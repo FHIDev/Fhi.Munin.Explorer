@@ -29,8 +29,8 @@
             <div class="munin-explorer-whole__main">
 
                 @* Every block below is a <section> carrying a fixed English id, so a contents nav
-                   can anchor on it and a link into one is the same link in either language. The
-                   wrapper sits INSIDE each emptiness check, never around it. *@
+                   can anchor on it and a link into one is the same link in either language. Where a
+                   block can come out empty the wrapper sits INSIDE that check, never around it. *@
 
                 @* Resolved from the payload, exactly as the kilde view resolves a source's. *@
                 @if (Groups.Count > 0)
@@ -58,9 +58,9 @@
                 }
 
                 @* Heading and table both, or neither — the block answers the emptiness question
-                   itself, and StatisticsBlock.Has is that same answer, so this view and the row's
-                   Data tab cannot disagree about it. *@
-                @if (StatisticsBlock.Has(variable))
+                   itself, and StatisticsBlock.AnyStatistics is that same answer, so this view and
+                   the row's Data tab cannot disagree about it. *@
+                @if (StatisticsBlock.AnyStatistics(variable))
                 {
                     <DetailSection Id="@DetailSectionIds.Statistics">
                         @StatisticsBlock.For(variable, BlockLevel, "headline headline-s", T)
@@ -69,13 +69,13 @@
             </div>
 
             <aside class="munin-explorer-whole__aside">
-                @if (DetailBlocks.AnyFacts(SourceInformation))
-                {
-                    <DetailSection Id="@DetailSectionIds.Source">
-                        @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                        @DetailBlocks.Facts(SourceInformation, Language)
-                    </DetailSection>
-                }
+                @* Not checked, because it cannot come out empty: the kildetype row falls back
+                   to "Ikke oppgitt" even where the variable names no source. Pinned by
+                   Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow. *@
+                <DetailSection Id="@DetailSectionIds.Source">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                    @DetailBlocks.Facts(SourceInformation, Language)
+                </DetailSection>
 
                 @if (CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T, Dates) is { } period)
                 {

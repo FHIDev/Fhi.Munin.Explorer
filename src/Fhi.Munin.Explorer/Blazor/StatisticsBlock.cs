@@ -33,7 +33,7 @@ internal static class StatisticsBlock
     internal static RenderFragment For(
         VariableDetail? variable, int headingLevel, string headingClass, Texts texts) => builder =>
     {
-        if (!Has(variable))
+        if (!AnyStatistics(variable))
         {
             return;
         }
@@ -60,9 +60,10 @@ internal static class StatisticsBlock
     /// </summary>
     /// <remarks>
     /// The guard inside <see cref="For"/> is this same call: a wrapper that answered the emptiness
-    /// question for itself could leave a section holding a heading and nothing else.
+    /// question for itself could leave a section holding a heading and nothing else. Named for
+    /// <see cref="DetailBlocks.AnyFacts"/>, which asks it of the block next to this one.
     /// </remarks>
-    internal static bool Has([NotNullWhen(true)] VariableDetail? variable) =>
+    internal static bool AnyStatistics([NotNullWhen(true)] VariableDetail? variable) =>
         variable is { Statistics.Count: > 0 };
 
     /// <summary>

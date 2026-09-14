@@ -45,8 +45,8 @@
             <div class="munin-explorer-kilde__main">
 
                 @* Every block below is a <section> carrying a fixed English id, so a contents nav
-                   can anchor on it and a link into one is the same link in either language. The
-                   wrapper sits INSIDE each emptiness check, never around it. *@
+                   can anchor on it and a link into one is the same link in either language. Where a
+                   block can come out empty the wrapper sits INSIDE that check, never around it. *@
 
                 @* The catalogue's own metadata. Which groups exist, what they are called and what
                    order they come in all arrive with the payload — see CatalogueProperties.Groups
@@ -69,6 +69,9 @@
                     </DetailSection>
                 }
 
+                @* No check here, because this block has no empty state: the tree always draws, its
+                   status line carrying the loading, empty, error and retry states, and its nodes
+                   come off a different request than these counts, which could hide a real one. *@
                 <DetailSection Id="@DetailSectionIds.DataCollections">
                     @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
                     <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" ShowNodeIcons="@ShowNodeIcons"
@@ -88,23 +91,18 @@
             </div>
 
             <aside class="munin-explorer-kilde__aside">
-                @* Heading and list together or neither, for both boxes: a section holding a heading
-                   and no facts is the empty block the emptiness checks exist to prevent. *@
-                @if (DetailBlocks.AnyFacts(SourceInformation))
-                {
-                    <DetailSection Id="@DetailSectionIds.Source">
-                        @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                        @DetailBlocks.Facts(SourceInformation, Language)
-                    </DetailSection>
-                }
+                @* Neither box is checked, because neither can come out empty: the kildetype row
+                   falls back to "Ikke oppgitt" and the variable count is an int. Pinned by
+                   Sections_WhenTheCatalogueHasFilledInNothing_ThenBothSidebarBoxesStillDrawARow. *@
+                <DetailSection Id="@DetailSectionIds.Source">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                    @DetailBlocks.Facts(SourceInformation, Language)
+                </DetailSection>
 
-                @if (DetailBlocks.AnyFacts(Statistics))
-                {
-                    <DetailSection Id="@DetailSectionIds.Statistics">
-                        @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
-                        @DetailBlocks.Facts(Statistics, Language)
-                    </DetailSection>
-                }
+                <DetailSection Id="@DetailSectionIds.Statistics">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
+                    @DetailBlocks.Facts(Statistics, Language)
+                </DetailSection>
             </aside>
         </div>
     </div>

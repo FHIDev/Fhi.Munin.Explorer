@@ -31,8 +31,8 @@
             <div class="munin-explorer-datasamling__main">
 
                 @* Every block below is a <section> carrying a fixed English id, so a contents nav
-                   can anchor on it and a link into one is the same link in either language. The
-                   wrapper sits INSIDE each emptiness check, never around it. *@
+                   can anchor on it and a link into one is the same link in either language. Where a
+                   block can come out empty the wrapper sits INSIDE that check, never around it. *@
 
                 @* The catalogue's own metadata, resolved from the payload exactly as the kilde and
                    variable views resolve theirs. The flat list this view replaced drew none of it,
@@ -68,15 +68,13 @@
             </div>
 
             <aside class="munin-explorer-datasamling__aside">
-                @* Heading and list together or neither, for both boxes: a section holding a heading
-                   and no facts is the empty block the emptiness checks exist to prevent. *@
-                @if (DetailBlocks.AnyFacts(SourceInformation))
-                {
-                    <DetailSection Id="@DetailSectionIds.Source">
-                        @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                        @DetailBlocks.Facts(SourceInformation, Language)
-                    </DetailSection>
-                }
+                @* Not checked, because it cannot come out empty: the kildetype row falls back
+                   to "Ikke oppgitt", so the list always has a row. Pinned by
+                   Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow. *@
+                <DetailSection Id="@DetailSectionIds.Source">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                    @DetailBlocks.Facts(SourceInformation, Language)
+                </DetailSection>
 
                 @* A datasamling that counts nothing gets no block, and the type names the heading
                    rather than filling a row. *@

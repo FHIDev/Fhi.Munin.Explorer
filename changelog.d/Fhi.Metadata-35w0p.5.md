@@ -7,8 +7,7 @@ category: Added
   words (`metadata`, `criteria`, `source`, `statistics`, `datacollections`, `versions`,
   `dataperiod`, `datatype`, `variablegroups`) rather than a slug of the heading, so a link into a
   section is the same link for a Norwegian and an English reader and survives a label being
-  reworded. Nothing moved on the page: the wrapper carries no spacing, and every block that drew
-  something before draws the same thing now — the section is emitted inside each emptiness check,
-  never around it, so a source with no statistics gets no empty box. Four sidebar headings that
-  used to draw over nothing now draw nothing at all; that is a behaviour change and has an entry
-  of its own under Changed. (Fhi.Metadata-35w0p.5)
+  reworded. Nothing moved on the page, which is the whole acceptance: the wrapper carries no
+  spacing, and every block that drew something before draws the same thing now — where a block can
+  come out empty the section is emitted inside that check, never around it, so a datasamling that
+  counts nothing gets no empty box rather than a heading in a box. (Fhi.Metadata-35w0p.5)

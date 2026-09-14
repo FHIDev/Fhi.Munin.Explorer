@@ -311,6 +311,21 @@ public class DatasamlingViewTest : BunitContext
     }
 
     [Fact]
+    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow()
+    {
+        // Why the source box carries no emptiness check while the statistics box beside it does:
+        // KildeTypeLabel answers "Ikke oppgitt" for a datasamling inheriting no kildetype, so that
+        // list is never empty, and Statistics has no row with a fallback of its own.
+        var cut = Render(new DatasamlingDetail { Id = Guid.NewGuid(), Code = "D", PreferredTerm = "D" });
+
+        // Named rather than merely counted, so taking the fallback away fails here saying which
+        // row went, rather than somewhere else saying the box was empty.
+        Assert.Equal("Type datakilde", cut.Find($"#{DetailSectionIds.Source} dt").TextContent);
+        Assert.Equal("Ikke oppgitt", cut.Find($"#{DetailSectionIds.Source} dd").TextContent);
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.Statistics}"));
+    }
+
+    [Fact]
     public void Sections_Always_ThenNoTwoOfThemShareAnId()
     {
         // Plain ids are only safe because an explorer renders at most one detail view: VariableSearch
