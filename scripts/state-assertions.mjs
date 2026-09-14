@@ -503,6 +503,15 @@ export const assertions = [
       await disclosure.and(page.locator('[aria-expanded="true"]'))
         .waitFor({ state: 'attached', timeout: findTimeout });
 
+      // The branch's identity for the round trip below, read while it is open because that is the
+      // only state it is drawn in: the id is the value's own key, where aria-label is the verb for
+      // the NEXT press and so says "Skjul" here and "Vis" on the same branch shut.
+      const branch = await disclosure.getAttribute('aria-controls');
+
+      if (branch === null) {
+        throw new Error(`the open branch "${label}" names no list, so there is no id to measure it by`);
+      }
+
       const facet = disclosure.locator('xpath=ancestor::details[1]');
       // Under the row's own list and never the row's own checkbox: what this assertion folds away
       // has to be a value the branch disclosed, and a branch row carries a checkbox of its own at
@@ -536,14 +545,14 @@ export const assertions = [
       await panel.locator(DISCLOSURE).nth(index).and(page.locator('[aria-expanded="true"]'))
         .waitFor({ state: 'attached', timeout: findTimeout });
 
-      return { index, label, chosen, whileShut, chips };
+      return { index, label, branch, chosen, whileShut, chips };
     },
 
-    async measure(page, { index, label, chosen, whileShut, chips }) {
+    async measure(page, { index, label, branch, chosen, whileShut, chips }) {
       const disclosure = page.locator(`${PANEL} ${DISCLOSURE}`).nth(index);
 
-      if (await disclosure.count() === 0 || await disclosure.getAttribute('aria-label') !== label) {
-        return `the panel no longer draws the branch "${label}" where it did — nothing was measured`;
+      if (await disclosure.count() === 0 || await disclosure.getAttribute('aria-controls') !== branch) {
+        return `the panel no longer draws the branch "${label}" open where it did — nothing was measured`;
       }
 
       if (whileShut !== chosen) {
