@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -1264,12 +1265,32 @@ public partial class VariableSearch
     private bool IsBranchOpen(string key) => _expandedBranches.Contains(key);
 
     /// <summary>The id of the list one branch discloses, unique to this mount and to that branch.</summary>
+    private string BranchId(string key) => $"munin-explorer-branch-{_instance}-{IdPart(key)}";
+
+    /// <summary>One facet value key as an id can spell it, and no two keys alike.</summary>
     /// <remarks>
-    /// The colon a facet value key carries is legal in an id and awkward in a selector, so it is
-    /// written as a hyphen here.
+    /// A kildetype group's key ends in whatever the API spells that kildetype with, so a space in
+    /// one would make <c>aria-controls</c> name two ids and find neither. Escaped rather than
+    /// replaced: replacing folds two keys differing only in punctuation onto one id.
     /// </remarks>
-    private string BranchId(string key) =>
-        $"munin-explorer-branch-{_instance}-{key.Replace(':', '-')}";
+    private static string IdPart(string key)
+    {
+        var id = new StringBuilder(key.Length);
+
+        foreach (var character in key)
+        {
+            if (char.IsAsciiLetterOrDigit(character) || character is '-')
+            {
+                id.Append(character);
+            }
+            else
+            {
+                id.Append(CultureInfo.InvariantCulture, $"_{(int)character:x4}");
+            }
+        }
+
+        return id.ToString();
+    }
 
     /// <summary>Open or shut one branch, and nothing else.</summary>
     /// <remarks>

@@ -168,8 +168,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   the kilde trail, because no host stylesheet names any of those. A branch *inside* one of those
   trees is the exception, and it is an argued one: its row carries the value's own checkbox, and a
   `<summary>` around a filter is two presses a reader cannot make apart, so the branch opens on a
-  `<button aria-expanded>` of its own drawn with an arrow as text. What a host supplies for them is base element
-  styling — list indentation in particular, which is what shows a delkilde sitting under its kilde.
+  `<button aria-expanded>` of its own drawn with an arrow as text. What a host supplies for them is
+  base element styling — list indentation in particular, which is what shows a delkilde sitting
+  under its kilde.
   `KildeView`'s own delkilde tree is a nested `<ul>` for both halves of that: a browser indents it
   unasked, and the nesting is a relationship a screen reader reads rather than one CSS draws.
   The package emits `<table>`s for the same reason: the kodeverk code list in an opened panel, and
@@ -287,8 +288,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     `<button aria-expanded>` carrying an arrow as text and an `aria-label` of its own, so undrawn
     it is still visible, operable and announced, and undrawn the row is the blocks it is made of
     stacked rather than laid out. What the rules buy is the row and a 24x24 target, which is WCAG
-    2.5.5. The branch was `<details>`/`<summary>` at the kildetype level alone until
-    `Fhi.Metadata-adog5`, and a summary cannot be the answer here: the row it would have to hold
+    2.5.8 Target Size (Minimum). The branch was `<details>`/`<summary>` at the kildetype level
+    alone until `Fhi.Metadata-adog5`, and a summary cannot be the answer here: the row it would hold
     carries the value's own checkbox, and a disclosure wrapped around a filter is the two presses
     a reader must be able to make apart. **Neither name is in any published Stiler**, and the rules
     are not written yet either — `Fhi.Metadata-cs3pt` is where they are tracked, and it carries the

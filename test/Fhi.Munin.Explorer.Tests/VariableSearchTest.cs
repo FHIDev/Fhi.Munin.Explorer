@@ -5397,6 +5397,45 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Branches_WhenAKildetypeSpellsItselfWithCharactersAnIdCannotHold_ThenAriaControlsStillResolves()
+    {
+        // A kildetype group's key ends in whatever the API spells that kildetype with. A space in
+        // an id makes aria-controls name two ids and find neither, which is a relationship lost
+        // with nothing on screen or in a log to say so. (Fhi.Metadata-adog5)
+        var facets = Facets() with
+        {
+            KildeTyper =
+            [
+                new() { Value = "kilde register", DisplayName = "Med mellomrom", Count = 1 },
+                new() { Value = "kilde-register", DisplayName = "Med bindestrek", Count = 1 }
+            ],
+            Kilder =
+            [
+                new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = "kilde register", Count = 1 },
+                new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "kilde-register", Count = 1 }
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        List<string> ids = [];
+
+        for (var group = 0; group < KildeTypeGroups(cut).Count; group++)
+        {
+            BranchDisclosure(KildeTypeGroups(cut)[group]).Click();
+            ids.Add(BranchDisclosure(KildeTypeGroups(cut)[group]).GetAttribute("aria-controls")!);
+        }
+
+        Assert.Equal(2, ids.Count);
+        Assert.All(ids, id => Assert.DoesNotContain(" ", id, StringComparison.Ordinal));
+        Assert.All(ids, id => Assert.Equal("UL", cut.Find($"#{id}").TagName.ToUpperInvariant()));
+
+        // And two kildetyper differing only in punctuation are two ids: folding them onto one would
+        // point both disclosures at the same list and duplicate the id in the page.
+        Assert.Equal(2, ids.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
     public void Branches_WhenTheReaderIsEnglish_ThenTheDisclosureIsNamedInEnglish()
     {
         // The name is prose this package writes, so it follows Language rather than the catalogue —
@@ -5480,6 +5519,37 @@ public class VariableSearchTest : BunitContext
         Assert.Contains("Datasamling 7-0", FilterPanel(cut).TextContent, StringComparison.Ordinal);
         Assert.DoesNotContain("Datasamling 8-0", FilterPanel(cut).TextContent, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Branches_WhateverTheFirstShutOneIs_ThenEverythingFocusableInItsRowIsItsOwnTwoControls(
+        bool oneKildetype)
+    {
+        // The shape scripts/state-assertions.mjs counts, pinned on both payloads it can meet: with
+        // one kildetype the heading is lifted away and the first shut branch is a kilde row with a
+        // checkbox of its own, so a count that subtracts a fixed one for the disclosure is wrong.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), oneKildetype ? ManyDatasamlinger() : FacetsWithDatasamlinger()));
+
+        var row = KildeTypeGroups(cut)[0];
+
+        Assert.Equal(0, DisclosedControls(row));
+
+        BranchDisclosure(row).Click();
+
+        Assert.True(DisclosedControls(KildeTypeGroups(cut)[0]) > 0);
+    }
+
+    /// <summary>What one branch row holds that is the reader's to reach, and not the row's own.</summary>
+    /// <remarks>
+    /// The C# half of the browser assertion's own filter: everything deeper sits in a row of its
+    /// own, so the row's disclosure and its checkbox are the two elements whose nearest
+    /// <c>&lt;li&gt;</c> is this one. (Fhi.Metadata-adog5)
+    /// </remarks>
+    private static int DisclosedControls(AngleSharp.Dom.IElement row) =>
+        row.QuerySelectorAll("a[href], button, input, select, textarea, [tabindex]:not([tabindex='-1'])")
+            .Count(control => control.Closest("li") != row);
 
     [Fact]
     public void Branches_WhenTheCatalogueIsLargeAndEverythingIsOpened_ThenEveryDatasamlingIsReachable()

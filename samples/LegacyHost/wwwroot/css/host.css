@@ -656,7 +656,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    Both names are handles. Undefined, the disclosure is a browser-default button drawn with the
    arrow it carries as text — visible, operable, and named by its aria-label whatever a stylesheet
    does — and the branch draws as the blocks it is made of. What the rules buy is the row and a
-   24x24 target, which is WCAG 2.5.5 rather than decoration. A host that strips outlines owes the
+   24x24 target, which is WCAG 2.5.8 rather than decoration. A host that strips outlines owes the
    focus ring back: the disclosure is a tab stop on every branch of the tree.
    (Fhi.Metadata-adog5) */
 .munin-explorer-filters__branch {

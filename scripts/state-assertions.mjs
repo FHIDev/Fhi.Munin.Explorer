@@ -67,6 +67,18 @@ const firstShutBranch = page => page.locator(`${PANEL} ${DISCLOSURE}[aria-expand
 /** The row one disclosure belongs to. */
 const rowOf = disclosure => disclosure.locator('xpath=..');
 
+/**
+ * How much of what a Tab could land on inside a row is the branch's disclosed content.
+ *
+ * Counted apart from the row's own controls rather than by subtracting them: whether a row carries
+ * a checkbox of its own is the payload's answer, since the kildetype heading that has none is
+ * lifted away when a catalogue has only one kildetype. Everything deeper sits in a row of its own.
+ */
+const disclosedControls = row => row.evaluate(
+  (item, selector) => [...item.querySelectorAll(selector)]
+    .filter(control => control.closest('li') !== item).length,
+  FOCUSABLE);
+
 /** The route a facet press refetches, and so the one a staged drop has to hold open. */
 const SEARCH = '/api/explorer/variables';
 
@@ -400,8 +412,7 @@ export const assertions = [
         .and(page.locator('[aria-expanded="true"]'))
         .waitFor({ state: 'attached', timeout: findTimeout });
 
-      const disclosed = await rowOf(panel.locator(DISCLOSURE).nth(index))
-        .locator(FOCUSABLE).count() - 1;
+      const disclosed = await disclosedControls(rowOf(panel.locator(DISCLOSURE).nth(index)));
 
       await panel.locator(DISCLOSURE).nth(index).focus();
       await page.keyboard.press(' ');
@@ -431,7 +442,7 @@ export const assertions = [
       }
 
       const row = rowOf(disclosure);
-      const left = await row.locator(FOCUSABLE).count() - 1;
+      const left = await disclosedControls(row);
       const lists = await row.locator('ul').count();
 
       if (left > 0 || lists > 0) {
@@ -493,7 +504,10 @@ export const assertions = [
         .waitFor({ state: 'attached', timeout: findTimeout });
 
       const facet = disclosure.locator('xpath=ancestor::details[1]');
-      const box = rowOf(disclosure).locator('input[type=checkbox]:not(:checked)').first();
+      // Under the row's own list and never the row's own checkbox: what this assertion folds away
+      // has to be a value the branch disclosed, and a branch row carries a checkbox of its own at
+      // every level but a kildetype heading.
+      const box = rowOf(disclosure).locator('ul input[type=checkbox]:not(:checked)').first();
 
       await box.waitFor({ state: 'visible', timeout: findTimeout });
       await box.click();
@@ -561,7 +575,7 @@ export const assertions = [
     // the facet's own controls do it.
     async control(page, { index }) {
       await rowOf(page.locator(`${PANEL} ${DISCLOSURE}`).nth(index))
-        .locator('input[type=checkbox]:checked').first()
+        .locator('ul input[type=checkbox]:checked').first()
         .evaluate(box => { box.checked = false; });
     },
   },

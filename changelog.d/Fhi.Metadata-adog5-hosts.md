@@ -5,7 +5,7 @@ category: Notes for hosts
   branch. Both are handles: the button carries an arrow as text and an `aria-label` of its own, so
   with no rule at all it is still visible, operable and announced, and the row simply draws as the
   blocks it is made of instead of as a row. What a rule buys is the row itself and a 24×24 target,
-  which is WCAG 2.5.5 rather than decoration — and the focus ring, if your reset strips outlines:
+  which is WCAG 2.5.8 rather than decoration — and the focus ring, if your reset strips outlines:
   the disclosure is a tab stop on every branch of the tree. Both sample stylesheets carry the
   rules to copy. The change to watch for is the kildetype groups inside the Kilde facet: they were
   `<details>`/`<summary>` and inherited whatever you give `.munin-explorer-filters summary`, and
