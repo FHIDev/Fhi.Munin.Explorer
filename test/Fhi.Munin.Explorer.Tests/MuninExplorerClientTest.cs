@@ -984,9 +984,9 @@ public class MuninExplorerClientTest
     [Fact]
     public async Task GetFiltersAsync_WhenADatasamlingsCategoriesArriveAsAnExplicitNull_ThenTheyAreReadAsEmpty()
     {
-        // The same rule on a facet row, where a caller reads Categories per row in a loop and has
-        // no obvious place to put a null check. Nothing about this list is special —
-        // NullAsEmptyCollectionsTest is what keeps the converter matching every IReadOnlyList<T>.
+        // The same rule on a facet row, where a caller reads Categories per row in a loop with no
+        // obvious place for a null check. Nothing about this list is special — what keeps every
+        // contract collection in a shape the converter matches is NullAsEmptyCollectionsTest.
         var filters = await WithJson("""
             {
               "datasamlinger": [
