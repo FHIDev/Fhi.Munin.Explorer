@@ -68,12 +68,12 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
-    public void Metadata_WhenAKeyIsAlreadyInTheSidebar_ThenItIsNotRepeatedInTheGroups()
+    public void Metadata_WhenAKeyIsAlreadyABlockOfItsOwn_ThenItIsNotRepeatedInTheGroups()
     {
-        // The bug this was written for. DataType is drawn in the sidebar from the typed field, and
-        // it was ALSO drawn in the metadata under its own group — the same fact, twice, saying two
-        // different things: "Heltall" in the sidebar from our own translation, "Integer" in the
-        // group from the catalogue's vocabulary, whose Norwegian label for this field is English.
+        // The bug this was written for. DataType has a block of its own drawn from the typed field,
+        // and it was ALSO drawn in the metadata under its own group — the same fact, twice, saying
+        // two different things: "Heltall" from our own translation, "Integer" from the catalogue's
+        // vocabulary, whose Norwegian label for this field is English.
         var cut = Render(Detail());
 
         Assert.DoesNotContain("Integer", cut.Markup, StringComparison.Ordinal);
@@ -81,9 +81,9 @@ public class VariableViewTest : BunitContext
         // And the group goes with it, because nothing else in it was filled in — which is exactly
         // the five groups Runa draws where the payload offers six.
         //
-        // Scoped to the group headings on purpose. The sidebar has a Datatype heading of its own and
-        // is meant to: that is where this fact belongs. Asserting no "Datatype" heading anywhere
-        // would fail on the very thing the fix keeps.
+        // Scoped to the group headings on purpose. The typed field has a Datatype heading of its
+        // own and is meant to: that is where this fact belongs. Asserting no "Datatype" heading
+        // anywhere would fail on the very thing the fix keeps.
         Assert.DoesNotContain(cut.FindAll(".munin-explorer-group").Select(e => e.TextContent),
                               text => text == "Datatype");
         Assert.Single(cut.FindAll(".munin-explorer-group"));
@@ -483,15 +483,15 @@ public class VariableViewTest : BunitContext
         DataTo = new DateTimeOffset(2022, 11, 9, 0, 0, 0, TimeSpan.Zero),
     };
 
-    /// <summary>The sidebar's data period, which is the first plain paragraph in the aside.</summary>
+    /// <summary>The data period, which is the only thing in its own section.</summary>
     private static string DataPeriod(IRenderedComponent<VariableView> cut) =>
-        cut.Find(".munin-explorer-whole__aside p.margin--none").TextContent;
+        cut.Find($"#{DetailSectionIds.DataPeriod} p.margin--none").TextContent;
 
     [Fact]
-    public void Dates_Always_ThenTheMonthIsAbbreviatedBecauseTheColumnTheySitInIsNarrow()
+    public void Dates_Always_ThenTheMonthIsAbbreviated()
     {
-        // The aside is 320px, where "20. september 2022 – 9. november 2022" wraps and the short
-        // form does not. Untested until the date helpers became shared, which is exactly when a
+        // The short form the 320px rail this block used to sit in needed, kept now the block reads
+        // full width. Untested until the date helpers became shared, which is exactly when a
         // spelled-out month could arrive here without anything failing.
         Assert.Equal("20. sep. 2022 – 9. nov. 2022", DataPeriod(Render(WithDataPeriod())));
     }
@@ -516,24 +516,24 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
-    public void Aside_Always_ThenItsFactListsWearTheGridTheHostGivesOneLane()
+    public void FactLists_Always_ThenTheyWearTheGridInTheOneColumn()
     {
-        // The markup half of the sidebar's single lane — the stylesheet half is asserted in
-        // KildeViewTest. The version detail below this aside renders into a full-width column and
-        // is deliberately not asserted here. (Fhi.Metadata-hi0po)
-        var aside = Render(Detail()).Find(".munin-explorer-whole__aside");
+        // The markup half — the stylesheet half is asserted in KildeViewTest. Every block of this
+        // view reads in one column now, so nothing here may end up back in a rail of its own.
+        var cut = Render(Detail());
 
-        Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.Empty(cut.FindAll("aside"));
+        Assert.NotEmpty(cut.Find(".munin-explorer-whole__main").QuerySelectorAll("dl.munin-explorer-meta__grid"));
     }
 
     [Fact]
-    public void Aside_WhenTheOwningKildeHasNoKildetype_ThenTheRowSaysSoRatherThanDroppingOut()
+    public void SourceInformation_WhenTheOwningKildeHasNoKildetype_ThenTheRowSaysSoRatherThanDroppingOut()
     {
         // DetailBlocks.Facts drops a blank value entirely, so a reading site letting the API's null
         // through raw loses the row rather than drawing an empty one — and no compiler says so,
         // because the label helper has always taken a null. (Fhi.Metadata-l9l2n.61)
         var facts = Render(Detail() with { KildeType = null })
-            .Find(".munin-explorer-whole__aside dl.munin-explorer-meta__grid");
+            .Find($"#{DetailSectionIds.Source} dl.munin-explorer-meta__grid");
 
         Assert.Equal(
             ["Kildenavn", "Kortnavn", "Type datakilde"],

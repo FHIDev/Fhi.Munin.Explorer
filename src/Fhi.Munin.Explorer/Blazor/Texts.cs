@@ -158,7 +158,7 @@ internal sealed record Texts(
     string FieldName,
     string VariableCountSuffix,
 
-    // The variable detail view: its sidebar, and the statistics table's columns.
+    // The variable detail view: its own fact blocks, and the statistics table's columns.
     string FieldKildeName,
     string FieldKildeShortName,
     string FieldVariableGroups,

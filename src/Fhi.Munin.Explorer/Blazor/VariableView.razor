@@ -66,9 +66,11 @@
                         @StatisticsBlock.For(variable, BlockLevel, "headline headline-s", T)
                     </DetailSection>
                 }
-            </div>
 
-            <aside class="munin-explorer-whole__aside">
+                @* The five blocks below are what the rail beside this column held, in the order it
+                   held them: the mockups put source information near the end of the page and name
+                   no position for the four with it. *@
+
                 @* Checked although it does not empty under this package's own texts: the row that
                    keeps it full falls back to Texts.NotSpecified, a string the host constructs, so
                    presence follows the content rather than that string. *@
@@ -127,7 +129,7 @@
                         </ul>
                     </DetailSection>
                 }
-            </aside>
+            </div>
         </div>
     </div>
 }

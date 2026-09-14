@@ -6,12 +6,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// A source, in the shape both explorers show it: what it is called, the catalogue's own metadata
-/// about it, and a sidebar of the facts that are the same for every source.
+/// about it, and the facts that are the same for every source.
 /// </summary>
 /// <remarks>
 /// Shared deliberately, and built as a core with slots rather than one view with flags. Measured on
 /// 2026-08-20, Runa and Kelda render the same source identically down to the heading order — same
-/// name block, same eight metadata groups, same two sidebar boxes, and — since
+/// name block, same eight metadata groups, same two fact boxes, and — since
 /// Fhi.Metadata-rhybi — the same word over the datasamlinger. Kelda then adds sections Runa
 /// does not have.
 /// <para>

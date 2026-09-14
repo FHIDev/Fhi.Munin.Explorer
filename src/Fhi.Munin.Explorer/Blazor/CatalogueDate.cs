@@ -2,8 +2,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>How much room a date is allowed to take.</summary>
 /// <remarks>
-/// The caller's, because the room is the caller's: a spelled-out month wraps in a 320px sidebar and
-/// does not in a main column. It never decides the ordinal dot, which follows the reader.
+/// The caller's, because the room is the caller's: a spelled-out month wraps in a narrow column and
+/// does not in a wide one. It never decides the ordinal dot, which follows the reader.
 /// </remarks>
 internal enum DateWidth
 {

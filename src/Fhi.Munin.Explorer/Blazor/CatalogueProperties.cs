@@ -256,8 +256,8 @@ internal static class CatalogueProperties
     /// <para>
     /// <paramref name="drawnElsewhere"/> names keys the caller renders itself, so the same fact does
     /// not appear twice on one page. A variable's <c>DataType</c> is the case this was written for:
-    /// the sidebar shows it, and left in the groups it also appeared there — under the same label,
-    /// with a different word, because the sidebar translates the code and the group resolves it
+    /// a block of its own shows it, and left in the groups it also appeared there — under the same
+    /// label, with a different word, because that block translates the code and the group resolves it
     /// through the catalogue's own vocabulary, whose Norwegian labels for this field are English.
     /// Dropping the key drops the group with it whenever nothing else in that group is filled in,
     /// which is exactly what Runa shows.

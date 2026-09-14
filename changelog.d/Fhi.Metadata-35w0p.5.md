@@ -1,7 +1,7 @@
 category: Added
 - **The kilde, datasamling and variable views draw each block as a `<section>` with a stable id.**
   Every block heading below the page title — the catalogue metadata, the datasamlinger, the
-  inclusion criteria, the version history, the statistics and each sidebar box — now sits inside
+  inclusion criteria, the version history, the statistics and each fact box — now sits inside
   `<section id="…" data-nav-section class="munin-explorer-page__section">`, which is what a
   contents nav or a scroll-spy needs to anchor on; neither ships yet. The ids are fixed English
   words (`metadata`, `criteria`, `source`, `statistics`, `datacollections`, `versions`,

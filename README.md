@@ -211,9 +211,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   a category to check against. The `THEIRS` allowlist in `scripts/assert-sample-css-in-step.sh` is
   empty by construction, and what these names cost a host is now the same question everywhere: a
   host on Stiler 0.1.13 or later has rules for them — 0.1.14 for the pager's skip link, which was
-  renamed after 0.1.13 shipped, none at all yet for the pager itself, and 0.1.39 for the single
-  lane the three asides' `munin-explorer-meta__grid` needs, without which the sidebar's words push
-  the whole page into horizontal scrolling above 1280px (`Fhi.Metadata-hi0po`) — any other host
+  renamed after 0.1.13 shipped, and none at all yet for the pager itself — any other host
   draws whatever it wants drawn, and the sub-lists below are about how much drawing nothing costs.
 
   - Handles, where something else already dresses the element — a Stiler class it also wears, or
@@ -227,8 +225,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     opens a row, the button inside each sortable column heading, and the columns that hold a
     number. The samples style them for arrangement — the root as a grid at desktop width,
     `-filters`, `-detail`, `-drilldown`, `-kodeverk*` and `-codes*` for spacing, indentation and a
-    rule between rows, the kilde, datasamling and variable views' name block, main column and
-    sidebar as one page layout under three prefixes, the kilde list as a table with its counts
+    rule between rows, the kilde, datasamling and variable views' name block and main column as
+    one page layout under three prefixes, the kilde list as a table with its counts
     right-aligned, the sorted heading's button marked by the two declarations Stiler already gives
     the variable explorer's, and a count of nought dimmed under
     `munin-explorer-kilder__count--zero` so an empty register reads as empty rather than as a
@@ -573,7 +571,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main__name` | handle |
   | `munin-explorer-dataitem-period` | prose |
   | `munin-explorer-datasamling` | handle |
-  | `munin-explorer-datasamling__aside` | handle |
   | `munin-explorer-datasamling__body` | handle |
   | `munin-explorer-datasamling__criteria` | handle |
   | `munin-explorer-datasamling__description` | handle |
@@ -610,7 +607,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-hierarchy__metadata` | handle |
   | `munin-explorer-hierarchy__nodes` | handle |
   | `munin-explorer-hierarchy__open` | handle |
-  | `munin-explorer-kilde__aside` | handle |
   | `munin-explorer-kilde__body` | handle |
   | `munin-explorer-kilde__datasamlinger` | handle |
   | `munin-explorer-kilde__delkilde` | handle |
@@ -677,7 +673,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-versions__to` | handle |
   | `munin-explorer-versions__toggle` | handle |
   | `munin-explorer-whole` | handle |
-  | `munin-explorer-whole__aside` | handle |
   | `munin-explorer-whole__body` | handle |
   | `munin-explorer-whole__code` | handle |
   | `munin-explorer-whole__description` | handle |
@@ -967,7 +962,7 @@ Four things are worth knowing before mounting one.
   helsedata publishes itself, so it defaults to `false`: a host embedding the explorer inside a
   site that already covers access and pricing gets neither block without doing anything. Set it
   to `true` on a host of your own. Nothing else on the kilde page moves with it — the variable
-  count, the metadata, the datasamlinger and the sidebar are drawn either way.
+  count, the metadata, the datasamlinger and the source information are drawn either way.
 
 Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch`,
 `VariableListView`, `VariableListFilters` and `KildeSearch` stay public underneath, so a host that

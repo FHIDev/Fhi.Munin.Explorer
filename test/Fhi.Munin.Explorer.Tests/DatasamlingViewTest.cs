@@ -10,7 +10,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// The whole datasamling: its name block, the catalogue's own metadata, who the data includes and
-/// the sidebar of who owns it and how much of it there is.
+/// the blocks saying who owns it and how much of it there is.
 /// </summary>
 /// <remarks>
 /// Written with the view itself, which replaced a flat list of eleven fields inside the variable
@@ -67,7 +67,7 @@ public class DatasamlingViewTest : BunitContext
     };
 
     /// <summary>
-    /// One sidebar box, found by the heading over it rather than by its position.
+    /// One fact box, found by the heading over it rather than by its position.
     /// </summary>
     /// <remarks>
     /// Either box is drawn only when it has a row, so a position would hand back the wrong one
@@ -75,13 +75,13 @@ public class DatasamlingViewTest : BunitContext
     /// </remarks>
     private static IElement Box(IRenderedComponent<DatasamlingView> cut, string heading)
     {
-        var aside = cut.Find(".munin-explorer-datasamling__aside");
+        var main = cut.Find(".munin-explorer-datasamling__main");
 
-        var found = aside.Children.FirstOrDefault(
+        var found = main.Children.FirstOrDefault(
                         e => e.QuerySelector("h3, h4, h5, h6")?.TextContent == heading)
                     ?? throw new InvalidOperationException(
-                        $"No '{heading}' section in the sidebar, only: "
-                        + $"{string.Join(", ", aside.QuerySelectorAll("h3, h4, h5, h6").Select(e => e.TextContent))}.");
+                        $"No '{heading}' section in the main column, only: "
+                        + $"{string.Join(", ", main.QuerySelectorAll("h3, h4, h5, h6").Select(e => e.TextContent))}.");
 
         return found.QuerySelector("dl")
                ?? throw new InvalidOperationException(
@@ -144,7 +144,6 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer-datasamling",
-            "munin-explorer-datasamling__aside",
             "munin-explorer-datasamling__body",
             "munin-explorer-datasamling__criteria",
             "munin-explorer-datasamling__description",
@@ -166,7 +165,7 @@ public class DatasamlingViewTest : BunitContext
     {
         // The parameter is EditorRequired but the caller sets it from a fetch, so null is the state
         // between opening the view and the payload landing. An empty shell would be a header rule
-        // and a sidebar box drawn around nothing.
+        // and a fact box drawn around nothing.
         Assert.Empty(Render(datasamling: null).Markup.Trim());
     }
 
@@ -175,8 +174,8 @@ public class DatasamlingViewTest : BunitContext
     {
         // The code, and not the kortNavn beside it the way the kilde view puts a source's: on a
         // datasamling that field holds the owning kilde's abbreviation — "ALS" on every one of the
-        // ALS register's — so it names the kilde rather than the datasamling, and the sidebar
-        // already says which kilde this is.
+        // ALS register's — so it names the kilde rather than the datasamling, and the source
+        // information already says which kilde this is.
         var cut = Render(Datasamling());
 
         Assert.Equal("K_ALS.INKLUSJON",
@@ -194,7 +193,7 @@ public class DatasamlingViewTest : BunitContext
     }
 
     [Fact]
-    public void Description_WhenTheCatalogueHasOne_ThenItIsProseUnderTheNameRatherThanARowInTheSidebar()
+    public void Description_WhenTheCatalogueHasOne_ThenItIsProseUnderTheNameRatherThanAFactRow()
     {
         var cut = Render(Datasamling());
 
@@ -294,8 +293,8 @@ public class DatasamlingViewTest : BunitContext
     {
         // The wrapper goes INSIDE each emptiness check. Outside one it would draw a section holding
         // a heading and nothing else, which is worse than the bare heading it replaced. Both of
-        // this view's suppressible blocks are taken away at once — the criteria in the main column
-        // and the statistics in the sidebar.
+        // this view's suppressible blocks are taken away at once — the criteria and the
+        // statistics.
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
@@ -343,10 +342,10 @@ public class DatasamlingViewTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Criteria_WhenTheCatalogueHasThem_ThenTheySitInTheMainColumnRatherThanInTheSidebar()
+    public void Criteria_WhenTheCatalogueHasThem_ThenTheyAreProseRatherThanAFactRow()
     {
         // Prose, and often several paragraphs of it — the answer to the first question a researcher
-        // asks about a datasamling. A sidebar row is the one place it cannot be read.
+        // asks about a datasamling. A fact row is the one place it cannot be read.
         var cut = Render(Datasamling());
 
         Assert.StartsWith("Alle pasienter som er 18 år eller eldre",
@@ -369,7 +368,7 @@ public class DatasamlingViewTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
-    // The sidebar.
+    // The fact boxes.
     // ---------------------------------------------------------------------------------
 
     [Fact]
@@ -486,7 +485,7 @@ public class DatasamlingViewTest : BunitContext
 
         Assert.DoesNotContain("Statistikk", BlockHeadings(cut));
         Assert.Equal(["Kildeinformasjon"],
-                     cut.FindAll(".munin-explorer-datasamling__aside .headline-s").Select(e => e.TextContent));
+                     BlockHeadings(cut).Where(h => h is "Kildeinformasjon" or "Statistikk"));
     }
 
     [Fact]
@@ -511,7 +510,7 @@ public class DatasamlingViewTest : BunitContext
         var cut = Render(Datasamling(), headingLevel: 4);
 
         Assert.Equal("H4", cut.Find(".munin-explorer-datasamling__header h4").TagName);
-        Assert.Equal("H5", cut.Find(".munin-explorer-datasamling__aside h5").TagName);
+        Assert.Equal("H5", cut.Find($"#{DetailSectionIds.Source} h5").TagName);
         Assert.Equal("H6", cut.Find(".munin-explorer-group").TagName);
     }
 
@@ -559,7 +558,7 @@ public class DatasamlingViewTest : BunitContext
     ];
 
     [Fact]
-    public void Sections_WhenAnExplorerPassesThem_ThenTheyComeLastInTheMainColumnRatherThanInTheSidebar()
+    public void Sections_WhenAnExplorerPassesThem_ThenTheyComeLastAfterTheViewsOwnBlocks()
     {
         // The slot is the reason this is a core with composition points rather than a view with a
         // flag per explorer. Nothing here learns which explorer is calling.
@@ -623,14 +622,15 @@ public class DatasamlingViewTest : BunitContext
     }
 
     [Fact]
-    public void Aside_Always_ThenItsFactListsWearTheGridTheHostGivesOneLane()
+    public void FactLists_Always_ThenTheyWearTheGridInTheOneColumn()
     {
-        // The markup half of the sidebar's single lane — the stylesheet half is asserted in
-        // KildeViewTest. Fact lists that stopped wearing this class, or moved out of the aside,
-        // would leave the host's rule matching nothing and say so nowhere. (Fhi.Metadata-hi0po)
-        var aside = Render(Datasamling()).Find(".munin-explorer-datasamling__aside");
+        // The markup half — the stylesheet half is asserted in KildeViewTest. Fact lists that
+        // stopped wearing this class would leave the host's rule matching nothing and say so
+        // nowhere. (Fhi.Metadata-hi0po)
+        var main = Render(Datasamling()).Find(".munin-explorer-datasamling__main");
 
-        Assert.NotEmpty(aside.QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.Empty(Render(Datasamling()).FindAll("aside"));
+        Assert.NotEmpty(main.QuerySelectorAll("dl.munin-explorer-meta__grid"));
     }
 
     [Fact]

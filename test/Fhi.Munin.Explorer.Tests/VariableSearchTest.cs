@@ -4878,11 +4878,9 @@ public class VariableSearchTest : BunitContext
     };
 
     /// <summary>The word under the panel's Datatype heading, which is a sibling rather than a
-    /// child of it — the aside is a flat run of headings and paragraphs.</summary>
+    /// child of it — a block is a flat run of a heading and what follows it.</summary>
     private static string PanelDataType(IRenderedComponent<VariableView> cut) =>
-        cut.FindAll(".munin-explorer-whole__aside .headline-s")
-           .Single(h => h.TextContent == "Datatype")
-           .NextElementSibling!.TextContent;
+        cut.Find($"#{DetailSectionIds.DataType} .headline-s").NextElementSibling!.TextContent;
 
     [Fact]
     public void Render_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowAndTheFacetShowIt()
@@ -11779,7 +11777,6 @@ public class VariableSearchTest : BunitContext
                 "munin-explorer-kilde__delkilder",
                 "munin-explorer-kilde__delkilde",
                 "munin-explorer-kilde__delkilde-name",
-                "munin-explorer-kilde__aside",
             ],
             invented);
 
