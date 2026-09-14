@@ -427,7 +427,7 @@ public partial class VariableSearch
     /// </remarks>
     private FacetGroup KildeGroup(FilterOptions facets)
     {
-        var levels = KildeLevels(facets);
+        var levels = FilterHierarchy.KildeLevels(facets);
         var kilder = VisibleKilder(facets, levels);
 
         // The order the kildetype facet is in, so the headings here and the facet above agree.
@@ -473,9 +473,10 @@ public partial class VariableSearch
             .Where(kilde => _filter.KildeIds.Contains(kilde.Id))
             .Select(kilde => KildeValue(kilde)),
         .. ListedKilder(facets)
-            .SelectMany(kilde => OnePerId(levels.Delkilder[kilde.Id],
-                                          delkilde => delkilde.Id,
-                                          delkilde => delkilde.ParentDelkildeId))
+            .SelectMany(kilde => FilterHierarchy.OnePerId(
+                            levels.Delkilder[kilde.Id],
+                            delkilde => delkilde.Id,
+                            delkilde => delkilde.ParentDelkildeId))
             .Where(delkilde => _filter.DelkildeIds.Contains(delkilde.Id))
             .Select(DelkildeValue),
         .. facets.Datasamlinger
@@ -538,7 +539,7 @@ public partial class VariableSearch
         }
 
         var term = text.Trim();
-        var levels = KildeLevels(facets);
+        var levels = FilterHierarchy.KildeLevels(facets);
 
         return VisibleKilder(facets, levels).Any(kilde => !KildeMatches(kilde, levels, term));
     }
@@ -563,7 +564,7 @@ public partial class VariableSearch
     /// <summary>Whether a kilde, or anything drawn under it, holds <paramref name="term"/>.</summary>
     /// <remarks>
     /// A datasamling is reached under its delkilde as well as straight off the kilde, since
-    /// <see cref="KildeLevels"/> puts it in whichever of the two lookups its parent says. What the
+    /// <see cref="FilterHierarchy.KildeLevels"/> puts it in whichever of the two lookups its parent says. What the
     /// reader then sees of a deep match is <see cref="OpenBranchesToMatches"/>'s business.
     /// </remarks>
     private bool KildeMatches(KildeFacet kilde, KildeLevelLookup levels, string term) =>
@@ -682,46 +683,6 @@ public partial class VariableSearch
     private (string Text, string? Language) DatasamlingLabel(DatasamlingFacet datasamling) =>
         CatalogueName(datasamling.Name, null);
 
-    /// <summary>The delkilder and datasamlinger of the kilde facet, keyed by what each hangs under.</summary>
-    /// <remarks>
-    /// Datasamlinger are split across two lookups rather than keyed into one by whichever parent
-    /// they hang from: the two id spaces are independent Guids off the wire, and one lookup would
-    /// read a kilde id that happened to equal a delkilde id as the other level's key and misfile
-    /// the row with no error anywhere.
-    /// </remarks>
-    private sealed record KildeLevelLookup(
-        ILookup<Guid, DelkildeFacet> Delkilder,
-        ILookup<Guid, DatasamlingFacet> DatasamlingerByKilde,
-        ILookup<Guid, DatasamlingFacet> DatasamlingerByDelkilde);
-
-    /// <summary>Both child levels of the kilde tree, in one pass over the facets.</summary>
-    private static KildeLevelLookup KildeLevels(FilterOptions facets)
-    {
-        // GroupBy rather than ToDictionary: a payload repeating a delkilde id is malformed, but it
-        // throws here on the render path and inside the kilde search box's onchange, either of
-        // which tears the circuit down over what would otherwise be one oddly drawn row.
-        var delkildeOwner = facets.Delkilder
-            .GroupBy(delkilde => delkilde.Id)
-            .ToDictionary(group => group.Key, group => group.First().KildeId);
-
-        // A delkilde the payload left out — cross-filtered away, or belonging to another kilde — is
-        // an absent parent, so its datasamlinger fall back to the kilde rather than disappearing
-        // with it.
-        bool HangsUnderItsDelkilde(DatasamlingFacet datasamling) =>
-            datasamling.DelkildeId is { } parent
-            && delkildeOwner.TryGetValue(parent, out var owner)
-            && owner == datasamling.KildeId;
-
-        return new KildeLevelLookup(
-            facets.Delkilder.ToLookup(delkilde => delkilde.KildeId),
-            facets.Datasamlinger
-                .Where(datasamling => !HangsUnderItsDelkilde(datasamling))
-                .ToLookup(datasamling => datasamling.KildeId),
-            facets.Datasamlinger
-                .Where(HangsUnderItsDelkilde)
-                .ToLookup(datasamling => datasamling.DelkildeId!.Value));
-    }
-
     private bool IsDelkildeChosen(Guid id) => _filter.DelkildeIds.Contains(id);
 
     private Func<Task> ToggleDelkilde(Guid id) =>
@@ -741,7 +702,7 @@ public partial class VariableSearch
     {
         // Collapsed before the tree is built, so the copy that decides whether a row is offered is
         // the copy that names it; Tree collapses the same way again, to no effect. (Fhi.Metadata-l9l2n.82)
-        var grupper = OnePerId(facets.Variabelgrupper, g => g.Id, g => g.ParentId);
+        var grupper = FilterHierarchy.OnePerId(facets.Variabelgrupper, g => g.Id, g => g.ParentId);
 
         // An opted-out group is in this payload only to carry the offered groups under it, so it is
         // a container here: a checkbox would offer a filter the API says the reader may not have,
@@ -917,7 +878,7 @@ public partial class VariableSearch
     /// recursing until the stack runs out.
     /// </para>
     /// <para>
-    /// An id the payload names more than once is <see cref="OnePerId">collapsed to one node</see>
+    /// An id the payload names more than once is <see cref="FilterHierarchy.OnePerId">collapsed to one node</see>
     /// before any of that, so where the value sits is the payload's meaning rather than its order.
     /// </para>
     /// <para>
@@ -939,7 +900,7 @@ public partial class VariableSearch
         Func<int, int?> count,
         Func<Guid, IReadOnlyList<FacetValue>>? under = null)
     {
-        var all = OnePerId(nodes, node => node.Id, node => node.ParentId);
+        var all = FilterHierarchy.OnePerId(nodes, node => node.Id, node => node.ParentId);
 
         if (all.Count == 0)
         {
@@ -996,22 +957,6 @@ public partial class VariableSearch
             return new FacetValue($"{keyPrefix}{node.Id}", node.Label, node.Language, count(node.Count),
                                   selected(node.Id), toggle(node.Id), children);
         }
-    }
-
-    /// <summary>One entry per id, the copy hanging off a parent that is present winning.</summary>
-    /// <remarks>
-    /// Naming an id twice drew it twice, so one press ticked both and the row over the results
-    /// carried two chips for one filter. Two entries with one id can differ in parent and in name
-    /// alike, so keeping the first listed would nest, and label, by payload order. (Fhi.Metadata-l9l2n.82)
-    /// </remarks>
-    private static IReadOnlyList<T> OnePerId<T>(IEnumerable<T> entries, Func<T, Guid> id, Func<T, Guid?> parentId)
-    {
-        var listed = entries.ToList();
-        var known = listed.Select(id).ToHashSet();
-
-        return [.. listed.GroupBy(id).Select(copies => copies.FirstOrDefault(Parented) ?? copies.First())];
-
-        bool Parented(T entry) => parentId(entry) is { } parent && known.Contains(parent);
     }
 
     /// <summary>Which way the last Utvid alle / Skjul alle press left every disclosure, if any.</summary>
