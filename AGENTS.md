@@ -292,9 +292,10 @@ written for HostileHost" and the only one the numbers support:
   print `n/a` and measure nothing.
 - `nothing the reader can press is under the host header` reports `no .main-header on the page —
   the host chrome did not render`. ModernHost draws none; that finding is about the fixture.
-- `the component stays inside the box the host gave it` fails at 320 on a real defect the fix for
-  which is not in this repository: the column picker's open list is 304px wide against a 226px
-  mount and hangs off the left edge of the viewport, `Fhi.Metadata-abmom`.
+- `the component stays inside the box the host gave it` fails at 320 on the column picker: here its
+  open list is 304px wide against a 226px mount and hangs 55px off the left edge of the viewport.
+  Under real Stiler that is 2px, which `Fhi.Metadata-abmom` closed as accepted; the sample's
+  excess is `Fhi.Metadata-w6lvr`.
 - the two `kilder` pins hold at 320, and are left out because what they exist to catch is a Stiler
   rule going missing, which the sample stylesheet can only stand in for. `check-hostile-host.sh`
   measures them against the real one at six widths.
