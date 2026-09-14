@@ -5,11 +5,13 @@
 ## Bead
 
 <!-- Work is tracked in the Munin beads workspace, not this repo's issues.
-     "Closes-Bead: <id>" closes the bead a few minutes after this PR merges.
-     Only partly done? Write "Bead: <id>" instead — "Closes-Bead" closes it
-     whether or not the acceptance criteria are met. -->
+     Uncomment the line below and put the real bead id in it: the closer only reads
+     "Closes-Bead: <id>" as a plain line of its own, never inside a comment.
+     It closes the bead a few minutes after this PR merges. Only partly done?
+     Write "Bead: <id>" instead — "Closes-Bead" closes it whether or not the
+     acceptance criteria are met. -->
 
-Closes-Bead: <!-- Fhi.Metadata-... -->
+<!-- Closes-Bead: Fhi.Metadata-xxxxx -->
 
 ## Changelog
 

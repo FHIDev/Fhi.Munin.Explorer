@@ -4,8 +4,8 @@ description: >
   Evidence-based verification before committing, pushing, or opening a pull request in
   Fhi.Munin.Explorer. Runs the build, the tests, dotnet format and the repository's own guard
   scripts, checks the changelog fragment and the comment budget, and checks the pull request
-  reference is the cross-repository form. Use instead of declaring work done because it looks
-  right.
+  body carries a `Closes-Bead: <bead-id>` line (or `Bead: <bead-id>` for partial work). Use
+  instead of declaring work done because it looks right.
 allowed-tools: "Read, Grep, Glob, Bash(dotnet:*), Bash(git:*), Bash(./scripts/:*), Bash(scripts/:*), Bash(gh:*), Bash(bd:*)"
 version: "1.0.0"
 license: "MIT"
