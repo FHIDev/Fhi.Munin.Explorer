@@ -34,6 +34,11 @@ behaviour found later by someone else.
    something, in `test/host-class-names.txt` — a capture of the live helsedata page, their own
    page-specific stylesheets included — or in the sample stylesheet. Neither reads Stiler at all,
    and neither can say which declarations a rule has to carry.
+   And never answer "does Stiler have this rule" by grepping a deployed site:
+   **`helsedata.no` does not run Stiler at all** — only the test host does, and even there a grep
+   says which version is deployed, not what the package contains. Doing this produced one
+   confidently-wrong bead (`Fhi.Metadata-u0cxn`, closed moot) and corrections to three others that
+   had to be retracted.
    `skiplink-pagination` was in both sources the whole time it was broken, because helsedata
    styles it and so do the samples, while a Stiler-only host got nothing; a rule somewhere is not
    a rule where it is needed, and that host is the one the prefix exists for. Separately: when
