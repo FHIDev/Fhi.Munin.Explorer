@@ -5260,6 +5260,107 @@ public class VariableSearchTest : BunitContext
         Assert.Equal(2, Facet(cut, "Tromsøundersøkelsen").ParentElement!.QuerySelectorAll("li").Length);
     }
 
+    // ---- datakategori glyphs on the datasamling rows (Fhi.Metadata-evoil) ----
+
+    /// <summary>Two datasamlinger, one under its kilde and one under a delkilde, with the categories named.</summary>
+    private static FilterOptions FacetsWithCategories(
+        IReadOnlyList<string> underKilde, IReadOnlyList<string> underDelkilde) => Facets() with
+        {
+            Datasamlinger =
+            [
+                new()
+                {
+                    Id = Tromso1, Name = "Tromsø 1", KildeId = Tromso, Count = 5,
+                    Categories = underKilde
+                },
+                new()
+                {
+                    Id = Tromso4Round, Name = "Fjerde runde", KildeId = Tromso, DelkildeId = Tromso4,
+                    Count = 4, Categories = underDelkilde
+                }
+            ]
+        };
+
+    /// <summary>The datakategori glyphs one facet row draws, in the order it draws them.</summary>
+    private static IReadOnlyList<string> RowGlyphs(IRenderedComponent<VariableSearch> cut, string label) =>
+        [.. Facet(cut, label)
+            .QuerySelectorAll(".munin-explorer-filters__icons .munin-explorer-filters__icon")
+            .Select(glyph => glyph.GetAttribute("data-node-icon")!)];
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesCategories_ThenOneGlyphPerCategoryIsDrawnInTheSharedOrder()
+    {
+        // The payload's order is incidental and the render order is DataCategoryIcons.Order, so one
+        // set of categories looks the same here as it does in the kildeutforsker's own tree.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["EINS", "PHDR"], ["PHDR"])));
+
+        Assert.Equal(["PHDR", "EINS"], RowGlyphs(cut, "Tromsø 1"));
+        Assert.Equal(["PHDR"], RowGlyphs(cut, "Fjerde runde"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesNoCategories_ThenNoSlotIsDrawnAtAll()
+    {
+        // Absence is not the catch-all: an empty slot would still take the gap the stylesheet puts
+        // between the glyphs and the name, so the whole span is left out.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithCategories([], [])));
+
+        // Read off the whole panel rather than one row: the kilder and delkilder above draw none
+        // either, so an assertion on the datasamling alone would pass over a folder on every branch.
+        ExpandBranches(cut);
+        Assert.Empty(FilterPanel(cut).QuerySelectorAll(".munin-explorer-filters__icons"));
+        Assert.NotEmpty(FilterPanel(cut).QuerySelectorAll("li"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesAnUnknownCategory_ThenItFallsBackToTheCatchAllGlyph()
+    {
+        // The icon helper's own rule, and this panel adds nothing to it: a categorised datasamling
+        // must never read as an uncategorised one, so a token nothing recognises draws `other`.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["snomed:other", "PHDR"], [])));
+
+        Assert.Equal(["PHDR", "other"], RowGlyphs(cut, "Tromsø 1"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingHangsStraightOffItsKilde_ThenItDrawsWhatOneUnderADelkildeDraws()
+    {
+        // DelkildeId decides where the row hangs and nothing about the glyphs — and it is null on
+        // the majority of datasamlinger, which is the case the tree reached last. (Fhi.Metadata-mgp03)
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["EINS"], ["EINS"])));
+
+        Assert.Equal(["EINS"], RowGlyphs(cut, "Tromsø 1"));
+        Assert.Equal(RowGlyphs(cut, "Fjerde runde"), RowGlyphs(cut, "Tromsø 1"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesCategories_ThenTheCheckboxKeepsTheNameItHad()
+    {
+        // The glyphs are decoration: measured against the same row drawn without them rather than
+        // against a string, because what this pins is that adding them changed nothing a screen
+        // reader hears. They follow the name for the other half of it — a variable number of glyphs
+        // in front would put the row's start where its neighbours' is not. (Fhi.Metadata-evoil)
+        var bare = RenderWith(new FilteringClient(OnePage(), FacetsWithCategories([], [])));
+        var drawn = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])));
+
+        var named = AccessibleName.Of(FacetBox(drawn, "Tromsø 1"));
+
+        Assert.Equal(AccessibleName.Of(FacetBox(bare, "Tromsø 1")), named);
+        Assert.NotEqual("", named);
+
+        var row = Facet(drawn, "Tromsø 1");
+        var slot = row.QuerySelector(".munin-explorer-filters__icons")!;
+
+        Assert.Equal("true", slot.GetAttribute("aria-hidden"));
+        Assert.Equal("currentColor", slot.QuerySelector("svg")!.GetAttribute("stroke"));
+        Assert.Equal("INPUT", row.FirstElementChild!.TagName);
+        Assert.Contains("Tromsø 1", slot.PreviousSibling!.TextContent, StringComparison.Ordinal);
+    }
+
     // ---- the tree folds, branch by branch (Fhi.Metadata-adog5) ----
 
     /// <summary>A Guid built out of two numbers, so a fixture can mint as many as it needs.</summary>

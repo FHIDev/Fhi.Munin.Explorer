@@ -92,6 +92,10 @@ public partial class VariableSearch
     /// rather than "mark it as the page's". Every value decides it, because nothing downstream
     /// can tell a catalogue name from prose this package composed.
     /// </para>
+    /// <para>
+    /// <c>Icons</c> are the decorative glyphs drawn after the label — a datasamling's datakategorier,
+    /// off the same facet payload as the row. Drawn by the panel alone: a chip carries the words.
+    /// </para>
     /// </remarks>
     private sealed record FacetValue(
         string Key,
@@ -101,7 +105,8 @@ public partial class VariableSearch
         bool Selected,
         Func<Task>? Toggle,
         IReadOnlyList<FacetValue> Children,
-        bool GroupHeading = false);
+        bool GroupHeading = false,
+        IReadOnlyList<NodeIcon>? Icons = null);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
     /// <remarks>
@@ -676,7 +681,10 @@ public partial class VariableSearch
             _filter.DatasamlingIds.Contains(datasamling.Id),
             () => ToggleAsync(_filter.DatasamlingIds, datasamling.Id,
                               ids => _filter with { DatasamlingIds = ids }),
-            []);
+            [],
+            // Off the facet payload this row was already built from, so the glyphs cost no request —
+            // and read whatever parent the row hangs from, since a category is the datasamling's own.
+            Icons: DataCategoryIcons.For(datasamling.Categories));
     }
 
     private (string Text, string? Language) DatasamlingLabel(DatasamlingFacet datasamling) =>
@@ -1194,15 +1202,24 @@ public partial class VariableSearch
                 builder.CloseElement();
                 builder.AddContent(36, value.Label);
 
+                // After the name and inside the label: a glyph in front would read as another level
+                // of tree indent, and the slot is aria-hidden, so the checkbox keeps the name it had.
+                // What they stand for is in the datakategori facet above rather than said twice here.
+                if (value.Icons is { Count: > 0 } icons)
+                {
+                    builder.AddContent(37, (RenderFragment)(nested =>
+                        NodeIcons.Write(nested, icons, NodeIconClasses.Facets)));
+                }
+
                 // The space is a text node of the label, not the span's first character: a name is
                 // computed per element, so a space inside the span is trimmed off and the name
                 // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(37, " ");
-                    builder.OpenElement(38, "span");
-                    builder.AddAttribute(39, "class", "munin-explorer-filters__count");
-                    builder.AddContent(40, $"({count})");
+                    builder.AddContent(40, " ");
+                    builder.OpenElement(41, "span");
+                    builder.AddAttribute(42, "class", "munin-explorer-filters__count");
+                    builder.AddContent(43, $"({count})");
                     builder.CloseElement();
                 }
 

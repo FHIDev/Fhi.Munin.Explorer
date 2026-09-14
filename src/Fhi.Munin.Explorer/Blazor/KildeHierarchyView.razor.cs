@@ -221,7 +221,7 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
         // NodeIcons.Write opens this fragment with sequence numbers of its own, so everything below
         // starts past them: the renderer diffs a fragment against one increasing sequence.
         var icons = ShowNodeIcons ? NodeIcons.For(node) : NodeIcons.None;
-        NodeIcons.Write(builder, icons);
+        NodeIcons.Write(builder, icons, NodeIconClasses.Hierarchy);
 
         var named = T.Named(node.Name, null);
         builder.OpenElement(20, "span");

@@ -2,9 +2,27 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
+/// <summary>The two class names one icon slot wears: the group's, and each glyph's.</summary>
+/// <remarks>
+/// Written out per surface rather than composed from a prefix, because the class-name inventory is
+/// reconciled against literals in <c>src/</c> and a stem finished at runtime is a name no guard here
+/// can see.
+/// </remarks>
+internal sealed record NodeIconClasses(string Group, string Glyph)
+{
+    /// <summary>The kilde hierarchy's own tree, where the glyphs lead the row.</summary>
+    internal static NodeIconClasses Hierarchy { get; } =
+        new("munin-explorer-hierarchy__icons", "munin-explorer-hierarchy__icon");
+
+    /// <summary>The facet panels' value rows, where they follow the name. Stiler 0.1.75 and later.</summary>
+    internal static NodeIconClasses Facets { get; } =
+        new("munin-explorer-filters__icons", "munin-explorer-filters__icon");
+}
+
 /// <summary>
-/// The decorative icon slot a hierarchy row draws in front of its label: a folder for the grouping
-/// levels, one glyph per datakategori for a datasamling, and nothing for a variabelgruppe.
+/// The decorative icon slot a row draws beside its label — in front of it in the kilde hierarchy,
+/// after it in the facet panels: a folder for the grouping levels, one glyph per datakategori for a
+/// datasamling, and nothing for a variabelgruppe.
 /// </summary>
 internal static class NodeIcons
 {
@@ -23,7 +41,8 @@ internal static class NodeIcons
     /// Writes the slot, or nothing at all when there are no glyphs — an empty span would still take
     /// the gap the stylesheet puts between the icons and the name.
     /// </summary>
-    internal static void Write(RenderTreeBuilder builder, IReadOnlyList<NodeIcon> icons)
+    internal static void Write(
+        RenderTreeBuilder builder, IReadOnlyList<NodeIcon> icons, NodeIconClasses classes)
     {
         if (icons.Count == 0)
         {
@@ -31,15 +50,15 @@ internal static class NodeIcons
         }
 
         builder.OpenElement(0, "span");
-        builder.AddAttribute(1, "class", "munin-explorer-hierarchy__icons");
-        // Decorative: the row's accessible name stays its label, and the categories these stand for
-        // are said in words beside them rather than twice.
+        builder.AddAttribute(1, "class", classes.Group);
+        // Decorative: whatever the slot sits in keeps the accessible name it had, so a glyph never
+        // joins the name of a control the reader presses.
         builder.AddAttribute(2, "aria-hidden", "true");
         foreach (var icon in icons)
         {
             builder.OpenElement(3, "svg");
             builder.SetKey(icon.Key);
-            builder.AddAttribute(4, "class", "munin-explorer-hierarchy__icon");
+            builder.AddAttribute(4, "class", classes.Glyph);
             builder.AddAttribute(5, "data-node-icon", icon.Key);
             builder.AddAttribute(6, "viewBox", "0 0 24 24");
             // An <svg> with no width or height is 300x150, so a host with no rule for the class
