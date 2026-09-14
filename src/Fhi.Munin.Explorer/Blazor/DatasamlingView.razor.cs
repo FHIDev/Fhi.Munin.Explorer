@@ -67,28 +67,11 @@ public sealed partial class DatasamlingView : ComponentBase
 
     private string Reader => ReaderLanguage.Of(Language);
 
-    /// <summary>
-    /// The trail the chassis draws: the caller's steps with this page's own name appended, or null
-    /// when the caller supplied none.
-    /// </summary>
-    /// <remarks>
-    /// Null rather than a one-step list, because a trail whose only step is the page itself names
-    /// nowhere the reader could go and is decoration. The last step carries no target: the chassis
-    /// drops one anyway, and building it without one keeps the two from disagreeing.
-    /// </remarks>
-    private IReadOnlyList<DetailTrailStep>? PageTrail
-    {
-        get
-        {
-            if (Trail is not { Count: > 0 } above || Datasamling is not { } datasamling)
-            {
-                return null;
-            }
-
-            var named = T.Named(datasamling.PreferredTerm, datasamling.Code);
-            return [.. above, new DetailTrailStep(named.Text, null, CatalogueProperties.Foreign(named.Norwegian, Reader))];
-        }
-    }
+    /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
+    private IReadOnlyList<DetailTrailStep>? PageTrail =>
+        Datasamling is { } datasamling
+            ? DetailTrail.Append(Trail, T.Named(datasamling.PreferredTerm, datasamling.Code), Reader)
+            : null;
 
     /// <summary>The level for the block headings, and for each metadata group under them.</summary>
     private int BlockLevel => Math.Min(HeadingLevel + 1, 6);

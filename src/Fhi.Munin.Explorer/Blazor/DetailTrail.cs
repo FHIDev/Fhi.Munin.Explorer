@@ -47,6 +47,29 @@ public sealed class DetailTrail : ComponentBase
     [Parameter, EditorRequired]
     public string Label { get; set; } = "";
 
+    /// <summary>
+    /// <paramref name="above"/> with the page's own name appended as the last step, or null when
+    /// the caller supplied no steps.
+    /// </summary>
+    /// <remarks>
+    /// The three detail views' shared rule in one place, so a change to it cannot half-apply. Null
+    /// rather than a one-step list, because a trail whose only step is the page names nowhere the
+    /// reader could go; and the last step is built with no target, which this class drops anyway.
+    /// </remarks>
+    /// <param name="above">The steps the surface above supplied, outermost first.</param>
+    /// <param name="named">What the page shows for its subject, and whether that is still Norwegian.</param>
+    /// <param name="reader">The reader's language, against which the label is marked or left alone.</param>
+    internal static IReadOnlyList<DetailTrailStep>? Append(
+        IReadOnlyList<DetailTrailStep>? above, (string Text, bool Norwegian) named, string reader)
+    {
+        if (above is not { Count: > 0 } steps)
+        {
+            return null;
+        }
+
+        return [.. steps, new DetailTrailStep(named.Text, null, CatalogueProperties.Foreign(named.Norwegian, reader))];
+    }
+
     /// <inheritdoc />
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {

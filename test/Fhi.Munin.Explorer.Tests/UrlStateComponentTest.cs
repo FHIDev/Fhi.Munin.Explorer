@@ -489,6 +489,54 @@ public class UrlStateComponentTest : BunitContext
     }
 
     [Fact]
+    public void Kilder_WhenTheReaderSortedBeforeOpeningAKilde_ThenTheBreadcrumbBackToTheListKeepsThatOrder()
+    {
+        // The trail's one new address, and the claim its doc makes: the crumb is built when it is
+        // pressed, not when the component mounted, so it carries the order the reader left the list
+        // in. One that silently re-sorted would undo work the word "Kildeutforsker" never mentions.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/kilder?utm_source=nyhetsbrev");
+
+        Sort(cut, KildeSortOrder.Name);
+        Sort(cut, KildeSortOrder.Name);
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+
+        Assert.Equal(
+            "/kilder?utm_source=nyhetsbrev&sort=Name&sortDir=Descending",
+            cut.Find("nav.breadcrumbs a").GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Kilder_WhenADatasamlingIsOpen_ThenTheBreadcrumbDropsBothOwnedKeysAndKeepsTheHostsOwn()
+    {
+        // Two steps in is the deepest the crumb has to climb out of, and dropping only one of the
+        // two keys would send the reader back into the drill-in they pressed it to leave.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(
+            kilde, datasamling, $"http://localhost/kilder?utm_source=nyhetsbrev&kilde={kilde}&datasamling={datasamling}");
+
+        Assert.Equal("/kilder?utm_source=nyhetsbrev", cut.Find("nav.breadcrumbs a").GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Kilder_WhenNothingButTheOpenKildeIsInTheAddress_ThenTheBreadcrumbIsThePathWithNoQueryAtAll()
+    {
+        // The first caller that can hand UrlMirror.Address an empty query: with no host key and the
+        // catalogue's own order, every key the crumb would write is at its default, and the branch
+        // that answers it is the only one that must not leave a bare "?" behind.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}&datasamling={datasamling}");
+
+        Assert.Equal("/kilder", cut.Find("nav.breadcrumbs a").GetAttribute("href"));
+    }
+
+    [Fact]
     public void Kilder_WhenTheReaderOpensAKildeUnderASubPath_ThenOnlyTheQueryChanges()
     {
         // The same trap as the variable explorer's, asserted while the state is set rather than

@@ -166,8 +166,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// <summary>Held rather than written into the markup — see <see cref="DatasamlingHref"/>.</summary>
     private Func<Guid?, string>? _address;
 
-    /// <inheritdoc cref="_address"/>
-    private Func<string>? _list;
+    /// <summary>The kilde list's own address, held for <see cref="_address"/>'s reason.</summary>
+    private Func<string>? _listAddress;
 
     private EventCallback<IReadOnlyList<Guid>> Handover =>
         VariableExplorerPath is null
@@ -341,12 +341,12 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     /// <summary>This same page with no kilde open — the trail's step back to the list.</summary>
     /// <remarks>
-    /// The order the reader chose is kept, because closing the drill-in keeps it: a crumb that
-    /// silently re-sorted the list would undo work the word "Kildeutforsker" never mentions. Held
-    /// for the component's life for the reason <see cref="DatasamlingHref"/> is.
+    /// The order the reader chose is kept: holding the closure for the component's life — the
+    /// reason <see cref="DatasamlingHref"/> is held — does not freeze it, because the body reads
+    /// the order fields at call time. A crumb that re-sorted the list would undo unmentioned work.
     /// </remarks>
     private Func<string> KilderHref =>
-        _list ??= () => _mirror.Address(Query(null, null));
+        _listAddress ??= () => _mirror.Address(Query(null, null));
 
     /// <summary>Follow the open kilde, and drop the datasamling that was a step inside it.</summary>
     /// <remarks>

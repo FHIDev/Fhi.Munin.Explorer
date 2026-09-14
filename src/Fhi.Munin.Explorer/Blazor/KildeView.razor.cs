@@ -103,28 +103,11 @@ public sealed partial class KildeView : ComponentBase
 
     private string Reader => ReaderLanguage.Of(Language);
 
-    /// <summary>
-    /// The trail the chassis draws: the caller's steps with this page's own name appended, or null
-    /// when the caller supplied none.
-    /// </summary>
-    /// <remarks>
-    /// Null rather than a one-step list, because a trail whose only step is the page itself names
-    /// nowhere the reader could go and is decoration. The last step carries no target: the chassis
-    /// drops one anyway, and building it without one keeps the two from disagreeing.
-    /// </remarks>
-    private IReadOnlyList<DetailTrailStep>? PageTrail
-    {
-        get
-        {
-            if (Trail is not { Count: > 0 } above || Kilde is not { } kilde)
-            {
-                return null;
-            }
-
-            var named = T.Named(kilde.PreferredTerm, kilde.Code);
-            return [.. above, new DetailTrailStep(named.Text, null, CatalogueProperties.Foreign(named.Norwegian, Reader))];
-        }
-    }
+    /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
+    private IReadOnlyList<DetailTrailStep>? PageTrail =>
+        Kilde is { } kilde
+            ? DetailTrail.Append(Trail, T.Named(kilde.PreferredTerm, kilde.Code), Reader)
+            : null;
 
     /// <summary>The level for the two block headings, and for each metadata group under them.</summary>
     private int BlockLevel => Math.Min(HeadingLevel + 1, 6);

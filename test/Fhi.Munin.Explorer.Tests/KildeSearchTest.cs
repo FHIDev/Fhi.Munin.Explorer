@@ -5869,6 +5869,14 @@ public class KildeSearchTest : BunitContext
         /// </remarks>
         public bool StallKilde { get; set; }
 
+        /// <summary>Answer the datasamling with no parent kilde named, as a thin payload does.</summary>
+        /// <remarks>
+        /// <c>ParentKildeName</c> defaults to "" and an explicit null reads as "" too, so a payload
+        /// without <c>parentKildeNavn</c> is what the guard in <c>DatasamlingTrail</c> is for: the
+        /// alternative is a crumb whose whole text — and whole accessible name — is the empty string.
+        /// </remarks>
+        public bool UnnamedParentKilde { get; set; }
+
         private readonly List<TaskCompletionSource<DatasamlingDetail?>> _stalls = [];
 
         private readonly TaskCompletionSource<KildeDetail?> _kildeStall = new();
@@ -5911,7 +5919,7 @@ public class KildeSearchTest : BunitContext
                     Id = id,
                     Code = "K_ALS.INKLUSJON",
                     PreferredTerm = "Inklusjon",
-                    ParentKildeName = "Als registeret",
+                    ParentKildeName = UnnamedParentKilde ? "" : "Als registeret",
                 });
         }
     }
@@ -5956,6 +5964,24 @@ public class KildeSearchTest : BunitContext
 
         Assert.Equal(["Kildeutforsker", "Als registeret"],
                      cut.FindAll("nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Trail_WhenTheDatasamlingNamesNoParentKilde_ThenTheMiddleStepIsDroppedRatherThanDrawnBlank()
+    {
+        // Reachable from the live API, not hypothetical: parentKildeNavn is a string that defaults
+        // to "", and without the guard the middle crumb is a link whose entire accessible name is
+        // the empty string — a target a screen reader announces as nothing at all.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { UnnamedParentKilde = true };
+
+        var cut = RenderDrillIn(client, kilde, datasamling, wireList: true);
+
+        Assert.Equal(["Kildeutforsker", "Inklusjon"],
+                     cut.FindAll("nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
+        Assert.Equal(["/kilder"], cut.FindAll("nav.breadcrumbs a").Select(link => link.GetAttribute("href")));
+        Assert.DoesNotContain("", cut.FindAll("nav.breadcrumbs a").Select(link => link.TextContent.Trim()));
     }
 
     [Fact]
