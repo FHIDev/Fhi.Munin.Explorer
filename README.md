@@ -424,10 +424,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     surfaces and the class is passed in for the one piece they share. Handles, both: a definition
     list is a definition list undrawn, and the language name is a `<p>` so it keeps its own line
     whatever a host declares. Stiler's rules are written — the same
-    `components/munin-explorer/_page.scss`, merged as PR 39301 — and copy the panel's numbers
-    declaration for declaration, so a host that has them sees nothing move. That PR bumped no
-    version of its own; `Fhi.Metadata-35w0p.11` records 0.1.71 as the release carrying them, and
-    nothing in this repository can check a feed to confirm it.
+    `components/munin-explorer/_page.scss`, merged as PR 39301 — and the fact list's copy the
+    panel's numbers declaration for declaration, so its grid and type move nothing. The language
+    marker's does not: 0.1.75 declares `margin: 0` for it and none of the panel marker's uppercase,
+    letter-spacing or grey, which `assert-sample-css-matches-stiler.sh` names three divergences at a
+    time against the pin. So the language name draws at body size on a host that has Stiler until
+    `Fhi.Metadata-4ozhj` lands, and the sample stand-ins draw it that way too rather than inventing
+    the look the guard cannot see.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail

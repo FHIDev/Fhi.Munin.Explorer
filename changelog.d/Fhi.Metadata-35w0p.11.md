@@ -5,7 +5,10 @@ category: Changed
   a value the catalogue holds in more than one is `munin-explorer-page__language` rather than
   `munin-explorer-meta__language`. Nothing else about the markup changes — the same rows, the same
   `<div>` around each `dt`/`dd` pair, the same count of pairs on every page — and `Fhi.Helsedata.Stiler`
-  gives the new names the panel's numbers unchanged, so a host that has its rules sees nothing move.
+  0.1.75 gives the fact list the panel's numbers unchanged, so its grid and type move nothing. The
+  language marker is the exception: Stiler declares `margin: 0` for it and none of the panel
+  marker's uppercase, letter-spacing or grey, so the language name draws at body size until
+  `Fhi.Metadata-4ozhj` adds them.
   The result row's drill-in panel keeps both of its own names and is untouched: `DetailBlocks` draws
   both surfaces, so the one piece they share takes its class from the caller rather than deciding
   for itself. Until now a detail page borrowed the panel's typography and grid, which is why

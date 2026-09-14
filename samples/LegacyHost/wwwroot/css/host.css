@@ -1878,34 +1878,13 @@ table.munin-explorer-data-list tbody th {
 
 /* ---- the fact lists on a detail page ----
 
-   The chassis's own, so the detail pages and the result row's drill-in panel can move apart. Every
-   declaration below is Stiler's, from components/munin-explorer/_page.scss, and every number in it
-   was copied from the panel's `munin-explorer-meta__grid` unchanged, so the swap moves nothing.
-   (Fhi.Metadata-35w0p.11) */
-.munin-explorer-page__fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-row-gap: 40px;
-  grid-column-gap: 24px;
-  font: normal 1rem/160% var(--font);
-  margin-bottom: 24px;
-}
+   `munin-explorer-page__fields` and `munin-explorer-page__language` are Stiler's own since 0.1.75
+   and stand in the extracted region below. The marker is `margin: 0` there and nothing else — none
+   of the panel marker's uppercase, letter-spacing or grey — so writing that look here would invent
+   it, and a host on Stiler draws the name at body size until `Fhi.Metadata-4ozhj` lands.
 
-.munin-explorer-page__fields p {
-  margin: 0;
-}
-
-@media (max-width: 1280px) {
-  .munin-explorer-page__fields {
-    grid-template-columns: auto;
-    gap: 16px;
-    margin-bottom: 16px;
-    width: 100%;
-  }
-}
-
-/* The stand-in's own, exactly as the same three rules above the panel grid are: Stiler declares
-   nothing for a grid item, and a <dd> left alone keeps the browser's 40px indent. */
+   The three below are the stand-in's own, as the same three above the panel grid are: Stiler
+   declares nothing for a grid item, and a <dd> left alone keeps the browser's 40px indent. */
 .munin-explorer-page__fields dt {
   margin-bottom: 4px;
 }
@@ -1916,15 +1895,6 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-page__fields dd + dd {
   margin-top: 10px;
-}
-
-/* The chassis counterpart of the panel's language marker, drawn the same way for the same reason:
-   the <p> is what breaks the line, and this is the quieter voice of a label. */
-.munin-explorer-page__language {
-  font: normal 600 0.6875rem/150% var(--font);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--grey60);
 }
 
 /* ---- the contents nav inside that column ----
