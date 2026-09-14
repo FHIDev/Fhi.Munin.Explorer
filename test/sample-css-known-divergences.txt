@@ -52,7 +52,10 @@
 # grey20 where Stiler's own comment says not to. The base rule and the drilldown's grid-column were
 # in it too, until #204.
 #
-# IT IS 217 SINCE Fhi.Metadata-35w0p.6, and the three that arrived are the second family of
+# Stiler 0.1.75 retires three entries: the expand icon's width and the choicepicker's two
+# declarations now exist in the package. 214 entries remain; no new exceptions were added.
+#
+# IT WAS 217 SINCE Fhi.Metadata-35w0p.6, and the three that arrived are the second family of
 # entries here with an expiry condition rather than drift. That bead stopped emitting the 320px
 # aside on the three detail views, and the stand-in collapsed `__body` to one track in the same
 # change so that no sample host draws an empty rail. The pinned Stiler keeps its second track until
@@ -155,7 +158,6 @@ invented-declaration||.munin-explorer-dataitem-main__desiredData input|padding
 invented-declaration||.munin-explorer-dataitem-main__expand-icon|color
 invented-declaration||.munin-explorer-dataitem-main__expand-icon|display
 invented-declaration||.munin-explorer-dataitem-main__expand-icon|transition
-invented-declaration||.munin-explorer-dataitem-main__expand-icon|width
 invented-declaration||.munin-explorer-datasamling__criteria|margin
 invented-declaration||.munin-explorer-detail|border-top
 invented-declaration||.munin-explorer-filters__count|overflow-wrap
@@ -169,8 +171,6 @@ invented-declaration||.munin-explorer-header__actions|justify-content
 # in their PR 39170 the day before), so the pin is right and the sample is simply ahead of it. The
 # sample must carry them or the column picker draws its panel off the wrong ancestor and shows both
 # chevrons at once. Delete these two lines when HostileHost pins >= 0.1.53 (Fhi.Metadata-kpmt3).
-invented-declaration||.munin-explorer-header__actions .dropdown-choicepicker|text-align
-invented-declaration||.munin-explorer__dropdown|position
 invented-declaration||.munin-explorer-kilde__delkilde-description|font-size
 invented-declaration||.munin-explorer-meta__grid|gap
 invented-declaration||.munin-explorer-meta__tabs|gap

@@ -139,7 +139,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     `Fhi.Metadata-ja2qu`. It is worth spelling out because it failed backwards from every other
     missing rule here: what was missing was the rule that **hides** the link until it is focused,
     so a Stiler-only host drew a permanently visible "Hopp til paginering" over every
-    multi-page result list rather than an unstyled anything. Neither sample host showed it — both
+    multi-page result list rather than an undrawn anything. Neither sample host showed it — both
     styled the borrowed name in their own `host.css` — and neither guard could, because neither
     guard reads Stiler. Both ask only whether a name has a rule that declares something, in the
     capture of helsedata's live page (`test/host-class-names.txt`, where `skiplink-pagination` sits
@@ -180,7 +180,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   The panel's `Nivålinjer` toggle is a neighbouring rule rather than that one: it puts
   `data-level-lines="true"` on `munin-explorer-filters` and draws nothing itself. The argument above
   does not apply to it and should not be borrowed for it — a class on the `<ul>` that is already
-  there would render exactly as it does today, unstyled or not, because no element is being replaced.
+  there would render exactly as it does today, undrawn or not, because no element is being replaced.
   What a class would cost is inventory: this contract, both sample stylesheets and
   `assert-sample-css-in-step.sh` would each have to carry the name for good. A state marker owes
   none of that. Both sample stylesheets show the rule — one `border-left` on the nested lists — and
@@ -285,16 +285,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     facet's tree — kildetype group, kilde, delkilde — opens on a control of its own, and the two
     names it adds are `munin-explorer-filters__branch` on the row and
     `munin-explorer-filters__disclosure` on the button. Handles both: the button is a real
-    `<button aria-expanded>` carrying an arrow as text and an `aria-label` of its own, so undrawn
-    it is still visible, operable and announced, and undrawn the row is the blocks it is made of
+    `<button aria-expanded>` carrying an arrow as text and a name from `aria-labelledby`, so unstyled
+    it is still visible, operable and announced, and unstyled the row is the blocks it is made of
     stacked rather than laid out. What the rules buy is the row and a 24x24 target, which is WCAG
     2.5.8 Target Size (Minimum). The branch was `<details>`/`<summary>` at the kildetype level
     alone until `Fhi.Metadata-adog5`, and a summary cannot be the answer here: the row it would hold
     carries the value's own checkbox, and a disclosure wrapped around a filter is the two presses
-    a reader must be able to make apart. **Neither name is in any published Stiler**, and the rules
-    are not written yet either — `Fhi.Metadata-cs3pt` is where they are tracked, and it carries the
-    other half of the same change: the group rows no longer match `.munin-explorer-filters summary`,
-    so whatever that rule was giving them has to be given again. The count is where these groups add
+    a reader must be able to make apart. **Both names are styled in Stiler 0.1.75 and later**
+    (`Fhi.Metadata-cs3pt`). The rules keep the checkbox beside its disclosure, put children on the
+    next line, and preserve a visible keyboard focus state when a host reset removes outlines.
+    The count is where these groups add
     a third name, and it is one to read this list for. It
     wears `munin-explorer-filters__groupcount`, which is the row above's form under a name that says
     what these numbers are: a group's SIZE, drawn whether or not anything in it is ticked, where

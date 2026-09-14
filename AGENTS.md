@@ -301,11 +301,9 @@ written for HostileHost" and the only one the numbers support:
 
 Read the run for exactly what it is: three assertions, one page, two states, against the sample
 stylesheet. The pinned-Stiler pages are still unmeasured at 320. `Fhi.Metadata-hfzsu` — 82px of
-helsedata's own site chrome overflowing there on every page of theirs — is fixed on Stiler's main
-and closed, so what adding 320 to `GEOMETRY_WIDTHS` now waits on is that fix being released and
-`samples/HostileHost` moving off its `0.1.42` pin, which is `Fhi.Metadata-kpmt3`. Until then a gate
-that included those pages would be red on every pull request for a defect this repository cannot
-fix, and a gate nobody can get green is one somebody deletes.
+helsedata's own site chrome overflowing there on every page of theirs — is released, and
+`samples/HostileHost` now pins `0.1.75`. Adding 320 to `GEOMETRY_WIDTHS` remains
+`Fhi.Metadata-kpmt3`; the pin update alone does not extend the six widths this gate measures.
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
@@ -498,7 +496,7 @@ that catches exactly that under the prefix, is deliberately off here. What repla
 the run prints how many borrowed rules the sample writes matched no Stiler selector, and that
 number is the size of the blind spot for that run. It is not zero. Read it.
 
-The 217 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
+The 214 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
 writes that file.** A divergence not listed fails the build, and a listed line that no longer
 diverges also fails it with an instruction to delete the line, so the count can only go down.
 Adding a line is a hand edit that needs a reason; do not add one to get a branch green. What the

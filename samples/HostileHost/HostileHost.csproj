@@ -20,7 +20,7 @@
        0.1.41 is the first release carrying `.munin-explorer-kilder-scroll`, which is the
        Stiler half of Fhi.Metadata-b3brc and what /kilder needs to fit at 1024 and 843. -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.42" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.75" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
@@ -30,7 +30,7 @@
        build` there is all it takes, with no feed and no Azure Artifacts Credential Provider.
 
        WHY IT IS OPT-IN AND CI NEVER SETS IT. What this builds is main, not the published
-       0.1.42, and it skips whatever the package's own build does beyond sass. A measurement
+       0.1.75, and it skips whatever the package's own build does beyond sass. A measurement
        taken here is not a measurement of what helsedata restore, so the gate keeps the
        package and this exists for looking at the layout (Fhi.Metadata-wgwa0). -->
   <PropertyGroup Condition="'$(UseLocalStiler)' == 'true'">
