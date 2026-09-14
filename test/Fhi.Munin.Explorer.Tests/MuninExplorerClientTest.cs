@@ -853,9 +853,8 @@ public class MuninExplorerClientTest
     [Fact]
     public async Task GetFiltersAsync_WhenADatasamlingCarriesNoCategoriesKey_ThenItReadsAsEmpty()
     {
-        // runa sends the key on all 308 rows, so this is an API predating Fhi.Metadata-h8gry — and
-        // filters.json, which predates it too and is re-captured under Fhi.Metadata-uqyh7, once
-        // hierarkiVariabelgrupper has somewhere to land. A caller reads Categories either way.
+        // An API predating the field (Fhi.Metadata-h8gry) sends no key at all, and a caller reads
+        // Categories the same way against one of those as against one that sends it.
         var filters = await WithJson("""
             {
               "datasamlinger": [
