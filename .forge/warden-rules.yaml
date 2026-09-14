@@ -104,9 +104,9 @@ rules:
     - id: regression-guard-must-fail-without-fix
       category: testing
       pattern: >-
-        A new test, assertion, or CI guard added to catch a specific regression, where the production code path it claims to guard is absent, stubbed, or synthetically constructed within the test itself
+        A new test, assertion, or CI guard added to catch a specific regression, where the production element it claims to guard — shipped markup, an attribute, a call, a script — is absent from this revision or stood up by the test itself instead of being exercised
       check: >-
-        Verify the assertion can actually fail on this revision: confirm the production call or attribute it guards exists in the shipped code, and that deleting or breaking that specific production element makes this assertion red. A guard built against a synthetic fixture or a not-yet-implemented shape proves only that the measurement harness works — it does not guard the regression. A bUnit test that news up the DTO it claims to pin, or stubs the service whose call is the regression, fails this the same way an .mjs scan against a synthetic box does. If the implementation lands in a later PR, hold the guard until then or point it at the real implementation now.
+        Verify the assertion can actually fail on this revision: confirm the production call or attribute it guards exists in the shipped code, and that deleting or breaking that specific production element makes this assertion red. A guard built around a not-yet-implemented shape, or asserting over a box the harness constructed, proves only that the measurement harness works — it does not guard the regression. What makes a guard synthetic is the guarded element, not its surroundings: faking a collaborator (deriving from `EmptyMuninExplorerClient`) or feeding an input broken on purpose is how the guards here reach the markup, handler or script actually under guard, and `ShapeDriftTest` and `DriftRanGuardTest` are required to do exactly that. Read what deleting the production element would do: if the assertion stays green because the test supplied the element itself, this is the defect; if it turns red, the stub and the broken-on-purpose payload are doing their job. If the implementation lands in a later PR, hold the guard until then or point it at the real implementation now.
       source: copilot:PR#254
       added: "2026-09-10"
       paths:
@@ -123,6 +123,7 @@ rules:
       added: "2026-09-10"
       paths:
         - src/**/*.cs
+        - test/**/*.cs
     - id: changelog-fragment-grammar
       category: style
       pattern: >-
@@ -133,3 +134,13 @@ rules:
       added: "2026-09-10"
       paths:
         - changelog.d/**/*.md
+    - id: xml-doc-prose-grammar
+      category: style
+      pattern: >-
+        Prose in a public XML doc comment on the package's API — `<summary>`, `<remarks>`, `<param>`
+      check: >-
+        Read each sentence as written and verify it is grammatical — in particular that omitted relative pronouns ('that', 'which', 'who'), articles, and prepositions are present where the sentence needs them. These ship inside the package and are read in an IDE by someone who has only the package, with no later editing pass, which is the same reason the three-line comment ceiling exempts them: length is theirs to spend, correctness is not.
+      source: copilot:PR#250
+      added: "2026-09-14"
+      paths:
+        - src/**/*.cs
