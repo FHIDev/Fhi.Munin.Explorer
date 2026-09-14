@@ -390,7 +390,8 @@ public class FilterHierarchyTest
     public void Build_WhenThePayloadRepeatsACatalogueId_ThenOneNodeIsDrawnCarryingTheFirstListedCount()
     {
         // Every level of the tree keys something by these ids, so a repeated one is both a row drawn
-        // twice and a dictionary that throws while building the panel.
+        // twice and a dictionary that throws while building the panel. Copies that disagree about
+        // their parent are the two tests below; here every copy names the same one.
         var facets = Answer() with
         {
             Kilder = [Kilde(Mfr, count: 9), Kilde(Mfr, count: 3)],
@@ -411,6 +412,49 @@ public class FilterHierarchyTest
 
         Assert.Equal([9, 7, 4], new[] { kilde.Count, delkilde.Count, datasamling.Count });
         Assert.Equal("Bakgrunn", Assert.Single(datasamling.Children).Name);
+    }
+
+    [Fact]
+    public void Build_WhenARepeatedDelkildeIdNamesAParentInOnlyOneCopy_ThenItIsDrawnUnderThatParent()
+    {
+        // The copy hanging off a present parent wins, first listed or not — the one rule the delkilde
+        // level does not share with the levels above and below it, whose parents are not of their own
+        // kind and cannot be preferred. (Fhi.Metadata-l9l2n.82)
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder =
+            [
+                Delkilde(Svangerskap, Mfr),
+                Delkilde(Fodsel, Mfr),
+                Delkilde(Svangerskap, Mfr, parent: Fodsel)
+            ]
+        };
+
+        var kilde = Assert.Single(FilterHierarchy.Build(facets));
+        var fodsel = Assert.Single(kilde.Children);
+
+        Assert.Equal(Fodsel, fodsel.Id);
+        Assert.Equal(Svangerskap, Assert.Single(fodsel.Children).Id);
+    }
+
+    [Fact]
+    public void Build_WhenARepeatedDatasamlingIdDisagreesAboutItsDelkilde_ThenItIsStillDrawnOnce()
+    {
+        // The two copies are split across the two lookups the kilde level keeps, so settling the id
+        // inside either bucket still draws it at both paths — one press, two chips. (Fhi.Metadata-l9l2n.82)
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder = [Delkilde(Fodsel, Mfr)],
+            Datasamlinger = [Datasamling(Registrering, Mfr, Fodsel), Datasamling(Registrering, Mfr)]
+        };
+
+        var tree = FilterHierarchy.Build(facets);
+        var delkilde = Assert.Single(Assert.Single(tree).Children);
+
+        Assert.Equal(1, Flatten(tree).Count(node => node.Id == Registrering));
+        Assert.Equal(Registrering, Assert.Single(delkilde.Children).Id);
     }
 
     [Fact]

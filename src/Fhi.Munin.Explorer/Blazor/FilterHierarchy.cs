@@ -106,12 +106,17 @@ internal static class FilterHierarchy
             && delkilder.TryGetValue(parent, out var delkilde)
             && delkilde.KildeId == datasamling.KildeId;
 
+        // One entry per id before the split rather than inside each bucket: two copies of one id
+        // disagreeing about their delkilde land in different lookups, which no per-bucket
+        // de-duplication can see, and the id is then drawn at two paths. (Fhi.Metadata-l9l2n.82)
+        var datasamlinger = facets.Datasamlinger.DistinctBy(datasamling => datasamling.Id).ToList();
+
         return new KildeLevelLookup(
             facets.Delkilder.ToLookup(delkilde => delkilde.KildeId),
-            facets.Datasamlinger
+            datasamlinger
                 .Where(datasamling => !HangsUnderItsDelkilde(datasamling))
                 .ToLookup(datasamling => datasamling.KildeId),
-            facets.Datasamlinger
+            datasamlinger
                 .Where(HangsUnderItsDelkilde)
                 .ToLookup(datasamling => datasamling.DelkildeId!.Value));
     }
@@ -180,14 +185,14 @@ internal static class FilterHierarchy
 
     /// <summary>Datasamlinger as branches: what hangs under one is the groups placed in it.</summary>
     /// <remarks>
-    /// DistinctBy rather than <see cref="OnePerId{T}"/>, which the levels carrying a parent id go
-    /// through: these are already bucketed by the parent they hang from, so two copies of one id
-    /// here agree about it and there is no parented copy to prefer.
+    /// Takes the buckets as they come: <see cref="KildeLevels"/> has already left one entry per id
+    /// across both of them, which is where a repeated id has to be settled since the copies can
+    /// disagree about which bucket they belong in.
     /// </remarks>
     private static IReadOnlyList<HierarchyNode> Datasamlinger(
         IEnumerable<DatasamlingFacet> datasamlinger, string parentPath, GruppePlacements grupper) =>
     [
-        .. datasamlinger.DistinctBy(datasamling => datasamling.Id).Select(datasamling =>
+        .. datasamlinger.Select(datasamling =>
         {
             var path = NodePath(parentPath, HierarchyLevel.Datasamling, datasamling.Id);
 
