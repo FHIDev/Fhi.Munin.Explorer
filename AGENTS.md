@@ -534,6 +534,15 @@ renamed `munin-explorer*` name has no appearance there until a rule for it lands
 green Explorer pipeline is not evidence the element is styled; nothing that runs on this side has
 ever looked at the stylesheet that decides it.
 
+**So check Stiler itself, and nothing else.** The authoritative answer to "does Stiler carry a rule
+for this name" is the `Fhi.Helsedata.Stiler` repository — `Static/scss/` for the source and
+`wwwroot/css/main.css` for what the package actually ships — or the published package on
+`Fhi.Helsedata.no`. **Never a deployed site.** `helsedata.no` does not run Stiler at all; the test
+host does, and even there a grep answers "which version is deployed", not "what does Stiler
+contain". A bundle fetched from a running site is evidence about someone's deployment, and reading
+it as evidence about the package has already produced one confidently-wrong bead
+(`Fhi.Metadata-u0cxn`, closed moot) and corrections to three others that had to be retracted.
+
 **The Stiler rule therefore gets its own bead, filed before the PR that introduces the name
 merges** — labels `stiler`, `rcl` and `helsedata` — and not a clause inside the RCL bead's own
 acceptance criteria. A clause is not work anyone can be handed: it is in nobody's `bd ready`, it
