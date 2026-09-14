@@ -55,9 +55,23 @@ public sealed partial class DatasamlingView : ComponentBase
     [Parameter]
     public RenderFragment? Sections { get; set; }
 
+    /// <inheritdoc cref="KildeView.Trail"/>
+    [Parameter]
+    public IReadOnlyList<DetailTrailStep>? Trail { get; set; }
+
+    /// <inheritdoc cref="KildeView.Actions"/>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
     private Texts T => Texts.For(Language);
 
     private string Reader => ReaderLanguage.Of(Language);
+
+    /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
+    private IReadOnlyList<DetailTrailStep>? PageTrail =>
+        Datasamling is { } datasamling
+            ? DetailTrail.Append(Trail, T.Named(datasamling.PreferredTerm, datasamling.Code), Reader)
+            : null;
 
     /// <summary>The level for the block headings, and for each metadata group under them.</summary>
     private int BlockLevel => Math.Min(HeadingLevel + 1, 6);

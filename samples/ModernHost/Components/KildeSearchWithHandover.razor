@@ -22,6 +22,7 @@
              SelectedKildeIdChanged="Opened"
              SelectedDatasamlingId="@_datasamling"
              DatasamlingHref="@_address"
+             KilderHref="@_list"
              ExploreVariablesRequested="ExploreVariables" />
 
 @code {
@@ -40,9 +41,13 @@
     // and a changed parameter re-renders the whole list for nothing.
     private Func<Guid?, string>? _address;
 
+    /// <inheritdoc cref="_address"/>
+    private Func<string>? _list;
+
     protected override void OnInitialized()
     {
         _address = Address;
+        _list = Kilder;
         ReadAddress();
         Nav.LocationChanged += Moved;
     }
@@ -68,6 +73,13 @@
 
     private static Guid? Value(IReadOnlyDictionary<string, StringValues> query, string key) =>
         query.TryGetValue(key, out var value) && Guid.TryParse(value.ToString(), out var id) ? id : null;
+
+    /// <summary>This page with neither key, for the breadcrumb's step back to the list.</summary>
+    /// <remarks>
+    /// <c>Address</c> cannot answer it: it always names the open kilde, and the list is the page
+    /// with no kilde open. A host knows its own paths, which is the whole reason this is asked for.
+    /// </remarks>
+    private static string Kilder() => "/kilder";
 
     /// <summary>Where a datasamling of the open kilde lives, or the open kilde on its own.</summary>
     private string Address(Guid? datasamling) =>

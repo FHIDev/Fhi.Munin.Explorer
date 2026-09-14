@@ -189,6 +189,17 @@ public sealed partial class KildeSearch : ComponentBase
     [Parameter] public Func<Guid?, string>? DatasamlingHref { get; set; }
 
     /// <summary>
+    /// Where the kilde list itself is: this same page with no kilde open. Leave it unset and an
+    /// open kilde draws no breadcrumb at all, while an open datasamling still draws one — rooted
+    /// at the parent kilde alone, which <see cref="DatasamlingHref"/> is enough to reach.
+    /// </summary>
+    /// <remarks>
+    /// A delegate rather than a string for <see cref="DatasamlingHref"/>'s reasons — it is read at
+    /// render time, off an address that moves — and a parent-only parameter for the same one.
+    /// </remarks>
+    [Parameter] public Func<string>? KilderHref { get; set; }
+
+    /// <summary>
     /// Raised when the reader asks to explore variables for the kilder they have chosen, carrying
     /// the ids that go with them. Wire it, or no selection column is drawn.
     /// </summary>
@@ -1160,6 +1171,29 @@ public sealed partial class KildeSearch : ComponentBase
     /// coarser one.
     /// </remarks>
     private string? KildeHref => DatasamlingHref?.Invoke(null);
+
+    /// <summary>
+    /// The steps above an open kilde: the list it was opened from, and nothing else. Empty when no
+    /// <see cref="KilderHref"/> was wired, and then no trail is drawn at all.
+    /// </summary>
+    /// <remarks>
+    /// Rebuilt per render rather than held, unlike the delegates beside it: what it holds is an
+    /// address that moves with the order the reader chose, and a held one would send them back to
+    /// the list re-sorted.
+    /// </remarks>
+    private IReadOnlyList<DetailTrailStep> KildeTrail =>
+        KilderHref is { } list ? [new DetailTrailStep(T.KildeTitle, list())] : [];
+
+    /// <summary>The same, plus the kilde an open datasamling hangs off.</summary>
+    /// <remarks>
+    /// <c>parentKildeNavn</c> is on the datasamling's own payload for exactly this, so the trail
+    /// costs no second request; it is the catalogue's Norwegian with no code to fall back to, which
+    /// is why the <c>lang</c> is a literal here where the views compute one. No address, no step.
+    /// </remarks>
+    private IReadOnlyList<DetailTrailStep> DatasamlingTrail(DatasamlingDetail datasamling) =>
+        KildeHref is { } kilde && !string.IsNullOrWhiteSpace(datasamling.ParentKildeName)
+            ? [.. KildeTrail, new DetailTrailStep(datasamling.ParentKildeName, kilde, CatalogueProperties.Foreign("no", Reader))]
+            : KildeTrail;
 
     // The held-delegate idiom KildeExplorer.DatasamlingHref explains, one layer down: the tree
     // takes a Guid where the host's route takes a Guid?, and an adapter written in the markup

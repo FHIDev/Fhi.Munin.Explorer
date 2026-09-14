@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The chassis the detail views share: the root, the name block above the fold, the body grid, the
-/// contents column and the main column. Four surfaces wear it.
+/// The chassis the detail views share: the root, the page chrome, the name block above the fold,
+/// the body grid, the contents column and the main column. Four surfaces wear it.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -12,6 +12,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <see cref="DatasamlingView"/>, <see cref="VariableView"/> and <see cref="VariableListView"/>
 /// alike. Three views drawing one page shape under three prefixes is what made every layout rule in
 /// Stiler a three-selector compound, and the fourth surface would have made it four.
+/// </para>
+/// <para>
+/// The chrome — <see cref="Trail"/>, <see cref="Eyebrow"/>, <see cref="Actions"/> — is what makes
+/// a detail page read as part of helsedata rather than as a component dropped into one. All three
+/// draw only when a caller fills them, and the trail's targets are the caller's alone: nothing in
+/// this package knows a URL.
 /// </para>
 /// <para>
 /// Each view's own names are parameters rather than a prefix this component completes, because a
@@ -56,6 +62,56 @@ public sealed partial class DetailPage : ComponentBase
     /// </summary>
     [Parameter]
     public RenderFragment? Header { get; set; }
+
+    /// <summary>
+    /// The eyebrow: what kind of thing this page is about — <c>Datakilde</c>, <c>Datasamling</c>,
+    /// <c>Variabel</c>. Drawn as a <c>&lt;p&gt;</c>, and nothing at all when it is empty.
+    /// </summary>
+    /// <remarks>
+    /// Never a heading, and not by accident. The page's outline is how a screen reader user moves
+    /// through it, and a word above the title rendered as an <c>h*</c> becomes a second title in
+    /// that outline — one that names a category rather than the thing on screen.
+    /// </remarks>
+    [Parameter]
+    public string? Eyebrow { get; set; }
+
+    /// <summary>
+    /// Where this page sits, outermost step first, the page itself last. Empty or unset draws no
+    /// trail at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every step's target is the caller's to supply, because this package has none to give: there
+    /// is no router here and helsedata's addresses are not ours. A step whose
+    /// <see cref="DetailTrailStep.Href"/> is null is drawn as plain text rather than as a link that
+    /// goes nowhere, and a caller with no targets at all passes nothing and gets no trail.
+    /// </para>
+    /// <para>
+    /// The last step is the page the reader is on: <see cref="DetailTrail"/> marks it
+    /// <c>aria-current="page"</c> and never draws it as a link, whatever it carries.
+    /// </para>
+    /// </remarks>
+    [Parameter]
+    public IReadOnlyList<DetailTrailStep>? Trail { get; set; }
+
+    /// <summary>
+    /// The trail's accessible name, in the reader's language. The host page has a breadcrumb of its
+    /// own above the mount point, so this landmark is named rather than left anonymous beside it.
+    /// </summary>
+    [Parameter]
+    public string? TrailLabel { get; set; }
+
+    /// <summary>
+    /// What the reader can do from this page, gathered into one row above the name block. The row's
+    /// element is drawn only when this is set, so a page with no page-level action has no row.
+    /// </summary>
+    /// <remarks>
+    /// For actions that act on the page's own subject. A control that acts on the surface the page
+    /// opened inside — the way out of a drill-in, say — belongs to that surface and stays there: an
+    /// action row repeating a control still drawn elsewhere is worse than no action row.
+    /// </remarks>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
 
     /// <summary>
     /// The contents column, beside the main one. Its element is drawn only when this is set, so a

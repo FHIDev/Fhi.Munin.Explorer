@@ -166,6 +166,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// <summary>Held rather than written into the markup — see <see cref="DatasamlingHref"/>.</summary>
     private Func<Guid?, string>? _address;
 
+    /// <summary>The kilde list's own address, held for <see cref="_address"/>'s reason.</summary>
+    private Func<string>? _listAddress;
+
     private EventCallback<IReadOnlyList<Guid>> Handover =>
         VariableExplorerPath is null
             ? default
@@ -285,7 +288,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         || string.Equals(key, DirectionQueryKey, StringComparison.OrdinalIgnoreCase);
 
     protected override Task OnAfterRenderAsync(bool firstRender) =>
-        _mirror.MirrorAsync(Query(_selectedDatasamlingId)).AsTask();
+        _mirror.MirrorAsync(Query(_selectedKildeId, _selectedDatasamlingId)).AsTask();
 
     /// <summary>The four keys this component owns, as a query string, omitting what is at its default.</summary>
     /// <remarks>
@@ -293,18 +296,22 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// it found it — <see cref="ExplorerUrlState.ToQueryString"/>'s rule, for its reason: a link
     /// carries what someone chose rather than a transcript of every setting.
     /// </remarks>
+    /// <param name="kilde">
+    /// The kilde the query should name — the open one for the address bar, and none at all for the
+    /// link back to the list, which is the same page with the drill-in closed.
+    /// </param>
     /// <param name="datasamling">
     /// The datasamling the query should name, which is the open one for the address bar and any of
     /// the kilde's for a link that would open it.
     /// </param>
-    private string Query(Guid? datasamling)
+    private string Query(Guid? kilde, Guid? datasamling)
     {
         string[] owned =
         [
-            _selectedKildeId is { } id
+            kilde is { } id
                 ? QueryKey + "=" + Uri.EscapeDataString(id.ToString())
                 : "",
-            _selectedKildeId is not null && datasamling is { } open
+            kilde is not null && datasamling is { } open
                 ? DatasamlingQueryKey + "=" + Uri.EscapeDataString(open.ToString())
                 : "",
             _order == KildeSortOrder.Standard
@@ -330,7 +337,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// changed parameter on every render.
     /// </remarks>
     private Func<Guid?, string> DatasamlingHref =>
-        _address ??= datasamling => _mirror.Address(Query(datasamling));
+        _address ??= datasamling => _mirror.Address(Query(_selectedKildeId, datasamling));
+
+    /// <summary>This same page with no kilde open — the trail's step back to the list.</summary>
+    /// <remarks>
+    /// The order the reader chose is kept: holding the closure for the component's life — the
+    /// reason <see cref="DatasamlingHref"/> is held — does not freeze it, because the body reads
+    /// the order fields at call time. A crumb that re-sorted the list would undo unmentioned work.
+    /// </remarks>
+    private Func<string> KilderHref =>
+        _listAddress ??= () => _mirror.Address(Query(null, null));
 
     /// <summary>Follow the open kilde, and drop the datasamling that was a step inside it.</summary>
     /// <remarks>

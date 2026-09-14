@@ -31,6 +31,35 @@ public class DetailPageTest : BunitContext
             }
         });
 
+    private IRenderedComponent<DetailPage> RenderChrome(
+        IReadOnlyList<DetailTrailStep>? trail = null,
+        string? eyebrow = null,
+        bool withActions = false) =>
+        Render<DetailPage>(parameters =>
+        {
+            parameters
+                .Add(p => p.ViewRoot, "munin-explorer-kilde")
+                .Add(p => p.ViewMain, "munin-explorer-kilde__main")
+                .Add(p => p.Eyebrow, eyebrow)
+                .Add(p => p.Trail, trail)
+                .Add(p => p.TrailLabel, "Brødsmulesti")
+                .Add(p => p.Header, (RenderFragment)(builder => builder.AddMarkupContent(0, "<p>the name block</p>")));
+
+            if (withActions)
+            {
+                parameters.Add(p => p.Actions,
+                    (RenderFragment)(builder => builder.AddMarkupContent(0, "<button type=\"button\">an action</button>")));
+            }
+        });
+
+    /// <summary>A trail of the shape a caller with addresses supplies: ancestors, then the page.</summary>
+    private static IReadOnlyList<DetailTrailStep> Targeted() =>
+    [
+        new DetailTrailStep("Kildeutforsker", "/kilder"),
+        new DetailTrailStep("Als registeret", "/kilder?kilde=1", "no"),
+        new DetailTrailStep("Inklusjon", null, "no"),
+    ];
+
     [Fact]
     public void Contents_WhenAViewFillsIt_ThenItLandsInTheContentsColumnAndNowhereElse()
     {
@@ -156,6 +185,160 @@ public class DetailPageTest : BunitContext
         var root = cut.Find(".munin-explorer-page");
 
         Assert.Equal("munin-explorer-page munin-explorer-kilde", root.ClassName);
+    }
+
+    [Fact]
+    public void Eyebrow_WhenAViewSetsIt_ThenItIsAParagraphAboveTheNameBlockAndNeverAHeading()
+    {
+        // The whole of AC3, and the reason this is a <p>: a word above the title rendered as an
+        // <h*> is a second title in the outline a screen reader navigates by, naming a category
+        // rather than the thing on screen.
+        var cut = RenderChrome(eyebrow: "Datakilde");
+
+        var eyebrow = cut.Find(".munin-explorer-page__eyebrow");
+
+        Assert.Equal("P", eyebrow.TagName);
+        Assert.Equal("Datakilde", eyebrow.TextContent.Trim());
+        Assert.Null(eyebrow.GetAttribute("role"));
+        Assert.Empty(cut.FindAll("h1, h2, h3, h4, h5, h6"));
+
+        var children = cut.Find(".munin-explorer-page").Children.ToList();
+
+        Assert.True(
+            children.FindIndex(child => child.ClassList.Contains("munin-explorer-page__eyebrow"))
+            < children.FindIndex(child => child.TextContent.Contains("the name block", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Eyebrow_WhenAViewSetsNothing_ThenNoElementIsDrawnForIt()
+    {
+        // An empty one is not free: Stiler gives the name a pill and 1rem of margin above it, so a
+        // blank paragraph would be a gap over the title on a page that asked for none.
+        foreach (var empty in (string?[])[null, "", "   "])
+        {
+            Assert.Empty(RenderChrome(eyebrow: empty).FindAll(".munin-explorer-page__eyebrow"));
+        }
+    }
+
+    [Fact]
+    public void Trail_WhenStepsCarryTargets_ThenItIsANamedNavAroundAnOrderedListOfLinks()
+    {
+        // AC4 whole. The <ol> is the half a row of links cannot claim: the order is what a
+        // breadcrumb tells a screen reader, and a <ul> says the steps are a set.
+        var cut = RenderChrome(Targeted());
+
+        var nav = cut.Find("nav.breadcrumbs");
+
+        Assert.Equal("Brødsmulesti", AccessibleName.Of(nav));
+
+        var list = Assert.Single(nav.Children);
+
+        Assert.Equal("OL", list.TagName);
+        Assert.Contains("breadcrumbs__list", list.ClassList);
+        Assert.All(list.Children, step => Assert.Equal("LI", step.TagName));
+
+        Assert.Equal(
+            ["/kilder", "/kilder?kilde=1"],
+            nav.QuerySelectorAll("a").Select(a => a.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void Trail_Always_ThenTheLastStepIsTheCurrentPageAndIsNotALink()
+    {
+        // Marked rather than merely last, and plain text rather than a link to where the reader
+        // already is. The href on it is deliberate: the chassis drops one, so no call site can put
+        // the current page back into the tab order one view at a time.
+        var cut = RenderChrome([
+            new DetailTrailStep("Kildeutforsker", "/kilder"),
+            new DetailTrailStep("Inklusjon", "/kilder?kilde=1&datasamling=2"),
+        ]);
+
+        var steps = cut.FindAll("nav.breadcrumbs li");
+        var last = steps[^1];
+
+        Assert.Equal("page", last.GetAttribute("aria-current"));
+        Assert.Contains("breadcrumbs__last-crumb", last.ClassList);
+        Assert.Empty(last.QuerySelectorAll("a"));
+        Assert.Equal("Inklusjon", last.TextContent.Trim());
+        Assert.Null(steps[0].GetAttribute("aria-current"));
+    }
+
+    [Fact]
+    public void Trail_WhenNoStepCarriesATarget_ThenTheTrailIsPlainTextAndNotOneDeadLink()
+    {
+        // The degradation AC2 asks about, one level down from "no trail at all": a caller may know
+        // where a page sits and have no address for it. An <a> with no href is not a link a browser
+        // will follow, and an href="#" is a control that reloads the page it is on.
+        var cut = RenderChrome([
+            new DetailTrailStep("Kildeutforsker", null),
+            new DetailTrailStep("Als registeret", null),
+            new DetailTrailStep("Inklusjon", null),
+        ]);
+
+        Assert.Empty(cut.FindAll("nav.breadcrumbs a"));
+        Assert.Equal(
+            ["Kildeutforsker", "Als registeret", "Inklusjon"],
+            cut.FindAll("nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Trail_WhenACallerPassesNone_ThenNoNavIsDrawnAtAll()
+    {
+        // What a caller with no addresses of its own gets — the variable explorer's drill-ins, and
+        // Kelda before a host wires KilderHref. A landmark with one step names nowhere to go.
+        foreach (var nothing in (IReadOnlyList<DetailTrailStep>?[])[null, []])
+        {
+            Assert.Empty(RenderChrome(nothing).FindAll("nav.breadcrumbs"));
+        }
+    }
+
+    [Fact]
+    public void Trail_WhenAStepIsTheCataloguesNorwegian_ThenTheLangIsOnTheWordsRatherThanOnTheLink()
+    {
+        // An accessible name is announced in the computed language of the element that owns it, so
+        // a langed <a> would switch voice for the whole control rather than for the name in it.
+        var step = RenderChrome(Targeted())
+            .FindAll("nav.breadcrumbs a")
+            .Single(link => link.TextContent.Trim() == "Als registeret");
+
+        Assert.Null(step.GetAttribute("lang"));
+        Assert.Equal("no", Assert.Single(step.Children).GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Actions_WhenAViewFillsIt_ThenTheRowIsDrawnAboveTheNameBlock()
+    {
+        var cut = RenderChrome(withActions: true);
+
+        var row = cut.Find(".munin-explorer-page__actions");
+
+        Assert.Equal("an action", row.TextContent.Trim());
+
+        var children = cut.Find(".munin-explorer-page").Children.ToList();
+
+        Assert.True(
+            children.FindIndex(child => child.ClassList.Contains("munin-explorer-page__actions"))
+            < children.FindIndex(child => child.TextContent.Contains("the name block", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Actions_WhenNoViewFillsIt_ThenTheRowIsNotDrawnAtAll()
+    {
+        // Stiler gives the row 24px of margin above it, so an empty one is a gap under the chrome
+        // of every page with no page-level action — which is every page in this package today.
+        Assert.Empty(RenderChrome(withActions: false).FindAll(".munin-explorer-page__actions"));
+    }
+
+    [Fact]
+    public void Chrome_Always_ThenEveryNameItEmitsHasARuleSomeStylesheetSupplies()
+    {
+        // The trail's five names are helsedata's own rather than ours, so this is where that claim
+        // is checked: they have to be in the capture of their live page, since neither sample
+        // stands a borrowed rule in and a partial copy of one is a divergence rather than a
+        // stand-in.
+        var cut = RenderChrome(Targeted(), eyebrow: "Datakilde", withActions: true);
+
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
     }
 
     [Fact]

@@ -5869,6 +5869,14 @@ public class KildeSearchTest : BunitContext
         /// </remarks>
         public bool StallKilde { get; set; }
 
+        /// <summary>Answer the datasamling with no parent kilde named, as a thin payload does.</summary>
+        /// <remarks>
+        /// <c>ParentKildeName</c> defaults to "" and an explicit null reads as "" too, so a payload
+        /// without <c>parentKildeNavn</c> is what the guard in <c>DatasamlingTrail</c> is for: the
+        /// alternative is a crumb whose whole text — and whole accessible name — is the empty string.
+        /// </remarks>
+        public bool UnnamedParentKilde { get; set; }
+
         private readonly List<TaskCompletionSource<DatasamlingDetail?>> _stalls = [];
 
         private readonly TaskCompletionSource<KildeDetail?> _kildeStall = new();
@@ -5904,19 +5912,105 @@ public class KildeSearchTest : BunitContext
 
             return Task.FromResult<DatasamlingDetail?>(MissingDatasamling
                 ? null
-                : new() { Id = id, Code = "K_ALS.INKLUSJON", PreferredTerm = "Inklusjon" });
+                // parentKildeNavn is what the trail's kilde step is named after, and the API sends
+                // it with every datasamling so the crumb costs no second request.
+                : new()
+                {
+                    Id = id,
+                    Code = "K_ALS.INKLUSJON",
+                    PreferredTerm = "Inklusjon",
+                    ParentKildeName = UnnamedParentKilde ? "" : "Als registeret",
+                });
         }
     }
 
     /// <summary>Kelda mounted the way <see cref="KildeExplorer"/> mounts it, at some address.</summary>
     private IRenderedComponent<KildeSearch> RenderDrillIn(
-        DrillInClient client, Guid? kilde, Guid? datasamling, bool wireHref = true) =>
+        DrillInClient client, Guid? kilde, Guid? datasamling, bool wireHref = true, bool wireList = false) =>
         RenderWith(client, p => p
             .Add(c => c.SelectedKildeId, kilde)
             .Add(c => c.SelectedDatasamlingId, datasamling)
+            .Add(c => c.KilderHref, wireList ? (Func<string>)(() => "/kilder") : null)
             .Add(c => c.DatasamlingHref, wireHref
                 ? (Func<Guid?, string>)(id => id is null ? $"/kilder?kilde={kilde}" : $"/kilder?kilde={kilde}&datasamling={id}")
                 : null));
+
+    [Fact]
+    public void Trail_WhenADatasamlingIsOpen_ThenItNamesTheListTheKildeAndTheDatasamlingInThatOrder()
+    {
+        // Both targets come off the host's own address through KildeExplorer, which is the only
+        // thing here that knows one: this component has no NavigationManager and no idea which
+        // query keys the page carries. The last step is the page and is not a link.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling, wireList: true);
+
+        var steps = cut.FindAll("nav.breadcrumbs li");
+
+        Assert.Equal(["Kildeutforsker", "Als registeret", "Inklusjon"],
+                     steps.Select(step => step.TextContent.Trim()));
+        Assert.Equal(["/kilder", $"/kilder?kilde={kilde}"],
+                     cut.FindAll("nav.breadcrumbs a").Select(link => link.GetAttribute("href")));
+        Assert.Equal("page", steps[^1].GetAttribute("aria-current"));
+    }
+
+    [Fact]
+    public void Trail_WhenTheKildeIsOpen_ThenItNamesTheListAndTheKildeAndNothingElse()
+    {
+        var kilde = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, Guid.NewGuid()), kilde, datasamling: null, wireList: true);
+
+        Assert.Equal(["Kildeutforsker", "Als registeret"],
+                     cut.FindAll("nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Trail_WhenTheDatasamlingNamesNoParentKilde_ThenTheMiddleStepIsDroppedRatherThanDrawnBlank()
+    {
+        // Reachable from the live API, not hypothetical: parentKildeNavn is a string that defaults
+        // to "", and without the guard the middle crumb is a link whose entire accessible name is
+        // the empty string — a target a screen reader announces as nothing at all.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { UnnamedParentKilde = true };
+
+        var cut = RenderDrillIn(client, kilde, datasamling, wireList: true);
+
+        Assert.Equal(["Kildeutforsker", "Inklusjon"],
+                     cut.FindAll("nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
+        Assert.Equal(["/kilder"], cut.FindAll("nav.breadcrumbs a").Select(link => link.GetAttribute("href")));
+        Assert.DoesNotContain("", cut.FindAll("nav.breadcrumbs a").Select(link => link.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Trail_WhenOnlyTheKildesAddressIsWired_ThenTheTrailStartsAtTheKildeRatherThanAtTheList()
+    {
+        // Every step this component offers is one a reader can press. A host that wired one address
+        // and not the other gets the steps it can reach and no word standing in for the rest.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling);
+
+        Assert.Equal(["Als registeret", "Inklusjon"],
+                     cut.FindAll("nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Trail_WhenNoAddressIsWiredAtAll_ThenNoTrailIsDrawnRatherThanOneThatGoesNowhere()
+    {
+        // A host that wired nothing gets no landmark at all. The way out of the drill-in is still
+        // there and still works — the trail is the addition, never the only way back.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling, wireHref: false);
+
+        Assert.Empty(cut.FindAll("nav.breadcrumbs"));
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown button.hd-button-square"));
+    }
 
     [Fact]
     public void DrillIn_WhenTheAddressNamesADatasamlingOfTheOpenKilde_ThenItsOwnViewReplacesTheKildesAndTheKildeIsNotFetched()

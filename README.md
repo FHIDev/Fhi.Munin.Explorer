@@ -95,7 +95,14 @@ These are not style preferences — each one is a host that breaks otherwise.
     open list. These are not ours to rename: a change to one of them is a change to Stiler. Every
     borrowed name is now one Stiler really defines, the detail views' contents nav included: it
     wears `form-menu__list` and `form-menu__list__item`, global unscoped classes in Stiler's
-    `pages/_healthregisterpage.scss` that reach its compiled stylesheet. What Stiler declares is
+    `pages/_healthregisterpage.scss` that reach its compiled stylesheet. The detail pages'
+    breadcrumb is the same bargain under a second set of names — `breadcrumbs` on the `<nav>`,
+    `breadcrumbs__list`, `breadcrumbs__list-item`, `breadcrumbs__divider` and
+    `breadcrumbs__last-crumb` — global and unscoped in Stiler's `layout/_breadcrumbs.scss`, so the
+    trail takes helsedata's own type, colour and dividers and this package invents no name for it.
+    Neither sample host stands those five in, deliberately: a partial copy of a borrowed rule is
+    what `scripts/assert-sample-css-matches-stiler.sh` reports as a divergence, and an unstyled
+    trail is a numbered list that still reads correctly. What Stiler declares is
     read off Stiler — its repository and its published package — and never off a deployed site:
     helsedata.no serves those rules from its own `application.css` and carries no other `form-menu`
     rule, which briefly read as proof the names were not Stiler's, and is not, because that site
@@ -426,6 +433,22 @@ These are not style preferences — each one is a host that breaks otherwise.
     the bead that writes one. It is a handle in the table below, and undefined it degrades quietly:
     the heading is still a heading and still wears Stiler's own `headline headline-s`, so what is
     lost is the rule and the space under the name block that separate it from the list.
+    The chassis adds two chrome names above the name block, `munin-explorer-page__eyebrow` and
+    `munin-explorer-page__actions`, and the chrome's third piece — the breadcrumb — adds none at
+    all, because it wears helsedata's own `breadcrumbs*` names listed further up. The eyebrow is
+    the word naming what kind of thing the page is about, `Datakilde` / `Datasamling` /
+    `Variabel`, and it is a `<p>` and never an `<h*>`: a heading there would put a second title in
+    the outline a screen reader navigates by. The action row holds page-level controls and is
+    emitted only when a caller fills it, which no call site in this package does yet — the way out
+    of a drill-in belongs to the drill-in, has to be on screen before the view exists, and
+    repeating it here would draw the same control twice. Both are handles: undefined, the eyebrow
+    is a paragraph above the title and the row is its children in ordinary flow, and no word is
+    lost either way. Stiler 0.1.75 — the pin `samples/HostileHost` restores — carries a rule for
+    each, in the same `components/munin-explorer/_page.scss`, and both sample stylesheets already
+    stand in at its declarations. Three of the four surfaces set the eyebrow — the kilde,
+    datasamling and variable views, each naming its own kind. `VariableListView` sets no chrome at
+    all: the saved-list view's own is a bead of its own.
+
     The same three add `munin-explorer-page__fields` on every fact list they draw, and
     `munin-explorer-page__language` on the language name above a value the catalogue holds in more
     than one. Both used to be the drill-in panel's own `munin-explorer-meta__grid` and
@@ -715,7 +738,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__tab-content` | handle |
   | `munin-explorer-meta__tabs` | handle |
   | `munin-explorer-page` | handle |
+  | `munin-explorer-page__actions` | handle |
   | `munin-explorer-page__body` | handle |
+  | `munin-explorer-page__eyebrow` | handle |
   | `munin-explorer-page__fields` | handle |
   | `munin-explorer-page__header` | handle |
   | `munin-explorer-page__language` | handle |
