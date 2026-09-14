@@ -13,4 +13,7 @@ category: Notes for hosts
   The `Fhi.Helsedata.Stiler` rules for the two new names, and whatever that summary rule was
   carrying for the group rows, are `Fhi.Metadata-cs3pt` and are in no published version yet — so
   every host draws the disclosures at browser defaults until the release that first carries them.
+  Both names are drawn by every facet that nests values and not by the Kilde facet alone: a
+  variabelgruppe nested under another is a branch row too, and it starts shut where it used to be
+  drawn unasked, so a rule scoped to the Kilde facet reaches neither it nor its disclosure.
   (Fhi.Metadata-adog5)

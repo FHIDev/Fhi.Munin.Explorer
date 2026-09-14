@@ -68,6 +68,71 @@ const firstShutBranch = page => page.locator(`${PANEL} ${DISCLOSURE}[aria-expand
 const rowOf = disclosure => disclosure.locator('xpath=..');
 
 /**
+ * One disclosure, found by the names it answers to rather than by where it sits.
+ *
+ * Not by index: a press that refetches rebuilds the whole tree, and Playwright reads a `nth` that
+ * has moved as the LAST match rather than as an error — a silent mis-measure in a file whose own
+ * header exists to keep a green run from meaning more than it is. The verb in the name is the one
+ * for the NEXT press, so a branch answers to one name shut and another open, and both are kept.
+ */
+const branchNamed = (page, names) => page.locator(
+  names.map(name => `${PANEL} ${DISCLOSURE}[aria-label=${JSON.stringify(name)}]`).join(', '));
+
+/**
+ * Open the first shut branch the panel draws, and hand back the names it now answers to.
+ *
+ * Both branch assertions begin here, and both need it open: neither can ask anything of a branch
+ * that has disclosed nothing, and the name it wears open is only readable once it is. Pressed from
+ * the keyboard because that is also the claim — a <button> answers Enter with no handler of its own
+ * — and because two clicks on one control inside the double-click interval are a double-click,
+ * which every disclosure in this package refuses by design. (Fhi.Metadata-zel47)
+ */
+async function openFirstShutBranch(page) {
+  const panel = page.locator(PANEL);
+  await panel.waitFor({ state: 'visible', timeout: findTimeout });
+
+  const shut = firstShutBranch(page);
+  await shut.waitFor({ state: 'visible', timeout: findTimeout });
+
+  const names = [await shut.getAttribute('aria-label')];
+  const button = await shut.elementHandle();
+
+  // The pin has to name one control, or every re-locate below could land on a second branch the
+  // catalogue happens to have given the same name.
+  if (await branchNamed(page, names).count() !== 1) {
+    throw new Error(`the panel draws more than one branch named "${names[0]}" — no press can be pinned to one`);
+  }
+
+  await shut.focus();
+
+  if (!await shut.evaluate(one => one === document.activeElement)) {
+    throw new Error(`the disclosure "${names[0]}" would not take focus`);
+  }
+
+  await page.keyboard.press('Enter');
+
+  // Against the element itself for this one step: it is mid-rename, so neither name finds it.
+  await page.waitForFunction(
+    one => one.getAttribute('aria-expanded') === 'true', button, { timeout: findTimeout });
+
+  names.push(await button.getAttribute('aria-label'));
+
+  if (names[1] === names[0]) {
+    throw new Error(`the disclosure "${names[0]}" kept its name when it opened, so it names the wrong press`);
+  }
+
+  return { panel, names, label: names[0], disclosure: branchNamed(page, names) };
+}
+
+/** Press a pinned disclosure, from the keyboard, and wait until it says it has moved. */
+async function pressBranch(page, names, expanded) {
+  await branchNamed(page, names).focus();
+  await page.keyboard.press(' ');
+  await branchNamed(page, names).and(page.locator(`[aria-expanded="${expanded}"]`))
+    .waitFor({ state: 'attached', timeout: findTimeout });
+}
+
+/**
  * How much of what a Tab could land on inside a row is the branch's disclosed content.
  *
  * Counted apart from the row's own controls rather than by subtracting them: whether a row carries
@@ -384,50 +449,21 @@ export const assertions = [
     // reader is tabbing through, and whether the button answers Enter and Space at all. bUnit
     // renders a render tree — there is no tab order in one, and no key to press.
     async stage(page) {
-      const panel = page.locator(PANEL);
-      await panel.waitFor({ state: 'visible', timeout: findTimeout });
+      const { names, label, disclosure } = await openFirstShutBranch(page);
 
-      const shut = firstShutBranch(page);
-      await shut.waitFor({ state: 'visible', timeout: findTimeout });
+      const disclosed = await disclosedControls(rowOf(disclosure));
 
-      const label = await shut.getAttribute('aria-label');
-      const index = await panel.locator(DISCLOSURE).evaluateAll(
-        (all, one) => all.indexOf(one), await shut.elementHandle());
+      await pressBranch(page, names, 'false');
 
-      if (index < 0) {
-        throw new Error(`the branch "${label}" is not one of the panel's own disclosures`);
-      }
-
-      // From the keyboard throughout. A <button> answers Enter and Space without a handler of its
-      // own, which is exactly the claim — and a control that cannot be focused fails here rather
-      // than passing quietly further down.
-      await shut.focus();
-
-      if (!await shut.evaluate(button => button === document.activeElement)) {
-        throw new Error(`the disclosure "${label}" would not take focus`);
-      }
-
-      await page.keyboard.press('Enter');
-      await panel.locator(DISCLOSURE).nth(index)
-        .and(page.locator('[aria-expanded="true"]'))
-        .waitFor({ state: 'attached', timeout: findTimeout });
-
-      const disclosed = await disclosedControls(rowOf(panel.locator(DISCLOSURE).nth(index)));
-
-      await panel.locator(DISCLOSURE).nth(index).focus();
-      await page.keyboard.press(' ');
-      await panel.locator(DISCLOSURE).nth(index)
-        .and(page.locator('[aria-expanded="false"]'))
-        .waitFor({ state: 'attached', timeout: findTimeout });
-
-      return { index, label, disclosed };
+      return { names, label, disclosed };
     },
 
-    async measure(page, { index, label, disclosed }) {
-      const disclosure = page.locator(`${PANEL} ${DISCLOSURE}`).nth(index);
+    async measure(page, { names, label, disclosed }) {
+      const disclosure = branchNamed(page, names);
+      const drawn = await disclosure.count();
 
-      if (await disclosure.count() === 0 || await disclosure.getAttribute('aria-label') !== label) {
-        return `the panel no longer draws the branch "${label}" where it did — nothing was measured`;
+      if (drawn !== 1) {
+        return `the panel draws ${drawn} branches named "${label}" where it drew one — nothing was measured`;
       }
 
       // Reported rather than passed over: a branch that disclosed nothing is one this assertion
@@ -467,8 +503,8 @@ export const assertions = [
     // The defect this replays is the design it was chosen over: draw the values anyway and hide
     // them with `hidden`. That is one author rule away from being visible and focusable, which is
     // how two tab panels came to be drawn at once on 2026-09-03.
-    async control(page, { index }) {
-      await rowOf(page.locator(`${PANEL} ${DISCLOSURE}`).nth(index)).evaluate(row => {
+    async control(page, { names }) {
+      await rowOf(branchNamed(page, names)).evaluate(row => {
         const list = document.createElement('ul');
         list.hidden = true;
         list.innerHTML = '<li><label><input type="checkbox"> Skjult verdi</label></li>';
@@ -487,30 +523,7 @@ export const assertions = [
     // Measured in a browser because the round trip is what makes it worth asking — the value goes
     // out of the DOM and comes back from a render, not from a patch.
     async stage(page) {
-      const panel = page.locator(PANEL);
-      await panel.waitFor({ state: 'visible', timeout: findTimeout });
-
-      const shut = firstShutBranch(page);
-      await shut.waitFor({ state: 'visible', timeout: findTimeout });
-
-      const label = await shut.getAttribute('aria-label');
-      const index = await panel.locator(DISCLOSURE).evaluateAll(
-        (all, one) => all.indexOf(one), await shut.elementHandle());
-
-      await shut.click();
-
-      const disclosure = panel.locator(DISCLOSURE).nth(index);
-      await disclosure.and(page.locator('[aria-expanded="true"]'))
-        .waitFor({ state: 'attached', timeout: findTimeout });
-
-      // The branch's identity for the round trip below, read while it is open because that is the
-      // only state it is drawn in: the id is the value's own key, where aria-label is the verb for
-      // the NEXT press and so says "Skjul" here and "Vis" on the same branch shut.
-      const branch = await disclosure.getAttribute('aria-controls');
-
-      if (branch === null) {
-        throw new Error(`the open branch "${label}" names no list, so there is no id to measure it by`);
-      }
+      const { panel, names, label, disclosure } = await openFirstShutBranch(page);
 
       const facet = disclosure.locator('xpath=ancestor::details[1]');
       // Under the row's own list and never the row's own checkbox: what this assertion folds away
@@ -519,10 +532,16 @@ export const assertions = [
       const box = rowOf(disclosure).locator('ul input[type=checkbox]:not(:checked)').first();
 
       await box.waitFor({ state: 'visible', timeout: findTimeout });
+
+      // A real pointer press, unlike the disclosures either side of it: the browser's own flip of
+      // this box before any handler runs is the whole subject of this file.
       await box.click();
 
-      // Out the other side of the refetch a tick provokes, so what is folded away below is the
-      // tree the answer rebuilt rather than the one the press left mid-flight.
+      // Both edges of the refetch a tick provokes. The rise is caught where it can be — against a
+      // local stub the panel can go busy and back inside one round trip — and the fall is waited
+      // for either way, so what is folded away below is the tree the answer rebuilt.
+      await panel.and(page.locator('[aria-busy="true"]'))
+        .waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
       await panel.and(page.locator('[aria-busy="false"]'))
         .waitFor({ state: 'visible', timeout: findTimeout });
 
@@ -532,27 +551,35 @@ export const assertions = [
         throw new Error(`ticking a value under "${label}" chose nothing, so there is nothing to fold away`);
       }
 
-      await panel.locator(DISCLOSURE).nth(index).click();
-      await panel.locator(DISCLOSURE).nth(index).and(page.locator('[aria-expanded="false"]'))
-        .waitFor({ state: 'attached', timeout: findTimeout });
+      await pressBranch(page, names, 'false');
 
       // Read while it is shut: the chip row and the facet's own count are drawn off the filter
       // rather than off what is on screen, so both have to survive the value leaving the DOM.
       const whileShut = await chosenInFacet(facet);
       const chips = await page.locator('.munin-explorer-filters__chip').count();
 
-      await panel.locator(DISCLOSURE).nth(index).click();
-      await panel.locator(DISCLOSURE).nth(index).and(page.locator('[aria-expanded="true"]'))
-        .waitFor({ state: 'attached', timeout: findTimeout });
+      await pressBranch(page, names, 'true');
 
-      return { index, label, branch, chosen, whileShut, chips };
+      return { names, label, chosen, whileShut, chips };
     },
 
-    async measure(page, { index, label, branch, chosen, whileShut, chips }) {
-      const disclosure = page.locator(`${PANEL} ${DISCLOSURE}`).nth(index);
+    async measure(page, { names, label, chosen, whileShut, chips }) {
+      const disclosure = branchNamed(page, names);
 
-      if (await disclosure.count() === 0 || await disclosure.getAttribute('aria-controls') !== branch) {
-        return `the panel no longer draws the branch "${label}" open where it did — nothing was measured`;
+      // Given a moment to settle rather than read on the instant: the tick's refetch lands on its
+      // own schedule, and a render arriving between the last press and this read would otherwise
+      // be reported as a branch that had gone.
+      await disclosure.and(page.locator('[aria-expanded="true"]'))
+        .waitFor({ state: 'attached', timeout: findTimeout }).catch(() => {});
+
+      const drawn = await disclosure.count();
+
+      if (drawn !== 1) {
+        return `the panel draws ${drawn} branches named "${label}" where it drew one — nothing was measured`;
+      }
+
+      if (await disclosure.getAttribute('aria-expanded') !== 'true') {
+        return `"${label}" is shut again after being reopened — nothing was measured`;
       }
 
       if (whileShut !== chosen) {
@@ -582,8 +609,8 @@ export const assertions = [
 
     // The flip the missing call would leave behind, put there by hand, exactly as the picker's and
     // the facet's own controls do it.
-    async control(page, { index }) {
-      await rowOf(page.locator(`${PANEL} ${DISCLOSURE}`).nth(index))
+    async control(page, { names }) {
+      await rowOf(branchNamed(page, names))
         .locator('ul input[type=checkbox]:checked').first()
         .evaluate(box => { box.checked = false; });
     },

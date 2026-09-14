@@ -520,6 +520,8 @@ public partial class VariableSearch
         }
 
         _kildeSearch = text ?? string.Empty;
+
+        OpenBranchesToMatches();
     }
 
     /// <summary>Whether committing <paramref name="text"/> takes a kilde the panel is drawing off the screen.</summary>
@@ -561,7 +563,8 @@ public partial class VariableSearch
     /// <summary>Whether a kilde, or anything drawn under it, holds <paramref name="term"/>.</summary>
     /// <remarks>
     /// A datasamling is reached under its delkilde as well as straight off the kilde, since
-    /// <see cref="KildeLevels"/> puts it in whichever of the two lookups its parent says.
+    /// <see cref="KildeLevels"/> puts it in whichever of the two lookups its parent says. What the
+    /// reader then sees of a deep match is <see cref="OpenBranchesToMatches"/>'s business.
     /// </remarks>
     private bool KildeMatches(KildeFacet kilde, KildeLevelLookup levels, string term) =>
         LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)
@@ -1051,7 +1054,7 @@ public partial class VariableSearch
         _ => string.Empty
     };
 
-    /// <summary>Open every facet at once, or fold every facet at once.</summary>
+    /// <summary>Open every facet and every branch of every facet tree at once, or fold them all.</summary>
     /// <remarks>
     /// The rebuild costs the dataperiode's date fields whatever was typed into them but not yet
     /// committed — they bind on change, so a half-typed date lives only in the DOM. Accepted: the
@@ -1241,7 +1244,7 @@ public partial class VariableSearch
         var key = value.Key;
 
         builder.AddAttribute(10, "onclick",
-                             EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleBranch(key, e)));
+                             EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleBranchFromControl(key, e)));
 
         // Text rather than a rule, so a host with no stylesheet still sees which way the branch
         // points — and aria-hidden, so the name is the label alone: an arrow is not the visible
@@ -1265,6 +1268,11 @@ public partial class VariableSearch
     private bool IsBranchOpen(string key) => _expandedBranches.Contains(key);
 
     /// <summary>The id of the list one branch discloses, unique to this mount and to that branch.</summary>
+    /// <remarks>
+    /// Every segment is one a CSS selector can hold: the prefix is a literal, <see cref="IdPart"/>
+    /// escapes the key, and the mount's own segment is eight hex digits of a Guid — so a test, or a
+    /// host, can write <c>#id</c> and have it parse.
+    /// </remarks>
     private string BranchId(string key) => $"munin-explorer-branch-{_instance}-{IdPart(key)}";
 
     /// <summary>One facet value key as an id can spell it, and no two keys alike.</summary>
@@ -1295,11 +1303,12 @@ public partial class VariableSearch
     /// <summary>Open or shut one branch, and nothing else.</summary>
     /// <remarks>
     /// Touches neither <see cref="_filter"/> nor the API: a press here changes what is drawn, so a
-    /// value ticked inside a branch is still ticked when it is reopened. The guard is the standing
-    /// half of the question <see cref="RowPress"/> asks, and all of it that applies — the panel
-    /// keeps no press, so the drag clause cannot be read here. (Fhi.Metadata-zel47)
+    /// value ticked inside a branch is still ticked when it is reopened. The guard reads the two
+    /// gestures that stand still — a double-click and a shift-click — and not the drag, which needs
+    /// a press this panel keeps none of; a click reporting no count at all is the keyboard's and
+    /// goes through. (Fhi.Metadata-zel47)
     /// </remarks>
-    private void ToggleBranch(string key, MouseEventArgs released)
+    private void ToggleBranchFromControl(string key, MouseEventArgs released)
     {
         if (RowPress.WasSelectionStandingStill(released))
         {
@@ -1332,16 +1341,64 @@ public partial class VariableSearch
         }
     }
 
+    /// <summary>Open every branch under <paramref name="values"/>, and everything under those.</summary>
+    /// <remarks>
+    /// Descends only into a key it had not already opened, so a payload whose nodes name each other
+    /// as parent terminates here: a stack overflow is process-fatal and cannot be caught.
+    /// </remarks>
     private void OpenBranches(IReadOnlyList<FacetValue> values)
     {
         foreach (var value in values)
         {
-            if (value.Children.Count > 0)
+            if (value.Children.Count > 0 && _expandedBranches.Add(value.Key))
             {
-                _expandedBranches.Add(value.Key);
                 OpenBranches(value.Children);
             }
         }
+    }
+
+    /// <summary>Open the branches standing between a kilde the search kept and the name that matched.</summary>
+    /// <remarks>
+    /// The term is matched over everything under a kilde and every branch starts shut, so without
+    /// this a deep match keeps a row whose matching name is nowhere on the page. Written where a
+    /// press writes, so Skjul alle still shuts what a search opened. (Fhi.Metadata-adog5)
+    /// </remarks>
+    private void OpenBranchesToMatches()
+    {
+        if (KildeSearchTerm is not { } term || _facets is not { } facets)
+        {
+            return;
+        }
+
+        OpenMatchedBranches(KildeGroup(facets).Values, term, []);
+    }
+
+    /// <summary>
+    /// Whether anything at or under <paramref name="values"/> holds <paramref name="term"/>, opening
+    /// every branch that has a match below it on the way back up.
+    /// </summary>
+    /// <remarks>
+    /// A branch whose own label matched is left alone: the reader typed a name this row already
+    /// shows them, and opening it would unfold a kilde they can see on the strength of its own name.
+    /// <paramref name="walked"/> guards the descent the way <see cref="OpenBranches"/> does.
+    /// </remarks>
+    private bool OpenMatchedBranches(IReadOnlyList<FacetValue> values, string term, HashSet<string> walked)
+    {
+        var matched = false;
+
+        foreach (var value in values)
+        {
+            var below = walked.Add(value.Key) && OpenMatchedBranches(value.Children, term, walked);
+
+            if (below)
+            {
+                _expandedBranches.Add(value.Key);
+            }
+
+            matched = matched || below || LabelMatches(value.Label, term);
+        }
+
+        return matched;
     }
 
     /// <summary>Add or remove one value from a facet, and fetch what that leaves.</summary>

@@ -3401,7 +3401,7 @@ public class VariableSearchTest : BunitContext
 
     /// <summary>The disclosure on a branch row.</summary>
     private static IElement BranchDisclosure(AngleSharp.Dom.IElement row) =>
-        (IElement)row.QuerySelector(".munin-explorer-filters__disclosure")!;
+        row.QuerySelector(".munin-explorer-filters__disclosure")!;
 
     /// <summary>Press one of the toolbar's buttons, without opening anything on the way to it.</summary>
     /// <remarks>
@@ -3778,6 +3778,10 @@ public class VariableSearchTest : BunitContext
 
         Assert.Contains("Tromsøundersøkelsen", KildeFacet(cut).TextContent, StringComparison.Ordinal);
         Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+
+        // And the name itself is on the page. Every branch starts shut, so a kilde kept for a match
+        // nobody can see would be a row that answers a term it never shows. (Fhi.Metadata-adog5)
+        Assert.Contains("Første besøk", KildeFacet(cut).TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -3793,6 +3797,40 @@ public class VariableSearchTest : BunitContext
 
         Assert.Contains("Tromsøundersøkelsen", KildeFacet(cut).TextContent, StringComparison.Ordinal);
         Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Contains("Andre runde", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchMatchesDeepInTheTree_ThenThePathDownToItIsOpened()
+    {
+        // Three branches stand between the kilde the search kept and the datasamling that kept it,
+        // and every one of them starts shut: the match is what the reader typed, so it is the one
+        // thing the facet has to be showing them afterwards. (Fhi.Metadata-adog5)
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                                 FacetsWithDatasamlinger()));
+
+        KildeSearchField(cut).Change("Andre runde");
+
+        // The kildetype heading is lifted away once a term leaves one group standing, so the kilde
+        // is the top of the path here.
+        Assert.Equal("true", Branch(cut, "Tromsøundersøkelsen").GetAttribute("aria-expanded"));
+        Assert.Equal("true", Branch(cut, "Tromsø 4").GetAttribute("aria-expanded"));
+        Assert.Equal("true", Branch(cut, "Første besøk").GetAttribute("aria-expanded"));
+        Assert.Contains("Andre runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchNamesTheKildeItself_ThenItsOwnBranchIsLeftShut()
+    {
+        // The other half of the same rule. A row the reader can already see matched on its own
+        // name, so unfolding it would answer a term with levels nobody asked about.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                                 FacetsWithDatasamlinger()));
+
+        KildeSearchField(cut).Change("Tromsøundersøkelsen");
+
+        Assert.Equal("false", Branch(cut, "Tromsøundersøkelsen").GetAttribute("aria-expanded"));
+        Assert.DoesNotContain("Tromsø 4", FilterPanel(cut).TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -5275,8 +5313,8 @@ public class VariableSearchTest : BunitContext
         };
     }
 
-    /// <summary>Every list drawn anywhere in the filter panel.</summary>
-    private static int ListsInThePanel(IRenderedComponent<VariableSearch> cut) =>
+    /// <summary>Every row drawn anywhere in the filter panel.</summary>
+    private static int RowsInThePanel(IRenderedComponent<VariableSearch> cut) =>
         FilterPanel(cut).QuerySelectorAll("li").Length;
 
     [Fact]
@@ -5346,6 +5384,55 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("true", Branch(cut, "Tromsøundersøkelsen").GetAttribute("aria-expanded"));
         Assert.Contains("Tromsø 1", FilterPanel(cut).TextContent, StringComparison.Ordinal);
         Assert.DoesNotContain("Fjerde runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Branches_WhenOneIsShutAfterExpandAll_ThenItStaysShutThroughTheNextAnswer()
+    {
+        // Utvid alle is walked off the facets rather than remembered as a flag, and this is the
+        // difference: a sticky flag consulted while drawing would reopen the branch on the next
+        // render and leave it impossible to collapse at all. (Fhi.Metadata-adog5)
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        ClickToolbar(cut, "Utvid alle");
+        Branch(cut, "Tromsø 4").Click();
+
+        Assert.Equal("false", Branch(cut, "Tromsø 4").GetAttribute("aria-expanded"));
+
+        // A tick refetches both endpoints and rebuilds the tree, which is the render a flag would
+        // have reopened it in.
+        TickWhereItStands(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("false", Branch(cut, "Tromsø 4").GetAttribute("aria-expanded"));
+        Assert.Equal("true", Branch(cut, "Tromsøundersøkelsen").GetAttribute("aria-expanded"));
+        Assert.DoesNotContain("Fjerde runde", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>Tick a facet value where it stands, unfolding nothing to reach it.</summary>
+    /// <remarks>
+    /// <see cref="ClickFacet"/> goes through <see cref="Facet"/>, which opens every branch first —
+    /// right for a value nested in a shut tree, and fatal to a test about a branch the reader shut.
+    /// </remarks>
+    private static void TickWhereItStands(IRenderedComponent<VariableSearch> cut, string label)
+    {
+        var box = FilterPanel(cut).QuerySelectorAll("li")
+            .Single(row => RowWords(row).StartsWith(label, StringComparison.Ordinal))
+            .QuerySelector("input[type=checkbox]")!;
+
+        box.Change(!box.HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void Branches_WhenTheDisclosureIsActivatedFromTheKeyboard_ThenItStillOpens()
+    {
+        // Enter and Space on a <button> synthesise a click reporting no count at all, and the guard
+        // on the handler refuses the two selection gestures that do report one — so a press with no
+        // count has to go through, or the tree is mouse-only. (Fhi.Metadata-zel47)
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()));
+
+        BranchDisclosure(KildeTypeGroups(cut)[1]).Click(new MouseEventArgs());
+
+        Assert.Equal("true", BranchDisclosure(KildeTypeGroups(cut)[1]).GetAttribute("aria-expanded"));
     }
 
     [Fact]
@@ -5511,11 +5598,11 @@ public class VariableSearchTest : BunitContext
         Assert.Equal(kilder, KildeTypeGroups(cut).Count);
         Assert.DoesNotContain("Datasamling ", FilterPanel(cut).TextContent, StringComparison.Ordinal);
 
-        var shut = ListsInThePanel(cut);
+        var shut = RowsInThePanel(cut);
 
         Branch(cut, "Kilde 7").Click();
 
-        Assert.Equal(shut + each, ListsInThePanel(cut));
+        Assert.Equal(shut + each, RowsInThePanel(cut));
         Assert.Contains("Datasamling 7-0", FilterPanel(cut).TextContent, StringComparison.Ordinal);
         Assert.DoesNotContain("Datasamling 8-0", FilterPanel(cut).TextContent, StringComparison.Ordinal);
     }
