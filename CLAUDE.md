@@ -176,13 +176,16 @@ checkout needs to find the shared database.
   `git -c http.extraHeader="Authorization: Bearer $(az account get-access-token --resource
   499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)" clone …`, and fetches need it
   too. Rules go under `Static/scss/components/munin-explorer/`, one file per area (`_trail.scss`,
-  `_filters.scss`, `_results.scss`, and so on). No `gh`, no Copilot review, no
-  `Closes #N`. And `az repos pr create --description` truncates at the first newline and turns æøå
+  `_filters.scss`, `_results.scss`, and so on). No `gh`, no Copilot review, and no
+  `Closes-Bead` either: nothing reads Azure DevOps, so close a Stiler bead by hand once its PR
+  merges. And `az repos pr create --description` truncates at the first newline and turns æøå
   into question marks: create the PR, then PATCH title and description over the REST API with
   explicit UTF-8 bytes, and read it back.
-- Reference the bead with the **cross-repository** form, since the issues live in Munin:
-  `Closes FHIDev/Munin#1234`. Use `Refs` when the PR only partly satisfies the bead — `Closes`
-  shuts it whether or not the acceptance criteria are met.
+- Close the bead with a **`Closes-Bead: Fhi.Metadata-abc12`** line in the PR body — the same line
+  as in Munin. The bead-closer reads merged PRs here and closes it a few minutes after the merge.
+  Beads have no GitHub issues, so `Closes FHIDev/Munin#N` closes no bead. Write `Bead: <id>`
+  instead when the PR only partly satisfies the bead — `Closes-Bead` shuts it whether or not the
+  acceptance criteria are met.
 - **Work is not done until it is pushed.** A worktree can be deleted with the session.
 
 ### One hazard worth knowing

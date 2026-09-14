@@ -4,8 +4,8 @@ description: >
   Evidence-based verification before committing, pushing, or opening a pull request in
   Fhi.Munin.Explorer. Runs the build, the tests, dotnet format and the repository's own guard
   scripts, checks the changelog fragment and the comment budget, and checks the pull request
-  reference is the cross-repository form. Use instead of declaring work done because it looks
-  right.
+  body carries a `Closes-Bead: <bead-id>` line (or `Bead: <bead-id>` for partial work). Use
+  instead of declaring work done because it looks right.
 allowed-tools: "Read, Grep, Glob, Bash(dotnet:*), Bash(git:*), Bash(./scripts/:*), Bash(scripts/:*), Bash(gh:*), Bash(bd:*)"
 version: "1.0.0"
 license: "MIT"
@@ -137,21 +137,22 @@ Every file in the list should relate to the stated task. Revert what does not.
 
 ## 7. The pull request reference — the one that has actually cost us
 
-**Work items for this repository live in `FHIDev/Munin`, not here.** The reference that closes
-one is therefore the cross-repository form:
+**A PR that finishes a bead carries `Closes-Bead: <bead-id>` on a line of its own.** The
+bead-closer reads merged PRs here and closes the bead a few minutes after the merge. It is the
+same line as in Munin, and beads have no GitHub issues, so no `Closes` reference to an issue
+closes a bead:
 
 ```
-Closes FHIDev/Munin#1234      # yes
-Closes #1234                  # closes nothing — or the wrong thing
+Closes-Bead: Fhi.Metadata-l9l2n.111   # yes
+Closes FHIDev/Munin#1234              # closes no bead
 ```
 
-Thirty-two merged pull requests here carried the bare form and closed nothing, because the
-session was reading Munin's instructions — where the bare form is correct, since there the issue
-is in the same repository — while pushing to Explorer. Check the reference before opening the PR,
-and check it again on any PR body an agent generated.
+Thirty-two merged pull requests here once carried a reference that closed nothing, and nobody
+noticed. Check the line before opening the PR, and check it again on any PR body an agent
+generated.
 
-Use `Refs FHIDev/Munin#N` when the change only partly satisfies the bead: `Closes` shuts it
-whether or not the acceptance criteria are met.
+Write `Bead: <bead-id>` instead when the change only partly satisfies the bead: `Closes-Bead`
+shuts it whether or not the acceptance criteria are met.
 
 Then:
 
@@ -174,7 +175,7 @@ Report what ran, not what you believe:
 ✓ Changelog:    changelog.d/Fhi.Metadata-abc12.md, category: Fixed
 ✓ Comments:     no block over three lines in the diff
 ✓ Scope:        5 files, all related
-✓ PR reference: Closes FHIDev/Munin#1234
+✓ PR reference: Closes-Bead: Fhi.Metadata-abc12
 ```
 
 Or, when something fails, say which and what you are doing about it:

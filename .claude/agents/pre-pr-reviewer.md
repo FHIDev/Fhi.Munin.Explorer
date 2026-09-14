@@ -329,15 +329,15 @@ git diff --stat main...HEAD
 
 Every file should relate to the stated task. Flag unrelated files, and flag a diff that does
 something the bead explicitly ruled out of scope without the bead being updated to record the
-reversal — reviewers read the linked issue to decide what the change is supposed to contain.
+reversal — reviewers read the bead to decide what the change is supposed to contain.
 
 ## 13. The pull request itself
 
-- **`Closes FHIDev/Munin#N`.** Work items for this repository live in `FHIDev/Munin`; a bare
-  `Closes #N` resolves against this repository and closes nothing, silently. Thirty-two merged PRs
-  here carried the bare form. Check it on any PR body an agent generated.
-- **`Refs FHIDev/Munin#N`** when the change only partly satisfies the bead — `Closes` shuts it
-  whether or not the acceptance criteria are met. Name the unmet criterion in the body.
+- **`Closes-Bead: <bead-id>`** on a line of its own when the PR finishes the bead — it is what
+  closes the bead after the merge. `Closes FHIDev/Munin#N` or `Closes #N` closes no bead, since
+  beads have no GitHub issues; flag either on any PR body an agent generated.
+- **`Bead: <bead-id>`** instead when the change only partly satisfies the bead — `Closes-Bead`
+  shuts it whether or not the acceptance criteria are met. Name the unmet criterion in the body.
 - `[no-changelog]` in the title if and only if the `src/` change genuinely has nothing to tell a
   host (§5).
 - The seven required checks are `build + test`, `changelog fragment`,
@@ -368,7 +368,7 @@ reversal — reviewers read the linked issue to decide what the change is suppos
 – Accessibility:          markup untouched
 ✓ Tests:                  22 new, invariants asserted
 ✓ Scope:                  6 files, all related
-✗ PR reference:           body says "Closes #5375" — needs FHIDev/Munin#5375
+✗ PR reference:           body says "Closes FHIDev/Munin#5375" — needs Closes-Bead: <bead-id>
 
 **Verdict: 4 issues to fix before opening the PR**
 

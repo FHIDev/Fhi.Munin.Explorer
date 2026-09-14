@@ -5,15 +5,13 @@
 ## Bead
 
 <!-- Work is tracked in the Munin beads workspace, not this repo's issues.
-     Use the cross-repository form so merging closes the bead:
+     Uncomment the line below and put the real bead id in it: the closer only reads
+     "Closes-Bead: <id>" as a plain line of its own, never inside a comment.
+     It closes the bead a few minutes after this PR merges. Only partly done?
+     Write "Bead: <id>" instead — "Closes-Bead" closes it whether or not the
+     acceptance criteria are met. -->
 
-       Closes FHIDev/Munin#1234
-
-     Use `Refs` instead of `Closes` when this PR only partly satisfies the bead —
-     `Closes` closes it on merge whether or not the acceptance criteria are met. -->
-
-Bead: Fhi.Metadata-
-Closes FHIDev/Munin#
+<!-- Closes-Bead: Fhi.Metadata-xxxxx -->
 
 ## Changelog
 
