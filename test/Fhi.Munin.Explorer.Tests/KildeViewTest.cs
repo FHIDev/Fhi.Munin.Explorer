@@ -377,6 +377,9 @@ public class KildeViewTest : BunitContext
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
             "munin-explorer-page__body",
+            // Every fact list this view draws, the chassis's own name since
+            // Fhi.Metadata-35w0p.11 rather than the result row's drill-in panel's.
+            "munin-explorer-page__fields",
             "munin-explorer-page__main",
             // The wrapper each block below the name sits in, so the contents nav can anchor on it.
             "munin-explorer-page__section",
@@ -1868,7 +1871,7 @@ public class KildeViewTest : BunitContext
             },
         };
 
-        var markers = Render(kilde).FindAll("p.munin-explorer-meta__language");
+        var markers = Render(kilde).FindAll("p.munin-explorer-page__language");
 
         Assert.Equal(["Norsk", "Engelsk"], markers.Select(m => m.TextContent.Trim()));
 
@@ -1885,7 +1888,7 @@ public class KildeViewTest : BunitContext
 
         Assert.Equal("DIV", wrapper.TagName);
         Assert.Equal("DL", wrapper.ParentElement!.TagName);
-        Assert.Contains("munin-explorer-meta__grid", wrapper.ParentElement.ClassName!, StringComparison.Ordinal);
+        Assert.Contains("munin-explorer-page__fields", wrapper.ParentElement.ClassName!, StringComparison.Ordinal);
 
         var values = cells.Select(c => c.QuerySelector("span")!).ToList();
 
@@ -1958,7 +1961,7 @@ public class KildeViewTest : BunitContext
             },
         };
 
-        var anchor = Render(kilde).Find(".munin-explorer-meta__grid dd a");
+        var anchor = Render(kilde).Find(".munin-explorer-page__fields dd a");
 
         Assert.Equal("https://uit.no/research/tromsostudy", anchor.GetAttribute("href"));
         Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
@@ -1979,7 +1982,7 @@ public class KildeViewTest : BunitContext
             AdditionalProperties = new Dictionary<string, string?> { ["Hjemmeside"] = "www.barnediabetes.no" },
         };
 
-        var anchor = Render(kilde).Find(".munin-explorer-meta__grid dd a");
+        var anchor = Render(kilde).Find(".munin-explorer-page__fields dd a");
 
         Assert.Equal("https://www.barnediabetes.no", anchor.GetAttribute("href"));
         Assert.Equal("www.barnediabetes.no", anchor.TextContent);
@@ -1994,27 +1997,24 @@ public class KildeViewTest : BunitContext
         var cut = Render(Kilde());
 
         Assert.Empty(cut.FindAll("aside"));
-        Assert.NotEmpty(cut.Find(".munin-explorer-kilde__main").QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.NotEmpty(cut.Find(".munin-explorer-kilde__main").QuerySelectorAll("dl.munin-explorer-page__fields"));
     }
 
     [Fact]
     public void FactLists_WhenAHostStylesThem_ThenTheDefaultIsTwoLanes()
     {
-        // The stylesheet half. The single lane was scoped to the asides, so with those gone every
-        // fact list takes the unscoped default — which is the right shape for a full-width column.
-        // Through SampleDeclarationsFor so `-1` and `-2` cannot answer for the base class. The
-        // aside branch is still in the sample and inert, which is what the exclusion below narrows.
-        const string Base = @"\.munin-explorer-meta__grid(?![\w-])";
+        // The stylesheet half, and the name is the chassis's own now: a rule left behind on the
+        // panel's class would still be in the sample and would draw nothing here (Fhi.Metadata-35w0p.11).
+        // Through SampleDeclarationsFor so a descendant rule cannot answer for the class itself.
+        const string Base = @"\.munin-explorer-page__fields\s*(,|$)";
 
-        var grids = HostClassNames.SampleDeclarationsFor("munin-explorer-meta__grid");
+        var grids = HostClassNames.SampleDeclarationsFor("munin-explorer-page__fields");
 
         // Per branch, so grouping the base rule with a scoped one stays equivalent CSS here.
         Assert.True(
             grids.Any(rule => Regex.IsMatch(rule.Declarations, @"grid-template-columns:\s*1fr\s+1fr\s*(;|$)")
-                              && rule.Selector.Split(',').Any(
-                                  branch => !branch.Contains("__aside", StringComparison.Ordinal)
-                                            && Regex.IsMatch(branch, Base))),
-            "No unscoped rule leaves munin-explorer-meta__grid two lanes for the main column.");
+                              && rule.Selector.Split(',').Any(branch => Regex.IsMatch(branch.Trim() + ",", Base))),
+            "No unscoped rule leaves munin-explorer-page__fields two lanes for the main column.");
     }
 
     [Fact]

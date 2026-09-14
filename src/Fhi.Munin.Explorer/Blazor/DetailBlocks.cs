@@ -11,9 +11,19 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Shared by <see cref="KildeView"/>, <see cref="VariableView"/> and <see cref="DatasamlingView"/>,
 /// which drew it from three private copies. Level and class stay the caller's, as they are for
 /// <see cref="StatisticsBlock"/>: the same block sits at three different depths.
+/// <para>
+/// <see cref="Values"/> alone is shared with the result row's drill-in panel, which is a
+/// different surface wearing a different prefix — hence the class it takes.
+/// </para>
 /// </remarks>
 internal static class DetailBlocks
 {
+    // The chassis's own fact list, not the drill-in panel's: Values is the one piece both
+    // surfaces draw, so its class comes from the caller and only a detail page asks for these.
+    // (Fhi.Metadata-35w0p.11)
+    private const string PageFields = "munin-explorer-page__fields";
+    private const string PageLanguage = "munin-explorer-page__language";
+
     /// <summary>A heading at the given level, so a view nests wherever it is put.</summary>
     internal static RenderFragment Heading(int level, string text, string cssClass,
                                            string? id = null, string? language = null) => builder =>
@@ -47,7 +57,7 @@ internal static class DetailBlocks
         var reader = ReaderLanguage.Of(language);
 
         builder.OpenElement(0, "dl");
-        builder.AddAttribute(1, "class", "munin-explorer-meta__grid");
+        builder.AddAttribute(1, "class", PageFields);
 
         var seq = 10;
 
@@ -95,7 +105,8 @@ internal static class DetailBlocks
     /// name sits outside the marked span so it is not announced in the language it names, and is a
     /// <c>p</c> so a host with no rule for the class still gets one language per line.
     /// </remarks>
-    internal static int Values(RenderTreeBuilder builder, int seq, PropertyRow row, string reader, Texts text)
+    internal static int Values(RenderTreeBuilder builder, int seq, PropertyRow row, string reader, Texts text,
+                              string languageClass)
     {
         foreach (var slot in row.Values)
         {
@@ -109,7 +120,7 @@ internal static class DetailBlocks
             else
             {
                 builder.OpenElement(seq + 10, "p");
-                builder.AddAttribute(seq + 11, "class", "munin-explorer-meta__language");
+                builder.AddAttribute(seq + 11, "class", languageClass);
                 builder.AddContent(seq + 12, text.LanguageName(slot.Language));
                 builder.CloseElement();
 
@@ -163,7 +174,7 @@ internal static class DetailBlocks
         builder.CloseElement();
 
         builder.OpenElement(4, "dl");
-        builder.AddAttribute(5, "class", "munin-explorer-meta__grid");
+        builder.AddAttribute(5, "class", PageFields);
 
         var seq = 10;
 
@@ -177,7 +188,7 @@ internal static class DetailBlocks
             builder.AddContent(seq + 4, row.Label);
             builder.CloseElement();
 
-            seq = Values(builder, seq + 5, row, reader, text);
+            seq = Values(builder, seq + 5, row, reader, text, PageLanguage);
 
             builder.CloseElement();
         }

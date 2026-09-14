@@ -400,6 +400,19 @@ These are not style preferences — each one is a host that breaks otherwise.
     that has one, in both sample stylesheets and in the Stiler rule before it publishes
     (`Fhi.Metadata-ex5wb`). Ungated, a fixed 250px first track would lay a lone main column out in
     it.
+    The same three add `munin-explorer-page__fields` on every fact list they draw, and
+    `munin-explorer-page__language` on the language name above a value the catalogue holds in more
+    than one. Both used to be the drill-in panel's own `munin-explorer-meta__grid` and
+    `munin-explorer-meta__language`, borrowed by the detail pages since they were built, which is
+    why `_trail.scss` already carried an override forcing the panel's two lanes back to one on a
+    detail page. The panel keeps its two names and is untouched — `DetailBlocks` draws both
+    surfaces and the class is passed in for the one piece they share. Handles, both: a definition
+    list is a definition list undrawn, and the language name is a `<p>` so it keeps its own line
+    whatever a host declares. Stiler's rules are written — the same
+    `components/munin-explorer/_page.scss`, merged as PR 39301 — and copy the panel's numbers
+    declaration for declaration, so a host that has them sees nothing move. That PR bumped no
+    version of its own; `Fhi.Metadata-35w0p.11` records 0.1.71 as the release carrying them, and
+    nothing in this repository can check a feed to confirm it.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
@@ -669,6 +682,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__tabs` | handle |
   | `munin-explorer-page` | handle |
   | `munin-explorer-page__body` | handle |
+  | `munin-explorer-page__fields` | handle |
+  | `munin-explorer-page__language` | handle |
   | `munin-explorer-page__main` | handle |
   | `munin-explorer-page__section` | handle |
   | `munin-explorer-page__toc` | handle |

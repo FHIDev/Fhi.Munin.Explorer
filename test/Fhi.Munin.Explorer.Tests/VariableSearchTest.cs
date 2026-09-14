@@ -7468,6 +7468,44 @@ public class VariableSearchTest : BunitContext
         Assert.Contains("5", Panel(cut).TextContent);
     }
 
+    [Fact]
+    public void Properties_WhenAValueIsHeldInTwoLanguages_ThenThePanelKeepsItsOwnLanguageClass()
+    {
+        // The language marker is the one piece DetailBlocks draws for both surfaces, and this panel
+        // is the surface no detail-page test renders. The detail pages moved to the chassis under
+        // Fhi.Metadata-35w0p.11; a rename taking this with it would leave the marker unstyled here.
+        var id = Guid.NewGuid();
+        var detail = Detail(id) with
+        {
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["TittelFlerspraklig"] = """{"nb":"Als registeret","en":"The ALS registry"}""",
+            },
+            PropertyMetadata =
+            [
+                new()
+                {
+                    Key = "TittelFlerspraklig",
+                    SortOrder = 540,
+                    Type = "MultilingualText",
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Tittel" },
+                },
+            ],
+        };
+
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+
+        var markers = Panel(cut).QuerySelectorAll("p.munin-explorer-meta__language");
+
+        Assert.Equal(["Norsk", "Engelsk"], markers.Select(m => m.TextContent.Trim()));
+
+        // And nothing of the chassis reaches in: the panel is a different surface under a different
+        // prefix, which is the whole of what the two names buy.
+        Assert.Empty(Panel(cut).QuerySelectorAll("[class*='munin-explorer-page']"));
+    }
+
     /// <summary>A detail payload shaped like the captured one, with every field the panel draws.</summary>
     private static VariableDetail Detail(Guid id, string name = "1. Tale") => new()
     {
@@ -11851,8 +11889,8 @@ public class VariableSearchTest : BunitContext
     public void Source_WhenAPanelIsOpen_ThenItIsBuiltFromShapesRatherThanFromANewStyleName()
     {
         // Neither stylesheet has a key/value block that can be read back off it, so the owner is a
-        // heading wearing Stiler's own headline classes and a <dl> that borrows helsedata's
-        // munin-explorer-meta__grid, rather than a new style name of ours.
+        // heading wearing Stiler's own headline classes and a <dl> under the detail chassis's own
+        // munin-explorer-page__fields, rather than a shape of its own.
         var cut = OpenOwner(TwoRows(), 0);
 
         var invented = cut.FindAll("[class]")
@@ -11901,6 +11939,9 @@ public class VariableSearchTest : BunitContext
                 "munin-explorer-kilde__delkilder",
                 "munin-explorer-kilde__delkilde",
                 "munin-explorer-kilde__delkilde-name",
+                // The fact lists of the two blocks that close the kilde view. The chassis's own
+                // name since Fhi.Metadata-35w0p.11; the drill-in PANEL keeps munin-explorer-meta__grid.
+                "munin-explorer-page__fields",
             ],
             invented);
 
@@ -11917,13 +11958,14 @@ public class VariableSearchTest : BunitContext
                         .Distinct(),
                    k => Assert.Contains(k, (string[])["headline-3", "headline-s", "headline-xxs"]));
 
-        // The fact lists borrow the grid the detail panel already uses rather than a shape of their
-        // own — the same pairs of label and value, so the same class.
+        // The fact lists wear the detail chassis's own name, which is what separates them from the
+        // result row's drill-in panel: both are pairs of label and value, and until
+        // Fhi.Metadata-35w0p.11 both said so with the panel's class.
         // GetAttribute, not ClassName: AngleSharp reports a missing class attribute as "" rather
         // than null, so the null branch of this list was unreachable and the assertion did not mean
         // what it said.
         Assert.All(panel.QuerySelectorAll("dl"),
-                   e => Assert.Contains(e.GetAttribute("class"), (string?[])[null, "munin-explorer-meta__grid"]));
+                   e => Assert.Contains(e.GetAttribute("class"), (string?[])[null, "munin-explorer-page__fields"]));
 
         Back(cut);
 

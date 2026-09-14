@@ -153,6 +153,9 @@ public class DatasamlingViewTest : BunitContext
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
             "munin-explorer-page__body",
+            // Every fact list this view draws, the chassis's own name since
+            // Fhi.Metadata-35w0p.11 rather than the result row's drill-in panel's.
+            "munin-explorer-page__fields",
             "munin-explorer-page__main",
             // The wrapper each block below the name sits in, so the contents nav can anchor on it.
             "munin-explorer-page__section",
@@ -797,7 +800,7 @@ public class DatasamlingViewTest : BunitContext
         var main = Render(Datasamling()).Find(".munin-explorer-datasamling__main");
 
         Assert.Empty(Render(Datasamling()).FindAll("aside"));
-        Assert.NotEmpty(main.QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.NotEmpty(main.QuerySelectorAll("dl.munin-explorer-page__fields"));
     }
 
     [Fact]
