@@ -409,8 +409,18 @@ public class UrlStateComponentTest : BunitContext
                 }
                 : new KildeHierarchy { KildeId = id });
 
+        /// <remarks>
+        /// Named parent and all: <c>KildeSearch.DatasamlingTrail</c> drops the middle step when
+        /// <c>parentKildeNavn</c> is blank, and a one-crumb trail asserts only the list's address.
+        /// </remarks>
         public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
-            Task.FromResult<DatasamlingDetail?>(new() { Id = id, Code = "K_ALS.INKLUSJON", PreferredTerm = "Inklusjon" });
+            Task.FromResult<DatasamlingDetail?>(new()
+            {
+                Id = id,
+                Code = "K_ALS.INKLUSJON",
+                PreferredTerm = "Inklusjon",
+                ParentKildeName = "Als registeret",
+            });
     }
 
     /// <summary>The kildeutforsker at <paramref name="url"/>, over a kilde with one datasamling.</summary>
@@ -509,31 +519,38 @@ public class UrlStateComponentTest : BunitContext
     }
 
     [Fact]
-    public void Kilder_WhenADatasamlingIsOpen_ThenTheBreadcrumbDropsBothOwnedKeysAndKeepsTheHostsOwn()
+    public void Kilder_WhenADatasamlingIsOpen_ThenEachCrumbDropsTheKeysBelowItAndKeepsTheHostsOwn()
     {
-        // Two steps in is the deepest the crumb has to climb out of, and dropping only one of the
-        // two keys would send the reader back into the drill-in they pressed it to leave.
+        // Two steps in is the deepest the trail has to climb out of, and each crumb drops a
+        // different amount: the kilde step keeps the key the list step drops, and a step that
+        // dropped neither would send the reader back into the drill-in they pressed it to leave.
         var kilde = Guid.NewGuid();
         var datasamling = Guid.NewGuid();
 
         var cut = RenderKilder(
             kilde, datasamling, $"http://localhost/kilder?utm_source=nyhetsbrev&kilde={kilde}&datasamling={datasamling}");
 
-        Assert.Equal("/kilder?utm_source=nyhetsbrev", cut.Find("nav.breadcrumbs a").GetAttribute("href"));
+        var trail = cut.FindAll("nav.breadcrumbs a");
+
+        Assert.Equal("/kilder?utm_source=nyhetsbrev", trail[0].GetAttribute("href"));
+        Assert.Equal($"/kilder?utm_source=nyhetsbrev&kilde={kilde}", trail[1].GetAttribute("href"));
     }
 
     [Fact]
-    public void Kilder_WhenNothingButTheOpenKildeIsInTheAddress_ThenTheBreadcrumbIsThePathWithNoQueryAtAll()
+    public void Kilder_WhenNothingButTheOpenKildeIsInTheAddress_ThenTheListCrumbIsThePathWithNoQueryAtAll()
     {
         // The first caller that can hand UrlMirror.Address an empty query: with no host key and the
-        // catalogue's own order, every key the crumb would write is at its default, and the branch
-        // that answers it is the only one that must not leave a bare "?" behind.
+        // catalogue's own order, every key the list crumb would write is at its default, and the
+        // branch that answers it is the only one that must not leave a bare "?" behind.
         var kilde = Guid.NewGuid();
         var datasamling = Guid.NewGuid();
 
         var cut = RenderKilder(kilde, datasamling, $"http://localhost/kilder?kilde={kilde}&datasamling={datasamling}");
 
-        Assert.Equal("/kilder", cut.Find("nav.breadcrumbs a").GetAttribute("href"));
+        var trail = cut.FindAll("nav.breadcrumbs a");
+
+        Assert.Equal("/kilder", trail[0].GetAttribute("href"));
+        Assert.Equal($"/kilder?kilde={kilde}", trail[1].GetAttribute("href"));
     }
 
     [Fact]
