@@ -1,6 +1,8 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
-<div class="@RootClasses">
+@* The splat first, so a caller writing `class` cannot take `munin-explorer-page` off the root
+   the layout rules key on: for a duplicated name, Blazor lets the later attribute win. *@
+<div @attributes="AdditionalAttributes" class="@RootClasses">
 
     @Header
 

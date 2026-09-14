@@ -824,10 +824,10 @@ public class VariableListViewTest : BunitContext
         // `grid-template-columns: 384px 576px` — the page shell's own sidebar-and-results grid —
         // and munin-explorer-container to `display: flex; flex-direction: row`. Either one lays
         // this view's blocks out as columns.
-        var root = cut.Find("[role=alert]").Closest("div:not([role])");
+        // Anchored on the chassis name: walking up from the alert stops inside the main column now.
+        var root = cut.Find(".munin-explorer-page");
 
-        Assert.NotNull(root);
-        Assert.DoesNotContain("munin-explorer-container", root!.ClassList);
+        Assert.DoesNotContain("munin-explorer-container", root.ClassList);
         Assert.DoesNotContain("munin-explorer", root.ClassList);
     }
 
@@ -3203,6 +3203,57 @@ public class VariableListViewTest : BunitContext
         Assert.Empty(DesiredDataFields(cut));
         Assert.Equal(0, client.DesiredDataCalls);
         Assert.Equal(0, client.VariablesCalls);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The chassis, which this view is the fourth surface on and the only one with no contents column.
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Chassis_WhenTheViewIsDrawn_ThenTheRootIsTheSharedPageAndStillCarriesTheVersion()
+    {
+        // The root wears the chassis name now, and the version marker had to come with it: this
+        // package ships no endpoint, so the DOM is the only place a deployed version can be read.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var root = cut.Find(".munin-explorer-page");
+
+        // Alone: this is the one detail view with no older prefix of its own to be worn beside.
+        Assert.Equal("munin-explorer-page", root.ClassName);
+        Assert.False(string.IsNullOrWhiteSpace(root.GetAttribute("data-munin-explorer-version")));
+    }
+
+    [Fact]
+    public void Chassis_WhenTheViewIsDrawn_ThenTheBodyHoldsOneColumnAndNoContentsRail()
+    {
+        // The trap this surface is likeliest to spring: a two-track body with one child leaves an
+        // empty 250px rail down the left of it. The Kilde filter beside the list does the grouping a
+        // contents nav would, by decision, so the column is never emitted and the track never asked for.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+        Assert.Equal(["munin-explorer-page__main"], body.Children.Select(child => child.ClassName));
+    }
+
+    [Fact]
+    public void Heading_WhenTheHostSetsTheLevel_ThenItIsAHeadingAtThatLevelCarryingAClassAndAnId()
+    {
+        // It was assembled as a string and injected as a MarkupString, which is why it carried
+        // neither: nothing sized it, and nothing could link to it.
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListView>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.HeadingLevel, 3));
+
+        var heading = cut.Find(".munin-explorer-page__header > h3");
+
+        Assert.Equal("Mine variabellister", heading.TextContent);
+        Assert.Equal("headline headline-s margin--bottom", heading.ClassName);
+        Assert.StartsWith("munin-explorer-list-heading-", heading.Id, StringComparison.Ordinal);
     }
 
     [Fact]

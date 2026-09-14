@@ -416,6 +416,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     two-track rule to a body that has one; 0.1.75 publishes it ungated and `Fhi.Metadata-ex5wb` is
     the bead that gates it there. Ungated, a fixed 250px first track would lay a lone main column
     out in it.
+    `VariableListView` is a fourth surface on that chassis since `Fhi.Metadata-35w0p.13`, and the
+    one with no prefix of its own: it wears `munin-explorer-page` and `munin-explorer-page__body`
+    and `munin-explorer-page__main` with nothing beside them, and it is the view that never has a
+    contents column — the Kilde filter beside the list does the grouping a nav would, so the gate
+    above is what decides whether it draws a rail it has nothing to put in. It adds
+    `munin-explorer-page__header` for its name block, the chassis's own name for what the other
+    three wear a prefixed one for, and **no Stiler carries a rule for it**: `Fhi.Metadata-urbj0` is
+    the bead that writes one. It is a handle in the table below, and undefined it degrades quietly:
+    the heading is still a heading and still wears Stiler's own `headline headline-s`, so what is
+    lost is the rule and the space under the name block that separate it from the list.
     The same three add `munin-explorer-page__fields` on every fact list they draw, and
     `munin-explorer-page__language` on the language name above a value the catalogue holds in more
     than one. Both used to be the drill-in panel's own `munin-explorer-meta__grid` and
@@ -707,6 +717,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-page` | handle |
   | `munin-explorer-page__body` | handle |
   | `munin-explorer-page__fields` | handle |
+  | `munin-explorer-page__header` | handle |
   | `munin-explorer-page__language` | handle |
   | `munin-explorer-page__main` | handle |
   | `munin-explorer-page__section` | handle |
