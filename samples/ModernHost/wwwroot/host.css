@@ -1830,6 +1830,41 @@ table.munin-explorer-data-list tbody th {
   scroll-margin-top: 140px;
 }
 
+/* ---- the contents nav inside that column, and the one place this file is NOT standing in for
+   Stiler ----
+
+   `form-menu__list` and `form-menu__list__item` are borrowed names, and they were borrowed on the
+   strength of the same argument the pager's were: helsedata.no styles them on every page. It is the
+   same argument, and it fails the same way. Read back on 2026-09-14 off helsedata.no's own compiled
+   bundles, the rules are in `application.css` — their application-form page — and there is no
+   `form-menu` rule of any kind in `styles.css`, which is the Stiler bundle and carries every other
+   borrowed name this component emits. So a host on Stiler alone draws the contents nav as a raw
+   bulleted list of blue underlined links inside an otherwise styled column, and nothing in this
+   repository can see it: `test/host-class-names.txt` is a capture of the live page with
+   `application.css` in it, and `assert-sample-css-matches-stiler.sh` says nothing at all about a
+   selector Stiler has never heard of. That is `skiplink-pagination` exactly. `Fhi.Metadata-u0cxn`
+   is the bead that decides it — a rule in Stiler, or the rename into our own prefix that the pager
+   and the skip link both ended in.
+
+   The declarations are copied from `application.css` and are an arrangement, not a design. Two of
+   helsedata's are deliberately left out: `a:focus { outline: none }`, which is safe only beside the
+   `.is-tabbing` rules that put a focus ring back and which need their script, and the `a:after`
+   overlay those rules paint on, which draws nothing without them. Dropping them leaves the browser's
+   own focus ring, which is the accessible half of that pair. */
+.form-menu__list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.form-menu__list a {
+  display: block;
+  margin: 0;
+  padding: 8px 4px 8px 24px;
+  position: relative;
+  color: var(--dark);
+  text-decoration: none;
+}
+
 /* Copied from Stiler's `_trail.scss`, selector for selector: a stand-in that works differently from
    the rule it stands in for is not standing in for it. Inert since Fhi.Metadata-35w0p.6 stopped
    emitting the aside, and kept for as long as Stiler keeps it — the fact lists now take the

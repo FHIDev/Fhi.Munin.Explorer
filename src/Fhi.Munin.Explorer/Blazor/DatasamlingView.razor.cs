@@ -152,17 +152,12 @@ public sealed partial class DatasamlingView : ComponentBase
         StatisticsBlock.Heading(Datasamling?.StatisticsType, T);
 
     /// <summary>The sections this view draws, in the order it draws them.</summary>
-    /// <remarks>
-    /// Both the contents nav and each section's own condition read this, through
-    /// <see cref="Drawn"/> — one predicate per section, so an entry cannot name a block the view
-    /// left out and a link cannot scroll to an anchor that is not there.
-    /// </remarks>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
     /// <inheritdoc />
     protected override void OnParametersSet() => Toc = BuildToc();
 
-    /// <summary>The entries, in document order, each under the condition its block renders under.</summary>
+    /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
     /// <remarks>
     /// The explorer's own sections arrive through <see cref="Sections"/> and are wrapped in no
     /// section of ours, so the nav does not offer them — this view never learns what they are.
@@ -174,25 +169,17 @@ public sealed partial class DatasamlingView : ComponentBase
             return [];
         }
 
-        List<DetailTocEntry> toc = [];
+        DetailTocBuilder toc = new();
 
-        void Section(bool drawn, string id, string heading)
-        {
-            if (drawn)
-            {
-                toc.Add(new DetailTocEntry(id, heading));
-            }
-        }
-
-        Section(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
-        Section(!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria),
+        toc.Add(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
+        toc.Add(!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria),
                 DetailSectionIds.Criteria, T.FieldInclusionCriteria);
-        Section(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
-        Section(AnyStatistics, DetailSectionIds.Statistics, StatisticsHeading);
+        toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
+        toc.Add(AnyStatistics, DetailSectionIds.Statistics, StatisticsHeading);
 
-        return toc;
+        return toc.Entries;
     }
 
     /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
-    private bool Drawn(string id) => Toc.Any(entry => entry.Id == id);
+    private bool Drawn(string id) => Toc.Contains(id);
 }

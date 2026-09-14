@@ -9,13 +9,26 @@ category: Notes for hosts
   (`Fhi.Metadata-ex5wb` is the bead that puts that gate into Stiler's own copy), because the column
   is still drawn only when something fills it and a page with no sections fills nothing.
   (Fhi.Metadata-35w0p.12)
-- **The nav itself borrows helsedata's `form-menu__list` and `form-menu__list__item`, and needs no
-  new rule from anyone.** Both are global, unscoped selectors in Stiler's
-  `pages/_healthregisterpage.scss`, so on a host carrying Stiler the nav takes that site's own link
-  colour, padding and hover for nothing. A host without those rules gets a plain unstyled list of
-  links, which still reads as a contents list. Nothing is emitted for the active-item modifiers
-  `form-menu__list__item--active` and `--active-child`: with no scroll tracking in this package an
-  active item would be permanently wrong on every section but one. (Fhi.Metadata-35w0p.12)
+- **The nav itself borrows helsedata's `form-menu__list` and `form-menu__list__item`, and on
+  Stiler alone those names draw nothing.** Read back on 2026-09-14 off helsedata.no's own compiled
+  bundles, the rules are in `application.css` — their application-form page, loaded across
+  helsedata.no — and there is no `form-menu` rule of any kind in the Stiler bundle. So inside
+  helsedata's estate the nav takes that site's link colour and padding for nothing, and a host
+  carrying Stiler and no more gets a bare bulleted list of links in the contents column. It still
+  reads as a contents list, and `Fhi.Metadata-u0cxn` decides whether that stands: a rule in
+  Stiler, or the rename into `munin-explorer*` that the pager and its skip link both ended in after
+  the same argument failed the same way. Both sample stylesheets carry a stand-in meanwhile.
+  Nothing is emitted for the active-item modifiers `form-menu__list__item--active` and
+  `--active-child`: with no scroll tracking in this package an active item would be permanently
+  wrong on every section but one. (Fhi.Metadata-35w0p.12)
+
+- **One detail view per document.** The section ids the nav links to — `metadata`, `source`,
+  `statistics` and the rest — are fixed English literals with nothing per-instance in them, so that
+  a deep link one reader sends another lands in the same place whichever language either is
+  reading. The price is that two detail views in one document write each id twice, and a browser
+  resolves a fragment to the first match: the second view's contents nav would scroll the reader
+  into the first view's sections. Mount one. `VariableSearch` and `KildeSearch` already do — each
+  picks between the arms of one `if`/`else`. (Fhi.Metadata-35w0p.12)
 - **`DetailToc` and `DetailTocEntry` are new public types, and neither is one to mount.**
   `DetailToc` is the nav the three detail views put in their own contents column, public only
   because a Razor component has to be — the same reason `DetailPage` and `DetailSection` are — and

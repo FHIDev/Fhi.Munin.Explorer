@@ -1421,6 +1421,75 @@ public class KildeViewTest : BunitContext
                      Render(Kilde(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
 
+    /// <summary>A source the catalogue has filled in nothing for beyond what it is called.</summary>
+    private static KildeDetail Sparse() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "K",
+        PreferredTerm = "K",
+    };
+
+    [Theory]
+    [InlineData("study")]
+    [InlineData("kilde")]
+    [InlineData("sparse")]
+    public void Contents_WhateverTheCatalogueFilledIn_ThenEveryLinkResolvesToASectionInTheDocument(string fixture)
+    {
+        // The one assertion that catches a predicate in BuildToc drifting from the condition on its
+        // block, which is a dead in-page link no compiler and no markup test sees. Asked of a source
+        // with delkilder, one without, and one with nothing at all.
+        var cut = Render(fixture switch { "study" => Study(), "kilde" => Kilde(), _ => Sparse() });
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+
+        // Resolved through the DOM rather than compared as strings: `#metadata` is also the CSS
+        // selector for the element it has to land on, so this is the browser's own question.
+        Assert.All(Targets(cut), href => Assert.NotNull(cut.Find(href)));
+    }
+
+    [Fact]
+    public void Contents_WhenTheCatalogueFilledInNothing_ThenOnlyTheBlocksWithNoEmptyStateAreNamed()
+    {
+        // Three of the four survive a payload this bare, for three different reasons: the datasamling
+        // tree has no empty state at all, the counts box always has a total to report, and the source
+        // box falls back to "Ikke oppgitt". Only the curated metadata goes.
+        Assert.Equal(["#" + DetailSectionIds.DataCollections, "#" + DetailSectionIds.Source,
+                      "#" + DetailSectionIds.Statistics],
+                     Targets(Render(Sparse())));
+    }
+
+    [Fact]
+    public void Contents_WhenTheSourceIsReplacedAfterTheFirstRender_ThenTheNavIsRebuiltWithIt()
+    {
+        // Toc is cached and rebuilt only in OnParametersSet, so every predicate it reads has to be
+        // a parameter or derived from one. They are — Groups, SourceInformation, Statistics and the
+        // delkilde count all hang off Kilde — and this is what says so if one stops being.
+        var cut = Render(Sparse());
+
+        Assert.DoesNotContain("#" + DetailSectionIds.Metadata, Targets(cut));
+
+        cut.Render(p => p.Add(c => c.Kilde, Study()));
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Contains("#" + DetailSectionIds.Metadata, Targets(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenTheDatasamlingHeadingFollowsTheSource_ThenTheNavSaysWhatTheBlockSays()
+    {
+        // The one entry whose words are not a fixed text: a source with delkilder heads this block
+        // differently from one without. The nav names the block without drawing it, so this is
+        // where the two could say different things with nothing failing.
+        foreach (var kilde in new[] { Kilde(), Study() })
+        {
+            var cut = Render(kilde);
+
+            Assert.Equal(
+                cut.Find($"#{DetailSectionIds.DataCollections}").FirstElementChild!.TextContent,
+                cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.DataCollections}']").TextContent);
+        }
+    }
+
     // ---------------------------------------------------------------------------------
     // The slot each explorer puts its own sections in.
     // ---------------------------------------------------------------------------------

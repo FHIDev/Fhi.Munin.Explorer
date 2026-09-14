@@ -91,13 +91,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     `Fhi.Helsedata.Stiler`'s own name, every one read back off Stiler's compiled stylesheet rather
     than guessed at: `searchbox__freetext*`, `hd-button-square` with its `button-square--*`
     modifiers, `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`,
-    `hd-button-reset`, `screenreader-only`, `dropdown-choicepicker*` for the column picker's
-    open list, and `form-menu__list` with its `form-menu__list__item` for the detail views'
-    contents nav — both global and unscoped in Stiler's `pages/_healthregisterpage.scss`, which is
-    what lets that nav take helsedata's own link colour, padding and hover with no rule of its own.
-    These are not ours to rename: a change to one of them is a change to Stiler. Every
-    borrowed name is now one Stiler really defines. Three were not — the pager's two names and its
-    skip link's, all read off helsedata's own page-specific `variables.css` — and all three are
+    `hd-button-reset`, `screenreader-only`, and `dropdown-choicepicker*` for the column picker's
+    open list. These are not ours to rename: a change to one of them is a change to Stiler. Every
+    borrowed name is now one Stiler really defines, **with one exception under review**: the detail
+    views' contents nav wears `form-menu__list` and `form-menu__list__item`, and read back on
+    2026-09-14 off helsedata.no's own compiled bundles those rules are in `application.css`, their
+    application-form page, with no `form-menu` rule of any kind in the Stiler bundle that carries
+    every other name above. A host on Stiler alone therefore draws that nav as a bare bulleted list.
+    `Fhi.Metadata-u0cxn` decides it — a rule in Stiler, or the rename into our own prefix that
+    the other three exceptions ended in. Those three were the pager's two names and its
+    skip link's, all read off helsedata's own page-specific `variables.css`, and all three are
     ours now: the pager under `Fhi.Metadata-hyyxl` and the skip link into it under
     `Fhi.Metadata-ja2qu` — see below.
   - **Ours.** Everything the explorer is actually built out of — its structure and its whole result

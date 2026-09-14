@@ -431,6 +431,74 @@ public class DatasamlingViewTest : BunitContext
                      Render(Datasamling(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
 
+    /// <summary>A datasamling the catalogue has filled in nothing for beyond what it is called.</summary>
+    private static DatasamlingDetail Sparse() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "D",
+        PreferredTerm = "D",
+    };
+
+    [Theory]
+    [InlineData("full")]
+    [InlineData("sparse")]
+    public void Contents_WhateverTheCatalogueFilledIn_ThenEveryLinkResolvesToASectionInTheDocument(string fixture)
+    {
+        // The one assertion that catches a predicate in BuildToc drifting from the condition on its
+        // block, which is a dead in-page link no compiler and no markup test sees.
+        var cut = Render(fixture == "full" ? Datasamling() : Sparse());
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+
+        // Resolved through the DOM rather than compared as strings: `#metadata` is also the CSS
+        // selector for the element it has to land on, so this is the browser's own question.
+        Assert.All(Targets(cut), href => Assert.NotNull(cut.Find(href)));
+    }
+
+    [Fact]
+    public void Contents_WhenTheCatalogueFilledInNothing_ThenOnlyTheSourceBoxIsNamed()
+    {
+        // Three of the four go. The source box survives because its kildetype row falls back to
+        // "Ikke oppgitt", which is a row and therefore content — the same reason the variable and
+        // kilde views keep theirs on a payload this bare.
+        Assert.Equal(["#" + DetailSectionIds.Source], Targets(Render(Sparse())));
+    }
+
+    [Fact]
+    public void Contents_WhenTheDatasamlingIsReplacedAfterTheFirstRender_ThenTheNavIsRebuiltWithIt()
+    {
+        // Toc is cached and rebuilt only in OnParametersSet, so every predicate it reads has to be
+        // a parameter or derived from one. They all hang off Datasamling, and this is what says so
+        // if one stops doing.
+        var cut = Render(Sparse());
+
+        Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
+
+        cut.Render(p => p.Add(c => c.Datasamling, Datasamling()));
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Contains("#" + DetailSectionIds.Metadata, Targets(cut));
+    }
+
+    [Theory]
+    [InlineData("yearly", "Statistikk (Årsbasert)")]
+    [InlineData("accumulated", "Statistikk (Akkumulert)")]
+    [InlineData(null, "Statistikk")]
+    public void Contents_WhateverTheStatisticsTypeIs_ThenTheNavEntrySaysWhatTheHeadingSays(
+        string? statisticsType, string expected)
+    {
+        // The one entry whose words are not a fixed text: the catalogue's own statistikktype sits
+        // inside this heading. The nav names the block without drawing it, so this is where the two
+        // could say different things with nothing failing.
+        var cut = Render(Datasamling() with { StatisticsType = statisticsType });
+
+        var heading = cut.Find($"#{DetailSectionIds.Statistics}").FirstElementChild!.TextContent;
+        var entry = cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.Statistics}']").TextContent;
+
+        Assert.Equal(expected, heading);
+        Assert.Equal(heading, entry);
+    }
+
     // ---------------------------------------------------------------------------------
     // Inclusion and exclusion criteria.
     // ---------------------------------------------------------------------------------

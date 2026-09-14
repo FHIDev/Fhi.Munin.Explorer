@@ -48,9 +48,9 @@ public class DetailTocTest : BunitContext
     [Fact]
     public void Render_WhenThereAreEntries_ThenTheListWearsHelsedatasOwnNamesAndNoneOfOurs()
     {
-        // form-menu__list and form-menu__list__item are global, unscoped selectors in Stiler's
-        // pages/_healthregisterpage.scss, so the nav takes that site's link colour, padding and
-        // hover with no rule of ours anywhere. A name invented here would have drawn nothing.
+        // form-menu__list and form-menu__list__item are helsedata's own, so the nav takes that
+        // site's link colour and padding with no rule of ours. Where those rules actually live, and
+        // why that is not settled, is on DetailToc and in the sample stylesheets.
         var cut = RenderToc(Three);
 
         var nav = cut.Find("nav");
@@ -84,8 +84,8 @@ public class DetailTocTest : BunitContext
     [Fact]
     public void Render_Always_ThenEveryNameItEmitsHasARuleSomeStylesheetKeeps()
     {
-        // Both names are helsedata's own, captured in test/host-class-names.txt, so neither needs a
-        // rule in the sample stylesheets — and neither may be invented, which is what this asks.
+        // Both names are helsedata's own, captured in test/host-class-names.txt. That capture is
+        // what this reads, and it cannot tell Stiler's rules from the live page's — see DetailToc.
         var cut = RenderToc(Three);
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));

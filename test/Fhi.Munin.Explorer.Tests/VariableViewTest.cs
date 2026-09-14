@@ -802,4 +802,104 @@ public class VariableViewTest : BunitContext
         Assert.Equal("Contents",
                      Render(Whole(), "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
+
+    /// <summary>A variable the catalogue has filled in nothing for, which is five of eight blocks gone.</summary>
+    private static VariableDetail Sparse() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "V",
+        PreferredTerm = "V",
+    };
+
+    [Theory]
+    [InlineData("whole")]
+    [InlineData("plain")]
+    [InlineData("sparse")]
+    public void Contents_WhateverTheCatalogueFilledIn_ThenEveryLinkResolvesToASectionInTheDocument(string fixture)
+    {
+        // The one assertion that catches a predicate in BuildToc drifting from the condition on its
+        // block, which is a dead in-page link no compiler and no markup test sees. Asked of a full
+        // payload, a plain one and one with nothing in it at all, because a list and a set of
+        // predicates agree most easily when everything is present.
+        var cut = Render(fixture switch { "whole" => Whole(), "plain" => Detail(), _ => Sparse() });
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+
+        // Resolved through the DOM rather than compared as strings: `#metadata` is also the CSS
+        // selector for the element it has to land on, so this is the browser's own question.
+        Assert.All(Targets(cut), href => Assert.NotNull(cut.Find(href)));
+    }
+
+    [Fact]
+    public void Contents_WhenNoBlockDrawsAtAll_ThenThereIsNoNavAndNoColumnHoldingIt()
+    {
+        // Sparse() suppresses seven of the eight, and the source box keeps the last one — see
+        // Sections_WhenTheCatalogueHasFilledInNothing. So the emptiest nav this view can reach is
+        // one entry, and the column is drawn because something fills it.
+        var cut = Render(Sparse());
+
+        Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
+        Assert.Single(cut.FindAll(".munin-explorer-page__toc"));
+    }
+
+    [Fact]
+    public void Contents_WhenTheVariableIsReplacedAfterTheFirstRender_ThenTheNavIsRebuiltWithIt()
+    {
+        // Toc is cached and rebuilt only in OnParametersSet, so every predicate it reads has to be
+        // a parameter or something derived from one. They are — Groups, Versions, SourceInformation
+        // and both lists all hang off Variable — and this is what says so if one stops being.
+        var cut = Render(Sparse());
+
+        Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
+
+        cut.Render(p => p.Add(c => c.Variable, Whole()));
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Contains("#" + DetailSectionIds.Versions, Targets(cut));
+    }
+
+    [Theory]
+    [InlineData("yearly", "Statistikk (Årsbasert)")]
+    [InlineData("accumulated", "Statistikk (Akkumulert)")]
+    [InlineData("akkumulert", "Statistikk (Akkumulert)")]
+    [InlineData("kvartalsvis", "Statistikk (kvartalsvis)")]
+    [InlineData(null, "Statistikk")]
+    public void Contents_WhateverTheStatisticsTypeIs_ThenTheNavEntrySaysWhatTheHeadingSays(
+        string? statisticsType, string expected)
+    {
+        // The nav has to name this block without drawing it, and the block names itself from a
+        // field. Two spellings of that would be two spellings of one fact — a reader sees one
+        // wording in the nav and another over what it jumps to, and nothing fails. Every type the
+        // catalogue has been seen to send, plus one it has not, plus none at all.
+        var cut = Render(Whole() with { DatasamlingStatisticsType = statisticsType });
+
+        var heading = cut.Find($"#{DetailSectionIds.Statistics}").FirstElementChild!.TextContent;
+        var entry = cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.Statistics}']").TextContent;
+
+        Assert.Equal(expected, heading);
+        Assert.Equal(heading, entry);
+    }
+
+    [Fact]
+    public void DataType_WhenTheCatalogueHoldsOnlyWhitespace_ThenNeitherTheBlockNorItsNavEntryIsDrawn()
+    {
+        // Present but blank is its own case, and the branch that tells it from null is the one no
+        // rich fixture reaches: a section reading "Datatype" over an empty paragraph, and a nav
+        // entry pointing at it.
+        var cut = Render(Detail() with { DataType = "   " });
+
+        Assert.DoesNotContain(DetailSectionIds.DataType, Wrappers(cut).Select(section => section.Id!));
+        Assert.DoesNotContain("#" + DetailSectionIds.DataType, Targets(cut));
+    }
+
+    [Fact]
+    public void Sections_WhenTwoOfThisViewAreDrawn_ThenBothWriteTheSameIdsRatherThanIdsOfTheirOwn()
+    {
+        // The deep-link promise and its price in one assertion. Nothing per-instance goes in these
+        // ids, so a link one reader sends another lands in the same place — and TWO of these views
+        // in one document would therefore carry every id twice, with the browser resolving each
+        // nav link to the first. That is why a page mounts one; DetailSectionIds has the reasoning.
+        Assert.Equal(Wrappers(Render(Whole())).Select(section => section.Id!),
+                     Wrappers(Render(Whole())).Select(section => section.Id!));
+    }
 }
