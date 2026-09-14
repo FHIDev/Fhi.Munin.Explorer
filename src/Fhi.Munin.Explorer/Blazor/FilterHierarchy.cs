@@ -22,14 +22,9 @@ internal enum HierarchyLevel
 
 /// <summary>One node of the catalogue hierarchy, and whatever hangs under it.</summary>
 /// <remarks>
-/// <c>Path</c> says where the node is drawn and <c>Id</c> says what ticking it selects: one
-/// variabelgruppe hangs under every datasamling its variables are in, so a position is not an
-/// identity and the selection key stays the panel's own <c>FacetValueKey</c>.
-/// <para>
-/// <c>ShortName</c> is the kilde's <c>kortNavn</c> and null at every other level, which has none.
-/// <c>Offered</c> is false for a row the payload returned to nest something under rather than to
-/// offer — the standalone facet's opt-out, and never the tree's.
-/// </para>
+/// <c>Path</c> is where the node is drawn and <c>Id</c> what ticking it selects, since one group
+/// hangs under every datasamling its variables are in. <c>ShortName</c> is the kilde's
+/// <c>kortNavn</c>, null below it; <c>Offered</c> false for a row sent to nest rather than to offer.
 /// </remarks>
 internal sealed record HierarchyNode(
     string Path,
@@ -68,12 +63,8 @@ internal static class FilterHierarchy
     /// </summary>
     /// <remarks>
     /// Built from <see cref="FilterOptions.HierarchyVariabelgrupper"/>, which carries every group
-    /// whatever its <see cref="VariabelgruppeFacet.Filter"/> says, and is empty against an API
-    /// predating it — leaving a source tree with no groups rather than a tree of the wrong ones.
-    /// <para>
-    /// A kilde the answer does not list draws nothing, groups placed under it included: there is no
-    /// node for them to hang from, and the panel offers the kilder the payload named.
-    /// </para>
+    /// whatever its <see cref="VariabelgruppeFacet.Filter"/> says and is empty against an API
+    /// predating it; a kilde the answer does not list draws nothing, the groups under it included.
     /// </remarks>
     internal static IReadOnlyList<HierarchyNode> Build(FilterOptions facets)
     {
