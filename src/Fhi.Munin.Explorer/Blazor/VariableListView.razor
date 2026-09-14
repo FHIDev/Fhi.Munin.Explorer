@@ -5,314 +5,318 @@
    has no business wording. The host knows how its readers sign in; the package does not. *@
 @if (State?.IsAuthenticated == true)
 {
-    @* No class. This root carried `munin-explorer munin-explorer-container`, and both are page
-       layout: measured in helsedata, `munin-explorer` computes to
-       `display: grid; grid-template-columns: 384px 576px` — the shell's own sidebar-and-results
-       grid — and `munin-explorer-container` is `display: flex; flex-direction: row`. This view is
-       a column of blocks and is neither, so its heading, create form and alerts were laid out as
-       columns of a page grid. Nested in the explorer's tab panel that ran past the viewport.
+    @* The chassis the three detail views wear, so the fourth is laid out by the same rules. The
+       root carried `munin-explorer munin-explorer-container` once and both were page grids that
+       laid this column of blocks out as columns; `munin-explorer-page` is not one. *@
+    @* No contents column, by decision: the Kilde filter beside the list does the grouping a nav
+       would, and paging stays flat. Contents is left null, so the body is one child in one track
+       rather than a main column in the second of two. (Fhi.Metadata-35w0p.13) *@
+    @* No ViewRoot and no ViewMain: this is the one detail surface with no older prefix of its own,
+       so there is no name here for the chassis's to be worn beside. *@
+    @* Still the version, and still on the root: a host may mount this view on a page of its own,
+       and a version readable on two of the three mount points is a trap for whoever checks the
+       third. (Fhi.Metadata-sqbei) *@
+    <DetailPage ViewRoot="" ViewMain="" data-munin-explorer-version="@ExplorerVersion.Current">
+        <Header>
+            @* The chassis's own header name: the other three wear a prefixed one beside it and this
+               view has none to wear. The id is what a deep link into this surface lands on. *@
+            <div class="munin-explorer-page__header">
+                @DetailBlocks.Heading(TitleLevel, T.MyListsHeading, "headline headline-s margin--bottom",
+                                      ListHeadingId)
 
-       Nothing replaces them: a block is what this wants, and the ghost-button border the samples
-       scope under `.munin-explorer` still applies here through the explorer's own section when
-       this view is mounted inside it. (Fhi.Metadata-l9l2n.39) *@
-    @* Still the version, though: a host may mount this view on a page of its own, and a version
-       readable on two of the three mount points is a trap for whoever checks the third.
-       (Fhi.Metadata-sqbei) *@
-    <div data-munin-explorer-version="@ExplorerVersion.Current">
-
-        @* No class on the heading: the package ships no CSS, and the other components leave
-           theirs bare too. A name here would be one with no rule behind it. *@
-        @((MarkupString)$"<h{TitleLevel}>{T.MyListsHeading}</h{TitleLevel}>")
-
-        @* The picker is only a choice when there is one to make. With a single list it would be a
-           control whose every option is already selected. *@
-        @if (Lists.Count > 1)
-        {
-            <label class="munin-explorer-filters__facets">
-                @T.ChooseList
-                <select value="@_shownList" @onchange="ChooseListAsync">
-                    @* Every option says what its list holds, which is what makes helsedata's own
-                       overview readable at a glance — see the remarks on ListOption. *@
-                    @foreach (var list in Lists)
-                    {
-                        <option value="@list.Id" selected="@(list.Id == _shownList)">@ListOption(list)</option>
-                    }
-                </select>
-            </label>
-        }
-
-        @* The count off the same field the picker's options read, beside the day the list last
-           changed — see the remarks on ListMeta. *@
-        @if (ListMeta is { } meta)
-        {
-            <p class="caption">@meta</p>
-        }
-
-        @* helsedata's own variants: primary for the one action that makes something new,
-           ghost-blue for the rest. Create and rename were standing forms and are disclosures. *@
-        <div>
-            <button class="hd-button-square button-square--primary"
-                    type="button"
-                    id="@CreateToggleId"
-                    aria-expanded="@Expanded(_creating)"
-                    @onclick="ToggleCreatingFromControl">@T.AddNewList</button>
-
-            @* Both act on the list on screen, so neither is drawn when there is none. *@
-            @if (_shownList is not null)
-            {
-                <button class="hd-button-square button-square--ghost-blue"
-                        type="button"
-                        id="@RenameToggleId"
-                        aria-expanded="@Expanded(_renaming)"
-                        @onclick="ToggleRenamingFromControl">@T.RenameList</button>
-
-                @* Two steps because the API offers no undo, and in the page rather than a JS
-                   confirm a host's CSP may suppress. One control, so neither step removes the
-                   element under the reader's focus. Ghost, not ghost-blue: it destroys something. *@
-                <button class="hd-button-square button-square--ghost"
-                        type="button"
-                        id="@DeleteButtonId"
-                        aria-expanded="@Expanded(_confirmingDelete)"
-                        @onclick="ToggleConfirmingDeleteFromControl">
-                    @(_confirmingDelete ? T.ConfirmDeleteNo : T.DeleteList)
-                </button>
-
-                @if (_confirmingDelete)
+                @* The picker is only a choice when there is one to make. With a single list it
+                   would be a control whose every option is already selected. *@
+                @if (Lists.Count > 1)
                 {
-                    @* The question describes the button that acts on it rather than being announced
-                       on its own: a role="alert" inserted and filled in one update is announced
-                       unreliably, which the alert region below is already shaped around. *@
-                    <span id="@ConfirmDeleteId">@T.ConfirmDeleteList</span>
+                    <label class="munin-explorer-filters__facets">
+                        @T.ChooseList
+                        <select value="@_shownList" @onchange="ChooseListAsync">
+                            @* Every option says what its list holds, which is what makes
+                               helsedata's own overview readable at a glance — see ListOption. *@
+                            @foreach (var list in Lists)
+                            {
+                                <option value="@list.Id" selected="@(list.Id == _shownList)">@ListOption(list)</option>
+                            }
+                        </select>
+                    </label>
+                }
+
+                @* The count off the same field the picker's options read, beside the day the
+                   list last changed — see the remarks on ListMeta. *@
+                @if (ListMeta is { } meta)
+                {
+                    <p class="caption">@meta</p>
+                }
+            </div>
+        </Header>
+        <ChildContent>
+
+            @* helsedata's own variants: primary for the one action that makes something new,
+               ghost-blue for the rest. Create and rename were standing forms and are disclosures. *@
+            <div>
+                <button class="hd-button-square button-square--primary"
+                        type="button"
+                        id="@CreateToggleId"
+                        aria-expanded="@Expanded(_creating)"
+                        @onclick="ToggleCreatingFromControl">@T.AddNewList</button>
+
+                @* Both act on the list on screen, so neither is drawn when there is none. *@
+                @if (_shownList is not null)
+                {
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            id="@RenameToggleId"
+                            aria-expanded="@Expanded(_renaming)"
+                            @onclick="ToggleRenamingFromControl">@T.RenameList</button>
+
+                    @* Two steps because the API offers no undo, and in the page rather than a JS
+                       confirm a host's CSP may suppress. One control, so neither step removes the
+                       element under the reader's focus. Ghost, not ghost-blue: it destroys something. *@
                     <button class="hd-button-square button-square--ghost"
                             type="button"
-                            aria-describedby="@ConfirmDeleteId"
-                            @onclick="DeleteListAsync">@T.ConfirmDeleteYes</button>
+                            id="@DeleteButtonId"
+                            aria-expanded="@Expanded(_confirmingDelete)"
+                            @onclick="ToggleConfirmingDeleteFromControl">
+                        @(_confirmingDelete ? T.ConfirmDeleteNo : T.DeleteList)
+                    </button>
+
+                    @if (_confirmingDelete)
+                    {
+                        @* The question describes the button that acts on it rather than being announced
+                           on its own: a role="alert" inserted and filled in one update is announced
+                           unreliably, which the alert region below is already shaped around. *@
+                        <span id="@ConfirmDeleteId">@T.ConfirmDeleteList</span>
+                        <button class="hd-button-square button-square--ghost"
+                                type="button"
+                                aria-describedby="@ConfirmDeleteId"
+                                @onclick="DeleteListAsync">@T.ConfirmDeleteYes</button>
+                    }
                 }
-            }
-        </div>
-
-        @* Revealed by the button above, and NOT closed again by a create that succeeds: the reader
-           is standing on the button inside this block, and removing it would drop their focus to
-           <body> — the same reason nothing here is ever `disabled`. *@
-        @if (_creating)
-        {
-            <div>
-                @* A real label, never a placeholder: no accessible name, and gone the moment the
-                   reader types (WCAG 4.1.2, 3.3.2). The id is per-mount, or two mounts name one
-                   field twice. onchange, never oninput — a round trip per keystroke on a circuit. *@
-                <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
-                <input type="text"
-                       id="@NewListNameId"
-                       @bind="_newName"
-                       @bind:event="onchange" />
-
-                @* aria-disabled rather than disabled: it becomes unavailable the moment a
-                   successful create clears the name, and disabling the element that has focus
-                   drops focus to <body>. CreateListAsync already refuses an empty name, so the
-                   press is inert. *@
-                <button class="hd-button-square button-square--ghost-blue"
-                        type="button"
-                        aria-disabled="@AriaDisabled(_newName.Trim().Length > 0)"
-                        @onclick="CreateListAsync">@T.CreateList</button>
-            </div>
-        }
-
-        @* The same shape, for the list on screen. Left open after a rename that succeeds for the
-           reason the create block gives. *@
-        @if (_renaming && _shownList is not null)
-        {
-            <div>
-                <label class="form-element__label" for="@RenameListNameId">@T.RenameListName</label>
-                <input type="text"
-                       id="@RenameListNameId"
-                       @bind="_renameName"
-                       @bind:event="onchange" />
-                <button class="hd-button-square button-square--ghost-blue"
-                        type="button"
-                        aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0)"
-                        @onclick="RenameListAsync">@T.SaveListName</button>
-            </div>
-        }
-
-        @* Only when there is something to download. A button that exports an empty list would
-           produce a file with a header row and nothing under it. *@
-        @if (_page is not null && _page.TotalCount > 0)
-        {
-            @* A named group, not just a visual one: three controls that only make sense together,
-               and a screen reader moving between them otherwise hears three unrelated widgets. *@
-            <div role="group" aria-label="@T.DownloadList">
-                <label>
-                    <input type="checkbox"
-                           checked="@_includeKodeverk"
-                           @onchange="e => _includeKodeverk = e.Value is true" />
-                    @T.IncludeKodeverk
-                </label>
-
-                @* Two formats, two buttons. aria-disabled while a download is in flight rather
-                   than disabled, for the reason the pager gives: disabling the element that has
-                   focus drops focus to <body>. Secondary actions, so ghost-blue — the same
-                   variant helsedata gives "Åpne variabelliste" on their own page. *@
-                <button class="hd-button-square button-square--ghost-blue"
-                        type="button"
-                        aria-disabled="@AriaDisabled(!_downloading)"
-                        @onclick="() => DownloadAsync(ExportFormat.Xlsx)">@T.DownloadXlsx</button>
-
-                <button class="hd-button-square button-square--ghost-blue"
-                        type="button"
-                        aria-disabled="@AriaDisabled(!_downloading)"
-                        @onclick="() => DownloadAsync(ExportFormat.Csv)">@T.DownloadCsv</button>
-            </div>
-        }
-
-        @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
-           same update is announced unreliably. Same shape as the explorer's own alert region. *@
-        <div role="alert" aria-live="assertive" aria-atomic="true">
-            @(_failed ? T.ListLoadError : DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
-        </div>
-
-        @* A refused annotation gets its own region, because it outlasts whatever the reader does
-           next: the field stays marked invalid until that row is written again, and sharing the
-           region above would let a download or a rename failure take the sentence away and leave
-           the mark unexplained (WCAG 3.3.1). The refused field points here by id. *@
-        <div role="alert" aria-live="assertive" aria-atomic="true" id="@DesiredDataRefusalId">
-            @DesiredDataRefusalMessage
-        </div>
-
-        @* Not while the read is known to have failed. The alert above already says so, and
-           "du har ingen variabellister ennå" beside it answers the same question the other way —
-           the reader cannot tell whether they have none or whether we never found out. The two
-           branches below are already unreachable then, because a failure leaves _page null. *@
-        @if (!_failed && Lists.Count == 0)
-        {
-            <p>@T.NoListsYet</p>
-        }
-        else if (_page is not null && _page.Items.Count == 0 && !_loading)
-        {
-            <p>@EmptyMessage</p>
-        }
-        else if (_page is not null)
-        {
-            @* A real <table>, which the explorer's own list cannot be: munin-explorer-dataitem-main
-               is `display: flex` in Stiler, and flex on a table strips its semantics
-               (VariableSearch.razor:530). Nothing in helsedata dresses a SAVED list, so this one
-               is free of that. The scaffolding it replaces could not stop every row repeating all
-               seven field names — a div has no header to be associated with. *@
-            @* Inline, not left to the host: Stiler has no rule for this name, and undrawn the
-               table scrolls the host's whole page. `position` is what makes the box the containing
-               block that clips the rows' absolutely positioned labels. Only the focus ring is the
-               host's. *@
-            <div class="munin-explorer-list-scroll"
-                 style="overflow-x:auto;position:relative"
-                 role="region"
-                 tabindex="0"
-                 aria-label="@ShownListName">
-                <table class="munin-explorer-data-list" aria-label="@ShownListName">
-                    <thead>
-                        <tr class="munin-explorer-data-list__item__row--header">
-                            <th scope="col" class="munin-explorer-dataitem-header__name">@T.ColumnVariable</th>
-                            <th scope="col" class="munin-explorer-dataitem-header__code">@T.FieldCode</th>
-                            <th scope="col" class="munin-explorer-dataitem-header__source">@T.FieldSource</th>
-                            <th scope="col" class="munin-explorer-dataitem-header__dataCollection">@T.FieldDataCollection</th>
-                            <th scope="col" class="munin-explorer-dataitem-header__theme">@T.FieldVariableGroup</th>
-                            <th scope="col" class="munin-explorer-dataitem-header__dataType">@T.FieldDataType</th>
-                            <th scope="col" class="munin-explorer-dataitem-header__period">@T.FieldDataPeriod</th>
-                            <th scope="col" class="munin-explorer-dataitem-header__desiredData">@T.FieldDesiredData</th>
-
-                            @* A control column with no visible heading, the shape Kelda's expand
-                               column uses: every button under it says "Fjern" already, and a
-                               screen reader arriving in the column has nothing else to hear. *@
-                            <th scope="col"><span class="screenreader-only">@T.ColumnRemove</span></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in _page.Items)
-                        {
-                            <tr class="munin-explorer-data-list__item">
-
-                                @* An orphaned entry keeps its place, so the paging totals stay
-                                   honest; RowName decides in one place what it reads as, because
-                                   the remove button is named from these very words. <th scope=row>
-                                   the way Kelda's table does, and with no class:
-                                   munin-explorer-dataitem-main__name is `display: inline-flex`,
-                                   which a table header cell cannot be. *@
-                                <th scope="row">
-                                    <span class="munin-explorer-dataitem-main__column__text"
-                                          id="@RowNameId(item)"
-                                          lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
-                                </th>
-
-                                @* The six columns the result list draws too, built by the cell
-                                   helper both call — written out here as well, they could gain an
-                                   attribute in one place and not the other without anything
-                                   failing. *@
-                                @Cells(item)
-
-                                @* Rendered from the draft rather than from the item, which keeps a
-                                   text the API refused in the field instead of reverting it under
-                                   the reader. The column header names the COLUMN; this span names
-                                   the field, which a control still owes on its own (WCAG 4.1.2). *@
-                                <td class="munin-explorer-dataitem-main__desiredData">
-                                    <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
-                                    <input type="text"
-                                           value="@DesiredDataOf(item)"
-                                           aria-labelledby="@DesiredDataLabelledBy(item)"
-                                           aria-invalid="@DesiredDataInvalid(item)"
-                                           aria-describedby="@DesiredDataDescribedBy(item)"
-                                           @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())" />
-                                </td>
-
-                                @* "Fjern" on every button in the column, so the accessible name
-                                   has to say which row (WCAG 4.1.2). Two elements rather than one
-                                   aria-label, because each half is in its own language — see
-                                   RemoveLabelledBy, which decides the order and why. *@
-                                <td>
-                                    <button class="hd-button-square button-square--ghost-blue"
-                                            type="button"
-                                            id="@RemoveButtonId(item)"
-                                            aria-labelledby="@RemoveLabelledBy(item)"
-                                            @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
             </div>
 
-            @* The list is as long as the reader made it, and the endpoint is paged. A view that
-               fetched page one and called it the list would show the first 25 and hide the rest
-               without saying so. *@
-            @if (TotalPages > 1)
+            @* Revealed by the button above, and NOT closed again by a create that succeeds: the reader
+               is standing on the button inside this block, and removing it would drop their focus to
+               <body> — the same reason nothing here is ever `disabled`. *@
+            @if (_creating)
             {
-                <div class="munin-explorer-pagination"
-                     role="navigation"
-                     aria-label="@T.Pagination">
-                    @* The content wrapper is where the layout lives (host.css:1609), and the
-                       disabled styling is scoped to it. Without it the buttons get no flex row and
-                       the unavailable state draws nothing.
+                <div>
+                    @* A real label, never a placeholder: no accessible name, and gone the moment the
+                       reader types (WCAG 4.1.2, 3.3.2). The id is per-mount, or two mounts name one
+                       field twice. onchange, never oninput — a round trip per keystroke on a circuit. *@
+                    <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
+                    <input type="text"
+                           id="@NewListNameId"
+                           @bind="_newName"
+                           @bind:event="onchange" />
 
-                       aria-disabled, not disabled: a disabled button at the end of the list drops
-                       focus to <body>, which a sighted keyboard user has no sign of. The clamp in
-                       GoToPageAsync is what makes the press inert. Same rule as the result list. *@
-                    <div class="munin-explorer-pagination-content">
-                        <button class="hd-button-square button-square--ghost"
-                                type="button"
-                                aria-label="@T.PreviousLabel"
-                                aria-disabled="@AriaDisabled(_pageNumber > 1)"
-                                @onclick="() => GoToPageAsync(_pageNumber - 1)">@T.Previous</button>
-
-                        @* The same numbered run the result list draws, from the same renderer.
-                           This pager wears the same two class names, so it had the same unstyled
-                           shape and is the same defect twice (Fhi.Metadata-ejcbi). *@
-                        @PageNumbers.Write(this, _pageNumber, TotalPages, GoToPageAsync, T.GoToPageLabel, T.CurrentPageLabel)
-
-                        <button class="hd-button-square button-square--ghost"
-                                type="button"
-                                aria-label="@T.NextLabel"
-                                aria-disabled="@AriaDisabled(_pageNumber < TotalPages)"
-                                @onclick="() => GoToPageAsync(_pageNumber + 1)">@T.Next</button>
-                    </div>
+                    @* aria-disabled rather than disabled: it becomes unavailable the moment a
+                       successful create clears the name, and disabling the element that has focus
+                       drops focus to <body>. CreateListAsync already refuses an empty name, so the
+                       press is inert. *@
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            aria-disabled="@AriaDisabled(_newName.Trim().Length > 0)"
+                            @onclick="CreateListAsync">@T.CreateList</button>
                 </div>
             }
-        }
-    </div>
+
+            @* The same shape, for the list on screen. Left open after a rename that succeeds for the
+               reason the create block gives. *@
+            @if (_renaming && _shownList is not null)
+            {
+                <div>
+                    <label class="form-element__label" for="@RenameListNameId">@T.RenameListName</label>
+                    <input type="text"
+                           id="@RenameListNameId"
+                           @bind="_renameName"
+                           @bind:event="onchange" />
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0)"
+                            @onclick="RenameListAsync">@T.SaveListName</button>
+                </div>
+            }
+
+            @* Only when there is something to download. A button that exports an empty list would
+               produce a file with a header row and nothing under it. *@
+            @if (_page is not null && _page.TotalCount > 0)
+            {
+                @* A named group, not just a visual one: three controls that only make sense together,
+                   and a screen reader moving between them otherwise hears three unrelated widgets. *@
+                <div role="group" aria-label="@T.DownloadList">
+                    <label>
+                        <input type="checkbox"
+                               checked="@_includeKodeverk"
+                               @onchange="e => _includeKodeverk = e.Value is true" />
+                        @T.IncludeKodeverk
+                    </label>
+
+                    @* Two formats, two buttons. aria-disabled while a download is in flight rather
+                       than disabled, for the reason the pager gives: disabling the element that has
+                       focus drops focus to <body>. Secondary actions, so ghost-blue — the same
+                       variant helsedata gives "Åpne variabelliste" on their own page. *@
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            aria-disabled="@AriaDisabled(!_downloading)"
+                            @onclick="() => DownloadAsync(ExportFormat.Xlsx)">@T.DownloadXlsx</button>
+
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            aria-disabled="@AriaDisabled(!_downloading)"
+                            @onclick="() => DownloadAsync(ExportFormat.Csv)">@T.DownloadCsv</button>
+                </div>
+            }
+
+            @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
+               same update is announced unreliably. Same shape as the explorer's own alert region. *@
+            <div role="alert" aria-live="assertive" aria-atomic="true">
+                @(_failed ? T.ListLoadError : DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
+            </div>
+
+            @* A refused annotation gets its own region, because it outlasts whatever the reader does
+               next: the field stays marked invalid until that row is written again, and sharing the
+               region above would let a download or a rename failure take the sentence away and leave
+               the mark unexplained (WCAG 3.3.1). The refused field points here by id. *@
+            <div role="alert" aria-live="assertive" aria-atomic="true" id="@DesiredDataRefusalId">
+                @DesiredDataRefusalMessage
+            </div>
+
+            @* Not while the read is known to have failed. The alert above already says so, and
+               "du har ingen variabellister ennå" beside it answers the same question the other way —
+               the reader cannot tell whether they have none or whether we never found out. The two
+               branches below are already unreachable then, because a failure leaves _page null. *@
+            @if (!_failed && Lists.Count == 0)
+            {
+                <p>@T.NoListsYet</p>
+            }
+            else if (_page is not null && _page.Items.Count == 0 && !_loading)
+            {
+                <p>@EmptyMessage</p>
+            }
+            else if (_page is not null)
+            {
+                @* A real <table>, which the explorer's own list cannot be: munin-explorer-dataitem-main
+                   is `display: flex` in Stiler, and flex on a table strips its semantics
+                   (VariableSearch.razor:530). Nothing in helsedata dresses a SAVED list, so this one
+                   is free of that. The scaffolding it replaces could not stop every row repeating all
+                   seven field names — a div has no header to be associated with. *@
+                @* Inline, not left to the host: Stiler has no rule for this name, and undrawn the
+                   table scrolls the host's whole page. `position` is what makes the box the containing
+                   block that clips the rows' absolutely positioned labels. Only the focus ring is the
+                   host's. *@
+                <div class="munin-explorer-list-scroll"
+                     style="overflow-x:auto;position:relative"
+                     role="region"
+                     tabindex="0"
+                     aria-label="@ShownListName">
+                    <table class="munin-explorer-data-list" aria-label="@ShownListName">
+                        <thead>
+                            <tr class="munin-explorer-data-list__item__row--header">
+                                <th scope="col" class="munin-explorer-dataitem-header__name">@T.ColumnVariable</th>
+                                <th scope="col" class="munin-explorer-dataitem-header__code">@T.FieldCode</th>
+                                <th scope="col" class="munin-explorer-dataitem-header__source">@T.FieldSource</th>
+                                <th scope="col" class="munin-explorer-dataitem-header__dataCollection">@T.FieldDataCollection</th>
+                                <th scope="col" class="munin-explorer-dataitem-header__theme">@T.FieldVariableGroup</th>
+                                <th scope="col" class="munin-explorer-dataitem-header__dataType">@T.FieldDataType</th>
+                                <th scope="col" class="munin-explorer-dataitem-header__period">@T.FieldDataPeriod</th>
+                                <th scope="col" class="munin-explorer-dataitem-header__desiredData">@T.FieldDesiredData</th>
+
+                                @* A control column with no visible heading, the shape Kelda's expand
+                                   column uses: every button under it says "Fjern" already, and a
+                                   screen reader arriving in the column has nothing else to hear. *@
+                                <th scope="col"><span class="screenreader-only">@T.ColumnRemove</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _page.Items)
+                            {
+                                <tr class="munin-explorer-data-list__item">
+
+                                    @* An orphaned entry keeps its place, so the paging totals stay
+                                       honest; RowName decides in one place what it reads as, because
+                                       the remove button is named from these very words. <th scope=row>
+                                       the way Kelda's table does, and with no class:
+                                       munin-explorer-dataitem-main__name is `display: inline-flex`,
+                                       which a table header cell cannot be. *@
+                                    <th scope="row">
+                                        <span class="munin-explorer-dataitem-main__column__text"
+                                              id="@RowNameId(item)"
+                                              lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                    </th>
+
+                                    @* The six columns the result list draws too, built by the cell
+                                       helper both call — written out here as well, they could gain an
+                                       attribute in one place and not the other without anything
+                                       failing. *@
+                                    @Cells(item)
+
+                                    @* Rendered from the draft rather than from the item, which keeps a
+                                       text the API refused in the field instead of reverting it under
+                                       the reader. The column header names the COLUMN; this span names
+                                       the field, which a control still owes on its own (WCAG 4.1.2). *@
+                                    <td class="munin-explorer-dataitem-main__desiredData">
+                                        <span class="screenreader-only" id="@DesiredDataLabelId(item)">@T.FieldDesiredData</span>
+                                        <input type="text"
+                                               value="@DesiredDataOf(item)"
+                                               aria-labelledby="@DesiredDataLabelledBy(item)"
+                                               aria-invalid="@DesiredDataInvalid(item)"
+                                               aria-describedby="@DesiredDataDescribedBy(item)"
+                                               @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())" />
+                                    </td>
+
+                                    @* "Fjern" on every button in the column, so the accessible name
+                                       has to say which row (WCAG 4.1.2). Two elements rather than one
+                                       aria-label, because each half is in its own language — see
+                                       RemoveLabelledBy, which decides the order and why. *@
+                                    <td>
+                                        <button class="hd-button-square button-square--ghost-blue"
+                                                type="button"
+                                                id="@RemoveButtonId(item)"
+                                                aria-labelledby="@RemoveLabelledBy(item)"
+                                                @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @* The list is as long as the reader made it, and the endpoint is paged. A view that
+                   fetched page one and called it the list would show the first 25 and hide the rest
+                   without saying so. *@
+                @if (TotalPages > 1)
+                {
+                    <div class="munin-explorer-pagination"
+                         role="navigation"
+                         aria-label="@T.Pagination">
+                        @* The content wrapper is where the layout lives (host.css:1609), and the
+                           disabled styling is scoped to it. Without it the buttons get no flex row and
+                           the unavailable state draws nothing.
+
+                           aria-disabled, not disabled: a disabled button at the end of the list drops
+                           focus to <body>, which a sighted keyboard user has no sign of. The clamp in
+                           GoToPageAsync is what makes the press inert. Same rule as the result list. *@
+                        <div class="munin-explorer-pagination-content">
+                            <button class="hd-button-square button-square--ghost"
+                                    type="button"
+                                    aria-label="@T.PreviousLabel"
+                                    aria-disabled="@AriaDisabled(_pageNumber > 1)"
+                                    @onclick="() => GoToPageAsync(_pageNumber - 1)">@T.Previous</button>
+
+                            @* The same numbered run the result list draws, from the same renderer.
+                               This pager wears the same two class names, so it had the same unstyled
+                               shape and is the same defect twice (Fhi.Metadata-ejcbi). *@
+                            @PageNumbers.Write(this, _pageNumber, TotalPages, GoToPageAsync, T.GoToPageLabel, T.CurrentPageLabel)
+
+                            <button class="hd-button-square button-square--ghost"
+                                    type="button"
+                                    aria-label="@T.NextLabel"
+                                    aria-disabled="@AriaDisabled(_pageNumber < TotalPages)"
+                                    @onclick="() => GoToPageAsync(_pageNumber + 1)">@T.Next</button>
+                        </div>
+                    </div>
+                }
+            }
+        </ChildContent>
+    </DetailPage>
 }

@@ -145,9 +145,9 @@ public class ExplorerVersionTest : BunitContext
     [Fact]
     public void Version_WhenAComponentRootIsWritten_ThenItCarriesTheAttribute()
     {
-        // Off MARKUP, never the raw file: every root explains this attribute in a comment that names
-        // it, so a check reading raw text stays green on a root that kept the prose and lost the
-        // attribute. Roots are found by class="munin-explorer" alone — VariableListView wears none.
+        // Off MARKUP, never the raw file: a check reading raw text stays green on a root that kept
+        // the prose naming this attribute and lost the attribute. Roots are found by
+        // class="munin-explorer" — the chassis root VariableListView sits on writes no such literal.
         var roots = Directory
             .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer"), "*.razor", SearchOption.AllDirectories)
             .Where(path => !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)

@@ -75,6 +75,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
+    /// <summary>
+    /// The title of this surface, so a link can land on it and a host can point at it. The three
+    /// detail views take theirs from the caller; nothing mounts this one inside a named region.
+    /// </summary>
+    private string ListHeadingId => $"munin-explorer-list-heading-{_instance}";
+
     /// <summary>The name field of the create form, which its label points at.</summary>
     private string NewListNameId => $"munin-explorer-new-list-{_instance}";
 
