@@ -209,6 +209,9 @@ if [ -z "${PLAYWRIGHT_BROWSER_CHANNEL:-}" ]; then
     tail -10 /tmp/hostile-pw-install.log >&2
     exit 2
   }
+  # A Linux box with no root and no browser libraries, the Forge's, gets them unpacked into a prefix.
+  . "$ROOT/scripts/chromium-deps.sh"
+  chromium_deps_ensure || { echo "could not provide chromium's libraries - TOOLING failure." >&2; exit 2; }
 else
   echo "==> BROWSER: ${PLAYWRIGHT_BROWSER_CHANNEL} (not the bundled chromium)"
 fi
