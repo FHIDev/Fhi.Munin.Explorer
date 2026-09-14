@@ -49,8 +49,8 @@ public class DetailTocTest : BunitContext
     public void Render_WhenThereAreEntries_ThenTheListWearsHelsedatasOwnNamesAndNoneOfOurs()
     {
         // form-menu__list and form-menu__list__item are helsedata's own, so the nav takes that
-        // site's link colour and padding with no rule of ours. Where those rules actually live, and
-        // why that is not settled, is on DetailToc and in the sample stylesheets.
+        // site's link colour and padding with no rule of ours. Where Stiler declares them, and
+        // where the stand-in for a host without it lives, is on DetailToc and in the samples.
         var cut = RenderToc(Three);
 
         var nav = cut.Find("nav");

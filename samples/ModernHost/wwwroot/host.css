@@ -1830,29 +1830,26 @@ table.munin-explorer-data-list tbody th {
   scroll-margin-top: 140px;
 }
 
-/* ---- the contents nav inside that column, and the one place this file is NOT standing in for
-   Stiler ----
+/* ---- the contents nav inside that column ----
 
-   `form-menu__list` and `form-menu__list__item` are borrowed names, and they were borrowed on the
-   strength of the same argument the pager's were: helsedata.no styles them on every page. It is the
-   same argument, and it fails the same way. Read back on 2026-09-14 off helsedata.no's own compiled
-   bundles, the rules are in `application.css` — their application-form page — and there is no
-   `form-menu` rule of any kind in `styles.css`, which is the Stiler bundle and carries every other
-   borrowed name this component emits. So a host on Stiler alone draws the contents nav as a raw
-   bulleted list of blue underlined links inside an otherwise styled column, and nothing in this
-   repository can see it: `test/host-class-names.txt` is a capture of the live page with
-   `application.css` in it, and `assert-sample-css-matches-stiler.sh` says nothing at all about a
-   selector Stiler has never heard of. That is `skiplink-pagination` exactly. `Fhi.Metadata-u0cxn`
-   is the bead that decides it — a rule in Stiler, or the rename into our own prefix that the pager
-   and the skip link both ended in.
+   `form-menu__list` and `form-menu__list__item` are borrowed: global, unscoped classes in Stiler's
+   `pages/_healthregisterpage.scss` that reach its compiled stylesheet, so a host on Stiler needs no
+   rule of ours. This stand-in was written from helsedata.no's `application.css` instead and came
+   out three declarations short of the pinned 0.1.42 — `margin` here, `background-color` and
+   `transition` on the link — which `assert-sample-css-matches-stiler.sh` named. Read Stiler for
+   what Stiler declares, never a deployed site: helsedata.no serves no `form-menu` rule outside
+   `application.css`, which looked like proof these names were not Stiler's and is not, because
+   that site does not run Stiler at all. `Fhi.Metadata-u0cxn` was opened on that misreading and is
+   closed moot. `form-menu__list__item` has no rule anywhere — only `--active` and `--active-child`
+   do, and this package emits neither.
 
-   The declarations are copied from `application.css` and are an arrangement, not a design. Two of
-   helsedata's are deliberately left out: `a:focus { outline: none }`, which is safe only beside the
-   `.is-tabbing` rules that put a focus ring back and which need their script, and the `a:after`
-   overlay those rules paint on, which draws nothing without them. Dropping them leaves the browser's
-   own focus ring, which is the accessible half of that pair. */
+   Two of Stiler's declarations are deliberately left out: `a:focus { outline: none }`, which is
+   safe only beside the `.is-tabbing` rules that put a focus ring back and which need their script,
+   and the `a:after` overlay those rules paint on, which draws nothing without them. Dropping them
+   leaves the browser's own focus ring, which is the accessible half of that pair. */
 .form-menu__list {
   list-style: none;
+  margin: 0;
   padding-left: 0;
 }
 
@@ -1861,8 +1858,10 @@ table.munin-explorer-data-list tbody th {
   margin: 0;
   padding: 8px 4px 8px 24px;
   position: relative;
+  background-color: transparent;
   color: var(--dark);
   text-decoration: none;
+  transition: background-color 0.2s ease;
 }
 
 /* Copied from Stiler's `_trail.scss`, selector for selector: a stand-in that works differently from

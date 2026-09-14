@@ -22,12 +22,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </para>
 /// <para>
 /// The list wears helsedata's own <c>form-menu__list</c> names rather than anything under this
-/// package's prefix, so inside helsedata's estate the nav takes that site's link colour and padding
-/// for nothing. Read back on 2026-09-14, though, those rules are in helsedata's own
-/// <c>application.css</c> and not in the Stiler bundle at all, so a host carrying Stiler and no more
-/// draws a bare bulleted list here. <c>Fhi.Metadata-u0cxn</c> decides whether that stands: a rule
-/// in Stiler, or the rename into this package's prefix that the pager and its skip link ended in
-/// after the same argument for borrowing failed the same way.
+/// package's prefix: they are global, unscoped classes in <c>Fhi.Helsedata.Stiler</c> and reach its
+/// compiled stylesheet, so the nav takes that site's link colour and padding for nothing and this
+/// package adds no rule for them. <c>form-menu__list__item</c> carries no rule of its own anywhere
+/// — only the active modifiers do, and neither is emitted here.
 /// </para>
 /// <para>
 /// Goes in <see cref="DetailPage.Contents"/>, which draws the column around it. This component
