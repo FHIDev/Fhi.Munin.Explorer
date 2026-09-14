@@ -42,6 +42,53 @@ public class ContractCoverageTest
         Covers<FilterOptions>("filters.json");
 
     [Fact]
+    public void VariabelgruppeSurfaces_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered() =>
+        // Inline rather than from a fixture: both collections answer empty in every environment
+        // probed so far, so a field added to the facet lands nowhere in filters.json — and a row
+        // written into that capture would pin a payload the API does not send. (Fhi.Metadata-0ecep)
+        Assert.NotNull(JsonSerializer.Deserialize<FilterOptions>(
+            """
+            {
+              "variabelgrupper": [
+                {
+                  "id": "8e4507de-d725-4471-aeb9-97999cf411ce",
+                  "name": "Gruppe tilbudt",
+                  "parentId": null,
+                  "count": 1,
+                  "filter": "1",
+                  "global": false,
+                  "owners": [
+                    {
+                      "kildeId": "c368f9fb-2fbc-43c2-b0ba-c6db2b1d2f68",
+                      "delkildeId": null,
+                      "datasamlingId": "25acaea1-6ba9-4417-b514-e014e4b53011"
+                    }
+                  ]
+                }
+              ],
+              "hierarkiVariabelgrupper": [
+                {
+                  "id": "09489d56-c805-420f-898b-211a335724b8",
+                  "name": "Gruppe opt-out",
+                  "parentId": null,
+                  "count": 1,
+                  "filter": "2",
+                  "global": false,
+                  "owners": [
+                    {
+                      "kildeId": "c368f9fb-2fbc-43c2-b0ba-c6db2b1d2f68",
+                      "delkildeId": "c1cc6266-ac04-4e7c-8b33-427dbb9d6871",
+                      "datasamlingId": "f9262831-e1a9-405f-8599-0d0eb6e9b8ed"
+                    }
+                  ]
+                }
+              ],
+              "totalCount": 3
+            }
+            """,
+            Strict));
+
+    [Fact]
     public void KildeList_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<IReadOnlyList<KildeSummary>>("kilder.json");
 

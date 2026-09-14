@@ -76,9 +76,9 @@ public partial class VariableSearch
     /// </summary>
     /// <remarks>
     /// <c>Count</c> is how many variables the value would leave, or null where there is no count to
-    /// show. <c>Toggle</c> is what ticking it does, or null for a value that is not selectable —
-    /// the kildetype headings the kilder are grouped under are labels rather than filters, because
-    /// kildetype has a facet of its own.
+    /// show. <c>Toggle</c> is what ticking it does, or null for a value that is not selectable: a
+    /// kildetype heading the kilder are grouped under, a label rather than a filter because
+    /// kildetype has a facet of its own, or a variabelgruppe the API returns but does not offer.
     /// <para>
     /// <c>Collapsible</c> makes such a heading a disclosure of its own, so the reader lands on the
     /// three kildetype rows rather than on every kilde under them. Its <c>Count</c> is then how
@@ -731,16 +731,29 @@ public partial class VariableSearch
     /// environment probed so far. Saying "pick a datakilde" is what stops an empty list from
     /// reading as a broken one.
     /// </remarks>
-    private FacetGroup VariabelgruppeGroup(FilterOptions facets) =>
-        new(FacetName(HierarchyLevel.Variabelgruppe),
+    private FacetGroup VariabelgruppeGroup(FilterOptions facets)
+    {
+        // Collapsed before the tree is built, so the copy that decides whether a row is offered is
+        // the copy that names it; Tree collapses the same way again, to no effect. (Fhi.Metadata-l9l2n.82)
+        var grupper = OnePerId(facets.Variabelgrupper, g => g.Id, g => g.ParentId);
+
+        // An opted-out group is in this payload only to carry the offered groups under it, so it is
+        // a container here: a checkbox would offer a filter the API says the reader may not have,
+        // and dropping the row would strand its children.
+        var containers = grupper
+            .Where(gruppe => !gruppe.IsStandaloneFacetOption)
+            .Select(gruppe => gruppe.Id)
+            .ToHashSet();
+
+        return new(FacetName(HierarchyLevel.Variabelgruppe),
             T.FieldVariableGroup,
             OpenByDefault: false,
-            Tree(facets.Variabelgrupper
-                     .Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, null), g.Count)),
+            Tree(grupper.Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, null), g.Count)),
                  $"{FacetName(HierarchyLevel.Variabelgruppe)}:",
                  IsGruppeChosen,
-                 ToggleGruppe, Counted),
+                 id => containers.Contains(id) ? null : ToggleGruppe(id), Counted),
             T.NoVariabelgrupper);
+    }
 
     private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
 
@@ -906,12 +919,17 @@ public partial class VariableSearch
     /// datasamlinger, which carry their own key prefix and their own selection, and so cannot be
     /// nodes here.
     /// </para>
+    /// <para>
+    /// <c>toggle</c> answering null makes a node a container rather than a checkbox, the way
+    /// <see cref="FacetValue.Toggle"/> already reads it — for a row the payload returned to nest
+    /// something else under rather than to offer.
+    /// </para>
     /// </remarks>
     private static IReadOnlyList<FacetValue> Tree(
         IEnumerable<TreeNode> nodes,
         string keyPrefix,
         Func<Guid, bool> selected,
-        Func<Guid, Func<Task>> toggle,
+        Func<Guid, Func<Task>?> toggle,
         Func<int, int?> count,
         Func<Guid, IReadOnlyList<FacetValue>>? under = null)
     {
@@ -1097,9 +1115,10 @@ public partial class VariableSearch
     /// label — see KildeSearch.Filters.cs. Keyed because counts reorder the values between
     /// renders, and an unkeyed patch would move the box under the reader's finger. (Fhi.Metadata-j0a2h)
     /// <para>
-    /// <c>lang</c> goes on the <c>&lt;label&gt;</c>, which already holds the words, and never on
-    /// the <c>&lt;li&gt;</c>, which also holds the values nested under this one: <c>lang</c>
-    /// inherits, so a kilde's Norwegian would reach a child whose own
+    /// <c>lang</c> goes on the element holding just the words — the <c>&lt;label&gt;</c>, or the
+    /// <c>&lt;span&gt;</c> a container gets in place of one — and never on the <c>&lt;li&gt;</c>,
+    /// which also holds the values nested under this one: <c>lang</c> inherits, so a kilde's
+    /// Norwegian would reach a child whose own
     /// <see cref="FacetValue.Language"/> is null and meant it. The kildeutforsker's panel marks
     /// its labels the same way, and a name marked in its chip but not on the checkbox that chip
     /// stands for would name one kilde two ways on one page.
@@ -1127,22 +1146,25 @@ public partial class VariableSearch
 
             if (toggle is null)
             {
-                // Bare text, so unmarked: no value reaches here with a language of its own, and an
-                // element to hang one on would be new structure in the panel — a munin-explorer
-                // name and a Stiler rule for it — bought for a marking nothing asks for yet.
-                builder.AddContent(2, value.Label);
+                // A container names a variabelgruppe in the catalogue's own Norwegian and the chip
+                // for that group is marked, so this row has to be too. A span with no class is
+                // somewhere to hang the marking that costs no rule in Stiler.
+                builder.OpenElement(2, "span");
+                builder.AddAttribute(3, "lang", value.Language);
+                builder.AddContent(4, value.Label);
+                builder.CloseElement();
             }
             else
             {
-                builder.OpenElement(3, "label");
-                builder.AddAttribute(4, "lang", value.Language);
-                builder.OpenElement(5, "input");
-                builder.AddAttribute(6, "type", "checkbox");
-                builder.AddAttribute(7, "checked", value.Selected);
+                builder.OpenElement(5, "label");
+                builder.AddAttribute(6, "lang", value.Language);
+                builder.OpenElement(7, "input");
+                builder.AddAttribute(8, "type", "checkbox");
+                builder.AddAttribute(9, "checked", value.Selected);
 
                 // The event's own value is ignored: the toggle flips what the filter holds, which
                 // is the one state a press and the render after it are certain to agree about.
-                builder.AddAttribute(8, "onchange",
+                builder.AddAttribute(10, "onchange",
                                      EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
 
                 // What a plain onchange does not do and this panel needs: a press that ApplyFilterAsync
@@ -1151,17 +1173,17 @@ public partial class VariableSearch
                 builder.SetUpdatesAttributeName("checked");
 
                 builder.CloseElement();
-                builder.AddContent(9, value.Label);
+                builder.AddContent(11, value.Label);
 
                 // The space is a text node of the label, not the span's first character: a name is
                 // computed per element, so a space inside the span is trimmed off and the name
                 // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(10, " ");
-                    builder.OpenElement(11, "span");
-                    builder.AddAttribute(12, "class", "munin-explorer-filters__count");
-                    builder.AddContent(13, $"({count})");
+                    builder.AddContent(12, " ");
+                    builder.OpenElement(13, "span");
+                    builder.AddAttribute(14, "class", "munin-explorer-filters__count");
+                    builder.AddContent(15, $"({count})");
                     builder.CloseElement();
                 }
 
@@ -1170,7 +1192,7 @@ public partial class VariableSearch
 
             if (value.Children.Count > 0)
             {
-                builder.AddContent(14, FacetList(value.Children));
+                builder.AddContent(16, FacetList(value.Children));
             }
 
             builder.CloseElement();
@@ -1290,8 +1312,9 @@ public partial class VariableSearch
             {
                 foreach (var value in group.ChosenValues)
                 {
-                    // A value nothing can untick has no removal to offer: the kildetype headings
-                    // inside the kilde facet are labels rather than filters.
+                    // A value with no checkbox has no removal to offer here: a kildetype heading is
+                    // a label rather than a filter, and a chosen variabelgruppe the API does not
+                    // offer gets its chip from UnfacetedHierarchyChips below instead.
                     if (value.Toggle is not { } toggle)
                     {
                         continue;
