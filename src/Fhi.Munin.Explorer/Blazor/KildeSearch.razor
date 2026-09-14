@@ -113,7 +113,8 @@
             <DatasamlingView Datasamling="datasamling"
                              Language="@Language"
                              HeadingLevel="@KildeLevel"
-                             HeadingId="@DetailHeadingId" />
+                             HeadingId="@DetailHeadingId"
+                             Trail="@DatasamlingTrail(datasamling)" />
         }
         else if (_selectedDatasamlingId is null && _kilde is { } kilde)
         {
@@ -122,6 +123,7 @@
                        Language="@Language"
                        HeadingLevel="@KildeLevel"
                        HeadingId="@DetailHeadingId"
+                       Trail="@KildeTrail"
                        DatasamlingHref="@NodeHref">
                 <Sections>
                     @* At SectionLevel rather than a literal h2: these have to land on the level

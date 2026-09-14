@@ -41,13 +41,15 @@ public class DatasamlingViewTest : BunitContext
         string? language = null,
         int headingLevel = 2,
         string? headingId = null,
+        IReadOnlyList<DetailTrailStep>? trail = null,
         RenderFragment? sections = null) =>
         Render<DatasamlingView>(b =>
         {
             b.Add(c => c.Datasamling, datasamling)
              .Add(c => c.Language, language)
              .Add(c => c.HeadingLevel, headingLevel)
-             .Add(c => c.HeadingId, headingId);
+             .Add(c => c.HeadingId, headingId)
+             .Add(c => c.Trail, trail);
 
             // Left unset rather than set to null when no explorer passes any, which is the state a
             // host actually renders this view in.
@@ -56,6 +58,48 @@ public class DatasamlingViewTest : BunitContext
                 b.Add(c => c.Sections, sections);
             }
         });
+
+    [Fact]
+    public void Eyebrow_Always_ThenItNamesTheKindOfPageAndIsNotAHeading()
+    {
+        // The eyebrow is above the title and is a <p>: rendered as an <h*> it would be a second
+        // title in the outline, naming a category rather than the thing on screen. Both languages,
+        // because a word that only translates in one of them reads as the component's own noise.
+        var eyebrow = Render(Datasamling()).Find(".munin-explorer-page__eyebrow");
+
+        Assert.Equal("P", eyebrow.TagName);
+        Assert.Equal("Datasamling", eyebrow.TextContent.Trim());
+        Assert.Equal("Data collection", Render(Datasamling(), language: "en").Find(".munin-explorer-page__eyebrow").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Trail_WhenACallerSuppliesTheStepsAbove_ThenThisPageIsAppendedAsTheCurrentStep()
+    {
+        // The view appends its own name rather than the caller repeating it, so the last step is
+        // the page by construction — and the one step a reader can never be sent to a dead link by.
+        var cut = Render(Datasamling(), trail: [new DetailTrailStep("Kildeutforsker", "/kilder")]);
+
+        var steps = cut.FindAll("nav.breadcrumbs li");
+
+        Assert.Equal("Kildeutforsker", steps[0].TextContent.Trim());
+        Assert.Equal("/kilder", Assert.Single(steps[0].QuerySelectorAll("a")).GetAttribute("href"));
+
+        var last = steps[^1];
+
+        Assert.Equal("page", last.GetAttribute("aria-current"));
+        Assert.Empty(last.QuerySelectorAll("a"));
+        Assert.Equal(
+            cut.Find(".munin-explorer-datasamling__header .headline-s").TextContent.Trim(),
+            last.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Trail_WhenNoCallerSuppliesSteps_ThenNoBreadcrumbIsDrawn()
+    {
+        // The state every mount of this view is in today outside the kildeutforsker: no addresses
+        // to offer, so no trail rather than one step that goes nowhere.
+        Assert.Empty(Render(Datasamling()).FindAll("nav.breadcrumbs"));
+    }
 
     /// <summary>Markup an explorer might hang after the metadata, carrying no class of its own.</summary>
     private static readonly RenderFragment ExplorerSections = builder =>

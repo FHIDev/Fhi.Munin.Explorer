@@ -46,6 +46,14 @@ public sealed partial class VariableView : ComponentBase
     [Parameter]
     public RenderFragment? Sections { get; set; }
 
+    /// <inheritdoc cref="KildeView.Trail"/>
+    [Parameter]
+    public IReadOnlyList<DetailTrailStep>? Trail { get; set; }
+
+    /// <inheritdoc cref="KildeView.Actions"/>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
     // Unique per instance so two of these views on one page cannot collide on DOM ids, the same
     // reason VariableSearch carries one. A host mounting a variable beside the one it replaced
     // is the case that makes it real: both views hold the same version ids.
@@ -54,6 +62,29 @@ public sealed partial class VariableView : ComponentBase
     private Texts T => Texts.For(Language);
 
     private string Reader => ReaderLanguage.Of(Language);
+
+    /// <summary>
+    /// The trail the chassis draws: the caller's steps with this page's own name appended, or null
+    /// when the caller supplied none.
+    /// </summary>
+    /// <remarks>
+    /// Null rather than a one-step list, because a trail whose only step is the page itself names
+    /// nowhere the reader could go and is decoration. The last step carries no target: the chassis
+    /// drops one anyway, and building it without one keeps the two from disagreeing.
+    /// </remarks>
+    private IReadOnlyList<DetailTrailStep>? PageTrail
+    {
+        get
+        {
+            if (Trail is not { Count: > 0 } above || Variable is not { } variable)
+            {
+                return null;
+            }
+
+            var named = T.Named(variable.PreferredTerm, variable.Code);
+            return [.. above, new DetailTrailStep(named.Text, null, CatalogueProperties.Foreign(named.Norwegian, Reader))];
+        }
+    }
 
     private int BlockLevel => Math.Min(HeadingLevel + 1, 6);
 
