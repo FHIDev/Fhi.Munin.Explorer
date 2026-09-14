@@ -3,11 +3,8 @@ using Microsoft.AspNetCore.Components.Rendering;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The two class names one icon slot wears: the group's, and each glyph's.</summary>
-/// <remarks>
-/// Written out per surface rather than composed from a prefix, because the class-name inventory is
-/// reconciled against literals in <c>src/</c> and a stem finished at runtime is a name no guard here
-/// can see.
-/// </remarks>
+/// <remarks>Written out per surface, never composed from a prefix: the class-name inventory is
+/// reconciled against literals in <c>src/</c> and cannot see a stem finished at runtime.</remarks>
 internal sealed record NodeIconClasses(string Group, string Glyph)
 {
     /// <summary>The kilde hierarchy's own tree, where the glyphs lead the row.</summary>
@@ -19,11 +16,8 @@ internal sealed record NodeIconClasses(string Group, string Glyph)
         new("munin-explorer-filters__icons", "munin-explorer-filters__icon");
 }
 
-/// <summary>
-/// The decorative icon slot a row draws beside its label — in front of it in the kilde hierarchy,
-/// after it in the facet panels: a folder for the grouping levels, one glyph per datakategori for a
-/// datasamling, and nothing for a variabelgruppe.
-/// </summary>
+/// <summary>The decorative icon slot a row draws beside its label — in front of it in the kilde
+/// hierarchy, after it in the facet panels.</summary>
 internal static class NodeIcons
 {
     /// <summary>No glyphs at all — what a row draws when the host has turned the icons off.</summary>
@@ -51,8 +45,8 @@ internal static class NodeIcons
 
         builder.OpenElement(0, "span");
         builder.AddAttribute(1, "class", classes.Group);
-        // Decorative: whatever the slot sits in keeps the accessible name it had, so a glyph never
-        // joins the name of a control the reader presses.
+        // Decorative: a glyph never joins the accessible name of whatever the slot sits in, so the
+        // categories reach a reader through SpokenCategories beside it instead.
         builder.AddAttribute(2, "aria-hidden", "true");
         foreach (var icon in icons)
         {
@@ -89,20 +83,17 @@ internal static class NodeIcons
     }
 
     /// <summary>
-    /// The glyphs in words, for the reader who cannot see them. Null for a folder, which says only
-    /// what the nesting around it already says, and null when there are no glyphs.
+    /// The datakategorier in words, since the glyphs are aria-hidden. Null when there are none and
+    /// null for the folder, which says only what the nesting around the row already says.
     /// </summary>
-    internal static string? SpokenCategories(
-        KildeNodeKind kind, IReadOnlyList<NodeIcon> icons, Texts texts)
+    internal static string? SpokenCategories(IReadOnlyList<NodeIcon> icons, Texts texts)
     {
-        if (kind != KildeNodeKind.Datasamling || icons.Count == 0)
-        {
-            return null;
-        }
+        var named = icons
+            .Where(icon => icon.Key != DataCategoryIcons.Grouping)
+            .Select(icon =>
+                texts.DataCategoryNames.TryGetValue(icon.Key, out var name) ? name : icon.Key)
+            .ToList();
 
-        var named = icons.Select(icon =>
-            texts.DataCategoryNames.TryGetValue(icon.Key, out var name) ? name : icon.Key);
-
-        return texts.DataCategoryNamed(string.Join(", ", named));
+        return named.Count == 0 ? null : texts.DataCategoryNamed(string.Join(", ", named));
     }
 }

@@ -64,13 +64,9 @@ bodies.set(listRoute, JSON.stringify([
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));
 
-// The filters capture predates `datasamlinger[].categories`, which the live endpoint now sends on
-// every entry (Fhi.Metadata-l9l2n.113 re-captures it). Served as captured, the facet tree draws no
-// datakategori glyph anywhere and this gate would scan the change of Fhi.Metadata-evoil having
-// rendered none of it — the blind spot Fhi.Metadata-wr31i closed for whole pages, one field down.
-// So the tokens are supplied here rather than written into the capture: taken from the same
-// payload's own `datakategorier` facet, so the vocabulary is the API's, and spread by index so the
-// tree carries rows with none, with one and with several.
+// The filters capture predates `datasamlinger[].categories` (Fhi.Metadata-l9l2n.113 re-captures
+// it), and served as captured the facet tree draws no datakategori glyph for this gate to scan.
+// Synthesised from the payload's own `datakategorier`, spread so rows carry none, one and several.
 const filtersRoute = routes.find(([, source]) => source === 'filters.json')[0];
 const filters = JSON.parse(bodies.get(filtersRoute));
 const vocabulary = filters.datakategorier.map(facet => facet.value);

@@ -327,11 +327,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     Kelda's `munin-explorer-hierarchy__icon*` pair already sets — the `<svg>` carries `width`,
     `height` and `stroke="currentColor"` as attributes, so an undefined name draws the glyphs at
     text size in the text colour and what a rule buys is the row they sit in and the gap between
-    them. The slot is `aria-hidden`, so the checkbox keeps exactly the accessible name it had, and
-    unlike Kelda's tree this panel adds no `screenreader-only` words beside them: the datakategori
-    facet a few rows up is the same vocabulary as a list of checkboxes, and a bilingual legend for
-    the glyphs is `Fhi.Metadata-zllxt`. The rules are `Fhi.Helsedata.Stiler` PR 39340's and are
-    **published in 0.1.75**, the version `samples/HostileHost` pins (`Fhi.Metadata-1t36m`).
+    them. The slot is `aria-hidden` and the categories follow the name as `screenreader-only` words,
+    exactly as Kelda's tree says them — the datakategori facet a few rows up lists the vocabulary
+    and says nothing about which datasamling is in which, so the row is the only place the pairing
+    is stated at all. A bilingual legend for the glyphs themselves is `Fhi.Metadata-zllxt`. The
+    rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**, the version
+    `samples/HostileHost` pins (`Fhi.Metadata-1t36m`).
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so

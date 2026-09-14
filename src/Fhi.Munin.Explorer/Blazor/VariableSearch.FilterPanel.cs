@@ -92,10 +92,8 @@ public partial class VariableSearch
     /// rather than "mark it as the page's". Every value decides it, because nothing downstream
     /// can tell a catalogue name from prose this package composed.
     /// </para>
-    /// <para>
-    /// <c>Icons</c> are the decorative glyphs drawn after the label — a datasamling's datakategorier,
-    /// off the same facet payload as the row. Drawn by the panel alone: a chip carries the words.
-    /// </para>
+    /// <para><c>Icons</c> are a datasamling's datakategori glyphs, off the same facet payload as
+    /// the row; the panel draws them and the chip for the same value does not.</para>
     /// </remarks>
     private sealed record FacetValue(
         string Key,
@@ -1202,13 +1200,22 @@ public partial class VariableSearch
                 builder.CloseElement();
                 builder.AddContent(36, value.Label);
 
-                // After the name and inside the label: a glyph in front would read as another level
-                // of tree indent, and the slot is aria-hidden, so the checkbox keeps the name it had.
-                // What they stand for is in the datakategori facet above rather than said twice here.
+                // After the name: a variable number of glyphs in front of it would read as another
+                // level of tree indent. The glyphs are aria-hidden, so the words below are the only
+                // place the row says which datakategorier this datasamling carries.
                 if (value.Icons is { Count: > 0 } icons)
                 {
                     builder.AddContent(37, (RenderFragment)(nested =>
                         NodeIcons.Write(nested, icons, NodeIconClasses.Facets)));
+
+                    if (NodeIcons.SpokenCategories(icons, T) is { } categories)
+                    {
+                        builder.AddContent(38, " ");
+                        builder.OpenElement(39, "span");
+                        builder.AddAttribute(40, "class", "screenreader-only");
+                        builder.AddContent(41, categories);
+                        builder.CloseElement();
+                    }
                 }
 
                 // The space is a text node of the label, not the span's first character: a name is
@@ -1216,10 +1223,10 @@ public partial class VariableSearch
                 // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(40, " ");
-                    builder.OpenElement(41, "span");
-                    builder.AddAttribute(42, "class", "munin-explorer-filters__count");
-                    builder.AddContent(43, $"({count})");
+                    builder.AddContent(42, " ");
+                    builder.OpenElement(43, "span");
+                    builder.AddAttribute(44, "class", "munin-explorer-filters__count");
+                    builder.AddContent(45, $"({count})");
                     builder.CloseElement();
                 }
 

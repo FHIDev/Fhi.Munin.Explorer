@@ -232,7 +232,7 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
         // The glyphs are aria-hidden, so these words are the only place the tree says which
         // datakategori a datasamling carries. After the name rather than before it: a row is found
         // by its name, and a category read first delays the word the reader is listening for.
-        if (NodeIcons.SpokenCategories(node.Kind, icons, T) is { } categories)
+        if (NodeIcons.SpokenCategories(icons, T) is { } categories)
         {
             builder.OpenElement(23, "span");
             builder.AddAttribute(24, "class", "screenreader-only");

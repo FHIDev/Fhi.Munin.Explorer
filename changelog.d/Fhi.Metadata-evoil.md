@@ -8,6 +8,7 @@ category: Added
   leading it, so a row with three of them starts where a row with none does and the tree's apparent
   depth is unchanged. A token the icon table does not know falls back to the catch-all glyph, as it
   does in the hierarchy tree, and a datasamling with no categories at all draws nothing. The slot is
-  `aria-hidden`, so the checkbox's accessible name is exactly the name it was before — the
-  datakategori facet a few rows above is the same vocabulary as a list of checkboxes.
+  `aria-hidden` and the categories are named in `screenreader-only` words after the label instead,
+  the way the hierarchy tree names them, so the checkbox says which datakategorier its datasamling
+  carries rather than leaving the pairing to the glyphs alone.
   (Fhi.Metadata-evoil)

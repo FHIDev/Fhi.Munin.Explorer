@@ -133,12 +133,9 @@ public class VariableSearchTest : BunitContext
         return Render<VariableSearch>(b => p?.Invoke(b));
     }
 
-    /// <summary>The same render in a context of its own, for a test that draws one row two ways.</summary>
-    /// <remarks>
-    /// A context refuses a second service registration once a render has resolved one from it, so
-    /// two payloads in one test method need two contexts rather than two calls to
-    /// <see cref="RenderWith"/>.
-    /// </remarks>
+    /// <summary>The same render in a context of its own. A context refuses a second service
+    /// registration once a render has resolved one, so two payloads in one test need two
+    /// contexts.</summary>
     private static IRenderedComponent<VariableSearch> RenderApart(
         BunitContext context, IMuninExplorerClient client)
     {
@@ -5350,23 +5347,34 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenADatasamlingCarriesCategories_ThenTheCheckboxKeepsTheNameItHad()
+    public void Render_WhenADatasamlingCarriesCategories_ThenTheCheckboxNamesThemInWords()
     {
-        // The glyphs are decoration: measured against the same row drawn without them rather than
-        // against a string, because what this pins is that adding them changed nothing a screen
-        // reader hears. They follow the name for the other half of it — a variable number of glyphs
-        // in front would put the row's start where its neighbours' is not. (Fhi.Metadata-evoil)
+        // The glyphs are aria-hidden, so these words are the only place a reader who cannot see
+        // them learns which categories THIS row carries: the datakategori facet above lists the
+        // vocabulary and says nothing about which datasamling is in which. (Fhi.Metadata-evoil)
         using var other = new BunitContext();
         var bare = RenderApart(other, new FilteringClient(OnePage(), FacetsWithCategories([], [])));
         var drawn = RenderWith(new FilteringClient(
             OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])));
 
-        var named = AccessibleName.Of(FacetBox(drawn, "Tromsø 1"));
+        // After the name and before the count, in the render order the glyphs are drawn in.
+        Assert.Equal(
+            "Tromsø 1 Datakategori: Befolkningsbaserte helseregistre, Biobanker og prøvesamlinger. (5)",
+            AccessibleName.Of(FacetBox(drawn, "Tromsø 1")));
 
-        Assert.Equal(AccessibleName.Of(FacetBox(bare, "Tromsø 1")), named);
-        Assert.NotEqual("", named);
+        // A row with no glyphs says nothing extra: absence is not a category to announce.
+        Assert.Equal("Tromsø 1 (5)", AccessibleName.Of(FacetBox(bare, "Tromsø 1")));
+    }
 
-        var row = Facet(drawn, "Tromsø 1");
+    [Fact]
+    public void Render_WhenADatasamlingCarriesCategories_ThenTheGlyphsThemselvesStayDecoration()
+    {
+        // The words above are what a reader hears; the slot must not also reach the tree, and the
+        // checkbox stays the row's first child so a glyph never leads it. (Fhi.Metadata-evoil)
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])));
+
+        var row = Facet(cut, "Tromsø 1");
         var slot = row.QuerySelector(".munin-explorer-filters__icons")!;
 
         Assert.Equal("true", slot.GetAttribute("aria-hidden"));

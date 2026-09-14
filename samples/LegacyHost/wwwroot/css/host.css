@@ -758,26 +758,6 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-variant-numeric: tabular-nums;
 }
 
-/* One glyph per datakategori on a datasamling's row in the kilde facet, drawn AFTER the name — a
-   variable number of glyphs in front of it would read as a level of tree depth the row does not
-   have. The same shape `munin-explorer-hierarchy__icon*` takes in Kelda's tree, which is where
-   Stiler's rules for these two inherit from as well (PR 39340, in 0.1.75).
-
-   Cosmetic only: the slot is aria-hidden and the glyphs carry `width`, `height` and
-   `stroke="currentColor"` as attributes, so a host that defines neither name still gets them at
-   text size in the text colour, and the checkbox keeps the accessible name it had. */
-.munin-explorer-filters__icons {
-  align-items: center;
-  display: inline-flex;
-  flex: none;
-  gap: 4px;
-}
-.munin-explorer-filters__icon {
-  height: 1em;
-  width: 1em;
-  flex: none;
-}
-
 /* The row of active filters over the results: one capsule per ticked value, each with a close
    control, and a Fjern alle filtre at the end of it. Three names of ours, whose Stiler rules are
    PR 39206's — these are the stand-in for those, measured to the same boxes: the row 44px, a
