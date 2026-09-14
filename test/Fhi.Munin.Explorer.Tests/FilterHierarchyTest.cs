@@ -390,8 +390,8 @@ public class FilterHierarchyTest
     public void Build_WhenThePayloadRepeatsACatalogueId_ThenOneNodeIsDrawnCarryingTheFirstListedCount()
     {
         // Every level of the tree keys something by these ids, so a repeated one is both a row drawn
-        // twice and a dictionary that throws while building the panel. Copies that disagree about
-        // their parent are the two tests below; here every copy names the same one.
+        // twice and a dictionary that throws while building the panel. Here every copy names the same
+        // parents; the two below disagree about a delkilde, which each level settles its own way.
         var facets = Answer() with
         {
             Kilder = [Kilde(Mfr, count: 9), Kilde(Mfr, count: 3)],
