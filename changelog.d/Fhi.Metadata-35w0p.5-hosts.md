@@ -16,3 +16,8 @@ category: Notes for hosts
   explorer renders at most one detail view. A page that mounts two explorers, or that already means
   something of its own by `id="source"`, will have duplicates: if that is your page, keep your own
   ids off those nine until `Fhi.Metadata-uobxg` settles it. (Fhi.Metadata-35w0p.5)
+- **`DetailSection` is a new public component, and it is not one to mount.** It is the wrapper the
+  three detail views draw each of their blocks in, public only because a Razor component has to be
+  — the same reason `KildeHierarchyView` and `VariableListFilters` are. It takes an `Id` and its
+  content and emits the `<section>` described above, so mounting one on your own page gets you an
+  element with an id and nothing in it. (Fhi.Metadata-35w0p.5)

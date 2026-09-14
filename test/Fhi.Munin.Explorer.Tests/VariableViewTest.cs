@@ -684,4 +684,15 @@ public class VariableViewTest : BunitContext
         Assert.All(Wrappers(cut), section => Assert.True(
             section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
     }
+
+    [Fact]
+    public void Sections_Always_ThenNoTwoOfThemShareAnId()
+    {
+        // Plain ids are only safe because an explorer renders at most one detail view: VariableSearch
+        // picks between the three arms of one if/else, KildeSearch between two. This view writes the
+        // most of the three - eight - so it is where a second use of one would first go unnoticed.
+        var ids = Wrappers(Render(Whole())).Select(section => section.Id!).ToList();
+
+        Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
 }

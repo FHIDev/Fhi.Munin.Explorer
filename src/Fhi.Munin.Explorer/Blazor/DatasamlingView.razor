@@ -39,29 +39,27 @@
                    and every datasamling measured carries between three and eleven curated keys. *@
                 @if (Groups.Count > 0)
                 {
-                    <section id="@DetailSectionIds.Metadata" data-nav-section
-                             class="munin-explorer-page__section">
+                    <DetailSection Id="@DetailSectionIds.Metadata">
                         @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
 
                         @foreach (var group in Groups)
                         {
                             @DetailBlocks.Group(group, GroupLevel, Language)
                         }
-                    </section>
+                    </DetailSection>
                 }
 
                 @* Who is in the data and who is not — the first question a researcher asks about a
                    datasamling, and prose rather than a field, so it sits in the main column. *@
                 @if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
                 {
-                    <section id="@DetailSectionIds.Criteria" data-nav-section
-                             class="munin-explorer-page__section">
+                    <DetailSection Id="@DetailSectionIds.Criteria">
                         @DetailBlocks.Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
                         <p class="munin-explorer-datasamling__criteria"
                            lang="@CatalogueProperties.Foreign("no", Reader)">
                             @datasamling.InclusionAndExclusionCriteria
                         </p>
-                    </section>
+                    </DetailSection>
                 }
 
                 @* Whatever the explorer using this view puts after the metadata. This component
@@ -74,22 +72,20 @@
                    and no facts is the empty block the emptiness checks exist to prevent. *@
                 @if (DetailBlocks.AnyFacts(SourceInformation))
                 {
-                    <section id="@DetailSectionIds.Source" data-nav-section
-                             class="munin-explorer-page__section">
+                    <DetailSection Id="@DetailSectionIds.Source">
                         @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
                         @DetailBlocks.Facts(SourceInformation, Language)
-                    </section>
+                    </DetailSection>
                 }
 
                 @* A datasamling that counts nothing gets no block, and the type names the heading
                    rather than filling a row. *@
                 @if (AnyStatistics)
                 {
-                    <section id="@DetailSectionIds.Statistics" data-nav-section
-                             class="munin-explorer-page__section">
+                    <DetailSection Id="@DetailSectionIds.Statistics">
                         @DetailBlocks.Heading(BlockLevel, StatisticsHeading, "headline headline-s")
                         @DetailBlocks.Facts(Statistics, Language)
-                    </section>
+                    </DetailSection>
                 }
             </aside>
         </div>

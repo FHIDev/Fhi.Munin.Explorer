@@ -310,6 +310,17 @@ public class DatasamlingViewTest : BunitContext
             section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
     }
 
+    [Fact]
+    public void Sections_Always_ThenNoTwoOfThemShareAnId()
+    {
+        // Plain ids are only safe because an explorer renders at most one detail view: VariableSearch
+        // picks between the three arms of one if/else, KildeSearch between two. Within a view each id
+        // is written at most once, and this is what says so.
+        var ids = Wrappers(Render(Datasamling())).Select(section => section.Id!).ToList();
+
+        Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
+
     // ---------------------------------------------------------------------------------
     // Inclusion and exclusion criteria.
     // ---------------------------------------------------------------------------------

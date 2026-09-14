@@ -59,19 +59,17 @@
                    so it renders as a bare <h*> at the browser's own size instead. *@
                 @if (Groups.Count > 0)
                 {
-                    <section id="@DetailSectionIds.Metadata" data-nav-section
-                             class="munin-explorer-page__section">
+                    <DetailSection Id="@DetailSectionIds.Metadata">
                         @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
 
                         @foreach (var group in Groups)
                         {
                             @DetailBlocks.Group(group, GroupLevel, Language)
                         }
-                    </section>
+                    </DetailSection>
                 }
 
-                <section id="@DetailSectionIds.DataCollections" data-nav-section
-                         class="munin-explorer-page__section">
+                <DetailSection Id="@DetailSectionIds.DataCollections">
                     @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
                     <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" ShowNodeIcons="@ShowNodeIcons"
                                         DatasamlingHref="@DatasamlingHref" />
@@ -82,7 +80,7 @@
                             @DataCollectionStructure
                         </details>
                     }
-                </section>
+                </DetailSection>
 
                 @* Whatever the explorer using this view puts after the metadata. This component
                    never learns which explorer that is, so it wraps none of it in a section. *@
@@ -94,20 +92,18 @@
                    and no facts is the empty block the emptiness checks exist to prevent. *@
                 @if (DetailBlocks.AnyFacts(SourceInformation))
                 {
-                    <section id="@DetailSectionIds.Source" data-nav-section
-                             class="munin-explorer-page__section">
+                    <DetailSection Id="@DetailSectionIds.Source">
                         @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
                         @DetailBlocks.Facts(SourceInformation, Language)
-                    </section>
+                    </DetailSection>
                 }
 
                 @if (DetailBlocks.AnyFacts(Statistics))
                 {
-                    <section id="@DetailSectionIds.Statistics" data-nav-section
-                             class="munin-explorer-page__section">
+                    <DetailSection Id="@DetailSectionIds.Statistics">
                         @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
                         @DetailBlocks.Facts(Statistics, Language)
-                    </section>
+                    </DetailSection>
                 }
             </aside>
         </div>

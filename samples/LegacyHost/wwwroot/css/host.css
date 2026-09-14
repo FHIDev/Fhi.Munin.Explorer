@@ -1790,11 +1790,23 @@ table.munin-explorer-data-list tbody th {
    140px is Stiler's own number rather than a guess — components/munin-explorer/_page.scss, merged
    as PR 39299 — where it hangs on the data-nav-section attribute every one of these sections also
    carries. It is written on the class here because the class is what assert-sample-css-in-step.sh
-   reads out of src/, and on these elements the two select the same set. Stiler's other rules there
-   answer to a sticky header and a contents nav that neither sample has, so they are deliberately
-   not copied: the mobile step of the same offset, and a min-height on the last section so a
-   scroll-spy can reach it. None of the three is in a published Stiler — that PR bumped no version
-   — so a host has nothing for this name today, which costs nothing until the nav arrives. */
+   reads out of src/, and on these elements the two select the same set.
+
+   That file holds FOUR rules and this copies one, so the other three are named rather than left to
+   be found later. Two answer to a sticky header and a contents nav that neither sample has: the
+   mobile step of the same offset, 80px under Stiler's own mobile token, and a min-height on the
+   last section so a scroll-spy can reach the bottom of the page. The third is
+   `.munin-explorer-page__section:first-child > :is(h2,h3,h4,h5,h6):first-child { margin-top: 0 }`,
+   and it is the one of the four with a visual consequence: Stiler's own reset in _trail.scss is
+   fixed-depth and stops matching the moment the headings go inside a section, so PR 39299 moved it
+   here and rescoped it to the first section, leaving the gap between sections two onward alone.
+   It is not copied because the counterpart here is scoped differently and was never broken — the
+   reset above reaches a heading only as `root > * > h:first-child`, which is the name in __header
+   and never a block heading in __main, so the samples drew 16px over the first block before this
+   change and draw the same 16px after it. Copying Stiler's replacement would take that gap away,
+   which is a visual change this markup did not cause. None of the four is in a published Stiler —
+   that PR bumped no version — so a host has nothing for this name today, which costs nothing until
+   the nav arrives. */
 .munin-explorer-page__section {
   scroll-margin-top: 140px;
 }
