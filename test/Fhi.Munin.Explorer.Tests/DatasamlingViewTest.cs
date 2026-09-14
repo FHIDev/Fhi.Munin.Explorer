@@ -70,24 +70,22 @@ public class DatasamlingViewTest : BunitContext
     /// One sidebar box, found by the heading over it rather than by its position.
     /// </summary>
     /// <remarks>
-    /// The statistics box is drawn only when it has a row, so the boxes slide up under headings
-    /// that move with them and a position would hand back the wrong one without being able to say
-    /// it had.
+    /// Either box is drawn only when it has a row, so a position would hand back the wrong one
+    /// without being able to say it had. The heading can say it.
     /// </remarks>
     private static IElement Box(IRenderedComponent<DatasamlingView> cut, string heading)
     {
         var aside = cut.Find(".munin-explorer-datasamling__aside");
 
-        var found = aside.Children.FirstOrDefault(e => e.TextContent == heading)
+        var found = aside.Children.FirstOrDefault(
+                        e => e.QuerySelector("h3, h4, h5, h6")?.TextContent == heading)
                     ?? throw new InvalidOperationException(
-                        $"No '{heading}' heading in the sidebar, only: "
-                        + $"{string.Join(", ", aside.Children.Select(e => e.TextContent))}.");
+                        $"No '{heading}' section in the sidebar, only: "
+                        + $"{string.Join(", ", aside.QuerySelectorAll("h3, h4, h5, h6").Select(e => e.TextContent))}.");
 
-        return found.NextElementSibling is { TagName: "DL" } box
-            ? box
-            : throw new InvalidOperationException(
-                $"The '{heading}' heading is followed by {found.NextElementSibling?.TagName ?? "nothing"} "
-                + "rather than by its own box, so that box drew no facts at all.");
+        return found.QuerySelector("dl")
+               ?? throw new InvalidOperationException(
+                   $"The '{heading}' section holds no box, so it drew no facts at all.");
     }
 
     private static IElement SourceInformation(IRenderedComponent<DatasamlingView> cut) =>
@@ -133,7 +131,7 @@ public class DatasamlingViewTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // The exact list, for the reason the kilde view's version of it is exact: a ninth name here
+        // The exact list, for the reason the kilde view's version of it is exact: a tenth name here
         // is news, and news that has to be answered in both sample stylesheets before it ships.
         // None of these was ever helsedata's, so every one is a promise only the samples keep.
         var cut = Render(Datasamling());
@@ -154,6 +152,8 @@ public class DatasamlingViewTest : BunitContext
             "munin-explorer-datasamling__identifiers",
             "munin-explorer-datasamling__main",
             "munin-explorer-group",                   // shared with the kilde and variable views
+            // The wrapper each block below the name sits in, so a contents nav can anchor on it.
+            "munin-explorer-page__section",
         ], invented);
     }
 
@@ -239,6 +239,75 @@ public class DatasamlingViewTest : BunitContext
         // nothing to do with a heading promising a block.
         Assert.DoesNotContain("Metadata", BlockHeadings(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-group"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The section each block sits in, which is what a contents nav will anchor on.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Every section this view emits, in document order.</summary>
+    private static IReadOnlyList<IElement> Wrappers(IRenderedComponent<DatasamlingView> cut) =>
+        [.. cut.FindAll("section.munin-explorer-page__section")];
+
+    [Fact]
+    public void Sections_Always_ThenEveryBlockIsWrappedAndTheNameAboveThemIsNot()
+    {
+        var cut = Render(Datasamling());
+
+        Assert.Equal(
+            [DetailSectionIds.Metadata, DetailSectionIds.Criteria,
+             DetailSectionIds.Source, DetailSectionIds.Statistics],
+            Wrappers(cut).Select(section => section.Id!));
+
+        Assert.All(Wrappers(cut), section =>
+        {
+            // helsedata's own attribute, which their register pages already carry, rather than one
+            // invented here — and the block's heading opens the section rather than sitting above it.
+            Assert.True(section.HasAttribute("data-nav-section"));
+            Assert.Contains(section.FirstElementChild!.TagName, (string[])["H3", "H4", "H5", "H6"]);
+        });
+
+        // The name is the view's own title, not a section of it.
+        Assert.Null(cut.Find("h2").Closest("[data-nav-section]"));
+    }
+
+    [Fact]
+    public void Sections_WhenTheSameDatasamlingIsReadInBothLanguages_ThenOnlyTheHeadingsDiffer()
+    {
+        // THE TRAP. An id slugged from the heading passes every test that runs in one language and
+        // breaks every deep link the moment the other reader opens it.
+        var norwegian = Render(Datasamling(), language: "no");
+        var english = Render(Datasamling(), language: "en");
+
+        Assert.Equal(Wrappers(norwegian).Select(s => s.Id!), Wrappers(english).Select(s => s.Id!));
+
+        // Worth nothing unless the headings really do differ. The statistics heading is left out
+        // because the catalogue's own statistikktype is inside it; the three above it are enough.
+        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon"],
+                     BlockHeadings(norwegian).Take(3));
+        Assert.Equal(["Metadata", "Inclusion and exclusion criteria", "Source information"],
+                     BlockHeadings(english).Take(3));
+    }
+
+    [Fact]
+    public void Sections_WhenABlockDrawsNothing_ThenNoEmptyWrapperIsLeftBehind()
+    {
+        // The wrapper goes INSIDE each emptiness check. Outside one it would draw a section holding
+        // a heading and nothing else, which is worse than the bare heading it replaced. Both of
+        // this view's suppressible blocks are taken away at once — the criteria in the main column
+        // and the statistics in the sidebar.
+        var cut = Render(Datasamling() with
+        {
+            InclusionAndExclusionCriteria = null,
+            Frequency = null,
+            CountingUnit = null,
+            VariableCount = 0,
+        });
+
+        Assert.Equal([DetailSectionIds.Metadata, DetailSectionIds.Source],
+                     Wrappers(cut).Select(section => section.Id!));
+        Assert.All(Wrappers(cut), section => Assert.True(
+            section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
     }
 
     // ---------------------------------------------------------------------------------
@@ -444,9 +513,22 @@ public class DatasamlingViewTest : BunitContext
     public void HeadingId_WhenTheHostNamesNothing_ThenNoEmptyIdIsEmitted()
     {
         // An id="" is a duplicate the moment a second view is on the page, and an aria-labelledby
-        // pointing at it resolves to whichever came first.
-        Assert.Empty(Render(Datasamling()).FindAll("[id]"));
+        // pointing at it resolves to whichever came first. The section ids below are the view's own
+        // and are always written.
+        var ids = Render(Datasamling()).FindAll("[id]").Select(e => e.Id!).ToList();
+
+        Assert.DoesNotContain(ids, id => id.Length == 0);
+        Assert.All(ids, id => Assert.Contains(id, DetailSectionIdsUnderTest));
     }
+
+    /// <summary>Every id this view is allowed to write when the host names none.</summary>
+    private static readonly string[] DetailSectionIdsUnderTest =
+    [
+        DetailSectionIds.Metadata,
+        DetailSectionIds.Criteria,
+        DetailSectionIds.Source,
+        DetailSectionIds.Statistics,
+    ];
 
     [Fact]
     public void Sections_WhenAnExplorerPassesThem_ThenTheyComeLastInTheMainColumnRatherThanInTheSidebar()

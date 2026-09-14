@@ -132,8 +132,8 @@ public sealed partial class DatasamlingView : ComponentBase
                 (T.FieldVariableCount, datasamling.VariableCount > 0 ? datasamling.VariableCount.ToString() : null, false),
             ];
 
-    /// <summary>Whether the statistics block has a row to draw, heading included.</summary>
-    private bool AnyStatistics => Statistics.Any(fact => !string.IsNullOrWhiteSpace(fact.Value));
+    /// <summary>Whether the statistics block has a row to draw, heading and section included.</summary>
+    private bool AnyStatistics => DetailBlocks.AnyFacts(Statistics);
 
     /// <summary>
     /// The statistics heading, naming the kind of statistics rather than just saying "Statistikk".

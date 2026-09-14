@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
@@ -32,7 +33,7 @@ internal static class StatisticsBlock
     internal static RenderFragment For(
         VariableDetail? variable, int headingLevel, string headingClass, Texts texts) => builder =>
     {
-        if (variable is not { Statistics.Count: > 0 })
+        if (!Has(variable))
         {
             return;
         }
@@ -53,6 +54,16 @@ internal static class StatisticsBlock
             seq = FrequencyTable(builder, seq, statistic, texts);
         }
     };
+
+    /// <summary>
+    /// Whether <see cref="For"/> would draw anything, so a caller can wrap it in a section.
+    /// </summary>
+    /// <remarks>
+    /// The guard inside <see cref="For"/> is this same call: a wrapper that answered the emptiness
+    /// question for itself could leave a section holding a heading and nothing else.
+    /// </remarks>
+    internal static bool Has([NotNullWhen(true)] VariableDetail? variable) =>
+        variable is { Statistics.Count: > 0 };
 
     /// <summary>
     /// The heading, which names the kind of statistics rather than just saying "Statistikk".

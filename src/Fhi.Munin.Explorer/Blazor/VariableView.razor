@@ -28,74 +28,109 @@
         <div class="munin-explorer-whole__body">
             <div class="munin-explorer-whole__main">
 
+                @* Every block below is a <section> carrying a fixed English id, so a contents nav
+                   can anchor on it and a link into one is the same link in either language. The
+                   wrapper sits INSIDE each emptiness check, never around it. *@
+
                 @* Resolved from the payload, exactly as the kilde view resolves a source's. *@
                 @if (Groups.Count > 0)
                 {
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+                    <section id="@DetailSectionIds.Metadata" data-nav-section
+                             class="munin-explorer-page__section">
+                        @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
 
-                    foreach (var group in Groups)
-                    {
-                        @DetailBlocks.Group(group, GroupLevel, Language)
-                    }
+                        @foreach (var group in Groups)
+                        {
+                            @DetailBlocks.Group(group, GroupLevel, Language)
+                        }
+                    </section>
                 }
 
                 @* Kodeverk arrives from the explorer that already draws it, rather than being
-                   rebuilt here. *@
+                   rebuilt here, so this view wraps none of it in a section. *@
                 @Sections
 
                 @if (Versions.Count > 0)
                 {
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingVersionHistory, "headline headline-s")
-                    @VersionHistory
+                    <section id="@DetailSectionIds.Versions" data-nav-section
+                             class="munin-explorer-page__section">
+                        @DetailBlocks.Heading(BlockLevel, T.HeadingVersionHistory, "headline headline-s")
+                        @VersionHistory
+                    </section>
                 }
 
                 @* Heading and table both, or neither — the block answers the emptiness question
-                   itself, so this view and the row's Data tab cannot disagree about it. *@
-                @StatisticsBlock.For(variable, BlockLevel, "headline headline-s", T)
+                   itself, and StatisticsBlock.Has is that same answer, so this view and the row's
+                   Data tab cannot disagree about it. *@
+                @if (StatisticsBlock.Has(variable))
+                {
+                    <section id="@DetailSectionIds.Statistics" data-nav-section
+                             class="munin-explorer-page__section">
+                        @StatisticsBlock.For(variable, BlockLevel, "headline headline-s", T)
+                    </section>
+                }
             </div>
 
             <aside class="munin-explorer-whole__aside">
-                @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                @DetailBlocks.Facts(SourceInformation, Language)
+                @if (DetailBlocks.AnyFacts(SourceInformation))
+                {
+                    <section id="@DetailSectionIds.Source" data-nav-section
+                             class="munin-explorer-page__section">
+                        @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                        @DetailBlocks.Facts(SourceInformation, Language)
+                    </section>
+                }
 
                 @if (CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T, Dates) is { } period)
                 {
-                    @DetailBlocks.Heading(BlockLevel, T.FieldDataPeriod, "headline headline-s")
-                    <p class="margin--none">@period</p>
+                    <section id="@DetailSectionIds.DataPeriod" data-nav-section
+                             class="munin-explorer-page__section">
+                        @DetailBlocks.Heading(BlockLevel, T.FieldDataPeriod, "headline headline-s")
+                        <p class="margin--none">@period</p>
+                    </section>
                 }
 
                 @if (!string.IsNullOrWhiteSpace(variable.DataType))
                 {
-                    @DetailBlocks.Heading(BlockLevel, T.FieldDataType, "headline headline-s")
-                    <p class="margin--none">@T.DataTypeLabel(variable.DataType)</p>
+                    <section id="@DetailSectionIds.DataType" data-nav-section
+                             class="munin-explorer-page__section">
+                        @DetailBlocks.Heading(BlockLevel, T.FieldDataType, "headline headline-s")
+                        <p class="margin--none">@T.DataTypeLabel(variable.DataType)</p>
+                    </section>
                 }
 
                 @if (variable.AllVariabelgrupper.Count > 0)
                 {
-                    @DetailBlocks.Heading(BlockLevel, T.FieldVariableGroups, "headline headline-s")
-                    <ul class="munin-explorer-whole__list">
-                        @foreach (var group in variable.AllVariabelgrupper)
-                        {
-                            <li lang="@CatalogueProperties.Foreign("no", Reader)">@group.Name</li>
-                        }
-                    </ul>
+                    <section id="@DetailSectionIds.VariableGroups" data-nav-section
+                             class="munin-explorer-page__section">
+                        @DetailBlocks.Heading(BlockLevel, T.FieldVariableGroups, "headline headline-s")
+                        <ul class="munin-explorer-whole__list">
+                            @foreach (var group in variable.AllVariabelgrupper)
+                            {
+                                <li lang="@CatalogueProperties.Foreign("no", Reader)">@group.Name</li>
+                            }
+                        </ul>
+                    </section>
                 }
 
                 @if (variable.AllDatasamlinger.Count > 0)
                 {
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingDataCollections, "headline headline-s")
-                    <ul class="munin-explorer-whole__list">
-                        @foreach (var datasamling in variable.AllDatasamlinger)
-                        {
-                            <li>
-                                <span lang="@CatalogueProperties.Foreign("no", Reader)">@datasamling.Name</span>
-                                @if (CatalogueDate.Period(datasamling.ValidFrom, datasamling.ValidTo, Language, T, Dates) is { } validity)
-                                {
-                                    <span class="caption"> (@validity)</span>
-                                }
-                            </li>
-                        }
-                    </ul>
+                    <section id="@DetailSectionIds.DataCollections" data-nav-section
+                             class="munin-explorer-page__section">
+                        @DetailBlocks.Heading(BlockLevel, T.HeadingDataCollections, "headline headline-s")
+                        <ul class="munin-explorer-whole__list">
+                            @foreach (var datasamling in variable.AllDatasamlinger)
+                            {
+                                <li>
+                                    <span lang="@CatalogueProperties.Foreign("no", Reader)">@datasamling.Name</span>
+                                    @if (CatalogueDate.Period(datasamling.ValidFrom, datasamling.ValidTo, Language, T, Dates) is { } validity)
+                                    {
+                                        <span class="caption"> (@validity)</span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </section>
                 }
             </aside>
         </div>

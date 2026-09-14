@@ -366,6 +366,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     above `munin-explorer-results` rather than inside it, deliberately: the results container is
     drawn only with rows on screen, and the count inside this row is the component's one polite
     live region, which has to be in the DOM before its text arrives.
+    The three detail views add `munin-explorer-page__section`, worn by the `<section>` each of
+    their blocks sits in — the kilde, datasamling and variable views alike. A handle, and the
+    plainest kind: the wrapper carries an `id` and helsedata's own `data-nav-section` and no
+    padding, border or margin of its own, so an undefined one costs nothing at all today. What a
+    rule buys is the `scroll-margin` that keeps a linked-to heading clear of a sticky header, which
+    is why the section exists before the contents nav that will use it does. Stiler's rules for
+    it are written — `components/munin-explorer/_page.scss`, merged as PR 39299 — and hang the
+    offset on the `data-nav-section` attribute rather than on the class; that PR bumped no
+    version, so no published Stiler carries them and every host draws the wrapper undrawn until
+    one does.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
@@ -436,12 +446,23 @@ These are not style preferences — each one is a host that breaks otherwise.
     correctly announced, since `aria-checked` carries the state, but with no visible on/off mark:
     a sighted reader loses what a screen reader user still hears.
 
-  Ids are a separate family, each suffixed with a per-instance discriminator so two mounts on one
-  page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`, `-toggle-*`,
-  `-detail-*`, `-tab-*`, `-source-*` and the rest. `munin-explorer-source-*` is worth naming,
-  because it reads like a class and is not one: the drill-in region it identifies wears the class
-  `munin-explorer-drilldown`, so a host or a test reaching for `.munin-explorer-source` comes up
-  empty.
+  The detail views' section ids are the one exception to the paragraph below, and a deliberate
+  one: `metadata`, `criteria`, `source`, `statistics`, `datacollections`, `versions`, `dataperiod`,
+  `datatype` and `variablegroups` are written bare, because a link to a section is a link one
+  reader sends another and a discriminator minted at run time is a link that resolves once. They
+  are fixed English words rather than a slug of the heading for the same reason — the headings are
+  bilingual, so a derived id would differ between `nb` and `en`. Within one mount they cannot
+  repeat: an explorer renders at most one detail view, and each view emits each id at most once.
+  Two mounts on one page, or a host page that already means something by `id="source"`, are the
+  bound on that — `Fhi.Metadata-uobxg` records it, and the chassis bead that adds the contents nav
+  is where it gets settled.
+
+  Ids are otherwise a separate family, each suffixed with a per-instance discriminator so two
+  mounts on one page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`,
+  `-toggle-*`, `-detail-*`, `-tab-*`, `-source-*` and the rest. `munin-explorer-source-*` is
+  worth naming, because it reads like a class and is not one: the drill-in region it identifies
+  wears the class `munin-explorer-drilldown`, so a host or a test reaching for
+  `.munin-explorer-source` comes up empty.
 
   One family more is written by interpolation rather than as a literal, so the table below cannot
   carry it and this paragraph has to: `RowCell.Write` dresses each result column as
@@ -626,6 +647,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__tab--active` | handle |
   | `munin-explorer-meta__tab-content` | handle |
   | `munin-explorer-meta__tabs` | handle |
+  | `munin-explorer-page__section` | handle |
   | `munin-explorer-pagination` | handle |
   | `munin-explorer-pagination-content` | handle |
   | `munin-explorer-pagination-pages` | meaning |

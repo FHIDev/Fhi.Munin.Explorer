@@ -1780,6 +1780,25 @@ table.munin-explorer-data-list tbody th {
   background: var(--grey10);
 }
 
+/* One block of a detail view — the metadata, the datasamlinger, the sidebar boxes and the rest —
+   wrapped so a contents nav has something to anchor on and a scroll-spy something to watch.
+
+   The scroll offset is the ONLY declaration, and that is the point of the rule rather than an
+   omission: the wrapper went around markup that was already spaced correctly, so padding or a
+   margin here would move a page whose whole acceptance was that nothing moved.
+
+   140px is Stiler's own number rather than a guess — components/munin-explorer/_page.scss, merged
+   as PR 39299 — where it hangs on the data-nav-section attribute every one of these sections also
+   carries. It is written on the class here because the class is what assert-sample-css-in-step.sh
+   reads out of src/, and on these elements the two select the same set. Stiler's other rules there
+   answer to a sticky header and a contents nav that neither sample has, so they are deliberately
+   not copied: the mobile step of the same offset, and a min-height on the last section so a
+   scroll-spy can reach it. None of the three is in a published Stiler — that PR bumped no version
+   — so a host has nothing for this name today, which costs nothing until the nav arrives. */
+.munin-explorer-page__section {
+  scroll-margin-top: 140px;
+}
+
 /* Copied from Stiler's `_trail.scss`, selector for selector: a stand-in that works differently from
    the rule it stands in for is not standing in for it. Scoped to the aside for Stiler's reason —
    the same class in the main column keeps its two tracks. Not the `munin-explorer-meta__grid-1`

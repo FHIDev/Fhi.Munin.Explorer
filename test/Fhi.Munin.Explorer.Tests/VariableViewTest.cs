@@ -590,4 +590,98 @@ public class VariableViewTest : BunitContext
             Assert.DoesNotContain(english, cut.Markup, StringComparison.OrdinalIgnoreCase);
         }
     }
+
+    // ---------------------------------------------------------------------------------
+    // The section each block sits in, which is what a contents nav will anchor on.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Every section this view emits, in document order.</summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> Wrappers(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll("section.munin-explorer-page__section")];
+
+    /// <summary>A variable with every one of this view's eight blocks filled in.</summary>
+    /// <remarks>
+    /// The plain fixture fills three, so a list read off it would say nothing about the five that
+    /// are drawn only when the catalogue has something to put in them.
+    /// </remarks>
+    private static VariableDetail Whole() => Detail() with
+    {
+        DataFrom = new DateTimeOffset(2022, 9, 20, 0, 0, 0, TimeSpan.Zero),
+        DataTo = new DateTimeOffset(2022, 11, 9, 0, 0, 0, TimeSpan.Zero),
+        Versions = [Version(Guid.NewGuid())],
+        DatasamlingStatisticsType = "yearly",
+        Statistics = [new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022" } }],
+        AllVariabelgrupper = [new() { Id = Guid.NewGuid(), Name = "Funksjonsmål" }],
+        AllDatasamlinger = [new() { Id = Guid.NewGuid(), Name = "Inklusjon" }],
+    };
+
+    [Fact]
+    public void Sections_Always_ThenEveryBlockIsWrappedAndTheNameAboveThemIsNot()
+    {
+        var cut = Render(Whole());
+
+        Assert.Equal(
+            [DetailSectionIds.Metadata, DetailSectionIds.Versions, DetailSectionIds.Statistics,
+             DetailSectionIds.Source, DetailSectionIds.DataPeriod, DetailSectionIds.DataType,
+             DetailSectionIds.VariableGroups, DetailSectionIds.DataCollections],
+            Wrappers(cut).Select(section => section.Id!));
+
+        Assert.All(Wrappers(cut), section =>
+        {
+            // helsedata's own attribute, which their register pages already carry, rather than one
+            // invented here — and the block's heading opens the section rather than sitting above it.
+            Assert.True(section.HasAttribute("data-nav-section"));
+            Assert.Contains(section.FirstElementChild!.TagName, (string[])["H3", "H4", "H5", "H6"]);
+        });
+
+        // The name is the view's own title, not a section of it.
+        Assert.Null(cut.Find("h2").Closest("[data-nav-section]"));
+    }
+
+    [Fact]
+    public void Sections_WhenTheSameVariableIsReadInBothLanguages_ThenOnlyTheHeadingsDiffer()
+    {
+        // THE TRAP. An id slugged from the heading passes every test that runs in one language and
+        // breaks every deep link the moment the other reader opens it.
+        var norwegian = Render(Whole(), "no");
+        var english = Render(Whole(), "en");
+
+        Assert.Equal(Wrappers(norwegian).Select(s => s.Id!), Wrappers(english).Select(s => s.Id!));
+
+        // Worth nothing unless the headings really do differ. Metadata is the same word in both,
+        // which is exactly why the ids cannot be read off them: six of these eight are not.
+        Assert.Equal(
+            ["Metadata", "Versjonshistorikk", "Kildeinformasjon", "Dataperiode", "Datatype",
+             "Variabelgrupper", "Datasamlinger"],
+            HeadingsExceptStatistics(norwegian));
+        Assert.Equal(
+            ["Metadata", "Version history", "Source information", "Data period", "Data type",
+             "Variable groups", "Data collections"],
+            HeadingsExceptStatistics(english));
+    }
+
+    /// <summary>
+    /// The section headings, less the statistics one, which carries the catalogue's own
+    /// statistikktype inside it and is asserted where that translation is.
+    /// </summary>
+    private static IEnumerable<string> HeadingsExceptStatistics(IRenderedComponent<VariableView> cut) =>
+        Wrappers(cut)
+            .Where(section => section.Id != DetailSectionIds.Statistics)
+            .Select(section => section.FirstElementChild!.TextContent);
+
+    [Fact]
+    public void Sections_WhenABlockDrawsNothing_ThenNoEmptyWrapperIsLeftBehind()
+    {
+        // The wrapper goes INSIDE each emptiness check. Outside one it would draw a section holding
+        // a heading and nothing else, which is worse than the bare heading it replaced. The plain
+        // fixture carries no versions, no statistics, no data period and neither list, so five of
+        // the eight are suppressed here at once — including the statistics block, whose emptiness
+        // check lives in StatisticsBlock rather than in this view.
+        var cut = Render(Detail());
+
+        Assert.Equal([DetailSectionIds.Metadata, DetailSectionIds.Source, DetailSectionIds.DataType],
+                     Wrappers(cut).Select(section => section.Id!));
+        Assert.All(Wrappers(cut), section => Assert.True(
+            section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
+    }
 }
