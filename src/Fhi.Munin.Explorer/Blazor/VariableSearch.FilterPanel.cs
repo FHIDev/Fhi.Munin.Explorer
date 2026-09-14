@@ -564,8 +564,8 @@ public partial class VariableSearch
     /// <summary>Whether a kilde, or anything drawn under it, holds <paramref name="term"/>.</summary>
     /// <remarks>
     /// A datasamling is reached under its delkilde as well as straight off the kilde, since
-    /// <see cref="FilterHierarchy.KildeLevels"/> puts it in whichever of the two lookups its parent says. What the
-    /// reader then sees of a deep match is <see cref="OpenBranchesToMatches"/>'s business.
+    /// <see cref="FilterHierarchy.KildeLevels"/> puts it in whichever of the two lookups its parent
+    /// says. What the reader sees of a deep match is <see cref="OpenBranchesToMatches"/>'s business.
     /// </remarks>
     private bool KildeMatches(KildeFacet kilde, KildeLevelLookup levels, string term) =>
         LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)

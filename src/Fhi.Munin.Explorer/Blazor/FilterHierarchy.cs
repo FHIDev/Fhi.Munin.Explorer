@@ -96,20 +96,15 @@ internal static class FilterHierarchy
     /// <summary>Both child levels of the kilde tree, in one pass over the facets.</summary>
     internal static KildeLevelLookup KildeLevels(FilterOptions facets)
     {
-        // GroupBy rather than ToDictionary: a payload repeating a delkilde id is malformed, but it
-        // throws here on the render path and inside the kilde search box's onchange, either of
-        // which tears the circuit down over what would otherwise be one oddly drawn row.
-        var delkildeOwner = facets.Delkilder
-            .GroupBy(delkilde => delkilde.Id)
-            .ToDictionary(group => group.Key, group => group.First().KildeId);
+        var delkilder = ById(facets.Delkilder, delkilde => delkilde.Id);
 
         // A delkilde the payload left out — cross-filtered away, or belonging to another kilde — is
         // an absent parent, so its datasamlinger fall back to the kilde rather than disappearing
         // with it.
         bool HangsUnderItsDelkilde(DatasamlingFacet datasamling) =>
             datasamling.DelkildeId is { } parent
-            && delkildeOwner.TryGetValue(parent, out var owner)
-            && owner == datasamling.KildeId;
+            && delkilder.TryGetValue(parent, out var delkilde)
+            && delkilde.KildeId == datasamling.KildeId;
 
         return new KildeLevelLookup(
             facets.Delkilder.ToLookup(delkilde => delkilde.KildeId),
@@ -136,6 +131,15 @@ internal static class FilterHierarchy
 
         bool Parented(T entry) => parentId(entry) is { } parent && known.Contains(parent);
     }
+
+    /// <summary>The entries keyed by id, the first listed copy of a repeated one winning.</summary>
+    /// <remarks>
+    /// GroupBy rather than ToDictionary: a payload repeating an id is malformed, but it throws on
+    /// the render path and inside the kilde search box's onchange alike, either of which tears the
+    /// circuit down over what would otherwise be one oddly drawn row.
+    /// </remarks>
+    private static Dictionary<Guid, T> ById<T>(IEnumerable<T> entries, Func<T, Guid> id) =>
+        entries.GroupBy(id).ToDictionary(group => group.Key, group => group.First());
 
     /// <summary>One kilde, with the two levels under it and whatever groups hang off the kilde itself.</summary>
     /// <remarks>
@@ -175,6 +179,11 @@ internal static class FilterHierarchy
                  ]));
 
     /// <summary>Datasamlinger as branches: what hangs under one is the groups placed in it.</summary>
+    /// <remarks>
+    /// DistinctBy rather than <see cref="OnePerId{T}"/>, which the levels carrying a parent id go
+    /// through: these are already bucketed by the parent they hang from, so two copies of one id
+    /// here agree about it and there is no parented copy to prefer.
+    /// </remarks>
     private static IReadOnlyList<HierarchyNode> Datasamlinger(
         IEnumerable<DatasamlingFacet> datasamlinger, string parentPath, GruppePlacements grupper) =>
     [
@@ -231,9 +240,10 @@ internal static class FilterHierarchy
 
         foreach (var gruppe in grupper)
         {
-            // One node per placement, and one placement per owner: a payload repeating an owner
-            // would otherwise draw two siblings under one parent carrying one path between them.
-            foreach (var owner in gruppe.Owners.Distinct())
+            // A payload repeating an owner files the group twice under it, which Grupper's own
+            // OnePerId then collapses — so one node per placement, without a second pass here
+            // claiming to be what produces it.
+            foreach (var owner in gruppe.Owners)
             {
                 // The deepest owning id the answer still carries. A datasamling or delkilde the
                 // cross-filtering dropped would otherwise take the groups under it off the tree,
@@ -262,11 +272,6 @@ internal static class FilterHierarchy
         static ILookup<Guid, VariabelgruppeFacet> Lookup(
             IEnumerable<(Guid Owner, VariabelgruppeFacet Gruppe)> placed) =>
             placed.ToLookup(entry => entry.Owner, entry => entry.Gruppe);
-
-        // GroupBy rather than ToDictionary, for the reason KildeLevels gives: a repeated id is a
-        // malformed payload, and throwing here takes the circuit rather than one drawn row.
-        static Dictionary<Guid, T> ById<T>(IEnumerable<T> entries, Func<T, Guid> id) =>
-            entries.GroupBy(id).ToDictionary(group => group.Key, group => group.First());
     }
 
     /// <summary>

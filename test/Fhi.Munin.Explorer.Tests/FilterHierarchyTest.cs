@@ -15,7 +15,9 @@ namespace Fhi.Munin.Explorer.Tests;
 public class FilterHierarchyTest
 {
     private static readonly Guid Mfr = new("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid Npr = new("aaaaaaaa-0000-0000-0000-000000000002");
     private static readonly Guid Fodsel = new("bbbbbbbb-0000-0000-0000-000000000001");
+    private static readonly Guid Svangerskap = new("bbbbbbbb-0000-0000-0000-000000000002");
     private static readonly Guid Registrering = new("dddddddd-0000-0000-0000-000000000001");
     private static readonly Guid Oppfolging = new("dddddddd-0000-0000-0000-000000000002");
     private static readonly Guid Bakgrunn = new("cccccccc-0000-0000-0000-000000000001");
@@ -287,6 +289,171 @@ public class FilterHierarchyTest
         Assert.Equal(12, nodes.Count(node => node.Level == HierarchyLevel.Datasamling));
         Assert.Equal(48, nodes.Count(node => node.Level == HierarchyLevel.Variabelgruppe));
         Assert.Equal(nodes.Count, nodes.Select(node => node.Path).Distinct().Count());
+    }
+
+    [Fact]
+    public void Build_WhenADelkildeNamesAnotherAsItsParent_ThenItIsDrawnUnderItWithItsOwnLevelsBeneath()
+    {
+        // A delkilde hangs off a delkilde as readily as off its kilde, and drawing the child beside
+        // its parent instead would say the two are peers of one kilde.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder = [Delkilde(Fodsel, Mfr), Delkilde(Svangerskap, Mfr, parent: Fodsel)],
+            Datasamlinger = [Datasamling(Registrering, Mfr, Fodsel), Datasamling(Oppfolging, Mfr, Svangerskap)],
+            HierarchyVariabelgrupper =
+            [
+                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel)),
+                Gruppe(Levekaar, "Levekår", Under(Mfr, delkilde: Svangerskap))
+            ]
+        };
+
+        var tree = FilterHierarchy.Build(facets);
+        var fodsel = Assert.Single(Assert.Single(tree).Children);
+        var svangerskap = fodsel.Children[1];
+
+        Assert.Equal([HierarchyLevel.Datasamling, HierarchyLevel.Delkilde, HierarchyLevel.Variabelgruppe],
+                     fodsel.Children.Select(node => node.Level));
+        Assert.Equal(Svangerskap, svangerskap.Id);
+        Assert.Equal($"Kilde:{Mfr}/Delkilde:{Fodsel}/Delkilde:{Svangerskap}", svangerskap.Path);
+        Assert.Equal([Oppfolging, Levekaar], svangerskap.Children.Select(node => node.Id));
+        Assert.Equal(1, Flatten(tree).Count(node => node.Id == Svangerskap));
+    }
+
+    [Fact]
+    public void Build_WhenADelkildesParentIsNotInTheAnswer_ThenItStandsAtKildeLevelWithWhatIsUnderIt()
+    {
+        // The parent delkilde is cross-filtered away as readily as any other facet, and losing its
+        // children with it would take a whole branch of filters off the panel.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder = [Delkilde(Svangerskap, Mfr, parent: NotInThePayload)],
+            Datasamlinger = [Datasamling(Registrering, Mfr, Svangerskap)]
+        };
+
+        var delkilde = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+        Assert.Equal(HierarchyLevel.Delkilde, delkilde.Level);
+        Assert.Equal(Svangerskap, delkilde.Id);
+        Assert.Equal(Registrering, Assert.Single(delkilde.Children).Id);
+    }
+
+    [Fact]
+    public void Build_WhenThePayloadRepeatsAVariabelgruppeId_ThenTheParentedCopyIsTheOneDrawn()
+    {
+        // Two copies of one id differ in owner, parent and name alike, so keeping the first listed
+        // would draw the group somewhere else, under nothing, and call it something else.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Datasamlinger = [Datasamling(Registrering, Mfr), Datasamling(Oppfolging, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering)),
+                Gruppe(Levekaar, "Levekår først", Under(Mfr, datasamling: Oppfolging)),
+                Gruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Registrering), parent: Bakgrunn)
+            ]
+        };
+
+        var tree = FilterHierarchy.Build(facets);
+        var kilde = Assert.Single(tree);
+        var levekaar = Assert.Single(Assert.Single(kilde.Children[0].Children).Children);
+
+        Assert.Equal("Levekår", levekaar.Name);
+        Assert.Empty(kilde.Children[1].Children);
+        Assert.Equal(1, Flatten(tree).Count(node => node.Id == Levekaar));
+    }
+
+    [Fact]
+    public void Build_WhenAGroupNamesOneOwnerTwice_ThenItIsDrawnOnceUnderIt()
+    {
+        // One press ticks one filter, so a repeated owner drawing two rows would put two chips over
+        // the results for it. (Fhi.Metadata-l9l2n.82)
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Datasamlinger = [Datasamling(Registrering, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Gruppe(Bakgrunn, "Bakgrunn",
+                       [.. Under(Mfr, datasamling: Registrering), .. Under(Mfr, datasamling: Registrering)])
+            ]
+        };
+
+        var datasamling = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+        Assert.Equal(Bakgrunn, Assert.Single(datasamling.Children).Id);
+    }
+
+    [Fact]
+    public void Build_WhenThePayloadRepeatsACatalogueId_ThenOneNodeIsDrawnCarryingTheFirstListedCount()
+    {
+        // Every level of the tree keys something by these ids, so a repeated one is both a row drawn
+        // twice and a dictionary that throws while building the panel.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr, count: 9), Kilde(Mfr, count: 3)],
+            Delkilder = [Delkilde(Fodsel, Mfr, count: 7), Delkilde(Fodsel, Mfr, count: 2)],
+            Datasamlinger =
+            [
+                Datasamling(Registrering, Mfr, Fodsel, count: 4), Datasamling(Registrering, Mfr, Fodsel, count: 1)
+            ],
+            HierarchyVariabelgrupper =
+            [
+                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel, datasamling: Registrering))
+            ]
+        };
+
+        var kilde = Assert.Single(FilterHierarchy.Build(facets));
+        var delkilde = Assert.Single(kilde.Children);
+        var datasamling = Assert.Single(delkilde.Children);
+
+        Assert.Equal([9, 7, 4], new[] { kilde.Count, delkilde.Count, datasamling.Count });
+        Assert.Equal("Bakgrunn", Assert.Single(datasamling.Children).Name);
+    }
+
+    [Fact]
+    public void Build_WhenTheOwningDatasamlingIdIsAnotherKildes_ThenTheGroupStaysAtTheKildeItNames()
+    {
+        // The id spaces are independent Guids off the wire, so a datasamling id that is in the
+        // answer settles nothing until its kilde agrees: filing the group there would draw it under
+        // a kilde whose variables it has none of, with no error anywhere.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr), Kilde(Npr)],
+            Datasamlinger = [Datasamling(Registrering, Npr)],
+            HierarchyVariabelgrupper =
+            [
+                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering))
+            ]
+        };
+
+        var tree = FilterHierarchy.Build(facets);
+
+        Assert.Equal("Bakgrunn", Assert.Single(tree[0].Children).Name);
+        Assert.Empty(Assert.Single(tree[1].Children).Children);
+    }
+
+    [Fact]
+    public void Build_WhenTheOwningDelkildeIdIsAnotherKildes_ThenTheGroupStaysAtTheKildeItNames()
+    {
+        // The delkilde arm of the same hazard, and its own clause in the builder: a delkilde id in
+        // the answer is not a delkilde of the kilde the placement names.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr), Kilde(Npr)],
+            Delkilder = [Delkilde(Fodsel, Npr)],
+            HierarchyVariabelgrupper =
+            [
+                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel))
+            ]
+        };
+
+        var tree = FilterHierarchy.Build(facets);
+
+        Assert.Equal("Bakgrunn", Assert.Single(tree[0].Children).Name);
+        Assert.Empty(Assert.Single(tree[1].Children).Children);
     }
 
     /// <summary>Every node of the tree, parents before what hangs under them.</summary>
