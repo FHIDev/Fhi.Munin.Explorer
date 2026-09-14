@@ -197,6 +197,9 @@ public class DatasamlingViewTest : BunitContext
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
             "munin-explorer-page__body",
+            // The word above the name block saying what kind of thing this page is about. A <p>,
+            // so the outline a screen reader navigates by is the one the view already had.
+            "munin-explorer-page__eyebrow",
             // Every fact list this view draws, the chassis's own name since
             // Fhi.Metadata-35w0p.11 rather than the result row's drill-in panel's.
             "munin-explorer-page__fields",
