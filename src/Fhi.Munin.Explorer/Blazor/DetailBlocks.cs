@@ -37,7 +37,7 @@ internal static class DetailBlocks
     internal static RenderFragment Facts(
         IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts, string? language) => builder =>
     {
-        var shown = facts.Where(f => !string.IsNullOrWhiteSpace(f.Value)).ToList();
+        var shown = Shown(facts);
 
         if (shown.Count == 0)
         {
@@ -71,6 +71,20 @@ internal static class DetailBlocks
 
         builder.CloseElement();
     };
+
+    /// <summary>
+    /// Whether <see cref="Facts"/> would draw a row, so a caller can drop the heading over it too.
+    /// </summary>
+    /// <remarks>
+    /// Both answers come off <see cref="Shown"/>, because a section wrapper decided here and a list
+    /// decided there could otherwise disagree and leave an empty <c>section</c> behind.
+    /// </remarks>
+    internal static bool AnyFacts(IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) =>
+        Shown(facts).Count > 0;
+
+    private static List<(string Label, string? Value, bool Norwegian)> Shown(
+        IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) =>
+        [.. facts.Where(f => !string.IsNullOrWhiteSpace(f.Value))];
 
     /// <summary>
     /// A row's value as one <c>dd</c> per language the catalogue holds it in, and the sequence

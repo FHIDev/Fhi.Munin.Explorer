@@ -30,45 +30,63 @@
         <div class="munin-explorer-datasamling__body">
             <div class="munin-explorer-datasamling__main">
 
+                @* Every block below is a <section> carrying a fixed English id, so a contents nav
+                   can anchor on it and a link into one is the same link in either language. Where a
+                   block can come out empty the wrapper sits INSIDE that check, never around it. *@
+
                 @* The catalogue's own metadata, resolved from the payload exactly as the kilde and
                    variable views resolve theirs. The flat list this view replaced drew none of it,
                    and every datasamling measured carries between three and eleven curated keys. *@
                 @if (Groups.Count > 0)
                 {
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+                    <DetailSection Id="@DetailSectionIds.Metadata">
+                        @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
 
-                    foreach (var group in Groups)
-                    {
-                        @DetailBlocks.Group(group, GroupLevel, Language)
-                    }
+                        @foreach (var group in Groups)
+                        {
+                            @DetailBlocks.Group(group, GroupLevel, Language)
+                        }
+                    </DetailSection>
                 }
 
                 @* Who is in the data and who is not — the first question a researcher asks about a
                    datasamling, and prose rather than a field, so it sits in the main column. *@
                 @if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
                 {
-                    @DetailBlocks.Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
-                    <p class="munin-explorer-datasamling__criteria"
-                       lang="@CatalogueProperties.Foreign("no", Reader)">
-                        @datasamling.InclusionAndExclusionCriteria
-                    </p>
+                    <DetailSection Id="@DetailSectionIds.Criteria">
+                        @DetailBlocks.Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
+                        <p class="munin-explorer-datasamling__criteria"
+                           lang="@CatalogueProperties.Foreign("no", Reader)">
+                            @datasamling.InclusionAndExclusionCriteria
+                        </p>
+                    </DetailSection>
                 }
 
                 @* Whatever the explorer using this view puts after the metadata. This component
-                   never learns which explorer that is. *@
+                   never learns which explorer that is, so it wraps none of it in a section. *@
                 @Sections
             </div>
 
             <aside class="munin-explorer-datasamling__aside">
-                @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                @DetailBlocks.Facts(SourceInformation, Language)
+                @* Checked although it does not empty under this package's own texts: the row that
+                   keeps it full falls back to Texts.NotSpecified, a string the host constructs, so
+                   presence follows the content rather than that string. *@
+                @if (DetailBlocks.AnyFacts(SourceInformation))
+                {
+                    <DetailSection Id="@DetailSectionIds.Source">
+                        @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                        @DetailBlocks.Facts(SourceInformation, Language)
+                    </DetailSection>
+                }
 
-                @* Heading and list together or neither: a datasamling that counts nothing gets no
-                   empty block, and the type names the heading rather than filling a row. *@
+                @* A datasamling that counts nothing gets no block, and the type names the heading
+                   rather than filling a row. *@
                 @if (AnyStatistics)
                 {
-                    @DetailBlocks.Heading(BlockLevel, StatisticsHeading, "headline headline-s")
-                    @DetailBlocks.Facts(Statistics, Language)
+                    <DetailSection Id="@DetailSectionIds.Statistics">
+                        @DetailBlocks.Heading(BlockLevel, StatisticsHeading, "headline headline-s")
+                        @DetailBlocks.Facts(Statistics, Language)
+                    </DetailSection>
                 }
             </aside>
         </div>

@@ -11769,6 +11769,9 @@ public class VariableSearchTest : BunitContext
                 "munin-explorer-kilde__description",
                 "munin-explorer-kilde__body",
                 "munin-explorer-kilde__main",
+                // The wrapper each block below the name sits in. First seen on the datasamlinger,
+                // this fixture's kilde having no metadata groups to open a section before it.
+                "munin-explorer-page__section",
                 "munin-explorer-hierarchy",
                 "munin-explorer-retry",
                 "munin-explorer-hierarchy__metadata",

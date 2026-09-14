@@ -132,8 +132,13 @@ public sealed partial class DatasamlingView : ComponentBase
                 (T.FieldVariableCount, datasamling.VariableCount > 0 ? datasamling.VariableCount.ToString() : null, false),
             ];
 
-    /// <summary>Whether the statistics block has a row to draw, heading included.</summary>
-    private bool AnyStatistics => Statistics.Any(fact => !string.IsNullOrWhiteSpace(fact.Value));
+    /// <summary>Whether the statistics block has a row to draw, heading and section included.</summary>
+    /// <remarks>
+    /// The fact-list flavour, over <see cref="Statistics"/>. <see cref="StatisticsBlock"/> spells
+    /// the name too, for a variable's statistics table — a different question about a different
+    /// type, so every <c>AnyStatistics</c> named in this file means this one.
+    /// </remarks>
+    private bool AnyStatistics => DetailBlocks.AnyFacts(Statistics);
 
     /// <summary>
     /// The statistics heading, naming the kind of statistics rather than just saying "Statistikk".

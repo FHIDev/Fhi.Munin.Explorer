@@ -208,28 +208,30 @@ public class KildeViewTest : BunitContext
     /// One sidebar box, found by the heading over it rather than by its position.
     /// </summary>
     /// <remarks>
-    /// A box whose every fact is blank draws no <c>dl</c> at all, while its heading is drawn
-    /// unconditionally — so the boxes slide up under headings that stay put, and a position would
-    /// hand back the statistics for a call asking after the source information without being able
-    /// to say it had. The heading can say it: the lookup starts there, and a box that stopped
-    /// drawing is reported as itself rather than as whatever the next call misreads.
+    /// A box whose every fact is blank draws no section at all, so a position would hand back the
+    /// statistics for a call asking after the source information without being able to say it had.
+    /// The heading can say it: the lookup starts there, and a box that stopped drawing is reported
+    /// as itself rather than as whatever the next call misreads.
     /// </remarks>
     private static IElement Box(IRenderedComponent<KildeView> cut, Func<Texts, string> boxHeading)
     {
         var aside = cut.Find(".munin-explorer-kilde__aside");
         var name = boxHeading(Texts.For(cut.Instance.Language));
 
-        var heading = aside.Children.FirstOrDefault(e => e.TextContent == name)
+        var section = aside.Children.FirstOrDefault(
+                          e => e.QuerySelector("h3, h4, h5, h6")?.TextContent == name)
                       ?? throw new InvalidOperationException(
-                          $"No '{name}' heading in the sidebar, only: "
-                          + $"{string.Join(", ", aside.Children.Select(e => e.TextContent))}.");
+                          $"No '{name}' section in the sidebar, only: "
+                          + $"{string.Join(", ", Headings(aside))}.");
 
-        return heading.NextElementSibling is { TagName: "DL" } box
-            ? box
-            : throw new InvalidOperationException(
-                $"The '{name}' heading is followed by {heading.NextElementSibling?.TagName ?? "nothing"} "
-                + "rather than by its own box, so that box drew no facts at all.");
+        return section.QuerySelector("dl")
+               ?? throw new InvalidOperationException(
+                   $"The '{name}' section holds no box, so it drew no facts at all.");
     }
+
+    /// <summary>What the sidebar's sections are headed with, for a failure that names them.</summary>
+    private static IEnumerable<string> Headings(IElement aside) =>
+        aside.QuerySelectorAll("h3, h4, h5, h6").Select(e => e.TextContent);
 
     private static IReadOnlyList<string> Labels(IElement list) =>
         [.. list.QuerySelectorAll("dt").Select(e => e.TextContent)];
@@ -374,6 +376,8 @@ public class KildeViewTest : BunitContext
             "munin-explorer-kilde__identifiers",
             "munin-explorer-kilde__kildetype",
             "munin-explorer-kilde__main",
+            // The wrapper each block below the name sits in, so a contents nav can anchor on it.
+            "munin-explorer-page__section",
         ], invented);
     }
 
@@ -516,9 +520,21 @@ public class KildeViewTest : BunitContext
     public void HeadingId_WhenTheHostNamesNothing_ThenNoEmptyIdIsEmitted()
     {
         // An id="" is not nothing: it is an id no aria-labelledby can point at, and two of them on
-        // one page are duplicates.
-        Assert.Empty(Render(Kilde()).FindAll("[id]"));
+        // one page are duplicates. The section ids below are the view's own and are always written.
+        var ids = Render(Kilde()).FindAll("[id]").Select(e => e.Id!).ToList();
+
+        Assert.DoesNotContain(ids, id => id.Length == 0);
+        Assert.All(ids, id => Assert.Contains(id, DetailSectionIdsUnderTest));
     }
+
+    /// <summary>Every id this view is allowed to write when the host names none.</summary>
+    private static readonly string[] DetailSectionIdsUnderTest =
+    [
+        DetailSectionIds.Metadata,
+        DetailSectionIds.DataCollections,
+        DetailSectionIds.Source,
+        DetailSectionIds.Statistics,
+    ];
 
     // ---------------------------------------------------------------------------------
     // The metadata the catalogue arranges itself.
@@ -1229,6 +1245,95 @@ public class KildeViewTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
+    // The section each block sits in, which is what a contents nav will anchor on.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Every section this view emits, in document order.</summary>
+    private static IReadOnlyList<IElement> Wrappers(IRenderedComponent<KildeView> cut) =>
+        [.. cut.FindAll("section.munin-explorer-page__section")];
+
+    [Fact]
+    public void Sections_Always_ThenEveryBlockIsWrappedAndTheNameAboveThemIsNot()
+    {
+        var cut = Render(Kilde());
+
+        Assert.Equal(
+            [DetailSectionIds.Metadata, DetailSectionIds.DataCollections,
+             DetailSectionIds.Source, DetailSectionIds.Statistics],
+            Wrappers(cut).Select(section => section.Id!));
+
+        Assert.All(Wrappers(cut), section =>
+        {
+            // helsedata's own attribute, which their register pages already carry, rather than one
+            // invented here — and the block's heading opens the section rather than sitting above it.
+            Assert.True(section.HasAttribute("data-nav-section"));
+            Assert.Contains(section.FirstElementChild!.TagName, (string[])["H3", "H4", "H5", "H6"]);
+        });
+
+        // The name is the view's own title, not a section of it: a contents nav listing it would
+        // offer the reader a link to where they already are.
+        Assert.Null(cut.Find(".munin-explorer-kilde__header .headline-s").Closest("[data-nav-section]"));
+    }
+
+    [Fact]
+    public void Sections_WhenTheSameSourceIsReadInBothLanguages_ThenOnlyTheHeadingsDiffer()
+    {
+        // THE TRAP. An id slugged from the heading passes every test that runs in one language and
+        // breaks every deep link the moment the other reader opens it — and it breaks again the
+        // next time a label is reworded, for readers of both.
+        var norwegian = Render(Kilde(), language: "no");
+        var english = Render(Kilde(), language: "en");
+
+        Assert.Equal(Wrappers(norwegian).Select(s => s.Id!), Wrappers(english).Select(s => s.Id!));
+
+        // Worth nothing unless the headings really do differ, so both are read out in full. The
+        // metadata heading is the same word in both, which is exactly why the ids cannot be read
+        // off them: three of these four are not.
+        Assert.Equal(["Metadata", "Datasamlinger", "Kildeinformasjon", "Statistikk"],
+                     Wrappers(norwegian).Select(s => s.FirstElementChild!.TextContent));
+        Assert.Equal(["Metadata", "Data collections", "Source information", "Statistics"],
+                     Wrappers(english).Select(s => s.FirstElementChild!.TextContent));
+    }
+
+    [Fact]
+    public void Sections_WhenABlockDrawsNothing_ThenNoEmptyWrapperIsLeftBehind()
+    {
+        // The wrapper goes INSIDE each emptiness check. Outside one it would draw a section holding
+        // a heading and nothing else, which is worse than the bare heading it replaced.
+        var cut = Render(Kilde() with { PropertyMetadata = [], AdditionalProperties = new Dictionary<string, string?>() });
+
+        Assert.DoesNotContain(DetailSectionIds.Metadata, Wrappers(cut).Select(s => s.Id!));
+        Assert.All(Wrappers(cut), section => Assert.True(section.Children.Length > 1,
+                                                         $"Section '{section.Id}' holds its heading and nothing else."));
+    }
+
+    [Fact]
+    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenBothSidebarBoxesStillDrawARow()
+    {
+        // Why both sidebar boxes survive their emptiness checks on a payload this bare:
+        // KildeTypeLabel answers "Ikke oppgitt" for a source carrying no kildetype and
+        // TotalVariables is an int, so no payload the catalogue can send empties either list.
+        var cut = Render(new KildeDetail { Id = Guid.NewGuid(), Code = "K_X", PreferredTerm = "X" });
+
+        // Named rather than merely counted, so taking a fallback away fails here saying which row
+        // went, rather than somewhere else saying a box was empty.
+        Assert.Equal(["Type datakilde", "Grad av personidentifikasjon"], Labels(SourceInformation(cut)));
+        Assert.Equal(["Totalt antall variabler"], Labels(Statistics(cut)));
+        Assert.Equal(["0"], Values(Statistics(cut)));
+    }
+
+    [Fact]
+    public void Sections_Always_ThenNoTwoOfThemShareAnId()
+    {
+        // Plain ids are only safe because an explorer renders at most one detail view: VariableSearch
+        // picks between the three arms of one if/else, KildeSearch between two. Within a view each id
+        // is written at most once, and this is what says so.
+        var ids = Wrappers(Render(Study())).Select(section => section.Id!).ToList();
+
+        Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
+
+    // ---------------------------------------------------------------------------------
     // The slot each explorer puts its own sections in.
     // ---------------------------------------------------------------------------------
 
@@ -1249,11 +1354,14 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Sections_WhenNoExplorerPassesAny_ThenNothingIsDrawnWhereTheyWouldHaveGone()
     {
-        // The shared metadata disclosure is last; an empty Sections slot must add no wrapper.
+        // The datasamling section is last, and the metadata disclosure is the last thing in it; an
+        // empty Sections slot must add no wrapper after either.
         var cut = Render(Kilde());
 
-        Assert.Equal("details", cut.Find(".munin-explorer-kilde__main").Children.Last().TagName,
-                     ignoreCase: true);
+        var last = cut.Find(".munin-explorer-kilde__main").Children.Last();
+
+        Assert.Equal(DetailSectionIds.DataCollections, last.Id);
+        Assert.Equal("details", last.Children.Last().TagName, ignoreCase: true);
     }
 
     // ---------------------------------------------------------------------------------

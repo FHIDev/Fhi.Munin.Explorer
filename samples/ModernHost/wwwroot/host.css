@@ -1780,6 +1780,13 @@ table.munin-explorer-data-list tbody th {
   background: var(--grey10);
 }
 
+/* One block of a detail view, wrapped so a contents nav has something to anchor on. The scroll
+   offset is the only declaration by design: the wrapper went around markup that was already spaced
+   correctly. 140px is Stiler's own token, from components/munin-explorer/_page.scss. */
+.munin-explorer-page__section {
+  scroll-margin-top: 140px;
+}
+
 /* Copied from Stiler's `_trail.scss`, selector for selector: a stand-in that works differently from
    the rule it stands in for is not standing in for it. Scoped to the aside for Stiler's reason —
    the same class in the main column keeps its two tracks. Not the `munin-explorer-meta__grid-1`
