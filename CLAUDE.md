@@ -150,7 +150,9 @@ checkout needs to find the shared database.
   gate cannot see is in AGENTS.md under "Accessibility is a requirement, not a preference". CI runs
   the same script, so a red check there is never a surprise. It takes
   `PLAYWRIGHT_BROWSER_CHANNEL=msedge` on the same terms as the layout gate below, for the same
-  Node 26 reason — a different engine build from CI's, so the run says which it used.
+  Node 26 reason — a different engine build from CI's, so the run says which it used. On a Linux
+  box with no root and no browser libraries, the Forge's, every browser gate unpacks them into a
+  user prefix itself; see `docs/running-locally.md`.
 - **If the change touches layout, run `./scripts/check-hostile-host.sh` as well.** It renders the
   component in helsedata's real stylesheet under their top-anchored header and measures boxes, which
   is the only thing here that would have caught the four defects of 2026-09-03 — axe was green

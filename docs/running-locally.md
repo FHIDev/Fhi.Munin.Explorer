@@ -152,6 +152,28 @@ helsedata's private Azure Artifacts feed. So:
   failed unpack. Both scripts now skip the install when a channel is set and name the browser they
   used.
 
+- **No root and no browser libraries — the Forge box — is handled for you, at a small price.**
+  Playwright's bundled chromium dies there on "Host system is missing dependencies". There is no
+  `sudo` for `playwright install-deps`, and no `msedge` or any other browser for
+  `PLAYWRIGHT_BROWSER_CHANNEL` to find, so that escape does not apply either. On Linux the three
+  browser gates therefore source `scripts/chromium-deps.sh` after installing chromium: when `ldd`
+  finds a library missing, or the host has no fonts, it fetches the Ubuntu 24.04 packages chromium
+  needs from `archive.ubuntu.com`, unpacks them with `dpkg-deb -x` into
+  `~/.cache/munin-explorer/chromium-deps-v1`, and points `LD_LIBRARY_PATH` and `FONTCONFIG_FILE`
+  at them. The first run on a box takes a few minutes; later ones find the prefix and take none. On
+  a host that already has the libraries and fonts — every CI runner — it does nothing at all.
+
+  **The fonts are the part that fails silently.** With the libraries alone chromium starts and lays
+  every glyph out at zero width: text has no box, `Range.getClientRects()` returns nothing, and a
+  geometry assertion about text fails as though the page were broken. The prefix carries
+  `fonts-liberation` and `fonts-dejavu-core` for that reason, which also means text widths there
+  need not match CI's. The run prints `BROWSER LIBS` when it used the prefix, so a number can say
+  where it came from.
+
+  Outside Ubuntu 24.04 amd64 it refuses with exit 2 rather than guess package names. To run a scan
+  script by hand instead of through a gate, source it the same way first:
+  `. scripts/chromium-deps.sh && chromium_deps_ensure`.
+
 ### What it is for
 
 ```bash
