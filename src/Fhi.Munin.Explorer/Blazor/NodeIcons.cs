@@ -83,8 +83,9 @@ internal static class NodeIcons
     }
 
     /// <summary>
-    /// The datakategorier in words, since the glyphs are aria-hidden. Null when there are none and
-    /// null for the folder, which says only what the nesting around the row already says.
+    /// The datakategorier in words, since the glyphs are aria-hidden. Null when there are none, and
+    /// null for the folder — the grouping levels' one glyph, which no datasamling ever carries and
+    /// which says only what the nesting around the row already says.
     /// </summary>
     internal static string? SpokenCategories(IReadOnlyList<NodeIcon> icons, Texts texts)
     {
@@ -95,5 +96,25 @@ internal static class NodeIcons
             .ToList();
 
         return named.Count == 0 ? null : texts.DataCategoryNamed(string.Join(", ", named));
+    }
+
+    /// <summary>
+    /// Writes those words beside the slot, or nothing when there are none. The separator is a text
+    /// node rather than the span's first character: an accessible name is computed per element, so
+    /// a space inside the span is trimmed off and the row announces as "Tromsø 1Datakategori: …".
+    /// </summary>
+    internal static void WriteSpoken(
+        RenderTreeBuilder builder, IReadOnlyList<NodeIcon> icons, Texts texts)
+    {
+        if (SpokenCategories(icons, texts) is not { } categories)
+        {
+            return;
+        }
+
+        builder.AddContent(0, " ");
+        builder.OpenElement(1, "span");
+        builder.AddAttribute(2, "class", "screenreader-only");
+        builder.AddContent(3, categories);
+        builder.CloseElement();
     }
 }

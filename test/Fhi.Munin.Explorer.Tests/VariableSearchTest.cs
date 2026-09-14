@@ -3231,6 +3231,29 @@ public class VariableSearchTest : BunitContext
     private static IElement FacetBox(IRenderedComponent<VariableSearch> cut, string label) =>
         Facet(cut, label).QuerySelector("input[type=checkbox]")!;
 
+    /// <summary>The <c>lang</c> the facet row reading <paramref name="label"/> puts on those words.</summary>
+    /// <remarks>
+    /// Read off the name span rather than the <c>label</c> around it, which is asserted bare: the
+    /// row also holds this package's own prose — the spoken datakategorier, the count — which is the
+    /// reader's language and not the catalogue's, and <c>lang</c> inherits. (WCAG 3.1.2)
+    /// </remarks>
+    private static string? FacetLang(IRenderedComponent<VariableSearch> cut, string label)
+    {
+        var row = Facet(cut, label);
+
+        Assert.False(row.HasAttribute("lang"));
+
+        return FacetName(row).GetAttribute("lang");
+    }
+
+    /// <summary>The span holding a facet row's own name, the one element in it the catalogue wrote.</summary>
+    /// <remarks>
+    /// By the absence of a class: every other span in the row wears one, and a marker class of its
+    /// own would be a <c>munin-explorer</c> name needing a rule in Stiler for nothing.
+    /// </remarks>
+    private static IElement FacetName(IElement row) =>
+        row.Children.First(child => child.TagName == "SPAN" && !child.HasAttribute("class"));
+
     /// <summary>Whether a facet value is ticked — the fact <c>aria-pressed</c> used to carry.</summary>
     private static bool FacetChosen(IRenderedComponent<VariableSearch> cut, string label) =>
         FacetBox(cut, label).HasAttribute("checked");
@@ -5367,6 +5390,50 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Render_WhenAnEnglishReaderMeetsACategorisedDatasamling_ThenOnlyTheNameIsMarkedNorwegian()
+    {
+        // The name is the catalogue's Norwegian and carries the marking; these words are this
+        // package's own English beside it, and a lang over both would have an English voice
+        // pronounce "Data category" with Norwegian phonetics (WCAG 3.1.2). (Fhi.Metadata-evoil)
+        var cut = RenderWith(
+            new FilteringClient(OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])),
+            b => b.Add(c => c.Language, "en"));
+
+        var row = Facet(cut, "Tromsø 1");
+        var spoken = row.QuerySelector(".screenreader-only")!;
+
+        Assert.Equal("no", FacetLang(cut, "Tromsø 1"));
+        Assert.Equal(
+            "Data category: Population health data registries, Health data from biobanks.",
+            spoken.TextContent.Trim());
+        Assert.Null(MarkedLanguage(spoken, row));
+    }
+
+    /// <summary>The <c>lang</c> a screen reader would read <paramref name="element"/> in.</summary>
+    /// <remarks>
+    /// The nearest marking at or above it, stopping at <paramref name="row"/>: nothing between a
+    /// row and the panel is marked, so a marking found further up would be one this package put on
+    /// the page for another reason entirely.
+    /// </remarks>
+    private static string? MarkedLanguage(IElement element, IElement row)
+    {
+        for (var node = element; node is not null; node = node.ParentElement)
+        {
+            if (node.GetAttribute("lang") is { } lang)
+            {
+                return lang;
+            }
+
+            if (node == row)
+            {
+                break;
+            }
+        }
+
+        return null;
+    }
+
+    [Fact]
     public void Render_WhenADatasamlingCarriesCategories_ThenTheGlyphsThemselvesStayDecoration()
     {
         // The words above are what a reader hears; the slot must not also reach the tree, and the
@@ -6290,7 +6357,7 @@ public class VariableSearchTest : BunitContext
                                 vocabulary: CategoryWordSpelledLikeItsCode()),
             b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("no", Facet(cut, "Prøvesamling").GetAttribute("lang"));
+        Assert.Equal("no", FacetLang(cut, "Prøvesamling"));
 
         ClickFacet(cut, "Prøvesamling");
 
@@ -6306,15 +6373,15 @@ public class VariableSearchTest : BunitContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
         var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("no", Facet(cut, "Tromsøundersøkelsen").GetAttribute("lang"));
-        Assert.Equal("no", Facet(cut, "Tromsø 4").GetAttribute("lang"));
-        Assert.Null(Facet(cut, "String").GetAttribute("lang"));
-        Assert.Null(Facet(cut, "ICD-10").GetAttribute("lang"));
+        Assert.Equal("no", FacetLang(cut, "Tromsøundersøkelsen"));
+        Assert.Equal("no", FacetLang(cut, "Tromsø 4"));
+        Assert.Null(FacetLang(cut, "String"));
+        Assert.Null(FacetLang(cut, "ICD-10"));
 
         ClickFacet(cut, "Tromsøundersøkelsen");
 
         Assert.Equal(ChipLang(cut, "Tromsøundersøkelsen"),
-                     Facet(cut, "Tromsøundersøkelsen").GetAttribute("lang"));
+                     FacetLang(cut, "Tromsøundersøkelsen"));
     }
 
     [Fact]

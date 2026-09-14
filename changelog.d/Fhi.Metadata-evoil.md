@@ -10,5 +10,8 @@ category: Added
   does in the hierarchy tree, and a datasamling with no categories at all draws nothing. The slot is
   `aria-hidden` and the categories are named in `screenreader-only` words after the label instead,
   the way the hierarchy tree names them, so the checkbox says which datakategorier its datasamling
-  carries rather than leaving the pairing to the glyphs alone.
+  carries rather than leaving the pairing to the glyphs alone. Those words are this package's prose
+  in the reader's language, so the `lang` marking a facet row puts on a catalogue name now sits on a
+  `<span>` around the name itself rather than on the `<label>` around the whole row, which would
+  have had a screen reader pronounce "Data category" as Norwegian (WCAG 3.1.2).
   (Fhi.Metadata-evoil)

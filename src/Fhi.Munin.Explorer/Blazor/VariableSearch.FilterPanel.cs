@@ -1182,14 +1182,13 @@ public partial class VariableSearch
             else
             {
                 builder.OpenElement(30, "label");
-                builder.AddAttribute(31, "lang", value.Language);
-                builder.OpenElement(32, "input");
-                builder.AddAttribute(33, "type", "checkbox");
-                builder.AddAttribute(34, "checked", value.Selected);
+                builder.OpenElement(31, "input");
+                builder.AddAttribute(32, "type", "checkbox");
+                builder.AddAttribute(33, "checked", value.Selected);
 
                 // The event's own value is ignored: the toggle flips what the filter holds, which
                 // is the one state a press and the render after it are certain to agree about.
-                builder.AddAttribute(35, "onchange",
+                builder.AddAttribute(34, "onchange",
                                      EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
 
                 // What a plain onchange does not do and this panel needs: a press that ApplyFilterAsync
@@ -1198,24 +1197,25 @@ public partial class VariableSearch
                 builder.SetUpdatesAttributeName("checked");
 
                 builder.CloseElement();
-                builder.AddContent(36, value.Label);
+
+                // The marking sits on the name, not on the label around it: the label also carries
+                // this package's own prose below, which is the reader's language and not the
+                // catalogue's and must not be pronounced as Norwegian. (WCAG 3.1.2)
+                builder.OpenElement(35, "span");
+                builder.AddAttribute(36, "lang", value.Language);
+                builder.AddContent(37, value.Label);
+                builder.CloseElement();
 
                 // After the name: a variable number of glyphs in front of it would read as another
-                // level of tree indent. The glyphs are aria-hidden, so the words below are the only
-                // place the row says which datakategorier this datasamling carries.
+                // level of tree indent. The glyphs are aria-hidden, so the words beside them are the
+                // only place the row says which datakategorier this datasamling carries.
                 if (value.Icons is { Count: > 0 } icons)
                 {
-                    builder.AddContent(37, (RenderFragment)(nested =>
+                    builder.AddContent(38, (RenderFragment)(nested =>
                         NodeIcons.Write(nested, icons, NodeIconClasses.Facets)));
 
-                    if (NodeIcons.SpokenCategories(icons, T) is { } categories)
-                    {
-                        builder.AddContent(38, " ");
-                        builder.OpenElement(39, "span");
-                        builder.AddAttribute(40, "class", "screenreader-only");
-                        builder.AddContent(41, categories);
-                        builder.CloseElement();
-                    }
+                    builder.AddContent(39, (RenderFragment)(nested =>
+                        NodeIcons.WriteSpoken(nested, icons, T)));
                 }
 
                 // The space is a text node of the label, not the span's first character: a name is
@@ -1223,10 +1223,10 @@ public partial class VariableSearch
                 // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(42, " ");
-                    builder.OpenElement(43, "span");
-                    builder.AddAttribute(44, "class", "munin-explorer-filters__count");
-                    builder.AddContent(45, $"({count})");
+                    builder.AddContent(40, " ");
+                    builder.OpenElement(41, "span");
+                    builder.AddAttribute(42, "class", "munin-explorer-filters__count");
+                    builder.AddContent(43, $"({count})");
                     builder.CloseElement();
                 }
 
