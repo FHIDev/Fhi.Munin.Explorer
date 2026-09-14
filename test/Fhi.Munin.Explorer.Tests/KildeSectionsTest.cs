@@ -60,22 +60,22 @@ public class KildeSectionsTest : BunitContext
             : OpenInRuna(Tromso()).Find(".munin-explorer-kilde");
 
         var hierarchy = view.QuerySelector(".munin-explorer-hierarchy")!;
-        Assert.Equal(8, hierarchy.QuerySelectorAll(":scope > ul > li").Length);
+        Assert.Equal(7, hierarchy.QuerySelectorAll(":scope > ul > li").Length);
         Assert.Contains("Tromsø5", hierarchy.TextContent);
         Assert.Contains("ALCOHOL", hierarchy.TextContent);
         Assert.All(hierarchy.QuerySelectorAll("details"), branch => Assert.False(branch.HasAttribute("open")));
         var metadata = view.QuerySelector("details.munin-explorer-hierarchy__metadata")!;
         Assert.False(metadata.HasAttribute("open"));
-        Assert.Equal(14, metadata.QuerySelectorAll("table tbody tr").Length);
+        Assert.Equal(11, metadata.QuerySelectorAll("table tbody tr").Length);
         Assert.Equal("Beskrivelser og gyldighetsperioder", AccessibleName.Of(metadata.QuerySelector("summary")!));
     }
 
     /// <summary>
-    /// The Tromsø study, out of the captured payload — a kilde with a real delkilde tree.
+    /// Tromsøundersøkelsen, out of the captured payload — a kilde with a real delkilde tree.
     /// </summary>
     /// <remarks>
     /// The fixture rather than a hand-written source, because the datasamling section is the one
-    /// both explorers draw and its rows come through five delkilder here. A source with a flat list
+    /// both explorers draw and its rows come through four delkilder here. A source with a flat list
     /// of datasamlinger would leave the two views agreeing for a reason that is not the one under
     /// test.
     /// </remarks>
@@ -274,14 +274,14 @@ public class KildeSectionsTest : BunitContext
         ], TextOf(cut.FindAll(BlockHeadings)));
 
         // The fixture really rendered, and through the delkilder rather than only off the kilde:
-        // three datasamlinger hang directly off the Tromsø study and eleven under its five
+        // three datasamlinger hang directly off Tromsøundersøkelsen and eight under its four
         // delkilder. A section headed "Delkilder og datasamlinger" over the three would be the
         // failure this fixture exists to catch.
         var rows = TextOf(cut.FindAll(CollectionRows));
 
-        Assert.Equal(14, rows.Count);
-        Assert.Contains("Tromsø1 - The First Tromsø Study", rows);
-        Assert.Contains("Tromsø4 - The Fourth Tromsø Study - first visit", rows);
+        Assert.Equal(11, rows.Count);
+        Assert.Contains("Tromsø1 - Den første Tromsøundersøkelsen", rows);
+        Assert.Contains("Tromsø4 - Den fjerde Tromsøundersøkelsen - føste besøk", rows);
 
         // Kelda's own sections have bodies rather than being bare headings: a heading with nothing
         // under it reads as a rendering fault to a reader who cannot know a section is unfinished.
@@ -297,7 +297,7 @@ public class KildeSectionsTest : BunitContext
         // One substring per body, each unique to it, rather than the tail the two static sentences
         // happen to share — both end "…er beskrevet på helsedata.no.".
         Assert.Equal(
-            "5752 publiserte variabler i denne kilden.",
+            "12728 publiserte variabler i denne kilden.",
             BodyUnder(cut, "Variabler"));
         Assert.StartsWith(
             "Kriteriene for tilgang til data fra denne kilden",
@@ -341,10 +341,10 @@ public class KildeSectionsTest : BunitContext
         // the arrangement on a kilde without delkilder. Most kilder have none, and on those the
         // arranged section and the flat table it replaced draw the same picture, so a pass there
         // proves nothing ran. This is the captured Tromsø payload — a study series whose organising
-        // fact is its waves, three datasamlinger on the study itself and eleven under its five
+        // fact is its waves, three datasamlinger on the study itself and eight under its four
         // delkilder — rather than a source written to suit the assertion.
         //
-        // Read by descending through the <li> each row is in. A flat table holds all fourteen names
+        // Read by descending through the <li> each row is in. A flat table holds all eleven names
         // too and would satisfy any assertion that only counted them, which is exactly what the
         // section did before: it answered what the study holds while destroying how it is arranged.
         var cut = OpenInKelda(Tromso());
@@ -353,34 +353,45 @@ public class KildeSectionsTest : BunitContext
         // the kilde rather than off a wave.
         Assert.Equal(
         [
-            "Tromsø1 - The First Tromsø Study",
-            "Tromsø2 - The Second Tromsø Study",
-            "Tromsø3 - The Third Tromsø Study",
+            "Tromsø1 - Den første Tromsøundersøkelsen",
+            "Tromsø2 - Den andre Tromsøundersøkelsen",
+            "Tromsø3 - Den tredje Tromsøundersøkelsen",
         ], TextOf(cut.FindAll(
             ".munin-explorer-hierarchy__metadata > table.munin-explorer-kilde__datasamlinger tbody th")));
 
-        // Then the five waves, in the catalogue's order, each with what is inside it. K_TR.BIODATA
-        // holds nothing and is a wave of the study all the same: drawing only the delkilder that
-        // hold something would leave a reader counting five waves on helsedata.no and four here.
+        // Then the four waves, in the catalogue's order, each with what is inside it. A wave that
+        // holds nothing is drawn all the same; this capture has none, so KildeViewTest pins that
+        // against a written source.
         Assert.Equal(
         [
-            "Biodata:",
-            "Tromsø4 - The Fourth Tromsø Study: "
-            + "Tromsø4 - The Fourth Tromsø Study - first visit, "
-            + "Tromsø4 - The Fourth Tromsø Study - second visit",
-            "Tromsø5 - The Fifth Tromsø Study: "
-            + "Tromsø5 - The Fifth Tromsø Study - first visit, "
-            + "Tromsø5 - The Fifth Tromsø Study - second visit, "
-            + "Tromsø5 - The Fifth Tromsø study - forst visit ; sample collection, "
-            + "Tromsø5 - The Fifth Tromsø study - second visit; sample collection",
-            "Tromsø6 - The Sixth Tromsø Study: "
-            + "Tromsø6 - The Sixth Tromsø Study - first visit, "
-            + "Tromsø6 - The Sixth Tromsø Study - second visit",
-            "Tromsø7 - The Seventh Tromsø Study: "
-            + "Tromsø7 - The Seventh Tromsø Study - first visit, "
-            + "Tromsø7 - The Seventh Tromsø Study - second visit, "
-            + "Tromsø7 - The Seventh Tromsø Study -Sample collection",
+            "Tromsø4 - Den fjerde Tromsøundersøkelsen: "
+            + "Tromsø4 - Den fjerde Tromsøundersøkelsen - føste besøk, "
+            + "Tromsø4 - Den fjerde Tromsøundersøkelsen - andre besøk",
+            "Tromsø5 - Den femte Tromsøundersøkelsen: "
+            + "Tromsø5 - Den femte Tromsøundersøkelsen - første besøk, "
+            + "Tromsø5 - Den femte Tromsøundersøkelsen - andre besøk",
+            "Tromsø6 - Den sjette Tromsøundersøkelsen: "
+            + "Tromsø6 - Den sjette Tromsøundersøkelsen første besøk, "
+            + "Tromsø6 - Den sjette Tromsøundersøkelsen - andre besøk",
+            "Tromsø7 - Den sjuende Tromsøundersøkelsen: "
+            + "Tromsø7 - Den sjuende Tromsøundersøkelsen - første besøk, "
+            + "Tromsø7 - Den sjuende Tromsøundersøkelsen - andre besøk",
         ], Waves(cut));
+    }
+
+    [Fact]
+    public void DataCollections_WhenTheDetailDisagreesWithTheTree_ThenOnlyTheTreeReadsTheHierarchy()
+    {
+        // The two captures were taken together and agree, so only a detail that differs from the
+        // tree shows that the table and the count are not read off the hierarchy request.
+        var kilde = Tromso() with { Datasamlinger = [], TotalVariables = 5752 };
+
+        var cut = OpenInKelda(kilde);
+        var view = cut.Find(".munin-explorer-kilde");
+
+        Assert.Equal(7, view.QuerySelectorAll(".munin-explorer-hierarchy > ul > li").Length);
+        Assert.Equal(8, view.QuerySelectorAll("details.munin-explorer-hierarchy__metadata table tbody tr").Length);
+        Assert.Equal("5752 publiserte variabler i denne kilden.", BodyUnder(cut, "Variabler"));
     }
 
     /// <summary>
@@ -441,9 +452,9 @@ public class KildeSectionsTest : BunitContext
         var cut = OpenInRuna(kilde);
 
         // "Delkilder og datasamlinger" in Runa too, and that is not Kelda leaking in: Runa passes
-        // no heading at all, and the shared core's default reads the SOURCE. Tromsø has five
+        // no heading at all, and the shared core's default reads the SOURCE. Tromsø has four
         // delkilder and the section now draws them, so the word that named the old flat table would
-        // head five waves while promising none of them. Kelda passes no copy of the string either
+        // head four waves while promising none of them. Kelda passes no copy of the string either
         // (Fhi.Metadata-rhybi), so this is the source's word in both explorers.
         Assert.Equal(
             ["Metadata", "Delkilder og datasamlinger", "Kildeinformasjon", "Statistikk"],
@@ -521,7 +532,7 @@ public class KildeSectionsTest : BunitContext
         ], TextOf(cut.FindAll(BlockHeadings)));
 
         Assert.Equal(
-            "5752 published variables in this source.",
+            "12728 published variables in this source.",
             BodyUnder(cut, "Variables"));
         Assert.StartsWith(
             "The criteria for access to data from this source",

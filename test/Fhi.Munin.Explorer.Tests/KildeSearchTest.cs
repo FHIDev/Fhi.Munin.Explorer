@@ -108,7 +108,7 @@ public class KildeSearchTest : BunitContext
     /// </summary>
     /// <remarks>
     /// Transcribed off the <c>healthCategory</c> vocabulary in
-    /// <c>Testdata/kilde-med-delkilder.json</c>, which is what the API really serves. It belongs
+    /// <c>Testdata/kilde.json</c>, which is what the API really serves. It belongs
     /// here and nowhere else: the package itself used to hold this table and translate the facet
     /// out of it, and that copy going stale is what the tests below are here to keep from coming
     /// back.
