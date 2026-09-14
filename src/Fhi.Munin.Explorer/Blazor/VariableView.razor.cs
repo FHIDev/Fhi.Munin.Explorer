@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// A variable in full: the catalogue's metadata about it, what its data looks like, and a sidebar
+/// A variable in full: the catalogue's metadata about it, what its data looks like, and the blocks
 /// saying where it lives.
 /// </summary>
 /// <remarks>
@@ -59,11 +59,11 @@ public sealed partial class VariableView : ComponentBase
 
     private int GroupLevel => Math.Min(HeadingLevel + 2, 6);
 
-    /// <summary>The month this view abbreviates, because both places it writes a date are narrow.</summary>
+    /// <summary>The month this view abbreviates, because the version list's date columns are narrow.</summary>
     /// <remarks>
-    /// The sidebar is 320px and "20. september 2022 – 9. november 2022" wraps in it; the version
-    /// list writes its two dates as two columns beside a name and a badge. The width is this view's
-    /// to pick — the ordinal dot is not, and follows the reader (Fhi.Metadata-n39ea).
+    /// One width for both places a date is written, and the version list is the one that needs it:
+    /// two dates as two columns beside a name and a badge. The data period was narrowed for the
+    /// 320px rail it used to sit in and keeps the form (Fhi.Metadata-n39ea).
     /// </remarks>
     private const DateWidth Dates = DateWidth.Narrow;
 
@@ -78,7 +78,7 @@ public sealed partial class VariableView : ComponentBase
     private IReadOnlyList<PropertyGroup> Groups =>
         Variable is { } variable
             ? CatalogueProperties.Groups(variable.PropertyMetadata, variable.AdditionalProperties, Reader,
-                                         DrawnInTheSidebar)
+                                         DrawnElsewhere)
             : [];
 
     /// <summary>Keys this view renders itself, so the metadata does not repeat them.</summary>
@@ -86,7 +86,7 @@ public sealed partial class VariableView : ComponentBase
     /// Just the one, and it earns its place: DataType is the only filled-in key in its group on a
     /// typical variable, so dropping it drops the group and leaves the five Runa shows.
     /// </remarks>
-    private static readonly HashSet<string> DrawnInTheSidebar = new(StringComparer.Ordinal) { "DataType" };
+    private static readonly HashSet<string> DrawnElsewhere = new(StringComparer.Ordinal) { "DataType" };
 
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>

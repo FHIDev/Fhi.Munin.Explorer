@@ -52,6 +52,13 @@
 # grey20 where Stiler's own comment says not to. The base rule and the drilldown's grid-column were
 # in it too, until #204.
 #
+# IT IS 217 SINCE Fhi.Metadata-35w0p.6, and the three that arrived are the second family of
+# entries here with an expiry condition rather than drift. That bead stopped emitting the 320px
+# aside on the three detail views, and the stand-in collapsed `__body` to one track in the same
+# change so that no sample host draws an empty rail. The pinned Stiler keeps its second track until
+# Fhi.Metadata-35w0p.39, so the sample is ahead of the pin exactly as the two choicepicker lines
+# below are. The three lines are marked where they sit, with the condition that deletes them.
+#
 # IT IS 214 SINCE Fhi.Metadata-l9l2n.105, and the 40 that arrived are a new FAMILY rather than new
 # drift: until that bead the comparison looked only at the munin-explorer prefix, so every rule the
 # sample writes for a name it BORROWS from Stiler - the choicepicker, the buttons, the searchbox,
@@ -115,6 +122,16 @@
 # needs measuring — see the bead. The guard is what stops the list growing; shrinking it is
 # separate work.
 different-value|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|max-height
+# The three below EXPIRE when the Stiler rule loses its second track. Fhi.Metadata-35w0p.6 stopped
+# emitting the 320px aside these bodies were laid out around, so the stand-in collapsed them to one
+# track; the pinned Stiler still declares `minmax(0, 1fr) 320px` here - _trail.scss:129-143, and
+# Fhi.Metadata-35w0p.39 is the bead that removes it - so the sample is AHEAD of the pin rather than
+# drifting from it. Left at two tracks it would draw 344px of empty page beside the one column on
+# both sample hosts, which is the defect this PR exists to stop. Delete these three lines the day
+# the pin carries the one-track rule.
+different-value|@media (min-width:1024px)|.munin-explorer-datasamling__body|grid-template-columns
+different-value|@media (min-width:1024px)|.munin-explorer-kilde__body|grid-template-columns
+different-value|@media (min-width:1024px)|.munin-explorer-whole__body|grid-template-columns
 different-value||.munin-explorer-frequency td|padding
 different-value||.munin-explorer-frequency td|vertical-align
 different-value||.munin-explorer-frequency th|padding
@@ -325,15 +342,15 @@ missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 #
 # CONFIRMED AGAINST THE PIN on 2026-09-11, which is the step that matters and the reason the
 # paragraph above is not the last word. The credentialed CI job read Stiler 0.1.42 out of the
-# restored package and reproduced 213 of these 214 lines exactly - no new line, no stale one -
-# across 285 Stiler rules under the prefix (run 34577010548, commit 2eac2ae). The four searchbox
-# padding lines are what the run before it looked like, and they were a defect in these lines
-# rather than in the component: a red run against the pin is a data problem here first.
+# restored package and reproduced 213 of the 214 lines standing then exactly - no new line, no
+# stale one - across 285 Stiler rules under the prefix (run 34577010548, commit 2eac2ae). The four
+# searchbox padding lines are what the run before it looked like, and they were a defect in these
+# lines rather than in the component: a red run against the pin is a data problem here first.
 #
-# The 214th, `.datasourcecard__heading|font-weight`, is newer than that run and has been read off
-# the bundle only. It is not a value comparison - it says Stiler declares no font-weight longhand
-# under that selector, which minification does not change - so the bundle is decent evidence. Not
-# proof, though, and the next credentialed run is.
+# The 214th of them, `.datasourcecard__heading|font-weight`, is newer than that run and has been
+# read off the bundle only. It is not a value comparison - it says Stiler declares no font-weight
+# longhand under that selector, which minification does not change - so the bundle is decent
+# evidence. Not proof, though, and the next credentialed run is.
 
 # The choicepicker, and the reason this section exists. Every line is a real difference between
 # what the sample draws and what a host on Stiler sees, and the first four are layout-deciding

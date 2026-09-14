@@ -4878,11 +4878,9 @@ public class VariableSearchTest : BunitContext
     };
 
     /// <summary>The word under the panel's Datatype heading, which is a sibling rather than a
-    /// child of it — the aside is a flat run of headings and paragraphs.</summary>
+    /// child of it — a block is a flat run of a heading and what follows it.</summary>
     private static string PanelDataType(IRenderedComponent<VariableView> cut) =>
-        cut.FindAll(".munin-explorer-whole__aside .headline-s")
-           .Single(h => h.TextContent == "Datatype")
-           .NextElementSibling!.TextContent;
+        cut.Find($"#{DetailSectionIds.DataType} .headline-s").NextElementSibling!.TextContent;
 
     [Fact]
     public void Render_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowAndTheFacetShowIt()
@@ -10964,8 +10962,8 @@ public class VariableSearchTest : BunitContext
         Assert.Equal(AlsId, client.LastSourceId);
         Assert.Equal(before, navigation.Uri);
 
-        // The sidebar, in Runa's order. Beskrivelse is not in it any more: it moved up to the
-        // ingress under the name, where a description belongs and where Runa puts it. The two
+        // The source information, in Runa's order. Beskrivelse is not in it any more: it moved up
+        // to the ingress under the name, where a description belongs and where Runa puts it. The two
         // counts left too — the variable count is under Statistikk, and the datasamling count is
         // the table rather than a number.
         Assert.Equal(
@@ -11063,8 +11061,8 @@ public class VariableSearchTest : BunitContext
         Assert.Equal(1, client.DatasamlingCalls);
         Assert.Equal(InklusjonId, client.LastSourceId);
 
-        // The sidebar, in the order the kilde view puts the same fields in. Beskrivelse and the
-        // criteria are not in it: both are prose and both moved into the main column, where a
+        // The source information, in the order the kilde view puts the same fields in. Beskrivelse
+        // and the criteria are not in it: both are prose and both moved into the main column, where a
         // description and a page of inclusion criteria can be read (Fhi.Metadata-jgfum).
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
@@ -11084,7 +11082,7 @@ public class VariableSearchTest : BunitContext
         var panel = SourcePanel(cut);
 
         // Telleenhet arrives as an empty string, and an empty string draws no row at all rather
-        // than a label over "Ikke oppgitt" — the rule the two sidebar boxes already follow.
+        // than a label over "Ikke oppgitt" — the rule the two fact boxes already follow.
         Assert.DoesNotContain("Telleenhet", panel.TextContent);
 
         Assert.Equal(
@@ -11719,7 +11717,7 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("no", description.GetAttribute("lang"));
         Assert.Equal("Indirectly identifiable", values[4].TextContent);
 
-        // The sidebar is mixed, and each cell says which it is: the kildetype and the identification
+        // The fact box is mixed, and each cell says which it is: the kildetype and the identification
         // level are vocabularies this package translates, so they are English here and unmarked. The
         // legal basis and the controller are the catalogue's own words, stored once in Norwegian.
         Assert.Null(values[0].GetAttribute("lang"));
@@ -11749,9 +11747,9 @@ public class VariableSearchTest : BunitContext
 
         // Every name this package invents, and the list is meant to stay short: each one is a class
         // helsedata's stylesheet has never heard of, so it is inert until Stiler is asked for it.
-        // The kilde view adds a layout - a main column, a sidebar - that no existing helsedata class
-        // describes, which is why these exist at all. Anything inside that layout uses helsedata's
-        // own names.
+        // The kilde view adds a layout - a name block over a main column - that no existing
+        // helsedata class describes, which is why these exist at all. Anything inside that layout
+        // uses helsedata's own names.
         //
         // The three delkilde names are here because this fixture's kilde has a delkilde tree two
         // levels deep, which is deliberate: a source with no delkilder draws none of them, so a
@@ -11779,7 +11777,6 @@ public class VariableSearchTest : BunitContext
                 "munin-explorer-kilde__delkilder",
                 "munin-explorer-kilde__delkilde",
                 "munin-explorer-kilde__delkilde-name",
-                "munin-explorer-kilde__aside",
             ],
             invented);
 

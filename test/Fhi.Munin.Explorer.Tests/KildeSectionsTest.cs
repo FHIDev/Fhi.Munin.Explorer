@@ -17,7 +17,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <para>
 /// <see cref="KildeView"/> is one component both explorers render a source with — measured on
 /// 2026-08-20, the same kilde drew the same name block, the same eight metadata groups in the same
-/// order and the same two sidebar boxes in both. Kelda then adds Variabler, Kriterier for tilgang
+/// order and the same two fact boxes in both. Kelda then adds Variabler, Kriterier for tilgang
 /// til data and Priser — the last two only when the host sets <c>ShowAccessAndPrices</c>, which is
 /// its own trap and lives in <see cref="KildeHostParameterTest"/>. That difference is markup Kelda
 /// passes <em>into</em> the shared core — never markup added to the core. The datasamling section
@@ -259,18 +259,18 @@ public class KildeSectionsTest : BunitContext
 
         var cut = OpenInKelda(kilde, accessAndPrices: true);
 
-        // The whole page, in order: the shared core's metadata, the datasamling section under
-        // Kelda's word for it, Kelda's own three, and the core's two sidebar boxes. Nothing here is
-        // a second copy of the metadata block or the sidebar — those are the core's, once.
+        // The whole page, in order: the shared core's own blocks — metadata, the datasamling
+        // section under Kelda's word for it, and its two fact boxes — then Kelda's own three, which
+        // an explorer adds to the page the core is. Nothing here is a second copy of either.
         Assert.Equal(
         [
             "Metadata",
             "Delkilder og datasamlinger",
+            "Kildeinformasjon",
+            "Statistikk",
             "Variabler",
             "Kriterier for tilgang til data",
             "Priser",
-            "Kildeinformasjon",
-            "Statistikk",
         ], TextOf(cut.FindAll(BlockHeadings)));
 
         // The fixture really rendered, and through the delkilder rather than only off the kilde:
@@ -321,9 +321,9 @@ public class KildeSectionsTest : BunitContext
         [
             "Metadata",
             "Delkilder og datasamlinger",
-            "Variabler",
             "Kildeinformasjon",
             "Statistikk",
+            "Variabler",
         ], TextOf(cut.FindAll(BlockHeadings)));
 
         // Said again over the text, because a heading list cannot see a body that outlived its
@@ -513,11 +513,11 @@ public class KildeSectionsTest : BunitContext
         [
             "Metadata",
             "Sub-sources and data collections",
+            "Source information",
+            "Statistics",
             "Variables",
             "Criteria for access to data",
             "Prices",
-            "Source information",
-            "Statistics",
         ], TextOf(cut.FindAll(BlockHeadings)));
 
         Assert.Equal(
@@ -630,7 +630,7 @@ public class KildeSectionsTest : BunitContext
     /// Each name is the shortest one that cannot hit something the core legitimately says.
     /// <c>AccessCriteria</c> and <c>Prices</c> catch both the heading and the body member of their
     /// block. <c>Variables</c> on its own would not do: the core says <c>T.FieldTotalVariables</c>
-    /// in its own sidebar, so the section's own <c>HeadingVariables</c> is what is banned, and
+    /// in its own fact box, so the section's own <c>HeadingVariables</c> is what is banned, and
     /// <c>KildeVariableCount</c> rather than <c>VariableCount</c> for the same reason — the
     /// datasamling table reads <c>row.VariableCount</c>.
     /// </para>

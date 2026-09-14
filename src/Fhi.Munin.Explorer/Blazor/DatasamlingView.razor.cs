@@ -5,7 +5,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// A datasamling in full: what it is called, the catalogue's own metadata about it, who it
-/// includes, and a sidebar of who owns the data and how much of it there is.
+/// includes, and who owns the data and how much of it there is.
 /// </summary>
 /// <remarks>
 /// The sibling of <see cref="KildeView"/> and built the same way — a page-shaped view that opens
@@ -81,7 +81,7 @@ public sealed partial class DatasamlingView : ComponentBase
 
     /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
     /// <remarks>
-    /// No key is named as drawn elsewhere: the fields the sidebar shows are ungrouped in the
+    /// No key is named as drawn elsewhere: the fields the fact boxes show are ungrouped in the
     /// catalogue's own metadata, and an ungrouped key never reaches a group to begin with.
     /// </remarks>
     private IReadOnlyList<PropertyGroup> Groups =>

@@ -12,7 +12,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// The whole kilde: the view both explorers render a source with — its name block, the catalogue's
-/// own metadata, the datasamlinger it holds and the two sidebar boxes.
+/// own metadata, the datasamlinger it holds and the two fact boxes.
 /// </summary>
 /// <remarks>
 /// Written because this component had no test class of its own. The suite had one for the explorer,
@@ -196,16 +196,16 @@ public class KildeViewTest : BunitContext
             }
         });
 
-    /// <summary>The sidebar's first box — the facts every source has.</summary>
+    /// <summary>The first fact box — the facts every source has.</summary>
     private static IElement SourceInformation(IRenderedComponent<KildeView> cut) =>
         Box(cut, T => T.HeadingSourceInformation);
 
-    /// <summary>The sidebar's second box — the counts and dates.</summary>
+    /// <summary>The second fact box — the counts and dates.</summary>
     private static IElement Statistics(IRenderedComponent<KildeView> cut) =>
         Box(cut, T => T.HeadingStatistics);
 
     /// <summary>
-    /// One sidebar box, found by the heading over it rather than by its position.
+    /// One fact box, found by the heading over it rather than by its position.
     /// </summary>
     /// <remarks>
     /// A box whose every fact is blank draws no section at all, so a position would hand back the
@@ -215,23 +215,23 @@ public class KildeViewTest : BunitContext
     /// </remarks>
     private static IElement Box(IRenderedComponent<KildeView> cut, Func<Texts, string> boxHeading)
     {
-        var aside = cut.Find(".munin-explorer-kilde__aside");
+        var main = cut.Find(".munin-explorer-kilde__main");
         var name = boxHeading(Texts.For(cut.Instance.Language));
 
-        var section = aside.Children.FirstOrDefault(
+        var section = main.Children.FirstOrDefault(
                           e => e.QuerySelector("h3, h4, h5, h6")?.TextContent == name)
                       ?? throw new InvalidOperationException(
-                          $"No '{name}' section in the sidebar, only: "
-                          + $"{string.Join(", ", Headings(aside))}.");
+                          $"No '{name}' section in the main column, only: "
+                          + $"{string.Join(", ", Headings(main))}.");
 
         return section.QuerySelector("dl")
                ?? throw new InvalidOperationException(
                    $"The '{name}' section holds no box, so it drew no facts at all.");
     }
 
-    /// <summary>What the sidebar's sections are headed with, for a failure that names them.</summary>
-    private static IEnumerable<string> Headings(IElement aside) =>
-        aside.QuerySelectorAll("h3, h4, h5, h6").Select(e => e.TextContent);
+    /// <summary>What the main column's sections are headed with, for a failure that names them.</summary>
+    private static IEnumerable<string> Headings(IElement main) =>
+        main.QuerySelectorAll("h3, h4, h5, h6").Select(e => e.TextContent);
 
     private static IReadOnlyList<string> Labels(IElement list) =>
         [.. list.QuerySelectorAll("dt").Select(e => e.TextContent)];
@@ -364,7 +364,6 @@ public class KildeViewTest : BunitContext
             "munin-explorer-hierarchy",
             "munin-explorer-hierarchy__metadata",
             "munin-explorer-kilde",
-            "munin-explorer-kilde__aside",
             "munin-explorer-kilde__body",
             "munin-explorer-kilde__datasamlinger",
             "munin-explorer-kilde__delkilde",
@@ -390,7 +389,7 @@ public class KildeViewTest : BunitContext
     {
         // The parameter is EditorRequired but the caller sets it from a fetch, so null is the state
         // between opening the view and the payload landing. An empty shell — a header rule, a
-        // sidebar box with a heading and no facts — reads as a source with nothing in it.
+        // fact box with a heading and no facts — reads as a source with nothing in it.
         Assert.Equal(string.Empty, Render(kilde: null).Markup.Trim());
     }
 
@@ -442,11 +441,11 @@ public class KildeViewTest : BunitContext
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    public void Kildetype_WhenTheKildeHasNone_ThenNoEmptyBadgeIsDrawnButTheSidebarStillSaysSo(string? kildetype)
+    public void Kildetype_WhenTheKildeHasNone_ThenNoEmptyBadgeIsDrawnButTheRecordStillSaysSo(string? kildetype)
     {
         // A badge is a shape as much as a word, so an empty one is a stray coloured box. The
-        // sidebar is a record and answers the question either way — "Ikke oppgitt" is the answer
-        // there, and a missing row would leave a reader wondering whether it was asked.
+        // source information is a record and answers the question either way — "Ikke oppgitt" is
+        // the answer there, and a missing row would leave a reader wondering whether it was asked.
         var cut = Render(Kilde() with { Kildetype = kildetype });
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilde__kildetype"));
@@ -834,8 +833,8 @@ public class KildeViewTest : BunitContext
     public void Metadata_WhenHasLegalBasisRepeatsLovverkOnThisSource_ThenBothStillShow(
         string language, string label)
     {
-        // hasLegalBasis happens to repeat the sidebar's Lovverk fact word for word on this
-        // source. It is not dropped: the test below shows the two fields can genuinely differ,
+        // hasLegalBasis happens to repeat the source information's Lovverk fact word for word on
+        // this source. It is not dropped: the test below shows the two fields can genuinely differ,
         // so a value-blind exclusion here would risk deleting real content (Fhi.Metadata-43jrq).
         var cut = Render(Barnediabetes(), language);
 
@@ -1204,8 +1203,8 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void DataCollections_WhenARowStoppedCollecting_ThenTheRowSaysWhenRatherThanOngoing()
     {
-        // The same open/closed pair as the sidebar's, asked of the table, because the row's period
-        // is the cell a reader uses to tell a wave that has closed from one still running.
+        // The same open/closed pair as the source information's, asked of the table, because the
+        // row's period is the cell a reader uses to tell a closed wave from one still running.
         var kilde = Kilde() with
         {
             Datasamlinger =
@@ -1308,9 +1307,9 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenBothSidebarBoxesStillDrawARow()
+    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenBothFactBoxesStillDrawARow()
     {
-        // Why both sidebar boxes survive their emptiness checks on a payload this bare:
+        // Why both fact boxes survive their emptiness checks on a payload this bare:
         // KildeTypeLabel answers "Ikke oppgitt" for a source carrying no kildetype and
         // TotalVariables is an int, so no payload the catalogue can send empties either list.
         var cut = Render(new KildeDetail { Id = Guid.NewGuid(), Code = "K_X", PreferredTerm = "X" });
@@ -1338,34 +1337,36 @@ public class KildeViewTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Sections_WhenAnExplorerPassesThem_ThenTheyComeLastInTheMainColumnRatherThanInTheSidebar()
+    public void Sections_WhenAnExplorerPassesThem_ThenTheyComeLastAfterTheViewsOwnBlocks()
     {
         // The whole reason this is a core with a slot instead of one view with a flag per Kelda
-        // section. They go after the metadata — the source's own record reads first — and in the
-        // main column, because the sidebar is the facts every source has and nothing else.
+        // section. They go after every block the view is itself — the source's own record reads
+        // first — because an explorer's sections are additions to the page it embedded.
         var cut = Render(Kilde(), sections: KeldaSections);
 
         var main = cut.Find(".munin-explorer-kilde__main");
+        var ids = main.Children.Select(e => e.Id).ToArray();
 
-        Assert.Equal("kelda-sections", main.Children.Last().Id);
-        Assert.Empty(cut.FindAll(".munin-explorer-kilde__aside #kelda-sections"));
+        Assert.Equal("kelda-sections", ids[^1]);
+        Assert.Contains(DetailSectionIds.Source, ids[..^1]);
+        Assert.Contains(DetailSectionIds.Statistics, ids[..^1]);
     }
 
     [Fact]
     public void Sections_WhenNoExplorerPassesAny_ThenNothingIsDrawnWhereTheyWouldHaveGone()
     {
-        // The datasamling section is last, and the metadata disclosure is the last thing in it; an
-        // empty Sections slot must add no wrapper after either.
+        // The statistics section is last of the view's own blocks; an empty Sections slot must add
+        // no wrapper after it.
         var cut = Render(Kilde());
 
         var last = cut.Find(".munin-explorer-kilde__main").Children.Last();
 
-        Assert.Equal(DetailSectionIds.DataCollections, last.Id);
-        Assert.Equal("details", last.Children.Last().TagName, ignoreCase: true);
+        Assert.Equal(DetailSectionIds.Statistics, last.Id);
+        Assert.Equal("dl", last.Children.Last().TagName, ignoreCase: true);
     }
 
     // ---------------------------------------------------------------------------------
-    // The sidebar: the facts every source has, which is why they are typed fields rather
+    // The fact boxes: the facts every source has, which is why they are typed fields rather
     // than curated properties.
     // ---------------------------------------------------------------------------------
 
@@ -1590,7 +1591,7 @@ public class KildeViewTest : BunitContext
         Assert.Equal("no", cut.Find("table.munin-explorer-kilde__datasamlinger tbody th").GetAttribute("lang"));
 
         // Ours: the kildetype badge is this package's translation of an enum, not the catalogue's
-        // prose, and so is the identification level beside it in the sidebar.
+        // prose, and so is the identification level in the source information below it.
         Assert.False(cut.Find(".munin-explorer-kilde__kildetype").HasAttribute("lang"));
 
         var facts = SourceInformation(cut);
@@ -1808,45 +1809,27 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
-    public void Aside_Always_ThenItsFactListsWearTheGridAndTheMainColumnKeepsItsTwoLanes()
+    public void FactLists_Always_ThenEveryOneOfThemWearsTheGridInTheOneColumn()
     {
-        // The markup half of the sidebar's single lane. The metadata groups render into the wide
-        // middle column, where two lanes are the right shape and the aside's rule must not reach
-        // them. (Fhi.Metadata-hi0po)
+        // The markup half. Both fact boxes and the metadata groups now render into the same
+        // full-width column, so nothing here may end up back in a rail of its own.
         var cut = Render(Kilde());
 
-        Assert.NotEmpty(cut.Find(".munin-explorer-kilde__aside").QuerySelectorAll("dl.munin-explorer-meta__grid"));
+        Assert.Empty(cut.FindAll("aside"));
         Assert.NotEmpty(cut.Find(".munin-explorer-kilde__main").QuerySelectorAll("dl.munin-explorer-meta__grid"));
     }
 
     [Fact]
-    public void Aside_WhenAHostStylesTheFactLists_ThenOneLaneIsScopedToItAndTheDefaultStaysTwo()
+    public void FactLists_WhenAHostStylesThem_ThenTheDefaultIsTwoLanes()
     {
-        // The stylesheet half of the sidebar's single lane, for all three asides. Through
-        // SampleDeclarationsFor so `-1` and `-2` cannot answer for the base class, and anchored on
-        // the whole value so a second track fails it. (Fhi.Metadata-hi0po)
+        // The stylesheet half. The single lane was scoped to the asides, so with those gone every
+        // fact list takes the unscoped default — which is the right shape for a full-width column.
+        // Through SampleDeclarationsFor so `-1` and `-2` cannot answer for the base class. The
+        // aside branch is still in the sample and inert, which is what the exclusion below narrows.
         const string Base = @"\.munin-explorer-meta__grid(?![\w-])";
-        const string OneLane = @"grid-template-columns:\s*minmax\(\s*0\s*,\s*1fr\s*\)\s*(;|$)";
 
         var grids = HostClassNames.SampleDeclarationsFor("munin-explorer-meta__grid");
 
-        foreach (var aside in (string[])
-                 [
-                     "munin-explorer-kilde__aside",
-                     "munin-explorer-datasamling__aside",
-                     "munin-explorer-whole__aside",
-                 ])
-        {
-            Assert.True(
-                grids.Any(rule => Regex.IsMatch(rule.Declarations, OneLane)
-                                  && rule.Selector.Split(',').Any(
-                                      branch => branch.Contains(aside, StringComparison.Ordinal)
-                                                && Regex.IsMatch(branch, Base))),
-                $"Nothing gives {aside} one shrinkable lane, so its fact lists keep the two-lane default.");
-        }
-
-        // The default the aside opts out of. Narrowing the base rule would fix the sidebar by
-        // costing the wide middle column its two lanes, and every assertion above would still pass.
         // Per branch, so grouping the base rule with a scoped one stays equivalent CSS here.
         Assert.True(
             grids.Any(rule => Regex.IsMatch(rule.Declarations, @"grid-template-columns:\s*1fr\s+1fr\s*(;|$)")
@@ -1854,6 +1837,42 @@ public class KildeViewTest : BunitContext
                                   branch => !branch.Contains("__aside", StringComparison.Ordinal)
                                             && Regex.IsMatch(branch, Base))),
             "No unscoped rule leaves munin-explorer-meta__grid two lanes for the main column.");
+    }
+
+    [Fact]
+    public void Body_WhenAHostLaysOutADetailView_ThenTheColumnIsTheOnlyTrack()
+    {
+        // The other stylesheet half, and the one the markup change needs: the aside is gone, so a
+        // body still declaring `minmax(0, 1fr) 320px` above 1024px leaves a 320px track with
+        // nothing in it and narrows the column this change exists to widen. (Fhi.Metadata-35w0p.6)
+        var rules = Regex
+            .Matches(WideBlock(HostClassNames.SampleCss), @"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}")
+            .Select(rule => (Selector: rule.Groups["selector"].Value,
+                             Declarations: rule.Groups["declarations"].Value))
+            .ToList();
+
+        foreach (var body in (string[])
+                 [
+                     "munin-explorer-kilde__body",
+                     "munin-explorer-datasamling__body",
+                     "munin-explorer-whole__body",
+                 ])
+        {
+            // Per branch, so grouping the three under one selector stays equivalent CSS here.
+            var tracks = rules
+                .Where(rule => rule.Selector.Split(',').Any(
+                    branch => Regex.IsMatch(branch, $@"\.{body}(?![\w-])")))
+                .Select(rule => Regex.Match(rule.Declarations, @"grid-template-columns:\s*([^;]+)"))
+                .Where(match => match.Success)
+                .Select(match => match.Groups[1].Value.Trim())
+                .ToList();
+
+            // Nothing here may pass by saying nothing: deleting the rule would empty the set.
+            Assert.NotEmpty(tracks);
+
+            // Anchored on the whole value, so a second track appended to it fails.
+            Assert.All(tracks, value => Assert.Matches(@"^minmax\(\s*0\s*,\s*1fr\s*\)$", value));
+        }
     }
 
     [Fact]
@@ -1958,31 +1977,46 @@ public class KildeViewTest : BunitContext
     }
 
     /// <summary>
-    /// The body of the sample's <c>@media (min-width: 1024px)</c> block.
+    /// Every <c>@media (min-width: 1024px)</c> block in the sample, joined.
     /// </summary>
     /// <remarks>
     /// HostClassNames matches innermost blocks, so a rule inside an at-rule comes back with a bare
-    /// selector and nothing says which breakpoint it sits in. These rules mean nothing outside this
-    /// one — below it the grid has a single track — so the guard reads the block itself.
+    /// selector and nothing says which breakpoint it sits in. Every block, because the sample
+    /// declares two at this width and the first holds none of the detail views' rules.
     /// </remarks>
     private static string WideBlock(string css)
     {
-        var start = css.IndexOf("@media (min-width: 1024px)", StringComparison.Ordinal);
+        const string Breakpoint = "@media (min-width: 1024px)";
 
-        Assert.True(start >= 0, "The sample no longer has a min-width: 1024px block.");
+        var blocks = new List<string>();
 
-        var depth = 0;
-
-        for (var i = css.IndexOf('{', start); i < css.Length; i++)
+        for (var start = css.IndexOf(Breakpoint, StringComparison.Ordinal); start >= 0;)
         {
-            depth += css[i] switch { '{' => 1, '}' => -1, _ => 0 };
+            var depth = 0;
+            var end = -1;
 
-            if (depth == 0)
+            for (var i = css.IndexOf('{', start); i < css.Length; i++)
             {
-                return css[start..i];
+                depth += css[i] switch { '{' => 1, '}' => -1, _ => 0 };
+
+                if (depth == 0)
+                {
+                    end = i;
+                    break;
+                }
             }
+
+            if (end < 0)
+            {
+                throw new InvalidOperationException("A min-width: 1024px block is never closed.");
+            }
+
+            blocks.Add(css[start..end]);
+            start = css.IndexOf(Breakpoint, end, StringComparison.Ordinal);
         }
 
-        throw new InvalidOperationException("The min-width: 1024px block is never closed.");
+        Assert.True(blocks.Count > 0, "The sample no longer has a min-width: 1024px block.");
+
+        return string.Concat(blocks);
     }
 }
