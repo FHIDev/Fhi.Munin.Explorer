@@ -374,6 +374,25 @@ These are not style preferences — each one is a host that breaks otherwise.
     offset on the `data-nav-section` attribute rather than on the class; that PR bumped no
     version, so no published Stiler carries them and every host draws the wrapper undrawn until
     one does.
+    The same three add the chassis those sections sit in — `munin-explorer-page` on the root,
+    `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc` —
+    written once, by `DetailPage`, rather than three times under three prefixes. The root and the
+    main column wear theirs *beside* the view's own name rather than instead of it, because one of
+    those older names is the drill-in panel's as well: `munin-explorer-kilde__datasamlinger` is
+    styled under `munin-explorer-kilder__expanded` in an expanded result row, so a clean rename
+    would have taken a surface nobody would think to retest with it. The body is the exception and
+    wears `munin-explorer-page__body` alone: every published Stiler still lays
+    `munin-explorer-kilde__body` and its two siblings out as `minmax(0, 1fr) 320px`, so an element
+    wearing an old name and the chassis name would carry a `grid-template-columns` from each of two
+    blocks and draw whichever the host loaded last. Handles, all four — undefined, the body and its
+    two columns are blocks in ordinary flow, which stacks the contents column above the main one and
+    loses no words. Stiler's rules are written, in the same
+    `_page.scss` and merged as PR 39300, and that PR bumped no version either, so no published
+    Stiler draws the two-track body yet. The contents column is drawn only when something fills it,
+    and nothing in the package does until the contents nav ships (`Fhi.Metadata-35w0p.12`) — so the
+    two-track rule is scoped to a body that has one, in both sample stylesheets and in the Stiler
+    rule before it publishes (`Fhi.Metadata-ex5wb`). Ungated, a fixed 250px first track would lay a
+    lone main column out in it.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
@@ -571,7 +590,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main__name` | handle |
   | `munin-explorer-dataitem-period` | prose |
   | `munin-explorer-datasamling` | handle |
-  | `munin-explorer-datasamling__body` | handle |
   | `munin-explorer-datasamling__criteria` | handle |
   | `munin-explorer-datasamling__description` | handle |
   | `munin-explorer-datasamling__header` | handle |
@@ -607,7 +625,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-hierarchy__metadata` | handle |
   | `munin-explorer-hierarchy__nodes` | handle |
   | `munin-explorer-hierarchy__open` | handle |
-  | `munin-explorer-kilde__body` | handle |
   | `munin-explorer-kilde__datasamlinger` | handle |
   | `munin-explorer-kilde__delkilde` | handle |
   | `munin-explorer-kilde__delkilde-description` | handle |
@@ -643,7 +660,11 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__tab--active` | handle |
   | `munin-explorer-meta__tab-content` | handle |
   | `munin-explorer-meta__tabs` | handle |
+  | `munin-explorer-page` | handle |
+  | `munin-explorer-page__body` | handle |
+  | `munin-explorer-page__main` | handle |
   | `munin-explorer-page__section` | handle |
+  | `munin-explorer-page__toc` | handle |
   | `munin-explorer-pagination` | handle |
   | `munin-explorer-pagination-content` | handle |
   | `munin-explorer-pagination-pages` | meaning |
@@ -673,7 +694,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-versions__to` | handle |
   | `munin-explorer-versions__toggle` | handle |
   | `munin-explorer-whole` | handle |
-  | `munin-explorer-whole__body` | handle |
   | `munin-explorer-whole__code` | handle |
   | `munin-explorer-whole__description` | handle |
   | `munin-explorer-whole__header` | handle |

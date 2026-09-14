@@ -107,7 +107,7 @@ public class DatasamlingViewTest : BunitContext
 
     /// <summary>The headings of the blocks under the name, in the order they are drawn.</summary>
     private static IReadOnlyList<string> BlockHeadings(IRenderedComponent<DatasamlingView> cut) =>
-        [.. cut.FindAll(".munin-explorer-datasamling__body .headline-s").Select(e => e.TextContent)];
+        [.. cut.FindAll(".munin-explorer-page__body .headline-s").Select(e => e.TextContent)];
 
     // ---------------------------------------------------------------------------------
     // Styling contract. The package ships no CSS, so every class name this view emits is
@@ -131,7 +131,7 @@ public class DatasamlingViewTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // The exact list, for the reason the kilde view's version of it is exact: a tenth name here
+        // The exact list, for the reason the kilde view's version of it is exact: one more name here
         // is news, and news that has to be answered in both sample stylesheets before it ships.
         // None of these was ever helsedata's, so every one is a promise only the samples keep.
         var cut = Render(Datasamling());
@@ -144,16 +144,41 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal(
         [
             "munin-explorer-datasamling",
-            "munin-explorer-datasamling__body",
             "munin-explorer-datasamling__criteria",
             "munin-explorer-datasamling__description",
             "munin-explorer-datasamling__header",
             "munin-explorer-datasamling__identifiers",
             "munin-explorer-datasamling__main",
             "munin-explorer-group",                   // shared with the kilde and variable views
+            // The chassis the three detail views share, worn beside this view's own names above.
+            "munin-explorer-page",
+            "munin-explorer-page__body",
+            "munin-explorer-page__main",
             // The wrapper each block below the name sits in, so a contents nav can anchor on it.
             "munin-explorer-page__section",
         ], invented);
+    }
+
+    [Fact]
+    public void Chassis_WhenTheViewIsDrawn_ThenTheSharedNamesAreWornBesideThisViewsOwn()
+    {
+        // Both sets on every element but the body: the chassis is added beside this view's own
+        // prefix rather than replacing it, so a host rule keyed on either one still draws.
+        var cut = Render(Datasamling());
+
+        Assert.Contains("munin-explorer-datasamling", cut.Find(".munin-explorer-page").ClassList);
+
+        var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
+
+        // The body, and only the body, sheds its older name: an element wearing both would carry a
+        // `grid-template-columns` from each block, settled by which stylesheet the host loaded last.
+        Assert.Equal("munin-explorer-page__body", body.ClassName);
+        Assert.Contains("munin-explorer-datasamling__main", cut.Find(".munin-explorer-page__main").ClassList);
+
+        // Nothing fills the contents column yet, so the body is one child in one track rather than
+        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
+        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
+        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
     }
 
     // ---------------------------------------------------------------------------------

@@ -1,0 +1,24 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+<div class="@RootClasses">
+
+    @Header
+
+    @* The chassis name alone. Every published Stiler lays the three views' own `__body` names out
+       as a grid of their own, and two `grid-template-columns` on one element are settled by source
+       order rather than by either stylesheet meaning it. *@
+    <div class="munin-explorer-page__body">
+
+        @* Only when something fills it: the body's second track is declared for a body that has
+           this column, so an unfilled page is one child in one track and costs no rail and no gap
+           at any width. *@
+        @if (Contents is not null)
+        {
+            <div class="munin-explorer-page__toc">@Contents</div>
+        }
+
+        <div class="@MainClasses">
+            @ChildContent
+        </div>
+    </div>
+</div>

@@ -68,6 +68,28 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
+    public void Chassis_WhenTheViewIsDrawn_ThenTheSharedNamesAreWornBesideThisViewsOwn()
+    {
+        // Both sets on every element but the body: the chassis is added beside this view's own
+        // prefix rather than replacing it, so a host rule keyed on either one still draws.
+        var cut = Render(Detail());
+
+        Assert.Contains("munin-explorer-whole", cut.Find(".munin-explorer-page").ClassList);
+
+        var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
+
+        // The body, and only the body, sheds its older name: an element wearing both would carry a
+        // `grid-template-columns` from each block, settled by which stylesheet the host loaded last.
+        Assert.Equal("munin-explorer-page__body", body.ClassName);
+        Assert.Contains("munin-explorer-whole__main", cut.Find(".munin-explorer-page__main").ClassList);
+
+        // Nothing fills the contents column yet, so the body is one child in one track rather than
+        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
+        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
+        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+    }
+
+    [Fact]
     public void Metadata_WhenAKeyIsAlreadyABlockOfItsOwn_ThenItIsNotRepeatedInTheGroups()
     {
         // The bug this was written for. DataType has a block of its own drawn from the typed field,

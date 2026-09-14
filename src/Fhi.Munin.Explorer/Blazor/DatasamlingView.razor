@@ -2,95 +2,95 @@
 
 @if (Datasamling is { } datasamling)
 {
-    <div class="munin-explorer-datasamling">
+    <DetailPage ViewRoot="munin-explorer-datasamling"
+                ViewMain="munin-explorer-datasamling__main">
+        <Header>
 
-        @* The name block, arranged as the kilde view arranges a source's: the identifier under the
-           name rather than beside it, and the description as prose below both. *@
-        <div class="munin-explorer-datasamling__header">
-            @{ var named = T.Named(datasamling.PreferredTerm, datasamling.Code); }
+            @* The name block, arranged as the kilde view arranges a source's: the identifier under the
+               name rather than beside it, and the description as prose below both. *@
+            <div class="munin-explorer-datasamling__header">
+                @{ var named = T.Named(datasamling.PreferredTerm, datasamling.Code); }
 
-            @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not - and
-               not when the catalogue left the name empty and this is the code standing in for it. *@
-            @DetailBlocks.Heading(HeadingLevel, named.Text, "headline headline-s margin--bottom",
-                                  HeadingId, CatalogueProperties.Foreign(named.Norwegian, Reader))
+                @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not - and
+                   not when the catalogue left the name empty and this is the code standing in for it. *@
+                @DetailBlocks.Heading(HeadingLevel, named.Text, "headline headline-s margin--bottom",
+                                      HeadingId, CatalogueProperties.Foreign(named.Norwegian, Reader))
 
-            @* Not when the heading above has already fallen back to it. (Fhi.Metadata-w13lk) *@
-            @if (named.Norwegian && !string.IsNullOrWhiteSpace(datasamling.Code))
-            {
-                <p class="caption margin--none munin-explorer-datasamling__identifiers">@datasamling.Code</p>
-            }
-
-            @if (Description is { } description)
-            {
-                <p class="ingress munin-explorer-datasamling__description"
-                   lang="@CatalogueProperties.Foreign("no", Reader)">@CatalogueMarkdown.Render(description)</p>
-            }
-        </div>
-
-        <div class="munin-explorer-datasamling__body">
-            <div class="munin-explorer-datasamling__main">
-
-                @* Every block below is a <section> carrying a fixed English id, so a contents nav
-                   can anchor on it and a link into one is the same link in either language. Where a
-                   block can come out empty the wrapper sits INSIDE that check, never around it. *@
-
-                @* The catalogue's own metadata, resolved from the payload exactly as the kilde and
-                   variable views resolve theirs. The flat list this view replaced drew none of it,
-                   and every datasamling measured carries between three and eleven curated keys. *@
-                @if (Groups.Count > 0)
+                @* Not when the heading above has already fallen back to it. (Fhi.Metadata-w13lk) *@
+                @if (named.Norwegian && !string.IsNullOrWhiteSpace(datasamling.Code))
                 {
-                    <DetailSection Id="@DetailSectionIds.Metadata">
-                        @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
-
-                        @foreach (var group in Groups)
-                        {
-                            @DetailBlocks.Group(group, GroupLevel, Language)
-                        }
-                    </DetailSection>
+                    <p class="caption margin--none munin-explorer-datasamling__identifiers">@datasamling.Code</p>
                 }
 
-                @* Who is in the data and who is not — the first question a researcher asks about a
-                   datasamling, and prose rather than a field, so it sits in the main column. *@
-                @if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
+                @if (Description is { } description)
                 {
-                    <DetailSection Id="@DetailSectionIds.Criteria">
-                        @DetailBlocks.Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
-                        <p class="munin-explorer-datasamling__criteria"
-                           lang="@CatalogueProperties.Foreign("no", Reader)">
-                            @datasamling.InclusionAndExclusionCriteria
-                        </p>
-                    </DetailSection>
+                    <p class="ingress munin-explorer-datasamling__description"
+                       lang="@CatalogueProperties.Foreign("no", Reader)">@CatalogueMarkdown.Render(description)</p>
                 }
-
-                @* Last of this view's own blocks, because the mockups put source information near
-                   the end of the page rather than in a rail beside it. *@
-
-                @* Checked although it does not empty under this package's own texts: the row that
-                   keeps it full falls back to Texts.NotSpecified, a string the host constructs, so
-                   presence follows the content rather than that string. *@
-                @if (DetailBlocks.AnyFacts(SourceInformation))
-                {
-                    <DetailSection Id="@DetailSectionIds.Source">
-                        @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                        @DetailBlocks.Facts(SourceInformation, Language)
-                    </DetailSection>
-                }
-
-                @* A datasamling that counts nothing gets no block, and the type names the heading
-                   rather than filling a row. *@
-                @if (AnyStatistics)
-                {
-                    <DetailSection Id="@DetailSectionIds.Statistics">
-                        @DetailBlocks.Heading(BlockLevel, StatisticsHeading, "headline headline-s")
-                        @DetailBlocks.Facts(Statistics, Language)
-                    </DetailSection>
-                }
-
-                @* Whatever the explorer using this view puts after this view's own blocks. This
-                   component never learns which explorer that is, so it wraps none of it in a
-                   section. *@
-                @Sections
             </div>
-        </div>
-    </div>
+        </Header>
+        <ChildContent>
+
+            @* Every block below is a <section> carrying a fixed English id, so a contents nav
+               can anchor on it and a link into one is the same link in either language. Where a
+               block can come out empty the wrapper sits INSIDE that check, never around it. *@
+
+            @* The catalogue's own metadata, resolved from the payload exactly as the kilde and
+               variable views resolve theirs. The flat list this view replaced drew none of it,
+               and every datasamling measured carries between three and eleven curated keys. *@
+            @if (Groups.Count > 0)
+            {
+                <DetailSection Id="@DetailSectionIds.Metadata">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+
+                    @foreach (var group in Groups)
+                    {
+                        @DetailBlocks.Group(group, GroupLevel, Language)
+                    }
+                </DetailSection>
+            }
+
+            @* Who is in the data and who is not — the first question a researcher asks about a
+               datasamling, and prose rather than a field, so it sits in the main column. *@
+            @if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
+            {
+                <DetailSection Id="@DetailSectionIds.Criteria">
+                    @DetailBlocks.Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
+                    <p class="munin-explorer-datasamling__criteria"
+                       lang="@CatalogueProperties.Foreign("no", Reader)">
+                        @datasamling.InclusionAndExclusionCriteria
+                    </p>
+                </DetailSection>
+            }
+
+            @* Last of this view's own blocks, because the mockups put source information near
+               the end of the page rather than in a rail beside it. *@
+
+            @* Checked although it does not empty under this package's own texts: the row that
+               keeps it full falls back to Texts.NotSpecified, a string the host constructs, so
+               presence follows the content rather than that string. *@
+            @if (DetailBlocks.AnyFacts(SourceInformation))
+            {
+                <DetailSection Id="@DetailSectionIds.Source">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                    @DetailBlocks.Facts(SourceInformation, Language)
+                </DetailSection>
+            }
+
+            @* A datasamling that counts nothing gets no block, and the type names the heading
+               rather than filling a row. *@
+            @if (AnyStatistics)
+            {
+                <DetailSection Id="@DetailSectionIds.Statistics">
+                    @DetailBlocks.Heading(BlockLevel, StatisticsHeading, "headline headline-s")
+                    @DetailBlocks.Facts(Statistics, Language)
+                </DetailSection>
+            }
+
+            @* Whatever the explorer using this view puts after this view's own blocks. This
+               component never learns which explorer that is, so it wraps none of it in a
+               section. *@
+            @Sections
+        </ChildContent>
+    </DetailPage>
 }

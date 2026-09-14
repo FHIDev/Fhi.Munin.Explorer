@@ -244,7 +244,7 @@ public class KildeSectionsTest : BunitContext
     /// <c>headline-s</c> too, in the header block above. Read as a list rather than searched for, so
     /// a section that appears where it should not is a failure and not merely unreported.
     /// </remarks>
-    private const string BlockHeadings = ".munin-explorer-kilde__body .headline-s";
+    private const string BlockHeadings = ".munin-explorer-page__body .headline-s";
 
     /// <summary>The datasamling rows, each headed with its own name.</summary>
     private const string CollectionRows = "table.munin-explorer-kilde__datasamlinger tbody th";

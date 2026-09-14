@@ -304,7 +304,7 @@ public class KildeViewTest : BunitContext
     }
 
     private static IReadOnlyList<string> BlockHeadings(IRenderedComponent<KildeView> cut) =>
-        [.. cut.FindAll(".munin-explorer-kilde__body .headline-s").Select(e => e.TextContent)];
+        [.. cut.FindAll(".munin-explorer-page__body .headline-s").Select(e => e.TextContent)];
 
     // ---------------------------------------------------------------------------------
     // Styling contract. The package ships no CSS, so every class name this view emits is
@@ -336,13 +336,13 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // The exact list, for the reason the explorer's own version of this is exact: a tenth name
+        // The exact list, for the reason the explorer's own version of this is exact: one more name
         // appearing here is news, and news that has to be answered in both sample stylesheets before
         // it ships. None of these was ever helsedata's — the six that used to be theirs in this prefix
         // are all on the explorer, none on this view — so every one is a promise only the sample
         // stylesheet keeps.
         //
-        // It is the second such list: VariableSearchTest.cs pins twelve of these fourteen down the
+        // It is the second such list: VariableSearchTest.cs pins eighteen of these twenty down the
         // drill-in path, all but munin-explorer-group, which that fixture's kilde has no metadata
         // groups to produce, and the delkilde beskrivelse, which its delkilder do not carry.
         // Renaming a handle means editing both, and the other one fails with a message about the
@@ -364,7 +364,6 @@ public class KildeViewTest : BunitContext
             "munin-explorer-hierarchy",
             "munin-explorer-hierarchy__metadata",
             "munin-explorer-kilde",
-            "munin-explorer-kilde__body",
             "munin-explorer-kilde__datasamlinger",
             "munin-explorer-kilde__delkilde",
             "munin-explorer-kilde__delkilde-description",
@@ -375,9 +374,36 @@ public class KildeViewTest : BunitContext
             "munin-explorer-kilde__identifiers",
             "munin-explorer-kilde__kildetype",
             "munin-explorer-kilde__main",
+            // The chassis the three detail views share, worn beside this view's own names above.
+            "munin-explorer-page",
+            "munin-explorer-page__body",
+            "munin-explorer-page__main",
             // The wrapper each block below the name sits in, so a contents nav can anchor on it.
             "munin-explorer-page__section",
         ], invented);
+    }
+
+    [Fact]
+    public void Chassis_WhenTheViewIsDrawn_ThenTheSharedNamesAreWornBesideThisViewsOwn()
+    {
+        // Both sets on every element but the body, which is the whole of this change:
+        // `__datasamlinger` below is styled inside an expanded row of the kildeutforsker as well as
+        // on this page, so renaming the prefix would have moved a surface nothing here renders.
+        var cut = Render(Kilde());
+
+        Assert.Contains("munin-explorer-kilde", cut.Find(".munin-explorer-page").ClassList);
+
+        var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
+
+        // The body, and only the body, sheds its older name: an element wearing both would carry a
+        // `grid-template-columns` from each block, settled by which stylesheet the host loaded last.
+        Assert.Equal("munin-explorer-page__body", body.ClassName);
+        Assert.Contains("munin-explorer-kilde__main", cut.Find(".munin-explorer-page__main").ClassList);
+
+        // Nothing fills the contents column yet, so the body is one child in one track rather than
+        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
+        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
+        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -475,7 +501,7 @@ public class KildeViewTest : BunitContext
 
         // Counted as well as checked: Assert.All passes over an empty collection, so a selector
         // that stopped matching would leave this test green while checking nothing.
-        var blocks = cut.FindAll(".munin-explorer-kilde__body .headline-s");
+        var blocks = cut.FindAll(".munin-explorer-page__body .headline-s");
         var groups = cut.FindAll(".munin-explorer-group");
 
         Assert.Equal(4, blocks.Count);
@@ -1837,42 +1863,6 @@ public class KildeViewTest : BunitContext
                                   branch => !branch.Contains("__aside", StringComparison.Ordinal)
                                             && Regex.IsMatch(branch, Base))),
             "No unscoped rule leaves munin-explorer-meta__grid two lanes for the main column.");
-    }
-
-    [Fact]
-    public void Body_WhenAHostLaysOutADetailView_ThenTheColumnIsTheOnlyTrack()
-    {
-        // The other stylesheet half, and the one the markup change needs: the aside is gone, so a
-        // body still declaring `minmax(0, 1fr) 320px` above 1024px leaves a 320px track with
-        // nothing in it and narrows the column this change exists to widen. (Fhi.Metadata-35w0p.6)
-        var rules = Regex
-            .Matches(WideBlock(HostClassNames.SampleCss), @"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}")
-            .Select(rule => (Selector: rule.Groups["selector"].Value,
-                             Declarations: rule.Groups["declarations"].Value))
-            .ToList();
-
-        foreach (var body in (string[])
-                 [
-                     "munin-explorer-kilde__body",
-                     "munin-explorer-datasamling__body",
-                     "munin-explorer-whole__body",
-                 ])
-        {
-            // Per branch, so grouping the three under one selector stays equivalent CSS here.
-            var tracks = rules
-                .Where(rule => rule.Selector.Split(',').Any(
-                    branch => Regex.IsMatch(branch, $@"\.{body}(?![\w-])")))
-                .Select(rule => Regex.Match(rule.Declarations, @"grid-template-columns:\s*([^;]+)"))
-                .Where(match => match.Success)
-                .Select(match => match.Groups[1].Value.Trim())
-                .ToList();
-
-            // Nothing here may pass by saying nothing: deleting the rule would empty the set.
-            Assert.NotEmpty(tracks);
-
-            // Anchored on the whole value, so a second track appended to it fails.
-            Assert.All(tracks, value => Assert.Matches(@"^minmax\(\s*0\s*,\s*1fr\s*\)$", value));
-        }
     }
 
     [Fact]

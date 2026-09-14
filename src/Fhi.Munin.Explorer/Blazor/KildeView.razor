@@ -2,116 +2,116 @@
 
 @if (Kilde is { } kilde)
 {
-    <div class="munin-explorer-kilde">
+    <DetailPage ViewRoot="munin-explorer-kilde"
+                ViewMain="munin-explorer-kilde__main">
+        <Header>
 
-        @* The name block. Runa puts the identifiers under the name rather than beside it, and the
-           kildetype as a tag away from both — it is a category, not part of what this source is
-           called. *@
-        <div class="munin-explorer-kilde__header">
-            @{ var named = T.Named(kilde.PreferredTerm, kilde.Code); }
+            @* The name block. Runa puts the identifiers under the name rather than beside it, and the
+               kildetype as a tag away from both — it is a category, not part of what this source is
+               called. *@
+            <div class="munin-explorer-kilde__header">
+                @{ var named = T.Named(kilde.PreferredTerm, kilde.Code); }
 
-            @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not - and
-               not when the catalogue left the name empty and this is the code standing in for it. *@
-            @DetailBlocks.Heading(HeadingLevel, named.Text, "headline headline-s margin--bottom",
-                                  HeadingId, CatalogueProperties.Foreign(named.Norwegian, Reader))
+                @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not - and
+                   not when the catalogue left the name empty and this is the code standing in for it. *@
+                @DetailBlocks.Heading(HeadingLevel, named.Text, "headline headline-s margin--bottom",
+                                      HeadingId, CatalogueProperties.Foreign(named.Norwegian, Reader))
 
-            @* Not when the heading above has already fallen back to it: the code twice, stacked, is
-               what a naive fallback draws. (Fhi.Metadata-w13lk) *@
-            @if (named.Norwegian && Identifiers is { } identifiers)
-            {
-                <p class="caption margin--none munin-explorer-kilde__identifiers">@identifiers</p>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(kilde.Kildetype))
-            {
-                @* `tag` was here, on the theory that it was Stiler's badge class. helsedata defines
-                   no `.tag` at all — their badges are `taglist`/`taglistitem`, and even those are
-                   only styled inside `.listcontainer .listitemholder .taglist`, which never matches
-                   this markup. The kildetype class below is ours and carries the whole badge. *@
-                <p class="munin-explorer-kilde__kildetype">@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</p>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(kilde.Description))
-            {
-                @* Norwegian whatever the reader's language: the catalogue stores one description,
-                   authored with markdown links and line breaks (FHIDev/Munin#5385). *@
-                <p class="ingress munin-explorer-kilde__description" lang="@CatalogueProperties.Foreign("no", Reader)">
-                    @CatalogueMarkdown.Render(kilde.Description)
-                </p>
-            }
-        </div>
-
-        <div class="munin-explorer-kilde__body">
-            <div class="munin-explorer-kilde__main">
-
-                @* Every block below is a <section> carrying a fixed English id, so a contents nav
-                   can anchor on it and a link into one is the same link in either language. Where a
-                   block can come out empty the wrapper sits INSIDE that check, never around it. *@
-
-                @* The catalogue's own metadata. Which groups exist, what they are called and what
-                   order they come in all arrive with the payload — see CatalogueProperties.Groups
-                   for the two rules that decide which of them a reader actually sees.
-
-                   The four block headings below wear headline-s, the same size as the name above
-                   them, because Stiler's scale has nothing verified between it and the headline-xxs
-                   the field labels wear. A smaller-sounding name invented to sit in that gap —
-                   headline-sm was here until Fhi.Metadata-e4bj2 — is a name no stylesheet defines,
-                   so it renders as a bare <h*> at the browser's own size instead. *@
-                @if (Groups.Count > 0)
+                @* Not when the heading above has already fallen back to it: the code twice, stacked, is
+                   what a naive fallback draws. (Fhi.Metadata-w13lk) *@
+                @if (named.Norwegian && Identifiers is { } identifiers)
                 {
-                    <DetailSection Id="@DetailSectionIds.Metadata">
-                        @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
-
-                        @foreach (var group in Groups)
-                        {
-                            @DetailBlocks.Group(group, GroupLevel, Language)
-                        }
-                    </DetailSection>
+                    <p class="caption margin--none munin-explorer-kilde__identifiers">@identifiers</p>
                 }
 
-                @* No check here, because this block has no empty state: the tree always draws, its
-                   status line carrying the loading, empty, error and retry states, and its nodes
-                   come off a different request than these counts, which could hide a real one. *@
-                <DetailSection Id="@DetailSectionIds.DataCollections">
-                    @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
-                    <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" ShowNodeIcons="@ShowNodeIcons"
-                                        DatasamlingHref="@DatasamlingHref" />
-                    @if (DataCollections.Count > 0 || Delkilder.Count > 0)
+                @if (!string.IsNullOrWhiteSpace(kilde.Kildetype))
+                {
+                    @* `tag` was here, on the theory that it was Stiler's badge class. helsedata defines
+                       no `.tag` at all — their badges are `taglist`/`taglistitem`, and even those are
+                       only styled inside `.listcontainer .listitemholder .taglist`, which never matches
+                       this markup. The kildetype class below is ours and carries the whole badge. *@
+                    <p class="munin-explorer-kilde__kildetype">@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</p>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(kilde.Description))
+                {
+                    @* Norwegian whatever the reader's language: the catalogue stores one description,
+                       authored with markdown links and line breaks (FHIDev/Munin#5385). *@
+                    <p class="ingress munin-explorer-kilde__description" lang="@CatalogueProperties.Foreign("no", Reader)">
+                        @CatalogueMarkdown.Render(kilde.Description)
+                    </p>
+                }
+            </div>
+        </Header>
+        <ChildContent>
+
+            @* Every block below is a <section> carrying a fixed English id, so a contents nav
+               can anchor on it and a link into one is the same link in either language. Where a
+               block can come out empty the wrapper sits INSIDE that check, never around it. *@
+
+            @* The catalogue's own metadata. Which groups exist, what they are called and what
+               order they come in all arrive with the payload — see CatalogueProperties.Groups
+               for the two rules that decide which of them a reader actually sees.
+
+               The four block headings below wear headline-s, the same size as the name above
+               them, because Stiler's scale has nothing verified between it and the headline-xxs
+               the field labels wear. A smaller-sounding name invented to sit in that gap —
+               headline-sm was here until Fhi.Metadata-e4bj2 — is a name no stylesheet defines,
+               so it renders as a bare <h*> at the browser's own size instead. *@
+            @if (Groups.Count > 0)
+            {
+                <DetailSection Id="@DetailSectionIds.Metadata">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+
+                    @foreach (var group in Groups)
                     {
-                        <details class="munin-explorer-hierarchy__metadata" @key="kilde.Id">
-                            <summary>@T.HierarchyMetadata</summary>
-                            @DataCollectionStructure
-                        </details>
+                        @DetailBlocks.Group(group, GroupLevel, Language)
                     }
                 </DetailSection>
+            }
 
-                @* Last of this view's own blocks, because the mockups put source information near
-                   the end of the page rather than in a rail beside it. *@
-
-                @* Both boxes are checked although neither empties under this package's own texts:
-                   the row that keeps the first full falls back to Texts.NotSpecified, a string the
-                   host constructs, so presence follows the content rather than that string. *@
-                @if (DetailBlocks.AnyFacts(SourceInformation))
+            @* No check here, because this block has no empty state: the tree always draws, its
+               status line carrying the loading, empty, error and retry states, and its nodes
+               come off a different request than these counts, which could hide a real one. *@
+            <DetailSection Id="@DetailSectionIds.DataCollections">
+                @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
+                <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" ShowNodeIcons="@ShowNodeIcons"
+                                    DatasamlingHref="@DatasamlingHref" />
+                @if (DataCollections.Count > 0 || Delkilder.Count > 0)
                 {
-                    <DetailSection Id="@DetailSectionIds.Source">
-                        @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                        @DetailBlocks.Facts(SourceInformation, Language)
-                    </DetailSection>
+                    <details class="munin-explorer-hierarchy__metadata" @key="kilde.Id">
+                        <summary>@T.HierarchyMetadata</summary>
+                        @DataCollectionStructure
+                    </details>
                 }
+            </DetailSection>
 
-                @if (DetailBlocks.AnyFacts(Statistics))
-                {
-                    <DetailSection Id="@DetailSectionIds.Statistics">
-                        @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
-                        @DetailBlocks.Facts(Statistics, Language)
-                    </DetailSection>
-                }
+            @* Last of this view's own blocks, because the mockups put source information near
+               the end of the page rather than in a rail beside it. *@
 
-                @* Whatever the explorer using this view puts after this view's own blocks. This
-                   component never learns which explorer that is, so it wraps none of it in a
-                   section. *@
-                @Sections
-            </div>
-        </div>
-    </div>
+            @* Both boxes are checked although neither empties under this package's own texts:
+               the row that keeps the first full falls back to Texts.NotSpecified, a string the
+               host constructs, so presence follows the content rather than that string. *@
+            @if (DetailBlocks.AnyFacts(SourceInformation))
+            {
+                <DetailSection Id="@DetailSectionIds.Source">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                    @DetailBlocks.Facts(SourceInformation, Language)
+                </DetailSection>
+            }
+
+            @if (DetailBlocks.AnyFacts(Statistics))
+            {
+                <DetailSection Id="@DetailSectionIds.Statistics">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
+                    @DetailBlocks.Facts(Statistics, Language)
+                </DetailSection>
+            }
+
+            @* Whatever the explorer using this view puts after this view's own blocks. This
+               component never learns which explorer that is, so it wraps none of it in a
+               section. *@
+            @Sections
+        </ChildContent>
+    </DetailPage>
 }

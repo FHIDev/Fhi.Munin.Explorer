@@ -11876,12 +11876,19 @@ public class VariableSearchTest : BunitContext
             [
                 "munin-explorer",
                 "munin-explorer-drilldown",
+                // The chassis the three detail views share. Each of its names comes first on the
+                // element it dresses, with the name that element wore before it beside it — except
+                // the body, which wears the chassis name alone.
+                "munin-explorer-page",
                 "munin-explorer-kilde",
                 "munin-explorer-kilde__header",
                 "munin-explorer-kilde__identifiers",
                 "munin-explorer-kilde__kildetype",
                 "munin-explorer-kilde__description",
-                "munin-explorer-kilde__body",
+                "munin-explorer-page__body",
+                // No contents column: it is emitted only when something fills it, and nothing does
+                // until the contents nav ships (Fhi.Metadata-35w0p.12).
+                "munin-explorer-page__main",
                 "munin-explorer-kilde__main",
                 // The wrapper each block below the name sits in. First seen on the datasamlinger,
                 // this fixture's kilde having no metadata groups to open a section before it.

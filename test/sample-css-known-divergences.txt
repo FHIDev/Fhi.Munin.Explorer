@@ -122,16 +122,6 @@
 # needs measuring — see the bead. The guard is what stops the list growing; shrinking it is
 # separate work.
 different-value|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters|max-height
-# The three below EXPIRE when the Stiler rule loses its second track. Fhi.Metadata-35w0p.6 stopped
-# emitting the 320px aside these bodies were laid out around, so the stand-in collapsed them to one
-# track; the pinned Stiler still declares `minmax(0, 1fr) 320px` here - _trail.scss:129-143, and
-# Fhi.Metadata-35w0p.39 is the bead that removes it - so the sample is AHEAD of the pin rather than
-# drifting from it. Left at two tracks it would draw 344px of empty page beside the one column on
-# both sample hosts, which is the defect this PR exists to stop. Delete these three lines the day
-# the pin carries the one-track rule.
-different-value|@media (min-width:1024px)|.munin-explorer-datasamling__body|grid-template-columns
-different-value|@media (min-width:1024px)|.munin-explorer-kilde__body|grid-template-columns
-different-value|@media (min-width:1024px)|.munin-explorer-whole__body|grid-template-columns
 different-value||.munin-explorer-frequency td|padding
 different-value||.munin-explorer-frequency td|vertical-align
 different-value||.munin-explorer-frequency th|padding

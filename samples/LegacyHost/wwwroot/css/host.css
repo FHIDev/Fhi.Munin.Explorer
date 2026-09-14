@@ -1744,9 +1744,9 @@ table.munin-explorer-data-list tbody th {
   max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
 }
 
-/* One track, at every width. The 320px rail these bodies were shaped around stopped being emitted
-   in Fhi.Metadata-35w0p.6, and a second track with nothing in it is 344px of dead page rather than
-   a harmless leftover. The block stays inside the breakpoint it has always been declared in. */
+/* Nothing has worn these names since the chassis took the body over in Fhi.Metadata-35w0p.9, so
+   like the aside below they match nothing and stand in for Stiler's own two tracks again — the one
+   track 35w0p.6 collapsed them to fixed a rail no element can be in now. Out with Stiler's, 39. */
 .munin-explorer-kilde__body,
 .munin-explorer-datasamling__body,
 .munin-explorer-whole__body {
@@ -1758,7 +1758,7 @@ table.munin-explorer-data-list tbody th {
   .munin-explorer-kilde__body,
   .munin-explorer-datasamling__body,
   .munin-explorer-whole__body {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 320px;
     align-items: start;
   }
 }
@@ -1781,6 +1781,46 @@ table.munin-explorer-data-list tbody th {
   padding: 16px;
   border-radius: 4px;
   background: var(--grey10);
+}
+
+/* The chassis the three detail views share, worn beside the prefix each of them already had.
+   Every declaration is Stiler's own, from components/munin-explorer/_page.scss. Two below restate
+   a rule above because Stiler has both and both names are on the element — not a leftover. */
+.munin-explorer-page > * > :is(h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+.munin-explorer-page__body {
+  display: grid;
+  gap: 40px;
+}
+
+/* 1025px, where the three bodies above say 1024: Stiler writes this breakpoint with its
+   `$desktop-all` token, the exact complement of `$tablet`, so no width matches both a min- and a
+   max-width rule. A stand-in that spells a breakpoint differently is standing in for nothing. */
+@media (min-width: 1025px) {
+  /* Two tracks only for a body that has two children: the contents column is emitted only when
+     something fills it, and a lone main column under a fixed first track lands in 250px of a 1440px
+     page. Stiler's own copy is ungated until Fhi.Metadata-ex5wb, so this is ahead of it. */
+  .munin-explorer-page__body:has(> .munin-explorer-page__toc) {
+    grid-template-columns: 250px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  /* The contents column follows the reader down the page. The scroller is half of the pairing
+     rather than a flourish: a max-height with nothing to scroll in only spills. */
+  .munin-explorer-page__toc {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+}
+
+/* A grid track is `min-width: auto`, so the widest thing in the column sets the floor — the trap
+   the three mains above meet, and the reason the content track is `minmax(0, 1fr)` and not `1fr`. */
+.munin-explorer-page__main {
+  min-inline-size: 0;
 }
 
 /* One block of a detail view, wrapped so a contents nav has something to anchor on. The scroll
