@@ -13,7 +13,7 @@ category: Notes for hosts
   declares them, so you write no rule for either.** They are global, unscoped classes in Stiler's
   `pages/_healthregisterpage.scss` and they reach its compiled stylesheet, which is where the nav
   gets its link colour and padding from. Both sample stylesheets carry a stand-in for hosts with no
-  Stiler, and that stand-in now declares what the pinned 0.1.42 declares — `margin` on the list,
+  Stiler, and that stand-in now declares what Stiler 0.1.42 declares — `margin` on the list,
   `background-color` and `transition` on the link — after
   `scripts/assert-sample-css-matches-stiler.sh` found it three declarations short of the real rule.
   `form-menu__list__item` has no rule of its own anywhere, and nothing is emitted for the

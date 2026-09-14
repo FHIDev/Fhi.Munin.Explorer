@@ -112,11 +112,85 @@ public class GeometryScanGuardTest
         Assert.Contains("unknown state \"no-such-state\"", run.Output, StringComparison.Ordinal);
     }
 
+    [NodeFact]
+    public void Scan_WhenLeavingOutANameNothingDefines_ThenItExitsTwo()
+    {
+        // A misspelt exception would leave out nothing and still be read as a named, known gap.
+        var run = Scan(null, $"{Target}::kilder-list", except: "no such assertion");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("unknown assertion \"no such assertion\"", run.Output, StringComparison.Ordinal);
+    }
+
+    [NodeFact]
+    public void Scan_WhenBothRunAndLeaveOutListsAreGiven_ThenItExitsTwo()
+    {
+        var run = Scan("hidden means hidden", $"{Target}::kilder-list", except: "no horizontal overflow");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("GEOMETRY_ASSERTIONS and GEOMETRY_EXCEPT are both set", run.Output, StringComparison.Ordinal);
+    }
+
+    [NodeFact]
+    public void Scan_WhenLeavingOutOneName_ThenTheBannerCountsEveryOtherAssertion()
+    {
+        var run = Scan(null, $"{Target}::no-such-state", except: "hidden means hidden");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains(
+            $"==> ASSERTIONS: {Assertions.Count - 1} of {Assertions.Count}, leaving out: hidden means hidden{Environment.NewLine}",
+            run.Output.ReplaceLineEndings(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HostileHost_WhenItLeavesAssertionsOutAt320_ThenEveryNameAndStateExists()
+    {
+        // Only the credentialed CI job runs that script, so a rename would otherwise surface there
+        // alone. Every call is parsed or the count below disagrees, so none is skipped unread.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+        var calls = Regex.Matches(
+            source,
+            @"^reflow ""(?<except>[^""]*)""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+            RegexOptions.Multiline);
+
+        Assert.NotEmpty(calls);
+        Assert.Equal(Regex.Matches(source, @"^reflow ", RegexOptions.Multiline).Count, calls.Count);
+
+        foreach (Match call in calls)
+        {
+            var names = call.Groups["except"].Value
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var name in names)
+            {
+                Assert.True(
+                    Assertions.ContainsKey(name),
+                    $"check-hostile-host.sh leaves out '{name}' at 320px, which geometry-assertions.mjs "
+                    + "does not define.");
+            }
+
+            var states = Regex.Matches(call.Groups["targets"].Value, @"""[^"":]*::(?<state>[^""]+)""")
+                .Select(match => match.Groups["state"].Value)
+                .ToList();
+
+            Assert.NotEmpty(states);
+
+            foreach (var state in states)
+            {
+                Assert.True(
+                    KnownStates.Value.Contains(state),
+                    $"check-hostile-host.sh measures the state '{state}' at 320px, which axe-states.mjs "
+                    + "does not define.");
+            }
+        }
+    }
+
     /// <summary>
     /// One run of the real script, from a directory that is not the checkout — which holds it to
     /// resolving its sibling modules by its own path rather than by where the caller stood.
     /// </summary>
-    private static GuardRun Scan(string assertions, string target)
+    private static GuardRun Scan(string? assertions, string target, string? except = null)
     {
         var dir = Directory.CreateTempSubdirectory("munin-geometry-scan");
 
@@ -132,6 +206,7 @@ public class GeometryScanGuardTest
             start.ArgumentList.Add(Repo.In("scripts", "geometry-scan.mjs"));
             start.ArgumentList.Add(target);
             start.Environment["GEOMETRY_ASSERTIONS"] = assertions;
+            start.Environment["GEOMETRY_EXCEPT"] = except;
 
             return Guard.Run(start, "geometry-scan.mjs");
         }

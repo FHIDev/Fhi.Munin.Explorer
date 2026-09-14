@@ -300,10 +300,12 @@ written for HostileHost" and the only one the numbers support:
   measures them against the real one at six widths.
 
 Read the run for exactly what it is: three assertions, one page, two states, against the sample
-stylesheet. The pinned-Stiler pages are still unmeasured at 320. `Fhi.Metadata-hfzsu` — 82px of
-helsedata's own site chrome overflowing there on every page of theirs — is released, and
-`samples/HostileHost` now pins `0.1.75`. Adding 320 to `GEOMETRY_WIDTHS` remains
-`Fhi.Metadata-kpmt3`; the pin update alone does not extend the six widths this gate measures.
+stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
+its own after the six widths: every assertion, except where a state fails today, and then only the
+failing assertion is left out, through `GEOMETRY_EXCEPT`, beside the bead that fixes it —
+`Fhi.Metadata-abmom`'s 2px on the kilder states, `Fhi.Metadata-jcdil` on `explorer-list-tab`,
+`Fhi.Metadata-s9h1k` on the three `kilde-hierarchy-*` states. Closing one of those beads means
+deleting its exception, not adding a state.
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1

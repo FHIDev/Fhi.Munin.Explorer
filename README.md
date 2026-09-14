@@ -375,8 +375,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     written down — so a host that defines none of them gets the same words, the same controls and
     the same order, in inline flow instead of a row of capsules. What the rules buy is the capsule
     itself and a 24×24 box for the close control, which is a WCAG 2.5.5 target rather than a
-    decoration. The rules are `Fhi.Helsedata.Stiler` PR 39206's, which 0.1.42 — the version pinned
-    here — predates, so a host has them from whichever release takes it. The two other names in that
+    decoration. The rules are `Fhi.Helsedata.Stiler` PR 39206's, which 0.1.42 predates and 0.1.68 —
+    the version helsedata.no pins — carries. The two other names in that
     row are borrowed and need nothing new — the heading is `caption margin--none` and the clear-all
     is `hd-button-square button-square--ghost`, Stiler's, worn in this component already by the
     facet panel's fold toggle.
@@ -387,8 +387,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     plainest one here: undefined, they go back to being blocks in ordinary flow, which is exactly
     what shipped before the name existed, so what a rule buys is a row of vertical space and
     nothing a reader could otherwise miss. Its rules are
-    `Fhi.Helsedata.Stiler` PR 39220's, merged after 0.1.42 was cut, so a host has them from the
-    release that follows the version pinned here. The name says `results` and the element sits
+    `Fhi.Helsedata.Stiler` PR 39220's, merged after 0.1.42 was cut and carried by 0.1.68. The name says `results` and the element sits
     above `munin-explorer-results` rather than inside it, deliberately: the results container is
     drawn only with rows on screen, and the count inside this row is the component's one polite
     live region, which has to be in the DOM before its text arrives.
@@ -608,10 +607,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   The only thing that tells them apart is whether the box contains the selection column, so a rule
   that needs the distinction selects `.munin-explorer-kilder-scroll--cols-N:has(.munin-explorer-kilder__select)`
   and gives the other table the `:not(:has(…))` arm. That is what
-  `Fhi.Helsedata.Stiler` PR 39282 does. It postdates 0.1.42, the version pinned here, and it
-  postdates 0.1.67 as well — that release was already the newest on the feed when the PR merged to
-  `main` at 08:50 UTC on 2026-09-11 — so no published Stiler carries these thresholds yet, and a
-  host has them from whichever release is cut next.
+  `Fhi.Helsedata.Stiler` PR 39282 does. It postdates 0.1.67 — that release was already the newest
+  on the feed when the PR merged to `main` at 08:50 UTC on 2026-09-11 — and 0.1.68 is the first
+  release that carries these thresholds.
 
   **The whole list, name by name.** The paragraphs above pick out the names worth an argument.
   They used to end in hand-written counts, and every one of them had gone stale: `kilde*` had grown

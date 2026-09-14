@@ -16,8 +16,8 @@
 #     scroll offset 0, which is where the absolute header overlaps;
 #   - the search-only mount, which this host does not render. The kildeutforsker IS measured, on
 #     /kilder, as of Fhi.Metadata-fih3y;
-#   - widths other than the six in GEOMETRY_WIDTHS, and any height at all — nothing here asks
-#     about vertical layout;
+#   - widths other than the six in GEOMETRY_WIDTHS and 320, and any height at all — nothing here
+#     asks about vertical layout. At 320 some assertions are left out in some states, by name;
 #   - whether it LOOKS right. Boxes in the right places can still be the wrong design.
 #
 # Usage:  ./scripts/check-hostile-host.sh
@@ -123,7 +123,7 @@ fi
 
 # STILER_FROM_SOURCE=1 swaps the pinned package for the Stiler checkout beside this repository,
 # which is the only way this port runs on a machine without the Azure Artifacts Credential
-# Provider. What it then measures is Stiler MAIN, not the pinned 0.1.42 helsedata restore, so the
+# Provider. What it then measures is Stiler MAIN, not the pinned package, so the
 # run says which of the two it used and CI never sets it (Fhi.Metadata-wgwa0).
 STILER_ARGS=()
 if [ "${STILER_FROM_SOURCE:-0}" = "1" ]; then
@@ -226,6 +226,36 @@ set -e
 
 [ "$geometry_status" -eq 2 ] && exit 2
 
+# 320px, WCAG 1.4.10 Reflow. Each call leaves out only what fails in its states today, named with the
+# bead that fixes it; the bead's last step is deleting its call's exception.
+reflow_status=0
+reflow() {
+  local except="$1"; shift
+  local urls=() t status
+  for t in "$@"; do urls+=("${BASE}${t}"); done
+  set +e
+  GEOMETRY_WIDTHS=320 GEOMETRY_EXCEPT="$except" ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" \
+    node "$ROOT/scripts/geometry-scan.mjs" "${urls[@]}"
+  status=$?
+  set -e
+  [ "$status" -eq 2 ] && exit 2
+  [ "$status" -ne 0 ] && reflow_status=1
+  return 0
+}
+
+echo
+echo "==> measuring the reflow width WCAG 1.4.10 names"
+reflow "" "/::explorer-tabs"
+# The closed column picker hangs 2px off the left edge; Fhi.Metadata-abmom records why that stays.
+reflow "the component stays inside the box the host gave it" \
+  "/kilder::kilder-list" "/kilder::kilder-counts" "/kilder::kilde-facets"
+# The list picker's <select> is as wide as its longest option (Fhi.Metadata-jcdil).
+reflow "no horizontal overflow,the component stays inside the box the host gave it" \
+  "/::explorer-list-tab"
+# The detail page's fact grids widen to an unbroken URL (Fhi.Metadata-s9h1k).
+reflow "no horizontal overflow,the component stays inside the box the host gave it" \
+  "/kilder::kilde-hierarchy-collapsed" "/kilder::kilde-hierarchy-expanded" "/kilder::kilde-hierarchy-metadata"
+
 # An assertion that has quietly stopped measuring anything reports success forever, so each one is
 # handed a page carrying the defect it was written for and required to say so.
 set +e
@@ -259,7 +289,7 @@ EOF
   exit 1
 fi
 
-if [ "$geometry_status" -ne 0 ] || [ "$axe_status" -ne 0 ]; then
+if [ "$geometry_status" -ne 0 ] || [ "$reflow_status" -ne 0 ] || [ "$axe_status" -ne 0 ]; then
   cat >&2 <<'EOF'
 The component does not render correctly inside helsedata's stylesheet and chrome.
 
@@ -277,7 +307,8 @@ Every geometry assertion that applies held, each one still fires against the def
 for, and axe found no violations - against helsedata's real stylesheet.
 
 Read that for what it is. It says the boxes are where they should be at six widths and at
-scroll offset 0, on the front page and on the kildeutforsker; it does not say the page looks
+scroll offset 0, and at 320 minus the gaps the reflow step names, on the front page and on the
+kildeutforsker; it does not say the page looks
 right, and it says nothing at all about the search-only mount this host does not render. The
 header of this script lists the rest. Assertions printed `n/a` measured nothing on that page and
 say so; they are not passes.
