@@ -301,11 +301,9 @@ written for HostileHost" and the only one the numbers support:
 
 Read the run for exactly what it is: three assertions, one page, two states, against the sample
 stylesheet. The pinned-Stiler pages are still unmeasured at 320. `Fhi.Metadata-hfzsu` — 82px of
-helsedata's own site chrome overflowing there on every page of theirs — is fixed on Stiler's main
-and closed, so what adding 320 to `GEOMETRY_WIDTHS` now waits on is that fix being released and
-`samples/HostileHost` moving off its `0.1.42` pin, which is `Fhi.Metadata-kpmt3`. Until then a gate
-that included those pages would be red on every pull request for a defect this repository cannot
-fix, and a gate nobody can get green is one somebody deletes.
+helsedata's own site chrome overflowing there on every page of theirs — is released, and
+`samples/HostileHost` now pins `0.1.75`. Adding 320 to `GEOMETRY_WIDTHS` remains
+`Fhi.Metadata-kpmt3`; the pin update alone does not extend the six widths this gate measures.
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1
@@ -533,6 +531,15 @@ renamed `munin-explorer*` name has no appearance there until a rule for it lands
 `Fhi.Helsedata.Stiler`** — a separate Azure DevOps repository no pipeline here can reach. So a
 green Explorer pipeline is not evidence the element is styled; nothing that runs on this side has
 ever looked at the stylesheet that decides it.
+
+**So check Stiler itself, and nothing else.** The authoritative answer to "does Stiler carry a rule
+for this name" is the `Fhi.Helsedata.Stiler` repository — `Static/scss/` for the source and
+`wwwroot/css/main.css` for what the package actually ships — or the published package on
+`Fhi.Helsedata.no`. **Never a deployed site.** `helsedata.no` does not run Stiler at all; the test
+host does, and even there a grep answers "which version is deployed", not "what does Stiler
+contain". A bundle fetched from a running site is evidence about someone's deployment, and reading
+it as evidence about the package has already produced one confidently-wrong bead
+(`Fhi.Metadata-u0cxn`, closed moot) and corrections to three others that had to be retracted.
 
 **The Stiler rule therefore gets its own bead, filed before the PR that introduces the name
 merges** — labels `stiler`, `rcl` and `helsedata` — and not a clause inside the RCL bead's own

@@ -145,7 +145,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     `Fhi.Metadata-ja2qu`. It is worth spelling out because it failed backwards from every other
     missing rule here: what was missing was the rule that **hides** the link until it is focused,
     so a Stiler-only host drew a permanently visible "Hopp til paginering" over every
-    multi-page result list rather than an unstyled anything. Neither sample host showed it — both
+    multi-page result list rather than an undrawn anything. Neither sample host showed it — both
     styled the borrowed name in their own `host.css` — and neither guard could, because neither
     guard reads Stiler. Both ask only whether a name has a rule that declares something, in the
     capture of helsedata's live page (`test/host-class-names.txt`, where `skiplink-pagination` sits
@@ -169,10 +169,14 @@ These are not style preferences — each one is a host that breaks otherwise.
   A name no stylesheet has heard of renders as a raw browser default inside an otherwise styled
   page, which defeats the point of shipping this as a component at all. That is why owning the
   prefix does not mean inventing freely: where there is no rule for a shape, change the shape
-  rather than adding a stylesheet. The filter panel is `<details>` plus a nested `<ul>` rather than
-  an accordion and a tree, and the detail panel is a `<dl>` with an `<ol>` for the kilde trail,
-  because no host stylesheet names any of those. What a host supplies for them is base element
-  styling — list indentation in particular, which is what shows a delkilde sitting under its kilde.
+  rather than adding a stylesheet. A facet in the filter panel is a `<details>` over a nested
+  `<ul>` rather than an accordion and a tree, and the detail panel is a `<dl>` with an `<ol>` for
+  the kilde trail, because no host stylesheet names any of those. A branch *inside* one of those
+  trees is the exception, and it is an argued one: its row carries the value's own checkbox, and a
+  `<summary>` around a filter is two presses a reader cannot make apart, so the branch opens on a
+  `<button aria-expanded>` of its own drawn with an arrow as text. What a host supplies for them is
+  base element styling — list indentation in particular, which is what shows a delkilde sitting
+  under its kilde.
   `KildeView`'s own delkilde tree is a nested `<ul>` for both halves of that: a browser indents it
   unasked, and the nesting is a relationship a screen reader reads rather than one CSS draws.
   The package emits `<table>`s for the same reason: the kodeverk code list in an opened panel, and
@@ -182,7 +186,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   The panel's `Nivålinjer` toggle is a neighbouring rule rather than that one: it puts
   `data-level-lines="true"` on `munin-explorer-filters` and draws nothing itself. The argument above
   does not apply to it and should not be borrowed for it — a class on the `<ul>` that is already
-  there would render exactly as it does today, unstyled or not, because no element is being replaced.
+  there would render exactly as it does today, undrawn or not, because no element is being replaced.
   What a class would cost is inventory: this contract, both sample stylesheets and
   `assert-sample-css-in-step.sh` would each have to carry the name for good. A state marker owes
   none of that. Both sample stylesheets show the rule — one `border-left` on the nested lists — and
@@ -283,10 +287,21 @@ These are not style preferences — each one is a host that breaks otherwise.
     (0,1,1) and a bare class is (0,1,0), so a class on any other element loses the font-size to it
     and the field draws at 18px instead of 14px. And the rule reached `Fhi.Helsedata.Stiler`'s
     `main` after 0.1.42 was cut, so the floor is the first release that follows it — a host on
-    0.1.42 or older is in the undressed case above rather than a broken one. The kildetype groups
-    inside that same facet add no name for the disclosure itself: they are `<details>`/`<summary>`
-    like the facets around them, so the marker, the open state and the focus ring come from rules a
-    host already has. The count is where they do add a name, and it is one to read this list for. It
+    0.1.42 or older is in the undressed case above rather than a broken one. Every branch of that
+    facet's tree — kildetype group, kilde, delkilde — opens on a control of its own, and the two
+    names it adds are `munin-explorer-filters__branch` on the row and
+    `munin-explorer-filters__disclosure` on the button. Handles both: the button is a real
+    `<button aria-expanded>` carrying an arrow as text and a name from `aria-labelledby`, so unstyled
+    it is still visible, operable and announced, and unstyled the row is the blocks it is made of
+    stacked rather than laid out. What the rules buy is the row and a 24x24 target, which is WCAG
+    2.5.8 Target Size (Minimum). The branch was `<details>`/`<summary>` at the kildetype level
+    alone until `Fhi.Metadata-adog5`, and a summary cannot be the answer here: the row it would hold
+    carries the value's own checkbox, and a disclosure wrapped around a filter is the two presses
+    a reader must be able to make apart. **Both names are styled in Stiler 0.1.75 and later**
+    (`Fhi.Metadata-cs3pt`). The rules keep the checkbox beside its disclosure, put children on the
+    next line, and preserve a visible keyboard focus state when a host reset removes outlines.
+    The count is where these groups add
+    a third name, and it is one to read this list for. It
     wears `munin-explorer-filters__groupcount`, which is the row above's form under a name that says
     what these numbers are: a group's SIZE, drawn whether or not anything in it is ticked, where
     `__chosen` means how many values the reader chose. They shared the name until
@@ -619,10 +634,12 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-drilldown` | handle |
   | `munin-explorer-filters` | handle |
   | `munin-explorer-filters__active` | handle |
+  | `munin-explorer-filters__branch` | handle |
   | `munin-explorer-filters__chip` | handle |
   | `munin-explorer-filters__chip-remove` | handle |
   | `munin-explorer-filters__chosen` | handle |
   | `munin-explorer-filters__count` | handle |
+  | `munin-explorer-filters__disclosure` | handle |
   | `munin-explorer-filters__facets` | handle |
   | `munin-explorer-filters__groupcount` | handle |
   | `munin-explorer-filters__search` | handle |

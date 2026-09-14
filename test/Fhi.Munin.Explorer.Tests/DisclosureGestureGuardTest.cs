@@ -139,8 +139,9 @@ public class DisclosureGestureGuardTest : BunitContext
     private static readonly Guid DatasamlingId = new("aaaaaaaa-0000-0000-0000-000000000002");
     private static readonly Guid VariableId = new("aaaaaaaa-0000-0000-0000-000000000003");
     private static readonly Guid ListId = new("aaaaaaaa-0000-0000-0000-000000000004");
+    private static readonly Guid OtherKildeId = new("aaaaaaaa-0000-0000-0000-000000000005");
 
-    private sealed class DisclosureClient : EmptyMuninExplorerClient
+    private class DisclosureClient : EmptyMuninExplorerClient
     {
         private static readonly KildeSummary Kilde = new()
         {
@@ -292,6 +293,48 @@ public class DisclosureGestureGuardTest : BunitContext
         Services.AddScoped<VariableListState>();
 
         AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 4);
+    }
+
+    [Fact]
+    public void VariableSearchFilterTree_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
+    {
+        // Three, and two of them are the facet tree's own: the scene above answers the filters
+        // endpoint with nothing, so its panel draws no tree at all and the branch disclosures added
+        // by Fhi.Metadata-adog5 were swept by neither half of this guard.
+        Services.AddSingleton<IMuninExplorerClient>(new FacetTreeClient());
+        Services.AddScoped<VariableListState>();
+
+        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 3);
+    }
+
+    /// <summary>The same client, answering the filters endpoint with a tree two levels deep.</summary>
+    /// <remarks>
+    /// Two kildetyper, because one is lifted away: the panel drops a group heading that would be
+    /// the only one, so a single-kildetype payload draws no group row to gesture.
+    /// </remarks>
+    private sealed class FacetTreeClient : DisclosureClient
+    {
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new FilterOptions
+            {
+                KildeTyper =
+                [
+                    new() { Value = "sentraltHelseregister", DisplayName = "Sentralt helseregister", Count = 1 },
+                    new() { Value = "biobank", DisplayName = "Biobank", Count = 1 }
+                ],
+                Kilder =
+                [
+                    new() { Id = KildeId, Name = "Als registeret", KildeType = "sentraltHelseregister", Count = 1 },
+                    new() { Id = OtherKildeId, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 1 }
+                ],
+                Datasamlinger =
+                [
+                    new() { Id = DatasamlingId, Name = "Inklusjon", KildeId = KildeId, Count = 1 }
+                ],
+                TotalCount = 2,
+            });
     }
 
     /// <summary>The explorer with its first row open and the Data tab chosen, where kodeverk live.</summary>

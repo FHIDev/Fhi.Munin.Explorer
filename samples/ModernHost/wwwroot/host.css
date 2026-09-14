@@ -508,6 +508,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   display: flex;
   gap: 16px;
   margin-bottom: 16px;
+  align-items: center;
 }
 
 .munin-explorer-filters__toolbar > .hd-button-square {
@@ -602,29 +603,14 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   border-bottom: 1px solid var(--grey30);
   padding: 8px 0;
 }
-.munin-explorer-filters summary { cursor: pointer; }
-.munin-explorer-filters summary .form-element__label { margin-top: 0; cursor: pointer; }
-.munin-explorer-filters summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-
-/* Kelda's facet summary as one row: heading, ticked-value count, then the disclosure marker at the
-   trailing edge — without it the block-level <h4> takes the whole first line and pushes the other
-   two onto rows of their own. Stiler's is unscoped and shared with Runa's. (Fhi.Metadata-l9l2n.58) */
-.munin-explorer-filters__facets > details > summary {
+.munin-explorer-filters summary {
+  cursor: pointer;
+  align-items: center;
   display: flex;
-  align-items: baseline;
   gap: 8px;
 }
-
-/* A flex box is not a list-item, so the browser stops drawing the marker; this is it, redrawn
-   where the row has room for it. The empty alt text is load-bearing — without it the glyph joins
-   the accessible name and the facet announces as "Kildetype 2 valgt ▸". (Fhi.Metadata-l9l2n.58) */
-.munin-explorer-filters__facets > details > summary::after {
-  content: counter(list-item, disclosure-closed) / "";
-  margin-left: auto;
-}
-.munin-explorer-filters__facets > details[open] > summary::after {
-  content: counter(list-item, disclosure-open) / "";
-}
+.munin-explorer-filters summary .form-element__label { margin-top: 0; cursor: pointer; }
+.munin-explorer-filters summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 .munin-explorer-filters ul {
   margin: 8px 0 0;
@@ -645,9 +631,47 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   cursor: pointer;
   overflow-wrap: anywhere;
   line-height: 150%;
+  font-size: 0.875rem;
 }
 
 .munin-explorer-filters li > label input[type="checkbox"] { margin-top: 4px; flex: none; }
+
+/* Disclosure and selection stay beside each other; children take their own line.
+   A filled focus state survives the host reset that removes button outlines. (Fhi.Metadata-cs3pt) */
+.munin-explorer-filters__branch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: 4px;
+}
+
+.munin-explorer-filters__branch > label { flex: 1 1 0; min-width: 0; }
+
+.munin-explorer-filters__branch > ul { flex-basis: 100%; }
+
+.munin-explorer-filters__disclosure {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--grey60);
+  font-size: 0.75rem;
+  line-height: 24px;
+  cursor: pointer;
+}
+
+.munin-explorer-filters__disclosure:hover,
+.munin-explorer-filters__disclosure:focus-visible {
+  background-color: var(--grey60);
+  color: #fff;
+}
+
+.munin-explorer-filters__disclosure:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
 
 /* Nivålinjer: one guide line per level of the tree, drawn from first paint — the toggle takes them
    away rather than putting them there. The package emits `data-level-lines` on the panel instead of
@@ -666,7 +690,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    is no margin on top of that, so the shift stays at one pixel per level rather than compounding
    into a visible reflow of the tree. */
 .munin-explorer-filters[data-level-lines="true"] ul ul {
-  border-left: 1px solid var(--grey60);
+  border-left-color: rgb(81, 84, 123);
 }
 
 /* The clear button is never `disabled` — the same focus reason as the pager's — so its unavailable
@@ -814,12 +838,15 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    package. */
 .munin-explorer-filters input[type="date"] {
   display: block;
-  margin: 4px 0 12px;
-  padding: 6px 8px;
+  margin: 4px 0 8px;
+  padding: 0 10px;
   font: inherit;
   color: var(--dark);
-  border: 1px solid var(--grey30);
-  border-radius: 4px;
+  border: 1px solid rgb(114, 113, 150);
+  border-radius: 7px;
+  font-size: 0.875rem;
+  height: 34px;
+  width: 100%;
 }
 
 /* The box that narrows a long facet's own values, on the same terms and for the same reason: a
@@ -828,15 +855,14 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    and a default-width box beside a wrapped 60-character label reads as belonging to something
    else. box-sizing so that width and the padding beside it do not overflow the column. */
 .munin-explorer-filters input[type="text"] {
-  display: block;
-  box-sizing: border-box;
   width: 100%;
-  margin: 4px 0 8px;
-  padding: 6px 8px;
+  margin: 8px 0 4px;
+  padding: 0 10px;
   font: inherit;
-  color: var(--dark);
-  border: 1px solid var(--grey30);
-  border-radius: 4px;
+  border: 1px solid rgb(114, 113, 150);
+  border-radius: 7px;
+  font-size: 0.875rem;
+  height: 34px;
 }
 
 /* The variabelutforsker's own version of that box, in the Kilde facet, and the one name in this
@@ -853,7 +879,7 @@ input.munin-explorer-filters__search {
   margin: 8px 0 4px;
   padding: 0 10px;
   font-size: 0.875rem;
-  border: 1px solid var(--grey30);
+  border: 1px solid rgb(114, 113, 150);
   border-radius: 7px;
 }
 
@@ -906,7 +932,7 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   list-style: none;
 }
 .munin-explorer-detail dd ol li + li::before {
-  content: "\203A";
+  content: "›";
   margin: 0 8px;
   color: var(--grey60);
 }
@@ -1087,10 +1113,13 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   width: 16px;
   color: var(--primary);
   transition: transform 120ms ease;
+  flex: 0 0 1rem;
+  background-size: 1rem;
+  height: 1rem;
 }
 
 .munin-explorer-dataitem-main__expand-icon::before {
-  content: "\203A";           /* › */
+  content: "›";           /* › */
   font-size: 1.25rem;
   line-height: 1;
 }
@@ -1226,6 +1255,10 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 
 .munin-explorer-data-list__header {
   border-bottom: 2px solid var(--grey30);
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+  z-index: 1;
 }
 
 .munin-explorer-data-list__item__row--header {
@@ -1252,7 +1285,9 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 }
 
 .munin-explorer-dataitem-main__expand-icon {
-  flex: 0 0 24px;
+  flex: 0 0 1rem;
+  background-size: 1rem;
+  height: 1rem;
 }
 
 .munin-explorer-dataitem-main__column,
@@ -1585,7 +1620,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-breadcrumb li + li::before {
-  content: "\203A";
+  content: "›";
   margin: 0 8px;
   color: var(--grey60);
 }
@@ -1775,12 +1810,23 @@ table.munin-explorer-data-list tbody th {
 /* Nothing has emitted an aside since Fhi.Metadata-35w0p.6, so this matches nothing. It stays
    rather than going: a stand-in draws what the stylesheet a host restores draws, and Stiler still
    carries it. It leaves with Stiler's, under Fhi.Metadata-35w0p.39. */
-.munin-explorer-kilde__aside,
-.munin-explorer-datasamling__aside,
+.munin-explorer-kilde__aside {
+  padding: 16px;
+  border-radius: 4px;
+  background: var(--grey10);
+  border: 1px solid rgb(230, 230, 237);
+}
+.munin-explorer-datasamling__aside {
+  padding: 16px;
+  border-radius: 4px;
+  background: var(--grey10);
+  border: 1px solid rgb(230, 230, 237);
+}
 .munin-explorer-whole__aside {
   padding: 16px;
   border-radius: 4px;
   background: var(--grey10);
+  border: 1px solid rgb(230, 230, 237);
 }
 
 /* The chassis the three detail views share, worn beside the prefix each of them already had.
@@ -2252,7 +2298,11 @@ table.munin-explorer-data-list tbody th {
    checkbox wide. Scoped under the table for the reason the count rule above is: the rule it has
    to beat carries a class and an element. */
 .munin-explorer-kilder .munin-explorer-kilder__select {
-  width: 1%;
+  width: 32px;
+  padding-left: 4px;
+  padding-right: 4px;
+  text-align: center;
+  vertical-align: top;
 }
 /* The toggle wears hd-button-reset, so without a rule this is a bare glyph in a column with no
    width. Scoped like __count and __select: the shared cell rule carries a class and an element, so
@@ -2267,9 +2317,9 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-kilder__expand-toggle {
   cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  padding: 4px 6px;
+  padding: 8px 12px;
+  align-items: center;
+  display: inline-flex;
 }
 
 /* A sample has no icon font, so this stands in for Stiler's `.icon` — the same character the
@@ -2284,7 +2334,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-kilder__expand-icon::before {
-  content: "\203A";           /* › */
+  content: "›";           /* › */
   font-size: 1.25rem;
   line-height: 24px;
 }
@@ -2479,20 +2529,19 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-header__actions-button > .icon--right {
-  margin-left: 8px;
   margin-right: 0;
 }
 
 .munin-explorer-header__actions-button > .icon-layout::before {
-  content: "\229E";           /* ⊞ */
+  content: "⊞";           /* ⊞ */
 }
 
 .munin-explorer-header__actions-button > .icon-keyboard-arrow-down::before {
-  content: "\25BE";           /* ▾ */
+  content: "▾";           /* ▾ */
 }
 
 .munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before {
-  content: "\25B4";           /* ▴ */
+  content: "▴";           /* ▴ */
 }
 
 /* Both chevrons are drawn and one is hidden, because the component ships no script and cannot
@@ -2778,6 +2827,8 @@ table.munin-explorer-data-list tbody th {
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--grey30);
+  margin-bottom: 24px;
+  padding-bottom: 16px;
 }
 /* The skip link's target, focused programmatically. Without an outline of its own the jump is
    invisible to a sighted keyboard user, who has no other sign that focus moved. */
@@ -2818,7 +2869,9 @@ table.munin-explorer-data-list tbody th {
    `flex: 1` so the box fills the row up to Stiler's own 720px cap rather than shrinking to its
    words: the sentence changes while a retry runs, and a box sized to its text would move the
    button left and right under the reader's pointer as it did. */
-.munin-explorer-alert .infobox { margin: 0; flex: 1 1 auto; }
+.munin-explorer-alert .infobox {
+  margin: 0;
+}
 
 /* Stiler's `margin-bottom` stays on the button so a host with no rule for this row still gets the
    spacing the stacked layout always had. Inside the row it would push the button off centre, so it
@@ -2880,6 +2933,10 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-pagination-pages .hd-button-reset {
   padding: 4px 8px;
   text-decoration: underline;
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 2.75rem;
 }
 .munin-explorer-pagination-pages .hd-button-reset.current {
   font-weight: 700;
@@ -2906,6 +2963,7 @@ table.munin-explorer-data-list tbody th {
   background-color: #fff;
   color: var(--dark);
   font: normal 1rem/1.5 var(--font);
+  height: 2.75rem;
 }
 
 /* ======================================================================
@@ -3016,7 +3074,7 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-hierarchy__nodes {
   list-style: none;
   margin: 0;
-  padding-left: 20px;
+  padding-left: 0;
 }
 .munin-explorer-hierarchy > .munin-explorer-hierarchy__nodes {
   padding-left: 0;
@@ -3024,30 +3082,47 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-hierarchy__branch {
   margin: 4px 0;
 }
-.munin-explorer-hierarchy__branch > summary,
+.munin-explorer-hierarchy__branch > summary {
+  cursor: pointer;
+  padding: 4px 8px;
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
 .munin-explorer-hierarchy__metadata > summary {
   cursor: pointer;
-  padding: 8px 4px;
+  padding: 4px 8px;
+  align-items: center;
+  display: flex;
+  gap: 8px;
 }
-.munin-explorer-hierarchy__branch > summary:focus-visible,
+.munin-explorer-hierarchy__branch > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  background: rgb(230, 230, 237);
+}
 .munin-explorer-hierarchy__metadata > summary:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+  background: rgb(230, 230, 237);
 }
 .munin-explorer-hierarchy__leaf {
-  display: block;
-  padding: 8px 4px 8px 20px;
+  display: flex;
+  padding: 4px 8px;
+  align-items: center;
+  gap: 8px;
 }
 .munin-explorer-hierarchy__icons {
   align-items: center;
   display: inline-flex;
-  gap: 2px;
-  margin-right: 6px;
-  vertical-align: -0.125em;
+  gap: 4px;
+  flex: none;
+  order: 1;
 }
 .munin-explorer-hierarchy__icon {
-  height: 0.875em;
-  width: 0.875em;
+  height: 1em;
+  width: 1em;
+  flex: none;
 }
 /* The grouping folder recedes behind the coloured category glyphs, as it does in Kelda. --grey60
    rather than the --dark the clear button's glyph takes: this one is aria-hidden decoration beside
@@ -3056,12 +3131,9 @@ table.munin-explorer-data-list tbody th {
   color: var(--grey60);
 }
 .munin-explorer-hierarchy__count {
-  background: var(--grey20);
-  border-radius: 4px;
   color: var(--grey60);
   font-variant-numeric: tabular-nums;
-  padding: 0 4px;
-  white-space: nowrap;
+  flex: none;
 }
 /* The route out of a datasamling in the tree and into its own page. The package writes it after
    the node's <details> and never inside the <summary>, which would toggle the node on the same
@@ -3088,4 +3160,884 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-hierarchy__metadata {
   border-top: 1px solid var(--grey30);
   margin-bottom: 16px;
+  padding-top: 8px;
+}
+
+/* Rules introduced since the previous Stiler pin; compared against the published 0.1.75. */
+.munin-explorer-filters__toolbar > .hd-button-square:not([aria-pressed]) {
+  background: none;
+  color: rgb(50, 55, 141);
+  font-size: 0.875rem;
+  height: auto;
+  min-height: 1.5rem;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.munin-explorer .munin-explorer-filters__toolbar > .hd-button-square.button-square--ghost:not([aria-pressed]) {
+  border-color: transparent;
+}
+
+.munin-explorer-filters__toolbar > .hd-button-square:not([aria-pressed]):hover {
+  background: none;
+  color: rgb(82, 30, 255);
+}
+
+.munin-explorer-filters__toolbar > .hd-button-square[aria-pressed] {
+  border-radius: 999px;
+  font-size: 0.875rem;
+  gap: 8px;
+  height: auto;
+  min-height: 2rem;
+  padding: 4px 12px;
+}
+
+.munin-explorer-filters__toolbar > .hd-button-square[aria-pressed]::before {
+  background: currentColor;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  content: "";
+  flex: none;
+  height: 10px;
+  width: 10px;
+}
+
+.munin-explorer-filters__toolbar > .hd-button-square[aria-pressed=false]::before {
+  background: none;
+}
+
+.munin-explorer-filters input[type=text]:focus {
+  border: 1px solid rgb(66, 139, 255);
+  outline: none;
+  box-shadow: 0 0 0 1px rgb(66, 139, 255);
+}
+
+.munin-explorer-filters input[type=date]:focus {
+  border: 1px solid rgb(66, 139, 255);
+  outline: none;
+  box-shadow: 0 0 0 1px rgb(66, 139, 255);
+}
+
+.munin-explorer-filters summary::after {
+  content: "";
+  flex: none;
+  margin-left: auto;
+  width: 1rem;
+  height: 1rem;
+  background: url(../img/icons/keyboard-arrow/icon_down.svg) no-repeat center/1rem;
+}
+
+.munin-explorer-filters details[open] > summary::after {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
+}
+
+.munin-explorer-filters__icons {
+  align-items: center;
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+}
+
+.munin-explorer-filters__icon {
+  flex: none;
+  height: 1em;
+  width: 1em;
+}
+
+.munin-explorer-filters__badge {
+  flex: none;
+  padding: 1px 9px;
+  border: 1px solid rgb(81, 84, 123);
+  border-radius: 999px;
+  color: rgb(81, 84, 123);
+  font-size: 0.75rem;
+}
+
+.munin-explorer-filters ul ul {
+  border-left: 1px solid transparent;
+  padding-left: 15px;
+}
+
+.munin-explorer-filters__legend {
+  margin-top: 16px;
+  columns: 20ch auto;
+  column-gap: 16px;
+  font-size: 0.875rem;
+}
+
+.munin-explorer-filters__legend-item {
+  align-items: flex-start;
+  break-inside: avoid;
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.munin-explorer-filters__legend-item > .munin-explorer-filters__icon {
+  margin-top: 4px;
+}
+
+.munin-explorer .munin-explorer-filters__active {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0 0 16px;
+}
+
+.munin-explorer-filters__active > .hd-button-square {
+  background: none;
+  color: rgb(50, 55, 141);
+  font-size: 0.875rem;
+  height: auto;
+  min-height: 1.5rem;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.munin-explorer .munin-explorer-filters__active > .hd-button-square.button-square--ghost:not([aria-pressed]) {
+  border-color: transparent;
+}
+
+.munin-explorer-filters__active > .hd-button-square:hover {
+  background: none;
+  color: rgb(82, 30, 255);
+}
+
+.munin-explorer .munin-explorer-filters__chip {
+  align-items: center;
+  background: rgb(239, 240, 250);
+  border: 1px solid rgb(81, 84, 123);
+  border-radius: 999px;
+  color: rgb(38, 32, 69);
+  display: inline-flex;
+  font-size: 0.875rem;
+  gap: 4px;
+  line-height: 150%;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 4px 4px 4px 8px;
+}
+
+.munin-explorer .munin-explorer-filters__chip-remove {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: rgb(38, 32, 69);
+  cursor: pointer;
+  display: inline-flex;
+  flex: none;
+  font: inherit;
+  font-size: 1rem;
+  height: 24px;
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  width: 24px;
+}
+
+.munin-explorer .munin-explorer-filters__chip-remove:hover {
+  background-color: rgb(81, 84, 123);
+  color: rgb(255, 255, 255);
+}
+
+.munin-explorer .munin-explorer-filters__chip-remove:focus-visible {
+  background-color: rgb(81, 84, 123);
+  color: rgb(255, 255, 255);
+  box-shadow: 0 0 0 2px rgb(66, 139, 255);
+  outline: none;
+}
+
+.munin-explorer .munin-explorer-switch {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: rgb(81, 84, 123);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.875rem;
+  gap: 8px;
+  line-height: 150%;
+  min-height: 2rem;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.munin-explorer .munin-explorer-switch[aria-checked=true] {
+  color: rgb(38, 32, 69);
+}
+
+.munin-explorer .munin-explorer-switch:hover {
+  background-color: rgb(239, 240, 250);
+  color: rgb(38, 32, 69);
+}
+
+.munin-explorer .munin-explorer-switch:focus-visible {
+  background-color: rgb(239, 240, 250);
+  color: rgb(38, 32, 69);
+  box-shadow: 0 0 0 2px rgb(66, 139, 255);
+  outline: none;
+}
+
+.munin-explorer .munin-explorer-switch__track {
+  background: rgb(239, 240, 250);
+  border: 1px solid rgb(81, 84, 123);
+  border-radius: 999px;
+  display: inline-block;
+  flex: none;
+  height: 18px;
+  position: relative;
+  width: 30px;
+}
+
+.munin-explorer .munin-explorer-switch__thumb {
+  background: rgb(81, 84, 123);
+  border-radius: 50%;
+  height: 12px;
+  left: 2px;
+  position: absolute;
+  top: 2px;
+  transition: transform 0.12s;
+  width: 12px;
+}
+
+.munin-explorer .munin-explorer-switch[aria-checked=true] .munin-explorer-switch__track {
+  background: rgb(81, 84, 123);
+  border-color: rgb(81, 84, 123);
+}
+
+.munin-explorer .munin-explorer-switch[aria-checked=true] .munin-explorer-switch__thumb {
+  background: rgb(255, 255, 255);
+  transform: translateX(12px);
+}
+
+@media (prefers-reduced-motion:reduce) {
+.munin-explorer .munin-explorer-switch__thumb {
+  transition: none;
+}
+}
+
+.munin-explorer-hierarchy > p:empty {
+  display: none;
+}
+
+.munin-explorer-hierarchy__nodes .munin-explorer-hierarchy__nodes {
+  border-left: 1px solid rgb(81, 84, 123);
+  padding-left: 16px;
+}
+
+.munin-explorer-hierarchy__branch > summary::after {
+  content: "";
+  flex: none;
+  margin-left: auto;
+  order: 2;
+  width: 1rem;
+  height: 1rem;
+  background: url(../img/icons/keyboard-arrow/icon_down.svg) no-repeat center/1rem;
+}
+
+.munin-explorer-hierarchy__metadata > summary::after {
+  content: "";
+  flex: none;
+  margin-left: auto;
+  order: 2;
+  width: 1rem;
+  height: 1rem;
+  background: url(../img/icons/keyboard-arrow/icon_down.svg) no-repeat center/1rem;
+}
+
+.munin-explorer-hierarchy__branch[open] > summary::after {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
+}
+
+.munin-explorer-hierarchy__metadata[open] > summary::after {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
+}
+
+.munin-explorer-hierarchy__branch > summary:hover {
+  background: rgb(230, 230, 237);
+}
+
+.munin-explorer-hierarchy__metadata > summary:hover {
+  background: rgb(230, 230, 237);
+}
+
+.munin-explorer-page__section[data-nav-section] {
+  scroll-margin-top: 140px;
+}
+
+.munin-explorer-page__section:last-child {
+  min-height: calc(60vh - 120px);
+}
+
+.munin-explorer-page__section:first-child > :is(h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+@media (max-width:767px) {
+.munin-explorer-page__section[data-nav-section] {
+  scroll-margin-top: 80px;
+}
+}
+
+.munin-explorer-page__body {
+  display: grid;
+  gap: 40px;
+}
+
+@media (min-width:1025px) {
+.munin-explorer-page__body {
+  grid-template-columns: 250px minmax(0, 1fr);
+  align-items: start;
+}
+}
+
+@media (min-width:1025px) {
+.munin-explorer-page__toc {
+  position: sticky;
+  top: 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+}
+
+.munin-explorer-page__main {
+  min-inline-size: 0;
+}
+
+.munin-explorer-page__fields {
+  display: grid;
+  grid-row-gap: 40px;
+  grid-column-gap: 24px;
+  font: normal 1rem/160% graphik, Arial, Helvetica, sans-serif;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 24px;
+}
+
+.munin-explorer-page__fields p {
+  margin: 0;
+}
+
+.munin-explorer-page__language {
+  margin: 0;
+}
+
+@media (max-width:1280px) {
+.munin-explorer-page__fields {
+  gap: 16px;
+  grid-template-columns: auto;
+  margin-bottom: 16px;
+  width: 100%;
+}
+}
+
+.munin-explorer-page__eyebrow {
+  display: inline-block;
+  margin: 1rem 0 0.75rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgb(239, 240, 250);
+  color: rgb(81, 84, 123);
+  font-size: 0.8125rem;
+}
+
+.munin-explorer-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 24px 0 0;
+}
+
+.munin-explorer-page__facts {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.625rem;
+  margin: 1.875rem 0 0;
+  padding: 1.375rem 0;
+  border-top: 1px solid rgb(230, 230, 237);
+  border-bottom: 1px solid rgb(230, 230, 237);
+}
+
+.munin-explorer-page__facts > div {
+  min-width: 0;
+}
+
+.munin-explorer-page__facts dt {
+  margin: 0 0 0.3125rem;
+  color: rgb(81, 84, 123);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.munin-explorer-page__facts dd {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.munin-explorer-page__facts small {
+  display: block;
+  margin-top: 0.1875rem;
+  color: rgb(81, 84, 123);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+@media (max-width:1080px) {
+.munin-explorer-page__facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.375rem;
+}
+}
+
+@media (max-width:600px) {
+.munin-explorer-page__facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.125rem;
+}
+}
+
+.munin-explorer-versions__detail[hidden] {
+  display: none;
+}
+
+.munin-explorer-kilder > tbody > tr:hover > th {
+  background: rgb(239, 240, 250);
+}
+
+.munin-explorer-kilder > tbody > tr:hover > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded) {
+  background: rgb(239, 240, 250);
+}
+
+.munin-explorer-kilder > tbody > tr:focus-within > th {
+  background: rgb(239, 240, 250);
+}
+
+.munin-explorer-kilder > tbody > tr:focus-within > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded) {
+  background: rgb(239, 240, 250);
+}
+
+.munin-explorer-kilder > tbody > tr:has( > .munin-explorer-kilder__expand > button) {
+  cursor: pointer;
+}
+
+.munin-explorer-results:has( > .munin-explorer-kilder-scroll) {
+  container-name: munin-explorer-kilder;
+  container-type: inline-size;
+}
+
+@container munin-explorer-kilder (min-width:780px) {
+.munin-explorer-kilder-scroll:not([class*=munin-explorer-kilder-scroll--cols-]) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:780px) {
+.munin-explorer-kilder-scroll:not([class*=munin-explorer-kilder-scroll--cols-]) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:467px) {
+.munin-explorer-kilder-scroll--cols-5:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:467px) {
+.munin-explorer-kilder-scroll--cols-4:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:467px) {
+.munin-explorer-kilder-scroll--cols-5:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:467px) {
+.munin-explorer-kilder-scroll--cols-4:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:634px) {
+.munin-explorer-kilder-scroll--cols-6:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:634px) {
+.munin-explorer-kilder-scroll--cols-5:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:634px) {
+.munin-explorer-kilder-scroll--cols-6:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:634px) {
+.munin-explorer-kilder-scroll--cols-5:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:800px) {
+.munin-explorer-kilder-scroll--cols-7:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:800px) {
+.munin-explorer-kilder-scroll--cols-6:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:800px) {
+.munin-explorer-kilder-scroll--cols-7:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:800px) {
+.munin-explorer-kilder-scroll--cols-6:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:957px) {
+.munin-explorer-kilder-scroll--cols-8:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:957px) {
+.munin-explorer-kilder-scroll--cols-7:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:957px) {
+.munin-explorer-kilder-scroll--cols-8:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:957px) {
+.munin-explorer-kilder-scroll--cols-7:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1102px) {
+.munin-explorer-kilder-scroll--cols-9:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1102px) {
+.munin-explorer-kilder-scroll--cols-8:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1102px) {
+.munin-explorer-kilder-scroll--cols-9:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1102px) {
+.munin-explorer-kilder-scroll--cols-8:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1220px) {
+.munin-explorer-kilder-scroll--cols-10:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1220px) {
+.munin-explorer-kilder-scroll--cols-9:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1220px) {
+.munin-explorer-kilder-scroll--cols-10:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1220px) {
+.munin-explorer-kilder-scroll--cols-9:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1310px) {
+.munin-explorer-kilder-scroll--cols-11:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1310px) {
+.munin-explorer-kilder-scroll--cols-10:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1310px) {
+.munin-explorer-kilder-scroll--cols-11:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1310px) {
+.munin-explorer-kilder-scroll--cols-10:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1396px) {
+.munin-explorer-kilder-scroll--cols-12:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1396px) {
+.munin-explorer-kilder-scroll--cols-11:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1396px) {
+.munin-explorer-kilder-scroll--cols-12:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1396px) {
+.munin-explorer-kilder-scroll--cols-11:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1478px) {
+.munin-explorer-kilder-scroll--cols-13:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1478px) {
+.munin-explorer-kilder-scroll--cols-12:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1478px) {
+.munin-explorer-kilder-scroll--cols-13:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1478px) {
+.munin-explorer-kilder-scroll--cols-12:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1560px) {
+.munin-explorer-kilder-scroll--cols-14:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1560px) {
+.munin-explorer-kilder-scroll--cols-13:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1560px) {
+.munin-explorer-kilder-scroll--cols-14:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1560px) {
+.munin-explorer-kilder-scroll--cols-13:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1632px) {
+.munin-explorer-kilder-scroll--cols-15:has(.munin-explorer-kilder__select) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1632px) {
+.munin-explorer-kilder-scroll--cols-14:not(:has(.munin-explorer-kilder__select)) {
+  overflow-x: visible;
+}
+}
+
+@container munin-explorer-kilder (min-width:1632px) {
+.munin-explorer-kilder-scroll--cols-15:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+@container munin-explorer-kilder (min-width:1632px) {
+.munin-explorer-kilder-scroll--cols-14:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+  box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+  position: sticky;
+  top: var(--munin-explorer-sticky-top, 0);
+}
+}
+
+.munin-explorer .munin-explorer-selection {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.munin-explorer-kilder__expand-toggle:focus-visible {
+  outline: 2px solid rgb(66, 139, 255);
+  outline-offset: 2px;
+}
+
+.munin-explorer-kilder .munin-explorer-kilder__expand-icon {
+  background-size: 1rem;
+  height: 1rem;
+  width: 1rem;
+}
+
+.munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-right {
+  background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
+}
+
+.munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-down {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
+}
+
+.munin-explorer-kilder > tbody > tr:hover .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-right {
+  background-image: url(../img/icons/keyboard-arrow/icon_down--blue.svg);
+}
+
+.munin-explorer-kilder > tbody > tr:hover .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-down {
+  background-image: url(../img/icons/keyboard-arrow/icon_up--blue.svg);
+}
+
+.munin-explorer-kilder .munin-explorer-kilder__select input[type=checkbox] {
+  height: 24px;
+  margin: 0;
+  width: 24px;
+}
+
+.munin-explorer-results__toolbar .munin-explorer-header {
+  margin: 0;
+}
+
+.munin-explorer-results__toolbar .munin-explorer-header__actions {
+  margin: 0;
+}
+
+.munin-explorer-results__toolbar select {
+  height: 2.75rem;
+}
+
+.munin-explorer-results__toolbar > div:has( > select) {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.munin-explorer-results__toolbar > div:has( > select) > .form-element__label {
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+.munin-explorer-header__actions .dropdown-choicepicker__item input[aria-disabled=true] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.munin-explorer-header__actions .dropdown-choicepicker__item input[aria-disabled=true] + .form-control__label {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-right {
+  background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
+}
+
+.munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-down {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
+}
+
+.munin-explorer-dataitem-main__period .munin-explorer-dataitem-main__column__text {
+  white-space: normal;
 }

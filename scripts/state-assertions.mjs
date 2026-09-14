@@ -10,9 +10,11 @@
 // happens there, and the disagreement is invisible to every test in test/. (Fhi.Metadata-1s7z1)
 //
 // WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
-//   - every OTHER control the component draws. Two presses are measured here, both in the variable
-//     explorer: the column picker's refusal to hide the last column, and a facet press dropped
-//     because a fetch was already in flight;
+//   - every OTHER control the component draws. Four presses are measured here, all in the variable
+//     explorer: the column picker's refusal to hide the last column, a facet press dropped because
+//     a fetch was already in flight, and the two the facet tree's branch disclosures add — that a
+//     shut branch leaves nothing behind for a Tab to land on, and that folding one over a ticked
+//     value leaves the value ticked;
 //   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
 //     visited at all;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this
@@ -46,6 +48,105 @@ const ITEM = '.dropdown-choicepicker__item';
 
 /** The facet sidebar. Its values are checkboxes; the dataperiode facet is fields and has none. */
 const PANEL = '.munin-explorer-filters';
+
+/** The control that opens one row of a facet tree — the rows that have values under them. */
+const DISCLOSURE = '.munin-explorer-filters__disclosure';
+
+/**
+ * What a Tab could land on inside a branch row.
+ *
+ * Read off the DOM rather than by tabbing through it: a shut branch's claim is that its values are
+ * not rendered at all, which is the stronger half of "not focusable" and the only one that survives
+ * a host stylesheet beating `[hidden]`. The Tab below measures the other half on the live page.
+ */
+const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+/** The first branch in the panel a reader can actually see, with its ancestors already open. */
+const firstShutBranch = page => page.locator(`${PANEL} ${DISCLOSURE}[aria-expanded="false"]:visible`).first();
+
+/** The row one disclosure belongs to. */
+const rowOf = disclosure => disclosure.locator('xpath=..');
+
+/**
+ * One disclosure, found by the names it answers to rather than by where it sits.
+ *
+ * Not by index: a press that refetches rebuilds the whole tree, and Playwright reads a `nth` that
+ * has moved as the LAST match rather than as an error — a silent mis-measure in a file whose own
+ * header exists to keep a green run from meaning more than it is. The verb in the name is the one
+ * for the NEXT press, so a branch answers to one name shut and another open, and both are kept.
+ */
+const branchNamed = (page, names) => names
+  .map(name => page.locator(PANEL).getByRole('button', { name, exact: true }))
+  .reduce((found, next) => found.or(next));
+
+const branchName = button => button.evaluate(one => one.getAttribute('aria-labelledby')
+  .split(/\s+/).map(id => document.getElementById(id).textContent.trim()).join(' '));
+
+/**
+ * Open the first shut branch the panel draws, and hand back the names it now answers to.
+ *
+ * Both branch assertions begin here, and both need it open: neither can ask anything of a branch
+ * that has disclosed nothing, and the name it wears open is only readable once it is. Pressed from
+ * the keyboard because that is also the claim — a <button> answers Enter with no handler of its own
+ * — and because two clicks on one control inside the double-click interval are a double-click,
+ * which every disclosure in this package refuses by design. (Fhi.Metadata-zel47)
+ */
+async function openFirstShutBranch(page) {
+  const panel = page.locator(PANEL);
+  await panel.waitFor({ state: 'visible', timeout: findTimeout });
+
+  const shut = firstShutBranch(page);
+  await shut.waitFor({ state: 'visible', timeout: findTimeout });
+
+  const names = [await branchName(shut)];
+  const button = await shut.elementHandle();
+
+  // The pin has to name one control, or every re-locate below could land on a second branch the
+  // catalogue happens to have given the same name.
+  if (await branchNamed(page, names).count() !== 1) {
+    throw new Error(`the panel draws more than one branch named "${names[0]}" — no press can be pinned to one`);
+  }
+
+  await shut.focus();
+
+  if (!await shut.evaluate(one => one === document.activeElement)) {
+    throw new Error(`the disclosure "${names[0]}" would not take focus`);
+  }
+
+  await page.keyboard.press('Enter');
+
+  // Against the element itself for this one step: it is mid-rename, so neither name finds it.
+  await page.waitForFunction(
+    one => one.getAttribute('aria-expanded') === 'true', button, { timeout: findTimeout });
+
+  names.push(await branchName(button));
+
+  if (names[1] === names[0]) {
+    throw new Error(`the disclosure "${names[0]}" kept its name when it opened, so it names the wrong press`);
+  }
+
+  return { panel, names, label: names[0], disclosure: branchNamed(page, names) };
+}
+
+/** Press a pinned disclosure, from the keyboard, and wait until it says it has moved. */
+async function pressBranch(page, names, expanded) {
+  await branchNamed(page, names).focus();
+  await page.keyboard.press(' ');
+  await branchNamed(page, names).and(page.locator(`[aria-expanded="${expanded}"]`))
+    .waitFor({ state: 'attached', timeout: findTimeout });
+}
+
+/**
+ * How much of what a Tab could land on inside a row is the branch's disclosed content.
+ *
+ * Counted apart from the row's own controls rather than by subtracting them: whether a row carries
+ * a checkbox of its own is the payload's answer, since the kildetype heading that has none is
+ * lifted away when a catalogue has only one kildetype. Everything deeper sits in a row of its own.
+ */
+const disclosedControls = row => row.evaluate(
+  (item, selector) => [...item.querySelectorAll(selector)]
+    .filter(control => control.closest('li') !== item).length,
+  FOCUSABLE);
 
 /** The route a facet press refetches, and so the one a staged drop has to hold open. */
 const SEARCH = '/api/explorer/variables';
@@ -339,6 +440,187 @@ export const assertions = [
       await page.locator(`${PANEL} details`).nth(index)
         .locator(':scope input[type=checkbox]').first()
         .evaluate(box => { box.checked = !box.checked; });
+    },
+  },
+
+  {
+    name: 'a shut branch leaves nothing under it for a Tab to land on',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    // The one thing about this control no test in test/ can ask, and the reason it is here rather
+    // than only in bUnit: whether the values a branch discloses are really gone from the page the
+    // reader is tabbing through, and whether the button answers Enter and Space at all. bUnit
+    // renders a render tree — there is no tab order in one, and no key to press.
+    async stage(page) {
+      let branch = await openFirstShutBranch(page);
+      // A grouping row has no checkbox. Descend until Tab can exercise the selectable-row case.
+      while (await rowOf(branch.disclosure).locator(':scope > label input[type=checkbox]').count() === 0) {
+        branch = await openFirstShutBranch(page);
+      }
+      const { names, label, disclosure } = branch;
+
+      const disclosed = await disclosedControls(rowOf(disclosure));
+
+      await pressBranch(page, names, 'false');
+
+      return { names, label, disclosed };
+    },
+
+    async measure(page, { names, label, disclosed }) {
+      const disclosure = branchNamed(page, names);
+      const drawn = await disclosure.count();
+
+      if (drawn !== 1) {
+        return `the panel draws ${drawn} branches named "${label}" where it drew one — nothing was measured`;
+      }
+
+      // Reported rather than passed over: a branch that disclosed nothing is one this assertion
+      // could not have failed on, whatever the collapse then did.
+      if (disclosed < 1) {
+        return `opening "${label}" put nothing a reader can reach on the page, so shutting it ` +
+          'again proves nothing';
+      }
+
+      if (await disclosure.getAttribute('aria-expanded') !== 'false') {
+        return `Space did not shut "${label}" — the control does not answer the keyboard`;
+      }
+
+      const row = rowOf(disclosure);
+      const left = await disclosedControls(row);
+      const lists = await row.locator('ul').count();
+
+      if (left > 0 || lists > 0) {
+        return `"${label}" is shut and its row still holds ${lists} list(s) and ${left} control(s): ` +
+          'a shut branch renders its values rather than leaving them out, so a stylesheet is all ' +
+          'that stands between them and the tab order';
+      }
+
+      // The row's own checkbox stays reachable; only disclosed descendants must leave the tab order.
+      await disclosure.focus();
+      await page.keyboard.press('Tab');
+
+      const inside = await row.evaluate(
+        item => item.contains(document.activeElement) && document.activeElement.closest('li') !== item);
+
+      return inside
+        ? `Tab off "${label}" landed inside a shut descendant row`
+        : null;
+    },
+
+    // The defect this replays is the design it was chosen over: draw the values anyway and hide
+    // them with `hidden`. That is one author rule away from being visible and focusable, which is
+    // how two tab panels came to be drawn at once on 2026-09-03.
+    async control(page, { names }) {
+      await rowOf(branchNamed(page, names)).evaluate(row => {
+        const list = document.createElement('ul');
+        list.hidden = true;
+        list.innerHTML = '<li><label><input type="checkbox"> Skjult verdi</label></li>';
+        row.appendChild(list);
+      });
+    },
+  },
+
+  {
+    name: 'folding a branch over a ticked value leaves the value ticked and the filter in force',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    // Expansion is the panel's state and selection is the filter's, and the two must not be
+    // coupled: a reader tidying the tree away would otherwise drop a filter they never released.
+    // Measured in a browser because the round trip is what makes it worth asking — the value goes
+    // out of the DOM and comes back from a render, not from a patch.
+    async stage(page) {
+      const { panel, names, label, disclosure } = await openFirstShutBranch(page);
+
+      const facet = disclosure.locator('xpath=ancestor::details[1]');
+      // Under the row's own list and never the row's own checkbox: what this assertion folds away
+      // has to be a value the branch disclosed, and a branch row carries a checkbox of its own at
+      // every level but a kildetype heading.
+      const box = rowOf(disclosure).locator('ul input[type=checkbox]:not(:checked)').first();
+
+      await box.waitFor({ state: 'visible', timeout: findTimeout });
+
+      // A real pointer press, unlike the disclosures either side of it: the browser's own flip of
+      // this box before any handler runs is the whole subject of this file.
+      await box.click();
+
+      // Both edges of the refetch a tick provokes. The rise is caught where it can be — against a
+      // local stub the panel can go busy and back inside one round trip — and the fall is waited
+      // for either way, so what is folded away below is the tree the answer rebuilt.
+      await panel.and(page.locator('[aria-busy="true"]'))
+        .waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+      await panel.and(page.locator('[aria-busy="false"]'))
+        .waitFor({ state: 'visible', timeout: findTimeout });
+
+      const chosen = await chosenInFacet(facet);
+
+      if (chosen === 0) {
+        throw new Error(`ticking a value under "${label}" chose nothing, so there is nothing to fold away`);
+      }
+
+      await pressBranch(page, names, 'false');
+
+      // Read while it is shut: the chip row and the facet's own count are drawn off the filter
+      // rather than off what is on screen, so both have to survive the value leaving the DOM.
+      const whileShut = await chosenInFacet(facet);
+      const chips = await page.locator('.munin-explorer-filters__chip').count();
+
+      await pressBranch(page, names, 'true');
+
+      return { names, label, chosen, whileShut, chips };
+    },
+
+    async measure(page, { names, label, chosen, whileShut, chips }) {
+      const disclosure = branchNamed(page, names);
+
+      // Given a moment to settle rather than read on the instant: the tick's refetch lands on its
+      // own schedule, and a render arriving between the last press and this read would otherwise
+      // be reported as a branch that had gone.
+      await disclosure.and(page.locator('[aria-expanded="true"]'))
+        .waitFor({ state: 'attached', timeout: findTimeout }).catch(() => {});
+
+      const drawn = await disclosure.count();
+
+      if (drawn !== 1) {
+        return `the panel draws ${drawn} branches named "${label}" where it drew one — nothing was measured`;
+      }
+
+      if (await disclosure.getAttribute('aria-expanded') !== 'true') {
+        return `"${label}" is shut again after being reopened — nothing was measured`;
+      }
+
+      if (whileShut !== chosen) {
+        return `the facet said ${chosen} value(s) chosen with "${label}" open and ${whileShut} ` +
+          'with it shut: folding a branch away changed the filter';
+      }
+
+      if (chips < 1) {
+        return 'the ticked value drew no chip over the results while its branch was shut, so the ' +
+          'only control left over that filter went with the branch';
+      }
+
+      const facet = disclosure.locator('xpath=ancestor::details[1]');
+      const nowChosen = await chosenInFacet(facet);
+      const ticked = await tickedInFacet(facet);
+
+      if (nowChosen !== chosen) {
+        return `reopening "${label}" left the facet saying ${nowChosen} value(s) chosen where it ` +
+          `said ${chosen} before it was shut`;
+      }
+
+      return ticked === nowChosen
+        ? null
+        : `${ticked} checkbox(es) are ticked in a facet the panel says holds ${nowChosen}: the ` +
+          'reopened branch drew its value at odds with the filter it is in';
+    },
+
+    // The flip the missing call would leave behind, put there by hand, exactly as the picker's and
+    // the facet's own controls do it.
+    async control(page, { names }) {
+      await rowOf(branchNamed(page, names))
+        .locator('ul input[type=checkbox]:checked').first()
+        .evaluate(box => { box.checked = false; });
     },
   },
 ];
