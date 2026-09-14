@@ -60,7 +60,7 @@
 # aside on the three detail views, and the stand-in collapsed `__body` to one track in the same
 # change so that no sample host draws an empty rail. The pinned Stiler keeps its second track until
 # Fhi.Metadata-35w0p.39, so the sample is ahead of the pin exactly as the two choicepicker lines
-# below are. The three lines are marked where they sit, with the condition that deletes them.
+# listed further down once were. The three lines are marked where they sit, with the condition that deletes them.
 #
 # IT IS 214 SINCE Fhi.Metadata-l9l2n.105, and the 40 that arrived are a new FAMILY rather than new
 # drift: until that bead the comparison looked only at the munin-explorer prefix, so every rule the

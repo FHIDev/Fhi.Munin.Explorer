@@ -301,11 +301,12 @@ written for HostileHost" and the only one the numbers support:
 
 Read the run for exactly what it is: three assertions, one page, two states, against the sample
 stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
-its own after the six widths: every assertion, except where a state fails today, and then only the
-failing assertion is left out, through `GEOMETRY_EXCEPT`, beside the bead that fixes it —
-`Fhi.Metadata-abmom`'s 2px on the kilder states, `Fhi.Metadata-jcdil` on `explorer-list-tab`,
-`Fhi.Metadata-s9h1k` on the three `kilde-hierarchy-*` states. Closing one of those beads means
-deleting its exception, not adding a state.
+its own after the six widths. It runs every assertion in every state, except that a state failing
+today leaves out only its failing assertions, through `GEOMETRY_EXCEPT`, with the reason beside
+it. Two of the three exceptions are open defects whose beads end by deleting them:
+`Fhi.Metadata-jcdil` on `explorer-list-tab`, `Fhi.Metadata-s9h1k` on the three `kilde-hierarchy-*`
+states. The third is kept on purpose: under real Stiler the closed column picker hangs 2px off the
+left edge on the kilder states, and `Fhi.Metadata-abmom`'s close reason records why that stays.
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1

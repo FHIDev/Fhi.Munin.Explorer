@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Runs axe against the ModernHost sample and fails on any violation, then measures one page at
-# 320px - the width WCAG 1.4.10 Reflow names, which no other gate here visits. A green run means no
+# 320px - the width WCAG 1.4.10 Reflow names, which check-hostile-host.sh also measures. A green run means no
 # DETECTED regression and nothing more; what this gate is blind to is in AGENTS.md under
 # "Accessibility is a requirement, not a preference". Read it before quoting a pass.
 #

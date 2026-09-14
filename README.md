@@ -387,8 +387,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     plainest one here: undefined, they go back to being blocks in ordinary flow, which is exactly
     what shipped before the name existed, so what a rule buys is a row of vertical space and
     nothing a reader could otherwise miss. Its rules are
-    `Fhi.Helsedata.Stiler` PR 39220's, merged after 0.1.42 was cut and carried by 0.1.68. The name says `results` and the element sits
-    above `munin-explorer-results` rather than inside it, deliberately: the results container is
+    `Fhi.Helsedata.Stiler` PR 39220's, merged after 0.1.42 was cut and carried by 0.1.68. The
+    name says `results` and the element sits above `munin-explorer-results` rather than inside it, deliberately: the results container is
     drawn only with rows on screen, and the count inside this row is the component's one polite
     live region, which has to be in the DOM before its text arrives.
     The three detail views add `munin-explorer-page__section`, worn by the `<section>` each of

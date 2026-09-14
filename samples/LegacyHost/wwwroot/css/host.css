@@ -1917,7 +1917,7 @@ table.munin-explorer-data-list tbody th {
    `form-menu__list` and `form-menu__list__item` are borrowed: global, unscoped classes in Stiler's
    `pages/_healthregisterpage.scss` that reach its compiled stylesheet, so a host on Stiler needs no
    rule of ours. This stand-in was written from helsedata.no's `application.css` instead and came
-   out three declarations short of the pinned 0.1.42 — `margin` here, `background-color` and
+   out three declarations short of Stiler 0.1.42 — `margin` here, `background-color` and
    `transition` on the link — which `assert-sample-css-matches-stiler.sh` named. Read Stiler for
    what Stiler declares, never a deployed site: helsedata.no serves no `form-menu` rule outside
    `application.css`, which looked like proof these names were not Stiler's and is not, because

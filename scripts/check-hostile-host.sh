@@ -226,8 +226,8 @@ set -e
 
 [ "$geometry_status" -eq 2 ] && exit 2
 
-# 320px, WCAG 1.4.10 Reflow. Each call leaves out only what fails in its states today, named with the
-# bead that fixes it; the bead's last step is deleting its call's exception.
+# 320px, WCAG 1.4.10 Reflow. Each call leaves out only what fails in its states today, with the bead
+# that says why; an open bead's last step is deleting its call's exception.
 reflow_status=0
 reflow() {
   local except="$1"; shift

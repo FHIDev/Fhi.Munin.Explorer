@@ -20,8 +20,8 @@
        0.1.41 is the first release carrying `.munin-explorer-kilder-scroll`, which is the
        Stiler half of Fhi.Metadata-b3brc and what /kilder needs to fit at 1024 and 843.
 
-       AHEAD OF HELSEDATA ON PURPOSE. helsedata.no pins 0.1.68 (Fhi.Helsedata.Optimizely.csproj,
-       their PR 39284, checked 2026-09-14), which lacks the branch disclosure rules 0.1.75 carries
+       AHEAD OF HELSEDATA ON PURPOSE, against the bump rule above: helsedata.no pins 0.1.68 (their
+       PR 39284, checked 2026-09-14), which lacks the branch disclosure rules 0.1.75 carries
        (Fhi.Metadata-adog5). Both gates that read this pin pass on 0.1.68 too (Fhi.Metadata-kpmt3). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
     <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.75" />

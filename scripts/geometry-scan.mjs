@@ -137,7 +137,9 @@ const measurable = applicable.some(({ states: appliesTo }) =>
 
 if (!measurable) {
   console.error('no assertion asked for applies to any of these targets - TOOLING failure.');
-  console.error(`asked for: ${chosen.length === 0 ? 'the whole suite' : chosen.join('; ')}`);
+  console.error(`asked for: ${applicable.length === assertions.length
+    ? 'the whole suite'
+    : applicable.map(({ name }) => name).join('; ')}`);
   console.error(`targets: ${plan.map(({ label }) => label).join('; ')}`);
   process.exit(2);
 }
