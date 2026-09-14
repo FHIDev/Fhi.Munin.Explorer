@@ -1120,8 +1120,8 @@ and why the eight `0.1.0-alpha.*` sections were all written on one day.
 ## Issue tracking
 
 Work is tracked in the Munin beads workspace, not in this repository's issues — epic
-`Fhi.Metadata-l9l2n`. Pull requests close their bead with the cross-repository form,
-e.g. `Closes FHIDev/Munin#1234`.
+`Fhi.Metadata-l9l2n`. Pull requests close their bead with a line of its own in the body,
+e.g. `Closes-Bead: Fhi.Metadata-l9l2n.111`; it is closed a few minutes after the merge.
 
 GitHub Issues here are open for external consumers to report problems.
 
