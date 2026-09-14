@@ -336,13 +336,13 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles()
     {
-        // The exact list, for the reason the explorer's own version of this is exact: a tenth name
+        // The exact list, for the reason the explorer's own version of this is exact: one more name
         // appearing here is news, and news that has to be answered in both sample stylesheets before
         // it ships. None of these was ever helsedata's — the six that used to be theirs in this prefix
         // are all on the explorer, none on this view — so every one is a promise only the sample
         // stylesheet keeps.
         //
-        // It is the second such list: VariableSearchTest.cs pins twelve of these fourteen down the
+        // It is the second such list: VariableSearchTest.cs pins eighteen of these twenty down the
         // drill-in path, all but munin-explorer-group, which that fixture's kilde has no metadata
         // groups to produce, and the delkilde beskrivelse, which its delkilder do not carry.
         // Renaming a handle means editing both, and the other one fails with a message about the
@@ -375,9 +375,35 @@ public class KildeViewTest : BunitContext
             "munin-explorer-kilde__identifiers",
             "munin-explorer-kilde__kildetype",
             "munin-explorer-kilde__main",
+            // The chassis the three detail views share, worn beside this view's own names above.
+            "munin-explorer-page",
+            "munin-explorer-page__body",
+            "munin-explorer-page__main",
             // The wrapper each block below the name sits in, so a contents nav can anchor on it.
             "munin-explorer-page__section",
+            "munin-explorer-page__toc",
         ], invented);
+    }
+
+    [Fact]
+    public void Chassis_WhenTheViewIsDrawn_ThenTheSharedNamesAreWornBesideThisViewsOwn()
+    {
+        // Both sets on each element, which is the whole of this change: `__datasamlinger` below is
+        // styled inside an expanded row of the kildeutforsker as well as on this page, so renaming
+        // the prefix would have moved a surface nothing here renders. (Fhi.Metadata-35w0p.9)
+        var cut = Render(Kilde());
+
+        Assert.Contains("munin-explorer-kilde", cut.Find(".munin-explorer-page").ClassList);
+
+        var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
+
+        Assert.Contains("munin-explorer-kilde__body", body.ClassList);
+        Assert.Contains("munin-explorer-kilde__main", cut.Find(".munin-explorer-page__main").ClassList);
+
+        // The contents column comes first and is drawn empty. Its track is a fixed 250px, so a body
+        // holding the main column alone would lay that column out in it.
+        Assert.Equal("munin-explorer-page__toc", body.Children[0].ClassName);
+        Assert.Empty(body.Children[0].TextContent);
     }
 
     // ---------------------------------------------------------------------------------

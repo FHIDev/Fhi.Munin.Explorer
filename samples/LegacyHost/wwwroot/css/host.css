@@ -1783,6 +1783,43 @@ table.munin-explorer-data-list tbody th {
   background: var(--grey10);
 }
 
+/* The chassis the three detail views share, worn beside the prefix each of them already had.
+   Every declaration is Stiler's own, from components/munin-explorer/_page.scss, which took its
+   numbers off helsedata's register pages (Fhi.Metadata-35w0p.4, Fhi.Metadata-35w0p.7). */
+.munin-explorer-page > * > :is(h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+.munin-explorer-page__body {
+  display: grid;
+  gap: 40px;
+}
+
+/* 1025px, where the three bodies above say 1024: Stiler writes this breakpoint with its
+   `$desktop-all` token, the exact complement of `$tablet`, so no width matches both a min- and a
+   max-width rule. A stand-in that spells a breakpoint differently is standing in for nothing. */
+@media (min-width: 1025px) {
+  .munin-explorer-page__body {
+    grid-template-columns: 250px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  /* The contents column follows the reader down the page. The scroller is half of the pairing
+     rather than a flourish: a max-height with nothing to scroll in only spills. */
+  .munin-explorer-page__toc {
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+}
+
+/* A grid track is `min-width: auto`, so the widest thing in the column sets the floor — the trap
+   the three mains above meet, and the reason the content track is `minmax(0, 1fr)` and not `1fr`. */
+.munin-explorer-page__main {
+  min-inline-size: 0;
+}
+
 /* One block of a detail view, wrapped so a contents nav has something to anchor on. The scroll
    offset is the only declaration by design: the wrapper went around markup that was already spaced
    correctly. 140px is Stiler's own token, from components/munin-explorer/_page.scss. */

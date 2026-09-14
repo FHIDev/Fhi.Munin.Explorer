@@ -1,0 +1,17 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+<div class="munin-explorer-page @LegacyRoot">
+
+    @Header
+
+    <div class="munin-explorer-page__body @LegacyBody">
+
+        @* Drawn whether or not anything fills it: the chassis body is a grid whose first track is a
+           fixed 250px, so a body holding the main column alone would lay that column out in it. *@
+        <div class="munin-explorer-page__toc">@Contents</div>
+
+        <div class="munin-explorer-page__main @LegacyMain">
+            @ChildContent
+        </div>
+    </div>
+</div>

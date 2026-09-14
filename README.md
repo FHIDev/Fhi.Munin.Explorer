@@ -374,6 +374,19 @@ These are not style preferences — each one is a host that breaks otherwise.
     offset on the `data-nav-section` attribute rather than on the class; that PR bumped no
     version, so no published Stiler carries them and every host draws the wrapper undrawn until
     one does.
+    The same three add the chassis those sections sit in — `munin-explorer-page` on the root,
+    `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc` —
+    written once, by `DetailPage`, rather than three times under three prefixes. Every one of them
+    is worn *beside* the view's own name rather than instead of it, because one of those older
+    names is the drill-in panel's as well: `munin-explorer-kilde__datasamlinger` is styled under
+    `munin-explorer-kilder__expanded` in an expanded result row, so a clean rename would have taken
+    a surface nobody would think to retest with it. Handles, all four — undefined, the body and its
+    two columns are blocks in ordinary flow, which stacks the contents column above the main one
+    and loses no words. Stiler's rules are written, in the same `_page.scss` and merged as PR
+    39300, and that PR bumped no version either, so the two-track body is one column on every
+    published Stiler today. The contents column is drawn whether anything fills it or not: its
+    track is a fixed 250px, and a body holding only the main column would lay that column out in
+    it.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
@@ -643,7 +656,11 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__tab--active` | handle |
   | `munin-explorer-meta__tab-content` | handle |
   | `munin-explorer-meta__tabs` | handle |
+  | `munin-explorer-page` | handle |
+  | `munin-explorer-page__body` | handle |
+  | `munin-explorer-page__main` | handle |
   | `munin-explorer-page__section` | handle |
+  | `munin-explorer-page__toc` | handle |
   | `munin-explorer-pagination` | handle |
   | `munin-explorer-pagination-content` | handle |
   | `munin-explorer-pagination-pages` | meaning |

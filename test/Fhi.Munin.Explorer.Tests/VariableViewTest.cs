@@ -68,6 +68,26 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
+    public void Chassis_WhenTheViewIsDrawn_ThenTheSharedNamesAreWornBesideThisViewsOwn()
+    {
+        // Both sets on each element: the chassis is added beside this view's own prefix rather
+        // than replacing it, so a host rule keyed on either one still draws. (Fhi.Metadata-35w0p.9)
+        var cut = Render(Detail());
+
+        Assert.Contains("munin-explorer-whole", cut.Find(".munin-explorer-page").ClassList);
+
+        var body = Assert.Single(cut.FindAll(".munin-explorer-page__body"));
+
+        Assert.Contains("munin-explorer-whole__body", body.ClassList);
+        Assert.Contains("munin-explorer-whole__main", cut.Find(".munin-explorer-page__main").ClassList);
+
+        // The contents column comes first and is drawn empty. Its track is a fixed 250px, so a body
+        // holding the main column alone would lay that column out in it.
+        Assert.Equal("munin-explorer-page__toc", body.Children[0].ClassName);
+        Assert.Empty(body.Children[0].TextContent);
+    }
+
+    [Fact]
     public void Metadata_WhenAKeyIsAlreadyABlockOfItsOwn_ThenItIsNotRepeatedInTheGroups()
     {
         // The bug this was written for. DataType has a block of its own drawn from the typed field,
