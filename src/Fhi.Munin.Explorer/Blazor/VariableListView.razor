@@ -5,21 +5,13 @@
    has no business wording. The host knows how its readers sign in; the package does not. *@
 @if (State?.IsAuthenticated == true)
 {
-    @* The chassis the three detail views wear, so the fourth is laid out by the same rules. The
-       root carried `munin-explorer munin-explorer-container` once and both were page grids that
-       laid this column of blocks out as columns; `munin-explorer-page` is not one. *@
-    @* No contents column, by decision: the Kilde filter beside the list does the grouping a nav
-       would, and paging stays flat. Contents is left null, so the body is one child in one track
-       rather than a main column in the second of two. (Fhi.Metadata-35w0p.13) *@
-    @* No ViewRoot and no ViewMain: this is the one detail surface with no older prefix of its own,
-       so there is no name here for the chassis's to be worn beside. *@
     @* Still the version, and still on the root: a host may mount this view on a page of its own,
        and a version readable on two of the three mount points is a trap for whoever checks the
        third. (Fhi.Metadata-sqbei) *@
     <DetailPage ViewRoot="" ViewMain="" data-munin-explorer-version="@ExplorerVersion.Current">
         <Header>
             @* The chassis's own header name: the other three wear a prefixed one beside it and this
-               view has none to wear. The id is what a deep link into this surface lands on. *@
+               view has none to wear. *@
             <div class="munin-explorer-page__header">
                 @DetailBlocks.Heading(TitleLevel, T.MyListsHeading, "headline headline-s margin--bottom",
                                       ListHeadingId)

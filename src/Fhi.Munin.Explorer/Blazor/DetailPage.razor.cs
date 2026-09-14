@@ -80,8 +80,10 @@ public sealed partial class DetailPage : ComponentBase
     /// <remarks>
     /// <c>data-munin-explorer-version</c> is what this is for: a view mounted on its own is a mount
     /// point a host reads the package version off, and the root is the element it is read from.
-    /// A <c>class</c> here would win over <see cref="ViewRoot"/>, which is the parameter for a
-    /// view's own root name.
+    /// A <c>class</c> written here does <em>not</em> displace the root's class list: the splat is
+    /// written before <c>class</c> on the element, so <c>munin-explorer-page</c> and
+    /// <see cref="ViewRoot"/> stay on the root and a caller's own name is dropped. Pass a view's
+    /// own root name through <see cref="ViewRoot"/>, which is the parameter for it.
     /// </remarks>
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }

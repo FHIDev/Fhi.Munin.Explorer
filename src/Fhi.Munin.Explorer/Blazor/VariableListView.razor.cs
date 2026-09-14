@@ -76,8 +76,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
     /// <summary>
-    /// The title of this surface, so a link can land on it and a host can point at it. The three
-    /// detail views take theirs from the caller; nothing mounts this one inside a named region.
+    /// The title of this surface: an anchor within one page load, not a deep link. Minted per mount
+    /// like every other id here, so no URL fragment and no host-written <c>aria-labelledby</c> can
+    /// name it — nothing mounts this view inside a region that would need to.
     /// </summary>
     private string ListHeadingId => $"munin-explorer-list-heading-{_instance}";
 

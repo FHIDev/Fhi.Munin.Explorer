@@ -9,9 +9,10 @@ category: Changed
   still on the root element, which is now the chassis's. The table, the scroll container around it
   and the pager are untouched, and paging stays flat.
   The heading used to be assembled as a string and injected as raw markup, so it carried neither a
-  class nor an id — it missed `headline headline-s` and nothing could link to it. It comes from the
-  same heading helper the other three views use now, at the level the host asked for, with an id of
-  its own. (Fhi.Metadata-35w0p.13)
+  class nor an id — it missed `headline headline-s`, and no anchor on the page could reach it. It
+  comes from the same heading helper the other three views use now, at the level the host asked for,
+  with an id of its own. That id is minted per mount, as every id this view writes is, so it is an
+  anchor within one page load rather than a stable deep link. (Fhi.Metadata-35w0p.13)
 - **This view deliberately has no contents nav, so its body is one column and never a rail.**
   The Kilde filter beside the list already does the grouping a contents nav would do, so
   `DetailPage.Contents` is left null and `munin-explorer-page__toc` is not emitted. Both sample

@@ -423,8 +423,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     above is what decides whether it draws a rail it has nothing to put in. It adds
     `munin-explorer-page__header` for its name block, the chassis's own name for what the other
     three wear a prefixed one for, and **no Stiler carries a rule for it**: `Fhi.Metadata-urbj0` is
-    the bead that writes one. A handle — undefined, the heading is a heading and what is lost is the
-    rule under it that separates the name block from the list.
+    the bead that writes one. It is a handle in the table below, and undefined it degrades quietly:
+    the heading is still a heading and still wears Stiler's own `headline headline-s`, so what is
+    lost is the rule and the space under the name block that separate it from the list.
     The same three add `munin-explorer-page__fields` on every fact list they draw, and
     `munin-explorer-page__language` on the language name above a value the catalogue holds in more
     than one. Both used to be the drill-in panel's own `munin-explorer-meta__grid` and

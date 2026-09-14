@@ -143,6 +143,22 @@ public class DetailPageTest : BunitContext
     }
 
     [Fact]
+    public void Attributes_WhenACallerWritesAClass_ThenTheChassisNameIsStillOnTheRoot()
+    {
+        // Blazor settles a duplicated attribute by source order, so this holds only because the
+        // splat is written before `class` on the element. Swapped — the splat reads more naturally
+        // first — a host's own name would replace the root every layout rule keys on, silently.
+        var cut = Render<DetailPage>(parameters => parameters
+            .Add(p => p.ViewRoot, "munin-explorer-kilde")
+            .Add(p => p.ViewMain, "")
+            .AddUnmatched("class", "the-host-own-name"));
+
+        var root = cut.Find(".munin-explorer-page");
+
+        Assert.Equal("munin-explorer-page munin-explorer-kilde", root.ClassName);
+    }
+
+    [Fact]
     public void Render_Always_ThenEveryNameItEmitsHasARuleInBothSampleStylesheets()
     {
         // The contents column is the one name here no view renders, so it is the one a host could

@@ -824,10 +824,10 @@ public class VariableListViewTest : BunitContext
         // `grid-template-columns: 384px 576px` — the page shell's own sidebar-and-results grid —
         // and munin-explorer-container to `display: flex; flex-direction: row`. Either one lays
         // this view's blocks out as columns.
-        var root = cut.Find("[role=alert]").Closest("div:not([role])");
+        // Anchored on the chassis name: walking up from the alert stops inside the main column now.
+        var root = cut.Find(".munin-explorer-page");
 
-        Assert.NotNull(root);
-        Assert.DoesNotContain("munin-explorer-container", root!.ClassList);
+        Assert.DoesNotContain("munin-explorer-container", root.ClassList);
         Assert.DoesNotContain("munin-explorer", root.ClassList);
     }
 

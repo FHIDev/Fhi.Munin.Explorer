@@ -1856,9 +1856,9 @@ table.munin-explorer-data-list tbody th {
     align-items: start;
   }
 
-  /* The pin's own ungated copy of the rule above is extracted further down this file, so a body
-     with no contents column has to have the second track taken back rather than merely not given.
-     The saved-list view is the one that never has one. */
+  /* Taken back rather than merely not given: an ungated copy of the rule above, from any stylesheet
+     this one is read after, would otherwise leave a lone main column in a 250px rail. The
+     saved-list view is the one that never draws a contents column. */
   .munin-explorer-page__body:not(:has(> .munin-explorer-page__toc)) {
     grid-template-columns: minmax(0, 1fr);
   }
