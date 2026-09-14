@@ -4,6 +4,10 @@
 # after a press the component REFUSED. Nothing else here does: bUnit renders a render tree, so the
 # browser's own flip of a checkbox — which happens before any handler runs — never happens in it.
 #
+# It asks the facet tree's branch disclosures a neighbouring question, and for the same reason: a
+# shut branch's values have to be absent from the page rather than hidden on it, and a tab order is
+# not something a render tree has. (Fhi.Metadata-adog5)
+#
 # WHY THIS EXISTS. The column picker and the facet panel both call
 # `builder.SetUpdatesAttributeName("checked")`, and it is there for one reason: a render that equals
 # the render before it writes nothing back to the DOM, so a press the component declines leaves the
@@ -13,7 +17,7 @@
 # only its own assertion. (Fhi.Metadata-1s7z1)
 #
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
-#   - the two presses it stages are the whole of it. scripts/state-assertions.mjs lists what that
+#   - the four presses it stages are the whole of it. scripts/state-assertions.mjs lists what that
 #     leaves out — the kildeutforsker's copy of the same picker, the facet panel's other refusal
 #     path, and every other control in the component;
 #   - one press per call site. The picker's other columns and the panel's other facets go the same

@@ -2,6 +2,7 @@ using System.Globalization;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -80,9 +81,10 @@ public partial class VariableSearch
     /// kildetype heading the kilder are grouped under, a label rather than a filter because
     /// kildetype has a facet of its own, or a variabelgruppe the API returns but does not offer.
     /// <para>
-    /// <c>Collapsible</c> makes such a heading a disclosure of its own, so the reader lands on the
-    /// three kildetype rows rather than on every kilde under them. Its <c>Count</c> is then how
-    /// many kilder the group holds rather than how many variables a value would leave.
+    /// <c>GroupHeading</c> says such a row is a heading the values below are grouped under, so its
+    /// <c>Count</c> is how many of them there are rather than how many variables a value would
+    /// leave — and is drawn as a group size. Every value with children is a disclosure of its own
+    /// whether or not it is one. (Fhi.Metadata-adog5)
     /// </para>
     /// <para>
     /// <c>Language</c> is what <c>Label</c> is written in, and null means "do not mark this"
@@ -98,7 +100,7 @@ public partial class VariableSearch
         bool Selected,
         Func<Task>? Toggle,
         IReadOnlyList<FacetValue> Children,
-        bool Collapsible = false);
+        bool GroupHeading = false);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
     /// <remarks>
@@ -578,9 +580,9 @@ public partial class VariableSearch
 
     /// <summary>A kildetype heading: a label rather than a filter, because kildetype has its own facet.</summary>
     /// <remarks>
-    /// A disclosure of its own, so the panel opens on three group rows rather than on 46 kilder.
-    /// Its count is how many kilder the group holds — what the row is hiding — rather than the
-    /// variable count the values under it carry. (Fhi.Metadata-l9l2n.67)
+    /// Shut like every other branch, so the panel opens on three group rows rather than on 46
+    /// kilder. Its count is how many kilder the group holds — what the row is hiding — rather than
+    /// the variable count the values under it carry. (Fhi.Metadata-l9l2n.67)
     /// </remarks>
     private FacetValue KildeTypeHeading(
         FilterOptions facets,
@@ -593,7 +595,7 @@ public partial class VariableSearch
             Selected: false,
             Toggle: null,
             [.. kilder.Select(kilde => KildeValue(kilde, levels))],
-            Collapsible: true);
+            GroupHeading: true);
 
     private FacetValue KildeValue(KildeFacet kilde, KildeLevelLookup levels) =>
         KildeValue(kilde) with
@@ -1036,14 +1038,6 @@ public partial class VariableSearch
     /// <summary>Whether a facet is drawn open: the last fold press, or the facet's own default.</summary>
     private bool FacetOpen(FacetGroup group) => _foldAll ?? group.OpenByDefault;
 
-    /// <summary>Whether a kildetype group inside the kilde facet is drawn open.</summary>
-    /// <remarks>
-    /// Closed until a fold press says otherwise, which is what leaves the reader on the group rows.
-    /// No generation of its own: a press rebuilds the facet above under a new key, and a keyed
-    /// rebuild takes the whole subtree with it.
-    /// </remarks>
-    private bool GroupOpen => _foldAll ?? false;
-
     /// <summary>What the last fold press did, for the panel's live region.</summary>
     /// <remarks>
     /// Empty until a press, or the region would speak on every mount. A second identical press is
@@ -1066,6 +1060,8 @@ public partial class VariableSearch
     {
         _foldAll = open;
         _foldGeneration++;
+
+        FoldAllBranches(open);
     }
 
     /// <summary>Whether the tree draws a guide line per level.</summary>
@@ -1123,22 +1119,29 @@ public partial class VariableSearch
     /// its labels the same way, and a name marked in its chip but not on the checkbox that chip
     /// stands for would name one kilde two ways on one page.
     /// </para>
+    /// <para>
+    /// A value with children is a branch, and its children are drawn only while it is open — not
+    /// hidden, absent, so nothing inside a shut branch can be tabbed into whatever a host's
+    /// stylesheet does to <c>[hidden]</c>. (Fhi.Metadata-adog5)
+    /// </para>
     /// </remarks>
-    private RenderFragment FacetList(IReadOnlyList<FacetValue> values) => builder =>
+    private RenderFragment FacetList(IReadOnlyList<FacetValue> values, string? id = null) => builder =>
     {
         builder.OpenElement(0, "ul");
+        builder.AddAttribute(1, "id", id);
 
         foreach (var value in values)
         {
-            builder.OpenElement(1, "li");
+            var branch = value.Children.Count > 0;
+            var open = branch && IsBranchOpen(value.Key);
+
+            builder.OpenElement(2, "li");
             builder.SetKey(value.Key);
 
-            if (value.Collapsible)
+            if (branch)
             {
-                CollapsibleGroup(builder, value);
-                builder.CloseElement();
-
-                continue;
+                builder.AddAttribute(3, "class", "munin-explorer-filters__branch");
+                Disclosure(builder, value, open);
             }
 
             // Held in a local so the null check below is one the compiler can carry into the branch.
@@ -1149,22 +1152,34 @@ public partial class VariableSearch
                 // A container names a variabelgruppe in the catalogue's own Norwegian and the chip
                 // for that group is marked, so this row has to be too. A span with no class is
                 // somewhere to hang the marking that costs no rule in Stiler.
-                builder.OpenElement(2, "span");
-                builder.AddAttribute(3, "lang", value.Language);
-                builder.AddContent(4, value.Label);
+                builder.OpenElement(20, "span");
+                builder.AddAttribute(21, "lang", value.Language);
+                builder.AddContent(22, value.Label);
                 builder.CloseElement();
+
+                // Outside the span above rather than inside it, which is where the summary this
+                // replaced held it: the marking is the catalogue's language, and this figure is
+                // ours. A group's SIZE, so `__groupcount` and never `__chosen`. (Fhi.Metadata-l9l2n.104)
+                if (value is { GroupHeading: true, Count: { } members })
+                {
+                    builder.AddContent(23, " ");
+                    builder.OpenElement(24, "span");
+                    builder.AddAttribute(25, "class", "munin-explorer-filters__groupcount");
+                    builder.AddContent(26, members.ToString(CultureInfo.CurrentCulture));
+                    builder.CloseElement();
+                }
             }
             else
             {
-                builder.OpenElement(5, "label");
-                builder.AddAttribute(6, "lang", value.Language);
-                builder.OpenElement(7, "input");
-                builder.AddAttribute(8, "type", "checkbox");
-                builder.AddAttribute(9, "checked", value.Selected);
+                builder.OpenElement(30, "label");
+                builder.AddAttribute(31, "lang", value.Language);
+                builder.OpenElement(32, "input");
+                builder.AddAttribute(33, "type", "checkbox");
+                builder.AddAttribute(34, "checked", value.Selected);
 
                 // The event's own value is ignored: the toggle flips what the filter holds, which
                 // is the one state a press and the render after it are certain to agree about.
-                builder.AddAttribute(10, "onchange",
+                builder.AddAttribute(35, "onchange",
                                      EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
 
                 // What a plain onchange does not do and this panel needs: a press that ApplyFilterAsync
@@ -1173,26 +1188,26 @@ public partial class VariableSearch
                 builder.SetUpdatesAttributeName("checked");
 
                 builder.CloseElement();
-                builder.AddContent(11, value.Label);
+                builder.AddContent(36, value.Label);
 
                 // The space is a text node of the label, not the span's first character: a name is
                 // computed per element, so a space inside the span is trimmed off and the name
                 // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(12, " ");
-                    builder.OpenElement(13, "span");
-                    builder.AddAttribute(14, "class", "munin-explorer-filters__count");
-                    builder.AddContent(15, $"({count})");
+                    builder.AddContent(37, " ");
+                    builder.OpenElement(38, "span");
+                    builder.AddAttribute(39, "class", "munin-explorer-filters__count");
+                    builder.AddContent(40, $"({count})");
                     builder.CloseElement();
                 }
 
                 builder.CloseElement();
             }
 
-            if (value.Children.Count > 0)
+            if (open)
             {
-                builder.AddContent(16, FacetList(value.Children));
+                builder.AddContent(50, FacetList(value.Children, BranchId(value.Key)));
             }
 
             builder.CloseElement();
@@ -1201,46 +1216,111 @@ public partial class VariableSearch
         builder.CloseElement();
     };
 
-    /// <summary>One kildetype group inside the kilde facet, as a disclosure over its kilder.</summary>
+    /// <summary>The control that opens and shuts one branch of a facet tree.</summary>
     /// <remarks>
-    /// A <c>&lt;details&gt;</c> and not a button with a chevron of its own: the marker, the open
-    /// state and the focus ring are then the ones a host already draws for
-    /// <c>.munin-explorer-filters summary</c>, so the disclosure itself costs no class name and no
-    /// new rule. Its count adds a name, and the paragraph below is about that.
+    /// A <c>&lt;button aria-expanded&gt;</c> beside the checkbox and never around it: expanding a
+    /// kilde narrows nothing, and a reader who wants its datasamlinger must not have to filter on
+    /// the kilde to see them. A <c>&lt;summary&gt;</c> holding the checkbox would be the same
+    /// control twice over, which is what the kildetype groups were before this.
     /// <para>
-    /// The count wears <c>munin-explorer-filters__groupcount</c> and not <c>__chosen</c>: these are
-    /// group sizes, and nothing here is chosen. Stiler gives it <c>__chosen</c>'s own selector, so
-    /// the tabular figures cannot drift apart from it. (Fhi.Metadata-l9l2n.104)
-    /// </para>
-    /// <para>
-    /// No <c>lang</c>: the one value drawn here is <see cref="KildeTypeHeading"/>, whose words are
-    /// the reader's own for the reason <see cref="KildeTypeValue"/> gives. The <c>&lt;summary&gt;</c>
-    /// holds the count as well, so a marking put on it would reach that too — this package's own
-    /// figure inside a foreign scope, which is the same defect one level down.
+    /// <c>aria-controls</c> only while the list is drawn: a shut branch renders no children at all,
+    /// and a reference to an id nothing carries is an ARIA error rather than a relationship.
     /// </para>
     /// </remarks>
-    private void CollapsibleGroup(RenderTreeBuilder builder, FacetValue value)
+    private void Disclosure(RenderTreeBuilder builder, FacetValue value, bool open)
     {
-        builder.OpenElement(15, "details");
-        builder.AddAttribute(16, "open", GroupOpen);
-        builder.OpenElement(17, "summary");
-        builder.AddContent(18, value.Label);
+        builder.OpenElement(4, "button");
+        builder.AddAttribute(5, "type", "button");
+        builder.AddAttribute(6, "class", "munin-explorer-filters__disclosure");
+        builder.AddAttribute(7, "aria-expanded", open ? "true" : "false");
+        builder.AddAttribute(8, "aria-controls", open ? BranchId(value.Key) : null);
+        builder.AddAttribute(9, "aria-label",
+                             open ? T.CollapseBranch(value.Label) : T.ExpandBranch(value.Label));
 
-        // The space is a text node of the summary rather than the span's first character, for the
-        // reason the value counts further up are: a name is computed per element, so a space inside
-        // the span is trimmed off and the group announces as "Biobank12".
-        if (value.Count is { } members)
+        var key = value.Key;
+
+        builder.AddAttribute(10, "onclick",
+                             EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleBranch(key, e)));
+
+        // Text rather than a rule, so a host with no stylesheet still sees which way the branch
+        // points — and aria-hidden, so the name is the label alone: an arrow is not the visible
+        // word WCAG 2.5.3 asks a name to contain.
+        builder.OpenElement(11, "span");
+        builder.AddAttribute(12, "aria-hidden", "true");
+        builder.AddContent(13, open ? "▾" : "▸");
+        builder.CloseElement();
+
+        builder.CloseElement();
+    }
+
+    /// <summary>Which branches of the facet trees are open, by the value key of each.</summary>
+    /// <remarks>
+    /// Never cleared when a filters answer arrives, so a branch the reader opened is still open
+    /// after ticking something inside it — the keys are the payload's own ids rather than positions.
+    /// </remarks>
+    private readonly HashSet<string> _expandedBranches = [];
+
+    /// <summary>Whether the branch at <paramref name="key"/> is drawn open. Every branch starts shut.</summary>
+    private bool IsBranchOpen(string key) => _expandedBranches.Contains(key);
+
+    /// <summary>The id of the list one branch discloses, unique to this mount and to that branch.</summary>
+    /// <remarks>
+    /// The colon a facet value key carries is legal in an id and awkward in a selector, so it is
+    /// written as a hyphen here.
+    /// </remarks>
+    private string BranchId(string key) =>
+        $"munin-explorer-branch-{_instance}-{key.Replace(':', '-')}";
+
+    /// <summary>Open or shut one branch, and nothing else.</summary>
+    /// <remarks>
+    /// Touches neither <see cref="_filter"/> nor the API: a press here changes what is drawn, so a
+    /// value ticked inside a branch is still ticked when it is reopened. The guard is the standing
+    /// half of the question <see cref="RowPress"/> asks, and all of it that applies — the panel
+    /// keeps no press, so the drag clause cannot be read here. (Fhi.Metadata-zel47)
+    /// </remarks>
+    private void ToggleBranch(string key, MouseEventArgs released)
+    {
+        if (RowPress.WasSelectionStandingStill(released))
         {
-            builder.AddContent(19, " ");
-            builder.OpenElement(20, "span");
-            builder.AddAttribute(21, "class", "munin-explorer-filters__groupcount");
-            builder.AddContent(22, members.ToString(CultureInfo.CurrentCulture));
-            builder.CloseElement();
+            return;
         }
 
-        builder.CloseElement();
-        builder.AddContent(23, FacetList(value.Children));
-        builder.CloseElement();
+        if (!_expandedBranches.Add(key))
+        {
+            _expandedBranches.Remove(key);
+        }
+    }
+
+    /// <summary>Open every branch of every facet tree, or shut all of them.</summary>
+    /// <remarks>
+    /// Walked off <see cref="FacetGroups"/> rather than remembered as a flag, so a branch the
+    /// reader shuts after Utvid alle stays shut the way a facet does.
+    /// </remarks>
+    private void FoldAllBranches(bool open)
+    {
+        _expandedBranches.Clear();
+
+        if (!open)
+        {
+            return;
+        }
+
+        foreach (var group in FacetGroups)
+        {
+            OpenBranches(group.Values);
+        }
+    }
+
+    private void OpenBranches(IReadOnlyList<FacetValue> values)
+    {
+        foreach (var value in values)
+        {
+            if (value.Children.Count > 0)
+            {
+                _expandedBranches.Add(value.Key);
+                OpenBranches(value.Children);
+            }
+        }
     }
 
     /// <summary>Add or remove one value from a facet, and fetch what that leaves.</summary>

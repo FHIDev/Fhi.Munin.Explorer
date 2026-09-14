@@ -10,9 +10,11 @@
 // happens there, and the disagreement is invisible to every test in test/. (Fhi.Metadata-1s7z1)
 //
 // WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
-//   - every OTHER control the component draws. Two presses are measured here, both in the variable
-//     explorer: the column picker's refusal to hide the last column, and a facet press dropped
-//     because a fetch was already in flight;
+//   - every OTHER control the component draws. Four presses are measured here, all in the variable
+//     explorer: the column picker's refusal to hide the last column, a facet press dropped because
+//     a fetch was already in flight, and the two the facet tree's branch disclosures add — that a
+//     shut branch leaves nothing behind for a Tab to land on, and that folding one over a ticked
+//     value leaves the value ticked;
 //   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
 //     visited at all;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this
@@ -46,6 +48,24 @@ const ITEM = '.dropdown-choicepicker__item';
 
 /** The facet sidebar. Its values are checkboxes; the dataperiode facet is fields and has none. */
 const PANEL = '.munin-explorer-filters';
+
+/** The control that opens one row of a facet tree — the rows that have values under them. */
+const DISCLOSURE = '.munin-explorer-filters__disclosure';
+
+/**
+ * What a Tab could land on inside a branch row.
+ *
+ * Read off the DOM rather than by tabbing through it: a shut branch's claim is that its values are
+ * not rendered at all, which is the stronger half of "not focusable" and the only one that survives
+ * a host stylesheet beating `[hidden]`. The Tab below measures the other half on the live page.
+ */
+const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+/** The first branch in the panel a reader can actually see, with its ancestors already open. */
+const firstShutBranch = page => page.locator(`${PANEL} ${DISCLOSURE}[aria-expanded="false"]:visible`).first();
+
+/** The row one disclosure belongs to. */
+const rowOf = disclosure => disclosure.locator('xpath=..');
 
 /** The route a facet press refetches, and so the one a staged drop has to hold open. */
 const SEARCH = '/api/explorer/variables';
@@ -339,6 +359,210 @@ export const assertions = [
       await page.locator(`${PANEL} details`).nth(index)
         .locator(':scope input[type=checkbox]').first()
         .evaluate(box => { box.checked = !box.checked; });
+    },
+  },
+
+  {
+    name: 'a shut branch leaves nothing under it for a Tab to land on',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    // The one thing about this control no test in test/ can ask, and the reason it is here rather
+    // than only in bUnit: whether the values a branch discloses are really gone from the page the
+    // reader is tabbing through, and whether the button answers Enter and Space at all. bUnit
+    // renders a render tree — there is no tab order in one, and no key to press.
+    async stage(page) {
+      const panel = page.locator(PANEL);
+      await panel.waitFor({ state: 'visible', timeout: findTimeout });
+
+      const shut = firstShutBranch(page);
+      await shut.waitFor({ state: 'visible', timeout: findTimeout });
+
+      const label = await shut.getAttribute('aria-label');
+      const index = await panel.locator(DISCLOSURE).evaluateAll(
+        (all, one) => all.indexOf(one), await shut.elementHandle());
+
+      if (index < 0) {
+        throw new Error(`the branch "${label}" is not one of the panel's own disclosures`);
+      }
+
+      // From the keyboard throughout. A <button> answers Enter and Space without a handler of its
+      // own, which is exactly the claim — and a control that cannot be focused fails here rather
+      // than passing quietly further down.
+      await shut.focus();
+
+      if (!await shut.evaluate(button => button === document.activeElement)) {
+        throw new Error(`the disclosure "${label}" would not take focus`);
+      }
+
+      await page.keyboard.press('Enter');
+      await panel.locator(DISCLOSURE).nth(index)
+        .and(page.locator('[aria-expanded="true"]'))
+        .waitFor({ state: 'attached', timeout: findTimeout });
+
+      const disclosed = await rowOf(panel.locator(DISCLOSURE).nth(index))
+        .locator(FOCUSABLE).count() - 1;
+
+      await panel.locator(DISCLOSURE).nth(index).focus();
+      await page.keyboard.press(' ');
+      await panel.locator(DISCLOSURE).nth(index)
+        .and(page.locator('[aria-expanded="false"]'))
+        .waitFor({ state: 'attached', timeout: findTimeout });
+
+      return { index, label, disclosed };
+    },
+
+    async measure(page, { index, label, disclosed }) {
+      const disclosure = page.locator(`${PANEL} ${DISCLOSURE}`).nth(index);
+
+      if (await disclosure.count() === 0 || await disclosure.getAttribute('aria-label') !== label) {
+        return `the panel no longer draws the branch "${label}" where it did — nothing was measured`;
+      }
+
+      // Reported rather than passed over: a branch that disclosed nothing is one this assertion
+      // could not have failed on, whatever the collapse then did.
+      if (disclosed < 1) {
+        return `opening "${label}" put nothing a reader can reach on the page, so shutting it ` +
+          'again proves nothing';
+      }
+
+      if (await disclosure.getAttribute('aria-expanded') !== 'false') {
+        return `Space did not shut "${label}" — the control does not answer the keyboard`;
+      }
+
+      const row = rowOf(disclosure);
+      const left = await row.locator(FOCUSABLE).count() - 1;
+      const lists = await row.locator('ul').count();
+
+      if (left > 0 || lists > 0) {
+        return `"${label}" is shut and its row still holds ${lists} list(s) and ${left} control(s): ` +
+          'a shut branch renders its values rather than leaving them out, so a stylesheet is all ' +
+          'that stands between them and the tab order';
+      }
+
+      // And the live half of the same claim, since the DOM check above cannot see a tabindex the
+      // page put somewhere else: Tab off the disclosure must leave this row altogether.
+      await disclosure.focus();
+      await page.keyboard.press('Tab');
+
+      const inside = await row.evaluate(
+        item => item.contains(document.activeElement) && document.activeElement !== item);
+
+      return inside
+        ? `Tab off "${label}" landed back inside its own shut row`
+        : null;
+    },
+
+    // The defect this replays is the design it was chosen over: draw the values anyway and hide
+    // them with `hidden`. That is one author rule away from being visible and focusable, which is
+    // how two tab panels came to be drawn at once on 2026-09-03.
+    async control(page, { index }) {
+      await rowOf(page.locator(`${PANEL} ${DISCLOSURE}`).nth(index)).evaluate(row => {
+        const list = document.createElement('ul');
+        list.hidden = true;
+        list.innerHTML = '<li><label><input type="checkbox"> Skjult verdi</label></li>';
+        row.appendChild(list);
+      });
+    },
+  },
+
+  {
+    name: 'folding a branch over a ticked value leaves the value ticked and the filter in force',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    // Expansion is the panel's state and selection is the filter's, and the two must not be
+    // coupled: a reader tidying the tree away would otherwise drop a filter they never released.
+    // Measured in a browser because the round trip is what makes it worth asking — the value goes
+    // out of the DOM and comes back from a render, not from a patch.
+    async stage(page) {
+      const panel = page.locator(PANEL);
+      await panel.waitFor({ state: 'visible', timeout: findTimeout });
+
+      const shut = firstShutBranch(page);
+      await shut.waitFor({ state: 'visible', timeout: findTimeout });
+
+      const label = await shut.getAttribute('aria-label');
+      const index = await panel.locator(DISCLOSURE).evaluateAll(
+        (all, one) => all.indexOf(one), await shut.elementHandle());
+
+      await shut.click();
+
+      const disclosure = panel.locator(DISCLOSURE).nth(index);
+      await disclosure.and(page.locator('[aria-expanded="true"]'))
+        .waitFor({ state: 'attached', timeout: findTimeout });
+
+      const facet = disclosure.locator('xpath=ancestor::details[1]');
+      const box = rowOf(disclosure).locator('input[type=checkbox]:not(:checked)').first();
+
+      await box.waitFor({ state: 'visible', timeout: findTimeout });
+      await box.click();
+
+      // Out the other side of the refetch a tick provokes, so what is folded away below is the
+      // tree the answer rebuilt rather than the one the press left mid-flight.
+      await panel.and(page.locator('[aria-busy="false"]'))
+        .waitFor({ state: 'visible', timeout: findTimeout });
+
+      const chosen = await chosenInFacet(facet);
+
+      if (chosen === 0) {
+        throw new Error(`ticking a value under "${label}" chose nothing, so there is nothing to fold away`);
+      }
+
+      await panel.locator(DISCLOSURE).nth(index).click();
+      await panel.locator(DISCLOSURE).nth(index).and(page.locator('[aria-expanded="false"]'))
+        .waitFor({ state: 'attached', timeout: findTimeout });
+
+      // Read while it is shut: the chip row and the facet's own count are drawn off the filter
+      // rather than off what is on screen, so both have to survive the value leaving the DOM.
+      const whileShut = await chosenInFacet(facet);
+      const chips = await page.locator('.munin-explorer-filters__chip').count();
+
+      await panel.locator(DISCLOSURE).nth(index).click();
+      await panel.locator(DISCLOSURE).nth(index).and(page.locator('[aria-expanded="true"]'))
+        .waitFor({ state: 'attached', timeout: findTimeout });
+
+      return { index, label, chosen, whileShut, chips };
+    },
+
+    async measure(page, { index, label, chosen, whileShut, chips }) {
+      const disclosure = page.locator(`${PANEL} ${DISCLOSURE}`).nth(index);
+
+      if (await disclosure.count() === 0 || await disclosure.getAttribute('aria-label') !== label) {
+        return `the panel no longer draws the branch "${label}" where it did — nothing was measured`;
+      }
+
+      if (whileShut !== chosen) {
+        return `the facet said ${chosen} value(s) chosen with "${label}" open and ${whileShut} ` +
+          'with it shut: folding a branch away changed the filter';
+      }
+
+      if (chips < 1) {
+        return 'the ticked value drew no chip over the results while its branch was shut, so the ' +
+          'only control left over that filter went with the branch';
+      }
+
+      const facet = disclosure.locator('xpath=ancestor::details[1]');
+      const nowChosen = await chosenInFacet(facet);
+      const ticked = await tickedInFacet(facet);
+
+      if (nowChosen !== chosen) {
+        return `reopening "${label}" left the facet saying ${nowChosen} value(s) chosen where it ` +
+          `said ${chosen} before it was shut`;
+      }
+
+      return ticked === nowChosen
+        ? null
+        : `${ticked} checkbox(es) are ticked in a facet the panel says holds ${nowChosen}: the ` +
+          'reopened branch drew its value at odds with the filter it is in';
+    },
+
+    // The flip the missing call would leave behind, put there by hand, exactly as the picker's and
+    // the facet's own controls do it.
+    async control(page, { index }) {
+      await rowOf(page.locator(`${PANEL} ${DISCLOSURE}`).nth(index))
+        .locator('input[type=checkbox]:checked').first()
+        .evaluate(box => { box.checked = false; });
     },
   },
 ];

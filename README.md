@@ -163,9 +163,12 @@ These are not style preferences — each one is a host that breaks otherwise.
   A name no stylesheet has heard of renders as a raw browser default inside an otherwise styled
   page, which defeats the point of shipping this as a component at all. That is why owning the
   prefix does not mean inventing freely: where there is no rule for a shape, change the shape
-  rather than adding a stylesheet. The filter panel is `<details>` plus a nested `<ul>` rather than
-  an accordion and a tree, and the detail panel is a `<dl>` with an `<ol>` for the kilde trail,
-  because no host stylesheet names any of those. What a host supplies for them is base element
+  rather than adding a stylesheet. A facet in the filter panel is a `<details>` over a nested
+  `<ul>` rather than an accordion and a tree, and the detail panel is a `<dl>` with an `<ol>` for
+  the kilde trail, because no host stylesheet names any of those. A branch *inside* one of those
+  trees is the exception, and it is an argued one: its row carries the value's own checkbox, and a
+  `<summary>` around a filter is two presses a reader cannot make apart, so the branch opens on a
+  `<button aria-expanded>` of its own drawn with an arrow as text. What a host supplies for them is base element
   styling — list indentation in particular, which is what shows a delkilde sitting under its kilde.
   `KildeView`'s own delkilde tree is a nested `<ul>` for both halves of that: a browser indents it
   unasked, and the nesting is a relationship a screen reader reads rather than one CSS draws.
@@ -277,10 +280,21 @@ These are not style preferences — each one is a host that breaks otherwise.
     (0,1,1) and a bare class is (0,1,0), so a class on any other element loses the font-size to it
     and the field draws at 18px instead of 14px. And the rule reached `Fhi.Helsedata.Stiler`'s
     `main` after 0.1.42 was cut, so the floor is the first release that follows it — a host on
-    0.1.42 or older is in the undressed case above rather than a broken one. The kildetype groups
-    inside that same facet add no name for the disclosure itself: they are `<details>`/`<summary>`
-    like the facets around them, so the marker, the open state and the focus ring come from rules a
-    host already has. The count is where they do add a name, and it is one to read this list for. It
+    0.1.42 or older is in the undressed case above rather than a broken one. Every branch of that
+    facet's tree — kildetype group, kilde, delkilde — opens on a control of its own, and the two
+    names it adds are `munin-explorer-filters__branch` on the row and
+    `munin-explorer-filters__disclosure` on the button. Handles both: the button is a real
+    `<button aria-expanded>` carrying an arrow as text and an `aria-label` of its own, so undrawn
+    it is still visible, operable and announced, and undrawn the row is the blocks it is made of
+    stacked rather than laid out. What the rules buy is the row and a 24x24 target, which is WCAG
+    2.5.5. The branch was `<details>`/`<summary>` at the kildetype level alone until
+    `Fhi.Metadata-adog5`, and a summary cannot be the answer here: the row it would have to hold
+    carries the value's own checkbox, and a disclosure wrapped around a filter is the two presses
+    a reader must be able to make apart. **Neither name is in any published Stiler**, and the rules
+    are not written yet either — `Fhi.Metadata-cs3pt` is where they are tracked, and it carries the
+    other half of the same change: the group rows no longer match `.munin-explorer-filters summary`,
+    so whatever that rule was giving them has to be given again. The count is where these groups add
+    a third name, and it is one to read this list for. It
     wears `munin-explorer-filters__groupcount`, which is the row above's form under a name that says
     what these numbers are: a group's SIZE, drawn whether or not anything in it is ticked, where
     `__chosen` means how many values the reader chose. They shared the name until
@@ -581,10 +595,12 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-drilldown` | handle |
   | `munin-explorer-filters` | handle |
   | `munin-explorer-filters__active` | handle |
+  | `munin-explorer-filters__branch` | handle |
   | `munin-explorer-filters__chip` | handle |
   | `munin-explorer-filters__chip-remove` | handle |
   | `munin-explorer-filters__chosen` | handle |
   | `munin-explorer-filters__count` | handle |
+  | `munin-explorer-filters__disclosure` | handle |
   | `munin-explorer-filters__facets` | handle |
   | `munin-explorer-filters__groupcount` | handle |
   | `munin-explorer-filters__search` | handle |
