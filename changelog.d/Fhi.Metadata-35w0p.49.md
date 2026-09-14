@@ -21,4 +21,6 @@ category: Added
   costs no second request. The variable explorer's drill-ins get no trail: opening one there is
   component state and not an address, so there is no target to offer. (Fhi.Metadata-35w0p.49)
 - **`KildeSearch` takes a `KilderHref`.** The address of the kilde list, for the trail's first
-  step. Unset, `KildeSearch` draws no trail; `KildeExplorer` sets it for you. (Fhi.Metadata-35w0p.49)
+  step. Unset, an open kilde draws no trail at all, while an open datasamling still draws one —
+  rooted at the parent kilde alone, which `DatasamlingHref` is enough to reach. `KildeExplorer`
+  sets it for you. (Fhi.Metadata-35w0p.49)

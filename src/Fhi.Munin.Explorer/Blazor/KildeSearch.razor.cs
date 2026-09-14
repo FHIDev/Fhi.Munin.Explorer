@@ -190,8 +190,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>
     /// Where the kilde list itself is: this same page with no kilde open. Leave it unset and an
-    /// open kilde draws no breadcrumb at all, while an open datasamling draws one rooted at the
-    /// parent kilde alone — whatever steps <see cref="DatasamlingHref"/> can still reach.
+    /// open kilde draws no breadcrumb at all, while an open datasamling still draws one — rooted
+    /// at the parent kilde alone, which <see cref="DatasamlingHref"/> is enough to reach.
     /// </summary>
     /// <remarks>
     /// A delegate rather than a string for <see cref="DatasamlingHref"/>'s reasons — it is read at
@@ -1186,10 +1186,9 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>The same, plus the kilde an open datasamling hangs off.</summary>
     /// <remarks>
-    /// The kilde's name comes off the datasamling's own payload — <c>parentKildeNavn</c> is in it
-    /// for exactly this — and is the catalogue's Norwegian or nothing, never a code fallback, which
-    /// is why the <c>lang</c> here is a literal where the three views compute one. The step is left
-    /// rather than drawn as words when no address was wired: a step nobody can press is not ours.
+    /// <c>parentKildeNavn</c> is on the datasamling's own payload for exactly this, so the trail
+    /// costs no second request; it is the catalogue's Norwegian with no code to fall back to, which
+    /// is why the <c>lang</c> is a literal here where the views compute one. No address, no step.
     /// </remarks>
     private IReadOnlyList<DetailTrailStep> DatasamlingTrail(DatasamlingDetail datasamling) =>
         KildeHref is { } kilde && !string.IsNullOrWhiteSpace(datasamling.ParentKildeName)
