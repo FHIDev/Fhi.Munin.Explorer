@@ -290,8 +290,8 @@ internal sealed record Texts(
     // A branch of the source tree opens and shuts on a control of its own, beside the checkbox and
     // never part of it: expanding narrows nothing. Named after the node, because "Vis" repeated
     // down a tree says nothing about which branch it opens. (Fhi.Metadata-adog5)
-    Func<string, string> ExpandBranch,
-    Func<string, string> CollapseBranch,
+    string ExpandBranch,
+    string CollapseBranch,
     // What the panel's live region says after a fold press. The press is otherwise silent.
     string FacetsExpanded,
     string FacetsCollapsed,
@@ -985,8 +985,8 @@ internal sealed record Texts(
         ExpandAllFacets: "Utvid alle",
         CollapseAllFacets: "Skjul alle",
         LevelLines: "Nivålinjer",
-        ExpandBranch: name => $"Vis nivåene under {name}",
-        CollapseBranch: name => $"Skjul nivåene under {name}",
+        ExpandBranch: "Vis nivåene under",
+        CollapseBranch: "Skjul nivåene under",
         FacetsExpanded: "Alle filtre er utvidet.",
         FacetsCollapsed: "Alle filtre er skjult.",
         FilterError: "Kunne ikke oppdatere filtrene nå. Tallene kan være utdaterte.",
@@ -1343,8 +1343,8 @@ internal sealed record Texts(
         ExpandAllFacets: "Expand all",
         CollapseAllFacets: "Collapse all",
         LevelLines: "Level lines",
-        ExpandBranch: name => $"Show the levels under {name}",
-        CollapseBranch: name => $"Hide the levels under {name}",
+        ExpandBranch: "Show the levels under",
+        CollapseBranch: "Hide the levels under",
         FacetsExpanded: "All filters expanded.",
         FacetsCollapsed: "All filters collapsed.",
         FilterError: "Could not refresh the filters right now. The counts may be out of date.",

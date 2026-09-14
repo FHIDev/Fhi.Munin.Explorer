@@ -1238,8 +1238,8 @@ public partial class VariableSearch
         builder.AddAttribute(6, "class", "munin-explorer-filters__disclosure");
         builder.AddAttribute(7, "aria-expanded", open ? "true" : "false");
         builder.AddAttribute(8, "aria-controls", open ? BranchId(value.Key) : null);
-        builder.AddAttribute(9, "aria-label",
-                             open ? T.CollapseBranch(value.Label) : T.ExpandBranch(value.Label));
+        var nameId = BranchId(value.Key) + "-name";
+        builder.AddAttribute(9, "aria-labelledby", $"{nameId}-action {nameId}");
 
         var key = value.Key;
 
@@ -1252,6 +1252,22 @@ public partial class VariableSearch
         builder.OpenElement(11, "span");
         builder.AddAttribute(12, "aria-hidden", "true");
         builder.AddContent(13, open ? "▾" : "▸");
+        builder.CloseElement();
+
+        // Keep catalogue words in their own language without applying it to the UI action.
+        builder.OpenElement(14, "span");
+        builder.AddAttribute(15, "class", "screenreader-only");
+        builder.OpenElement(16, "span");
+        builder.AddAttribute(17, "id", nameId + "-action");
+        builder.AddAttribute(18, "lang", ReaderLanguage.Of(Language));
+        builder.AddContent(19, open ? T.CollapseBranch : T.ExpandBranch);
+        builder.CloseElement();
+        builder.AddContent(20, " ");
+        builder.OpenElement(21, "span");
+        builder.AddAttribute(22, "id", nameId);
+        builder.AddAttribute(23, "lang", value.Language ?? ReaderLanguage.Of(Language));
+        builder.AddContent(24, value.Label);
+        builder.CloseElement();
         builder.CloseElement();
 
         builder.CloseElement();

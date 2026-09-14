@@ -75,8 +75,12 @@ const rowOf = disclosure => disclosure.locator('xpath=..');
  * header exists to keep a green run from meaning more than it is. The verb in the name is the one
  * for the NEXT press, so a branch answers to one name shut and another open, and both are kept.
  */
-const branchNamed = (page, names) => page.locator(
-  names.map(name => `${PANEL} ${DISCLOSURE}[aria-label=${JSON.stringify(name)}]`).join(', '));
+const branchNamed = (page, names) => names
+  .map(name => page.locator(PANEL).getByRole('button', { name, exact: true }))
+  .reduce((found, next) => found.or(next));
+
+const branchName = button => button.evaluate(one => one.getAttribute('aria-labelledby')
+  .split(/\s+/).map(id => document.getElementById(id).textContent.trim()).join(' '));
 
 /**
  * Open the first shut branch the panel draws, and hand back the names it now answers to.
@@ -94,7 +98,7 @@ async function openFirstShutBranch(page) {
   const shut = firstShutBranch(page);
   await shut.waitFor({ state: 'visible', timeout: findTimeout });
 
-  const names = [await shut.getAttribute('aria-label')];
+  const names = [await branchName(shut)];
   const button = await shut.elementHandle();
 
   // The pin has to name one control, or every re-locate below could land on a second branch the
@@ -115,7 +119,7 @@ async function openFirstShutBranch(page) {
   await page.waitForFunction(
     one => one.getAttribute('aria-expanded') === 'true', button, { timeout: findTimeout });
 
-  names.push(await button.getAttribute('aria-label'));
+  names.push(await branchName(button));
 
   if (names[1] === names[0]) {
     throw new Error(`the disclosure "${names[0]}" kept its name when it opened, so it names the wrong press`);
@@ -449,7 +453,12 @@ export const assertions = [
     // reader is tabbing through, and whether the button answers Enter and Space at all. bUnit
     // renders a render tree — there is no tab order in one, and no key to press.
     async stage(page) {
-      const { names, label, disclosure } = await openFirstShutBranch(page);
+      let branch = await openFirstShutBranch(page);
+      // A grouping row has no checkbox. Descend until Tab can exercise the selectable-row case.
+      while (await rowOf(branch.disclosure).locator(':scope > label input[type=checkbox]').count() === 0) {
+        branch = await openFirstShutBranch(page);
+      }
+      const { names, label, disclosure } = branch;
 
       const disclosed = await disclosedControls(rowOf(disclosure));
 
@@ -487,16 +496,15 @@ export const assertions = [
           'that stands between them and the tab order';
       }
 
-      // And the live half of the same claim, since the DOM check above cannot see a tabindex the
-      // page put somewhere else: Tab off the disclosure must leave this row altogether.
+      // The row's own checkbox stays reachable; only disclosed descendants must leave the tab order.
       await disclosure.focus();
       await page.keyboard.press('Tab');
 
       const inside = await row.evaluate(
-        item => item.contains(document.activeElement) && document.activeElement !== item);
+        item => item.contains(document.activeElement) && document.activeElement.closest('li') !== item);
 
       return inside
-        ? `Tab off "${label}" landed back inside its own shut row`
+        ? `Tab off "${label}" landed inside a shut descendant row`
         : null;
     },
 

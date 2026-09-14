@@ -5533,6 +5533,34 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Show the levels under Biobank", AccessibleName.Of(Branch(cut, "Biobank")));
     }
 
+    [Theory]
+    [InlineData("en", "en", "Show the levels under", "Hide the levels under")]
+    [InlineData("nb-NO", "no", "Vis nivåene under", "Skjul nivåene under")]
+    public void Branches_WhenACatalogueNameLabelsTheDisclosure_ThenEachPartKeepsItsLanguage(
+        string language, string uiLanguage, string expand, string collapse)
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithDatasamlinger()),
+                             b => b.Add(c => c.Language, language));
+        ExpandBranches(cut);
+        var button = Branch(cut, "Tromsøundersøkelsen");
+        var ids = button.GetAttribute("aria-labelledby")!.Split(' ');
+
+        Assert.False(button.HasAttribute("aria-label"));
+        Assert.Equal(2, ids.Length);
+        Assert.Equal(uiLanguage, cut.Find($"#{ids[0]}").GetAttribute("lang"));
+        Assert.Equal("no", cut.Find($"#{ids[1]}").GetAttribute("lang"));
+        Assert.Equal("Tromsøundersøkelsen", cut.Find($"#{ids[1]}").TextContent);
+        Assert.Equal($"{collapse} Tromsøundersøkelsen", AccessibleName.Of(button));
+
+        button.Click();
+
+        button = Branch(cut, "Tromsøundersøkelsen");
+        Assert.Equal($"{expand} Tromsøundersøkelsen", AccessibleName.Of(button));
+        Assert.Equal(ids, button.GetAttribute("aria-labelledby")!.Split(' '));
+        var allIds = cut.FindAll("[id]").Select(element => element.Id).ToList();
+        Assert.Equal(allIds.Count, allIds.Distinct(StringComparer.Ordinal).Count());
+    }
+
     [Fact]
     public void Branches_WhenOneIsToggled_ThenNothingIsFetchedAndNoFilterMoves()
     {
