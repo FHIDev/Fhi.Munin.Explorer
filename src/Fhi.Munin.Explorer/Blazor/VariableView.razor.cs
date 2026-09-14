@@ -113,6 +113,16 @@ public sealed partial class VariableView : ComponentBase
             ? CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T, Dates)
             : null;
 
+    /// <summary>This variable's data type in the reader's language, or null when the catalogue names none.</summary>
+    /// <remarks>
+    /// The same shape as <see cref="DataPeriod"/>, and for the same reason: the block is drawn
+    /// exactly when there is a label to put in it, and the contents nav asks that same question.
+    /// </remarks>
+    private string? DataTypeLabel =>
+        Variable is { DataType: { } dataType } && !string.IsNullOrWhiteSpace(dataType)
+            ? T.DataTypeLabel(dataType)
+            : null;
+
     /// <summary>The sections this view draws, in the order it draws them.</summary>
     /// <remarks>
     /// Both the contents nav and each section's own condition read this, through
@@ -152,7 +162,7 @@ public sealed partial class VariableView : ComponentBase
                 StatisticsBlock.Heading(variable.DatasamlingStatisticsType, T));
         Section(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
         Section(DataPeriod is not null, DetailSectionIds.DataPeriod, T.FieldDataPeriod);
-        Section(!string.IsNullOrWhiteSpace(variable.DataType), DetailSectionIds.DataType, T.FieldDataType);
+        Section(DataTypeLabel is not null, DetailSectionIds.DataType, T.FieldDataType);
         Section(variable.AllVariabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
         Section(variable.AllDatasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
 
