@@ -78,7 +78,7 @@ public sealed partial class VariableView : ComponentBase
     private IReadOnlyList<PropertyGroup> Groups =>
         Variable is { } variable
             ? CatalogueProperties.Groups(variable.PropertyMetadata, variable.AdditionalProperties, Reader,
-                                         DrawnInTheSidebar)
+                                         DrawnElsewhere)
             : [];
 
     /// <summary>Keys this view renders itself, so the metadata does not repeat them.</summary>
@@ -86,7 +86,7 @@ public sealed partial class VariableView : ComponentBase
     /// Just the one, and it earns its place: DataType is the only filled-in key in its group on a
     /// typical variable, so dropping it drops the group and leaves the five Runa shows.
     /// </remarks>
-    private static readonly HashSet<string> DrawnInTheSidebar = new(StringComparer.Ordinal) { "DataType" };
+    private static readonly HashSet<string> DrawnElsewhere = new(StringComparer.Ordinal) { "DataType" };
 
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>

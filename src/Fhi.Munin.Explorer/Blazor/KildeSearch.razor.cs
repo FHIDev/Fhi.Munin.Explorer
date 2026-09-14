@@ -69,7 +69,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// The sections are the measured difference between the two explorers rather than an invention
 /// here. On 2026-08-20 the same kilde in both drew the same name block, the same eight metadata
-/// groups in the same order and the same two sidebar boxes; the datasamling section was the same
+/// groups in the same order and the same two fact boxes; the datasamling section was the same
 /// rows under a different word, and Kelda had three sections Runa has not — Variabler, Kriterier
 /// for tilgang til data and Priser. Those three are markup in this component's own file, passed
 /// into the shared core. What a host passes as <see cref="Sections"/> follows them. The last two

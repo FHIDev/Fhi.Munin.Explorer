@@ -1348,8 +1348,8 @@ public class KildeViewTest : BunitContext
         var ids = main.Children.Select(e => e.Id).ToArray();
 
         Assert.Equal("kelda-sections", ids[^1]);
-        Assert.Contains("source", ids[..^1]);
-        Assert.Contains("statistics", ids[..^1]);
+        Assert.Contains(DetailSectionIds.Source, ids[..^1]);
+        Assert.Contains(DetailSectionIds.Statistics, ids[..^1]);
     }
 
     [Fact]
@@ -1824,7 +1824,8 @@ public class KildeViewTest : BunitContext
     {
         // The stylesheet half. The single lane was scoped to the asides, so with those gone every
         // fact list takes the unscoped default — which is the right shape for a full-width column.
-        // Through SampleDeclarationsFor so `-1` and `-2` cannot answer for the base class.
+        // Through SampleDeclarationsFor so `-1` and `-2` cannot answer for the base class. The
+        // aside branch is still in the sample and inert, which is what the exclusion below narrows.
         const string Base = @"\.munin-explorer-meta__grid(?![\w-])";
 
         var grids = HostClassNames.SampleDeclarationsFor("munin-explorer-meta__grid");
@@ -1836,6 +1837,42 @@ public class KildeViewTest : BunitContext
                                   branch => !branch.Contains("__aside", StringComparison.Ordinal)
                                             && Regex.IsMatch(branch, Base))),
             "No unscoped rule leaves munin-explorer-meta__grid two lanes for the main column.");
+    }
+
+    [Fact]
+    public void Body_WhenAHostLaysOutADetailView_ThenTheColumnIsTheOnlyTrack()
+    {
+        // The other stylesheet half, and the one the markup change needs: the aside is gone, so a
+        // body still declaring `minmax(0, 1fr) 320px` above 1024px leaves a 320px track with
+        // nothing in it and narrows the column this change exists to widen. (Fhi.Metadata-35w0p.6)
+        var rules = Regex
+            .Matches(WideBlock(HostClassNames.SampleCss), @"(?<selector>[^{}]*)\{(?<declarations>[^{}]*)\}")
+            .Select(rule => (Selector: rule.Groups["selector"].Value,
+                             Declarations: rule.Groups["declarations"].Value))
+            .ToList();
+
+        foreach (var body in (string[])
+                 [
+                     "munin-explorer-kilde__body",
+                     "munin-explorer-datasamling__body",
+                     "munin-explorer-whole__body",
+                 ])
+        {
+            // Per branch, so grouping the three under one selector stays equivalent CSS here.
+            var tracks = rules
+                .Where(rule => rule.Selector.Split(',').Any(
+                    branch => Regex.IsMatch(branch, $@"\.{body}(?![\w-])")))
+                .Select(rule => Regex.Match(rule.Declarations, @"grid-template-columns:\s*([^;]+)"))
+                .Where(match => match.Success)
+                .Select(match => match.Groups[1].Value.Trim())
+                .ToList();
+
+            // Nothing here may pass by saying nothing: deleting the rule would empty the set.
+            Assert.NotEmpty(tracks);
+
+            // Anchored on the whole value, so a second track appended to it fails.
+            Assert.All(tracks, value => Assert.Matches(@"^minmax\(\s*0\s*,\s*1fr\s*\)$", value));
+        }
     }
 
     [Fact]
@@ -1940,31 +1977,46 @@ public class KildeViewTest : BunitContext
     }
 
     /// <summary>
-    /// The body of the sample's <c>@media (min-width: 1024px)</c> block.
+    /// Every <c>@media (min-width: 1024px)</c> block in the sample, joined.
     /// </summary>
     /// <remarks>
     /// HostClassNames matches innermost blocks, so a rule inside an at-rule comes back with a bare
-    /// selector and nothing says which breakpoint it sits in. These rules mean nothing outside this
-    /// one — below it the grid has a single track — so the guard reads the block itself.
+    /// selector and nothing says which breakpoint it sits in. Every block, because the sample
+    /// declares two at this width and the first holds none of the detail views' rules.
     /// </remarks>
     private static string WideBlock(string css)
     {
-        var start = css.IndexOf("@media (min-width: 1024px)", StringComparison.Ordinal);
+        const string Breakpoint = "@media (min-width: 1024px)";
 
-        Assert.True(start >= 0, "The sample no longer has a min-width: 1024px block.");
+        var blocks = new List<string>();
 
-        var depth = 0;
-
-        for (var i = css.IndexOf('{', start); i < css.Length; i++)
+        for (var start = css.IndexOf(Breakpoint, StringComparison.Ordinal); start >= 0;)
         {
-            depth += css[i] switch { '{' => 1, '}' => -1, _ => 0 };
+            var depth = 0;
+            var end = -1;
 
-            if (depth == 0)
+            for (var i = css.IndexOf('{', start); i < css.Length; i++)
             {
-                return css[start..i];
+                depth += css[i] switch { '{' => 1, '}' => -1, _ => 0 };
+
+                if (depth == 0)
+                {
+                    end = i;
+                    break;
+                }
             }
+
+            if (end < 0)
+            {
+                throw new InvalidOperationException("A min-width: 1024px block is never closed.");
+            }
+
+            blocks.Add(css[start..end]);
+            start = css.IndexOf(Breakpoint, end, StringComparison.Ordinal);
         }
 
-        throw new InvalidOperationException("The min-width: 1024px block is never closed.");
+        Assert.True(blocks.Count > 0, "The sample no longer has a min-width: 1024px block.");
+
+        return string.Concat(blocks);
     }
 }

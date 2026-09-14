@@ -1744,9 +1744,9 @@ table.munin-explorer-data-list tbody th {
   max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
 }
 
-/* Main column and sidebar, and only once there is room for two of them. Below 1024px the aside
-   returns to the flow under the main column, which is where a phone wants it — the same
-   threshold and the same reasoning as the filter panel above. */
+/* One track, at every width. The 320px rail these bodies were shaped around stopped being emitted
+   in Fhi.Metadata-35w0p.6, and a second track with nothing in it is 344px of dead page rather than
+   a harmless leftover. The block stays inside the breakpoint it has always been declared in. */
 .munin-explorer-kilde__body,
 .munin-explorer-datasamling__body,
 .munin-explorer-whole__body {
@@ -1758,20 +1758,23 @@ table.munin-explorer-data-list tbody th {
   .munin-explorer-kilde__body,
   .munin-explorer-datasamling__body,
   .munin-explorer-whole__body {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 }
 
 /* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
-   The datasamlinger table has four columns of Norwegian names in it and would push the sidebar
-   off the right edge rather than shrink. Same trap the filter panel meets, same fix. */
+   The datasamlinger table has four columns of Norwegian names in it and would widen the track past
+   the page rather than shrink. Same trap the filter panel meets, same fix. */
 .munin-explorer-kilde__main,
 .munin-explorer-datasamling__main,
 .munin-explorer-whole__main {
   min-inline-size: 0;
 }
 
+/* Nothing has emitted an aside since Fhi.Metadata-35w0p.6, so this matches nothing. It stays
+   rather than going: a stand-in draws what the stylesheet a host restores draws, and Stiler still
+   carries it. It leaves with Stiler's, under Fhi.Metadata-35w0p.39. */
 .munin-explorer-kilde__aside,
 .munin-explorer-datasamling__aside,
 .munin-explorer-whole__aside {
@@ -1788,9 +1791,9 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* Copied from Stiler's `_trail.scss`, selector for selector: a stand-in that works differently from
-   the rule it stands in for is not standing in for it. Scoped to the aside for Stiler's reason —
-   the same class in the main column keeps its two tracks. Not the `munin-explorer-meta__grid-1`
-   modifier, which Stiler also gives `grid-row: 1/3`. (Fhi.Metadata-hi0po) */
+   the rule it stands in for is not standing in for it. Inert since Fhi.Metadata-35w0p.6 stopped
+   emitting the aside, and kept for as long as Stiler keeps it — the fact lists now take the
+   unscoped two-lane default, which is the right shape for a full-width column. (Fhi.Metadata-hi0po) */
 .munin-explorer-kilde__aside .munin-explorer-meta__grid,
 .munin-explorer-whole__aside .munin-explorer-meta__grid,
 .munin-explorer-datasamling__aside .munin-explorer-meta__grid {

@@ -483,9 +483,11 @@ public class DatasamlingViewTest : BunitContext
             VariableCount = 0,
         });
 
-        Assert.DoesNotContain("Statistikk", BlockHeadings(cut));
-        Assert.Equal(["Kildeinformasjon"],
-                     BlockHeadings(cut).Where(h => h is "Kildeinformasjon" or "Statistikk"));
+        // The whole list rather than the two headings this is about: it used to be scoped to the
+        // aside, where "nothing else was drawn there" came free, and filtering the headings down to
+        // what it compares against would give that half away.
+        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon"],
+                     BlockHeadings(cut));
     }
 
     [Fact]
