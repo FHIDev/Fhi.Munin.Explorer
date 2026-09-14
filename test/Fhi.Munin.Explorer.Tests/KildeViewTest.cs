@@ -1252,12 +1252,6 @@ public class KildeViewTest : BunitContext
     private static IReadOnlyList<IElement> Wrappers(IRenderedComponent<KildeView> cut) =>
         [.. cut.FindAll("section.munin-explorer-page__section")];
 
-    /// <summary>The label and value of each row one section's fact list draws.</summary>
-    private static IReadOnlyList<(string Label, string Value)> Rows(
-        IRenderedComponent<KildeView> cut, string sectionId) =>
-        [.. cut.FindAll($"#{sectionId} dl > div")
-               .Select(row => (row.QuerySelector("dt")!.TextContent, row.QuerySelector("dd")!.TextContent))];
-
     [Fact]
     public void Sections_Always_ThenEveryBlockIsWrappedAndTheNameAboveThemIsNot()
     {
@@ -1316,16 +1310,16 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenBothSidebarBoxesStillDrawARow()
     {
-        // Why neither sidebar box carries an emptiness check, and what would put one back:
+        // Why both sidebar boxes survive their emptiness checks on a payload this bare:
         // KildeTypeLabel answers "Ikke oppgitt" for a source carrying no kildetype and
-        // TotalVariables is an int, so no payload empties either list.
+        // TotalVariables is an int, so no payload the catalogue can send empties either list.
         var cut = Render(new KildeDetail { Id = Guid.NewGuid(), Code = "K_X", PreferredTerm = "X" });
 
         // Named rather than merely counted, so taking a fallback away fails here saying which row
         // went, rather than somewhere else saying a box was empty.
-        Assert.Equal(["Type datakilde", "Grad av personidentifikasjon"],
-                     Rows(cut, DetailSectionIds.Source).Select(r => r.Label));
-        Assert.Equal([("Totalt antall variabler", "0")], Rows(cut, DetailSectionIds.Statistics));
+        Assert.Equal(["Type datakilde", "Grad av personidentifikasjon"], Labels(SourceInformation(cut)));
+        Assert.Equal(["Totalt antall variabler"], Labels(Statistics(cut)));
+        Assert.Equal(["0"], Values(Statistics(cut)));
     }
 
     [Fact]

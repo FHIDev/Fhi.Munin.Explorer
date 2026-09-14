@@ -91,18 +91,24 @@
             </div>
 
             <aside class="munin-explorer-kilde__aside">
-                @* Neither box is checked, because neither can come out empty: the kildetype row
-                   falls back to "Ikke oppgitt" and the variable count is an int. Pinned by
-                   Sections_WhenTheCatalogueHasFilledInNothing_ThenBothSidebarBoxesStillDrawARow. *@
-                <DetailSection Id="@DetailSectionIds.Source">
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                    @DetailBlocks.Facts(SourceInformation, Language)
-                </DetailSection>
+                @* Both boxes are checked although neither empties under this package's own texts:
+                   the row that keeps the first full falls back to Texts.NotSpecified, a string the
+                   host constructs, so presence follows the content rather than that string. *@
+                @if (DetailBlocks.AnyFacts(SourceInformation))
+                {
+                    <DetailSection Id="@DetailSectionIds.Source">
+                        @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                        @DetailBlocks.Facts(SourceInformation, Language)
+                    </DetailSection>
+                }
 
-                <DetailSection Id="@DetailSectionIds.Statistics">
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
-                    @DetailBlocks.Facts(Statistics, Language)
-                </DetailSection>
+                @if (DetailBlocks.AnyFacts(Statistics))
+                {
+                    <DetailSection Id="@DetailSectionIds.Statistics">
+                        @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
+                        @DetailBlocks.Facts(Statistics, Language)
+                    </DetailSection>
+                }
             </aside>
         </div>
     </div>

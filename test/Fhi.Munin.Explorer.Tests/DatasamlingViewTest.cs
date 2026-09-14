@@ -313,15 +313,17 @@ public class DatasamlingViewTest : BunitContext
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow()
     {
-        // Why the source box carries no emptiness check while the statistics box beside it does:
-        // KildeTypeLabel answers "Ikke oppgitt" for a datasamling inheriting no kildetype, so that
-        // list is never empty, and Statistics has no row with a fallback of its own.
+        // Why the source box survives its emptiness check on a payload this bare while the
+        // statistics box beside it does not: the kildetype and identification rows both answer
+        // "Ikke oppgitt" rather than nothing, and Statistics has no row with a fallback.
         var cut = Render(new DatasamlingDetail { Id = Guid.NewGuid(), Code = "D", PreferredTerm = "D" });
 
-        // Named rather than merely counted, so taking the fallback away fails here saying which
-        // row went, rather than somewhere else saying the box was empty.
-        Assert.Equal("Type datakilde", cut.Find($"#{DetailSectionIds.Source} dt").TextContent);
-        Assert.Equal("Ikke oppgitt", cut.Find($"#{DetailSectionIds.Source} dd").TextContent);
+        // The whole list rather than the first row, and by label: a row added above this one is a
+        // new row appearing, not the fallback going, and the two should not fail alike.
+        var box = SourceInformation(cut);
+
+        Assert.Equal(["Type datakilde", "Grad av personidentifikasjon"], Labels(box));
+        Assert.Equal("Ikke oppgitt", Value(box, "Type datakilde"));
         Assert.Empty(cut.FindAll($"#{DetailSectionIds.Statistics}"));
     }
 

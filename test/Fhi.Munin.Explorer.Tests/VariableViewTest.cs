@@ -688,15 +688,16 @@ public class VariableViewTest : BunitContext
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow()
     {
-        // Why the source box carries no emptiness check, and what would put one back: KildeTypeLabel
-        // answers "Ikke oppgitt" for a variable naming no source, so the list is never empty even
+        // Why the source box survives its emptiness check on a payload this bare: KildeTypeLabel
+        // answers "Ikke oppgitt" for a variable naming no source, so the list keeps a row even
         // with all three of its fields blank.
-        var cut = Render(new VariableDetail { Id = Guid.NewGuid(), Code = "V", PreferredTerm = "V" });
+        var facts = Render(new VariableDetail { Id = Guid.NewGuid(), Code = "V", PreferredTerm = "V" })
+            .Find($"#{DetailSectionIds.Source} dl.munin-explorer-meta__grid");
 
-        // Named rather than merely counted, so taking the fallback away fails here saying which
-        // row went, rather than somewhere else saying the box was empty.
-        Assert.Equal("Type datakilde", cut.Find($"#{DetailSectionIds.Source} dt").TextContent);
-        Assert.Equal("Ikke oppgitt", cut.Find($"#{DetailSectionIds.Source} dd").TextContent);
+        // The whole list rather than its first row: a row added above this one is a new row
+        // appearing, not the fallback going, and the two should not fail alike.
+        Assert.Equal(["Type datakilde"], facts.QuerySelectorAll("dt").Select(dt => dt.TextContent.Trim()));
+        Assert.Equal("Ikke oppgitt", facts.QuerySelector("dd")!.TextContent.Trim());
     }
 
     [Fact]

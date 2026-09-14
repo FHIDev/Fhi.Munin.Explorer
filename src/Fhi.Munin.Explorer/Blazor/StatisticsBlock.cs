@@ -60,8 +60,10 @@ internal static class StatisticsBlock
     /// </summary>
     /// <remarks>
     /// The guard inside <see cref="For"/> is this same call: a wrapper that answered the emptiness
-    /// question for itself could leave a section holding a heading and nothing else. Named for
-    /// <see cref="DetailBlocks.AnyFacts"/>, which asks it of the block next to this one.
+    /// question for itself could leave a section holding a heading and nothing else. Not to be
+    /// confused with <see cref="DatasamlingView"/>'s own <c>AnyStatistics</c>, which asks
+    /// <see cref="DetailBlocks.AnyFacts"/> of a datasamling's fact rows: a different question about
+    /// a different type, spelled the same because both gate a statistics section.
     /// </remarks>
     internal static bool AnyStatistics([NotNullWhen(true)] VariableDetail? variable) =>
         variable is { Statistics.Count: > 0 };

@@ -68,13 +68,16 @@
             </div>
 
             <aside class="munin-explorer-datasamling__aside">
-                @* Not checked, because it cannot come out empty: the kildetype row falls back
-                   to "Ikke oppgitt", so the list always has a row. Pinned by
-                   Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow. *@
-                <DetailSection Id="@DetailSectionIds.Source">
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                    @DetailBlocks.Facts(SourceInformation, Language)
-                </DetailSection>
+                @* Checked although it does not empty under this package's own texts: the row that
+                   keeps it full falls back to Texts.NotSpecified, a string the host constructs, so
+                   presence follows the content rather than that string. *@
+                @if (DetailBlocks.AnyFacts(SourceInformation))
+                {
+                    <DetailSection Id="@DetailSectionIds.Source">
+                        @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
+                        @DetailBlocks.Facts(SourceInformation, Language)
+                    </DetailSection>
+                }
 
                 @* A datasamling that counts nothing gets no block, and the type names the heading
                    rather than filling a row. *@
