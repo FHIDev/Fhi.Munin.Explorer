@@ -133,6 +133,19 @@ public class VariableSearchTest : BunitContext
         return Render<VariableSearch>(b => p?.Invoke(b));
     }
 
+    /// <summary>The same render in a context of its own, for a test that draws one row two ways.</summary>
+    /// <remarks>
+    /// A context refuses a second service registration once a render has resolved one from it, so
+    /// two payloads in one test method need two contexts rather than two calls to
+    /// <see cref="RenderWith"/>.
+    /// </remarks>
+    private static IRenderedComponent<VariableSearch> RenderApart(
+        BunitContext context, IMuninExplorerClient client)
+    {
+        context.Services.AddSingleton(client);
+        return context.Render<VariableSearch>();
+    }
+
     [Fact]
     public void Render_WhenTheSearchHasHits_ThenACardIsShownPerVariable()
     {
@@ -5343,7 +5356,8 @@ public class VariableSearchTest : BunitContext
         // against a string, because what this pins is that adding them changed nothing a screen
         // reader hears. They follow the name for the other half of it — a variable number of glyphs
         // in front would put the row's start where its neighbours' is not. (Fhi.Metadata-evoil)
-        var bare = RenderWith(new FilteringClient(OnePage(), FacetsWithCategories([], [])));
+        using var other = new BunitContext();
+        var bare = RenderApart(other, new FilteringClient(OnePage(), FacetsWithCategories([], [])));
         var drawn = RenderWith(new FilteringClient(
             OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])));
 
