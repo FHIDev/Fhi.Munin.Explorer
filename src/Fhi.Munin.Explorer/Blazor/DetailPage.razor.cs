@@ -61,9 +61,9 @@ public sealed partial class DetailPage : ComponentBase
     /// view that passes nothing draws one column in one track rather than an empty rail beside it.
     /// </summary>
     /// <remarks>
-    /// Nothing in the package sets it yet: the contents nav that fills it is <c>Fhi.Metadata-35w0p.12</c>,
-    /// and the column it lands in is declared here so that the nav is markup and a stylesheet rule
-    /// rather than a new element as well.
+    /// <see cref="DetailToc"/> is what the three detail views put here, and they pass null rather
+    /// than an empty fragment when they drew no section to link to — an empty one would still draw
+    /// the rail.
     /// </remarks>
     [Parameter]
     public RenderFragment? Contents { get; set; }

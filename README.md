@@ -91,8 +91,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     `Fhi.Helsedata.Stiler`'s own name, every one read back off Stiler's compiled stylesheet rather
     than guessed at: `searchbox__freetext*`, `hd-button-square` with its `button-square--*`
     modifiers, `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`,
-    `hd-button-reset`, `screenreader-only`, and `dropdown-choicepicker*` for the column picker's
-    open list. These are not ours to rename: a change to one of them is a change to Stiler. Every
+    `hd-button-reset`, `screenreader-only`, `dropdown-choicepicker*` for the column picker's
+    open list, and `form-menu__list` with its `form-menu__list__item` for the detail views'
+    contents nav — both global and unscoped in Stiler's `pages/_healthregisterpage.scss`, which is
+    what lets that nav take helsedata's own link colour, padding and hover with no rule of its own.
+    These are not ours to rename: a change to one of them is a change to Stiler. Every
     borrowed name is now one Stiler really defines. Three were not — the pager's two names and its
     skip link's, all read off helsedata's own page-specific `variables.css` — and all three are
     ours now: the pager under `Fhi.Metadata-hyyxl` and the skip link into it under
@@ -368,8 +371,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     their blocks sits in — the kilde, datasamling and variable views alike. A handle, and the
     plainest kind: the wrapper carries an `id` and helsedata's own `data-nav-section` and no
     padding, border or margin of its own, so an undefined one costs nothing at all today. What a
-    rule buys is the `scroll-margin` that keeps a linked-to heading clear of a sticky header, which
-    is why the section exists before the contents nav that will use it does. Stiler's rules for
+    rule buys is the `scroll-margin` that keeps a heading the contents nav has just linked to clear
+    of a sticky header, rather than under it. Stiler's rules for
     it are written — `components/munin-explorer/_page.scss`, merged as PR 39299 — and hang the
     offset on the `data-nav-section` attribute rather than on the class; that PR bumped no
     version, so no published Stiler carries them and every host draws the wrapper undrawn until
@@ -389,10 +392,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     loses no words. Stiler's rules are written, in the same
     `_page.scss` and merged as PR 39300, and that PR bumped no version either, so no published
     Stiler draws the two-track body yet. The contents column is drawn only when something fills it,
-    and nothing in the package does until the contents nav ships (`Fhi.Metadata-35w0p.12`) — so the
-    two-track rule is scoped to a body that has one, in both sample stylesheets and in the Stiler
-    rule before it publishes (`Fhi.Metadata-ex5wb`). Ungated, a fixed 250px first track would lay a
-    lone main column out in it.
+    which since `Fhi.Metadata-35w0p.12` is the contents nav — and only when the view drew a section
+    for it to link to, so a view with none still has no rail. The two-track rule is scoped to a body
+    that has one, in both sample stylesheets and in the Stiler rule before it publishes
+    (`Fhi.Metadata-ex5wb`). Ungated, a fixed 250px first track would lay a lone main column out in
+    it.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail

@@ -154,8 +154,11 @@ public class DatasamlingViewTest : BunitContext
             "munin-explorer-page",
             "munin-explorer-page__body",
             "munin-explorer-page__main",
-            // The wrapper each block below the name sits in, so a contents nav can anchor on it.
+            // The wrapper each block below the name sits in, so the contents nav can anchor on it.
             "munin-explorer-page__section",
+            // The contents column, drawn now that the nav fills it. The nav inside wears
+            // helsedata's own form-menu names, which is why it adds none of ours.
+            "munin-explorer-page__toc",
         ], invented);
     }
 
@@ -175,10 +178,11 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-datasamling__main", cut.Find(".munin-explorer-page__main").ClassList);
 
-        // Nothing fills the contents column yet, so the body is one child in one track rather than
-        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
-        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
-        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+        // The contents nav fills the column, so the body is two children in two tracks and the nav
+        // comes first — ahead in the DOM of the sections it points into, not only beside them.
+        Assert.Equal(
+            ["munin-explorer-page__toc", "munin-explorer-page__main munin-explorer-datasamling__main"],
+            body.Children.Select(child => child.ClassName));
     }
 
     // ---------------------------------------------------------------------------------
@@ -360,6 +364,71 @@ public class DatasamlingViewTest : BunitContext
         var ids = Wrappers(Render(Datasamling())).Select(section => section.Id!).ToList();
 
         Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The contents nav in the column beside them.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Where the nav's entries point, in document order.</summary>
+    private static IReadOnlyList<string> Targets(IRenderedComponent<DatasamlingView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")!)];
+
+    /// <summary>What the nav's entries say, in document order.</summary>
+    private static IReadOnlyList<string> Entries(IRenderedComponent<DatasamlingView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent)];
+
+    [Fact]
+    public void Contents_Always_ThenEveryEntryPointsAtASectionThatIsReallyThere()
+    {
+        // Read against the sections themselves rather than against a list written here: an entry
+        // taken off the sections a view COULD draw is the dead anchor this nav is likeliest to
+        // produce, and the two lists cannot drift apart while this compares them.
+        var cut = Render(Datasamling());
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
+    {
+        // The payload Sections_WhenABlockDrawsNothing uses, asked one column over: the criteria and
+        // the statistics both go, so the nav is down to the two blocks that are left.
+        var cut = Render(Datasamling() with
+        {
+            InclusionAndExclusionCriteria = null,
+            Frequency = null,
+            CountingUnit = null,
+            VariableCount = 0,
+        });
+
+        Assert.Equal(["#" + DetailSectionIds.Metadata, "#" + DetailSectionIds.Source], Targets(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenTheSameDatasamlingIsReadInBothLanguages_ThenOnlyTheWordsDiffer()
+    {
+        // THE TRAP once more, one column over from the sections: the words translate and the hrefs
+        // must not, or a link one reader sends lands nowhere for the other.
+        var norwegian = Render(Datasamling(), language: "no");
+        var english = Render(Datasamling(), language: "en");
+
+        Assert.Equal(Targets(norwegian), Targets(english));
+        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon"],
+                     Entries(norwegian).Take(3));
+        Assert.Equal(["Metadata", "Inclusion and exclusion criteria", "Source information"],
+                     Entries(english).Take(3));
+    }
+
+    [Fact]
+    public void Contents_Always_ThenTheNavIsNamedInTheReadersLanguage()
+    {
+        // A landmark among the host page's own, so it says which navigation it is.
+        Assert.Equal("Innhold",
+                     Render(Datasamling(), language: "no").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
+        Assert.Equal("Contents",
+                     Render(Datasamling(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
 
     // ---------------------------------------------------------------------------------

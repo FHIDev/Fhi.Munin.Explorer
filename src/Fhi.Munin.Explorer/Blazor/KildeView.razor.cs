@@ -183,6 +183,55 @@ public sealed partial class KildeView : ComponentBase
                 (T.FieldDataPeriod, CatalogueDate.Period(kilde.DataFrom, kilde.DataTo, Language, T), false),
             ];
 
+    /// <summary>The sections this view draws, in the order it draws them.</summary>
+    /// <remarks>
+    /// Both the contents nav and each section's own condition read this, through
+    /// <see cref="Drawn"/> — one predicate per section, so an entry cannot name a block the view
+    /// left out and a link cannot scroll to an anchor that is not there.
+    /// </remarks>
+    private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
+
+    /// <inheritdoc />
+    protected override void OnParametersSet() => Toc = BuildToc();
+
+    /// <summary>The entries, in document order, each under the condition its block renders under.</summary>
+    /// <remarks>
+    /// The explorer's own sections arrive through <see cref="Sections"/> and are wrapped in no
+    /// section of ours, so the nav does not offer them — this view never learns what they are.
+    /// </remarks>
+    private IReadOnlyList<DetailTocEntry> BuildToc()
+    {
+        if (Kilde is null)
+        {
+            return [];
+        }
+
+        List<DetailTocEntry> toc = [];
+
+        void Section(bool drawn, string id, string heading)
+        {
+            if (drawn)
+            {
+                toc.Add(new DetailTocEntry(id, heading));
+            }
+        }
+
+        Section(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
+
+        // Unconditional, as the block is: the tree's own status line carries the loading, empty and
+        // error states, so this section always has something in it.
+        Section(true, DetailSectionIds.DataCollections,
+                DataCollectionsHeading ?? DefaultDataCollectionsHeading);
+
+        Section(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
+        Section(DetailBlocks.AnyFacts(Statistics), DetailSectionIds.Statistics, T.HeadingStatistics);
+
+        return toc;
+    }
+
+    /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
+    private bool Drawn(string id) => Toc.Any(entry => entry.Id == id);
+
     /// <summary>
     /// The heading for the datasamling section, when the explorer using this view wants a word of
     /// its own over it.

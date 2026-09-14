@@ -150,4 +150,49 @@ public sealed partial class DatasamlingView : ComponentBase
     /// </remarks>
     private string StatisticsHeading =>
         StatisticsBlock.Heading(Datasamling?.StatisticsType, T);
+
+    /// <summary>The sections this view draws, in the order it draws them.</summary>
+    /// <remarks>
+    /// Both the contents nav and each section's own condition read this, through
+    /// <see cref="Drawn"/> — one predicate per section, so an entry cannot name a block the view
+    /// left out and a link cannot scroll to an anchor that is not there.
+    /// </remarks>
+    private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
+
+    /// <inheritdoc />
+    protected override void OnParametersSet() => Toc = BuildToc();
+
+    /// <summary>The entries, in document order, each under the condition its block renders under.</summary>
+    /// <remarks>
+    /// The explorer's own sections arrive through <see cref="Sections"/> and are wrapped in no
+    /// section of ours, so the nav does not offer them — this view never learns what they are.
+    /// </remarks>
+    private IReadOnlyList<DetailTocEntry> BuildToc()
+    {
+        if (Datasamling is not { } datasamling)
+        {
+            return [];
+        }
+
+        List<DetailTocEntry> toc = [];
+
+        void Section(bool drawn, string id, string heading)
+        {
+            if (drawn)
+            {
+                toc.Add(new DetailTocEntry(id, heading));
+            }
+        }
+
+        Section(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
+        Section(!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria),
+                DetailSectionIds.Criteria, T.FieldInclusionCriteria);
+        Section(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
+        Section(AnyStatistics, DetailSectionIds.Statistics, StatisticsHeading);
+
+        return toc;
+    }
+
+    /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
+    private bool Drawn(string id) => Toc.Any(entry => entry.Id == id);
 }

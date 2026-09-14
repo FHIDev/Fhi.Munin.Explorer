@@ -3,7 +3,8 @@
 @if (Datasamling is { } datasamling)
 {
     <DetailPage ViewRoot="munin-explorer-datasamling"
-                ViewMain="munin-explorer-datasamling__main">
+                ViewMain="munin-explorer-datasamling__main"
+                Contents="@DetailToc.Column(Toc, T.HeadingContents)">
         <Header>
 
             @* The name block, arranged as the kilde view arranges a source's: the identifier under the
@@ -31,14 +32,14 @@
         </Header>
         <ChildContent>
 
-            @* Every block below is a <section> carrying a fixed English id, so a contents nav
-               can anchor on it and a link into one is the same link in either language. Where a
-               block can come out empty the wrapper sits INSIDE that check, never around it. *@
+            @* Every block below is a <section> carrying a fixed English id, and draws exactly when
+               Drawn says the contents nav names it — one predicate per section, so the nav can
+               never link to a block left out, in either language. *@
 
             @* The catalogue's own metadata, resolved from the payload exactly as the kilde and
                variable views resolve theirs. The flat list this view replaced drew none of it,
                and every datasamling measured carries between three and eleven curated keys. *@
-            @if (Groups.Count > 0)
+            @if (Drawn(DetailSectionIds.Metadata))
             {
                 <DetailSection Id="@DetailSectionIds.Metadata">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
@@ -52,7 +53,7 @@
 
             @* Who is in the data and who is not — the first question a researcher asks about a
                datasamling, and prose rather than a field, so it sits in the main column. *@
-            @if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
+            @if (Drawn(DetailSectionIds.Criteria))
             {
                 <DetailSection Id="@DetailSectionIds.Criteria">
                     @DetailBlocks.Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
@@ -69,7 +70,7 @@
             @* Checked although it does not empty under this package's own texts: the row that
                keeps it full falls back to Texts.NotSpecified, a string the host constructs, so
                presence follows the content rather than that string. *@
-            @if (DetailBlocks.AnyFacts(SourceInformation))
+            @if (Drawn(DetailSectionIds.Source))
             {
                 <DetailSection Id="@DetailSectionIds.Source">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
@@ -79,7 +80,7 @@
 
             @* A datasamling that counts nothing gets no block, and the type names the heading
                rather than filling a row. *@
-            @if (AnyStatistics)
+            @if (Drawn(DetailSectionIds.Statistics))
             {
                 <DetailSection Id="@DetailSectionIds.Statistics">
                     @DetailBlocks.Heading(BlockLevel, StatisticsHeading, "headline headline-s")

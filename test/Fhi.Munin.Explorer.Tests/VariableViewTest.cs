@@ -83,10 +83,11 @@ public class VariableViewTest : BunitContext
         Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-whole__main", cut.Find(".munin-explorer-page__main").ClassList);
 
-        // Nothing fills the contents column yet, so the body is one child in one track rather than
-        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
-        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
-        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+        // The contents nav fills the column, so the body is two children in two tracks and the nav
+        // comes first — ahead in the DOM of the sections it points into, not only beside them.
+        Assert.Equal(
+            ["munin-explorer-page__toc", "munin-explorer-page__main munin-explorer-whole__main"],
+            body.Children.Select(child => child.ClassName));
     }
 
     [Fact]
@@ -731,5 +732,74 @@ public class VariableViewTest : BunitContext
         var ids = Wrappers(Render(Whole())).Select(section => section.Id!).ToList();
 
         Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The contents nav in the column beside them.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Where the nav's entries point, in document order.</summary>
+    private static IReadOnlyList<string> Targets(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")!)];
+
+    /// <summary>What the nav's entries say, in document order.</summary>
+    private static IReadOnlyList<string> Entries(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent)];
+
+    [Fact]
+    public void Contents_Always_ThenEveryEntryPointsAtASectionThatIsReallyThere()
+    {
+        // All eight blocks, read against the sections themselves rather than against a list written
+        // here: an entry taken off the sections a view COULD draw is the dead anchor this nav is
+        // likeliest to produce, and the two cannot drift apart while this compares them.
+        var cut = Render(Whole());
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
+    {
+        // The plain fixture, which suppresses five of the eight — the statistics block among them,
+        // whose emptiness check lives in StatisticsBlock rather than in this view. A nav offering
+        // any of the five would be offering a link to an anchor that is not in the document.
+        var cut = Render(Detail());
+
+        Assert.Equal(
+            ["#" + DetailSectionIds.Metadata, "#" + DetailSectionIds.Source, "#" + DetailSectionIds.DataType],
+            Targets(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenTheSameVariableIsReadInBothLanguages_ThenOnlyTheWordsDiffer()
+    {
+        // THE TRAP once more, one column over from the sections: the words translate and the hrefs
+        // must not, or a link one reader sends lands nowhere for the other.
+        var norwegian = Render(Whole(), "no");
+        var english = Render(Whole(), "en");
+
+        Assert.Equal(Targets(norwegian), Targets(english));
+
+        // The statistics entry is left out of both, for the reason HeadingsExceptStatistics gives:
+        // the catalogue's own statistikktype is inside that heading.
+        Assert.Equal(
+            ["Metadata", "Versjonshistorikk", "Kildeinformasjon", "Dataperiode", "Datatype",
+             "Variabelgrupper", "Datasamlinger"],
+            Entries(norwegian).Where((_, index) => index != 2));
+        Assert.Equal(
+            ["Metadata", "Version history", "Source information", "Data period", "Data type",
+             "Variable groups", "Data collections"],
+            Entries(english).Where((_, index) => index != 2));
+    }
+
+    [Fact]
+    public void Contents_Always_ThenTheNavIsNamedInTheReadersLanguage()
+    {
+        // A landmark among the host page's own, so it says which navigation it is.
+        Assert.Equal("Innhold",
+                     Render(Whole(), "no").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
+        Assert.Equal("Contents",
+                     Render(Whole(), "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
 }

@@ -8,12 +8,11 @@ namespace Fhi.Munin.Explorer.Tests;
 /// The chassis the three detail views share, rendered directly rather than through one of them.
 /// </summary>
 /// <remarks>
-/// The three view tests reach it the way a reader does, and that is what they are for — but none of
-/// them fills <see cref="DetailPage.Contents"/>, because nothing in the package does until the
-/// contents nav ships (Fhi.Metadata-35w0p.12). So the fragment and the column it lands in were
-/// public API that was invisible when removed: deleting <c>@Contents</c> from the markup, or
-/// rendering it into the main column instead, left every test in the suite green. The three
-/// placements below are the whole of what the chassis promises, and this is where they are pinned.
+/// The three view tests reach it the way a reader does, and that is what they are for — but they
+/// reach it through <see cref="DetailToc"/> now that the contents nav fills
+/// <see cref="DetailPage.Contents"/>, so what the chassis promises about the fragment is still only
+/// pinned here: that it lands in the contents column and not the main one, and that a view passing
+/// nothing gets no column at all. The three placements below are the whole of that promise.
 /// </remarks>
 public class DetailPageTest : BunitContext
 {
@@ -35,8 +34,8 @@ public class DetailPageTest : BunitContext
     [Fact]
     public void Contents_WhenAViewFillsIt_ThenItLandsInTheContentsColumnAndNowhereElse()
     {
-        // The fragment nothing in the package sets yet. Asserted by where it lands rather than by
-        // its presence: rendered into `__main` instead it would still be on the page.
+        // Asserted by where it lands rather than by its presence: rendered into `__main` instead,
+        // the nav would still be on the page and every count of it would still pass.
         var cut = RenderPage(withContents: true);
 
         var toc = cut.Find(".munin-explorer-page__body > .munin-explorer-page__toc");

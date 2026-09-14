@@ -11886,8 +11886,9 @@ public class VariableSearchTest : BunitContext
                 "munin-explorer-kilde__kildetype",
                 "munin-explorer-kilde__description",
                 "munin-explorer-page__body",
-                // No contents column: it is emitted only when something fills it, and nothing does
-                // until the contents nav ships (Fhi.Metadata-35w0p.12).
+                // The contents column, ahead of the main one: the nav fills it, and the nav's own
+                // list wears helsedata's form-menu names rather than anything in this prefix.
+                "munin-explorer-page__toc",
                 "munin-explorer-page__main",
                 "munin-explorer-kilde__main",
                 // The wrapper each block below the name sits in. First seen on the datasamlinger,

@@ -378,8 +378,11 @@ public class KildeViewTest : BunitContext
             "munin-explorer-page",
             "munin-explorer-page__body",
             "munin-explorer-page__main",
-            // The wrapper each block below the name sits in, so a contents nav can anchor on it.
+            // The wrapper each block below the name sits in, so the contents nav can anchor on it.
             "munin-explorer-page__section",
+            // The contents column, drawn now that the nav fills it. The nav inside wears
+            // helsedata's own form-menu names, which is why it adds none of ours.
+            "munin-explorer-page__toc",
         ], invented);
     }
 
@@ -400,10 +403,11 @@ public class KildeViewTest : BunitContext
         Assert.Equal("munin-explorer-page__body", body.ClassName);
         Assert.Contains("munin-explorer-kilde__main", cut.Find(".munin-explorer-page__main").ClassList);
 
-        // Nothing fills the contents column yet, so the body is one child in one track rather than
-        // an empty rail beside the content. DetailPageTest pins the shape with the column in it.
-        Assert.Contains("munin-explorer-page__main", Assert.Single(body.Children).ClassList);
-        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+        // The contents nav fills the column, so the body is two children in two tracks and the nav
+        // comes first — ahead in the DOM of the sections it points into, not only beside them.
+        Assert.Equal(
+            ["munin-explorer-page__toc", "munin-explorer-page__main munin-explorer-kilde__main"],
+            body.Children.Select(child => child.ClassName));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1356,6 +1360,65 @@ public class KildeViewTest : BunitContext
         var ids = Wrappers(Render(Study())).Select(section => section.Id!).ToList();
 
         Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The contents nav in the column beside them.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>Where the nav's entries point, in document order.</summary>
+    private static IReadOnlyList<string> Targets(IRenderedComponent<KildeView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")!)];
+
+    /// <summary>What the nav's entries say, in document order.</summary>
+    private static IReadOnlyList<string> Entries(IRenderedComponent<KildeView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent)];
+
+    [Fact]
+    public void Contents_Always_ThenEveryEntryPointsAtASectionThatIsReallyThere()
+    {
+        // The failure this nav is likeliest to produce: an entry taken off a static list of the
+        // sections a view COULD draw, pointing at an anchor that one suppressed. Read against the
+        // sections themselves rather than against a list written here, so neither can drift alone.
+        var cut = Render(Study());
+
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
+    {
+        // The same payload Sections_WhenABlockDrawsNothing uses, asked one column over: a source
+        // with no curated metadata draws no metadata section, so the nav must not offer one.
+        var cut = Render(Kilde() with { PropertyMetadata = [], AdditionalProperties = new Dictionary<string, string?>() });
+
+        Assert.DoesNotContain("#" + DetailSectionIds.Metadata, Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenTheSameSourceIsReadInBothLanguages_ThenOnlyTheWordsDiffer()
+    {
+        // THE TRAP once more, one column over from the sections: the words translate and the hrefs
+        // must not, or a link a Norwegian reader sends lands nowhere for an English one.
+        var norwegian = Render(Kilde(), language: "no");
+        var english = Render(Kilde(), language: "en");
+
+        Assert.Equal(Targets(norwegian), Targets(english));
+        Assert.Equal(["Metadata", "Datasamlinger", "Kildeinformasjon", "Statistikk"], Entries(norwegian));
+        Assert.Equal(["Metadata", "Data collections", "Source information", "Statistics"], Entries(english));
+    }
+
+    [Fact]
+    public void Contents_Always_ThenTheNavIsNamedInTheReadersLanguage()
+    {
+        // A landmark among the host page's own, so it says which navigation it is. The nav itself
+        // wears no class: the column around it is what Stiler makes sticky.
+        Assert.Equal("Innhold",
+                     Render(Kilde(), language: "no").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
+        Assert.Equal("Contents",
+                     Render(Kilde(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
 
     // ---------------------------------------------------------------------------------

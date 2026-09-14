@@ -102,4 +102,63 @@ public sealed partial class VariableView : ComponentBase
                 (T.FieldKildeShortName, variable.KildeShortName, true),
                 (T.FacetKildeType, T.KildeTypeLabel(variable.KildeType, variable.KildeType), false),
             ];
+
+    /// <summary>The years this variable's data covers, in words, or null when the catalogue has neither end.</summary>
+    /// <remarks>
+    /// A property rather than a pattern match in the markup, because the contents nav asks the same
+    /// question: the block is drawn exactly when there is a period to put in it.
+    /// </remarks>
+    private string? DataPeriod =>
+        Variable is { } variable
+            ? CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T, Dates)
+            : null;
+
+    /// <summary>The sections this view draws, in the order it draws them.</summary>
+    /// <remarks>
+    /// Both the contents nav and each section's own condition read this, through
+    /// <see cref="Drawn"/> — one predicate per section, so an entry cannot name a block the view
+    /// left out and a link cannot scroll to an anchor that is not there.
+    /// </remarks>
+    private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
+
+    /// <inheritdoc />
+    protected override void OnParametersSet() => Toc = BuildToc();
+
+    /// <summary>The entries, in document order, each under the condition its block renders under.</summary>
+    /// <remarks>
+    /// The kodeverk section arrives through <see cref="Sections"/> and carries no id of its own, so
+    /// the nav does not offer it — this view never learns what the explorer put there.
+    /// </remarks>
+    private IReadOnlyList<DetailTocEntry> BuildToc()
+    {
+        if (Variable is not { } variable)
+        {
+            return [];
+        }
+
+        List<DetailTocEntry> toc = [];
+
+        void Section(bool drawn, string id, string heading)
+        {
+            if (drawn)
+            {
+                toc.Add(new DetailTocEntry(id, heading));
+            }
+        }
+
+        Section(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
+        Section(Versions.Count > 0, DetailSectionIds.Versions, T.HeadingVersionHistory);
+        Section(StatisticsBlock.AnyStatistics(variable), DetailSectionIds.Statistics,
+                StatisticsBlock.Heading(variable.DatasamlingStatisticsType, T));
+        Section(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
+        Section(DataPeriod is not null, DetailSectionIds.DataPeriod, T.FieldDataPeriod);
+        Section(!string.IsNullOrWhiteSpace(variable.DataType), DetailSectionIds.DataType, T.FieldDataType);
+        Section(variable.AllVariabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
+        Section(variable.AllDatasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
+
+        return toc;
+    }
+
+    /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
+    private bool Drawn(string id) => Toc.Any(entry => entry.Id == id);
 }

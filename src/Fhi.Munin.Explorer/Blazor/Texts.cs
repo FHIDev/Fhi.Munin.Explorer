@@ -148,6 +148,11 @@ internal sealed record Texts(
     string FieldVariableCount,
     string FieldDataCollections,
 
+    // The contents nav over the detail views' sections. Its own string rather than a reuse of
+    // HeadingDataCollections and friends: it names the nav, not a section, and Runa calls the
+    // column Innhold.
+    string HeadingContents,
+
     // Headings and fields the kilde view needs, which the variable panel has no use for.
     string HeadingMetadata,
     string HeadingSourceInformation,
@@ -887,6 +892,7 @@ internal sealed record Texts(
         FieldCountingUnit: "Telleenhet",
         FieldVariableCount: "Antall variabler",
         FieldDataCollections: "Antall datasamlinger",
+        HeadingContents: "Innhold",
         HeadingMetadata: "Metadata",
         HeadingSourceInformation: "Kildeinformasjon",
         HeadingStatistics: "Statistikk",
@@ -1243,6 +1249,7 @@ internal sealed record Texts(
         FieldCountingUnit: "Counting unit",
         FieldVariableCount: "Number of variables",
         FieldDataCollections: "Number of data collections",
+        HeadingContents: "Contents",
         HeadingMetadata: "Metadata",
         HeadingSourceInformation: "Source information",
         HeadingStatistics: "Statistics",

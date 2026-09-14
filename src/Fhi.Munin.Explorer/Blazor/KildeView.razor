@@ -3,7 +3,8 @@
 @if (Kilde is { } kilde)
 {
     <DetailPage ViewRoot="munin-explorer-kilde"
-                ViewMain="munin-explorer-kilde__main">
+                ViewMain="munin-explorer-kilde__main"
+                Contents="@DetailToc.Column(Toc, T.HeadingContents)">
         <Header>
 
             @* The name block. Runa puts the identifiers under the name rather than beside it, and the
@@ -45,9 +46,9 @@
         </Header>
         <ChildContent>
 
-            @* Every block below is a <section> carrying a fixed English id, so a contents nav
-               can anchor on it and a link into one is the same link in either language. Where a
-               block can come out empty the wrapper sits INSIDE that check, never around it. *@
+            @* Every block below is a <section> carrying a fixed English id, and draws exactly when
+               Drawn says the contents nav names it — one predicate per section, so the nav can
+               never link to a block left out, in either language. *@
 
             @* The catalogue's own metadata. Which groups exist, what they are called and what
                order they come in all arrive with the payload — see CatalogueProperties.Groups
@@ -58,7 +59,7 @@
                the field labels wear. A smaller-sounding name invented to sit in that gap —
                headline-sm was here until Fhi.Metadata-e4bj2 — is a name no stylesheet defines,
                so it renders as a bare <h*> at the browser's own size instead. *@
-            @if (Groups.Count > 0)
+            @if (Drawn(DetailSectionIds.Metadata))
             {
                 <DetailSection Id="@DetailSectionIds.Metadata">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
@@ -70,21 +71,24 @@
                 </DetailSection>
             }
 
-            @* No check here, because this block has no empty state: the tree always draws, its
+            @* Always true, because this block has no empty state: the tree always draws, its
                status line carrying the loading, empty, error and retry states, and its nodes
                come off a different request than these counts, which could hide a real one. *@
-            <DetailSection Id="@DetailSectionIds.DataCollections">
-                @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
-                <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" ShowNodeIcons="@ShowNodeIcons"
-                                    DatasamlingHref="@DatasamlingHref" />
-                @if (DataCollections.Count > 0 || Delkilder.Count > 0)
-                {
-                    <details class="munin-explorer-hierarchy__metadata" @key="kilde.Id">
-                        <summary>@T.HierarchyMetadata</summary>
-                        @DataCollectionStructure
-                    </details>
-                }
-            </DetailSection>
+            @if (Drawn(DetailSectionIds.DataCollections))
+            {
+                <DetailSection Id="@DetailSectionIds.DataCollections">
+                    @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
+                    <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" ShowNodeIcons="@ShowNodeIcons"
+                                        DatasamlingHref="@DatasamlingHref" />
+                    @if (DataCollections.Count > 0 || Delkilder.Count > 0)
+                    {
+                        <details class="munin-explorer-hierarchy__metadata" @key="kilde.Id">
+                            <summary>@T.HierarchyMetadata</summary>
+                            @DataCollectionStructure
+                        </details>
+                    }
+                </DetailSection>
+            }
 
             @* Last of this view's own blocks, because the mockups put source information near
                the end of the page rather than in a rail beside it. *@
@@ -92,7 +96,7 @@
             @* Both boxes are checked although neither empties under this package's own texts:
                the row that keeps the first full falls back to Texts.NotSpecified, a string the
                host constructs, so presence follows the content rather than that string. *@
-            @if (DetailBlocks.AnyFacts(SourceInformation))
+            @if (Drawn(DetailSectionIds.Source))
             {
                 <DetailSection Id="@DetailSectionIds.Source">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
@@ -100,7 +104,7 @@
                 </DetailSection>
             }
 
-            @if (DetailBlocks.AnyFacts(Statistics))
+            @if (Drawn(DetailSectionIds.Statistics))
             {
                 <DetailSection Id="@DetailSectionIds.Statistics">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
