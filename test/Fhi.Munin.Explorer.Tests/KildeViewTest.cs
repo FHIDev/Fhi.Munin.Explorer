@@ -2003,17 +2003,17 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void FactLists_WhenAHostStylesThem_ThenTheDefaultIsTwoLanes()
     {
-        // The stylesheet half, and the name is the chassis's own now: a rule left behind on the
-        // panel's class would still be in the sample and would draw nothing here (Fhi.Metadata-35w0p.11).
-        // Through SampleDeclarationsFor so a descendant rule cannot answer for the class itself.
-        const string Base = @"\.munin-explorer-page__fields\s*(,|$)";
+        // The chassis's name now, not the panel's (Fhi.Metadata-35w0p.11). Anchored both ends:
+        // SampleDeclarationsFor keeps any rule MENTIONING the name, so an ancestor-scoped branch
+        // would otherwise answer for the bare class — what the old assertion excluded by hand.
+        const string Base = @"^\.munin-explorer-page__fields$";
 
         var grids = HostClassNames.SampleDeclarationsFor("munin-explorer-page__fields");
 
         // Per branch, so grouping the base rule with a scoped one stays equivalent CSS here.
         Assert.True(
             grids.Any(rule => Regex.IsMatch(rule.Declarations, @"grid-template-columns:\s*1fr\s+1fr\s*(;|$)")
-                              && rule.Selector.Split(',').Any(branch => Regex.IsMatch(branch.Trim() + ",", Base))),
+                              && rule.Selector.Split(',').Any(branch => Regex.IsMatch(branch.Trim(), Base))),
             "No unscoped rule leaves munin-explorer-page__fields two lanes for the main column.");
     }
 

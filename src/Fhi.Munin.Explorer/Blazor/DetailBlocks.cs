@@ -106,7 +106,7 @@ internal static class DetailBlocks
     /// <c>p</c> so a host with no rule for the class still gets one language per line.
     /// </remarks>
     internal static int Values(RenderTreeBuilder builder, int seq, PropertyRow row, string reader, Texts text,
-                              string languageClass)
+                               string languageClass)
     {
         foreach (var slot in row.Values)
         {

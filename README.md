@@ -392,9 +392,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     rule buys is the `scroll-margin` that keeps a heading the contents nav has just linked to clear
     of a sticky header, rather than under it. Stiler's rules for
     it are written — `components/munin-explorer/_page.scss`, merged as PR 39299 — and hang the
-    offset on the `data-nav-section` attribute rather than on the class; that PR bumped no
-    version, so no published Stiler carries them and every host draws the wrapper undrawn until
-    one does.
+    offset on the `data-nav-section` attribute rather than on the class. That PR bumped no version
+    of its own, but 0.1.75 carries the file: both sample stylesheets stand in at its declarations
+    for the name and `assert-sample-css-matches-stiler.sh` finds no divergence against that pin.
+    Which PR bumped a version says nothing about what a later release shipped — read the pin.
     The same three add the chassis those sections sit in — `munin-explorer-page` on the root,
     `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc` —
     written once, by `DetailPage`, rather than three times under three prefixes. The root and the
@@ -408,13 +409,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     blocks and draw whichever the host loaded last. Handles, all four — undefined, the body and its
     two columns are blocks in ordinary flow, which stacks the contents column above the main one and
     loses no words. Stiler's rules are written, in the same
-    `_page.scss` and merged as PR 39300, and that PR bumped no version either, so no published
-    Stiler draws the two-track body yet. The contents column is drawn only when something fills it,
-    which since `Fhi.Metadata-35w0p.12` is the contents nav — and only when the view drew a section
-    for it to link to, so a view with none still has no rail. The two-track rule is scoped to a body
-    that has one, in both sample stylesheets and in the Stiler rule before it publishes
-    (`Fhi.Metadata-ex5wb`). Ungated, a fixed 250px first track would lay a lone main column out in
-    it.
+    `_page.scss` and merged as PR 39300, and 0.1.75 carries them by the same reading of the pin.
+    The contents column is drawn only when something fills it, which since
+    `Fhi.Metadata-35w0p.12` is the contents nav — and only when the view drew a section
+    for it to link to, so a view with none still has no rail. Both sample stylesheets scope the
+    two-track rule to a body that has one; 0.1.75 publishes it ungated and `Fhi.Metadata-ex5wb` is
+    the bead that gates it there. Ungated, a fixed 250px first track would lay a lone main column
+    out in it.
     The same three add `munin-explorer-page__fields` on every fact list they draw, and
     `munin-explorer-page__language` on the language name above a value the catalogue holds in more
     than one. Both used to be the drill-in panel's own `munin-explorer-meta__grid` and
@@ -425,8 +426,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     list is a definition list undrawn, and the language name is a `<p>` so it keeps its own line
     whatever a host declares. Stiler's rules are written — the same
     `components/munin-explorer/_page.scss`, merged as PR 39301 — and the fact list's copy the
-    panel's numbers declaration for declaration, so its grid and type move nothing. The language
-    marker's does not: 0.1.75 declares `margin: 0` for it and none of the panel marker's uppercase,
+    panel's numbers declaration for declaration, so on a host that has 0.1.75 its grid and type move
+    nothing. Not so in the sample hosts: their `munin-explorer-meta__grid` stand-in diverges from
+    Stiler's by six recorded declarations, so a sample detail page's fact lists gain a 40px row gap,
+    a 24px bottom margin and the `font` shorthand they had none of. The language marker moves on
+    both: 0.1.75 declares `margin: 0` for it and none of the panel marker's uppercase,
     letter-spacing or grey, which `assert-sample-css-matches-stiler.sh` names three divergences at a
     time against the pin. So the language name draws at body size on a host that has Stiler until
     `Fhi.Metadata-4ozhj` lands, and the sample stand-ins draw it that way too rather than inventing

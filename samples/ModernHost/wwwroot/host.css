@@ -1883,6 +1883,11 @@ table.munin-explorer-data-list tbody th {
    of the panel marker's uppercase, letter-spacing or grey — so writing that look here would invent
    it, and a host on Stiler draws the name at body size until `Fhi.Metadata-4ozhj` lands.
 
+   The swap moves these sample pages, whatever it does on a host with Stiler: the stand-in for the
+   panel grid above diverges from Stiler's by six recorded declarations
+   (test/sample-css-known-divergences.txt), so a fact list here gains a 40px row gap, a 24px bottom
+   margin and a font shorthand it had none of, and loses the marker's uppercase and grey.
+
    The three below are the stand-in's own, as the same three above the panel grid are: Stiler
    declares nothing for a grid item, and a <dd> left alone keeps the browser's 40px indent. */
 .munin-explorer-page__fields dt {
