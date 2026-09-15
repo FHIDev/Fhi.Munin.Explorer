@@ -273,8 +273,7 @@ internal static class CatalogueProperties
     }
 
     /// <summary>
-    /// Whether the catalogue has put this key in a section on this surface, which is whether
-    /// <see cref="Groups"/> would draw it rather than skip it for want of a group name.
+    /// Whether <see cref="Groups"/> draws this key in a section of its own on this surface.
     /// </summary>
     /// <remarks>
     /// A view that draws a fact in a list of its own asks this before drawing it: the same fact in
@@ -282,18 +281,32 @@ internal static class CatalogueProperties
     /// as two legitimate rows, which is the failure <c>drawnElsewhere</c> exists for
     /// (Fhi.Metadata-bct95). Asked of the payload rather than assumed, because a key is placed per
     /// environment and per surface: unplaced, the section draws nothing and the box still must.
+    /// <para>
+    /// Answered through <see cref="Rows"/>, over the same <paramref name="values"/> and the same
+    /// <paramref name="drawnElsewhere"/> the section is given, rather than by asking whether the
+    /// entry names a group. Naming one is not enough to be drawn: a key with no value, none the
+    /// reader has a label for, one whose label is the storage qualifier alone, or one typed so the
+    /// view has nothing honest to draw is placed and still drawn nowhere — and a fact box that had
+    /// already yielded to it would leave the fact on no surface at all.
+    /// </para>
     /// </remarks>
-    internal static bool Placed(IEnumerable<PropertyMetadataEntry> metadata, string key, string reader) =>
-        metadata.Any(entry => string.Equals(entry.Key, key, StringComparison.Ordinal)
-                              && GroupName(entry, reader) is not null);
+    internal static bool Placed(
+        IEnumerable<PropertyMetadataEntry> metadata,
+        IReadOnlyDictionary<string, string?>? values,
+        string reader,
+        string key,
+        IReadOnlySet<string>? drawnElsewhere = null) =>
+        Rows(metadata.Where(entry => string.Equals(entry.Key, key, StringComparison.Ordinal)
+                                     && GroupName(entry, reader) is not null),
+             values, reader, drawnElsewhere).Count > 0;
 
     /// <summary>
     /// The section an entry names, and the language it named it in, or nothing where it names none.
     /// </summary>
     /// <remarks>
-    /// Shared with <see cref="Groups"/> rather than spelled twice: a key <see cref="Placed"/> calls
-    /// placed and the grouping drops is a fact that leaves the fact box and never arrives in a
-    /// section, and no test of either alone would see it.
+    /// Shared with <see cref="Groups"/> rather than spelled twice, and <see cref="Placed"/> asks
+    /// both this and the row itself: a key called placed that the grouping drops is a fact that
+    /// leaves the fact box and never arrives in a section, and no test of either alone would see it.
     /// </remarks>
     private static (string Name, string Language)? GroupName(PropertyMetadataEntry entry, string reader)
     {

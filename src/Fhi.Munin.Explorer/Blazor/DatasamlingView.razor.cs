@@ -121,8 +121,14 @@ public sealed partial class DatasamlingView : ComponentBase
             : new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.Description };
 
     /// <summary>Whether the catalogue's own sections draw this key, so this view must not.</summary>
+    /// <remarks>
+    /// The merged values and this view's own suppressions both go in, so the question is the one
+    /// <see cref="Groups"/> answers rather than a weaker one about the placement alone — the rule
+    /// <see cref="CatalogueProperties.Placed"/> states in full.
+    /// </remarks>
     private bool Placed(string key) =>
-        Datasamling is { } datasamling && CatalogueProperties.Placed(datasamling.PropertyMetadata, key, Reader);
+        Datasamling is { } datasamling
+        && CatalogueProperties.Placed(datasamling.PropertyMetadata, Values, Reader, key, DrawnElsewhere);
 
     /// <summary>One curated property's first value, resolved exactly as its section resolves it.</summary>
     private string? Curated(string key) =>
@@ -147,8 +153,9 @@ public sealed partial class DatasamlingView : ComponentBase
     /// identification level are vocabularies this package translates; the rest are stored once, in
     /// Norwegian, however the reader is reading.
     /// <para>
-    /// Five of them are column-backed properties the catalogue can place in a section of its own,
-    /// and each yields when it does — see <see cref="UnlessPlaced"/>. Kilde, Kildetype and Sist
+    /// Six of them are column-backed properties the catalogue can place in a section of its own,
+    /// and each yields when it does — see <see cref="UnlessPlaced"/> and
+    /// <see cref="ValidityRows"/>. Kilde, Kildetype and Sist
     /// oppdatert are not among them: no section can draw a fact nothing merges into the renderable
     /// set.
     /// </para>
@@ -167,16 +174,42 @@ public sealed partial class DatasamlingView : ComponentBase
                  UnlessPlaced(CatalogueColumns.DataProcessor, datasamling.EffectiveDataProcessor), true),
                 (T.FieldPersonIdentification,
                  UnlessPlaced(CatalogueColumns.PersonIdentification, PersonIdentification), false),
-                (T.FieldValidity, ValidityRow, false),
+                .. ValidityRows,
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false),
             ];
 
     /// <summary>
-    /// The validity as a fact box shows it, unless a section has taken either end of it: one row
-    /// against the catalogue's two, so either placement is enough to move it.
+    /// The validity as a fact box shows it: the period, or the one end no section has taken — the
+    /// rule <c>KildeView.ValidityRows</c> follows, for the reason its own remarks give.
     /// </summary>
-    private string? ValidityRow =>
-        Placed(CatalogueColumns.ValidFrom) || Placed(CatalogueColumns.ValidTo) ? null : Validity;
+    private IEnumerable<(string Label, string? Value, bool Norwegian)> ValidityRows
+    {
+        get
+        {
+            if (Datasamling is not { } datasamling)
+            {
+                yield break;
+            }
+
+            var from = Placed(CatalogueColumns.ValidFrom);
+            var to = Placed(CatalogueColumns.ValidTo);
+
+            if (!from && !to)
+            {
+                yield return (T.FieldValidity, Validity, false);
+            }
+            else if (!from)
+            {
+                yield return (T.FieldValidFrom,
+                              CatalogueDate.DayOrNothing(datasamling.EffectiveValidFrom, Language), false);
+            }
+            else if (!to)
+            {
+                yield return (T.FieldValidTo,
+                              CatalogueDate.DayOrNothing(datasamling.EffectiveValidTo, Language), false);
+            }
+        }
+    }
 
     /// <summary>
     /// The four values the hero row and the fact boxes both draw, resolved once each.

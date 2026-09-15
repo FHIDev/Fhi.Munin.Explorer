@@ -184,6 +184,12 @@ public class SeededPlacementRenderingTest : BunitContext
             [CatalogueColumns.Frequency] = "Hver maaned",
         };
 
+    /// <inheritdoc cref="KildeFacts"/>
+    private static IReadOnlyDictionary<string, string> VariableFacts => new Dictionary<string, string>
+    {
+        [CatalogueColumns.Description] = "Skalaen maaler taleevne.",
+    };
+
     /// <summary>
     /// The page's text with the hero strip taken out, which is what a count is taken over.
     /// </summary>
@@ -294,10 +300,10 @@ public class SeededPlacementRenderingTest : BunitContext
         // Beskrivelse is the one key of the ten that three different views already draw in their
         // name block, so it is the one that joins drawnElsewhere rather than leaving a box.
         Assert.Equal(1, Occurrences(Body(RenderKilde(Kilde(Section))),
-                                    "Norsk register for motonevronsykdommer."));
+                                    KildeFacts[CatalogueColumns.Description]));
         Assert.Equal(1, Occurrences(Body(RenderDatasamling(Datasamling(Section))),
-                                    "Skjemaet som melder en pasient inn i registeret."));
-        Assert.Equal(1, Occurrences(Body(RenderVariable(Variable(Section))), "Skalaen maaler taleevne."));
+                                    DatasamlingFacts[CatalogueColumns.Description]));
+        EachDrawnOnce(Body(RenderVariable(Variable(Section))), VariableFacts);
     }
 
     [Fact]
@@ -331,6 +337,35 @@ public class SeededPlacementRenderingTest : BunitContext
         Assert.Contains("Gyldig fra", body, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(CatalogueColumns.ValidFrom)]
+    [InlineData(CatalogueColumns.ValidTo)]
+    public void Validity_WhenOnlyOneEndIsPlaced_ThenNeitherPageLeavesTheOtherEndUndrawn(string placed)
+    {
+        // Placements are per key and are editable master data, so one end can be placed while the
+        // other is not. A fact box that moved its whole period on either placement would take the
+        // unplaced date off the page altogether, which is this bead's blank field.
+        PropertyMetadataEntry[] placement =
+        [
+            Definition(CatalogueColumns.ValidFrom, "Gyldig fra", "Date", 110,
+                       placed == CatalogueColumns.ValidFrom ? Section : null),
+            Definition(CatalogueColumns.ValidTo, "Gyldig til", "Date", 120,
+                       placed == CatalogueColumns.ValidTo ? Section : null),
+        ];
+
+        string[] pages =
+        [
+            Body(RenderKilde(Kilde(section: null) with { PropertyMetadata = placement })),
+            Body(RenderDatasamling(Datasamling(section: null) with { PropertyMetadata = placement })),
+        ];
+
+        foreach (var body in pages)
+        {
+            Assert.Equal(1, Occurrences(body, KildeFacts[CatalogueColumns.ValidFrom]));
+            Assert.Equal(1, Occurrences(body, KildeFacts[CatalogueColumns.ValidTo]));
+        }
+    }
+
     [Fact]
     public void PersonIdentification_WhenItsPlacementArrives_ThenTheHeroReadsTheWordTheSectionReads()
     {
@@ -361,15 +396,37 @@ public class SeededPlacementRenderingTest : BunitContext
     public void ColumnKeys_Always_ThenEveryOneCatalogueColumnsCanMergeIsCountedBySomeSurface()
     {
         // Derived rather than listed a second time: a key added to CatalogueColumns and to nobody's
-        // expectations would be merged into the renderable set and never counted, which is exactly
-        // the state this file exists to make impossible.
-        var merged = typeof(CatalogueColumns)
-            .GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
-            .Select(field => (string)field.GetRawConstantValue()!);
+        // expectations would be merged into the renderable set and never counted. Asked per surface
+        // because the datasamling table is a copy of the kilde's — against the union of them, a key
+        // added to that copy alone would pass while the other two surfaces drew it uncounted.
+        (string Surface, IReadOnlyList<string> Defined, IEnumerable<string> Counted)[] surfaces =
+        [
+            ("kilde", Keys(KildeDefinitions(Section)), KildeFacts.Keys),
+            ("datasamling", Keys(DatasamlingDefinitions(Section)), DatasamlingFacts.Keys),
+            ("variabel", Keys(Variable(Section).PropertyMetadata), VariableFacts.Keys),
+        ];
 
-        Assert.Empty(merged.Except(DatasamlingFacts.Keys, StringComparer.Ordinal));
+        foreach (var (surface, defined, counted) in surfaces)
+        {
+            Assert.Equal((surface, ""), (surface, Missing(defined, counted)));
+        }
+
+        Assert.Equal("", Missing(MergeableKeys, surfaces.SelectMany(surface => surface.Defined)));
     }
+
+    /// <summary>Every key CatalogueColumns can merge into the renderable set, read off the class.</summary>
+    private static IReadOnlyList<string> MergeableKeys =>
+        [.. typeof(CatalogueColumns)
+            .GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(member => member.IsLiteral && member.FieldType == typeof(string))
+            .Select(member => (string)member.GetRawConstantValue()!)];
+
+    private static IReadOnlyList<string> Keys(IEnumerable<PropertyMetadataEntry> definitions) =>
+        [.. definitions.Select(entry => entry.Key)];
+
+    /// <summary>The keys the second side does not carry, named so a failure says which they are.</summary>
+    private static string Missing(IEnumerable<string> keys, IEnumerable<string> carried) =>
+        string.Join(", ", keys.Except(carried, StringComparer.Ordinal).Order(StringComparer.Ordinal));
 
     /// <summary>
     /// One row's value anywhere in the page's fact lists, found by the label beside it.

@@ -1380,7 +1380,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// </summary>
     /// <remarks>
     /// Beskrivelse alone, and that is where this differs from
-    /// <see cref="VariableView.DrawnElsewhere"/>: the Identifikasjon list above spells the
+    /// <c>VariableView.DrawnElsewhere</c>: the Identifikasjon list above spells the
     /// description out, while DataType has no block of its own here the way it has on the detail
     /// page — suppressing it would take the row off the one surface that draws it.
     /// </remarks>

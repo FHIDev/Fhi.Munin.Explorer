@@ -116,7 +116,7 @@ public sealed partial class VariableView : ComponentBase
     /// DataType block for the key to be drawn twice against.
     /// </para>
     /// </remarks>
-    internal static readonly IReadOnlySet<string> DrawnElsewhere =
+    private static readonly IReadOnlySet<string> DrawnElsewhere =
         new HashSet<string>(StringComparer.Ordinal) { "DataType", CatalogueColumns.Description };
 
     /// <summary>Where the variable lives: which source, under which name.</summary>

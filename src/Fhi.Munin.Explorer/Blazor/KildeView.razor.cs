@@ -136,6 +136,7 @@ public sealed partial class KildeView : ComponentBase
     private string? _groupsReader;
     private IReadOnlyList<PropertyGroup> _groups = [];
     private IReadOnlyDictionary<string, string?> _values = ReadOnlyDictionary<string, string?>.Empty;
+    private IReadOnlySet<string> _drawnElsewhere = new HashSet<string>(StringComparer.Ordinal);
 
     /// <summary>
     /// The payload's curated bag with the source's own columns merged in — see
@@ -188,13 +189,15 @@ public sealed partial class KildeView : ComponentBase
         if (Kilde is not { } kilde)
         {
             _values = ReadOnlyDictionary<string, string?>.Empty;
+            _drawnElsewhere = new HashSet<string>(StringComparer.Ordinal);
             _groups = [];
 
             return;
         }
 
         _values = CatalogueColumns.Values(kilde, Reader);
-        _groups = CatalogueProperties.Groups(kilde.PropertyMetadata, _values, Reader, DrawnElsewhere(kilde));
+        _drawnElsewhere = DrawnElsewhere(kilde);
+        _groups = CatalogueProperties.Groups(kilde.PropertyMetadata, _values, Reader, _drawnElsewhere);
     }
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
@@ -250,8 +253,17 @@ public sealed partial class KildeView : ComponentBase
         Kilde is { } kilde ? CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T) : null;
 
     /// <summary>Whether the catalogue's own sections draw this key, so this view must not.</summary>
-    private bool Placed(string key) =>
-        Kilde is { } kilde && CatalogueProperties.Placed(kilde.PropertyMetadata, key, Reader);
+    /// <remarks>
+    /// The merged values and this view's own suppressions both go in, so the question is the one
+    /// <see cref="Groups"/> answers rather than a weaker one about the placement alone.
+    /// </remarks>
+    private bool Placed(string key)
+    {
+        Resolve();
+
+        return Kilde is { } kilde
+               && CatalogueProperties.Placed(kilde.PropertyMetadata, _values, Reader, key, _drawnElsewhere);
+    }
 
     /// <summary>One curated property's first value, resolved exactly as its section resolves it.</summary>
     private string? Curated(string key) =>
@@ -291,10 +303,11 @@ public sealed partial class KildeView : ComponentBase
     /// — the kildetype and the identification level are vocabularies this package translates — and
     /// the rest are stored once, in Norwegian, however the reader is reading.
     /// <para>
-    /// Five of them are column-backed properties the catalogue can place in a section of its own,
-    /// and each yields when it does — see <see cref="UnlessPlaced"/>. Kildetype is not among them:
-    /// nothing merges that column into the renderable set, so no section can draw it. Sist oppdatert
-    /// has no property definition at all.
+    /// Six of them are column-backed properties the catalogue can place in a section of its own,
+    /// and each yields when it does — see <see cref="UnlessPlaced"/> and <see cref="ValidityRows"/>,
+    /// which yields one end at a time because the catalogue places two keys where this shows one row.
+    /// Kildetype is not among them: nothing merges that column into the renderable set, so no section
+    /// can draw it. Sist oppdatert has no property definition at all.
     /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> SourceInformation =>
@@ -307,19 +320,44 @@ public sealed partial class KildeView : ComponentBase
                 (T.FieldDataProcessor, UnlessPlaced(CatalogueColumns.DataProcessor, kilde.DataProcessor), true),
                 (T.FieldPersonIdentification,
                  UnlessPlaced(CatalogueColumns.PersonIdentification, PersonIdentification), false),
-                (T.FieldValidity, ValidityRow, false),
+                .. ValidityRows,
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(kilde.LastUpdated, Language), false),
             ];
 
     /// <summary>
-    /// The validity as a fact box shows it, unless a section has taken either end of it.
+    /// The validity as a fact box shows it: the period, or the one end no section has taken.
     /// </summary>
     /// <remarks>
-    /// One row against the catalogue's two, so either placement is enough to move it: a period
-    /// beside a Gyldig fra row is the same date twice, in two shapes.
+    /// Per end, because the catalogue places the two keys separately: yielding the whole period to
+    /// either placement leaves the other date drawn nowhere, and keeping the period beside a placed
+    /// end either repeats that date or, with the closing one placed, reads as ongoing.
     /// </remarks>
-    private string? ValidityRow =>
-        Placed(CatalogueColumns.ValidFrom) || Placed(CatalogueColumns.ValidTo) ? null : Validity;
+    private IEnumerable<(string Label, string? Value, bool Norwegian)> ValidityRows
+    {
+        get
+        {
+            if (Kilde is not { } kilde)
+            {
+                yield break;
+            }
+
+            var from = Placed(CatalogueColumns.ValidFrom);
+            var to = Placed(CatalogueColumns.ValidTo);
+
+            if (!from && !to)
+            {
+                yield return (T.FieldValidity, Validity, false);
+            }
+            else if (!from)
+            {
+                yield return (T.FieldValidFrom, CatalogueDate.DayOrNothing(kilde.ValidFrom, Language), false);
+            }
+            else if (!to)
+            {
+                yield return (T.FieldValidTo, CatalogueDate.DayOrNothing(kilde.ValidTo, Language), false);
+            }
+        }
+    }
 
     /// <summary>Counts and dates, which belong to no language.</summary>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> Statistics =>
