@@ -92,6 +92,19 @@ internal static class DetailBlocks
     internal static bool AnyFacts(IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) =>
         Shown(facts).Count > 0;
 
+    /// <summary>
+    /// A second field written as a hero fact's note — <c>Gyldighet: 2006–</c> — or null where the
+    /// catalogue has not filled that field in.
+    /// </summary>
+    /// <remarks>
+    /// The label is needed because a bare qualifier says nothing: <c>2006–</c> under a data period
+    /// reads as a second period rather than as the register's own validity. Composite, so it is
+    /// left unmarked whichever language its halves are in, the way every other joined string here
+    /// is.
+    /// </remarks>
+    internal static string? Qualified(string label, string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : $"{label}: {value}";
+
     private static List<(string Label, string? Value, bool Norwegian)> Shown(
         IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) =>
         [.. facts.Where(f => !string.IsNullOrWhiteSpace(f.Value))];

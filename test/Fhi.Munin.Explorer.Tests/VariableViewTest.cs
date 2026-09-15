@@ -951,4 +951,197 @@ public class VariableViewTest : BunitContext
         Assert.Equal(Wrappers(Render(Whole())).Select(section => section.Id!),
                      Wrappers(Render(Whole())).Select(section => section.Id!));
     }
+
+    // ---------------------------------------------------------------------------------
+    // The hero row: the six facts a variable leads with, under the name block.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>
+    /// A variable with all six of the facts the row leads with, which no other fixture here has.
+    /// </summary>
+    /// <remarks>
+    /// Three of the six are curated properties rather than typed fields, so the metadata has to
+    /// carry their vocabularies as well as their keys: a value resolved off the bag instead of
+    /// through the catalogue's own options is the code — <c>5</c> — rather than the word.
+    /// </remarks>
+    private static VariableDetail Leading() => Whole() with
+    {
+        KodeverkLinks =
+        [
+            new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", DisplayName = "ALSFRS-R tale" },
+        ],
+        PropertyMetadata =
+        [
+            Entry("Kommentar", 50, "Beskrivelse"),
+            Entry("DataType", 20, "Datatype", """[{"value":"2","label":"Integer","labelEn":"Integer"}]"""),
+            Named("Opprinnelse", 30, "Beskrivelse", "Opprinnelse", "Origin",
+                  """[{"value":"5","label":"Direkte fra skjema","labelEn":"Directly from form"}]"""),
+            Named("Identifiseringsgrad", 160, "Personvern", "Identifiseringsgrad", "Identification level",
+                  """[{"value":"1","label":"Ikke vurdert","labelEn":"Not assessed"}]"""),
+            Named("DatabaseReferanse", 240, "Teknisk", "Databasereferanse", "Database reference"),
+        ],
+        AdditionalProperties = new Dictionary<string, string?>
+        {
+            ["Kommentar"] = "Gyldig fra 2019.",
+            ["DataType"] = "2",
+            ["Opprinnelse"] = "5",
+            ["Identifiseringsgrad"] = "1",
+            ["DatabaseReferanse"] = "ALSFRSR1Tale",
+        },
+    };
+
+    /// <summary>
+    /// A curated entry the catalogue names in both languages, which the captured payload does and
+    /// <see cref="Entry"/> does not.
+    /// </summary>
+    /// <remarks>
+    /// The label is the hero cell's label as well as the group row's, so a fixture naming it in one
+    /// language only would test the fallback rather than the pairing.
+    /// </remarks>
+    private static PropertyMetadataEntry Named(string key, int sortOrder, string group,
+                                               string label, string labelEnglish,
+                                               string? optionsJson = null) =>
+        new()
+        {
+            Key = key,
+            SortOrder = sortOrder,
+            GroupTranslations = new Dictionary<string, string> { ["no"] = group, ["en"] = group },
+            DisplayNameTranslations = new Dictionary<string, string> { ["no"] = label, ["en"] = labelEnglish },
+            OptionsJson = optionsJson,
+        };
+
+    private static AngleSharp.Dom.IElement Hero(IRenderedComponent<VariableView> cut) =>
+        cut.Find("dl.munin-explorer-page__facts");
+
+    private static AngleSharp.Dom.IElement Cell(AngleSharp.Dom.IElement hero, string label) =>
+        hero.QuerySelectorAll("div").FirstOrDefault(cell => cell.QuerySelector("dt")?.TextContent == label)
+        ?? throw new InvalidOperationException(
+            $"No '{label}' cell in the hero row, only: "
+            + $"{string.Join(", ", hero.QuerySelectorAll("dt").Select(dt => dt.TextContent))}.");
+
+    /// <summary>One hero cell's value, without the note under it.</summary>
+    private static string HeroValue(AngleSharp.Dom.IElement hero, string label)
+    {
+        var cell = Cell(hero, label).QuerySelector("dd")!;
+        var note = cell.QuerySelector("small");
+
+        return note is null ? cell.TextContent : cell.TextContent[..^note.TextContent.Length];
+    }
+
+    /// <summary>One row of a metadata group, found by the label the catalogue gave it.</summary>
+    private static string GroupValue(IRenderedComponent<VariableView> cut, string label) =>
+        cut.Find($"#{DetailSectionIds.Metadata}")
+           .QuerySelectorAll("div")
+           .FirstOrDefault(row => row.QuerySelector("dt")?.TextContent == label)
+           ?.QuerySelector("dd")?.TextContent
+        ?? throw new InvalidOperationException($"No '{label}' row among the metadata groups.");
+
+    [Fact]
+    public void HeroFacts_Always_ThenTheyAreTheFiveProposedPlusTheDataPeriod()
+    {
+        // Kilde and Datasamling are deliberately absent although the strip this replaces led with
+        // both: the breadcrumb directly above names them, and a strip that repeats the chrome
+        // spends two of six slots on facts the reader has just read (Fhi.Metadata-l9l2n.92). The
+        // sixth is Dataperiode, which passes the same test — no crumb carries it.
+        Assert.Equal(
+            ["Kodeverk", "Statistikk", "Opprinnelse", "Identifiseringsgrad", "Databasereferanse",
+             "Dataperiode"],
+            Hero(Render(Leading())).QuerySelectorAll("dt").Select(dt => dt.TextContent));
+    }
+
+    [Fact]
+    public void HeroFacts_Always_ThenEachReadsTheSameWordsAsTheSectionThatDrawsItBelow()
+    {
+        // The comparison this bead turns on. The three curated facts resolve through the same call
+        // their groups are built from, so a vocabulary edited in Munin moves both at once — which
+        // is precisely what DataType's old duplication did not do.
+        var cut = Render(Leading());
+        var hero = Hero(cut);
+
+        Assert.Equal(GroupValue(cut, "Opprinnelse"), HeroValue(hero, "Opprinnelse"));
+        Assert.Equal(GroupValue(cut, "Identifiseringsgrad"), HeroValue(hero, "Identifiseringsgrad"));
+        Assert.Equal(GroupValue(cut, "Databasereferanse"), HeroValue(hero, "Databasereferanse"));
+        Assert.Equal(DataPeriod(cut), HeroValue(hero, "Dataperiode"));
+
+        // The word the vocabulary resolves to rather than the code the bag holds, which is the
+        // whole reason these go through CatalogueProperties.
+        Assert.Equal("Direkte fra skjema", HeroValue(hero, "Opprinnelse"));
+
+        // Statistikk is the two halves the heading below joins, read off the same two members.
+        Assert.Equal(cut.Find($"#{DetailSectionIds.Statistics}").FirstElementChild!.TextContent,
+                     $"Statistikk ({HeroValue(hero, "Statistikk")})");
+    }
+
+    [Fact]
+    public void HeroFacts_Always_ThenNoCuratedKeyIsDroppedFromTheGroupsBelow()
+    {
+        // The collision this bead had to resolve deliberately. DrawnElsewhere suppresses a key from
+        // the metadata groups, and three of the six facts are curated keys — added to that set they
+        // would vanish from Beskrivelse, Personvern and Teknisk, which is a relocation rather than
+        // a summary. Only DataType is in it, and DataType is not a hero fact.
+        var cut = Render(Leading());
+
+        Assert.Equal(["Opprinnelse", "Kommentar", "Identifiseringsgrad", "Databasereferanse"],
+                     cut.Find($"#{DetailSectionIds.Metadata}")
+                        .QuerySelectorAll("dl dt").Select(dt => dt.TextContent));
+        Assert.Empty(cut.Find(".munin-explorer-page__body").QuerySelectorAll("dl.munin-explorer-page__facts"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheVariableHasNoneOfThem_ThenNoRowIsDrawnRatherThanAnEmptyOne()
+    {
+        // Unlike a source, a variable can lead with nothing at all: not one of the six falls back
+        // to a word. The plain fixture is that variable — no kodeverk, no statistics, no data
+        // period and none of the three curated keys.
+        Assert.Empty(Render(Detail()).FindAll("dl.munin-explorer-page__facts"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheCatalogueNamesNoKodeverk_ThenTheRowIsFiveRatherThanPaddedToSix()
+    {
+        // Six is the shape the grid is ruled for, not a quota to fill: a fact the catalogue has not
+        // filled in is dropped, and the tracks beside it stay empty.
+        var hero = Hero(Render(Leading() with { KodeverkLinks = [] }));
+
+        Assert.Equal(["Statistikk", "Opprinnelse", "Identifiseringsgrad", "Databasereferanse",
+                      "Dataperiode"],
+                     hero.QuerySelectorAll("dt").Select(dt => dt.TextContent));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenAKodeverkHasNoName_ThenTheCellSaysSoRatherThanShowingItsReference()
+    {
+        // The fallback the panel's own kodeverk block makes: a reference standing in for a name
+        // reads as the kodeverk being called 2336. The kind is the note either way, because a bare
+        // reference is what it is missing.
+        var hero = Hero(Render(Leading() with
+        {
+            KodeverkLinks = [new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2336" }],
+        }));
+
+        Assert.Equal("Ukjent navn", HeroValue(hero, "Kodeverk"));
+        Assert.Equal("Kildekodeverk", Cell(hero, "Kodeverk").QuerySelector("small")!.TextContent);
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheReaderIsEnglish_ThenACuratedValueIsMarkedByTheLanguageItIsReallyIn()
+    {
+        // Curation is uneven, so an English page carries some Norwegian — and a hero cell has to
+        // say which, for the reason every value on these pages does: a screen reader switches voice
+        // on the mark and reads Norwegian with English phonetics without it.
+        var hero = Hero(Render(Leading() with
+        {
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["DatabaseReferanse"] = "ALSFRSR1Tale",
+                ["Opprinnelse"] = "5",
+            },
+        }, language: "en"));
+
+        // The catalogue resolves this one to an English word, so it is the reader's own language.
+        Assert.Empty(Cell(hero, "Origin").QuerySelectorAll("span"));
+
+        // And the free-text one is stored once, in Norwegian, however the reader is reading.
+        Assert.Equal("no", Cell(hero, "Database reference").QuerySelector("span")!.GetAttribute("lang"));
+    }
 }

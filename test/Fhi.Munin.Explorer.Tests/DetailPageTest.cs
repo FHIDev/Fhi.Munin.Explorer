@@ -330,6 +330,37 @@ public class DetailPageTest : BunitContext
     }
 
     [Fact]
+    public void Facts_WhenAViewNamesThem_ThenTheRowSitsBetweenTheNameBlockAndTheBody()
+    {
+        // Where it sits is the whole of what the chassis promises about this fragment. Rendered
+        // inside the body it would be a cell of the two-track grid rather than a row across the
+        // page, and every count of it would still pass.
+        var cut = Render<DetailPage>(parameters => parameters
+            .Add(p => p.ViewRoot, "munin-explorer-kilde")
+            .Add(p => p.ViewMain, "munin-explorer-kilde__main")
+            .Add(p => p.Facts, (IReadOnlyList<DetailFact>)[new DetailFact("Type", "Kvalitetsregister")])
+            .Add(p => p.Header, (RenderFragment)(builder => builder.AddMarkupContent(0, "<p>the name block</p>")))
+            .Add(p => p.ChildContent, (RenderFragment)(builder => builder.AddMarkupContent(0, "<p>the sections</p>"))));
+
+        var children = cut.Find(".munin-explorer-page").Children.ToList();
+
+        var nameBlock = children.FindIndex(child => child.TextContent.Contains("the name block", StringComparison.Ordinal));
+        var facts = children.FindIndex(child => child.ClassList.Contains("munin-explorer-page__facts"));
+        var body = children.FindIndex(child => child.ClassList.Contains("munin-explorer-page__body"));
+
+        Assert.True(nameBlock < facts && facts < body);
+        Assert.Empty(cut.Find(".munin-explorer-page__body").QuerySelectorAll(".munin-explorer-page__facts"));
+    }
+
+    [Fact]
+    public void Facts_WhenAViewNamesNone_ThenNoRowIsDrawnAtAll()
+    {
+        // Stiler rules the row with a border above and below it, so an empty one is two lines
+        // across a page that led with nothing — and the saved-list view leads with nothing.
+        Assert.Empty(RenderPage(withContents: false).FindAll(".munin-explorer-page__facts"));
+    }
+
+    [Fact]
     public void Chrome_Always_ThenEveryNameItEmitsHasARuleSomeStylesheetSupplies()
     {
         // The trail's five names are helsedata's own rather than ours, so this is where that claim
