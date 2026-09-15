@@ -210,12 +210,11 @@ public sealed partial class KildeView : ComponentBase
 
     /// <inheritdoc cref="KildetypeLabel"/>
     /// <remarks>
-    /// Zero is dropped rather than drawn, as <see cref="DatasamlingView"/> drops its own count: a
-    /// source whose variables are not loaded yet would lead with a 0 contradicting the collection
-    /// count under it.
+    /// A zero is drawn, not dropped: <see cref="KildeSortOrder"/> and KildeSearch's zero-weight
+    /// count class both read nought off this non-nullable int as a count of none, and KildeSearch
+    /// prints it in words a section below this one.
     /// </remarks>
-    private string? TotalVariables =>
-        Kilde is { TotalVariables: > 0 } kilde ? kilde.TotalVariables.ToString() : null;
+    private string? TotalVariables => Kilde?.TotalVariables.ToString();
 
     /// <summary>
     /// The facts every source has, which is why they are typed fields rather than curated properties.
@@ -274,7 +273,7 @@ public sealed partial class KildeView : ComponentBase
                                CatalogueProperties.Foreign("no", Reader)),
                 new DetailFact(T.FieldPersonIdentification, PersonIdentification),
                 new DetailFact(T.FieldDataPeriod, DataPeriod,
-                               Note: DetailBlocks.Qualified(T.FieldValidity, Validity)),
+                               NoteLabel: T.FieldValidity, Note: Validity),
                 new DetailFact(T.FieldTotalVariables, TotalVariables,
                                Note: DataCollections.Count > 0
                                    ? T.DatasamlingCountCrumb(DataCollections.Count)

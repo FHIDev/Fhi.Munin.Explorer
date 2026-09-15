@@ -252,13 +252,19 @@ public class DatasamlingViewTest : BunitContext
         // this page writes it outside the Statistikk row that marks it — unmarked here, the same
         // word would be read to an English reader with English phonetics four cells above.
         var english = Render(Datasamling() with { CountingUnit = "Pasient" }, language: "en");
+        var note = Cell(Hero(english), "Number of variables").QuerySelector("small")!;
 
-        Assert.Equal("no",
-                     Cell(Hero(english), "Number of variables").QuerySelector("small")!.GetAttribute("lang"));
+        // The unit alone, not the line: "Counting unit" is this package's word and is translated,
+        // so a mark on the <small> would announce an English label in a Norwegian voice — which is
+        // how the Statistikk row below marks the same field, label unmarked and value marked.
+        Assert.Equal("Counting unit: Pasient", note.TextContent);
+        Assert.False(note.HasAttribute("lang"));
+        Assert.Equal("no", note.QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Equal("Pasient", note.QuerySelector("span")!.TextContent);
 
         // And a Norwegian reader is told nothing, because Norwegian is the page they are reading.
-        Assert.Null(Cell(Hero(Render(Datasamling() with { CountingUnit = "Pasient" })), "Antall variabler")
-                        .QuerySelector("small")!.GetAttribute("lang"));
+        Assert.Empty(Cell(Hero(Render(Datasamling() with { CountingUnit = "Pasient" })), "Antall variabler")
+                         .QuerySelector("small")!.QuerySelectorAll("span"));
     }
 
     /// <summary>The headings of the blocks under the name, in the order they are drawn.</summary>

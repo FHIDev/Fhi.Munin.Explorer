@@ -61,9 +61,10 @@ public class DetailFactsTest : BunitContext
         var cut = Render(
             new DetailFact("Type", "Kvalitetsregister"),
             new DetailFact("Omfang", "630", Note: "i 6 datasamlinger"),
-            // Whitespace counts as no note: the views build one by joining a label to a value the
-            // catalogue may not have, and a lone separator is what that would otherwise draw.
-            new DetailFact("Tilgang", "Ikke-offentlig", Note: "   "));
+            // Whitespace counts as no note, and a label with nothing to name goes with it: the
+            // views pass a field the catalogue may not have filled in, and a lone separator —
+            // "Gyldighet: " over nothing — is what a label drawn on its own would leave behind.
+            new DetailFact("Tilgang", "Ikke-offentlig", NoteLabel: "Gyldighet", Note: "   "));
 
         Assert.Null(Cell(cut, "Type").QuerySelector("small"));
         Assert.Null(Cell(cut, "Tilgang").QuerySelector("small"));
@@ -99,29 +100,54 @@ public class DetailFactsTest : BunitContext
         // the note as well, and a note is usually this component's own words joined to a count —
         // English for an English reader, and read out in Norwegian phonetics if it inherits.
         var cut = Render(new DetailFact("Data controller", "St. Olavs hospital HF", "no",
-                                        Note: "Valid from: 2010"));
+                                        NoteLabel: "Valid from", Note: "2010"));
 
         var value = Cell(cut, "Data controller").QuerySelector("dd")!;
+        var marked = value.QuerySelector("span")!;
 
-        Assert.Equal("no", value.QuerySelector("span")!.GetAttribute("lang"));
-        Assert.Equal("St. Olavs hospital HF", value.QuerySelector("span")!.TextContent);
+        Assert.Equal("no", marked.GetAttribute("lang"));
+        Assert.Equal("St. Olavs hospital HF", marked.TextContent);
         Assert.False(value.HasAttribute("lang"));
-        Assert.False(value.QuerySelector("small")!.HasAttribute("lang"));
+
+        var note = value.QuerySelector("small")!;
+
+        Assert.Equal("Valid from: 2010", note.TextContent);
+        Assert.False(note.HasAttribute("lang"));
+        Assert.Empty(note.QuerySelectorAll("span"));
     }
 
     [Fact]
-    public void Lang_WhenTheNoteIsTheCataloguesNorwegianToo_ThenItCarriesAMarkOfItsOwn()
+    public void Lang_WhenTheNoteIsTheCataloguesNorwegianToo_ThenItsValueCarriesAMarkOfItsOwn()
     {
         // The other half of the same record, and the half a lang on the <dd> could not express: a
         // note whose substance is catalogue free text is marked while the value beside it is the
         // reader's own language, which is the datasamling page's count and its telleenhet.
-        var value = Cell(Render(new DetailFact("Number of variables", "99",
-                                               Note: "Counting unit: Pasient", NoteLang: "no")),
+        var value = Cell(Render(new DetailFact("Number of variables", "99", NoteLabel: "Counting unit",
+                                               Note: "Pasient", NoteLang: "no")),
                          "Number of variables").QuerySelector("dd")!;
+        var note = value.QuerySelector("small")!;
 
-        Assert.Equal("no", value.QuerySelector("small")!.GetAttribute("lang"));
-        Assert.Empty(value.QuerySelectorAll("span"));
+        // The unit alone. NoteLabel is this package's own word, translated into the reader's
+        // language by Texts — a mark covering the line would have "Counting unit" announced in
+        // Norwegian phonetics, which is the WCAG 3.1.2 failure the mark exists to avoid.
+        Assert.Equal("Counting unit: Pasient", note.TextContent);
+        Assert.False(note.HasAttribute("lang"));
+        Assert.Equal("no", Assert.Single(note.QuerySelectorAll("span")).GetAttribute("lang"));
+        Assert.Equal("Pasient", note.QuerySelector("span")!.TextContent);
+
+        // And the count above it is in no language at all, so it is wrapped in nothing.
         Assert.False(value.HasAttribute("lang"));
+        Assert.Equal("99", value.ChildNodes.OfType<IText>().Single().TextContent);
+    }
+
+    [Fact]
+    public void Note_WhenItNeedsNoNaming_ThenTheValueStandsOnItsOwnWithNoSeparator()
+    {
+        // The source page's collection count, which reads as what it is without a label — so the
+        // ": " is a function of NoteLabel rather than a fixture of the second line.
+        var cut = Render(new DetailFact("Totalt antall variabler", "630", Note: "i 6 datasamlinger"));
+
+        Assert.Equal("i 6 datasamlinger", Assert.Single(cut.FindAll("small")).TextContent);
     }
 
     [Fact]

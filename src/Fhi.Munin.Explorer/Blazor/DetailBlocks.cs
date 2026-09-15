@@ -5,8 +5,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// The pieces every detail view is built from: a heading at a level the caller picks, a definition
-/// list of facts, one group of the catalogue's own properties, and the qualifier a hero fact hangs
-/// under its value.
+/// list of facts, and one group of the catalogue's own properties.
 /// </summary>
 /// <remarks>
 /// Shared by <see cref="KildeView"/>, <see cref="VariableView"/> and <see cref="DatasamlingView"/>,
@@ -92,19 +91,6 @@ internal static class DetailBlocks
     /// </remarks>
     internal static bool AnyFacts(IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) =>
         Shown(facts).Count > 0;
-
-    /// <summary>
-    /// A second field written as a hero fact's note — <c>Gyldighet: 2006–</c> — or null where the
-    /// catalogue has not filled that field in.
-    /// </summary>
-    /// <remarks>
-    /// The label is needed because a bare qualifier says nothing: <c>2006–</c> under a data period
-    /// reads as a second period rather than as the register's own validity. Which language the
-    /// joined string is in is the caller's to say through <c>DetailFact.NoteLang</c>, because only
-    /// the caller knows whether the value half is the catalogue's own Norwegian.
-    /// </remarks>
-    internal static string? Qualified(string label, string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : $"{label}: {value}";
 
     private static List<(string Label, string? Value, bool Norwegian)> Shown(
         IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) =>

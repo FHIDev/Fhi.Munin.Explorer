@@ -207,7 +207,7 @@ public sealed partial class DatasamlingView : ComponentBase
                 new DetailFact(T.FieldPersonIdentification, PersonIdentification),
                 new DetailFact(T.FieldValidity, Validity),
                 new DetailFact(T.FieldVariableCount, VariableCount,
-                               Note: DetailBlocks.Qualified(T.FieldCountingUnit, datasamling.CountingUnit),
+                               NoteLabel: T.FieldCountingUnit, Note: datasamling.CountingUnit,
                                NoteLang: CatalogueProperties.Foreign("no", Reader)),
                 new DetailFact(T.FieldLegalBasis, datasamling.EffectiveLegalBasis,
                                CatalogueProperties.Foreign("no", Reader)),

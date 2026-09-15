@@ -67,8 +67,16 @@ public sealed class DetailFacts : ComponentBase
             if (!string.IsNullOrWhiteSpace(fact.Note))
             {
                 builder.OpenElement(seq + 8, "small");
-                builder.AddAttribute(seq + 9, "lang", fact.NoteLang);
-                builder.AddContent(seq + 10, fact.Note);
+
+                // The label outside whatever marks the value, as the dt outside is: it is this
+                // package's word, translated, and Norwegian phonetics for "Counting unit" is
+                // WCAG 3.1.2 — the same reason CatalogueProperties.Foreign answers null for ours.
+                if (!string.IsNullOrWhiteSpace(fact.NoteLabel))
+                {
+                    builder.AddContent(seq + 9, $"{fact.NoteLabel}: ");
+                }
+
+                Words(builder, seq + 10, fact.Note, fact.NoteLang);
                 builder.CloseElement();
             }
 
@@ -82,13 +90,13 @@ public sealed class DetailFacts : ComponentBase
     }
 
     /// <summary>
-    /// The value, wrapped in a marked span only where it is not in the reader's language. Consumes
+    /// A value, wrapped in a marked span only where it is not in the reader's language. Consumes
     /// four sequence numbers from <paramref name="seq"/>.
     /// </summary>
     /// <remarks>
-    /// A span rather than a <c>lang</c> on the <c>dd</c>, which is what the fact lists below use:
-    /// the note shares that <c>dd</c> and is usually in the other language, so a mark on the
-    /// parent would switch the voice for both.
+    /// A span rather than a <c>lang</c> on the element above, which is what the fact lists below
+    /// use: both the value and the note's value share a <c>dd</c> with words in the reader's own
+    /// language, so a mark on a parent would switch the voice for those too.
     /// </remarks>
     private static void Words(RenderTreeBuilder builder, int seq, string? value, string? language)
     {
