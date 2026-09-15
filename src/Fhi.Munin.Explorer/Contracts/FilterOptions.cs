@@ -10,6 +10,11 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// The counts are cross-filtered: they describe the *current* selection, not the whole catalogue,
 /// so the endpoint has to be re-fetched whenever a filter changes. A facet with no matches is
 /// omitted from its list rather than returned with a zero count.
+/// <para>
+/// An instance never changes: every property is <c>init</c>-only and every collection is handed out
+/// read-only, and each answer is deserialised into a new one. So a caller may hold something derived
+/// from one against its reference, which is what lets a panel walk a whole payload once per answer.
+/// </para>
 /// </remarks>
 public sealed record FilterOptions
 {

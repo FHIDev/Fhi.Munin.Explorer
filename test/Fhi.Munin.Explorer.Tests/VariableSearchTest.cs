@@ -5715,6 +5715,27 @@ public class VariableSearchTest : BunitContext
         Assert.Contains("Måltider", KildeFacet(cut).TextContent, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Variabelgrupper_WhenOneIsAlreadyChosen_ThenItsRowInTheKildeTreeIsItsNameAndNothingElse()
+    {
+        // FacetList draws a count and a marking inside the checkbox alone, so a container computing
+        // either would promise a figure and a tick the reader never gets — and this id is ticked in
+        // the standalone facet, which is the one control over it until Fhi.Metadata-km3zb.
+        var cut = RenderFiltered(new FilteringClient(OnePage(), FacetsWithVariabelgrupper()),
+                                 new VariableFilter { VariabelgruppeIds = [Kosthold] });
+
+        ExpandBranches(cut);
+
+        var row = Assert.Single(KildeFacet(cut).QuerySelectorAll("li"),
+                                li => RowWords(li).StartsWith("Kosthold", StringComparison.Ordinal));
+
+        Assert.Equal("Kosthold", RowWords(row));
+        Assert.Empty(row.QuerySelectorAll("label"));
+        Assert.Empty(row.QuerySelectorAll("input"));
+        Assert.Empty(row.QuerySelectorAll(".munin-explorer-filters__count"));
+        Assert.Empty(row.QuerySelectorAll(".munin-explorer-filters__groupcount"));
+    }
+
     /// <summary>Two filters answers, so a tree held against the first cannot be drawn from twice.</summary>
     private sealed class RefreshingFacetsClient(FilterOptions first, FilterOptions next)
         : EmptyMuninExplorerClient

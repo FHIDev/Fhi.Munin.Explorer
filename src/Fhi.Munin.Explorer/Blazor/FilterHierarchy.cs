@@ -42,6 +42,9 @@ internal static class FilterHierarchy
     /// <summary>The kilde → delkilde → datasamling → variabelgruppe tree, built from
     /// <see cref="FilterOptions.HierarchyVariabelgrupper"/>, which carries every group whatever its
     /// <see cref="VariabelgruppeFacet.Filter"/> says and is empty against an older API.</summary>
+    /// <remarks>One root per listed kilde, the <c>DistinctBy</c> below being what a caller keying the
+    /// roots by id relies on; and <see cref="Nest"/> places each entry once, so a parent chain looping
+    /// back on itself is cut where it repeats rather than walked forever.</remarks>
     internal static IReadOnlyList<HierarchyNode> Build(FilterOptions facets)
     {
         var levels = KildeLevels(facets);
@@ -111,10 +114,10 @@ internal static class FilterHierarchy
         bool Parented(T entry) => parentId(entry) is { } parent && known.Contains(parent);
     }
 
-    /// <summary>Keyed by id, the first listed copy winning. GroupBy rather than ToDictionary: a
-    /// repeated id is malformed, but throwing on the render path tears the circuit down over what
-    /// would otherwise be one oddly drawn row.</summary>
-    private static Dictionary<Guid, T> ById<T>(IEnumerable<T> entries, Func<T, Guid> id) =>
+    /// <summary>Keyed by id, the first listed copy winning — the render path's keying, this one
+    /// included. GroupBy rather than ToDictionary: a repeated id is malformed, but throwing there
+    /// tears the circuit down over what would otherwise be one oddly drawn row.</summary>
+    internal static Dictionary<Guid, T> ById<T>(IEnumerable<T> entries, Func<T, Guid> id) =>
         entries.GroupBy(id).ToDictionary(group => group.Key, group => group.First());
 
     /// <summary>Datasamlinger before delkilder, the order the panel's kilde facet already draws

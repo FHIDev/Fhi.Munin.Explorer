@@ -499,6 +499,12 @@ public partial class VariableSearch
     private string? KildeSearchTerm =>
         string.IsNullOrWhiteSpace(_kildeSearch) ? null : _kildeSearch.Trim();
 
+    // The kilde tree and the filters answer it was built from, held as one so neither can name a
+    // payload the other did not: see KildeTree for what it saves and FetchFacetsAsync for the clear
+    // that releases it, which is what keeps identity from being the only way out.
+    private FilterOptions? _treeOf;
+    private IReadOnlyDictionary<Guid, HierarchyNode>? _kildeTree;
+
     /// <summary>The kilde facet's search box, named by a label of its own.</summary>
     private string KildeSearchId => $"munin-explorer-facet-search-{_instance}";
 
@@ -630,34 +636,31 @@ public partial class VariableSearch
     /// <summary>What hangs under each kilde, by kilde id: the whole tree the builder places.</summary>
     /// <remarks>
     /// One filters answer and nothing else, so the variabelgrupper under a kilde cost no request of
-    /// their own (Fhi.Metadata-raspm). One node per listed kilde, the collapse
-    /// <see cref="ListedKilder"/> makes, so the key cannot repeat.
+    /// their own (Fhi.Metadata-raspm). Every listed kilde is a root of
+    /// <see cref="FilterHierarchy.Build"/>, so each of them reaches its own subtree through this key.
     /// </remarks>
     private IReadOnlyDictionary<Guid, HierarchyNode> KildeTree(FilterOptions facets)
     {
+        // Held against the answer by identity, which FilterOptions being an immutable record makes
+        // sound: the walk over every placement the payload carries runs once per answer rather than
+        // three times per commit of the facet's search box.
         if (ReferenceEquals(_treeOf, facets) && _kildeTree is { } held)
         {
             return held;
         }
 
-        var tree = FilterHierarchy.Build(facets).ToDictionary(node => node.Id);
+        var tree = FilterHierarchy.ById(FilterHierarchy.Build(facets), node => node.Id);
 
         (_treeOf, _kildeTree) = (facets, tree);
 
         return tree;
     }
 
-    // The answer _kildeTree was built from, by identity: a fresh one is a new instance and a
-    // retained one is the object still on screen, so the walk over every placement the payload
-    // carries runs once per answer rather than three times per commit of the facet's search box.
-    private FilterOptions? _treeOf;
-    private IReadOnlyDictionary<Guid, HierarchyNode>? _kildeTree;
-
     /// <summary>The levels under a kilde as the panel draws them, each where the builder placed it.</summary>
     /// <remarks>
     /// Nothing here draws a disclosure: <see cref="FacetList"/> gives one to whatever has children,
-    /// so the datasamlinger holding groups and the non-leaf groups get the shut branch the kilder
-    /// and delkilder already had, and a leaf gets none. (Fhi.Metadata-adog5)
+    /// so a datasamling holding groups is a branch and a leaf gets none (Fhi.Metadata-adog5). The
+    /// walk needs no guard of its own — <see cref="FilterHierarchy.Build"/> places each node once.
     /// </remarks>
     private IReadOnlyList<FacetValue> HierarchyValues(IReadOnlyList<HierarchyNode> nodes)
     {
@@ -669,45 +672,55 @@ public partial class VariableSearch
 
         FacetValue Value(HierarchyNode node)
         {
-            var reading = readings[node.Level];
             var (label, language) = CatalogueName(node.Name, node.ShortName);
+            IReadOnlyList<FacetValue> children = [.. node.Children.Select(Value)];
+
+            // A row with no toggle draws neither: FacetList reads Count and Selected inside the
+            // checkbox alone, so a figure or a tick set here would be one the reader never gets. A
+            // level HierarchyLevels does not read is such a row rather than a KeyNotFoundException.
+            if (!readings.TryGetValue(node.Level, out var reading)
+                || NodeToggle(node, reading) is not { } toggle)
+            {
+                return new FacetValue(
+                    NodeKey(node), label, language, Count: null, Selected: false, Toggle: null, children);
+            }
 
             return new FacetValue(NodeKey(node),
                                   label,
                                   language,
                                   Counted(node.Count),
                                   reading.Chosen().Contains(node.Id),
-                                  NodeToggle(node, reading),
-                                  [.. node.Children.Select(Value)]);
+                                  toggle,
+                                  children);
         }
     }
 
     /// <summary>What tells one drawn row of the kilde tree from every other.</summary>
     /// <remarks>
-    /// A group hangs under every datasamling its variables are in, so its id says what ticking it
-    /// selects and not where it is drawn: two placements sharing a key would share an expansion and
-    /// hand their two lists one <c>id</c>. The levels above it are drawn once each.
+    /// A group hangs under every datasamling its variables are in, so its key is where it is drawn
+    /// rather than the id ticking it selects: two placements sharing one would share an expansion
+    /// and hand their two lists one <c>id</c>. Under <see cref="FacetName"/>'s prefix all the same,
+    /// so a path can never read as the value key that name builds.
     /// </remarks>
     private static string NodeKey(HierarchyNode node) =>
-        node.Level == HierarchyLevel.Variabelgruppe ? node.Path : FacetValueKey(node.Level, node.Id);
+        node.Level == HierarchyLevel.Variabelgruppe
+            ? $"{FacetName(node.Level)}:{node.Path}"
+            : FacetValueKey(node.Level, node.Id);
 
     /// <summary>What ticking one row of the kilde tree does, or null for a row that offers nothing.</summary>
     /// <remarks>
-    /// <see cref="HierarchyNode.Offered"/> is the payload's own refusal and is read on its own
-    /// terms, so it still holds when Fhi.Metadata-km3zb takes the clause beside it away: every
-    /// variabelgruppe is a container until this tree and the standalone facet tick as one.
+    /// Every variabelgruppe is a container until this tree and the standalone facet tick as one
+    /// (Fhi.Metadata-km3zb). <see cref="HierarchyNode.Offered"/> is not read: nothing
+    /// <see cref="FilterHierarchy.Build"/> places sets it false, so a clause on it would be inert.
     /// </remarks>
-    private Func<Task>? NodeToggle(HierarchyNode node, HierarchyReading reading)
-    {
-        if (!node.Offered || node.Level == HierarchyLevel.Variabelgruppe)
-        {
-            return null;
-        }
+    private Func<Task>? NodeToggle(HierarchyNode node, HierarchyReading reading) =>
+        node.Level == HierarchyLevel.Variabelgruppe
+            ? null
+            : () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply);
 
-        return () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply);
-    }
-
-    /// <summary>A delkilde as a chip names it: its words and its toggle, with neither a count nor a tree.</summary>
+    /// <summary>A delkilde as a chip names it: its words and its toggle, with neither a count nor a
+    /// tree. <see cref="ChosenKilder"/> is its one caller — the tree draws its delkilder through
+    /// <see cref="HierarchyValues"/>.</summary>
     private FacetValue DelkildeValue(DelkildeFacet delkilde)
     {
         var (label, language) = DelkildeLabel(delkilde);
@@ -724,7 +737,7 @@ public partial class VariableSearch
     private (string Text, string? Language) DelkildeLabel(DelkildeFacet delkilde) =>
         CatalogueName(delkilde.Name, null);
 
-    /// <summary>A datasamling the same way — the split the kilde and delkilde above are read through.</summary>
+    /// <summary>A datasamling the same way, and out of the same one caller.</summary>
     private FacetValue DatasamlingValue(DatasamlingFacet datasamling)
     {
         var (label, language) = DatasamlingLabel(datasamling);
@@ -1835,6 +1848,11 @@ public partial class VariableSearch
 
             _facets = await RetainedAsync(
                 await Client.GetFiltersAsync(_executedSearch, _filter, language), language);
+
+            // The one place a new answer arrives, so the one place the tree built from the old one
+            // has to go: identity alone would hold it were the previous instance ever handed back.
+            (_treeOf, _kildeTree) = (null, null);
+
             _facetError = null;
             _retryFacetsEnabled = false;
 
