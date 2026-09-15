@@ -853,7 +853,8 @@ public class VariableViewTest : BunitContext
         var cut = Render<VariableView>(b => b
             .Add(c => c.Variable, Detail())
             .Add(c => c.NamedSections,
-                 [new DetailNamedSection(DetailSectionIds.Versions, "Mine versjoner", body => body.AddContent(0, "x"))]));
+                 [new DetailNamedSection(DetailSectionIds.Versions, "Mine versjoner",
+                                         body => body.AddContent(0, "x"))]));
 
         var versions = Assert.Single(Wrappers(cut), section => section.Id == DetailSectionIds.Versions);
 

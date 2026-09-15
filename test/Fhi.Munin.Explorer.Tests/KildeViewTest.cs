@@ -1457,7 +1457,8 @@ public class KildeViewTest : BunitContext
         var cut = Render<KildeView>(b => b
             .Add(c => c.Kilde, Sparse())
             .Add(c => c.NamedSections,
-                 [new DetailNamedSection(DetailSectionIds.Metadata, "Min metadata", body => body.AddContent(0, "x"))]));
+                 [new DetailNamedSection(DetailSectionIds.Metadata, "Min metadata",
+                                         body => body.AddContent(0, "x"))]));
 
         var metadata = Assert.Single(Wrappers(cut), section => section.Id == DetailSectionIds.Metadata);
 

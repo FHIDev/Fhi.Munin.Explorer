@@ -329,7 +329,7 @@ public sealed partial class KildeView : ComponentBase
         return toc;
     }
 
-    /// <summary>Whether this view's own block with this id is drawn; a named section never switches one on.</summary>
+    /// <summary>Whether this view's own block is drawn; a named section never switches one on.</summary>
     private bool Drawn(string id) => DrawnIds.Contains(id);
 
     /// <summary>

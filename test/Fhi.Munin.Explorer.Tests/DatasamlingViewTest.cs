@@ -593,7 +593,8 @@ public class DatasamlingViewTest : BunitContext
         var cut = Render<DatasamlingView>(b => b
             .Add(c => c.Datasamling, Sparse())
             .Add(c => c.NamedSections,
-                 [new DetailNamedSection(DetailSectionIds.Criteria, "Mine kriterier", body => body.AddContent(0, "x"))]));
+                 [new DetailNamedSection(DetailSectionIds.Criteria, "Mine kriterier",
+                                         body => body.AddContent(0, "x"))]));
 
         var criteria = Assert.Single(Wrappers(cut), section => section.Id == DetailSectionIds.Criteria);
 
