@@ -28,7 +28,7 @@
                 @if (!string.IsNullOrWhiteSpace(variable.Description))
                 {
                     <p class="ingress munin-explorer-whole__description"
-                       lang="@CatalogueProperties.Foreign("no", Reader)">@variable.Description</p>
+                       lang="@CatalogueProperties.Foreign("no", Reader)">@CatalogueMarkdown.Render(variable.Description)</p>
                 }
             </div>
         </Header>

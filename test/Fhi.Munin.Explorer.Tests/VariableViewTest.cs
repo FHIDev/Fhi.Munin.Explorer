@@ -294,6 +294,44 @@ public class VariableViewTest : BunitContext
         Assert.DoesNotContain("Statistikk", Render(Detail()).Markup, StringComparison.Ordinal);
     }
 
+    // V_LMR.VARE_ADMINISTRASJONSVEI_BESKRIVELSE on the test API, 2026-09-15: one of 36 variables
+    // whose beskrivelse carries a markdown link, and of 35 carrying <br>.
+    private const string AuthoredDescription =
+        "Preparatets godkjente administrasjonsveier (beskrivelse). <br><br> Beskrivelse fra kodeverk "
+        + "Legemiddelform (OID 7477) tilgjengelig på [FinnKode](https://finnkode.helsedirektoratet.no/adm/collections).";
+
+    [Fact]
+    public void Description_WhenTheCatalogueAuthoredMarkdown_ThenTheIngressRendersItAsElements()
+    {
+        var cut = Render(Detail() with { Description = AuthoredDescription }, language: "en");
+
+        var ingress = cut.Find("p.ingress.munin-explorer-whole__description");
+
+        Assert.Equal("no", ingress.GetAttribute("lang"));
+        Assert.Equal(2, ingress.QuerySelectorAll("br").Length);
+        var anchor = Assert.Single(ingress.QuerySelectorAll("a"));
+        Assert.Equal("https://finnkode.helsedirektoratet.no/adm/collections", anchor.GetAttribute("href"));
+        Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
+        Assert.Equal("FinnKode", anchor.TextContent);
+        Assert.DoesNotContain("&lt;br", ingress.InnerHtml, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Description_WhenTheCatalogueHoldsRawHtml_ThenNoElementRendersAndTheTagShowsAsText()
+    {
+        // V_RESEPTREGISTERET.HJEMMEL's shape: the renderer draws markdown, never HTML.
+        var cut = Render(Detail() with
+        {
+            Description = "Ordinasjonens hjemmel i hht. <a href = \"https://lovdata.no/dokument/SF/forskrift/2007-06-28-814\" "
+                          + "target=\"_blank\">Blåreseptforskriften</a>.",
+        });
+
+        var ingress = cut.Find(".munin-explorer-whole__description");
+
+        Assert.Empty(ingress.QuerySelectorAll("a"));
+        Assert.Contains("<a href = ", ingress.TextContent, StringComparison.Ordinal);
+    }
+
     private static VariableVersion Version(
         Guid id, string name = "Basaldose", string status = "Active",
         DateTimeOffset? from = null, DateTimeOffset? to = null, string description = "Avlest basaldose") =>
@@ -389,6 +427,28 @@ public class VariableViewTest : BunitContext
 
         Assert.All(cut.FindAll(".munin-explorer-versions__detail"),
                    d => Assert.False(d.HasAttribute("hidden")));
+    }
+
+    [Fact]
+    public void Versions_WhenADescriptionCarriesMarkdown_ThenTheOpenVersionRendersItAsElements()
+    {
+        var detail = Detail() with
+        {
+            Versions = [Version(Guid.NewGuid(), from: new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                                description: AuthoredDescription)],
+        };
+
+        var cut = Render(detail);
+        PressVersion(cut);
+
+        var values = cut.FindAll(".munin-explorer-versions__detail dd");
+
+        var anchor = Assert.Single(values[0].QuerySelectorAll("a"));
+        Assert.Equal("https://finnkode.helsedirektoratet.no/adm/collections", anchor.GetAttribute("href"));
+        Assert.Equal(2, values[0].QuerySelectorAll("br").Length);
+
+        // The dates share the flag and parse too; Norwegian dates open like an ordered list.
+        Assert.Equal(["1. jan. 2020", "Pågående"], values.Skip(1).Select(v => v.InnerHtml));
     }
 
     /// <summary>
