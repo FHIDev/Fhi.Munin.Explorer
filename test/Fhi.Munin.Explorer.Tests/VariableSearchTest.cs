@@ -5648,17 +5648,17 @@ public class VariableSearchTest : BunitContext
 
     // ---- variabelgrupper in the kilde tree (Fhi.Metadata-g51gg) ----
 
-    private static readonly Guid Kosthold = new("cccccccc-1111-0000-0000-000000000001");
-    private static readonly Guid Maltider = new("cccccccc-1111-0000-0000-000000000002");
-    private static readonly Guid Miljo = new("cccccccc-1111-0000-0000-000000000003");
-    private static readonly Guid Provesvar = new("cccccccc-1111-0000-0000-000000000004");
+    private static readonly Guid Nutrition = new("cccccccc-1111-0000-0000-000000000001");
+    private static readonly Guid Meals = new("cccccccc-1111-0000-0000-000000000002");
+    private static readonly Guid Environment = new("cccccccc-1111-0000-0000-000000000003");
+    private static readonly Guid TestResults = new("cccccccc-1111-0000-0000-000000000004");
     private static readonly Guid Serum = new("cccccccc-1111-0000-0000-000000000005");
 
     /// <summary>One placement, named the way the payload names it: a kilde, and how far down it reaches.</summary>
     private static VariabelgruppeOwner Under(Guid kilde, Guid? delkilde = null, Guid? datasamling = null) =>
         new() { KildeId = kilde, DelkildeId = delkilde, DatasamlingId = datasamling };
 
-    private static VariabelgruppeFacet Gruppe(
+    private static VariabelgruppeFacet Variabelgruppe(
         Guid id,
         string name,
         IReadOnlyList<VariabelgruppeOwner> owners,
@@ -5676,9 +5676,9 @@ public class VariableSearchTest : BunitContext
     {
         HierarchyVariabelgrupper =
         [
-            Gruppe(Kosthold, "Kosthold", [Under(Tromso, datasamling: Tromso1)], count: 5),
-            Gruppe(Maltider, "Måltider", [Under(Tromso, datasamling: Tromso1)], parent: Kosthold, count: 3),
-            Gruppe(Miljo, "Miljø", [Under(Tromso, delkilde: Tromso4)], count: 2)
+            Variabelgruppe(Nutrition, "Kosthold", [Under(Tromso, datasamling: Tromso1)], count: 5),
+            Variabelgruppe(Meals, "Måltider", [Under(Tromso, datasamling: Tromso1)], parent: Nutrition, count: 3),
+            Variabelgruppe(Environment, "Miljø", [Under(Tromso, delkilde: Tromso4)], count: 2)
         ]
     };
 
@@ -5755,10 +5755,10 @@ public class VariableSearchTest : BunitContext
         {
             HierarchyVariabelgrupper =
             [
-                Gruppe(Kosthold, "Kosthold", [Under(Tromso, datasamling: Tromso1)], filter: "1"),
-                Gruppe(Maltider, "Måltider", [Under(Tromso, datasamling: Tromso1)],
+                Variabelgruppe(Nutrition, "Kosthold", [Under(Tromso, datasamling: Tromso1)], filter: "1"),
+                Variabelgruppe(Meals, "Måltider", [Under(Tromso, datasamling: Tromso1)],
                        filter: VariabelgruppeFacet.StandaloneFacetOptOut),
-                Gruppe(Miljo, "Miljø", [Under(Tromso, datasamling: Tromso1)])
+                Variabelgruppe(Environment, "Miljø", [Under(Tromso, datasamling: Tromso1)])
             ]
         };
 
@@ -5791,6 +5791,34 @@ public class VariableSearchTest : BunitContext
         // The datasamling holding them is a branch now, where with no groups in it it was a leaf.
         Assert.NotNull(Assert.Single(PanelRows(cut, "Tromsø 1"))
                            .QuerySelector(".munin-explorer-filters__disclosure"));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenTheDatasamlingHoldingThemIsCategorised_ThenItStillDrawsItsGlyphs()
+    {
+        // The glyphs are the datasamling's own and the tree is built from the facet payload, so a
+        // node model dropping the categories would take them off a row the reader had them on —
+        // and off the words the checkbox is named by with them. (Fhi.Metadata-evoil)
+        var facets = FacetsWithVariabelgrupper() with
+        {
+            Datasamlinger =
+            [
+                new()
+                {
+                    Id = Tromso1, Name = "Tromsø 1", KildeId = Tromso, Count = 5,
+                    Categories = ["EINS", "PHDR"]
+                }
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        ExpandBranches(cut);
+
+        Assert.Equal(["PHDR", "EINS"], RowGlyphs(cut, "Tromsø 1"));
+
+        // And no level above or below it draws a slot, the groups it now holds included.
+        Assert.Single(FilterPanel(cut).QuerySelectorAll(".munin-explorer-filters__icons"));
     }
 
     [Fact]
@@ -5856,11 +5884,11 @@ public class VariableSearchTest : BunitContext
         {
             HierarchyVariabelgrupper =
             [
-                Gruppe(Provesvar, "Prøvesvar",
+                Variabelgruppe(TestResults, "Prøvesvar",
                        [Under(Tromso, datasamling: Tromso1), Under(Tromso, Tromso4, Tromso4Round)]),
-                Gruppe(Serum, "Serum",
+                Variabelgruppe(Serum, "Serum",
                        [Under(Tromso, datasamling: Tromso1), Under(Tromso, Tromso4, Tromso4Round)],
-                       parent: Provesvar)
+                       parent: TestResults)
             ]
         };
 
@@ -5913,7 +5941,7 @@ public class VariableSearchTest : BunitContext
         // either would promise a figure and a tick the reader never gets — and this id is ticked in
         // the standalone facet, which is the one control over it until Fhi.Metadata-km3zb.
         var cut = RenderFiltered(new FilteringClient(OnePage(), FacetsWithVariabelgrupper()),
-                                 new VariableFilter { VariabelgruppeIds = [Kosthold] });
+                                 new VariableFilter { VariabelgruppeIds = [Nutrition] });
 
         ExpandBranches(cut);
 

@@ -685,7 +685,8 @@ public partial class VariableSearch
                 || NodeToggle(node, reading) is not { } toggle)
             {
                 return new FacetValue(
-                    NodeKey(node), label, language, Count: null, Selected: false, Toggle: null, children);
+                    NodeKey(node), label, language, Count: null, Selected: false, Toggle: null, children,
+                    Icons: DataCategoryIcons.For(node.Categories));
             }
 
             return new FacetValue(NodeKey(node),
@@ -694,7 +695,10 @@ public partial class VariableSearch
                                   Counted(node.Count),
                                   reading.Chosen().Contains(node.Id),
                                   toggle,
-                                  children);
+                                  children,
+                                  // The builder carries them on the datasamling alone, so every
+                                  // other level asks for the glyphs of no categories and draws none.
+                                  Icons: DataCategoryIcons.For(node.Categories));
         }
     }
 

@@ -15,7 +15,8 @@ internal enum HierarchyLevel
 
 /// <summary><c>Path</c> is where the node is drawn and <c>Id</c> what ticking it selects, since one
 /// group hangs under every datasamling its variables are in; <c>Offered</c> false nests a node
-/// without offering it as a filter.</summary>
+/// without offering it as a filter. <c>Categories</c> are a datasamling's datakategori tokens,
+/// carried here so the row that draws them needs no second pass over the facets.</summary>
 internal sealed record HierarchyNode(
     string Path,
     HierarchyLevel Level,
@@ -24,7 +25,8 @@ internal sealed record HierarchyNode(
     string? ShortName,
     int Count,
     IReadOnlyList<HierarchyNode> Children,
-    bool Offered = true);
+    bool Offered = true,
+    IReadOnlyList<string>? Categories = null);
 
 /// <summary>Keyed by what each hangs under. Two datasamling lookups rather than one keyed by
 /// parent: the id spaces are independent Guids off the wire, so a kilde id equal to a delkilde id
@@ -167,7 +169,8 @@ internal static class FilterHierarchy
 
             return new HierarchyNode(
                 path, HierarchyLevel.Datasamling, datasamling.Id, datasamling.Name, null, datasamling.Count,
-                Variabelgrupper(placements.ByDatasamling[datasamling.Id], path));
+                Variabelgrupper(placements.ByDatasamling[datasamling.Id], path),
+                Categories: datasamling.Categories);
         })
     ];
 
