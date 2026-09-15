@@ -79,13 +79,13 @@ public sealed record KildeSummary
     /// Null when there is nothing to measure — no visible variables — which is not the same as a
     /// measured <c>0</c>.
     /// </summary>
-    [JsonPropertyName("andelKodeverk")] public int? AndelKodeverk { get; init; }
+    [JsonPropertyName("andelKodeverk")] public int? KodeverkShare { get; init; }
 
     /// <summary>
-    /// Share in percent (0–100) of the kilde's visible variables that carry at least one statistikk
-    /// entry. Null under the same rule as <see cref="AndelKodeverk"/>.
+    /// Share in percent (0–100) of the kilde's visible variables that carry at least one statistics
+    /// entry. Null under the same rule as <see cref="KodeverkShare"/>.
     /// </summary>
-    [JsonPropertyName("andelStatistikk")] public int? AndelStatistikk { get; init; }
+    [JsonPropertyName("andelStatistikk")] public int? StatisticsShare { get; init; }
 
     /// <summary>
     /// Curated free-form metadata — contact details, purpose, legal basis, HealthDCAT-AP fields

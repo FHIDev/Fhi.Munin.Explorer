@@ -31,8 +31,8 @@ public sealed record PropertyMetadataEntry
         new Dictionary<string, string>();
 
     /// <summary>
-    /// Stable identifier of the section the key belongs under, e.g. <c>om-registeret</c>. Null where
-    /// the group has no key, and against an API that predates the field.
+    /// Stable identifier of the section the key belongs under, e.g. <c>om-registeret</c>. Null either
+    /// when the group has no key or when the API predates the field.
     /// </summary>
     /// <remarks>
     /// The key identifies a section; <see cref="GroupTranslations"/> only titles it, and a curator
