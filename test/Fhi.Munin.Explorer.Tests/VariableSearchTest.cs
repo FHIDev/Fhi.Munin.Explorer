@@ -5447,7 +5447,8 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("true", slot.GetAttribute("aria-hidden"));
         Assert.Equal("currentColor", slot.QuerySelector("svg")!.GetAttribute("stroke"));
         Assert.Equal("INPUT", row.FirstElementChild!.TagName);
-        Assert.Contains("Tromsø 1", slot.PreviousSibling!.TextContent, StringComparison.Ordinal);
+        Assert.Equal("INPUT", slot.PreviousElementSibling!.TagName);
+        Assert.Equal("Tromsø 1", slot.NextElementSibling!.TextContent);
     }
 
     // ---- the tree folds, branch by branch (Fhi.Metadata-adog5) ----

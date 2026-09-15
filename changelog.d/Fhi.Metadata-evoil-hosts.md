@@ -6,7 +6,6 @@ category: Notes for hosts
   glyphs still draw at text size in the text colour, and the slot is `aria-hidden` either way. What
   a rule buys is the row they sit in and the gap between them. Use `Fhi.Helsedata.Stiler` **0.1.75
   or later**, which supplies both (`Fhi.Metadata-1t36m`); both sample stylesheets carry the rules to
-  copy for a host that has neither. One thing to keep if you write your own: the glyphs are drawn
-  after the name, and a rule that moves them in front of it puts a variable number of glyphs in the
-  indent column, where a row with three reads as a level deeper in the tree than a row with none.
+  copy for a host that has neither. The glyphs are drawn between the checkbox and the name, as in
+  Runa. Preserve that order and keep checkbox indentation independent of the number of glyphs.
   (Fhi.Metadata-evoil)

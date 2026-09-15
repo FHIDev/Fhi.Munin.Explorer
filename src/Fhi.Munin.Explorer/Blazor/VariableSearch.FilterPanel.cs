@@ -1198,22 +1198,24 @@ public partial class VariableSearch
 
                 builder.CloseElement();
 
+                var icons = value.Icons;
+                if (icons is { Count: > 0 })
+                {
+                    builder.AddContent(35, (RenderFragment)(nested =>
+                        NodeIcons.Write(nested, icons, NodeIconClasses.Facets)));
+                }
+
                 // The marking sits on the name, not on the label around it: the label also carries
                 // this package's own prose below, which is the reader's language and not the
                 // catalogue's and must not be pronounced as Norwegian. (WCAG 3.1.2)
-                builder.OpenElement(35, "span");
-                builder.AddAttribute(36, "lang", value.Language);
-                builder.AddContent(37, value.Label);
+                builder.OpenElement(36, "span");
+                builder.AddAttribute(37, "lang", value.Language);
+                builder.AddContent(38, value.Label);
                 builder.CloseElement();
 
-                // After the name: a variable number of glyphs in front of it would read as another
-                // level of tree indent. The glyphs are aria-hidden, so the words beside them are the
-                // only place the row says which datakategorier this datasamling carries.
-                if (value.Icons is { Count: > 0 } icons)
+                // Keep the spoken categories after the name even though the decorative icons lead it.
+                if (icons is { Count: > 0 })
                 {
-                    builder.AddContent(38, (RenderFragment)(nested =>
-                        NodeIcons.Write(nested, icons, NodeIconClasses.Facets)));
-
                     builder.AddContent(39, (RenderFragment)(nested =>
                         NodeIcons.WriteSpoken(nested, icons, T)));
                 }

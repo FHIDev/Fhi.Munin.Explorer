@@ -320,10 +320,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     repository reads Stiler, so that bead is the whole of the evidence on this side.
     That facet's datasamling rows add two more, `munin-explorer-filters__icons` on the slot and
     `munin-explorer-filters__icon` on each glyph in it — one per datakategori the datasamling
-    carries, off the same `/filters` payload the row itself is built from. They are drawn **after**
-    the name rather than in front of it, which is the one thing about them worth stating: a row with
-    three glyphs and a row with none have to start at the same place, or a variable number of
-    leading glyphs reads as a level of tree depth the row does not have. Handles both, on the terms
+    carries, off the same `/filters` payload the row itself is built from. They are drawn between
+    the checkbox and the name, as in Runa. The checkbox keeps the same indentation regardless of
+    how many glyphs follow it. Handles both, on the terms
     Kelda's `munin-explorer-hierarchy__icon*` pair already sets — the `<svg>` carries `width`,
     `height` and `stroke="currentColor"` as attributes, so an undefined name draws the glyphs at
     text size in the text colour and what a rule buys is the row they sit in and the gap between
