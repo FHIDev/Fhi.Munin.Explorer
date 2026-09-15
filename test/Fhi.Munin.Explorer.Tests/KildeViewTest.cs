@@ -1710,8 +1710,8 @@ public class KildeViewTest : BunitContext
     public void HeroFacts_WhenTheSourceHangsItsCollectionsOffDelkilder_ThenTheNoteCountsThemToo()
     {
         // The count above the note is the source's total across the whole tree, so a note counted
-        // over the direct collections alone would say "312 variabler in 1 data collection" for a
-        // source whose variables live across four — the dishonest claim the note exists to prevent.
+        // over the direct collections alone would say "312 variabler i 1 datasamling" for a source
+        // whose variables live across four — the dishonest claim the note exists to prevent.
         var hero = Hero(Render(Kilde() with
         {
             Delkilder =

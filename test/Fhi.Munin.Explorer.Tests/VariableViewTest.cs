@@ -1101,8 +1101,7 @@ public class VariableViewTest : BunitContext
     {
         // Statistikktype belongs to the owning datasamling while the rows are the variable's own,
         // so a newly pinned variable in a yearly collection has a kind and nothing of that kind —
-        // and a hero cell announcing one over a page with no statistics block is the disagreement
-        // this row exists to rule out.
+        // which is the hero-over-an-absent-section disagreement this row exists to rule out.
         var cut = Render(Leading() with { Statistics = [] });
 
         Assert.DoesNotContain("Statistikk",
