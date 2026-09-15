@@ -6175,8 +6175,12 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Kosthold (5)", AccessibleName.Of(row.QuerySelector("input[type=checkbox]")!));
 
         // A group's own count and never a group SIZE: `__groupcount` is the kildetype headings'.
-        Assert.Single(row.QuerySelectorAll(".munin-explorer-filters__count"));
-        Assert.Empty(row.QuerySelectorAll(".munin-explorer-filters__groupcount"));
+        // Read off the label naming this row, since Måltider hangs open inside it with a count of
+        // its own and a descendant search would count that one too.
+        var naming = row.Children.Single(child => child.TagName is "LABEL");
+
+        Assert.Single(naming.QuerySelectorAll(".munin-explorer-filters__count"));
+        Assert.Empty(naming.QuerySelectorAll(".munin-explorer-filters__groupcount"));
     }
 
     /// <summary>Two filters answers, so a tree held against the first cannot be drawn from twice.</summary>
