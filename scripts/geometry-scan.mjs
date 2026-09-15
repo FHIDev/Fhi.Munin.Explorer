@@ -45,11 +45,8 @@ const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
 // min-content plus 48px of page air is 827, so 843 of viewport is the last width that fits and
 // everything under it needs the table's own scroll box.
 //
-// 320 is the width WCAG 1.4.10 Reflow names, and it IS measured - by check-accessibility.sh, three
-// assertions on ModernHost's /kilder. Not in this default because that would measure the
-// pinned-Stiler pages too, and the pin is 0.1.42, which still has the 82px header overflow: the fix
-// is on Stiler's main (Fhi.Metadata-hfzsu, closed 2026-09-09) and arrives here when it is released
-// and the pin moves (Fhi.Metadata-kpmt3).
+// 320, WCAG 1.4.10's width, is not in this default: check-hostile-host.sh measures it as a step of
+// its own, because some states fail there today and are left out by name (Fhi.Metadata-kpmt3).
 const widths = (process.env.GEOMETRY_WIDTHS ?? '1689,1440,1281,1280,1024,843')
   .split(',')
   .map(w => Number(w.trim()))
@@ -65,30 +62,43 @@ if (targets.length === 0 || widths.length === 0) {
 // caller is check-accessibility.sh, whose 320px run names the three that hold on a host with no
 // chrome and no Stiler - which three, and why the other seven are left out, is written there.
 //
+// GEOMETRY_EXCEPT is the other way round: every assertion but the named ones, so an assertion added
+// later is measured by default. check-hostile-host.sh's 320px step uses it, one gap per bead.
+//
 // De-duplicated, because `applicable` is a filter over `assertions` and cannot repeat: a name given
 // twice would otherwise print a count and a list that contradict each other.
-const chosen = [...new Set((process.env.GEOMETRY_ASSERTIONS ?? '')
+const names = variable => [...new Set((process.env[variable] ?? '')
   .split(',')
   .map(name => name.trim())
   .filter(name => name.length > 0))];
+const chosen = names('GEOMETRY_ASSERTIONS');
+const excepted = names('GEOMETRY_EXCEPT');
+
+if (chosen.length > 0 && excepted.length > 0) {
+  console.error('GEOMETRY_ASSERTIONS and GEOMETRY_EXCEPT are both set - TOOLING failure.');
+  console.error('name what to run, or what to leave out, not both.');
+  process.exit(2);
+}
 
 // A name that matches nothing would run an empty suite and report success, which is the false
-// green this file exists to end.
-for (const name of chosen) {
+// green this file exists to end - and, left out, would leave out nothing while saying it had.
+for (const name of [...chosen, ...excepted]) {
   if (assertions.some(assertion => assertion.name === name)) continue;
   console.error(`unknown assertion "${name}" - TOOLING failure.`);
   console.error(`known assertions: ${assertions.map(assertion => assertion.name).join('; ')}`);
   process.exit(2);
 }
 
-const applicable = chosen.length === 0
-  ? assertions
-  : assertions.filter(assertion => chosen.includes(assertion.name));
+const applicable = assertions.filter(assertion =>
+  (chosen.length === 0 || chosen.includes(assertion.name)) && !excepted.includes(assertion.name));
 
 // Said out loud, because a subset run is not the suite and a reader of the output has no other way
 // to tell the two apart.
 if (chosen.length > 0) {
   console.log(`==> ASSERTIONS: ${applicable.length} of ${assertions.length}: ${chosen.join('; ')}`);
+}
+if (excepted.length > 0) {
+  console.log(`==> ASSERTIONS: ${applicable.length} of ${assertions.length}, leaving out: ${excepted.join('; ')}`);
 }
 
 // Parsed before a browser starts, so a typo in a state name is a message rather than a run that
@@ -127,7 +137,10 @@ const measurable = applicable.some(({ states: appliesTo }) =>
 
 if (!measurable) {
   console.error('no assertion asked for applies to any of these targets - TOOLING failure.');
-  console.error(`asked for: ${chosen.length === 0 ? 'the whole suite' : chosen.join('; ')}`);
+  const asked = applicable.length === assertions.length
+    ? 'the whole suite'
+    : applicable.map(({ name }) => name).join('; ') || 'nothing - every assertion was left out';
+  console.error(`asked for: ${asked}`);
   console.error(`targets: ${plan.map(({ label }) => label).join('; ')}`);
   process.exit(2);
 }
@@ -248,7 +261,7 @@ try {
 
 console.log('');
 const notRun = inapplicable === 0 ? '' : `, and ${inapplicable} did not apply`;
-const subset = chosen.length === 0
+const subset = applicable.length === assertions.length
   ? ''
   : ` Only ${applicable.length} of ${assertions.length} assertions were asked for, so this says` +
     ' nothing about the rest.';

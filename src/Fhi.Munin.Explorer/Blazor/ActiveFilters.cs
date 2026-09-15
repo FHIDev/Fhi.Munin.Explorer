@@ -21,7 +21,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Three names under this package's prefix: <c>munin-explorer-filters__active</c> is the row,
 /// <c>munin-explorer-filters__chip</c> the capsule and <c>munin-explorer-filters__chip-remove</c>
 /// the close control inside it. Their rules are <c>Fhi.Metadata-l9l2n.51</c>'s, on
-/// <c>Fhi.Helsedata.Stiler</c> PR 39206 and not in 0.1.42, the version pinned here. The other
+/// <c>Fhi.Helsedata.Stiler</c> PR 39206, which 0.1.42 predates and 0.1.68 carries. The other
 /// two elements wear Stiler's own names rather than new ones — the heading is a
 /// <c>caption margin--none</c> paragraph, where <c>margin--none</c> is load-bearing because a bare
 /// <c>caption</c> paragraph carries block margins that break the row's alignment, and the clear-all
