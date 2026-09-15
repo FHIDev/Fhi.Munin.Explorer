@@ -452,15 +452,21 @@ jobs:
   # that happens to be unavailable — it evaluates to false and the job never runs at all, secret
   # or no secret, which is the silent version of exactly what this job exists to prevent.
   #
-  # NOT YET IN report's needs: BELOW, AND THAT IS DELIBERATE. It is red on main today, for two
-  # defects it found on its first run and neither of which can be fixed from this repository:
-  # Fhi.Metadata-l9l2n.41 (Stiler collapses every result row to zero height below 1280px) and
-  # Fhi.Metadata-l9l2n.42 (Stiler has no rule for the desiredData column, so the annotation field
-  # is a 17px sliver). When those land in Fhi.Helsedata.Stiler and this goes green, add
-  # "hostile-layout" to report's needs: and to its table, and require it in branch protection —
-  # the same three steps the other guards went through on 2026-08-28.
+  # THE GEOMETRY SCAN USED TO LIVE HERE AND NOW RUNS NIGHTLY. Measured 2026-09-15 on run
+  # 34953304775: "Measure the component inside helsedata's stylesheet" took 421 seconds and every
+  # other step in this job took 19 between them. At ~12 merges a day that was about 1.5 hours of
+  # Actions time daily, spent re-measuring a surface that changes when STILER changes rather than
+  # when this repository does. It moved to the devbox drift sidecar beside ContractDrift and
+  # FixtureFreshness (forgeBench devbox/chart/templates/drift.yaml), which runs it once a night
+  # and opens or comments on an issue when it fails — better reporting than a red check nobody
+  # can act on, since both defects it found are Stiler-side (Fhi.Metadata-l9l2n.41, .42).
+  #
+  # WHAT STAYS HERE IS THE DECLARATION GUARD, AND IT STAYS FOR A REASON. It asserts that the
+  # sample stand-in stylesheet still declares what the real Stiler declares, which is a claim a
+  # PULL REQUEST can break and a nightly would report a day late against a tree nobody is looking
+  # at. It costs a second. The restore above it stays because the guard needs the real package.
   hostile-layout:
-    name: layout in helsedata's stylesheet
+    name: declarations match helsedata's stylesheet
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -548,13 +554,9 @@ jobs:
           key: nuget-hostile-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
           restore-keys: nuget-hostile-${{ runner.os }}-
 
-      - name: Cache the scanner's browser
-        if: steps.feed.outputs.have_pat == 'true'
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('scripts/check-hostile-host.sh') }}
-          restore-keys: playwright-${{ runner.os }}-
+      # The Playwright browser cache went with the scan on 2026-09-15. Nothing in this job starts
+      # a browser any more, so restoring ~300 MB of them cost three seconds and bought nothing.
+      # The nightly sidecar runs on a pod with the browsers already in the image.
 
       # A step of its own so the private-feed restore has a name. Folded into the script below it
       # is where NU1301 was found the hard way: the script starts a stub, starts a host, and only
@@ -600,11 +602,11 @@ jobs:
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-sample-css-matches-stiler.sh
 
-      - name: Measure the component inside helsedata's stylesheet
-        if: steps.feed.outputs.have_pat == 'true'
-        # The same script developers can run locally before pushing, so a red check here is
-        # never a surprise that only CI knows how to reproduce.
-        run: ./scripts/check-hostile-host.sh
+      # ./scripts/check-hostile-host.sh USED TO RUN HERE. It is not deleted and it is not
+      # unowned: the nightly drift sidecar runs the same script, against the same restored
+      # package, and reports failures as an issue. Developers can still run it locally before
+      # pushing, which is what it was written for. Do not restore this step without moving the
+      # nightly one out first, or the same 421-second scan runs in both places.
 
   # A step reads steps.<id>.outcome, which is job-local, so the summary inside "build + test"
   # could only ever report itself and the four guards were never in the comment. A job added to
@@ -617,6 +619,12 @@ jobs:
     # decoration, so it had to become required, and the layout measurement beside it was in the
     # same position and green on main throughout. A run without the feed secret SKIPS the job, and
     # the loop below counts a skip as fine, so fork pull requests are unaffected.
+    #
+    # The layout measurement left on 2026-09-15 for the nightly drift sidecar; the job kept its id
+    # and its place here because the declaration guard is the half that had to be per-PR, and it is
+    # the half that remains. Renaming the id would have been the tidier edit and a worse one: this
+    # `needs:` list and the table below are the two places that would then have to agree, and the
+    # required check in the ruleset is `ci summary`, not this job, so the id is invisible to it.
     needs: [build, changelog, changelog-assembly, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, accessibility, component-state, hostile-layout]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
@@ -661,7 +669,7 @@ jobs:
           a host needs no glue|${{ needs.consumer.result }}
           accessibility|${{ needs.accessibility.result }}
           state after a refused press|${{ needs['component-state'].result }}
-          layout and stylesheet fidelity in helsedata's Stiler|${{ needs['hostile-layout'].result }}
+          declarations match helsedata's stylesheet|${{ needs['hostile-layout'].result }}
           EOF
 
           FILE=ci-summary.md
