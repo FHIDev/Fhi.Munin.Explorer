@@ -6,9 +6,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// The package's one JavaScript module, imported once per component and disposed with it.
 /// </summary>
 /// <remarks>
-/// Nothing reads it yet. It exists so a later enhancement has a module to put itself in, and every
-/// call here answers "not there" rather than throwing: an import rejection on a legacy Blazor Server
-/// circuit takes the circuit down, which costs the reader the page (Fhi.Metadata-35w0p.14).
+/// Nothing reads it yet. It exists so a later enhancement has a module to put itself in, and a
+/// refused import answers "not there" rather than throwing: an unhandled rejection on a legacy
+/// Blazor Server circuit takes the circuit down, which costs the reader the page (Fhi.Metadata-35w0p.14).
 /// </remarks>
 internal sealed class ExplorerInterop : IAsyncDisposable
 {
@@ -22,6 +22,7 @@ internal sealed class ExplorerInterop : IAsyncDisposable
 
     private readonly IJSRuntime _js;
     private IJSObjectReference? _module;
+    private bool _disposed;
 
     internal ExplorerInterop(IJSRuntime js)
     {
@@ -30,7 +31,9 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         _js = js;
     }
 
-    /// <summary>Whether the module is loaded, and so whether its exports can be called.</summary>
+    /// <summary>
+    /// Whether the module is there — and so, once it has one, whether an export can be called.
+    /// </summary>
     internal bool IsLoaded => _module is not null;
 
     /// <summary>
@@ -43,25 +46,23 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     /// </remarks>
     internal async Task<bool> TryLoadAsync(CancellationToken cancellationToken = default)
     {
-        _module ??= await Tolerated(
-            () => _js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath))
-            .ConfigureAwait(false);
+        if (_module is null && !_disposed)
+        {
+            var module = await Fetched(cancellationToken).ConfigureAwait(false);
+
+            // Disposal can land while the import is in flight, and `??=` would assign anyway: the
+            // answer would be a live reference on a dead instance that nothing releases again.
+            if (_disposed)
+            {
+                await Released(module).ConfigureAwait(false);
+            }
+            else
+            {
+                _module = module;
+            }
+        }
 
         return _module is not null;
-    }
-
-    /// <summary>
-    /// The package version the page itself reports — and null whenever the module is not there to
-    /// be asked, which is every caller's ordinary case rather than an error.
-    /// </summary>
-    internal async Task<string?> TryReadPageVersionAsync(CancellationToken cancellationToken = default)
-    {
-        var module = _module;
-
-        return module is null
-            ? null
-            : await Tolerated(() => module.InvokeAsync<string>("packageVersion", cancellationToken))
-                .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -69,7 +70,34 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     {
         var module = _module;
         _module = null;
+        _disposed = true;
 
+        await Released(module).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The import, answering null where the host does not serve the file as well as where the
+    /// browser is out of reach.
+    /// </summary>
+    private async Task<IJSObjectReference?> Fetched(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await Tolerated(
+                () => _js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath))
+                .ConfigureAwait(false);
+        }
+        // The host serves no such file, or a Content-Security-Policy refused it. Only an import is
+        // ordinary this way: the same exception out of an export is a defect in the module itself.
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Releases <paramref name="module"/> if there is one, tolerating a dead circuit.</summary>
+    private static async Task Released(IJSObjectReference? module)
+    {
         if (module is not null)
         {
             await Tolerated(module.DisposeAsync).ConfigureAwait(false);
@@ -80,20 +108,15 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     /// Runs <paramref name="call"/>, answering null wherever the browser is out of reach.
     /// </summary>
     /// <remarks>
-    /// The four clauses are the whole list of what "out of reach" means, in one place. Anything
-    /// else travels on: a fault inside the module is a defect to read in a host's log, and only
-    /// these four are the ordinary shape of a reader whose browser was never going to answer.
+    /// The three clauses are the whole list of what "out of reach" means, in one place. Anything
+    /// else travels on, a <see cref="JSException"/> included: that is how a fault inside an export
+    /// surfaces, and it is a defect to read in a host's log rather than a browser out of reach.
     /// </remarks>
     private static async Task<T?> Tolerated<T>(Func<ValueTask<T>> call) where T : class
     {
         try
         {
             return await call().ConfigureAwait(false);
-        }
-        // The host serves no such file, or a Content-Security-Policy refused it.
-        catch (JSException)
-        {
-            return null;
         }
         // The reader closed the tab. On disposal this is the normal case rather than an edge one.
         catch (JSDisconnectedException)

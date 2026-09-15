@@ -84,6 +84,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     private ExplorerInterop? _interop;
 
+    private bool _disposed;
+
     protected override void OnInitialized()
     {
         InteractiveMount.Require(RendererInfo.IsInteractive, nameof(VariableExplorer));
@@ -115,12 +117,27 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         // The result is discarded on purpose: nothing rendered above reads the module, so a host
         // that does not serve it draws exactly this page (Fhi.Metadata-35w0p.14). Here rather than
         // in OnInitialized because prerender has no JS runtime to import with.
-        _interop = new ExplorerInterop(JS);
-        await _interop.TryLoadAsync();
+        var interop = new ExplorerInterop(JS);
+
+        // Assigned before the import so DisposeAsync can see it, and released here when disposal
+        // already ran: this continuation resumes after an await the renderer does not wait for.
+        _interop = interop;
+
+        await interop.TryLoadAsync();
+
+        if (_disposed)
+        {
+            await interop.DisposeAsync();
+        }
     }
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync() => _interop?.DisposeAsync() ?? ValueTask.CompletedTask;
+    public ValueTask DisposeAsync()
+    {
+        _disposed = true;
+
+        return _interop?.DisposeAsync() ?? ValueTask.CompletedTask;
+    }
 
     // This page as the reader's address bar now reads it, for the drill-in views' contents nav.
     // Built fresh on every render: the state it reads moves without a navigation, and a contents

@@ -61,6 +61,26 @@ public partial class ExplorerInteropTest
         Assert.Equal([], stylesheets);
     }
 
+    [Fact]
+    public void ModuleExports_WhenTheSourceIsRead_ThenTheWrapperNamesEveryOne()
+    {
+        // Nothing to find today: the module is a seam and exports nothing. This is here for the
+        // first export, whose name is a literal in C# and a declaration in JS with nothing else
+        // holding the two together — and Tolerated answers a renamed one as an ordinary null.
+        var wrapper = File.ReadAllText(
+            Repo.In("src", "Fhi.Munin.Explorer", "Blazor", nameof(ExplorerInterop) + ".cs"));
+
+        foreach (Match export in Export().Matches(File.ReadAllText(ModuleInSource)))
+        {
+            var name = export.Groups["name"].Value;
+
+            Assert.True(
+                wrapper.Contains($"\"{name}\"", StringComparison.Ordinal),
+                $"{ExplorerInterop.ModuleFile} exports '{name}' and {nameof(ExplorerInterop)} names " +
+                "no such identifier, so nothing ties the two spellings together.");
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Where the import may happen, read off the source
 
@@ -124,7 +144,6 @@ public partial class ExplorerInteropTest
 
         Assert.False(await interop.TryLoadAsync());
         Assert.False(interop.IsLoaded);
-        Assert.Null(await interop.TryReadPageVersionAsync());
     }
 
     [Theory]
@@ -140,6 +159,38 @@ public partial class ExplorerInteropTest
         var interop = new ExplorerInterop(new RefusingJsRuntime(Raise(thrown)));
 
         Assert.False(await interop.TryLoadAsync());
+    }
+
+    [Fact]
+    public async Task TryLoadAsync_WhenTheImportFailsForAnyOtherReason_ThenItTravelsOn()
+    {
+        // The other half of Tolerated's contract, and the half a widened clause would take away
+        // silently: everything outside the three is a defect, and a defect nothing rethrows is a
+        // permanent null with nothing in any host's log.
+        var interop = new ExplorerInterop(new RefusingJsRuntime(new ArgumentException("boom")));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => interop.TryLoadAsync());
+    }
+
+    [Fact]
+    public async Task DisposeAsync_WhenTheImportIsStillInFlight_ThenTheModuleIsReleasedOnArrival()
+    {
+        // The component can go while its import is unanswered — a host swapping the explorer out
+        // of the render tree on a circuit that lives on. Nothing disposes what arrives after that
+        // but this, and the reference would sit in the runtime's table for the circuit's life.
+        var module = new CountingModule();
+        var runtime = new PendingJsRuntime(module);
+        var interop = new ExplorerInterop(runtime);
+
+        var loading = interop.TryLoadAsync();
+
+        await interop.DisposeAsync();
+
+        runtime.Answer();
+
+        Assert.False(await loading);
+        Assert.False(interop.IsLoaded);
+        Assert.Equal(1, module.Disposals);
     }
 
     [Fact]
@@ -190,12 +241,14 @@ public partial class ExplorerInteropTest
 
     /// <summary>The files under <c>src/</c> that import the module, with their source.</summary>
     /// <remarks>
-    /// The wrapper itself is skipped: it declares the method every caller below calls, and a guard
-    /// that read its declaration as a call would report the one file that cannot be wrong.
+    /// Razor as well as C#: an <c>@code</c> block is a lifecycle method like any other, and a walk
+    /// that read only <c>.cs</c> would leave both theories green while the rule went unenforced.
+    /// The wrapper itself is skipped — it declares the method, and that is not a call.
     /// </remarks>
     private static IEnumerable<(string File, string Source)> Callers() =>
         Directory
-            .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer"), "*.cs", SearchOption.AllDirectories)
+            .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer"), "*.*", SearchOption.AllDirectories)
+            .Where(path => Path.GetExtension(path) is ".cs" or ".razor")
             .Where(path => !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                                 .Any(segment => segment is "bin" or "obj"))
             .Where(path => Path.GetFileName(path) != nameof(ExplorerInterop) + ".cs")
@@ -228,12 +281,16 @@ public partial class ExplorerInteropTest
     /// <remarks>
     /// Blanks rather than removal so the offsets stay true. Without this the guard reads the prose
     /// beside a call — the wrapper's own "not from OnInitialized" — as the method holding it.
+    /// Razor's own comments go first, through the one copy of that stripping the suite has.
     /// </remarks>
     private static string Blanked(string source) =>
-        Comment().Replace(source, found => new string(' ', found.Length));
+        Comment().Replace(RazorSource.WithoutComments(source), found => new string(' ', found.Length));
 
     [GeneratedRegex(@"//[^\n]*|/\*.*?\*/", RegexOptions.Singleline)]
     private static partial Regex Comment();
+
+    [GeneratedRegex(@"\bexport\s+(?:async\s+)?(?:function\*?|const|let|var|class)\s+(?<name>[A-Za-z_$][\w$]*)")]
+    private static partial Regex Export();
 
     [GeneratedRegex(@"\bOn(?:Initialized|ParametersSet|AfterRender)(?:Async)?\b")]
     private static partial Regex Lifecycle();
@@ -242,64 +299,4 @@ public partial class ExplorerInteropTest
         thrown == typeof(OperationCanceledException)
             ? new OperationCanceledException()
             : (Exception)Activator.CreateInstance(thrown, "out of reach")!;
-
-    // -----------------------------------------------------------------------
-    // Stand-ins for the browser
-
-    /// <summary>A runtime that refuses every call, the way a host without the module does.</summary>
-    private sealed class RefusingJsRuntime(Exception thrown) : IJSRuntime
-    {
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) => throw thrown;
-
-        public ValueTask<TValue> InvokeAsync<TValue>(
-            string identifier, CancellationToken cancellationToken, object?[]? args) => throw thrown;
-    }
-
-    /// <summary>A runtime that hands out one module, counting how often it was asked for it.</summary>
-    private sealed class LendingJsRuntime(IJSObjectReference module) : IJSRuntime
-    {
-        internal int Imports { get; private set; }
-
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
-            InvokeAsync<TValue>(identifier, CancellationToken.None, args);
-
-        public ValueTask<TValue> InvokeAsync<TValue>(
-            string identifier, CancellationToken cancellationToken, object?[]? args)
-        {
-            Imports++;
-
-            return ValueTask.FromResult((TValue)(object)module);
-        }
-    }
-
-    /// <summary>A module whose disposal throws, as one on a dropped circuit does.</summary>
-    private sealed class RefusingModule(Exception thrown) : IJSObjectReference
-    {
-        public ValueTask DisposeAsync() => throw thrown;
-
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) => throw thrown;
-
-        public ValueTask<TValue> InvokeAsync<TValue>(
-            string identifier, CancellationToken cancellationToken, object?[]? args) => throw thrown;
-    }
-
-    /// <summary>A module that counts its own disposals.</summary>
-    private sealed class CountingModule : IJSObjectReference
-    {
-        internal int Disposals { get; private set; }
-
-        public ValueTask DisposeAsync()
-        {
-            Disposals++;
-
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
-            ValueTask.FromResult(default(TValue)!);
-
-        public ValueTask<TValue> InvokeAsync<TValue>(
-            string identifier, CancellationToken cancellationToken, object?[]? args) =>
-            ValueTask.FromResult(default(TValue)!);
-    }
 }
