@@ -713,6 +713,32 @@ public class KildeViewTest : BunitContext
         Assert.Equal(expected, cut.FindAll(".munin-explorer-group").Select(e => e.TextContent));
     }
 
+    /// <summary>
+    /// The merged values, the suppression set and the grouping are resolved once per (Kilde,
+    /// Language) pair rather than per read, and a cache keyed on either half alone goes stale on
+    /// the other.
+    /// </summary>
+    /// <remarks>
+    /// The language half — the payload half is pinned by
+    /// <see cref="Contents_WhenTheSourceIsReplacedAfterTheFirstRender_ThenTheNavIsRebuiltWithIt"/>.
+    /// The same instance is passed back deliberately, since a fresh one would miss the cache on its
+    /// reference alone: KildeSearch keeps the source it fetched when the reader changes language,
+    /// so the instance and this view's place in the render tree both survive the toggle.
+    /// </remarks>
+    [Theory]
+    [InlineData("no", "Datainnsamling")]
+    [InlineData("en", "Data Collection")]
+    public void Metadata_WhenOnlyTheLanguageChanges_ThenTheCachedGroupsAreResolvedAgain(
+        string language, string expected)
+    {
+        var kilde = Barnediabetes();
+        var cut = Render(kilde, language: language == "no" ? "en" : "no");
+
+        cut.Render(b => b.Add(c => c.Kilde, kilde).Add(c => c.Language, language));
+
+        Assert.Equal(expected, cut.FindAll(".munin-explorer-group")[0].TextContent);
+    }
+
     [Theory]
     [InlineData("no")]
     [InlineData("en")]

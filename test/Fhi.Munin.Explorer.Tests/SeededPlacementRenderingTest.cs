@@ -440,26 +440,51 @@ public class SeededPlacementRenderingTest : BunitContext
         Assert.Empty(ValidityRows(from: true, to: true));
     }
 
+    private const string IdentificationLabel = "Grad av personidentifikasjon";
+
+    /// <summary>
+    /// The word each page's hero draws for the identification level, beside the word the row below
+    /// it draws — the catalogue's section once the key is placed, the view's own fact box until
+    /// then.
+    /// </summary>
+    /// <remarks>
+    /// Both pages because each resolves the level in a member of its own, so an assertion on one
+    /// says nothing about the other's branch.
+    /// </remarks>
+    private IReadOnlyList<(string Page, string Hero, string Row)> Identification(string? section)
+    {
+        var kilde = RenderKilde(Kilde(section));
+        var datasamling = RenderDatasamling(Datasamling(section));
+
+        return
+        [
+            ("kilde", HeroValue(kilde, IdentificationLabel), SectionValue(kilde, IdentificationLabel)),
+            ("datasamling", HeroValue(datasamling, IdentificationLabel),
+             SectionValue(datasamling, IdentificationLabel)),
+        ];
+    }
+
     [Fact]
     public void PersonIdentification_WhenItsPlacementArrives_ThenTheHeroReadsTheWordTheSectionReads()
     {
         // The DataType collision, in the one other field that has it: the catalogue curates a word
         // for each code and this package translates the same codes itself, so a hero resolving one
         // while the section resolves the other puts one fact on one page in two wordings.
-        var cut = RenderKilde(Kilde(Section));
-        var hero = HeroValue(cut, "Grad av personidentifikasjon");
+        const string Curated = "Indirekte personidentifiserbare data";
 
-        Assert.Equal("Indirekte personidentifiserbare data", hero);
-        Assert.Equal(SectionValue(cut, "Grad av personidentifikasjon"), hero);
+        Assert.Equal([("kilde", Curated, Curated), ("datasamling", Curated, Curated)],
+                     Identification(Section));
     }
 
     [Fact]
     public void PersonIdentification_WhenNoPlacementHasArrived_ThenTheHeroKeepsThisPackagesOwnWord()
     {
-        // Nothing can draw the catalogue's word with no section to draw it in, so the hero falls
-        // back rather than emptying a slot the layout declares six tracks for.
-        Assert.Equal("Indirekte identifiserbar",
-                     HeroValue(RenderKilde(Kilde(section: null)), "Grad av personidentifikasjon"));
+        // Nothing can draw the catalogue's word with no section to draw it in, so both surfaces
+        // fall back rather than emptying a slot the layout declares six tracks for.
+        const string Own = "Indirekte identifiserbar";
+
+        Assert.Equal([("kilde", Own, Own), ("datasamling", Own, Own)],
+                     Identification(section: null));
     }
 
     /// <summary>One hero cell's value — the summary strip the counts above deliberately leave out.</summary>
