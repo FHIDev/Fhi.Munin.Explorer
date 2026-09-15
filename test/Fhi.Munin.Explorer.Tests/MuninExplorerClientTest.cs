@@ -818,8 +818,8 @@ public class MuninExplorerClientTest
     [Fact]
     public async Task GetKildeHierarchyAsync_WhenAGroupNestsOthers_ThenTheChildrenAndBothHalvesOfTheOrderAreRead()
     {
-        // No capture holds a nested group or an unordered one any more, so both halves of int? and
-        // the child list are pinned here against fixed names. (Fhi.Metadata-l9l2n.61)
+        // hierarchy.json no longer holds a nested group or an unordered one, so both halves of int?
+        // and the child list are pinned here against fixed names. (Fhi.Metadata-l9l2n.61)
         var hierarchy = await WithJson("""
             {
               "directDatasamlinger": [
@@ -841,11 +841,11 @@ public class MuninExplorerClientTest
             }
             """).GetKildeHierarchyAsync(Guid.NewGuid());
 
-        var provetyper = Assert.Single(Assert.Single(hierarchy!.DirectDatasamlinger).Variabelgrupper);
-        Assert.Equal("Prøvetyper", provetyper.Name);
-        Assert.Null(provetyper.PresentationOrder);
-        Assert.Equal(["Plasma", "Serum"], provetyper.ChildVariabelgrupper.Select(group => group.Name));
-        Assert.Equal([609, 647], provetyper.ChildVariabelgrupper.Select(group => group.PresentationOrder));
+        var sampleTypes = Assert.Single(Assert.Single(hierarchy!.DirectDatasamlinger).Variabelgrupper);
+        Assert.Equal("Prøvetyper", sampleTypes.Name);
+        Assert.Null(sampleTypes.PresentationOrder);
+        Assert.Equal(["Plasma", "Serum"], sampleTypes.ChildVariabelgrupper.Select(group => group.Name));
+        Assert.Equal([609, 647], sampleTypes.ChildVariabelgrupper.Select(group => group.PresentationOrder));
     }
 
     [Fact]

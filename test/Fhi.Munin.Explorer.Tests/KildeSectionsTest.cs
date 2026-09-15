@@ -380,7 +380,7 @@ public class KildeSectionsTest : BunitContext
     }
 
     [Fact]
-    public void DataCollections_WhenTheDetailDisagreesWithTheTree_ThenOnlyTheTreeReadsTheHierarchy()
+    public void DataCollections_WhenTheDetailDisagreesWithTheTree_ThenTheTableAndTheVariableCountFollowTheDetail()
     {
         // The two captures were taken together and agree, so only a detail that differs from the
         // tree shows that the table and the count are not read off the hierarchy request.
