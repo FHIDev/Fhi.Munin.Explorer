@@ -8720,10 +8720,8 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Panel_WhenNoPlacementHasArrived_ThenTheIdentificationListStillSpellsTheDescriptionOut()
     {
-        // The other half of the suppression, and the half that was harmless only until this change:
-        // before it the key never reached the bag, so taking Beskrivelse out of Egenskaper removed
-        // nothing. Now it removes a row that would otherwise render, and the only thing keeping the
-        // description on the panel at all is that the Identifikasjon list above draws it
+        // Suppressing Beskrivelse now removes a row that would otherwise render, and the only thing
+        // keeping the description on the panel is that the Identifikasjon list draws it
         // unconditionally — coupled by nothing but that, so it is asserted (Fhi.Metadata-bct95).
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(Detail(TaleId)));
 
