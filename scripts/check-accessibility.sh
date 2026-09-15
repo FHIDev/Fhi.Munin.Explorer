@@ -58,6 +58,7 @@ TARGETS=(
   "/::variables-list"
   "$REFLOW_TARGET"
   "/::filters-level-lines"
+  "/::filters-node-icons-off"
   "/::variable-detail"
   "/kilder::kilde-drilldown"
   "/kilder::kilde-hierarchy-collapsed"

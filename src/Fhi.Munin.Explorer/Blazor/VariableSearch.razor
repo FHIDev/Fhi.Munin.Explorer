@@ -135,10 +135,13 @@ else if (_sourceKind is not null)
 
         @if (_kilde is { } kilde)
         {
+            @* The reader's own Ikoner choice follows them into the drill-in: the tree in here is
+               the same hierarchy the facet panel draws, so one press has to decide both. *@
             <KildeView Kilde="kilde"
                        Language="@Language"
                        HeadingLevel="@RowLevel"
-                       HeadingId="@SourceHeadingId" />
+                       HeadingId="@SourceHeadingId"
+                       ShowNodeIcons="@_showNodeIcons" />
         }
         else if (_datasamling is { } datasamling)
         {
@@ -278,11 +281,11 @@ else
             <legend class="form-element__label">@T.FiltersTitle</legend>
 
             @* The toolbar. Utvid alle and Skjul alle do the one thing a native disclosure cannot do
-               for itself; Nivålinjer is a switch and says so with role and aria-checked. None of the
-               three narrows anything, which is why none is a checkbox — the facet values are. *@
+               for itself; Nivålinjer and Ikoner are switches and say so with role and aria-checked.
+               None of the four narrows anything, which is why none is a checkbox — the values are. *@
             @* Own container: in inline flow the last button's trailing margin was the whole overflow,
                and `gap` leaves nothing trailing. Only the two fold buttons shrink and wrap their
-               labels — the switch below is outside that rule. (Fhi.Metadata-l9l2n.37) *@
+               labels — the two switches below are outside that rule. (Fhi.Metadata-l9l2n.37) *@
             <div class="munin-explorer-filters__toolbar">
                 <button class="hd-button-square button-square--ghost"
                         type="button"
@@ -302,6 +305,19 @@ else
                         <span class="munin-explorer-switch__thumb"></span>
                     </span>
                     @T.LevelLines
+                </button>
+                @* The second switch, same shape as the first: what it turns off is decoration
+                   alone — the glyphs and the words that stand in for them — so the badge, the
+                   counts and the ticks beside them are drawn either way. *@
+                <button class="munin-explorer-switch"
+                        type="button"
+                        role="switch"
+                        aria-checked="@(_showNodeIcons ? "true" : "false")"
+                        @onclick="ToggleNodeIconsAsync">
+                    <span class="munin-explorer-switch__track" aria-hidden="true">
+                        <span class="munin-explorer-switch__thumb"></span>
+                    </span>
+                    @T.NodeIcons
                 </button>
             </div>
 

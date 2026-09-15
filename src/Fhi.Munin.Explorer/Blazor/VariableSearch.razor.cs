@@ -462,6 +462,40 @@ public sealed partial class VariableSearch : ComponentBase
     /// <inheritdoc cref="LevelLines"/>
     [Parameter] public EventCallback<bool> LevelLinesChanged { get; set; }
 
+    /// <summary>
+    /// Whether the filter panel's kilde tree draws a node icon in front of each name — a folder on
+    /// a kilde or a delkilde, one glyph per datakategori on a datasamling, and nothing on a
+    /// variabelgruppe. Two-way, <b>on by default</b>, which is what the <c>Ikoner</c> switch turns
+    /// off. It is passed on to the kilde a reader drills into, so one press decides the icons on
+    /// both surfaces — <see cref="KildeHierarchyView.ShowNodeIcons"/> is the same choice there.
+    /// </summary>
+    /// <remarks>
+    /// <b>Decoration only.</b> Turning it off removes the glyphs and the <c>screenreader-only</c>
+    /// words that stand in for them, and nothing else: the filter a row ticks, the counts beside
+    /// it, the kildetype badge on a kilde and the level lines are all drawn exactly as before.
+    /// The badge in particular is a fact rather than a picture, so it stays on the row and in the
+    /// checkbox's accessible name whichever way this is set.
+    /// <para>
+    /// The glyphs are inline <c>&lt;svg&gt;</c> at <c>1em</c> in <c>currentColor</c>, each wearing
+    /// <c>munin-explorer-filters__icon</c> and a <c>data-node-icon</c> naming its datakategori, so
+    /// what a host stylesheet decides is whether two categories are told apart by colour as well as
+    /// by shape. A host with no rule for them still gets icons, at text size and in the text colour.
+    /// </para>
+    /// <para>
+    /// Remembered by the host and never by the package, exactly as <see cref="LevelLines"/> is:
+    /// reaching <c>localStorage</c> from a circuit is a JS interop call this package does not make,
+    /// and what is remembered about a reader is the host's own policy to set. It is read once at
+    /// mount and owned by the component afterwards, so a host stores what
+    /// <see cref="ShowNodeIconsChanged"/> raises and supplies it at the next mount; changing the
+    /// parameter on a component that is already mounted does nothing. A host that stores nothing
+    /// gets the icons at every visit.
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool ShowNodeIcons { get; set; } = true;
+
+    /// <inheritdoc cref="ShowNodeIcons"/>
+    [Parameter] public EventCallback<bool> ShowNodeIconsChanged { get; set; }
+
     /// <summary>Which page of results is showing. Two-way, one-based.</summary>
     /// <remarks>
     /// Restored on first render, so a shared link opens on the page it was shared from. A page past

@@ -516,9 +516,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   overflow-wrap: anywhere;
 }
 
-/* Nivålinjer, the one switch, wearing its own name and NOTHING else: the rule above selects
-   hd-button-square, and beside it the toolbar squeezes this to one character wide. State hangs
-   on aria-checked, not a modifier class, so drawn and announced agree. (Fhi.Metadata-l9l2n.87) */
+/* Nivålinjer and Ikoner, the toolbar's two switches, each wearing its own name and NOTHING else:
+   the rule above selects hd-button-square, and beside it the toolbar squeezes one to a character
+   wide. State hangs on aria-checked, not a modifier class, so drawn and announced agree.
+   (Fhi.Metadata-l9l2n.87) */
 .munin-explorer-switch {
   display: inline-flex;
   align-items: center;

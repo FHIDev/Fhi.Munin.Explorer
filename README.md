@@ -362,8 +362,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     A handle, and the plainest kind: the word is real text inside the `<label>`,
     so it is part of the checkbox's accessible name and reads correctly with no rule at all, and
     what a rule buys is the capsule that tells it from the name beside it. It is its own name and
-    never part of the icon slot, which is what keeps a host — or the `ShowNodeIcons` toggle when it
-    reaches this panel — able to turn decoration off without taking a fact off the row with it. The
+    never part of the icon slot, which is what keeps a host — and the `Ikoner` switch, which reaches
+    this panel now — able to turn decoration off without taking a fact off the row with it. The
     word is this package's own bilingual copy rather than the API's resolved kildetype label, unlike
     every other kildetype word in this panel: the badge marks membership of a named set and is drawn
     under a group heading already carrying the API's word for the same value. A kildetype the table
@@ -381,20 +381,22 @@ These are not style preferences — each one is a host that breaks otherwise.
     itself is a sentence in the alert region either way, so no host loses the reason — only the
     mark saying which row it was about.
     The variable explorer's own panel adds `munin-explorer-filters__toolbar`, the row holding Utvid
-    alle, Skjul alle and Nivålinjer. The three buttons used to sit in inline flow carrying margins
-    of their own, and the last one's trailing margin counted against the line: at the 369px an
-    expanded panel leaves once it grows a scrollbar, the row needed 369.05px and Nivålinjer dropped
-    onto a row by itself. A host that defines nothing for the name gets the three buttons back in
-    inline flow, which is a row until a label grows; what the rule buys is `display: flex` with a
-    `gap`, so nothing trails the last button, and — for the two fold buttons, which is all its
-    `min-width: 0` half selects — labels that shrink and wrap rather than the row breaking apart at
-    the next longer translation. Nivålinjer is deliberately outside that half (below), so it is the
-    row's one member at its own natural width, and the 16px the container won back is spent on it
-    and then some: the switch adds a 30px track and an 8px gap to the label it already had. What
-    keeps the row whole is that no other member is fixed — the two that can shrink absorb it. That
-    is reasoning rather than measurement, and the measurement is worth doing: at 369px the row was
-    already 0.05px over before any of this. Both sample stylesheets carry it, and it is in
-    `Fhi.Helsedata.Stiler` from the release that follows PR 39046.
+    alle, Skjul alle, Nivålinjer and Ikoner. The row was three buttons in inline flow once, each
+    carrying margins of its own, and the last one's trailing margin counted against the line: at
+    the 369px an expanded panel leaves once it grows a scrollbar, the row needed 369.05px and
+    Nivålinjer dropped onto a row by itself. A host that defines nothing for the name gets the four
+    controls back in inline flow, which is a row until a label grows; what the rule buys is
+    `display: flex` with a `gap`, so nothing trails the last button, and — for the two fold buttons,
+    which is all its `min-width: 0` half selects — labels that shrink and wrap rather than the row
+    breaking apart at the next longer translation. Both switches are deliberately outside that half
+    (below), so they are the row's two members at their own natural width, and the 16px the
+    container won back is spent on the first of them and then some: a switch adds a 30px track and
+    an 8px gap to the label it already had. What keeps the row whole is that no other member is
+    fixed — the two that can shrink absorb both. That is reasoning rather than measurement, and the
+    measurement is worth doing: at 369px the row was already 0.05px over with three members in it,
+    and Ikoner, added under `Fhi.Metadata-kd9ts`, made them four without anything here measuring the
+    result. Both sample stylesheets carry it, and it is in `Fhi.Helsedata.Stiler` from the release
+    that follows PR 39046.
     Kelda's panel wears the same name for the same row, minus Nivålinjer — its facets are not
     nested, so a level-lines toggle would draw nothing — and there the rule does one thing more: it
     pins the row to the top of the facet column, which scrolls at sidebar widths, so a control that
@@ -582,8 +584,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     WCAG 2.1 AA problem rather than a cosmetic one, and it is the `skiplink-pagination` shape: both
     sample stylesheets have the rule, so the guard is green while the host the prefix exists for
     gets nothing.
-    The filter panel's `Nivålinjer` switch closes the list with two, `munin-explorer-switch__track`
-    and `munin-explorer-switch__thumb`, and they are here rather than among the handles for the reason
+    The filter panel's `Nivålinjer` and `Ikoner` switches close the list with two,
+    `munin-explorer-switch__track` and `munin-explorer-switch__thumb`, and they are here rather
+    than among the handles for the reason
     the period bar's are: both spans are empty, so an undrawn one is nothing at all and the on/off
     state a sighted reader can see goes with it. The state itself is not lost — the control is a
     `role="switch"` carrying `aria-checked`, so a screen reader announces it either way — and the
@@ -1095,8 +1098,13 @@ Each row carries a node icon in front of its name — a folder on a delkilde, on
 datakategori on a datasamling, and nothing on a variabelgruppe, which is the mapping Kelda's own
 tree draws, legacy category slugs and all. `ShowNodeIcons` turns them off on `KildeHierarchyView`
 and on `KildeView`; the variable counts are untouched either way, and the package remembers no
-choice of its own for the reason `LevelLines` does not. The glyphs are inline `<svg>` marked
-`aria-hidden`, so a datasamling's categories are said in words in a `screenreader-only` span
+choice of its own for the reason `LevelLines` does not. `VariableSearch` carries the same
+parameter beside `ShowNodeIconsChanged`, where it is the `Ikoner` switch in the filter panel's
+toolbar and reaches that panel's own kilde tree as well as the kilde a reader drills into — one
+press, both surfaces. Two-way there and read once at mount, exactly as `LevelLines` is, so a host
+stores what the callback raises and hands it back at the next mount; changing the parameter on a
+mounted component does nothing. The glyphs are inline `<svg>` marked `aria-hidden`, so a
+datasamling's categories are said in words in a `screenreader-only` span
 instead of twice. Each one is `1em` in `currentColor` and wears
 `munin-explorer-hierarchy__icon` with a `data-node-icon` naming its datakategori — `PHDR`, `EINS`,
 `other` and the rest, plus `kilde` for the folder — which is the hook a stylesheet colours them
