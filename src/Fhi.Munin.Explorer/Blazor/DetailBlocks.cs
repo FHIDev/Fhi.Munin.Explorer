@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Components.Rendering;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The three pieces every detail view is built from: a heading at a level the caller picks, a
-/// definition list of facts, and one group of the catalogue's own properties.
+/// The pieces every detail view is built from: a heading at a level the caller picks, a definition
+/// list of facts, and one group of the catalogue's own properties.
 /// </summary>
 /// <remarks>
 /// Shared by <see cref="KildeView"/>, <see cref="VariableView"/> and <see cref="DatasamlingView"/>,

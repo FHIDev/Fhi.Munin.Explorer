@@ -26,6 +26,14 @@
 
     @Header
 
+    @* The hero row, under the name block and above the body as the mockups arrange it. Drawn only
+       where a view named facts the catalogue filled in — an empty <dl> is a pair of rules and a
+       row of padding around nothing. *@
+    @if (Facts is { Count: > 0 } facts)
+    {
+        <DetailFacts Facts="facts" />
+    }
+
     @* The chassis name alone. Every published Stiler lays the three views' own `__body` names out
        as a grid of their own, and two `grid-template-columns` on one element are settled by source
        order rather than by either stylesheet meaning it. *@

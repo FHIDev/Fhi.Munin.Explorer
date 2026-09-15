@@ -137,6 +137,85 @@ public sealed partial class VariableView : ComponentBase
             ? T.DataTypeLabel(dataType)
             : null;
 
+    // The catalogue's own keys for the three curated properties the hero row leads with. Named here
+    // because a hero fact has to be chosen; their labels, words and order are still the payload's.
+    private const string OriginKey = "Opprinnelse";
+    private const string IdentificationKey = "Identifiseringsgrad";
+    private const string DatabaseReferenceKey = "DatabaseReferanse";
+
+    /// <summary>
+    /// The six facts a variable leads with, in the order the strip reads.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Kilde and Datasamling are deliberately not among them although the strip this replaces led
+    /// with both: the breadcrumb directly above names them, and a fact strip that repeats the
+    /// chrome spends two of six slots on facts the reader has just read (Fhi.Metadata-l9l2n.92).
+    /// Kodeverk, Statistikk, Opprinnelse, Identifiseringsgrad and Databasereferanse are that bead's
+    /// own five; Dataperiode is the sixth, and it passes the same test — it is in no crumb.
+    /// </para>
+    /// <para>
+    /// Every one is drawn again below, and none of the three curated keys joins
+    /// <see cref="DrawnElsewhere"/> on account of being here: that set exists for the same fact
+    /// drawn twice in the body under two labels, which is what DataType was, and a hero row is a
+    /// different register. What must not differ is the wording, so the three keys resolve through
+    /// <see cref="CatalogueProperties.Row"/> — the call their groups are built from — rather than
+    /// off the bag.
+    /// </para>
+    /// <para>
+    /// A variable with several kodeverk leads with the first and the kind it is; the section below
+    /// is what lists them all.
+    /// </para>
+    /// </remarks>
+    private IReadOnlyList<DetailFact> HeroFacts =>
+        Variable is null
+            ? []
+            : [.. new DetailFact?[]
+                {
+                    KodeverkFact,
+                    StatisticsFact,
+                    Curated(OriginKey),
+                    Curated(IdentificationKey),
+                    Curated(DatabaseReferenceKey),
+                    new DetailFact(T.FieldDataPeriod, DataPeriod),
+                }.OfType<DetailFact>()];
+
+    /// <summary>One curated property as a hero fact, or null where the catalogue holds none.</summary>
+    /// <remarks>
+    /// Label and value both come off the resolved row, so a curated property renamed or
+    /// re-translated in Munin moves here and in the group below it together.
+    /// </remarks>
+    private DetailFact? Curated(string key) =>
+        Variable is { } variable
+        && CatalogueProperties.Row(variable.PropertyMetadata, variable.AdditionalProperties, Reader, key)
+            is { Values: [var first, ..] } row
+            ? new DetailFact(row.Label, first.Text, CatalogueProperties.Foreign(first.Language, Reader))
+            : null;
+
+    /// <summary>The first kodeverk the variable draws its values from, and the kind of list it is.</summary>
+    private DetailFact? KodeverkFact =>
+        Variable?.KodeverkLinks is [{ } link, ..]
+            ? new DetailFact(
+                T.HeadingKodeverk,
+                string.IsNullOrWhiteSpace(link.DisplayName) ? T.KodeverkUnnamed : link.DisplayName,
+                CatalogueProperties.Foreign(!string.IsNullOrWhiteSpace(link.DisplayName), Reader),
+                Note: T.KodeverkTypeLabel(link.KodeverkType))
+            : null;
+
+    /// <summary>
+    /// Which kind of statistics the variable has, or null where it has none to have a kind of.
+    /// </summary>
+    /// <remarks>
+    /// The label and the word are the two halves <see cref="StatisticsBlock.Heading"/> joins into
+    /// the heading below, read off the same two members rather than spelled again.
+    /// </remarks>
+    private DetailFact? StatisticsFact =>
+        Variable is { DatasamlingStatisticsType: { } type }
+        && !string.IsNullOrWhiteSpace(type)
+        && StatisticsBlock.AnyStatistics(Variable)
+            ? new DetailFact(T.HeadingStatistics, T.StatisticsTypeLabel(type))
+            : null;
+
     /// <summary>The heading over the statistics block, which the nav has to name without drawing it.</summary>
     /// <remarks>
     /// Read off <see cref="StatisticsBlock"/> rather than rebuilt here, the same way

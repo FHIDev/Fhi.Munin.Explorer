@@ -4,7 +4,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// The chassis the detail views share: the root, the page chrome, the name block above the fold,
-/// the body grid, the contents column and the main column. Four surfaces wear it.
+/// the hero fact row under it, the body grid, the contents column and the main column. Four
+/// surfaces wear it.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -62,6 +63,25 @@ public sealed partial class DetailPage : ComponentBase
     /// </summary>
     [Parameter]
     public RenderFragment? Header { get; set; }
+
+    /// <summary>
+    /// The facts the page leads with, drawn as a row between the name block and the body. Empty or
+    /// unset draws no row at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Six is the shape: Stiler lays this row out as six equal tracks at desktop, three below
+    /// 1080px and two below 600px, so five leaves a hole and seven wraps to a row of one. A record
+    /// the catalogue has not filled in draws fewer — <see cref="DetailFacts"/> drops a fact with no
+    /// value rather than drawing it empty.
+    /// </para>
+    /// <para>
+    /// A summary rather than a relocation. Every fact here is still drawn in the section it belongs
+    /// to further down, so a reader who scrolls to the access rule finds it where it always was.
+    /// </para>
+    /// </remarks>
+    [Parameter]
+    public IReadOnlyList<DetailFact>? Facts { get; set; }
 
     /// <summary>
     /// The eyebrow: what kind of thing this page is about — <c>Datakilde</c>, <c>Datasamling</c>,

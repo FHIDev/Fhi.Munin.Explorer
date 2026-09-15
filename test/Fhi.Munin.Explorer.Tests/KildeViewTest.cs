@@ -424,6 +424,10 @@ public class KildeViewTest : BunitContext
             // The word above the name block saying what kind of thing this page is about. A <p>,
             // so the outline a screen reader navigates by is the one the view already had.
             "munin-explorer-page__eyebrow",
+            // The hero row under the name block. Always drawn on a source: two of its six facts
+            // fall back to Texts.NotSpecified rather than to nothing, so there is no source thin
+            // enough to leave the list out.
+            "munin-explorer-page__facts",
             // Every fact list this view draws, the chassis's own name since
             // Fhi.Metadata-35w0p.11 rather than the result row's drill-in panel's.
             "munin-explorer-page__fields",
@@ -1591,6 +1595,161 @@ public class KildeViewTest : BunitContext
 
         Assert.Equal(DetailSectionIds.Statistics, last.Id);
         Assert.Equal("dl", last.Children.Last().TagName, ignoreCase: true);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The hero row: the six facts a source leads with, under the name block.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The hero row, which a source always has: two of its six never resolve to nothing.</summary>
+    private static IElement Hero(IRenderedComponent<KildeView> cut) =>
+        cut.Find("dl.munin-explorer-page__facts");
+
+    /// <summary>One hero cell's value, without the note under it.</summary>
+    /// <remarks>
+    /// Split off rather than read whole, because the same-words comparison below is against the
+    /// section's value and the note is a second field joined to a label of its own.
+    /// </remarks>
+    private static string HeroValue(IElement hero, string label)
+    {
+        var cell = Fact(hero, label);
+        var note = cell.QuerySelector("small");
+
+        return note is null ? cell.TextContent : cell.TextContent[..^note.TextContent.Length];
+    }
+
+    [Fact]
+    public void HeroFacts_Always_ThenTheyAreTheSixTheMockupLeadsWith()
+    {
+        // The mockup's sixth is Tilgang, and the catalogue has no access field for a source — so
+        // Lovverk stands in it, which is the nearest thing a reader deciding whether they can have
+        // the data actually has. Six exactly: Stiler lays the row out as six equal tracks, so five
+        // leaves a hole and seven wraps to a row of one.
+        Assert.Equal(
+            ["Type datakilde", "Dataansvarlig", "Grad av personidentifikasjon", "Dataperiode",
+             "Totalt antall variabler", "Lovverk"],
+            Labels(Hero(Render(Kilde()))));
+    }
+
+    [Fact]
+    public void HeroFacts_Always_ThenEachReadsTheSameWordsAsTheSectionThatDrawsItBelow()
+    {
+        // The repetition is deliberate and the disagreement is the bug. A variable's DataType was
+        // ugly for exactly this reason: a block of its own and the catalogue's vocabulary resolved
+        // one field into two different words on one page. Compared literally, both ends rendered.
+        var cut = Render(Kilde());
+        var hero = Hero(cut);
+        var source = SourceInformation(cut);
+        var statistics = Statistics(cut);
+
+        Assert.Equal(Value(source, "Type datakilde"), HeroValue(hero, "Type datakilde"));
+        Assert.Equal(Value(source, "Dataansvarlig"), HeroValue(hero, "Dataansvarlig"));
+        Assert.Equal(Value(source, "Grad av personidentifikasjon"),
+                     HeroValue(hero, "Grad av personidentifikasjon"));
+        Assert.Equal(Value(source, "Lovverk"), HeroValue(hero, "Lovverk"));
+        Assert.Equal(Value(statistics, "Dataperiode"), HeroValue(hero, "Dataperiode"));
+        Assert.Equal(Value(statistics, "Totalt antall variabler"),
+                     HeroValue(hero, "Totalt antall variabler"));
+
+        // The note under the data period is the validity, which is a row of its own below: the
+        // label is what stops "2023 – Pågående" reading as a second data period.
+        Assert.Equal($"Gyldighet: {Value(source, "Gyldighet")}",
+                     Fact(hero, "Dataperiode").QuerySelector("small")!.TextContent);
+    }
+
+    [Fact]
+    public void HeroFacts_Always_ThenNothingIsTakenOutOfTheSectionsBelow()
+    {
+        // A summary, not a relocation. The hero draws six of these fields and both boxes still draw
+        // all nine, because none of them joins DrawnElsewhere — that set is for the same fact drawn
+        // twice in the body under two labels, and a hero row is a different register.
+        var cut = Render(Kilde());
+
+        Assert.Equal(
+            ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin"],
+            Labels(SourceInformation(cut)));
+        Assert.Equal(["Totalt antall variabler", "Dataperiode"], Labels(Statistics(cut)));
+
+        // And the row is above the body rather than inside it, so it is not a cell of the grid the
+        // contents column and the main column share.
+        Assert.Empty(cut.Find(".munin-explorer-page__body").QuerySelectorAll("dl.munin-explorer-page__facts"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenAFactHasNothingToQualify_ThenNoEmptySmallIsDrawn()
+    {
+        // Two of this source's six carry a note and four do not, so both halves are rendered here:
+        // an omitted element, not an empty one.
+        var hero = Hero(Render(Kilde()));
+
+        Assert.Null(Fact(hero, "Type datakilde").QuerySelector("small"));
+        Assert.Null(Fact(hero, "Dataansvarlig").QuerySelector("small"));
+        Assert.Null(Fact(hero, "Grad av personidentifikasjon").QuerySelector("small"));
+        Assert.Null(Fact(hero, "Lovverk").QuerySelector("small"));
+
+        // The count's own qualifier, which is what makes it honest: 312 variabler in how many
+        // collections is a different claim from 312 variabler.
+        Assert.Equal("1 datasamling",
+                     Fact(hero, "Totalt antall variabler").QuerySelector("small")!.TextContent);
+        Assert.Equal(2, hero.QuerySelectorAll("small").Length);
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheSourceHoldsNoCollections_ThenTheCountCarriesNoQualifierAtAll()
+    {
+        // "0 datasamlinger" under a variable count says nothing and contradicts the count above it
+        // whenever the catalogue has both. Dropped rather than drawn.
+        var hero = Hero(Render(Kilde() with { Datasamlinger = [], Delkilder = [] }));
+
+        Assert.Null(Fact(hero, "Totalt antall variabler").QuerySelector("small"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheSourceHangsItsCollectionsOffDelkilder_ThenTheNoteCountsThemToo()
+    {
+        // The count above the note is the source's total across the whole tree, so a note counted
+        // over the direct collections alone would say "312 variabler i 1 datasamling" for a source
+        // whose variables live across four — the dishonest claim the note exists to prevent.
+        var hero = Hero(Render(Kilde() with
+        {
+            Delkilder =
+            [
+                Delkilde("Biodata", [Collection("Prøver"), Collection("Analyser")]),
+                Delkilde("Tromsø 4", [], children: [Delkilde("Runde 7", [Collection("Spørreskjema")])]),
+            ],
+        }));
+
+        Assert.Equal("4 datasamlinger",
+                     Fact(hero, "Totalt antall variabler").QuerySelector("small")!.TextContent);
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheSourceCountsNoVariables_ThenItLeadsWithTheZeroRatherThanDropIt()
+    {
+        // TotalVariables is a non-nullable int, so the contract cannot say "not counted" and a
+        // nought here is a count of none — the reading KildeSortOrder and the kilder table's
+        // zero-weight count class both settled. KildeSearch prints it in words a section lower.
+        var cut = Render(Kilde() with { TotalVariables = 0 });
+
+        Assert.Equal("0", HeroValue(Hero(cut), "Totalt antall variabler"));
+
+        // And the section below it, which reads the same member: the two cannot disagree.
+        Assert.Equal("0", Value(Statistics(cut), "Totalt antall variabler"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheReaderIsEnglish_ThenTheCataloguesOwnWordsAreMarkedAndOursAreNot()
+    {
+        // The row is mixed the way the fact box below it is: the kildetype and the identification
+        // level are vocabularies this package translates, the controller and the legal basis are
+        // stored once in Norwegian however the reader is reading.
+        var hero = Hero(Render(Kilde(), language: "en"));
+
+        Assert.Equal("no", Fact(hero, "Data controller").QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Equal("no", Fact(hero, "Legal basis").QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Empty(Fact(hero, "Type of data source").QuerySelectorAll("span"));
+        Assert.Empty(Fact(hero, "Level of personal identification").QuerySelectorAll("span"));
     }
 
     // ---------------------------------------------------------------------------------

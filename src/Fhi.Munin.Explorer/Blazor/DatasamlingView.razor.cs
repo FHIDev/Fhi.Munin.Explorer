@@ -116,16 +116,47 @@ public sealed partial class DatasamlingView : ComponentBase
             ? []
             : [
                 (T.FieldSource, datasamling.ParentKildeName, true),
-                (T.FacetKildeType, T.KildeTypeLabel(datasamling.EffectiveKildetype, datasamling.EffectiveKildetype), false),
+                (T.FacetKildeType, KildetypeLabel, false),
                 (T.FieldLegalBasis, datasamling.EffectiveLegalBasis, true),
                 (T.FieldDataController, datasamling.EffectiveDataController, true),
                 (T.FieldDataProcessor, datasamling.EffectiveDataProcessor, true),
-                (T.FieldPersonIdentification, T.PersonIdentificationLabel(datasamling.EffectivePersonIdentificationLevel), false),
-                (T.FieldValidity,
-                 CatalogueDate.Period(datasamling.EffectiveValidFrom, datasamling.EffectiveValidTo, Language, T),
-                 false),
+                (T.FieldPersonIdentification, PersonIdentification, false),
+                (T.FieldValidity, Validity, false),
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false),
             ];
+
+    /// <summary>
+    /// The four values the hero row and the fact boxes both draw, resolved once each.
+    /// </summary>
+    /// <remarks>
+    /// One member per value rather than one expression per surface, for the reason
+    /// <see cref="KildeView.KildetypeLabel"/> gives: the hero repeats what the sections show, and
+    /// two resolutions of one field are how one fact ends up on one page under two different words.
+    /// Every one of them is the inherited <c>Effective…</c> value, as this view's own remarks
+    /// require.
+    /// </remarks>
+    private string? KildetypeLabel =>
+        Datasamling is { } datasamling
+            ? T.KildeTypeLabel(datasamling.EffectiveKildetype, datasamling.EffectiveKildetype)
+            : null;
+
+    /// <inheritdoc cref="KildetypeLabel"/>
+    private string? PersonIdentification =>
+        Datasamling is { } datasamling
+            ? T.PersonIdentificationLabel(datasamling.EffectivePersonIdentificationLevel)
+            : null;
+
+    /// <inheritdoc cref="KildetypeLabel"/>
+    private string? Validity =>
+        Datasamling is { } datasamling
+            ? CatalogueDate.Period(datasamling.EffectiveValidFrom, datasamling.EffectiveValidTo, Language, T)
+            : null;
+
+    /// <inheritdoc cref="KildetypeLabel"/>
+    private string? VariableCount =>
+        Datasamling is { } datasamling && datasamling.VariableCount > 0
+            ? datasamling.VariableCount.ToString()
+            : null;
 
     /// <summary>
     /// How the data is collected and how much of it there is.
@@ -143,7 +174,43 @@ public sealed partial class DatasamlingView : ComponentBase
             : [
                 (T.FieldFrequency, datasamling.Frequency, true),
                 (T.FieldCountingUnit, datasamling.CountingUnit, true),
-                (T.FieldVariableCount, datasamling.VariableCount > 0 ? datasamling.VariableCount.ToString() : null, false),
+                (T.FieldVariableCount, VariableCount, false),
+            ];
+
+    /// <summary>
+    /// The six facts a datasamling leads with — the source's own six, with Gyldighet where a source
+    /// has Dataperiode and the collection's own variable count where a source has its total.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The same six on purpose: a reader moving between a source and one of its collections is
+    /// comparing them, and a row that reorders itself between the two pages is a row they have to
+    /// read twice. Every value is the member the section below reads, so the two cannot come out in
+    /// different words, and no key goes into a <c>drawnElsewhere</c> set on account of being here —
+    /// this view names none at all.
+    /// </para>
+    /// <para>
+    /// Kilde is deliberately not among them although the fact box below shows it: the breadcrumb
+    /// directly above already names the source, and a fact strip that repeats the chrome spends a
+    /// slot on something the reader has just read. Telleenhet qualifies the count rather than
+    /// taking a slot of its own, and Frekvens qualifies nothing today — no datasamling in the
+    /// catalogue carries one — so it stays in Statistikk where an empty row draws nothing.
+    /// </para>
+    /// </remarks>
+    private IReadOnlyList<DetailFact> HeroFacts =>
+        Datasamling is not { } datasamling
+            ? []
+            : [
+                new DetailFact(T.FacetKildeType, KildetypeLabel),
+                new DetailFact(T.FieldDataController, datasamling.EffectiveDataController,
+                               CatalogueProperties.Foreign("no", Reader)),
+                new DetailFact(T.FieldPersonIdentification, PersonIdentification),
+                new DetailFact(T.FieldValidity, Validity),
+                new DetailFact(T.FieldVariableCount, VariableCount,
+                               NoteLabel: T.FieldCountingUnit, Note: datasamling.CountingUnit,
+                               NoteLang: CatalogueProperties.Foreign("no", Reader)),
+                new DetailFact(T.FieldLegalBasis, datasamling.EffectiveLegalBasis,
+                               CatalogueProperties.Foreign("no", Reader)),
             ];
 
     /// <summary>Whether the statistics block has a row to draw, heading and section included.</summary>

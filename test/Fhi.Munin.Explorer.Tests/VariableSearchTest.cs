@@ -10034,8 +10034,11 @@ public class VariableSearchTest : BunitContext
                         KodeverkLines(cut)[1].QuerySelector(".munin-explorer-kodeverk__reference")!.ClassName!);
     }
 
+    // Every dl but the chassis's hero row, which repeats six of the kilde's fields above the body:
+    // counted in, it would shift every index here by six the moment a source is opened inside the
+    // panel. (Fhi.Metadata-35w0p.26)
     private static IReadOnlyList<AngleSharp.Dom.IElement> Values(IRenderedComponent<VariableSearch> cut) =>
-        [.. Panel(cut).QuerySelectorAll("dl dd")];
+        [.. Panel(cut).QuerySelectorAll("dl:not(.munin-explorer-page__facts) dd")];
 
     private static DetailClient TwoRows() =>
         new DetailClient(OnePage(Row(TaleId, "1. Tale"), Row(SpyttId, "2. Spyttsekresjon")))
@@ -11669,11 +11672,14 @@ public class VariableSearchTest : BunitContext
     private static AngleSharp.Dom.IElement SourcePanel(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-drilldown");
 
+    // The fact lists alone, not every dl in the drill-in: the chassis's hero row is a dl too, and
+    // it repeats six of these fields above the body — so an unscoped selector reads the summary
+    // back and reports the sections as having moved. (Fhi.Metadata-35w0p.26)
     private static IReadOnlyList<string> SourceLabels(IRenderedComponent<VariableSearch> cut) =>
-        [.. SourcePanel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent)];
+        [.. SourcePanel(cut).QuerySelectorAll("dl.munin-explorer-page__fields dt").Select(t => t.TextContent)];
 
     private static IReadOnlyList<string> SourceValues(IRenderedComponent<VariableSearch> cut) =>
-        [.. SourcePanel(cut).QuerySelectorAll("dl dd").Select(d => d.TextContent)];
+        [.. SourcePanel(cut).QuerySelectorAll("dl.munin-explorer-page__fields dd").Select(d => d.TextContent)];
 
     /// <summary>Open the first row's detail panel and then one of its two owners.</summary>
     private IRenderedComponent<VariableSearch> OpenOwner(DetailClient client, int index)
@@ -12444,7 +12450,9 @@ public class VariableSearchTest : BunitContext
              "Total number of variables", "Data period"],
             SourceLabels(cut));
 
-        var values = SourcePanel(cut).QuerySelectorAll("dl dd");
+        // The fact lists alone: the hero row above them repeats six of these fields, so an
+        // unscoped selector reads the summary rather than the sections. (Fhi.Metadata-35w0p.26)
+        var values = SourcePanel(cut).QuerySelectorAll("dl.munin-explorer-page__fields dd");
 
         // Our prose, so no lang of its own; the register's own name keeps one.
         Assert.Equal("National medical quality registry", values[0].TextContent);
@@ -12514,6 +12522,9 @@ public class VariableSearchTest : BunitContext
                 "munin-explorer-kilde__identifiers",
                 "munin-explorer-kilde__kildetype",
                 "munin-explorer-kilde__description",
+                // The hero row, between the name block and the body. Always drawn on a source:
+                // two of its six facts fall back to Texts.NotSpecified rather than to nothing.
+                "munin-explorer-page__facts",
                 "munin-explorer-page__body",
                 // The contents column, ahead of the main one: the nav fills it, and the nav's own
                 // list wears helsedata's form-menu names rather than anything in this prefix.
@@ -12555,8 +12566,12 @@ public class VariableSearchTest : BunitContext
         // GetAttribute, not ClassName: AngleSharp reports a missing class attribute as "" rather
         // than null, so the null branch of this list was unreachable and the assertion did not mean
         // what it said.
+        // The hero row is the third shape a <dl> takes here, and the one name that is not a fact
+        // list: it is the chassis's own row above the body, not a block inside one.
         Assert.All(panel.QuerySelectorAll("dl"),
-                   e => Assert.Contains(e.GetAttribute("class"), (string?[])[null, "munin-explorer-page__fields"]));
+                   e => Assert.Contains(e.GetAttribute("class"),
+                                        (string?[])[null, "munin-explorer-page__fields",
+                                                    "munin-explorer-page__facts"]));
 
         Back(cut);
 
