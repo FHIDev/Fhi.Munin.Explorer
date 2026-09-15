@@ -132,8 +132,12 @@ public sealed class DetailToc : ComponentBase, IDisposable
         builder.OpenElement(0, "nav");
         builder.AddAttribute(1, "aria-label", Label);
 
-        builder.OpenElement(2, "ul");
-        builder.AddAttribute(3, "class", "form-menu__list");
+        builder.OpenElement(2, "h2");
+        builder.AddContent(3, Label);
+        builder.CloseElement();
+
+        builder.OpenElement(4, "ul");
+        builder.AddAttribute(5, "class", "form-menu__list");
 
         // Rooted-absolute, the shape UrlMirror.Address writes, so the fallback and the cascade agree.
         // It carries the host's path base whatever the document's <base href> says, because a rooted
