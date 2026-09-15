@@ -161,6 +161,28 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // The same tree with the Ikoner switch pressed, which is the one state where a facet row names
+  // itself without its datakategori words: the glyphs are aria-hidden and the words stand in for
+  // them, so both leave together and what is left has to name the row on its own. The badge is a
+  // fact rather than decoration and is asserted still there — a press that took it with the
+  // pictures would be a name losing a word, which axe cannot see. (Fhi.Metadata-kd9ts)
+  'filters-node-icons-off': async page => {
+    await states['filters-level-lines'](page);
+
+    const panel = page.locator('.munin-explorer-filters');
+    const control = panel.getByRole('switch', { name: 'Ikoner', exact: true });
+
+    await control.waitFor({ state: 'visible', timeout: findTimeout });
+    await control.click();
+
+    await panel.locator('.munin-explorer-filters__icons').first()
+      .waitFor({ state: 'detached', timeout: findTimeout });
+
+    if (await panel.locator('.munin-explorer-filters__badge').count() === 0) {
+      throw new Error('Turning the node icons off took the kildetype badge with them');
+    }
+  },
+
   // A variable row opened. The panel under the row is the largest block of markup in the package
   // that only exists after a click — every property, the statistics block and the owner buttons.
   // It fetches, so the wait is on the region reporting itself done rather than on it appearing.

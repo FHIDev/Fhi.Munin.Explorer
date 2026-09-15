@@ -299,11 +299,12 @@ internal sealed record Texts(
     // questions, and the dataperiode's two ends. Chips from the other facets are the value alone,
     // which is the word the panel's own checkbox carries. (Fhi.Metadata-l9l2n.68)
     Func<string, string, string> FilterInFacet,
-    // The panel's toolbar. Three presses that change how the tree is drawn and narrow nothing, so
+    // The panel's toolbar. Four presses that change how the tree is drawn and narrow nothing, so
     // none of them is named for a filter. (Fhi.Metadata-wcbxi)
     string ExpandAllFacets,
     string CollapseAllFacets,
     string LevelLines,
+    string NodeIcons,
     // A branch of the source tree opens and shuts on a control of its own, beside the checkbox and
     // never part of it: expanding narrows nothing. Named after the node, because "Vis" repeated
     // down a tree says nothing about which branch it opens. (Fhi.Metadata-adog5)
@@ -1021,6 +1022,7 @@ internal sealed record Texts(
         ExpandAllFacets: "Utvid alle",
         CollapseAllFacets: "Skjul alle",
         LevelLines: "Nivålinjer",
+        NodeIcons: "Ikoner",
         ExpandBranch: "Vis nivåene under",
         CollapseBranch: "Skjul nivåene under",
         FacetsExpanded: "Alle filtre er utvidet.",
@@ -1388,6 +1390,7 @@ internal sealed record Texts(
         ExpandAllFacets: "Expand all",
         CollapseAllFacets: "Collapse all",
         LevelLines: "Level lines",
+        NodeIcons: "Icons",
         ExpandBranch: "Show the levels under",
         CollapseBranch: "Hide the levels under",
         FacetsExpanded: "All filters expanded.",

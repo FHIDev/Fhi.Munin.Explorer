@@ -22,7 +22,8 @@
 //     variable explorer: the picker's refusal to hide the last column, a facet press dropped because
 //     a fetch was already in flight, and the two the facet tree's branch disclosures add — that a
 //     shut branch leaves nothing behind for a Tab to land on, and that folding one over a ticked
-//     value leaves the value ticked;
+//     value leaves the value ticked. The toolbar's Ikoner switch is measured beside them and is not
+//     a refusal at all: the press is accepted, and what is asked is what the redraw left alone;
 //   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
 //     visited at all;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this
@@ -277,6 +278,33 @@ const chosenInFacet = facet => facet.locator(':scope > summary').evaluate(summar
 
 /** How many of a facet's boxes the BROWSER has ticked, nested values included. */
 const tickedInFacet = facet => facet.locator(':scope input[type=checkbox]:checked').count();
+
+/** The row over the facets holding the two switches that redraw the tree without narrowing it. */
+const TOOLBAR = '.munin-explorer-filters__toolbar';
+
+/** The decorative glyph slot a facet row draws in front of its name, where it draws one. */
+const ICONS = '.munin-explorer-filters__icons';
+
+/** The Ikoner switch's own label, which is what tells it from Nivålinjer beside it. */
+const ICONS_SWITCH = 'Ikoner';
+
+/**
+ * Press one of the toolbar's switches, from the keyboard, and wait until it says it has moved.
+ *
+ * By its accessible name and not by index: the row holds two switches drawn from one shape, and a
+ * press that landed on the other would still leave every reading below looking sane. From the
+ * keyboard because a <button role="switch"> answering Space with no handler of ours is half of
+ * what makes the control a control.
+ */
+async function pressSwitch(page, name, checked) {
+  const control = page.locator(TOOLBAR).getByRole('switch', { name, exact: true });
+
+  await control.waitFor({ state: 'visible', timeout: findTimeout });
+  await control.focus();
+  await page.keyboard.press(' ');
+  await control.and(page.locator(`[aria-checked="${checked}"]`))
+    .waitFor({ state: 'attached', timeout: findTimeout });
+}
 
 export const assertions = [
   {
@@ -798,6 +826,108 @@ export const assertions = [
 
     // The flip the missing call would leave behind, put there by hand, exactly as the picker's and
     // the facet's own controls do it.
+    async control(page, { names }) {
+      await rowOf(branchNamed(page, names))
+        .locator('ul input[type=checkbox]:checked').first()
+        .evaluate(box => { box.checked = false; });
+    },
+  },
+
+  {
+    name: 'turning the node icons off redraws the rows and leaves what is ticked ticked',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    // Why a browser rather than bUnit. The glyph slot sits INSIDE the <label> the checkbox is in,
+    // so turning it off edits the subtree around a control whose state the browser holds and the
+    // render tree does not: `input.checked` is the browser's, and a patch that replaced the input
+    // instead of editing beside it would drop a tick the component still believes in. bUnit
+    // re-reads its own render tree, where the tick is an attribute, and agrees with itself either
+    // way. The press is also the one thing here that is not a refusal — it is a redraw the
+    // component accepts — so what is asked is what the redraw left alone. (Fhi.Metadata-kd9ts)
+    async stage(page) {
+      const { panel, names, label, disclosure } = await openFirstShutBranch(page);
+
+      const facet = disclosure.locator('xpath=ancestor::details[1]');
+      // Under the row's own list rather than the row's own checkbox, as the fold assertion does:
+      // what has to survive the redraw is a value the branch disclosed.
+      const box = rowOf(disclosure).locator('ul input[type=checkbox]:not(:checked)').first();
+
+      await box.waitFor({ state: 'visible', timeout: findTimeout });
+      await box.click();
+
+      // Both edges of the refetch a tick provokes, the rise caught where it can be: what the
+      // switch then redraws has to be the tree the answer rebuilt.
+      await panel.and(page.locator('[aria-busy="true"]'))
+        .waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+      await panel.and(page.locator('[aria-busy="false"]'))
+        .waitFor({ state: 'visible', timeout: findTimeout });
+
+      const chosen = await chosenInFacet(facet);
+
+      if (chosen === 0) {
+        throw new Error(`ticking a value under "${label}" chose nothing, so there is nothing to keep`);
+      }
+
+      const drawn = await panel.locator(ICONS).count();
+
+      if (drawn === 0) {
+        throw new Error('the panel drew no node icons at all, so turning them off proves nothing');
+      }
+
+      const lines = await panel.getAttribute('data-level-lines');
+
+      await pressSwitch(page, ICONS_SWITCH, 'false');
+
+      const whileOff = await panel.locator(ICONS).count();
+
+      await pressSwitch(page, ICONS_SWITCH, 'true');
+
+      return { names, label, chosen, drawn, whileOff, lines };
+    },
+
+    async measure(page, { names, label, chosen, drawn, whileOff, lines }) {
+      const panel = page.locator(PANEL);
+      const disclosure = branchNamed(page, names);
+      const branches = await disclosure.count();
+
+      if (branches !== 1) {
+        return `the panel draws ${branches} branches named "${label}" where it drew one — nothing was measured`;
+      }
+
+      // Reported rather than passed over: a switch that redrew nothing is one this assertion could
+      // not have failed on, whatever the rows then did.
+      if (whileOff !== 0) {
+        return `${whileOff} icon slot(s) were still drawn with the switch off, so the press redrew nothing`;
+      }
+
+      const back = await panel.locator(ICONS).count();
+
+      if (back !== drawn) {
+        return `${back} icon slot(s) came back where ${drawn} went away, so the switch is not its own undo`;
+      }
+
+      if (await panel.getAttribute('data-level-lines') !== lines) {
+        return 'the level lines moved with the node icons: one switch in the toolbar drove the other';
+      }
+
+      const facet = disclosure.locator('xpath=ancestor::details[1]');
+      const nowChosen = await chosenInFacet(facet);
+      const ticked = await tickedInFacet(facet);
+
+      if (nowChosen !== chosen) {
+        return `the facet says ${nowChosen} value(s) are chosen where it said ${chosen} before the ` +
+          'icons were turned off and on: redrawing the rows changed the filter';
+      }
+
+      return ticked === nowChosen
+        ? null
+        : `${ticked} checkbox(es) are ticked in a facet the panel says holds ${nowChosen}: redrawing ` +
+          "the rows without their icons left the browser's own tick at odds with the filter";
+    },
+
+    // The same hand-made flip the two above use — here it stands for the redraw having taken the
+    // checkbox with the slot beside it and put back one the browser had never ticked.
     async control(page, { names }) {
       await rowOf(branchNamed(page, names))
         .locator('ul input[type=checkbox]:checked').first()

@@ -19,8 +19,12 @@
 # because the disagreement is invisible to bUnit. This run fails on either, and each removal fails
 # only its own assertion. (Fhi.Metadata-1s7z1)
 #
+# It asks the filter panel's Ikoner switch one more, and that press is ACCEPTED rather than refused:
+# the glyph slot sits inside the label the checkbox is in, so what a redraw does to the browser's
+# own tick beside it is a question a render tree cannot answer. (Fhi.Metadata-kd9ts)
+#
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
-#   - the six presses it stages are the whole of it. scripts/state-assertions.mjs lists what that
+#   - the seven presses it stages are the whole of it. scripts/state-assertions.mjs lists what that
 #     leaves out — the kildeutforsker's copy of the same picker, the facet panel's other refusal
 #     path, the contents nav's focus step, and every other control in the component;
 #   - one press per call site. The picker's other columns and the panel's other facets go the same
@@ -214,8 +218,9 @@ cat <<'EOF'
 A refused press left the DOM and the component agreeing, and each assertion still fires against
 the defect it exists for.
 
-Read that for what it is. Four presses were staged in the variable explorer's column picker and
-its facet panel, and one in each of the two contents navs, against the sample stylesheet. The
-header of this script and of scripts/state-assertions.mjs list what that leaves out - the contents
-nav's focus step in particular, which this host's router takes over.
+Read that for what it is. Four refused presses were staged in the variable explorer's column
+picker and its facet panel, one accepted press on the panel's Ikoner switch, and one in each of
+the two contents navs, against the sample stylesheet. The header of this script and of
+scripts/state-assertions.mjs list what that leaves out - the contents nav's focus step in
+particular, which this host's router takes over.
 EOF

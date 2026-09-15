@@ -18,6 +18,7 @@ public partial class VariableSearch
         _sort = Sort;
         _direction = Direction;
         _levelLines = LevelLines;
+        _showNodeIcons = ShowNodeIcons;
         _page = Math.Max(Page, 1);
         _pageSize = PageSize;
 
