@@ -1,5 +1,7 @@
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -16,6 +18,14 @@ namespace Fhi.Munin.Explorer.Tests;
 /// the scroll position an active item is permanently wrong on every section but one, so the
 /// highlight waits for the scroll-spy rather than being faked here.
 /// </para>
+/// <para>
+/// <b>What the href tests here cannot prove.</b> They read the <c>href</c> ATTRIBUTE, which is a
+/// string in a render tree. What broke on helsedata is what the browser RESOLVES that string to
+/// against the page's <c>&lt;base href&gt;</c>, and bUnit has no base element and no URL resolver,
+/// so it would report <c>#metadata</c> as correct in the broken build and the fixed one alike. The
+/// resolved value is measured in a browser, by the contents-nav assertion in
+/// <c>scripts/state-assertions.mjs</c>. These tests pin the string that assertion depends on.
+/// </para>
 /// </remarks>
 public class DetailTocTest : BunitContext
 {
@@ -26,23 +36,115 @@ public class DetailTocTest : BunitContext
         new(DetailSectionIds.Statistics, "Statistikk"),
     ];
 
-    private IRenderedComponent<DetailToc> RenderToc(IReadOnlyList<DetailTocEntry> entries) =>
-        Render<DetailToc>(parameters => parameters
-            .Add(p => p.Entries, entries)
-            .Add(p => p.Label, "Innhold"));
+    private IRenderedComponent<DetailToc> RenderToc(
+        IReadOnlyList<DetailTocEntry> entries, string? cascaded = null) =>
+        Render<DetailToc>(parameters =>
+        {
+            parameters.Add(p => p.Entries, entries).Add(p => p.Label, "Innhold");
+
+            // Only when there is one: bUnit refuses a null cascading value, and a host that
+            // cascades nothing is the case every other test here is about.
+            if (cascaded is not null)
+            {
+                parameters.AddCascadingValue(DetailToc.PageAddressName, cascaded);
+            }
+        });
+
+    /// <summary>Put the circuit at <paramref name="url"/>, as a host mounting the nav would.</summary>
+    private void Arrive(string url) =>
+        Services.GetRequiredService<NavigationManager>().NavigateTo(url);
 
     [Fact]
-    public void Render_WhenThereAreEntries_ThenEachIsAPlainFragmentLinkInTheOrderGiven()
+    public void Render_WhenThereAreEntries_ThenEachLinksToItsSectionInTheOrderGiven()
     {
-        // Plain #fragment anchors are the whole of this bead: the browser scrolls, the section's
-        // own scroll-margin-top keeps the heading clear of a sticky header, and no script runs.
+        // Fragment anchors are the whole of this bead: the browser scrolls, the section's own
+        // scroll-margin-top keeps the heading clear of a sticky header, and no script runs.
         var cut = RenderToc(Three);
 
-        Assert.Equal(["#metadata", "#source", "#statistics"],
+        Assert.Equal(["/#metadata", "/#source", "/#statistics"],
                      cut.FindAll("a").Select(a => a.GetAttribute("href")));
 
         Assert.Equal(["Metadata", "Kildeinformasjon", "Statistikk"],
                      cut.FindAll("a").Select(a => a.TextContent));
+    }
+
+    [Fact]
+    public void Render_WhenTheCircuitCarriesAPathAndQuery_ThenEveryHrefNamesThemBeforeTheFragment()
+    {
+        // The bare "#id" this replaces resolved against the host's <base href="/"> rather than
+        // against the page, so every entry left the kilde for the site root. Both halves are load
+        // bearing: without the query the jump is a different document and the browser reloads,
+        // which fixes the scroll and loses the ?kilde= (Fhi.Metadata-l9l2n.114).
+        Arrive("http://localhost/MuninKelda/?kilde=8dee8189-0e2d-4e6d-9362-e0bf8ede8d95");
+
+        var cut = RenderToc(Three);
+
+        Assert.All(cut.FindAll("a"), link => Assert.StartsWith(
+            "/MuninKelda/?kilde=8dee8189-0e2d-4e6d-9362-e0bf8ede8d95#",
+            link.GetAttribute("href"),
+            StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_WhenTheCircuitsAddressCarriesAFragment_ThenItIsNotCarriedIntoTheHrefs()
+    {
+        // A reader who arrived on a deep link, or pressed an entry in a host that told Blazor
+        // about it. Two fragments in one href point at nothing at all.
+        Arrive("http://localhost/kilder?kilde=abc#source");
+
+        var cut = RenderToc(Three);
+
+        Assert.Equal("/kilder?kilde=abc#metadata", cut.FindAll("a")[0].GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Render_WhenAWrapperCascadesItsMirroredAddress_ThenTheHrefsUseItRatherThanTheCircuits()
+    {
+        // UrlMirror moves the address bar with history.replaceState, which Blazor is never told
+        // about, so NavigationManager.Uri is the address the circuit LOADED. A kilde opened from
+        // the list is in the cascaded value and in no other reachable place.
+        Arrive("http://localhost/kilder");
+
+        var cut = RenderToc(Three, "/kilder?kilde=abc");
+
+        Assert.Equal("/kilder?kilde=abc#metadata", cut.FindAll("a")[0].GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Moved_WhenTheHostRewritesTheQueryUnderAStandingComponent_ThenTheHrefsFollow()
+    {
+        // Why the LocationChanged subscription is there, and the half every other test here misses
+        // by arriving BEFORE it renders. A host owning its own query moves it under a component
+        // nothing above re-renders, and the links would go on naming the address it arrived on.
+        Arrive("http://localhost/kilder?kilde=one");
+
+        var cut = RenderToc(Three);
+
+        Assert.Equal("/kilder?kilde=one#metadata", cut.FindAll("a")[0].GetAttribute("href"));
+
+        Arrive("http://localhost/kilder?kilde=two");
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "/kilder?kilde=two#metadata", cut.FindAll("a")[0].GetAttribute("href")));
+    }
+
+    [Fact]
+    public void Moved_WhenTheComponentIsGone_ThenItIsNotStillListeningForNavigations()
+    {
+        // LocationChanged belongs to the host and outlives every component that touches it, and a
+        // nav is built afresh on every drill-in: a lost unsubscribe accumulates one handler per
+        // detail view the reader opens. Silent, because rendering a disposed component is a no-op.
+        var cut = RenderToc(Three);
+        var toc = cut.Instance;
+
+        Assert.Contains(toc, NavigationListeners.Of(Services.GetRequiredService<NavigationManager>()));
+
+        // The call the renderer makes when a host's Router leaves the page, made directly: the
+        // renderer's own DisposeComponents queues it and returns, which is a race from here.
+        ((IDisposable)toc).Dispose();
+
+        Assert.DoesNotContain(toc, NavigationListeners.Of(Services.GetRequiredService<NavigationManager>()));
+        Assert.Null(Record.Exception(() => Arrive("http://localhost/kilder?kilde=three")));
     }
 
     [Fact]

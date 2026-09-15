@@ -1376,6 +1376,10 @@ public class KildeViewTest : BunitContext
             // invented here — and the block's heading opens the section rather than sitting above it.
             Assert.True(section.HasAttribute("data-nav-section"));
             Assert.Contains(section.FirstElementChild!.TagName, (string[])["H3", "H4", "H5", "H6"]);
+
+            // A fragment jump moves focus only to a focusable target, so without this the reader
+            // is scrolled here and their next Tab carries on from the nav — WCAG 2.4.3.
+            Assert.Equal("-1", section.GetAttribute("tabindex"));
         });
 
         // The name is the view's own title, not a section of it: a contents nav listing it would
@@ -1456,9 +1460,16 @@ public class KildeViewTest : BunitContext
     // The contents nav in the column beside them.
     // ---------------------------------------------------------------------------------
 
-    /// <summary>Where the nav's entries point, in document order.</summary>
+    /// <summary>Which section each entry names, in document order.</summary>
+    /// <remarks>
+    /// The fragment alone. In front of it every href carries this page's own path and query, which
+    /// is what stops a bare <c>#id</c> resolving against a host's <c>&lt;base href&gt;</c>; that
+    /// prefix says nothing about which block an entry names and is pinned in DetailTocTest.
+    /// </remarks>
     private static IReadOnlyList<string> Targets(IRenderedComponent<KildeView> cut) =>
-        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")!)];
+        [.. cut.FindAll(".munin-explorer-page__toc a")
+               .Select(link => link.GetAttribute("href")!)
+               .Select(href => href[href.IndexOf('#', StringComparison.Ordinal)..])];
 
     /// <summary>What the nav's entries say, in document order.</summary>
     private static IReadOnlyList<string> Entries(IRenderedComponent<KildeView> cut) =>
@@ -1609,7 +1620,7 @@ public class KildeViewTest : BunitContext
         foreach (var (kilde, heading) in cases)
         {
             var cut = Render(kilde, dataCollectionsHeading: heading);
-            var entry = cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.DataCollections}']");
+            var entry = cut.Find($".munin-explorer-page__toc a[href$='#{DetailSectionIds.DataCollections}']");
 
             Assert.Equal(
                 cut.Find($"#{DetailSectionIds.DataCollections}").FirstElementChild!.TextContent,

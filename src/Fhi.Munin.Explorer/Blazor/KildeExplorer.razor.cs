@@ -339,6 +339,13 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private Func<Guid?, string> DatasamlingHref =>
         _address ??= datasamling => _mirror.Address(Query(_selectedKildeId, datasamling));
 
+    /// <summary>This page as the reader's address bar now reads it, for the contents nav.</summary>
+    /// <remarks>
+    /// Built fresh on every render rather than held: the fields it reads move without a navigation,
+    /// and a contents link naming the kilde before last would take the reader off this page.
+    /// </remarks>
+    private string PageAddress => _mirror.Address(Query(_selectedKildeId, _selectedDatasamlingId));
+
     /// <summary>This same page with no kilde open — the trail's step back to the list.</summary>
     /// <remarks>
     /// The order the reader chose is kept: holding the closure for the component's life — the

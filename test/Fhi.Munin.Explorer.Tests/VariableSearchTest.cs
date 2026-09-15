@@ -5696,7 +5696,7 @@ public class VariableSearchTest : BunitContext
     /// Rows rather than controls, because a variabelgruppe in this tree is a container: it wears no
     /// checkbox and no button, so <see cref="Facet"/> — which reads both — cannot reach it.
     /// </remarks>
-    private static IReadOnlyList<IElement> PanelRows(IRenderedComponent<VariableSearch> cut, string label) =>
+    private static IReadOnlyList<IElement> FilterPanelRows(IRenderedComponent<VariableSearch> cut, string label) =>
         [.. FilterPanel(cut).QuerySelectorAll("li")
             .Where(li => RowWords(li).StartsWith(label, StringComparison.Ordinal))];
 
@@ -5740,10 +5740,10 @@ public class VariableSearchTest : BunitContext
         // inside it: folding it into one would say the variables are in a datasamling they are not.
         Branch(cut, "Tromsø 4").Click();
 
-        var delkilde = Assert.Single(PanelRows(cut, "Tromsø 4"));
+        var delkilde = Assert.Single(FilterPanelRows(cut, "Tromsø 4"));
 
-        Assert.Contains(Assert.Single(PanelRows(cut, "Miljø")), delkilde.QuerySelectorAll("li"));
-        Assert.Empty(Assert.Single(PanelRows(cut, "Fjerde runde")).QuerySelectorAll("li"));
+        Assert.Contains(Assert.Single(FilterPanelRows(cut, "Miljø")), delkilde.QuerySelectorAll("li"));
+        Assert.Empty(Assert.Single(FilterPanelRows(cut, "Fjerde runde")).QuerySelectorAll("li"));
     }
 
     [Fact]
@@ -5767,7 +5767,7 @@ public class VariableSearchTest : BunitContext
         ExpandBranches(cut);
 
         Assert.Equal(["Kosthold", "Måltider", "Miljø"],
-                     Assert.Single(PanelRows(cut, "Tromsø 1")).QuerySelectorAll("li").Select(RowWords));
+                     Assert.Single(FilterPanelRows(cut, "Tromsø 1")).QuerySelectorAll("li").Select(RowWords));
     }
 
     [Fact]
@@ -5779,8 +5779,8 @@ public class VariableSearchTest : BunitContext
 
         ExpandBranches(cut);
 
-        var branch = Assert.Single(PanelRows(cut, "Kosthold"));
-        var leaf = Assert.Single(PanelRows(cut, "Måltider"));
+        var branch = Assert.Single(FilterPanelRows(cut, "Kosthold"));
+        var leaf = Assert.Single(FilterPanelRows(cut, "Måltider"));
 
         Assert.Contains("munin-explorer-filters__branch", branch.ClassName!, StringComparison.Ordinal);
         Assert.NotNull(branch.QuerySelector(".munin-explorer-filters__disclosure"));
@@ -5789,7 +5789,7 @@ public class VariableSearchTest : BunitContext
         Assert.Empty(leaf.QuerySelectorAll(".munin-explorer-filters__disclosure"));
 
         // The datasamling holding them is a branch now, where with no groups in it it was a leaf.
-        Assert.NotNull(Assert.Single(PanelRows(cut, "Tromsø 1"))
+        Assert.NotNull(Assert.Single(FilterPanelRows(cut, "Tromsø 1"))
                            .QuerySelector(".munin-explorer-filters__disclosure"));
     }
 
@@ -5846,7 +5846,7 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal("true", open.GetAttribute("aria-expanded"));
         Assert.Equal("Skjul nivåene under Kosthold", AccessibleName.Of(open));
-        Assert.Equal(Assert.Single(PanelRows(cut, "Kosthold")).QuerySelector("ul")!.Id,
+        Assert.Equal(Assert.Single(FilterPanelRows(cut, "Kosthold")).QuerySelector("ul")!.Id,
                      open.GetAttribute("aria-controls"));
     }
 
@@ -5872,7 +5872,7 @@ public class VariableSearchTest : BunitContext
         // And no group is offered as a filter yet: the tree and the standalone facet share one id,
         // and a checkbox here before Fhi.Metadata-km3zb holds the two in step is a second control
         // over that id with nothing keeping them one selection.
-        Assert.Empty(Assert.Single(PanelRows(cut, "Måltider")).QuerySelectorAll("input"));
+        Assert.Empty(Assert.Single(FilterPanelRows(cut, "Måltider")).QuerySelectorAll("input"));
     }
 
     [Fact]
@@ -5910,13 +5910,13 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal("true", BranchDisclosure(opened[0]).GetAttribute("aria-expanded"));
         Assert.Equal("false", BranchDisclosure(opened[1]).GetAttribute("aria-expanded"));
-        Assert.Single(PanelRows(cut, "Serum"));
+        Assert.Single(FilterPanelRows(cut, "Serum"));
 
         BranchDisclosure(BranchRows(cut, "Prøvesvar")[1]).Click();
 
         var both = BranchRows(cut, "Prøvesvar");
 
-        Assert.Equal(2, PanelRows(cut, "Serum").Count);
+        Assert.Equal(2, FilterPanelRows(cut, "Serum").Count);
         Assert.NotEqual(BranchDisclosure(both[0]).GetAttribute("aria-controls"),
                         BranchDisclosure(both[1]).GetAttribute("aria-controls"));
     }
@@ -5985,14 +5985,14 @@ public class VariableSearchTest : BunitContext
 
         ExpandBranches(cut);
 
-        Assert.Empty(PanelRows(cut, "Kosthold"));
+        Assert.Empty(FilterPanelRows(cut, "Kosthold"));
 
         client.Refreshed = true;
         ClickFacet(cut, "Vis historiske");
 
         ExpandBranches(cut);
 
-        Assert.Single(PanelRows(cut, "Kosthold"));
+        Assert.Single(FilterPanelRows(cut, "Kosthold"));
     }
 
     [Fact]
@@ -12713,7 +12713,13 @@ public class VariableSearchTest : BunitContext
         PressOwnerControl(WholeVariableToggle(cut));
 
         var view = cut.Find(".munin-explorer-drilldown");
-        var targets = view.QuerySelectorAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")).ToList();
+        // The fragment alone. In front of it every href carries this page's own path and query,
+        // which stops a bare "#id" resolving against a host's <base href>; that prefix says
+        // nothing about which block an entry names and is pinned in DetailTocTest.
+        var targets = view.QuerySelectorAll(".munin-explorer-page__toc a")
+                          .Select(link => link.GetAttribute("href")!)
+                          .Select(href => href[href.IndexOf('#', StringComparison.Ordinal)..])
+                          .ToList();
 
         Assert.Equal(view.QuerySelectorAll("section[data-nav-section]").Select(section => "#" + section.Id), targets);
         Assert.Equal(kodeverk, targets.Contains("#" + DetailSectionIds.CodeLists));

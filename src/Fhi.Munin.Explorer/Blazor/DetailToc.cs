@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Routing;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -9,11 +10,33 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Plain <c>#fragment</c> links and no script at all. The browser does the scrolling, and
+/// Fragment links and no script at all, so the scrolling is the host's to do and
 /// <c>scroll-margin-top</c> on <see cref="DetailSection"/>'s wrapper is what puts the heading clear
-/// of a sticky site header. The one thing that would need script is the highlight following the
-/// reader down the page, and it is deliberately not here: the nav is the whole navigational
-/// benefit, it ships now, and this package still ships zero JavaScript.
+/// of a sticky site header. Whether the jump carries keyboard FOCUS as well as the viewport depends
+/// on the host: a browser making the fragment jump itself moves focus to the target, and a Blazor
+/// <c>Router</c> intercepting a same-page press scrolls without it. This component's half is that
+/// the target can take focus at all — <see cref="DetailSection"/> writes <c>tabindex="-1"</c> for
+/// it. The one thing that would need script is the highlight following the reader down the page,
+/// and it is deliberately not here: the nav is the whole navigational benefit, it ships now, and
+/// this package still ships zero JavaScript.
+/// </para>
+/// <para>
+/// Each href carries this page's own path and query in front of the <c>#</c>. A bare <c>#id</c> is
+/// resolved against the document's <c>&lt;base href&gt;</c> rather than against the page being
+/// read, and helsedata's Optimizely host sets that to <c>/</c>, so every link left the page for the
+/// site root instead of scrolling. The query goes with the path because a browser treats a fragment
+/// jump as same-document only when the path and the query both match: <c>/MuninKelda/#metadata</c>
+/// pressed on <c>/MuninKelda/?kilde=…</c> is a fresh load of that page with no kilde open, which
+/// loses the reader's place by a quieter route than the site root does.
+/// </para>
+/// <para>
+/// A host mounting a detail view inside <see cref="VariableExplorer"/> or
+/// <see cref="KildeExplorer"/> gets that address from the wrapper, which is the only side that
+/// knows what it last wrote. Mounted under anything else the links are built from the circuit's own
+/// address, so a host owning its own query string has to move it through
+/// <see cref="NavigationManager"/>: an address bar moved by <c>history.replaceState</c> alone is
+/// one Blazor is never told about, and the links would keep naming the address the reader arrived
+/// on.
 /// </para>
 /// <para>
 /// So no <c>form-menu__list__item--active</c> is emitted either. With nothing tracking the scroll
@@ -33,8 +56,23 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <see cref="Column"/> for the reason that matters.
 /// </para>
 /// </remarks>
-public sealed class DetailToc : ComponentBase
+public sealed class DetailToc : ComponentBase, IDisposable
 {
+    /// <summary>
+    /// The name <see cref="VariableExplorer"/> and <see cref="KildeExplorer"/> cascade their
+    /// mirrored address under, and this component reads it back by.
+    /// </summary>
+    internal const string PageAddressName = "MuninExplorerPageAddress";
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    // The address bar as the wrapper that owns the query last wrote it. Cascaded rather than read
+    // from NavigationManager, whose Uri is the address the circuit STARTED on: UrlMirror writes
+    // with history.replaceState, which moves the browser without telling Blazor.
+    [CascadingParameter(Name = PageAddressName)]
+    private string? PageAddress { get; set; }
+
     /// <summary>
     /// The sections to link to, in document order. Every one must be a section that rendered: a
     /// link to an <c>id</c> the document does not carry is a control that does nothing.
@@ -73,6 +111,17 @@ public sealed class DetailToc : ComponentBase
             };
 
     /// <inheritdoc />
+    protected override void OnInitialized() => Navigation.LocationChanged += Moved;
+
+    /// <inheritdoc />
+    public void Dispose() => Navigation.LocationChanged -= Moved;
+
+    // A host that owns the query can rewrite it without anything above this component re-rendering,
+    // and the hrefs would then keep naming the address the reader arrived on. InvokeAsync because a
+    // LocationChanged raised off the renderer's dispatcher throws, which tears the circuit down.
+    private void Moved(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    /// <inheritdoc />
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         if (Entries.Count == 0)
@@ -86,6 +135,11 @@ public sealed class DetailToc : ComponentBase
         builder.OpenElement(2, "ul");
         builder.AddAttribute(3, "class", "form-menu__list");
 
+        // Rooted-absolute, the shape UrlMirror.Address writes, so the fallback and the cascade agree.
+        // It carries the host's path base whatever the document's <base href> says, because a rooted
+        // href resolves against that base's ORIGIN and never against its path.
+        var page = PageAddress is { Length: > 0 } given ? given : new Uri(Navigation.Uri).PathAndQuery;
+
         var seq = 10;
 
         foreach (var entry in Entries)
@@ -94,7 +148,7 @@ public sealed class DetailToc : ComponentBase
             builder.AddAttribute(seq + 1, "class", "form-menu__list__item");
 
             builder.OpenElement(seq + 2, "a");
-            builder.AddAttribute(seq + 3, "href", $"#{entry.Id}");
+            builder.AddAttribute(seq + 3, "href", $"{page}#{entry.Id}");
             builder.AddContent(seq + 4, entry.Label);
             builder.CloseElement();
 

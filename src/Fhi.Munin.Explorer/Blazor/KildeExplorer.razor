@@ -24,14 +24,19 @@
    No @page and no @rendermode, like everything else here; but this one owns the query string, so
    it must be mounted interactively. No class names and no markup of its own. *@
 
-<KildeSearch @key="_arrival"
-             SelectedKildeId="@_selectedKildeId"
-             SelectedKildeIdChanged="@KildeChanged"
-             SelectedDatasamlingId="@_selectedDatasamlingId"
-             DatasamlingHref="@DatasamlingHref"
-             KilderHref="@KilderHref"
-             @bind-Order="_order"
-             @bind-Direction="_direction"
-             ExploreVariablesRequested="@Handover"
-             Language="@Language"
-             ShowAccessAndPrices="@ShowAccessAndPrices" />
+@* The address the mirror last wrote, for the detail views' contents nav. Only this component
+   knows it: the mirror moves the browser with history.replaceState, which leaves
+   NavigationManager.Uri on the address the circuit loaded. (Fhi.Metadata-l9l2n.114) *@
+<CascadingValue Name="@DetailToc.PageAddressName" Value="@PageAddress">
+    <KildeSearch @key="_arrival"
+                 SelectedKildeId="@_selectedKildeId"
+                 SelectedKildeIdChanged="@KildeChanged"
+                 SelectedDatasamlingId="@_selectedDatasamlingId"
+                 DatasamlingHref="@DatasamlingHref"
+                 KilderHref="@KilderHref"
+                 @bind-Order="_order"
+                 @bind-Direction="_direction"
+                 ExploreVariablesRequested="@Handover"
+                 Language="@Language"
+                 ShowAccessAndPrices="@ShowAccessAndPrices" />
+</CascadingValue>

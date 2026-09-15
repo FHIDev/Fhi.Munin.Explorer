@@ -1,4 +1,3 @@
-using System.Reflection;
 using AngleSharp.Dom;
 using Bunit;
 using Bunit.TestDoubles;
@@ -6,7 +5,6 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -337,6 +335,34 @@ public class UrlStateComponentTest : BunitContext
     }
 
     [Fact]
+    public void Variables_WhenTheWholeVariableIsOpened_ThenTheContentsNavPointsAtTheAddressTheMirrorWrote()
+    {
+        // The mirror image of the kilder test below, and the harder half of the bead: the mirror
+        // moves the address bar with history.replaceState, so NavigationManager.Uri is still
+        // /variabler and a link built from it would drop the ?variabelId= and reload the search.
+        var cut = RenderVariables("http://localhost/variabler");
+
+        Rows(cut)[0].Click();
+        Whole(cut).Click();
+
+        var contents = cut.FindAll(".munin-explorer-page__toc a");
+
+        Assert.NotEmpty(contents);
+        Assert.All(contents, link => Assert.StartsWith(
+            Mirrored() + "#", link.GetAttribute("href"), StringComparison.Ordinal));
+        Assert.Equal($"/variabler?variabelId={TwoVariableClient.SpeechId}", Mirrored());
+    }
+
+    /// <summary>The open panel's "Vis hele variabelen" button, which swaps the list for the view.</summary>
+    /// <remarks>
+    /// By its words rather than by index, as VariableSearchTest finds it: it is drawn after the
+    /// owner toggles in the same block, so a rename fails here rather than moving the press.
+    /// </remarks>
+    private static IElement Whole(IRenderedComponent<VariableExplorer> cut) =>
+        cut.FindAll(".munin-explorer-detail > button")
+           .Single(b => b.TextContent.Contains("hele variabelen", StringComparison.Ordinal));
+
+    [Fact]
     public void Selection_WhenALinkCarriesAVariable_ThenItOpensWithTheSearchAroundItIntact()
     {
         var cut = RenderVariables(
@@ -564,6 +590,27 @@ public class UrlStateComponentTest : BunitContext
 
         cut.Find(".munin-explorer-kilder__name").Click();
 
+        Assert.Equal($"/MuninKelda?kilde={id}", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenAKildeIsOpenedFromTheList_ThenTheContentsNavPointsAtTheAddressTheMirrorWrote()
+    {
+        // The half of Fhi.Metadata-l9l2n.114 that NavigationManager cannot answer. The mirror moves
+        // the address bar with history.replaceState and Blazor is never told, so NavigationManager
+        // .Uri is still /MuninKelda: a contents link built from it would drop the ?kilde= the
+        // reader is on and reload the front page, which is the trap the bead names.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/MuninKelda");
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+
+        var contents = cut.FindAll(".munin-explorer-page__toc a");
+
+        Assert.NotEmpty(contents);
+        Assert.All(contents, link => Assert.StartsWith(
+            Mirrored() + "#", link.GetAttribute("href"), StringComparison.Ordinal));
         Assert.Equal($"/MuninKelda?kilde={id}", Mirrored());
     }
 
@@ -1092,21 +1139,12 @@ public class UrlStateComponentTest : BunitContext
 
     /// <summary>Whoever is listening for a navigation, read off the event itself.</summary>
     /// <remarks>
-    /// Reflection because a leak has no other symptom: rendering a disposed component is a no-op,
-    /// so a handler left behind costs nothing any assertion on a view could see. The field is
-    /// asserted to exist, so a framework renaming it fails here rather than reporting none ever.
+    /// <see cref="DetailToc"/> subscribes for its own reasons and needs the same read, so the
+    /// reflection lives in one place — see <see cref="NavigationListeners"/> for why it is needed
+    /// at all.
     /// </remarks>
-    private static IReadOnlyList<object> Listeners(NavigationManager navigation)
-    {
-        var field = typeof(NavigationManager).GetField(
-            "_locationChanged", BindingFlags.Instance | BindingFlags.NonPublic);
-
-        Assert.NotNull(field);
-
-        return field.GetValue(navigation) is EventHandler<LocationChangedEventArgs> subscribed
-            ? [.. subscribed.GetInvocationList().Select(handler => handler.Target!)]
-            : [];
-    }
+    private static IReadOnlyList<object> Listeners(NavigationManager navigation) =>
+        NavigationListeners.Of(navigation);
 
     [Fact]
     public void Moved_WhenTheComponentIsGone_ThenItIsNotStillListeningForNavigations()

@@ -470,11 +470,20 @@ public class KildeSectionsTest : BunitContext
         Assert.DoesNotContain("publiserte variabler i denne kilden", view, StringComparison.Ordinal);
     }
 
-    /// <summary>The contents nav's links as href and words, in document order.</summary>
+    /// <summary>The contents nav's links as the section each names and its words, in document order.</summary>
+    /// <remarks>
+    /// The fragment alone. In front of it every href carries this page's own path and query, which
+    /// is what stops a bare <c>#id</c> resolving against a host's <c>&lt;base href&gt;</c>; that
+    /// prefix says nothing about which block an entry names and is pinned in DetailTocTest.
+    /// </remarks>
     private static IReadOnlyList<(string Href, string Label)> Nav<TComponent>(IRenderedComponent<TComponent> cut)
         where TComponent : IComponent =>
         [.. cut.FindAll(".munin-explorer-page__toc a")
-               .Select(link => (link.GetAttribute("href")!, link.TextContent.Trim()))];
+               .Select(link =>
+               {
+                   var href = link.GetAttribute("href")!;
+                   return (href[href.IndexOf('#', StringComparison.Ordinal)..], link.TextContent.Trim());
+               })];
 
     /// <summary>Every section the page drew, as the link that would reach it and its heading.</summary>
     private static IReadOnlyList<(string Href, string Label)> DrawnSections<TComponent>(IRenderedComponent<TComponent> cut)

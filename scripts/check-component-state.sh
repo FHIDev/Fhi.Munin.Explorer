@@ -4,6 +4,9 @@
 # after a press the component REFUSED. Nothing else here does: bUnit renders a render tree, so the
 # browser's own flip of a checkbox — which happens before any handler runs — never happens in it.
 #
+# It asks the contents nav a neighbouring question on the same terms: what a browser RESOLVES an
+# href to against the page's <base> element — neither of which a render tree has.
+#
 # It asks the facet tree's branch disclosures a neighbouring question, and for the same reason: a
 # shut branch's values have to be absent from the page rather than hidden on it, and a tab order is
 # not something a render tree has. (Fhi.Metadata-adog5)
@@ -17,9 +20,9 @@
 # only its own assertion. (Fhi.Metadata-1s7z1)
 #
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
-#   - the four presses it stages are the whole of it. scripts/state-assertions.mjs lists what that
+#   - the six presses it stages are the whole of it. scripts/state-assertions.mjs lists what that
 #     leaves out — the kildeutforsker's copy of the same picker, the facet panel's other refusal
-#     path, and every other control in the component;
+#     path, the contents nav's focus step, and every other control in the component;
 #   - one press per call site. The picker's other columns and the panel's other facets go the same
 #     way by construction, but by construction is not measured;
 #   - the sample stylesheet, not helsedata's. This runs ModernHost, as check-accessibility.sh does,
@@ -46,11 +49,21 @@ STUB_PORT="${STATE_STUB_PORT:-5094}"
 STUB_BASE="http://127.0.0.1:${STUB_PORT}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# `/` is VariableSearch on its own, which is where both presses live: the column picker above the
-# results and the facet panel beside them. `variables-list` is the state that waits for a row, so
-# neither assertion stages a press against a list whose data never arrived.
+# `/` is VariableSearch on its own, which is where the four refused presses live: the column picker
+# above the results and the facet panel beside them. `variables-list` is the state that waits for a
+# row, so no assertion stages a press against a list whose data never arrived.
+#
+# The last two are a contents nav drawn over a path WITH a query, which is what the nav assertion
+# needs: ModernHost's App.razor emits `<base href="/">`, and a bare `#id` href resolves against
+# that rather than against the page, which is how every entry came to leave the kilde for the site
+# root on helsedata (Fhi.Metadata-l9l2n.114). Two of them rather than one because the address is
+# reached two ways — `/kilder` mounts the sample's own wrapper, which navigates, so the nav reads
+# NavigationManager; `/utforsker` mounts VariableExplorer, which moves the address bar with
+# history.replaceState and so has to hand the nav an address Blazor was never told about.
 TARGETS=(
   "/::variables-list"
+  "/kilder::kilde-hierarchy-collapsed"
+  "/utforsker::variable-whole"
 )
 
 host_pid=""
@@ -201,7 +214,8 @@ cat <<'EOF'
 A refused press left the DOM and the component agreeing, and each assertion still fires against
 the defect it exists for.
 
-Read that for what it is. Two presses were staged, in the variable explorer's column picker and
-its facet panel, against the sample stylesheet. The header of this script and of
-scripts/state-assertions.mjs list what that leaves out.
+Read that for what it is. Four presses were staged in the variable explorer's column picker and
+its facet panel, and one in each of the two contents navs, against the sample stylesheet. The
+header of this script and of scripts/state-assertions.mjs list what that leaves out - the contents
+nav's focus step in particular, which this host's router takes over.
 EOF
