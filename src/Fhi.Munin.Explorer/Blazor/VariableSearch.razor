@@ -1052,3 +1052,21 @@ else
     }
 }
 </section>
+
+@code {
+    @* One toolbar switch, the shape Nivålinjer and Ikoner are both drawn from. aria-checked is the
+       whole state: a modifier class beside it is how a control ends up drawn on and announced off.
+       The name stands ALONE — the toolbar's own hd-button-square rule collapses it. (Fhi.Metadata-l9l2n.87) *@
+    private RenderFragment Switch(string label, bool on, Func<Task> press) =>
+        @<button class="munin-explorer-switch"
+                 type="button"
+                 role="switch"
+                 aria-checked="@(on ? "true" : "false")"
+                 @onclick="press">
+            <span class="munin-explorer-switch__track" aria-hidden="true">
+                <span class="munin-explorer-switch__thumb"></span>
+            </span>
+            @* Outside the track, which is aria-hidden: the label is the whole accessible name. *@
+            @label
+        </button>;
+}
