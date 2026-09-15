@@ -602,13 +602,12 @@ public partial class VariableSearch
             [.. kilder.Select(kilde => KildeValue(kilde, tree))],
             GroupHeading: true);
 
-    private FacetValue KildeValue(KildeFacet kilde, IReadOnlyDictionary<Guid, HierarchyNode> tree)
-    {
-        IReadOnlyList<FacetValue> children =
-            tree.TryGetValue(kilde.Id, out var node) ? HierarchyValues(node.Children) : [];
-
-        return KildeValue(kilde) with { Count = Counted(kilde.Count), Children = children };
-    }
+    private FacetValue KildeValue(KildeFacet kilde, IReadOnlyDictionary<Guid, HierarchyNode> tree) =>
+        KildeValue(kilde) with
+        {
+            Count = Counted(kilde.Count),
+            Children = tree.TryGetValue(kilde.Id, out var node) ? HierarchyValues(node.Children) : [],
+        };
 
     /// <summary>A kilde on its own: its words and its toggle, with neither a count nor its tree.</summary>
     /// <remarks>
