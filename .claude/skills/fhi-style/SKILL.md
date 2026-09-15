@@ -120,8 +120,11 @@ stay byte-identical. Edit one, copy it over the other, run
 
 ## The package ships no CSS and nothing host-specific
 
-No `wwwroot`, no `.razor.css` — the samples carry styling because they have no Stiler; the
-package must not. `scripts/assert-package-contents.sh` enforces it.
+No `.razor.css`, and nothing in `wwwroot` but the one JavaScript module `explorer-interop.js`
+(Fhi.Metadata-35w0p.14) — the samples carry styling because they have no Stiler; the package must
+not. `scripts/assert-package-contents.sh` enforces it by naming every packed entry, so a second
+module fails there exactly as a stylesheet does: adding a file under `wwwroot` and adding its
+entry to that script are one commit, either alone red.
 
 The component renders in helsedata's **legacy** Blazor Server as well as a modern Blazor Web App,
 so: no `@page`, no `@rendermode`, no `HeadOutlet`, nothing host-specific. `BannedSymbols.txt`

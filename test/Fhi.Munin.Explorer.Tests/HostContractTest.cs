@@ -78,8 +78,8 @@ public class HostContractTest
     public void Package_WhenItsSourceTreeIsRead_ThenThereIsNoStylesheetInItAtAll()
     {
         // The wider half of the same rule: a `.razor.css` is what the theory above catches, and
-        // this catches a stylesheet parked anywhere else under src/ — a wwwroot the project file
-        // has not been told to exclude yet, a file left beside a helper.
+        // this catches a stylesheet parked anywhere else under src/ — beside the one JavaScript
+        // module in wwwroot, or left beside a helper.
         var stylesheets = Files("*.css").Select(path => Path.GetRelativePath(SourceRoot, path)).Order(StringComparer.Ordinal);
 
         Assert.Equal([], stylesheets);

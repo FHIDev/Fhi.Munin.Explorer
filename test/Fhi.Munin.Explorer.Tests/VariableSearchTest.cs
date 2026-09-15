@@ -1296,7 +1296,7 @@ public class VariableSearchTest : BunitContext
         Assert.False(dropdown.HasAttribute("style"));
 
         // A <details>, because their dropdown opens and closes from React state and this package
-        // ships no script. Same reason the filter facets are disclosures.
+        // ships no script for it. Same reason the filter facets are disclosures.
         var summary = cut.Find(".munin-explorer-header__actions > details > summary");
         Assert.Contains("hd-button-square", summary.ClassName!);
         Assert.Equal("Kolonner", summary.TextContent);

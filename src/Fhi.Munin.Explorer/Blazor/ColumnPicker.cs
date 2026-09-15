@@ -23,8 +23,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// A <c>&lt;details&gt;</c> rather than a button and a panel, for the reason the filter facets are:
 /// their dropdown opens, closes on Escape and closes on an outside click from React state, and this
-/// package ships no script. The element does the first two natively and costs nothing; what is lost
-/// is the outside click, which leaves the list open rather than broken.
+/// package ships no script for it. The element does the first two natively and costs nothing; what
+/// is lost is the outside click, which leaves the list open rather than broken.
 /// </para>
 /// <para>
 /// It wears two names, not one, and both are borrowed from Stiler: <c>munin-explorer__dropdown</c>
@@ -112,7 +112,8 @@ internal static class ColumnPicker
         builder.AddContent(11, buttonLabel);
 
         // Both chevrons are drawn and Stiler hides the one contradicting the open state: nothing
-        // here can swap a class, the package shipping no script, and the state is the element's.
+        // here can swap a class, the package shipping no script for this, and the state is the
+        // element's.
         builder.OpenElement(12, "span");
         builder.AddAttribute(13, "class", "icon icon--right icon-keyboard-arrow-down");
         builder.AddAttribute(14, "aria-hidden", "true");
