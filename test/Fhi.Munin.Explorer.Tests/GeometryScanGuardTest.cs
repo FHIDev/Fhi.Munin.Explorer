@@ -187,6 +187,43 @@ public class GeometryScanGuardTest
     }
 
     [Fact]
+    public void HostileHost_WhenMeasuringAt320_ThenEveryTargetIsInExactlyOneCall()
+    {
+        // A state added to TARGETS and not to a reflow call would never be measured at 320, and
+        // both the gate and the test above would stay green.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+        var array = Regex.Match(source, @"^TARGETS=\((?<items>[^)]*)^\)", RegexOptions.Multiline);
+
+        Assert.True(array.Success, "check-hostile-host.sh no longer declares TARGETS=( ... ).");
+
+        var targets = Regex.Matches(array.Groups["items"].Value, @"""(?<target>[^""]+)""")
+            .Select(match => match.Groups["target"].Value)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        var measured = Regex.Matches(
+                source,
+                @"^reflow ""[^""]*""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+                RegexOptions.Multiline)
+            .SelectMany(call => Regex.Matches(call.Groups["targets"].Value, @"""(?<target>[^""]+)"""))
+            .Select(match => match.Groups["target"].Value)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.NotEmpty(targets);
+        Assert.Equal(targets, measured);
+    }
+
+    [Fact]
+    public void TheCaller_WhenItMeasures320_ThenAnExportedExceptListCannotStopIt()
+    {
+        // geometry-scan.mjs exits 2 when both lists are set, so an exported GEOMETRY_EXCEPT would stop
+        // check-accessibility.sh's 320px scan before it measured anything.
+        var source = File.ReadAllText(Repo.In("scripts", "check-accessibility.sh"));
+
+        Assert.Matches(@"(?m)^GEOMETRY_EXCEPT= \\\r?\n(?:GEOMETRY_[A-Z_]+=[^\n]*\\\r?\n)*\s+node [^\n]*geometry-scan\.mjs", source);
+    }
+
+    [Fact]
     public void HostileHost_WhenA320ScanFails_ThenTheRunFailsAndAnExportedListCannotStopOrNarrowIt()
     {
         // Read, not run: the step needs a browser and the feed. Without the status lines a real run

@@ -202,6 +202,7 @@ echo
 echo "==> measuring the reflow width WCAG 1.4.10 names"
 set +e
 GEOMETRY_WIDTHS=320 \
+GEOMETRY_EXCEPT= \
 GEOMETRY_ASSERTIONS='no horizontal overflow,hidden means hidden,text a reader is meant to see has a box to see it in' \
   node "$ROOT/scripts/geometry-scan.mjs" "${BASE}${REFLOW_TARGET}" "${BASE}${REFLOW_TICKED_TARGET}"
 reflow_status=$?
