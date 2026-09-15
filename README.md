@@ -295,7 +295,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     and the field draws at 18px instead of 14px. And the rule reached `Fhi.Helsedata.Stiler`'s
     `main` after 0.1.42 was cut, so the floor is the first release that follows it — a host on
     0.1.42 or older is in the undressed case above rather than a broken one. Every branch of that
-    facet's tree — kildetype group, kilde, delkilde — opens on a control of its own, and the two
+    facet's tree — kildetype group, kilde, delkilde, a datasamling holding variabelgrupper, and a
+    variabelgruppe with groups nested under it — opens on a control of its own, and the two
     names it adds are `munin-explorer-filters__branch` on the row and
     `munin-explorer-filters__disclosure` on the button. Handles both: the button is a real
     `<button aria-expanded>` carrying an arrow as text and a name from `aria-labelledby`, so unstyled
