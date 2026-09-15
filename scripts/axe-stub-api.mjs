@@ -67,9 +67,16 @@ bodies.set(listRoute, JSON.stringify([
 // No kilde in the captured catalogue carries biobank, the one kildetype the Kilde facet draws a
 // badge for, so a verbatim payload renders that markup nowhere and a scan reports no violations in
 // what is not there - the finding this whole stub exists for. One row is retyped, its facet with it.
-const filtersRoute = routes.find(([, source]) => source === 'filters.json')[0];
-const filters = JSON.parse(bodies.get(filtersRoute));
+const filtersRoute = routes.find(([, source]) => source === 'filters.json')?.[0];
+const filters = filtersRoute === undefined ? undefined : JSON.parse(bodies.get(filtersRoute));
 const badged = new Map([['MS', ['biobank', 'Biobank']]]);
+
+// The same re-capture the check below is about can drop the fixture outright or rename the arrays
+// in it. Said here, or it arrives as a TypeError out of a stub whose caller only sees axe time out.
+if (!Array.isArray(filters?.kilder) || !Array.isArray(filters?.kildeTyper)) {
+  console.error('stub: filters.json is missing, or carries neither kilder nor kildeTyper');
+  process.exit(2);
+}
 
 const retyped = filters.kilder.filter(one => badged.has(one.kortNavn));
 
@@ -97,6 +104,10 @@ for (const kilde of retyped) {
     facet.count += kilde.count;
   }
 }
+
+// The symmetric case to the merge above: a kildetype whose only kilde was retyped away would stay
+// as a heading with no rows under it, a shape the real API never serves and the scan would measure.
+filters.kildeTyper = filters.kildeTyper.filter(type => type.count > 0);
 filters.kildeTyper.sort((a, b) => a.displayName.localeCompare(b.displayName, 'nb'));
 bodies.set(filtersRoute, JSON.stringify(filters));
 

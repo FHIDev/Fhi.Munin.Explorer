@@ -743,9 +743,9 @@ public partial class VariableSearch
             ? null
             : () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply);
 
-    /// <summary>A delkilde as a chip names it: its words and its toggle, with neither a count nor a
-    /// tree. <see cref="ChosenKilder"/> is its one caller — the tree draws its delkilder through
-    /// <see cref="HierarchyValues"/>.</summary>
+    /// <summary>A delkilde as a chip names it: its words and its toggle, with no count, no tree and
+    /// no folder. <see cref="ChosenKilder"/> is its one caller — the tree draws its delkilder, and
+    /// puts their folders on, through <see cref="HierarchyValues"/>.</summary>
     private FacetValue DelkildeValue(DelkildeFacet delkilde)
     {
         var (label, language) = DelkildeLabel(delkilde);
