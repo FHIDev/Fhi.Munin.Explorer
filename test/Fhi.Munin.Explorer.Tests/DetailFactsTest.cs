@@ -99,7 +99,7 @@ public class DetailFactsTest : BunitContext
         // the note as well, and a note is usually this component's own words joined to a count —
         // English for an English reader, and read out in Norwegian phonetics if it inherits.
         var cut = Render(new DetailFact("Data controller", "St. Olavs hospital HF", "no",
-                                        "Valid from: 2010", null));
+                                        Note: "Valid from: 2010"));
 
         var value = Cell(cut, "Data controller").QuerySelector("dd")!;
 
@@ -107,6 +107,21 @@ public class DetailFactsTest : BunitContext
         Assert.Equal("St. Olavs hospital HF", value.QuerySelector("span")!.TextContent);
         Assert.False(value.HasAttribute("lang"));
         Assert.False(value.QuerySelector("small")!.HasAttribute("lang"));
+    }
+
+    [Fact]
+    public void Lang_WhenTheNoteIsTheCataloguesNorwegianToo_ThenItCarriesAMarkOfItsOwn()
+    {
+        // The other half of the same record, and the half a lang on the <dd> could not express: a
+        // note whose substance is catalogue free text is marked while the value beside it is the
+        // reader's own language, which is the datasamling page's count and its telleenhet.
+        var value = Cell(Render(new DetailFact("Number of variables", "99",
+                                               Note: "Counting unit: Pasient", NoteLang: "no")),
+                         "Number of variables").QuerySelector("dd")!;
+
+        Assert.Equal("no", value.QuerySelector("small")!.GetAttribute("lang"));
+        Assert.Empty(value.QuerySelectorAll("span"));
+        Assert.False(value.HasAttribute("lang"));
     }
 
     [Fact]

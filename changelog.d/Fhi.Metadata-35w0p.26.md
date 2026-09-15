@@ -8,8 +8,10 @@ category: Added
   (Fhi.Metadata-35w0p.26)
 - **`DetailPage` takes a `Facts`, and `DetailFact` is what goes in it.** A label, a value and an
   optional note, each with its own `lang` for the half that is the catalogue's Norwegian: a value
-  and its note are usually in different languages, so they are marked apart. Empty or unset draws
-  no row at all. (Fhi.Metadata-35w0p.26)
+  and its note need not be in one language, so they are marked apart. A datasamling's variable
+  count is the case that needs both — the count is in no language and the telleenhet under it is
+  catalogue free text held only in Norwegian, so an English reader gets the note marked and the
+  count not. Empty or unset draws no row at all. (Fhi.Metadata-35w0p.26)
 - **A source and a datasamling lead with the same six facts, and a variable with six of its own.**
   Kildetype, Dataansvarlig, Grad av personidentifikasjon, a period, a count and Lovverk on the two
   entity pages — Dataperiode and the total variable count on a source, Gyldighet and the
@@ -19,3 +21,9 @@ category: Added
   section below** — the row summarises the page rather than moving anything out of it, and each
   value is resolved through the member that section reads, so the two cannot come out in different
   words. (Fhi.Metadata-35w0p.26)
+- **A source whose variables the catalogue has not loaded yet drops the count rather than leading
+  with `0`.** `Totalt antall variabler` now behaves as a datasamling's `Antall variabler` already
+  did: a zero says nothing, contradicts the collection count beside it and reads as a cell that
+  failed to render. The Statistikk fact list below reads the same member, so it drops the row too —
+  and a source with no data period either now draws no Statistikk block at all.
+  (Fhi.Metadata-35w0p.26)

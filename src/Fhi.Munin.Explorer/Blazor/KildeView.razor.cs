@@ -209,7 +209,13 @@ public sealed partial class KildeView : ComponentBase
         Kilde is { } kilde ? CatalogueDate.Period(kilde.DataFrom, kilde.DataTo, Language, T) : null;
 
     /// <inheritdoc cref="KildetypeLabel"/>
-    private string? TotalVariables => Kilde?.TotalVariables.ToString();
+    /// <remarks>
+    /// Zero is dropped rather than drawn, as <see cref="DatasamlingView"/> drops its own count: a
+    /// source whose variables are not loaded yet would lead with a 0 contradicting the collection
+    /// count under it.
+    /// </remarks>
+    private string? TotalVariables =>
+        Kilde is { TotalVariables: > 0 } kilde ? kilde.TotalVariables.ToString() : null;
 
     /// <summary>
     /// The facts every source has, which is why they are typed fields rather than curated properties.

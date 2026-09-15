@@ -27,8 +27,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <param name="Note">The second line, or null when the field has no qualifier to add.</param>
 /// <param name="NoteLang">
 /// The same for <paramref name="Note"/>, and separate from <paramref name="Lang"/> because the two
-/// are often in different languages: a value is usually the catalogue's Norwegian while a note
-/// built from a field label and a count is in the reader's.
+/// need not be in one language: a count is in no language at all while the unit it is counted in
+/// is catalogue free text stored only in Norwegian. It marks the whole second line, label
+/// included, so set it where the note's substance is the catalogue's own words and leave it null
+/// where the note is built from this package's vocabularies.
 /// </param>
 public sealed record DetailFact(
     string Label,

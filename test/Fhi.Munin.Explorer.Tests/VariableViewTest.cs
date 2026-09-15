@@ -1097,6 +1097,20 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
+    public void HeroFacts_WhenTheKindOfStatisticsHasNoStatisticsUnderIt_ThenNeitherIsDrawn()
+    {
+        // Statistikktype belongs to the owning datasamling while the rows are the variable's own,
+        // so a newly pinned variable in a yearly collection has a kind and nothing of that kind —
+        // and a hero cell announcing one over a page with no statistics block is the disagreement
+        // this row exists to rule out.
+        var cut = Render(Leading() with { Statistics = [] });
+
+        Assert.DoesNotContain("Statistikk",
+                              Hero(cut).QuerySelectorAll("dt").Select(dt => dt.TextContent));
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.Statistics}"));
+    }
+
+    [Fact]
     public void HeroFacts_WhenTheCatalogueNamesNoKodeverk_ThenTheRowIsFiveRatherThanPaddedToSix()
     {
         // Six is the shape the grid is ruled for, not a quota to fill: a fact the catalogue has not

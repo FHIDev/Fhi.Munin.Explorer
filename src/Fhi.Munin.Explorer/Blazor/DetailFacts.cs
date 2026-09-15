@@ -82,7 +82,8 @@ public sealed class DetailFacts : ComponentBase
     }
 
     /// <summary>
-    /// The value, wrapped in a marked span only where it is not in the reader's language.
+    /// The value, wrapped in a marked span only where it is not in the reader's language. Consumes
+    /// four sequence numbers from <paramref name="seq"/>.
     /// </summary>
     /// <remarks>
     /// A span rather than a <c>lang</c> on the <c>dd</c>, which is what the fact lists below use:

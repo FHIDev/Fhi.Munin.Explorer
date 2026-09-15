@@ -1402,18 +1402,20 @@ public class KildeViewTest : BunitContext
     };
 
     [Fact]
-    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenBothFactBoxesStillDrawARow()
+    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxDrawsAndTheCountsBoxDoesNot()
     {
-        // Why both fact boxes survive their emptiness checks on a payload this bare:
-        // KildeTypeLabel answers "Ikke oppgitt" for a source carrying no kildetype and
-        // TotalVariables is an int, so no payload the catalogue can send empties either list.
+        // Why the source box survives its emptiness check on a payload this bare: KildeTypeLabel
+        // answers "Ikke oppgitt" for a source carrying no kildetype and PersonIdentificationLabel
+        // does the same, so no payload the catalogue can send empties that list.
         var cut = Render(Sparse());
 
         // Named rather than merely counted, so taking a fallback away fails here saying which row
         // went, rather than somewhere else saying a box was empty.
         Assert.Equal(["Type datakilde", "Grad av personidentifikasjon"], Labels(SourceInformation(cut)));
-        Assert.Equal(["Totalt antall variabler"], Labels(Statistics(cut)));
-        Assert.Equal(["0"], Values(Statistics(cut)));
+
+        // The counts box has no fallback of its own: both its rows are the catalogue's, and a zero
+        // variable count is dropped rather than drawn, so there is no heading over nothing.
+        Assert.DoesNotContain(DetailSectionIds.Statistics, Wrappers(cut).Select(section => section.Id));
     }
 
     [Fact]
@@ -1507,11 +1509,10 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Contents_WhenTheCatalogueFilledInNothing_ThenOnlyTheBlocksWithNoEmptyStateAreNamed()
     {
-        // Three of the four survive a payload this bare, for three different reasons: the datasamling
-        // tree has no empty state at all, the counts box always has a total to report, and the source
-        // box falls back to "Ikke oppgitt". Only the curated metadata goes.
-        Assert.Equal(["#" + DetailSectionIds.DataCollections, "#" + DetailSectionIds.Source,
-                      "#" + DetailSectionIds.Statistics],
+        // Two of the four survive a payload this bare: the datasamling tree has no empty state at
+        // all, and the source box falls back to "Ikke oppgitt". The curated metadata goes, and so
+        // does the counts box — neither of its two rows has a fallback, and a zero count is dropped.
+        Assert.Equal(["#" + DetailSectionIds.DataCollections, "#" + DetailSectionIds.Source],
                      Targets(Render(Sparse())));
     }
 
@@ -1703,6 +1704,39 @@ public class KildeViewTest : BunitContext
         var hero = Hero(Render(Kilde() with { Datasamlinger = [], Delkilder = [] }));
 
         Assert.Null(Fact(hero, "Totalt antall variabler").QuerySelector("small"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheSourceHangsItsCollectionsOffDelkilder_ThenTheNoteCountsThemToo()
+    {
+        // The count above the note is the source's total across the whole tree, so a note counted
+        // over the direct collections alone would say "312 variabler in 1 data collection" for a
+        // source whose variables live across four — the dishonest claim the note exists to prevent.
+        var hero = Hero(Render(Kilde() with
+        {
+            Delkilder =
+            [
+                Delkilde("Biodata", [Collection("Prøver"), Collection("Analyser")]),
+                Delkilde("Tromsø 4", [], children: [Delkilde("Runde 7", [Collection("Spørreskjema")])]),
+            ],
+        }));
+
+        Assert.Equal("4 datasamlinger",
+                     Fact(hero, "Totalt antall variabler").QuerySelector("small")!.TextContent);
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheCatalogueHasLoadedNoVariables_ThenTheCountIsDroppedRatherThanZero()
+    {
+        // A newly registered source carries totalVariables 0 while its collections are already
+        // listed, and a hero cell reading 0 over "3 datasamlinger" reads as a failed render. The
+        // sibling collection page drops its own zero the same way.
+        var cut = Render(Kilde() with { TotalVariables = 0 });
+
+        Assert.DoesNotContain("Totalt antall variabler", Labels(Hero(cut)));
+
+        // And the section below it, which reads the same member: the two cannot disagree.
+        Assert.Equal(["Dataperiode"], Labels(Statistics(cut)));
     }
 
     [Fact]

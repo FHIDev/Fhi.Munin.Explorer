@@ -231,6 +231,36 @@ public class DatasamlingViewTest : BunitContext
         Assert.Equal("Pasient", Value(Box(cut, "Statistikk (Årsbasert)"), "Telleenhet"));
     }
 
+    [Fact]
+    public void HeroFacts_WhenTheReaderIsEnglish_ThenTheCataloguesOwnWordsAreMarkedAndOursAreNot()
+    {
+        // The same mix as the source page, on the same two fields: the kildetype and the
+        // identification level are vocabularies this package translates, the controller and the
+        // legal basis are inherited free text stored once, in Norwegian, however the reader reads.
+        var hero = Hero(Render(Datasamling(), language: "en"));
+
+        Assert.Equal("no", Cell(hero, "Data controller").QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Equal("no", Cell(hero, "Legal basis").QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Empty(Cell(hero, "Type of data source").QuerySelectorAll("span"));
+        Assert.Empty(Cell(hero, "Level of personal identification").QuerySelectorAll("span"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheReaderIsEnglish_ThenTheCountingUnitIsMarkedAsTheSectionMarksIt()
+    {
+        // Telleenhet is catalogue free text held only in Norwegian, and the note is the one place
+        // this page writes it outside the Statistikk row that marks it — unmarked here, the same
+        // word would be read to an English reader with English phonetics four cells above.
+        var english = Render(Datasamling() with { CountingUnit = "Pasient" }, language: "en");
+
+        Assert.Equal("no",
+                     Cell(Hero(english), "Number of variables").QuerySelector("small")!.GetAttribute("lang"));
+
+        // And a Norwegian reader is told nothing, because Norwegian is the page they are reading.
+        Assert.Null(Cell(Hero(Render(Datasamling() with { CountingUnit = "Pasient" })), "Antall variabler")
+                        .QuerySelector("small")!.GetAttribute("lang"));
+    }
+
     /// <summary>The headings of the blocks under the name, in the order they are drawn.</summary>
     private static IReadOnlyList<string> BlockHeadings(IRenderedComponent<DatasamlingView> cut) =>
         [.. cut.FindAll(".munin-explorer-page__body .headline-s").Select(e => e.TextContent)];

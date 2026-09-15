@@ -199,7 +199,7 @@ public sealed partial class VariableView : ComponentBase
                 T.HeadingKodeverk,
                 string.IsNullOrWhiteSpace(link.DisplayName) ? T.KodeverkUnnamed : link.DisplayName,
                 CatalogueProperties.Foreign(!string.IsNullOrWhiteSpace(link.DisplayName), Reader),
-                T.KodeverkTypeLabel(link.KodeverkType))
+                Note: T.KodeverkTypeLabel(link.KodeverkType))
             : null;
 
     /// <summary>
