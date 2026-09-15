@@ -9063,7 +9063,7 @@ public class VariableSearchTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal([Detail(TaleId).Description], PanelRows(cut, "Beskrivelse"));
+        Assert.Equal([Detail(TaleId).Description], PanelValues(cut, "Beskrivelse"));
     }
 
     [Fact]
@@ -9076,12 +9076,12 @@ public class VariableSearchTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal([Detail(TaleId).Description], PanelRows(cut, "Beskrivelse"));
+        Assert.Equal([Detail(TaleId).Description], PanelValues(cut, "Beskrivelse"));
     }
 
     // Every value the open panel draws under one label, hero strip excluded for the reason Values
     // gives. Asked by label rather than by text so "drawn twice" and "drawn nowhere" both fail.
-    private static IReadOnlyList<string> PanelRows(IRenderedComponent<VariableSearch> cut, string label) =>
+    private static IReadOnlyList<string> PanelValues(IRenderedComponent<VariableSearch> cut, string label) =>
         [.. Panel(cut).QuerySelectorAll("dl:not(.munin-explorer-page__facts) div")
                       .Where(row => row.QuerySelector("dt")?.TextContent == label)
                       .Select(row => row.QuerySelector("dd")?.TextContent ?? "")];
