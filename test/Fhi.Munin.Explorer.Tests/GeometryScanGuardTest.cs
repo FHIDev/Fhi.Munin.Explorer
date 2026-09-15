@@ -112,11 +112,145 @@ public class GeometryScanGuardTest
         Assert.Contains("unknown state \"no-such-state\"", run.Output, StringComparison.Ordinal);
     }
 
+    [NodeFact]
+    public void Scan_WhenLeavingOutANameNothingDefines_ThenItExitsTwo()
+    {
+        // A misspelt exception would leave out nothing and still be read as a named, known gap.
+        var run = Scan(null, $"{Target}::kilder-list", except: "no such assertion");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("unknown assertion \"no such assertion\"", run.Output, StringComparison.Ordinal);
+    }
+
+    [NodeFact]
+    public void Scan_WhenBothRunAndLeaveOutListsAreGiven_ThenItExitsTwo()
+    {
+        var run = Scan("hidden means hidden", $"{Target}::kilder-list", except: "no horizontal overflow");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("GEOMETRY_ASSERTIONS and GEOMETRY_EXCEPT are both set", run.Output, StringComparison.Ordinal);
+    }
+
+    [NodeFact]
+    public void Scan_WhenLeavingOutOneName_ThenTheBannerCountsEveryOtherAssertion()
+    {
+        var run = Scan(null, $"{Target}::no-such-state", except: "hidden means hidden");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains(
+            $"==> ASSERTIONS: {Assertions.Count - 1} of {Assertions.Count}, leaving out: hidden means hidden{Environment.NewLine}",
+            run.Output.ReplaceLineEndings(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HostileHost_WhenItLeavesAssertionsOutAt320_ThenEveryNameAndStateExists()
+    {
+        // Only the credentialed CI job runs that script, so a rename would otherwise surface there
+        // alone. Every call is parsed or the count below disagrees, so none is skipped unread.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+        var calls = Regex.Matches(
+            source,
+            @"^reflow ""(?<except>[^""]*)""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+            RegexOptions.Multiline);
+
+        Assert.NotEmpty(calls);
+        Assert.Equal(Regex.Matches(source, @"^reflow ", RegexOptions.Multiline).Count, calls.Count);
+
+        foreach (Match call in calls)
+        {
+            var names = call.Groups["except"].Value
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var name in names)
+            {
+                Assert.True(
+                    Assertions.ContainsKey(name),
+                    $"check-hostile-host.sh leaves out '{name}' at 320px, which geometry-assertions.mjs "
+                    + "does not define.");
+            }
+
+            var states = Regex.Matches(call.Groups["targets"].Value, @"""[^"":]*::(?<state>[^""]+)""")
+                .Select(match => match.Groups["state"].Value)
+                .ToList();
+
+            Assert.NotEmpty(states);
+
+            foreach (var state in states)
+            {
+                Assert.True(
+                    KnownStates.Value.Contains(state),
+                    $"check-hostile-host.sh measures the state '{state}' at 320px, which axe-states.mjs "
+                    + "does not define.");
+            }
+        }
+    }
+
+    [Fact]
+    public void HostileHost_WhenMeasuringAt320_ThenEveryTargetIsInExactlyOneCall()
+    {
+        // A state added to TARGETS and not to a reflow call would never be measured at 320, and
+        // both the gate and the test above would stay green.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+        var array = Regex.Match(source, @"^TARGETS=\((?<items>[^)]*)^\)", RegexOptions.Multiline);
+
+        Assert.True(array.Success, "check-hostile-host.sh no longer declares TARGETS=( ... ).");
+
+        var targets = Regex.Matches(array.Groups["items"].Value, @"""(?<target>[^""]+)""")
+            .Select(match => match.Groups["target"].Value)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        var measured = Regex.Matches(
+                source,
+                @"^reflow ""[^""]*""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+                RegexOptions.Multiline)
+            .SelectMany(call => Regex.Matches(call.Groups["targets"].Value, @"""(?<target>[^""]+)"""))
+            .Select(match => match.Groups["target"].Value)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.NotEmpty(targets);
+        Assert.Equal(targets, measured);
+    }
+
+    [Fact]
+    public void TheCaller_WhenItMeasures320_ThenAnExportedExceptListCannotStopIt()
+    {
+        // geometry-scan.mjs exits 2 when both lists are set, so an exported GEOMETRY_EXCEPT would stop
+        // check-accessibility.sh's 320px scan before it measured anything.
+        var source = File.ReadAllText(Repo.In("scripts", "check-accessibility.sh"));
+
+        Assert.Matches(@"(?m)^GEOMETRY_EXCEPT= \\\r?\n(?:GEOMETRY_[A-Z_]+=[^\n]*\\\r?\n)*\s+node [^\n]*geometry-scan\.mjs", source);
+    }
+
+    [Fact]
+    public void HostileHost_WhenA320ScanFails_ThenTheRunFailsAndAnExportedListCannotStopOrNarrowIt()
+    {
+        // Read, not run: the step needs a browser and the feed. Without the status lines a real run
+        // printed a 320px FAIL and exited 0; without clearing, an exported list exits 2 or narrows a scan.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+        Assert.Matches(@"(?m)^GEOMETRY_EXCEPT= [^\n]*geometry-scan\.mjs"" ""\$\{urls\[@\]\}""$", source);
+
+        var body = Regex.Match(source, @"^reflow\(\) \{(?<body>.*?)^\}", RegexOptions.Multiline | RegexOptions.Singleline);
+
+        Assert.True(body.Success, "check-hostile-host.sh no longer defines reflow() { ... }.");
+        Assert.Matches(@"GEOMETRY_ASSERTIONS=\s", body.Groups["body"].Value);
+        Assert.Matches(@"\[ ""\$status"" -ne 0 \] && reflow_status=1", body.Groups["body"].Value);
+
+        var verdict = Regex.Match(
+            source,
+            @"^if (?<condition>[^\n]*); then\s+cat >&2 <<'EOF'\s+The component does not render correctly",
+            RegexOptions.Multiline);
+
+        Assert.True(verdict.Success, "check-hostile-host.sh no longer has the failing verdict this reads.");
+        Assert.Contains(@"[ ""$reflow_status"" -ne 0 ]", verdict.Groups["condition"].Value, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// One run of the real script, from a directory that is not the checkout — which holds it to
     /// resolving its sibling modules by its own path rather than by where the caller stood.
     /// </summary>
-    private static GuardRun Scan(string assertions, string target)
+    private static GuardRun Scan(string? assertions, string target, string? except = null)
     {
         var dir = Directory.CreateTempSubdirectory("munin-geometry-scan");
 
@@ -132,6 +266,7 @@ public class GeometryScanGuardTest
             start.ArgumentList.Add(Repo.In("scripts", "geometry-scan.mjs"));
             start.ArgumentList.Add(target);
             start.Environment["GEOMETRY_ASSERTIONS"] = assertions;
+            start.Environment["GEOMETRY_EXCEPT"] = except;
 
             return Guard.Run(start, "geometry-scan.mjs");
         }
