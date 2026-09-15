@@ -2,10 +2,22 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
-/// <summary>
-/// The decorative icon slot a hierarchy row draws in front of its label: a folder for the grouping
-/// levels, one glyph per datakategori for a datasamling, and nothing for a variabelgruppe.
-/// </summary>
+/// <summary>The two class names one icon slot wears: the group's, and each glyph's.</summary>
+/// <remarks>Written out per surface, never composed from a prefix: the class-name inventory is
+/// reconciled against literals in <c>src/</c> and cannot see a stem finished at runtime.</remarks>
+internal sealed record NodeIconClasses(string Group, string Glyph)
+{
+    /// <summary>The kilde hierarchy's own tree, where the glyphs lead the row.</summary>
+    internal static NodeIconClasses Hierarchy { get; } =
+        new("munin-explorer-hierarchy__icons", "munin-explorer-hierarchy__icon");
+
+    /// <summary>The facet panels' value rows, where they follow the name. Stiler 0.1.75 and later.</summary>
+    internal static NodeIconClasses Facets { get; } =
+        new("munin-explorer-filters__icons", "munin-explorer-filters__icon");
+}
+
+/// <summary>The decorative icon slot a row draws beside its label — in front of it in the kilde
+/// hierarchy, after it in the facet panels.</summary>
 internal static class NodeIcons
 {
     /// <summary>No glyphs at all — what a row draws when the host has turned the icons off.</summary>
@@ -23,7 +35,8 @@ internal static class NodeIcons
     /// Writes the slot, or nothing at all when there are no glyphs — an empty span would still take
     /// the gap the stylesheet puts between the icons and the name.
     /// </summary>
-    internal static void Write(RenderTreeBuilder builder, IReadOnlyList<NodeIcon> icons)
+    internal static void Write(
+        RenderTreeBuilder builder, IReadOnlyList<NodeIcon> icons, NodeIconClasses classes)
     {
         if (icons.Count == 0)
         {
@@ -31,15 +44,15 @@ internal static class NodeIcons
         }
 
         builder.OpenElement(0, "span");
-        builder.AddAttribute(1, "class", "munin-explorer-hierarchy__icons");
-        // Decorative: the row's accessible name stays its label, and the categories these stand for
-        // are said in words beside them rather than twice.
+        builder.AddAttribute(1, "class", classes.Group);
+        // Decorative: a glyph never joins the accessible name of whatever the slot sits in, so the
+        // categories reach a reader through SpokenCategories beside it instead.
         builder.AddAttribute(2, "aria-hidden", "true");
         foreach (var icon in icons)
         {
             builder.OpenElement(3, "svg");
             builder.SetKey(icon.Key);
-            builder.AddAttribute(4, "class", "munin-explorer-hierarchy__icon");
+            builder.AddAttribute(4, "class", classes.Glyph);
             builder.AddAttribute(5, "data-node-icon", icon.Key);
             builder.AddAttribute(6, "viewBox", "0 0 24 24");
             // An <svg> with no width or height is 300x150, so a host with no rule for the class
@@ -70,20 +83,38 @@ internal static class NodeIcons
     }
 
     /// <summary>
-    /// The glyphs in words, for the reader who cannot see them. Null for a folder, which says only
-    /// what the nesting around it already says, and null when there are no glyphs.
+    /// The datakategorier in words, since the glyphs are aria-hidden. Null when there are none, and
+    /// null for the folder — the grouping levels' one glyph, which no datasamling ever carries and
+    /// which says only what the nesting around the row already says.
     /// </summary>
-    internal static string? SpokenCategories(
-        KildeNodeKind kind, IReadOnlyList<NodeIcon> icons, Texts texts)
+    internal static string? SpokenCategories(IReadOnlyList<NodeIcon> icons, Texts texts)
     {
-        if (kind != KildeNodeKind.Datasamling || icons.Count == 0)
+        var named = icons
+            .Where(icon => icon.Key != DataCategoryIcons.Grouping)
+            .Select(icon =>
+                texts.DataCategoryNames.TryGetValue(icon.Key, out var name) ? name : icon.Key)
+            .ToList();
+
+        return named.Count == 0 ? null : texts.DataCategoryNamed(string.Join(", ", named));
+    }
+
+    /// <summary>
+    /// Writes those words beside the slot, or nothing when there are none. The separator is a text
+    /// node rather than the span's first character: an accessible name is computed per element, so
+    /// a space inside the span is trimmed off and the row announces as "Tromsø 1Datakategori: …".
+    /// </summary>
+    internal static void WriteSpoken(
+        RenderTreeBuilder builder, IReadOnlyList<NodeIcon> icons, Texts texts)
+    {
+        if (SpokenCategories(icons, texts) is not { } categories)
         {
-            return null;
+            return;
         }
 
-        var named = icons.Select(icon =>
-            texts.DataCategoryNames.TryGetValue(icon.Key, out var name) ? name : icon.Key);
-
-        return texts.DataCategoryNamed(string.Join(", ", named));
+        builder.AddContent(0, " ");
+        builder.OpenElement(1, "span");
+        builder.AddAttribute(2, "class", "screenreader-only");
+        builder.AddContent(3, categories);
+        builder.CloseElement();
     }
 }

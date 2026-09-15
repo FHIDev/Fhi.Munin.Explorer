@@ -120,7 +120,7 @@ public sealed class NodeIconsTest
     {
         var node = Node(KildeNodeKind.Datasamling, ["biobanks", "PHDR"]);
 
-        Assert.Equal(expected, NodeIcons.SpokenCategories(node.Kind, NodeIcons.For(node), Texts.For(language)));
+        Assert.Equal(expected, NodeIcons.SpokenCategories(NodeIcons.For(node), Texts.For(language)));
     }
 
     [Fact]
@@ -129,10 +129,10 @@ public sealed class NodeIconsTest
         // The folder repeats the nesting the list already conveys, so saying it would make every
         // grouping row announce its own type before its name.
         var delkilde = Node(KildeNodeKind.Delkilde, []);
-        Assert.Null(NodeIcons.SpokenCategories(delkilde.Kind, NodeIcons.For(delkilde), Texts.For("no")));
+        Assert.Null(NodeIcons.SpokenCategories(NodeIcons.For(delkilde), Texts.For("no")));
 
         var uncategorised = Node(KildeNodeKind.Datasamling, []);
-        Assert.Null(NodeIcons.SpokenCategories(uncategorised.Kind, NodeIcons.For(uncategorised), Texts.For("no")));
+        Assert.Null(NodeIcons.SpokenCategories(NodeIcons.For(uncategorised), Texts.For("no")));
     }
 
     private static KildeHierarchyNode Node(KildeNodeKind kind, IReadOnlyList<string> categories) =>

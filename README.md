@@ -325,6 +325,20 @@ These are not style preferences — each one is a host that breaks otherwise.
     size and colour and without the tabular figures. The merge is recorded in
     `Fhi.Metadata-l9l2n.73`, whose close note names PR 39274, merged 2026-09-11; nothing in this
     repository reads Stiler, so that bead is the whole of the evidence on this side.
+    That facet's datasamling rows add two more, `munin-explorer-filters__icons` on the slot and
+    `munin-explorer-filters__icon` on each glyph in it — one per datakategori the datasamling
+    carries, off the same `/filters` payload the row itself is built from. They are drawn between
+    the checkbox and the name, as in Runa. The checkbox keeps the same indentation regardless of
+    how many glyphs follow it. Handles both, on the terms
+    Kelda's `munin-explorer-hierarchy__icon*` pair already sets — the `<svg>` carries `width`,
+    `height` and `stroke="currentColor"` as attributes, so an undefined name draws the glyphs at
+    text size in the text colour and what a rule buys is the row they sit in and the gap between
+    them. The slot is `aria-hidden` and the categories follow the name as `screenreader-only` words,
+    exactly as Kelda's tree says them — the datakategori facet a few rows up lists the vocabulary
+    and says nothing about which datasamling is in which, so the row is the only place the pairing
+    is stated at all. A bilingual legend for the glyphs themselves is `Fhi.Metadata-zllxt`. The
+    rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**, the version
+    `samples/HostileHost` pins (`Fhi.Metadata-1t36m`).
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so
@@ -692,6 +706,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-filters__disclosure` | handle |
   | `munin-explorer-filters__facets` | handle |
   | `munin-explorer-filters__groupcount` | handle |
+  | `munin-explorer-filters__icon` | handle |
+  | `munin-explorer-filters__icons` | handle |
   | `munin-explorer-filters__search` | handle |
   | `munin-explorer-filters__toggle` | handle |
   | `munin-explorer-filters__toolbar` | handle |
