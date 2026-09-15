@@ -133,6 +133,16 @@ public class VariableSearchTest : BunitContext
         return Render<VariableSearch>(b => p?.Invoke(b));
     }
 
+    /// <summary>The same render in a context of its own. A context refuses a second service
+    /// registration once a render has resolved one, so two payloads in one test need two
+    /// contexts.</summary>
+    private static IRenderedComponent<VariableSearch> RenderApart(
+        BunitContext context, IMuninExplorerClient client)
+    {
+        context.Services.AddSingleton(client);
+        return context.Render<VariableSearch>();
+    }
+
     [Fact]
     public void Render_WhenTheSearchHasHits_ThenACardIsShownPerVariable()
     {
@@ -3221,6 +3231,29 @@ public class VariableSearchTest : BunitContext
     private static IElement FacetBox(IRenderedComponent<VariableSearch> cut, string label) =>
         Facet(cut, label).QuerySelector("input[type=checkbox]")!;
 
+    /// <summary>The <c>lang</c> the facet row reading <paramref name="label"/> puts on those words.</summary>
+    /// <remarks>
+    /// Read off the name span rather than the <c>label</c> around it, which is asserted bare: the
+    /// row also holds this package's own prose — the spoken datakategorier, the count — which is the
+    /// reader's language and not the catalogue's, and <c>lang</c> inherits. (WCAG 3.1.2)
+    /// </remarks>
+    private static string? FacetLang(IRenderedComponent<VariableSearch> cut, string label)
+    {
+        var row = Facet(cut, label);
+
+        Assert.False(row.HasAttribute("lang"));
+
+        return FacetName(row).GetAttribute("lang");
+    }
+
+    /// <summary>The span holding a facet row's own name, the one element in it the catalogue wrote.</summary>
+    /// <remarks>
+    /// By the absence of a class: every other span in the row wears one, and a marker class of its
+    /// own would be a <c>munin-explorer</c> name needing a rule in Stiler for nothing.
+    /// </remarks>
+    private static IElement FacetName(IElement row) =>
+        row.Children.First(child => child.TagName == "SPAN" && !child.HasAttribute("class"));
+
     /// <summary>Whether a facet value is ticked — the fact <c>aria-pressed</c> used to carry.</summary>
     private static bool FacetChosen(IRenderedComponent<VariableSearch> cut, string label) =>
         FacetBox(cut, label).HasAttribute("checked");
@@ -5260,6 +5293,164 @@ public class VariableSearchTest : BunitContext
         Assert.Equal(2, Facet(cut, "Tromsøundersøkelsen").ParentElement!.QuerySelectorAll("li").Length);
     }
 
+    // ---- datakategori glyphs on the datasamling rows (Fhi.Metadata-evoil) ----
+
+    /// <summary>Two datasamlinger, one under its kilde and one under a delkilde, with the categories named.</summary>
+    private static FilterOptions FacetsWithCategories(
+        IReadOnlyList<string> underKilde, IReadOnlyList<string> underDelkilde) => Facets() with
+        {
+            Datasamlinger =
+            [
+                new()
+                {
+                    Id = Tromso1, Name = "Tromsø 1", KildeId = Tromso, Count = 5,
+                    Categories = underKilde
+                },
+                new()
+                {
+                    Id = Tromso4Round, Name = "Fjerde runde", KildeId = Tromso, DelkildeId = Tromso4,
+                    Count = 4, Categories = underDelkilde
+                }
+            ]
+        };
+
+    /// <summary>The datakategori glyphs one facet row draws, in the order it draws them.</summary>
+    private static IReadOnlyList<string> RowGlyphs(IRenderedComponent<VariableSearch> cut, string label) =>
+        [.. Facet(cut, label)
+            .QuerySelectorAll(".munin-explorer-filters__icons .munin-explorer-filters__icon")
+            .Select(glyph => glyph.GetAttribute("data-node-icon")!)];
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesCategories_ThenOneGlyphPerCategoryIsDrawnInTheSharedOrder()
+    {
+        // The payload's order is incidental and the render order is DataCategoryIcons.Order, so one
+        // set of categories looks the same here as it does in the kildeutforsker's own tree.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["EINS", "PHDR"], ["PHDR"])));
+
+        Assert.Equal(["PHDR", "EINS"], RowGlyphs(cut, "Tromsø 1"));
+        Assert.Equal(["PHDR"], RowGlyphs(cut, "Fjerde runde"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesNoCategories_ThenNoSlotIsDrawnAtAll()
+    {
+        // Absence is not the catch-all: an empty slot would still take the gap the stylesheet puts
+        // between the glyphs and the name, so the whole span is left out.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithCategories([], [])));
+
+        // Read off the whole panel rather than one row: the kilder and delkilder above draw none
+        // either, so an assertion on the datasamling alone would pass over a folder on every branch.
+        ExpandBranches(cut);
+        Assert.Empty(FilterPanel(cut).QuerySelectorAll(".munin-explorer-filters__icons"));
+        Assert.NotEmpty(FilterPanel(cut).QuerySelectorAll("li"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesAnUnknownCategory_ThenItFallsBackToTheCatchAllGlyph()
+    {
+        // The icon helper's own rule, and this panel adds nothing to it: a categorised datasamling
+        // must never read as an uncategorised one, so a token nothing recognises draws `other`.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["snomed:other", "PHDR"], [])));
+
+        Assert.Equal(["PHDR", "other"], RowGlyphs(cut, "Tromsø 1"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingHangsStraightOffItsKilde_ThenItDrawsWhatOneUnderADelkildeDraws()
+    {
+        // DelkildeId decides where the row hangs and nothing about the glyphs — and it is null on
+        // the majority of datasamlinger, which is the case the tree reached last. (Fhi.Metadata-mgp03)
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["EINS"], ["EINS"])));
+
+        Assert.Equal(["EINS"], RowGlyphs(cut, "Tromsø 1"));
+        Assert.Equal(RowGlyphs(cut, "Fjerde runde"), RowGlyphs(cut, "Tromsø 1"));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesCategories_ThenTheCheckboxNamesThemInWords()
+    {
+        // The glyphs are aria-hidden, so these words are the only place a reader who cannot see
+        // them learns which categories THIS row carries: the datakategori facet above lists the
+        // vocabulary and says nothing about which datasamling is in which. (Fhi.Metadata-evoil)
+        using var other = new BunitContext();
+        var bare = RenderApart(other, new FilteringClient(OnePage(), FacetsWithCategories([], [])));
+        var drawn = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])));
+
+        // After the name and before the count, in the render order the glyphs are drawn in.
+        Assert.Equal(
+            "Tromsø 1 Datakategori: Befolkningsbaserte helseregistre, Biobanker og prøvesamlinger. (5)",
+            AccessibleName.Of(FacetBox(drawn, "Tromsø 1")));
+
+        // A row with no glyphs says nothing extra: absence is not a category to announce.
+        Assert.Equal("Tromsø 1 (5)", AccessibleName.Of(FacetBox(bare, "Tromsø 1")));
+    }
+
+    [Fact]
+    public void Render_WhenAnEnglishReaderMeetsACategorisedDatasamling_ThenOnlyTheNameIsMarkedNorwegian()
+    {
+        // The name is the catalogue's Norwegian and carries the marking; these words are this
+        // package's own English beside it, and a lang over both would have an English voice
+        // pronounce "Data category" with Norwegian phonetics (WCAG 3.1.2). (Fhi.Metadata-evoil)
+        var cut = RenderWith(
+            new FilteringClient(OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])),
+            b => b.Add(c => c.Language, "en"));
+
+        var row = Facet(cut, "Tromsø 1");
+        var spoken = row.QuerySelector(".screenreader-only")!;
+
+        Assert.Equal("no", FacetLang(cut, "Tromsø 1"));
+        Assert.Equal(
+            "Data category: Population health data registries, Health data from biobanks.",
+            spoken.TextContent.Trim());
+        Assert.Null(MarkedLanguage(spoken, row));
+    }
+
+    /// <summary>The <c>lang</c> a screen reader would read <paramref name="element"/> in.</summary>
+    /// <remarks>
+    /// The nearest marking at or above it, stopping at <paramref name="row"/>: nothing between a
+    /// row and the panel is marked, so a marking found further up would be one this package put on
+    /// the page for another reason entirely.
+    /// </remarks>
+    private static string? MarkedLanguage(IElement element, IElement row)
+    {
+        for (var node = element; node is not null; node = node.ParentElement)
+        {
+            if (node.GetAttribute("lang") is { } lang)
+            {
+                return lang;
+            }
+
+            if (node == row)
+            {
+                break;
+            }
+        }
+
+        return null;
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCarriesCategories_ThenTheGlyphsThemselvesStayDecoration()
+    {
+        // The words above are what a reader hears; the slot must not also reach the tree, and the
+        // checkbox stays the row's first child so a glyph never leads it. (Fhi.Metadata-evoil)
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])));
+
+        var row = Facet(cut, "Tromsø 1");
+        var slot = row.QuerySelector(".munin-explorer-filters__icons")!;
+
+        Assert.Equal("true", slot.GetAttribute("aria-hidden"));
+        Assert.Equal("currentColor", slot.QuerySelector("svg")!.GetAttribute("stroke"));
+        Assert.Equal("INPUT", row.FirstElementChild!.TagName);
+        Assert.Equal("INPUT", slot.PreviousElementSibling!.TagName);
+        Assert.Equal("Tromsø 1", slot.NextElementSibling!.TextContent);
+    }
+
     // ---- the tree folds, branch by branch (Fhi.Metadata-adog5) ----
 
     /// <summary>A Guid built out of two numbers, so a fixture can mint as many as it needs.</summary>
@@ -6167,7 +6358,7 @@ public class VariableSearchTest : BunitContext
                                 vocabulary: CategoryWordSpelledLikeItsCode()),
             b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("no", Facet(cut, "Prøvesamling").GetAttribute("lang"));
+        Assert.Equal("no", FacetLang(cut, "Prøvesamling"));
 
         ClickFacet(cut, "Prøvesamling");
 
@@ -6183,15 +6374,15 @@ public class VariableSearchTest : BunitContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
         var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("no", Facet(cut, "Tromsøundersøkelsen").GetAttribute("lang"));
-        Assert.Equal("no", Facet(cut, "Tromsø 4").GetAttribute("lang"));
-        Assert.Null(Facet(cut, "String").GetAttribute("lang"));
-        Assert.Null(Facet(cut, "ICD-10").GetAttribute("lang"));
+        Assert.Equal("no", FacetLang(cut, "Tromsøundersøkelsen"));
+        Assert.Equal("no", FacetLang(cut, "Tromsø 4"));
+        Assert.Null(FacetLang(cut, "String"));
+        Assert.Null(FacetLang(cut, "ICD-10"));
 
         ClickFacet(cut, "Tromsøundersøkelsen");
 
         Assert.Equal(ChipLang(cut, "Tromsøundersøkelsen"),
-                     Facet(cut, "Tromsøundersøkelsen").GetAttribute("lang"));
+                     FacetLang(cut, "Tromsøundersøkelsen"));
     }
 
     [Fact]

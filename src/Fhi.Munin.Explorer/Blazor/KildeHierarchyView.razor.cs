@@ -221,7 +221,7 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
         // NodeIcons.Write opens this fragment with sequence numbers of its own, so everything below
         // starts past them: the renderer diffs a fragment against one increasing sequence.
         var icons = ShowNodeIcons ? NodeIcons.For(node) : NodeIcons.None;
-        NodeIcons.Write(builder, icons);
+        NodeIcons.Write(builder, icons, NodeIconClasses.Hierarchy);
 
         var named = T.Named(node.Name, null);
         builder.OpenElement(20, "span");
@@ -232,13 +232,7 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
         // The glyphs are aria-hidden, so these words are the only place the tree says which
         // datakategori a datasamling carries. After the name rather than before it: a row is found
         // by its name, and a category read first delays the word the reader is listening for.
-        if (NodeIcons.SpokenCategories(node.Kind, icons, T) is { } categories)
-        {
-            builder.OpenElement(23, "span");
-            builder.AddAttribute(24, "class", "screenreader-only");
-            builder.AddContent(25, $" {categories}");
-            builder.CloseElement();
-        }
+        builder.AddContent(23, (RenderFragment)(nested => NodeIcons.WriteSpoken(nested, icons, T)));
 
         if (node.Count > 0)
         {

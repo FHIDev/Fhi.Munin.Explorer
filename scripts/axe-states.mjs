@@ -144,6 +144,14 @@ export const states = {
       .locator('.munin-explorer-filters__disclosure[aria-expanded="true"]')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // And a datasamling row drawing its datakategori glyphs, on the same terms: a payload whose
+    // datasamlinger carry no categories renders the tree with none of Fhi.Metadata-evoil's markup
+    // in it, and axe reports no violations in what is not there.
+    await page
+      .locator('.munin-explorer-filters__icons')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
   // A variable row opened. The panel under the row is the largest block of markup in the package
