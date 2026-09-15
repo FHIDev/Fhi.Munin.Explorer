@@ -7,9 +7,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>data-munin-explorer-version</c>.
 /// </summary>
 /// <remarks>
-/// Read off the assembly at load time rather than written down anywhere: this package ships no
-/// static web assets and no endpoint, so the DOM is the only place a deployed version can be read
-/// from — and a literal that drifts is worse than the silence it replaces. (Fhi.Metadata-sqbei)
+/// Read off the assembly at load time rather than written down anywhere: this package has no
+/// endpoint, and its one static web asset is a module a host need not serve, so the DOM is the only
+/// place a deployed version can be read from — and a literal that drifts is worse than the silence
+/// it replaces. (Fhi.Metadata-sqbei)
 /// </remarks>
 internal static class ExplorerVersion
 {

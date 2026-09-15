@@ -8,8 +8,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// The address bar, for a component that owns some of the query string and none of the rest.
 /// </summary>
 /// <remarks>
-/// No JavaScript ships with this package: <c>history.replaceState</c> is a browser built-in reached
-/// through <see cref="IJSRuntime"/>, as <see cref="BrowserDownload"/> reaches <c>Blob</c>.
+/// <c>history.replaceState</c> is a browser built-in reached through <see cref="IJSRuntime"/>, as
+/// <see cref="BrowserDownload"/> reaches <c>Blob</c> — not an export of the package's own module,
+/// so the address bar follows the view whether or not a host serves that file.
 /// </remarks>
 internal sealed class UrlMirror
 {

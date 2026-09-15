@@ -4,7 +4,7 @@ category: Added
   datasamlinger, the version history or the statistics without scrolling for them. It fills the
   contents column `DetailPage` has had since the chassis landed, and a page that drew no section
   draws no column at all rather than an empty rail. The links are plain `#fragment` anchors — the
-  browser does the scrolling and the package still ships **no JavaScript**; the highlight that
+  browser does the scrolling and the nav itself runs **no JavaScript**; the highlight that
   follows the reader down the page is a separate change and needs a script, so it is not here.
   Every entry is built from the same condition its section renders under, so a nav never offers a
   link to a block the page suppressed, and the `href` values are the fixed English section ids in

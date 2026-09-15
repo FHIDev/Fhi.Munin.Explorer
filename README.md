@@ -85,8 +85,15 @@ These are not style preferences — each one is a host that breaks otherwise.
   is a single parameterised root component.
 - **No `@rendermode`.** The host decides, at the mount site. This is what lets one package serve
   both a legacy and a modern host.
-- **No CSS, no `wwwroot`, no `.razor.css`.** Styling comes from the host. The names the markup
-  emits split in two, and the difference matters to whoever is writing the rules:
+- **No CSS, no `.razor.css`.** Styling comes from the host. The `wwwroot` the package does have
+  holds one JavaScript module and nothing else — `explorer-interop.js`, served at
+  `_content/Fhi.Munin.Explorer/` and imported after the first render, the shape
+  `Fhi.Helsedata.Soknader` already ships on this same host. Nothing rendered depends on it, so a
+  host that does not serve it draws the same page, and `scripts/assert-package-contents.sh` names
+  every packed entry one by one — a stylesheet parked beside the module still fails the build
+  (Fhi.Metadata-35w0p.14).
+  The names the markup emits split in two, and the difference matters to whoever is writing the
+  rules:
   - **Borrowed.** Where a part of the component is ordinary page furniture, it wears
     `Fhi.Helsedata.Stiler`'s own name, every one read back off Stiler's compiled stylesheet rather
     than guessed at: `searchbox__freetext*`, `hd-button-square` with its `button-square--*`

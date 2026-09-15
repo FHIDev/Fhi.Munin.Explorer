@@ -14,11 +14,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// minted for it, a synthetic anchor carrying <c>download</c> is clicked, and the URL is revoked.
 /// </para>
 /// <para>
-/// <b>No JavaScript file ships with this package.</b> Every call below is a browser built-in —
-/// <c>Blob</c>, <c>URL</c>, <c>document</c> — reached through <see cref="IJSRuntime"/>. The
-/// packaging guard forbids a <c>wwwroot</c> because a stylesheet riding along would compete with
-/// the host's own (<c>scripts/assert-package-contents.sh</c>); it is not a ban on interop, and the
-/// sample host already drives <c>history.replaceState</c> this way.
+/// <b>Nothing below is in the package's own module.</b> Every call is a browser built-in —
+/// <c>Blob</c>, <c>URL</c>, <c>document</c> — reached through <see cref="IJSRuntime"/>, so a host
+/// that never serves <see cref="ExplorerInterop"/>'s file still downloads a list. The packaging
+/// guard names what may ship rather than banning a <c>wwwroot</c>, because what it is really
+/// keeping out is a stylesheet competing with the host's own.
 /// </para>
 /// <para>
 /// The bytes cross the circuit to get here, which is the real cost of this approach: a large export

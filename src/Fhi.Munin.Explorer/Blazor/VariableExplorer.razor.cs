@@ -34,7 +34,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// link to an empty page for everyone but its author.
 /// </para>
 /// </remarks>
-public sealed partial class VariableExplorer : ComponentBase
+public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 {
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -82,6 +82,8 @@ public sealed partial class VariableExplorer : ComponentBase
 
     private UrlMirror _mirror = default!;
 
+    private ExplorerInterop? _interop;
+
     protected override void OnInitialized()
     {
         InteractiveMount.Require(RendererInfo.IsInteractive, nameof(VariableExplorer));
@@ -101,8 +103,24 @@ public sealed partial class VariableExplorer : ComponentBase
         _state = Binding.From(ExplorerUrlState.Parse(_mirror.Owned));
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender) =>
-        _mirror.MirrorAsync(Linkable(_state.ToState()).ToQueryString()).AsTask();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await _mirror.MirrorAsync(Linkable(_state.ToState()).ToQueryString());
+
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // The result is discarded on purpose: nothing rendered above reads the module, so a host
+        // that does not serve it draws exactly this page (Fhi.Metadata-35w0p.14). Here rather than
+        // in OnInitialized because prerender has no JS runtime to import with.
+        _interop = new ExplorerInterop(JS);
+        await _interop.TryLoadAsync();
+    }
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync() => _interop?.DisposeAsync() ?? ValueTask.CompletedTask;
 
     // This page as the reader's address bar now reads it, for the drill-in views' contents nav.
     // Built fresh on every render: the state it reads moves without a navigation, and a contents

@@ -48,9 +48,12 @@ behaviour found later by someone else.
    opens and closes entirely inside `ColumnPicker()`. Reasoning in `AGENTS.md`. The Stiler rule for
    a name you invent is a separate bead of its own — see "Finishing".
 
-3. **The package ships no CSS.** No `wwwroot`, no `.razor.css`. Sample hosts carry their own
-   styling because they have no Stiler; the package must not.
-   `scripts/assert-package-contents.sh` enforces it and runs in CI on every PR.
+3. **The package ships no CSS.** No `.razor.css`, and nothing in `wwwroot` but the one JavaScript
+   module `explorer-interop.js` (Fhi.Metadata-35w0p.14). Sample hosts carry their own styling
+   because they have no Stiler; the package must not.
+   `scripts/assert-package-contents.sh` enforces it and runs in CI on every PR — by naming every
+   packed entry, so a second module fails there exactly as a stylesheet does. Adding a file to
+   `wwwroot` and adding its entry to that script are one commit: either alone is red.
 
 4. **The two sample stylesheets are one file, copied — and they style every name we invent.**
    `samples/ModernHost/wwwroot/host.css` and `samples/LegacyHost/wwwroot/css/host.css` must be
