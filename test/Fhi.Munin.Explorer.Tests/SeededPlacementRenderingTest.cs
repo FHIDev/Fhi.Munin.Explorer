@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Reflection;
 using AngleSharp.Dom;
 using Bunit;
@@ -46,8 +47,10 @@ public class SeededPlacementRenderingTest : BunitContext
     // Munin types this one SingleSelect and curates a word for every code, and that word is not the
     // word Texts.PersonIdentificationLabel has — which is the whole reason it can be drawn twice.
     private const string IdentificationOptions =
-        """[{"value":"indirectlyIdentifiable","label":"Indirekte personidentifiserbare data",""" +
-        """"labelEn":"Indirectly identifiable data"}]""";
+        """
+        [{"value":"indirectlyIdentifiable","label":"Indirekte personidentifiserbare data",
+          "labelEn":"Indirectly identifiable data"}]
+        """;
 
     private const string StatisticsOptions =
         """[{"value":"hendelsestelling","label":"Telling av hendelser","labelEn":"Event count"}]""";
@@ -69,7 +72,7 @@ public class SeededPlacementRenderingTest : BunitContext
             OptionsJson = optionsJson,
             DisplayNameTranslations = new Dictionary<string, string> { ["no"] = label },
             GroupTranslations = section is null
-                ? new Dictionary<string, string>()
+                ? ReadOnlyDictionary<string, string>.Empty
                 : new Dictionary<string, string> { ["no"] = section },
         };
 
@@ -269,16 +272,20 @@ public class SeededPlacementRenderingTest : BunitContext
     {
         var body = Body(RenderDatasamling(Datasamling(section: null)));
 
-        EachDrawnOnce(body, new Dictionary<string, string>(DatasamlingFacts)
+        var facts = new Dictionary<string, string>(DatasamlingFacts)
         {
             [CatalogueColumns.PersonIdentification] = "Indirekte identifiserbar",
             [CatalogueColumns.ValidFrom] = "3. februar 2023 – 5. april 2024",
             [CatalogueColumns.ValidTo] = "3. februar 2023 – 5. april 2024",
             // Unresolved, because the fact box draws the stored code rather than the vocabulary's
-            // word for it. The heading names the statistics type either way, so it is not counted.
+            // word for it. Statistikktype is left out of the count entirely: no fact box draws it,
+            // and the heading that names it is written twice, in the nav and over the section.
             [CatalogueColumns.Frequency] = "manedlig",
-            [CatalogueColumns.StatisticsType] = "hendelsestelling",
-        });
+        };
+
+        facts.Remove(CatalogueColumns.StatisticsType);
+
+        EachDrawnOnce(body, facts);
     }
 
     [Fact]
