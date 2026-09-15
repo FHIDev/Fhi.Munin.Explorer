@@ -295,15 +295,23 @@ public sealed partial class KildeView : ComponentBase
     /// <summary>The sections this view draws, in the order it draws them.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
+    private IReadOnlySet<string> DrawnIds { get; set; } = new HashSet<string>();
+
     /// <inheritdoc />
-    protected override void OnParametersSet() => Toc = BuildToc();
+    protected override void OnParametersSet()
+    {
+        var toc = BuildToc();
+
+        Toc = toc.Entries;
+        DrawnIds = toc.Drawn;
+    }
 
     /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
-    private IReadOnlyList<DetailTocEntry> BuildToc()
+    private DetailTocBuilder BuildToc()
     {
         if (Kilde is null)
         {
-            return [];
+            return new();
         }
 
         DetailTocBuilder toc = new();
@@ -318,11 +326,11 @@ public sealed partial class KildeView : ComponentBase
         toc.Add(DetailBlocks.AnyFacts(Statistics), DetailSectionIds.Statistics, T.HeadingStatistics);
         toc.AddNamed(NamedSections);
 
-        return toc.Entries;
+        return toc;
     }
 
     /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
-    private bool Drawn(string id) => Toc.Contains(id);
+    private bool Drawn(string id) => DrawnIds.Contains(id);
 
     /// <summary>
     /// The heading for the datasamling section, when the explorer using this view wants a word of

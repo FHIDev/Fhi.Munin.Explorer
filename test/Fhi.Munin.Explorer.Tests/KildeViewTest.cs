@@ -165,10 +165,10 @@ public class KildeViewTest : BunitContext
     };
 
     /// <summary>Markup a host might hang after the metadata, carrying no class of its own.</summary>
-    private static readonly RenderFragment KeldaSections = builder =>
+    private static readonly RenderFragment HostSections = builder =>
     {
         builder.OpenElement(0, "p");
-        builder.AddAttribute(1, "id", "kelda-sections");
+        builder.AddAttribute(1, "id", "host-sections");
         builder.AddContent(2, "Tilgangskriterier");
         builder.CloseElement();
     };
@@ -1590,19 +1590,18 @@ public class KildeViewTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Sections_WhenAnExplorerPassesThem_ThenTheyComeLastAfterTheViewsOwnBlocks()
+    public void Sections_WhenAHostPassesThem_ThenTheyComeLastAfterTheNamedSections()
     {
-        // The whole reason this is a core with a slot instead of one view with a flag per Kelda
-        // section. They go after every block the view is itself — the source's own record reads
-        // first — because an explorer's sections are additions to the page it embedded.
-        var cut = Render(Kilde(), sections: KeldaSections);
+        // A host's markup is an addition to the page it embedded, so it follows every section the
+        // view draws, the named ones included.
+        var cut = Render<KildeView>(b => b
+            .Add(c => c.Kilde, Kilde())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two)
+            .Add(c => c.Sections, HostSections));
 
-        var main = cut.Find(".munin-explorer-kilde__main");
-        var ids = main.Children.Select(e => e.Id).ToArray();
+        var ids = cut.Find(".munin-explorer-kilde__main").Children.Select(e => e.Id ?? "").ToArray();
 
-        Assert.Equal("kelda-sections", ids[^1]);
-        Assert.Contains(DetailSectionIds.Source, ids[..^1]);
-        Assert.Contains(DetailSectionIds.Statistics, ids[..^1]);
+        Assert.Equal([DetailSectionIds.Statistics, "first", "second", "host-sections"], ids[^4..]);
     }
 
     [Fact]

@@ -12,8 +12,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// it has something to show: the view has no way to tell an empty <see cref="Body"/> from a full one.
 /// </para>
 /// <para>
-/// <see cref="Id"/> joins the fixed ids the view writes itself — <c>metadata</c>, <c>source</c>,
-/// <c>statistics</c> and the rest — so it must be none of those, and the same in every language.
+/// <see cref="Id"/> shares the document with the ids the views write themselves — <c>metadata</c>,
+/// <c>criteria</c>, <c>source</c>, <c>statistics</c>, <c>datacollections</c>, <c>versions</c>,
+/// <c>dataperiod</c>, <c>datatype</c>, <c>variablegroups</c>, <c>variables</c>,
+/// <c>accesscriteria</c>, <c>prices</c> and <c>codelists</c> — so give it one that is none of those
+/// and no other section's: a repeated id puts two elements on the page under it, and the nav's
+/// second link lands on the first. Keep it the same in every language, since a reader shares the link.
 /// </para>
 /// </remarks>
 /// <param name="Id">The section's <c>id</c>, which the nav links to, written without the <c>#</c>.</param>

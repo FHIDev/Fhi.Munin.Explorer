@@ -101,7 +101,7 @@ public class DatasamlingViewTest : BunitContext
         Assert.Empty(Render(Datasamling()).FindAll("nav.breadcrumbs"));
     }
 
-    /// <summary>Markup an explorer might hang after the metadata, carrying no class of its own.</summary>
+    /// <summary>Markup a host might hang after the view's sections, carrying no class of its own.</summary>
     private static readonly RenderFragment ExplorerSections = builder =>
     {
         builder.OpenElement(0, "p");
@@ -911,15 +911,18 @@ public class DatasamlingViewTest : BunitContext
     ];
 
     [Fact]
-    public void Sections_WhenAnExplorerPassesThem_ThenTheyComeLastAfterTheViewsOwnBlocks()
+    public void Sections_WhenAHostPassesThem_ThenTheyComeLastAfterTheNamedSections()
     {
-        // The slot is the reason this is a core with composition points rather than a view with a
-        // flag per explorer. Nothing here learns which explorer is calling.
-        var cut = Render(Datasamling(), sections: ExplorerSections);
+        // A host's markup is an addition to the page it embedded, so it follows every section the
+        // view draws, the named ones included.
+        var cut = Render<DatasamlingView>(b => b
+            .Add(c => c.Datasamling, Datasamling())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two)
+            .Add(c => c.Sections, ExplorerSections));
 
-        var main = cut.Find(".munin-explorer-datasamling__main");
+        var ids = cut.Find(".munin-explorer-datasamling__main").Children.Select(e => e.Id ?? "").ToArray();
 
-        Assert.Equal("explorer-sections", main.LastElementChild!.Id);
+        Assert.Equal([DetailSectionIds.Statistics, "first", "second", "explorer-sections"], ids[^4..]);
     }
 
     [Fact]

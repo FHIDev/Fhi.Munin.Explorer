@@ -238,15 +238,23 @@ public sealed partial class VariableView : ComponentBase
     /// <summary>The sections this view draws, in the order it draws them.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
+    private IReadOnlySet<string> DrawnIds { get; set; } = new HashSet<string>();
+
     /// <inheritdoc />
-    protected override void OnParametersSet() => Toc = BuildToc();
+    protected override void OnParametersSet()
+    {
+        var toc = BuildToc();
+
+        Toc = toc.Entries;
+        DrawnIds = toc.Drawn;
+    }
 
     /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
-    private IReadOnlyList<DetailTocEntry> BuildToc()
+    private DetailTocBuilder BuildToc()
     {
         if (Variable is not { } variable)
         {
-            return [];
+            return new();
         }
 
         DetailTocBuilder toc = new();
@@ -261,9 +269,9 @@ public sealed partial class VariableView : ComponentBase
         toc.Add(variable.AllVariabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
         toc.Add(variable.AllDatasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
 
-        return toc.Entries;
+        return toc;
     }
 
     /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
-    private bool Drawn(string id) => Toc.Contains(id);
+    private bool Drawn(string id) => DrawnIds.Contains(id);
 }

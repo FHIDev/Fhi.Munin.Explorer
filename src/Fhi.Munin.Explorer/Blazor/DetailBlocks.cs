@@ -161,7 +161,7 @@ internal static class DetailBlocks
         builder.CloseElement();
     }
 
-    /// <summary>The sections an explorer handed a view, each in a <see cref="DetailSection"/> under its heading.</summary>
+    /// <summary>The heading level is the view's own blocks', so a handed section cannot nest under one.</summary>
     internal static RenderFragment NamedSections(IReadOnlyList<DetailNamedSection>? sections, int level) => builder =>
     {
         foreach (var section in sections ?? [])

@@ -506,7 +506,7 @@ internal sealed record Texts(
     Func<string, string> DataCategoryNamed,
     IReadOnlyDictionary<string, string> DataCategoryNames,
     // The sections Kelda has over a kilde and Runa has not, measured on the same source in both on
-    // 2026-08-20. They are markup Kelda hands to KildeView.NamedSections rather than markup inside that
+    // 2026-08-20. They are sections Kelda hands to KildeView.NamedSections rather than markup inside that
     // component, so their words sit here beside the rest of Kelda's rather than in the shared core.
     // Its own member rather than ColumnVariableCount reused, though both read "Variabler": that one
     // heads a column of numbers in the kilde list and is named for it, so a column that becomes

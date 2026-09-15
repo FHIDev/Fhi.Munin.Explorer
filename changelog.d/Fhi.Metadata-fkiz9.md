@@ -5,4 +5,4 @@ category: Fixed
   whole-variable page in the variabelutforsker left out its Kodeverk section the same way. Each is
   now a section of its own with a fixed English id (`variables`, `accesscriteria`, `prices`,
   `codelists`), listed in page order, and Kodeverk is listed only for a variable that has one.
-  Runa's kilde page, which adds no sections, keeps its four entries. (Fhi.Metadata-fkiz9)
+  Runa's kilde page, which adds no sections, lists only the view's own. (Fhi.Metadata-fkiz9)

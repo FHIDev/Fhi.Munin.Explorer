@@ -5,9 +5,11 @@ category: Notes for hosts
   `id="prices"` will have a duplicate, and the nav's link lands on whichever comes first.
   `Fhi.Metadata-uobxg` is where that bound gets settled. (Fhi.Metadata-fkiz9)
 - **Kelda's sections and the whole variable's Kodeverk now sit in `munin-explorer-page__section`
-  wrappers, so `Fhi.Helsedata.Stiler`'s rules for that name reach them.** No new class name. Two of
-  those rules change what these sections look like under Stiler: `scroll-margin-top` puts a heading
-  reached from the nav clear of a sticky header, and the `:last-child` rule gives the last section
-  on a kilde page — Variabler, or Priser with `ShowAccessAndPrices` — the `min-height` that lets the
-  nav's last link scroll its section into view. Runa's kilde page already ended in a wrapped
-  section. (Fhi.Metadata-fkiz9)
+  wrappers, so `Fhi.Helsedata.Stiler`'s rules for that name reach them.** No new class name.
+  `scroll-margin-top` puts a heading reached from the nav clear of a sticky header. And unless you
+  pass `KildeSearch.Sections`, the last of Kelda's sections — Variabler, or Priser with
+  `ShowAccessAndPrices` — is now the column's last child, so Stiler's `:last-child` rule gives it a
+  `min-height` of `calc(60vh - 120px)`: expect that much space under a one-line section at the
+  bottom of an open kilde. Stiler's reason is a scroll-spy, which could otherwise never mark the
+  nav's last entry active; Runa's kilde page already ended in a wrapped section and got the same
+  space. (Fhi.Metadata-fkiz9)

@@ -267,13 +267,10 @@ public sealed partial class KildeSearch : ComponentBase
     /// The host's own sections for an open kilde, placed after Kelda's.
     /// </summary>
     /// <remarks>
-    /// The seam that keeps <see cref="KildeView"/> a shared core: Kelda's own sections — its
-    /// variables, its access criteria, its prices — are markup that goes <em>into</em> that
-    /// component rather than markup added to it, and this parameter is the same door held open for
-    /// whoever embedded the explorer. It reaches <see cref="KildeView.Sections"/> after Kelda's own,
-    /// because a host's section is an addition to the page it embedded rather than a replacement for
-    /// what the component is. The page's contents nav lists Kelda's sections and not this: the view
-    /// cannot see an id or a heading inside a fragment.
+    /// Passed to <see cref="KildeView.Sections"/>, after Kelda's own sections — its variables, its
+    /// access criteria, its prices — because a host's section is an addition to the page it embedded
+    /// rather than a replacement for what the component is. The page's contents nav lists Kelda's
+    /// sections and not this: the view cannot see an id or a heading inside a fragment.
     /// </remarks>
     [Parameter] public RenderFragment? Sections { get; set; }
 
@@ -1274,7 +1271,7 @@ public sealed partial class KildeSearch : ComponentBase
     /// <see cref="KildeView"/> draws the headings, so they sit at the level of its own blocks, and
     /// lists each section in its contents nav.
     /// </remarks>
-    private IReadOnlyList<DetailNamedSection> KeldaSections(KildeDetail kilde)
+    private IReadOnlyList<DetailNamedSection> OwnSections(KildeDetail kilde)
     {
         List<DetailNamedSection> sections =
         [

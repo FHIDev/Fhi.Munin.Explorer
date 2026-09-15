@@ -11,9 +11,17 @@ namespace Fhi.Munin.Explorer.Blazor;
 internal sealed class DetailTocBuilder
 {
     private readonly List<DetailTocEntry> _entries = [];
+    private readonly HashSet<string> _drawn = new(StringComparer.Ordinal);
 
     /// <summary>The entries in the order they were added, which is the order the view draws them.</summary>
     internal IReadOnlyList<DetailTocEntry> Entries => _entries;
+
+    /// <summary>The ids of the view's own blocks that draw, named sections left out.</summary>
+    /// <remarks>
+    /// Apart from <see cref="Entries"/> so a named section reusing one of these ids cannot switch
+    /// the view's own empty block on.
+    /// </remarks>
+    internal IReadOnlySet<string> Drawn => _drawn;
 
     /// <summary>Name the section with this id, under the same condition its block renders under.</summary>
     internal void Add(bool drawn, string id, string heading)
@@ -21,6 +29,7 @@ internal sealed class DetailTocBuilder
         if (drawn)
         {
             _entries.Add(new DetailTocEntry(id, heading));
+            _drawn.Add(id);
         }
     }
 
@@ -31,7 +40,7 @@ internal sealed class DetailTocBuilder
     /// </remarks>
     internal void Always(string id, string heading) => Add(true, id, heading);
 
-    /// <summary>Name every section an explorer handed the view, at the place the view draws them.</summary>
+    /// <summary>Listed wherever the view draws them, which differs between the views.</summary>
     internal void AddNamed(IReadOnlyList<DetailNamedSection>? sections)
     {
         foreach (var section in sections ?? [])
@@ -39,12 +48,4 @@ internal sealed class DetailTocBuilder
             _entries.Add(section.Entry);
         }
     }
-}
-
-/// <summary>Reading a built contents nav back, which is how a view asks whether to draw a block.</summary>
-internal static class DetailTocEntries
-{
-    /// <summary>Whether the nav names this section, which is whether the view drew it.</summary>
-    internal static bool Contains(this IReadOnlyList<DetailTocEntry> toc, string id) =>
-        toc.Any(entry => entry.Id == id);
 }
