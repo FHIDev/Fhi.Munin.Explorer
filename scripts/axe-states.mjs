@@ -152,6 +152,13 @@ export const states = {
       .locator('.munin-explorer-filters__icons')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // And a kilde row wearing its kildetype badge, for the same reason — the stub retypes two
+    // kilder so there is one on screen at all. (Fhi.Metadata-aw203)
+    await page
+      .locator('.munin-explorer-filters__badge')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
   // A variable row opened. The panel under the row is the largest block of markup in the package

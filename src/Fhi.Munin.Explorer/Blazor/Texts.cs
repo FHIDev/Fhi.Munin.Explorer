@@ -335,6 +335,10 @@ internal sealed record Texts(
     // which holds the code alone, for a facet the API sent nameless, and for a legacy stored
     // spelling echoed back as one. See AGENTS.md, "The API names a datatype, not this package".
     IReadOnlyDictionary<string, string> KildeTypeNames,
+    // The badge a kilde row wears in the facet tree, for the two kildetyper Runa marks out there.
+    // A table of its own and not KildeTypeNames: membership is the badge's whole meaning, so a
+    // kildetype this does not name wears none — see KildeTypeBadge.
+    IReadOnlyDictionary<string, string> KildeTypeBadges,
     IReadOnlyDictionary<string, string> DataTypeNames,
     string Ascending,
     string Descending,
@@ -673,6 +677,16 @@ internal sealed record Texts(
 
         return string.IsNullOrWhiteSpace(fallback) ? NotSpecified : fallback;
     }
+
+    /// <summary>The badge word for a kildetype, or null for one that wears no badge.</summary>
+    /// <remarks>
+    /// Absent and unrecognised answer alike on purpose: the badge says a kilde is one of the kinds
+    /// the table names, so a kildetype nobody here has a word for is not one of them. And not
+    /// <see cref="KildeTypeNameFromApi"/>, because this marks a row rather than rendering the
+    /// vocabulary — the heading over that row already carries the API's word for the same value.
+    /// </remarks>
+    public string? KildeTypeBadge(string? value) =>
+        value is not null && KildeTypeBadges.TryGetValue(value, out var badge) ? badge : null;
 
     /// <summary>
     /// What a facet or a heading shows for a kildetype the API has named, preferring the API's own
@@ -1037,6 +1051,11 @@ internal sealed record Texts(
             ["forskningsprosjekt"] = "Forskningsprosjekt",
             ["manueltOpprettet"] = "Manuelt opprettet"
         },
+        KildeTypeBadges: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["biobank"] = "Biobank",
+            ["provesamling"] = "Prøvesamling"
+        },
         DataTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["1"] = "Streng",
@@ -1398,6 +1417,11 @@ internal sealed record Texts(
             ["annenDatakilde"] = "Other data source",
             ["forskningsprosjekt"] = "Research project",
             ["manueltOpprettet"] = "Manually created"
+        },
+        KildeTypeBadges: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["biobank"] = "Biobank",
+            ["provesamling"] = "Sample collection"
         },
         DataTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

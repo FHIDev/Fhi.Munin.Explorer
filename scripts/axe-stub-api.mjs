@@ -64,6 +64,35 @@ bodies.set(listRoute, JSON.stringify([
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));
 
+// No kilde in the captured catalogue carries either of the two kildetyper the Kilde facet draws a
+// badge for, so a verbatim payload renders that markup nowhere and a scan reports no violations in
+// what is not there - the finding this whole stub exists for. Two rows are retyped, and the
+// kildetype facet is moved with them so the panel's headings still agree with the rows under them.
+const filtersRoute = routes.find(([, source]) => source === 'filters.json')[0];
+const filters = JSON.parse(bodies.get(filtersRoute));
+const badged = new Map([['MS', ['biobank', 'Biobank']], ['PARKINSON', ['provesamling', 'Prøvesamling']]]);
+
+const retyped = filters.kilder.filter(one => badged.has(one.kortNavn));
+
+// Loud here rather than as a state timing out later: a re-capture that drops or renames one of
+// these two would leave the badge off every page, which is the silence the note above is about.
+if (retyped.length !== badged.size) {
+  console.error(`stub: filters.json holds ${retyped.length} of the ${badged.size} kilder the badge states need`);
+  process.exit(2);
+}
+
+for (const kilde of retyped) {
+  const was = filters.kildeTyper.find(type => type.value === kilde.kildeType);
+  if (was !== undefined) {
+    was.count -= kilde.count;
+  }
+  const [value, displayName] = badged.get(kilde.kortNavn);
+  kilde.kildeType = value;
+  filters.kildeTyper.push({ value, displayName, count: kilde.count });
+}
+filters.kildeTyper.sort((a, b) => a.displayName.localeCompare(b.displayName, 'nb'));
+bodies.set(filtersRoute, JSON.stringify(filters));
+
 // The one route whose fixture cannot be served verbatim. my-list-variables.json is a real capture:
 // 247 entries reported, two of them kept. Served as-is for every page, it says "page 1 of 3" every
 // time, and VariableListState walks every page of the active list — so the walk never advances and

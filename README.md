@@ -326,20 +326,42 @@ These are not style preferences — each one is a host that breaks otherwise.
     size and colour and without the tabular figures. The merge is recorded in
     `Fhi.Metadata-l9l2n.73`, whose close note names PR 39274, merged 2026-09-11; nothing in this
     repository reads Stiler, so that bead is the whole of the evidence on this side.
-    That facet's datasamling rows add two more, `munin-explorer-filters__icons` on the slot and
-    `munin-explorer-filters__icon` on each glyph in it — one per datakategori the datasamling
-    carries, off the same `/filters` payload the row itself is built from. They are drawn between
+    That facet's rows add two more, `munin-explorer-filters__icons` on the slot and
+    `munin-explorer-filters__icon` on each glyph in it — one per datakategori a datasamling
+    carries, and the one folder a kilde and a delkilde wear, off the same `/filters` payload the
+    row itself is built from. They are drawn between
     the checkbox and the name, as in Runa. The checkbox keeps the same indentation regardless of
-    how many glyphs follow it. Handles both, on the terms
+    how many glyphs follow it. The folder is deliberately the same glyph at both grouping levels:
+    what tells a kilde from a delkilde is where the row sits, and a second picture would invite a
+    reader to look for a difference the tree does not draw. Handles both, on the terms
     Kelda's `munin-explorer-hierarchy__icon*` pair already sets — the `<svg>` carries `width`,
     `height` and `stroke="currentColor"` as attributes, so an undefined name draws the glyphs at
     text size in the text colour and what a rule buys is the row they sit in and the gap between
     them. The slot is `aria-hidden` and the categories follow the name as `screenreader-only` words,
     exactly as Kelda's tree says them — the datakategori facet a few rows up lists the vocabulary
     and says nothing about which datasamling is in which, so the row is the only place the pairing
-    is stated at all. A bilingual legend for the glyphs themselves is `Fhi.Metadata-zllxt`. The
+    is stated at all. A folder says nothing of the kind and is announced nowhere: it repeats the
+    nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
+    A bilingual legend for the glyphs themselves is `Fhi.Metadata-zllxt`. The
     rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**, the version
     `samples/HostileHost` pins (`Fhi.Metadata-1t36m`).
+    A kilde row of that facet adds one more, `munin-explorer-filters__badge`, worn by the word
+    marking a kilde whose kildetype is one of the two the tree calls out — Biobank and
+    Prøvesamling. A handle, and the plainest kind: the word is real text inside the `<label>`, so
+    it is part of the checkbox's accessible name and reads correctly with no rule at all, and what
+    a rule buys is the capsule that tells it from the name beside it. It is its own name and never
+    part of the icon slot, which is what keeps a host — or the `ShowNodeIcons` toggle when it
+    reaches this panel — able to turn decoration off without taking a fact off the row with it.
+    The word is this package's own bilingual copy rather than the API's resolved kildetype label,
+    unlike every other kildetype word in this panel: the badge marks membership of a closed pair
+    and is drawn under a group heading already carrying the API's word for the same value. A
+    kildetype the pair does not name, and a kilde carrying none at all, wear no badge — an empty
+    capsule would say they were one of the two. Both sample stylesheets already carried the rule
+    before any markup wore the name — stood in under their "since the previous Stiler pin" heading,
+    which is where a rule copied off the pinned published package goes — so
+    `assert-sample-css-matches-stiler.sh` against that pin is what says whether 0.1.75 really has
+    it. Nothing on this side reads Stiler, and this paragraph does not claim to —
+    `Fhi.Metadata-gegtb` is the bead that goes and looks, and writes the rule if it is not there.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
     the annotation field is a browser-default text box, which is visible, operable and named, so
@@ -701,6 +723,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-drilldown` | handle |
   | `munin-explorer-filters` | handle |
   | `munin-explorer-filters__active` | handle |
+  | `munin-explorer-filters__badge` | handle |
   | `munin-explorer-filters__branch` | handle |
   | `munin-explorer-filters__chip` | handle |
   | `munin-explorer-filters__chip-remove` | handle |

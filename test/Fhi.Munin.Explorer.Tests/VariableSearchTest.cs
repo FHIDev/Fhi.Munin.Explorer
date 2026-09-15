@@ -5339,11 +5339,12 @@ public class VariableSearchTest : BunitContext
         // between the glyphs and the name, so the whole span is left out.
         var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithCategories([], [])));
 
-        // Read off the whole panel rather than one row: the kilder and delkilder above draw none
-        // either, so an assertion on the datasamling alone would pass over a folder on every branch.
-        ExpandBranches(cut);
-        Assert.Empty(FilterPanel(cut).QuerySelectorAll(".munin-explorer-filters__icons"));
-        Assert.NotEmpty(FilterPanel(cut).QuerySelectorAll("li"));
+        Assert.Empty(Facet(cut, "Tromsø 1").QuerySelectorAll(".munin-explorer-filters__icons"));
+        Assert.Empty(Facet(cut, "Fjerde runde").QuerySelectorAll(".munin-explorer-filters__icons"));
+
+        // And the branches above are what says the panel drew glyphs at all: an assertion over the
+        // whole panel read as evidence here until the kilde levels grew folders of their own.
+        Assert.Equal(["kilde"], RowGlyphs(cut, "Tromsøundersøkelsen"));
     }
 
     [Fact]
@@ -5449,6 +5450,168 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("INPUT", row.FirstElementChild!.TagName);
         Assert.Equal("INPUT", slot.PreviousElementSibling!.TagName);
         Assert.Equal("Tromsø 1", slot.NextElementSibling!.TextContent);
+    }
+
+    // ---- folder glyphs and kildetype badges on the kilde levels (Fhi.Metadata-aw203) ----
+
+    private static readonly Guid Provebanken = new("aaaaaaaa-0000-0000-0000-000000000003");
+    private static readonly Guid Kreftregisteret = new("aaaaaaaa-0000-0000-0000-000000000004");
+
+    /// <summary>A kilde for each badge the table answers, and one for each way it refuses.</summary>
+    /// <remarks>
+    /// The two unbadged kilder are the pair that has to look alike: a kildetype no table here names,
+    /// and no kildetype at all. Keeping Facets()' delkilder gives the tree two levels of folder.
+    /// </remarks>
+    private static FilterOptions FacetsWithBadges() => Facets() with
+    {
+        KildeTyper =
+        [
+            new() { Value = "biobank", DisplayName = "Biobank", Count = 12 },
+            new() { Value = "provesamling", DisplayName = "Prøvesamling", Count = 9 },
+            new() { Value = "kvantekilde", DisplayName = "Kvantekilde", Count = 4 }
+        ],
+        Kilder =
+        [
+            new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 },
+            new() { Id = Provebanken, Name = "Prøvebanken", KildeType = "provesamling", Count = 9 },
+            new() { Id = Kreftregisteret, Name = "Kreftregisteret", KildeType = "kvantekilde", Count = 4 },
+            new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = null, Count = 30 }
+        ]
+    };
+
+    /// <summary>The badge one facet row wears, or null where it wears none.</summary>
+    private static string? RowBadge(IRenderedComponent<VariableSearch> cut, string label) =>
+        Facet(cut, label).QuerySelector(".munin-explorer-filters__badge")?.TextContent;
+
+    [Fact]
+    public void Render_WhenTheKildeTreeIsDrawn_ThenKilderAndDelkilderWearTheSameFolder()
+    {
+        // One glyph for both levels, as in Runa: a delkilde is a kilde's own grouping, so a reader
+        // must not be invited to tell the two apart by picture. (Fhi.Metadata-aw203)
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
+
+        Assert.Equal(["kilde"], RowGlyphs(cut, "Tromsøundersøkelsen"));
+        Assert.Equal(["kilde"], RowGlyphs(cut, "Tromsø 4"));
+        Assert.Equal(RowGlyphs(cut, "Tromsøundersøkelsen"), RowGlyphs(cut, "Første besøk"));
+    }
+
+    [Theory]
+    [InlineData("Tromsøundersøkelsen", "Biobank", "Tromsøundersøkelsen Biobank (12)")]
+    [InlineData("Prøvebanken", "Prøvesamling", "Prøvebanken Prøvesamling (9)")]
+    public void Render_WhenAKildeIsOneOfTheBadgedKildetyper_ThenTheCheckboxIsNamedWithTheBadge(
+        string kilde, string badge, string name)
+    {
+        // Real text in the label rather than a picture or a rule, so what the badge says about the
+        // kilde reaches every reader and not only the one who can see the capsule.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
+
+        Assert.Equal(badge, RowBadge(cut, kilde));
+        Assert.Equal(name, AccessibleName.Of(FacetBox(cut, kilde)));
+    }
+
+    [Theory]
+    [InlineData("Kreftregisteret", "Kreftregisteret (4)")]
+    [InlineData("Dødsårsaksregisteret", "Dødsårsaksregisteret (30)")]
+    public void Render_WhenAKildetypeIsUnknownOrAbsent_ThenTheRowWearsNoBadgeAtAll(
+        string kilde, string name)
+    {
+        // The two answer alike on purpose: the badge says a kilde is one of the kinds the table
+        // names, so a kildetype nobody here has a word for is simply not one of them, and an empty
+        // capsule would say it was.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
+
+        Assert.Null(RowBadge(cut, kilde));
+        Assert.Equal(name, AccessibleName.Of(FacetBox(cut, kilde)));
+    }
+
+    [Fact]
+    public void Render_WhenALevelUnderABadgedKildeIsDrawn_ThenItCarriesNoBadgeOfItsOwn()
+    {
+        // The badge is the kilde's own kildetype and a delkilde has none; repeating it down the
+        // tree would read as a fact about the level it is drawn on.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
+
+        Assert.Null(RowBadge(cut, "Tromsø 4"));
+        Assert.Null(RowBadge(cut, "Første besøk"));
+    }
+
+    [Fact]
+    public void Render_WhenABadgedKildeAlsoWearsAFolder_ThenTheBadgeSitsOutsideTheDecorativeSlot()
+    {
+        // Wherever a ShowNodeIcons toggle reaches this panel it removes the aria-hidden slot whole.
+        // The badge is a fact rather than decoration, so it must not be inside the slot to go with
+        // it — and it reads after the name and before the count. (Fhi.Metadata-aw203)
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
+
+        var row = Facet(cut, "Tromsøundersøkelsen");
+        var slot = row.QuerySelector(".munin-explorer-filters__icons")!;
+        var badge = row.QuerySelector(".munin-explorer-filters__badge")!;
+
+        Assert.Equal("true", slot.GetAttribute("aria-hidden"));
+        Assert.Empty(slot.QuerySelectorAll(".munin-explorer-filters__badge"));
+        Assert.Equal("INPUT", slot.PreviousElementSibling!.TagName);
+        Assert.Equal("Tromsøundersøkelsen", badge.PreviousElementSibling!.TextContent);
+        Assert.Equal("munin-explorer-filters__count", badge.NextElementSibling!.ClassName);
+    }
+
+    [Fact]
+    public void Render_WhenAnEnglishReaderMeetsABadgedKilde_ThenTheBadgeIsEnglishAndUnmarked()
+    {
+        // The badge is this package's own prose in the reader's language beside a name that is the
+        // catalogue's Norwegian, so the marking stays on the name alone. (WCAG 3.1.2)
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()),
+                             b => b.Add(c => c.Language, "en"));
+
+        var row = Facet(cut, "Prøvebanken");
+        var badge = row.QuerySelector(".munin-explorer-filters__badge")!;
+
+        Assert.Equal("Sample collection", badge.TextContent);
+        Assert.Equal("no", FacetLang(cut, "Prøvebanken"));
+        Assert.Null(MarkedLanguage(badge, row));
+    }
+
+    [Fact]
+    public void Render_WhenGlyphsAndBadgesAreDrawn_ThenEveryRowStillOpensOnItsOwnControl()
+    {
+        // Indentation is where the checkbox and the disclosure sit, so neither a glyph nor a badge
+        // may get in front of either — with a name long enough to wrap, and a leaf beside a branch.
+        var facets = FacetsWithBadges() with
+        {
+            Kilder =
+            [
+                new()
+                {
+                    Id = Tromso,
+                    Name = "Den sjuende Tromsøundersøkelsen med delkilder og datasamlinger under seg",
+                    KildeType = "biobank",
+                    Count = 12
+                }
+            ],
+            Datasamlinger = [new() { Id = Tromso1, Name = "Tromsø 1", KildeId = Tromso, Count = 5 }]
+        };
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+        ExpandBranches(cut);
+
+        var rows = FilterPanel(cut).QuerySelectorAll("li");
+
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.Equal(
+            row.ClassList.Contains("munin-explorer-filters__branch") ? "BUTTON" : "LABEL",
+            row.FirstElementChild!.TagName));
+        Assert.All(FilterPanel(cut).QuerySelectorAll("li > label"),
+                   label => Assert.Equal("INPUT", label.FirstElementChild!.TagName));
+    }
+
+    [Fact]
+    public void Chips_WhenABadgedKildeIsChosen_ThenTheChipCarriesTheNameAlone()
+    {
+        // A chip says which filter is on, and the badge is a property of the kilde rather than part
+        // of what was chosen — the row and its chip still name one kilde one way.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
+
+        ClickFacet(cut, "Tromsøundersøkelsen");
+
+        Assert.Equal(["Tromsøundersøkelsen"], Chips(cut));
     }
 
     // ---- the tree folds, branch by branch (Fhi.Metadata-adog5) ----
@@ -5817,8 +5980,13 @@ public class VariableSearchTest : BunitContext
 
         Assert.Equal(["PHDR", "EINS"], RowGlyphs(cut, "Tromsø 1"));
 
-        // And no level above or below it draws a slot, the groups it now holds included.
-        Assert.Single(FilterPanel(cut).QuerySelectorAll(".munin-explorer-filters__icons"));
+        // And the groups it now holds draw no slot of their own. A count over the whole panel read
+        // as evidence of that until the kilde levels above grew folders. (Fhi.Metadata-aw203)
+        var groups = FilterPanelRows(cut, "Kosthold");
+
+        Assert.NotEmpty(groups);
+        Assert.All(groups, row => Assert.Empty(
+            row.QuerySelectorAll(".munin-explorer-filters__icons")));
     }
 
     [Fact]

@@ -11,13 +11,13 @@ internal sealed record NodeIconClasses(string Group, string Glyph)
     internal static NodeIconClasses Hierarchy { get; } =
         new("munin-explorer-hierarchy__icons", "munin-explorer-hierarchy__icon");
 
-    /// <summary>The facet panels' value rows, where they follow the name. Stiler 0.1.75 and later.</summary>
+    /// <summary>The facet panels' value rows, where they lead the name. Stiler 0.1.75 and later.</summary>
     internal static NodeIconClasses Facets { get; } =
         new("munin-explorer-filters__icons", "munin-explorer-filters__icon");
 }
 
-/// <summary>The decorative icon slot a row draws beside its label — in front of it in the kilde
-/// hierarchy, after it in the facet panels.</summary>
+/// <summary>The decorative icon slot a row draws in front of its label, in the kilde hierarchy and
+/// in the facet panels alike.</summary>
 internal static class NodeIcons
 {
     /// <summary>No glyphs at all — what a row draws when the host has turned the icons off.</summary>
