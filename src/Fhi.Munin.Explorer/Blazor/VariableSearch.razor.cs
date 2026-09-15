@@ -1058,7 +1058,9 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(17, "id", RowHeadingId(v));
         // Munin's variable names are Norwegian whatever language the surrounding UI is in.
         builder.AddAttribute(18, "lang", "no");
-        builder.AddContent(19, v.PreferredTerm);
+        // Stiler clips the name to one line; the data cells get their tooltip from RowCell.
+        builder.AddAttribute(19, "title", string.IsNullOrWhiteSpace(v.PreferredTerm) ? null : v.PreferredTerm);
+        builder.AddContent(20, v.PreferredTerm);
         builder.CloseElement();
 
         builder.CloseElement();
@@ -1173,7 +1175,7 @@ public sealed partial class VariableSearch : ComponentBase
 
         if (sort is not { } field)
         {
-            builder.AddContent(seq + 3, label);
+            Label(builder, seq + 3, label);
             builder.CloseElement();
             return;
         }
@@ -1183,33 +1185,43 @@ public sealed partial class VariableSearch : ComponentBase
         // it — "none" on every other column is noise a reader has to listen through.
         if (IsActiveSort(field))
         {
-            builder.AddAttribute(seq + 4, "aria-sort", AriaSort());
+            builder.AddAttribute(seq + 5, "aria-sort", AriaSort());
         }
 
-        builder.OpenElement(seq + 5, "button");
+        builder.OpenElement(seq + 6, "button");
         // hd-button-reset is Stiler's own "this is a button but draw nothing" class, which is what
         // their header buttons wear — 12 rules, in the site-wide stylesheet.
-        builder.AddAttribute(seq + 6, "class", "hd-button-reset munin-explorer-dataitem-header__button");
-        builder.AddAttribute(seq + 7, "type", "button");
-        builder.AddAttribute(seq + 8, "aria-current", AriaCurrent(field));
-        builder.AddAttribute(seq + 9, "onclick", EventCallback.Factory.Create(this, () => SortAsync(field)));
+        builder.AddAttribute(seq + 7, "class", "hd-button-reset munin-explorer-dataitem-header__button");
+        builder.AddAttribute(seq + 8, "type", "button");
+        builder.AddAttribute(seq + 9, "aria-current", AriaCurrent(field));
+        builder.AddAttribute(seq + 10, "onclick", EventCallback.Factory.Create(this, () => SortAsync(field)));
 
         // The button says what the COLUMN is, not what the ordering is. It used to render the sort
         // field's own label, so the first column read "Standard (stigende)" where it should read
         // "Navn" — the name of the thing in the column. The ordering is shown by the arrow beside
         // it and announced by aria-sort above, which is how a column header carries both.
-        builder.AddContent(seq + 10, label);
+        Label(builder, seq + 11, label);
 
         if (IsActiveSort(field))
         {
-            builder.OpenElement(seq + 11, "span");
-            builder.AddAttribute(seq + 12, "aria-hidden", "true");
-            builder.AddContent(seq + 13, Ascending ? " \u2191" : " \u2193");
+            builder.OpenElement(seq + 14, "span");
+            builder.AddAttribute(seq + 15, "aria-hidden", "true");
+            builder.AddContent(seq + 16, Ascending ? " \u2191" : " \u2193");
             builder.CloseElement();
         }
 
         builder.CloseElement();
 
+        builder.CloseElement();
+    }
+
+    // Stiler clips a header that outgrows its column, so the label carries itself as a tooltip. On
+    // the span: on the sorted column, Edge reads a title on the header or its button as a repeated name.
+    private static void Label(RenderTreeBuilder builder, int seq, string label)
+    {
+        builder.OpenElement(seq, "span");
+        builder.AddAttribute(seq + 1, "title", label);
+        builder.AddContent(seq + 2, label);
         builder.CloseElement();
     }
 
