@@ -124,23 +124,45 @@ rules:
       paths:
         - src/**/*.cs
         - test/**/*.cs
-    - id: changelog-fragment-grammar
+    - id: xmldoc-mixed-compat-claim
+      category: other
+      pattern: >-
+        XML doc comment describes a compatibility/migration scenario where an old member and a new member coexist (e.g. deprecated collection kept populated alongside a newly added replacement)
+      check: >-
+        Verify the doc text doesn't claim contradictory states for the same member (e.g. 'populated' and 'empty' both said of the same collection) — confirm which member stays populated and which starts empty, and check every duplicated copy of the doc comment (e.g. on both the property and its backing field or XML tag) for the same inconsistency
+      source: copilot:PR#290
+      added: "2026-09-14"
+      paths:
+        - src/**/*.cs
+    - id: changelog-fragment-english-only
       category: style
       pattern: >-
-        Prose in a changelog.d/ fragment, which ships to readers as release-note text
+        A changelog fragment in changelog.d/ contains Norwegian domain terms (e.g. datakategorier, datakategori) instead of English in its title or body
       check: >-
-        Read each sentence of the fragment as written and verify it is grammatical — in particular that omitted relative pronouns ('that', 'which', 'who'), articles, and prepositions are present where the sentence needs them, since these fragments are assembled verbatim into CHANGELOG.md and the package's PackageReleaseNotes with no later editing pass.
+        Verify every changelog.d/*.md fragment's title and body are English-only, translating any Norwegian terms that aren't on the approved untranslatable domain-term list (kilde, datasamling, variabelgruppe, kildetype, kodeverk)
+      source: copilot:PR#302
+      added: "2026-09-14"
+      paths:
+        - changelog.d/**
+        - changelog.d/**/*.md
+    - id: comment-history-not-incident-history
+      category: style
+      pattern: >-
+        A comment on a test (or other code) explains why it exists by narrating past states — old counts, prior capture behavior, bead/PR history — instead of stating the current invariant
+      check: >-
+        Verify the comment states only the present-tense invariant the code enforces; confirm any incident history, counts, or 'used to'/'previously' narrative is removed and belongs in the bead instead
+      source: copilot:PR#302
+      added: "2026-09-14"
+      paths:
+        - test/**/*.cs
+    - id: doc-prose-grammar
+      category: style
+      pattern: >-
+        Prose in reader-facing shipped text with no later editing pass — a changelog.d/ fragment or a public XML doc comment (<summary>, <remarks>, <param>)
+      check: >-
+        Read each sentence as written and verify it is grammatical — in particular that omitted relative pronouns ('that', 'which', 'who'), articles, and prepositions are present where the sentence needs them, since the text is assembled or shipped verbatim with no chance to fix it later.
       source: copilot:PR#250
       added: "2026-09-10"
       paths:
         - changelog.d/**/*.md
-    - id: xml-doc-prose-grammar
-      category: style
-      pattern: >-
-        Prose in a public XML doc comment on the package's API — `<summary>`, `<remarks>`, `<param>`
-      check: >-
-        Read each sentence as written and verify it is grammatical — in particular that omitted relative pronouns ('that', 'which', 'who'), articles, and prepositions are present where the sentence needs them. These ship inside the package and are read in an IDE by someone who has only the package, with no later editing pass, which is the same reason the three-line comment ceiling exempts them: length is theirs to spend, correctness is not.
-      source: copilot:PR#250
-      added: "2026-09-14"
-      paths:
         - src/**/*.cs
