@@ -3160,11 +3160,9 @@ public class VariableSearchTest : BunitContext
         cut.FindAll(".munin-explorer-filters button, .munin-explorer-filters li > label");
 
     /// <summary>
-    /// The control in the panel whose visible text starts with <paramref name="label"/> — a facet
-    /// value, or one of the toolbar buttons, which this selector also reaches. A variabelgruppe
-    /// both surfaces offer wears a checkbox on each and cannot be read here at all: that is what
-    /// <see cref="SurfaceBox"/> is for. No other label collides, and <c>Single</c> says so if one
-    /// starts to.
+    /// The control in the panel whose visible text starts with <paramref name="label"/>: a facet value, or a
+    /// toolbar button, which this also reaches. A variabelgruppe both surfaces offer wears a checkbox on each,
+    /// so <see cref="SurfaceBox"/> reads those; no other label collides, and <c>Single</c> says so.
     /// </summary>
     /// <remarks>
     /// Still <c>StartsWith</c> on the raw text: ignoring leading whitespace would widen every
@@ -6379,11 +6377,11 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Variabelgrupper_WhenTheTwoCollectionsNameOneIdDifferently_ThenTheFacetsCopyNamesItEverywhere()
+    public void Variabelgrupper_WhenTheTwoCollectionsNameOneIdDifferently_ThenTheFacetsCopyNamesTheChipAndTheTrail()
     {
-        // Copies of one id differ in name as well as in parent (Fhi.Metadata-l9l2n.82), and a chip,
-        // a trail step and a checkbox are three controls over one filter: two spellings among them
-        // read as two filters, and the facet's is the spelling the reader has in front of them.
+        // Copies of one id differ in name as well as in parent (Fhi.Metadata-l9l2n.82). The chip,
+        // the trail step and the standalone facet's checkbox are three controls over one filter, so
+        // they read one list; the tree draws its rows from its own collection and keeps its name.
         var facets = FacetsWithDatasamlinger() with
         {
             Variabelgrupper = [Variabelgruppe(Nutrition, "Kosthold", [], count: 5)],
@@ -6405,6 +6403,33 @@ public class VariableSearchTest : BunitContext
         Assert.True(SurfaceBox(StandaloneFacet(cut), "Kosthold").HasAttribute("checked"));
         Assert.Equal(["Kosthold"], Chips(cut));
         Assert.Equal("Kosthold", Crumbs(cut)[^1].TextContent);
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenTheFacetItselfHoldsTwoCopiesOfOneId_ThenTheChipAndTheTrailReadTheSameCopy()
+    {
+        // The shape the order turns on: OnePerId prefers the parented copy, so a trail step reading
+        // the collection raw would take the first listed and spell one filter the other way from
+        // the chip and the checkbox beside it. (Fhi.Metadata-l9l2n.82)
+        var facets = FacetsWithDatasamlinger() with
+        {
+            Variabelgrupper =
+            [
+                Variabelgruppe(Nutrition, "Kosthold", [], count: 5),
+                Variabelgruppe(Environment, "Miljø", [], count: 2),
+                Variabelgruppe(Nutrition, "Måltidsvaner", [], parent: Environment, count: 5)
+            ]
+        };
+
+        var client = new FilteringClient(OnePage(), facets);
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+        Press(SurfaceBox(StandaloneFacet(cut), "Måltidsvaner"));
+
+        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
+        Assert.Equal(["Måltidsvaner"], Chips(cut));
+        Assert.Equal("Måltidsvaner", Crumbs(cut)[^1].TextContent);
     }
 
     [Fact]

@@ -799,7 +799,7 @@ public partial class VariableSearch
     {
         // Collapsed before the tree is built, so the copy that decides whether a row is offered is
         // the copy that names it; Tree collapses the same way again, to no effect. (Fhi.Metadata-l9l2n.82)
-        var grupper = FilterHierarchy.OnePerId(facets.Variabelgrupper, g => g.Id, g => g.ParentId);
+        var grupper = FacetVariabelgrupper(facets);
 
         // An opted-out group is in this payload only to carry the offered groups under it, so it is
         // a container here: a checkbox would offer a filter the API says the reader may not have,
@@ -834,16 +834,23 @@ public partial class VariableSearch
             .Select(VariabelgruppeValue)
     ];
 
+    /// <summary>The standalone facet's own collection, one entry per id.</summary>
+    /// <remarks>
+    /// The one call site of that collapse, so the row and the chip over one id are named alike
+    /// because they read one list rather than because two expressions happen to agree.
+    /// </remarks>
+    private static IReadOnlyList<VariabelgruppeFacet> FacetVariabelgrupper(FilterOptions facets) =>
+        FilterHierarchy.OnePerId(facets.Variabelgrupper, gruppe => gruppe.Id, gruppe => gruppe.ParentId);
+
     /// <summary>Every variabelgruppe either surface can name, one entry per id.</summary>
     /// <remarks>
-    /// Both collections, each collapsed the way its own surface collapses it, because copies of one
-    /// id differ in name as well as in parent. The facet's copy then wins where it has one — the
-    /// order <see cref="VariabelgruppeName"/> reads in — so one id is not named two ways on a page.
+    /// Both collections, each collapsed as its own surface collapses it: copies of one id differ in
+    /// name as well as in parent. The facet's copy wins, and <see cref="VariabelgruppeName"/> reads
+    /// this list, so chip, trail step and the facet's checkbox agree; the tree keeps its own name.
     /// </remarks>
     private static IReadOnlyList<VariabelgruppeFacet> ListedVariabelgrupper(FilterOptions facets)
     {
-        var standalone = FilterHierarchy.OnePerId(
-            facets.Variabelgrupper, gruppe => gruppe.Id, gruppe => gruppe.ParentId);
+        var standalone = FacetVariabelgrupper(facets);
 
         var named = standalone.Select(gruppe => gruppe.Id).ToHashSet();
 
