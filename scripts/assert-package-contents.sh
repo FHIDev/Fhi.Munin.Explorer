@@ -10,14 +10,16 @@
 # The rule is "exactly this set", not "at least this set". A missing file and an unexpected one
 # are both packaging bugs, and the unexpected one is the more dangerous of the two:
 #
-#   * A wwwroot/ or staticwebassets/ entry in the RCL would mean the component started shipping
-#     its own CSS. It deliberately does not — it emits the host's class names so helsedata's
-#     Stiler styles it, and a stylesheet riding along in the package would silently start
-#     competing with theirs.
+#   * A staticwebassets/ entry other than the one .js module named below would mean the component
+#     started shipping something it does not — a stylesheet above all, which would silently
+#     compete with helsedata's own. The RCL emits their class names so Stiler styles it, and the
+#     rule that it ships no CSS is unchanged: what it ships is one JavaScript module, listed by
+#     name, and the five props files the SDK writes to make the browser able to fetch it
+#     (Fhi.Metadata-35w0p.14).
 #   * A second lib/<tfm>/ directory would mean the target framework moved without anyone saying
 #     so, which changes who can install the package at all.
-#   * A .pdb, content file, or build/ props file means something got included that we never
-#     decided to support, and support is exactly what shipping it implies.
+#   * A .pdb or content file means something got included that we never decided to support, and
+#     support is exactly what shipping it implies.
 #
 # Usage:
 #   scripts/assert-package-contents.sh [artifacts-dir] [expected-version]
@@ -91,11 +93,21 @@ for pkg in "${PACKAGES[@]}"; do
     | grep -Fxv '[Content_Types].xml' \
     | LC_ALL=C sort || true)
 
+  # The staticwebassets/ entry and the five props files came in together and only together: the
+  # SDK writes the props for any RCL with a wwwroot, and without them the module is in the .nupkg
+  # and a 404 in the browser. Named one by one so this stays an exact set — a second module, or a
+  # stylesheet beside it, still fails.
   expected=$(printf '%s\n' \
     "$pkg.nuspec" \
     "README.md" \
     "lib/$TFM/$pkg.dll" \
     "lib/$TFM/$pkg.xml" \
+    "staticwebassets/explorer-interop.js" \
+    "build/$pkg.props" \
+    "build/Microsoft.AspNetCore.StaticWebAssetEndpoints.props" \
+    "build/Microsoft.AspNetCore.StaticWebAssets.props" \
+    "buildMultiTargeting/$pkg.props" \
+    "buildTransitive/$pkg.props" \
     | LC_ALL=C sort)
 
   if [ "$actual" = "$expected" ]; then

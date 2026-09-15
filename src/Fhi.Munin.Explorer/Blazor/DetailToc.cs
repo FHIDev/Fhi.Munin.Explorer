@@ -17,8 +17,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>Router</c> intercepting a same-page press scrolls without it. This component's half is that
 /// the target can take focus at all — <see cref="DetailSection"/> writes <c>tabindex="-1"</c> for
 /// it. The one thing that would need script is the highlight following the reader down the page,
-/// and it is deliberately not here: the nav is the whole navigational benefit, it ships now, and
-/// this package still ships zero JavaScript.
+/// and it is deliberately not here: the nav is the whole navigational benefit and it ships now.
+/// The package does ship a JavaScript module since Fhi.Metadata-35w0p.14, and this nav uses none
+/// of it — the scrolling is still the browser's.
 /// </para>
 /// <para>
 /// Each href carries this page's own path and query in front of the <c>#</c>. A bare <c>#id</c> is

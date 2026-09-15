@@ -6,6 +6,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -621,6 +622,58 @@ public class VariableExplorerTest : BunitContext
 
         Assert.DoesNotContain("Koble konto", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("munin-explorer-account-link", cut.Markup, StringComparison.Ordinal);
+    }
+
+    // -----------------------------------------------------------------------
+    // Taking it away again.
+
+    [Fact]
+    public async Task Unmount_WhenTheExplorerGoesAway_ThenTheModuleIsReleased()
+    {
+        // Blazor calls DisposeAsync only on a component that declares IAsyncDisposable, so dropping
+        // the interface leaves the method public, uncalled and every test green — while each mount
+        // holds a module reference for the circuit's life on the legacy host this package serves.
+        var module = new CountingModule();
+        var client = new ExplorerClient();
+
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        Services.AddSingleton<IJSRuntime>(new LendingJsRuntime(module));
+        SetRendererInfo(new RendererInfo("Server", true));
+
+        Render<VariableExplorer>();
+
+        await Renderer.DisposeComponents();
+
+        Assert.Equal(1, module.Disposals);
+    }
+
+    [Fact]
+    public async Task Unmount_WhenItLandsBeforeTheImportIsEvenIssued_ThenTheModuleIsStillReleased()
+    {
+        // OnAfterRenderAsync imports after awaiting the URL mirror, so a host swapping the explorer
+        // out on a circuit that lives on gets a DisposeAsync with nothing to release — and the
+        // continuation then builds the interop anyway. Without the disposed flag, nothing frees it.
+        var module = new CountingModule();
+        var runtime = new HoldingJsRuntime(module);
+
+        Services.AddSingleton<IMuninExplorerClient>(new ExplorerClient());
+        Services.AddScoped<VariableListState>();
+        Services.AddSingleton<IJSRuntime>(runtime);
+        SetRendererInfo(new RendererInfo("Server", true));
+
+        Render<VariableExplorer>();
+
+        await Renderer.DisposeComponents();
+
+        runtime.Release();
+
+        var released = await Task.WhenAny(module.Released, Task.Delay(TimeSpan.FromSeconds(10)));
+
+        Assert.True(
+            released == module.Released,
+            "the module imported after disposal was never released, so every mount and unmount of " +
+            "the explorer leaves one more reference registered for the circuit's life.");
     }
 
     // -----------------------------------------------------------------------

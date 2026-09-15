@@ -230,8 +230,10 @@ The component must render inside helsedata's **legacy** Blazor Server (`AddServe
 - **No `@page`, no `@rendermode`, no `HeadOutlet`, nothing host-specific.** `BannedSymbols.txt`
   makes the last one a build error; `scripts/assert-portability-guard-armed.sh` exists because that
   wiring was quietly stale once while every build stayed green.
-- **The package ships no CSS** — no `wwwroot`, no `.razor.css`. Samples carry styling because they
-  have no Stiler; the package must not. `scripts/assert-package-contents.sh` enforces it.
+- **The package ships no CSS** — no `.razor.css`, and nothing in `wwwroot` but the one JavaScript
+  module. Samples carry styling because they have no Stiler; the package must not.
+  `scripts/assert-package-contents.sh` enforces it by naming every packed entry, so a new file
+  under `wwwroot` and its entry in that script have to arrive in the same commit.
 - **Docs and samples mount with `render-mode="Server"`, never `ServerPrerendered`** — prerendering
   runs `OnInitializedAsync` twice and doubles the API calls, and an `EventCallback` serialises to
   an empty delegate across a static-SSR boundary. If the change adds a callback parameter or a new
@@ -362,7 +364,7 @@ reversal — reviewers read the bead to decide what the change is supposed to co
 ✗ Comment budget:         test/…/ExplorerUrlStateTest.cs:41 — 6-line <remarks> on a test
 ✓ Changelog:              changelog.d/Fhi.Metadata-f3p6v.md, category: Added
 – Class names:            no new munin-explorer* names
-✓ Portability:            no wwwroot, no @rendermode, no banned symbol
+✓ Portability:            no new wwwroot file, no @rendermode, no banned symbol
 ✓ Identifiers and text:   English, both Texts halves present
 ✓ Untrusted input:        caps, Enum.IsDefined, boundary theory present
 – Accessibility:          markup untouched

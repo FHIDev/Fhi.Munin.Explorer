@@ -28,7 +28,9 @@ The RCL has to render in helsedata's Optimizely CMS (legacy Blazor Server, no ro
 
 - [ ] No `@page` — the CMS owns routing; the explorer is one parameterised root component
 - [ ] No `@rendermode` in the RCL — the host decides at the mount site
-- [ ] No CSS, `wwwroot` or `.razor.css` shipped from the RCL — styling comes from Stiler
+- [ ] No CSS and no `.razor.css` shipped from the RCL — styling comes from Stiler. A new file
+      under the RCL's `wwwroot` carries its own entry in `scripts/assert-package-contents.sh`,
+      in the same commit
 - [ ] New `EventCallback` parameters, if any, are documented as requiring a fully interactive mount
 - [ ] Verified in `samples/LegacyHost`, not only `samples/ModernHost`
 
