@@ -3,11 +3,9 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>The filter panel's hierarchy, head-on: which node hangs where, and what may be offered.</summary>
-/// <remarks>
-/// Tested apart from the markup because a group hung off its <c>parentId</c> rather than off its
-/// owner, or an opted-out one offered as a checkbox, renders perfectly and narrows by the wrong id.
-/// </remarks>
+/// <summary>Which node hangs where, and what may be offered. Tested apart from the markup because a
+/// group hung off its <c>parentId</c> rather than off its owner, or an opted-out one offered as a
+/// checkbox, renders perfectly and narrows by the wrong id.</summary>
 public class FilterHierarchyTest
 {
     private static readonly Guid Mfr = new("aaaaaaaa-0000-0000-0000-000000000001");

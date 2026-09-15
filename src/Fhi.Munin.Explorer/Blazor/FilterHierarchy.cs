@@ -2,11 +2,9 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
-/// <summary>The four levels of the catalogue hierarchy, outermost first.</summary>
-/// <remarks>
-/// Declaration order is the trail's order and the order the members are compared in, so they are
-/// not free to be reordered. Kildetype is a facet of its own rather than a step towards a kilde.
-/// </remarks>
+/// <summary>The catalogue hierarchy, outermost first: declaration order is the trail's order and
+/// the order the members are compared in, so they are not free to reorder. Kildetype is a facet of
+/// its own rather than a step towards a kilde.</summary>
 internal enum HierarchyLevel
 {
     Kilde,
@@ -15,11 +13,9 @@ internal enum HierarchyLevel
     Variabelgruppe
 }
 
-/// <summary>One node of the catalogue hierarchy, and whatever hangs under it.</summary>
-/// <remarks>
-/// <c>Path</c> is where the node is drawn and <c>Id</c> what ticking it selects, since one group
-/// hangs under every datasamling its variables are in; <c>Offered</c> false nests without offering.
-/// </remarks>
+/// <summary><c>Path</c> is where the node is drawn and <c>Id</c> what ticking it selects, since one
+/// group hangs under every datasamling its variables are in; <c>Offered</c> false nests a node
+/// without offering it as a filter.</summary>
 internal sealed record HierarchyNode(
     string Path,
     HierarchyLevel Level,
@@ -30,28 +26,22 @@ internal sealed record HierarchyNode(
     IReadOnlyList<HierarchyNode> Children,
     bool Offered = true);
 
-/// <summary>The delkilder and datasamlinger of the kilde facet, keyed by what each hangs under.</summary>
-/// <remarks>
-/// Two datasamling lookups rather than one keyed by parent: the id spaces are independent Guids off
-/// the wire, so a kilde id equal to a delkilde id would misfile the row with no error anywhere.
-/// </remarks>
+/// <summary>Keyed by what each hangs under. Two datasamling lookups rather than one keyed by
+/// parent: the id spaces are independent Guids off the wire, so a kilde id equal to a delkilde id
+/// would misfile the row with no error anywhere.</summary>
 internal sealed record KildeLevelLookup(
     ILookup<Guid, DelkildeFacet> Delkilder,
     ILookup<Guid, DatasamlingFacet> DatasamlingerByKilde,
     ILookup<Guid, DatasamlingFacet> DatasamlingerByDelkilde);
 
-/// <summary>The filter panel's hierarchy, read off one <c>/api/explorer/filters</c> answer.</summary>
-/// <remarks>
-/// Pure by design: no state, no request, no selection. Counts are the answer's own — the API
-/// cross-filters every facet, so a summed count would promise a number a tick does not produce.
-/// </remarks>
+/// <summary>Read off one <c>/api/explorer/filters</c> answer: no state, no request, no selection.
+/// Counts are the answer's own — the API cross-filters every facet, so a summed count would promise
+/// a number a tick does not produce.</summary>
 internal static class FilterHierarchy
 {
-    /// <summary>The whole kilde → delkilde → datasamling → variabelgruppe tree the panel narrows by.</summary>
-    /// <remarks>
-    /// Built from <see cref="FilterOptions.HierarchyVariabelgrupper"/>, which carries every group
-    /// whatever its <see cref="VariabelgruppeFacet.Filter"/> says and is empty against an older API.
-    /// </remarks>
+    /// <summary>The kilde → delkilde → datasamling → variabelgruppe tree, built from
+    /// <see cref="FilterOptions.HierarchyVariabelgrupper"/>, which carries every group whatever its
+    /// <see cref="VariabelgruppeFacet.Filter"/> says and is empty against an older API.</summary>
     internal static IReadOnlyList<HierarchyNode> Build(FilterOptions facets)
     {
         var levels = KildeLevels(facets);
@@ -63,11 +53,9 @@ internal static class FilterHierarchy
         ];
     }
 
-    /// <summary>The standalone variabelgruppe facet's own list — the flat checkbox surface, nested.</summary>
-    /// <remarks>
-    /// It reads no selection and must never be given one: a group opted out of this facet stays a
-    /// container while ticked, so its chip and the tree remain the way off it. (Fhi.Metadata-fbe3w)
-    /// </remarks>
+    /// <summary>The standalone facet's own list, nested. It reads no selection and must never be
+    /// given one: a group opted out of this facet stays a container while ticked, so its chip and
+    /// the tree remain the way off it. (Fhi.Metadata-fbe3w)</summary>
     internal static IReadOnlyList<HierarchyNode> StandaloneVariabelgrupper(FilterOptions facets) =>
         Nest(OnePerId(facets.Variabelgrupper,
                       variabelgruppe => variabelgruppe.Id,
@@ -110,11 +98,9 @@ internal static class FilterHierarchy
                 .ToLookup(datasamling => datasamling.DelkildeId!.Value));
     }
 
-    /// <summary>One entry per id, the copy hanging off a parent that is present winning.</summary>
-    /// <remarks>
-    /// Two entries with one id can differ in parent and in name alike, so keeping the first listed
-    /// would nest, and label, by payload order. (Fhi.Metadata-l9l2n.82)
-    /// </remarks>
+    /// <summary>One entry per id, the copy hanging off a present parent winning: two entries with
+    /// one id can differ in parent and in name alike, so keeping the first listed would nest, and
+    /// label, by payload order. (Fhi.Metadata-l9l2n.82)</summary>
     internal static IReadOnlyList<T> OnePerId<T>(IEnumerable<T> entries, Func<T, Guid> id, Func<T, Guid?> parentId)
     {
         var listed = entries.ToList();
@@ -125,19 +111,15 @@ internal static class FilterHierarchy
         bool Parented(T entry) => parentId(entry) is { } parent && known.Contains(parent);
     }
 
-    /// <summary>The entries keyed by id, the first listed copy of a repeated one winning.</summary>
-    /// <remarks>
-    /// GroupBy rather than ToDictionary: a repeated id is malformed, but throwing on the render path
-    /// tears the circuit down over what would otherwise be one oddly drawn row.
-    /// </remarks>
+    /// <summary>Keyed by id, the first listed copy winning. GroupBy rather than ToDictionary: a
+    /// repeated id is malformed, but throwing on the render path tears the circuit down over what
+    /// would otherwise be one oddly drawn row.</summary>
     private static Dictionary<Guid, T> ById<T>(IEnumerable<T> entries, Func<T, Guid> id) =>
         entries.GroupBy(id).ToDictionary(group => group.Key, group => group.First());
 
-    /// <summary>One kilde, with the two levels under it and whatever groups hang off the kilde itself.</summary>
-    /// <remarks>
-    /// Datasamlinger before delkilder, the order the panel's kilde facet already draws them in, and
-    /// the groups last: a group no datasamling of the kilde holds is an appendix to the structure.
-    /// </remarks>
+    /// <summary>Datasamlinger before delkilder, the order the panel's kilde facet already draws
+    /// them in, and the groups last: a group no datasamling of the kilde holds is an appendix to
+    /// the structure.</summary>
     private static HierarchyNode Kilde(KildeFacet kilde, KildeLevelLookup levels, VariabelgruppePlacements placements)
     {
         var path = NodePath("", HierarchyLevel.Kilde, kilde.Id);
@@ -150,11 +132,9 @@ internal static class FilterHierarchy
         ]);
     }
 
-    /// <summary>A kilde's delkilder, each nested under the delkilde its own facet names.</summary>
-    /// <remarks>
-    /// Takes the buckets as they come: <see cref="KildeLevels"/> settles repeated ids across all of
-    /// them at once, which is the only place it can be done since copies can disagree about a parent.
-    /// </remarks>
+    /// <summary>Takes the buckets as they come: <see cref="KildeLevels"/> settles repeated ids
+    /// across all of them at once, which is the only place it can be done since copies of one id
+    /// can disagree about a parent.</summary>
     private static IReadOnlyList<HierarchyNode> Delkilder(
         IEnumerable<DelkildeFacet> delkilder,
         string parentPath,
@@ -188,11 +168,9 @@ internal static class FilterHierarchy
         })
     ];
 
-    /// <summary>The groups placed at one owner, nested among themselves.</summary>
-    /// <remarks>
-    /// <see cref="VariabelgruppeFacet.ParentId"/> is another group and never the catalogue owner: a
-    /// group whose parent is placed elsewhere stands as a root here rather than following it out.
-    /// </remarks>
+    /// <summary><see cref="VariabelgruppeFacet.ParentId"/> is another group and never the catalogue
+    /// owner, so a group whose parent is placed elsewhere stands as a root here rather than
+    /// following it out.</summary>
     private static IReadOnlyList<HierarchyNode> Variabelgrupper(
         IEnumerable<VariabelgruppeFacet> placed, string parentPath) =>
         Nest(OnePerId(placed, variabelgruppe => variabelgruppe.Id, variabelgruppe => variabelgruppe.ParentId),
@@ -204,11 +182,9 @@ internal static class FilterHierarchy
                  path, HierarchyLevel.Variabelgruppe, variabelgruppe.Id, variabelgruppe.Name, null,
                  variabelgruppe.Count, nested));
 
-    /// <summary>Every variabelgruppe under the ids its own owners name, one list per level.</summary>
-    /// <remarks>
-    /// Three lookups rather than one keyed by owner, for the reason <see cref="KildeLevelLookup"/>
-    /// gives: the id spaces are independent Guids and one collection would file by a collision.
-    /// </remarks>
+    /// <summary>Every variabelgruppe under the ids its owners name. Three lookups rather than one
+    /// keyed by owner, for the reason <see cref="KildeLevelLookup"/> gives: the id spaces are
+    /// independent Guids and one collection would file by a collision.</summary>
     private sealed record VariabelgruppePlacements(
         ILookup<Guid, VariabelgruppeFacet> ByKilde,
         ILookup<Guid, VariabelgruppeFacet> ByDelkilde,
@@ -266,11 +242,9 @@ internal static class FilterHierarchy
             placed.ToLookup(entry => entry.Owner, entry => entry.Variabelgruppe);
     }
 
-    /// <summary>Nest one level by the parent id its own entries carry, and turn each into a node.</summary>
-    /// <remarks>
-    /// A parent the cross-filtering dropped leaves its children as roots rather than taking them off
-    /// the tree, and a chain looping back on itself is seeded by a second pass — the panel's rules.
-    /// </remarks>
+    /// <summary>Nest one level by the parent id its entries carry. A parent the cross-filtering
+    /// dropped leaves its children as roots rather than taking them off the tree, and a chain
+    /// looping back on itself is seeded by a second pass — the panel's rules.</summary>
     private static IReadOnlyList<HierarchyNode> Nest<T>(
         IReadOnlyList<T> all,
         HierarchyLevel level,
@@ -335,11 +309,9 @@ internal static class FilterHierarchy
         }
     }
 
-    /// <summary>Where a node is drawn: its ancestors' path, then its own level and id.</summary>
-    /// <remarks>
-    /// The level is the enum's own name rather than the panel's Norwegian facet word, so a path
-    /// cannot be mistaken for the selection key that word builds.
-    /// </remarks>
+    /// <summary>Its ancestors' path, then its own level and id. The level is the enum's name rather
+    /// than the panel's Norwegian facet word, so a path cannot be mistaken for the selection key
+    /// that word builds.</summary>
     private static string NodePath(string parentPath, HierarchyLevel level, Guid id) =>
         parentPath.Length == 0 ? $"{level}:{id}" : $"{parentPath}/{level}:{id}";
 }
