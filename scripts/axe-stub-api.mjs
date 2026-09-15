@@ -64,23 +64,6 @@ bodies.set(listRoute, JSON.stringify([
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));
 
-// The filters capture predates `datasamlinger[].categories` (Fhi.Metadata-l9l2n.113 re-captures
-// it), and served as captured the facet tree draws no datakategori glyph for this gate to scan.
-// Synthesised from the payload's own `datakategorier`, spread so rows carry none, one and several.
-const filtersRoute = routes.find(([, source]) => source === 'filters.json')[0];
-const filters = JSON.parse(bodies.get(filtersRoute));
-const vocabulary = filters.datakategorier.map(facet => facet.value);
-
-bodies.set(filtersRoute, JSON.stringify({
-  ...filters,
-  datasamlinger: filters.datasamlinger.map((collection, index) => ({
-    ...collection,
-    categories: collection.categories ?? (index % 4 === 0
-      ? []
-      : vocabulary.slice(index % vocabulary.length, (index % vocabulary.length) + (index % 3))),
-  })),
-}));
-
 // The one route whose fixture cannot be served verbatim. my-list-variables.json is a real capture:
 // 247 entries reported, two of them kept. Served as-is for every page, it says "page 1 of 3" every
 // time, and VariableListState walks every page of the active list — so the walk never advances and
