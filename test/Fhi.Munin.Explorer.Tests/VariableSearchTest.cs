@@ -1723,7 +1723,6 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Render_Always_ThenTheRowNameCarriesItsFullTextOnHover()
     {
-        // Measured 2026-09-15 on HostileHost: 17-19 names per page clip at every desktop width.
         const string name = "Utleveringens ICD10-refusjonskode (beskrivelse) iht. klassifisering i Farmalogg";
         var cut = RenderWith(new FakeClient(OnePage(Variable(name, "V_LMR.KODE"))));
 
@@ -1746,7 +1745,6 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Header_Always_ThenEveryColumnHeaderCarriesItsLabelOnHover()
     {
-        // Stiler clips a header that outgrows its column: "Variabelgruppe" at 1300px on HostileHost.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var headers = cut.FindAll("[role='columnheader']");
