@@ -5715,6 +5715,46 @@ public class VariableSearchTest : BunitContext
         Assert.Contains("Måltider", KildeFacet(cut).TextContent, StringComparison.Ordinal);
     }
 
+    /// <summary>Two filters answers, so a tree held against the first cannot be drawn from twice.</summary>
+    private sealed class RefreshingFacetsClient(FilterOptions first, FilterOptions next)
+        : EmptyMuninExplorerClient
+    {
+        /// <summary>Answer this refresh, and every one after it, with the second payload.</summary>
+        public bool Refreshed { get; set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(OnePage(Variable("1. Tale", "KODE")));
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Refreshed ? next : first);
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenASecondFiltersAnswerArrives_ThenTheTreeIsBuiltFromThatOne()
+    {
+        // The tree is held against the answer it was built from rather than walked once per caller,
+        // so what releases it is another answer arriving — hold it any longer and the panel draws a
+        // catalogue the reader has already narrowed away from, counts and all.
+        var client = new RefreshingFacetsClient(FacetsWithDatasamlinger(), FacetsWithVariabelgrupper());
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+
+        Assert.Empty(PanelRows(cut, "Kosthold"));
+
+        client.Refreshed = true;
+        ClickFacet(cut, "Vis historiske");
+
+        ExpandBranches(cut);
+
+        Assert.Single(PanelRows(cut, "Kosthold"));
+    }
+
     [Fact]
     public void Branches_WhenOneIsOpened_ThenItSaysSoWhereAScreenReaderReadsIt()
     {

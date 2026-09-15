@@ -634,8 +634,25 @@ public partial class VariableSearch
     /// their own (Fhi.Metadata-raspm). One node per listed kilde, the collapse
     /// <see cref="ListedKilder"/> makes, so the key cannot repeat.
     /// </remarks>
-    private static IReadOnlyDictionary<Guid, HierarchyNode> KildeTree(FilterOptions facets) =>
-        FilterHierarchy.Build(facets).ToDictionary(node => node.Id);
+    private IReadOnlyDictionary<Guid, HierarchyNode> KildeTree(FilterOptions facets)
+    {
+        if (ReferenceEquals(_treeOf, facets) && _kildeTree is { } held)
+        {
+            return held;
+        }
+
+        var tree = FilterHierarchy.Build(facets).ToDictionary(node => node.Id);
+
+        (_treeOf, _kildeTree) = (facets, tree);
+
+        return tree;
+    }
+
+    // The answer _kildeTree was built from, by identity: a fresh one is a new instance and a
+    // retained one is the object still on screen, so the walk over every placement the payload
+    // carries runs once per answer rather than three times per commit of the facet's search box.
+    private FilterOptions? _treeOf;
+    private IReadOnlyDictionary<Guid, HierarchyNode>? _kildeTree;
 
     /// <summary>The levels under a kilde as the panel draws them, each where the builder placed it.</summary>
     /// <remarks>
@@ -661,7 +678,7 @@ public partial class VariableSearch
                                   language,
                                   Counted(node.Count),
                                   reading.Chosen().Contains(node.Id),
-                                  NodeToggle(node.Level, node.Id, reading),
+                                  NodeToggle(node, reading),
                                   [.. node.Children.Select(Value)]);
         }
     }
@@ -677,18 +694,18 @@ public partial class VariableSearch
 
     /// <summary>What ticking one row of the kilde tree does, or null for a row that offers nothing.</summary>
     /// <remarks>
-    /// A variabelgruppe is a container here until Fhi.Metadata-km3zb wires this tree and the
-    /// standalone facet to one selection: a checkbox before then is a second control over the same
-    /// ids with nothing holding the two in step.
+    /// <see cref="HierarchyNode.Offered"/> is the payload's own refusal and is read on its own
+    /// terms, so it still holds when Fhi.Metadata-km3zb takes the clause beside it away: every
+    /// variabelgruppe is a container until this tree and the standalone facet tick as one.
     /// </remarks>
-    private Func<Task>? NodeToggle(HierarchyLevel level, Guid id, HierarchyReading reading)
+    private Func<Task>? NodeToggle(HierarchyNode node, HierarchyReading reading)
     {
-        if (level == HierarchyLevel.Variabelgruppe)
+        if (!node.Offered || node.Level == HierarchyLevel.Variabelgruppe)
         {
             return null;
         }
 
-        return () => ToggleAsync(reading.Chosen(), id, reading.Apply);
+        return () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply);
     }
 
     /// <summary>A delkilde as a chip names it: its words and its toggle, with neither a count nor a tree.</summary>
