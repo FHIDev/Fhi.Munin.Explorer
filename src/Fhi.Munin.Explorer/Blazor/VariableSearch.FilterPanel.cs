@@ -1154,6 +1154,37 @@ public partial class VariableSearch
         return RaiseAsync(ShowNodeIconsChanged, _showNodeIcons, Log);
     }
 
+    /// <summary>One toolbar switch — the shape Nivålinjer and Ikoner are both drawn from.</summary>
+    /// <remarks>
+    /// <c>aria-checked</c> and no modifier class beside it: two sources for one state is how a
+    /// control ends up drawn on and announced off. The name stands ALONE — with
+    /// <c>hd-button-square</c> beside it the toolbar's own rule collapses it. (Fhi.Metadata-l9l2n.87)
+    /// </remarks>
+    private RenderFragment Switch(string label, bool on, Func<Task> press) => builder =>
+    {
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "class", "munin-explorer-switch");
+        builder.AddAttribute(2, "type", "button");
+        builder.AddAttribute(3, "role", "switch");
+        builder.AddAttribute(4, "aria-checked", on ? "true" : "false");
+        builder.AddAttribute(5, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, press));
+
+        builder.OpenElement(6, "span");
+        builder.AddAttribute(7, "class", "munin-explorer-switch__track");
+        builder.AddAttribute(8, "aria-hidden", "true");
+
+        builder.OpenElement(9, "span");
+        builder.AddAttribute(10, "class", "munin-explorer-switch__thumb");
+        builder.CloseElement();
+
+        builder.CloseElement();
+
+        // Outside the track, which is aria-hidden: the label is the whole accessible name.
+        builder.AddContent(11, label);
+
+        builder.CloseElement();
+    };
+
     /// <summary>A facet's own label, saying how many of its values are chosen.</summary>
     /// <remarks>
     /// On the summary line, so a collapsed facet still says that something inside it is narrowing
@@ -1249,7 +1280,7 @@ public partial class VariableSearch
                 // The toggle takes the spoken categories with the glyphs, which is what
                 // KildeHierarchyView's own parameter does: the words stand in for the pictures and
                 // say nothing a row without them was saying. The badge below is outside both.
-                var icons = _showNodeIcons && value.Icons is { } drawn ? drawn : NodeIcons.None;
+                var icons = _showNodeIcons ? value.Icons : null;
                 if (icons is { Count: > 0 })
                 {
                     builder.AddContent(35, (RenderFragment)(nested =>

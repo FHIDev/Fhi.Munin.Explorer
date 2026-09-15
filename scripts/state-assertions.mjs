@@ -149,6 +149,52 @@ async function pressBranch(page, names, expanded) {
 }
 
 /**
+ * How long the rise of the refetch a tick provokes is waited for.
+ *
+ * Swallowed rather than required: against a local stub the panel can go busy and back inside one
+ * round trip, so the rise is caught where it can be and the FALL is what is actually waited on. A
+ * budget of its own because it is a ceiling on a wait that is allowed to time out.
+ */
+const BUSY_MS = 2000;
+
+/**
+ * Open the first shut branch and tick the first value it discloses, waiting out the refetch.
+ *
+ * Where both assertions that need a ticked value under a branch begin — folding one away, and
+ * redrawing the rows without their icons — so the refetch handshake and the guard below live in
+ * one place. Under the row's own list and never the row's own checkbox: what has to survive is a
+ * value the BRANCH disclosed, and a branch row carries a checkbox of its own at every level but a
+ * kildetype heading.
+ */
+async function tickFirstDisclosedValue(page) {
+  const { panel, names, label, disclosure } = await openFirstShutBranch(page);
+
+  const facet = disclosure.locator('xpath=ancestor::details[1]');
+  const box = rowOf(disclosure).locator('ul input[type=checkbox]:not(:checked)').first();
+
+  await box.waitFor({ state: 'visible', timeout: findTimeout });
+
+  // A real pointer press, unlike the disclosures either side of it: the browser's own flip of this
+  // box before any handler runs is the whole subject of this file.
+  await box.click();
+
+  // Both edges of the refetch, so what either assertion then does to the tree is done to the tree
+  // the answer rebuilt.
+  await panel.and(page.locator('[aria-busy="true"]'))
+    .waitFor({ state: 'visible', timeout: BUSY_MS }).catch(() => {});
+  await panel.and(page.locator('[aria-busy="false"]'))
+    .waitFor({ state: 'visible', timeout: findTimeout });
+
+  const chosen = await chosenInFacet(facet);
+
+  if (chosen === 0) {
+    throw new Error(`ticking a value under "${label}" chose nothing, so there is nothing to hold on to`);
+  }
+
+  return { panel, names, label, facet, chosen };
+}
+
+/**
  * How much of what a Tab could land on inside a row is the branch's disclosed content.
  *
  * Counted apart from the row's own controls rather than by subtracting them: whether a row carries
@@ -740,33 +786,7 @@ export const assertions = [
     // Measured in a browser because the round trip is what makes it worth asking — the value goes
     // out of the DOM and comes back from a render, not from a patch.
     async stage(page) {
-      const { panel, names, label, disclosure } = await openFirstShutBranch(page);
-
-      const facet = disclosure.locator('xpath=ancestor::details[1]');
-      // Under the row's own list and never the row's own checkbox: what this assertion folds away
-      // has to be a value the branch disclosed, and a branch row carries a checkbox of its own at
-      // every level but a kildetype heading.
-      const box = rowOf(disclosure).locator('ul input[type=checkbox]:not(:checked)').first();
-
-      await box.waitFor({ state: 'visible', timeout: findTimeout });
-
-      // A real pointer press, unlike the disclosures either side of it: the browser's own flip of
-      // this box before any handler runs is the whole subject of this file.
-      await box.click();
-
-      // Both edges of the refetch a tick provokes. The rise is caught where it can be — against a
-      // local stub the panel can go busy and back inside one round trip — and the fall is waited
-      // for either way, so what is folded away below is the tree the answer rebuilt.
-      await panel.and(page.locator('[aria-busy="true"]'))
-        .waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
-      await panel.and(page.locator('[aria-busy="false"]'))
-        .waitFor({ state: 'visible', timeout: findTimeout });
-
-      const chosen = await chosenInFacet(facet);
-
-      if (chosen === 0) {
-        throw new Error(`ticking a value under "${label}" chose nothing, so there is nothing to fold away`);
-      }
+      const { names, label, facet, chosen } = await tickFirstDisclosedValue(page);
 
       await pressBranch(page, names, 'false');
 
@@ -846,28 +866,7 @@ export const assertions = [
     // way. The press is also the one thing here that is not a refusal — it is a redraw the
     // component accepts — so what is asked is what the redraw left alone. (Fhi.Metadata-kd9ts)
     async stage(page) {
-      const { panel, names, label, disclosure } = await openFirstShutBranch(page);
-
-      const facet = disclosure.locator('xpath=ancestor::details[1]');
-      // Under the row's own list rather than the row's own checkbox, as the fold assertion does:
-      // what has to survive the redraw is a value the branch disclosed.
-      const box = rowOf(disclosure).locator('ul input[type=checkbox]:not(:checked)').first();
-
-      await box.waitFor({ state: 'visible', timeout: findTimeout });
-      await box.click();
-
-      // Both edges of the refetch a tick provokes, the rise caught where it can be: what the
-      // switch then redraws has to be the tree the answer rebuilt.
-      await panel.and(page.locator('[aria-busy="true"]'))
-        .waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
-      await panel.and(page.locator('[aria-busy="false"]'))
-        .waitFor({ state: 'visible', timeout: findTimeout });
-
-      const chosen = await chosenInFacet(facet);
-
-      if (chosen === 0) {
-        throw new Error(`ticking a value under "${label}" chose nothing, so there is nothing to keep`);
-      }
+      const { panel, names, label, chosen } = await tickFirstDisclosedValue(page);
 
       const drawn = await panel.locator(ICONS).count();
 
