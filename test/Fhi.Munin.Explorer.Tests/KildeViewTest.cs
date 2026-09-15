@@ -1662,7 +1662,9 @@ public class KildeViewTest : BunitContext
     {
         // A summary, not a relocation. The hero draws six of these fields and both boxes still draw
         // all nine, because none of them joins DrawnElsewhere — that set is for the same fact drawn
-        // twice in the body under two labels, and a hero row is a different register.
+        // twice in the body under two labels, and a hero row is a different register. This source's
+        // payload places none of its column-backed keys, which is what keeps every box row here;
+        // SeededPlacementRenderingTest is where a placed one is counted.
         var cut = Render(Kilde());
 
         Assert.Equal(

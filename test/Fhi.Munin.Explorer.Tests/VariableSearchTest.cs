@@ -8689,6 +8689,36 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Panel_WhenBeskrivelseGainsAPlacement_ThenTheIdentificationListStillDrawsItOnlyOnce()
+    {
+        // The call site the bead warns about. This list is built without the detail views' own
+        // drawnElsewhere set, so whatever makes a column-backed value renderable reaches it too —
+        // and the Identifikasjon group above already spells the description out, under a label of
+        // this package's own, which is the same fact twice (Fhi.Metadata-bct95).
+        var placed = Detail(TaleId) with
+        {
+            PropertyMetadata =
+            [
+                new()
+                {
+                    Key = "Beskrivelse",
+                    SortOrder = 30,
+                    Type = "Text",
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Beskrivelse" },
+                    GroupTranslations = new Dictionary<string, string> { ["no"] = "Om variabelen" },
+                },
+            ],
+        };
+
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(placed));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Single(Values(cut),
+                      value => value.TextContent.Contains("grad av utfall", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Panel_WhenTheDataTabIsChosen_ThenTheKodeverkShowsAndTheMetadataDoesNot()
     {
         var cut = RenderWith(TwoRows());

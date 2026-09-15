@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -134,31 +135,66 @@ public sealed partial class KildeView : ComponentBase
     private KildeDetail? _groupsKilde;
     private string? _groupsReader;
     private IReadOnlyList<PropertyGroup> _groups = [];
+    private IReadOnlyDictionary<string, string?> _values = ReadOnlyDictionary<string, string?>.Empty;
+
+    /// <summary>
+    /// The payload's curated bag with the source's own columns merged in — see
+    /// <see cref="CatalogueColumns"/> for why a column-backed value has to be put there at all.
+    /// </summary>
+    /// <remarks>
+    /// Resolved inside the cache below rather than beside it: the merge is a dictionary build, and
+    /// the hero facts read it once per fact on top of the two reads the markup makes.
+    /// </remarks>
+    private IReadOnlyDictionary<string, string?> Values
+    {
+        get
+        {
+            Resolve();
+
+            return _values;
+        }
+    }
 
     /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
-    /// <remarks>
-    /// Cached against the (Kilde, Reader) pair rather than recomputed per access: the markup reads
-    /// this twice per render — the empty check, then the loop — and each call was rebuilding
-    /// DrawnElsewhere's set and re-walking every property (Fhi.Metadata-43jrq).
-    /// </remarks>
     private IReadOnlyList<PropertyGroup> Groups
     {
         get
         {
-            if (ReferenceEquals(_groupsKilde, Kilde) && _groupsReader == Reader)
-            {
-                return _groups;
-            }
-
-            _groupsKilde = Kilde;
-            _groupsReader = Reader;
-            _groups = Kilde is { } kilde
-                ? CatalogueProperties.Groups(kilde.PropertyMetadata, kilde.AdditionalProperties, Reader,
-                                             DrawnElsewhere(kilde))
-                : [];
+            Resolve();
 
             return _groups;
         }
+    }
+
+    /// <summary>
+    /// Fills both caches, once per (Kilde, Reader) pair rather than per access.
+    /// </summary>
+    /// <remarks>
+    /// The markup reads the groups twice per render — the empty check, then the loop — and each
+    /// call was rebuilding DrawnElsewhere's set and re-walking every property (Fhi.Metadata-43jrq).
+    /// The merged values are read once per hero fact on top of that, and are what the groups are
+    /// built from, so the two belong to the same pair.
+    /// </remarks>
+    private void Resolve()
+    {
+        if (ReferenceEquals(_groupsKilde, Kilde) && _groupsReader == Reader)
+        {
+            return;
+        }
+
+        _groupsKilde = Kilde;
+        _groupsReader = Reader;
+
+        if (Kilde is not { } kilde)
+        {
+            _values = ReadOnlyDictionary<string, string?>.Empty;
+            _groups = [];
+
+            return;
+        }
+
+        _values = CatalogueColumns.Values(kilde, Reader);
+        _groups = CatalogueProperties.Groups(kilde.PropertyMetadata, _values, Reader, DrawnElsewhere(kilde));
     }
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
@@ -197,12 +233,43 @@ public sealed partial class KildeView : ComponentBase
         Kilde is { } kilde ? T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype) : null;
 
     /// <inheritdoc cref="KildetypeLabel"/>
+    /// <remarks>
+    /// The catalogue's own word once it has placed the key in a section, this package's vocabulary
+    /// until then. Both spell the same code — <c>Direkte personidentifiserbare data</c> against
+    /// <c>Direkte identifiserbar</c> — so a hero reading one while the section reads the other is
+    /// the DataType collision again (Fhi.Metadata-bct95).
+    /// </remarks>
     private string? PersonIdentification =>
-        Kilde is { } kilde ? T.PersonIdentificationLabel(kilde.PersonIdentificationLevel) : null;
+        Kilde is not { } kilde ? null
+        : Placed(CatalogueColumns.PersonIdentification)
+            ? Curated(CatalogueColumns.PersonIdentification)
+            : T.PersonIdentificationLabel(kilde.PersonIdentificationLevel);
 
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? Validity =>
         Kilde is { } kilde ? CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T) : null;
+
+    /// <summary>Whether the catalogue's own sections draw this key, so this view must not.</summary>
+    private bool Placed(string key) =>
+        Kilde is { } kilde && CatalogueProperties.Placed(kilde.PropertyMetadata, key, Reader);
+
+    /// <summary>One curated property's first value, resolved exactly as its section resolves it.</summary>
+    private string? Curated(string key) =>
+        Kilde is { } kilde
+        && CatalogueProperties.Row(kilde.PropertyMetadata, Values, Reader, key) is { Values: [var first, ..] }
+            ? first.Text
+            : null;
+
+    /// <summary>
+    /// A fact box's value, or nothing where the catalogue has placed the key in a section of its
+    /// own and that section is drawing it.
+    /// </summary>
+    /// <remarks>
+    /// The same fact in a section and in a fact box is two rows under one label in two different
+    /// words, which reads as two legitimate rows; dropped outright it would be a blank field on a
+    /// public page wherever Munin's placements have not arrived (Fhi.Metadata-bct95).
+    /// </remarks>
+    private string? UnlessPlaced(string key, string? value) => Placed(key) ? null : value;
 
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? DataPeriod =>
@@ -223,19 +290,36 @@ public sealed partial class KildeView : ComponentBase
     /// The third element says whether the value is the catalogue's own words. Two of these are ours
     /// — the kildetype and the identification level are vocabularies this package translates — and
     /// the rest are stored once, in Norwegian, however the reader is reading.
+    /// <para>
+    /// Five of them are column-backed properties the catalogue can place in a section of its own,
+    /// and each yields when it does — see <see cref="UnlessPlaced"/>. Kildetype is not among them:
+    /// nothing merges that column into the renderable set, so no section can draw it. Sist oppdatert
+    /// has no property definition at all.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> SourceInformation =>
         Kilde is not { } kilde
             ? []
             : [
                 (T.FacetKildeType, KildetypeLabel, false),
-                (T.FieldLegalBasis, kilde.LegalBasis, true),
-                (T.FieldDataController, kilde.DataController, true),
-                (T.FieldDataProcessor, kilde.DataProcessor, true),
-                (T.FieldPersonIdentification, PersonIdentification, false),
-                (T.FieldValidity, Validity, false),
+                (T.FieldLegalBasis, UnlessPlaced(CatalogueColumns.LegalBasis, kilde.LegalBasis), true),
+                (T.FieldDataController, UnlessPlaced(CatalogueColumns.DataController, kilde.DataController), true),
+                (T.FieldDataProcessor, UnlessPlaced(CatalogueColumns.DataProcessor, kilde.DataProcessor), true),
+                (T.FieldPersonIdentification,
+                 UnlessPlaced(CatalogueColumns.PersonIdentification, PersonIdentification), false),
+                (T.FieldValidity, ValidityRow, false),
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(kilde.LastUpdated, Language), false),
             ];
+
+    /// <summary>
+    /// The validity as a fact box shows it, unless a section has taken either end of it.
+    /// </summary>
+    /// <remarks>
+    /// One row against the catalogue's two, so either placement is enough to move it: a period
+    /// beside a Gyldig fra row is the same date twice, in two shapes.
+    /// </remarks>
+    private string? ValidityRow =>
+        Placed(CatalogueColumns.ValidFrom) || Placed(CatalogueColumns.ValidTo) ? null : Validity;
 
     /// <summary>Counts and dates, which belong to no language.</summary>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> Statistics =>
@@ -251,11 +335,12 @@ public sealed partial class KildeView : ComponentBase
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Every one of them is still drawn below — the first three and the last in Kildeinformasjon,
-    /// the data period and the variable count in Statistikk — and every value here is the member
-    /// that section reads, so the two cannot come out in different words. None of these keys goes
-    /// into <see cref="DrawnElsewhere"/>: a hero row is a summary in a different register and is
-    /// meant to repeat.
+    /// Every one of them is still drawn below — the data period and the variable count in
+    /// Statistikk, the rest in Kildeinformasjon or, once the catalogue places the key, in the
+    /// section it placed it in — and every value here is the member that section reads, so the two
+    /// cannot come out in different words. None of these keys goes into
+    /// <see cref="DrawnElsewhere"/>: a hero row is a summary in a different register and is meant
+    /// to repeat.
     /// </para>
     /// <para>
     /// The mockup's sixth is Tilgang, and Munin's catalogue holds no access field for a source, so

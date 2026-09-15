@@ -175,17 +175,28 @@ internal static class CatalogueProperties
     /// panel's own rows. Unguarded it throws while rendering, where the try/catch around the fetch
     /// is long since finished and cannot catch it.
     /// </para>
+    /// <para>
+    /// <paramref name="drawnElsewhere"/> means what it means in <see cref="Groups"/>, and is here
+    /// for the one surface that draws rows without them: the variable panel, whose own Identifikasjon
+    /// list already spells out the description (Fhi.Metadata-bct95).
+    /// </para>
     /// </remarks>
     internal static List<PropertyRow> Rows(
         IEnumerable<PropertyMetadataEntry> metadata,
         IReadOnlyDictionary<string, string?>? values,
-        string reader)
+        string reader,
+        IReadOnlySet<string>? drawnElsewhere = null)
     {
         var rows = new List<PropertyRow>();
         var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
 
         foreach (var entry in metadata.OrderBy(m => m.SortOrder).ThenBy(m => m.Key, StringComparer.Ordinal))
         {
+            if (drawnElsewhere is not null && drawnElsewhere.Contains(entry.Key))
+            {
+                continue;
+            }
+
             if (!present.TryGetValue(entry.Key, out var raw) || string.IsNullOrWhiteSpace(raw))
             {
                 continue;
@@ -262,6 +273,45 @@ internal static class CatalogueProperties
     }
 
     /// <summary>
+    /// Whether the catalogue has put this key in a section on this surface, which is whether
+    /// <see cref="Groups"/> would draw it rather than skip it for want of a group name.
+    /// </summary>
+    /// <remarks>
+    /// A view that draws a fact in a list of its own asks this before drawing it: the same fact in
+    /// a section and in a fact box comes out under the same label in two different words and reads
+    /// as two legitimate rows, which is the failure <c>drawnElsewhere</c> exists for
+    /// (Fhi.Metadata-bct95). Asked of the payload rather than assumed, because a key is placed per
+    /// environment and per surface: unplaced, the section draws nothing and the box still must.
+    /// </remarks>
+    internal static bool Placed(IEnumerable<PropertyMetadataEntry> metadata, string key, string reader) =>
+        metadata.Any(entry => string.Equals(entry.Key, key, StringComparison.Ordinal)
+                              && GroupName(entry, reader) is not null);
+
+    /// <summary>
+    /// The section an entry names, and the language it named it in, or nothing where it names none.
+    /// </summary>
+    /// <remarks>
+    /// Shared with <see cref="Groups"/> rather than spelled twice: a key <see cref="Placed"/> calls
+    /// placed and the grouping drops is a fact that leaves the fact box and never arrives in a
+    /// section, and no test of either alone would see it.
+    /// </remarks>
+    private static (string Name, string Language)? GroupName(PropertyMetadataEntry entry, string reader)
+    {
+        var (rawName, language) = Localised(entry.GroupTranslations, reader);
+
+        if (string.IsNullOrWhiteSpace(rawName))
+        {
+            return null;
+        }
+
+        // A group named only the qualifier strips to an empty heading, which the "every key empty"
+        // rule in Groups cannot catch on its own.
+        var name = WithoutStorageQualifier(rawName);
+
+        return string.IsNullOrWhiteSpace(name) ? null : (name, language);
+    }
+
+    /// <summary>
     /// The properties gathered into the groups the catalogue puts them in.
     /// </summary>
     /// <remarks>
@@ -311,21 +361,12 @@ internal static class CatalogueProperties
                 continue;
             }
 
-            var (rawName, language) = Localised(entry.GroupTranslations, reader);
-
-            if (string.IsNullOrWhiteSpace(rawName))
+            if (GroupName(entry, reader) is not { } placement)
             {
                 continue;
             }
 
-            var name = WithoutStorageQualifier(rawName);
-
-            // Same reasoning as the label above: a group named only the qualifier strips to an
-            // empty heading, which the "every key empty" rule below cannot catch on its own.
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                continue;
-            }
+            var (name, language) = placement;
 
             var existing = groups.FindIndex(g => string.Equals(g.Name, name, StringComparison.Ordinal));
 

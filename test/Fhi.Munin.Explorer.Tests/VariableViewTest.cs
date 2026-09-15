@@ -1078,7 +1078,8 @@ public class VariableViewTest : BunitContext
         // The collision this bead had to resolve deliberately. DrawnElsewhere suppresses a key from
         // the metadata groups, and three of the six facts are curated keys — added to that set they
         // would vanish from Beskrivelse, Personvern and Teknisk, which is a relocation rather than
-        // a summary. Only DataType is in it, and DataType is not a hero fact.
+        // a summary. That set holds DataType and Beskrivelse — the blocks this view draws itself —
+        // and neither is a hero fact.
         var cut = Render(Leading());
 
         Assert.Equal(["Opprinnelse", "Kommentar", "Identifiseringsgrad", "Databasereferanse"],

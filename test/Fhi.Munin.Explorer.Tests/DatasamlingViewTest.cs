@@ -199,8 +199,8 @@ public class DatasamlingViewTest : BunitContext
     public void HeroFacts_Always_ThenNothingIsTakenOutOfTheSectionsBelow()
     {
         // A summary, not a relocation. The fact box still draws all eight fields, Kilde and
-        // Databehandler included, and no key joins a drawnElsewhere set on account of the row —
-        // this view names none at all.
+        // Databehandler included, and no key joins the drawnElsewhere set on account of the row —
+        // that set names Beskrivelse, which the ingress draws, and nothing else.
         var cut = Render(Datasamling());
 
         Assert.Equal(

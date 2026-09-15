@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 
@@ -93,15 +94,50 @@ public sealed partial class DatasamlingView : ComponentBase
             ? datasamling.Description
             : null;
 
+    /// <summary>
+    /// The payload's curated bag with the collection's own columns merged in — see
+    /// <see cref="CatalogueColumns"/> for why a column-backed value has to be put there at all.
+    /// </summary>
+    private IReadOnlyDictionary<string, string?> Values =>
+        Datasamling is { } datasamling
+            ? CatalogueColumns.Values(datasamling, Reader)
+            : ReadOnlyDictionary<string, string?>.Empty;
+
     /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
     /// <remarks>
-    /// No key is named as drawn elsewhere: the fields the fact boxes show are ungrouped in the
-    /// catalogue's own metadata, and an ungrouped key never reaches a group to begin with.
+    /// Beskrivelse is named as drawn elsewhere exactly when the ingress above draws it, which is
+    /// this view's own rule: a description that only repeats the name is not drawn there, and
+    /// suppressing the section's row as well would lose it altogether.
     /// </remarks>
     private IReadOnlyList<PropertyGroup> Groups =>
         Datasamling is { } datasamling
-            ? CatalogueProperties.Groups(datasamling.PropertyMetadata, datasamling.AdditionalProperties, Reader)
+            ? CatalogueProperties.Groups(datasamling.PropertyMetadata, Values, Reader, DrawnElsewhere)
             : [];
+
+    /// <inheritdoc cref="Groups"/>
+    private IReadOnlySet<string> DrawnElsewhere =>
+        Description is null
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.Description };
+
+    /// <summary>Whether the catalogue's own sections draw this key, so this view must not.</summary>
+    private bool Placed(string key) =>
+        Datasamling is { } datasamling && CatalogueProperties.Placed(datasamling.PropertyMetadata, key, Reader);
+
+    /// <summary>One curated property's first value, resolved exactly as its section resolves it.</summary>
+    private string? Curated(string key) =>
+        Datasamling is { } datasamling
+        && CatalogueProperties.Row(datasamling.PropertyMetadata, Values, Reader, key)
+            is { Values: [var first, ..] }
+            ? first.Text
+            : null;
+
+    /// <summary>
+    /// A fact box's value, or nothing where the catalogue has placed the key in a section of its
+    /// own and that section is drawing it — the rule <see cref="KildeView"/> follows for the same
+    /// fields, and for the reason its own remarks give.
+    /// </summary>
+    private string? UnlessPlaced(string key, string? value) => Placed(key) ? null : value;
 
     /// <summary>
     /// The facts every datasamling has, labelled as the kilde view labels the same fields.
@@ -110,6 +146,12 @@ public sealed partial class DatasamlingView : ComponentBase
     /// The third element says whether the value is the catalogue's own words. The kildetype and the
     /// identification level are vocabularies this package translates; the rest are stored once, in
     /// Norwegian, however the reader is reading.
+    /// <para>
+    /// Five of them are column-backed properties the catalogue can place in a section of its own,
+    /// and each yields when it does — see <see cref="UnlessPlaced"/>. Kilde, Kildetype and Sist
+    /// oppdatert are not among them: no section can draw a fact nothing merges into the renderable
+    /// set.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> SourceInformation =>
         Datasamling is not { } datasamling
@@ -117,13 +159,24 @@ public sealed partial class DatasamlingView : ComponentBase
             : [
                 (T.FieldSource, datasamling.ParentKildeName, true),
                 (T.FacetKildeType, KildetypeLabel, false),
-                (T.FieldLegalBasis, datasamling.EffectiveLegalBasis, true),
-                (T.FieldDataController, datasamling.EffectiveDataController, true),
-                (T.FieldDataProcessor, datasamling.EffectiveDataProcessor, true),
-                (T.FieldPersonIdentification, PersonIdentification, false),
-                (T.FieldValidity, Validity, false),
+                (T.FieldLegalBasis,
+                 UnlessPlaced(CatalogueColumns.LegalBasis, datasamling.EffectiveLegalBasis), true),
+                (T.FieldDataController,
+                 UnlessPlaced(CatalogueColumns.DataController, datasamling.EffectiveDataController), true),
+                (T.FieldDataProcessor,
+                 UnlessPlaced(CatalogueColumns.DataProcessor, datasamling.EffectiveDataProcessor), true),
+                (T.FieldPersonIdentification,
+                 UnlessPlaced(CatalogueColumns.PersonIdentification, PersonIdentification), false),
+                (T.FieldValidity, ValidityRow, false),
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false),
             ];
+
+    /// <summary>
+    /// The validity as a fact box shows it, unless a section has taken either end of it: one row
+    /// against the catalogue's two, so either placement is enough to move it.
+    /// </summary>
+    private string? ValidityRow =>
+        Placed(CatalogueColumns.ValidFrom) || Placed(CatalogueColumns.ValidTo) ? null : Validity;
 
     /// <summary>
     /// The four values the hero row and the fact boxes both draw, resolved once each.
@@ -141,10 +194,15 @@ public sealed partial class DatasamlingView : ComponentBase
             : null;
 
     /// <inheritdoc cref="KildetypeLabel"/>
+    /// <remarks>
+    /// The catalogue's own word once it has placed the key in a section, this package's vocabulary
+    /// until then — the rule <c>KildeView.PersonIdentification</c> gives in full.
+    /// </remarks>
     private string? PersonIdentification =>
-        Datasamling is { } datasamling
-            ? T.PersonIdentificationLabel(datasamling.EffectivePersonIdentificationLevel)
-            : null;
+        Datasamling is not { } datasamling ? null
+        : Placed(CatalogueColumns.PersonIdentification)
+            ? Curated(CatalogueColumns.PersonIdentification)
+            : T.PersonIdentificationLabel(datasamling.EffectivePersonIdentificationLevel);
 
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? Validity =>
@@ -167,13 +225,18 @@ public sealed partial class DatasamlingView : ComponentBase
     /// what keeps it out of <see cref="AnyStatistics"/>. A count of nothing is left out rather than
     /// shown as a zero, for the same reason: both are what let a datasamling with no numbers at all
     /// draw no block.
+    /// <para>
+    /// Both of the catalogue's own fields yield to a section that has been given the key, as the
+    /// fact box above does. The count is the collection's own number and has no property definition
+    /// to be placed.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> Statistics =>
         Datasamling is not { } datasamling
             ? []
             : [
-                (T.FieldFrequency, datasamling.Frequency, true),
-                (T.FieldCountingUnit, datasamling.CountingUnit, true),
+                (T.FieldFrequency, UnlessPlaced(CatalogueColumns.Frequency, datasamling.Frequency), true),
+                (T.FieldCountingUnit, UnlessPlaced(CatalogueColumns.CountingUnit, datasamling.CountingUnit), true),
                 (T.FieldVariableCount, VariableCount, false),
             ];
 
@@ -186,8 +249,8 @@ public sealed partial class DatasamlingView : ComponentBase
     /// The same six on purpose: a reader moving between a source and one of its collections is
     /// comparing them, and a row that reorders itself between the two pages is a row they have to
     /// read twice. Every value is the member the section below reads, so the two cannot come out in
-    /// different words, and no key goes into a <c>drawnElsewhere</c> set on account of being here —
-    /// this view names none at all.
+    /// different words, and no key goes into <see cref="DrawnElsewhere"/> on account of being here —
+    /// that set names Beskrivelse, which the ingress draws, and nothing else.
     /// </para>
     /// <para>
     /// Kilde is deliberately not among them although the fact box below shows it: the breadcrumb
