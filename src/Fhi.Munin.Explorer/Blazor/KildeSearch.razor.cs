@@ -61,7 +61,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// Selecting a kilde swaps the list for <see cref="KildeView"/> — the same component the variable
 /// explorer drills into, so the two cannot render the same source differently. Kelda's own
-/// sections reach it through <see cref="KildeView.Sections"/>; nothing Kelda-specific is added to
+/// sections reach it through <see cref="KildeView.NamedSections"/>; nothing Kelda-specific is added to
 /// that component itself, which is the whole reason it is a core with slots rather than one view
 /// with flags. The datasamling section's heading is not passed at all — it follows the source,
 /// which is a fact about the source rather than about who is rendering it.
@@ -267,14 +267,10 @@ public sealed partial class KildeSearch : ComponentBase
     /// The host's own sections for an open kilde, placed after Kelda's.
     /// </summary>
     /// <remarks>
-    /// The seam that keeps <see cref="KildeView"/> a shared core: Kelda's own sections — its
-    /// variables, its access criteria, its prices — are markup that goes <em>into</em> that
-    /// component rather than markup added to it, and this parameter is the same door held open for
-    /// whoever embedded the explorer. It is not passed straight through: what reaches
-    /// <see cref="KildeView.Sections"/> is Kelda's own sections — Variabler always, the other two
-    /// only under <see cref="ShowAccessAndPrices"/> — and then this, in that order, because a
-    /// host's section is an addition to the page it embedded rather than a replacement for what
-    /// the component is.
+    /// Passed to <see cref="KildeView.Sections"/>, after Kelda's own sections — its variables, its
+    /// access criteria, its prices — because a host's section is an addition to the page it embedded
+    /// rather than a replacement for what the component is. The page's contents nav lists Kelda's
+    /// sections and not this: the view cannot see an id or a heading inside a fragment.
     /// </remarks>
     [Parameter] public RenderFragment? Sections { get; set; }
 
@@ -629,19 +625,6 @@ public sealed partial class KildeSearch : ComponentBase
     /// breaking, for the reason <see cref="VariableSearch.HeadingLevel"/> spells out.
     /// </summary>
     private int KildeLevel => Math.Clamp(TitleLevel + 1, 1, 6);
-
-    /// <summary>
-    /// The heading level for Kelda's own sections: one step below the open kilde's name, which is
-    /// where <see cref="KildeView"/> puts the blocks it draws itself.
-    /// </summary>
-    /// <remarks>
-    /// The two have to agree, and the value they agree on is private to that component — so this
-    /// mirrors its arithmetic rather than reading it, and a test asserts that Kelda's sections come
-    /// out on the same level as the core's own headings. Without that, "Variabler" would read as a
-    /// part of the datasamlinger above it rather than as a section beside them, which is a claim
-    /// about the document made to everyone navigating it by heading.
-    /// </remarks>
-    private int SectionLevel => Math.Clamp(KildeLevel + 1, 1, 6);
 
     private string DetailBusy => _detailLoading ? "true" : "false";
 
@@ -1280,19 +1263,30 @@ public sealed partial class KildeSearch : ComponentBase
         builder.CloseElement();
     };
 
-    /// <summary>
-    /// The heading over one of Kelda's own sections, at <see cref="SectionLevel"/>.
-    /// </summary>
-    /// <remarks>
-    /// Built by hand for the reason <see cref="Heading"/> is: Razor has no syntax for a computed
-    /// element name, and the level is the host's choice rather than this component's. It wears
-    /// <c>headline-s</c>, which is what <see cref="KildeView"/> gives the blocks it draws itself,
-    /// so a reader cannot see which side of the seam a section came from.
-    /// </remarks>
-    private RenderFragment SectionHeading(string text) => builder =>
+    // Handed to KildeView rather than drawn here, so the headings sit at its blocks' level and the
+    // contents nav lists them.
+    private IReadOnlyList<DetailNamedSection> OwnSections(KildeDetail kilde)
     {
-        builder.OpenElement(0, $"h{SectionLevel}");
-        builder.AddAttribute(1, "class", "headline headline-s");
+        List<DetailNamedSection> sections =
+        [
+            new(DetailSectionIds.Variables, T.HeadingVariables, Caption(T.KildeVariableCount(kilde.TotalVariables))),
+        ];
+
+        if (ShowAccessAndPrices)
+        {
+            sections.Add(new(DetailSectionIds.AccessCriteria, T.HeadingAccessCriteria, Caption(T.BodyAccessCriteria)));
+            sections.Add(new(DetailSectionIds.Prices, T.HeadingPrices, Caption(T.BodyPrices)));
+        }
+
+        return sections;
+    }
+
+    // A classless <p> picks no size at all, so on a host carrying Stiler and nothing else it would
+    // land at the browser's own paragraph size.
+    private static RenderFragment Caption(string text) => builder =>
+    {
+        builder.OpenElement(0, "p");
+        builder.AddAttribute(1, "class", "caption");
         builder.AddContent(2, text);
         builder.CloseElement();
     };

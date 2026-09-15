@@ -513,28 +513,12 @@ public partial class VariableSearch
         _codesGeneration++;
     }
 
-    /// <summary>
-    /// The kodeverk block as a section, for the whole-variable view to place among its own.
-    /// </summary>
-    /// <remarks>
-    /// A heading and then the same fragment the Data tab draws. The alternative was a second copy
-    /// inside <see cref="VariableView"/>, which is a section to fix twice and two chances for the
-    /// panel and the full view to disagree about the same links.
-    /// </remarks>
-    private RenderFragment KodeverkSection(VariableDetail detail) => builder =>
-    {
-        if (detail.KodeverkLinks.Count == 0)
-        {
-            return;
-        }
-
-        builder.OpenElement(0, $"h{Math.Min(RowLevel + 1, 6)}");
-        builder.AddAttribute(1, "class", "headline headline-s");
-        builder.AddContent(2, T.HeadingKodeverk);
-        builder.CloseElement();
-
-        builder.AddContent(3, KodeverkGroups(detail));
-    };
+    // The Data tab's own fragment, so the panel and the whole variable cannot disagree about the
+    // same links; no section at all without kodeverk, so the nav offers none.
+    private IReadOnlyList<DetailNamedSection> KodeverkSections(VariableDetail detail) =>
+        detail.KodeverkLinks.Count == 0
+            ? []
+            : [new DetailNamedSection(DetailSectionIds.CodeLists, T.HeadingKodeverk, KodeverkGroups(detail))];
 
     /// <summary>
     /// The kodeverk the variable's values are drawn from, grouped by the kind of link they are.

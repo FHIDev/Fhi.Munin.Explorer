@@ -38,11 +38,22 @@ public sealed partial class VariableView : ComponentBase
     public string? HeadingId { get; set; }
 
     /// <summary>
-    /// Sections to place between the metadata and the statistics.
+    /// Sections to place between the metadata and the version history. Each is drawn under a heading
+    /// at the level of this view's own blocks and listed in the contents nav.
     /// </summary>
     /// <remarks>
     /// The kodeverk section arrives this way rather than being rebuilt here: the panel already draws
     /// it, and one section drawn twice is one section to fix twice.
+    /// </remarks>
+    [Parameter]
+    public IReadOnlyList<DetailNamedSection>? NamedSections { get; set; }
+
+    /// <summary>
+    /// Markup to place after <see cref="NamedSections"/>, drawn as given.
+    /// </summary>
+    /// <remarks>
+    /// Not listed in the contents nav, because this view cannot see an id or a heading inside a
+    /// fragment. Use <see cref="NamedSections"/> for a section the nav should offer.
     /// </remarks>
     [Parameter]
     public RenderFragment? Sections { get; set; }
@@ -244,24 +255,29 @@ public sealed partial class VariableView : ComponentBase
     /// <summary>The sections this view draws, in the order it draws them.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
+    private IReadOnlySet<string> DrawnIds { get; set; } = new HashSet<string>();
+
     /// <inheritdoc />
-    protected override void OnParametersSet() => Toc = BuildToc();
+    protected override void OnParametersSet()
+    {
+        var toc = BuildToc();
+
+        Toc = toc.Entries;
+        DrawnIds = toc.Drawn;
+    }
 
     /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
-    /// <remarks>
-    /// The kodeverk section arrives through <see cref="Sections"/> and carries no id of its own, so
-    /// the nav does not offer it — this view never learns what the explorer put there.
-    /// </remarks>
-    private IReadOnlyList<DetailTocEntry> BuildToc()
+    private DetailTocBuilder BuildToc()
     {
         if (Variable is not { } variable)
         {
-            return [];
+            return new();
         }
 
         DetailTocBuilder toc = new();
 
         toc.Add(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
+        toc.AddNamed(NamedSections);
         toc.Add(Versions.Count > 0, DetailSectionIds.Versions, T.HeadingVersionHistory);
         toc.Add(StatisticsBlock.AnyStatistics(variable), DetailSectionIds.Statistics, StatisticsHeading);
         toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
@@ -270,9 +286,9 @@ public sealed partial class VariableView : ComponentBase
         toc.Add(variable.AllVariabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
         toc.Add(variable.AllDatasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
 
-        return toc.Entries;
+        return toc;
     }
 
-    /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
-    private bool Drawn(string id) => Toc.Contains(id);
+    /// <summary>Whether this view's own block is drawn; a named section never switches one on.</summary>
+    private bool Drawn(string id) => DrawnIds.Contains(id);
 }

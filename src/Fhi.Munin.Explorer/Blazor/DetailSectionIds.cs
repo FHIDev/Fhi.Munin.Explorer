@@ -31,4 +31,14 @@ internal static class DetailSectionIds
     internal const string DataType = "datatype";
 
     internal const string VariableGroups = "variablegroups";
+
+    // The four below are the explorers' own, handed to a view as DetailNamedSection. The view's ids
+    // and these share one document, which is why they are listed together.
+    internal const string Variables = "variables";
+
+    internal const string AccessCriteria = "accesscriteria";
+
+    internal const string Prices = "prices";
+
+    internal const string CodeLists = "codelists";
 }

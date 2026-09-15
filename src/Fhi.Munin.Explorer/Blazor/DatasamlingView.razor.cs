@@ -45,13 +45,18 @@ public sealed partial class DatasamlingView : ComponentBase
     public string? HeadingId { get; set; }
 
     /// <summary>
-    /// Sections to place after the metadata, for the explorer that owns them.
+    /// Sections to place after this view's own blocks, for the explorer that owns them. Each is drawn
+    /// under a heading at the level of those blocks and listed in the contents nav.
     /// </summary>
     /// <remarks>
-    /// The same slot <see cref="KildeView.Sections"/> is, and for the same reason: the explorers
+    /// The same slot <see cref="KildeView.NamedSections"/> is, and for the same reason: the explorers
     /// differ in what they add around a shared core, and a flag per difference would make this the
-    /// one place they leak into each other. Runa passes none.
+    /// one place they leak into each other. Neither explorer passes any.
     /// </remarks>
+    [Parameter]
+    public IReadOnlyList<DetailNamedSection>? NamedSections { get; set; }
+
+    /// <inheritdoc cref="VariableView.Sections"/>
     [Parameter]
     public RenderFragment? Sections { get; set; }
 
@@ -360,19 +365,23 @@ public sealed partial class DatasamlingView : ComponentBase
     /// <summary>The sections this view draws, in the order it draws them.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
+    private IReadOnlySet<string> DrawnIds { get; set; } = new HashSet<string>();
+
     /// <inheritdoc />
-    protected override void OnParametersSet() => Toc = BuildToc();
+    protected override void OnParametersSet()
+    {
+        var toc = BuildToc();
+
+        Toc = toc.Entries;
+        DrawnIds = toc.Drawn;
+    }
 
     /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
-    /// <remarks>
-    /// The explorer's own sections arrive through <see cref="Sections"/> and are wrapped in no
-    /// section of ours, so the nav does not offer them — this view never learns what they are.
-    /// </remarks>
-    private IReadOnlyList<DetailTocEntry> BuildToc()
+    private DetailTocBuilder BuildToc()
     {
         if (Datasamling is not { } datasamling)
         {
-            return [];
+            return new();
         }
 
         DetailTocBuilder toc = new();
@@ -382,10 +391,11 @@ public sealed partial class DatasamlingView : ComponentBase
                 DetailSectionIds.Criteria, T.FieldInclusionCriteria);
         toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
         toc.Add(AnyStatistics, DetailSectionIds.Statistics, StatisticsHeading);
+        toc.AddNamed(NamedSections);
 
-        return toc.Entries;
+        return toc;
     }
 
-    /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
-    private bool Drawn(string id) => Toc.Contains(id);
+    /// <summary>Whether this view's own block is drawn; a named section never switches one on.</summary>
+    private bool Drawn(string id) => DrawnIds.Contains(id);
 }

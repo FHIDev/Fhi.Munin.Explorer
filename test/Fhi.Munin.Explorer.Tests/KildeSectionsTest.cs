@@ -5,6 +5,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -469,6 +470,59 @@ public class KildeSectionsTest : BunitContext
         Assert.DoesNotContain("publiserte variabler i denne kilden", view, StringComparison.Ordinal);
     }
 
+    /// <summary>The contents nav's links as href and words, in document order.</summary>
+    private static IReadOnlyList<(string Href, string Label)> Nav<TComponent>(IRenderedComponent<TComponent> cut)
+        where TComponent : IComponent =>
+        [.. cut.FindAll(".munin-explorer-page__toc a")
+               .Select(link => (link.GetAttribute("href")!, link.TextContent.Trim()))];
+
+    /// <summary>Every section the page drew, as the link that would reach it and its heading.</summary>
+    private static IReadOnlyList<(string Href, string Label)> DrawnSections<TComponent>(IRenderedComponent<TComponent> cut)
+        where TComponent : IComponent =>
+        [.. cut.FindAll("section[data-nav-section]")
+               .Select(section => ("#" + section.Id, section.FirstElementChild!.TextContent.Trim()))];
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Kelda_WhenAKildeIsOpen_ThenTheContentsNavListsEverySectionOnThePageInPageOrder(bool accessAndPrices)
+    {
+        // Kelda's sections used to reach the core as bare markup, so the nav stopped at Statistikk
+        // while Variabler, and with the host's leave Kriterier and Priser, were drawn below it
+        // (Fhi.Metadata-fkiz9). Read against the drawn sections, so neither list can drift alone.
+        var cut = OpenInKelda(Tromso(), accessAndPrices: accessAndPrices);
+
+        string[] expected = accessAndPrices
+            ? ["Metadata", "Delkilder og datasamlinger", "Kildeinformasjon", "Statistikk", "Variabler",
+               "Kriterier for tilgang til data", "Priser"]
+            : ["Metadata", "Delkilder og datasamlinger", "Kildeinformasjon", "Statistikk", "Variabler"];
+
+        Assert.Equal(expected, Nav(cut).Select(entry => entry.Label));
+        Assert.Equal(DrawnSections(cut), Nav(cut));
+        Assert.All(Nav(cut), entry => Assert.NotNull(cut.Find(entry.Href)));
+    }
+
+    [Fact]
+    public void Kelda_WhenAKildeIsOpen_ThenNoTwoSectionsOnThePageShareAnId()
+    {
+        // Kelda's ids and the core's share one document, and a repeated id sends the nav's second
+        // link to the first section of that name.
+        var ids = DrawnSections(OpenInKelda(Tromso(), accessAndPrices: true)).Select(section => section.Href).ToList();
+
+        Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+    }
+
+    [Fact]
+    public void Runa_WhenTheSameKildeIsOpen_ThenTheContentsNavKeepsTheCoresFourEntries()
+    {
+        var cut = OpenInRuna(Tromso());
+
+        Assert.Equal(
+            ["Metadata", "Delkilder og datasamlinger", "Kildeinformasjon", "Statistikk"],
+            Nav(cut).Select(entry => entry.Label));
+        Assert.Equal(DrawnSections(cut), Nav(cut));
+    }
+
     [Fact]
     public void SharedCore_WhenItIsGivenAHeadingAndNoSections_ThenItDrawsOnlyItsOwnBlocks()
     {
@@ -574,10 +628,9 @@ public class KildeSectionsTest : BunitContext
         int? headingLevel,
         string expected)
     {
-        // The level the core gives its own blocks is private to it, so Kelda mirrors the arithmetic
-        // rather than reading it — and an arithmetic mirrored in two places is one that drifts
-        // silently. A section one level too deep is not a cosmetic difference: it claims "Variabler"
-        // is a part of the datasamlinger above it to everyone navigating the page by heading.
+        // A section one level too deep claims "Variabler" is a part of the datasamlinger above it
+        // to everyone navigating the page by heading. The core draws Kelda's headings now, so this
+        // pins that it draws them at its own blocks' level.
         //
         // The last row is the flattening rather than an off-by-one: a title at h4 puts the kilde at
         // h5 and every block at h6, which is where both sides stop.

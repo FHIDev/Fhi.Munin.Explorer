@@ -5646,6 +5646,355 @@ public class VariableSearchTest : BunitContext
         Assert.Empty(kilde.QuerySelectorAll(".munin-explorer-filters__disclosure"));
     }
 
+    // ---- variabelgrupper in the kilde tree (Fhi.Metadata-g51gg) ----
+
+    private static readonly Guid Nutrition = new("cccccccc-1111-0000-0000-000000000001");
+    private static readonly Guid Meals = new("cccccccc-1111-0000-0000-000000000002");
+    private static readonly Guid Environment = new("cccccccc-1111-0000-0000-000000000003");
+    private static readonly Guid TestResults = new("cccccccc-1111-0000-0000-000000000004");
+    private static readonly Guid Serum = new("cccccccc-1111-0000-0000-000000000005");
+
+    /// <summary>One placement, named the way the payload names it: a kilde, and how far down it reaches.</summary>
+    private static VariabelgruppeOwner Under(Guid kilde, Guid? delkilde = null, Guid? datasamling = null) =>
+        new() { KildeId = kilde, DelkildeId = delkilde, DatasamlingId = datasamling };
+
+    private static VariabelgruppeFacet Variabelgruppe(
+        Guid id,
+        string name,
+        IReadOnlyList<VariabelgruppeOwner> owners,
+        Guid? parent = null,
+        string? filter = null,
+        int count = 0) =>
+        new() { Id = id, Name = name, ParentId = parent, Filter = filter, Count = count, Owners = owners };
+
+    /// <summary>The same facets again, with a variabelgruppe at each depth one can hang at.</summary>
+    /// <remarks>
+    /// Every name is its own, sharing no prefix with another and none with the standalone facet's
+    /// "Bakgrunn", so a lookup by label says which row — and which surface — it found.
+    /// </remarks>
+    private static FilterOptions FacetsWithVariabelgrupper() => FacetsWithDatasamlinger() with
+    {
+        HierarchyVariabelgrupper =
+        [
+            Variabelgruppe(Nutrition, "Kosthold", [Under(Tromso, datasamling: Tromso1)], count: 5),
+            Variabelgruppe(Meals, "Måltider", [Under(Tromso, datasamling: Tromso1)], parent: Nutrition, count: 3),
+            Variabelgruppe(Environment, "Miljø", [Under(Tromso, delkilde: Tromso4)], count: 2)
+        ]
+    };
+
+    /// <summary>Every branch row whose own words start with <paramref name="label"/>, in drawn order.</summary>
+    /// <remarks>
+    /// <see cref="Branch"/> reads one, which is right everywhere but here: a group hangs under every
+    /// datasamling its variables are in, so one name can be several rows.
+    /// </remarks>
+    private static IReadOnlyList<IElement> BranchRows(IRenderedComponent<VariableSearch> cut, string label) =>
+        [.. cut.FindAll(".munin-explorer-filters__branch")
+            .Where(li => RowWords(li).StartsWith(label, StringComparison.Ordinal))];
+
+    /// <summary>Every row of the panel whose own words start with <paramref name="label"/>.</summary>
+    /// <remarks>
+    /// Rows rather than controls, because a variabelgruppe in this tree is a container: it wears no
+    /// checkbox and no button, so <see cref="Facet"/> — which reads both — cannot reach it.
+    /// </remarks>
+    private static IReadOnlyList<IElement> PanelRows(IRenderedComponent<VariableSearch> cut, string label) =>
+        [.. FilterPanel(cut).QuerySelectorAll("li")
+            .Where(li => RowWords(li).StartsWith(label, StringComparison.Ordinal))];
+
+    [Fact]
+    public void Variabelgrupper_AtFirstPaint_ThenNotOneOfThemIsDrawnInTheKildeTree()
+    {
+        // Shut is where every branch of this tree starts, the groups included, and shut means
+        // absent: a reader who never opens a datasamling pays nothing for the groups inside it.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithVariabelgrupper()));
+
+        var panel = FilterPanel(cut).TextContent;
+
+        Assert.DoesNotContain("Kosthold", panel, StringComparison.Ordinal);
+        Assert.DoesNotContain("Måltider", panel, StringComparison.Ordinal);
+        Assert.DoesNotContain("Miljø", panel, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenEachLevelIsOpenedInTurn_ThenTheGroupsAppearWhereTheirOwnerIs()
+    {
+        // The three shapes the payload places at once: groups under a datasamling, a group under a
+        // delkilde that is in no datasamling of it, and a group nested under another group. Each
+        // has to wait for its own press, or "collapsed by default" stops at the level above.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithVariabelgrupper()));
+
+        BranchDisclosure(KildeTypeGroups(cut)[1]).Click();
+        Branch(cut, "Tromsøundersøkelsen").Click();
+
+        Assert.DoesNotContain("Kosthold", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+
+        Branch(cut, "Tromsø 1").Click();
+
+        Assert.Contains("Kosthold", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Måltider", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+
+        Branch(cut, "Kosthold").Click();
+
+        Assert.Contains("Måltider", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+
+        // The delkilde-level group, beside the datasamling under the same delkilde rather than
+        // inside it: folding it into one would say the variables are in a datasamling they are not.
+        Branch(cut, "Tromsø 4").Click();
+
+        var delkilde = Assert.Single(PanelRows(cut, "Tromsø 4"));
+
+        Assert.Contains(Assert.Single(PanelRows(cut, "Miljø")), delkilde.QuerySelectorAll("li"));
+        Assert.Empty(Assert.Single(PanelRows(cut, "Fjerde runde")).QuerySelectorAll("li"));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenOneIsOptedOutOfTheStandaloneFacet_ThenTheKildeTreeStillDrawsIt()
+    {
+        // The opt-out is the standalone facet's rule and nothing else's, so a tree reading it would
+        // hide a group the reader can see in Munin's own explorer. (Fhi.Metadata-fbe3w)
+        var facets = FacetsWithDatasamlinger() with
+        {
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Nutrition, "Kosthold", [Under(Tromso, datasamling: Tromso1)], filter: "1"),
+                Variabelgruppe(Meals, "Måltider", [Under(Tromso, datasamling: Tromso1)],
+                       filter: VariabelgruppeFacet.StandaloneFacetOptOut),
+                Variabelgruppe(Environment, "Miljø", [Under(Tromso, datasamling: Tromso1)])
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        ExpandBranches(cut);
+
+        Assert.Equal(["Kosthold", "Måltider", "Miljø"],
+                     Assert.Single(PanelRows(cut, "Tromsø 1")).QuerySelectorAll("li").Select(RowWords));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenOneHasGroupsUnderIt_ThenItIsABranchAndTheLeafBelowItIsNot()
+    {
+        // A leaf group gets no disclosure at all: a control that discloses nothing is a tab stop
+        // the reader presses to no effect, and most of this tree is leaves.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithVariabelgrupper()));
+
+        ExpandBranches(cut);
+
+        var branch = Assert.Single(PanelRows(cut, "Kosthold"));
+        var leaf = Assert.Single(PanelRows(cut, "Måltider"));
+
+        Assert.Contains("munin-explorer-filters__branch", branch.ClassName!, StringComparison.Ordinal);
+        Assert.NotNull(branch.QuerySelector(".munin-explorer-filters__disclosure"));
+
+        Assert.DoesNotContain("munin-explorer-filters__branch", leaf.ClassName ?? "", StringComparison.Ordinal);
+        Assert.Empty(leaf.QuerySelectorAll(".munin-explorer-filters__disclosure"));
+
+        // The datasamling holding them is a branch now, where with no groups in it it was a leaf.
+        Assert.NotNull(Assert.Single(PanelRows(cut, "Tromsø 1"))
+                           .QuerySelector(".munin-explorer-filters__disclosure"));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenTheDatasamlingHoldingThemIsCategorised_ThenItStillDrawsItsGlyphs()
+    {
+        // The glyphs are the datasamling's own and the tree is built from the facet payload, so a
+        // node model dropping the categories would take them off a row the reader had them on —
+        // and off the words the checkbox is named by with them. (Fhi.Metadata-evoil)
+        var facets = FacetsWithVariabelgrupper() with
+        {
+            Datasamlinger =
+            [
+                new()
+                {
+                    Id = Tromso1, Name = "Tromsø 1", KildeId = Tromso, Count = 5,
+                    Categories = ["EINS", "PHDR"]
+                }
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        ExpandBranches(cut);
+
+        Assert.Equal(["PHDR", "EINS"], RowGlyphs(cut, "Tromsø 1"));
+
+        // And no level above or below it draws a slot, the groups it now holds included.
+        Assert.Single(FilterPanel(cut).QuerySelectorAll(".munin-explorer-filters__icons"));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenABranchIsOpened_ThenItsControlIsNamedByTheGroupAndSaysWhichWayItIs()
+    {
+        // The disclosure Fhi.Metadata-adog5 delivered, reached by a group rather than reimplemented
+        // for one: a real <button>, so Enter and Space work with no keydown handler of its own.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithVariabelgrupper()));
+
+        ExpandBranches(cut);
+        Branch(cut, "Kosthold").Click();
+
+        var shut = Branch(cut, "Kosthold");
+
+        Assert.Equal("BUTTON", shut.TagName.ToUpperInvariant());
+        Assert.Equal("false", shut.GetAttribute("aria-expanded"));
+        Assert.Equal("Vis nivåene under Kosthold", AccessibleName.Of(shut));
+        Assert.False(shut.HasAttribute("aria-controls"));
+
+        // A click carrying no count at all is what Enter and Space synthesise, and the gesture
+        // guard has to let it through. (Fhi.Metadata-zel47)
+        Branch(cut, "Kosthold").Click(new MouseEventArgs());
+
+        var open = Branch(cut, "Kosthold");
+
+        Assert.Equal("true", open.GetAttribute("aria-expanded"));
+        Assert.Equal("Skjul nivåene under Kosthold", AccessibleName.Of(open));
+        Assert.Equal(Assert.Single(PanelRows(cut, "Kosthold")).QuerySelector("ul")!.Id,
+                     open.GetAttribute("aria-controls"));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenEveryBranchIsOpened_ThenNoFilterMovedAndNothingWasFetched()
+    {
+        // Expansion is the panel's own state and touches neither the filter nor the API: a reader
+        // browsing the tree must not have to narrow by a kilde to see what is under it.
+        var client = new FilteringClient(OnePage(), FacetsWithVariabelgrupper());
+        VariableFilter? reported = null;
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
+
+        var searches = client.SearchCalls;
+        var facetCalls = client.FacetCalls;
+
+        ExpandBranches(cut);
+
+        Assert.Contains("Måltider", FilterPanel(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal(searches, client.SearchCalls);
+        Assert.Equal(facetCalls, client.FacetCalls);
+        Assert.Null(reported);
+
+        // And no group is offered as a filter yet: the tree and the standalone facet share one id,
+        // and a checkbox here before Fhi.Metadata-km3zb holds the two in step is a second control
+        // over that id with nothing keeping them one selection.
+        Assert.Empty(Assert.Single(PanelRows(cut, "Måltider")).QuerySelectorAll("input"));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenOneHangsUnderTwoDatasamlinger_ThenEachPlacementOpensOnItsOwn()
+    {
+        // A group is drawn once per placement and ticked by one id, so the row cannot be keyed by
+        // that id: both placements would open together and hand their two lists one `id`.
+        var facets = FacetsWithDatasamlinger() with
+        {
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(TestResults, "Prøvesvar",
+                       [Under(Tromso, datasamling: Tromso1), Under(Tromso, Tromso4, Tromso4Round)]),
+                Variabelgruppe(Serum, "Serum",
+                       [Under(Tromso, datasamling: Tromso1), Under(Tromso, Tromso4, Tromso4Round)],
+                       parent: TestResults)
+            ]
+        };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        BranchDisclosure(KildeTypeGroups(cut)[1]).Click();
+        Branch(cut, "Tromsøundersøkelsen").Click();
+        Branch(cut, "Tromsø 1").Click();
+        Branch(cut, "Tromsø 4").Click();
+        Branch(cut, "Fjerde runde").Click();
+
+        var placements = BranchRows(cut, "Prøvesvar");
+
+        Assert.Equal(2, placements.Count);
+
+        BranchDisclosure(placements[0]).Click();
+
+        var opened = BranchRows(cut, "Prøvesvar");
+
+        Assert.Equal("true", BranchDisclosure(opened[0]).GetAttribute("aria-expanded"));
+        Assert.Equal("false", BranchDisclosure(opened[1]).GetAttribute("aria-expanded"));
+        Assert.Single(PanelRows(cut, "Serum"));
+
+        BranchDisclosure(BranchRows(cut, "Prøvesvar")[1]).Click();
+
+        var both = BranchRows(cut, "Prøvesvar");
+
+        Assert.Equal(2, PanelRows(cut, "Serum").Count);
+        Assert.NotEqual(BranchDisclosure(both[0]).GetAttribute("aria-controls"),
+                        BranchDisclosure(both[1]).GetAttribute("aria-controls"));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenTheFacetSearchNamesOne_ThenItsKildeSurvivesAndOpensToIt()
+    {
+        // The name of anything below a kilde counts as the kilde's own, and the groups are names
+        // the reader can see: a term typed out of the tree must not empty the facet it was read in.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithVariabelgrupper()));
+
+        KildeSearchField(cut).Change("Måltider");
+
+        Assert.DoesNotContain("Dødsårsaksregisteret", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Contains("Måltider", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenOneIsAlreadyChosen_ThenItsRowInTheKildeTreeIsItsNameAndNothingElse()
+    {
+        // FacetList draws a count and a marking inside the checkbox alone, so a container computing
+        // either would promise a figure and a tick the reader never gets — and this id is ticked in
+        // the standalone facet, which is the one control over it until Fhi.Metadata-km3zb.
+        var cut = RenderFiltered(new FilteringClient(OnePage(), FacetsWithVariabelgrupper()),
+                                 new VariableFilter { VariabelgruppeIds = [Nutrition] });
+
+        ExpandBranches(cut);
+
+        var row = Assert.Single(KildeFacet(cut).QuerySelectorAll("li"),
+                                li => RowWords(li).StartsWith("Kosthold", StringComparison.Ordinal));
+
+        Assert.Equal("Kosthold", RowWords(row));
+        Assert.Empty(row.QuerySelectorAll("label"));
+        Assert.Empty(row.QuerySelectorAll("input"));
+        Assert.Empty(row.QuerySelectorAll(".munin-explorer-filters__count"));
+        Assert.Empty(row.QuerySelectorAll(".munin-explorer-filters__groupcount"));
+    }
+
+    /// <summary>Two filters answers, so a tree held against the first cannot be drawn from twice.</summary>
+    private sealed class RefreshingFacetsClient(FilterOptions first, FilterOptions next)
+        : EmptyMuninExplorerClient
+    {
+        /// <summary>Answer this refresh, and every one after it, with the second payload.</summary>
+        public bool Refreshed { get; set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(OnePage(Variable("1. Tale", "KODE")));
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Refreshed ? next : first);
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenASecondFiltersAnswerArrives_ThenTheTreeIsBuiltFromThatOne()
+    {
+        // The tree is held against the answer it was built from rather than walked once per caller,
+        // so what releases it is another answer arriving — hold it any longer and the panel draws a
+        // catalogue the reader has already narrowed away from, counts and all.
+        var client = new RefreshingFacetsClient(FacetsWithDatasamlinger(), FacetsWithVariabelgrupper());
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+
+        Assert.Empty(PanelRows(cut, "Kosthold"));
+
+        client.Refreshed = true;
+        ClickFacet(cut, "Vis historiske");
+
+        ExpandBranches(cut);
+
+        Assert.Single(PanelRows(cut, "Kosthold"));
+    }
+
     [Fact]
     public void Branches_WhenOneIsOpened_ThenItSaysSoWhereAScreenReaderReadsIt()
     {
@@ -12348,6 +12697,32 @@ public class VariableSearchTest : BunitContext
         PressOwnerControl(WholeVariableToggle(cut), clicks: 0);
 
         Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void WholeVariable_WhenOpened_ThenTheContentsNavListsTheKodeverkSectionExactlyWhenItIsDrawn(bool kodeverk)
+    {
+        // The kodeverk section reached the view as bare markup with no id, so the nav on the page
+        // that draws it could not offer it (Fhi.Metadata-fkiz9).
+        var detail = kodeverk ? WithKodeverk(TaleId) : Detail(TaleId) with { KodeverkLinks = [] };
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(WholeVariableToggle(cut));
+
+        var view = cut.Find(".munin-explorer-drilldown");
+        var targets = view.QuerySelectorAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")).ToList();
+
+        Assert.Equal(view.QuerySelectorAll("section[data-nav-section]").Select(section => "#" + section.Id), targets);
+        Assert.Equal(kodeverk, targets.Contains("#" + DetailSectionIds.CodeLists));
+
+        if (kodeverk)
+        {
+            Assert.Equal("Kodeverk", view.QuerySelector($"#{DetailSectionIds.CodeLists}")!.FirstElementChild!.TextContent);
+            Assert.Equal(4, view.QuerySelectorAll($"#{DetailSectionIds.CodeLists} li.munin-explorer-kodeverk__item").Length);
+        }
     }
 
     [Fact]

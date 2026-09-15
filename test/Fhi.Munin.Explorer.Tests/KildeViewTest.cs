@@ -18,9 +18,9 @@ namespace Fhi.Munin.Explorer.Tests;
 /// Written because this component had no test class of its own. The suite had one for the explorer,
 /// one for the variable view and one for the filter panel, and the kilde view was only ever reached
 /// sideways, through the explorer's drill-in — so the parameters it exists for had no coverage.
-/// The parameters are the point, in two different ways. <see cref="KildeView.Sections"/> and
+/// The parameters are the point, in two different ways. <see cref="KildeView.NamedSections"/> and
 /// <see cref="KildeView.DataCollectionsHeading"/> are the whole reason this is a shared core rather
-/// than two views. Kelda wires <c>Sections</c> — <c>KildeSearch.razor</c> hands it three sections
+/// than two views. Kelda wires <c>NamedSections</c> — <c>KildeSearch.razor</c> hands it three sections
 /// of its own — and neither explorer wires the heading any more (Fhi.Metadata-rhybi), which is why
 /// both are exercised here directly: the assertions below are about what the core does with them,
 /// and <c>KildeSectionsTest</c> is about the difference they make between the two explorers.
@@ -165,10 +165,10 @@ public class KildeViewTest : BunitContext
     };
 
     /// <summary>Markup a host might hang after the metadata, carrying no class of its own.</summary>
-    private static readonly RenderFragment KeldaSections = builder =>
+    private static readonly RenderFragment HostSections = builder =>
     {
         builder.OpenElement(0, "p");
-        builder.AddAttribute(1, "id", "kelda-sections");
+        builder.AddAttribute(1, "id", "host-sections");
         builder.AddContent(2, "Tilgangskriterier");
         builder.CloseElement();
     };
@@ -1488,6 +1488,20 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
+    public void Contents_WhenANamedSectionReusesAnIdOfTheViewsOwn_ThenTheViewsEmptyBlockStaysOff()
+    {
+        var cut = Render<KildeView>(b => b
+            .Add(c => c.Kilde, Sparse())
+            .Add(c => c.NamedSections,
+                 [new DetailNamedSection(DetailSectionIds.Metadata, "Min metadata",
+                                         body => body.AddContent(0, "x"))]));
+
+        var metadata = Assert.Single(Wrappers(cut), section => section.Id == DetailSectionIds.Metadata);
+
+        Assert.Equal("Min metadata", metadata.FirstElementChild!.TextContent);
+    }
+
+    [Fact]
     public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
     {
         // The same payload Sections_WhenABlockDrawsNothing uses, asked one column over: a source
@@ -1568,6 +1582,27 @@ public class KildeViewTest : BunitContext
     }
 
     [Fact]
+    public void Contents_WhenAnExplorerHandsTheViewNamedSections_ThenEachIsDrawnAndListedAfterTheViewsOwn()
+    {
+        // Both halves come off one list: an entry without its section is a dead link, and a section
+        // without its entry is one the nav cannot reach (Fhi.Metadata-fkiz9). The fragment after them
+        // is the host's, which the view cannot name, so it is drawn and not listed.
+        RenderFragment host = builder => builder.AddMarkupContent(0, "<p>Fra verten</p>");
+
+        var cut = Render<KildeView>(b => b
+            .Add(c => c.Kilde, Kilde())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two)
+            .Add(c => c.Sections, host));
+
+        Assert.Equal(["#first", "#second"], Targets(cut).TakeLast(2));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+        Assert.Single(Wrappers(cut).Select(section => section.FirstElementChild!.TagName).Distinct());
+        Assert.Equal("Den andre", cut.Find("#second > p").TextContent);
+        Assert.Null(cut.FindAll("p").Single(p => p.TextContent == "Fra verten").Closest("section"));
+    }
+
+    [Fact]
     public void Contents_WhenTheDatasamlingHeadingFollowsTheSource_ThenTheNavSaysWhatTheBlockSays()
     {
         // The one entry whose words are not a fixed text: a source with delkilder heads this block
@@ -1605,19 +1640,18 @@ public class KildeViewTest : BunitContext
     // ---------------------------------------------------------------------------------
 
     [Fact]
-    public void Sections_WhenAnExplorerPassesThem_ThenTheyComeLastAfterTheViewsOwnBlocks()
+    public void Sections_WhenAHostPassesThem_ThenTheyComeLastAfterTheNamedSections()
     {
-        // The whole reason this is a core with a slot instead of one view with a flag per Kelda
-        // section. They go after every block the view is itself — the source's own record reads
-        // first — because an explorer's sections are additions to the page it embedded.
-        var cut = Render(Kilde(), sections: KeldaSections);
+        // A host's markup is an addition to the page it embedded, so it follows every section the
+        // view draws, the named ones included.
+        var cut = Render<KildeView>(b => b
+            .Add(c => c.Kilde, Kilde())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two)
+            .Add(c => c.Sections, HostSections));
 
-        var main = cut.Find(".munin-explorer-kilde__main");
-        var ids = main.Children.Select(e => e.Id).ToArray();
+        var ids = cut.Find(".munin-explorer-kilde__main").Children.Select(e => e.Id ?? "").ToArray();
 
-        Assert.Equal("kelda-sections", ids[^1]);
-        Assert.Contains(DetailSectionIds.Source, ids[..^1]);
-        Assert.Contains(DetailSectionIds.Statistics, ids[..^1]);
+        Assert.Equal([DetailSectionIds.Statistics, "first", "second", "host-sections"], ids[^4..]);
     }
 
     [Fact]

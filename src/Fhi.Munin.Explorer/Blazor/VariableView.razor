@@ -35,7 +35,7 @@
         <ChildContent>
 
             @* Every block below is a <section> carrying a fixed English id, and draws exactly when
-               Drawn says the contents nav names it — one predicate per section, so the nav can
+               its predicate in BuildToc holds — the one its nav entry is added under, so the nav can
                never link to a block left out, in either language. *@
 
             @* Resolved from the payload, exactly as the kilde view resolves a source's. *@
@@ -52,7 +52,8 @@
             }
 
             @* Kodeverk arrives from the explorer that already draws it, rather than being
-               rebuilt here, so this view wraps none of it in a section. *@
+               rebuilt here. *@
+            @DetailBlocks.NamedSections(NamedSections, BlockLevel)
             @Sections
 
             @if (Drawn(DetailSectionIds.Versions))

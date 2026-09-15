@@ -17,7 +17,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// A boolean per Kelda section would make this the one place where both explorers leak into each
 /// other, and every later difference would add another flag. Instead each explorer passes its own
-/// sections in through <see cref="Sections"/>, and this component never learns which one is calling.
+/// sections in through <see cref="NamedSections"/>, and this component never learns which one is calling.
 /// </para>
 /// <para>
 /// Ships no CSS, like everything else in this package: it emits the host's class names so the
@@ -52,12 +52,22 @@ public sealed partial class KildeView : ComponentBase
     public int HeadingLevel { get; set; } = 2;
 
     /// <summary>
-    /// Sections to place after the metadata, for the explorer that owns them.
+    /// Sections to place after this view's own blocks, for the explorer that owns them. Each is drawn
+    /// under a heading at the level of those blocks and listed in the contents nav.
     /// </summary>
     /// <remarks>
-    /// Kelda passes its variables, access criteria and prices here, and after them whatever its own
-    /// host hung on the explorer. Runa passes nothing at all. The shared collection hierarchy
-    /// and its metadata disclosure always come before these sections.
+    /// Kelda passes its variables, access criteria and prices here. Runa passes nothing at all.
+    /// </remarks>
+    [Parameter]
+    public IReadOnlyList<DetailNamedSection>? NamedSections { get; set; }
+
+    /// <summary>
+    /// Markup to place last, after <see cref="NamedSections"/>.
+    /// </summary>
+    /// <remarks>
+    /// Drawn as given and not listed in the contents nav: this view cannot see an id or a heading
+    /// inside a fragment. Kelda passes whatever its own host hung on the explorer here; a host that
+    /// wants its section in the nav mounts this view and uses <see cref="NamedSections"/>.
     /// </remarks>
     [Parameter]
     public RenderFragment? Sections { get; set; }
@@ -373,19 +383,23 @@ public sealed partial class KildeView : ComponentBase
     /// <summary>The sections this view draws, in the order it draws them.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
+    private IReadOnlySet<string> DrawnIds { get; set; } = new HashSet<string>();
+
     /// <inheritdoc />
-    protected override void OnParametersSet() => Toc = BuildToc();
+    protected override void OnParametersSet()
+    {
+        var toc = BuildToc();
+
+        Toc = toc.Entries;
+        DrawnIds = toc.Drawn;
+    }
 
     /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
-    /// <remarks>
-    /// The explorer's own sections arrive through <see cref="Sections"/> and are wrapped in no
-    /// section of ours, so the nav does not offer them — this view never learns what they are.
-    /// </remarks>
-    private IReadOnlyList<DetailTocEntry> BuildToc()
+    private DetailTocBuilder BuildToc()
     {
         if (Kilde is null)
         {
-            return [];
+            return new();
         }
 
         DetailTocBuilder toc = new();
@@ -398,12 +412,13 @@ public sealed partial class KildeView : ComponentBase
 
         toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
         toc.Add(DetailBlocks.AnyFacts(Statistics), DetailSectionIds.Statistics, T.HeadingStatistics);
+        toc.AddNamed(NamedSections);
 
-        return toc.Entries;
+        return toc;
     }
 
-    /// <summary>Whether the section with this id is drawn, which is whether the nav names it.</summary>
-    private bool Drawn(string id) => Toc.Contains(id);
+    /// <summary>Whether this view's own block is drawn; a named section never switches one on.</summary>
+    private bool Drawn(string id) => DrawnIds.Contains(id);
 
     /// <summary>
     /// The heading for the datasamling section, when the explorer using this view wants a word of

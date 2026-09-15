@@ -27,7 +27,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <c>input</c> event it must not have.
 /// </para>
 /// <para>
-/// The second is <see cref="KildeView.Sections"/>. Kelda's own sections have to reach that
+/// The second is <see cref="KildeView.NamedSections"/>. Kelda's own sections have to reach that
 /// component through its parameter, because it is a shared core with slots and not a view with
 /// flags; an implementation that instead put Kelda-specific markup inside it would pass any
 /// assertion that only looks for the text on screen. The assertion here is on the parameter, and
@@ -2262,12 +2262,11 @@ public class KildeSearchTest : BunitContext
         // Kelda's own sections go INTO it rather than being added to it — an implementation that
         // put Kelda-specific markup inside that component would satisfy any assertion that only
         // looked for text on screen, and would take down the separation the component is built to
-        // hold up. So the assertion is on the parameter as well as on the output.
+        // hold up. So the assertion is on the parameters as well as on the output.
         //
-        // It is no longer the host's fragment by reference: Kelda's own sections are markup in this
-        // component, and what reaches the core is those plus whatever the host passed. The host's
-        // own is still asserted, because a composition that dropped it would otherwise read exactly
-        // like one that never had it.
+        // Kelda's own sections reach the core as NamedSections and the host's fragment as Sections,
+        // by reference: a composition that dropped the host's would otherwise read exactly like one
+        // that never had it.
         var als = Kilde("Als registeret", "K_ALS");
         var client = new FakeClient(als).Publishing(als);
 
@@ -2281,11 +2280,14 @@ public class KildeSearchTest : BunitContext
 
         var view = cut.FindComponent<KildeView>();
 
-        Assert.NotNull(view.Instance.Sections);
+        Assert.Same(sections, view.Instance.Sections);
         Assert.Contains("Fra verten", cut.Markup);
 
-        // Kelda's own, in the same slot. The datasamling section is not one of them: the core
-        // draws it and reads its heading off the source (Fhi.Metadata-rhybi).
+        // The datasamling section is not one of Kelda's: the core draws it and reads its heading off
+        // the source (Fhi.Metadata-rhybi).
+        Assert.Equal(
+            [DetailSectionIds.Variables, DetailSectionIds.AccessCriteria, DetailSectionIds.Prices],
+            view.Instance.NamedSections!.Select(section => section.Id));
         Assert.Contains("Kriterier for tilgang til data", cut.Markup);
         Assert.Contains("Priser", cut.Markup);
     }
@@ -2304,7 +2306,10 @@ public class KildeSearchTest : BunitContext
 
         cut.Find(".munin-explorer-kilder tbody th button").Click();
 
-        Assert.NotNull(cut.FindComponent<KildeView>().Instance.Sections);
+        var view = cut.FindComponent<KildeView>().Instance;
+
+        Assert.Null(view.Sections);
+        Assert.Equal(3, view.NamedSections?.Count);
         Assert.Contains("Kriterier for tilgang til data", cut.Markup);
     }
 

@@ -268,6 +268,24 @@ public class FilterHierarchyTest
     }
 
     [Fact]
+    public void Build_WhenAKildeHasNothingUnderIt_ThenItIsStillARootAndNoRootIdRepeats()
+    {
+        // The panel keys these roots by id and reaches a kilde's whole subtree through that key, so
+        // a listed kilde missing from them loses its datasamlinger and its groups from the facet —
+        // and its search — with no error anywhere. (Fhi.Metadata-g51gg)
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr), Kilde(Npr), Kilde(Mfr)],
+            Datasamlinger = [Datasamling(Registrering, Npr)]
+        };
+
+        var roots = FilterHierarchy.Build(facets);
+
+        Assert.Equal([Mfr, Npr], roots.Select(node => node.Id));
+        Assert.All(roots, node => Assert.Equal(HierarchyLevel.Kilde, node.Level));
+    }
+
+    [Fact]
     public void Build_WhenTheAnswerIsAWholeCatalogue_ThenEveryPlacementIsDrawnExactlyOnce()
     {
         // The shape a real answer has — two kilder, delkilder, datasamlinger under both levels and
