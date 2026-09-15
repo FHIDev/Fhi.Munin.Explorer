@@ -8131,9 +8131,10 @@ public class VariableSearchTest : BunitContext
         Assert.All(panel.QuerySelectorAll("li > label"), l => Assert.False(l.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("li > label > input"), i => Assert.False(i.HasAttribute("class")));
 
-        // The toolbar is still buttons, and still Stiler's own square one — except Nivålinjer, which
-        // wears munin-explorer-switch ALONE: the toolbar's rule selects hd-button-square, and beside
-        // it the switch collapses to one character wide. (Fhi.Metadata-l9l2n.87)
+        // The toolbar is still buttons, and still Stiler's own square one — except the two
+        // switches, which wear munin-explorer-switch ALONE: the toolbar's rule selects
+        // hd-button-square, and beside it a switch collapses to one character wide.
+        // (Fhi.Metadata-l9l2n.87)
         var buttons = panel.QuerySelectorAll("button");
         Assert.All(
             buttons.Where(b => b.GetAttribute("role") != "switch" && !b.HasAttribute("aria-expanded")),
@@ -8144,9 +8145,12 @@ public class VariableSearchTest : BunitContext
         Assert.All(
             buttons.Where(b => b.HasAttribute("aria-expanded")),
             b => Assert.Equal("munin-explorer-filters__disclosure", b.ClassName));
-        Assert.Equal(
-            "munin-explorer-switch",
-            Assert.Single(buttons, b => b.GetAttribute("role") == "switch").ClassName);
+
+        // Nivålinjer and Ikoner, and the count is asserted because the exemption above is written
+        // per switch: a third one added without the bare name is what this would catch.
+        var switches = buttons.Where(b => b.GetAttribute("role") == "switch").ToList();
+        Assert.Equal(2, switches.Count);
+        Assert.All(switches, b => Assert.Equal("munin-explorer-switch", b.ClassName));
     }
 
     [Fact]
