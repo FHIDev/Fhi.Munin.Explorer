@@ -1,8 +1,8 @@
 // The page states the accessibility scan visits beyond a plain page load: a name, and a function
 // that drives a loaded page into it. Add one here and as a `path::state` target in
 // check-accessibility.sh — or in check-hostile-host.sh, for a state that stages boxes rather than
-// an accessibility tree, since geometry-scan.mjs reads this same list. Why at all: AGENTS.md,
-// "It scans states, not only pages".
+// an accessibility tree, or in check-component-state.sh, for one that stages a press; all three
+// read this same list. Why at all: AGENTS.md, "It scans states, not only pages".
 //
 // Controls are found by the name a reader presses them under, from `Texts.cs` in Norwegian since
 // both samples mount with `Language="no"`. A control this file cannot find stops the scan as a
@@ -165,6 +165,16 @@ export const states = {
     await page
       .locator('.munin-explorer-detail[aria-busy="false"]')
       .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // The whole variable, which is a view and not the panel above it: `VariableView` with a contents
+  // nav of its own. The one state in either sample drawing that nav under `VariableExplorer`, whose
+  // query moves by history.replaceState and so is past NavigationManager (Fhi.Metadata-l9l2n.114).
+  'variable-whole': async page => {
+    await states['variable-detail'](page);
+    await press(page, 'Vis hele variabelen');
+    await page.locator('.munin-explorer-whole').first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 

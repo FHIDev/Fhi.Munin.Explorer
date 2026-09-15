@@ -21,15 +21,18 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// resolved against the document's <c>&lt;base href&gt;</c> rather than against the page being
 /// read, and helsedata's Optimizely host sets that to <c>/</c>, so every link left the page for the
 /// site root instead of scrolling. The query goes with the path because a browser treats a fragment
-/// jump as same-document only when both match: <c>/MuninKelda/#metadata</c> would scroll and drop
-/// the <c>?kilde=</c> the reader is on.
+/// jump as same-document only when the path and the query both match: <c>/MuninKelda/#metadata</c>
+/// pressed on <c>/MuninKelda/?kilde=…</c> is a fresh load of that page with no kilde open, which
+/// loses the reader's place by a quieter route than the site root does.
 /// </para>
 /// <para>
 /// A host mounting a detail view inside <see cref="VariableExplorer"/> or
 /// <see cref="KildeExplorer"/> gets that address from the wrapper, which is the only side that
 /// knows what it last wrote. Mounted under anything else the links are built from the circuit's own
-/// address, so a host that moves the address bar with <c>history.replaceState</c> and no
-/// <c>NavigationManager</c> call owes this component nothing but that call.
+/// address, so a host owning its own query string has to move it through
+/// <see cref="NavigationManager"/>: an address bar moved by <c>history.replaceState</c> alone is
+/// one Blazor is never told about, and the links would keep naming the address the reader arrived
+/// on.
 /// </para>
 /// <para>
 /// So no <c>form-menu__list__item--active</c> is emitted either. With nothing tracking the scroll
@@ -109,9 +112,9 @@ public sealed class DetailToc : ComponentBase, IDisposable
     /// <inheritdoc />
     public void Dispose() => Navigation.LocationChanged -= Moved;
 
-    // A host that owns the query rewrites it without re-rendering us — KildeSearchWithHandover
-    // navigates and its own guard returns early — and the hrefs would then keep naming the address
-    // the reader arrived on rather than the one they are reading.
+    // A host that owns the query can rewrite it without anything above this component
+    // re-rendering, and the hrefs would then keep naming the address the reader arrived on rather
+    // than the one they are reading.
     private void Moved(object? sender, LocationChangedEventArgs e) => StateHasChanged();
 
     /// <inheritdoc />

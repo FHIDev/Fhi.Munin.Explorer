@@ -14,13 +14,12 @@
 //
 // WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
 //   - whether a contents-nav press moves FOCUS as well as the viewport. ModernHost is a Blazor Web
-//     App with an interactive router, and Blazor intercepts a same-page-with-hash press and calls
-//     scrollIntoView itself, which does not run the browser's own focus step. helsedata's host has
-//     no router and does not intercept, so there the focus moves; measured on samples/LegacyHost
-//     and recorded on Fhi.Metadata-l9l2n.114. What is asserted below is the half the component owns
-//     — that every target is focusable — not the browser's half;
-//   - every OTHER control the component draws. Four presses are measured here, all in the variable
-//     explorer: the column picker's refusal to hide the last column, a facet press dropped because
+//     App with an interactive router, and Blazor intercepts a same-page-with-hash press and scrolls
+//     itself rather than leaving the browser to make the fragment jump that carries focus. What is
+//     asserted below is therefore the half the component owns — that every target is focusable —
+//     and a host that does not intercept is not measured anywhere;
+//   - every OTHER control the component draws. Four REFUSED presses are measured here, all in the
+//     variable explorer: the picker's refusal to hide the last column, a facet press dropped because
 //     a fetch was already in flight, and the two the facet tree's branch disclosures add — that a
 //     shut branch leaves nothing behind for a Tab to land on, and that folding one over a ticked
 //     value leaves the value ticked;
@@ -251,14 +250,18 @@ export const assertions = [
     // Nothing about one defect is encoded here: it asks what the BROWSER makes of each href and
     // requires this page's own address, whatever the attribute happens to say.
     kind: 'invariant',
-    states: ['kilde-hierarchy-collapsed'],
+    states: ['kilde-hierarchy-collapsed', 'variable-whole'],
 
     // The one thing no test in test/ can ask. The attribute reads "#metadata" in the broken build
     // and "/kilder?kilde=…#metadata" in the fixed one, and bUnit can see both — but what broke on
     // helsedata is that a bare fragment resolves against the document's <base href="/">, which
     // their Optimizely layout sets, so every entry navigated to the site root and dropped the open
-    // kilde. bUnit has no base element and no URL resolver. ModernHost sets one, and /kilder is a
-    // path with a query on it, so this is the page the question can be asked on.
+    // kilde. bUnit has no base element and no URL resolver; ModernHost's App.razor sets one.
+    //
+    // Both staged states are here because the two halves of the fix are reached differently.
+    // /kilder is the host's own wrapper, which navigates, so the nav is built from the circuit's
+    // address; /utforsker is VariableExplorer, which mirrors with history.replaceState and so is
+    // the address NavigationManager cannot answer for and the cascade has to carry.
     async stage(page) {
       const nav = page.locator(TOC);
       await nav.waitFor({ state: 'visible', timeout: findTimeout });

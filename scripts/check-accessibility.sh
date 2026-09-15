@@ -29,7 +29,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # data never arrived. Why states at all: AGENTS.md, "It scans states, not only pages".
 #
 # DELIBERATELY NOT COVERED, so nobody reads a green run as more than it is:
-#   - the whole-variable drill-in and the owner panel inside a row, two more presses each;
+#   - the whole-variable drill-in and the owner panel inside a row, two more presses each. The
+#     first has a state of its own now — `variable-whole`, which check-component-state.sh stages to
+#     ask its contents nav a question axe does not ask — and is still not scanned here;
 #   - the pager past page one, and anything reached by searching; the kildeutforsker's own list
 #     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's is not — so
 #     neither its chip row nor the hierarchy trail over its results is ever on screen for axe,
