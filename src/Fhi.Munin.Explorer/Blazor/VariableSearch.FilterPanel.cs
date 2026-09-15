@@ -479,11 +479,6 @@ public partial class VariableSearch
     /// count and its chip over the results at once. (Fhi.Metadata-uidue) Every level is read through
     /// something that leaves one entry per id, or a chip could name a filter its own checkbox does
     /// not, or stand beside a second chip for the one press. (Fhi.Metadata-l9l2n.82)
-    /// <para>
-    /// Three levels and not the tree's fourth: a variabelgruppe is drawn once per placement here and
-    /// once in its own facet, so the one chip for it is <see cref="ChosenVariabelgrupper"/>'s.
-    /// (Fhi.Metadata-km3zb)
-    /// </para>
     /// </remarks>
     private IReadOnlyList<FacetValue> ChosenKilder(FilterOptions facets, KildeLevelLookup levels) =>
     [
@@ -821,12 +816,8 @@ public partial class VariableSearch
     }
 
     /// <summary>Which variabelgrupper are ticked, whichever surface the reader ticked them on.</summary>
-    /// <remarks>
-    /// Read off the answer rather than off this facet's own values, for the reason
-    /// <see cref="ChosenKilder"/> gives and one more: the kilde tree offers groups this facet opts
-    /// out of, so the summary's count and the chip for such a group are this reading's alone.
-    /// (Fhi.Metadata-km3zb) One entry per id, or one tick would stand beside two chips.
-    /// </remarks>
+    /// <remarks>Read off the answer and not off this facet's own values, which withhold the groups
+    /// the kilde tree offers; one entry per id, or one tick stands beside two chips.</remarks>
     private IReadOnlyList<FacetValue> ChosenVariabelgrupper(FilterOptions facets) =>
     [
         .. ListedVariabelgrupper(facets)
@@ -834,20 +825,14 @@ public partial class VariableSearch
             .Select(VariabelgruppeValue)
     ];
 
-    /// <summary>The standalone facet's own collection, one entry per id.</summary>
-    /// <remarks>
-    /// The one call site of that collapse, so the row and the chip over one id are named alike
-    /// because they read one list rather than because two expressions happen to agree.
-    /// </remarks>
+    /// <summary>The standalone facet's own collection, one entry per id — the one call site of that
+    /// collapse, so the row and the chip over one id read one list rather than agreeing by luck.</summary>
     private static IReadOnlyList<VariabelgruppeFacet> FacetVariabelgrupper(FilterOptions facets) =>
         FilterHierarchy.OnePerId(facets.Variabelgrupper, gruppe => gruppe.Id, gruppe => gruppe.ParentId);
 
     /// <summary>Every variabelgruppe either surface can name, one entry per id.</summary>
-    /// <remarks>
-    /// Both collections, each collapsed as its own surface collapses it: copies of one id differ in
-    /// name as well as in parent. The facet's copy wins, and <see cref="VariabelgruppeName"/> reads
-    /// this list, so chip, trail step and the facet's checkbox agree; the tree keeps its own name.
-    /// </remarks>
+    /// <remarks>The standalone facet's copy wins, since copies of one id differ in name as well as
+    /// in parent and <see cref="VariabelgruppeName"/> reads this list. (Fhi.Metadata-km3zb)</remarks>
     private static IReadOnlyList<VariabelgruppeFacet> ListedVariabelgrupper(FilterOptions facets)
     {
         var standalone = FacetVariabelgrupper(facets);

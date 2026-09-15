@@ -6246,11 +6246,6 @@ public class VariableSearchTest : BunitContext
     private static void Press(IElement box) => box.Change(!box.HasAttribute("checked"));
 
     /// <summary>One group on both surfaces and one the standalone facet opts out of.</summary>
-    /// <remarks>
-    /// The two shapes this bead is about: an id with a checkbox on each surface, which have to move
-    /// together, and an id the tree alone offers, which must stay clearable without ever appearing
-    /// in the facet beside it.
-    /// </remarks>
     private static FilterOptions FacetsWithBothSurfaces() => FacetsWithDatasamlinger() with
     {
         Variabelgrupper = [Variabelgruppe(Nutrition, "Kosthold", [], count: 5)],

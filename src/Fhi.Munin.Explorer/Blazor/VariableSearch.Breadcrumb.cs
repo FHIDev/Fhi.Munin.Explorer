@@ -322,11 +322,8 @@ public partial class VariableSearch
         ?? RowName(row => row.DatasamlingId == id ? row.DatasamlingName : null);
 
     /// <summary>A variabelgruppe's name — the facets, then the rows, as the kilde's is.</summary>
-    /// <remarks>
-    /// <see cref="ListedVariabelgrupper"/> rather than either collection raw: it names the groups the
-    /// kilde tree ticks and the facet withholds, and collapses repeated ids as the chip beside this
-    /// step does, which a raw <c>FirstOrDefault</c> would not. (Fhi.Metadata-km3zb)
-    /// </remarks>
+    /// <remarks><see cref="ListedVariabelgrupper"/> and not either collection raw: the kilde tree
+    /// ticks groups the facet withholds, and one id gets one name. (Fhi.Metadata-km3zb)</remarks>
     private string? VariabelgruppeName(Guid id) =>
         DisplayText.Trimmed(
             _facets is { } facets

@@ -15,8 +15,7 @@ internal enum HierarchyLevel
 
 /// <summary><c>Path</c> is where the node is drawn and <c>Id</c> what ticking it selects, since one
 /// group hangs under every datasamling its variables are in. <c>Categories</c> are a datasamling's
-/// datakategori tokens, carried here so the row that draws them needs no second pass over the
-/// facets.</summary>
+/// datakategori tokens, so the row drawing them needs no second pass over the facets.</summary>
 internal sealed record HierarchyNode(
     string Path,
     HierarchyLevel Level,
