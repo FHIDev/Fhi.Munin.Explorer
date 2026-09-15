@@ -293,32 +293,11 @@ else
                 <button class="hd-button-square button-square--ghost"
                         type="button"
                         @onclick="() => FoldAll(false)">@T.CollapseAllFacets</button>
-                @* aria-checked and no modifier class beside it: two sources for one state is how a
-                   control ends up drawn on and announced off. The name stands alone — with
-                   hd-button-square beside it the toolbar's own rule collapses it. (Fhi.Metadata-l9l2n.87) *@
-                <button class="munin-explorer-switch"
-                        type="button"
-                        role="switch"
-                        aria-checked="@(_levelLines ? "true" : "false")"
-                        @onclick="ToggleLevelLinesAsync">
-                    <span class="munin-explorer-switch__track" aria-hidden="true">
-                        <span class="munin-explorer-switch__thumb"></span>
-                    </span>
-                    @T.LevelLines
-                </button>
-                @* The second switch, same shape as the first: what it turns off is decoration
-                   alone — the glyphs and the words that stand in for them — so the badge, the
-                   counts and the ticks beside them are drawn either way. *@
-                <button class="munin-explorer-switch"
-                        type="button"
-                        role="switch"
-                        aria-checked="@(_showNodeIcons ? "true" : "false")"
-                        @onclick="ToggleNodeIconsAsync">
-                    <span class="munin-explorer-switch__track" aria-hidden="true">
-                        <span class="munin-explorer-switch__thumb"></span>
-                    </span>
-                    @T.NodeIcons
-                </button>
+                @* Both from one Switch shape, which carries the contract they share — the bare
+                   class name and aria-checked as the only state. What Ikoner turns off is
+                   decoration alone, so the badge, the counts and the ticks are drawn either way. *@
+                @Switch(T.LevelLines, _levelLines, ToggleLevelLinesAsync)
+                @Switch(T.NodeIcons, _showNodeIcons, ToggleNodeIconsAsync)
             </div>
 
             @* A fold press rewrites every disclosure in the panel and is otherwise silent — the same

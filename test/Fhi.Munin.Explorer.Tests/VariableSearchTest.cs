@@ -4320,6 +4320,36 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Source_WhenTheNodeIconsArePressedOff_ThenTheKildeDrilledIntoDrawsNoneEither()
+    {
+        // The PRESS reaching the drill-in, which the test above cannot ask: the mount-time copy
+        // makes the parameter and the field the switch writes agree until someone presses it, so a
+        // drill-in bound to the parameter passes every other pin here while ignoring the switch.
+        var cut = RenderWith(TwoRows());
+
+        NodeIconsSwitch(cut).Click();
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        Assert.False(cut.FindComponent<KildeView>().Instance.ShowNodeIcons);
+    }
+
+    [Fact]
+    public void Source_WhenTheNodeIconsArePressedBackOn_ThenTheKildeDrilledIntoDrawsThem()
+    {
+        // The same claim from the other side, so neither constant can stand in for the field: the
+        // host stored them off, the reader asked for them back, and it is the reader's press the
+        // drill-in reads.
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.ShowNodeIcons, false));
+
+        NodeIconsSwitch(cut).Click();
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        Assert.True(cut.FindComponent<KildeView>().Instance.ShowNodeIcons);
+    }
+
+    [Fact]
     public void Filter_WhenTheSelectionYieldsRowsAgain_ThenTheCountsComeBack()
     {
         // The retained answer is for the stranded state only. Once the API has something to say,

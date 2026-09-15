@@ -4,9 +4,9 @@ category: Notes for hosts
   the second switch is a second member at its own natural width: the `min-width: 0` half of the
   rule must keep selecting the two fold buttons alone, because with it the switch collapses to one
   character wide. Nothing to add if you took `Fhi.Helsedata.Stiler`'s rule — it already selects
-  `hd-button-square`, which neither switch wears — and both sample stylesheets are unchanged for
-  the same reason. A host that wrote a toolbar rule of its own has one more member to fit, and the
-  two fold buttons are what absorbs it.
+  `hd-button-square`, which neither switch wears — and neither sample stylesheet needs a new rule,
+  for the same reason. A host that wrote a toolbar rule of its own has one more member to fit,
+  and the two fold buttons are what absorbs it.
   No new class name comes with the switch: it wears `munin-explorer-switch` with
   `munin-explorer-switch__track` and `munin-explorer-switch__thumb` inside it, exactly as
   Nivålinjer does, so a host already drawing that control draws this one. A host on a published
