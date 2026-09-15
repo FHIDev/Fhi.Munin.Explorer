@@ -322,8 +322,15 @@ public partial class VariableSearch
         ?? RowName(row => row.DatasamlingId == id ? row.DatasamlingName : null);
 
     /// <summary>A variabelgruppe's name — the facets, then the rows, as the kilde's is.</summary>
+    /// <remarks>
+    /// Both variabelgruppe collections, because the kilde tree ticks groups the standalone facet
+    /// withholds: reading that facet's list alone would leave such a group's chip and its trail step
+    /// saying "Variabelgruppe" over a filter the reader picked by name. (Fhi.Metadata-km3zb)
+    /// </remarks>
     private string? VariabelgruppeName(Guid id) =>
         DisplayText.Trimmed(_facets?.Variabelgrupper.FirstOrDefault(gruppe => gruppe.Id == id)?.Name)
+        ?? DisplayText.Trimmed(
+            _facets?.HierarchyVariabelgrupper.FirstOrDefault(gruppe => gruppe.Id == id)?.Name)
         ?? RowName(row => row.VariabelgruppeId == id ? row.VariabelgruppeName : null);
 
     /// <summary>The first name the visible rows can supply for a value, or null if none can.</summary>

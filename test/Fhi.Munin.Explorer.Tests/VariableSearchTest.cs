@@ -5906,8 +5906,8 @@ public class VariableSearchTest : BunitContext
 
     /// <summary>Every row of the panel whose own words start with <paramref name="label"/>.</summary>
     /// <remarks>
-    /// Rows rather than controls, because a variabelgruppe in this tree is a container: it wears no
-    /// checkbox and no button, so <see cref="Facet"/> — which reads both — cannot reach it.
+    /// Rows rather than controls, because <see cref="Facet"/> reads a single one: a group hangs
+    /// under every datasamling its variables are in, and the standalone facet may offer it too.
     /// </remarks>
     private static IReadOnlyList<IElement> FilterPanelRows(IRenderedComponent<VariableSearch> cut, string label) =>
         [.. FilterPanel(cut).QuerySelectorAll("li")
@@ -5968,10 +5968,11 @@ public class VariableSearchTest : BunitContext
         {
             HierarchyVariabelgrupper =
             [
-                Variabelgruppe(Nutrition, "Kosthold", [Under(Tromso, datasamling: Tromso1)], filter: "1"),
+                Variabelgruppe(Nutrition, "Kosthold", [Under(Tromso, datasamling: Tromso1)],
+                       filter: "1", count: 5),
                 Variabelgruppe(Meals, "Måltider", [Under(Tromso, datasamling: Tromso1)],
-                       filter: VariabelgruppeFacet.StandaloneFacetOptOut),
-                Variabelgruppe(Environment, "Miljø", [Under(Tromso, datasamling: Tromso1)])
+                       filter: VariabelgruppeFacet.StandaloneFacetOptOut, count: 3),
+                Variabelgruppe(Environment, "Miljø", [Under(Tromso, datasamling: Tromso1)], count: 2)
             ]
         };
 
@@ -5979,7 +5980,9 @@ public class VariableSearchTest : BunitContext
 
         ExpandBranches(cut);
 
-        Assert.Equal(["Kosthold", "Måltider", "Miljø"],
+        // Each with the count the answer gave it: the opt-out decides the standalone facet's
+        // membership and nothing about the row this tree draws.
+        Assert.Equal(["Kosthold (5)", "Måltider (3)", "Miljø (2)"],
                      Assert.Single(FilterPanelRows(cut, "Tromsø 1")).QuerySelectorAll("li").Select(RowWords));
     }
 
@@ -6087,10 +6090,12 @@ public class VariableSearchTest : BunitContext
         Assert.Equal(facetCalls, client.FacetCalls);
         Assert.Null(reported);
 
-        // And no group is offered as a filter yet: the tree and the standalone facet share one id,
-        // and a checkbox here before Fhi.Metadata-km3zb holds the two in step is a second control
-        // over that id with nothing keeping them one selection.
-        Assert.Empty(Assert.Single(FilterPanelRows(cut, "Måltider")).QuerySelectorAll("input"));
+        // The groups are offered as filters, and opening a branch ticks none of them: the checkbox
+        // is drawn by the same press that drew the row, so a disclosure writing a filter would
+        // narrow the results for a reader who only looked. (Fhi.Metadata-km3zb)
+        var box = Assert.Single(Assert.Single(FilterPanelRows(cut, "Måltider")).QuerySelectorAll("input"));
+
+        Assert.False(box.HasAttribute("checked"));
     }
 
     [Fact]
@@ -6153,11 +6158,10 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Variabelgrupper_WhenOneIsAlreadyChosen_ThenItsRowInTheKildeTreeIsItsNameAndNothingElse()
+    public void Variabelgrupper_WhenOneIsAlreadyChosen_ThenItsRowInTheKildeTreeIsATickedCheckbox()
     {
-        // FacetList draws a count and a marking inside the checkbox alone, so a container computing
-        // either would promise a figure and a tick the reader never gets — and this id is ticked in
-        // the standalone facet, which is the one control over it until Fhi.Metadata-km3zb.
+        // FacetList draws a count and a marking inside the checkbox alone, so a row that had none
+        // showed a chosen group as unchosen — and the count beside it says what the tick leaves.
         var cut = RenderFiltered(new FilteringClient(OnePage(), FacetsWithVariabelgrupper()),
                                  new VariableFilter { VariabelgruppeIds = [Nutrition] });
 
@@ -6166,10 +6170,12 @@ public class VariableSearchTest : BunitContext
         var row = Assert.Single(KildeFacet(cut).QuerySelectorAll("li"),
                                 li => RowWords(li).StartsWith("Kosthold", StringComparison.Ordinal));
 
-        Assert.Equal("Kosthold", RowWords(row));
-        Assert.Empty(row.QuerySelectorAll("label"));
-        Assert.Empty(row.QuerySelectorAll("input"));
-        Assert.Empty(row.QuerySelectorAll(".munin-explorer-filters__count"));
+        Assert.Equal("Kosthold (5)", RowWords(row));
+        Assert.True(row.QuerySelector("input[type=checkbox]")!.HasAttribute("checked"));
+        Assert.Equal("Kosthold (5)", AccessibleName.Of(row.QuerySelector("input[type=checkbox]")!));
+
+        // A group's own count and never a group SIZE: `__groupcount` is the kildetype headings'.
+        Assert.Single(row.QuerySelectorAll(".munin-explorer-filters__count"));
         Assert.Empty(row.QuerySelectorAll(".munin-explorer-filters__groupcount"));
     }
 
@@ -6211,6 +6217,209 @@ public class VariableSearchTest : BunitContext
         ExpandBranches(cut);
 
         Assert.Single(FilterPanelRows(cut, "Kosthold"));
+    }
+
+    // ---- one selection across both surfaces (Fhi.Metadata-km3zb) ----
+
+    /// <summary>The standalone facet, told apart from the kilde tree it shares its ids with.</summary>
+    /// <remarks>
+    /// Both surfaces draw a row per chosen group, so every assertion below says which one it read.
+    /// A <c>&lt;details&gt;</c> renders its contents whether or not it is open, so this needs no press.
+    /// </remarks>
+    private static IElement StandaloneFacet(IRenderedComponent<VariableSearch> cut) =>
+        Disclosures(cut)
+            .Single(facet => facet.FirstElementChild!.TextContent.Trim()
+                                  .StartsWith("Variabelgruppe", StringComparison.Ordinal));
+
+    /// <summary>The checkbox on the one row of <paramref name="surface"/> naming <paramref name="label"/>.</summary>
+    private static IElement SurfaceBox(IElement surface, string label) =>
+        Assert.Single(surface.QuerySelectorAll("li")
+                          .Where(row => RowWords(row).StartsWith(label, StringComparison.Ordinal)))
+            .QuerySelector("input[type=checkbox]")!;
+
+    /// <summary>Tick or untick a checkbox, the way the browser reports a press on one.</summary>
+    private static void Press(IElement box) => box.Change(!box.HasAttribute("checked"));
+
+    /// <summary>One group on both surfaces and one the standalone facet opts out of.</summary>
+    /// <remarks>
+    /// The two shapes this bead is about: an id with a checkbox on each surface, which have to move
+    /// together, and an id the tree alone offers, which must stay clearable without ever appearing
+    /// in the facet beside it.
+    /// </remarks>
+    private static FilterOptions FacetsWithBothSurfaces() => FacetsWithDatasamlinger() with
+    {
+        Variabelgrupper = [Variabelgruppe(Nutrition, "Kosthold", [], count: 5)],
+        HierarchyVariabelgrupper =
+        [
+            Variabelgruppe(Nutrition, "Kosthold", [Under(Tromso, datasamling: Tromso1)], count: 5),
+            Variabelgruppe(Meals, "Måltider", [Under(Tromso, datasamling: Tromso1)],
+                   filter: VariabelgruppeFacet.StandaloneFacetOptOut, count: 3)
+        ]
+    };
+
+    [Fact]
+    public void Variabelgrupper_WhenOneIsTickedInTheKildeTree_ThenTheStandaloneFacetTicksWithIt()
+    {
+        // One identity behind two checkboxes. Two surfaces keeping their own would put a ticked box
+        // over an unticked one for the same group, and a second chip beside the first.
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+        Press(SurfaceBox(KildeFacet(cut), "Kosthold"));
+
+        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
+        Assert.True(SurfaceBox(StandaloneFacet(cut), "Kosthold").HasAttribute("checked"));
+        Assert.Equal(["Kosthold"], Chips(cut));
+        Assert.Contains("Variabelgruppe (1)", FacetHeadings(cut));
+
+        // And the facet's own checkbox is the way off it again, the tree following it back.
+        Press(SurfaceBox(StandaloneFacet(cut), "Kosthold"));
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.False(SurfaceBox(KildeFacet(cut), "Kosthold").HasAttribute("checked"));
+        Assert.Empty(Chips(cut));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenOneIsTickedInTheStandaloneFacet_ThenTheKildeTreeTicksWithIt()
+    {
+        // The same claim from the other side, because either surface alone passes against the
+        // other's failure: one writing a selection the other cannot read is still two selections.
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+        Press(SurfaceBox(StandaloneFacet(cut), "Kosthold"));
+
+        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
+        Assert.True(SurfaceBox(KildeFacet(cut), "Kosthold").HasAttribute("checked"));
+        Assert.Equal(["Kosthold"], Chips(cut));
+
+        Press(SurfaceBox(KildeFacet(cut), "Kosthold"));
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.False(SurfaceBox(StandaloneFacet(cut), "Kosthold").HasAttribute("checked"));
+        Assert.Empty(Chips(cut));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenAnOptedOutGroupIsTickedInTheTree_ThenItNeverReachesTheOtherFacet()
+    {
+        // The opt-out is the standalone facet's rule, and selecting a group is not a way round it:
+        // a ticked id appearing there would offer the reader a filter the API says they may not
+        // have. The tree is the one control over it, and stays one. (Fhi.Metadata-fbe3w)
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+        Press(SurfaceBox(KildeFacet(cut), "Måltider"));
+
+        Assert.Equal([Meals], client.SearchFilter!.VariabelgruppeIds);
+        Assert.DoesNotContain("Måltider", StandaloneFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal(["Måltider"], Chips(cut));
+
+        Press(SurfaceBox(KildeFacet(cut), "Måltider"));
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.Empty(Chips(cut));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenADeepLinkNamesAnOptedOutGroup_ThenTheTreeTicksItAndTheFacetOmitsIt()
+    {
+        // A shared link carries ids and knows nothing of the opt-out, so restoring one has to reach
+        // the surface that offers it — and the trail has to name it out of the tree's own
+        // collection, the facet list it is absent from having been the only lookup.
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderFiltered(client, new VariableFilter { VariabelgruppeIds = [Meals] });
+
+        Assert.Equal([Meals], client.SearchFilter!.VariabelgruppeIds);
+
+        ExpandBranches(cut);
+
+        Assert.True(SurfaceBox(KildeFacet(cut), "Måltider").HasAttribute("checked"));
+        Assert.DoesNotContain("Måltider", StandaloneFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal(["Måltider"], Chips(cut));
+        Assert.Contains("Variabelgruppe (1)", FacetHeadings(cut));
+        Assert.Equal("Måltider", Crumbs(cut)[^1].TextContent);
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenAnOptedOutGroupsChipIsRemoved_ThenTheKildeTreeCheckboxClears()
+    {
+        // The chip and the tree's checkbox are two controls over one id, so a removal that left the
+        // box ticked would show a filter still in force that nothing was narrowing by.
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderFiltered(client, new VariableFilter { VariabelgruppeIds = [Meals] });
+
+        ExpandBranches(cut);
+        RemoveChip(cut, "Måltider");
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.Empty(Chips(cut));
+        Assert.False(SurfaceBox(KildeFacet(cut), "Måltider").HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenABranchIsShutAndReopened_ThenTheSelectionAndItsOneChipStand()
+    {
+        // Expansion is the panel's own state and selection is the filter's: a fold that dropped a
+        // tick would take a filter off with no control having said so, and the reader's only sign
+        // of it would be the result count moving.
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+        Press(SurfaceBox(KildeFacet(cut), "Kosthold"));
+
+        Branch(cut, "Tromsø 1").Click();
+
+        Assert.DoesNotContain("Kosthold", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal(["Kosthold"], Chips(cut));
+        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
+
+        Branch(cut, "Tromsø 1").Click();
+
+        Assert.True(SurfaceBox(KildeFacet(cut), "Kosthold").HasAttribute("checked"));
+        Assert.Equal(["Kosthold"], Chips(cut));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenOneIsDrawnAtTwoPlacements_ThenBothTickTogetherAndOneChipStands()
+    {
+        // A group hangs under every datasamling its variables are in, and the rows are keyed by
+        // where they are drawn — so a chip per drawn row is exactly what this shape produces, and
+        // two controls reading "Prøvesvar" are two a screen reader cannot tell apart.
+        var facets = FacetsWithDatasamlinger() with
+        {
+            Variabelgrupper = [],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(TestResults, "Prøvesvar",
+                       [Under(Tromso, datasamling: Tromso1), Under(Tromso, Tromso4, Tromso4Round)], count: 6)
+            ]
+        };
+
+        var client = new FilteringClient(OnePage(), facets);
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+
+        Assert.Equal(2, FilterPanelRows(cut, "Prøvesvar").Count);
+
+        Press(FilterPanelRows(cut, "Prøvesvar")[0].QuerySelector("input[type=checkbox]")!);
+
+        Assert.Equal([TestResults], client.SearchFilter!.VariabelgruppeIds);
+        Assert.All(FilterPanelRows(cut, "Prøvesvar"),
+                   row => Assert.True(row.QuerySelector("input[type=checkbox]")!.HasAttribute("checked")));
+        Assert.Equal(["Prøvesvar"], Chips(cut));
+
+        // The other placement is the same filter, so pressing it clears rather than adds a second.
+        Press(FilterPanelRows(cut, "Prøvesvar")[1].QuerySelector("input[type=checkbox]")!);
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.Empty(Chips(cut));
     }
 
     [Fact]

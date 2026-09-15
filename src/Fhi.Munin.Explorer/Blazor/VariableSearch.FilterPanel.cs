@@ -80,8 +80,9 @@ public partial class VariableSearch
     /// <c>Count</c> is how many variables the value would leave, or null where there is no count to
     /// show. <c>Toggle</c> is what ticking it does, or null for a value that is not selectable: a
     /// kildetype heading the kilder are grouped under, a label rather than a filter because
-    /// kildetype has a facet of its own, a variabelgruppe the API returns but does not offer, or
-    /// one in the kilde tree, which draws every group as a container — see <see cref="NodeToggle"/>.
+    /// kildetype has a facet of its own, or a variabelgruppe the standalone facet returns to nest an
+    /// offered one under. The kilde tree offers every group it draws, both surfaces writing the one
+    /// <see cref="VariableFilter.VariabelgruppeIds"/>. (Fhi.Metadata-km3zb)
     /// <para>
     /// <c>GroupHeading</c> says such a row is a heading the values below are grouped under, so its
     /// <c>Count</c> is how many of them there are rather than how many variables a value would
@@ -478,6 +479,11 @@ public partial class VariableSearch
     /// count and its chip over the results at once. (Fhi.Metadata-uidue) Every level is read through
     /// something that leaves one entry per id, or a chip could name a filter its own checkbox does
     /// not, or stand beside a second chip for the one press. (Fhi.Metadata-l9l2n.82)
+    /// <para>
+    /// Three levels and not the tree's fourth: a variabelgruppe is drawn once per placement here and
+    /// once in its own facet, so the one chip for it is <see cref="ChosenVariabelgrupper"/>'s.
+    /// (Fhi.Metadata-km3zb)
+    /// </para>
     /// </remarks>
     private IReadOnlyList<FacetValue> ChosenKilder(FilterOptions facets, KildeLevelLookup levels) =>
     [
@@ -693,8 +699,7 @@ public partial class VariableSearch
             // A row with no toggle draws neither: FacetList reads Count and Selected inside the
             // checkbox alone, so a figure or a tick set here would be one the reader never gets. A
             // level HierarchyLevels does not read is such a row rather than a KeyNotFoundException.
-            if (!readings.TryGetValue(node.Level, out var reading)
-                || NodeToggle(node, reading) is not { } toggle)
+            if (!readings.TryGetValue(node.Level, out var reading))
             {
                 return new FacetValue(
                     NodeKey(node), label, language, Count: null, Selected: false, Toggle: null, children,
@@ -706,7 +711,10 @@ public partial class VariableSearch
                                   language,
                                   Counted(node.Count),
                                   reading.Chosen().Contains(node.Id),
-                                  toggle,
+                                  // Every level ticks through its own reading, so a variabelgruppe
+                                  // drawn once per placement here and once in its own facet writes
+                                  // — and reads back — the one id. (Fhi.Metadata-km3zb)
+                                  () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply),
                                   children,
                                   Icons: Glyphs(node));
         }
@@ -731,17 +739,6 @@ public partial class VariableSearch
         node.Level == HierarchyLevel.Variabelgruppe
             ? $"{FacetName(node.Level)}:{node.Path}"
             : FacetValueKey(node.Level, node.Id);
-
-    /// <summary>What ticking one row of the kilde tree does, or null for a row that offers nothing.</summary>
-    /// <remarks>
-    /// Every variabelgruppe is a container until this tree and the standalone facet tick as one
-    /// (Fhi.Metadata-km3zb). <see cref="HierarchyNode.Offered"/> is not read: nothing
-    /// <see cref="FilterHierarchy.Build"/> places sets it false, so a clause on it would be inert.
-    /// </remarks>
-    private Func<Task>? NodeToggle(HierarchyNode node, HierarchyReading reading) =>
-        node.Level == HierarchyLevel.Variabelgruppe
-            ? null
-            : () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply);
 
     /// <summary>A delkilde as a chip names it: its words and its toggle, with no count, no tree and
     /// no folder. <see cref="ChosenKilder"/> is its one caller — the tree draws its delkilder, and
@@ -819,7 +816,49 @@ public partial class VariableSearch
                  $"{FacetName(HierarchyLevel.Variabelgruppe)}:",
                  IsGruppeChosen,
                  id => containers.Contains(id) ? null : ToggleGruppe(id), Counted),
-            T.NoVariabelgrupper);
+            T.NoVariabelgrupper,
+            Chosen: ChosenVariabelgrupper(facets));
+    }
+
+    /// <summary>Which variabelgrupper are ticked, whichever surface the reader ticked them on.</summary>
+    /// <remarks>
+    /// Read off the answer rather than off this facet's own values, for the reason
+    /// <see cref="ChosenKilder"/> gives and one more: the kilde tree offers groups this facet opts
+    /// out of, so the summary's count and the chip for such a group are this reading's alone.
+    /// (Fhi.Metadata-km3zb) One entry per id, or one tick would stand beside two chips.
+    /// </remarks>
+    private IReadOnlyList<FacetValue> ChosenVariabelgrupper(FilterOptions facets) =>
+    [
+        .. ListedVariabelgrupper(facets)
+            .Where(gruppe => IsGruppeChosen(gruppe.Id))
+            .Select(VariabelgruppeValue)
+    ];
+
+    /// <summary>Every variabelgruppe either surface can name, one entry per id.</summary>
+    /// <remarks>
+    /// Both collections, because the tree's carries the groups the standalone facet withholds, and
+    /// collapsed by <see cref="FilterHierarchy.OnePerId"/> — the rule the facet's own values are
+    /// built with, so a chip cannot name a group differently from the checkbox for it.
+    /// </remarks>
+    private static IReadOnlyList<VariabelgruppeFacet> ListedVariabelgrupper(FilterOptions facets) =>
+        FilterHierarchy.OnePerId(facets.Variabelgrupper.Concat(facets.HierarchyVariabelgrupper),
+                                 gruppe => gruppe.Id,
+                                 gruppe => gruppe.ParentId);
+
+    /// <summary>A variabelgruppe as a chip names it: its words and its toggle, with neither a count
+    /// nor a tree. <see cref="ChosenVariabelgrupper"/> is its one caller — the facet draws its own
+    /// values through <see cref="Tree"/>.</summary>
+    private FacetValue VariabelgruppeValue(VariabelgruppeFacet gruppe)
+    {
+        var (label, language) = CatalogueName(gruppe.Name, null);
+
+        return new(FacetValueKey(HierarchyLevel.Variabelgruppe, gruppe.Id),
+            label,
+            language,
+            null,
+            IsGruppeChosen(gruppe.Id),
+            ToggleGruppe(gruppe.Id),
+            []);
     }
 
     private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
