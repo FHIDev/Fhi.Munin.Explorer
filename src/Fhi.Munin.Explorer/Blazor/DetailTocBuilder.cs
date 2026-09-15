@@ -16,11 +16,7 @@ internal sealed class DetailTocBuilder
     /// <summary>The entries in the order they were added, which is the order the view draws them.</summary>
     internal IReadOnlyList<DetailTocEntry> Entries => _entries;
 
-    /// <summary>The ids of the view's own blocks that draw, named sections left out.</summary>
-    /// <remarks>
-    /// Apart from <see cref="Entries"/> so a named section reusing one of these ids cannot switch
-    /// the view's own empty block on.
-    /// </remarks>
+    /// <summary>The view's own blocks that draw, kept apart so a named section's id cannot switch one on.</summary>
     internal IReadOnlySet<string> Drawn => _drawn;
 
     /// <summary>Name the section with this id, under the same condition its block renders under.</summary>

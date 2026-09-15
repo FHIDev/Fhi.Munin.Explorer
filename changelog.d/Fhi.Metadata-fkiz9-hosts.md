@@ -6,8 +6,8 @@ category: Notes for hosts
   `Fhi.Metadata-uobxg` is where that bound gets settled. (Fhi.Metadata-fkiz9)
 - **Kelda's sections and the whole variable's Kodeverk now sit in `munin-explorer-page__section`
   wrappers, so `Fhi.Helsedata.Stiler`'s rules for that name reach them.** No new class name.
-  `scroll-margin-top` puts a heading reached from the nav clear of a sticky header. And unless you
-  pass `KildeSearch.Sections`, the last of Kelda's sections — Variabler, or Priser with
+  `scroll-margin-top` puts a heading reached from the nav clear of a sticky header. And unless your
+  `KildeSearch.Sections` draws an element, the last of Kelda's sections — Variabler, or Priser with
   `ShowAccessAndPrices` — is now the column's last child, so Stiler's `:last-child` rule gives it a
   `min-height` of `calc(60vh - 120px)`: expect that much space under a one-line section at the
   bottom of an open kilde. Stiler's reason is a scroll-spy, which could otherwise never mark the
