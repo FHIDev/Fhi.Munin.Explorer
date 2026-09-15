@@ -1720,6 +1720,45 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Als registeret", cell.GetAttribute("title"));
     }
 
+    [Fact]
+    public void Render_Always_ThenTheRowNameCarriesItsFullTextOnHover()
+    {
+        // Measured 2026-09-15 on HostileHost: 17-19 names per page clip at every desktop width.
+        const string name = "Utleveringens ICD10-refusjonskode (beskrivelse) iht. klassifisering i Farmalogg";
+        var cut = RenderWith(new FakeClient(OnePage(Variable(name, "V_LMR.KODE"))));
+
+        var text = cut.Find("button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text");
+
+        Assert.Equal(name, text.TextContent);
+        Assert.Equal(name, text.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void Render_WhenTheNameIsEmpty_ThenNoEmptyTooltipIsDrawn()
+    {
+        var cut = RenderWith(new FakeClient(OnePage(Variable("", "V_LMR.KODE"))));
+
+        var text = cut.Find("button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text");
+
+        Assert.False(text.HasAttribute("title"));
+    }
+
+    [Fact]
+    public void Header_Always_ThenEveryColumnHeaderCarriesItsLabelOnHover()
+    {
+        // Stiler clips a header that outgrows its column: "Variabelgruppe" at 1300px on HostileHost.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var headers = cut.FindAll("[role='columnheader']");
+
+        Assert.Equal(["Navn", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode"],
+                     headers.Select(h => h.QuerySelector("span[title]")?.GetAttribute("title")));
+
+        // Not on the header or its button, where Edge repeats the sorted column's name as its description.
+        Assert.All(headers, h => Assert.False(h.HasAttribute("title")));
+        Assert.Empty(cut.FindAll("[role='columnheader'] button[title]"));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
