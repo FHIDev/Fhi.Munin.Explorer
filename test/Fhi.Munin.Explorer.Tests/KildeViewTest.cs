@@ -721,9 +721,8 @@ public class KildeViewTest : BunitContext
     /// <remarks>
     /// The language half — the payload half is pinned by
     /// <see cref="Contents_WhenTheSourceIsReplacedAfterTheFirstRender_ThenTheNavIsRebuiltWithIt"/>.
-    /// The same instance is passed back deliberately, since a fresh one would miss the cache on its
-    /// reference alone: KildeSearch keeps the source it fetched when the reader changes language,
-    /// so the instance and this view's place in the render tree both survive the toggle.
+    /// The same instance is passed back deliberately: KildeSearch keeps the source it fetched when
+    /// the reader changes language, so a fresh one would miss the cache on its reference alone.
     /// </remarks>
     [Theory]
     [InlineData("no", "Datainnsamling")]
