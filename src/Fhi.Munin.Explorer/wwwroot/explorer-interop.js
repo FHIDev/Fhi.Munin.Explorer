@@ -4,5 +4,5 @@
 // caller carries on without it and a module that changed the page on import would not be optional.
 //
 // It exports nothing yet: this is the seam a later enhancement puts itself in. The first export
-// must be named in ExplorerInterop.cs, which ExplorerInteropTest holds it to — a C# identifier
-// that no longer matches one here is a permanent null with nothing in any host's log.
+// must be named in ExplorerInterop.cs, which ExplorerInteropTest holds it to — nothing else ties
+// the two spellings together, so a mismatch surfaces only when a host calls it.

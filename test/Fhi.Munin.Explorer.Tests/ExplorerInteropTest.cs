@@ -66,7 +66,7 @@ public partial class ExplorerInteropTest
     {
         // Nothing to find today: the module is a seam and exports nothing. This is here for the
         // first export, whose name is a literal in C# and a declaration in JS with nothing else
-        // holding the two together — and Tolerated answers a renamed one as an ordinary null.
+        // holding the two together, so a mismatch surfaces only when a host calls it.
         var wrapper = File.ReadAllText(
             Repo.In("src", "Fhi.Munin.Explorer", "Blazor", nameof(ExplorerInterop) + ".cs"));
 
