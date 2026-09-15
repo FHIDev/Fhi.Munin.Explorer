@@ -1,6 +1,7 @@
 using System.Net;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
@@ -53,17 +54,17 @@ public class MuninExplorerClientTest
         Assert.Equal(4, filters.KildeTyper.Count);
         Assert.Equal("annenDatakilde", filters.KildeTyper[0].Value);
         Assert.Equal("Annen datakilde", filters.KildeTyper[0].DisplayName);
-        Assert.Equal(61, filters.Kilder.Count);
-        Assert.Equal(16, filters.Instruments.Count);
-        Assert.Equal(11020, filters.KildeKodeverkCount);
-        Assert.Equal(31791, filters.TotalCount);
+        Assert.Equal(63, filters.Kilder.Count);
+        Assert.Equal(20, filters.Instruments.Count);
+        Assert.Equal(20080, filters.KildeKodeverkCount);
+        Assert.Equal(46037, filters.TotalCount);
 
-        // The facet this capture was re-taken for. Both parents are exercised: most datasamlinger
-        // hang straight off their kilde, and the few under a delkilde are what the panel needs to
-        // draw a level deeper. (Fhi.Metadata-c7bb6)
-        Assert.Equal(293, filters.Datasamlinger.Count);
-        Assert.Equal(279, filters.Datasamlinger.Count(d => d.DelkildeId is null));
+        // Both parents are exercised: most datasamlinger hang straight off their kilde, and the few
+        // under a delkilde are what the panel needs to draw a level deeper. (Fhi.Metadata-c7bb6)
+        Assert.Equal(365, filters.Datasamlinger.Count);
+        Assert.Equal(297, filters.Datasamlinger.Count(d => d.DelkildeId is null));
         Assert.All(filters.Datasamlinger, d => Assert.NotEqual(Guid.Empty, d.KildeId));
+        Assert.All(filters.Datasamlinger, d => Assert.NotEmpty(d.Categories));
 
         // Datatypes arrive labelled: Fhi.Metadata-xxi8k made the endpoint resolve the name in the
         // request's language, and this capture went unrefreshed until FixtureDriftTest noticed.
@@ -80,10 +81,9 @@ public class MuninExplorerClientTest
         // an omission, and its wire names are pinned below against a fixed payload.
         Assert.Empty(filters.Variabelgrupper);
 
-        // The tree collection is absent from this capture rather than empty in it: it was taken
-        // before Fhi.Metadata-aui6t added the key, which is the shape an older API still answers
-        // with and the reason a caller with no tree has to be a working caller.
-        Assert.Empty(filters.HierarchyVariabelgrupper);
+        // Opted-out groups ride in the tree too: the capture holds unset, "1" and "2" alike.
+        Assert.Equal(1339, filters.HierarchyVariabelgrupper.Count);
+        Assert.Contains(filters.HierarchyVariabelgrupper, group => group.Filter == "2");
         Assert.NotEqual(Guid.Empty, filters.Delkilder[0].KildeId);
 
         // Every kodeverk row in this capture has a resolved name. The null that an unreachable
@@ -165,7 +165,7 @@ public class MuninExplorerClientTest
     public async Task GetKildePropertyMetadataAsync_WhenTheApiAnswersWithAVocabulary_ThenBothLabelsSurvive()
     {
         // The two entries are copied verbatim out of the propertyMetadata a real kilde detail
-        // carries — Testdata/kilde-med-delkilder.json — because the sibling endpoint serves the
+        // carries — Testdata/kilde.json — because the sibling endpoint serves the
         // very same DTO, built by the same helper on the API side. What matters here is that
         // optionsJson arrives as a *string* holding JSON rather than as JSON, and that both labels
         // are still inside it: the list is fetched language-agnostically, so the component picks
@@ -221,8 +221,8 @@ public class MuninExplorerClientTest
         var kilde = await WithResponse("kilde-med-delkilder.json", out _).GetKildeAsync(Guid.NewGuid());
 
         Assert.NotNull(kilde);
-        Assert.Equal("The Tromsø study", kilde.PreferredTerm);
-        Assert.Equal(5, kilde.Delkilder.Count);
+        Assert.Equal("Tromsøundersøkelsen", kilde.PreferredTerm);
+        Assert.Equal(4, kilde.Delkilder.Count);
         Assert.Equal(3, kilde.Datasamlinger.Count); // hanging directly off the kilde
 
         var tromso4 = kilde.Delkilder.First(d => d.Code == "K_TR.TR4");
@@ -233,7 +233,7 @@ public class MuninExplorerClientTest
         var firstVisit = tromso4.Datasamlinger[0];
         Assert.Equal(tromso4.Id, firstVisit.ParentDelkildeId);
         Assert.Null(tromso4.DataController);
-        Assert.Equal("UiT The Arctic University of Norway", tromso4.EffectiveDataController);
+        Assert.Equal("Universitetet i Tromsø - Norges arktiske universitet", tromso4.EffectiveDataController);
     }
 
     [Fact]
@@ -242,38 +242,45 @@ public class MuninExplorerClientTest
         var hierarchy = await WithResponse("hierarchy.json", out _).GetKildeHierarchyAsync(Guid.NewGuid());
 
         Assert.NotNull(hierarchy);
-        Assert.Equal("The Tromsø study", hierarchy.KildeName);
-        Assert.Equal(2506, hierarchy.TotalVariableCount);
-        Assert.Equal(5, hierarchy.Delkilder.Count);
+        Assert.Equal("Tromsøundersøkelsen", hierarchy.KildeName);
+        Assert.Equal(12728, hierarchy.TotalVariableCount);
+        Assert.Equal(4, hierarchy.Delkilder.Count);
         Assert.Equal(3, hierarchy.DirectDatasamlinger.Count);
-
-        var tromso5 = hierarchy.Delkilder.First(d => d.Datasamlinger.Count == 4);
-        Assert.Equal(1170, tromso5.VariableCount);
 
         // Named rather than indexed, here and below: this is a wholesale re-capture, so an ordinal
         // would silently move onto a different datasamling the next time one is taken.
+        var tromso5 = hierarchy.Delkilder.Single(d => d.Name == "Tromsø5 - Den femte Tromsøundersøkelsen");
+        Assert.Equal(1066, tromso5.VariableCount);
+
         var firstVisit = tromso5.Datasamlinger
-            .Single(d => d.Name == "Tromsø5 - The Fifth Tromsø Study - first visit");
+            .Single(d => d.Name == "Tromsø5 - Den femte Tromsøundersøkelsen - første besøk");
 
         // A bare code, not the ehds-cat: CURIE the older captures hold: the datakategori vocabulary
         // is passed through as the catalogue authored it, which is why nothing matches on a prefix.
         Assert.Equal(["RPDG"], firstVisit.Categories);
+        Assert.Equal(
+            ["RPDG", "HGPD"],
+            hierarchy.DirectDatasamlinger.Single(d => d.Name == "Tromsø1 - Den første Tromsøundersøkelsen").Categories);
 
-        // The sample-collection visit: the two ordinary visits carry no variabelgrupper in this
-        // capture, so asserting on them would measure the catalogue rather than the reader.
-        var samples = tromso5.Datasamlinger
-            .Single(d => d.Name == "Tromsø5 - The Fifth Tromsø study - forst visit ; sample collection")
-            .Variabelgrupper;
-        Assert.NotEmpty(samples);
-        Assert.All(samples, group => Assert.NotEqual(Guid.Empty, group.Id));
+        var groups = firstVisit.Variabelgrupper;
+        Assert.NotEmpty(groups);
+        Assert.All(groups, group => Assert.NotEqual(Guid.Empty, group.Id));
+        Assert.Equal(1337, groups.Single(group => group.Name == "GENERAL INFORMATION").PresentationOrder);
+    }
 
-        // The curated order the contract had nowhere to put until Fhi.Metadata-l9l2n.61 — unset on
-        // the parent group here and set on both of its children, so both halves of int? are read.
-        var provetyper = Assert.Single(samples);
-        Assert.Equal("Prøvetyper", provetyper.Name);
-        Assert.Null(provetyper.PresentationOrder);
-        Assert.Equal(["Plasma", "Serum"], provetyper.ChildVariabelgrupper.Select(group => group.Name));
-        Assert.Equal([609, 647], provetyper.ChildVariabelgrupper.Select(group => group.PresentationOrder));
+    [Fact]
+    public async Task GetKildeHierarchyAsync_WhenSomeVariablesHaveExpired_ThenTheHistoricalCountIsReadApartFromTheTotal()
+    {
+        // The capture's own count is 0, which an unbound property returns too, so the real document
+        // is given a number only a bound one can. (Fhi.Metadata-l9l2n.113)
+        var capture = JsonNode.Parse(TestData.Read("hierarchy.json"))!;
+        capture["historicalVariableCount"] = 204;
+
+        var hierarchy = await WithJson(capture.ToJsonString()).GetKildeHierarchyAsync(Guid.NewGuid());
+
+        Assert.NotNull(hierarchy);
+        Assert.Equal(204, hierarchy.HistoricalVariableCount);
+        Assert.Equal(12728, hierarchy.TotalVariableCount);
     }
 
     [Fact]
@@ -809,6 +816,39 @@ public class MuninExplorerClientTest
     // ------------------------------------------------- wire names the capture cannot pin
 
     [Fact]
+    public async Task GetKildeHierarchyAsync_WhenAGroupNestsOthers_ThenTheChildrenAndBothHalvesOfTheOrderAreRead()
+    {
+        // hierarchy.json no longer holds a nested group or an unordered one, so both halves of int?
+        // and the child list are pinned here against fixed names. (Fhi.Metadata-l9l2n.61)
+        var hierarchy = await WithJson("""
+            {
+              "directDatasamlinger": [
+                {
+                  "name": "Tromsø5 - sample collection",
+                  "variabelgrupper": [
+                    {
+                      "id": "6f1d4a5c-0000-4000-8000-000000000301",
+                      "name": "Prøvetyper",
+                      "presentationOrder": null,
+                      "childVariabelgrupper": [
+                        { "id": "6f1d4a5c-0000-4000-8000-000000000302", "name": "Plasma", "presentationOrder": 609 },
+                        { "id": "6f1d4a5c-0000-4000-8000-000000000303", "name": "Serum", "presentationOrder": 647 }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """).GetKildeHierarchyAsync(Guid.NewGuid());
+
+        var sampleTypes = Assert.Single(Assert.Single(hierarchy!.DirectDatasamlinger).Variabelgrupper);
+        Assert.Equal("Prøvetyper", sampleTypes.Name);
+        Assert.Null(sampleTypes.PresentationOrder);
+        Assert.Equal(["Plasma", "Serum"], sampleTypes.ChildVariabelgrupper.Select(group => group.Name));
+        Assert.Equal([609, 647], sampleTypes.ChildVariabelgrupper.Select(group => group.PresentationOrder));
+    }
+
+    [Fact]
     public async Task GetFiltersAsync_WhenTheAnswerCarriesDatasamlinger_ThenEveryWireNameIsRead()
     {
         // filters.json carries the facet since Fhi.Metadata-c7bb6, but its values move with the
@@ -1161,6 +1201,16 @@ public class MuninExplorerClientTest
 
         Assert.Empty(filters.HierarchyVariabelgrupper);
         Assert.Empty(Assert.Single(filters.Variabelgrupper).Owners);
+    }
+
+    [Fact]
+    public async Task GetFiltersAsync_WhenAnOlderApiSendsNoTreeKey_ThenTheTreeIsReadAsEmpty()
+    {
+        // An API from before Fhi.Metadata-aui6t omits the tree, and no capture does, so this is the
+        // only place an absent tree is shown to read as empty rather than null.
+        var filters = await WithJson("""{ "variabelgrupper": [] }""").GetFiltersAsync();
+
+        Assert.Empty(filters.HierarchyVariabelgrupper);
     }
 
     [Fact]

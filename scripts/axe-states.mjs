@@ -33,7 +33,7 @@ async function press(scope, name) {
 
 export const states = {
   'kilde-hierarchy-collapsed': async page => {
-    const name = page.getByRole('button', { name: 'The Tromsø study', exact: true });
+    const name = page.getByRole('button', { name: 'Tromsøundersøkelsen', exact: true });
     await name.waitFor({ state: 'visible', timeout: findTimeout });
     await name.click();
     await page.locator('.munin-explorer-hierarchy > ul > li').first()

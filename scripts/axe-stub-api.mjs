@@ -7,7 +7,7 @@
 // The fixtures are reused rather than copied: one set for a human to re-capture when a drift
 // report asks for it, instead of a second set here that nothing would ever look at again.
 //
-// They are not one snapshot: filters.json reports 31791 variables where variables.json holds
+// They are not one snapshot: filters.json reports 46037 variables where variables.json holds
 // 18289, and its facet counts are that catalogue's. Nothing here reads a count back out, and
 // re-capturing the corpus together is its own job.
 //
@@ -30,7 +30,7 @@ if (!Number.isInteger(port) || port <= 0) {
 // `variables/{id}/timeline`. The literal is the one route with no fixture, and it answers with
 // what the client would have fallen back to anyway: an empty vocabulary.
 const routes = [
-  [/^\/api\/explorer\/kilder\/e358db40-0efa-47bb-893a-40ee00ccde12$/, 'kilde-med-delkilder.json'],
+  [/^\/api\/explorer\/kilder\/b37d66c3-d2a4-4e58-b13e-12f96d38e9f3$/, 'kilde-med-delkilder.json'],
   [/^\/api\/explorer\/variables\/[^/]+\/kodeverk\/[^/]+\/[^/]+\/codes$/, 'kodeverk-codes.json'],
   [/^\/api\/explorer\/variables\/[^/]+\/timeline$/, 'timeline.json'],
   [/^\/api\/explorer\/variables\/[^/]+$/, 'variable.json'],
@@ -63,23 +63,6 @@ bodies.set(listRoute, JSON.stringify([
   { ...study, navn: study.preferredTerm, aktiv: true, harVariabelbeskrivelse: study.totalVariables > 0,
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));
-
-// The filters capture predates `datasamlinger[].categories` (Fhi.Metadata-l9l2n.113 re-captures
-// it), and served as captured the facet tree draws no datakategori glyph for this gate to scan.
-// Synthesised from the payload's own `datakategorier`, spread so rows carry none, one and several.
-const filtersRoute = routes.find(([, source]) => source === 'filters.json')[0];
-const filters = JSON.parse(bodies.get(filtersRoute));
-const vocabulary = filters.datakategorier.map(facet => facet.value);
-
-bodies.set(filtersRoute, JSON.stringify({
-  ...filters,
-  datasamlinger: filters.datasamlinger.map((collection, index) => ({
-    ...collection,
-    categories: collection.categories ?? (index % 4 === 0
-      ? []
-      : vocabulary.slice(index % vocabulary.length, (index % vocabulary.length) + (index % 3))),
-  })),
-}));
 
 // The one route whose fixture cannot be served verbatim. my-list-variables.json is a real capture:
 // 247 entries reported, two of them kept. Served as-is for every page, it says "page 1 of 3" every
