@@ -953,7 +953,7 @@ public class KildeViewTest : BunitContext
     public void Metadata_WhenTittelFlersprakligHoldsATranslationPreferredTermLacks_ThenTheTranslationIsNotLost()
     {
         // THE TRAP again: kilde-med-delkilder.json's TittelFlerspraklig carries an English title
-        // ("The Tromsø Study") that PreferredTerm ("The Tromsø study") never had.
+        // ("The Tromsø Study") that PreferredTerm ("Tromsøundersøkelsen") never had.
         var cut = Render(KildeMedDelkilder());
 
         var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent);
@@ -1173,9 +1173,9 @@ public class KildeViewTest : BunitContext
     [Fact]
     public void Delkilder_WhenOneHoldsNoDatasamlingerOfItsOwn_ThenItIsStillOnThePage()
     {
-        // Tromsø really has one: K_TR.BIODATA carries no datasamlinger and is a wave of the study
-        // all the same. Drawing only the delkilder that hold something would leave a reader
-        // counting six waves on helsedata.no and five here, with nothing saying which is right.
+        // A study series can have one: a wave with no datasamlinger is a wave all the same. Drawing
+        // only the delkilder that hold something would leave a reader counting more waves on
+        // helsedata.no than here, with nothing saying which is right.
         var kilde = Kilde() with
         {
             Datasamlinger = [],

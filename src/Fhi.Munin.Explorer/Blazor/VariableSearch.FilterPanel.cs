@@ -93,6 +93,8 @@ public partial class VariableSearch
     /// rather than "mark it as the page's". Every value decides it, because nothing downstream
     /// can tell a catalogue name from prose this package composed.
     /// </para>
+    /// <para><c>Icons</c> are a datasamling's datakategori glyphs, off the same facet payload as
+    /// the row; the panel draws them and the chip for the same value does not.</para>
     /// </remarks>
     private sealed record FacetValue(
         string Key,
@@ -102,7 +104,8 @@ public partial class VariableSearch
         bool Selected,
         Func<Task>? Toggle,
         IReadOnlyList<FacetValue> Children,
-        bool GroupHeading = false);
+        bool GroupHeading = false,
+        IReadOnlyList<NodeIcon>? Icons = null);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
     /// <remarks>
@@ -749,7 +752,10 @@ public partial class VariableSearch
             _filter.DatasamlingIds.Contains(datasamling.Id),
             () => ToggleAsync(_filter.DatasamlingIds, datasamling.Id,
                               ids => _filter with { DatasamlingIds = ids }),
-            []);
+            [],
+            // Off the facet payload this row was already built from, so the glyphs cost no request —
+            // and read whatever parent the row hangs from, since a category is the datasamling's own.
+            Icons: DataCategoryIcons.For(datasamling.Categories));
     }
 
     private (string Text, string? Language) DatasamlingLabel(DatasamlingFacet datasamling) =>
@@ -1187,14 +1193,13 @@ public partial class VariableSearch
             else
             {
                 builder.OpenElement(30, "label");
-                builder.AddAttribute(31, "lang", value.Language);
-                builder.OpenElement(32, "input");
-                builder.AddAttribute(33, "type", "checkbox");
-                builder.AddAttribute(34, "checked", value.Selected);
+                builder.OpenElement(31, "input");
+                builder.AddAttribute(32, "type", "checkbox");
+                builder.AddAttribute(33, "checked", value.Selected);
 
                 // The event's own value is ignored: the toggle flips what the filter holds, which
                 // is the one state a press and the render after it are certain to agree about.
-                builder.AddAttribute(35, "onchange",
+                builder.AddAttribute(34, "onchange",
                                      EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
 
                 // What a plain onchange does not do and this panel needs: a press that ApplyFilterAsync
@@ -1203,17 +1208,38 @@ public partial class VariableSearch
                 builder.SetUpdatesAttributeName("checked");
 
                 builder.CloseElement();
-                builder.AddContent(36, value.Label);
+
+                var icons = value.Icons;
+                if (icons is { Count: > 0 })
+                {
+                    builder.AddContent(35, (RenderFragment)(nested =>
+                        NodeIcons.Write(nested, icons, NodeIconClasses.Facets)));
+                }
+
+                // The marking sits on the name, not on the label around it: the label also carries
+                // this package's own prose below, which is the reader's language and not the
+                // catalogue's and must not be pronounced as Norwegian. (WCAG 3.1.2)
+                builder.OpenElement(36, "span");
+                builder.AddAttribute(37, "lang", value.Language);
+                builder.AddContent(38, value.Label);
+                builder.CloseElement();
+
+                // Keep the spoken categories after the name even though the decorative icons lead it.
+                if (icons is { Count: > 0 })
+                {
+                    builder.AddContent(39, (RenderFragment)(nested =>
+                        NodeIcons.WriteSpoken(nested, icons, T)));
+                }
 
                 // The space is a text node of the label, not the span's first character: a name is
                 // computed per element, so a space inside the span is trimmed off and the name
                 // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(37, " ");
-                    builder.OpenElement(38, "span");
-                    builder.AddAttribute(39, "class", "munin-explorer-filters__count");
-                    builder.AddContent(40, $"({count})");
+                    builder.AddContent(40, " ");
+                    builder.OpenElement(41, "span");
+                    builder.AddAttribute(42, "class", "munin-explorer-filters__count");
+                    builder.AddContent(43, $"({count})");
                     builder.CloseElement();
                 }
 

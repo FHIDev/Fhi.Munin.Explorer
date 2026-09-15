@@ -59,8 +59,8 @@
 # entries here with an expiry condition rather than drift. That bead stopped emitting the 320px
 # aside on the three detail views, and the stand-in collapsed `__body` to one track in the same
 # change so that no sample host draws an empty rail. The pinned Stiler keeps its second track until
-# Fhi.Metadata-35w0p.39, so the sample is ahead of the pin exactly as the two choicepicker lines
-# below are. The three lines are marked where they sit, with the condition that deletes them.
+# Fhi.Metadata-35w0p.39, so the sample was ahead of the pin exactly as the two choicepicker lines
+# described further down once were. All three have since been retired, and none is left below.
 #
 # IT IS 214 SINCE Fhi.Metadata-l9l2n.105, and the 40 that arrived are a new FAMILY rather than new
 # drift: until that bead the comparison looked only at the munin-explorer prefix, so every rule the
@@ -80,9 +80,8 @@
 # selector, the trigger's icon rule and the dropdown - were missing-selector lines the column
 # picker's own rules made false, so the sample moved TOWARDS Stiler and the stale half of the guard
 # said so. The two that arrived are the opposite case and the reason the format needed a note at
-# all: they are not drift but a sample that is AHEAD of the pin, correct against Stiler 0.1.53 and
-# invented against the 0.1.42 both this fixture and helsedata.no restore. They delete themselves
-# the day the pin moves, and Fhi.Metadata-kpmt3 is what carries that.
+# all: they are not drift but a sample that was AHEAD of the pin, correct against Stiler 0.1.53 and
+# invented against the 0.1.42 pinned then. Both went when the pin moved to 0.1.75.
 #
 # WHAT THIS LIST DOES NOT COVER, so a short list is never read as a close match: source order and
 # specificity are not compared, so two rules that both exist and both declare the same property can
@@ -155,12 +154,6 @@ invented-declaration||.munin-explorer-frequency thead th|border-bottom
 invented-declaration||.munin-explorer-frequency thead th|font-weight
 invented-declaration||.munin-explorer-frequency|margin
 invented-declaration||.munin-explorer-header__actions|justify-content
-# The two below EXPIRE when the pin moves. Both rules exist in Fhi.Helsedata.Stiler 0.1.53 - the
-# release carrying Fhi.Metadata-f6az7's Stiler half - and not in the pinned 0.1.42. Checked on
-# 2026-09-09: helsedata.no pins 0.1.42 too (Fhi.Helsedata.Optimizely.csproj:70, lifted from 0.1.37
-# in their PR 39170 the day before), so the pin is right and the sample is simply ahead of it. The
-# sample must carry them or the column picker draws its panel off the wrong ancestor and shows both
-# chevrons at once. Delete these two lines when HostileHost pins >= 0.1.53 (Fhi.Metadata-kpmt3).
 invented-declaration||.munin-explorer-kilde__delkilde-description|font-size
 invented-declaration||.munin-explorer-meta__grid|gap
 invented-declaration||.munin-explorer-meta__tabs|gap
@@ -321,7 +314,7 @@ missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 # is Stiler as helsedata actually serves it. For `.dropdown-choicepicker__item` the two agree
 # declaration for declaration with the 0.1.42 reading in the bead, which is the one selector
 # there was a second source for. CI compares against the pin, and the pin is the authority: a
-# line here that 0.1.42 does not produce fails as stale and should be deleted rather than argued
+# line here that the pin does not produce fails as stale and should be deleted rather than argued
 # with.
 #
 # That bundle is MINIFIED, and shorthands are compared as written, so it under-reports: its

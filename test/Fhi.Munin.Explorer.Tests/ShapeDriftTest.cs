@@ -146,7 +146,7 @@ public class ShapeDriftTest
 
         // What the rule above costs, written down rather than left to be found out. An empty list
         // is how this contract says "none", so a collection withdrawn wholesale reads exactly like
-        // one that happens to be empty, and this kilde losing its five delkilder passes. The
+        // one that happens to be empty, and this kilde losing its four delkilder passes. The
         // remarks on ShapeDrift argue why that trade is the right way round; if the argument stops
         // holding, this is the test that has to change with it.
         Assert.Empty(DriftIn<KildeDetail>(live));

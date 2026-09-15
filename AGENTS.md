@@ -292,18 +292,22 @@ written for HostileHost" and the only one the numbers support:
   print `n/a` and measure nothing.
 - `nothing the reader can press is under the host header` reports `no .main-header on the page —
   the host chrome did not render`. ModernHost draws none; that finding is about the fixture.
-- `the component stays inside the box the host gave it` fails at 320 on a real defect the fix for
-  which is not in this repository: the column picker's open list is 304px wide against a 226px
-  mount and hangs off the left edge of the viewport, `Fhi.Metadata-abmom`.
+- `the component stays inside the box the host gave it` fails at 320 on the column picker: here its
+  open list is 304px wide against a 226px mount and hangs 55px off the left edge of the viewport.
+  Under real Stiler that is 2px, which `Fhi.Metadata-abmom` closed as accepted; the sample's
+  excess is `Fhi.Metadata-w6lvr`.
 - the two `kilder` pins hold at 320, and are left out because what they exist to catch is a Stiler
   rule going missing, which the sample stylesheet can only stand in for. `check-hostile-host.sh`
   measures them against the real one at six widths.
 
 Read the run for exactly what it is: three assertions, one page, two states, against the sample
-stylesheet. The pinned-Stiler pages are still unmeasured at 320. `Fhi.Metadata-hfzsu` — 82px of
-helsedata's own site chrome overflowing there on every page of theirs — is released, and
-`samples/HostileHost` now pins `0.1.75`. Adding 320 to `GEOMETRY_WIDTHS` remains
-`Fhi.Metadata-kpmt3`; the pin update alone does not extend the six widths this gate measures.
+stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
+its own after the six widths. It runs every assertion in every state, except that a state failing
+today leaves out only its failing assertions, through `GEOMETRY_EXCEPT`, with the reason beside
+it. Two of the three exceptions are open defects whose beads end by deleting them:
+`Fhi.Metadata-jcdil` on `explorer-list-tab`, `Fhi.Metadata-s9h1k` on the three `kilde-hierarchy-*`
+states. The third is kept on purpose: under real Stiler the closed column picker hangs 2px off the
+left edge on the kilder states, and `Fhi.Metadata-abmom`'s close reason records why that stays.
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1

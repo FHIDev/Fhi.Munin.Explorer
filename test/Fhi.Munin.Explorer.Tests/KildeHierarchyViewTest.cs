@@ -251,9 +251,9 @@ public sealed class KildeHierarchyViewTest : BunitContext
 
         // Read off the capture rather than a fixture, because the claim is about the catalogue: the
         // 32 groups under Tromsø4's first visit are a questionnaire's own sequence, and in name
-        // order the same list opens on ALCOHOL, BLOOD SAMPLES, COFFEE.
+        // order the same list opens on ALCOHOL, ALCOHOL PU70 - Q2, BLOOD SAMPLES.
         var firstVisit = cut.FindAll("details")
-            .Single(d => Name(d) == "Tromsø4 - The Fourth Tromsø Study - first visit");
+            .Single(d => Name(d) == "Tromsø4 - Den fjerde Tromsøundersøkelsen - føste besøk");
 
         Assert.Equal(
             ["GENERAL INFORMATION", "PHYSICAL EXAMINATION", "BLOOD SAMPLES"],

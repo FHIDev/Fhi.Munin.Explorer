@@ -19,6 +19,9 @@ public sealed record KildeHierarchy
     /// <summary>Visible published variables under the whole kilde.</summary>
     [JsonPropertyName("totalVariableCount")] public int TotalVariableCount { get; init; }
 
+    /// <summary>Variables whose every published version has expired; disjoint from <see cref="TotalVariableCount"/>.</summary>
+    [JsonPropertyName("historicalVariableCount")] public int HistoricalVariableCount { get; init; }
+
     [JsonPropertyName("delkilder")] public IReadOnlyList<HierarchyDelkilde> Delkilder { get; init; } = [];
 
     /// <summary>Datasamlinger that belong to the kilde itself rather than to any delkilde.</summary>

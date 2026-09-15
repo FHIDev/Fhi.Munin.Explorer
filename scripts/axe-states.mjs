@@ -33,7 +33,7 @@ async function press(scope, name) {
 
 export const states = {
   'kilde-hierarchy-collapsed': async page => {
-    const name = page.getByRole('button', { name: 'The Tromsø study', exact: true });
+    const name = page.getByRole('button', { name: 'Tromsøundersøkelsen', exact: true });
     await name.waitFor({ state: 'visible', timeout: findTimeout });
     await name.click();
     await page.locator('.munin-explorer-hierarchy > ul > li').first()
@@ -142,6 +142,14 @@ export const states = {
     // leaves this state failing to arrive rather than scanning a tree that is not there.
     await page
       .locator('.munin-explorer-filters__disclosure[aria-expanded="true"]')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // And a datasamling row drawing its datakategori glyphs, on the same terms: a payload whose
+    // datasamlinger carry no categories renders the tree with none of Fhi.Metadata-evoil's markup
+    // in it, and axe reports no violations in what is not there.
+    await page
+      .locator('.munin-explorer-filters__icons')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
