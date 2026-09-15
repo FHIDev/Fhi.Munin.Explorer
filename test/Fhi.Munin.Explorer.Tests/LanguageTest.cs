@@ -237,6 +237,21 @@ public class LanguageTest : BunitContext
         }
     }
 
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Texts_WhenAKildetypeWearsABadge_ThenItIsOneTheApiCanSend(string language)
+    {
+        // provesamling shipped as a badge key and could match no payload: it is an EHDS
+        // datakategori slug and no kildetype at all, so the badge drew nowhere while every fixture
+        // invented the value it needed. KildeTypeNames is the vocabulary checked against runa.
+        var texts = Texts.For(language);
+
+        Assert.All(texts.KildeTypeBadges.Keys,
+                   key => Assert.True(texts.KildeTypeNames.ContainsKey(key),
+                                      $"KildeTypeBadges[{key}] names no kildetype the API sends."));
+    }
+
     [Fact]
     public void Texts_WhenTheApiRateLimits_ThenTheSentenceDiffersFromTheGenericFailureInBothLanguages()
     {

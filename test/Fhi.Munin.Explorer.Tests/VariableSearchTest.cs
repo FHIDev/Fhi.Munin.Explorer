@@ -5454,27 +5454,25 @@ public class VariableSearchTest : BunitContext
 
     // ---- folder glyphs and kildetype badges on the kilde levels (Fhi.Metadata-aw203) ----
 
-    private static readonly Guid Provebanken = new("aaaaaaaa-0000-0000-0000-000000000003");
     private static readonly Guid Kreftregisteret = new("aaaaaaaa-0000-0000-0000-000000000004");
 
-    /// <summary>A kilde for each badge the table answers, and one for each way it refuses.</summary>
+    /// <summary>The kilde the badge table answers for, and one for each way it refuses.</summary>
     /// <remarks>
-    /// The two unbadged kilder are the pair that has to look alike: a kildetype no table here names,
-    /// and no kildetype at all. Keeping Facets()' delkilder gives the tree two levels of folder.
+    /// Every kildetype here is one the API's own vocabulary holds, badged or not: a fixture minting
+    /// its own cannot go red when a badge key matches no payload, which is how provesamling got in.
+    /// The unbadged pair has to look alike — a kildetype no table names, and none at all.
     /// </remarks>
     private static FilterOptions FacetsWithBadges() => Facets() with
     {
         KildeTyper =
         [
             new() { Value = "biobank", DisplayName = "Biobank", Count = 12 },
-            new() { Value = "provesamling", DisplayName = "Prøvesamling", Count = 9 },
-            new() { Value = "kvantekilde", DisplayName = "Kvantekilde", Count = 4 }
+            new() { Value = "forskningsprosjekt", DisplayName = "Forskningsprosjekt", Count = 4 }
         ],
         Kilder =
         [
             new() { Id = Tromso, Name = "Tromsøundersøkelsen", KildeType = "biobank", Count = 12 },
-            new() { Id = Provebanken, Name = "Prøvebanken", KildeType = "provesamling", Count = 9 },
-            new() { Id = Kreftregisteret, Name = "Kreftregisteret", KildeType = "kvantekilde", Count = 4 },
+            new() { Id = Kreftregisteret, Name = "Kreftregisteret", KildeType = "forskningsprosjekt", Count = 4 },
             new() { Id = Dodsarsak, Name = "Dødsårsaksregisteret", KildeType = null, Count = 30 }
         ]
     };
@@ -5495,28 +5493,26 @@ public class VariableSearchTest : BunitContext
         Assert.Equal(RowGlyphs(cut, "Tromsøundersøkelsen"), RowGlyphs(cut, "Første besøk"));
     }
 
-    [Theory]
-    [InlineData("Tromsøundersøkelsen", "Biobank", "Tromsøundersøkelsen Biobank (12)")]
-    [InlineData("Prøvebanken", "Prøvesamling", "Prøvebanken Prøvesamling (9)")]
-    public void Render_WhenAKildeIsOneOfTheBadgedKildetyper_ThenTheCheckboxIsNamedWithTheBadge(
-        string kilde, string badge, string name)
+    [Fact]
+    public void Render_WhenAKildeIsOneOfTheBadgedKildetyper_ThenTheCheckboxIsNamedWithTheBadge()
     {
         // Real text in the label rather than a picture or a rule, so what the badge says about the
         // kilde reaches every reader and not only the one who can see the capsule.
         var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
 
-        Assert.Equal(badge, RowBadge(cut, kilde));
-        Assert.Equal(name, AccessibleName.Of(FacetBox(cut, kilde)));
+        Assert.Equal("Biobank", RowBadge(cut, "Tromsøundersøkelsen"));
+        Assert.Equal("Tromsøundersøkelsen Biobank (12)",
+                     AccessibleName.Of(FacetBox(cut, "Tromsøundersøkelsen")));
     }
 
     [Theory]
     [InlineData("Kreftregisteret", "Kreftregisteret (4)")]
     [InlineData("Dødsårsaksregisteret", "Dødsårsaksregisteret (30)")]
-    public void Render_WhenAKildetypeIsUnknownOrAbsent_ThenTheRowWearsNoBadgeAtAll(
+    public void Render_WhenAKildetypeIsUnbadgedOrAbsent_ThenTheRowWearsNoBadgeAtAll(
         string kilde, string name)
     {
-        // The two answer alike on purpose: the badge says a kilde is one of the kinds the table
-        // names, so a kildetype nobody here has a word for is simply not one of them, and an empty
+        // The two answer alike on purpose: forskningsprosjekt is a kildetype the API sends and the
+        // badge table does not name, so it is not one of the kinds the badge marks, and an empty
         // capsule would say it was.
         var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
 
@@ -5555,18 +5551,19 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Render_WhenAnEnglishReaderMeetsABadgedKilde_ThenTheBadgeIsEnglishAndUnmarked()
+    public void Render_WhenAnEnglishReaderMeetsABadgedKilde_ThenOnlyTheNameIsMarkedNorwegian()
     {
         // The badge is this package's own prose in the reader's language beside a name that is the
-        // catalogue's Norwegian, so the marking stays on the name alone. (WCAG 3.1.2)
+        // catalogue's Norwegian, so the marking stays on the name alone. Biobank is spelled alike in
+        // both tables, so what this pins is the marking rather than the word. (WCAG 3.1.2)
         var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()),
                              b => b.Add(c => c.Language, "en"));
 
-        var row = Facet(cut, "Prøvebanken");
+        var row = Facet(cut, "Tromsøundersøkelsen");
         var badge = row.QuerySelector(".munin-explorer-filters__badge")!;
 
-        Assert.Equal("Sample collection", badge.TextContent);
-        Assert.Equal("no", FacetLang(cut, "Prøvebanken"));
+        Assert.Equal("Biobank", badge.TextContent);
+        Assert.Equal("no", FacetLang(cut, "Tromsøundersøkelsen"));
         Assert.Null(MarkedLanguage(badge, row));
     }
 

@@ -99,7 +99,8 @@ public partial class VariableSearch
     /// <para>
     /// <c>Badge</c> is a word on the row rather than a picture of one, so it joins the checkbox's
     /// accessible name. Its own member and never a glyph, because the two are not the same offer:
-    /// a host turning decoration off must not take a fact off the row with it.
+    /// a host turning decoration off must not take a fact off the row with it. It is drawn inside
+    /// that label, so a value with no <c>Toggle</c> — a group heading — renders none at all.
     /// </para>
     /// </remarks>
     private sealed record FacetValue(

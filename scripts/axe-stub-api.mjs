@@ -64,18 +64,17 @@ bodies.set(listRoute, JSON.stringify([
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));
 
-// No kilde in the captured catalogue carries either of the two kildetyper the Kilde facet draws a
+// No kilde in the captured catalogue carries biobank, the one kildetype the Kilde facet draws a
 // badge for, so a verbatim payload renders that markup nowhere and a scan reports no violations in
-// what is not there - the finding this whole stub exists for. Two rows are retyped, and the
-// kildetype facet is moved with them so the panel's headings still agree with the rows under them.
+// what is not there - the finding this whole stub exists for. One row is retyped, its facet with it.
 const filtersRoute = routes.find(([, source]) => source === 'filters.json')[0];
 const filters = JSON.parse(bodies.get(filtersRoute));
-const badged = new Map([['MS', ['biobank', 'Biobank']], ['PARKINSON', ['provesamling', 'Prøvesamling']]]);
+const badged = new Map([['MS', ['biobank', 'Biobank']]]);
 
 const retyped = filters.kilder.filter(one => badged.has(one.kortNavn));
 
 // Loud here rather than as a state timing out later: a re-capture that drops or renames one of
-// these two would leave the badge off every page, which is the silence the note above is about.
+// these would leave the badge off every page, which is the silence the note above is about.
 if (retyped.length !== badged.size) {
   console.error(`stub: filters.json holds ${retyped.length} of the ${badged.size} kilder the badge states need`);
   process.exit(2);
@@ -88,7 +87,15 @@ for (const kilde of retyped) {
   }
   const [value, displayName] = badged.get(kilde.kortNavn);
   kilde.kildeType = value;
-  filters.kildeTyper.push({ value, displayName, count: kilde.count });
+
+  // Added to the facet the value already has rather than beside it: a re-capture where the
+  // catalogue has grown one would otherwise put two headings for one kildetype in the panel.
+  const facet = filters.kildeTyper.find(type => type.value === value);
+  if (facet === undefined) {
+    filters.kildeTyper.push({ value, displayName, count: kilde.count });
+  } else {
+    facet.count += kilde.count;
+  }
 }
 filters.kildeTyper.sort((a, b) => a.displayName.localeCompare(b.displayName, 'nb'));
 bodies.set(filtersRoute, JSON.stringify(filters));

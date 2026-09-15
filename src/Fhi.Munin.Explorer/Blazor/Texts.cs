@@ -335,9 +335,9 @@ internal sealed record Texts(
     // which holds the code alone, for a facet the API sent nameless, and for a legacy stored
     // spelling echoed back as one. See AGENTS.md, "The API names a datatype, not this package".
     IReadOnlyDictionary<string, string> KildeTypeNames,
-    // The badge a kilde row wears in the facet tree, for the two kildetyper Runa marks out there.
-    // A table of its own and not KildeTypeNames: membership is the badge's whole meaning, so a
-    // kildetype this does not name wears none — see KildeTypeBadge.
+    // The badge a kilde row wears in the facet tree. Biobank alone: prøvesamling is an EHDS
+    // datakategori rather than a kildetype the API can send, checked against runa on 2026-09-15.
+    // Membership is the badge's whole meaning, so a kildetype this does not name wears none.
     IReadOnlyDictionary<string, string> KildeTypeBadges,
     IReadOnlyDictionary<string, string> DataTypeNames,
     string Ascending,
@@ -1053,8 +1053,7 @@ internal sealed record Texts(
         },
         KildeTypeBadges: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["biobank"] = "Biobank",
-            ["provesamling"] = "Prøvesamling"
+            ["biobank"] = "Biobank"
         },
         DataTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -1420,8 +1419,7 @@ internal sealed record Texts(
         },
         KildeTypeBadges: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["biobank"] = "Biobank",
-            ["provesamling"] = "Sample collection"
+            ["biobank"] = "Biobank"
         },
         DataTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

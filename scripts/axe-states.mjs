@@ -153,8 +153,8 @@ export const states = {
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
 
-    // And a kilde row wearing its kildetype badge, for the same reason — the stub retypes two
-    // kilder so there is one on screen at all. (Fhi.Metadata-aw203)
+    // And a kilde row wearing its kildetype badge, for the same reason — the stub retypes one
+    // kilde to biobank so there is such a row on screen at all. (Fhi.Metadata-aw203)
     await page
       .locator('.munin-explorer-filters__badge')
       .first()

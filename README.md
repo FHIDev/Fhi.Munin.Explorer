@@ -346,18 +346,24 @@ These are not style preferences — each one is a host that breaks otherwise.
     rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**, the version
     `samples/HostileHost` pins (`Fhi.Metadata-1t36m`).
     A kilde row of that facet adds one more, `munin-explorer-filters__badge`, worn by the word
-    marking a kilde whose kildetype is one of the two the tree calls out — Biobank and
-    Prøvesamling. A handle, and the plainest kind: the word is real text inside the `<label>`, so
-    it is part of the checkbox's accessible name and reads correctly with no rule at all, and what
-    a rule buys is the capsule that tells it from the name beside it. It is its own name and never
-    part of the icon slot, which is what keeps a host — or the `ShowNodeIcons` toggle when it
-    reaches this panel — able to turn decoration off without taking a fact off the row with it.
-    The word is this package's own bilingual copy rather than the API's resolved kildetype label,
-    unlike every other kildetype word in this panel: the badge marks membership of a closed pair
-    and is drawn under a group heading already carrying the API's word for the same value. A
-    kildetype the pair does not name, and a kilde carrying none at all, wear no badge — an empty
-    capsule would say they were one of the two. Both sample stylesheets already carried the rule
-    before any markup wore the name — stood in under their "since the previous Stiler pin" heading,
+    marking a kilde whose kildetype the tree calls out. That is **Biobank alone**, and the reason is
+    worth stating because the bead asked for Prøvesamling beside it: the Kilde-scoped `Kildetype`
+    PropertyDefinition the API resolves its kildetype names from holds eight values, and
+    prøvesamling is not one of them in any spelling — it is an EHDS *datakategori* slug, a different
+    vocabulary on a different field, and the `/filters` answer carries no datakategori for a kilde
+    at all. Read off runa's `api/explorer/kilder/egenskaper` on 2026-09-15; how a Prøvesamling kilde
+    should be marked is `Fhi.Metadata-wxn6g`, and a key for it here would have matched no payload
+    and drawn nothing. A handle, and the plainest kind: the word is real text inside the `<label>`,
+    so it is part of the checkbox's accessible name and reads correctly with no rule at all, and
+    what a rule buys is the capsule that tells it from the name beside it. It is its own name and
+    never part of the icon slot, which is what keeps a host — or the `ShowNodeIcons` toggle when it
+    reaches this panel — able to turn decoration off without taking a fact off the row with it. The
+    word is this package's own bilingual copy rather than the API's resolved kildetype label, unlike
+    every other kildetype word in this panel: the badge marks membership of a named set and is drawn
+    under a group heading already carrying the API's word for the same value. A kildetype the table
+    does not name, and a kilde carrying none at all, wear no badge — an empty capsule would say they
+    were one of them. Both sample stylesheets already carried the rule before any markup wore the
+    name — stood in under their "since the previous Stiler pin" heading,
     which is where a rule copied off the pinned published package goes — so
     `assert-sample-css-matches-stiler.sh` against that pin is what says whether 0.1.75 really has
     it. Nothing on this side reads Stiler, and this paragraph does not claim to —
