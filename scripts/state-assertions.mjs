@@ -338,10 +338,9 @@ export const assertions = [
       return { entries };
     },
 
-    // Every read is made here rather than in `stage`, and that is the whole of what makes the
-    // control below say anything: it rewrites the hrefs AFTER staging, so a press or a location
-    // read that happened once, before it ran, could never notice what it did. Each check reports
-    // rather than returning, so the control fires all of them it breaks instead of the first.
+    // Every read is made here and not in `stage`, which is what makes the control below say
+    // anything: it rewrites the hrefs after staging, so a read taken once before that could never
+    // notice. Findings are collected, not returned, so the control fires all of them it breaks.
     async measure(page, { entries }) {
       const findings = [];
 
