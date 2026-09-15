@@ -8,11 +8,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Emits <c>&lt;section id="…" data-nav-section class="munin-explorer-page__section"&gt;</c> around
-/// whatever it is given. The class and helsedata's <c>data-nav-section</c> attribute are written
-/// once here rather than at each of the fifteen blocks <see cref="KildeView"/>,
-/// <see cref="DatasamlingView"/> and <see cref="VariableView"/> draw between them, so a rename
-/// cannot reach two views and miss the third.
+/// Emits <c>&lt;section id="…" data-nav-section tabindex="-1" class="munin-explorer-page__section"&gt;</c>
+/// around whatever it is given. The class, helsedata's <c>data-nav-section</c> attribute and the
+/// negative <c>tabindex</c> that lets a fragment jump land focus here are written once rather than
+/// at each of the fifteen blocks <see cref="KildeView"/>, <see cref="DatasamlingView"/> and
+/// <see cref="VariableView"/> draw between them, so a rename cannot reach two views and miss the
+/// third.
 /// </para>
 /// <para>
 /// Public only because a Razor component must be, in the way <see cref="KildeHierarchyView"/> and
@@ -49,7 +50,12 @@ public sealed class DetailSection : ComponentBase
         builder.AddAttribute(1, "id", Id);
         builder.AddAttribute(2, "data-nav-section", true);
         builder.AddAttribute(3, "class", "munin-explorer-page__section");
-        builder.AddContent(4, ChildContent);
+
+        // A fragment jump moves focus only to a focusable target, so without this the reader is
+        // scrolled to the section and their next Tab carries on from the nav they just left —
+        // WCAG 2.4.3. Negative, so the section itself never enters the tab order.
+        builder.AddAttribute(4, "tabindex", "-1");
+        builder.AddContent(5, ChildContent);
         builder.CloseElement();
     }
 }

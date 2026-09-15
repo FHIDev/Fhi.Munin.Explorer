@@ -104,6 +104,11 @@ public sealed partial class VariableExplorer : ComponentBase
     protected override Task OnAfterRenderAsync(bool firstRender) =>
         _mirror.MirrorAsync(Linkable(_state.ToState()).ToQueryString()).AsTask();
 
+    // This page as the reader's address bar now reads it, for the drill-in views' contents nav.
+    // Built fresh on every render: the state it reads moves without a navigation, and a contents
+    // link naming the view before last would take the reader off this page.
+    private string PageAddress => _mirror.Address(Linkable(_state.ToState()).ToQueryString());
+
     private bool Owns(string key) =>
         ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key);
 

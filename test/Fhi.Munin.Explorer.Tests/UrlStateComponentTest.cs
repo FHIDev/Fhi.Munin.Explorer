@@ -568,6 +568,27 @@ public class UrlStateComponentTest : BunitContext
     }
 
     [Fact]
+    public void Kilder_WhenAKildeIsOpenedFromTheList_ThenTheContentsNavPointsAtTheAddressTheMirrorWrote()
+    {
+        // The half of Fhi.Metadata-l9l2n.114 that NavigationManager cannot answer. The mirror moves
+        // the address bar with history.replaceState and Blazor is never told, so NavigationManager
+        // .Uri is still /MuninKelda: a contents link built from it would drop the ?kilde= the
+        // reader is on and reload the front page, which is the trap the bead names.
+        var id = Guid.NewGuid();
+
+        var cut = RenderKilder(id, "http://localhost/MuninKelda");
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+
+        var contents = cut.FindAll(".munin-explorer-page__toc a");
+
+        Assert.NotEmpty(contents);
+        Assert.All(contents, link => Assert.StartsWith(
+            Mirrored() + "#", link.GetAttribute("href"), StringComparison.Ordinal));
+        Assert.Equal($"/MuninKelda?kilde={id}", Mirrored());
+    }
+
+    [Fact]
     public void Kilder_WhenTheReaderClosesTheKilde_ThenThePathTheyArrivedOnComesBackWithItsPathBase()
     {
         // Trap 2, which is invisible locally: replaceState writes an absolute path, so a component

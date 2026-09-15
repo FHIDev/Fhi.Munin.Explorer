@@ -1,9 +1,9 @@
 @* helsedata's page shell, reduced to the parts that are hostile to a mounted component, and
    copied structurally from their own Features/SiteLayout/Views/_Layout.cshtml.
 
-   Two things make this host different from samples/LegacyHost and samples/ModernHost, and both
-   are the reason four layout defects reached a branch on 2026-09-03 having passed 1317 unit
-   tests and eight axe states (Fhi.Metadata-l9l2n.40):
+   Three things make this host different from samples/LegacyHost and samples/ModernHost. The
+   first and the third are the reason four layout defects reached a branch on 2026-09-03 having
+   passed 1317 unit tests and eight axe states (Fhi.Metadata-l9l2n.40):
 
    1. THE STYLESHEET IS THEIRS. Not a stand-in that styles the same class names — the real
       Fhi.Helsedata.Stiler package, at the same _content path their layout links. It carries a
@@ -15,7 +15,12 @@
 
       Neither of those can be synthesised. A hand-written header reproduces neither.
 
-   2. THE HEADER IS OVER THE CONTENT, NOT ABOVE IT. `.main-header` is
+   2. THE BASE ELEMENT IS SET. `<base href="/">` is theirs, and it changes what every relative
+      URL in the page means — a fragment link included. samples/LegacyHost, the other host that
+      mounts KildeExplorer, emits none, so a link resolving against the wrong document looked
+      right there and left the page on helsedata.
+
+   3. THE HEADER IS OVER THE CONTENT, NOT ABOVE IT. `.main-header` is
       `position: absolute; top: 0` with a 64px `.main-header__content` inside it, so it occupies
       no space in flow and the page's first 64px are underneath it. Every other sample starts the
       component at a clean y=0 with nothing over it; the real host does not, and the tablist
@@ -23,13 +28,23 @@
 
    Deliberately NOT copied from their layout: the CMS plumbing, the skip links, Matomo, the
    footer, the fonts from Google. None of it changes the geometry, and each is another thing to
-   go stale. What is here is the shell, the header and the content wrapper. *@
+   go stale. What is here is the shell, the base, the header and the content wrapper.
+
+   Their skip link is broken the same way the contents nav was — href="#maincontent", resolved
+   against the base, at a target their page does not carry — and it is deliberately left out
+   rather than reproduced and fixed: it is the host's markup, not this package's. *@
 <!DOCTYPE html>
 <html lang="no">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] — Munin Explorer hostile host</title>
+
+    @* The third hostile thing, and the one that cost the contents nav (Fhi.Metadata-l9l2n.114).
+       helsedata's Optimizely layout emits this, and no other sample here mounting KildeExplorer
+       does: a bare `#id` href resolves against it rather than against the page being read, so
+       every contents link navigated to the site root and dropped the open kilde. *@
+    <base href="/" />
 
     @* The one line this whole sample exists for. Their layout links exactly this. *@
     <link rel="stylesheet" href="~/_content/Fhi.Helsedata.Stiler/css/main.css" />

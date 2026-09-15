@@ -7,18 +7,22 @@
    No @page and no @rendermode, like everything else here; but this one owns the query string, so
    it must be mounted interactively. *@
 
-<VariableSearch @bind-Search="_state.Search"
-                @bind-Filter="_state.Filter"
-                @bind-Sort="_state.Sort"
-                @bind-Direction="_state.Direction"
-                @bind-Page="_state.Page"
-                @bind-PageSize="_state.PageSize"
-                @bind-SelectedVariableId="_state.SelectedVariableId"
-                IsAuthenticated="@IsAuthenticated"
-                HeadingLevel="@HeadingLevel"
-                Language="@Language"
-                VariableList="@ReaderLists"
-                VariableListFilters="@ReaderListFilters" />
+@* The address the mirror last wrote, for the drill-in views' contents nav — see
+   KildeExplorer.razor, where the same value is cascaded for the same reason. *@
+<CascadingValue Name="@DetailToc.PageAddressName" Value="@PageAddress">
+    <VariableSearch @bind-Search="_state.Search"
+                    @bind-Filter="_state.Filter"
+                    @bind-Sort="_state.Sort"
+                    @bind-Direction="_state.Direction"
+                    @bind-Page="_state.Page"
+                    @bind-PageSize="_state.PageSize"
+                    @bind-SelectedVariableId="_state.SelectedVariableId"
+                    IsAuthenticated="@IsAuthenticated"
+                    HeadingLevel="@HeadingLevel"
+                    Language="@Language"
+                    VariableList="@ReaderLists"
+                    VariableListFilters="@ReaderListFilters" />
+</CascadingValue>
 
 @code {
     // Passed as a fragment rather than mounted beside the search, so the list sits inside the tab

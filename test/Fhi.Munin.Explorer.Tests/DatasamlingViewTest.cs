@@ -589,9 +589,16 @@ public class DatasamlingViewTest : BunitContext
     // The contents nav in the column beside them.
     // ---------------------------------------------------------------------------------
 
-    /// <summary>Where the nav's entries point, in document order.</summary>
+    /// <summary>Which section each entry names, in document order.</summary>
+    /// <remarks>
+    /// The fragment alone. In front of it every href carries this page's own path and query, which
+    /// is what stops a bare <c>#id</c> resolving against a host's <c>&lt;base href&gt;</c>; that
+    /// prefix says nothing about which block an entry names and is pinned in DetailTocTest.
+    /// </remarks>
     private static IReadOnlyList<string> Targets(IRenderedComponent<DatasamlingView> cut) =>
-        [.. cut.FindAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")!)];
+        [.. cut.FindAll(".munin-explorer-page__toc a")
+               .Select(link => link.GetAttribute("href")!)
+               .Select(href => href[href.IndexOf('#', StringComparison.Ordinal)..])];
 
     /// <summary>What the nav's entries say, in document order.</summary>
     private static IReadOnlyList<string> Entries(IRenderedComponent<DatasamlingView> cut) =>
@@ -704,7 +711,7 @@ public class DatasamlingViewTest : BunitContext
         var cut = Render(Datasamling() with { StatisticsType = statisticsType });
 
         var heading = cut.Find($"#{DetailSectionIds.Statistics}").FirstElementChild!.TextContent;
-        var entry = cut.Find($".munin-explorer-page__toc a[href='#{DetailSectionIds.Statistics}']").TextContent;
+        var entry = cut.Find($".munin-explorer-page__toc a[href$='#{DetailSectionIds.Statistics}']").TextContent;
 
         Assert.Equal(expected, heading);
         Assert.Equal(heading, entry);

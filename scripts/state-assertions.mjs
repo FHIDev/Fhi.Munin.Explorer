@@ -1,5 +1,8 @@
 // What the component's STATE is measured against: after a press it refuses, does the browser's own
-// control still say the same thing the component drew?
+// control still say the same thing the component drew? And, since Fhi.Metadata-l9l2n.114, one
+// neighbouring question that is here for the same reason — an href is a string in a render tree
+// until a browser RESOLVES it, and what it resolves to depends on a <base> element bUnit has not
+// got.
 //
 // WHY THIS EXISTS. A browser flips a checkbox itself, before any handler runs, and a Blazor render
 // that equals the render before it writes nothing back to the DOM. So a press the component
@@ -10,6 +13,12 @@
 // happens there, and the disagreement is invisible to every test in test/. (Fhi.Metadata-1s7z1)
 //
 // WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
+//   - whether a contents-nav press moves FOCUS as well as the viewport. ModernHost is a Blazor Web
+//     App with an interactive router, and Blazor intercepts a same-page-with-hash press and calls
+//     scrollIntoView itself, which does not run the browser's own focus step. helsedata's host has
+//     no router and does not intercept, so there the focus moves; measured on samples/LegacyHost
+//     and recorded on Fhi.Metadata-l9l2n.114. What is asserted below is the half the component owns
+//     — that every target is focusable — not the browser's half;
 //   - every OTHER control the component draws. Four presses are measured here, all in the variable
 //     explorer: the column picker's refusal to hide the last column, a facet press dropped because
 //     a fetch was already in flight, and the two the facet tree's branch disclosures add — that a
@@ -36,6 +45,9 @@
 // leaving the browser's flip standing — and state-scan.mjs requires `measure` to report it. An
 // assertion that has quietly stopped measuring anything passes forever otherwise, which is the
 // failure this whole file is about.
+
+/** The contents nav of a detail view, in the column beside it. */
+const TOC = '.munin-explorer-page__toc';
 
 /** The component's own root, for a message that says where it looked. */
 const MOUNT = '.munin-explorer';
@@ -234,6 +246,107 @@ const chosenInFacet = facet => facet.locator(':scope > summary').evaluate(summar
 const tickedInFacet = facet => facet.locator(':scope input[type=checkbox]:checked').count();
 
 export const assertions = [
+  {
+    name: 'every contents-nav link resolves to this page rather than to the host base',
+    // Nothing about one defect is encoded here: it asks what the BROWSER makes of each href and
+    // requires this page's own address, whatever the attribute happens to say.
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+
+    // The one thing no test in test/ can ask. The attribute reads "#metadata" in the broken build
+    // and "/kilder?kilde=…#metadata" in the fixed one, and bUnit can see both — but what broke on
+    // helsedata is that a bare fragment resolves against the document's <base href="/">, which
+    // their Optimizely layout sets, so every entry navigated to the site root and dropped the open
+    // kilde. bUnit has no base element and no URL resolver. ModernHost sets one, and /kilder is a
+    // path with a query on it, so this is the page the question can be asked on.
+    async stage(page) {
+      const nav = page.locator(TOC);
+      await nav.waitFor({ state: 'visible', timeout: findTimeout });
+
+      const base = await page.evaluate(() => document.querySelector('base')?.href ?? null);
+
+      // Without one the resolved value equals the document's own address whatever the href says,
+      // so a green run would be measuring nothing at all.
+      if (base === null) {
+        throw new Error('this host emits no <base href>, so it cannot tell the defect from the fix');
+      }
+
+      const entries = await nav.locator('a').evaluateAll(links => links.map(link => ({
+        label: (link.textContent ?? '').trim(),
+        id: link.getAttribute('href')?.split('#')[1] ?? '',
+      })));
+
+      if (entries.length === 0) {
+        throw new Error(`${TOC} drew no links, so there is no href to resolve`);
+      }
+
+      const before = await page.evaluate(() => ({ path: location.pathname, query: location.search }));
+
+      if (before.query === '') {
+        throw new Error(`${before.path} carries no query, so a dropped one would not show`);
+      }
+
+      // From the keyboard, because that is also the claim: a link answers Enter with no handler.
+      await nav.locator('a').first().focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(REFUSAL_MS);
+
+      const after = await page.evaluate(() => ({ path: location.pathname, query: location.search }));
+      const jumped = await page.evaluate(id => {
+        const box = document.getElementById(id)?.getBoundingClientRect();
+
+        return box === undefined ? null : box.top >= 0 && box.top < innerHeight;
+      }, entries[0].id);
+
+      return { base, entries, before, after, jumped };
+    },
+
+    async measure(page, { entries, before, after, jumped }) {
+      if (after.path !== before.path || after.query !== before.query) {
+        return `pressing "${entries[0].label}" moved the reader from ${before.path}${before.query} ` +
+          `to ${after.path}${after.query}: the jump left the page instead of scrolling within it`;
+      }
+
+      if (jumped !== true) {
+        return jumped === null
+          ? `"${entries[0].label}" names #${entries[0].id}, which is not in the document`
+          : `pressing "${entries[0].label}" left #${entries[0].id} off screen`;
+      }
+
+      // Read off the DOM every time rather than from what stage saw, because the control below
+      // rewrites the attribute and this is the read that has to notice.
+      const resolved = await page.locator(`${TOC} a`).evaluateAll(links => links.map(link => ({
+        id: link.getAttribute('href')?.split('#')[1] ?? '',
+        href: link.href,
+        wanted: `${location.origin}${location.pathname}${location.search}#${link.getAttribute('href')?.split('#')[1] ?? ''}`,
+      })));
+
+      const astray = resolved.find(one => one.href !== one.wanted);
+
+      if (astray !== undefined) {
+        return `the link to #${astray.id} resolves to ${astray.href} where this page is ` +
+          `${astray.wanted}: the href is being resolved against the <base>, not against the page`;
+      }
+
+      // The component's half of moving focus. Whether the browser takes it depends on the host —
+      // see the header — but a target that is not focusable can never be given it.
+      const unfocusable = await page.evaluate(ids => ids
+        .filter(id => document.getElementById(id)?.getAttribute('tabindex') !== '-1'),
+      resolved.map(one => one.id));
+
+      return unfocusable.length === 0
+        ? null
+        : `section(s) ${unfocusable.join(', ')} carry no tabindex="-1", so a fragment jump to ` +
+          'them scrolls the reader there and leaves their next Tab back in the nav';
+    },
+
+    // The bead's own defect, put back by hand: a bare fragment. The attribute then reads exactly
+    // what it read in the broken build, and the resolved value is the only thing that says so.
+    async control(page) {
+      await page.locator(`${TOC} a`).evaluateAll(links => links.forEach(
+        link => link.setAttribute('href', `#${link.getAttribute('href').split('#')[1]}`)));
+    },
+  },
   {
     name: 'a refused column toggle leaves the picker agreeing with the columns drawn',
     // Nothing about one defect is encoded here: it asks the picker and the header the same

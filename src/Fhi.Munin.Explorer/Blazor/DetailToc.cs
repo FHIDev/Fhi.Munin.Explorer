@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Routing;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -9,11 +10,26 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Plain <c>#fragment</c> links and no script at all. The browser does the scrolling, and
+/// Fragment links and no script at all. The browser does the scrolling and the focus, and
 /// <c>scroll-margin-top</c> on <see cref="DetailSection"/>'s wrapper is what puts the heading clear
 /// of a sticky site header. The one thing that would need script is the highlight following the
 /// reader down the page, and it is deliberately not here: the nav is the whole navigational
 /// benefit, it ships now, and this package still ships zero JavaScript.
+/// </para>
+/// <para>
+/// Each href carries this page's own path and query in front of the <c>#</c>. A bare <c>#id</c> is
+/// resolved against the document's <c>&lt;base href&gt;</c> rather than against the page being
+/// read, and helsedata's Optimizely host sets that to <c>/</c>, so every link left the page for the
+/// site root instead of scrolling. The query goes with the path because a browser treats a fragment
+/// jump as same-document only when both match: <c>/MuninKelda/#metadata</c> would scroll and drop
+/// the <c>?kilde=</c> the reader is on.
+/// </para>
+/// <para>
+/// A host mounting a detail view inside <see cref="VariableExplorer"/> or
+/// <see cref="KildeExplorer"/> gets that address from the wrapper, which is the only side that
+/// knows what it last wrote. Mounted under anything else the links are built from the circuit's own
+/// address, so a host that moves the address bar with <c>history.replaceState</c> and no
+/// <c>NavigationManager</c> call owes this component nothing but that call.
 /// </para>
 /// <para>
 /// So no <c>form-menu__list__item--active</c> is emitted either. With nothing tracking the scroll
@@ -33,8 +49,23 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <see cref="Column"/> for the reason that matters.
 /// </para>
 /// </remarks>
-public sealed class DetailToc : ComponentBase
+public sealed class DetailToc : ComponentBase, IDisposable
 {
+    /// <summary>
+    /// The name <see cref="VariableExplorer"/> and <see cref="KildeExplorer"/> cascade their
+    /// mirrored address under, and this component reads it back by.
+    /// </summary>
+    internal const string PageAddressName = "MuninExplorerPageAddress";
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    // The address bar as the wrapper that owns the query last wrote it. Cascaded rather than read
+    // from NavigationManager, whose Uri is the address the circuit STARTED on: UrlMirror writes
+    // with history.replaceState, which moves the browser without telling Blazor.
+    [CascadingParameter(Name = PageAddressName)]
+    private string? PageAddress { get; set; }
+
     /// <summary>
     /// The sections to link to, in document order. Every one must be a section that rendered: a
     /// link to an <c>id</c> the document does not carry is a control that does nothing.
@@ -73,6 +104,17 @@ public sealed class DetailToc : ComponentBase
             };
 
     /// <inheritdoc />
+    protected override void OnInitialized() => Navigation.LocationChanged += Moved;
+
+    /// <inheritdoc />
+    public void Dispose() => Navigation.LocationChanged -= Moved;
+
+    // A host that owns the query rewrites it without re-rendering us — KildeSearchWithHandover
+    // navigates and its own guard returns early — and the hrefs would then keep naming the address
+    // the reader arrived on rather than the one they are reading.
+    private void Moved(object? sender, LocationChangedEventArgs e) => StateHasChanged();
+
+    /// <inheritdoc />
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         if (Entries.Count == 0)
@@ -86,6 +128,8 @@ public sealed class DetailToc : ComponentBase
         builder.OpenElement(2, "ul");
         builder.AddAttribute(3, "class", "form-menu__list");
 
+        var page = PageAddress is { Length: > 0 } given ? given : new Uri(Navigation.Uri).PathAndQuery;
+
         var seq = 10;
 
         foreach (var entry in Entries)
@@ -94,7 +138,7 @@ public sealed class DetailToc : ComponentBase
             builder.AddAttribute(seq + 1, "class", "form-menu__list__item");
 
             builder.OpenElement(seq + 2, "a");
-            builder.AddAttribute(seq + 3, "href", $"#{entry.Id}");
+            builder.AddAttribute(seq + 3, "href", $"{page}#{entry.Id}");
             builder.AddContent(seq + 4, entry.Label);
             builder.CloseElement();
 
