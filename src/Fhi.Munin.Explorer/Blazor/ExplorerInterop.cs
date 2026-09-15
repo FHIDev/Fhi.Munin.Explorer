@@ -21,6 +21,11 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         $"./_content/{typeof(ExplorerInterop).Assembly.GetName().Name}/{ModuleFile}";
 
     private readonly IJSRuntime _js;
+
+    // The import's continuation resumes off the renderer's synchronization context and a disposal
+    // runs on the dispatcher, so the two reach these at once: exactly one may keep the module.
+    private readonly Lock _gate = new();
+
     private IJSObjectReference? _module;
     private bool _disposed;
 
@@ -52,13 +57,9 @@ internal sealed class ExplorerInterop : IAsyncDisposable
 
             // Disposal can land while the import is in flight, and `??=` would assign anyway: the
             // answer would be a live reference on a dead instance that nothing releases again.
-            if (_disposed)
+            if (!Kept(module))
             {
                 await Released(module).ConfigureAwait(false);
-            }
-            else
-            {
-                _module = module;
             }
         }
 
@@ -68,11 +69,39 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        var module = _module;
-        _module = null;
-        _disposed = true;
+        IJSObjectReference? module;
+
+        lock (_gate)
+        {
+            module = _module;
+            _module = null;
+            _disposed = true;
+        }
 
         await Released(module).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Takes <paramref name="module"/> as this instance's, unless disposal got here first.
+    /// </summary>
+    /// <remarks>
+    /// The check and the assignment are one step because they are not on the same thread as
+    /// <see cref="DisposeAsync"/>: read and assign apart and a disposal in between leaves the
+    /// arriving reference on a dead instance, which is the leak this answers.
+    /// </remarks>
+    private bool Kept(IJSObjectReference? module)
+    {
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return false;
+            }
+
+            _module = module;
+
+            return true;
+        }
     }
 
     /// <summary>
@@ -96,11 +125,25 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     }
 
     /// <summary>Releases <paramref name="module"/> if there is one, tolerating a dead circuit.</summary>
+    /// <remarks>
+    /// A release is a round trip on Blazor Server, so a browser whose reference table has moved on
+    /// answers it with a <see cref="JSException"/>. Unlike an export's, that one is not a defect to
+    /// surface: a throw out of disposal is unhandled in the renderer and takes the circuit down.
+    /// </remarks>
     private static async Task Released(IJSObjectReference? module)
     {
-        if (module is not null)
+        if (module is null)
+        {
+            return;
+        }
+
+        try
         {
             await Tolerated(module.DisposeAsync).ConfigureAwait(false);
+        }
+        // The reference is already gone from the browser's table. So is the thing it was holding.
+        catch (JSException)
+        {
         }
     }
 
@@ -108,9 +151,9 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     /// Runs <paramref name="call"/>, answering null wherever the browser is out of reach.
     /// </summary>
     /// <remarks>
-    /// The three clauses are the whole list of what "out of reach" means, in one place. Anything
-    /// else travels on, a <see cref="JSException"/> included: that is how a fault inside an export
-    /// surfaces, and it is a defect to read in a host's log rather than a browser out of reach.
+    /// The three clauses are the whole list of what "out of reach" means, in one place. A
+    /// <see cref="JSException"/> travels on: that is how a fault inside an export surfaces, and the
+    /// two calls where it means something milder answer for it themselves.
     /// </remarks>
     private static async Task<T?> Tolerated<T>(Func<ValueTask<T>> call) where T : class
     {

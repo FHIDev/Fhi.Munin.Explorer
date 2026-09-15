@@ -18,7 +18,9 @@ internal static class RazorSource
     /// These files explain in prose the rules the guards enforce — no <c>@page</c>, the root class,
     /// the version attribute — so a check a comment can satisfy, or break, is a check prose can
     /// switch off. <c>scripts/assert-sample-css-in-step.sh</c> strips for the same reason.
+    /// Blanks of the same length rather than one space, so a caller indexing the result still lands
+    /// where it meant to.
     /// </remarks>
     internal static string WithoutComments(string markup) =>
-        Regex.Replace(markup, @"@\*.*?\*@", " ", RegexOptions.Singleline);
+        Regex.Replace(markup, @"@\*.*?\*@", found => new string(' ', found.Length), RegexOptions.Singleline);
 }

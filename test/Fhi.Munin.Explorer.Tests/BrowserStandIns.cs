@@ -69,6 +69,10 @@ internal sealed class HoldingJsRuntime(IJSObjectReference module) : IJSRuntime
 }
 
 /// <summary>A runtime whose import stays in flight until the test answers it.</summary>
+/// <remarks>
+/// Only <c>import</c> waits on the answer, and only it is answered with the module, for the reason
+/// <see cref="LendingJsRuntime"/> gives: a component reaches the browser for other calls too.
+/// </remarks>
 internal sealed class PendingJsRuntime(IJSObjectReference module) : IJSRuntime
 {
     private readonly TaskCompletionSource<IJSObjectReference> _answer =
@@ -82,7 +86,7 @@ internal sealed class PendingJsRuntime(IJSObjectReference module) : IJSRuntime
 
     public async ValueTask<TValue> InvokeAsync<TValue>(
         string identifier, CancellationToken cancellationToken, object?[]? args) =>
-        (TValue)(object)await _answer.Task;
+        identifier == "import" ? (TValue)(object)await _answer.Task : default!;
 }
 
 /// <summary>A module whose disposal throws, as one on a dropped circuit does.</summary>

@@ -64,21 +64,61 @@ public partial class ExplorerInteropTest
     [Fact]
     public void ModuleExports_WhenTheSourceIsRead_ThenTheWrapperNamesEveryOne()
     {
-        // Nothing to find today: the module is a seam and exports nothing. This is here for the
-        // first export, whose name is a literal in C# and a declaration in JS with nothing else
-        // holding the two together, so a mismatch surfaces only when a host calls it.
+        // The module is a seam and exports nothing today, so this walk reads nothing and the two
+        // theories below are what hold the matcher up. It is here for the first export, whose name
+        // is a literal in C# and a declaration in JS with nothing else holding the two together.
+        var module = File.ReadAllText(ModuleInSource);
         var wrapper = File.ReadAllText(
             Repo.In("src", "Fhi.Munin.Explorer", "Blazor", nameof(ExplorerInterop) + ".cs"));
 
-        foreach (Match export in Export().Matches(File.ReadAllText(ModuleInSource)))
-        {
-            var name = export.Groups["name"].Value;
+        Assert.False(
+            Opaque().IsMatch(Blanked(module)),
+            $"{ExplorerInterop.ModuleFile} exports through `default` or `*`, neither of which names " +
+            "anything this can read. Export by name, so the two spellings stay tied together.");
 
+        foreach (var name in Exports(module))
+        {
             Assert.True(
                 wrapper.Contains($"\"{name}\"", StringComparison.Ordinal),
                 $"{ExplorerInterop.ModuleFile} exports '{name}' and {nameof(ExplorerInterop)} names " +
                 "no such identifier, so nothing ties the two spellings together.");
         }
+    }
+
+    [Theory]
+    [InlineData("export function packageVersion() {}", "packageVersion")]
+    [InlineData("export async function packageVersion() {}", "packageVersion")]
+    [InlineData("export function* packageVersion() {}", "packageVersion")]
+    [InlineData("export const packageVersion = () => {};", "packageVersion")]
+    [InlineData("export let packageVersion = 1;", "packageVersion")]
+    [InlineData("export var packageVersion = 1;", "packageVersion")]
+    [InlineData("export class PackageVersion {}", "PackageVersion")]
+    [InlineData("function packageVersion() {}\nexport { packageVersion };", "packageVersion")]
+    [InlineData("export { internalName as packageVersion };", "packageVersion")]
+    [InlineData("export { first, second };", "first second")]
+    [InlineData("export { packageVersion } from './other.js';", "packageVersion")]
+    [InlineData("function packageVersion() {}", "")]
+    [InlineData("// export function packageVersion() {}", "")]
+    public void Exports_WhenAModuleNamesThem_ThenEveryFormIsRead(string source, string names)
+    {
+        // The guard above reads a module with no exports in it, so the matcher is fed its input
+        // here instead — every shape a first export could reasonably take, and the two near misses
+        // that must read as nothing: a plain declaration, and the word inside a comment.
+        Assert.Equal(names, string.Join(' ', Exports(source)));
+        Assert.DoesNotMatch(Opaque(), Blanked(source));
+    }
+
+    [Theory]
+    [InlineData("export default function packageVersion() {}")]
+    [InlineData("export default packageVersion;")]
+    [InlineData("export * from './other.js';")]
+    [InlineData("export * as helpers from './other.js';")]
+    public void Exports_WhenAFormHidesTheName_ThenTheModuleIsRefusedRatherThanReadAsEmpty(string source)
+    {
+        // These are the forms the matcher cannot see a name in. Silence over them is the failure
+        // the guard exists to prevent, so the module is refused for using one rather than passing.
+        Assert.Matches(Opaque(), Blanked(source));
+        Assert.Empty(Exports(source));
     }
 
     // -----------------------------------------------------------------------
@@ -209,6 +249,22 @@ public partial class ExplorerInteropTest
     }
 
     [Fact]
+    public async Task DisposeAsync_WhenTheReleaseItselfFaults_ThenItSwallowsTheFault()
+    {
+        // A release is a round trip on Blazor Server, so a browser that has already dropped the
+        // reference — a reconnect, or a script on the page releasing it first — answers with a
+        // JSException. Letting that travel on makes an ordinary unmount an unhandled renderer fault.
+        var interop = new ExplorerInterop(
+            new LendingJsRuntime(new RefusingModule(new JSException("no such reference"))));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.DisposeAsync();
+
+        Assert.False(interop.IsLoaded);
+    }
+
+    [Fact]
     public async Task DisposeAsync_WhenItIsCalledTwice_ThenNothingIsReleasedASecondTime()
     {
         var module = new CountingModule();
@@ -289,8 +345,43 @@ public partial class ExplorerInteropTest
     [GeneratedRegex(@"//[^\n]*|/\*.*?\*/", RegexOptions.Singleline)]
     private static partial Regex Comment();
 
-    [GeneratedRegex(@"\bexport\s+(?:async\s+)?(?:function\*?|const|let|var|class)\s+(?<name>[A-Za-z_$][\w$]*)")]
-    private static partial Regex Export();
+    /// <summary>Every name <paramref name="source"/> exports, in the forms that state one.</summary>
+    /// <remarks>
+    /// Comments go first, through the same blanking the import walk uses — JS spells them the way
+    /// C# does, and the module's own header has the word <c>export</c> in its prose.
+    /// </remarks>
+    private static IEnumerable<string> Exports(string source)
+    {
+        var read = Blanked(source);
+
+        return Declared()
+            .Matches(read)
+            .Select(declared => declared.Groups["name"].Value)
+            .Concat(Listed()
+                .Matches(read)
+                .SelectMany(list => list.Groups["names"].Value.Split(','))
+                .Select(Bound)
+                .Where(name => name.Length > 0));
+    }
+
+    /// <summary>The name one entry of an <c>export { … }</c> list binds, after any <c>as</c>.</summary>
+    private static string Bound(string entry)
+    {
+        var words = entry.Split(default(char[]), StringSplitOptions.RemoveEmptyEntries);
+
+        return words.Length == 0 ? string.Empty : words[^1];
+    }
+
+    [GeneratedRegex(
+        @"\bexport\s+(?:async\s+)?(?:function\b\s*\*?|const|let|var|class)\s+(?<name>[A-Za-z_$][\w$]*)")]
+    private static partial Regex Declared();
+
+    [GeneratedRegex(@"\bexport\s*\{(?<names>[^}]*)\}")]
+    private static partial Regex Listed();
+
+    /// <summary>The export forms that state no name a caller could invoke by.</summary>
+    [GeneratedRegex(@"\bexport\s+(?:default\b|\*)")]
+    private static partial Regex Opaque();
 
     [GeneratedRegex(@"\bOn(?:Initialized|ParametersSet|AfterRender)(?:Async)?\b")]
     private static partial Regex Lifecycle();
