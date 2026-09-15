@@ -159,7 +159,13 @@ public class DetailTocTest : BunitContext
 
         Assert.Equal("Innhold", nav.GetAttribute("aria-label"));
         Assert.Null(nav.GetAttribute("class"));
-        Assert.Equal("form-menu__list", Assert.Single(nav.Children).ClassName);
+
+        Assert.Equal(2, nav.Children.Length);
+        Assert.Equal("h2", nav.Children[0].LocalName);
+        Assert.Equal("Innhold", nav.Children[0].TextContent);
+        Assert.Null(nav.Children[0].GetAttribute("class"));
+
+        Assert.Equal("form-menu__list", nav.Children[1].ClassName);
 
         // Exactly the base name on every item, which is also what says no item was marked active:
         // --active and --active-child are the modifiers the scroll-spy will add, in chain B.
