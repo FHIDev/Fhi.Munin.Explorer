@@ -6233,8 +6233,9 @@ public class VariableSearchTest : BunitContext
 
     /// <summary>The checkbox on the one row of <paramref name="surface"/> naming <paramref name="label"/>.</summary>
     private static IElement SurfaceBox(IElement surface, string label) =>
-        Assert.Single(surface.QuerySelectorAll("li")
-                          .Where(row => RowWords(row).StartsWith(label, StringComparison.Ordinal)))
+        Assert.Single(
+                surface.QuerySelectorAll("li"),
+                row => RowWords(row).StartsWith(label, StringComparison.Ordinal))
             .QuerySelector("input[type=checkbox]")!;
 
     /// <summary>Tick or untick a checkbox, the way the browser reports a press on one.</summary>
