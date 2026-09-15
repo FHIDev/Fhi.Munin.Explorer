@@ -8714,9 +8714,30 @@ public class VariableSearchTest : BunitContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Single(Values(cut),
-                      value => value.TextContent.Contains("grad av utfall", StringComparison.Ordinal));
+        Assert.Equal([Detail(TaleId).Description], PanelRows(cut, "Beskrivelse"));
     }
+
+    [Fact]
+    public void Panel_WhenNoPlacementHasArrived_ThenTheIdentificationListStillSpellsTheDescriptionOut()
+    {
+        // The other half of the suppression, and the half that was harmless only until this change:
+        // before it the key never reached the bag, so taking Beskrivelse out of Egenskaper removed
+        // nothing. Now it removes a row that would otherwise render, and the only thing keeping the
+        // description on the panel at all is that the Identifikasjon list above draws it
+        // unconditionally — coupled by nothing but that, so it is asserted (Fhi.Metadata-bct95).
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(Detail(TaleId)));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal([Detail(TaleId).Description], PanelRows(cut, "Beskrivelse"));
+    }
+
+    // Every value the open panel draws under one label, hero strip excluded for the reason Values
+    // gives. Asked by label rather than by text so "drawn twice" and "drawn nowhere" both fail.
+    private static IReadOnlyList<string> PanelRows(IRenderedComponent<VariableSearch> cut, string label) =>
+        [.. Panel(cut).QuerySelectorAll("dl:not(.munin-explorer-page__facts) div")
+                      .Where(row => row.QuerySelector("dt")?.TextContent == label)
+                      .Select(row => row.QuerySelector("dd")?.TextContent ?? "")];
 
     [Fact]
     public void Panel_WhenTheDataTabIsChosen_ThenTheKodeverkShowsAndTheMetadataDoesNot()

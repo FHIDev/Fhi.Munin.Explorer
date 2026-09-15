@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -132,29 +131,11 @@ public sealed partial class KildeView : ComponentBase
         : string.IsNullOrWhiteSpace(shortName) ? code
         : $"{code} ({shortName})";
 
-    private KildeDetail? _groupsKilde;
-    private string? _groupsReader;
+    private bool _resolved;
+    private KildeDetail? _resolvedKilde;
+    private string? _resolvedLanguage;
     private IReadOnlyList<PropertyGroup> _groups = [];
-    private IReadOnlyDictionary<string, string?> _values = ReadOnlyDictionary<string, string?>.Empty;
-    private IReadOnlySet<string> _drawnElsewhere = new HashSet<string>(StringComparer.Ordinal);
-
-    /// <summary>
-    /// The payload's curated bag with the source's own columns merged in — see
-    /// <see cref="CatalogueColumns"/> for why a column-backed value has to be put there at all.
-    /// </summary>
-    /// <remarks>
-    /// Resolved inside the cache below rather than beside it: the merge is a dictionary build, and
-    /// the hero facts read it once per fact on top of the two reads the markup makes.
-    /// </remarks>
-    private IReadOnlyDictionary<string, string?> Values
-    {
-        get
-        {
-            Resolve();
-
-            return _values;
-        }
-    }
+    private CataloguePlacement _placement = CataloguePlacement.None;
 
     /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
     private IReadOnlyList<PropertyGroup> Groups
@@ -168,7 +149,26 @@ public sealed partial class KildeView : ComponentBase
     }
 
     /// <summary>
-    /// Fills both caches, once per (Kilde, Reader) pair rather than per access.
+    /// The placement questions this page asks: the payload's curated bag with the source's own
+    /// columns merged in — see <see cref="CatalogueColumns"/> for why a column-backed value has to
+    /// be put there at all — and this view's own suppressions.
+    /// </summary>
+    /// <remarks>
+    /// Read into a local wherever two questions are asked about one fact, so the pair is answered
+    /// over one payload — see <see cref="CataloguePlacement"/>.
+    /// </remarks>
+    private CataloguePlacement Placement
+    {
+        get
+        {
+            Resolve();
+
+            return _placement;
+        }
+    }
+
+    /// <summary>
+    /// Fills both caches, once per (Kilde, Language) pair rather than per access.
     /// </summary>
     /// <remarks>
     /// The markup reads the groups twice per render — the empty check, then the loop — and each
@@ -178,26 +178,30 @@ public sealed partial class KildeView : ComponentBase
     /// </remarks>
     private void Resolve()
     {
-        if (ReferenceEquals(_groupsKilde, Kilde) && _groupsReader == Reader)
+        if (_resolved && ReferenceEquals(_resolvedKilde, Kilde) && _resolvedLanguage == Language)
         {
             return;
         }
 
-        _groupsKilde = Kilde;
-        _groupsReader = Reader;
+        _resolved = true;
+        _resolvedKilde = Kilde;
+        _resolvedLanguage = Language;
 
         if (Kilde is not { } kilde)
         {
-            _values = ReadOnlyDictionary<string, string?>.Empty;
-            _drawnElsewhere = new HashSet<string>(StringComparer.Ordinal);
+            _placement = CataloguePlacement.None;
             _groups = [];
 
             return;
         }
 
-        _values = CatalogueColumns.Values(kilde, Reader);
-        _drawnElsewhere = DrawnElsewhere(kilde);
-        _groups = CatalogueProperties.Groups(kilde.PropertyMetadata, _values, Reader, _drawnElsewhere);
+        _placement = new CataloguePlacement(kilde.PropertyMetadata,
+                                            CatalogueColumns.Values(kilde, Language),
+                                            Reader,
+                                            DrawnElsewhere(kilde));
+
+        _groups = CatalogueProperties.Groups(kilde.PropertyMetadata, _placement.Values, Reader,
+                                             _placement.DrawnElsewhere);
     }
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
@@ -208,7 +212,10 @@ public sealed partial class KildeView : ComponentBase
     /// </remarks>
     private static IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
     {
-        var keys = new HashSet<string>(StringComparer.Ordinal) { "Beskrivelse", "BeskrivelseFlerspraklig" };
+        var keys = new HashSet<string>(StringComparer.Ordinal)
+        {
+            CatalogueColumns.Description, "BeskrivelseFlerspraklig",
+        };
 
         if (Filled(kilde, "Formaal") && Filled(kilde, "FormaalFlerspraklig"))
         {
@@ -242,46 +249,31 @@ public sealed partial class KildeView : ComponentBase
     /// <c>Direkte identifiserbar</c> — so a hero reading one while the section reads the other is
     /// the DataType collision again (Fhi.Metadata-bct95).
     /// </remarks>
-    private string? PersonIdentification =>
-        Kilde is not { } kilde ? null
-        : Placed(CatalogueColumns.PersonIdentification)
-            ? Curated(CatalogueColumns.PersonIdentification)
-            : T.PersonIdentificationLabel(kilde.PersonIdentificationLevel);
+    private string? PersonIdentification
+    {
+        get
+        {
+            if (Kilde is not { } kilde)
+            {
+                return null;
+            }
+
+            // Both questions over one snapshot, so the word drawn cannot belong to a payload other
+            // than the one whose placement chose it.
+            var placement = Placement;
+
+            return placement.Placed(CatalogueColumns.PersonIdentification)
+                ? placement.Curated(CatalogueColumns.PersonIdentification)
+                : T.PersonIdentificationLabel(kilde.PersonIdentificationLevel);
+        }
+    }
 
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? Validity =>
         Kilde is { } kilde ? CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T) : null;
 
-    /// <summary>Whether the catalogue's own sections draw this key, so this view must not.</summary>
-    /// <remarks>
-    /// The merged values and this view's own suppressions both go in, so the question is the one
-    /// <see cref="Groups"/> answers rather than a weaker one about the placement alone.
-    /// </remarks>
-    private bool Placed(string key)
-    {
-        Resolve();
-
-        return Kilde is { } kilde
-               && CatalogueProperties.Placed(kilde.PropertyMetadata, _values, Reader, key, _drawnElsewhere);
-    }
-
-    /// <summary>One curated property's first value, resolved exactly as its section resolves it.</summary>
-    private string? Curated(string key) =>
-        Kilde is { } kilde
-        && CatalogueProperties.Row(kilde.PropertyMetadata, Values, Reader, key) is { Values: [var first, ..] }
-            ? first.Text
-            : null;
-
-    /// <summary>
-    /// A fact box's value, or nothing where the catalogue has placed the key in a section of its
-    /// own and that section is drawing it.
-    /// </summary>
-    /// <remarks>
-    /// The same fact in a section and in a fact box is two rows under one label in two different
-    /// words, which reads as two legitimate rows; dropped outright it would be a blank field on a
-    /// public page wherever Munin's placements have not arrived (Fhi.Metadata-bct95).
-    /// </remarks>
-    private string? UnlessPlaced(string key, string? value) => Placed(key) ? null : value;
+    /// <inheritdoc cref="CataloguePlacement.UnlessPlaced"/>
+    private string? UnlessPlaced(string key, string? value) => Placement.UnlessPlaced(key, value);
 
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? DataPeriod =>
@@ -324,40 +316,13 @@ public sealed partial class KildeView : ComponentBase
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(kilde.LastUpdated, Language), false),
             ];
 
-    /// <summary>
-    /// The validity as a fact box shows it: the period, or the one end no section has taken.
-    /// </summary>
-    /// <remarks>
-    /// Per end, because the catalogue places the two keys separately: yielding the whole period to
-    /// either placement leaves the other date drawn nowhere, and keeping the period beside a placed
-    /// end either repeats that date or, with the closing one placed, reads as ongoing.
-    /// </remarks>
-    private IEnumerable<(string Label, string? Value, bool Norwegian)> ValidityRows
-    {
-        get
-        {
-            if (Kilde is not { } kilde)
-            {
-                yield break;
-            }
-
-            var from = Placed(CatalogueColumns.ValidFrom);
-            var to = Placed(CatalogueColumns.ValidTo);
-
-            if (!from && !to)
-            {
-                yield return (T.FieldValidity, Validity, false);
-            }
-            else if (!from)
-            {
-                yield return (T.FieldValidFrom, CatalogueDate.DayOrNothing(kilde.ValidFrom, Language), false);
-            }
-            else if (!to)
-            {
-                yield return (T.FieldValidTo, CatalogueDate.DayOrNothing(kilde.ValidTo, Language), false);
-            }
-        }
-    }
+    /// <inheritdoc cref="CataloguePlacement.ValidityRows"/>
+    private IReadOnlyList<(string Label, string? Value, bool Norwegian)> ValidityRows =>
+        Kilde is { } kilde
+            ? Placement.ValidityRows(Validity,
+                                     CatalogueDate.DayOrNothing(kilde.ValidFrom, Language),
+                                     CatalogueDate.DayOrNothing(kilde.ValidTo, Language), T)
+            : [];
 
     /// <summary>Counts and dates, which belong to no language.</summary>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> Statistics =>

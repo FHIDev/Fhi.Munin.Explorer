@@ -46,6 +46,11 @@ internal static class CatalogueColumns
     internal const string ValidTo = "GyldigTil";
 
     /// <inheritdoc cref="Description"/>
+    /// <remarks>
+    /// The one merged key no fact box yields to: <see cref="DatasamlingView"/> draws it as the
+    /// Statistikk heading rather than as a row, and a heading naming what the numbers count is not
+    /// the same fact twice however the catalogue places the key.
+    /// </remarks>
     internal const string StatisticsType = "StatistikkType";
 
     /// <inheritdoc cref="Description"/>
@@ -55,15 +60,20 @@ internal static class CatalogueColumns
     internal const string Frequency = "Frekvens";
 
     /// <summary>A source's columns, keyed as the catalogue's property definitions key them.</summary>
-    internal static IReadOnlyDictionary<string, string?> Values(KildeDetail kilde, string reader) =>
+    /// <remarks>
+    /// The reader's language rather than the normalised reader tag, because the only thing this
+    /// consumes it for is formatting the two dates — and the fact box one line away formats the same
+    /// fields from the same argument, so the two are demonstrably one decision.
+    /// </remarks>
+    internal static IReadOnlyDictionary<string, string?> Values(KildeDetail kilde, string? language) =>
         Merge(kilde.AdditionalProperties,
               (Description, kilde.Description),
               (LegalBasis, kilde.LegalBasis),
               (DataController, kilde.DataController),
               (DataProcessor, kilde.DataProcessor),
               (PersonIdentification, kilde.PersonIdentificationLevel),
-              (ValidFrom, Day(kilde.ValidFrom, reader)),
-              (ValidTo, Day(kilde.ValidTo, reader)));
+              (ValidFrom, Day(kilde.ValidFrom, language)),
+              (ValidTo, Day(kilde.ValidTo, language)));
 
     /// <summary>
     /// A collection's columns, every inherited one taken from its <c>Effective…</c> value.
@@ -71,17 +81,18 @@ internal static class CatalogueColumns
     /// <remarks>
     /// The rule <see cref="DatasamlingView"/> already follows for the same fields: the own value is
     /// null where nothing is set at this level, so the own value would report "not stated" for a
-    /// controller that is perfectly well known one level up.
+    /// controller that is perfectly well known one level up. The language argument is the reader's
+    /// own tag, for the reason the source overload gives.
     /// </remarks>
-    internal static IReadOnlyDictionary<string, string?> Values(DatasamlingDetail datasamling, string reader) =>
+    internal static IReadOnlyDictionary<string, string?> Values(DatasamlingDetail datasamling, string? language) =>
         Merge(datasamling.AdditionalProperties,
               (Description, datasamling.Description),
               (LegalBasis, datasamling.EffectiveLegalBasis),
               (DataController, datasamling.EffectiveDataController),
               (DataProcessor, datasamling.EffectiveDataProcessor),
               (PersonIdentification, datasamling.EffectivePersonIdentificationLevel),
-              (ValidFrom, Day(datasamling.EffectiveValidFrom, reader)),
-              (ValidTo, Day(datasamling.EffectiveValidTo, reader)),
+              (ValidFrom, Day(datasamling.EffectiveValidFrom, language)),
+              (ValidTo, Day(datasamling.EffectiveValidTo, language)),
               (StatisticsType, datasamling.StatisticsType),
               (CountingUnit, datasamling.CountingUnit),
               (Frequency, datasamling.Frequency));
@@ -134,6 +145,6 @@ internal static class CatalogueColumns
     /// Written here rather than left to the renderer, which formats no dates at all: the column
     /// holds an instant, and the same field is already read as a day everywhere else on the page.
     /// </remarks>
-    private static string? Day(DateTimeOffset? value, string reader) =>
-        CatalogueDate.DayOrNothing(value, reader);
+    private static string? Day(DateTimeOffset? value, string? language) =>
+        CatalogueDate.DayOrNothing(value, language);
 }

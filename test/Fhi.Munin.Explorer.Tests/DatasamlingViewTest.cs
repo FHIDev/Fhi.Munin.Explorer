@@ -428,6 +428,43 @@ public class DatasamlingViewTest : BunitContext
         }
     }
 
+    /// <summary>
+    /// The merged values, the suppression set and the grouping are resolved once per (Datasamling,
+    /// Language) pair rather than per read, and a cache keyed on either half alone goes stale on the
+    /// other.
+    /// </summary>
+    /// <remarks>
+    /// Worth pinning because a fact box asks about a dozen placement questions per render, each of
+    /// which used to merge the values and rebuild the suppression set again (Fhi.Metadata-43jrq, on
+    /// the kilde side). The same payload instance is passed back deliberately: a fresh one would
+    /// miss the cache on its reference alone and say nothing about the language half.
+    /// </remarks>
+    [Theory]
+    [InlineData("no", "Beskrivelse")]
+    [InlineData("en", "Description")]
+    public void Metadata_WhenOnlyTheLanguageChanges_ThenTheCachedGroupsAreResolvedAgain(
+        string language, string expected)
+    {
+        var datasamling = Datasamling();
+        var cut = Render(datasamling, language: language == "no" ? "en" : "no");
+
+        cut.Render(b => b.Add(c => c.Datasamling, datasamling).Add(c => c.Language, language));
+
+        Assert.Equal(expected, cut.FindAll(".munin-explorer-group")[0].TextContent);
+    }
+
+    /// <inheritdoc cref="Metadata_WhenOnlyTheLanguageChanges_ThenTheCachedGroupsAreResolvedAgain"/>
+    [Fact]
+    public void Metadata_WhenOnlyTheDatasamlingChanges_ThenTheCachedGroupsAreResolvedAgain()
+    {
+        var cut = Render(Datasamling());
+
+        cut.Render(b => b.Add(c => c.Datasamling,
+                              Datasamling() with { AdditionalProperties = new Dictionary<string, string?>() }));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-group"));
+    }
+
     [Fact]
     public void Metadata_WhenTheCatalogueHasFilledInNothing_ThenNoHeadingPromisesAny()
     {

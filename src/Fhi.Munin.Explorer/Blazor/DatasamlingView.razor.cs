@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 
@@ -94,14 +93,11 @@ public sealed partial class DatasamlingView : ComponentBase
             ? datasamling.Description
             : null;
 
-    /// <summary>
-    /// The payload's curated bag with the collection's own columns merged in — see
-    /// <see cref="CatalogueColumns"/> for why a column-backed value has to be put there at all.
-    /// </summary>
-    private IReadOnlyDictionary<string, string?> Values =>
-        Datasamling is { } datasamling
-            ? CatalogueColumns.Values(datasamling, Reader)
-            : ReadOnlyDictionary<string, string?>.Empty;
+    private bool _resolved;
+    private DatasamlingDetail? _resolvedDatasamling;
+    private string? _resolvedLanguage;
+    private IReadOnlyList<PropertyGroup> _groups = [];
+    private CataloguePlacement _placement = CataloguePlacement.None;
 
     /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
     /// <remarks>
@@ -109,10 +105,71 @@ public sealed partial class DatasamlingView : ComponentBase
     /// this view's own rule: a description that only repeats the name is not drawn there, and
     /// suppressing the section's row as well would lose it altogether.
     /// </remarks>
-    private IReadOnlyList<PropertyGroup> Groups =>
-        Datasamling is { } datasamling
-            ? CatalogueProperties.Groups(datasamling.PropertyMetadata, Values, Reader, DrawnElsewhere)
-            : [];
+    private IReadOnlyList<PropertyGroup> Groups
+    {
+        get
+        {
+            Resolve();
+
+            return _groups;
+        }
+    }
+
+    /// <summary>
+    /// The placement questions this page asks: the payload's curated bag with the collection's own
+    /// columns merged in — see <see cref="CatalogueColumns"/> for why a column-backed value has to
+    /// be put there at all — and this view's own suppressions.
+    /// </summary>
+    /// <remarks>
+    /// Read into a local wherever two questions are asked about one fact, so the pair is answered
+    /// over one payload — see <see cref="CataloguePlacement"/>.
+    /// </remarks>
+    private CataloguePlacement Placement
+    {
+        get
+        {
+            Resolve();
+
+            return _placement;
+        }
+    }
+
+    /// <summary>
+    /// Fills both caches, once per (Datasamling, Language) pair rather than per access.
+    /// </summary>
+    /// <remarks>
+    /// The same cache <see cref="KildeView.Resolve"/> holds and for the same measurement
+    /// (Fhi.Metadata-43jrq): the markup reads the groups twice per render, and a fact box asks about
+    /// a dozen placement questions on top of that, each of which was merging the values and
+    /// rebuilding the suppression set again.
+    /// </remarks>
+    private void Resolve()
+    {
+        if (_resolved && ReferenceEquals(_resolvedDatasamling, Datasamling) && _resolvedLanguage == Language)
+        {
+            return;
+        }
+
+        _resolved = true;
+        _resolvedDatasamling = Datasamling;
+        _resolvedLanguage = Language;
+
+        if (Datasamling is not { } datasamling)
+        {
+            _placement = CataloguePlacement.None;
+            _groups = [];
+
+            return;
+        }
+
+        _placement = new CataloguePlacement(datasamling.PropertyMetadata,
+                                            CatalogueColumns.Values(datasamling, Language),
+                                            Reader,
+                                            DrawnElsewhere);
+
+        _groups = CatalogueProperties.Groups(datasamling.PropertyMetadata, _placement.Values, Reader,
+                                             _placement.DrawnElsewhere);
+    }
 
     /// <inheritdoc cref="Groups"/>
     private IReadOnlySet<string> DrawnElsewhere =>
@@ -120,30 +177,8 @@ public sealed partial class DatasamlingView : ComponentBase
             ? new HashSet<string>(StringComparer.Ordinal)
             : new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.Description };
 
-    /// <summary>Whether the catalogue's own sections draw this key, so this view must not.</summary>
-    /// <remarks>
-    /// The merged values and this view's own suppressions both go in, so the question is the one
-    /// <see cref="Groups"/> answers rather than a weaker one about the placement alone — the rule
-    /// <see cref="CatalogueProperties.Placed"/> states in full.
-    /// </remarks>
-    private bool Placed(string key) =>
-        Datasamling is { } datasamling
-        && CatalogueProperties.Placed(datasamling.PropertyMetadata, Values, Reader, key, DrawnElsewhere);
-
-    /// <summary>One curated property's first value, resolved exactly as its section resolves it.</summary>
-    private string? Curated(string key) =>
-        Datasamling is { } datasamling
-        && CatalogueProperties.Row(datasamling.PropertyMetadata, Values, Reader, key)
-            is { Values: [var first, ..] }
-            ? first.Text
-            : null;
-
-    /// <summary>
-    /// A fact box's value, or nothing where the catalogue has placed the key in a section of its
-    /// own and that section is drawing it — the rule <see cref="KildeView"/> follows for the same
-    /// fields, and for the reason its own remarks give.
-    /// </summary>
-    private string? UnlessPlaced(string key, string? value) => Placed(key) ? null : value;
+    /// <inheritdoc cref="CataloguePlacement.UnlessPlaced"/>
+    private string? UnlessPlaced(string key, string? value) => Placement.UnlessPlaced(key, value);
 
     /// <summary>
     /// The facts every datasamling has, labelled as the kilde view labels the same fields.
@@ -178,38 +213,13 @@ public sealed partial class DatasamlingView : ComponentBase
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false),
             ];
 
-    /// <summary>
-    /// The validity as a fact box shows it: the period, or the one end no section has taken — the
-    /// rule <c>KildeView.ValidityRows</c> follows, for the reason its own remarks give.
-    /// </summary>
-    private IEnumerable<(string Label, string? Value, bool Norwegian)> ValidityRows
-    {
-        get
-        {
-            if (Datasamling is not { } datasamling)
-            {
-                yield break;
-            }
-
-            var from = Placed(CatalogueColumns.ValidFrom);
-            var to = Placed(CatalogueColumns.ValidTo);
-
-            if (!from && !to)
-            {
-                yield return (T.FieldValidity, Validity, false);
-            }
-            else if (!from)
-            {
-                yield return (T.FieldValidFrom,
-                              CatalogueDate.DayOrNothing(datasamling.EffectiveValidFrom, Language), false);
-            }
-            else if (!to)
-            {
-                yield return (T.FieldValidTo,
-                              CatalogueDate.DayOrNothing(datasamling.EffectiveValidTo, Language), false);
-            }
-        }
-    }
+    /// <inheritdoc cref="CataloguePlacement.ValidityRows"/>
+    private IReadOnlyList<(string Label, string? Value, bool Norwegian)> ValidityRows =>
+        Datasamling is { } datasamling
+            ? Placement.ValidityRows(Validity,
+                                     CatalogueDate.DayOrNothing(datasamling.EffectiveValidFrom, Language),
+                                     CatalogueDate.DayOrNothing(datasamling.EffectiveValidTo, Language), T)
+            : [];
 
     /// <summary>
     /// The four values the hero row and the fact boxes both draw, resolved once each.
@@ -231,11 +241,24 @@ public sealed partial class DatasamlingView : ComponentBase
     /// The catalogue's own word once it has placed the key in a section, this package's vocabulary
     /// until then — the rule <c>KildeView.PersonIdentification</c> gives in full.
     /// </remarks>
-    private string? PersonIdentification =>
-        Datasamling is not { } datasamling ? null
-        : Placed(CatalogueColumns.PersonIdentification)
-            ? Curated(CatalogueColumns.PersonIdentification)
-            : T.PersonIdentificationLabel(datasamling.EffectivePersonIdentificationLevel);
+    private string? PersonIdentification
+    {
+        get
+        {
+            if (Datasamling is not { } datasamling)
+            {
+                return null;
+            }
+
+            // Both questions over one snapshot, so the word drawn cannot belong to a payload other
+            // than the one whose placement chose it.
+            var placement = Placement;
+
+            return placement.Placed(CatalogueColumns.PersonIdentification)
+                ? placement.Curated(CatalogueColumns.PersonIdentification)
+                : T.PersonIdentificationLabel(datasamling.EffectivePersonIdentificationLevel);
+        }
+    }
 
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? Validity =>
@@ -259,9 +282,10 @@ public sealed partial class DatasamlingView : ComponentBase
     /// shown as a zero, for the same reason: both are what let a datasamling with no numbers at all
     /// draw no block.
     /// <para>
-    /// Both of the catalogue's own fields yield to a section that has been given the key, as the
-    /// fact box above does. The count is the collection's own number and has no property definition
-    /// to be placed.
+    /// Frekvens and Telleenhet yield to a section that has been given their key, as the fact box
+    /// above does. The count is the collection's own number and has no property definition to be
+    /// placed. Statistikktype is drawn by no row here at all — see <see cref="StatisticsHeading"/>,
+    /// which is the surface that draws it and deliberately does not yield.
     /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> Statistics =>
@@ -324,6 +348,11 @@ public sealed partial class DatasamlingView : ComponentBase
     /// Shared with <see cref="StatisticsBlock"/>, which heads a variable's numbers the same way off
     /// the same field: a variable's statistikktype is the one belonging to the datasamling it is
     /// pinned into, so two spellings of that heading would be two spellings of one fact.
+    /// <para>
+    /// Read raw rather than through <see cref="UnlessPlaced"/>, alone among the merged keys: a
+    /// heading naming what the numbers count is not the fact repeated, it is what makes the section
+    /// findable, and a section placed StatistikkType and headed "Statistikk" would have lost it.
+    /// </para>
     /// </remarks>
     private string StatisticsHeading =>
         StatisticsBlock.Heading(Datasamling?.StatisticsType, T);

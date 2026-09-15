@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
@@ -660,5 +661,123 @@ public class CataloguePropertiesTest
 
         Assert.Equal("Fra no", Only(row).Text);
         Assert.Equal("no", Only(row).Language);
+    }
+
+    // The one key every Placed case below asks about, and the label its row would carry. A section
+    // that draws it draws exactly this <dt>, so "placed" and "drawn" are asked in the same words.
+    private const string Key = "Dataansvarlig";
+    private const string Label = "Dataansvarlig";
+    private const string Section = "Om kilden";
+    private const string Value = "St. Olavs hospital HF";
+
+    /// <summary>One definition of <see cref="Key"/>, as far from the ordinary one as each case needs.</summary>
+    private static PropertyMetadataEntry Placement(
+        string? label = Label, string? group = Section, string type = "String") =>
+        new()
+        {
+            Key = Key,
+            SortOrder = 90,
+            Type = type,
+            DisplayNameTranslations = label is null
+                ? ReadOnlyDictionary<string, string>.Empty
+                : new Dictionary<string, string> { ["no"] = label },
+            GroupTranslations = group is null
+                ? ReadOnlyDictionary<string, string>.Empty
+                : new Dictionary<string, string> { ["no"] = group },
+        };
+
+    /// <summary>A second key in a section, so a case can say what else that section holds.</summary>
+    private static PropertyMetadataEntry Neighbour(string key, string group) =>
+        new()
+        {
+            Key = key,
+            SortOrder = 95,
+            Type = "String",
+            DisplayNameTranslations = new Dictionary<string, string> { ["no"] = key },
+            GroupTranslations = new Dictionary<string, string> { ["no"] = group },
+        };
+
+    private static Dictionary<string, string?> Filled(string? value = Value) =>
+        new() { [Key] = value };
+
+    /// <summary>
+    /// Every way the catalogue can carry this key, and whether a section actually ends up drawing it.
+    /// </summary>
+    /// <remarks>
+    /// Named so a failure says which case moved, and asked of both sides at once below: the pair is
+    /// the invariant, not either answer on its own.
+    /// </remarks>
+    public static TheoryData<string, List<PropertyMetadataEntry>, Dictionary<string, string?>, bool>
+        PlacementCases => new()
+        {
+            { "an ordinary placed key", [Placement()], Filled(), true },
+            { "a placed key the payload left blank", [Placement()], Filled("   "), false },
+            { "a placed key the payload never carried", [Placement()], [], false },
+            { "a placed key with no label for this reader", [Placement(label: null)], Filled(), false },
+            { "a placed key labelled only the storage qualifier", [Placement(" (språkmerket)")], Filled(), false },
+            { "a placed key whose type leaves nothing to draw", [Placement(type: "Object")], Filled(), false },
+            { "a key the catalogue placed in no section", [Placement(group: null)], Filled(), false },
+            { "a key whose section is named only the qualifier", [Placement(group: " (flerspråklig)")], Filled(), false },
+            {
+                "a placed key alone in a section of empty neighbours",
+                [Placement(), Neighbour("Databehandler", Section)],
+                Filled(),
+                true
+            },
+            {
+                "a placed key whose section name collides after stripping",
+                [Placement(group: $"{Section} (flerspråklig)"), Neighbour("Databehandler", Section)],
+                new Dictionary<string, string?> { [Key] = Value, ["Databehandler"] = "Hemit HF" },
+                true
+            },
+        };
+
+    /// <summary>
+    /// Placed has to answer exactly the question Groups answers.
+    /// </summary>
+    /// <remarks>
+    /// The two are not one code path: Placed runs Rows over a single filtered entry plus GroupName,
+    /// while Groups additionally drops a group whose keys all came out empty and merges groups whose
+    /// names collide. A key called placed that the grouping then drops leaves the fact box yielding
+    /// to a section that draws nothing, and the fact is on no surface at all — a missing fact, which
+    /// nothing else on the page reveals (Fhi.Metadata-bct95).
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(PlacementCases))]
+    public void Placed_WhateverTheCatalogueCarries_ThenItAgreesWithWhatGroupsActuallyDraws(
+        string name, List<PropertyMetadataEntry> metadata, Dictionary<string, string?> values, bool expected)
+    {
+        var placed = CatalogueProperties.Placed(metadata, values, "no", Key);
+        var drawn = CatalogueProperties.Groups(metadata, values, "no")
+                                       .SelectMany(group => group.Rows)
+                                       .Any(row => row.Label == Label);
+
+        Assert.Equal((name, expected, expected), (name, placed, drawn));
+    }
+
+    [Fact]
+    public void Placed_WhenTheViewDrawsTheKeyItself_ThenNoSectionIsDrawingItEither()
+    {
+        // drawnElsewhere is the view's own suppression and goes into both questions, so a key the
+        // view has taken out of the sections is one the view must keep drawing.
+        List<PropertyMetadataEntry> metadata = [Placement()];
+        var values = Filled();
+        IReadOnlySet<string> suppressed = new HashSet<string>(StringComparer.Ordinal) { Key };
+
+        Assert.False(CatalogueProperties.Placed(metadata, values, "no", Key, suppressed));
+        Assert.Empty(CatalogueProperties.Groups(metadata, values, "no", suppressed));
+    }
+
+    [Fact]
+    public void Placed_WhenAnotherKeyIsPlacedInTheSameSection_ThenItAnswersForTheKeyItWasAskedAbout()
+    {
+        // Asked per key rather than per section: a fact box yielding on a neighbour's placement
+        // would drop its own row while the section drew nothing for it.
+        List<PropertyMetadataEntry> metadata = [Placement(), Neighbour("Databehandler", Section)];
+
+        Dictionary<string, string?> values = new() { ["Databehandler"] = "Hemit HF" };
+
+        Assert.False(CatalogueProperties.Placed(metadata, values, "no", Key));
+        Assert.True(CatalogueProperties.Placed(metadata, values, "no", "Databehandler"));
     }
 }

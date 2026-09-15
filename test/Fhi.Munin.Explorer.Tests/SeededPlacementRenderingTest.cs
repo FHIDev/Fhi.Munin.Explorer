@@ -366,6 +366,80 @@ public class SeededPlacementRenderingTest : BunitContext
         }
     }
 
+    /// <summary>The two validity definitions, each placed in a section or left in none.</summary>
+    private static PropertyMetadataEntry[] ValidityPlacement(bool from, bool to) =>
+    [
+        Definition(CatalogueColumns.ValidFrom, "Gyldig fra", "Date", 110, from ? Section : null),
+        Definition(CatalogueColumns.ValidTo, "Gyldig til", "Date", 120, to ? Section : null),
+    ];
+
+    /// <summary>
+    /// Every validity row the two pages' own fact boxes draw, for one placement of the pair.
+    /// </summary>
+    /// <remarks>
+    /// The box alone, scoped by section id, because which surface draws the validity is the thing
+    /// under test — and label and value together, because a count over the date text cannot tell
+    /// "the From row is drawn" from "the To row is drawn" when the two ends format alike.
+    /// </remarks>
+    private IReadOnlyList<(string Page, string Label, string Value)> ValidityRows(bool from, bool to)
+    {
+        var placement = ValidityPlacement(from, to);
+
+        return
+        [
+            .. Validity("kilde", RenderKilde(Kilde(section: null) with { PropertyMetadata = placement })),
+            .. Validity("datasamling",
+                        RenderDatasamling(Datasamling(section: null) with { PropertyMetadata = placement })),
+        ];
+    }
+
+    /// <inheritdoc cref="ValidityRows"/>
+    private static IEnumerable<(string Page, string Label, string Value)> Validity<T>(
+        string page, IRenderedComponent<T> cut) where T : IComponent =>
+        cut.FindAll($"#{DetailSectionIds.Source} dl.munin-explorer-page__fields div")
+           .Select(row => (page, row.QuerySelector("dt")!.TextContent, row.QuerySelector("dd")!.TextContent))
+           .Where(row => row.Item2 is "Gyldighet" or "Gyldig fra" or "Gyldig til");
+
+    private const string Period = "3. februar 2023 – 5. april 2024";
+
+    [Fact]
+    public void Validity_WhenNeitherEndIsPlaced_ThenBothFactBoxesDrawThePeriodUnderTheValidityLabel()
+    {
+        // The branch every page takes until the placements arrive, and the only one that draws both
+        // ends in one row.
+        Assert.Equal([("kilde", "Gyldighet", Period), ("datasamling", "Gyldighet", Period)],
+                     ValidityRows(from: false, to: false));
+    }
+
+    [Fact]
+    public void Validity_WhenOnlyGyldigFraIsPlaced_ThenBothFactBoxesDrawTheClosingEndAlone()
+    {
+        // The section has taken the opening date, so the box keeps the one it has not — under the
+        // closing label, which is a label this box never used before the placements existed.
+        Assert.Equal([("kilde", "Gyldig til", "5. april 2024"),
+                      ("datasamling", "Gyldig til", "5. april 2024")],
+                     ValidityRows(from: true, to: false));
+    }
+
+    [Fact]
+    public void Validity_WhenOnlyGyldigTilIsPlaced_ThenBothFactBoxesDrawTheOpeningEndAlone()
+    {
+        // The mirror of it, and the branch a swap would leave rendering plausible-looking output:
+        // the period beside a placed closing end reads as ongoing, and the wrong end repeats a date
+        // the section is already drawing.
+        Assert.Equal([("kilde", "Gyldig fra", "3. februar 2023"),
+                      ("datasamling", "Gyldig fra", "3. februar 2023")],
+                     ValidityRows(from: false, to: true));
+    }
+
+    [Fact]
+    public void Validity_WhenBothEndsArePlaced_ThenNeitherFactBoxDrawsAValidityRowAtAll()
+    {
+        // The branch that silently removes a row from a public fact box. Safe only because the two
+        // sections are now drawing both dates, which the count assertions above establish.
+        Assert.Empty(ValidityRows(from: true, to: true));
+    }
+
     [Fact]
     public void PersonIdentification_WhenItsPlacementArrives_ThenTheHeroReadsTheWordTheSectionReads()
     {
