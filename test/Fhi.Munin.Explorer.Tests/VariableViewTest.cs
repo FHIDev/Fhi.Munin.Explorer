@@ -2,6 +2,7 @@ using System.Text.Json;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -813,6 +814,51 @@ public class VariableViewTest : BunitContext
 
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
         Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenAnExplorerHandsTheViewNamedSections_ThenEachIsDrawnAndListedAfterTheMetadata()
+    {
+        // Where Runa's kodeverk goes, and off one list for both halves (Fhi.Metadata-fkiz9).
+        var cut = Render<VariableView>(b => b
+            .Add(c => c.Variable, Whole())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two));
+
+        Assert.Equal(["#" + DetailSectionIds.Metadata, "#first", "#second", "#" + DetailSectionIds.Versions],
+                     Targets(cut).Take(4));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+        Assert.Single(Wrappers(cut).Select(section => section.FirstElementChild!.TagName).Distinct());
+    }
+
+    [Fact]
+    public void Sections_WhenAHostPassesThem_ThenTheyComeAfterTheNamedSections()
+    {
+        var cut = Render<VariableView>(b => b
+            .Add(c => c.Variable, Whole())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two)
+            .Add(c => c.Sections, (RenderFragment)(host => host.AddMarkupContent(0, "<p id=\"host-sections\">Fra verten</p>"))));
+
+        var ids = cut.Find(".munin-explorer-whole__main").Children.Select(e => e.Id ?? "").ToArray();
+
+        Assert.Equal(["first", "second", "host-sections", DetailSectionIds.Versions],
+                     ids.SkipWhile(id => id != "first").Take(4));
+    }
+
+    [Fact]
+    public void Contents_WhenANamedSectionReusesAnIdOfTheViewsOwn_ThenTheViewsEmptyBlockStaysOff()
+    {
+        // The view's predicates read its own entries, not the named ones: otherwise a named
+        // "versions" would switch on an empty version history under the same id.
+        var cut = Render<VariableView>(b => b
+            .Add(c => c.Variable, Detail())
+            .Add(c => c.NamedSections,
+                 [new DetailNamedSection(DetailSectionIds.Versions, "Mine versjoner",
+                                         body => body.AddContent(0, "x"))]));
+
+        var versions = Assert.Single(Wrappers(cut), section => section.Id == DetailSectionIds.Versions);
+
+        Assert.Equal("Mine versjoner", versions.FirstElementChild!.TextContent);
     }
 
     [Fact]

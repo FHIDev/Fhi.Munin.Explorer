@@ -101,7 +101,7 @@ public class DatasamlingViewTest : BunitContext
         Assert.Empty(Render(Datasamling()).FindAll("nav.breadcrumbs"));
     }
 
-    /// <summary>Markup an explorer might hang after the metadata, carrying no class of its own.</summary>
+    /// <summary>Markup a host might hang after the view's sections, carrying no class of its own.</summary>
     private static readonly RenderFragment ExplorerSections = builder =>
     {
         builder.OpenElement(0, "p");
@@ -610,6 +610,35 @@ public class DatasamlingViewTest : BunitContext
     }
 
     [Fact]
+    public void Contents_WhenAnExplorerHandsTheViewNamedSections_ThenEachIsDrawnAndListedAfterTheViewsOwn()
+    {
+        // No explorer hands this view any yet; a host mounting it may, and off one list for both
+        // halves (Fhi.Metadata-fkiz9).
+        var cut = Render<DatasamlingView>(b => b
+            .Add(c => c.Datasamling, Datasamling())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two));
+
+        Assert.Equal(["#" + DetailSectionIds.Statistics, "#first", "#second"], Targets(cut).TakeLast(3));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+        Assert.Single(Wrappers(cut).Select(section => section.FirstElementChild!.TagName).Distinct());
+    }
+
+    [Fact]
+    public void Contents_WhenANamedSectionReusesAnIdOfTheViewsOwn_ThenTheViewsEmptyBlockStaysOff()
+    {
+        var cut = Render<DatasamlingView>(b => b
+            .Add(c => c.Datasamling, Sparse())
+            .Add(c => c.NamedSections,
+                 [new DetailNamedSection(DetailSectionIds.Criteria, "Mine kriterier",
+                                         body => body.AddContent(0, "x"))]));
+
+        var criteria = Assert.Single(Wrappers(cut), section => section.Id == DetailSectionIds.Criteria);
+
+        Assert.Equal("Mine kriterier", criteria.FirstElementChild!.TextContent);
+    }
+
+    [Fact]
     public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
     {
         // The payload Sections_WhenABlockDrawsNothing uses, asked one column over: the criteria and
@@ -933,15 +962,18 @@ public class DatasamlingViewTest : BunitContext
     ];
 
     [Fact]
-    public void Sections_WhenAnExplorerPassesThem_ThenTheyComeLastAfterTheViewsOwnBlocks()
+    public void Sections_WhenAHostPassesThem_ThenTheyComeLastAfterTheNamedSections()
     {
-        // The slot is the reason this is a core with composition points rather than a view with a
-        // flag per explorer. Nothing here learns which explorer is calling.
-        var cut = Render(Datasamling(), sections: ExplorerSections);
+        // A host's markup is an addition to the page it embedded, so it follows every section the
+        // view draws, the named ones included.
+        var cut = Render<DatasamlingView>(b => b
+            .Add(c => c.Datasamling, Datasamling())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two)
+            .Add(c => c.Sections, ExplorerSections));
 
-        var main = cut.Find(".munin-explorer-datasamling__main");
+        var ids = cut.Find(".munin-explorer-datasamling__main").Children.Select(e => e.Id ?? "").ToArray();
 
-        Assert.Equal("explorer-sections", main.LastElementChild!.Id);
+        Assert.Equal([DetailSectionIds.Statistics, "first", "second", "explorer-sections"], ids[^4..]);
     }
 
     [Fact]

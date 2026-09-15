@@ -52,7 +52,7 @@
         <ChildContent>
 
             @* Every block below is a <section> carrying a fixed English id, and draws exactly when
-               Drawn says the contents nav names it — one predicate per section, so the nav can
+               its predicate in BuildToc holds — the one its nav entry is added under, so the nav can
                never link to a block left out, in either language. *@
 
             @* The catalogue's own metadata. Which groups exist, what they are called and what
@@ -118,8 +118,9 @@
             }
 
             @* Whatever the explorer using this view puts after this view's own blocks. This
-               component never learns which explorer that is, so it wraps none of it in a
-               section. *@
+               component never learns which explorer that is: the named sections carry their own
+               id and heading, and the fragment after them is drawn as given. *@
+            @DetailBlocks.NamedSections(NamedSections, BlockLevel)
             @Sections
         </ChildContent>
     </DetailPage>

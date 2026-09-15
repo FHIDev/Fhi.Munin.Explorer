@@ -11,9 +11,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 internal sealed class DetailTocBuilder
 {
     private readonly List<DetailTocEntry> _entries = [];
+    private readonly HashSet<string> _drawn = new(StringComparer.Ordinal);
 
     /// <summary>The entries in the order they were added, which is the order the view draws them.</summary>
     internal IReadOnlyList<DetailTocEntry> Entries => _entries;
+
+    /// <summary>The view's own blocks that draw, kept apart so a named section's id cannot switch one on.</summary>
+    internal IReadOnlySet<string> Drawn => _drawn;
 
     /// <summary>Name the section with this id, under the same condition its block renders under.</summary>
     internal void Add(bool drawn, string id, string heading)
@@ -21,6 +25,7 @@ internal sealed class DetailTocBuilder
         if (drawn)
         {
             _entries.Add(new DetailTocEntry(id, heading));
+            _drawn.Add(id);
         }
     }
 
@@ -30,12 +35,13 @@ internal sealed class DetailTocBuilder
     /// rather than passing a <c>true</c> a reader has to open the view to explain.
     /// </remarks>
     internal void Always(string id, string heading) => Add(true, id, heading);
-}
 
-/// <summary>Reading a built contents nav back, which is how a view asks whether to draw a block.</summary>
-internal static class DetailTocEntries
-{
-    /// <summary>Whether the nav names this section, which is whether the view drew it.</summary>
-    internal static bool Contains(this IReadOnlyList<DetailTocEntry> toc, string id) =>
-        toc.Any(entry => entry.Id == id);
+    /// <summary>Listed wherever the view draws them, which differs between the views.</summary>
+    internal void AddNamed(IReadOnlyList<DetailNamedSection>? sections)
+    {
+        foreach (var section in sections ?? [])
+        {
+            _entries.Add(section.Entry);
+        }
+    }
 }

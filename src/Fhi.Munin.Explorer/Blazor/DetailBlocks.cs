@@ -161,6 +161,22 @@ internal static class DetailBlocks
         builder.CloseElement();
     }
 
+    /// <summary>Headings at the level of the view's own blocks, so a handed section cannot nest under one.</summary>
+    internal static RenderFragment NamedSections(IReadOnlyList<DetailNamedSection>? sections, int level) => builder =>
+    {
+        foreach (var section in sections ?? [])
+        {
+            builder.OpenComponent<DetailSection>(0);
+            builder.AddComponentParameter(1, nameof(DetailSection.Id), section.Id);
+            builder.AddComponentParameter(2, nameof(DetailSection.ChildContent), (RenderFragment)(content =>
+            {
+                content.AddContent(0, Heading(level, section.Heading, "headline headline-s"));
+                content.AddContent(1, section.Body);
+            }));
+            builder.CloseComponent();
+        }
+    };
+
     /// <summary>One metadata group: its name, then its rows.</summary>
     internal static RenderFragment Group(PropertyGroup group, int level, string? language) => builder =>
     {

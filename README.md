@@ -565,11 +565,13 @@ These are not style preferences — each one is a host that breaks otherwise.
 
   The detail views' section ids are the one exception to the paragraph below, and a deliberate
   one: `metadata`, `criteria`, `source`, `statistics`, `datacollections`, `versions`, `dataperiod`,
-  `datatype` and `variablegroups` are written bare, because a link to a section is a link one
+  `datatype` and `variablegroups`, and the explorers' own `variables`, `accesscriteria`, `prices`
+  and `codelists`, are written bare, because a link to a section is a link one
   reader sends another and a discriminator minted at run time is a link that resolves once. They
   are fixed English words rather than a slug of the heading for the same reason — the headings are
   bilingual, so a derived id would differ between `nb` and `en`. Within one mount they cannot
-  repeat: an explorer renders at most one detail view, and each view emits each id at most once.
+  repeat: an explorer renders at most one detail view, and each view emits each id at most once —
+  unless a host mounting a view hands it a `DetailNamedSection` with one of these ids.
   Two mounts on one page, or a host page that already means something by `id="source"`, are the
   bound on that — `Fhi.Metadata-uobxg` records it, and the chassis bead that adds the contents nav
   is where it gets settled.
@@ -1091,7 +1093,8 @@ Four things are worth knowing before mounting one.
   helsedata publishes itself, so it defaults to `false`: a host embedding the explorer inside a
   site that already covers access and pricing gets neither block without doing anything. Set it
   to `true` on a host of your own. Nothing else on the kilde page moves with it — the variable
-  count, the metadata, the datasamlinger and the source information are drawn either way.
+  count, the metadata, the datasamlinger and the source information are drawn either way — beyond
+  the contents nav, which lists the two blocks exactly when they are drawn.
 
 Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch`,
 `VariableListView`, `VariableListFilters` and `KildeSearch` stay public underneath, so a host that
