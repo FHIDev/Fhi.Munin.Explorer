@@ -5,9 +5,12 @@ category: Changed
   and one tick produces exactly one chip over the results however many places the tree draws that
   group at — a group hangs under every datasamling its variables are in, and every placement of it
   carries the same state. Each row now carries its cross-filtered count beside the name, as the
-  levels above it already did. A group the API opts out of the standalone facet stays out of it
-  whether or not it is selected: the kilde tree is the one surface that offers it, and its chip is
-  the way off it from anywhere else on the page. Shared links keep working unchanged — a
+  levels above it already did. A group the API opts out of the standalone facet gets no checkbox
+  there whether or not it is selected — where that facet names the group at all it is to nest the
+  offered ones under it, so the row stays a container. The kilde tree is the one surface that
+  offers such a group, and its chip is the way off it from anywhere else on the page. One id the
+  two collections name differently is named by the facet's own copy on every surface, so a chip, a
+  trail step and a checkbox over one filter cannot read as two. Shared links keep working — a
   `variabelgruppeIds` value restores as a tick in the tree, and its name reaches the chip and the
   hierarchy trail out of the tree's own collection rather than reading "Variabelgruppe". Opening
   and shutting a branch still narrows nothing and asks the API for nothing, so a selection and its

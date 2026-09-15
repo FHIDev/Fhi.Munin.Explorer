@@ -696,9 +696,9 @@ public partial class VariableSearch
             var (label, language) = CatalogueName(node.Name, node.ShortName);
             IReadOnlyList<FacetValue> children = [.. node.Children.Select(Value)];
 
-            // A row with no toggle draws neither: FacetList reads Count and Selected inside the
-            // checkbox alone, so a figure or a tick set here would be one the reader never gets. A
-            // level HierarchyLevels does not read is such a row rather than a KeyNotFoundException.
+            // A guard and not a row the tree draws: HierarchyLevels reads all four levels the
+            // builder places. A fifth added to one list and not the other lands here as an inert
+            // row rather than tearing the circuit down on a KeyNotFoundException.
             if (!readings.TryGetValue(node.Level, out var reading))
             {
                 return new FacetValue(
@@ -836,14 +836,25 @@ public partial class VariableSearch
 
     /// <summary>Every variabelgruppe either surface can name, one entry per id.</summary>
     /// <remarks>
-    /// Both collections, because the tree's carries the groups the standalone facet withholds, and
-    /// collapsed by <see cref="FilterHierarchy.OnePerId"/> — the rule the facet's own values are
-    /// built with, so a chip cannot name a group differently from the checkbox for it.
+    /// Both collections, each collapsed the way its own surface collapses it, because copies of one
+    /// id differ in name as well as in parent. The facet's copy then wins where it has one — the
+    /// order <see cref="VariabelgruppeName"/> reads in — so one id is not named two ways on a page.
     /// </remarks>
-    private static IReadOnlyList<VariabelgruppeFacet> ListedVariabelgrupper(FilterOptions facets) =>
-        FilterHierarchy.OnePerId(facets.Variabelgrupper.Concat(facets.HierarchyVariabelgrupper),
-                                 gruppe => gruppe.Id,
-                                 gruppe => gruppe.ParentId);
+    private static IReadOnlyList<VariabelgruppeFacet> ListedVariabelgrupper(FilterOptions facets)
+    {
+        var standalone = FilterHierarchy.OnePerId(
+            facets.Variabelgrupper, gruppe => gruppe.Id, gruppe => gruppe.ParentId);
+
+        var named = standalone.Select(gruppe => gruppe.Id).ToHashSet();
+
+        return
+        [
+            .. standalone,
+            .. FilterHierarchy
+                .OnePerId(facets.HierarchyVariabelgrupper, gruppe => gruppe.Id, gruppe => gruppe.ParentId)
+                .Where(gruppe => !named.Contains(gruppe.Id))
+        ];
+    }
 
     /// <summary>A variabelgruppe as a chip names it: its words and its toggle, with neither a count
     /// nor a tree. <see cref="ChosenVariabelgrupper"/> is its one caller — the facet draws its own
@@ -1597,8 +1608,8 @@ public partial class VariableSearch
                 foreach (var value in group.ChosenValues)
                 {
                     // A value with no checkbox has no removal to offer here: a kildetype heading is
-                    // a label rather than a filter, and a chosen variabelgruppe the API does not
-                    // offer gets its chip from UnfacetedHierarchyChips below instead.
+                    // a label rather than a filter. Every chosen variabelgruppe carries one now, the
+                    // opt-out included, so the fallback below is for one neither collection names.
                     if (value.Toggle is not { } toggle)
                     {
                         continue;

@@ -3161,8 +3161,10 @@ public class VariableSearchTest : BunitContext
 
     /// <summary>
     /// The control in the panel whose visible text starts with <paramref name="label"/> — a facet
-    /// value, or one of the toolbar buttons, which this selector also reaches. No label collides
-    /// today, and <c>Single</c> is what says so if one ever starts to.
+    /// value, or one of the toolbar buttons, which this selector also reaches. A variabelgruppe
+    /// both surfaces offer wears a checkbox on each and cannot be read here at all: that is what
+    /// <see cref="SurfaceBox"/> is for. No other label collides, and <c>Single</c> says so if one
+    /// starts to.
     /// </summary>
     /// <remarks>
     /// Still <c>StartsWith</c> on the raw text: ignoring leading whitespace would widen every
@@ -6328,6 +6330,81 @@ public class VariableSearchTest : BunitContext
 
         Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
         Assert.Empty(Chips(cut));
+    }
+
+    /// <summary>The opt-out's real shape: the standalone facet lists the group only to carry an
+    /// offered one under it, while the kilde tree offers the group itself.</summary>
+    private static FilterOptions FacetsWithAnOptedOutContainer() => FacetsWithDatasamlinger() with
+    {
+        Variabelgrupper =
+        [
+            Variabelgruppe(Meals, "Måltider", [],
+                   filter: VariabelgruppeFacet.StandaloneFacetOptOut, count: 3),
+            Variabelgruppe(Serum, "Serum", [], parent: Meals, count: 1)
+        ],
+        HierarchyVariabelgrupper =
+        [
+            Variabelgruppe(Meals, "Måltider", [Under(Tromso, datasamling: Tromso1)],
+                   filter: VariabelgruppeFacet.StandaloneFacetOptOut, count: 3)
+        ]
+    };
+
+    [Fact]
+    public void Variabelgrupper_WhenATickedOptedOutGroupIsAContainerInTheFacet_ThenItGetsNoCheckboxThere()
+    {
+        // The shape the payload really takes, and the one the two surfaces can visibly disagree in:
+        // the facet has to keep naming the group to nest the offered one under it, and ticking it in
+        // the tree must still not grow it a checkbox the API says the reader may not have.
+        var client = new FilteringClient(OnePage(), FacetsWithAnOptedOutContainer());
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+        Press(SurfaceBox(KildeFacet(cut), "Måltider"));
+
+        Assert.Equal([Meals], client.SearchFilter!.VariabelgruppeIds);
+
+        var container = Assert.Single(
+            StandaloneFacet(cut).QuerySelectorAll("li"),
+            row => RowWords(row).StartsWith("Måltider", StringComparison.Ordinal));
+
+        // A <label> is what a checkbox hangs in, so its absence is the row having no control at all
+        // — and the child below it is still offered, which is why the row is drawn.
+        Assert.DoesNotContain(container.Children, child => child.TagName == "LABEL");
+        Assert.NotNull(SurfaceBox(StandaloneFacet(cut), "Serum"));
+
+        // The tree's own box, the chip and the folded facet's count are the three that must agree.
+        Assert.True(SurfaceBox(KildeFacet(cut), "Måltider").HasAttribute("checked"));
+        Assert.Equal(["Måltider"], Chips(cut));
+        Assert.Contains("Variabelgruppe (1)", FacetHeadings(cut));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenTheTwoCollectionsNameOneIdDifferently_ThenTheFacetsCopyNamesItEverywhere()
+    {
+        // Copies of one id differ in name as well as in parent (Fhi.Metadata-l9l2n.82), and a chip,
+        // a trail step and a checkbox are three controls over one filter: two spellings among them
+        // read as two filters, and the facet's is the spelling the reader has in front of them.
+        var facets = FacetsWithDatasamlinger() with
+        {
+            Variabelgrupper = [Variabelgruppe(Nutrition, "Kosthold", [], count: 5)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Environment, "Miljø", [Under(Tromso, datasamling: Tromso1)], count: 2),
+                Variabelgruppe(Nutrition, "Måltidsvaner", [Under(Tromso, datasamling: Tromso1)],
+                       parent: Environment, count: 5)
+            ]
+        };
+
+        var client = new FilteringClient(OnePage(), facets);
+        var cut = RenderWith(client);
+
+        ExpandBranches(cut);
+        Press(SurfaceBox(KildeFacet(cut), "Måltidsvaner"));
+
+        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
+        Assert.True(SurfaceBox(StandaloneFacet(cut), "Kosthold").HasAttribute("checked"));
+        Assert.Equal(["Kosthold"], Chips(cut));
+        Assert.Equal("Kosthold", Crumbs(cut)[^1].TextContent);
     }
 
     [Fact]
