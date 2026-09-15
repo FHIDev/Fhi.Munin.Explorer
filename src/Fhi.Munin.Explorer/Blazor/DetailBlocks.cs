@@ -45,7 +45,8 @@ internal static class DetailBlocks
     /// with rich data only.
     /// </remarks>
     internal static RenderFragment Facts(
-        IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts, string? language) => builder =>
+        IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts, string? language,
+        bool authored = false) => builder =>
     {
         var shown = Shown(facts);
 
@@ -72,7 +73,16 @@ internal static class DetailBlocks
 
             builder.OpenElement(seq + 4, "dd");
             builder.AddAttribute(seq + 5, "lang", norwegian ? CatalogueProperties.Foreign("no", reader) : null);
-            builder.AddContent(seq + 6, value);
+
+            if (authored)
+            {
+                builder.AddContent(seq + 7, CatalogueMarkdown.Render(value));
+            }
+            else
+            {
+                builder.AddContent(seq + 6, value);
+            }
+
             builder.CloseElement();
 
             builder.CloseElement();

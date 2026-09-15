@@ -180,6 +180,6 @@ public sealed partial class VariableView
             (T.FieldValidTo, version.ValidTo is { } t ? CatalogueDate.Day(t, Language, Dates) : T.Ongoing, false),
         };
 
-        builder.AddContent(0, DetailBlocks.Facts(facts, Language));
+        builder.AddContent(0, DetailBlocks.Facts(facts, Language, authored: true));
     };
 }

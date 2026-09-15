@@ -211,7 +211,7 @@ public partial class VariableSearch
     /// than drawn as an em dash, and a value that is there is marked as Norwegian while the label
     /// beside it follows <see cref="Language"/>.
     /// </remarks>
-    private RenderFragment DetailValue(string? value) => builder =>
+    private RenderFragment DetailValue(string? value, bool authored = false) => builder =>
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -222,7 +222,16 @@ public partial class VariableSearch
 
         builder.OpenElement(1, "span");
         builder.AddAttribute(2, "lang", "no");
-        builder.AddContent(3, value);
+
+        if (authored)
+        {
+            builder.AddContent(3, CatalogueMarkdown.Render(value));
+        }
+        else
+        {
+            builder.AddContent(4, value);
+        }
+
         builder.CloseElement();
     };
 

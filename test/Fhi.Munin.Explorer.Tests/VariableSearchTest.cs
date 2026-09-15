@@ -11993,6 +11993,41 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void Detail_WhenTheDescriptionCarriesMarkdown_ThenThePanelRendersItAsElements()
+    {
+        // V_LMR.VARE_ADMINISTRASJONSVEI_BESKRIVELSE's shape on the test API, 2026-09-15.
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with
+            {
+                Code = "V_LMR.VARE_ADMINISTRASJONSVEI_BESKRIVELSE",
+                Description = "Administrasjonsveier. <br><br> Tilgjengelig på [FinnKode](https://finnkode.helsedirektoratet.no/adm/collections).",
+            });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        var description = Values(cut)[1];
+        var anchor = Assert.Single(description.QuerySelectorAll("span[lang=no] a"));
+        Assert.Equal("https://finnkode.helsedirektoratet.no/adm/collections", anchor.GetAttribute("href"));
+        Assert.Equal(2, description.QuerySelectorAll("br").Length);
+        Assert.Equal("V_LMR.VARE_ADMINISTRASJONSVEI_BESKRIVELSE", Values(cut)[0].TextContent);
+    }
+
+    [Fact]
+    public void Detail_WhenTheCodeLooksLikeMarkdown_ThenThePanelLeavesItAsText()
+    {
+        // Markup renders only in the fields that carry it (Robin, 2026-09-02, Fhi.Metadata-5bcr7).
+        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId) with { Code = "V_X.[KODE](https://example.org)" });
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+
+        Assert.Empty(Values(cut)[0].QuerySelectorAll("a"));
+        Assert.Equal("V_X.[KODE](https://example.org)", Values(cut)[0].TextContent);
+    }
+
+    [Fact]
     public void Detail_Always_ThenTheToggleIsWiredToThePanelAndNamedAfterItsRow()
     {
         // Twenty-five buttons all called "Vis detaljer" say nothing about which row they open when
