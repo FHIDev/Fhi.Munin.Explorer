@@ -12301,6 +12301,32 @@ public class VariableSearchTest : BunitContext
         Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void WholeVariable_WhenOpened_ThenTheContentsNavListsTheKodeverkSectionExactlyWhenItIsDrawn(bool kodeverk)
+    {
+        // The kodeverk section reached the view as bare markup with no id, so the nav on the page
+        // that draws it could not offer it (Fhi.Metadata-fkiz9).
+        var detail = kodeverk ? WithKodeverk(TaleId) : Detail(TaleId) with { KodeverkLinks = [] };
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+        PressOwnerControl(WholeVariableToggle(cut));
+
+        var view = cut.Find(".munin-explorer-drilldown");
+        var targets = view.QuerySelectorAll(".munin-explorer-page__toc a").Select(link => link.GetAttribute("href")).ToList();
+
+        Assert.Equal(view.QuerySelectorAll("section[data-nav-section]").Select(section => "#" + section.Id), targets);
+        Assert.Equal(kodeverk, targets.Contains("#" + DetailSectionIds.CodeLists));
+
+        if (kodeverk)
+        {
+            Assert.Equal("Kodeverk", view.QuerySelector($"#{DetailSectionIds.CodeLists}")!.FirstElementChild!.TextContent);
+            Assert.Equal(4, view.QuerySelectorAll($"#{DetailSectionIds.CodeLists} li.munin-explorer-kodeverk__item").Length);
+        }
+    }
+
     [Fact]
     public void WholeVariableBack_WhenTheSecondClickOfADoubleClickReachesIt_ThenTheViewIsNotClosed()
     {

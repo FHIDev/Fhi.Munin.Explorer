@@ -18,9 +18,9 @@ namespace Fhi.Munin.Explorer.Tests;
 /// Written because this component had no test class of its own. The suite had one for the explorer,
 /// one for the variable view and one for the filter panel, and the kilde view was only ever reached
 /// sideways, through the explorer's drill-in — so the parameters it exists for had no coverage.
-/// The parameters are the point, in two different ways. <see cref="KildeView.Sections"/> and
+/// The parameters are the point, in two different ways. <see cref="KildeView.NamedSections"/> and
 /// <see cref="KildeView.DataCollectionsHeading"/> are the whole reason this is a shared core rather
-/// than two views. Kelda wires <c>Sections</c> — <c>KildeSearch.razor</c> hands it three sections
+/// than two views. Kelda wires <c>NamedSections</c> — <c>KildeSearch.razor</c> hands it three sections
 /// of its own — and neither explorer wires the heading any more (Fhi.Metadata-rhybi), which is why
 /// both are exercised here directly: the assertions below are about what the core does with them,
 /// and <c>KildeSectionsTest</c> is about the difference they make between the two explorers.
@@ -1529,6 +1529,27 @@ public class KildeViewTest : BunitContext
 
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
         Assert.Contains("#" + DetailSectionIds.Metadata, Targets(cut));
+    }
+
+    [Fact]
+    public void Contents_WhenAnExplorerHandsTheViewNamedSections_ThenEachIsDrawnAndListedAfterTheViewsOwn()
+    {
+        // Both halves come off one list: an entry without its section is a dead link, and a section
+        // without its entry is one the nav cannot reach (Fhi.Metadata-fkiz9). The fragment after them
+        // is the host's, which the view cannot name, so it is drawn and not listed.
+        RenderFragment host = builder => builder.AddMarkupContent(0, "<p>Fra verten</p>");
+
+        var cut = Render<KildeView>(b => b
+            .Add(c => c.Kilde, Kilde())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two)
+            .Add(c => c.Sections, host));
+
+        Assert.Equal(["#first", "#second"], Targets(cut).TakeLast(2));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+        Assert.Single(Wrappers(cut).Select(section => section.FirstElementChild!.TagName).Distinct());
+        Assert.Equal("Den andre", cut.Find("#second > p").TextContent);
+        Assert.Null(cut.FindAll("p").Single(p => p.TextContent == "Fra verten").Closest("section"));
     }
 
     [Fact]

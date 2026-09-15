@@ -816,6 +816,21 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
+    public void Contents_WhenAnExplorerHandsTheViewNamedSections_ThenEachIsDrawnAndListedAfterTheMetadata()
+    {
+        // Where Runa's kodeverk goes, and off one list for both halves (Fhi.Metadata-fkiz9).
+        var cut = Render<VariableView>(b => b
+            .Add(c => c.Variable, Whole())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two));
+
+        Assert.Equal(["#" + DetailSectionIds.Metadata, "#first", "#second", "#" + DetailSectionIds.Versions],
+                     Targets(cut).Take(4));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+        Assert.Single(Wrappers(cut).Select(section => section.FirstElementChild!.TagName).Distinct());
+    }
+
+    [Fact]
     public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
     {
         // The plain fixture, which suppresses five of the eight — the statistics block among them,

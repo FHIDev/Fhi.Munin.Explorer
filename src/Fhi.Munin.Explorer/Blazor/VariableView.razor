@@ -52,7 +52,8 @@
             }
 
             @* Kodeverk arrives from the explorer that already draws it, rather than being
-               rebuilt here, so this view wraps none of it in a section. *@
+               rebuilt here. *@
+            @DetailBlocks.NamedSections(NamedSections, BlockLevel)
             @Sections
 
             @if (Drawn(DetailSectionIds.Versions))

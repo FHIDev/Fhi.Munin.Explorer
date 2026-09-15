@@ -94,8 +94,9 @@
             }
 
             @* Whatever the explorer using this view puts after this view's own blocks. This
-               component never learns which explorer that is, so it wraps none of it in a
-               section. *@
+               component never learns which explorer that is: the named sections carry their own
+               id and heading, and the fragment after them is drawn as given. *@
+            @DetailBlocks.NamedSections(NamedSections, BlockLevel)
             @Sections
         </ChildContent>
     </DetailPage>

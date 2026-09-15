@@ -565,7 +565,8 @@ These are not style preferences — each one is a host that breaks otherwise.
 
   The detail views' section ids are the one exception to the paragraph below, and a deliberate
   one: `metadata`, `criteria`, `source`, `statistics`, `datacollections`, `versions`, `dataperiod`,
-  `datatype` and `variablegroups` are written bare, because a link to a section is a link one
+  `datatype` and `variablegroups`, and the explorers' own `variables`, `accesscriteria`, `prices`
+  and `codelists`, are written bare, because a link to a section is a link one
   reader sends another and a discriminator minted at run time is a link that resolves once. They
   are fixed English words rather than a slug of the heading for the same reason — the headings are
   bilingual, so a derived id would differ between `nb` and `en`. Within one mount they cannot

@@ -37,11 +37,22 @@ public sealed partial class VariableView : ComponentBase
     public string? HeadingId { get; set; }
 
     /// <summary>
-    /// Sections to place between the metadata and the statistics.
+    /// Sections to place between the metadata and the version history. Each is drawn under a heading
+    /// at the level of this view's own blocks and listed in the contents nav.
     /// </summary>
     /// <remarks>
     /// The kodeverk section arrives this way rather than being rebuilt here: the panel already draws
     /// it, and one section drawn twice is one section to fix twice.
+    /// </remarks>
+    [Parameter]
+    public IReadOnlyList<DetailNamedSection>? NamedSections { get; set; }
+
+    /// <summary>
+    /// Markup to place after <see cref="NamedSections"/>, drawn as given.
+    /// </summary>
+    /// <remarks>
+    /// Not listed in the contents nav, because this view cannot see an id or a heading inside a
+    /// fragment. Use <see cref="NamedSections"/> for a section the nav should offer.
     /// </remarks>
     [Parameter]
     public RenderFragment? Sections { get; set; }
@@ -231,10 +242,6 @@ public sealed partial class VariableView : ComponentBase
     protected override void OnParametersSet() => Toc = BuildToc();
 
     /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
-    /// <remarks>
-    /// The kodeverk section arrives through <see cref="Sections"/> and carries no id of its own, so
-    /// the nav does not offer it — this view never learns what the explorer put there.
-    /// </remarks>
     private IReadOnlyList<DetailTocEntry> BuildToc()
     {
         if (Variable is not { } variable)
@@ -245,6 +252,7 @@ public sealed partial class VariableView : ComponentBase
         DetailTocBuilder toc = new();
 
         toc.Add(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
+        toc.AddNamed(NamedSections);
         toc.Add(Versions.Count > 0, DetailSectionIds.Versions, T.HeadingVersionHistory);
         toc.Add(StatisticsBlock.AnyStatistics(variable), DetailSectionIds.Statistics, StatisticsHeading);
         toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);

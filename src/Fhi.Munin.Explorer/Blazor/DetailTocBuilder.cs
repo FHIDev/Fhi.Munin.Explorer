@@ -30,6 +30,15 @@ internal sealed class DetailTocBuilder
     /// rather than passing a <c>true</c> a reader has to open the view to explain.
     /// </remarks>
     internal void Always(string id, string heading) => Add(true, id, heading);
+
+    /// <summary>Name every section an explorer handed the view, at the place the view draws them.</summary>
+    internal void AddNamed(IReadOnlyList<DetailNamedSection>? sections)
+    {
+        foreach (var section in sections ?? [])
+        {
+            _entries.Add(section.Entry);
+        }
+    }
 }
 
 /// <summary>Reading a built contents nav back, which is how a view asks whether to draw a block.</summary>

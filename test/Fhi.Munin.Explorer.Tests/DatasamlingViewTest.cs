@@ -573,6 +573,21 @@ public class DatasamlingViewTest : BunitContext
     }
 
     [Fact]
+    public void Contents_WhenAnExplorerHandsTheViewNamedSections_ThenEachIsDrawnAndListedAfterTheViewsOwn()
+    {
+        // No explorer hands this view any yet; a host mounting it may, and off one list for both
+        // halves (Fhi.Metadata-fkiz9).
+        var cut = Render<DatasamlingView>(b => b
+            .Add(c => c.Datasamling, Datasamling())
+            .Add(c => c.NamedSections, NamedSectionsFixture.Two));
+
+        Assert.Equal(["#" + DetailSectionIds.Statistics, "#first", "#second"], Targets(cut).TakeLast(3));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+        Assert.Single(Wrappers(cut).Select(section => section.FirstElementChild!.TagName).Distinct());
+    }
+
+    [Fact]
     public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
     {
         // The payload Sections_WhenABlockDrawsNothing uses, asked one column over: the criteria and
