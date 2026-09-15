@@ -93,8 +93,15 @@ public partial class VariableSearch
     /// rather than "mark it as the page's". Every value decides it, because nothing downstream
     /// can tell a catalogue name from prose this package composed.
     /// </para>
-    /// <para><c>Icons</c> are a datasamling's datakategori glyphs, off the same facet payload as
-    /// the row; the panel draws them and the chip for the same value does not.</para>
+    /// <para><c>Icons</c> are a row's decorative glyphs — a datasamling's datakategorier, or the
+    /// folder a kilde and a delkilde wear — off the same facet payload as the row; the panel draws
+    /// them and the chip for the same value does not.</para>
+    /// <para>
+    /// <c>Badge</c> is a word on the row rather than a picture of one, so it joins the checkbox's
+    /// accessible name. Its own member and never a glyph, because the two are not the same offer:
+    /// a host turning decoration off must not take a fact off the row with it. It is drawn inside
+    /// that label, so a value with no <c>Toggle</c> — a group heading — renders none at all.
+    /// </para>
     /// </remarks>
     private sealed record FacetValue(
         string Key,
@@ -105,7 +112,8 @@ public partial class VariableSearch
         Func<Task>? Toggle,
         IReadOnlyList<FacetValue> Children,
         bool GroupHeading = false,
-        IReadOnlyList<NodeIcon>? Icons = null);
+        IReadOnlyList<NodeIcon>? Icons = null,
+        string? Badge = null);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
     /// <remarks>
@@ -633,7 +641,11 @@ public partial class VariableSearch
             null,
             _filter.KildeIds.Contains(kilde.Id),
             () => ToggleAsync(_filter.KildeIds, kilde.Id, ids => _filter with { KildeIds = ids }),
-            []);
+            [],
+            // The same folder a delkilde wears: the two are one level of grouping as far as the
+            // tree is concerned, and Kelda's own hierarchy draws them alike.
+            Icons: [DataCategoryIcons.Folder],
+            Badge: T.KildeTypeBadge(kilde.KildeType));
     }
 
     /// <summary>What hangs under each kilde, by kilde id: the whole tree the builder places.</summary>
@@ -686,7 +698,7 @@ public partial class VariableSearch
             {
                 return new FacetValue(
                     NodeKey(node), label, language, Count: null, Selected: false, Toggle: null, children,
-                    Icons: DataCategoryIcons.For(node.Categories));
+                    Icons: Glyphs(node));
             }
 
             return new FacetValue(NodeKey(node),
@@ -696,10 +708,16 @@ public partial class VariableSearch
                                   reading.Chosen().Contains(node.Id),
                                   toggle,
                                   children,
-                                  // The builder carries them on the datasamling alone, so every
-                                  // other level asks for the glyphs of no categories and draws none.
-                                  Icons: DataCategoryIcons.For(node.Categories));
+                                  Icons: Glyphs(node));
         }
+
+        // A delkilde wears the folder its kilde does: the two are one level of grouping as far as
+        // the tree is concerned. Every other level asks for the categories the builder carries on
+        // the datasamling alone, and draws none where there are none.
+        static IReadOnlyList<NodeIcon> Glyphs(HierarchyNode node) =>
+            node.Level == HierarchyLevel.Delkilde
+                ? [DataCategoryIcons.Folder]
+                : DataCategoryIcons.For(node.Categories);
     }
 
     /// <summary>What tells one drawn row of the kilde tree from every other.</summary>
@@ -725,9 +743,9 @@ public partial class VariableSearch
             ? null
             : () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply);
 
-    /// <summary>A delkilde as a chip names it: its words and its toggle, with neither a count nor a
-    /// tree. <see cref="ChosenKilder"/> is its one caller — the tree draws its delkilder through
-    /// <see cref="HierarchyValues"/>.</summary>
+    /// <summary>A delkilde as a chip names it: its words and its toggle, with no count, no tree and
+    /// no folder. <see cref="ChosenKilder"/> is its one caller — the tree draws its delkilder, and
+    /// puts their folders on, through <see cref="HierarchyValues"/>.</summary>
     private FacetValue DelkildeValue(DelkildeFacet delkilde)
     {
         var (label, language) = DelkildeLabel(delkilde);
@@ -1235,15 +1253,27 @@ public partial class VariableSearch
                         NodeIcons.WriteSpoken(nested, icons, T)));
                 }
 
+                // Real text rather than a rule on the row, so the badge is part of the checkbox's
+                // accessible name: what it says is a fact about the kilde and not decoration, and a
+                // mark only a stylesheet drew would reach a sighted reader and nobody else.
+                if (value.Badge is { } badge)
+                {
+                    builder.AddContent(40, " ");
+                    builder.OpenElement(41, "span");
+                    builder.AddAttribute(42, "class", "munin-explorer-filters__badge");
+                    builder.AddContent(43, badge);
+                    builder.CloseElement();
+                }
+
                 // The space is a text node of the label, not the span's first character: a name is
                 // computed per element, so a space inside the span is trimmed off and the name
                 // announces as "Dødsårsaksregisteret(30)".
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(40, " ");
-                    builder.OpenElement(41, "span");
-                    builder.AddAttribute(42, "class", "munin-explorer-filters__count");
-                    builder.AddContent(43, $"({count})");
+                    builder.AddContent(44, " ");
+                    builder.OpenElement(45, "span");
+                    builder.AddAttribute(46, "class", "munin-explorer-filters__count");
+                    builder.AddContent(47, $"({count})");
                     builder.CloseElement();
                 }
 

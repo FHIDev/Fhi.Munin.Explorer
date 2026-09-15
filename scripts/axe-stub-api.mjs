@@ -64,6 +64,53 @@ bodies.set(listRoute, JSON.stringify([
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));
 
+// No kilde in the captured catalogue carries biobank, the one kildetype the Kilde facet draws a
+// badge for, so a verbatim payload renders that markup nowhere and a scan reports no violations in
+// what is not there - the finding this whole stub exists for. One row is retyped, its facet with it.
+const filtersRoute = routes.find(([, source]) => source === 'filters.json')?.[0];
+const filters = filtersRoute === undefined ? undefined : JSON.parse(bodies.get(filtersRoute));
+const badged = new Map([['MS', ['biobank', 'Biobank']]]);
+
+// The same re-capture the check below is about can drop the fixture outright or rename the arrays
+// in it. Said here, or it arrives as a TypeError out of a stub whose caller only sees axe time out.
+if (!Array.isArray(filters?.kilder) || !Array.isArray(filters?.kildeTyper)) {
+  console.error('stub: filters.json is missing, or carries neither kilder nor kildeTyper');
+  process.exit(2);
+}
+
+const retyped = filters.kilder.filter(one => badged.has(one.kortNavn));
+
+// Loud here rather than as a state timing out later: a re-capture that drops or renames one of
+// these would leave the badge off every page, which is the silence the note above is about.
+if (retyped.length !== badged.size) {
+  console.error(`stub: filters.json holds ${retyped.length} of the ${badged.size} kilder the badge states need`);
+  process.exit(2);
+}
+
+for (const kilde of retyped) {
+  const was = filters.kildeTyper.find(type => type.value === kilde.kildeType);
+  if (was !== undefined) {
+    was.count -= kilde.count;
+  }
+  const [value, displayName] = badged.get(kilde.kortNavn);
+  kilde.kildeType = value;
+
+  // Added to the facet the value already has rather than beside it: a re-capture where the
+  // catalogue has grown one would otherwise put two headings for one kildetype in the panel.
+  const facet = filters.kildeTyper.find(type => type.value === value);
+  if (facet === undefined) {
+    filters.kildeTyper.push({ value, displayName, count: kilde.count });
+  } else {
+    facet.count += kilde.count;
+  }
+}
+
+// The symmetric case to the merge above: a kildetype whose only kilde was retyped away would stay
+// as a heading with no rows under it, a shape the real API never serves and the scan would measure.
+filters.kildeTyper = filters.kildeTyper.filter(type => type.count > 0);
+filters.kildeTyper.sort((a, b) => a.displayName.localeCompare(b.displayName, 'nb'));
+bodies.set(filtersRoute, JSON.stringify(filters));
+
 // The one route whose fixture cannot be served verbatim. my-list-variables.json is a real capture:
 // 247 entries reported, two of them kept. Served as-is for every page, it says "page 1 of 3" every
 // time, and VariableListState walks every page of the active list — so the walk never advances and
