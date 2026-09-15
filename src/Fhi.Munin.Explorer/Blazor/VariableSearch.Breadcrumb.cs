@@ -14,24 +14,6 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </remarks>
 public partial class VariableSearch
 {
-    /// <summary>
-    /// The four levels of the catalogue hierarchy, outermost first.
-    /// </summary>
-    /// <remarks>
-    /// The order is the trail's order and the order the members are compared in — a press on one
-    /// level clears every level greater than it — so the members are not free to be reordered.
-    /// Kildetype is deliberately not among them: it is a facet of its own in the panel rather than
-    /// a step on the way to a kilde, and a reader who cleared the trail would not expect the type
-    /// filter to go with it.
-    /// </remarks>
-    private enum HierarchyLevel
-    {
-        Kilde,
-        Delkilde,
-        Datasamling,
-        Variabelgruppe
-    }
-
     /// <summary>The catalogue's word for a level: the facet it is drawn in, and its keys' prefix.</summary>
     /// <remarks>
     /// The one spelling of it. The chip row asks whether a chosen value already has a chip by
