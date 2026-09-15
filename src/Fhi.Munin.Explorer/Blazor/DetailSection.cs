@@ -8,7 +8,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Emits <c>&lt;section id="…" data-nav-section tabindex="-1" class="munin-explorer-page__section"&gt;</c>
+/// Emits <c>&lt;section id="…" data-nav-section class="munin-explorer-page__section" tabindex="-1"&gt;</c>
 /// around whatever it is given. The class, helsedata's <c>data-nav-section</c> attribute and the
 /// negative <c>tabindex</c> that lets a fragment jump land focus here are written once rather than
 /// at each of the fifteen blocks <see cref="KildeView"/>, <see cref="DatasamlingView"/> and

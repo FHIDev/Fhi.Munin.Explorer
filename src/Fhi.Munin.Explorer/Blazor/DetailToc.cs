@@ -10,11 +10,15 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Fragment links and no script at all. The browser does the scrolling and the focus, and
+/// Fragment links and no script at all, so the scrolling is the host's to do and
 /// <c>scroll-margin-top</c> on <see cref="DetailSection"/>'s wrapper is what puts the heading clear
-/// of a sticky site header. The one thing that would need script is the highlight following the
-/// reader down the page, and it is deliberately not here: the nav is the whole navigational
-/// benefit, it ships now, and this package still ships zero JavaScript.
+/// of a sticky site header. Whether the jump carries keyboard FOCUS as well as the viewport depends
+/// on the host: a browser making the fragment jump itself moves focus to the target, and a Blazor
+/// <c>Router</c> intercepting a same-page press scrolls without it. This component's half is that
+/// the target can take focus at all — <see cref="DetailSection"/> writes <c>tabindex="-1"</c> for
+/// it. The one thing that would need script is the highlight following the reader down the page,
+/// and it is deliberately not here: the nav is the whole navigational benefit, it ships now, and
+/// this package still ships zero JavaScript.
 /// </para>
 /// <para>
 /// Each href carries this page's own path and query in front of the <c>#</c>. A bare <c>#id</c> is
@@ -112,10 +116,10 @@ public sealed class DetailToc : ComponentBase, IDisposable
     /// <inheritdoc />
     public void Dispose() => Navigation.LocationChanged -= Moved;
 
-    // A host that owns the query can rewrite it without anything above this component
-    // re-rendering, and the hrefs would then keep naming the address the reader arrived on rather
-    // than the one they are reading.
-    private void Moved(object? sender, LocationChangedEventArgs e) => StateHasChanged();
+    // A host that owns the query can rewrite it without anything above this component re-rendering,
+    // and the hrefs would then keep naming the address the reader arrived on. InvokeAsync because a
+    // LocationChanged raised off the renderer's dispatcher throws, which tears the circuit down.
+    private void Moved(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
 
     /// <inheritdoc />
     protected override void BuildRenderTree(RenderTreeBuilder builder)
@@ -131,6 +135,9 @@ public sealed class DetailToc : ComponentBase, IDisposable
         builder.OpenElement(2, "ul");
         builder.AddAttribute(3, "class", "form-menu__list");
 
+        // Rooted-absolute, the shape UrlMirror.Address writes, so the fallback and the cascade agree.
+        // It carries the host's path base whatever the document's <base href> says, because a rooted
+        // href resolves against that base's ORIGIN and never against its path.
         var page = PageAddress is { Length: > 0 } given ? given : new Uri(Navigation.Uri).PathAndQuery;
 
         var seq = 10;

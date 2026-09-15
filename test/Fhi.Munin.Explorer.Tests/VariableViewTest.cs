@@ -702,6 +702,10 @@ public class VariableViewTest : BunitContext
             // invented here — and the block's heading opens the section rather than sitting above it.
             Assert.True(section.HasAttribute("data-nav-section"));
             Assert.Contains(section.FirstElementChild!.TagName, (string[])["H3", "H4", "H5", "H6"]);
+
+            // A fragment jump moves focus only to a focusable target, so without this the reader
+            // is scrolled here and their next Tab carries on from the nav — WCAG 2.4.3.
+            Assert.Equal("-1", section.GetAttribute("tabindex"));
         });
 
         // The name is the view's own title, not a section of it.

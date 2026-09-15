@@ -111,6 +111,43 @@ public class DetailTocTest : BunitContext
     }
 
     [Fact]
+    public void Moved_WhenTheHostRewritesTheQueryUnderAStandingComponent_ThenTheHrefsFollow()
+    {
+        // Why the LocationChanged subscription is there, and the half every other test here misses
+        // by arriving BEFORE it renders. A host owning its own query moves it under a component
+        // nothing above re-renders, and the links would go on naming the address it arrived on.
+        Arrive("http://localhost/kilder?kilde=one");
+
+        var cut = RenderToc(Three);
+
+        Assert.Equal("/kilder?kilde=one#metadata", cut.FindAll("a")[0].GetAttribute("href"));
+
+        Arrive("http://localhost/kilder?kilde=two");
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "/kilder?kilde=two#metadata", cut.FindAll("a")[0].GetAttribute("href")));
+    }
+
+    [Fact]
+    public void Moved_WhenTheComponentIsGone_ThenItIsNotStillListeningForNavigations()
+    {
+        // LocationChanged belongs to the host and outlives every component that touches it, and a
+        // nav is built afresh on every drill-in: a lost unsubscribe accumulates one handler per
+        // detail view the reader opens. Silent, because rendering a disposed component is a no-op.
+        var cut = RenderToc(Three);
+        var toc = cut.Instance;
+
+        Assert.Contains(toc, NavigationListeners.Of(Services.GetRequiredService<NavigationManager>()));
+
+        // The call the renderer makes when a host's Router leaves the page, made directly: the
+        // renderer's own DisposeComponents queues it and returns, which is a race from here.
+        ((IDisposable)toc).Dispose();
+
+        Assert.DoesNotContain(toc, NavigationListeners.Of(Services.GetRequiredService<NavigationManager>()));
+        Assert.Null(Record.Exception(() => Arrive("http://localhost/kilder?kilde=three")));
+    }
+
+    [Fact]
     public void Render_WhenThereAreEntries_ThenTheListWearsHelsedatasOwnNamesAndNoneOfOurs()
     {
         // form-menu__list and form-menu__list__item are helsedata's own, so the nav takes that

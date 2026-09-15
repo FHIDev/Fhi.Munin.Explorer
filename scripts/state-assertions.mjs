@@ -171,8 +171,42 @@ const HOLD_MS = 6000;
 // since what would still be in flight is exactly the write that proves the component fine.
 const REFUSAL_MS = Number(process.env.STATE_REFUSAL_MS ?? 3000);
 
+// How long the contents-nav press is given to ARRIVE, which is what makes it a different budget
+// from REFUSAL_MS above: there is an arrival to wait for here — the named section on screen, or the
+// reader taken off the page — so this is a ceiling on a press that does neither, not a flat spend.
+const JUMP_MS = Number(process.env.STATE_JUMP_MS ?? 5000);
+
 /** Playwright's default is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
+
+/**
+ * Press the contents nav's first entry from the keyboard, and wait until the page has answered.
+ *
+ * From the keyboard because that is also the claim: a link answers Enter with no handler of its
+ * own. Either answer ends the wait — the named section on screen, or the reader somewhere else
+ * entirely — so a working jump costs what the scroll costs rather than a flat budget.
+ *
+ * The timeout is swallowed on purpose: a press that does neither is the finding `measure` is about
+ * to report, and throwing here would be read as the harness failing instead of as the page.
+ */
+async function pressNavEntry(page, id, where) {
+  await page.locator(`${TOC} a`).first().focus();
+  await page.keyboard.press('Enter');
+
+  await page.waitForFunction(({ target, path, query, href }) => {
+    if (location.href === href) {
+      return false;
+    }
+
+    if (location.pathname !== path || location.search !== query) {
+      return true;
+    }
+
+    const box = document.getElementById(target)?.getBoundingClientRect();
+
+    return box !== undefined && box.top >= 0 && box.top < innerHeight;
+  }, { target: id, ...where }, { timeout: JUMP_MS }).catch(() => {});
+}
 
 /**
  * What the picker says about each column, whichever shape its control is.
@@ -266,10 +300,11 @@ export const assertions = [
       const nav = page.locator(TOC);
       await nav.waitFor({ state: 'visible', timeout: findTimeout });
 
+      // Without one the resolved value equals the document's own address whatever the href says,
+      // so a green run would be measuring nothing at all. Checked and not carried out of here:
+      // nothing downstream reads it, and a staged field nothing consumes reads as a promise.
       const base = await page.evaluate(() => document.querySelector('base')?.href ?? null);
 
-      // Without one the resolved value equals the document's own address whatever the href says,
-      // so a green run would be measuring nothing at all.
       if (base === null) {
         throw new Error('this host emits no <base href>, so it cannot tell the defect from the fix');
       }
@@ -283,41 +318,33 @@ export const assertions = [
         throw new Error(`${TOC} drew no links, so there is no href to resolve`);
       }
 
-      const before = await page.evaluate(() => ({ path: location.pathname, query: location.search }));
+      // Named as the malformed link it is. Left to the reads below, an empty id would surface as
+      // `#` naming no element — true, and a description of the wrong defect — and would then feed
+      // the resolved comparison a URL nothing could ever match.
+      const fragmentless = entries.filter(one => one.id === '');
 
-      if (before.query === '') {
-        throw new Error(`${before.path} carries no query, so a dropped one would not show`);
+      if (fragmentless.length > 0) {
+        throw new Error(`${TOC} draws link(s) ${fragmentless.map(one => `"${one.label}"`).join(', ')} ` +
+          'whose href carries no #fragment, so they name no section at all');
       }
 
-      // From the keyboard, because that is also the claim: a link answers Enter with no handler.
-      await nav.locator('a').first().focus();
-      await page.keyboard.press('Enter');
-      await page.waitForTimeout(REFUSAL_MS);
+      const query = await page.evaluate(() => location.search);
 
-      const after = await page.evaluate(() => ({ path: location.pathname, query: location.search }));
-      const jumped = await page.evaluate(id => {
-        const box = document.getElementById(id)?.getBoundingClientRect();
+      if (query === '') {
+        throw new Error(`${await page.evaluate(() => location.pathname)} carries no query, ` +
+          'so a dropped one would not show');
+      }
 
-        return box === undefined ? null : box.top >= 0 && box.top < innerHeight;
-      }, entries[0].id);
-
-      return { base, entries, before, after, jumped };
+      return { entries };
     },
 
-    async measure(page, { entries, before, after, jumped }) {
-      if (after.path !== before.path || after.query !== before.query) {
-        return `pressing "${entries[0].label}" moved the reader from ${before.path}${before.query} ` +
-          `to ${after.path}${after.query}: the jump left the page instead of scrolling within it`;
-      }
+    // Every read is made here rather than in `stage`, and that is the whole of what makes the
+    // control below say anything: it rewrites the hrefs AFTER staging, so a press or a location
+    // read that happened once, before it ran, could never notice what it did. Each check reports
+    // rather than returning, so the control fires all of them it breaks instead of the first.
+    async measure(page, { entries }) {
+      const findings = [];
 
-      if (jumped !== true) {
-        return jumped === null
-          ? `"${entries[0].label}" names #${entries[0].id}, which is not in the document`
-          : `pressing "${entries[0].label}" left #${entries[0].id} off screen`;
-      }
-
-      // Read off the DOM every time rather than from what stage saw, because the control below
-      // rewrites the attribute and this is the read that has to notice.
       const resolved = await page.locator(`${TOC} a`).evaluateAll(links => links.map(link => ({
         id: link.getAttribute('href')?.split('#')[1] ?? '',
         href: link.href,
@@ -327,8 +354,8 @@ export const assertions = [
       const astray = resolved.find(one => one.href !== one.wanted);
 
       if (astray !== undefined) {
-        return `the link to #${astray.id} resolves to ${astray.href} where this page is ` +
-          `${astray.wanted}: the href is being resolved against the <base>, not against the page`;
+        findings.push(`the link to #${astray.id} resolves to ${astray.href} where this page is ` +
+          `${astray.wanted}: the href is being resolved against the <base>, not against the page`);
       }
 
       // The component's half of moving focus. Whether the browser takes it depends on the host —
@@ -337,17 +364,56 @@ export const assertions = [
         .filter(id => document.getElementById(id)?.getAttribute('tabindex') !== '-1'),
       resolved.map(one => one.id));
 
-      return unfocusable.length === 0
-        ? null
-        : `section(s) ${unfocusable.join(', ')} carry no tabindex="-1", so a fragment jump to ` +
-          'them scrolls the reader there and leaves their next Tab back in the nav';
+      if (unfocusable.length > 0) {
+        findings.push(`section(s) ${unfocusable.join(', ')} carry no tabindex="-1", so a fragment ` +
+          'jump to them scrolls the reader there and leaves their next Tab back in the nav');
+      }
+
+      // Last, because it is the one read that can take the page away: pressed under the control the
+      // reader lands on the host base, and the hrefs and sections above are no longer there to read.
+      const before = await page.evaluate(() =>
+        ({ path: location.pathname, query: location.search, href: location.href }));
+
+      await pressNavEntry(page, entries[0].id, before);
+
+      const after = await page.evaluate(() => ({ path: location.pathname, query: location.search }));
+
+      if (after.path !== before.path || after.query !== before.query) {
+        findings.push(`pressing "${entries[0].label}" moved the reader from ${before.path}${before.query} ` +
+          `to ${after.path}${after.query}: the jump left the page instead of scrolling within it`);
+      } else {
+        const jumped = await page.evaluate(id => {
+          const box = document.getElementById(id)?.getBoundingClientRect();
+
+          return box === undefined ? null : box.top >= 0 && box.top < innerHeight;
+        }, entries[0].id);
+
+        if (jumped !== true) {
+          findings.push(jumped === null
+            ? `"${entries[0].label}" names #${entries[0].id}, which is not in the document`
+            : `pressing "${entries[0].label}" left #${entries[0].id} off screen`);
+        }
+      }
+
+      // Indented to land under the scanner's own prefix, so two findings read as two lines rather
+      // than as one sentence that lost its full stop.
+      return findings.length === 0 ? null : findings.join('\n         ');
     },
 
     // The bead's own defect, put back by hand: a bare fragment. The attribute then reads exactly
-    // what it read in the broken build, and the resolved value is the only thing that says so.
+    // what it read in the broken build, and every read in `measure` is made after this.
     async control(page) {
-      await page.locator(`${TOC} a`).evaluateAll(links => links.forEach(
-        link => link.setAttribute('href', `#${link.getAttribute('href').split('#')[1]}`)));
+      await page.locator(`${TOC} a`).evaluateAll(links => links.forEach(link => {
+        const id = link.getAttribute('href')?.split('#')[1];
+
+        // Staging refused a fragmentless link, so reaching this is the harness having changed
+        // under itself rather than a finding — and `#` alone would be a control of nothing.
+        if (!id) {
+          throw new Error('a contents-nav link has no #fragment to strip it back to');
+        }
+
+        link.setAttribute('href', `#${id}`);
+      }));
     },
   },
   {

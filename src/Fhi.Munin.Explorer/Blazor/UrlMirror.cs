@@ -79,9 +79,18 @@ internal sealed class UrlMirror
     /// </summary>
     /// <param name="query">The owned keys as a query string with no leading <c>?</c>.</param>
     /// <remarks>
+    /// <para>
     /// Absolute-path rather than relative for <see cref="MirrorAsync"/>'s reason, which a link has
     /// too: a bare <c>?x=1</c> resolves against the document's <c>&lt;base href&gt;</c> and lands
     /// wherever that points rather than back on this page.
+    /// </para>
+    /// <para>
+    /// <b>The argument and the incoming address are the whole of it</b> — nothing here reads what
+    /// <see cref="MirrorAsync"/> last wrote. So a caller may build a link from the state it is
+    /// about to mirror, during the render that introduces it, and get the address the mirror will
+    /// write rather than the one before it. <see cref="DetailToc"/>'s cascade depends on that
+    /// ordering: it renders before <c>OnAfterRenderAsync</c> runs.
+    /// </para>
     /// </remarks>
     public string Address(string query)
     {
