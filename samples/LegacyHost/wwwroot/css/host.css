@@ -1733,9 +1733,12 @@ table.munin-explorer-data-list tbody th {
   margin-top: 0;
 }
 
+/* The fourth selector is the chassis's own, worn by the saved-list view: that surface has no
+   prefix of its own, and one name block drawn four ways would read as four components. */
 .munin-explorer-kilde__header,
 .munin-explorer-datasamling__header,
-.munin-explorer-whole__header {
+.munin-explorer-whole__header,
+.munin-explorer-page__header {
   padding-bottom: 16px;
   margin-bottom: 16px;
   border-bottom: 1px solid var(--grey30);
@@ -1851,6 +1854,13 @@ table.munin-explorer-data-list tbody th {
   .munin-explorer-page__body:has(> .munin-explorer-page__toc) {
     grid-template-columns: 250px minmax(0, 1fr);
     align-items: start;
+  }
+
+  /* Taken back rather than merely not given: an ungated copy of the rule above, from any stylesheet
+     this one is read after, would otherwise leave a lone main column in a 250px rail. The
+     saved-list view is the one that never draws a contents column. */
+  .munin-explorer-page__body:not(:has(> .munin-explorer-page__toc)) {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* The contents column follows the reader down the page. The scroller is half of the pairing

@@ -12507,6 +12507,9 @@ public class VariableSearchTest : BunitContext
                 // the body, which wears the chassis name alone.
                 "munin-explorer-page",
                 "munin-explorer-kilde",
+                // The chassis's eyebrow, above the name block: this view draws one on every
+                // detail page, the drill-in panel's included.
+                "munin-explorer-page__eyebrow",
                 "munin-explorer-kilde__header",
                 "munin-explorer-kilde__identifiers",
                 "munin-explorer-kilde__kildetype",

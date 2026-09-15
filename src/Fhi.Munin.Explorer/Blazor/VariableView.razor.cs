@@ -46,6 +46,14 @@ public sealed partial class VariableView : ComponentBase
     [Parameter]
     public RenderFragment? Sections { get; set; }
 
+    /// <inheritdoc cref="KildeView.Trail"/>
+    [Parameter]
+    public IReadOnlyList<DetailTrailStep>? Trail { get; set; }
+
+    /// <inheritdoc cref="KildeView.Actions"/>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
     // Unique per instance so two of these views on one page cannot collide on DOM ids, the same
     // reason VariableSearch carries one. A host mounting a variable beside the one it replaced
     // is the case that makes it real: both views hold the same version ids.
@@ -54,6 +62,12 @@ public sealed partial class VariableView : ComponentBase
     private Texts T => Texts.For(Language);
 
     private string Reader => ReaderLanguage.Of(Language);
+
+    /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
+    private IReadOnlyList<DetailTrailStep>? PageTrail =>
+        Variable is { } variable
+            ? DetailTrail.Append(Trail, T.Named(variable.PreferredTerm, variable.Code), Reader)
+            : null;
 
     private int BlockLevel => Math.Min(HeadingLevel + 1, 6);
 

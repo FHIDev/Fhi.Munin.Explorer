@@ -153,6 +153,18 @@ internal sealed record Texts(
     // column Innhold.
     string HeadingContents,
 
+    // The eyebrow over a detail page's title, naming what kind of thing the page is about. Their
+    // own strings rather than a reuse of FieldDataCollection, whose identical Norwegian word is a
+    // fact list's label and free to be reworded without the page's kind changing.
+    string EyebrowKilde,
+    string EyebrowDatasamling,
+    string EyebrowVariable,
+
+    // The breadcrumb landmark's name. Not HierarchyTrail, which names the filter trail over the
+    // results: that one narrows a list and this one leaves the page, and a reader hearing the same
+    // words for both has no way to tell which landmark they are in.
+    string TrailLabel,
+
     // Headings and fields the kilde view needs, which the variable panel has no use for.
     string HeadingMetadata,
     string HeadingSourceInformation,
@@ -898,6 +910,10 @@ internal sealed record Texts(
         FieldVariableCount: "Antall variabler",
         FieldDataCollections: "Antall datasamlinger",
         HeadingContents: "Innhold",
+        EyebrowKilde: "Datakilde",
+        EyebrowDatasamling: "Datasamling",
+        EyebrowVariable: "Variabel",
+        TrailLabel: "Brødsmulesti",
         HeadingMetadata: "Metadata",
         HeadingSourceInformation: "Kildeinformasjon",
         HeadingStatistics: "Statistikk",
@@ -1257,6 +1273,10 @@ internal sealed record Texts(
         FieldVariableCount: "Number of variables",
         FieldDataCollections: "Number of data collections",
         HeadingContents: "Contents",
+        EyebrowKilde: "Data source",
+        EyebrowDatasamling: "Data collection",
+        EyebrowVariable: "Variable",
+        TrailLabel: "Breadcrumb",
         HeadingMetadata: "Metadata",
         HeadingSourceInformation: "Source information",
         HeadingStatistics: "Statistics",

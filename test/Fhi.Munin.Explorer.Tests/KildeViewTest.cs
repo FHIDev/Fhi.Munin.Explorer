@@ -179,6 +179,7 @@ public class KildeViewTest : BunitContext
         int headingLevel = 2,
         string? headingId = null,
         string? dataCollectionsHeading = null,
+        IReadOnlyList<DetailTrailStep>? trail = null,
         RenderFragment? sections = null) =>
         Render<KildeView>(b =>
         {
@@ -186,6 +187,7 @@ public class KildeViewTest : BunitContext
              .Add(c => c.Language, language)
              .Add(c => c.HeadingLevel, headingLevel)
              .Add(c => c.HeadingId, headingId)
+             .Add(c => c.Trail, trail)
              .Add(c => c.DataCollectionsHeading, dataCollectionsHeading);
 
             // Left unset rather than set to null when no explorer passes any, which is the state a
@@ -195,6 +197,48 @@ public class KildeViewTest : BunitContext
                 b.Add(c => c.Sections, sections);
             }
         });
+
+    [Fact]
+    public void Eyebrow_Always_ThenItNamesTheKindOfPageAndIsNotAHeading()
+    {
+        // The eyebrow is above the title and is a <p>: rendered as an <h*> it would be a second
+        // title in the outline, naming a category rather than the thing on screen. Both languages,
+        // because a word that only translates in one of them reads as the component's own noise.
+        var eyebrow = Render(Kilde()).Find(".munin-explorer-page__eyebrow");
+
+        Assert.Equal("P", eyebrow.TagName);
+        Assert.Equal("Datakilde", eyebrow.TextContent.Trim());
+        Assert.Equal("Data source", Render(Kilde(), language: "en").Find(".munin-explorer-page__eyebrow").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Trail_WhenACallerSuppliesTheStepsAbove_ThenThisPageIsAppendedAsTheCurrentStep()
+    {
+        // The view appends its own name rather than the caller repeating it, so the last step is
+        // the page by construction — and the one step a reader can never be sent to a dead link by.
+        var cut = Render(Kilde(), trail: [new DetailTrailStep("Kildeutforsker", "/kilder")]);
+
+        var steps = cut.FindAll("nav.breadcrumbs li");
+
+        Assert.Equal("Kildeutforsker", steps[0].TextContent.Trim());
+        Assert.Equal("/kilder", Assert.Single(steps[0].QuerySelectorAll("a")).GetAttribute("href"));
+
+        var last = steps[^1];
+
+        Assert.Equal("page", last.GetAttribute("aria-current"));
+        Assert.Empty(last.QuerySelectorAll("a"));
+        Assert.Equal(
+            cut.Find(".munin-explorer-kilde__header .headline-s").TextContent.Trim(),
+            last.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Trail_WhenNoCallerSuppliesSteps_ThenNoBreadcrumbIsDrawn()
+    {
+        // The state every mount of this view is in today outside the kildeutforsker: no addresses
+        // to offer, so no trail rather than one step that goes nowhere.
+        Assert.Empty(Render(Kilde()).FindAll("nav.breadcrumbs"));
+    }
 
     /// <summary>The first fact box — the facts every source has.</summary>
     private static IElement SourceInformation(IRenderedComponent<KildeView> cut) =>
@@ -377,6 +421,9 @@ public class KildeViewTest : BunitContext
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
             "munin-explorer-page__body",
+            // The word above the name block saying what kind of thing this page is about. A <p>,
+            // so the outline a screen reader navigates by is the one the view already had.
+            "munin-explorer-page__eyebrow",
             // Every fact list this view draws, the chassis's own name since
             // Fhi.Metadata-35w0p.11 rather than the result row's drill-in panel's.
             "munin-explorer-page__fields",

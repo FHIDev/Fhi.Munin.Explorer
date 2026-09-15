@@ -1,6 +1,28 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
-<div class="@RootClasses">
+@* The splat first, so a caller writing `class` cannot take `munin-explorer-page` off the root
+   the layout rules key on: for a duplicated name, Blazor lets the later attribute win. *@
+<div @attributes="AdditionalAttributes" class="@RootClasses">
+
+    @* The chrome, above the name block as the mockups arrange it. Every piece of it is drawn only
+       when a caller filled it: a trail with no steps, an eyebrow with no word and an unfilled
+       action row are each nothing at all rather than an empty box with a margin. *@
+    @if (Trail is { Count: > 0 } trail)
+    {
+        <DetailTrail Steps="trail" Label="@(TrailLabel ?? string.Empty)" />
+    }
+
+    @* A <p>, never an h*: the eyebrow names the kind of thing this page is about and is not a
+       heading, and one in the outline would put a second title above the real one. *@
+    @if (!string.IsNullOrWhiteSpace(Eyebrow))
+    {
+        <p class="munin-explorer-page__eyebrow">@Eyebrow</p>
+    }
+
+    @if (Actions is not null)
+    {
+        <div class="munin-explorer-page__actions">@Actions</div>
+    }
 
     @Header
 

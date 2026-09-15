@@ -63,6 +63,32 @@ public sealed partial class KildeView : ComponentBase
     public RenderFragment? Sections { get; set; }
 
     /// <summary>
+    /// Where this source sits, for the breadcrumb: the steps above it, outermost first. This view
+    /// appends the source's own name as the last step, so a caller never has to say it twice and
+    /// the current page can never end up drawn as a link.
+    /// </summary>
+    /// <remarks>
+    /// Every step's target comes from here because this package has none to give: there is no
+    /// router and helsedata's addresses are not ours. Pass nothing — which a caller with no
+    /// addresses of its own has to — and no trail is drawn at all; pass a step with a null
+    /// <see cref="DetailTrailStep.Href"/> and it is drawn as plain text rather than as a dead link.
+    /// </remarks>
+    [Parameter]
+    public IReadOnlyList<DetailTrailStep>? Trail { get; set; }
+
+    /// <summary>
+    /// Page-level controls, gathered into a row above the name block.
+    /// </summary>
+    /// <remarks>
+    /// For what acts on the source this page is about. The way out of whatever surface the view
+    /// opened inside is not that: it belongs to the surface, has to be on screen while the payload
+    /// is still in flight — which is before this view exists — and repeating it here would put the
+    /// same control on the page twice.
+    /// </remarks>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    /// <summary>
     /// An id for the name heading, so a surrounding region can label itself by it.
     /// </summary>
     /// <remarks>
@@ -76,6 +102,12 @@ public sealed partial class KildeView : ComponentBase
     private Texts T => Texts.For(Language);
 
     private string Reader => ReaderLanguage.Of(Language);
+
+    /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
+    private IReadOnlyList<DetailTrailStep>? PageTrail =>
+        Kilde is { } kilde
+            ? DetailTrail.Append(Trail, T.Named(kilde.PreferredTerm, kilde.Code), Reader)
+            : null;
 
     /// <summary>The level for the two block headings, and for each metadata group under them.</summary>
     private int BlockLevel => Math.Min(HeadingLevel + 1, 6);

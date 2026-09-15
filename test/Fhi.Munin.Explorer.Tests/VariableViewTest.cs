@@ -46,10 +46,56 @@ public class VariableViewTest : BunitContext
         },
     };
 
-    private IRenderedComponent<VariableView> Render(VariableDetail detail, string? language = null) =>
+    private IRenderedComponent<VariableView> Render(
+        VariableDetail detail,
+        string? language = null,
+        IReadOnlyList<DetailTrailStep>? trail = null) =>
         Render<VariableView>(b => b
             .Add(c => c.Variable, detail)
-            .Add(c => c.Language, language));
+            .Add(c => c.Language, language)
+            .Add(c => c.Trail, trail));
+
+    [Fact]
+    public void Eyebrow_Always_ThenItNamesTheKindOfPageAndIsNotAHeading()
+    {
+        // The eyebrow is above the title and is a <p>: rendered as an <h*> it would be a second
+        // title in the outline, naming a category rather than the thing on screen. Both languages,
+        // because a word that only translates in one of them reads as the component's own noise.
+        var eyebrow = Render(Detail()).Find(".munin-explorer-page__eyebrow");
+
+        Assert.Equal("P", eyebrow.TagName);
+        Assert.Equal("Variabel", eyebrow.TextContent.Trim());
+        Assert.Equal("Variable", Render(Detail(), language: "en").Find(".munin-explorer-page__eyebrow").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Trail_WhenACallerSuppliesTheStepsAbove_ThenThisPageIsAppendedAsTheCurrentStep()
+    {
+        // The view appends its own name rather than the caller repeating it, so the last step is
+        // the page by construction — and the one step a reader can never be sent to a dead link by.
+        var cut = Render(Detail(), trail: [new DetailTrailStep("Kildeutforsker", "/kilder")]);
+
+        var steps = cut.FindAll("nav.breadcrumbs li");
+
+        Assert.Equal("Kildeutforsker", steps[0].TextContent.Trim());
+        Assert.Equal("/kilder", Assert.Single(steps[0].QuerySelectorAll("a")).GetAttribute("href"));
+
+        var last = steps[^1];
+
+        Assert.Equal("page", last.GetAttribute("aria-current"));
+        Assert.Empty(last.QuerySelectorAll("a"));
+        Assert.Equal(
+            cut.Find(".munin-explorer-whole__header .headline-s").TextContent.Trim(),
+            last.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Trail_WhenNoCallerSuppliesSteps_ThenNoBreadcrumbIsDrawn()
+    {
+        // The state every mount of this view is in today outside the kildeutforsker: no addresses
+        // to offer, so no trail rather than one step that goes nowhere.
+        Assert.Empty(Render(Detail()).FindAll("nav.breadcrumbs"));
+    }
 
     [Fact]
     public void Render_Always_ThenEveryClassNameIsOneSomeStylesheetActuallyDefines()
