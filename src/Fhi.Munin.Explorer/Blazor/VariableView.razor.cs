@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 
@@ -91,16 +92,32 @@ public sealed partial class VariableView : ComponentBase
     /// </remarks>
     private IReadOnlyList<PropertyGroup> Groups =>
         Variable is { } variable
-            ? CatalogueProperties.Groups(variable.PropertyMetadata, variable.AdditionalProperties, Reader,
-                                         DrawnElsewhere)
+            ? CatalogueProperties.Groups(variable.PropertyMetadata, Values, Reader, DrawnElsewhere)
             : [];
+
+    /// <summary>
+    /// The payload's curated bag with the variable's own columns merged in — see
+    /// <see cref="CatalogueColumns"/> for why a column-backed value has to be put there at all.
+    /// </summary>
+    private IReadOnlyDictionary<string, string?> Values =>
+        Variable is { } variable
+            ? CatalogueColumns.Values(variable)
+            : ReadOnlyDictionary<string, string?>.Empty;
 
     /// <summary>Keys this view renders itself, so the metadata does not repeat them.</summary>
     /// <remarks>
-    /// Just the one, and it earns its place: DataType is the only filled-in key in its group on a
-    /// typical variable, so dropping it drops the group and leaves the five Runa shows.
+    /// DataType earns its place twice over: it is the only filled-in key in its group on a typical
+    /// variable, so dropping it drops the group and leaves the five Runa shows. Beskrivelse is the
+    /// ingress under the name, which is where a variable's description has always been read — the
+    /// same call <see cref="KildeView"/> makes for the same field (Fhi.Metadata-bct95).
+    /// <para>
+    /// The drill-in panel keeps a set of its own — <c>VariableSearch.PanelDrawnElsewhere</c> — and
+    /// the difference is real rather than drift: it spells the description out too, and has no
+    /// DataType block for the key to be drawn twice against.
+    /// </para>
     /// </remarks>
-    private static readonly HashSet<string> DrawnElsewhere = new(StringComparer.Ordinal) { "DataType" };
+    private static readonly IReadOnlySet<string> DrawnElsewhere =
+        new HashSet<string>(StringComparer.Ordinal) { "DataType", CatalogueColumns.Description };
 
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>
@@ -187,7 +204,7 @@ public sealed partial class VariableView : ComponentBase
     /// </remarks>
     private DetailFact? Curated(string key) =>
         Variable is { } variable
-        && CatalogueProperties.Row(variable.PropertyMetadata, variable.AdditionalProperties, Reader, key)
+        && CatalogueProperties.Row(variable.PropertyMetadata, Values, Reader, key)
             is { Values: [var first, ..] } row
             ? new DetailFact(row.Label, first.Text, CatalogueProperties.Foreign(first.Language, Reader))
             : null;

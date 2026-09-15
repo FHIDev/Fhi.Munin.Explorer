@@ -1366,8 +1366,26 @@ public sealed partial class VariableSearch : ComponentBase
     private string? Foreign(string language) => CatalogueProperties.Foreign(language, Reader);
 
     /// <summary>The variable's curated properties, resolved for this reader.</summary>
+    /// <remarks>
+    /// Through <see cref="CatalogueColumns"/> rather than off the bag, because merging the
+    /// column-backed values in reaches this list too and not only the detail views
+    /// (Fhi.Metadata-bct95).
+    /// </remarks>
     private List<PropertyRow> PropertyRows(VariableDetail detail) =>
-        CatalogueProperties.Rows(detail.PropertyMetadata, detail.AdditionalProperties, Reader);
+        CatalogueProperties.Rows(detail.PropertyMetadata, CatalogueColumns.Values(detail), Reader,
+                                 PanelDrawnElsewhere);
+
+    /// <summary>
+    /// Keys this panel draws itself, so its Egenskaper list does not repeat them.
+    /// </summary>
+    /// <remarks>
+    /// Beskrivelse alone, and that is where this differs from
+    /// <c>VariableView.DrawnElsewhere</c>: the Identifikasjon list above spells the
+    /// description out, while DataType has no block of its own here the way it has on the detail
+    /// page — suppressing it would take the row off the one surface that draws it.
+    /// </remarks>
+    private static readonly IReadOnlySet<string> PanelDrawnElsewhere =
+        new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.Description };
 
     /// <summary>Which tab of the open panel is showing.</summary>
     /// <remarks>

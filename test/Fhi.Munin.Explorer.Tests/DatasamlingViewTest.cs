@@ -199,8 +199,8 @@ public class DatasamlingViewTest : BunitContext
     public void HeroFacts_Always_ThenNothingIsTakenOutOfTheSectionsBelow()
     {
         // A summary, not a relocation. The fact box still draws all eight fields, Kilde and
-        // Databehandler included, and no key joins a drawnElsewhere set on account of the row —
-        // this view names none at all.
+        // Databehandler included, and no key joins the drawnElsewhere set on account of the row —
+        // that set names Beskrivelse, which the ingress draws, and nothing else.
         var cut = Render(Datasamling());
 
         Assert.Equal(
@@ -426,6 +426,43 @@ public class DatasamlingViewTest : BunitContext
             Assert.Equal("DL", heading.NextElementSibling?.TagName);
             Assert.NotEmpty(heading.NextElementSibling!.QuerySelectorAll("dd"));
         }
+    }
+
+    /// <summary>
+    /// The merged values, the suppression set and the grouping are resolved once per (Datasamling,
+    /// Language) pair rather than per read, and a cache keyed on either half alone goes stale on the
+    /// other.
+    /// </summary>
+    /// <remarks>
+    /// Worth pinning because a fact box asks about a dozen placement questions per render, each of
+    /// which used to merge the values and rebuild the suppression set again (Fhi.Metadata-43jrq, on
+    /// the kilde side). The same payload instance is passed back deliberately: a fresh one would
+    /// miss the cache on its reference alone and say nothing about the language half.
+    /// </remarks>
+    [Theory]
+    [InlineData("no", "Beskrivelse")]
+    [InlineData("en", "Description")]
+    public void Metadata_WhenOnlyTheLanguageChanges_ThenTheCachedGroupsAreResolvedAgain(
+        string language, string expected)
+    {
+        var datasamling = Datasamling();
+        var cut = Render(datasamling, language: language == "no" ? "en" : "no");
+
+        cut.Render(b => b.Add(c => c.Datasamling, datasamling).Add(c => c.Language, language));
+
+        Assert.Equal(expected, cut.FindAll(".munin-explorer-group")[0].TextContent);
+    }
+
+    /// <inheritdoc cref="Metadata_WhenOnlyTheLanguageChanges_ThenTheCachedGroupsAreResolvedAgain"/>
+    [Fact]
+    public void Metadata_WhenOnlyTheDatasamlingChanges_ThenTheCachedGroupsAreResolvedAgain()
+    {
+        var cut = Render(Datasamling());
+
+        cut.Render(b => b.Add(c => c.Datasamling,
+                              Datasamling() with { AdditionalProperties = new Dictionary<string, string?>() }));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-group"));
     }
 
     [Fact]
