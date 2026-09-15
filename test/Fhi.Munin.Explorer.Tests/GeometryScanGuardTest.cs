@@ -186,6 +186,29 @@ public class GeometryScanGuardTest
         }
     }
 
+    [Fact]
+    public void HostileHost_WhenA320ScanFails_ThenTheRunFailsAndAnExportedListCannotStopOrNarrowIt()
+    {
+        // Read, not run: the step needs a browser and the feed. Without the status lines a real run
+        // printed a 320px FAIL and exited 0; without clearing, an exported list exits 2 or narrows a scan.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+        Assert.Matches(@"(?m)^GEOMETRY_EXCEPT= [^\n]*geometry-scan\.mjs"" ""\$\{urls\[@\]\}""$", source);
+
+        var body = Regex.Match(source, @"^reflow\(\) \{(?<body>.*?)^\}", RegexOptions.Multiline | RegexOptions.Singleline);
+
+        Assert.True(body.Success, "check-hostile-host.sh no longer defines reflow() { ... }.");
+        Assert.Matches(@"GEOMETRY_ASSERTIONS=\s", body.Groups["body"].Value);
+        Assert.Matches(@"\[ ""\$status"" -ne 0 \] && reflow_status=1", body.Groups["body"].Value);
+
+        var verdict = Regex.Match(
+            source,
+            @"^if (?<condition>[^\n]*); then\s+cat >&2 <<'EOF'\s+The component does not render correctly",
+            RegexOptions.Multiline);
+
+        Assert.True(verdict.Success, "check-hostile-host.sh no longer has the failing verdict this reads.");
+        Assert.Contains(@"[ ""$reflow_status"" -ne 0 ]", verdict.Groups["condition"].Value, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// One run of the real script, from a directory that is not the checkout — which holds it to
     /// resolving its sibling modules by its own path rather than by where the caller stood.

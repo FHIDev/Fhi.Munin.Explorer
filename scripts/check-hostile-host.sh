@@ -220,7 +220,7 @@ urls=()
 for t in "${TARGETS[@]}"; do urls+=("${BASE}${t}"); done
 
 set +e
-ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" node "$ROOT/scripts/geometry-scan.mjs" "${urls[@]}"
+GEOMETRY_EXCEPT= ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" node "$ROOT/scripts/geometry-scan.mjs" "${urls[@]}"
 geometry_status=$?
 set -e
 
@@ -234,7 +234,8 @@ reflow() {
   local urls=() t status
   for t in "$@"; do urls+=("${BASE}${t}"); done
   set +e
-  GEOMETRY_WIDTHS=320 GEOMETRY_EXCEPT="$except" ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" \
+  GEOMETRY_ASSERTIONS= GEOMETRY_WIDTHS=320 GEOMETRY_EXCEPT="$except" \
+    ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" \
     node "$ROOT/scripts/geometry-scan.mjs" "${urls[@]}"
   status=$?
   set -e
