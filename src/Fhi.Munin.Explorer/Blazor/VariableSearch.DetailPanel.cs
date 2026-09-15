@@ -513,15 +513,8 @@ public partial class VariableSearch
         _codesGeneration++;
     }
 
-    /// <summary>
-    /// The kodeverk block as a section, for the whole-variable view to place among its own, or none
-    /// when the variable has no kodeverk.
-    /// </summary>
-    /// <remarks>
-    /// The same fragment the Data tab draws. The alternative was a second copy inside
-    /// <see cref="VariableView"/>, which is a section to fix twice and two chances for the panel and
-    /// the full view to disagree about the same links.
-    /// </remarks>
+    // The Data tab's own fragment, so the panel and the whole variable cannot disagree about the
+    // same links; no section at all without kodeverk, so the nav offers none.
     private IReadOnlyList<DetailNamedSection> KodeverkSections(VariableDetail detail) =>
         detail.KodeverkLinks.Count == 0
             ? []

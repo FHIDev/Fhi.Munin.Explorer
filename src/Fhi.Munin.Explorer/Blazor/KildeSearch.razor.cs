@@ -1263,14 +1263,8 @@ public sealed partial class KildeSearch : ComponentBase
         builder.CloseElement();
     };
 
-    /// <summary>
-    /// Kelda's own sections for an open kilde: Variabler always, then access criteria and prices
-    /// under <see cref="ShowAccessAndPrices"/>.
-    /// </summary>
-    /// <remarks>
-    /// <see cref="KildeView"/> draws the headings, so they sit at the level of its own blocks, and
-    /// lists each section in its contents nav.
-    /// </remarks>
+    // Handed to KildeView rather than drawn here, so the headings sit at its blocks' level and the
+    // contents nav lists them.
     private IReadOnlyList<DetailNamedSection> OwnSections(KildeDetail kilde)
     {
         List<DetailNamedSection> sections =
