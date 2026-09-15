@@ -30,6 +30,16 @@ public sealed record PropertyMetadataEntry
     public IReadOnlyDictionary<string, string> GroupTranslations { get; init; } =
         new Dictionary<string, string>();
 
+    /// <summary>
+    /// Stable identifier of the section the key belongs under, e.g. <c>om-registeret</c>. Null where
+    /// the group has no key, and against an API that predates the field.
+    /// </summary>
+    /// <remarks>
+    /// The key identifies a section; <see cref="GroupTranslations"/> only titles it, and a curator
+    /// can rename a title without changing the key.
+    /// </remarks>
+    [JsonPropertyName("groupKey")] public string? GroupKey { get; init; }
+
     /// <summary>Ascending display order within the group.</summary>
     [JsonPropertyName("sortOrder")] public int SortOrder { get; init; }
 
