@@ -448,6 +448,17 @@ These are not style preferences — each one is a host that breaks otherwise.
     stand in at its declarations. Three of the four surfaces set the eyebrow — the kilde,
     datasamling and variable views, each naming its own kind. `VariableListView` sets no chrome at
     all: the saved-list view's own is a bead of its own.
+    Under the name block the same three add `munin-explorer-page__facts`, the hero row: one `<dl>`
+    holding a `<div>` per fact, each a `<dt>` label over a `<dd>` value with an optional `<small>`
+    under it carrying the qualifier that makes the value honest — `630 variabler`, then
+    `i 6 datasamlinger`. Six facts per page, because Stiler 0.1.75 lays the list out as
+    `repeat(6, minmax(0, 1fr))` at desktop, three tracks below 1080px and two below 600px, so five
+    leaves a hole and seven wraps to a row of one; a record the catalogue has not filled in draws
+    fewer, since a fact with no value is dropped rather than drawn empty. A handle: undefined, the
+    `<dl>` is a definition list at browser defaults, every label and value still on the page and in
+    the right order, and what is lost is the row — it stacks instead. `VariableListView` names no
+    facts, because a list of saved variables is not an entity with facts about it. Both sample
+    stylesheets stand in at exactly what the pinned 0.1.75 declares, the `small` included.
 
     The same three add `munin-explorer-page__fields` on every fact list they draw, and
     `munin-explorer-page__language` on the language name above a value the catalogue holds in more
@@ -741,6 +752,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-page__actions` | handle |
   | `munin-explorer-page__body` | handle |
   | `munin-explorer-page__eyebrow` | handle |
+  | `munin-explorer-page__facts` | handle |
   | `munin-explorer-page__fields` | handle |
   | `munin-explorer-page__header` | handle |
   | `munin-explorer-page__language` | handle |

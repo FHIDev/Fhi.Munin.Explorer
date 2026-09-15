@@ -186,6 +186,37 @@ public sealed partial class KildeView : ComponentBase
         kilde.AdditionalProperties?.TryGetValue(key, out var value) is true && !string.IsNullOrWhiteSpace(value);
 
     /// <summary>
+    /// The five values the hero row and the fact boxes both draw, resolved once each.
+    /// </summary>
+    /// <remarks>
+    /// One member per value rather than one expression per surface: the hero repeats what the
+    /// sections show on purpose, and two resolutions of one field are how the same fact ends up on
+    /// one page under two different words.
+    /// </remarks>
+    private string? KildetypeLabel =>
+        Kilde is { } kilde ? T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype) : null;
+
+    /// <inheritdoc cref="KildetypeLabel"/>
+    private string? PersonIdentification =>
+        Kilde is { } kilde ? T.PersonIdentificationLabel(kilde.PersonIdentificationLevel) : null;
+
+    /// <inheritdoc cref="KildetypeLabel"/>
+    private string? Validity =>
+        Kilde is { } kilde ? CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T) : null;
+
+    /// <inheritdoc cref="KildetypeLabel"/>
+    private string? DataPeriod =>
+        Kilde is { } kilde ? CatalogueDate.Period(kilde.DataFrom, kilde.DataTo, Language, T) : null;
+
+    /// <inheritdoc cref="KildetypeLabel"/>
+    /// <remarks>
+    /// A zero is drawn, not dropped: <see cref="KildeSortOrder"/> and KildeSearch's zero-weight
+    /// count class both read nought off this non-nullable int as a count of none, and KildeSearch
+    /// prints it in words a section below this one.
+    /// </remarks>
+    private string? TotalVariables => Kilde?.TotalVariables.ToString();
+
+    /// <summary>
     /// The facts every source has, which is why they are typed fields rather than curated properties.
     /// </summary>
     /// <remarks>
@@ -197,12 +228,12 @@ public sealed partial class KildeView : ComponentBase
         Kilde is not { } kilde
             ? []
             : [
-                (T.FacetKildeType, T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype), false),
+                (T.FacetKildeType, KildetypeLabel, false),
                 (T.FieldLegalBasis, kilde.LegalBasis, true),
                 (T.FieldDataController, kilde.DataController, true),
                 (T.FieldDataProcessor, kilde.DataProcessor, true),
-                (T.FieldPersonIdentification, T.PersonIdentificationLabel(kilde.PersonIdentificationLevel), false),
-                (T.FieldValidity, CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T), false),
+                (T.FieldPersonIdentification, PersonIdentification, false),
+                (T.FieldValidity, Validity, false),
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(kilde.LastUpdated, Language), false),
             ];
 
@@ -211,8 +242,44 @@ public sealed partial class KildeView : ComponentBase
         Kilde is not { } kilde
             ? []
             : [
-                (T.FieldTotalVariables, kilde.TotalVariables.ToString(), false),
-                (T.FieldDataPeriod, CatalogueDate.Period(kilde.DataFrom, kilde.DataTo, Language, T), false),
+                (T.FieldTotalVariables, TotalVariables, false),
+                (T.FieldDataPeriod, DataPeriod, false),
+            ];
+
+    /// <summary>
+    /// The six facts a source leads with, in the order the mockup puts them.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Every one of them is still drawn below — the first three and the last in Kildeinformasjon,
+    /// the data period and the variable count in Statistikk — and every value here is the member
+    /// that section reads, so the two cannot come out in different words. None of these keys goes
+    /// into <see cref="DrawnElsewhere"/>: a hero row is a summary in a different register and is
+    /// meant to repeat.
+    /// </para>
+    /// <para>
+    /// The mockup's sixth is Tilgang, and Munin's catalogue holds no access field for a source, so
+    /// Lovverk stands in it — the nearest thing a reader deciding whether they can have the data
+    /// actually has. The mockup's note under Dataansvarlig is a contact role the payload does not
+    /// carry either, and a note with nothing behind it is left off rather than invented.
+    /// </para>
+    /// </remarks>
+    private IReadOnlyList<DetailFact> HeroFacts =>
+        Kilde is not { } kilde
+            ? []
+            : [
+                new DetailFact(T.FacetKildeType, KildetypeLabel),
+                new DetailFact(T.FieldDataController, kilde.DataController,
+                               CatalogueProperties.Foreign("no", Reader)),
+                new DetailFact(T.FieldPersonIdentification, PersonIdentification),
+                new DetailFact(T.FieldDataPeriod, DataPeriod,
+                               NoteLabel: T.FieldValidity, Note: Validity),
+                new DetailFact(T.FieldTotalVariables, TotalVariables,
+                               Note: DataCollections.Count > 0
+                                   ? T.DatasamlingCountCrumb(DataCollections.Count)
+                                   : null),
+                new DetailFact(T.FieldLegalBasis, kilde.LegalBasis,
+                               CatalogueProperties.Foreign("no", Reader)),
             ];
 
     /// <summary>The sections this view draws, in the order it draws them.</summary>

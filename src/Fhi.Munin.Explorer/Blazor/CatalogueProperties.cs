@@ -235,6 +235,33 @@ internal static class CatalogueProperties
     }
 
     /// <summary>
+    /// One curated property by key, resolved exactly as the group below the fold resolves it, or
+    /// null where the catalogue holds nothing worth drawing for it.
+    /// </summary>
+    /// <remarks>
+    /// Through <see cref="Rows"/> rather than beside it, because the caller is a hero fact that the
+    /// metadata groups also draw: a second lookup would be a second chance to translate the same
+    /// code into a different word, which is the whole reason a variable's DataType is kept out of
+    /// its groups. The label carries the storage qualifier stripped and the value the vocabulary
+    /// resolved, both once.
+    /// <para>
+    /// A key the payload types as a URL answers with the row's <see cref="PropertyRow.Href"/> set;
+    /// a hero fact draws the words and drops the link, since the section below still offers it.
+    /// </para>
+    /// </remarks>
+    internal static PropertyRow? Row(
+        IEnumerable<PropertyMetadataEntry> metadata,
+        IReadOnlyDictionary<string, string?>? values,
+        string reader,
+        string key)
+    {
+        var rows = Rows(metadata.Where(entry => string.Equals(entry.Key, key, StringComparison.Ordinal)),
+                        values, reader);
+
+        return rows.Count > 0 ? rows[0] : null;
+    }
+
+    /// <summary>
     /// The properties gathered into the groups the catalogue puts them in.
     /// </summary>
     /// <remarks>

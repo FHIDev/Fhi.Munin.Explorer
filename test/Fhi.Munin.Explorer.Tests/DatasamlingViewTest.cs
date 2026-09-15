@@ -149,6 +149,124 @@ public class DatasamlingViewTest : BunitContext
         ?? throw new InvalidOperationException(
             $"No '{label}' row in this box, only: {string.Join(", ", Labels(list))}.");
 
+    /// <summary>The hero row, which a datasamling always has: two of its six never resolve to nothing.</summary>
+    private static IElement Hero(IRenderedComponent<DatasamlingView> cut) =>
+        cut.Find("dl.munin-explorer-page__facts");
+
+    /// <summary>One hero cell, found by the label beside it.</summary>
+    private static IElement Cell(IElement hero, string label) =>
+        hero.QuerySelectorAll("div").FirstOrDefault(row => row.QuerySelector("dt")?.TextContent == label)
+        ?? throw new InvalidOperationException(
+            $"No '{label}' cell in the hero row, only: {string.Join(", ", Labels(hero))}.");
+
+    [Fact]
+    public void HeroFacts_Always_ThenTheyAreTheSourcePagesSixOverThisCollectionsOwnValues()
+    {
+        // The same six as a source, deliberately: a reader moving between a source and one of its
+        // collections is comparing them, and a row that reorders itself between the two pages is a
+        // row they have to read twice. Gyldighet stands where a source has Dataperiode, which is
+        // the period a datasamling actually carries.
+        //
+        // Kilde is not among them although the fact box below shows it: the breadcrumb directly
+        // above already names the source, and a strip that repeats the chrome spends a slot on
+        // something the reader has just read.
+        Assert.Equal(
+            ["Type datakilde", "Dataansvarlig", "Grad av personidentifikasjon", "Gyldighet",
+             "Antall variabler", "Lovverk"],
+            Labels(Hero(Render(Datasamling()))));
+    }
+
+    [Fact]
+    public void HeroFacts_Always_ThenEachReadsTheSameWordsAsTheSectionThatDrawsItBelow()
+    {
+        // The repetition is deliberate and the disagreement is the bug — every value here is the
+        // member the section reads, and every one of them is the inherited Effective… twin.
+        var cut = Render(Datasamling());
+        var hero = Hero(cut);
+        var source = SourceInformation(cut);
+
+        Assert.Equal(Value(source, "Type datakilde"), Value(hero, "Type datakilde"));
+        Assert.Equal(Value(source, "Dataansvarlig"), Value(hero, "Dataansvarlig"));
+        Assert.Equal(Value(source, "Grad av personidentifikasjon"),
+                     Value(hero, "Grad av personidentifikasjon"));
+        Assert.Equal(Value(source, "Gyldighet"), Value(hero, "Gyldighet"));
+        Assert.Equal(Value(source, "Lovverk"), Value(hero, "Lovverk"));
+        Assert.Equal(Value(Box(cut, "Statistikk (Årsbasert)"), "Antall variabler"),
+                     Value(hero, "Antall variabler"));
+    }
+
+    [Fact]
+    public void HeroFacts_Always_ThenNothingIsTakenOutOfTheSectionsBelow()
+    {
+        // A summary, not a relocation. The fact box still draws all eight fields, Kilde and
+        // Databehandler included, and no key joins a drawnElsewhere set on account of the row —
+        // this view names none at all.
+        var cut = Render(Datasamling());
+
+        Assert.Equal(
+            ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin"],
+            Labels(SourceInformation(cut)));
+        Assert.Equal(["Antall variabler"], Labels(Box(cut, "Statistikk (Årsbasert)")));
+        Assert.Empty(cut.Find(".munin-explorer-page__body").QuerySelectorAll("dl.munin-explorer-page__facts"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheCatalogueNamesNoCountingUnit_ThenTheCountCarriesNoEmptyNote()
+    {
+        // This payload's telleEnhet is the empty string, which is the common case — so the captured
+        // datasamling is the render that would ship an empty <small> under every count.
+        Assert.Empty(Hero(Render(Datasamling())).QuerySelectorAll("small"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheCatalogueNamesACountingUnit_ThenItQualifiesTheCountBeneathIt()
+    {
+        // 99 variabler counted per what is a different claim from 99 variabler, which is the whole
+        // job of the second line — and the unit stays in Statistikk below, where it already was.
+        var cut = Render(Datasamling() with { CountingUnit = "Pasient" });
+
+        Assert.Equal("Telleenhet: Pasient",
+                     Cell(Hero(cut), "Antall variabler").QuerySelector("small")!.TextContent);
+        Assert.Equal("Pasient", Value(Box(cut, "Statistikk (Årsbasert)"), "Telleenhet"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheReaderIsEnglish_ThenTheCataloguesOwnWordsAreMarkedAndOursAreNot()
+    {
+        // The same mix as the source page, on the same two fields: the kildetype and the
+        // identification level are vocabularies this package translates, the controller and the
+        // legal basis are inherited free text stored once, in Norwegian, however the reader reads.
+        var hero = Hero(Render(Datasamling(), language: "en"));
+
+        Assert.Equal("no", Cell(hero, "Data controller").QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Equal("no", Cell(hero, "Legal basis").QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Empty(Cell(hero, "Type of data source").QuerySelectorAll("span"));
+        Assert.Empty(Cell(hero, "Level of personal identification").QuerySelectorAll("span"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheReaderIsEnglish_ThenTheCountingUnitIsMarkedAsTheSectionMarksIt()
+    {
+        // Telleenhet is catalogue free text held only in Norwegian, and the note is the one place
+        // this page writes it outside the Statistikk row that marks it — unmarked here, the same
+        // word would be read to an English reader with English phonetics four cells above.
+        var english = Render(Datasamling() with { CountingUnit = "Pasient" }, language: "en");
+        var note = Cell(Hero(english), "Number of variables").QuerySelector("small")!;
+
+        // The unit alone, not the line: "Counting unit" is this package's word and is translated,
+        // so a mark on the <small> would announce an English label in a Norwegian voice — which is
+        // how the Statistikk row below marks the same field, label unmarked and value marked.
+        Assert.Equal("Counting unit: Pasient", note.TextContent);
+        Assert.False(note.HasAttribute("lang"));
+        Assert.Equal("no", note.QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Equal("Pasient", note.QuerySelector("span")!.TextContent);
+
+        // And a Norwegian reader is told nothing, because Norwegian is the page they are reading.
+        Assert.Empty(Cell(Hero(Render(Datasamling() with { CountingUnit = "Pasient" })), "Antall variabler")
+                         .QuerySelector("small")!.QuerySelectorAll("span"));
+    }
+
     /// <summary>The headings of the blocks under the name, in the order they are drawn.</summary>
     private static IReadOnlyList<string> BlockHeadings(IRenderedComponent<DatasamlingView> cut) =>
         [.. cut.FindAll(".munin-explorer-page__body .headline-s").Select(e => e.TextContent)];
@@ -200,6 +318,9 @@ public class DatasamlingViewTest : BunitContext
             // The word above the name block saying what kind of thing this page is about. A <p>,
             // so the outline a screen reader navigates by is the one the view already had.
             "munin-explorer-page__eyebrow",
+            // The hero row under the name block, the source page's six over the collection's own
+            // values. Always drawn: two of the six fall back to Texts.NotSpecified.
+            "munin-explorer-page__facts",
             // Every fact list this view draws, the chassis's own name since
             // Fhi.Metadata-35w0p.11 rather than the result row's drill-in panel's.
             "munin-explorer-page__fields",
