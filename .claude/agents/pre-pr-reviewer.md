@@ -322,6 +322,10 @@ defect we ship becomes helsedata's to answer for, on their domain.
   failure at all while the test silently stops exercising its own premise.
 - When a fix is applied to N sibling call sites, the tests widen with it. One test on the
   originally-reported site leaves the other N-1 free to regress silently.
+- **A new contract member needs a payload that carries it, with a non-null value.**
+  `ContractCoverageTest` rejects unmapped keys, never absent ones, so a member whose fixture lacks
+  the key passes with a wrong wire name or type. Check the diff's fixtures carry each new key; if
+  none can, flag the missing inline-JSON test.
 
 ## 12. Scope
 

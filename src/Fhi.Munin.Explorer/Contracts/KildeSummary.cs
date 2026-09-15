@@ -75,6 +75,19 @@ public sealed record KildeSummary
     [JsonPropertyName("totalVariables")] public int TotalVariables { get; init; }
 
     /// <summary>
+    /// Share in percent (0–100) of the kilde's visible variables that carry a kodeverk link.
+    /// Null when there is nothing to measure — no visible variables — which is not the same as a
+    /// measured <c>0</c>.
+    /// </summary>
+    [JsonPropertyName("andelKodeverk")] public int? KodeverkShare { get; init; }
+
+    /// <summary>
+    /// Share in percent (0–100) of the kilde's visible variables that carry at least one statistics
+    /// entry. Null under the same rule as <see cref="KodeverkShare"/>.
+    /// </summary>
+    [JsonPropertyName("andelStatistikk")] public int? StatisticsShare { get; init; }
+
+    /// <summary>
     /// Curated free-form metadata — contact details, purpose, legal basis, HealthDCAT-AP fields
     /// and so on. Which keys appear varies per kilde and per environment, and every value is a
     /// string even when it holds JSON (<c>healthCategory</c> arrives as <c>["MRMR"]</c> in a

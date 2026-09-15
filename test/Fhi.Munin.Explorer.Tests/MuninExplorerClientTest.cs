@@ -124,6 +124,27 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
+    public async Task GetKilderAsync_WhenTheApiSendsTheCoverageShares_ThenAMeasuredZeroIsNotReadAsNothing()
+    {
+        // kilder.json predates both keys, so this is the only offline payload that carries them: a
+        // wrong wire name or type would otherwise pass every commit and read as null.
+        var kilder = await WithJson("""
+            [
+              { "code": "K_ALS", "andelKodeverk": 63, "andelStatistikk": 0 },
+              { "code": "K_TOM", "andelKodeverk": null, "andelStatistikk": null }
+            ]
+            """).GetKilderAsync();
+
+        var measured = kilder.Single(kilde => kilde.Code == "K_ALS");
+        Assert.Equal(63, measured.KodeverkShare);
+        Assert.Equal(0, measured.StatisticsShare);
+
+        var unmeasured = kilder.Single(kilde => kilde.Code == "K_TOM");
+        Assert.Null(unmeasured.KodeverkShare);
+        Assert.Null(unmeasured.StatisticsShare);
+    }
+
+    [Fact]
     public async Task GetKildeAsync_WhenTheApiAnswersWithARealResponse_ThenTheDetailAndItsDatasamlingerAreRead()
     {
         var kilde = await WithResponse("kilde.json", out _).GetKildeAsync(Guid.NewGuid());
