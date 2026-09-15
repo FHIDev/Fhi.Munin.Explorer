@@ -3,14 +3,10 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>
-/// The filter panel's hierarchy, head-on: which node hangs where, and which group the standalone
-/// facet may offer.
-/// </summary>
+/// <summary>The filter panel's hierarchy, head-on: which node hangs where, and what may be offered.</summary>
 /// <remarks>
-/// Tested apart from the markup because the rules are about the payload rather than about drawing:
-/// a group hung off its <c>parentId</c> rather than off its owner, or an opted-out one offered as a
-/// checkbox, renders perfectly and narrows by something else than the row says.
+/// Tested apart from the markup because a group hung off its <c>parentId</c> rather than off its
+/// owner, or an opted-out one offered as a checkbox, renders perfectly and narrows by the wrong id.
 /// </remarks>
 public class FilterHierarchyTest
 {
@@ -36,10 +32,10 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering), filter: "1"),
-                Gruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Registrering),
-                       filter: VariabelgruppeFacet.StandaloneFacetOptOut),
-                Gruppe(Diagnoser, "Diagnoser", Under(Mfr, datasamling: Registrering))
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering), filter: "1"),
+                Variabelgruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Registrering),
+                               filter: VariabelgruppeFacet.StandaloneFacetOptOut),
+                Variabelgruppe(Diagnoser, "Diagnoser", Under(Mfr, datasamling: Registrering))
             ]
         };
 
@@ -59,9 +55,9 @@ public class FilterHierarchyTest
         {
             Variabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", [], filter: VariabelgruppeFacet.StandaloneFacetOptOut),
-                Gruppe(Levekaar, "Levekår", [], parent: Bakgrunn, filter: "1"),
-                Gruppe(Diagnoser, "Diagnoser", [], parent: Bakgrunn)
+                Variabelgruppe(Bakgrunn, "Bakgrunn", [], filter: VariabelgruppeFacet.StandaloneFacetOptOut),
+                Variabelgruppe(Levekaar, "Levekår", [], parent: Bakgrunn, filter: "1"),
+                Variabelgruppe(Diagnoser, "Diagnoser", [], parent: Bakgrunn)
             ]
         };
 
@@ -82,7 +78,7 @@ public class FilterHierarchyTest
         {
             Variabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", [], filter: VariabelgruppeFacet.StandaloneFacetOptOut)
+                Variabelgruppe(Bakgrunn, "Bakgrunn", [], filter: VariabelgruppeFacet.StandaloneFacetOptOut)
             ]
         };
 
@@ -99,7 +95,7 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering))
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering))
             ]
         };
 
@@ -122,8 +118,8 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr, Fodsel)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel, datasamling: Registrering)),
-                Gruppe(Levekaar, "Levekår", Under(Mfr, delkilde: Fodsel))
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel, datasamling: Registrering)),
+                Variabelgruppe(Levekaar, "Levekår", Under(Mfr, delkilde: Fodsel))
             ]
         };
 
@@ -148,8 +144,8 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr), Datasamling(Oppfolging, Mfr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering)),
-                Gruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Oppfolging), parent: Bakgrunn)
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering)),
+                Variabelgruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Oppfolging), parent: Bakgrunn)
             ]
         };
 
@@ -170,8 +166,8 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr), Datasamling(Oppfolging, Mfr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn",
-                       [.. Under(Mfr, datasamling: Registrering), .. Under(Mfr, datasamling: Oppfolging)])
+                Variabelgruppe(Bakgrunn, "Bakgrunn",
+                               [.. Under(Mfr, datasamling: Registrering), .. Under(Mfr, datasamling: Oppfolging)])
             ]
         };
 
@@ -195,7 +191,7 @@ public class FilterHierarchyTest
             Kilder = [Kilde(Mfr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: NotInThePayload))
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: NotInThePayload))
             ]
         };
 
@@ -216,8 +212,8 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr, count: 0)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering), count: 4),
-                Gruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Registrering), count: 5)
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering), count: 4),
+                Variabelgruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Registrering), count: 5)
             ]
         };
 
@@ -246,7 +242,7 @@ public class FilterHierarchyTest
         {
             Kilder = [Kilde(Mfr)],
             Datasamlinger = [Datasamling(Registrering, Mfr)],
-            Variabelgrupper = [Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering))]
+            Variabelgrupper = [Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering))]
         };
 
         Assert.Empty(Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children).Children);
@@ -263,8 +259,8 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering), parent: Levekaar),
-                Gruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Registrering), parent: Bakgrunn)
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering), parent: Levekaar),
+                Variabelgruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Registrering), parent: Bakgrunn)
             ]
         };
 
@@ -278,7 +274,8 @@ public class FilterHierarchyTest
     {
         // The shape a real answer has — two kilder, delkilder, datasamlinger under both levels and
         // a group per datasamling — so a rule that only holds for a single branch fails here.
-        var facets = Catalogue(kilder: 2, delkilderPerKilde: 2, datasamlingerPerDelkilde: 3, grupperPerDatasamling: 4);
+        var facets = Catalogue(
+            kilder: 2, delkilderPerKilde: 2, datasamlingerPerDelkilde: 3, variabelgrupperPerDatasamling: 4);
 
         var tree = FilterHierarchy.Build(facets);
         var nodes = Flatten(tree).ToList();
@@ -303,8 +300,8 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr, Fodsel), Datasamling(Oppfolging, Mfr, Svangerskap)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel)),
-                Gruppe(Levekaar, "Levekår", Under(Mfr, delkilde: Svangerskap))
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel)),
+                Variabelgruppe(Levekaar, "Levekår", Under(Mfr, delkilde: Svangerskap))
             ]
         };
 
@@ -350,9 +347,9 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr), Datasamling(Oppfolging, Mfr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering)),
-                Gruppe(Levekaar, "Levekår først", Under(Mfr, datasamling: Oppfolging)),
-                Gruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Registrering), parent: Bakgrunn)
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering)),
+                Variabelgruppe(Levekaar, "Levekår først", Under(Mfr, datasamling: Oppfolging)),
+                Variabelgruppe(Levekaar, "Levekår", Under(Mfr, datasamling: Registrering), parent: Bakgrunn)
             ]
         };
 
@@ -376,8 +373,8 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Mfr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn",
-                       [.. Under(Mfr, datasamling: Registrering), .. Under(Mfr, datasamling: Registrering)])
+                Variabelgruppe(Bakgrunn, "Bakgrunn",
+                               [.. Under(Mfr, datasamling: Registrering), .. Under(Mfr, datasamling: Registrering)])
             ]
         };
 
@@ -402,7 +399,7 @@ public class FilterHierarchyTest
             ],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel, datasamling: Registrering))
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel, datasamling: Registrering))
             ]
         };
 
@@ -458,6 +455,25 @@ public class FilterHierarchyTest
     }
 
     [Fact]
+    public void Build_WhenARepeatedDelkildeIdDisagreesAboutItsKilde_ThenItIsStillDrawnOnce()
+    {
+        // Each kilde is handed its own bucket of delkilder, so settling the id inside one bucket
+        // still draws it under both kilder — one press, two chips, and the second kilde offering a
+        // filter none of its variables are behind. (Fhi.Metadata-l9l2n.82)
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr), Kilde(Npr)],
+            Delkilder = [Delkilde(Fodsel, Mfr), Delkilde(Fodsel, Npr)]
+        };
+
+        var tree = FilterHierarchy.Build(facets);
+
+        Assert.Equal(1, Flatten(tree).Count(node => node.Id == Fodsel));
+        Assert.Equal(Fodsel, Assert.Single(tree[0].Children).Id);
+        Assert.Empty(tree[1].Children);
+    }
+
+    [Fact]
     public void Build_WhenTheOwningDatasamlingIdIsAnotherKildes_ThenTheGroupStaysAtTheKildeItNames()
     {
         // The id spaces are independent Guids off the wire, so a datasamling id that is in the
@@ -469,7 +485,7 @@ public class FilterHierarchyTest
             Datasamlinger = [Datasamling(Registrering, Npr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering))
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering))
             ]
         };
 
@@ -490,7 +506,7 @@ public class FilterHierarchyTest
             Delkilder = [Delkilde(Fodsel, Npr)],
             HierarchyVariabelgrupper =
             [
-                Gruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel))
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel))
             ]
         };
 
@@ -516,7 +532,7 @@ public class FilterHierarchyTest
     private static DatasamlingFacet Datasamling(Guid id, Guid kilde, Guid? delkilde = null, int count = 0) =>
         new() { Id = id, Name = $"Datasamling {id:N}", KildeId = kilde, DelkildeId = delkilde, Count = count };
 
-    private static VariabelgruppeFacet Gruppe(
+    private static VariabelgruppeFacet Variabelgruppe(
         Guid id,
         string name,
         IReadOnlyList<VariabelgruppeOwner> owners,
@@ -532,12 +548,12 @@ public class FilterHierarchyTest
 
     /// <summary>An answer the size of a real one, every level of it populated.</summary>
     private static FilterOptions Catalogue(
-        int kilder, int delkilderPerKilde, int datasamlingerPerDelkilde, int grupperPerDatasamling)
+        int kilder, int delkilderPerKilde, int datasamlingerPerDelkilde, int variabelgrupperPerDatasamling)
     {
         List<KildeFacet> kildeFacets = [];
         List<DelkildeFacet> delkildeFacets = [];
         List<DatasamlingFacet> datasamlingFacets = [];
-        List<VariabelgruppeFacet> gruppeFacets = [];
+        List<VariabelgruppeFacet> variabelgruppeFacets = [];
 
         for (var kilde = 0; kilde < kilder; kilde++)
         {
@@ -556,17 +572,17 @@ public class FilterHierarchyTest
                     var datasamlingId = Id("d", index);
                     datasamlingFacets.Add(Datasamling(datasamlingId, kildeId, delkildeId));
 
-                    for (var gruppe = 0; gruppe < grupperPerDatasamling; gruppe++)
+                    for (var variabelgruppe = 0; variabelgruppe < variabelgrupperPerDatasamling; variabelgruppe++)
                     {
-                        var gruppeId = Id("c", (index * grupperPerDatasamling) + gruppe);
+                        var variabelgruppeId = Id("c", (index * variabelgrupperPerDatasamling) + variabelgruppe);
 
                         // Every third group opted out of the standalone facet, so a tree that read
                         // the opt-out would come up short of the count below rather than empty.
-                        gruppeFacets.Add(Gruppe(gruppeId, $"Gruppe {gruppeId:N}",
-                                                Under(kildeId, delkildeId, datasamlingId),
-                                                filter: gruppe % 3 == 0
-                                                    ? VariabelgruppeFacet.StandaloneFacetOptOut
-                                                    : null));
+                        variabelgruppeFacets.Add(Variabelgruppe(
+                            variabelgruppeId,
+                            $"Variabelgruppe {variabelgruppeId:N}",
+                            Under(kildeId, delkildeId, datasamlingId),
+                            filter: variabelgruppe % 3 == 0 ? VariabelgruppeFacet.StandaloneFacetOptOut : null));
                     }
                 }
             }
@@ -577,7 +593,7 @@ public class FilterHierarchyTest
             Kilder = kildeFacets,
             Delkilder = delkildeFacets,
             Datasamlinger = datasamlingFacets,
-            HierarchyVariabelgrupper = gruppeFacets
+            HierarchyVariabelgrupper = variabelgruppeFacets
         };
     }
 

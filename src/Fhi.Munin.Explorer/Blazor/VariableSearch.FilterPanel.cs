@@ -463,9 +463,9 @@ public partial class VariableSearch
     /// <remarks>
     /// Read off the answer rather than off the values drawn, because a ticked kilde the search has
     /// hidden is still narrowing the results — and would otherwise lose its place in the summary's
-    /// count and its chip over the results at once. (Fhi.Metadata-uidue) Reading the payload rather
-    /// than the drawn tree, it collapses repeats itself, on the tree's rule — or a chip and its own
-    /// checkbox could keep copies naming one delkilde two ways. (Fhi.Metadata-l9l2n.82)
+    /// count and its chip over the results at once. (Fhi.Metadata-uidue) Every level is read through
+    /// something that leaves one entry per id, or a chip could name a filter its own checkbox does
+    /// not, or stand beside a second chip for the one press. (Fhi.Metadata-l9l2n.82)
     /// </remarks>
     private IReadOnlyList<FacetValue> ChosenKilder(FilterOptions facets, KildeLevelLookup levels) =>
     [
@@ -473,13 +473,11 @@ public partial class VariableSearch
             .Where(kilde => _filter.KildeIds.Contains(kilde.Id))
             .Select(kilde => KildeValue(kilde)),
         .. ListedKilder(facets)
-            .SelectMany(kilde => FilterHierarchy.OnePerId(
-                            levels.Delkilder[kilde.Id],
-                            delkilde => delkilde.Id,
-                            delkilde => delkilde.ParentDelkildeId))
+            .SelectMany(kilde => levels.Delkilder[kilde.Id])
             .Where(delkilde => _filter.DelkildeIds.Contains(delkilde.Id))
             .Select(DelkildeValue),
         .. facets.Datasamlinger
+            .DistinctBy(datasamling => datasamling.Id)
             .Where(datasamling => _filter.DatasamlingIds.Contains(datasamling.Id))
             .Select(DatasamlingValue)
     ];

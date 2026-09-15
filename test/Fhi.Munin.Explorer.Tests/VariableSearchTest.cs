@@ -6310,6 +6310,33 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
+    public void ActiveFilters_WhenTheKildeFacetListsOneDatasamlingTwice_ThenItIsOneChoiceAndOneChip()
+    {
+        // The same Chosen list, over the level whose two copies can name different delkilder: the
+        // tree draws the first copy alone while a chip row reading the payload straight carries one
+        // per copy, so the press that ticked one row is offered back twice. (Fhi.Metadata-l9l2n.82)
+        var client = new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")),
+            Facets() with
+            {
+                Datasamlinger =
+                [
+                    new() { Id = Tromso1, Name = "Tromsø 1", KildeId = Tromso, Count = 5 },
+                    new() { Id = Tromso1, Name = "Tromsø 1", KildeId = Tromso, DelkildeId = Tromso4, Count = 5 }
+                ]
+            });
+
+        var cut = RenderWith(client);
+
+        Assert.Single(Named(cut, "Tromsø 1"));
+
+        ClickFacet(cut, "Tromsø 1");
+
+        Assert.Equal(1, client.SearchFilter!.ActiveCount);
+        Assert.Equal(["Tromsø 1"], Chips(cut));
+    }
+
+    [Fact]
     public void ActiveFilters_WhenTheKildeFacetListsOneKildeTwice_ThenItIsOneBoxOneChoiceAndOneChip()
     {
         // A kilde is drawn by neither the tree builder nor off a list of ticks, so a repeat reached
