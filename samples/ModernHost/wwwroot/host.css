@@ -1765,9 +1765,9 @@ table.munin-explorer-data-list tbody th {
   border: 1px solid rgb(230, 230, 237);
 }
 
-/* The chassis the three detail views share, worn beside the prefix each of them already had.
-   Every declaration is Stiler's own, from components/munin-explorer/_page.scss. Two below restate
-   a rule above because Stiler has both and both names are on the element — not a leftover. */
+/* The chassis the three detail views share, worn beside the prefix each of them already had. This
+   first reset is the sample's own; Stiler names no rule after the root. Two below restate a rule
+   above because Stiler has both and both names are on the element — not a leftover. */
 .munin-explorer-page > * > :is(h2, h3, h4, h5, h6):first-child {
   margin-top: 0;
 }

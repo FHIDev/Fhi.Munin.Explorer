@@ -540,16 +540,16 @@ export function compare(samplePath, stilerPath) {
   const unstyled = new Map();
   for (const sampleRule of sample.values()) {
     for (const name of namesOurs(sampleRule.selector)) {
-      if (!stilerNames.has(name)) unstyled.set(name, (unstyled.get(name) ?? 0) + 1);
+      if (!stilerNames.has(name)) unstyled.set(name, (unstyled.get(name) ?? new Set()).add(sampleRule.selector));
     }
   }
-  for (const [name, rules] of unstyled) {
+  for (const [name, selectors] of unstyled) {
     divergences.push({
       kind: "unstyled-name",
       context: "",
       selector: `.${name}`,
       property: "",
-      detail: `The sample writes ${rules} rule(s) naming '.${name}'; no Stiler selector names it at all.`,
+      detail: `The sample has ${selectors.size} distinct selector(s) naming '.${name}'; no Stiler selector names it at all.`,
     });
   }
 
