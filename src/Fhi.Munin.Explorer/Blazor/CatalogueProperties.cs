@@ -25,10 +25,15 @@ internal readonly record struct PropertyRow(
     string? Href = null);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
+/// <remarks>
+/// <c>Key</c> identifies the group where the payload names one; <c>Name</c> only titles it, and a
+/// curator can rename that. Null against an API that predates the field.
+/// </remarks>
 internal sealed record PropertyGroup(
     string Name,
     string NameLanguage,
-    IReadOnlyList<PropertyRow> Rows);
+    IReadOnlyList<PropertyRow> Rows,
+    string? Key = null);
 
 /// <summary>
 /// Resolving the catalogue's own properties: their names, their groups, and the words behind their
@@ -49,6 +54,13 @@ internal static class CatalogueProperties
 {
     /// <summary>Norwegian as a culture name, which is neither of the tags we render with.</summary>
     private const string NorwegianCulture = "nb-NO";
+
+    /// <summary>Munin's key for the catch-all section: the whole record rather than a selection from it.</summary>
+    /// <remarks>
+    /// The key and never the heading — a curator can rename the section (Fhi.Metadata-8w2xu), and a
+    /// match on "Alle metadatafelt" would turn it back into an ordinary group with no failing test.
+    /// </remarks>
+    internal const string CatchAllGroupKey = "alle-metadatafelt";
 
     /// <summary>The only two cultures this package ever formats in, resolved once.</summary>
     /// <remarks>
@@ -375,6 +387,11 @@ internal static class CatalogueProperties
     /// to prevent — reached from the other side.
     /// </para>
     /// <para>
+    /// <paramref name="completeRecordValues"/> is the one section meant to repeat, so the
+    /// <see cref="CatchAllGroupKey"/> group is built from the whole payload, not its own members.
+    /// Null draws it as an ordinary group, which is what an API without the key sends.
+    /// </para>
+    /// <para>
     /// <paramref name="values"/> is nullable for the reason <see cref="Rows"/> gives, and taken the
     /// same way. Normalised here as well as there because the group ordering reads the bag directly
     /// rather than through <see cref="Rows"/>.
@@ -384,7 +401,8 @@ internal static class CatalogueProperties
         IReadOnlyList<PropertyMetadataEntry> metadata,
         IReadOnlyDictionary<string, string?>? values,
         string reader,
-        IReadOnlySet<string>? drawnElsewhere = null)
+        IReadOnlySet<string>? drawnElsewhere = null,
+        IReadOnlyDictionary<string, string?>? completeRecordValues = null)
     {
         var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
         var groups = new List<Gathering>();
@@ -427,7 +445,15 @@ internal static class CatalogueProperties
 
         foreach (var group in groups)
         {
-            var rows = Rows(group.Entries, present, reader);
+            // The catch-all promises the complete record, so it is drawn from every entry the
+            // payload carries rather than from its own members — and without drawnElsewhere, whose
+            // whole job is to stop a fact appearing twice on one page.
+            var complete = completeRecordValues is not null
+                           && string.Equals(group.Key, CatchAllGroupKey, StringComparison.Ordinal);
+
+            var rows = complete
+                ? Rows(metadata, completeRecordValues, reader)
+                : Rows(group.Entries, present, reader);
 
             if (rows.Count == 0)
             {
@@ -442,7 +468,7 @@ internal static class CatalogueProperties
                 .DefaultIfEmpty(int.MaxValue)
                 .Min();
 
-            resolved.Add((new PropertyGroup(group.Name, group.Language, rows),
+            resolved.Add((new PropertyGroup(group.Name, group.Language, rows, group.Key),
                           group.PlacedOrder is null,
                           order));
         }

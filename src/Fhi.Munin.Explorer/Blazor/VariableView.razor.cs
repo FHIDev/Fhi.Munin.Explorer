@@ -103,8 +103,13 @@ public sealed partial class VariableView : ComponentBase
     /// </remarks>
     private IReadOnlyList<PropertyGroup> Groups =>
         Variable is { } variable
-            ? CatalogueProperties.Groups(variable.PropertyMetadata, Values, Reader, DrawnElsewhere)
+            ? CatalogueProperties.Groups(variable.PropertyMetadata, Values, Reader, DrawnElsewhere,
+                                         CompleteRecord.Values(variable, Values))
             : [];
+
+    /// <inheritdoc cref="KildeView.CompleteRecordFacts"/>
+    private CompleteRecordExtras CompleteRecordFacts =>
+        new(T.CompleteRecordLeadVariable, [(T.FieldDataPeriod, DataPeriod, false)]);
 
     /// <summary>
     /// The payload's curated bag with the variable's own columns merged in — see

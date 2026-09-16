@@ -187,8 +187,16 @@ internal static class DetailBlocks
         }
     };
 
-    /// <summary>One metadata group: its name, then its rows.</summary>
-    internal static RenderFragment Group(PropertyGroup group, int level, string? language) => builder =>
+    /// <summary>
+    /// One metadata group: its name, then its rows — or, for the catch-all, the complete record.
+    /// </summary>
+    /// <remarks>
+    /// The catch-all is told by its <see cref="PropertyGroup.Key"/> and never by its heading, which
+    /// is a curator's to rename. <paramref name="completeRecord"/> null draws every group the plain
+    /// way, which is what a surface with no such section wants.
+    /// </remarks>
+    internal static RenderFragment Group(PropertyGroup group, int level, string? language,
+                                         CompleteRecordExtras? completeRecord = null) => builder =>
     {
         var reader = ReaderLanguage.Of(language);
         var text = Texts.For(language);
@@ -199,12 +207,85 @@ internal static class DetailBlocks
         builder.AddContent(3, group.Name);
         builder.CloseElement();
 
+        if (completeRecord is { } extras
+            && string.Equals(group.Key, CatalogueProperties.CatchAllGroupKey, StringComparison.Ordinal))
+        {
+            CompleteRecordBody(builder, group, extras, reader, text);
+            return;
+        }
+
         builder.OpenElement(4, "dl");
         builder.AddAttribute(5, "class", PageFields);
 
-        var seq = 10;
+        Rows(builder, 10, group.Rows, reader, text);
 
-        foreach (var row in group.Rows)
+        builder.CloseElement();
+    };
+
+    // The catch-all's own names, which no host stylesheet defines: the package invents them and the
+    // sample stylesheets stand in until Fhi.Helsedata.Stiler carries a rule for each.
+    private const string CompleteRecordDisclosure = "munin-explorer-complete-record";
+    private const string CompleteRecordLead = "munin-explorer-complete-record__lead";
+    private const string CompleteRecordFields = "munin-explorer-complete-record__fields";
+
+    /// <summary>
+    /// The complete record under its heading: the lead, then a collapsed native
+    /// <c>&lt;details&gt;</c> over every field the payload holds plus the facts no property
+    /// definition carries. Native for the reason the hierarchy's disclosure is — no JavaScript.
+    /// </summary>
+    private static void CompleteRecordBody(RenderTreeBuilder builder, PropertyGroup group,
+                                           CompleteRecordExtras extras, string reader, Texts text)
+    {
+        builder.OpenElement(100, "p");
+        builder.AddAttribute(101, "class", CompleteRecordLead);
+        builder.AddContent(102, extras.Lead);
+        builder.CloseElement();
+
+        builder.OpenElement(110, "details");
+        builder.AddAttribute(111, "class", CompleteRecordDisclosure);
+
+        builder.OpenElement(112, "summary");
+        builder.AddContent(113, text.CompleteRecordSummary);
+        builder.CloseElement();
+
+        builder.OpenElement(114, "dl");
+        builder.AddAttribute(115, "class", CompleteRecordFields);
+
+        var seq = Rows(builder, 120, group.Rows, reader, text);
+
+        foreach (var (label, value, norwegian) in extras.Facts.Where(f => !string.IsNullOrWhiteSpace(f.Value)))
+        {
+            builder.OpenElement(seq, "div");
+
+            builder.OpenElement(seq + 1, "dt");
+            builder.AddAttribute(seq + 2, "class", "headline headline-xxs margin--none");
+            builder.AddContent(seq + 3, label);
+            builder.CloseElement();
+
+            builder.OpenElement(seq + 4, "dd");
+            builder.AddAttribute(seq + 5, "lang", norwegian ? CatalogueProperties.Foreign("no", reader) : null);
+            builder.AddContent(seq + 6, value);
+            builder.CloseElement();
+
+            builder.CloseElement();
+            seq += 10;
+        }
+
+        builder.CloseElement();
+        builder.CloseElement();
+    }
+
+    /// <summary>
+    /// The rows of a definition list, and the sequence number the caller continues from.
+    /// </summary>
+    /// <remarks>
+    /// Shared by the plain group and the complete record so the two cannot drift into two shapes of
+    /// row; the list around them is each caller's, since they wear different class names.
+    /// </remarks>
+    private static int Rows(RenderTreeBuilder builder, int seq, IReadOnlyList<PropertyRow> rows,
+                            string reader, Texts text)
+    {
+        foreach (var row in rows)
         {
             builder.OpenElement(seq, "div");
 
@@ -219,6 +300,6 @@ internal static class DetailBlocks
             builder.CloseElement();
         }
 
-        builder.CloseElement();
-    };
+        return seq;
+    }
 }

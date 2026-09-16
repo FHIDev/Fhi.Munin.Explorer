@@ -1504,6 +1504,41 @@ table.munin-explorer-data-list tbody th {
   margin-top: 0;
 }
 
+/* "Alle metadatafelt": Stiler does not know these three names yet (Fhi.Metadata-35w0p.21), so this
+   stand-in is their whole styling. Denser than `munin-explorer-page__fields` on purpose — it repeats
+   every field the sections above showed, so it reads as a reference table, not top to bottom. */
+.munin-explorer-complete-record__lead {
+  margin: 0 0 8px;
+}
+
+.munin-explorer-complete-record > summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.munin-explorer-complete-record__fields {
+  display: grid;
+  grid-column-gap: 24px;
+  grid-row-gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  margin: 8px 0 0;
+}
+
+.munin-explorer-complete-record__fields dt {
+  margin-bottom: 2px;
+}
+
+.munin-explorer-complete-record__fields dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+
+@media (max-width:1280px) {
+.munin-explorer-complete-record__fields {
+  grid-template-columns: auto;
+}
+}
+
 /* The period. The dates are the information; the bar is the illustration, so a host that styles
    neither still shows the period as words. */
 .munin-explorer-period {
