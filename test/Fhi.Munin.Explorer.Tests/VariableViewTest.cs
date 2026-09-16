@@ -13,12 +13,17 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 public class VariableViewTest : BunitContext
 {
-    private static PropertyMetadataEntry Entry(string key, int sortOrder, string group, string? optionsJson = null) =>
+    private static PropertyMetadataEntry Entry(string key, int sortOrder, string group,
+                                               string? optionsJson = null,
+                                               string? groupKey = null,
+                                               int? groupSortOrder = null) =>
         new()
         {
             Key = key,
             SortOrder = sortOrder,
             GroupTranslations = new Dictionary<string, string> { ["no"] = group },
+            GroupKey = groupKey,
+            GroupSortOrder = groupSortOrder,
             DisplayNameTranslations = new Dictionary<string, string> { ["no"] = key },
             OptionsJson = optionsJson,
         };
@@ -158,6 +163,113 @@ public class VariableViewTest : BunitContext
                               text => text == "Datatype");
         Assert.Single(cut.FindAll(".munin-explorer-group"));
     }
+
+    /// <summary>The catalogue's own word for this variable's data type, and this view's own.</summary>
+    /// <remarks>
+    /// Both, because the duplication being counted was two words for one fact: the block translates
+    /// the code itself and the group resolves it through the catalogue's vocabulary, whose Norwegian
+    /// label for this field is the English word. Counting only one of them would miss half the bug.
+    /// </remarks>
+    private static readonly string[] DataTypeWords = ["Heltall", "Integer"];
+
+    /// <summary>How many times the page states this variable's data type.</summary>
+    private static int DataTypeStatements(IRenderedComponent<VariableView> cut) =>
+        DataTypeWords.Sum(word => cut.Markup.Split(word, StringSplitOptions.None).Length - 1);
+
+    /// <summary>The plain fixture with the catalogue's section key and section order on every entry.</summary>
+    private static VariableDetail Keyed() => Detail() with
+    {
+        PropertyMetadata =
+        [
+            Entry("Kommentar", 50, "Beskrivelse", groupKey: "beskrivelse", groupSortOrder: 1000),
+            Entry("DataType", 20, "Datatype",
+                  """[{"value":"2","label":"Integer","labelEn":"Integer"}]""",
+                  groupKey: "datatype", groupSortOrder: 2000),
+        ],
+    };
+
+    [Fact]
+    public void DataType_WhenTheCatalogueKeysAndOrdersTheSections_ThenThePageStatesItExactlyOnce()
+    {
+        // Counted rather than looked at. The block above and a metadata row below are one fact in
+        // two words, and an assertion that the page merely contains the right one passes just as
+        // happily when it contains the wrong one as well (Fhi.Metadata-bct95).
+        Assert.Equal(1, DataTypeStatements(Render(Keyed())));
+    }
+
+    [Fact]
+    public void DataType_WhenThePayloadPredatesTheSectionKeyAndOrder_ThenThePageStillStatesItExactlyOnce()
+    {
+        // The same count on the fallback path, which is what every API older than those two fields
+        // serves. The suppression is per key and has never read either of them, and this is what
+        // says so rather than leaving it to be assumed.
+        Assert.Equal(1, DataTypeStatements(Render(Detail())));
+    }
+
+    [Fact]
+    public void Metadata_WhenAKeyIsFiledUnderNoSection_ThenItIsDrawnNowhereAndDataTypeIsStillStatedOnce()
+    {
+        // The column-backed keys arrive with no section, and this view already draws them itself.
+        // Gathering them under a catch-all heading would be DataType's duplication again, reached
+        // from the other side, so they stay out of the groups.
+        var detail = Keyed() with
+        {
+            PropertyMetadata =
+            [
+                .. Keyed().PropertyMetadata,
+                new PropertyMetadataEntry
+                {
+                    Key = "Ufilert",
+                    SortOrder = 10,
+                    GroupKey = "beskrivelse",
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Ufilert" },
+                },
+            ],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Kommentar"] = "Gyldig fra 2019.",
+                ["DataType"] = "2",
+                ["Ufilert"] = "noe",
+            },
+        };
+
+        var cut = Render(detail);
+
+        Assert.DoesNotContain("Ufilert", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal(1, DataTypeStatements(cut));
+    }
+
+    [Fact]
+    public void Metadata_WhenOneLanguageRenamesASectionButTheKeyDoesNot_ThenThePageDrawsTheSameSections()
+    {
+        // The rename test, on a rendered page rather than on the list behind it: what a reader
+        // notices is the section count, and today a curator editing one language's title in Munin
+        // is enough to split a section in two on a page they were not editing.
+        var cut = Render(Titled("Beskrivelse"));
+        var renamed = Render(Titled("Om variabelen"));
+
+        Assert.Equal(cut.FindAll(".munin-explorer-group").Count,
+                     renamed.FindAll(".munin-explorer-group").Count);
+        Assert.Single(renamed.FindAll(".munin-explorer-group"));
+        Assert.Equal(1, DataTypeStatements(renamed));
+    }
+
+    /// <summary>Two curated keys in one keyed section, the second titling it however it is asked to.</summary>
+    private static VariableDetail Titled(string secondTitle) => Detail() with
+    {
+        PropertyMetadata =
+        [
+            Entry("Kommentar", 50, "Beskrivelse", groupKey: "beskrivelse"),
+            Entry("Merknad", 60, secondTitle, groupKey: "beskrivelse"),
+            Entry("DataType", 20, "Datatype", """[{"value":"2","label":"Integer","labelEn":"Integer"}]"""),
+        ],
+        AdditionalProperties = new Dictionary<string, string?>
+        {
+            ["Kommentar"] = "Gyldig fra 2019.",
+            ["Merknad"] = "Samlet inn ved inklusjon.",
+            ["DataType"] = "2",
+        },
+    };
 
     [Fact]
     public void Statistics_WhenTheVariableHasThem_ThenTheyAreTheColumnsRunaShows()

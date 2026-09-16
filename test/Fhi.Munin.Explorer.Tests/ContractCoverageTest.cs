@@ -89,6 +89,31 @@ public class ContractCoverageTest
             Strict));
 
     [Fact]
+    public void PropertyMetadata_WhenTheApiNamesTheSectionsOwnOrder_ThenItIsCovered()
+    {
+        // Inline for the reason the facet above is: runa has the placements but not yet the build
+        // that serialises groupSortOrder, so every capture under Testdata/ predates the field and a
+        // row written into one would pin a payload the API does not send. (Fhi.Metadata-35w0p.19)
+        var entry = JsonSerializer.Deserialize<PropertyMetadataEntry>(
+            """
+            {
+              "key": "Beskrivelse",
+              "displayNameTranslations": { "no": "Beskrivelse" },
+              "groupTranslations": { "no": "Om registeret" },
+              "groupKey": "om-registeret",
+              "groupSortOrder": 1000,
+              "sortOrder": 1001,
+              "type": "Text",
+              "optionsJson": "[]",
+              "options": []
+            }
+            """,
+            Strict);
+
+        Assert.Equal(1000, entry!.GroupSortOrder);
+    }
+
+    [Fact]
     public void KildeList_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<IReadOnlyList<KildeSummary>>("kilder.json");
 

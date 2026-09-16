@@ -307,6 +307,11 @@ internal static class CatalogueProperties
     /// Shared with <see cref="Groups"/> rather than spelled twice, and <see cref="Placed"/> asks
     /// both this and the row itself: a key called placed that the grouping drops is a fact that
     /// leaves the fact box and never arrives in a section, and no test of either alone would see it.
+    /// <para>
+    /// Stripping the qualifier titles the group, and where the payload carries no <c>groupKey</c> it
+    /// identifies it too: the heading is what matches there, so a qualifier on one entry of a group
+    /// and not another would split it. With a key present nothing ever compares headings.
+    /// </para>
     /// </remarks>
     private static (string Name, string Language)? GroupName(PropertyMetadataEntry entry, string reader)
     {
@@ -328,8 +333,7 @@ internal static class CatalogueProperties
     /// The properties gathered into the groups the catalogue puts them in.
     /// </summary>
     /// <remarks>
-    /// Two rules, both measured against Runa rather than guessed at. A source there carries 73
-    /// properties across 13 groups but shows 8.
+    /// Three rules. A source on Runa carries 73 properties across 13 groups but shows 8.
     /// <list type="number">
     /// <item>
     /// A group whose every key is empty is dropped. Five go that way on a typical source, one of
@@ -337,12 +341,24 @@ internal static class CatalogueProperties
     /// that promised something.
     /// </item>
     /// <item>
-    /// Groups are ordered by the lowest sort order among the keys that <em>have</em> values, not
-    /// among all their keys. This is not a detail: counting all keys puts two groups on the same
-    /// number and leaves their order to however the dictionary enumerated, which is to say
-    /// arbitrary. Counting only the populated ones separates them and matches what Runa shows.
+    /// Two entries are the same group when they carry the same <c>groupKey</c>. Where the payload
+    /// has none, the localised heading identifies the group instead — which is what splits one
+    /// group in two the moment a curator renames it in one language only.
+    /// </item>
+    /// <item>
+    /// Groups are ordered by <c>groupSortOrder</c>, and where the payload has none by the lowest
+    /// sort order among the keys that <em>have</em> values — two numbering spaces, so every placed
+    /// group leads as a block rather than interleaving on the numbers. Counting all the keys would put
+    /// two groups on the same number and leave their order to however the dictionary enumerated;
+    /// counting only the populated ones separates them and matches what Runa shows, at the price of
+    /// a section that moves up the page when a previously-empty property is filled in.
     /// </item>
     /// </list>
+    /// <para>
+    /// The payload's own answer is preferred in both cases and required in neither. This package
+    /// ships on its own cadence and meets APIs that predate each field, so a release of it must
+    /// never become a reason to deploy Munin.
+    /// </para>
     /// <para>
     /// <paramref name="drawnElsewhere"/> names keys the caller renders itself, so the same fact does
     /// not appear twice on one page. A variable's <c>DataType</c> is the case this was written for:
@@ -351,6 +367,12 @@ internal static class CatalogueProperties
     /// through the catalogue's own vocabulary, whose Norwegian labels for this field are English.
     /// Dropping the key drops the group with it whenever nothing else in that group is filled in,
     /// which is exactly what Runa shows.
+    /// </para>
+    /// <para>
+    /// A key the payload files under no group at all is drawn nowhere here, deliberately. Those
+    /// keys are the column-backed ones, which every detail view already draws in markup of its own,
+    /// so a catch-all section would be the same duplication <paramref name="drawnElsewhere"/> exists
+    /// to prevent — reached from the other side.
     /// </para>
     /// <para>
     /// <paramref name="values"/> is nullable for the reason <see cref="Rows"/> gives, and taken the
@@ -365,7 +387,7 @@ internal static class CatalogueProperties
         IReadOnlySet<string>? drawnElsewhere = null)
     {
         var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
-        var groups = new List<(string Name, string Language, int Order, List<PropertyMetadataEntry> Entries)>();
+        var groups = new List<Gathering>();
 
         foreach (var entry in metadata)
         {
@@ -380,40 +402,74 @@ internal static class CatalogueProperties
             }
 
             var (name, language) = placement;
+            var key = string.IsNullOrWhiteSpace(entry.GroupKey) ? null : entry.GroupKey;
 
-            var existing = groups.FindIndex(g => string.Equals(g.Name, name, StringComparison.Ordinal));
+            // A keyed group is never matched by heading and an unkeyed one never by key: the two
+            // identities are different claims, and letting them meet would merge a group the
+            // payload named with one it only titled.
+            var existing = key is null
+                ? groups.Find(g => g.Key is null && string.Equals(g.Name, name, StringComparison.Ordinal))
+                : groups.Find(g => string.Equals(g.Key, key, StringComparison.Ordinal));
 
-            if (existing < 0)
+            if (existing is null)
             {
-                groups.Add((name, language, int.MaxValue, [entry]));
+                // Taken here rather than filled in later by the first entry that happens to carry
+                // one: a group half-way through the rollout would otherwise be declared placed by
+                // a straggler, and where it lands would follow the payload's order.
+                existing = new Gathering(key, name, language, entry.GroupSortOrder);
+                groups.Add(existing);
             }
-            else
-            {
-                groups[existing].Entries.Add(entry);
-            }
+
+            existing.Entries.Add(entry);
         }
 
-        var resolved = new List<(PropertyGroup Group, int Order)>();
+        var resolved = new List<(PropertyGroup Group, bool Inferred, int Order)>();
 
-        foreach (var (name, language, _, entries) in groups)
+        foreach (var group in groups)
         {
-            var rows = Rows(entries, present, reader);
+            var rows = Rows(group.Entries, present, reader);
 
             if (rows.Count == 0)
             {
                 continue;
             }
 
-            var order = entries
+            // The scan behind the ?? is only reached when the group is unplaced, so an older payload
+            // pays for it and a placed one does not.
+            var order = group.PlacedOrder ?? group.Entries
                 .Where(e => present.TryGetValue(e.Key, out var raw) && !string.IsNullOrWhiteSpace(raw))
                 .Select(e => e.SortOrder)
                 .DefaultIfEmpty(int.MaxValue)
                 .Min();
 
-            resolved.Add((new PropertyGroup(name, language, rows), order));
+            resolved.Add((new PropertyGroup(group.Name, group.Language, rows),
+                          group.PlacedOrder is null,
+                          order));
         }
 
-        return [.. resolved.OrderBy(g => g.Order).Select(g => g.Group)];
+        // Placed groups first, as a block: the two orders are different numbering spaces, so a
+        // payload part-way through the rollout must not interleave them on the arithmetic. Ordering
+        // is stable, so groups that tie keep the order the payload listed them in.
+        return [.. resolved.OrderBy(g => g.Inferred).ThenBy(g => g.Order).Select(g => g.Group)];
+    }
+
+    /// <summary>One group as it is being gathered: what identifies it, what titles it, what it holds.</summary>
+    /// <remarks>
+    /// <see cref="Key"/> and <see cref="PlacedOrder"/> are both null against an API that predates
+    /// them, and that nullness is the whole of the fallback: the heading identifies the group
+    /// instead, and its position is inferred from its members.
+    /// </remarks>
+    private sealed class Gathering(string? key, string name, string language, int? placedOrder)
+    {
+        internal string? Key { get; } = key;
+
+        internal string Name { get; } = name;
+
+        internal string Language { get; } = language;
+
+        internal int? PlacedOrder { get; } = placedOrder;
+
+        internal List<PropertyMetadataEntry> Entries { get; } = [];
     }
 
     // The catalogue's names for the property types whose value is not prose. Matched

@@ -25,7 +25,9 @@ public class CataloguePropertiesTest
         string? optionsJson = null,
         string? english = null,
         string? englishGroup = null,
-        string type = "")
+        string type = "",
+        string? groupKey = null,
+        int? groupSortOrder = null)
     {
         var name = new Dictionary<string, string> { ["no"] = key };
         var groups = new Dictionary<string, string> { ["no"] = group };
@@ -45,10 +47,291 @@ public class CataloguePropertiesTest
             Key = key,
             SortOrder = sortOrder,
             GroupTranslations = groups,
+            GroupKey = groupKey,
+            GroupSortOrder = groupSortOrder,
             DisplayNameTranslations = name,
             OptionsJson = optionsJson,
             Type = type,
         };
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Section identity and section order. Each rule below is paired with the fallback the
+    // same payload takes without the field, because this package meets APIs older than
+    // either (Fhi.Metadata-35w0p.19).
+    // ---------------------------------------------------------------------------------
+
+    [Fact]
+    public void Groups_WhenOneLanguageRenamesTheSectionButTheKeyDoesNot_ThenItsPropertiesStayInOneSection()
+    {
+        // The rename test. A curator editing the Norwegian title of a section is not creating a
+        // second section, and a reader on the other language is not looking at a different page.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 1001, "Om registeret", groupKey: "om-registeret"),
+            Entry("Formaal", 1002, "Om kilden", groupKey: "om-registeret"),
+        ];
+
+        Dictionary<string, string?> values = new() { ["Beskrivelse"] = "tekst", ["Formaal"] = "tekst" };
+
+        var renamed = CatalogueProperties.Groups(metadata, values, "no");
+
+        // The same payload with the rename never made, which is the "before" half of the count.
+        var untouched = CatalogueProperties.Groups(
+            [Entry("Beskrivelse", 1001, "Om registeret", groupKey: "om-registeret"),
+             Entry("Formaal", 1002, "Om registeret", groupKey: "om-registeret")],
+            values, "no");
+
+        Assert.Equal(untouched.Count, renamed.Count);
+        Assert.Equal(2, Assert.Single(renamed).Rows.Count);
+    }
+
+    [Fact]
+    public void Groups_WhenThePayloadPredatesTheGroupKey_ThenARenameStillSplitsTheSection()
+    {
+        // The fallback, asserted rather than assumed. Against an API with no groupKey the heading
+        // is the only identity there is, so a rename does split the section — which is why this is
+        // the path a payload takes only when it has nothing better to offer.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 1001, "Om registeret"),
+            Entry("Formaal", 1002, "Om kilden"),
+        ];
+
+        Dictionary<string, string?> values = new() { ["Beskrivelse"] = "tekst", ["Formaal"] = "tekst" };
+
+        Assert.Equal(["Om registeret", "Om kilden"],
+                     CatalogueProperties.Groups(metadata, values, "no").Select(g => g.Name));
+    }
+
+    [Fact]
+    public void Groups_WhenTwoSectionsShareAHeadingButNotAKey_ThenTheyAreDrawnApart()
+    {
+        // The other direction of the same rule. Two sections a curator has titled the same way are
+        // still two sections, and merging them on the heading would move a property into a section
+        // nobody filed it in.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 1001, "Innhold", groupKey: "innhold-kilde"),
+            Entry("Formaal", 2001, "Innhold", groupKey: "innhold-samling"),
+        ];
+
+        Dictionary<string, string?> values = new() { ["Beskrivelse"] = "tekst", ["Formaal"] = "tekst" };
+
+        var groups = CatalogueProperties.Groups(metadata, values, "no");
+
+        Assert.Equal(["Innhold", "Innhold"], groups.Select(g => g.Name));
+        Assert.All(groups, group => Assert.Single(group.Rows));
+    }
+
+    [Fact]
+    public void Groups_WhenTheCatalogueOrdersTheSections_ThenFillingAnEmptyPropertyDoesNotMoveThem()
+    {
+        // The stability test, and the fixture below is this one with the two new fields taken off.
+        // Epost sorts above every other member, so filling it in drags Kontakt to the top of the
+        // page under the inferred order. The catalogue's own order does not move for it.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 9001, "Om registeret", groupKey: "om-registeret", groupSortOrder: 1000),
+            Entry("Kontaktperson", 9500, "Kontakt", groupKey: "kontakt", groupSortOrder: 6000),
+            Entry("Epost", 1, "Kontakt", groupKey: "kontakt", groupSortOrder: 6000),
+        ];
+
+        Dictionary<string, string?> before = new() { ["Beskrivelse"] = "tekst", ["Kontaktperson"] = "Kari" };
+        Dictionary<string, string?> after = new(before) { ["Epost"] = "kari@fhi.no" };
+
+        Assert.Equal(["Om registeret", "Kontakt"],
+                     CatalogueProperties.Groups(metadata, before, "no").Select(g => g.Name));
+        Assert.Equal(["Om registeret", "Kontakt"],
+                     CatalogueProperties.Groups(metadata, after, "no").Select(g => g.Name));
+    }
+
+    [Fact]
+    public void Groups_WhenThePayloadPredatesTheGroupSortOrder_ThenFillingAnEmptyPropertyStillMovesThem()
+    {
+        // The fallback the test above replaces, and the discriminator for it: an older API still
+        // gets this, and a section that moves because somebody typed an address into a field is
+        // what the catalogue's own order exists to stop.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 9001, "Om registeret"),
+            Entry("Kontaktperson", 9500, "Kontakt"),
+            Entry("Epost", 1, "Kontakt"),
+        ];
+
+        Dictionary<string, string?> before = new() { ["Beskrivelse"] = "tekst", ["Kontaktperson"] = "Kari" };
+        Dictionary<string, string?> after = new(before) { ["Epost"] = "kari@fhi.no" };
+
+        Assert.Equal(["Om registeret", "Kontakt"],
+                     CatalogueProperties.Groups(metadata, before, "no").Select(g => g.Name));
+        Assert.Equal(["Kontakt", "Om registeret"],
+                     CatalogueProperties.Groups(metadata, after, "no").Select(g => g.Name));
+    }
+
+    [Fact]
+    public void Groups_WhenOnlySomeSectionsCarryTheCataloguesOrder_ThenThePlacedOnesLeadAsABlock()
+    {
+        // A payload part-way through the rollout carries two numbering spaces — a section's own
+        // band and a property's position inside one — and comparing them would order the page on
+        // arithmetic nobody chose. The placed sections lead instead, in the order they were given.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Kommentar", 10, "Uplassert"),
+            Entry("Beskrivelse", 9001, "Om registeret", groupKey: "om-registeret", groupSortOrder: 1000),
+        ];
+
+        Dictionary<string, string?> values = new() { ["Kommentar"] = "tekst", ["Beskrivelse"] = "tekst" };
+
+        Assert.Equal(["Om registeret", "Uplassert"],
+                     CatalogueProperties.Groups(metadata, values, "no").Select(g => g.Name));
+    }
+
+    [Fact]
+    public void Groups_WhenAKeyedEntryIsFiledUnderNoSection_ThenItIsStillDrawnNowhere()
+    {
+        // The column-backed keys arrive this way, and each detail view already draws them in markup
+        // of its own. Gathering them under a catch-all would state the same fact a second time in a
+        // second word, which is the duplication drawnElsewhere exists to prevent.
+        List<PropertyMetadataEntry> metadata =
+        [
+            new()
+            {
+                Key = "Ufilert",
+                SortOrder = 10,
+                GroupKey = "om-registeret",
+                GroupSortOrder = 1000,
+                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Ufilert" },
+            },
+            Entry("Beskrivelse", 1001, "Om registeret", groupKey: "om-registeret", groupSortOrder: 1000),
+        ];
+
+        Dictionary<string, string?> values = new() { ["Ufilert"] = "noe", ["Beskrivelse"] = "tekst" };
+
+        var group = Assert.Single(CatalogueProperties.Groups(metadata, values, "no"));
+
+        Assert.Equal(["Beskrivelse"], group.Rows.Select(row => row.Label));
+    }
+
+    [Fact]
+    public void Groups_WhenOneKeyedSectionIsTitledTwoWays_ThenTheFirstTitleHeadsIt()
+    {
+        // A payload disagreeing with itself still has to draw one section under one heading, and
+        // which one has to be decided rather than left to whichever entry the merge happened to
+        // reach last. First sighting, so the answer follows the order the payload was written in.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 1001, "Om registeret", groupKey: "om-registeret"),
+            Entry("Formaal", 1002, "Om kilden", groupKey: "om-registeret"),
+        ];
+
+        Dictionary<string, string?> values = new() { ["Beskrivelse"] = "tekst", ["Formaal"] = "tekst" };
+
+        Assert.Equal("Om registeret", Assert.Single(CatalogueProperties.Groups(metadata, values, "no")).Name);
+    }
+
+    [Fact]
+    public void Groups_WhenTheSectionKeyIsBlank_ThenTheHeadingIdentifiesItAsThoughTheFieldWereAbsent()
+    {
+        // An empty string is how a payload says "no key", not a key every unkeyed section shares —
+        // read the other way, every unkeyed section on the page would merge into one.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 1001, "Om registeret", groupKey: "  "),
+            Entry("Kontaktperson", 6001, "Kontakt", groupKey: ""),
+        ];
+
+        Dictionary<string, string?> values = new() { ["Beskrivelse"] = "tekst", ["Kontaktperson"] = "Kari" };
+
+        Assert.Equal(["Om registeret", "Kontakt"],
+                     CatalogueProperties.Groups(metadata, values, "no").Select(g => g.Name));
+    }
+
+    [Fact]
+    public void Groups_WhenOneSectionCarriesAKeyAndAnotherOfTheSameNameDoesNot_ThenTheyAreDrawnApart()
+    {
+        // The mixed half of the identity rule, and the shape a half-migrated payload takes: a key
+        // and a heading are different claims, so matching one against the other would merge a
+        // section the payload named with one it only titled.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 1001, "Innhold", groupKey: "innhold"),
+            Entry("Formaal", 2001, "Innhold"),
+        ];
+
+        Dictionary<string, string?> values = new() { ["Beskrivelse"] = "tekst", ["Formaal"] = "tekst" };
+
+        var groups = CatalogueProperties.Groups(metadata, values, "no");
+
+        Assert.Equal(["Innhold", "Innhold"], groups.Select(g => g.Name));
+        Assert.All(groups, group => Assert.Single(group.Rows));
+    }
+
+    [Fact]
+    public void Groups_WhenOneSectionsEntriesDisagreeAboutTheCataloguesOrder_ThenTheFirstOfThemPlacesIt()
+    {
+        // Whether a section is placed at all is decided by the entry that opened it, null included.
+        // Reading on until something non-null arrives would let a straggler lift a half-migrated
+        // section out of the inferred band, and which straggler depends on the payload's order.
+        List<PropertyMetadataEntry> placedLast =
+        [
+            Entry("Beskrivelse", 10, "Ustabil", groupKey: "ustabil"),
+            Entry("Formaal", 11, "Ustabil", groupKey: "ustabil", groupSortOrder: 1000),
+            Entry("Kontaktperson", 9500, "Plassert", groupKey: "plassert", groupSortOrder: 5000),
+            Entry("Kommentar", 20, "Uplassert"),
+        ];
+
+        List<PropertyMetadataEntry> placedFirst =
+        [
+            Entry("Beskrivelse", 10, "Ustabil", groupKey: "ustabil", groupSortOrder: 1000),
+            Entry("Formaal", 11, "Ustabil", groupKey: "ustabil"),
+            Entry("Kontaktperson", 9500, "Plassert", groupKey: "plassert", groupSortOrder: 5000),
+            Entry("Kommentar", 20, "Uplassert"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["Beskrivelse"] = "tekst",
+            ["Formaal"] = "tekst",
+            ["Kontaktperson"] = "Kari",
+            ["Kommentar"] = "tekst",
+        };
+
+        // Opened by an entry the catalogue never placed, so the section stays in the inferred band
+        // and sorts on its members — ahead of Uplassert, behind every placed section.
+        Assert.Equal(["Plassert", "Ustabil", "Uplassert"],
+                     CatalogueProperties.Groups(placedLast, values, "no").Select(g => g.Name));
+
+        // The same four entries, the section's own two the other way round: now it is placed at
+        // 1000 and leads the section the catalogue put at 5000.
+        Assert.Equal(["Ustabil", "Plassert", "Uplassert"],
+                     CatalogueProperties.Groups(placedFirst, values, "no").Select(g => g.Name));
+    }
+
+    [Fact]
+    public void Groups_WhenTheEntryThatOpensASectionDrawsNoRow_ThenItStillDecidesWhetherTheSectionIsPlaced()
+    {
+        // Metadata lists every key a section can hold and a payload fills some, so the entry that
+        // opens one need not be the first to draw. Deciding on the first that does would read as
+        // the same rule and would lift this section out of the inferred band on a straggler.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 10, "Ustabil", groupKey: "ustabil"),
+            Entry("Formaal", 11, "Ustabil", groupKey: "ustabil", groupSortOrder: 1000),
+            Entry("Kontaktperson", 9500, "Plassert", groupKey: "plassert", groupSortOrder: 5000),
+            Entry("Kommentar", 20, "Uplassert"),
+        ];
+
+        // Beskrivelse opens the section and is unset, so the section is unplaced and sorts on the
+        // one member that does draw: ahead of Uplassert at 20, behind every placed section.
+        Dictionary<string, string?> values = new()
+        {
+            ["Formaal"] = "tekst",
+            ["Kontaktperson"] = "Kari",
+            ["Kommentar"] = "tekst",
+        };
+
+        Assert.Equal(["Plassert", "Ustabil", "Uplassert"],
+                     CatalogueProperties.Groups(metadata, values, "no").Select(g => g.Name));
     }
 
     [Fact]
