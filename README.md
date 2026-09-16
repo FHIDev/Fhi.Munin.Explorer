@@ -350,8 +350,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     is stated at all — until the `Ikoner` switch above is turned off, which takes the words with
     the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
-    The rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**, the version
-    `samples/HostileHost` pins (`Fhi.Metadata-1t36m`).
+    The rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**;
+    `samples/HostileHost` pins 0.1.79 today (`Fhi.Metadata-1t36m`).
     The words for those glyphs are under the facets, in an `Ikonforklaring` legend that adds two
     names of its own — `munin-explorer-filters__legend` on the list and
     `munin-explorer-filters__legend-item` on each row. It lists the whole vocabulary rather than
