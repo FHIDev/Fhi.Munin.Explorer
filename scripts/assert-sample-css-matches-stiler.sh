@@ -231,7 +231,8 @@ if [ -n "$new" ]; then
   echo "it is a hand edit on purpose: this script never writes that file." >&2
   echo "" >&2
   echo "An unstyled-name is a name Stiler has no rule for at all. If src/ names it nowhere, not even" >&2
-  echo "in a comment, delete the sample's rule; otherwise file the Stiler bead and name it in a note." >&2
+  echo "in a comment, delete the sample's rule; otherwise name its Stiler bead in a note, or say why" >&2
+  echo "none is owed." >&2
   status=1
 fi
 

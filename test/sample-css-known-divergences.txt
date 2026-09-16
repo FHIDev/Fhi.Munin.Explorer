@@ -28,7 +28,7 @@
 #                         misleading as one that draws nothing.
 #   unstyled-name         The sample styles a munin-explorer name no Stiler selector mentions at all.
 #                         Context and property are empty; one line per name, however many rules.
-#                         Name the Stiler bead in a comment above it; that bead deletes the line.
+#                         Name its Stiler bead in a comment above it, or say why none is owed.
 #
 # The context field is the normalised at-rule the rule sits inside, empty at the top level.
 #

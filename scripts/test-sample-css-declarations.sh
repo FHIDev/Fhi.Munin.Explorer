@@ -132,6 +132,11 @@ reports "a name the sample styles only as an ancestor is reported" \
   '.munin-explorer-complete-record > summary { cursor: pointer; }' \
   '.munin-explorer-trail { margin: 0; }'
 
+only_of_kind "every name in a selector is read, not just its first or last" \
+  'unstyled-name||.munin-explorer-b|' \
+  '.munin-explorer-a .munin-explorer-b .munin-explorer-c { margin: 0; }' \
+  '.munin-explorer-a { margin: 0; } .munin-explorer-c { margin: 0; }'
+
 omits_kind "a name Stiler styles under another selector spelling is not unstyled" \
   'unstyled-name' \
   '.munin-explorer-meta dl > dt { margin: 0; }' \
