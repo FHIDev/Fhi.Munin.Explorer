@@ -161,6 +161,23 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // The result count quotes the search term, and a searched code is one unbroken word. The stub
+  // ignores the query and serves the same page, which is all this state needs: the count is drawn
+  // from what was typed. (Fhi.Metadata-ofg1h)
+  'explorer-search-code': async page => {
+    const box = page.locator('input.searchbox__freetext').first();
+    await box.waitFor({ state: 'visible', timeout: findTimeout });
+    await box.fill('V_LMR.VARE_ADMINISTRASJONSVEI_BESKRIVELSE');
+    await press(page, 'Søk');
+
+    // On the count QUOTING it: that <p> is drawn from first paint, so waiting for the element
+    // would pass on a search that never ran.
+    await page.locator('.munin-explorer-results__toolbar .caption')
+      .filter({ hasText: 'V_LMR.VARE_ADMINISTRASJONSVEI_BESKRIVELSE' })
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
   // A variable row opened. The panel under the row is the largest block of markup in the package
   // that only exists after a click — every property, the statistics block and the owner buttons.
   // It fetches, so the wait is on the region reporting itself done rather than on it appearing.

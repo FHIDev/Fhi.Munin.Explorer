@@ -111,6 +111,36 @@ filters.kildeTyper = filters.kildeTyper.filter(type => type.count > 0);
 filters.kildeTyper.sort((a, b) => a.displayName.localeCompare(b.displayName, 'nb'));
 bodies.set(filtersRoute, JSON.stringify(filters));
 
+// A code is one unbroken word, so it decides the reflow width — and no captured code is
+// longer than 23 characters, where the catalogue's longest is 41. Lengthened in the detail payload and in the row
+// the list serves first, which is the panel, the whole-variable page and the count. (ofg1h)
+const longCode = 'V_LMR.VARE_ADMINISTRASJONSVEI_BESKRIVELSE';
+const detailRoute = routes.find(([, source]) => source === 'variable.json')[0];
+const detail = JSON.parse(bodies.get(detailRoute));
+
+// The field and not only the payload: a re-capture that renames `code` would otherwise have this
+// add a property nothing reads, and every state would measure a short code and pass.
+if (typeof detail.code !== 'string') {
+  console.error('stub: variable.json carries no code to lengthen');
+  process.exit(2);
+}
+
+detail.code = longCode;
+bodies.set(detailRoute, JSON.stringify(detail));
+
+const variablesRoute = routes.find(([, source]) => source === 'variables.json')[0];
+const variables = JSON.parse(bodies.get(variablesRoute));
+
+// Loud rather than a state that measures a short code and passes: a re-capture that renames the
+// array leaves nothing lengthened and nothing to see.
+if (!Array.isArray(variables.items) || typeof variables.items[0]?.code !== 'string') {
+  console.error('stub: variables.json carries no first row with a code to lengthen');
+  process.exit(2);
+}
+
+variables.items[0].code = longCode;
+bodies.set(variablesRoute, JSON.stringify(variables));
+
 // The one route whose fixture cannot be served verbatim. my-list-variables.json is a real capture:
 // 247 entries reported, two of them kept. Served as-is for every page, it says "page 1 of 3" every
 // time, and VariableListState walks every page of the active list — so the walk never advances and

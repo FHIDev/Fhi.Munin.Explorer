@@ -41,6 +41,14 @@ const cases = [
       .insertAdjacentHTML('beforeend', '<div style="width:4000px;height:8px"></div>')),
   },
   {
+    assertion: 'no horizontal overflow',
+    defect: 'a value with no break point at 320px, the 2026-09-15 defect',
+    path: '/', state: 'variable-detail', width: 320,
+    apply: css(`.munin-explorer-page__fields dd, .munin-explorer-meta__grid dd,
+                .munin-explorer-page__facts dt, .munin-explorer-whole__code
+                { overflow-wrap: normal !important; }`),
+  },
+  {
     assertion: 'the component stays inside the box the host gave it',
     defect: 'a scroll box that clips its content instead of scrolling it',
     path: '/kilder', state: 'kilder-list', width: 1024,

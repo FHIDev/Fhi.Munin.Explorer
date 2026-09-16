@@ -58,9 +58,15 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # block }` is what left a folded panel on screen at 3798px, and ModernHost's stylesheet cannot
 # reproduce that. The state asserts a folded facet's values are off screen before it opens one, so
 # this is the run where that assertion means anything (Fhi.Metadata-co3sf).
+#
+# `variable-detail`, `variable-whole` and `explorer-search-code` are where the stub's long code is
+# drawn, and a code is one unbroken word: what decides the reflow width (Fhi.Metadata-ofg1h).
 TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
+  "/::variable-detail"
+  "/::variable-whole"
+  "/::explorer-search-code"
   "/kilder::kilder-list"
   "/kilder::kilder-counts"
   "/kilder::kilde-hierarchy-collapsed"
@@ -253,9 +259,13 @@ reflow "the component stays inside the box the host gave it" \
 # The list picker's <select> is as wide as its longest option (Fhi.Metadata-jcdil).
 reflow "no horizontal overflow,the component stays inside the box the host gave it" \
   "/::explorer-list-tab"
-# The detail page's fact grids widen to an unbroken URL (Fhi.Metadata-s9h1k).
-reflow "no horizontal overflow,the component stays inside the box the host gave it" \
+# Fhi.Metadata-s9h1k's exception went with Stiler 0.1.79, which breaks a long value rather than
+# widening its column; samples/HostileHost pins that release.
+reflow "" \
   "/kilder::kilde-hierarchy-collapsed" "/kilder::kilde-hierarchy-expanded" "/kilder::kilde-hierarchy-metadata"
+# The states the stub's long code reaches: the row panel's Kode, the whole-variable page's heading
+# and fact row, and the result count that quotes a searched term (Fhi.Metadata-ofg1h).
+reflow "" "/::variable-detail" "/::variable-whole" "/::explorer-search-code"
 
 # An assertion that has quietly stopped measuring anything reports success forever, so each one is
 # handed a page carrying the defect it was written for and required to say so.

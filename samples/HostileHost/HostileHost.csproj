@@ -21,10 +21,12 @@
        Stiler half of Fhi.Metadata-b3brc and what /kilder needs to fit at 1024 and 843.
 
        AHEAD OF HELSEDATA ON PURPOSE, against the bump rule above: helsedata.no pins 0.1.68 (their
-       PR 39284, checked 2026-09-14), which lacks the branch disclosure rules 0.1.75 carries
-       (Fhi.Metadata-adog5). Both gates that read this pin pass on 0.1.68 too (Fhi.Metadata-kpmt3). -->
+       PR 39284, checked 2026-09-14), which lacks both the branch disclosure rules
+       (Fhi.Metadata-adog5) and the long-value breaks 0.1.79 carries. The 320px step no longer passes on 0.1.68: the
+       states it measures need those breaks, which is what this branch's negative control shows
+       (Fhi.Metadata-ofg1h). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.75" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.79" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
@@ -34,7 +36,7 @@
        build` there is all it takes, with no feed and no Azure Artifacts Credential Provider.
 
        WHY IT IS OPT-IN AND CI NEVER SETS IT. What this builds is main, not the published
-       0.1.75, and it skips whatever the package's own build does beyond sass. A measurement
+       0.1.79, and it skips whatever the package's own build does beyond sass. A measurement
        taken here is not a measurement of what helsedata restore, so the gate keeps the
        package and this exists for looking at the layout (Fhi.Metadata-wgwa0). -->
   <PropertyGroup Condition="'$(UseLocalStiler)' == 'true'">
