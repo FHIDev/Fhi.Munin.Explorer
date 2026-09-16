@@ -639,25 +639,36 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 /* Disclosure and selection stay beside each other; children take their own line.
    A filled focus state survives the host reset that removes button outlines. (Fhi.Metadata-cs3pt) */
 .munin-explorer-filters__branch {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: start;
   column-gap: 4px;
+  font-size: 0.875rem;
+  line-height: 150%;
 }
 
-.munin-explorer-filters__branch > label { flex: 1 1 0; min-width: 0; }
+.munin-explorer-filters__branch > label {
+  grid-column: 2/-1;
+  grid-row: 1;
+  min-width: 0;
+}
 
-.munin-explorer-filters__branch > ul { flex-basis: 100%; }
+.munin-explorer-filters__branch > ul {
+  grid-column: 1/-1;
+  min-width: 0;
+}
 
 .munin-explorer-filters__disclosure {
-  flex: none;
+  display: grid;
+  place-items: center;
+  grid-column: 1;
+  grid-row: 1;
   width: 24px;
   height: 24px;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--grey60);
-  font-size: 0.75rem;
+  color: rgb(81, 84, 123);
   line-height: 24px;
   cursor: pointer;
 }
@@ -1685,7 +1696,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-meta__grid dd {
-  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Each language of a multilingual field is its own dd, so consecutive ones need separating or
@@ -1751,6 +1762,7 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-whole__code {
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
   font-size: 0.8125rem;
+  overflow-wrap: anywhere;
 }
 
 /* The kildetype is a category, not part of the name. This said "Stiler's tag class says so on
@@ -1905,6 +1917,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-page__fields dd {
+  overflow-wrap: anywhere;
   margin: 0;
 }
 
@@ -3221,6 +3234,7 @@ table.munin-explorer-data-list tbody th {
   display: inline-flex;
   flex: none;
   gap: 4px;
+  height: 1.5em;
 }
 
 .munin-explorer-filters__icon {
@@ -3558,6 +3572,7 @@ table.munin-explorer-data-list tbody th {
   font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
 .munin-explorer-page__facts dd {
@@ -4025,4 +4040,175 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-dataitem-main__period .munin-explorer-dataitem-main__column__text {
   white-space: normal;
+}
+
+/* ---- mirrored from Fhi.Helsedata.Stiler 0.1.79 when samples/HostileHost's pin moved
+   there from 0.1.75 (Fhi.Metadata-ofg1h). Rules the stand-in never had: four Stiler releases
+   of explorer work landed between the two pins. Declarations are Stiler's, verbatim. */
+
+.munin-explorer-datasamling__identifiers {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.munin-explorer-kilde__identifiers {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.munin-explorer-filters ul:has( > .munin-explorer-filters__branch) > li:not(.munin-explorer-filters__branch) > label {
+  margin-left: 28px;
+}
+
+.munin-explorer-filters__branch > .munin-explorer-filters__groupcount {
+  grid-column: 3;
+}
+
+.munin-explorer-filters__branch > span {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding-top: 2px;
+}
+
+.munin-explorer-filters__branch > ul > li:not(.munin-explorer-filters__branch) > label {
+  margin-left: 28px;
+}
+
+.munin-explorer-filters__disclosure > span[aria-hidden=true] {
+  width: 16px;
+  height: 16px;
+  font-size: 0;
+  background-color: currentColor;
+  mask: url(../img/icons/keyboard-arrow/icon_down.svg) no-repeat center/contain;
+}
+
+.munin-explorer-filters__disclosure[aria-expanded=true] > span[aria-hidden=true] {
+  mask-image: url(../img/icons/keyboard-arrow/icon_up.svg);
+}
+
+.munin-explorer-kilder > thead .munin-explorer-kilder__sort {
+  align-items: center;
+  display: inline-flex;
+  font-weight: 600;
+  gap: 4px;
+  letter-spacing: inherit;
+  min-height: 24px;
+  text-transform: inherit;
+}
+
+.munin-explorer-kilder > thead th {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+}
+
+.munin-explorer-page__stuckbar .munin-explorer-page__actions {
+  margin: 0 0 0 auto;
+}
+
+.munin-explorer-page__stuckbar dd {
+  margin: 0;
+}
+
+.munin-explorer-page__stuckbar dl div {
+  white-space: nowrap;
+}
+
+.munin-explorer-page__stuckbar dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.munin-explorer-page__stuckbar dt {
+  color: rgb(81, 84, 123);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.munin-explorer-page__stuckbar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  max-width: 1488px;
+  margin: 0 auto;
+  padding: 0.5625rem 0;
+}
+
+.munin-explorer-page__stuckbar-name {
+  font-size: 1rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.munin-explorer-page__stuckbar.munin-explorer-page__stuckbar--on {
+  height: auto;
+  overflow: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  border-bottom: 1px solid rgb(230, 230, 237);
+}
+
+.munin-explorer-page__stuckbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-100%);
+  background: rgb(246, 247, 252);
+  transition: opacity 0.15s;
+}
+
+.munin-explorer-results__toolbar > .caption {
+  overflow-wrap: anywhere;
+}
+
+/* ---- the same mirroring, for the rules Stiler scopes to a width or a motion preference.
+   The version row's phone layout is Fhi.Metadata-ofg1h's own; the rest came with the four
+   releases between the pins. */
+
+@media (max-width:1024px) {
+  .munin-explorer-page__stuckbar .munin-explorer-page__actions {
+    display: none;
+  }
+
+  .munin-explorer-page__stuckbar dl div:nth-child(n + 3) {
+    display: none;
+  }
+}
+
+@media (max-width:767px) {
+  .munin-explorer-versions__from {
+    inline-size: auto;
+  }
+
+  .munin-explorer-versions__name {
+    flex-basis: 100%;
+  }
+
+  .munin-explorer-versions__toggle {
+    flex-wrap: wrap;
+  }
+
+  .munin-explorer-versions__to {
+    inline-size: auto;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .munin-explorer-page__stuckbar {
+    transition: none;
+  }
 }

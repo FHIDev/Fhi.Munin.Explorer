@@ -423,3 +423,10 @@ missing-declaration||.datasourcecard__info .dot|margin-left
 missing-declaration||.datasourcecard__info .dot|margin-right
 missing-declaration||.datasourcecard__intro p|-webkit-box-orient
 missing-declaration||.datasourcecard__intro p|-webkit-line-clamp
+
+# The detail page's fact list keeps `margin: 0` where Stiler's rule for the same selector has
+# none. A dd carries the browser's own `margin-inline-start: 40px`, and Stiler zeroes it only under
+# `.munin-explorer-detail`, `__facts` and `__stuckbar` — none of which the detail page's `__fields`
+# is inside. Stiler gained this selector in 0.1.79 (Fhi.Metadata-ofg1h), which turned a sample-only
+# rule into a sample-only declaration.
+invented-declaration||.munin-explorer-page__fields dd|margin

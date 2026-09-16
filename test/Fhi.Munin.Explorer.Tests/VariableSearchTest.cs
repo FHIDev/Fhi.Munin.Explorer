@@ -3749,26 +3749,35 @@ public class VariableSearchTest : BunitContext
             .Select(rule => (rule.Selector, Declarations: Squeezed(rule.Declarations)))
             .ToList();
 
-        // `All` and not `Any`: a second block carrying neither declaration is the drift these pin,
-        // and the shared block below would go on satisfying an `Any`. `NotEmpty` because `All`
-        // over nothing passes. (Fhi.Metadata-l9l2n.104)
-        Assert.NotEmpty(rules);
+        // The typography is `__chosen`'s, shared rather than copied, so the two cannot drift apart
+        // (Fhi.Metadata-l9l2n.104). Stiler 0.1.79 places the count from a rule of its own, which is
+        // placement: that one may exist, and may declare nothing the shared rule settles.
+        var shared = rules.Where(r => r.Selector.Contains("munin-explorer-filters__chosen",
+                                                          StringComparison.Ordinal)).ToList();
 
-        Assert.All(rules, r => Assert.True(
+        // `NotEmpty` because `All` over nothing passes.
+        Assert.NotEmpty(shared);
+
+        Assert.All(shared, r => Assert.True(
             r.Declarations.Contains("font-variant-numeric:tabular-nums", StringComparison.Ordinal),
             "The group counts draw at proportional widths, so 45 above 13 shifts sideways and the "
             + "column shivers as the facet is narrowed — the whole reason this name has a rule."));
 
-        Assert.All(rules, r => Assert.True(
+        Assert.All(shared, r => Assert.True(
             r.Declarations.Contains("color:var(--grey60)", StringComparison.Ordinal),
             "Nothing dims the group count, so a size reads as loudly as the kildetype beside it."));
 
-        // The name was split out of `__chosen` and given its own selector nowhere: it was added to
-        // `__chosen`'s, in Stiler and in both samples, so the two cannot drift apart. A block of
-        // its own is how they start to. (Fhi.Metadata-l9l2n.104)
-        Assert.All(rules, r => Assert.True(
-            r.Selector.Contains("munin-explorer-filters__chosen", StringComparison.Ordinal),
-            "The group count has a block of its own rather than sharing `__chosen`'s selector."));
+        // A second block setting any of it is the drift the shared rule exists to prevent. `font`,
+        // `font-family` and `font-feature-settings` are named because each can defeat the tabular
+        // figures, and the match is anchored so `background-color` is not read as `color`.
+        var typography = new System.Text.RegularExpressions.Regex(
+            @"(^|;)(color|font|font-family|font-size|font-variant|font-variant-numeric|font-feature-settings):",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        Assert.All(rules.Except(shared), r => Assert.False(
+            typography.IsMatch(r.Declarations),
+            $"'{r.Selector}' sets the group count's typography outside the rule it shares with "
+            + "`__chosen`, which is where that belongs."));
     }
 
     [Fact]
