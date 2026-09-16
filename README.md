@@ -699,6 +699,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-breadcrumb` | meaning |
   | `munin-explorer-codes` | handle |
   | `munin-explorer-codes__table` | handle |
+  | `munin-explorer-complete-record` | handle |
+  | `munin-explorer-complete-record__fields` | handle |
+  | `munin-explorer-complete-record__lead` | handle |
   | `munin-explorer-container` | handle |
   | `munin-explorer-crumb` | meaning |
   | `munin-explorer-data-list` | handle |

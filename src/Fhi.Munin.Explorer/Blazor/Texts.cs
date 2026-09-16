@@ -171,6 +171,13 @@ internal sealed record Texts(
     string HeadingStatistics,
     string FieldLastUpdated,
     string FieldTotalVariables,
+    // The catch-all section's own prose. Its HEADING is not here: that one is the catalogue's, out
+    // of groupTranslations, so a curator renaming the section renames what a reader sees and these
+    // stay as they are. One lead per surface because the sentence names the thing it is about.
+    string CompleteRecordLeadKilde,
+    string CompleteRecordLeadDatasamling,
+    string CompleteRecordLeadVariable,
+    string CompleteRecordSummary,
     string HeadingDataCollections,
     string FieldName,
     string VariableCountSuffix,
@@ -933,6 +940,16 @@ internal sealed record Texts(
         HeadingStatistics: "Statistikk",
         FieldLastUpdated: "Sist oppdatert i Munin",
         FieldTotalVariables: "Totalt antall variabler",
+        CompleteRecordLeadKilde:
+            "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne kilden, "
+            + "slik de er registrert – ingenting er utelatt.",
+        CompleteRecordLeadDatasamling:
+            "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne "
+            + "datasamlingen, slik de er registrert – ingenting er utelatt.",
+        CompleteRecordLeadVariable:
+            "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne variabelen, "
+            + "slik de er registrert – ingenting er utelatt.",
+        CompleteRecordSummary: "Alle felt fra Munin, slik de er registrert",
         HeadingDataCollections: "Datasamlinger",
         FieldName: "Navn",
         VariableCountSuffix: "variabler",
@@ -1300,6 +1317,16 @@ internal sealed record Texts(
         HeadingStatistics: "Statistics",
         FieldLastUpdated: "Last updated in Munin",
         FieldTotalVariables: "Total number of variables",
+        CompleteRecordLeadKilde:
+            "The sections above are a selection. Below are all the fields Munin holds about this "
+            + "data source, as they are recorded – nothing is left out.",
+        CompleteRecordLeadDatasamling:
+            "The sections above are a selection. Below are all the fields Munin holds about this "
+            + "data collection, as they are recorded – nothing is left out.",
+        CompleteRecordLeadVariable:
+            "The sections above are a selection. Below are all the fields Munin holds about this "
+            + "variable, as they are recorded – nothing is left out.",
+        CompleteRecordSummary: "All fields from Munin, as they are recorded",
         HeadingDataCollections: "Data collections",
         FieldName: "Name",
         VariableCountSuffix: "variables",

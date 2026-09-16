@@ -211,8 +211,28 @@ public sealed partial class KildeView : ComponentBase
                                             DrawnElsewhere(kilde));
 
         _groups = CatalogueProperties.Groups(kilde.PropertyMetadata, _placement.Values, Reader,
-                                             _placement.DrawnElsewhere);
+                                             _placement.DrawnElsewhere,
+                                             CompleteRecord.Values(kilde, _placement.Values));
     }
+
+    /// <summary>
+    /// The lead over the catch-all section, and the four facts it lists that no property definition
+    /// carries.
+    /// </summary>
+    /// <remarks>
+    /// Every one of them is drawn elsewhere on this page as well, which is the section's own rule:
+    /// it is the complete record, so it repeats what the sections above already showed.
+    /// </remarks>
+    private CompleteRecordExtras CompleteRecordFacts =>
+        Kilde is not { } kilde
+            ? new(T.CompleteRecordLeadKilde, [])
+            : new(T.CompleteRecordLeadKilde,
+                  [
+                      (T.FieldTotalVariables, TotalVariables, false),
+                      (T.FieldDataCollections, DataCollections.Count.ToString(), false),
+                      (T.FieldDataPeriod, DataPeriod, false),
+                      (T.FieldLastUpdated, CatalogueDate.DayOrNothing(kilde.LastUpdated, Language), false),
+                  ]);
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>

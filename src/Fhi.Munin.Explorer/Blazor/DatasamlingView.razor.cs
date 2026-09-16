@@ -173,8 +173,19 @@ public sealed partial class DatasamlingView : ComponentBase
                                             DrawnElsewhere);
 
         _groups = CatalogueProperties.Groups(datasamling.PropertyMetadata, _placement.Values, Reader,
-                                             _placement.DrawnElsewhere);
+                                             _placement.DrawnElsewhere,
+                                             CompleteRecord.Values(datasamling, _placement.Values));
     }
+
+    /// <inheritdoc cref="KildeView.CompleteRecordFacts"/>
+    private CompleteRecordExtras CompleteRecordFacts =>
+        Datasamling is not { } datasamling
+            ? new(T.CompleteRecordLeadDatasamling, [])
+            : new(T.CompleteRecordLeadDatasamling,
+                  [
+                      (T.FieldVariableCount, VariableCount, false),
+                      (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false),
+                  ]);
 
     /// <inheritdoc cref="Groups"/>
     private IReadOnlySet<string> DrawnElsewhere =>
