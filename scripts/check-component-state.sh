@@ -11,6 +11,17 @@
 # shut branch's values have to be absent from the page rather than hidden on it, and a tab order is
 # not something a render tree has. (Fhi.Metadata-adog5)
 #
+# And at the variabelgruppe level of that tree it asks two questions of presses the component
+# ACCEPTS, which is a neighbouring question again rather than the one above: a group is drawn at
+# every placement its variables reach, so the reader flips one box and every other placement of it
+# has to come back from a render — and the folds they arrived with have to survive the refetch that
+# render answers. (Fhi.Metadata-g51gg, Fhi.Metadata-km3zb)
+#
+# One question more, and the only one here about FOCUS: the facet search commits because focus has
+# left its box, so a term that empties the facet rewrites the list the reader is standing in. Where
+# document.activeElement ends up afterwards is not something a render tree has either.
+# (Fhi.Metadata-6we8a)
+#
 # WHY THIS EXISTS. The column picker and the facet panel both call
 # `builder.SetUpdatesAttributeName("checked")`, and it is there for one reason: a render that equals
 # the render before it writes nothing back to the DOM, so a press the component declines leaves the
@@ -24,10 +35,17 @@
 # own tick beside it is a question a render tree cannot answer. (Fhi.Metadata-kd9ts)
 #
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
-#   - the six assertions it stages are the whole of it; the clicks each one needs to reach its
+#   - the nine assertions it stages are the whole of it; the clicks each one needs to reach its
 #     subject are setup rather than subject. scripts/state-assertions.mjs lists what that leaves
 #     out — the kildeutforsker's copy of the same picker, the facet panel's other refusal path,
 #     the contents nav's focus step, and every other control in the component;
+#   - three tree shapes the captured fixture has not got, so no state here can enter them: a
+#     variabelgruppe placed at a delkilde rather than in one of its datasamlinger, one placed at a
+#     kilde with neither under it, and the standalone Variabelgruppe facet populated at all — the
+#     capture answers that facet empty, and every `filter` in it is uniform per kilde, so the
+#     opted-out trunk carrying an offered descendant is a shape it cannot draw either. All three
+#     are covered in test/ by FilterHierarchyTest and VariableSearchTest and stay there until a
+#     re-capture reaches them (Fhi.Metadata-4wdnn);
 #   - one press per call site. The picker's other columns and the panel's other facets go the same
 #     way by construction, but by construction is not measured;
 #   - the sample stylesheet, not helsedata's. This runs ModernHost, as check-accessibility.sh does,
@@ -58,6 +76,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # above the results and the facet panel beside them. `variables-list` is the state that waits for a
 # row, so no assertion stages a press against a list whose data never arrived.
 #
+# `filters-variabelgrupper` is the same page with the Kilde facet narrowed to one group, which is
+# the only state here that reaches the variabelgruppe level of that tree. Two presses land there,
+# and between them they measure the two dimensions as separate: a tick at one placement of a group
+# reaches every other placement of it, and a tick leaves the folds the reader arrived with alone.
+#
 # The last two are a contents nav drawn over a path WITH a query, which is what the nav assertion
 # needs: ModernHost's App.razor emits `<base href="/">`, and a bare `#id` href resolves against
 # that rather than against the page, which is how every entry came to leave the kilde for the site
@@ -67,6 +90,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # history.replaceState and so has to hand the nav an address Blazor was never told about.
 TARGETS=(
   "/::variables-list"
+  "/::filters-variabelgrupper"
   "/kilder::kilde-hierarchy-collapsed"
   "/utforsker::variable-whole"
 )
@@ -216,14 +240,17 @@ EOF
 fi
 
 cat <<'EOF'
-A refused press left the DOM and the component agreeing, and each assertion still fires against
-the defect it exists for.
+Every press staged left the DOM and the component agreeing - the ones it refused and the ones it
+took alike - and each assertion still fires against the defect it exists for.
 
 Read that for what it is. Two REFUSED presses were staged in the variable explorer - the picker's
 last visible column, and a facet value pressed a second time while its own refetch was in flight -
-and three the component ACCEPTS beside them: the facet tree's two branch disclosures, and the
-panel's Ikoner switch. The two contents navs are read rather than pressed, and what is asked there
-is the address the browser resolved each href to. All of it against the sample stylesheet. The
-header of this script and of scripts/state-assertions.mjs list what that leaves out - the contents
-nav's focus step in particular, which this host's router takes over.
+and five the component ACCEPTS beside them: the facet tree's two branch disclosures, the panel's
+Ikoner switch, and two ticks at the variabelgruppe level of that tree. One press more is neither,
+the commit of the panel's own search field, and what is asked there is where focus ended up. The
+two contents navs are read rather than pressed, and what is asked there is the address the browser
+resolved each href to. All of it against the sample stylesheet. The header of this script and of
+scripts/state-assertions.mjs list what that leaves out - the contents nav's focus step in
+particular, which this host's router takes over, and the three tree shapes the captured fixture
+has not got.
 EOF

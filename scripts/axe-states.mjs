@@ -31,6 +31,84 @@ async function press(scope, name) {
   await button.click();
 }
 
+/**
+ * The variabelgruppe the `filters-variabelgrupper` state narrows the Kilde facet to.
+ *
+ * A catalogue name, so a re-capture can take it away — which is why every read of it below throws
+ * rather than returning nothing. Chosen for two properties the capture is thin in: the group is
+ * drawn under two datasamlinger of one kilde, and its `filter` is `"2"`. (Fhi.Metadata-g51gg)
+ */
+export const VARIABELGRUPPE = 'Assistert befruktning';
+
+/**
+ * A term the Kilde facet matches nothing at all with.
+ *
+ * Not a catalogue name and deliberately not a word: the facet matches over every level under a
+ * kilde, the variabelgrupper included, so anything that reads like Norwegian risks matching one of
+ * the catalogue's group names and staging a narrowed facet in place of an empty one.
+ */
+export const NO_MATCH = 'zzzz-ingen-treff-zzzz';
+
+/**
+ * The Kilde facet, found by the one control only it has: its own search box.
+ *
+ * By that box rather than by the heading word, because `FieldSource` names the facet and a column
+ * alike — and rather than by position, because `FacetGroups` drops a facet the API answered
+ * nothing for, so the index moves with the payload.
+ */
+export const kildeFacet = page => page.locator('.munin-explorer-filters details')
+  .filter({ has: page.locator('input.munin-explorer-filters__search') })
+  .first();
+
+/**
+ * Every row of the filter panel whose own label names `name`, in the order they are drawn.
+ *
+ * By the label's own text and not by a role query, because the count inside it joins the
+ * checkbox's accessible name and that count is cross-filtered — a locator holding `Kosthold (5)`
+ * stops matching the moment a tick moves the 5. `index` is into the panel's `<li>` list, which is
+ * how a caller presses one; `selectable` says the row is a checkbox rather than a container.
+ */
+export const groupRows = (page, name) => page.locator('.munin-explorer-filters li')
+  .evaluateAll((items, wanted) => items
+    .map((item, index) => {
+      const label = item.querySelector(':scope > label');
+
+      if (label === null || !(label.textContent ?? '').trim().startsWith(`${wanted} (`)) {
+        return null;
+      }
+
+      const box = label.querySelector('input[type=checkbox]');
+
+      return { index, selectable: box !== null, checked: box?.checked ?? false };
+    })
+    .filter(row => row !== null), name);
+
+/**
+ * Wait until the tree draws `name` at two placements, and hand those rows back.
+ *
+ * Polled from here rather than with `waitForFunction`, so the one reader above is what both the
+ * wait and the assertions read: a predicate copied into the page would be a second definition of
+ * "which row is this group" and free to drift from it.
+ */
+async function untilTwoPlacements(page, name) {
+  const deadline = Date.now() + findTimeout;
+
+  for (;;) {
+    const rows = await groupRows(page, name);
+
+    if (rows.length >= 2) {
+      return rows;
+    }
+
+    if (Date.now() > deadline) {
+      throw new Error(`the kilde tree drew ${rows.length} row(s) for "${name}" where it draws two: ` +
+        'the fixture no longer carries a group placed under two datasamlinger of one kilde');
+    }
+
+    await page.waitForTimeout(250);
+  }
+}
+
 export const states = {
   'kilde-hierarchy-collapsed': async page => {
     const name = page.getByRole('button', { name: 'Tromsøundersøkelsen', exact: true });
@@ -159,6 +237,71 @@ export const states = {
       .locator('.munin-explorer-filters__badge')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // The Kilde facet's tree open down to its variabelgrupper — the level Fhi.Metadata-g51gg added.
+  // filters-level-lines above already draws them, by unfolding the whole captured catalogue, which
+  // is the wrong vehicle for a PRESS: a tick rebuilds every row of it. The facet's own search keeps
+  // the matching kilde and opens the branches standing between it and the match, so this state
+  // reaches the same level in the rows of one kilde.
+  //
+  // VARIABELGRUPPE names a group the capture draws under two datasamlinger of one kilde, both of
+  // them hanging straight off that kilde with no delkilde between — the majority shape in the
+  // catalogue, and the one an inner join loses. Its `filter` is `"2"`, which the tree draws as a
+  // checkbox all the same, the opt-out being the standalone facet's rule alone
+  // (Fhi.Metadata-fbe3w). Every shape the assertions in state-assertions.mjs need, in one state.
+  'filters-variabelgrupper': async page => {
+    const panel = page.locator('.munin-explorer-filters');
+    await panel.waitFor({ state: 'visible', timeout: findTimeout });
+
+    // On an <input>, which is where Stiler's rule for the name is scoped, so a box that moved to
+    // another element fails here rather than drawing at the page's own size on helsedata.
+    const box = panel.locator('input.munin-explorer-filters__search');
+    await box.first().waitFor({ state: 'visible', timeout: findTimeout });
+
+    // Committed with Enter rather than by clicking away, which is what onchange also answers to:
+    // a commit that narrows puts focus back in this box (Fhi.Metadata-6we8a), so a click on some
+    // other control to fire it would be a press the rescue then takes the reader off.
+    await box.first().fill(VARIABELGRUPPE);
+    await box.first().press('Enter');
+
+    // On two placements of the group, never on the row count: reaching one would pass against a
+    // tree that had stopped repeating a group under every datasamling its variables are in, which
+    // is the shape both assertions turn on.
+    const rows = await untilTwoPlacements(page, VARIABELGRUPPE);
+
+    // Each of them a checkbox, which is the opt-out claim: this group carries Filter="2" in the
+    // capture, and a container row here would mean the tree had started reading it.
+    if (rows.some(row => !row.selectable)) {
+      throw new Error(`"${VARIABELGRUPPE}" is drawn as a container in the kilde tree, which reads ` +
+        'the standalone facet\'s opt-out that is not its rule');
+    }
+  },
+
+  // The Kilde facet with nothing left in it: a term matching no kilde, no delkilde, no datasamling
+  // and no variabelgruppe. The facet stays standing rather than dropping out, because dropping out
+  // would take the box the reader has to widen the term in away with it (Fhi.Metadata-l9l2n.67) —
+  // so what axe judges here is a disclosure holding a message and a search field and no list at
+  // all, which is the one empty state either explorer reaches without the stub answering
+  // differently than it does.
+  'filters-no-match': async page => {
+    const panel = page.locator('.munin-explorer-filters');
+    await panel.waitFor({ state: 'visible', timeout: findTimeout });
+
+    const facet = kildeFacet(page);
+    await facet.locator('li').first().waitFor({ state: 'visible', timeout: findTimeout });
+
+    const box = panel.locator('input.munin-explorer-filters__search').first();
+    await box.fill(NO_MATCH);
+    await box.press('Enter');
+
+    await facet.locator('li').first().waitFor({ state: 'detached', timeout: findTimeout });
+
+    // The facet itself, and the box inside it. Either one gone is the defect this state exists to
+    // keep an eye on, and axe reports no violations in a facet that is no longer on the page.
+    if (await facet.count() !== 1 || await box.count() !== 1) {
+      throw new Error('a search matching nothing took the Kilde facet or its own search box away');
+    }
   },
 
   // The result count quotes the search term, and a searched code is one unbroken word. The stub

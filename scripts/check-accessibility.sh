@@ -32,11 +32,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #   - the whole-variable drill-in and the owner panel inside a row, two more presses each. The
 #     first has a state of its own now — `variable-whole`, which check-component-state.sh stages to
 #     ask its contents nav a question axe does not ask — and is still not scanned here;
-#   - the pager past page one, and anything reached by searching; the kildeutforsker's own list
-#     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's is not — so
-#     neither its chip row nor the hierarchy trail over its results is ever on screen for axe,
-#     and a green run says nothing about either (Fhi.Metadata-oj286);
-#   - error and empty states, which need the stub to answer differently than it does;
+#   - the pager past page one, and the free-text search over the results; the Kilde facet's own
+#     search IS covered, in filters-variabelgrupper, which is the one state here holding a narrowed
+#     facet. The kildeutforsker's list narrowed by a facet is covered too, in kilde-facets, and the
+#     variable explorer's is not — so neither its chip row nor the hierarchy trail over its results
+#     is ever on screen for axe, and a green run says nothing about either (Fhi.Metadata-oj286);
+#   - error states, and every empty state but one, which need the stub to answer differently than
+#     it does. The exception is filters-no-match: a facet emptied by its own search is reached by
+#     typing rather than by a different payload, so that one IS scanned;
 #   - hierarchy branches beyond the two opened levels in kilde-hierarchy-expanded;
 #   - the English texts, and samples/LegacyHost, the same component in the other host;
 #   - the list tab's own create, rename and delete forms, and the annotation field in a row.
@@ -64,6 +67,8 @@ TARGETS=(
   "$REFLOW_TARGET"
   "/::filters-level-lines"
   "/::filters-node-icons-off"
+  "/::filters-variabelgrupper"
+  "/::filters-no-match"
   "/::variable-detail"
   "/kilder::kilde-drilldown"
   "/kilder::kilde-hierarchy-collapsed"

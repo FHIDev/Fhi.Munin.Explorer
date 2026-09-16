@@ -17,14 +17,22 @@
 //     App with an interactive router, and Blazor intercepts a same-page-with-hash press and scrolls
 //     itself rather than leaving the browser to make the fragment jump that carries focus. What is
 //     asserted below is therefore the half the component owns — that every target is focusable —
-//     and a host that does not intercept is not measured anywhere;
-//   - every OTHER control the component draws. Five presses are measured here, all in the variable
+//     and a host that does not intercept is not measured anywhere. The facet search's own rescue IS
+//     measured, and it is the one place here where document.activeElement is the whole question;
+//   - every OTHER control the component draws. Eight presses are measured here, all in the variable
 //     explorer. TWO the component refuses: the picker's refusal to hide the last column, and a
-//     facet press dropped because a fetch was already in flight. THREE it accepts, and each is
-//     here because the browser holds state the render tree has not got — the facet tree's two
-//     branch disclosures, that a shut branch leaves nothing behind for a Tab to land on and that
-//     folding one over a ticked value leaves the value ticked, and the toolbar's Ikoner switch,
-//     where what is asked is what the redraw left alone;
+//     facet press dropped because a fetch was already in flight. FIVE it accepts, and each is here
+//     because the browser holds state the render tree has not got — the facet tree's two branch
+//     disclosures, that a shut branch leaves nothing behind for a Tab to land on and that folding
+//     one over a ticked value leaves the value ticked; the toolbar's Ikoner switch, where what is
+//     asked is what the redraw left alone; and two at the variabelgruppe level of the tree, where
+//     what the browser flipped is one placement of a group and every other placement — and the
+//     folds the reader arrived with — have to come back from a render (Fhi.Metadata-km3zb,
+//     Fhi.Metadata-g51gg). ONE is neither a refusal nor a tick: the facet search committed by
+//     moving focus away, whose whole subject is where focus is afterwards (Fhi.Metadata-6we8a);
+//   - three shapes of that tree the captured fixture has not got, listed in check-component-state.sh
+//     and covered in test/ instead: a group placed at a delkilde, a group placed at a kilde, and
+//     the standalone Variabelgruppe facet populated at all (Fhi.Metadata-4wdnn);
 //   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
 //     visited at all;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this
@@ -46,6 +54,8 @@
 // leaving the browser's flip standing — and state-scan.mjs requires `measure` to report it. An
 // assertion that has quietly stopped measuring anything passes forever otherwise, which is the
 // failure this whole file is about.
+
+import { NO_MATCH, VARIABELGRUPPE, groupRows, kildeFacet } from './axe-states.mjs';
 
 /** The contents nav of a detail view, in the column beside it. */
 const TOC = '.munin-explorer-page__toc';
@@ -323,6 +333,39 @@ const chosenInFacet = facet => facet.locator(':scope > summary').evaluate(summar
   return match === null ? 0 : Number(match[1]);
 });
 
+/**
+ * How many values the facet whose summary opens with `label` says are chosen, or null for no
+ * such facet.
+ *
+ * Read off the summary line for the reason `chosenInFacet` is: that number and the chips over the
+ * results are one projection, so it is what the panel says the FILTER holds rather than what is
+ * ticked on screen. Wanted here for the standalone Variabelgruppe facet, which draws none of the
+ * tree's rows and still has to count a group ticked in it. (Fhi.Metadata-km3zb)
+ */
+const chosenInFacetNamed = (page, label) => page.locator(`${PANEL} details > summary`)
+  .evaluateAll((summaries, wanted) => {
+    const found = summaries.find(one => (one.textContent ?? '').trim().startsWith(wanted));
+
+    if (found === undefined) {
+      return null;
+    }
+
+    const match = /\((\d+)\)\s*$/.exec(found.textContent ?? '');
+
+    return match === null ? 0 : Number(match[1]);
+  }, label);
+
+/**
+ * Which branches of the tree are open, by the id each discloses.
+ *
+ * The id and not the position: `BranchId` is built from the value key, which for a variabelgruppe
+ * is where the row is DRAWN rather than the id ticking it, so two placements of one group have two
+ * of these — and a refetch that rebuilt the tree keeps them all. A shut branch carries no
+ * `aria-controls` at all, so what this returns is exactly the open set.
+ */
+const openBranchIds = page => page.locator(`${PANEL} ${DISCLOSURE}[aria-expanded="true"]`)
+  .evaluateAll(buttons => buttons.map(one => one.getAttribute('aria-controls')));
+
 /** How many of a facet's boxes the BROWSER has ticked, nested values included. */
 const tickedInFacet = facet => facet.locator(':scope input[type=checkbox]:checked').count();
 
@@ -351,6 +394,25 @@ async function pressSwitch(page, name, checked) {
   await page.keyboard.press(' ');
   await control.and(page.locator(`[aria-checked="${checked}"]`))
     .waitFor({ state: 'attached', timeout: findTimeout });
+}
+
+/**
+ * Tick the checkbox on one row of the panel and wait out the refetch it provokes.
+ *
+ * A real pointer press, because the browser's own flip of the box before any handler runs is the
+ * whole subject of this file. Both edges of `aria-busy` are waited for — the rise where it can be
+ * caught, since against a local stub the panel can go busy and back inside one round trip — so
+ * what is read afterwards is the tree the answer rebuilt rather than the one the press left.
+ */
+async function tickRow(page, index) {
+  const panel = page.locator(PANEL);
+
+  await panel.locator('li').nth(index).locator(':scope > label input[type=checkbox]').click();
+
+  await panel.and(page.locator('[aria-busy="true"]'))
+    .waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
+  await panel.and(page.locator('[aria-busy="false"]'))
+    .waitFor({ state: 'visible', timeout: findTimeout });
 }
 
 export const assertions = [
@@ -932,6 +994,260 @@ export const assertions = [
       await rowOf(branchNamed(page, names))
         .locator('ul input[type=checkbox]:checked').first()
         .evaluate(box => { box.checked = false; });
+    },
+  },
+
+  {
+    name: 'a variabelgruppe ticked at one placement is ticked at every other place the tree draws it',
+    kind: 'invariant',
+    states: ['filters-variabelgrupper'],
+
+    // A group hangs under every datasamling its variables are in, so the tree draws it at more than
+    // one place and every placement carries the one VariabelgruppeIds entry (Fhi.Metadata-km3zb).
+    // The reader flips ONE of those boxes and the browser writes that one itself; every other
+    // placement has to arrive from the render that follows, computed against a previous render tree
+    // Blazor has patched at the pressed box alone.
+    //
+    // VariableSearchTest asks the same question of the render tree and this asks it of the page, so
+    // read this as the round trip rather than as the only place it is asked: the answer is a real
+    // one off the stub, the tree is rebuilt whole rather than re-rendered in hand, and the press is
+    // a pointer press whose flip lands before any handler runs.
+    async stage(page) {
+      const placements = await groupRows(page, VARIABELGRUPPE);
+
+      // The state asserted two and a checkbox on each, so reaching this is the harness having
+      // changed under itself rather than a finding.
+      if (placements.length < 2) {
+        throw new Error(`the tree draws ${placements.length} row(s) for "${VARIABELGRUPPE}"`);
+      }
+      if (placements.some(row => row.checked)) {
+        throw new Error(`"${VARIABELGRUPPE}" is ticked already, so no press of ours chose it`);
+      }
+
+      await tickRow(page, placements[0].index);
+
+      return { pressed: placements[0].index, count: placements.length };
+    },
+
+    async measure(page, { pressed, count }) {
+      const findings = [];
+      const placements = await groupRows(page, VARIABELGRUPPE);
+
+      if (placements.length !== count) {
+        return `the tree draws ${placements.length} row(s) for "${VARIABELGRUPPE}" where it drew ` +
+          `${count} — nothing was measured`;
+      }
+
+      // Reported rather than passed over, for the reason the picker's refusal is: a press that
+      // chose nothing at all is a run that measured nothing.
+      const chosen = await chosenInFacetNamed(page, 'Variabelgruppe');
+
+      if (chosen !== 1) {
+        return `the Variabelgruppe facet says ${chosen} group(s) are chosen where the one press ` +
+          'should have chosen exactly one';
+      }
+
+      const untouched = placements.filter(row => row.index !== pressed && !row.checked);
+
+      if (untouched.length > 0) {
+        findings.push(`${untouched.length} of the ${count} rows the tree draws for ` +
+          `"${VARIABELGRUPPE}" are unticked while the filter holds it: a placement the reader never ` +
+          'pressed is drawn at odds with the one selection every placement shares');
+      }
+
+      // One chip and not one per placement. The chips are drawn off the filter, so two would mean
+      // the selection itself had been keyed by where the row is rather than by the group.
+      const chips = await page.locator('.munin-explorer-filters__chip').count();
+
+      if (chips !== 1) {
+        findings.push(`${chips} chip(s) stand over the results for one ticked group, where the one ` +
+          'id it writes should draw exactly one');
+      }
+
+      return findings.length === 0 ? null : findings.join('\n         ');
+    },
+
+    // The flip that never arrived, put back by hand: the placement the reader did not press, left
+    // as a render failing to write it would have left it.
+    async control(page, { pressed }) {
+      const placements = await groupRows(page, VARIABELGRUPPE);
+      const other = placements.find(row => row.index !== pressed);
+
+      if (other === undefined) {
+        throw new Error(`"${VARIABELGRUPPE}" has no second placement to leave unwritten`);
+      }
+
+      await page.locator(`${PANEL} li`).nth(other.index)
+        .locator(':scope > label input[type=checkbox]')
+        .evaluate(box => { box.checked = false; });
+    },
+  },
+
+  {
+    name: 'a tick inside the tree leaves every branch the reader opened still open',
+    kind: 'invariant',
+    states: ['filters-variabelgrupper'],
+
+    // The other half of the claim the assertion above and the fold assertion before it make between
+    // them: expansion is the panel's state and selection is the filter's, and neither moves the
+    // other. That one measures collapsing over a selection; this one measures selecting under an
+    // expansion, which is the direction a refetch can break — a tick rebuilds the whole tree from a
+    // fresh /filters answer, and _expandedBranches is deliberately not cleared when one arrives.
+    //
+    // It OVERLAPS a bUnit test on purpose, and the overlap is worth stating rather than dressing
+    // up: Branches_WhenOneIsShutAfterExpandAll_ThenItStaysShutThroughTheNextAnswer asks the same
+    // question of the render tree, and a clear added to _expandedBranches would redden both. What
+    // this adds is the round trip — a real answer off the stub rebuilding the whole tree, with the
+    // folds read back off the page as aria-controls ids that survived it — and the branches being
+    // ones the FACET SEARCH opened rather than ones a press did. Read it as the same rule measured
+    // one layer out, not as the only place the rule is measured.
+    async stage(page) {
+      const before = await openBranchIds(page);
+
+      // The state opens the branches standing between the kilde and the match, so none is the
+      // harness having changed under itself: there would be no group row to press either.
+      if (before.length === 0) {
+        throw new Error('no branch of the tree is open, so a tick cannot leave one open');
+      }
+      if (before.some(id => id === null)) {
+        throw new Error('an open disclosure carries no aria-controls, so it names no list at all');
+      }
+
+      const placements = await groupRows(page, VARIABELGRUPPE);
+
+      if (placements.length === 0) {
+        throw new Error(`the tree drew no row for "${VARIABELGRUPPE}" to tick`);
+      }
+
+      await tickRow(page, placements[0].index);
+
+      return { before };
+    },
+
+    async measure(page, { before }) {
+      // Reported rather than passed over: a tick that chose nothing is a render this assertion
+      // could not have failed on, whatever the refetch then did to the folds.
+      const chosen = await chosenInFacetNamed(page, 'Variabelgruppe');
+
+      if (chosen !== 1) {
+        return `the Variabelgruppe facet says ${chosen} group(s) are chosen, so the tick that was ` +
+          'to provoke the refetch never landed — nothing was measured';
+      }
+
+      const after = await openBranchIds(page);
+      const shut = before.filter(id => !after.includes(id));
+
+      if (shut.length === 0) {
+        return null;
+      }
+
+      return `${shut.length} of the ${before.length} branches open before the tick are shut after ` +
+        'it: the answer it provoked reset the folds, so a reader narrowing inside the tree loses ' +
+        'the place they narrowed from';
+    },
+
+    // The fold the reader would have lost, taken away by hand: the button drawn shut and the list
+    // it disclosed gone, exactly as a render off a cleared _expandedBranches would have left it.
+    async control(page) {
+      await page.locator(`${PANEL} ${DISCLOSURE}[aria-expanded="true"]`).first()
+        .evaluate(button => {
+          document.getElementById(button.getAttribute('aria-controls'))?.remove();
+          button.setAttribute('aria-expanded', 'false');
+          button.removeAttribute('aria-controls');
+        });
+    },
+  },
+
+  {
+    name: 'a facet search that empties the facet puts focus back in its own box',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    // Focus after a re-render, which is the one thing here no render tree holds: onchange fires
+    // BECAUSE focus has left the box, so a commit that narrows rewrites the list the reader who
+    // tabbed out is now standing in, and the component puts them back (Fhi.Metadata-6we8a). bUnit
+    // can see that FocusAsync was called and not where document.activeElement ended up.
+    //
+    // Committed by moving focus to another control rather than with Enter, and that is what makes
+    // the rescue load-bearing: Enter keeps focus in the box whether or not the component asks for
+    // it, so an assertion staged that way would hold with the call gone and measure nothing.
+    async stage(page) {
+      const panel = page.locator(PANEL);
+      await panel.waitFor({ state: 'visible', timeout: findTimeout });
+
+      const facet = kildeFacet(page);
+      const box = panel.locator('input.munin-explorer-filters__search').first();
+
+      await facet.locator('li').first().waitFor({ state: 'visible', timeout: findTimeout });
+      await box.waitFor({ state: 'visible', timeout: findTimeout });
+
+      // Where focus is taken so that the commit fires at all. The results' own search field,
+      // because it is a real control a reader leaves this box for and is on screen at this width
+      // without scrolling.
+      const elsewhere = page.locator('input.searchbox__freetext').first();
+      await elsewhere.waitFor({ state: 'visible', timeout: findTimeout });
+
+      const drawn = await facet.locator('li').count();
+
+      await box.click();
+      await box.fill(NO_MATCH);
+      await elsewhere.focus();
+
+      // The narrowed facet, waited for rather than slept through: the commit travels over the
+      // circuit, and the rescue lands in the render that answers it.
+      await facet.locator('li').first().waitFor({ state: 'detached', timeout: findTimeout });
+
+      return { drawn };
+    },
+
+    async measure(page, { drawn }) {
+      const findings = [];
+      const facet = kildeFacet(page);
+
+      // Reported rather than passed over: a facet that is gone, or that still lists its kilder, is
+      // one this assertion could not have failed on.
+      if (await facet.count() !== 1) {
+        return 'a search matching nothing took the Kilde facet off the page, so the box the reader ' +
+          'has to widen the term in went with it';
+      }
+
+      const left = await facet.locator('li').count();
+
+      if (left !== 0) {
+        return `the facet still lists ${left} of the ${drawn} rows it drew, so the term matched ` +
+          'something after all — nothing was measured';
+      }
+
+      const box = page.locator(`${PANEL} input.munin-explorer-filters__search`);
+
+      if (await box.count() !== 1) {
+        findings.push('the facet kept its heading and lost its search box, so there is no way back ' +
+          'from a term that matches nothing');
+      } else {
+        if (await box.inputValue() !== NO_MATCH) {
+          findings.push(`the box reads "${await box.inputValue()}" where the reader left ` +
+            `"${NO_MATCH}", so the term they have to widen is not the one on screen`);
+        }
+
+        if (!await box.evaluate(one => one === document.activeElement)) {
+          const where = await page.evaluate(() => {
+            const one = document.activeElement;
+
+            return one === null || one === document.body ? 'nothing at all' : one.tagName.toLowerCase();
+          });
+
+          findings.push(`focus is on ${where} rather than in the facet's own box: the commit ` +
+            'rewrote the list the reader was standing in and left them somewhere else');
+        }
+      }
+
+      return findings.length === 0 ? null : findings.join('\n         ');
+    },
+
+    // Focus left where the commit would have left it without the rescue: on the control the reader
+    // moved to, a screen away from the term they now have to widen.
+    async control(page) {
+      await page.locator('input.searchbox__freetext').first().focus();
     },
   },
 ];
