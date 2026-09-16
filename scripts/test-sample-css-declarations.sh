@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Guard for sample-css-declarations.mjs, and specifically for its BORROWED half. That half is all
+# Guard for sample-css-declarations.mjs, and above all for its BORROWED half. That half is all
 # asymmetries — missing-selector suppressed, invented-declaration and different-value kept, the
 # `font` shorthand read for its size and not for its weight — and every one of them is a decision
 # that looks like a bug to the next reader and can be "simplified" away without a single test going
@@ -45,6 +45,29 @@ silent () { # name, sample, stiler
   fi
 }
 
+only_of_kind () { # name, expected-key, sample, stiler: the key is the ONLY line of its kind
+  local out got
+  out="$(run "$3" "$4")"
+  got="$(printf '%s\n' "$out" | grep "^${2%%|*}|" || true)"
+  if [ "$got" = "$2" ]; then
+    printf '  ok    %s\n' "$1"
+  else
+    printf '  FAIL  %s\n     wanted only the line: %s\n     got:\n%s\n' "$1" "$2" "${out:-(nothing)}"
+    fail=1
+  fi
+}
+
+omits_kind () { # name, kind, sample, stiler
+  local out
+  out="$(run "$3" "$4")"
+  if printf '%s\n' "$out" | grep -q "^$2|"; then
+    printf '  FAIL  %s\n     wanted no %s line, got:\n%s\n' "$1" "$2" "$out"
+    fail=1
+  else
+    printf '  ok    %s\n' "$1"
+  fi
+}
+
 # ---------------------------------------------------------------------------------------------
 # The borrowed half exists at all. Deleting the `isBorrowed` clause from `isCompared` leaves the
 # prefix half green and fails these three.
@@ -78,13 +101,46 @@ reports "a PREFIX selector the sample never writes still IS reported" \
   '.munin-explorer-trail { margin: 0; }' \
   '.munin-explorer-trail { margin: 0; } .munin-explorer-detail { padding: 8px; }'
 
-# A selector only the SAMPLE has is compared in neither direction, whichever family it is in —
-# the sample carries its own host chrome and its own palette. The closing banner's unmatched count
-# is the only trace, which is why the count is asserted below rather than merely printed.
+# A BORROWED selector only the SAMPLE has is compared in neither direction — the sample carries its
+# own host chrome and its own palette. The closing banner's unmatched count is the only trace, which
+# is why the count is asserted below rather than merely printed.
 
-silent "a selector only the sample has is not reported" \
+silent "a borrowed selector only the sample has is not reported" \
+  '.hostbar { padding: 8px; }' \
+  '.searchbox__freetext { height: 56px; }'
+
+# ---------------------------------------------------------------------------------------------
+# unstyled-name. Under the prefix a name only the sample styles renders at browser defaults on
+# helsedata, whatever the stand-in draws for it.
+
+reports "a munin-explorer name Stiler never mentions is reported" \
+  'unstyled-name||.munin-explorer-invented|' \
   '.hostbar { padding: 8px; } .munin-explorer-invented { margin: 0; }' \
   '.searchbox__freetext { height: 56px; }'
+
+# One line per name, so the Stiler bead that adds the rule deletes one line however many rules the
+# sample wrote.
+only_of_kind "an unstyled name is one line however many rules name it" \
+  'unstyled-name||.munin-explorer-complete-record__fields|' \
+  '.munin-explorer-complete-record__fields { display: grid; }
+   .munin-explorer-complete-record__fields:hover { margin: 0; }' \
+  '.munin-explorer-trail { margin: 0; }'
+
+# A disclosure styled only through its summary still names the disclosure.
+reports "a name the sample styles only as an ancestor is reported" \
+  'unstyled-name||.munin-explorer-complete-record|' \
+  '.munin-explorer-complete-record > summary { cursor: pointer; }' \
+  '.munin-explorer-trail { margin: 0; }'
+
+omits_kind "a name Stiler styles under another selector spelling is not unstyled" \
+  'unstyled-name' \
+  '.munin-explorer-meta dl > dt { margin: 0; }' \
+  '.munin-explorer-meta dt { margin: 0; }'
+
+reports "a longer name in Stiler does not vouch for its stem" \
+  'unstyled-name||.munin-explorer-page|' \
+  '.munin-explorer-page { margin-top: 0; }' \
+  '.munin-explorer-page__body { display: grid; }'
 
 # ---------------------------------------------------------------------------------------------
 # The `font` shorthand. Stiler's responsive type sets size and line-height through it, and `font`

@@ -8,7 +8,7 @@
 // asks whether a name has a rule declaring SOMETHING, which is a question the samples answered
 // green while ~40 real divergences stood: a rule carrying half of Stiler's declarations, or the
 // right property carrying the wrong value, passes it. So nothing below asks whether a selector
-// exists except as a way of finding the declarations to compare.
+// exists except to find the declarations to compare, and unstyled-name, which asks it of a name.
 //
 // Driven by scripts/assert-sample-css-matches-stiler.sh, which resolves which Stiler to read.
 // Invoked directly it takes two paths and prints the divergences it finds:
@@ -338,6 +338,10 @@ function isBorrowed(selector) {
   return !isOurs(selector) && /\.[A-Za-z_-]/.test(selector);
 }
 
+function namesOurs(selector) {
+  return [...new Set([...selector.matchAll(/\.(munin-explorer[A-Za-z0-9_-]*)/g)].map((m) => m[1]))];
+}
+
 function isCompared(selector) {
   return isOurs(selector) || isBorrowed(selector);
 }
@@ -481,8 +485,8 @@ export function compare(samplePath, stilerPath) {
   // misleading as one that draws nothing.
   //
   // Reported only for selectors Stiler ALSO has. A whole selector the sample invents is not
-  // reported: the sample carries its own palette and its own host chrome, and neither is a claim
-  // about what Stiler draws.
+  // reported here: the sample carries its own palette and its own host chrome, and neither is a claim
+  // about what Stiler draws. Under the prefix the fifth kind, below, answers for the name.
   //
   // Counted and reported rather than left implicit: rules are keyed on selector TEXT, so a borrowed
   // rule Stiler spells differently — a reordered compound, an unshared pseudo-element — is not
@@ -527,6 +531,26 @@ export function compare(samplePath, stilerPath) {
         detail: `The sample declares '${property}: ${got}'; Stiler's rule for the same selector does not.`,
       });
     }
+  }
+
+  // The fifth kind: a prefixed name the sample styles and no Stiler selector mentions renders at
+  // browser defaults on helsedata. Per name, not per selector, so a name Stiler mentions anywhere
+  // counts as styled: a sample rule for it that Stiler lacks is a wider gap this kind does not close.
+  const stilerNames = new Set([...stiler.values()].flatMap((rule) => namesOurs(rule.selector)));
+  const unstyled = new Map();
+  for (const sampleRule of sample.values()) {
+    for (const name of namesOurs(sampleRule.selector)) {
+      if (!stilerNames.has(name)) unstyled.set(name, (unstyled.get(name) ?? 0) + 1);
+    }
+  }
+  for (const [name, rules] of unstyled) {
+    divergences.push({
+      kind: "unstyled-name",
+      context: "",
+      selector: `.${name}`,
+      property: "",
+      detail: `The sample writes ${rules} rule(s) naming '.${name}'; no Stiler selector names it at all.`,
+    });
   }
 
   divergences.sort((a, b) => keyOf(a).localeCompare(keyOf(b)));

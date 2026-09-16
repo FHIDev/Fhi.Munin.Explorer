@@ -26,6 +26,9 @@
 #   invented-declaration  The sample declares a property under a selector where Stiler does not.
 #                         A stand-in that draws something the real stylesheet does not is as
 #                         misleading as one that draws nothing.
+#   unstyled-name         The sample styles a munin-explorer name no Stiler selector mentions at all.
+#                         Context and property are empty; one line per name, however many rules.
+#                         Name the Stiler bead in a comment above it; that bead deletes the line.
 #
 # The context field is the normalised at-rule the rule sits inside, empty at the top level.
 #
@@ -102,8 +105,9 @@
 # SILENCE HERE ABOUT A SELECTOR IS NOT AGREEMENT. A selector only the sample has is not compared
 # at all: invented-declaration is reported only under selectors Stiler ALSO has, and
 # missing-selector only for selectors Stiler has and the sample lacks - and, on a borrowed name,
-# not even then. So a name Stiler has never heard of produces no line whichever way the two
-# differ, and neither does a borrowed name the sample simply leaves alone. Read a gap here as
+# not even then. Only unstyled-name reaches a sample-only selector, and only for a prefixed name no
+# Stiler selector mentions: a name Stiler styles under other selectors produces no line, and neither
+# does a borrowed name, whether the sample invents it or leaves it alone. Read a gap here as
 # "Stiler agrees" and a rule the sample invented reads as one the pin shares — which is how a
 # 320px overflow drawn by the sample's own `min-width: 21rem` on
 # `.munin-explorer-selection__explore` was written up as a defect helsedata.no has
@@ -437,3 +441,23 @@ invented-declaration||.munin-explorer-page__fields dd|margin
 # `flex-wrap: wrap` is the fix in both stylesheets; Fhi.Metadata-xfsvx is the same rule in
 # Stiler, and deleting this line is that bead's last step.
 invented-declaration||.munin-explorer-filters__toolbar|flex-wrap
+
+# UNSTYLED NAMES, the fifth kind (Fhi.Metadata-sepe7): the sample styles a name that no Stiler
+# selector mentions, so on helsedata it renders at browser defaults whatever the stand-in draws.
+
+# Written only in a VariableSearch comment; the cell is `__period`. assert-sample-css-in-step.sh
+# reads prose too, so the rule must stay, and no Stiler bead is owed for a name no element wears.
+unstyled-name||.munin-explorer-dataitem-period|
+
+# Fhi.Metadata-o3slu.
+unstyled-name||.munin-explorer-hierarchy__open|
+
+# Fhi.Metadata-l9l2n.109.
+unstyled-name||.munin-explorer-meta__language|
+
+# Fhi.Metadata-urbj0.
+unstyled-name||.munin-explorer-page__header|
+
+# The sample's heading reset under the chassis root. Fhi.Metadata-nvqny measured that Stiler's
+# `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
+unstyled-name||.munin-explorer-page|
