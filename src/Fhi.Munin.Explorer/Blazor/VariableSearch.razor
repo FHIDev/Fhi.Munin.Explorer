@@ -349,6 +349,20 @@ else
                     }
                 </details>
             }
+
+            @* What the row glyphs mean, in words, and only while any are drawn — with Ikoner off
+               there is no picture left in the panel to explain. A <details>, so the summary is the
+               control's name and its expanded state both, as every facet above it. *@
+            @* Shut at rest — reference rather than a filter — and keyed on the fold generation for
+               the same reason a facet is: it folds with them, so a second press has to land on a
+               disclosure the reader may have opened by hand since the first. *@
+            @if (_showNodeIcons)
+            {
+                <details @key="LegendKey" open="@LegendOpen">
+                    <summary><span class="form-element__label">@T.IconLegend</span></summary>
+                    @IconLegendList
+                </details>
+            }
         </fieldset>
     }
 

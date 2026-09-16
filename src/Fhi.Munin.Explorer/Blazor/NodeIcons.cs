@@ -50,32 +50,41 @@ internal static class NodeIcons
         builder.AddAttribute(2, "aria-hidden", "true");
         foreach (var icon in icons)
         {
-            builder.OpenElement(3, "svg");
-            builder.SetKey(icon.Key);
-            builder.AddAttribute(4, "class", classes.Glyph);
-            builder.AddAttribute(5, "data-node-icon", icon.Key);
-            builder.AddAttribute(6, "viewBox", "0 0 24 24");
-            // An <svg> with no width or height is 300x150, so a host with no rule for the class
-            // above would get one icon the size of a paragraph rather than an undersized one.
-            builder.AddAttribute(7, "width", "1em");
-            builder.AddAttribute(8, "height", "1em");
-            builder.AddAttribute(9, "fill", "none");
-            builder.AddAttribute(10, "stroke", "currentColor");
-            builder.AddAttribute(11, "stroke-width", "2");
-            builder.AddAttribute(12, "stroke-linecap", "round");
-            builder.AddAttribute(13, "stroke-linejoin", "round");
-            // Both, because focusable="false" is what keeps IE-era engines from making an inline
-            // svg a tab stop and aria-hidden is what keeps it off the accessibility tree.
-            builder.AddAttribute(14, "focusable", "false");
-            builder.AddAttribute(15, "aria-hidden", "true");
-            foreach (var shape in icon.Shapes)
+            WriteGlyph(builder, icon, classes.Glyph);
+        }
+        builder.CloseElement();
+    }
+
+    /// <summary>
+    /// One glyph, with no slot around it — what a legend row draws, where the slot would be a
+    /// second box between the picture and the word it is explained by.
+    /// </summary>
+    internal static void WriteGlyph(RenderTreeBuilder builder, NodeIcon icon, string glyphClass)
+    {
+        builder.OpenElement(3, "svg");
+        builder.SetKey(icon.Key);
+        builder.AddAttribute(4, "class", glyphClass);
+        builder.AddAttribute(5, "data-node-icon", icon.Key);
+        builder.AddAttribute(6, "viewBox", "0 0 24 24");
+        // An <svg> with no width or height is 300x150, so a host with no rule for the class
+        // above would get one icon the size of a paragraph rather than an undersized one.
+        builder.AddAttribute(7, "width", "1em");
+        builder.AddAttribute(8, "height", "1em");
+        builder.AddAttribute(9, "fill", "none");
+        builder.AddAttribute(10, "stroke", "currentColor");
+        builder.AddAttribute(11, "stroke-width", "2");
+        builder.AddAttribute(12, "stroke-linecap", "round");
+        builder.AddAttribute(13, "stroke-linejoin", "round");
+        // Both, because focusable="false" is what keeps IE-era engines from making an inline
+        // svg a tab stop and aria-hidden is what keeps it off the accessibility tree.
+        builder.AddAttribute(14, "focusable", "false");
+        builder.AddAttribute(15, "aria-hidden", "true");
+        foreach (var shape in icon.Shapes)
+        {
+            builder.OpenElement(16, shape.Element);
+            foreach (var (name, value) in shape.Attributes)
             {
-                builder.OpenElement(16, shape.Element);
-                foreach (var (name, value) in shape.Attributes)
-                {
-                    builder.AddAttribute(17, name, value);
-                }
-                builder.CloseElement();
+                builder.AddAttribute(17, name, value);
             }
             builder.CloseElement();
         }

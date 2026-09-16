@@ -33,6 +33,12 @@ internal static class DataCategoryIcons
     /// <summary>The keys the legend and <see cref="Texts.DataCategoryNames"/> cover, in render order.</summary>
     internal static IReadOnlyList<string> Order => CanonicalOrder;
 
+    /// <summary>
+    /// Every datakategori glyph in <see cref="Order"/> — the whole vocabulary, which is what a
+    /// legend lists, rather than the subset any one node happens to carry.
+    /// </summary>
+    internal static IReadOnlyList<NodeIcon> All => Vocabulary;
+
     private const string Prefix = "ehds-cat:";
 
     // Munin's seed revision 0008 crosswalk verbatim, its "other" onto itself included so the two
@@ -254,4 +260,8 @@ internal static class DataCategoryIcons
             Circle("7.5", "7.5", ".5", "currentColor")
         ])
     };
+
+    // After Glyphs on purpose: a static field initialiser runs in declaration order, so reading
+    // the dictionary from above it would build the vocabulary out of an empty one.
+    private static readonly NodeIcon[] Vocabulary = [.. CanonicalOrder.Select(key => Glyphs[key])];
 }

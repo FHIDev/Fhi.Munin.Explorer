@@ -481,6 +481,14 @@ public sealed partial class VariableSearch : ComponentBase
     /// badge in particular is a fact rather than a picture, so it stays on the row and in the
     /// checkbox's accessible name whichever way this is set.
     /// <para>
+    /// The <c>Ikonforklaring</c> legend under the facets goes with them. It names every datakategori
+    /// the tree can draw, glyph and word, in the order a row draws several of them in, and with this
+    /// off there is no picture left in the panel for it to explain. It is a
+    /// <c>&lt;details&gt;</c> resting shut and folding with the facets under <c>Utvid alle</c> and
+    /// <c>Skjul alle</c>, and it wears <c>munin-explorer-filters__legend</c> on the list with
+    /// <c>munin-explorer-filters__legend-item</c> on each row.
+    /// </para>
+    /// <para>
     /// The glyphs are inline <c>&lt;svg&gt;</c> at <c>1em</c> in <c>currentColor</c>, each wearing
     /// <c>munin-explorer-filters__icon</c> and a <c>data-node-icon</c> naming its datakategori, so
     /// what a host stylesheet decides is whether two categories are told apart by colour as well as

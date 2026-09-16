@@ -350,9 +350,31 @@ These are not style preferences — each one is a host that breaks otherwise.
     is stated at all — until the `Ikoner` switch above is turned off, which takes the words with
     the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
-    A bilingual legend for the glyphs themselves is `Fhi.Metadata-zllxt`. The
+    The
     rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**, the version
     `samples/HostileHost` pins (`Fhi.Metadata-1t36m`).
+    The words for those glyphs are under the facets, in an `Ikonforklaring` legend that adds two
+    names of its own — `munin-explorer-filters__legend` on the list and
+    `munin-explorer-filters__legend-item` on each row. It lists the whole vocabulary rather than
+    what is on screen, in `DataCategoryIcons.Order`, so the legend and a row that draws several
+    glyphs cannot disagree about which picture is which; it is drawn only while the `Ikoner` switch
+    is on, since with the pictures gone it explains nothing. Each row is the glyph, still
+    `aria-hidden`, and its name as ordinary text — not a `title`, not an `alt`, so the word is
+    there for every reader alike — and the glyphs are drawn in `currentColor` here as they are on
+    the rows: **no per-category colour**, deliberately, or the legend would be the one place the
+    vocabulary is told apart by hue. Handles both, on the same terms as the icon slot above: the
+    `<svg>` carries its own size and stroke and the names are real text, so an undefined pair is a
+    list of glyphs and words at browser defaults and no reader loses a word. What the rules buy is
+    the row each pairing sits on and the columns the eighteen of them are laid out in. Both sample
+    stylesheets already carried the rules before any markup wore the names, copied off the published
+    0.1.75 that `samples/HostileHost` pinned when they were written and compared since against the
+    0.1.79 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
+    evidence on this side that Stiler really has them — nothing in this repository reads Stiler, and
+    that guard runs only in the job holding the feed secret. A legend that rests
+    shut is a `<details>` and nothing invented: its `<summary>` is the control's accessible name and
+    its expanded state both, as every facet above it. It folds with those facets under `Utvid alle`
+    and `Skjul alle` rather than apart from them — one disclosure still open under a pressed
+    `Skjul alle` reads as the press not having worked.
     A kilde row of that facet adds one more, `munin-explorer-filters__badge`, worn by the word
     marking a kilde whose kildetype the tree calls out. Which kildetyper those are is
     `Texts.KildeTypeBadges` rather than this paragraph — one today, and a `LanguageTest` case is
@@ -753,6 +775,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-filters__groupcount` | handle |
   | `munin-explorer-filters__icon` | handle |
   | `munin-explorer-filters__icons` | handle |
+  | `munin-explorer-filters__legend` | handle |
+  | `munin-explorer-filters__legend-item` | handle |
   | `munin-explorer-filters__search` | handle |
   | `munin-explorer-filters__toggle` | handle |
   | `munin-explorer-filters__toolbar` | handle |
