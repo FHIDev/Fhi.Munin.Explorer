@@ -387,10 +387,9 @@ internal static class CatalogueProperties
     /// to prevent — reached from the other side.
     /// </para>
     /// <para>
-    /// <paramref name="completeRecordValues"/> is the one section that is meant to repeat: the group
-    /// keyed <see cref="CatchAllGroupKey"/> lists every entry with a value, those a named section
-    /// already drew included, so it is built from the whole payload rather than from its own members.
-    /// Passing null draws it as an ordinary group, which is what an API without the key sends.
+    /// <paramref name="completeRecordValues"/> is the one section meant to repeat, so the
+    /// <see cref="CatchAllGroupKey"/> group is built from the whole payload, not its own members.
+    /// Null draws it as an ordinary group, which is what an API without the key sends.
     /// </para>
     /// <para>
     /// <paramref name="values"/> is nullable for the reason <see cref="Rows"/> gives, and taken the

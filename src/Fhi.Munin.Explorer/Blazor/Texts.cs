@@ -943,13 +943,13 @@ internal sealed record Texts(
         FieldTotalVariables: "Totalt antall variabler",
         CompleteRecordLeadKilde:
             "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne kilden, "
-            + "slik de er registrert – ingenting er utelatt.",
+            + "slik de er registrert – bortsett fra felt som holder strukturerte data.",
         CompleteRecordLeadDatasamling:
             "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne "
-            + "datasamlingen, slik de er registrert – ingenting er utelatt.",
+            + "datasamlingen, slik de er registrert – bortsett fra felt som holder strukturerte data.",
         CompleteRecordLeadVariable:
             "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne variabelen, "
-            + "slik de er registrert – ingenting er utelatt.",
+            + "slik de er registrert – bortsett fra felt som holder strukturerte data.",
         CompleteRecordSummary: "Alle felt fra Munin, slik de er registrert",
         HeadingDataCollections: "Datasamlinger",
         FieldName: "Navn",
@@ -1321,13 +1321,13 @@ internal sealed record Texts(
         FieldTotalVariables: "Total number of variables",
         CompleteRecordLeadKilde:
             "The sections above are a selection. Below are all the fields Munin holds about this "
-            + "data source, as they are recorded – nothing is left out.",
+            + "data source, as they are recorded – apart from fields that hold structured data.",
         CompleteRecordLeadDatasamling:
             "The sections above are a selection. Below are all the fields Munin holds about this "
-            + "data collection, as they are recorded – nothing is left out.",
+            + "data collection, as they are recorded – apart from fields that hold structured data.",
         CompleteRecordLeadVariable:
             "The sections above are a selection. Below are all the fields Munin holds about this "
-            + "variable, as they are recorded – nothing is left out.",
+            + "variable, as they are recorded – apart from fields that hold structured data.",
         CompleteRecordSummary: "All fields from Munin, as they are recorded",
         HeadingDataCollections: "Data collections",
         FieldName: "Name",

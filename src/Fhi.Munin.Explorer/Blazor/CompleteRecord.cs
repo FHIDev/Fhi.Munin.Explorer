@@ -3,26 +3,19 @@ using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The two halves of the catch-all section that the payload cannot supply: the view's own lead
-/// paragraph, and the facts no property definition carries.
+/// The two halves of the catch-all the payload cannot supply: the view's own lead paragraph, and the
+/// facts no property definition carries. Appended by the view because only the view has them — a
+/// count of variables is not a curated property, so no placement can name one (Fhi.Metadata-35w0p.21).
 /// </summary>
-/// <remarks>
-/// Appended by the view because only the view has them — a count of variables or of datasamlinger
-/// is not a curated property and no placement can ever name one (Fhi.Metadata-35w0p.21).
-/// </remarks>
 internal readonly record struct CompleteRecordExtras(
     string Lead,
     IReadOnlyList<(string Label, string? Value, bool Norwegian)> Facts);
 
 /// <summary>
-/// The values the catch-all section is assembled from: everything a named section reads, plus the
-/// columns that identify the thing itself.
+/// The values the catch-all is assembled from: everything a named section reads, plus the columns
+/// that identify the thing itself. Kept apart from <see cref="CatalogueColumns"/> because a named
+/// section must not redraw the header's name and code, and the catch-all must.
 /// </summary>
-/// <remarks>
-/// Kept apart from <see cref="CatalogueColumns.Values(KildeDetail, string?)"/> on purpose. A named
-/// section must not start drawing the name and the code that the page's own header already draws;
-/// the catch-all must, because the sentence over it says nothing is left out.
-/// </remarks>
 internal static class CompleteRecord
 {
     /// <summary>The catalogue's keys for the columns a detail page draws in its name block.</summary>

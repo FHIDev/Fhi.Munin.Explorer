@@ -1563,12 +1563,9 @@ table.munin-explorer-data-list tbody th {
   margin-top: 0;
 }
 
-/* ---- "Alle metadatafelt", the complete record ----
-
-   Three names Fhi.Helsedata.Stiler does not know yet, so this stand-in is the whole of their
-   styling until the Stiler beads named in Fhi.Metadata-35w0p.21 land. The list is denser than
-   `munin-explorer-page__fields` on purpose: it repeats every field the sections above already
-   showed, so it is a reference table rather than something to read top to bottom. */
+/* "Alle metadatafelt": Stiler does not know these three names yet (Fhi.Metadata-35w0p.21), so this
+   stand-in is their whole styling. Denser than `munin-explorer-page__fields` on purpose — it repeats
+   every field the sections above showed, so it reads as a reference table, not top to bottom. */
 .munin-explorer-complete-record__lead {
   margin: 0 0 8px;
 }

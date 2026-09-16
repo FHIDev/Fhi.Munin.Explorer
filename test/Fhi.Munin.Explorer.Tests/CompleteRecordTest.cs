@@ -13,19 +13,9 @@ namespace Fhi.Munin.Explorer.Tests;
 /// missing from the page.
 /// </summary>
 /// <remarks>
-/// <para>
-/// It is deliberately NOT the placement leftovers. The catch-all Munin seeds holds 53 of the Tromsø
-/// payload's 73 definitions, and a section drawn from those alone is a selection like any other —
-/// it cannot carry the sentence "ingenting er utelatt", which is the only reason the section exists.
-/// So the rows are assembled here from every entry that has a value, those the named sections above
-/// already drew included (Fhi.Metadata-35w0p.21).
-/// </para>
-/// <para>
-/// That duplication is the requirement rather than a defect, so nothing here asserts that a field
-/// appears once on the page. <see cref="SeededPlacementRenderingTest"/> makes that assertion about
-/// the named sections and the fact boxes, which is where it belongs; made globally it would assert
-/// the opposite of what this section is for.
-/// </para>
+/// NOT the placement leftovers: the seeded catch-all holds 53 of the Tromsø payload's 73 definitions,
+/// so rows come from every entry with a value, duplicates included. That duplication is the
+/// requirement, so nothing here asserts a field appears once (Fhi.Metadata-35w0p.21).
 /// </remarks>
 public class CompleteRecordTest : BunitContext
 {
@@ -122,7 +112,7 @@ public class CompleteRecordTest : BunitContext
 
         var details = cut.Find(Disclosure);
 
-        Assert.Contains("ingenting er utelatt", cut.Find(Lead).TextContent, StringComparison.Ordinal);
+        Assert.Contains("bortsett fra felt som holder strukturerte data", cut.Find(Lead).TextContent, StringComparison.Ordinal);
         Assert.False(details.HasAttribute("open"));
         Assert.Equal("Alle felt fra Munin, slik de er registrert",
                      AccessibleName.Of(details.QuerySelector("summary")!));
@@ -136,7 +126,7 @@ public class CompleteRecordTest : BunitContext
         // groupTranslations while leaving groupKey exactly where it was.
         var cut = RenderKilde(Renamed(Tromso(), Retitled));
 
-        Assert.Contains("ingenting er utelatt", cut.Find(Lead).TextContent, StringComparison.Ordinal);
+        Assert.Contains("bortsett fra felt som holder strukturerte data", cut.Find(Lead).TextContent, StringComparison.Ordinal);
         Assert.False(cut.Find(Disclosure).HasAttribute("open"));
         Assert.Contains(Retitled, Headings(cut));
         Assert.DoesNotContain("Alle metadatafelt", Headings(cut));
@@ -198,7 +188,7 @@ public class CompleteRecordTest : BunitContext
     public void CatchAll_WhenThePayloadPredatesGroupKey_ThenNoSectionClaimsToBeTheCompleteRecord()
     {
         // Barnediabetes was captured before placements existed. Nothing in it can be recognised as
-        // the catch-all, and inventing one out of the leftovers would put "ingenting er utelatt"
+        // the catch-all, and inventing one out of the leftovers would put the completeness sentence
         // over a page where it is not true.
         var cut = RenderKilde(Barnediabetes());
 
@@ -332,7 +322,7 @@ public class CompleteRecordTest : BunitContext
         // The sentence is this package's own prose, so it is translated rather than marked foreign.
         var lead = RenderKilde(Tromso(), "en").Find(Lead);
 
-        Assert.Contains("nothing is left out", lead.TextContent, StringComparison.Ordinal);
+        Assert.Contains("apart from fields that hold structured data", lead.TextContent, StringComparison.Ordinal);
         Assert.Null(lead.GetAttribute("lang"));
     }
 

@@ -229,14 +229,10 @@ internal static class DetailBlocks
     private const string CompleteRecordFields = "munin-explorer-complete-record__fields";
 
     /// <summary>
-    /// The complete record under its heading: the lead, then a collapsed native disclosure over
-    /// every field the payload holds and the facts no property definition carries.
+    /// The complete record under its heading: the lead, then a collapsed native
+    /// <c>&lt;details&gt;</c> over every field the payload holds plus the facts no property
+    /// definition carries. Native for the reason the hierarchy's disclosure is — no JavaScript.
     /// </summary>
-    /// <remarks>
-    /// Collapsed, and a <c>&lt;details&gt;</c> rather than a scripted panel, for the reason the
-    /// hierarchy's own metadata disclosure is one: it opens with no JavaScript and on a host that
-    /// styles none of this.
-    /// </remarks>
     private static void CompleteRecordBody(RenderTreeBuilder builder, PropertyGroup group,
                                            CompleteRecordExtras extras, string reader, Texts text)
     {
