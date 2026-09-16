@@ -1246,9 +1246,9 @@ public partial class VariableSearch
 
                 builder.CloseElement();
 
-                // The toggle takes the spoken categories with the glyphs, which is what
-                // KildeHierarchyView's own parameter does: the words stand in for the pictures and
-                // say nothing a row without them was saying. The badge below is outside both.
+                // Both or neither, as KildeHierarchyView does it: the words are the glyphs said
+                // aloud, so keeping them would leave the switch doing nothing for the reader who
+                // pressed it. The badge below is a fact rather than a picture and is outside both.
                 var icons = _showNodeIcons ? value.Icons : null;
                 if (icons is { Count: > 0 })
                 {

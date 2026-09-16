@@ -470,10 +470,15 @@ public sealed partial class VariableSearch : ComponentBase
     /// both surfaces — <see cref="KildeHierarchyView.ShowNodeIcons"/> is the same choice there.
     /// </summary>
     /// <remarks>
-    /// <b>Decoration only.</b> Turning it off removes the glyphs and the <c>screenreader-only</c>
-    /// words that stand in for them, and nothing else: the filter a row ticks, the counts beside
-    /// it, the kildetype badge on a kilde and the level lines are all drawn exactly as before.
-    /// The badge in particular is a fact rather than a picture, so it stays on the row and in the
+    /// <b>It costs every reader the same thing.</b> The glyphs are <c>aria-hidden</c> and the
+    /// <c>screenreader-only</c> words beside them are what says the same categories aloud, so the
+    /// switch takes both or neither: a datasamling's datakategorier stop being stated on the row
+    /// for a reader who can see the tree and for one who is listening to it alike. Keeping the
+    /// words behind an <c>Ikoner</c> switch that is off would leave a control that does nothing
+    /// for the reader pressing it, which is why <see cref="KildeHierarchyView.ShowNodeIcons"/>
+    /// takes both too. <b>Nothing else moves.</b> The filter a row ticks, the counts beside it,
+    /// the kildetype badge on a kilde and the level lines are all drawn exactly as before — the
+    /// badge in particular is a fact rather than a picture, so it stays on the row and in the
     /// checkbox's accessible name whichever way this is set.
     /// <para>
     /// The glyphs are inline <c>&lt;svg&gt;</c> at <c>1em</c> in <c>currentColor</c>, each wearing

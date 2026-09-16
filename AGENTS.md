@@ -282,14 +282,22 @@ could only pin as text — the explore button's width floor overflowed the page 
 `Fhi.Metadata-l9l2n.65`, and `KildeSelectionTest` can say the declaration is there and not that the
 page fits.
 
+The variable explorer's `/` is measured beside them, in `variables-list`, and it is there for the
+filter panel's toolbar: that row grows a control at a time, and the fourth took it to 291px of
+content in a 226px mount, 42px past the viewport. `check-hostile-host.sh` measures a `/` of its own
+at 320 and does not run in CI, so without this target nothing a pull request has to pass looks at
+that row at all (`Fhi.Metadata-kd9ts`). The resting page rather than a press: unfolding the facets
+puts an unbroken datasamling name 142px past the edge, which is `Fhi.Metadata-7484a`.
+
 It runs three of the ten assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
 overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. The
 other seven were **measured there and then excluded**, which is a different claim from "they are
 written for HostileHost" and the only one the numbers support:
 
 - `the tablist clears the header`, `exactly one tab panel has content` and `no page shell class
-  inside a tab panel` are scoped to the two `explorer-*` states, so on either `kilder` state they
-  print `n/a` and measure nothing.
+  inside a tab panel` are scoped to the two `explorer-*` states, which are the composed
+  `VariableExplorer` on `/utforsker` and neither of the pages measured here, so they print `n/a`
+  and measure nothing.
 - `nothing the reader can press is under the host header` reports `no .main-header on the page —
   the host chrome did not render`. ModernHost draws none; that finding is about the fixture.
 - `the component stays inside the box the host gave it` fails at 320 on the column picker: here its
@@ -300,7 +308,7 @@ written for HostileHost" and the only one the numbers support:
   rule going missing, which the sample stylesheet can only stand in for. `check-hostile-host.sh`
   measures them against the real one at six widths.
 
-Read the run for exactly what it is: three assertions, one page, two states, against the sample
+Read the run for exactly what it is: three assertions, two pages, three states, against the sample
 stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
 its own after the six widths. It runs every assertion in every state, except that a state failing
 today leaves out only its failing assertions, through `GEOMETRY_EXCEPT`, with the reason beside

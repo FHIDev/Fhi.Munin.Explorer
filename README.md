@@ -347,7 +347,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     them. The slot is `aria-hidden` and the categories follow the name as `screenreader-only` words,
     exactly as Kelda's tree says them — the datakategori facet a few rows up lists the vocabulary
     and says nothing about which datasamling is in which, so the row is the only place the pairing
-    is stated at all. A folder says nothing of the kind and is announced nowhere: it repeats the
+    is stated at all — until the `Ikoner` switch above is turned off, which takes the words with
+    the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
     A bilingual legend for the glyphs themselves is `Fhi.Metadata-zllxt`. The
     rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**, the version
@@ -1105,7 +1106,11 @@ press, both surfaces. Two-way there and read once at mount, exactly as `LevelLin
 stores what the callback raises and hands it back at the next mount; changing the parameter on a
 mounted component does nothing. The glyphs are inline `<svg>` marked `aria-hidden`, so a
 datasamling's categories are said in words in a `screenreader-only` span
-instead of twice. Each one is `1em` in `currentColor` and wears
+instead of twice. Off takes both, on every surface and for every reader: the words ARE the
+glyphs said aloud, so a switch that left them standing would be one that does nothing at all for
+the reader pressing it. What that costs is the same either way — the row stops naming a
+datasamling's datakategorier — and nothing else on it moves, the kildetype badge included.
+Each one is `1em` in `currentColor` and wears
 `munin-explorer-hierarchy__icon` with a `data-node-icon` naming its datakategori — `PHDR`, `EINS`,
 `other` and the rest, plus `kilde` for the folder — which is the hook a stylesheet colours them
 through. Undefined, they draw at text size in the text colour, so what a host without the rules

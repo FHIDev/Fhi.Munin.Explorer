@@ -18,12 +18,13 @@
 //     itself rather than leaving the browser to make the fragment jump that carries focus. What is
 //     asserted below is therefore the half the component owns — that every target is focusable —
 //     and a host that does not intercept is not measured anywhere;
-//   - every OTHER control the component draws. Four REFUSED presses are measured here, all in the
-//     variable explorer: the picker's refusal to hide the last column, a facet press dropped because
-//     a fetch was already in flight, and the two the facet tree's branch disclosures add — that a
-//     shut branch leaves nothing behind for a Tab to land on, and that folding one over a ticked
-//     value leaves the value ticked. The toolbar's Ikoner switch is measured beside them and is not
-//     a refusal at all: the press is accepted, and what is asked is what the redraw left alone;
+//   - every OTHER control the component draws. Five presses are measured here, all in the variable
+//     explorer. TWO the component refuses: the picker's refusal to hide the last column, and a
+//     facet press dropped because a fetch was already in flight. THREE it accepts, and each is
+//     here because the browser holds state the render tree has not got — the facet tree's two
+//     branch disclosures, that a shut branch leaves nothing behind for a Tab to land on and that
+//     folding one over a ticked value leaves the value ticked, and the toolbar's Ikoner switch,
+//     where what is asked is what the redraw left alone;
 //   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
 //     visited at all;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this

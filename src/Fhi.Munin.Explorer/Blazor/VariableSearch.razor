@@ -294,8 +294,8 @@ else
                         type="button"
                         @onclick="() => FoldAll(false)">@T.CollapseAllFacets</button>
                 @* Both from one Switch shape, which carries the contract they share — the bare
-                   class name and aria-checked as the only state. What Ikoner turns off is
-                   decoration alone, so the badge, the counts and the ticks are drawn either way. *@
+                   class name and aria-checked as the only state. Ikoner takes the glyphs and the
+                   words said in their place together; badge, counts and ticks stay either way. *@
                 @Switch(T.LevelLines, _levelLines, ToggleLevelLinesAsync)
                 @Switch(T.NodeIcons, _showNodeIcons, ToggleNodeIconsAsync)
             </div>
