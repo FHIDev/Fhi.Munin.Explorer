@@ -247,6 +247,42 @@ summary_says "the BORROWED rule count is on its own line" \
 summary_says "borrowed rules that matched NOTHING are counted, not folded into the pass" \
   's/^# \([0-9]*\) borrowed sample rule(s) matched no Stiler selector.*$/\1/p' 2
 
+# ---------------------------------------------------------------------------------------------
+# The shell half's unstyled-name advice. Fixtures clear its floor of 100 prefix rules; the advice
+# must follow an unstyled-name and only that, or a declaration fix reads as a missing Stiler rule.
+
+guard_advises () { # name, yes|no, extra sample css
+  local floor="" i err
+  for i in $(seq 1 100); do floor+=".munin-explorer-r$i { margin: 0; }"$'\n'; done
+  printf '%s' "$floor" > "$tmp/stiler.css"
+  printf '%s%s' "$floor" "$3" > "$tmp/sample.css"
+  : > "$tmp/known.txt"
+  err="$(STILER_MAIN_CSS="$tmp/stiler.css" SAMPLE_CSS_MODERN="$tmp/sample.css" SAMPLE_CSS_LEGACY="$tmp/sample.css" \
+    KNOWN_DIVERGENCES="$tmp/known.txt" bash "$here/assert-sample-css-matches-stiler.sh" 2>&1 >/dev/null || true)"
+  local said=no
+  printf '%s\n' "$err" | grep -q "An unstyled-name is" && said=yes
+  if [ "$said" = "$2" ] && printf '%s\n' "$err" | grep -q "new divergence"; then
+    printf '  ok    %s\n' "$1"
+  else
+    printf '  FAIL  %s\n     wanted advice=%s after a new divergence, got:\n%s\n' "$1" "$2" "$err"
+    fail=1
+  fi
+}
+
+guard_advises "the guard gives unstyled-name advice for an unstyled name" yes \
+  '.munin-explorer-new { margin: 0; }'
+guard_advises "the guard gives no unstyled-name advice for a declaration divergence" no \
+  '.munin-explorer-r1 { padding: 0; }'
+
+# An empty block draws nothing, so it neither needs a Stiler rule nor vouches for a name.
+silent "an empty prefixed block in the sample is not unstyled" \
+  '.munin-explorer-trail { margin: 0; } .munin-explorer-empty {}' \
+  '.munin-explorer-trail { margin: 0; }'
+reports "an empty Stiler block does not vouch for a name" \
+  'unstyled-name||.munin-explorer-x|' \
+  '.munin-explorer-x { margin: 0; }' \
+  '.munin-explorer-x { }'
+
 if [ "$fail" = "0" ]; then
   echo "sample-css-declarations.mjs: every case above holds."
 else

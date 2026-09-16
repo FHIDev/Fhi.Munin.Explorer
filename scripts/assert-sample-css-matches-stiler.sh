@@ -69,7 +69,7 @@
 #
 # Usage:
 #   scripts/assert-sample-css-matches-stiler.sh
-#   STILER_MAIN_CSS=… SAMPLE_CSS_MODERN=… KNOWN_DIVERGENCES=… \
+#   STILER_MAIN_CSS=… SAMPLE_CSS_MODERN=… SAMPLE_CSS_LEGACY=… KNOWN_DIVERGENCES=… \
 #     scripts/assert-sample-css-matches-stiler.sh          # tests only
 #
 # Needs: node, and Fhi.Helsedata.Stiler restored. Locally that means the Azure Artifacts Credential
@@ -229,10 +229,12 @@ if [ -n "$new" ]; then
   echo "" >&2
   echo "Or, if the divergence is deliberate, add its key to $KNOWN with a note saying why. Adding" >&2
   echo "it is a hand edit on purpose: this script never writes that file." >&2
-  echo "" >&2
-  echo "An unstyled-name is a name Stiler has no rule for at all. If src/ names it nowhere, not even" >&2
-  echo "in a comment, delete the sample's rule; otherwise name its Stiler bead in a note, or say why" >&2
-  echo "none is owed." >&2
+  if printf '%s\n' "$new" | grep -q '^unstyled-name|'; then
+    echo "" >&2
+    echo "An unstyled-name is a name Stiler has no rule for at all. If src/ names it nowhere, not even" >&2
+    echo "in a comment, delete the sample's rule; otherwise name its Stiler bead in a note, or say why" >&2
+    echo "none is owed." >&2
+  fi
   status=1
 fi
 
