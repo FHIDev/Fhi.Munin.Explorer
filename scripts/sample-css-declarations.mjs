@@ -7,8 +7,9 @@
 // The whole point is that it compares declarations and not selectors. `assert-sample-css-in-step.sh`
 // asks whether a name has a rule declaring SOMETHING, which is a question the samples answered
 // green while ~40 real divergences stood: a rule carrying half of Stiler's declarations, or the
-// right property carrying the wrong value, passes it. So nothing below asks whether a selector
-// exists except to find the declarations to compare, and unstyled-name, which asks it of a name.
+// right property carrying the wrong value, passes it. So below, whether a selector exists is asked
+// only to find declarations to compare, to report a missing one, to count an unmatched borrowed one,
+// and, for unstyled-name, of a name.
 //
 // Driven by scripts/assert-sample-css-matches-stiler.sh, which resolves which Stiler to read.
 // Invoked directly it takes two paths and prints the divergences it finds:

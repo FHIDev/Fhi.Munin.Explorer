@@ -65,7 +65,8 @@
 # Fhi.Metadata-35w0p.39, so the sample was ahead of the pin exactly as the two choicepicker lines
 # described further down once were. All three have since been retired, and none is left below.
 #
-# IT WAS 214 FROM Fhi.Metadata-l9l2n.105, 212 after Fhi.Metadata-ofg1h and 210 now. The 40 that
+# IT WAS 214 FROM Fhi.Metadata-l9l2n.105, 212 after Fhi.Metadata-ofg1h, 211 before Fhi.Metadata-sepe7
+# and 219 after it, whose unstyled-name lines are listed at the bottom. The 40 that
 # arrived with l9l2n.105 are a new FAMILY rather than new drift: until that bead the comparison
 # looked only at the munin-explorer prefix, so every rule the sample writes for a name it BORROWS
 # from Stiler - the choicepicker, the buttons, the searchbox, `screenreader-only` - was compared
