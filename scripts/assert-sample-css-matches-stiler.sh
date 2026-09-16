@@ -22,8 +22,8 @@
 # `missing-selector` — the alarm that catches the same mistake under the prefix — is deliberately
 # off here and the count is the only trace left.
 #
-# Under the prefix it also reports an unstyled-name: a name the sample styles and no Stiler selector
-# mentions, which the declaration comparison above cannot see because there is nothing to compare.
+# Under the prefix it also reports an unstyled-name: a name the sample styles and no non-empty Stiler
+# rule names, which the declaration comparison above cannot see because there is nothing to compare.
 #
 # Without the borrowed half the sample's invented `white-space: nowrap` on
 # `.dropdown-choicepicker__item` was invisible here, and a measurement taken against the sample
@@ -231,7 +231,7 @@ if [ -n "$new" ]; then
   echo "it is a hand edit on purpose: this script never writes that file." >&2
   if printf '%s\n' "$new" | grep -q '^unstyled-name|'; then
     echo "" >&2
-    echo "An unstyled-name is a name Stiler has no rule for at all. If src/ names it nowhere, not even" >&2
+    echo "An unstyled-name is a name no non-empty Stiler rule names. If src/ names it nowhere, not even" >&2
     echo "in a comment, delete the sample's rule; otherwise name its Stiler bead in a note, or say why" >&2
     echo "none is owed." >&2
   fi

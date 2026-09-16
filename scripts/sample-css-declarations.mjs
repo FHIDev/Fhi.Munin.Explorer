@@ -533,10 +533,9 @@ export function compare(samplePath, stilerPath) {
     }
   }
 
-  // The fifth kind: a prefixed name the sample styles and no Stiler selector mentions renders at
-  // browser defaults on helsedata. Per name, not per selector, so a name Stiler mentions anywhere
-  // counts as styled: a sample rule for it that Stiler lacks is a wider gap this kind does not close.
-  // An empty block draws nothing, on either side, which is how assert-sample-css-in-step.sh reads it.
+  // The fifth kind: a prefixed name a non-empty sample rule names and no such Stiler rule does renders at
+  // browser defaults on helsedata. Per name: one such Stiler rule naming it anywhere counts as styled,
+  // and an empty block draws nothing on either side, as assert-sample-css-in-step.sh reads it.
   const drawing = (map) => [...map.values()].filter((rule) => rule.declarations.size > 0);
   const stilerNames = new Set(drawing(stiler).flatMap((rule) => namesOurs(rule.selector)));
   const unstyled = new Map();
@@ -551,7 +550,7 @@ export function compare(samplePath, stilerPath) {
       context: "",
       selector: `.${name}`,
       property: "",
-      detail: `The sample has ${selectors.size} distinct selector(s) naming '.${name}'; no Stiler selector names it at all.`,
+      detail: `The sample has ${selectors.size} distinct selector(s) naming '.${name}'; no non-empty Stiler rule names it.`,
     });
   }
 
