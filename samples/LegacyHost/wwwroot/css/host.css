@@ -1126,16 +1126,6 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   overflow-wrap: break-word;
 }
 
-.munin-explorer-dataitem-main__column--description {
-  padding: 4px 8px 0 44px;
-}
-
-.munin-explorer-dataitem-main__column--description p {
-  margin: 0;
-  color: var(--grey60);
-  font-size: 0.9375rem;
-}
-
 /* The panel is a sibling of the row, not a child of it — that is how helsedata nests it, and
    several of their rules select on exactly that relationship. */
 .munin-explorer-meta {
@@ -1626,20 +1616,6 @@ table.munin-explorer-data-list tbody th {
   cursor: default;
 }
 
-/* Nothing renders this any more — the trail's × is gone. The rule stays because Stiler still
-   carries it (0.1.75 does), and a stand-in that drops a rule the restored stylesheet still has stops
-   standing in for it. It goes when Stiler's goes (Fhi.Metadata-l1f7x). */
-.munin-explorer-breadcrumb__clear {
-  color: var(--grey60);
-  font-size: 1.25rem;
-  line-height: 1;
-  padding: 0 4px;
-}
-
-.munin-explorer-breadcrumb__clear:hover {
-  color: var(--dark);
-}
-
 /* helsedata's panel grid is `1fr 1fr` above 1280px and one column below. The sample carries a
    stand-in so the fields sit in lanes here too — stacked, they read as a long column of labels
    and the group headings stop meaning anything. */
@@ -1824,9 +1800,9 @@ table.munin-explorer-data-list tbody th {
   border: 1px solid rgb(230, 230, 237);
 }
 
-/* The chassis the three detail views share, worn beside the prefix each of them already had.
-   Every declaration is Stiler's own, from components/munin-explorer/_page.scss. Two below restate
-   a rule above because Stiler has both and both names are on the element — not a leftover. */
+/* The chassis the three detail views share, worn beside the prefix each of them already had. This
+   first reset is the sample's own; Stiler names no rule after the root. Two below restate a rule
+   above because Stiler has both and both names are on the element — not a leftover. */
 .munin-explorer-page > * > :is(h2, h3, h4, h5, h6):first-child {
   margin-top: 0;
 }

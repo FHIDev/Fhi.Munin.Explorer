@@ -68,7 +68,7 @@ behaviour found later by someone else.
    above stayed green while around forty divergences from `Fhi.Helsedata.Stiler` stood in the
    samples. `scripts/assert-sample-css-matches-stiler.sh` compares declarations — property and
    value — against the published package `samples/HostileHost` pins, for the `munin-explorer`
-   names and for the borrowed ones the sample writes a rule for, and the 210 standing today
+   names and for the borrowed ones the sample writes a rule for, and the ones standing today
    are listed in `test/sample-css-known-divergences.txt`. **Never add a line to that file to get a
    branch green**: a new divergence and a stale line both fail the build, so the count can only go
    down. Adding one is a hand edit that needs a reason in the PR.

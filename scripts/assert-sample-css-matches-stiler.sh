@@ -22,6 +22,9 @@
 # `missing-selector` — the alarm that catches the same mistake under the prefix — is deliberately
 # off here and the count is the only trace left.
 #
+# Under the prefix it also reports an unstyled-name: a name the sample styles and no non-empty Stiler
+# rule names, which the declaration comparison above cannot see because there is nothing to compare.
+#
 # Without the borrowed half the sample's invented `white-space: nowrap` on
 # `.dropdown-choicepicker__item` was invisible here, and a measurement taken against the sample
 # was written up as a P2 defect in the component (Fhi.Metadata-l9l2n.105).
@@ -51,8 +54,8 @@
 # an unconfigured guard should say so and stop rather than go red. But it means a required check
 # passing is not on its own proof that the stylesheets were compared. Read the job, not the tick.
 #
-# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. 210 declaration-level
-# divergences stand today. They are listed in test/sample-css-known-divergences.txt, this script
+# THE BASELINE IS NOT SELF-UPDATING, and that is the point of it. The divergences that stand
+# today are listed in test/sample-css-known-divergences.txt, this script
 # reads that list, and NOTHING here ever writes to it. A guard that records its own failures is
 # decoration. So:
 #
@@ -66,7 +69,7 @@
 #
 # Usage:
 #   scripts/assert-sample-css-matches-stiler.sh
-#   STILER_MAIN_CSS=… SAMPLE_CSS_MODERN=… KNOWN_DIVERGENCES=… \
+#   STILER_MAIN_CSS=… SAMPLE_CSS_MODERN=… SAMPLE_CSS_LEGACY=… KNOWN_DIVERGENCES=… \
 #     scripts/assert-sample-css-matches-stiler.sh          # tests only
 #
 # Needs: node, and Fhi.Helsedata.Stiler restored. Locally that means the Azure Artifacts Credential
@@ -226,6 +229,12 @@ if [ -n "$new" ]; then
   echo "" >&2
   echo "Or, if the divergence is deliberate, add its key to $KNOWN with a note saying why. Adding" >&2
   echo "it is a hand edit on purpose: this script never writes that file." >&2
+  if printf '%s\n' "$new" | grep -q '^unstyled-name|'; then
+    echo "" >&2
+    echo "An unstyled-name is a name no non-empty Stiler rule names. If src/ names it nowhere, not even" >&2
+    echo "in a comment, delete the sample's rule; otherwise name its Stiler bead in a note, or say why" >&2
+    echo "none is owed." >&2
+  fi
   status=1
 fi
 
