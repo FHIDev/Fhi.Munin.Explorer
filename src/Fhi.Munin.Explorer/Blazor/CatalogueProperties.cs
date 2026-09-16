@@ -347,7 +347,8 @@ internal static class CatalogueProperties
     /// </item>
     /// <item>
     /// Groups are ordered by <c>groupSortOrder</c>, and where the payload has none by the lowest
-    /// sort order among the keys that <em>have</em> values. Counting all the keys instead would put
+    /// sort order among the keys that <em>have</em> values — two numbering spaces, so every placed
+    /// group leads as a block rather than interleaving on the numbers. Counting all the keys would put
     /// two groups on the same number and leave their order to however the dictionary enumerated;
     /// counting only the populated ones separates them and matches what Runa shows, at the price of
     /// a section that moves up the page when a previously-empty property is filled in.
@@ -412,11 +413,13 @@ internal static class CatalogueProperties
 
             if (existing is null)
             {
-                existing = new Gathering(key, name, language);
+                // Taken here rather than filled in later by the first entry that happens to carry
+                // one: a group half-way through the rollout would otherwise be declared placed by
+                // a straggler, and where it lands would follow the payload's order.
+                existing = new Gathering(key, name, language) { PlacedOrder = entry.GroupSortOrder };
                 groups.Add(existing);
             }
 
-            existing.PlacedOrder ??= entry.GroupSortOrder;
             existing.Entries.Add(entry);
         }
 
@@ -431,7 +434,9 @@ internal static class CatalogueProperties
                 continue;
             }
 
-            var inferred = group.Entries
+            // The scan behind the ?? is only reached when the group is unplaced, so an older payload
+            // pays for it and a placed one does not.
+            var order = group.PlacedOrder ?? group.Entries
                 .Where(e => present.TryGetValue(e.Key, out var raw) && !string.IsNullOrWhiteSpace(raw))
                 .Select(e => e.SortOrder)
                 .DefaultIfEmpty(int.MaxValue)
@@ -439,7 +444,7 @@ internal static class CatalogueProperties
 
             resolved.Add((new PropertyGroup(group.Name, group.Language, rows),
                           group.PlacedOrder is null,
-                          group.PlacedOrder ?? inferred));
+                          order));
         }
 
         // Placed groups first, as a block: the two orders are different numbering spaces, so a
@@ -452,8 +457,9 @@ internal static class CatalogueProperties
     /// <remarks>
     /// <see cref="Key"/> and <see cref="PlacedOrder"/> are both null against an API that predates it,
     /// and that nullness is the whole of the fallback: the heading identifies the group instead, and
-    /// its position is inferred from its members. First sighting wins for both, so a payload that
-    /// disagrees with itself across the entries of one group still draws one deterministic section.
+    /// its position is inferred from its members. Both are taken from the entry that opened the
+    /// group and never revised, null included, so a payload that disagrees with itself across the
+    /// entries of one group still draws one deterministic section.
     /// </remarks>
     private sealed class Gathering(string? key, string name, string language)
     {
@@ -463,7 +469,7 @@ internal static class CatalogueProperties
 
         internal string Language { get; } = language;
 
-        internal int? PlacedOrder { get; set; }
+        internal int? PlacedOrder { get; init; }
 
         internal List<PropertyMetadataEntry> Entries { get; } = [];
     }

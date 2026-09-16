@@ -248,6 +248,67 @@ public class CataloguePropertiesTest
     }
 
     [Fact]
+    public void Groups_WhenOneSectionCarriesAKeyAndAnotherOfTheSameNameDoesNot_ThenTheyAreDrawnApart()
+    {
+        // The mixed half of the identity rule, and the shape a half-migrated payload takes: a key
+        // and a heading are different claims, so matching one against the other would merge a
+        // section the payload named with one it only titled.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 1001, "Innhold", groupKey: "innhold"),
+            Entry("Formaal", 2001, "Innhold"),
+        ];
+
+        Dictionary<string, string?> values = new() { ["Beskrivelse"] = "tekst", ["Formaal"] = "tekst" };
+
+        var groups = CatalogueProperties.Groups(metadata, values, "no");
+
+        Assert.Equal(["Innhold", "Innhold"], groups.Select(g => g.Name));
+        Assert.All(groups, group => Assert.Single(group.Rows));
+    }
+
+    [Fact]
+    public void Groups_WhenOneSectionsEntriesDisagreeAboutTheCataloguesOrder_ThenTheFirstOfThemPlacesIt()
+    {
+        // Whether a section is placed at all is decided by the entry that opened it, null included.
+        // Reading on until something non-null arrives would let a straggler lift a half-migrated
+        // section out of the inferred band, and which straggler depends on the payload's order.
+        List<PropertyMetadataEntry> placedLast =
+        [
+            Entry("Beskrivelse", 10, "Ustabil", groupKey: "ustabil"),
+            Entry("Formaal", 11, "Ustabil", groupKey: "ustabil", groupSortOrder: 1000),
+            Entry("Kontaktperson", 9500, "Plassert", groupKey: "plassert", groupSortOrder: 5000),
+            Entry("Kommentar", 20, "Uplassert"),
+        ];
+
+        List<PropertyMetadataEntry> placedFirst =
+        [
+            Entry("Beskrivelse", 10, "Ustabil", groupKey: "ustabil", groupSortOrder: 1000),
+            Entry("Formaal", 11, "Ustabil", groupKey: "ustabil"),
+            Entry("Kontaktperson", 9500, "Plassert", groupKey: "plassert", groupSortOrder: 5000),
+            Entry("Kommentar", 20, "Uplassert"),
+        ];
+
+        Dictionary<string, string?> values = new()
+        {
+            ["Beskrivelse"] = "tekst",
+            ["Formaal"] = "tekst",
+            ["Kontaktperson"] = "Kari",
+            ["Kommentar"] = "tekst",
+        };
+
+        // Opened by an entry the catalogue never placed, so the section stays in the inferred band
+        // and sorts on its members — ahead of Uplassert, behind every placed section.
+        Assert.Equal(["Plassert", "Ustabil", "Uplassert"],
+                     CatalogueProperties.Groups(placedLast, values, "no").Select(g => g.Name));
+
+        // The same four entries, the section's own two the other way round: now it is placed at
+        // 1000 and leads the section the catalogue put at 5000.
+        Assert.Equal(["Ustabil", "Plassert", "Uplassert"],
+                     CatalogueProperties.Groups(placedFirst, values, "no").Select(g => g.Name));
+    }
+
+    [Fact]
     public void Groups_WhenEveryKeyInAGroupIsEmpty_ThenTheGroupIsNotDrawnAtAll()
     {
         // A source carries far more curated keys than any one source fills in. Drawing the empty

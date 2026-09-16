@@ -50,11 +50,13 @@ public sealed record PropertyMetadataEntry
     /// either when no placement names the section there or when the API predates the field.
     /// </summary>
     /// <remarks>
-    /// Repeated on every entry of one section, and the same section can carry a different order on
-    /// another surface — the order belongs to the placement, not to the section. A consumer reading
-    /// null infers the section's position from its members' <see cref="SortOrder"/> instead, which
-    /// is what every consumer did before this field existed and is why a section could move up the
-    /// page when a previously-empty property was filled in.
+    /// Munin intends to repeat it on every entry of one section, and the same section can carry a
+    /// different order on another surface — the order belongs to the placement, not to the section.
+    /// This package does not rely on the repetition: it takes the value off whichever entry opened
+    /// the section and ignores the rest, so a ragged payload still draws one section in one place.
+    /// A consumer reading null infers the section's position from its members' <see cref="SortOrder"/>
+    /// instead, which is what every consumer did before this field existed and is why a section could
+    /// move up the page when a previously-empty property was filled in.
     /// </remarks>
     [JsonPropertyName("groupSortOrder")] public int? GroupSortOrder { get; init; }
 
