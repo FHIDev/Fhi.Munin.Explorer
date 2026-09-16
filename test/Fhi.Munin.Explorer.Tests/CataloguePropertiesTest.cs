@@ -309,6 +309,33 @@ public class CataloguePropertiesTest
     }
 
     [Fact]
+    public void Groups_WhenTheEntryThatOpensASectionDrawsNoRow_ThenItPlacesTheSectionAnyway()
+    {
+        // Metadata lists every key a section can hold and a payload fills some, so the entry that
+        // opens one need not be the first to draw. Deciding on the first that does would read as
+        // the same rule and would lift this section out of the inferred band on a straggler.
+        List<PropertyMetadataEntry> metadata =
+        [
+            Entry("Beskrivelse", 10, "Ustabil", groupKey: "ustabil"),
+            Entry("Formaal", 11, "Ustabil", groupKey: "ustabil", groupSortOrder: 1000),
+            Entry("Kontaktperson", 9500, "Plassert", groupKey: "plassert", groupSortOrder: 5000),
+            Entry("Kommentar", 20, "Uplassert"),
+        ];
+
+        // Beskrivelse opens the section and is unset, so the section is unplaced and sorts on the
+        // one member that does draw: ahead of Uplassert at 20, behind every placed section.
+        Dictionary<string, string?> values = new()
+        {
+            ["Formaal"] = "tekst",
+            ["Kontaktperson"] = "Kari",
+            ["Kommentar"] = "tekst",
+        };
+
+        Assert.Equal(["Plassert", "Ustabil", "Uplassert"],
+                     CatalogueProperties.Groups(metadata, values, "no").Select(g => g.Name));
+    }
+
+    [Fact]
     public void Groups_WhenEveryKeyInAGroupIsEmpty_ThenTheGroupIsNotDrawnAtAll()
     {
         // A source carries far more curated keys than any one source fills in. Drawing the empty

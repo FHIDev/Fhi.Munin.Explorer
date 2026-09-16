@@ -416,7 +416,7 @@ internal static class CatalogueProperties
                 // Taken here rather than filled in later by the first entry that happens to carry
                 // one: a group half-way through the rollout would otherwise be declared placed by
                 // a straggler, and where it lands would follow the payload's order.
-                existing = new Gathering(key, name, language) { PlacedOrder = entry.GroupSortOrder };
+                existing = new Gathering(key, name, language, entry.GroupSortOrder);
                 groups.Add(existing);
             }
 
@@ -461,7 +461,7 @@ internal static class CatalogueProperties
     /// group and never revised, null included, so a payload that disagrees with itself across the
     /// entries of one group still draws one deterministic section.
     /// </remarks>
-    private sealed class Gathering(string? key, string name, string language)
+    private sealed class Gathering(string? key, string name, string language, int? placedOrder)
     {
         internal string? Key { get; } = key;
 
@@ -469,7 +469,7 @@ internal static class CatalogueProperties
 
         internal string Language { get; } = language;
 
-        internal int? PlacedOrder { get; init; }
+        internal int? PlacedOrder { get; } = placedOrder;
 
         internal List<PropertyMetadataEntry> Entries { get; } = [];
     }
