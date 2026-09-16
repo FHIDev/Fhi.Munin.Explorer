@@ -457,8 +457,10 @@ public sealed partial class KildeView : ComponentBase
     /// <see cref="KildeHierarchyView.ShowNodeIcons"/>, which this is passed straight to.
     /// </summary>
     /// <remarks>
-    /// Neither explorer offers it further up, so a host that wants the icons off mounts this view,
-    /// or <see cref="KildeHierarchyView"/>, itself.
+    /// <see cref="VariableSearch"/> offers it further up, as the <c>Ikoner</c> switch in its filter
+    /// panel, and hands the reader's own choice to this view when they drill into a kilde.
+    /// <see cref="KildeSearch"/> offers nothing of the kind, so a host that wants the icons off in
+    /// the kildeutforsker mounts this view, or <see cref="KildeHierarchyView"/>, itself.
     /// </remarks>
     [Parameter]
     public bool ShowNodeIcons { get; set; } = true;

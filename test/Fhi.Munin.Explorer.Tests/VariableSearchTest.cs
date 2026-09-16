@@ -1477,9 +1477,9 @@ public class VariableSearchTest : BunitContext
             // The toolbar row: a container of its own, because in inline flow the last button's
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
-            // Nivålinjer, the one switch in the component. It wears this name ALONE — the toolbar
-            // rule above selects hd-button-square, and the house classes beside this one squeeze
-            // the control to one character wide. (Fhi.Metadata-l9l2n.87)
+            // Nivålinjer and Ikoner, the toolbar's two switches, drawn from one shape and so one
+            // name here. Each wears it ALONE — the toolbar rule above selects hd-button-square,
+            // and the house classes squeeze a switch to one character wide. (Fhi.Metadata-l9l2n.87)
             "munin-explorer-switch",
             "munin-explorer-switch__track",
             "munin-explorer-switch__thumb",
@@ -3256,17 +3256,29 @@ public class VariableSearchTest : BunitContext
             .Single(li => RowWords(li).StartsWith(label, StringComparison.Ordinal))
             .QuerySelector(".munin-explorer-filters__disclosure")!;
 
-    /// <summary>The toolbar's Nivålinjer switch, found by the role rather than by its label.</summary>
+    /// <summary>The toolbar switch whose label reads <paramref name="label"/>.</summary>
     /// <remarks>
-    /// The panel's one <c>role="switch"</c>, so the role identifies it exactly — and unlike a label
-    /// match it cannot be broken by rewrapping the markup around it.
+    /// The role is what the toolbar's two switches have in common and the label is what tells them
+    /// apart, so a press cannot land on the other one — and <c>Single</c> is what says so if a
+    /// third ever shares a label. <see cref="Facet"/> reaches neither: the track markup comes first.
     /// </remarks>
+    private static IElement ToolbarSwitch(IRenderedComponent<VariableSearch> cut, string label) =>
+        cut.FindAll(".munin-explorer-filters__toolbar [role=switch]")
+            .Single(control => control.TextContent.Contains(label, StringComparison.Ordinal));
+
     private static IElement LevelLinesSwitch(IRenderedComponent<VariableSearch> cut) =>
-        cut.Find(".munin-explorer-filters__toolbar [role=switch]");
+        ToolbarSwitch(cut, "Nivålinjer");
+
+    private static IElement NodeIconsSwitch(IRenderedComponent<VariableSearch> cut) =>
+        ToolbarSwitch(cut, "Ikoner");
 
     /// <summary>The checkbox a facet value is chosen with.</summary>
     private static IElement FacetBox(IRenderedComponent<VariableSearch> cut, string label) =>
         Facet(cut, label).QuerySelector("input[type=checkbox]")!;
+
+    /// <summary>The figure a facet value carries, or null where the panel drew none.</summary>
+    private static string? FacetCount(IRenderedComponent<VariableSearch> cut, string label) =>
+        Facet(cut, label).QuerySelector(".munin-explorer-filters__count")?.TextContent;
 
     /// <summary>The <c>lang</c> the facet row reading <paramref name="label"/> puts on those words.</summary>
     /// <remarks>
@@ -4046,7 +4058,7 @@ public class VariableSearchTest : BunitContext
     }
 
     [Fact]
-    public void Filter_Always_ThenTheThreeToolbarButtonsShareOneContainerAndCarryNoMarginsOfTheirOwn()
+    public void Filter_Always_ThenTheFourToolbarButtonsShareOneContainerAndCarryNoMarginsOfTheirOwn()
     {
         // The container is what the host's `gap` hangs on. In inline flow each button carried a
         // `margin-right` and the last one's trailing 16px counted against the line, so the row
@@ -4056,8 +4068,10 @@ public class VariableSearchTest : BunitContext
         var toolbar = cut.Find(".munin-explorer-filters__toolbar");
         var buttons = toolbar.Children;
 
+        // The order is the row's, and Ikoner is last: the two fold buttons are the only members
+        // the host's `min-width: 0` half may select, so neither switch may come between them.
         Assert.Equal(
-            ["Utvid alle", "Skjul alle", "Nivålinjer"],
+            ["Utvid alle", "Skjul alle", "Nivålinjer", "Ikoner"],
             buttons.Select(b => b.TextContent.Trim()));
         Assert.All(buttons, b => Assert.DoesNotContain("margin-", b.ClassName!));
     }
@@ -4151,6 +4165,188 @@ public class VariableSearchTest : BunitContext
 
         Assert.Null(FilterPanel(cut).GetAttribute("data-level-lines"));
         Assert.Equal("false", LevelLinesSwitch(cut).GetAttribute("aria-checked"));
+    }
+
+    // ---- the toolbar's Ikoner switch (Fhi.Metadata-kd9ts) ----
+
+    [Fact]
+    public void Filter_Always_ThenIkonerIsANativeSwitchWearingItsOwnNameAlone()
+    {
+        // The contract Nivålinjer is held to, asked of the second switch: a native <button> Tab
+        // reaches and Space activates, its own name and nothing else — `hd-button-square` beside it
+        // drops it into the toolbar's `min-width: 0` rule — and the track and thumb out of the name.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var switchControl = NodeIconsSwitch(cut);
+
+        Assert.Equal("BUTTON", switchControl.TagName);
+        Assert.Equal("button", switchControl.GetAttribute("type"));
+        Assert.Equal("munin-explorer-switch", switchControl.ClassName);
+        Assert.Equal("Ikoner", AccessibleName.Of(switchControl));
+
+        var track = switchControl.QuerySelector(".munin-explorer-switch__track")!;
+
+        Assert.Equal("true", track.GetAttribute("aria-hidden"));
+        Assert.NotNull(track.QuerySelector(".munin-explorer-switch__thumb"));
+
+        // aria-pressed and aria-checked on one element announce as two states of one control, and
+        // the Stiler rules key on the second.
+        Assert.False(switchControl.HasAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Filter_WhenNothingIsPressed_ThenTheNodeIconsAreAlreadyDrawn()
+    {
+        // On at first render, which is what KildeHierarchyView's own parameter defaults to: a
+        // reader who never finds the switch sees the tree Kelda draws, glyphs and all.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
+
+        Assert.Equal("true", NodeIconsSwitch(cut).GetAttribute("aria-checked"));
+        Assert.Equal(["kilde"], RowGlyphs(cut, "Tromsøundersøkelsen"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheNodeIconsArePressed_ThenTheTreeDropsThemAndTheHostIsTold()
+    {
+        // The package remembers no preference: it draws the choice and raises the change, which is
+        // the whole storage mechanism it offers — the same bargain LevelLines makes.
+        List<bool> reported = [];
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()),
+                             b => b.Add(c => c.ShowNodeIconsChanged, reported.Add));
+
+        NodeIconsSwitch(cut).Click();
+
+        // The whole slot rather than an empty one: a span with no glyphs in it would still take the
+        // gap the stylesheet puts between the icons and the name.
+        Assert.Equal("false", NodeIconsSwitch(cut).GetAttribute("aria-checked"));
+        Assert.Empty(RowGlyphs(cut, "Tromsøundersøkelsen"));
+        Assert.Empty(Facet(cut, "Tromsøundersøkelsen").QuerySelectorAll(".munin-explorer-filters__icons"));
+
+        NodeIconsSwitch(cut).Click();
+
+        Assert.Equal("true", NodeIconsSwitch(cut).GetAttribute("aria-checked"));
+        Assert.Equal(["kilde"], RowGlyphs(cut, "Tromsøundersøkelsen"));
+        Assert.Equal([false, true], reported);
+    }
+
+    [Fact]
+    public void Filter_WhenTheNodeIconsAreOff_ThenNothingButDecorationGoesWithThem()
+    {
+        // The whole of what this switch is allowed to touch. A ticked value, the count beside it,
+        // the kildetype badge and the level lines are facts rather than decoration, and the badge
+        // in particular is outside the icon slot so that turning the slot off cannot take it.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
+
+        ClickFacet(cut, "Tromsøundersøkelsen");
+
+        var count = FacetCount(cut, "Tromsøundersøkelsen");
+
+        NodeIconsSwitch(cut).Click();
+
+        Assert.True(FacetChosen(cut, "Tromsøundersøkelsen"));
+        Assert.Equal(count, FacetCount(cut, "Tromsøundersøkelsen"));
+        Assert.Equal("Biobank", RowBadge(cut, "Tromsøundersøkelsen"));
+        Assert.Equal("true", FilterPanel(cut).GetAttribute("data-level-lines"));
+        Assert.Equal("true", LevelLinesSwitch(cut).GetAttribute("aria-checked"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheNodeIconsAreOff_ThenTheSpokenCategoriesGoWithThem()
+    {
+        // The words stand in for the glyphs and say nothing a row drawing neither was saying, so
+        // the two leave together — which is what KildeHierarchyView does with the same choice. What
+        // the checkbox is left announcing is the name and the count. (Fhi.Metadata-evoil)
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])));
+
+        NodeIconsSwitch(cut).Click();
+
+        Assert.Equal("Tromsø 1 (5)", AccessibleName.Of(FacetBox(cut, "Tromsø 1")));
+        Assert.Empty(Facet(cut, "Tromsø 1").QuerySelectorAll(".screenreader-only"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheHostSetsShowNodeIcons_ThenTheTreeStartsWithThem()
+    {
+        // A host that stored the reader turning them back on passes it back, and the switch has to
+        // agree with the tree from the first render rather than from the first press.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()),
+                             b => b.Add(c => c.ShowNodeIcons, true));
+
+        Assert.Equal("true", NodeIconsSwitch(cut).GetAttribute("aria-checked"));
+        Assert.Equal(["kilde"], RowGlyphs(cut, "Tromsøundersøkelsen"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheHostClearsShowNodeIcons_ThenTheTreeStartsWithoutThem()
+    {
+        // The other half of the mechanism: without it the parameter is write-only and a host that
+        // stored the press has nowhere to put it back. The badge is drawn either way.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()),
+                             b => b.Add(c => c.ShowNodeIcons, false));
+
+        Assert.Equal("false", NodeIconsSwitch(cut).GetAttribute("aria-checked"));
+        Assert.Empty(RowGlyphs(cut, "Tromsøundersøkelsen"));
+        Assert.Equal("Biobank", RowBadge(cut, "Tromsøundersøkelsen"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheHostSetsShowNodeIconsAfterMount_ThenTheReadersOwnChoiceStands()
+    {
+        // Read once at mount and owned by the component afterwards, exactly as LevelLines is: a
+        // host holding the stored value in a field would otherwise write it back over the reader on
+        // its next render, and the press would look like it had done nothing.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithBadges()));
+
+        NodeIconsSwitch(cut).Click();
+        cut.Render(b => b.Add(c => c.ShowNodeIcons, true));
+
+        Assert.Equal("false", NodeIconsSwitch(cut).GetAttribute("aria-checked"));
+        Assert.Empty(RowGlyphs(cut, "Tromsøundersøkelsen"));
+    }
+
+    [Fact]
+    public void Source_WhenTheNodeIconsAreOff_ThenTheKildeDrilledIntoDrawsNoneEither()
+    {
+        // One choice, both surfaces. The drill-in draws the same hierarchy the facet panel does, so
+        // a reader who turned the pictures off must not meet them again one press later — and the
+        // panel is not on screen in there to press a second time.
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.ShowNodeIcons, false));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        Assert.False(cut.FindComponent<KildeView>().Instance.ShowNodeIcons);
+    }
+
+    [Fact]
+    public void Source_WhenTheNodeIconsArePressedOff_ThenTheKildeDrilledIntoDrawsNoneEither()
+    {
+        // The PRESS reaching the drill-in, which the test above cannot ask: the mount-time copy
+        // makes the parameter and the field the switch writes agree until someone presses it, so a
+        // drill-in bound to the parameter passes every other pin here while ignoring the switch.
+        var cut = RenderWith(TwoRows());
+
+        NodeIconsSwitch(cut).Click();
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        Assert.False(cut.FindComponent<KildeView>().Instance.ShowNodeIcons);
+    }
+
+    [Fact]
+    public void Source_WhenTheNodeIconsArePressedBackOn_ThenTheKildeDrilledIntoDrawsThem()
+    {
+        // The same claim from the other side, so neither constant can stand in for the field: the
+        // host stored them off, the reader asked for them back, and it is the reader's press the
+        // drill-in reads.
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.ShowNodeIcons, false));
+
+        NodeIconsSwitch(cut).Click();
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        Assert.True(cut.FindComponent<KildeView>().Instance.ShowNodeIcons);
     }
 
     [Fact]
@@ -8276,9 +8472,10 @@ public class VariableSearchTest : BunitContext
         Assert.All(panel.QuerySelectorAll("li > label"), l => Assert.False(l.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("li > label > input"), i => Assert.False(i.HasAttribute("class")));
 
-        // The toolbar is still buttons, and still Stiler's own square one — except Nivålinjer, which
-        // wears munin-explorer-switch ALONE: the toolbar's rule selects hd-button-square, and beside
-        // it the switch collapses to one character wide. (Fhi.Metadata-l9l2n.87)
+        // The toolbar is still buttons, and still Stiler's own square one — except the two
+        // switches, which wear munin-explorer-switch ALONE: the toolbar's rule selects
+        // hd-button-square, and beside it a switch collapses to one character wide.
+        // (Fhi.Metadata-l9l2n.87)
         var buttons = panel.QuerySelectorAll("button");
         Assert.All(
             buttons.Where(b => b.GetAttribute("role") != "switch" && !b.HasAttribute("aria-expanded")),
@@ -8289,9 +8486,12 @@ public class VariableSearchTest : BunitContext
         Assert.All(
             buttons.Where(b => b.HasAttribute("aria-expanded")),
             b => Assert.Equal("munin-explorer-filters__disclosure", b.ClassName));
-        Assert.Equal(
-            "munin-explorer-switch",
-            Assert.Single(buttons, b => b.GetAttribute("role") == "switch").ClassName);
+
+        // Nivålinjer and Ikoner, and the count is asserted because the exemption above is written
+        // per switch: a third one added without the bare name is what this would catch.
+        var switches = buttons.Where(b => b.GetAttribute("role") == "switch").ToList();
+        Assert.Equal(2, switches.Count);
+        Assert.All(switches, b => Assert.Equal("munin-explorer-switch", b.ClassName));
     }
 
     [Fact]
@@ -12714,9 +12914,9 @@ public class VariableSearchTest : BunitContext
             // The toolbar row: a container of its own, because in inline flow the last button's
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
-            // Nivålinjer, the one switch in the component. It wears this name ALONE — the toolbar
-            // rule above selects hd-button-square, and the house classes beside this one squeeze
-            // the control to one character wide. (Fhi.Metadata-l9l2n.87)
+            // Nivålinjer and Ikoner, the toolbar's two switches, drawn from one shape and so one
+            // name here. Each wears it ALONE — the toolbar rule above selects hd-button-square,
+            // and the house classes squeeze a switch to one character wide. (Fhi.Metadata-l9l2n.87)
             "munin-explorer-switch",
             "munin-explorer-switch__track",
             "munin-explorer-switch__thumb",

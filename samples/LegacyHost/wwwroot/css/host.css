@@ -500,25 +500,29 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters { margin-bottom: 24px; }
 
-/* The panel's toolbar: own container, spaced by `gap` so nothing trails the last button. Not
-   `flex-wrap: wrap` — the buttons shrink and wrap their own labels instead, so the row survives a
-   longer translation. (Fhi.Metadata-l9l2n.37) */
+/* The panel's toolbar: own container, spaced by `gap` so nothing trails the last button. It wraps
+   since Ikoner made four: only the buttons shrink, a switch keeps its intrinsic width, and 291px of
+   them in a 226px mount ran 42px past 320px. (Fhi.Metadata-l9l2n.37, Fhi.Metadata-kd9ts) */
 
 .munin-explorer-filters__toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 16px;
   align-items: center;
 }
 
+/* Still here under the wrap above, and now what a single button too wide for its own line falls
+   back on rather than what keeps the row in the box — a longer translation than any we ship. */
 .munin-explorer-filters__toolbar > .hd-button-square {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-/* Nivålinjer, the one switch, wearing its own name and NOTHING else: the rule above selects
-   hd-button-square, and beside it the toolbar squeezes this to one character wide. State hangs
-   on aria-checked, not a modifier class, so drawn and announced agree. (Fhi.Metadata-l9l2n.87) */
+/* Nivålinjer and Ikoner, the toolbar's two switches, each wearing its own name and NOTHING else:
+   the rule above selects hd-button-square, and beside it the toolbar squeezes one to a character
+   wide. State hangs on aria-checked, not a modifier class, so drawn and announced agree.
+   (Fhi.Metadata-l9l2n.87) */
 .munin-explorer-switch {
   display: inline-flex;
   align-items: center;
