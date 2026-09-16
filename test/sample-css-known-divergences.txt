@@ -449,8 +449,14 @@ invented-declaration||.munin-explorer-filters__toolbar|flex-wrap
 # reads prose too, so the rule must stay, and no Stiler bead is owed for a name no element wears.
 unstyled-name||.munin-explorer-dataitem-period|
 
-# Fhi.Metadata-o3slu.
+# Fhi.Metadata-o3slu. Stiler 0.1.80 has the rule; this line goes when the pin moves to it.
 unstyled-name||.munin-explorer-hierarchy__open|
+
+# Fhi.Metadata-35w0p.59, .60 and .61 (Stiler PR 39406). Stiler 0.1.80 has all three rules; these
+# lines go when the pin moves to it.
+unstyled-name||.munin-explorer-complete-record|
+unstyled-name||.munin-explorer-complete-record__fields|
+unstyled-name||.munin-explorer-complete-record__lead|
 
 # Fhi.Metadata-l9l2n.109.
 unstyled-name||.munin-explorer-meta__language|
