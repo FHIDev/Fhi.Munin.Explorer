@@ -9,7 +9,7 @@
 // green while ~40 real divergences stood: a rule carrying half of Stiler's declarations, or the
 // right property carrying the wrong value, passes it. So below, whether a selector exists is asked
 // only to find declarations to compare, to report a missing one, to count an unmatched borrowed one,
-// and, for unstyled-name, of a name.
+// and, for unstyled-name, to ask whether any Stiler rule names a class at all.
 //
 // Driven by scripts/assert-sample-css-matches-stiler.sh, which resolves which Stiler to read.
 // Invoked directly it takes two paths and prints the divergences it finds:
