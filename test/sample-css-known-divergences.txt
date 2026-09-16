@@ -445,8 +445,8 @@ invented-declaration||.munin-explorer-filters__toolbar|flex-wrap
 # UNSTYLED NAMES, the fifth kind (Fhi.Metadata-sepe7): the sample styles a name that no non-empty
 # Stiler rule names, so on helsedata it renders at browser defaults whatever the stand-in draws.
 
-# Written only in a VariableSearch comment; the cell is `__period`. assert-sample-css-in-step.sh
-# reads prose too, so the rule must stay, and no Stiler bead is owed for a name no element wears.
+# A stale name, written only in a VariableSearch comment; the bar is `munin-explorer-period`. No
+# Stiler bead is owed: Fhi.Metadata-vnhd4 fixes the comment and deletes the rule and this line.
 unstyled-name||.munin-explorer-dataitem-period|
 
 # Fhi.Metadata-o3slu. Stiler 0.1.80 has the rule; this line goes when the pin moves to it.
