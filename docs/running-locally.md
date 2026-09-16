@@ -180,8 +180,8 @@ helsedata's private Azure Artifacts feed. So:
 ./scripts/check-hostile-host.sh
 ```
 
-Starts the stub API and HostileHost, drives the explorer into two states, and measures it with
-`getBoundingClientRect` at three widths before running axe over the same page. It exists because
+Starts the stub API and HostileHost, drives the explorer into the states in `TARGETS`, and measures it with
+`getBoundingClientRect` at the widths in `GEOMETRY_WIDTHS` before running axe over the same page. It exists because
 four layout defects reached a branch on 2026-09-03 that 1317 unit tests and eight axe states did
 not see, and two of the four were collisions with rules only Stiler has — so no hand-written
 stand-in reproduces them. `scripts/geometry-assertions.mjs` says what it asks and why, including
