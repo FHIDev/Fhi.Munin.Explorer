@@ -56,35 +56,37 @@ internal static class NodeIcons
     }
 
     /// <summary>
-    /// One glyph, with no slot around it — what a legend row draws, where the slot would be a
-    /// second box between the picture and the word it is explained by.
+    /// One glyph and nothing around it: the slot is the caller's, so a legend row can draw the
+    /// picture as a direct child of the row, which is what Stiler's rule selects.
     /// </summary>
     internal static void WriteGlyph(RenderTreeBuilder builder, NodeIcon icon, string glyphClass)
     {
-        builder.OpenElement(3, "svg");
+        // From 0, as the two writers around it: a sequence borrowed from one caller is safe only
+        // where that caller's numbers happen to fit, and this one has two.
+        builder.OpenElement(0, "svg");
         builder.SetKey(icon.Key);
-        builder.AddAttribute(4, "class", glyphClass);
-        builder.AddAttribute(5, "data-node-icon", icon.Key);
-        builder.AddAttribute(6, "viewBox", "0 0 24 24");
+        builder.AddAttribute(1, "class", glyphClass);
+        builder.AddAttribute(2, "data-node-icon", icon.Key);
+        builder.AddAttribute(3, "viewBox", "0 0 24 24");
         // An <svg> with no width or height is 300x150, so a host with no rule for the class
         // above would get one icon the size of a paragraph rather than an undersized one.
-        builder.AddAttribute(7, "width", "1em");
-        builder.AddAttribute(8, "height", "1em");
-        builder.AddAttribute(9, "fill", "none");
-        builder.AddAttribute(10, "stroke", "currentColor");
-        builder.AddAttribute(11, "stroke-width", "2");
-        builder.AddAttribute(12, "stroke-linecap", "round");
-        builder.AddAttribute(13, "stroke-linejoin", "round");
+        builder.AddAttribute(4, "width", "1em");
+        builder.AddAttribute(5, "height", "1em");
+        builder.AddAttribute(6, "fill", "none");
+        builder.AddAttribute(7, "stroke", "currentColor");
+        builder.AddAttribute(8, "stroke-width", "2");
+        builder.AddAttribute(9, "stroke-linecap", "round");
+        builder.AddAttribute(10, "stroke-linejoin", "round");
         // Both, because focusable="false" is what keeps IE-era engines from making an inline
         // svg a tab stop and aria-hidden is what keeps it off the accessibility tree.
-        builder.AddAttribute(14, "focusable", "false");
-        builder.AddAttribute(15, "aria-hidden", "true");
+        builder.AddAttribute(11, "focusable", "false");
+        builder.AddAttribute(12, "aria-hidden", "true");
         foreach (var shape in icon.Shapes)
         {
-            builder.OpenElement(16, shape.Element);
+            builder.OpenElement(13, shape.Element);
             foreach (var (name, value) in shape.Attributes)
             {
-                builder.AddAttribute(17, name, value);
+                builder.AddAttribute(14, name, value);
             }
             builder.CloseElement();
         }

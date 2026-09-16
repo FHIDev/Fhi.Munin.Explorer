@@ -262,6 +262,6 @@ internal static class DataCategoryIcons
     };
 
     // After Glyphs on purpose: a static field initialiser runs in declaration order, so reading
-    // the dictionary from above it would build the vocabulary out of an empty one.
+    // the dictionary from above it would throw in the type initialiser.
     private static readonly NodeIcon[] Vocabulary = [.. CanonicalOrder.Select(key => Glyphs[key])];
 }

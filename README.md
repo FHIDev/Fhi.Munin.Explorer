@@ -350,8 +350,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     is stated at all — until the `Ikoner` switch above is turned off, which takes the words with
     the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
-    The
-    rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**, the version
+    The rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**, the version
     `samples/HostileHost` pins (`Fhi.Metadata-1t36m`).
     The words for those glyphs are under the facets, in an `Ikonforklaring` legend that adds two
     names of its own — `munin-explorer-filters__legend` on the list and
@@ -369,11 +368,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     stylesheets already carried the rules before any markup wore the names, copied off the published
     0.1.75 that `samples/HostileHost` pinned when they were written and compared since against the
     0.1.79 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
-    evidence on this side that Stiler really has them — nothing in this repository reads Stiler, and
-    that guard runs only in the job holding the feed secret. A legend that rests
-    shut is a `<details>` and nothing invented: its `<summary>` is the control's accessible name and
-    its expanded state both, as every facet above it. It folds with those facets under `Utvid alle`
-    and `Skjul alle` rather than apart from them — one disclosure still open under a pressed
+    evidence on this side that Stiler really has them — nothing in this repository reads Stiler,
+    and that guard runs only in the job holding the feed secret. A legend that rests shut is a
+    `<details>` and nothing invented: its `<summary>` is the control's accessible name and its
+    expanded state both, as every facet above it. It folds with those facets under `Utvid alle` and
+    `Skjul alle` rather than apart from them — one disclosure still open under a pressed
     `Skjul alle` reads as the press not having worked.
     A kilde row of that facet adds one more, `munin-explorer-filters__badge`, worn by the word
     marking a kilde whose kildetype the tree calls out. Which kildetyper those are is

@@ -1486,10 +1486,9 @@ public class VariableSearchTest : BunitContext
             // The number beside a facet value, in an element of its own so a host can dim it —
             // the same name the kilde explorer's facets wear. (Fhi.Metadata-cgk85)
             "munin-explorer-filters__count",
-            // The Ikonforklaring legend under the facets: the datakategori vocabulary in words, one
-            // row per glyph, drawn while the Ikoner switch is on. The glyph in each row wears the
-            // same name a value row's does — there is one slot class fewer, not one more, because a
-            // legend row holds a single glyph and needs no slot. (Fhi.Metadata-zllxt)
+            // The Ikonforklaring legend under the facets. Its glyph wears the facet value's own
+            // name, which no value row in this render draws, so the legend is what brings it into
+            // this list — and it wears that name alone, having no slot. (Fhi.Metadata-zllxt)
             "munin-explorer-filters__legend",
             "munin-explorer-filters__legend-item",
             "munin-explorer-filters__icon",
@@ -13128,8 +13127,9 @@ public class VariableSearchTest : BunitContext
             "munin-explorer-switch",
             "munin-explorer-switch__track",
             "munin-explorer-switch__thumb",
-            // The Ikonforklaring legend under the facets, and the glyph on each of its rows —
-            // which wears the name a facet value's glyph already does. (Fhi.Metadata-zllxt)
+            // The Ikonforklaring legend under the facets. Its glyph wears the facet value's own
+            // name, which no value row in this render draws, so the legend is what brings it into
+            // this list — and it wears that name alone, having no slot. (Fhi.Metadata-zllxt)
             "munin-explorer-filters__legend",
             "munin-explorer-filters__legend-item",
             "munin-explorer-filters__icon",
