@@ -455,11 +455,9 @@ internal static class CatalogueProperties
 
     /// <summary>One group as it is being gathered: what identifies it, what titles it, what it holds.</summary>
     /// <remarks>
-    /// <see cref="Key"/> and <see cref="PlacedOrder"/> are both null against an API that predates it,
-    /// and that nullness is the whole of the fallback: the heading identifies the group instead, and
-    /// its position is inferred from its members. Both are taken from the entry that opened the
-    /// group and never revised, null included, so a payload that disagrees with itself across the
-    /// entries of one group still draws one deterministic section.
+    /// <see cref="Key"/> and <see cref="PlacedOrder"/> are both null against an API that predates
+    /// them, and that nullness is the whole of the fallback: the heading identifies the group
+    /// instead, and its position is inferred from its members.
     /// </remarks>
     private sealed class Gathering(string? key, string name, string language, int? placedOrder)
     {

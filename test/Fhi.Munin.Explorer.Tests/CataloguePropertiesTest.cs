@@ -56,10 +56,9 @@ public class CataloguePropertiesTest
     }
 
     // ---------------------------------------------------------------------------------
-    // Section identity and section order. Both used to be read off the data — the heading
-    // said which section an entry was in, and the members' sort orders said where it went.
-    // Each rule below is paired with the fallback the same payload takes without the field,
-    // because this package meets APIs older than either (Fhi.Metadata-35w0p.19).
+    // Section identity and section order. Each rule below is paired with the fallback the
+    // same payload takes without the field, because this package meets APIs older than
+    // either (Fhi.Metadata-35w0p.19).
     // ---------------------------------------------------------------------------------
 
     [Fact]
@@ -309,7 +308,7 @@ public class CataloguePropertiesTest
     }
 
     [Fact]
-    public void Groups_WhenTheEntryThatOpensASectionDrawsNoRow_ThenItPlacesTheSectionAnyway()
+    public void Groups_WhenTheEntryThatOpensASectionDrawsNoRow_ThenItStillDecidesWhetherTheSectionIsPlaced()
     {
         // Metadata lists every key a section can hold and a payload fills some, so the entry that
         // opens one need not be the first to draw. Deciding on the first that does would read as
