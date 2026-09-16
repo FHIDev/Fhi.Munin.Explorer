@@ -1181,6 +1181,21 @@ public partial class VariableSearch
         return RaiseAsync(LevelLinesChanged, _levelLines, Log);
     }
 
+    /// <summary>Whether the kilde tree draws a node icon in front of each name.</summary>
+    /// <remarks>
+    /// No initialiser, for the reason <see cref="_levelLines"/> has none: <see cref="ShowNodeIcons"/>
+    /// is copied in before the first render, so the parameter's default is the one resting state.
+    /// </remarks>
+    private bool _showNodeIcons;
+
+    /// <summary>Turn the node icons on or off, and tell the host, so it can remember them.</summary>
+    private Task ToggleNodeIconsAsync()
+    {
+        _showNodeIcons = !_showNodeIcons;
+
+        return RaiseAsync(ShowNodeIconsChanged, _showNodeIcons, Log);
+    }
+
     /// <summary>A facet's own label, saying how many of its values are chosen.</summary>
     /// <remarks>
     /// On the summary line, so a collapsed facet still says that something inside it is narrowing
@@ -1273,7 +1288,10 @@ public partial class VariableSearch
 
                 builder.CloseElement();
 
-                var icons = value.Icons;
+                // Both or neither, as KildeHierarchyView does it: the words are the glyphs said
+                // aloud, so keeping them would leave the switch doing nothing for the reader who
+                // pressed it. The badge below is a fact rather than a picture and is outside both.
+                var icons = _showNodeIcons ? value.Icons : null;
                 if (icons is { Count: > 0 })
                 {
                     builder.AddContent(35, (RenderFragment)(nested =>

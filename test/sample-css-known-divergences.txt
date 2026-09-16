@@ -430,3 +430,11 @@ missing-declaration||.datasourcecard__intro p|-webkit-line-clamp
 # is inside. Stiler gained this selector in 0.1.79 (Fhi.Metadata-ofg1h), which turned a sample-only
 # rule into a sample-only declaration.
 invented-declaration||.munin-explorer-page__fields dd|margin
+
+# The filter panel's toolbar wraps in the stand-in and does not in Stiler. Ikoner made the row four
+# controls wide (Fhi.Metadata-kd9ts): only the two buttons take the `min-width: 0` beside them, a
+# switch keeps its intrinsic width, and at 320px the row measured 291px of content hanging 42px
+# past the viewport in a 226px mount - WCAG 1.4.10, and check-accessibility.sh measures it now.
+# `flex-wrap: wrap` is the fix in both stylesheets; Fhi.Metadata-xfsvx is the same rule in
+# Stiler, and deleting this line is that bead's last step.
+invented-declaration||.munin-explorer-filters__toolbar|flex-wrap
