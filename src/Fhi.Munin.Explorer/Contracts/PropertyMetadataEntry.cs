@@ -22,10 +22,15 @@ public sealed record PropertyMetadataEntry
         new Dictionary<string, string>();
 
     /// <summary>
-    /// Name of the section the key belongs under, per language code, e.g. <c>Identifikasjon</c>.
-    /// Empty when the key is not assigned to a group — render those ungrouped rather than
-    /// inventing a heading.
+    /// Title of the section the key belongs under, per language code, e.g. <c>Identifikasjon</c>.
+    /// Empty when no placement files the key on the surface this payload was fetched for.
     /// </summary>
+    /// <remarks>
+    /// This package draws nothing for an unfiled key, and a consumer should think hard before
+    /// gathering them under a catch-all heading instead: the keys that arrive without a section are
+    /// the column-backed ones, which every detail page already draws in markup of its own, so a
+    /// catch-all renders the same fact a second time under a second word.
+    /// </remarks>
     [JsonPropertyName("groupTranslations")]
     public IReadOnlyDictionary<string, string> GroupTranslations { get; init; } =
         new Dictionary<string, string>();
@@ -40,7 +45,20 @@ public sealed record PropertyMetadataEntry
     /// </remarks>
     [JsonPropertyName("groupKey")] public string? GroupKey { get; init; }
 
-    /// <summary>Ascending display order within the group.</summary>
+    /// <summary>
+    /// Ascending order of the section itself on the surface this payload was fetched for. Null
+    /// either when no placement names the section there or when the API predates the field.
+    /// </summary>
+    /// <remarks>
+    /// Repeated on every entry of one section, and the same section can carry a different order on
+    /// another surface — the order belongs to the placement, not to the section. A consumer reading
+    /// null infers the section's position from its members' <see cref="SortOrder"/> instead, which
+    /// is what every consumer did before this field existed and is why a section could move up the
+    /// page when a previously-empty property was filled in.
+    /// </remarks>
+    [JsonPropertyName("groupSortOrder")] public int? GroupSortOrder { get; init; }
+
+    /// <summary>Ascending display order within the section.</summary>
     [JsonPropertyName("sortOrder")] public int SortOrder { get; init; }
 
     /// <summary>
