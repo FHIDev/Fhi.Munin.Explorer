@@ -92,6 +92,8 @@ export const groupRows = (page, name) => page.locator('.munin-explorer-filters l
  */
 async function untilTwoPlacements(page, name) {
   const deadline = Date.now() + findTimeout;
+  let drawn = -1;
+  let moved = false;
 
   for (;;) {
     const rows = await groupRows(page, name);
@@ -100,9 +102,18 @@ async function untilTwoPlacements(page, name) {
       return rows;
     }
 
+    // Whether the count was still moving when the window closed, which is what tells a slow render
+    // from a capture that changed: a row count that never budged is the fixture's answer, and one
+    // that arrived or grew late is this poll being too short for the round trip.
+    moved = moved || (drawn !== -1 && rows.length !== drawn);
+    drawn = rows.length;
+
     if (Date.now() > deadline) {
-      throw new Error(`the kilde tree drew ${rows.length} row(s) for "${name}" where it draws two: ` +
-        'the fixture no longer carries a group placed under two datasamlinger of one kilde');
+      throw new Error(moved
+        ? `the kilde tree never reached two rows for "${name}" inside ${findTimeout}ms and was ` +
+          `still redrawing them, ${drawn} at the last look: too short a wait rather than a finding`
+        : `the kilde tree drew ${drawn} row(s) for "${name}" and settled there: the fixture no ` +
+          'longer carries a group placed under two datasamlinger of one kilde');
     }
 
     await page.waitForTimeout(250);
@@ -239,17 +250,9 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // The Kilde facet's tree open down to its variabelgrupper — the level Fhi.Metadata-g51gg added.
-  // filters-level-lines above already draws them, by unfolding the whole captured catalogue, which
-  // is the wrong vehicle for a PRESS: a tick rebuilds every row of it. The facet's own search keeps
-  // the matching kilde and opens the branches standing between it and the match, so this state
-  // reaches the same level in the rows of one kilde.
-  //
-  // VARIABELGRUPPE names a group the capture draws under two datasamlinger of one kilde, both of
-  // them hanging straight off that kilde with no delkilde between — the majority shape in the
-  // catalogue, and the one an inner join loses. Its `filter` is `"2"`, which the tree draws as a
-  // checkbox all the same, the opt-out being the standalone facet's rule alone
-  // (Fhi.Metadata-fbe3w). Every shape the assertions in state-assertions.mjs need, in one state.
+  // The Kilde facet's tree open down to its variabelgrupper, reached through the facet's own search
+  // rather than by unfolding the whole catalogue as filters-level-lines does — a tick rebuilds every
+  // row of that. (Fhi.Metadata-g51gg, Fhi.Metadata-fbe3w)
   'filters-variabelgrupper': async page => {
     const panel = page.locator('.munin-explorer-filters');
     await panel.waitFor({ state: 'visible', timeout: findTimeout });
@@ -278,12 +281,9 @@ export const states = {
     }
   },
 
-  // The Kilde facet with nothing left in it: a term matching no kilde, no delkilde, no datasamling
-  // and no variabelgruppe. The facet stays standing rather than dropping out, because dropping out
-  // would take the box the reader has to widen the term in away with it (Fhi.Metadata-l9l2n.67) —
-  // so what axe judges here is a disclosure holding a message and a search field and no list at
-  // all, which is the one empty state either explorer reaches without the stub answering
-  // differently than it does.
+  // The Kilde facet with nothing left in it, which is the one empty state either explorer reaches
+  // without the stub answering differently: a disclosure holding a message and the search box the
+  // reader has to widen the term in, and no list at all. (Fhi.Metadata-l9l2n.67)
   'filters-no-match': async page => {
     const panel = page.locator('.munin-explorer-filters');
     await panel.waitFor({ state: 'visible', timeout: findTimeout });

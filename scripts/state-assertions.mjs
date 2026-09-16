@@ -415,6 +415,28 @@ async function tickRow(page, index) {
     .waitFor({ state: 'visible', timeout: findTimeout });
 }
 
+/**
+ * Whether `box` holds focus, polled rather than read once.
+ *
+ * The rescue is an interop call travelling back over the circuit, so it can land after the render
+ * that emptied the facet is already on screen: one read turns a slow round trip into a finding.
+ */
+async function untilFocused(page, box) {
+  const deadline = Date.now() + findTimeout;
+
+  for (;;) {
+    if (await box.evaluate(one => one === document.activeElement)) {
+      return true;
+    }
+
+    if (Date.now() > deadline) {
+      return false;
+    }
+
+    await page.waitForTimeout(100);
+  }
+}
+
 export const assertions = [
   {
     name: 'every contents-nav link resolves to this page rather than to the host base',
@@ -1002,16 +1024,9 @@ export const assertions = [
     kind: 'invariant',
     states: ['filters-variabelgrupper'],
 
-    // A group hangs under every datasamling its variables are in, so the tree draws it at more than
-    // one place and every placement carries the one VariabelgruppeIds entry (Fhi.Metadata-km3zb).
-    // The reader flips ONE of those boxes and the browser writes that one itself; every other
-    // placement has to arrive from the render that follows, computed against a previous render tree
-    // Blazor has patched at the pressed box alone.
-    //
-    // VariableSearchTest asks the same question of the render tree and this asks it of the page, so
-    // read this as the round trip rather than as the only place it is asked: the answer is a real
-    // one off the stub, the tree is rebuilt whole rather than re-rendered in hand, and the press is
-    // a pointer press whose flip lands before any handler runs.
+    // A group hangs under every datasamling its variables are in, and every placement carries the
+    // one VariabelgruppeIds entry: the browser writes the box it flipped, and every other placement
+    // arrives from a render patched at that box alone. (Fhi.Metadata-km3zb)
     async stage(page) {
       const placements = await groupRows(page, VARIABELGRUPPE);
 
@@ -1088,19 +1103,9 @@ export const assertions = [
     kind: 'invariant',
     states: ['filters-variabelgrupper'],
 
-    // The other half of the claim the assertion above and the fold assertion before it make between
-    // them: expansion is the panel's state and selection is the filter's, and neither moves the
-    // other. That one measures collapsing over a selection; this one measures selecting under an
-    // expansion, which is the direction a refetch can break — a tick rebuilds the whole tree from a
-    // fresh /filters answer, and _expandedBranches is deliberately not cleared when one arrives.
-    //
-    // It OVERLAPS a bUnit test on purpose, and the overlap is worth stating rather than dressing
-    // up: Branches_WhenOneIsShutAfterExpandAll_ThenItStaysShutThroughTheNextAnswer asks the same
-    // question of the render tree, and a clear added to _expandedBranches would redden both. What
-    // this adds is the round trip — a real answer off the stub rebuilding the whole tree, with the
-    // folds read back off the page as aria-controls ids that survived it — and the branches being
-    // ones the FACET SEARCH opened rather than ones a press did. Read it as the same rule measured
-    // one layer out, not as the only place the rule is measured.
+    // Expansion is the panel's state and selection is the filter's, and this is the direction a
+    // refetch can break them together: a tick rebuilds the whole tree off a fresh /filters answer,
+    // and _expandedBranches is deliberately not cleared when one arrives. (Fhi.Metadata-g51gg)
     async stage(page) {
       const before = await openBranchIds(page);
 
@@ -1163,14 +1168,9 @@ export const assertions = [
     kind: 'invariant',
     states: ['variables-list'],
 
-    // Focus after a re-render, which is the one thing here no render tree holds: onchange fires
-    // BECAUSE focus has left the box, so a commit that narrows rewrites the list the reader who
-    // tabbed out is now standing in, and the component puts them back (Fhi.Metadata-6we8a). bUnit
-    // can see that FocusAsync was called and not where document.activeElement ended up.
-    //
-    // Committed by moving focus to another control rather than with Enter, and that is what makes
-    // the rescue load-bearing: Enter keeps focus in the box whether or not the component asks for
-    // it, so an assertion staged that way would hold with the call gone and measure nothing.
+    // Focus after a re-render, the one thing no render tree holds: onchange fires BECAUSE focus left
+    // the box, so a narrowing commit rewrites the list the reader tabbed into and the component puts
+    // them back. Committed by blur, never Enter, which keeps focus with the call gone. (Fhi.Metadata-6we8a)
     async stage(page) {
       const panel = page.locator(PANEL);
       await panel.waitFor({ state: 'visible', timeout: findTimeout });
@@ -1189,8 +1189,11 @@ export const assertions = [
 
       const drawn = await facet.locator('li').count();
 
+      // Typed rather than filled, so the blur is the only thing that commits: fill() dispatches
+      // change as well as input, which fires the rescue while focus is still in the box and leaves
+      // the interop racing the focus() below.
       await box.click();
-      await box.fill(NO_MATCH);
+      await box.pressSequentially(NO_MATCH);
       await elsewhere.focus();
 
       // The narrowed facet, waited for rather than slept through: the commit travels over the
@@ -1229,7 +1232,7 @@ export const assertions = [
             `"${NO_MATCH}", so the term they have to widen is not the one on screen`);
         }
 
-        if (!await box.evaluate(one => one === document.activeElement)) {
+        if (!await untilFocused(page, box)) {
           const where = await page.evaluate(() => {
             const one = document.activeElement;
 

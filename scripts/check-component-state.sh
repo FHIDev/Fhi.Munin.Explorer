@@ -46,6 +46,9 @@
 #     opted-out trunk carrying an offered descendant is a shape it cannot draw either. All three
 #     are covered in test/ by FilterHierarchyTest and VariableSearchTest and stay there until a
 #     re-capture reaches them (Fhi.Metadata-4wdnn);
+#   - an empty RESULT list, and so every press staged over one. The facet emptied by its own search
+#     is reached by typing, which is why filters-no-match exists at all, but the stub serves the same
+#     variables page whatever the query, so no press here has nought rows behind it;
 #   - one press per call site. The picker's other columns and the panel's other facets go the same
 #     way by construction, but by construction is not measured;
 #   - the sample stylesheet, not helsedata's. This runs ModernHost, as check-accessibility.sh does,
