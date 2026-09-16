@@ -192,33 +192,61 @@ internal static class DetailBlocks
     {
         var reader = ReaderLanguage.Of(language);
         var text = Texts.For(language);
+        var isCatchAll = string.Equals(group.Key, "alle-metadatafelt", StringComparison.Ordinal);
 
-        builder.OpenElement(0, $"h{level}");
-        builder.AddAttribute(1, "class", "headline headline-xxs margin--none munin-explorer-group");
-        builder.AddAttribute(2, "lang", CatalogueProperties.Foreign(group.NameLanguage, reader));
-        builder.AddContent(3, group.Name);
-        builder.CloseElement();
+        var seq = 0;
 
-        builder.OpenElement(4, "dl");
-        builder.AddAttribute(5, "class", PageFields);
+        if (isCatchAll)
+        {
+            builder.OpenElement(seq++, $"h{level}");
+            builder.AddAttribute(seq++, "class", "headline headline-xxs margin--none munin-explorer-group munin-explorer-catchall-heading");
+            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(group.NameLanguage, reader));
+            builder.AddContent(seq++, group.Name);
+            builder.CloseElement();
 
-        var seq = 10;
+            builder.OpenElement(seq++, "p");
+            builder.AddAttribute(seq++, "class", "munin-explorer-catchall-lead");
+            builder.AddContent(seq++, "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne kilden, slik de er registrert.");
+            builder.CloseElement();
+
+            builder.OpenElement(seq++, "details");
+            builder.AddAttribute(seq++, "class", "munin-explorer-catchall-details");
+            builder.OpenElement(seq++, "summary");
+            builder.AddContent(seq++, "Alle felt fra Munin, slik de er registrert");
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenElement(seq++, $"h{level}");
+            builder.AddAttribute(seq++, "class", "headline headline-xxs margin--none munin-explorer-group");
+            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(group.NameLanguage, reader));
+            builder.AddContent(seq++, group.Name);
+            builder.CloseElement();
+        }
+
+        builder.OpenElement(seq++, "dl");
+        builder.AddAttribute(seq++, "class", isCatchAll ? $"{PageFields} munin-explorer-catchall-grid" : PageFields);
 
         foreach (var row in group.Rows)
         {
-            builder.OpenElement(seq, "div");
+            builder.OpenElement(seq++, "div");
 
-            builder.OpenElement(seq + 1, "dt");
-            builder.AddAttribute(seq + 2, "class", "headline headline-xxs margin--none");
-            builder.AddAttribute(seq + 3, "lang", CatalogueProperties.Foreign(row.LabelLanguage, reader));
-            builder.AddContent(seq + 4, row.Label);
+            builder.OpenElement(seq++, "dt");
+            builder.AddAttribute(seq++, "class", "headline headline-xxs margin--none");
+            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(row.LabelLanguage, reader));
+            builder.AddContent(seq++, row.Label);
             builder.CloseElement();
 
-            seq = Values(builder, seq + 5, row, reader, text, PageLanguage);
+            seq = Values(builder, seq, row, reader, text, PageLanguage);
 
             builder.CloseElement();
         }
 
         builder.CloseElement();
+
+        if (isCatchAll)
+        {
+            builder.CloseElement();
+        }
     };
 }

@@ -28,7 +28,8 @@ internal readonly record struct PropertyRow(
 internal sealed record PropertyGroup(
     string Name,
     string NameLanguage,
-    IReadOnlyList<PropertyRow> Rows);
+    IReadOnlyList<PropertyRow> Rows,
+    string? Key = null);
 
 /// <summary>
 /// Resolving the catalogue's own properties: their names, their groups, and the words behind their
@@ -384,7 +385,8 @@ internal static class CatalogueProperties
         IReadOnlyList<PropertyMetadataEntry> metadata,
         IReadOnlyDictionary<string, string?>? values,
         string reader,
-        IReadOnlySet<string>? drawnElsewhere = null)
+        IReadOnlySet<string>? drawnElsewhere = null,
+        IReadOnlyList<PropertyRow>? computedFacts = null)
     {
         var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
         var groups = new List<Gathering>();
@@ -423,11 +425,23 @@ internal static class CatalogueProperties
             existing.Entries.Add(entry);
         }
 
+        var catchAll = groups.Find(g => string.Equals(g.Key, "alle-metadatafelt", StringComparison.Ordinal));
+        if (catchAll != null)
+        {
+            catchAll.Entries.Clear();
+            catchAll.Entries.AddRange(metadata);
+        }
+
         var resolved = new List<(PropertyGroup Group, bool Inferred, int Order)>();
 
         foreach (var group in groups)
         {
-            var rows = Rows(group.Entries, present, reader);
+            var rows = Rows(group.Entries, present, reader).ToList();
+
+            if (string.Equals(group.Key, "alle-metadatafelt", StringComparison.Ordinal) && computedFacts != null)
+            {
+                rows.AddRange(computedFacts);
+            }
 
             if (rows.Count == 0)
             {
@@ -442,7 +456,7 @@ internal static class CatalogueProperties
                 .DefaultIfEmpty(int.MaxValue)
                 .Min();
 
-            resolved.Add((new PropertyGroup(group.Name, group.Language, rows),
+            resolved.Add((new PropertyGroup(group.Name, group.Language, rows, group.Key),
                           group.PlacedOrder is null,
                           order));
         }

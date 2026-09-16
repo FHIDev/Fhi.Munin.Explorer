@@ -697,6 +697,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer` | handle |
   | `munin-explorer-alert` | handle |
   | `munin-explorer-breadcrumb` | meaning |
+  | `munin-explorer-catchall-details` | handle |
+  | `munin-explorer-catchall-grid` | handle |
+  | `munin-explorer-catchall-heading` | handle |
+  | `munin-explorer-catchall-lead` | handle |
   | `munin-explorer-codes` | handle |
   | `munin-explorer-codes__table` | handle |
   | `munin-explorer-container` | handle |

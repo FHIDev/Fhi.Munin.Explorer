@@ -51,11 +51,12 @@ public class KildeViewTest : BunitContext
             Task.FromResult<KildeHierarchy?>(new() { KildeId = id });
     }
 
-    private static PropertyMetadataEntry Entry(string key, int sortOrder, string group, string? displayName = null) =>
+    private static PropertyMetadataEntry Entry(string key, int sortOrder, string group, string? displayName = null, string? groupKey = null) =>
         new()
         {
             Key = key,
             SortOrder = sortOrder,
+            GroupKey = groupKey,
             GroupTranslations = new Dictionary<string, string> { ["no"] = group },
             DisplayNameTranslations = new Dictionary<string, string> { ["no"] = displayName ?? key },
         };
@@ -2438,5 +2439,41 @@ public class KildeViewTest : BunitContext
         Assert.True(blocks.Count > 0, "The sample no longer has a min-width: 1024px block.");
 
         return string.Concat(blocks);
+    }
+    [Fact]
+    public void CatchAll_WhenIdentifiedByGroupKey_ThenItRendersALeadAndACollapsedDetails()
+    {
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Test", 10, "Ikke Alle metadatafelt", groupKey: "alle-metadatafelt")],
+            AdditionalProperties = new Dictionary<string, string?> { ["Test"] = "verdi" },
+        };
+
+        var cut = Render(kilde);
+
+        var details = cut.Find("details.munin-explorer-catchall-details");
+        Assert.False(details.HasAttribute("open"));
+
+        var summary = details.QuerySelector("summary");
+        Assert.NotNull(summary);
+        Assert.Equal("Alle felt fra Munin, slik de er registrert", summary.TextContent.Trim());
+
+        var lead = cut.Find("p.munin-explorer-catchall-lead");
+        Assert.Contains("Seksjonene over er et utvalg", lead.TextContent);
+    }
+
+    [Fact]
+    public void CatchAll_WhenRenamedInThePayload_ThenItStillRendersTheLeadAndDisclosure()
+    {
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Test", 10, "Helt annet navn", groupKey: "alle-metadatafelt")],
+            AdditionalProperties = new Dictionary<string, string?> { ["Test"] = "verdi" },
+        };
+
+        var cut = Render(kilde);
+
+        Assert.NotNull(cut.Find("details.munin-explorer-catchall-details"));
+        Assert.NotNull(cut.Find("p.munin-explorer-catchall-lead"));
     }
 }

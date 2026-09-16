@@ -4026,3 +4026,16 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-dataitem-main__period .munin-explorer-dataitem-main__column__text {
   white-space: normal;
 }
+
+.munin-explorer-catchall-details {
+    display: block;
+}
+.munin-explorer-catchall-grid {
+    display: block;
+}
+.munin-explorer-catchall-heading {
+    display: block;
+}
+.munin-explorer-catchall-lead {
+    display: block;
+}

@@ -173,7 +173,19 @@ public sealed partial class DatasamlingView : ComponentBase
                                             DrawnElsewhere);
 
         _groups = CatalogueProperties.Groups(datasamling.PropertyMetadata, _placement.Values, Reader,
-                                             _placement.DrawnElsewhere);
+                                             _placement.DrawnElsewhere, CatchAllFacts());
+    }
+
+    private IReadOnlyList<PropertyRow> CatchAllFacts()
+    {
+        if (Datasamling is not { } datasamling) return [];
+        var facts = new System.Collections.Generic.List<PropertyRow>();
+        if (!string.IsNullOrWhiteSpace(VariableCount))
+            facts.Add(new PropertyRow(T.FieldVariableCount, Reader, [new LocalisedText(VariableCount, Reader)]));
+        var updated = CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language);
+        if (!string.IsNullOrWhiteSpace(updated))
+            facts.Add(new PropertyRow(T.FieldLastUpdated, Reader, [new LocalisedText(updated, Reader)]));
+        return facts;
     }
 
     /// <inheritdoc cref="Groups"/>

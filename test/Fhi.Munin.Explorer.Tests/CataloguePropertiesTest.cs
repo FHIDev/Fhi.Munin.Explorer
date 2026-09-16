@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
+using System.Text.Json;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -53,6 +55,17 @@ public class CataloguePropertiesTest
             OptionsJson = optionsJson,
             Type = type,
         };
+    }
+
+    [Fact]
+    public void Contracts_WhenTheFixtureCarriesGroupKey_ThenTheEntryDeserialisesIt()
+    {
+        var json = TestData.Read("kilde-med-delkilder.json");
+        var kilde = JsonSerializer.Deserialize<KildeDetail>(json, MuninExplorerClient.Json);
+        Assert.NotNull(kilde);
+
+        var withGroupKey = kilde.PropertyMetadata.Where(m => m.GroupKey != null).ToList();
+        Assert.Equal(73, withGroupKey.Count);
     }
 
     // ---------------------------------------------------------------------------------

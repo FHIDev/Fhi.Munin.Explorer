@@ -211,7 +211,23 @@ public sealed partial class KildeView : ComponentBase
                                             DrawnElsewhere(kilde));
 
         _groups = CatalogueProperties.Groups(kilde.PropertyMetadata, _placement.Values, Reader,
-                                             _placement.DrawnElsewhere);
+                                             _placement.DrawnElsewhere, CatchAllFacts());
+    }
+
+    private IReadOnlyList<PropertyRow> CatchAllFacts()
+    {
+        if (Kilde is not { } kilde) return [];
+        var facts = new System.Collections.Generic.List<PropertyRow>();
+        if (!string.IsNullOrWhiteSpace(TotalVariables))
+            facts.Add(new PropertyRow(T.FieldTotalVariables, Reader, [new LocalisedText(TotalVariables, Reader)]));
+        if (DataCollections.Count > 0)
+            facts.Add(new PropertyRow(T.FieldDataCollections, Reader, [new LocalisedText(DataCollections.Count.ToString(), Reader)]));
+        if (!string.IsNullOrWhiteSpace(DataPeriod))
+            facts.Add(new PropertyRow(T.FieldDataPeriod, Reader, [new LocalisedText(DataPeriod, Reader)]));
+        var updated = CatalogueDate.DayOrNothing(kilde.LastUpdated, Language);
+        if (!string.IsNullOrWhiteSpace(updated))
+            facts.Add(new PropertyRow(T.FieldLastUpdated, Reader, [new LocalisedText(updated, Reader)]));
+        return facts;
     }
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
