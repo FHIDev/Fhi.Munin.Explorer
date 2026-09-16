@@ -5243,27 +5243,6 @@ public class KildeSearchTest : BunitContext
             "No rule undoes [hidden] on the facets once the host has room for a sidebar.");
     }
 
-    [Fact]
-    public void ExpandIcon_WhenASampleStandsInForStiler_ThenTheDeclarationItNeedsIsABox()
-    {
-        // Same shape as the fold's guard above. `.icon` gives the chevron a 24px box on a Stiler
-        // host, and it is that box the toggle's target size rests on; a sample has no `.icon`, so a
-        // stand-in declaring only a colour would draw a control the reader cannot hit.
-        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-kilder__expand-icon");
-
-        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
-
-        var blocks = rules.Select(r => Squeezed(r.Declarations)).ToList();
-
-        Assert.True(
-            blocks.Any(d => d.Contains("height:24px", StringComparison.Ordinal)),
-            "No rule gives the chevron the 24px height Stiler's `.icon` gives it.");
-
-        Assert.True(
-            blocks.Any(d => d.Contains("width:24px", StringComparison.Ordinal)),
-            "No rule gives the chevron the 24px width Stiler's `.icon` gives it.");
-    }
-
     // ---------------------------------------------------------------------------------
     // The column picker. Its helpers are in KildeColumns, because KildeSelectionTest sweeps the
     // same toggles with the handover wired. (Fhi.Metadata-ay3zz)

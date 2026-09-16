@@ -552,53 +552,6 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   color: #fff;
 }
 
-/* The track. OFF IS THE STATE THAT NEARLY FAILED: its --grey20 fill is the hover surface's own
-   colour, 1.00:1 on it, so the --grey60 BORDER is what carries 1.4.11 — 6.76:1 and 6.38:1. Never
-   --primary; another control here is the frequency__track failure again. (Fhi.Metadata-l9l2n.86) */
-.munin-explorer-switch__track {
-  position: relative;
-  flex: none;
-  width: 30px;
-  height: 18px;
-  border: 1px solid var(--grey60);
-  border-radius: 9px;
-  background-color: var(--grey20);
-}
-
-.munin-explorer-switch[aria-checked="true"] .munin-explorer-switch__track {
-  background-color: var(--grey60);
-}
-
-/* The thumb, 12x12 travelling 12px — inset 2px from the track's border box, 3px from its outer
-   edge. It inverts with the track at 6.38:1 and 7.23:1, but the carrying signal is POSITION: left
-   is off and right is on with every colour removed. */
-.munin-explorer-switch__thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background-color: var(--grey60);
-}
-
-.munin-explorer-switch[aria-checked="true"] .munin-explorer-switch__thumb {
-  left: 14px;
-  background-color: #fff;
-}
-
-/* Both parts go white on the focus surface, at 7.23:1: --grey60 on --grey60 is the control
-   vanishing under the reader who just tabbed to it. Position still says on from off, so neither
-   state depends on these. After the aria-checked rules on purpose — equal specificity. */
-.munin-explorer-switch:focus-visible .munin-explorer-switch__track {
-  border-color: #fff;
-  background-color: var(--grey60);
-}
-
-.munin-explorer-switch:focus-visible .munin-explorer-switch__thumb {
-  background-color: #fff;
-}
-
 .munin-explorer-filters details {
   border-bottom: 1px solid var(--grey30);
   padding: 8px 0;
@@ -1117,26 +1070,14 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 }
 
 /* helsedata ships an icon font for this — .icon alone carries 466 rules across five of their
-   bundles. A sample host has no such font, so the chevron is drawn from a character instead.
-   It rotates rather than swapping glyphs, which is what makes the state change read as motion. */
+   bundles. A sample host has no such font, so the chevron is the two images Stiler swaps between,
+   and nothing turns them: an `icon_up.svg` rotated points right. (Fhi.Metadata-zqj5j) */
 .munin-explorer-dataitem-main__expand-icon {
   display: inline-block;
   width: 16px;
-  color: var(--primary);
-  transition: transform 120ms ease;
   flex: 0 0 1rem;
   background-size: 1rem;
   height: 1rem;
-}
-
-.munin-explorer-dataitem-main__expand-icon::before {
-  content: "›";           /* › */
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-.icon-keyboard-arrow-down.munin-explorer-dataitem-main__expand-icon {
-  transform: rotate(90deg);
 }
 
 /* The name is the disclosure, so it has to look like the control it is without wearing a button
@@ -2320,27 +2261,6 @@ table.munin-explorer-data-list tbody th {
   display: inline-flex;
 }
 
-/* A sample has no icon font, so this stands in for Stiler's `.icon` — the same character the
-   variable rows' chevron is drawn from. The 24px box is the load-bearing part: the toggle above
-   pads by 6px a side and 4px, so the glyph carries the target size. (Fhi.Metadata-mpx2p) */
-.munin-explorer-kilder__expand-icon {
-  color: var(--primary);
-  display: inline-block;
-  height: 24px;
-  transition: transform 120ms ease;
-  width: 24px;
-}
-
-.munin-explorer-kilder__expand-icon::before {
-  content: "›";           /* › */
-  font-size: 1.25rem;
-  line-height: 24px;
-}
-
-.icon-keyboard-arrow-down.munin-explorer-kilder__expand-icon {
-  transform: rotate(90deg);
-}
-
 /* Measured in the sample before this was written: on grey10 alone the panel was invisible against
    the white table, so six datasamlinger read as six more kilder, under a second header row nobody
    had said was nested. The inset and the rule down the left are what say "inside this row". */
@@ -2515,7 +2435,7 @@ table.munin-explorer-data-list tbody th {
   z-index: 99;
 }
 
-/* No icon font here, as for the row chevron above, so the trigger's icons are characters too.
+/* No icon font here, so the trigger's icons are characters — the row chevron is images now.
    Scoped to the trigger: an unscoped .icon-keyboard-arrow-down::before would also land on the
    row's expand icon and draw two arrows over each other. */
 .munin-explorer-header__actions-button > .icon {

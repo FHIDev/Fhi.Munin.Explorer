@@ -500,7 +500,7 @@ that catches exactly that under the prefix, is deliberately off here. What repla
 the run prints how many borrowed rules the sample writes matched no Stiler selector, and that
 number is the size of the blind spot for that run. It is not zero. Read it.
 
-The 214 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
+The 210 divergences standing today are listed in `test/sample-css-known-divergences.txt`. **Nothing
 writes that file.** A divergence not listed fails the build, and a listed line that no longer
 diverges also fails it with an instruction to delete the line, so the count can only go down.
 Adding a line is a hand edit that needs a reason; do not add one to get a branch green. What the

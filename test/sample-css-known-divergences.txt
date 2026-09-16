@@ -37,7 +37,7 @@
 # declaration on its own line so it has something a script can reconcile. The 62 missing selectors
 # were close to the rule-level count on their own.
 #
-# It is 175 now, and the three that went are worth recording because they are the first proof the
+# It was 175 then, and the three that went are worth recording because they are the first proof the
 # stale half of the guard works. #204 landed Fhi.Metadata-cuo0e and -7e7de while this branch was
 # open — the base `.munin-explorer` rule, the drilldown's grid-column, and the sibling rule beside
 # it. The guard went red on the merge with an instruction to delete three lines that no longer
@@ -47,13 +47,13 @@
 # Everything the manual diff named is in here, which is the check that the comparison is not
 # missing cases: the whole `@media (max-width:1280px)` row-collapse block, the eleven
 # `munin-explorer-meta` table rules, the filters toolbar and its `position: sticky`, `__column`'s
-# seven declarations, `__tab-content`'s three, the expand icon's invented rotate,
-# `.munin-explorer-detail`'s invented border-top, and `.munin-explorer-frequency__track` painting
-# grey20 where Stiler's own comment says not to. The base rule and the drilldown's grid-column were
-# in it too, until #204.
+# seven declarations, `__tab-content`'s three, `.munin-explorer-detail`'s invented border-top, and
+# `.munin-explorer-frequency__track` painting grey20 where Stiler's own comment says not to. The
+# base rule and the drilldown's grid-column were in it too, until #204, and the expand icon's
+# invented rotate until Fhi.Metadata-zqj5j deleted the rule.
 #
 # Stiler 0.1.75 retires three entries: the expand icon's width and the choicepicker's two
-# declarations now exist in the package. 214 entries remain; no new exceptions were added.
+# declarations now exist in the package. 214 entries remained then; no new exceptions were added.
 #
 # IT WAS 217 SINCE Fhi.Metadata-35w0p.6, and the three that arrived are the second family of
 # entries here with an expiry condition rather than drift. That bead stopped emitting the 320px
@@ -62,18 +62,19 @@
 # Fhi.Metadata-35w0p.39, so the sample was ahead of the pin exactly as the two choicepicker lines
 # described further down once were. All three have since been retired, and none is left below.
 #
-# IT IS 214 SINCE Fhi.Metadata-l9l2n.105, and the 40 that arrived are a new FAMILY rather than new
-# drift: until that bead the comparison looked only at the munin-explorer prefix, so every rule the
-# sample writes for a name it BORROWS from Stiler - the choicepicker, the buttons, the searchbox,
-# `screenreader-only` - was compared against nothing at all. The sample had invented
-# `white-space: nowrap` on `.dropdown-choicepicker__item`, where Stiler declares no `white-space`,
-# and the 55px overhang that produced was measured against ModernHost and filed as a P2 functional
-# defect in the component (Fhi.Metadata-abmom). They are listed at the bottom of this file under
-# their own heading, which also says how they were measured: off helsedata.no's served bundle
-# first, because the box they were found on could not restore the pin, and then confirmed against
-# the pin by the credentialed CI job. All but one of them: `.datasourcecard__heading|font-weight`
-# arrived after that run, when the `font` shorthand stopped blanket-exempting the longhands
-# beside it, so the bundle is still the only thing that has read that line.
+# IT WAS 214 FROM Fhi.Metadata-l9l2n.105, 212 after Fhi.Metadata-ofg1h and 210 now. The 40 that
+# arrived with l9l2n.105 are a new FAMILY rather than new drift: until that bead the comparison
+# looked only at the munin-explorer prefix, so every rule the sample writes for a name it BORROWS
+# from Stiler - the choicepicker, the buttons, the searchbox, `screenreader-only` - was compared
+# against nothing at all. The sample had invented `white-space: nowrap` on
+# `.dropdown-choicepicker__item`, where Stiler declares no `white-space`, and the 55px overhang
+# that produced was measured against ModernHost and filed as a P2 functional defect in the
+# component (Fhi.Metadata-abmom). They are listed at the bottom of this file under their own
+# heading, which also says how they were measured: off helsedata.no's served bundle first, because
+# the box they were found on could not restore the pin, and then confirmed against the pin by the
+# credentialed CI job. All but one of them: `.datasourcecard__heading|font-weight` arrived after
+# that run, when the `font` shorthand stopped blanket-exempting the longhands beside it, so the
+# bundle is still the only thing that has read that line.
 #
 # IT WAS 174 SINCE Fhi.Metadata-f6az7. Three went and two arrived, and the two are the first
 # entries here with an expiry condition written into them. The three that went - the choicepicker
@@ -144,9 +145,7 @@ invented-declaration||.munin-explorer-data-list__item|border-bottom
 invented-declaration||.munin-explorer-dataitem-main__desiredData input|border
 invented-declaration||.munin-explorer-dataitem-main__desiredData input|border-radius
 invented-declaration||.munin-explorer-dataitem-main__desiredData input|padding
-invented-declaration||.munin-explorer-dataitem-main__expand-icon|color
 invented-declaration||.munin-explorer-dataitem-main__expand-icon|display
-invented-declaration||.munin-explorer-dataitem-main__expand-icon|transition
 invented-declaration||.munin-explorer-datasamling__criteria|margin
 invented-declaration||.munin-explorer-detail|border-top
 invented-declaration||.munin-explorer-filters__count|overflow-wrap
@@ -297,7 +296,7 @@ missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 
 # ---------------------------------------------------------------------------------------------
 # BORROWED SELECTORS. Everything above this line is a name under the `munin-explorer` prefix; the
-# 40 below are names the component wears from Stiler, which the comparison did not look at until
+# 41 below are names the component wears from Stiler, which the comparison did not look at until
 # Fhi.Metadata-l9l2n.105. `.dropdown-choicepicker__item { white-space: nowrap }` is why it does
 # now: the sample invented that declaration, the guard was blind to it, and a measurement taken
 # against the sample was written up as a P2 functional defect in the component.
