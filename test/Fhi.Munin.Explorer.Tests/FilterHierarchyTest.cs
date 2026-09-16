@@ -3,9 +3,8 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>Which node hangs where, and what may be offered. Tested apart from the markup because a
-/// group hung off its <c>parentId</c> rather than off its owner, or an opted-out one offered as a
-/// checkbox, renders perfectly and narrows by the wrong id.</summary>
+/// <summary>Which node hangs where. Tested apart from the markup because a group hung off its
+/// <c>parentId</c> rather than off its owner renders perfectly and narrows by the wrong id.</summary>
 public class FilterHierarchyTest
 {
     private static readonly Guid Mfr = new("aaaaaaaa-0000-0000-0000-000000000001");
@@ -40,47 +39,7 @@ public class FilterHierarchyTest
         var datasamling = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
 
         Assert.Equal(["Bakgrunn", "Levekår", "Diagnoser"], datasamling.Children.Select(node => node.Name));
-        Assert.All(datasamling.Children, node => Assert.True(node.Offered));
         Assert.All(datasamling.Children, node => Assert.Equal(HierarchyLevel.Variabelgruppe, node.Level));
-    }
-
-    [Fact]
-    public void StandaloneVariabelgrupper_WhenAGroupIsOptedOut_ThenItNestsWhatIsOfferedWithoutBeingOffered()
-    {
-        // Both halves, because either alone passes against the other's failure: a checkbox there
-        // offers a filter the API withholds, and dropping the row strands the group under it.
-        var facets = Answer() with
-        {
-            Variabelgrupper =
-            [
-                Variabelgruppe(Bakgrunn, "Bakgrunn", [], filter: VariabelgruppeFacet.StandaloneFacetOptOut),
-                Variabelgruppe(Levekaar, "Levekår", [], parent: Bakgrunn, filter: "1"),
-                Variabelgruppe(Diagnoser, "Diagnoser", [], parent: Bakgrunn)
-            ]
-        };
-
-        var trunk = Assert.Single(FilterHierarchy.StandaloneVariabelgrupper(facets));
-
-        Assert.False(trunk.Offered);
-        Assert.Equal(["Levekår", "Diagnoser"], trunk.Children.Select(node => node.Name));
-        Assert.All(trunk.Children, node => Assert.True(node.Offered));
-    }
-
-    [Fact]
-    public void StandaloneVariabelgrupper_WhenAnOptedOutGroupStandsAlone_ThenNothingOffersItBack()
-    {
-        // The shape the answer takes when the request already selects the group: it is listed for
-        // the selection's sake and is still not a choice the facet may make. (Fhi.Metadata-fbe3w)
-        // The method takes no selection at all, which is what makes that structural.
-        var facets = Answer() with
-        {
-            Variabelgrupper =
-            [
-                Variabelgruppe(Bakgrunn, "Bakgrunn", [], filter: VariabelgruppeFacet.StandaloneFacetOptOut)
-            ]
-        };
-
-        Assert.False(Assert.Single(FilterHierarchy.StandaloneVariabelgrupper(facets)).Offered);
     }
 
     [Fact]
@@ -224,10 +183,9 @@ public class FilterHierarchyTest
     }
 
     [Fact]
-    public void Build_WhenTheAnswerCarriesNothing_ThenBothSurfacesAreEmpty()
+    public void Build_WhenTheAnswerCarriesNothing_ThenTheTreeIsEmpty()
     {
         Assert.Empty(FilterHierarchy.Build(Answer()));
-        Assert.Empty(FilterHierarchy.StandaloneVariabelgrupper(Answer()));
     }
 
     [Fact]

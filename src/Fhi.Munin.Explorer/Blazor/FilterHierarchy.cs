@@ -14,9 +14,8 @@ internal enum HierarchyLevel
 }
 
 /// <summary><c>Path</c> is where the node is drawn and <c>Id</c> what ticking it selects, since one
-/// group hangs under every datasamling its variables are in; <c>Offered</c> false nests a node
-/// without offering it as a filter. <c>Categories</c> are a datasamling's datakategori tokens,
-/// carried here so the row that draws them needs no second pass over the facets.</summary>
+/// group hangs under every datasamling its variables are in. <c>Categories</c> are a datasamling's
+/// datakategori tokens, so the row drawing them needs no second pass over the facets.</summary>
 internal sealed record HierarchyNode(
     string Path,
     HierarchyLevel Level,
@@ -25,7 +24,6 @@ internal sealed record HierarchyNode(
     string? ShortName,
     int Count,
     IReadOnlyList<HierarchyNode> Children,
-    bool Offered = true,
     IReadOnlyList<string>? Categories = null);
 
 /// <summary>Keyed by what each hangs under. Two datasamling lookups rather than one keyed by
@@ -57,21 +55,6 @@ internal static class FilterHierarchy
             .. facets.Kilder.DistinctBy(kilde => kilde.Id).Select(kilde => Kilde(kilde, levels, placements))
         ];
     }
-
-    /// <summary>The standalone facet's own list, nested. It reads no selection and must never be
-    /// given one: a group opted out of this facet stays a container while ticked, so its chip and
-    /// the tree remain the way off it. (Fhi.Metadata-fbe3w)</summary>
-    internal static IReadOnlyList<HierarchyNode> StandaloneVariabelgrupper(FilterOptions facets) =>
-        Nest(OnePerId(facets.Variabelgrupper,
-                      variabelgruppe => variabelgruppe.Id,
-                      variabelgruppe => variabelgruppe.ParentId),
-             HierarchyLevel.Variabelgruppe,
-             parentPath: "",
-             variabelgruppe => variabelgruppe.Id,
-             variabelgruppe => variabelgruppe.ParentId,
-             (variabelgruppe, path, nested) => new HierarchyNode(
-                 path, HierarchyLevel.Variabelgruppe, variabelgruppe.Id, variabelgruppe.Name, null,
-                 variabelgruppe.Count, nested, variabelgruppe.IsStandaloneFacetOption));
 
     /// <summary>Both child levels of the kilde tree, in one pass over the facets.</summary>
     internal static KildeLevelLookup KildeLevels(FilterOptions facets)

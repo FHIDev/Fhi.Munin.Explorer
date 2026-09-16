@@ -80,8 +80,9 @@ public partial class VariableSearch
     /// <c>Count</c> is how many variables the value would leave, or null where there is no count to
     /// show. <c>Toggle</c> is what ticking it does, or null for a value that is not selectable: a
     /// kildetype heading the kilder are grouped under, a label rather than a filter because
-    /// kildetype has a facet of its own, a variabelgruppe the API returns but does not offer, or
-    /// one in the kilde tree, which draws every group as a container — see <see cref="NodeToggle"/>.
+    /// kildetype has a facet of its own, or a variabelgruppe the standalone facet returns to nest an
+    /// offered one under. The kilde tree offers every group it draws, both surfaces writing the one
+    /// <see cref="VariableFilter.VariabelgruppeIds"/>. (Fhi.Metadata-km3zb)
     /// <para>
     /// <c>GroupHeading</c> says such a row is a heading the values below are grouped under, so its
     /// <c>Count</c> is how many of them there are rather than how many variables a value would
@@ -690,11 +691,10 @@ public partial class VariableSearch
             var (label, language) = CatalogueName(node.Name, node.ShortName);
             IReadOnlyList<FacetValue> children = [.. node.Children.Select(Value)];
 
-            // A row with no toggle draws neither: FacetList reads Count and Selected inside the
-            // checkbox alone, so a figure or a tick set here would be one the reader never gets. A
-            // level HierarchyLevels does not read is such a row rather than a KeyNotFoundException.
-            if (!readings.TryGetValue(node.Level, out var reading)
-                || NodeToggle(node, reading) is not { } toggle)
+            // A guard and not a row the tree draws: HierarchyLevels reads all four levels the
+            // builder places. A fifth added to one list and not the other lands here as an inert
+            // row rather than tearing the circuit down on a KeyNotFoundException.
+            if (!readings.TryGetValue(node.Level, out var reading))
             {
                 return new FacetValue(
                     NodeKey(node), label, language, Count: null, Selected: false, Toggle: null, children,
@@ -706,7 +706,10 @@ public partial class VariableSearch
                                   language,
                                   Counted(node.Count),
                                   reading.Chosen().Contains(node.Id),
-                                  toggle,
+                                  // Every level ticks through its own reading, so a variabelgruppe
+                                  // drawn once per placement here and once in its own facet writes
+                                  // — and reads back — the one id. (Fhi.Metadata-km3zb)
+                                  () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply),
                                   children,
                                   Icons: Glyphs(node));
         }
@@ -731,17 +734,6 @@ public partial class VariableSearch
         node.Level == HierarchyLevel.Variabelgruppe
             ? $"{FacetName(node.Level)}:{node.Path}"
             : FacetValueKey(node.Level, node.Id);
-
-    /// <summary>What ticking one row of the kilde tree does, or null for a row that offers nothing.</summary>
-    /// <remarks>
-    /// Every variabelgruppe is a container until this tree and the standalone facet tick as one
-    /// (Fhi.Metadata-km3zb). <see cref="HierarchyNode.Offered"/> is not read: nothing
-    /// <see cref="FilterHierarchy.Build"/> places sets it false, so a clause on it would be inert.
-    /// </remarks>
-    private Func<Task>? NodeToggle(HierarchyNode node, HierarchyReading reading) =>
-        node.Level == HierarchyLevel.Variabelgruppe
-            ? null
-            : () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply);
 
     /// <summary>A delkilde as a chip names it: its words and its toggle, with no count, no tree and
     /// no folder. <see cref="ChosenKilder"/> is its one caller — the tree draws its delkilder, and
@@ -802,7 +794,7 @@ public partial class VariableSearch
     {
         // Collapsed before the tree is built, so the copy that decides whether a row is offered is
         // the copy that names it; Tree collapses the same way again, to no effect. (Fhi.Metadata-l9l2n.82)
-        var grupper = FilterHierarchy.OnePerId(facets.Variabelgrupper, g => g.Id, g => g.ParentId);
+        var grupper = FacetVariabelgrupper(facets);
 
         // An opted-out group is in this payload only to carry the offered groups under it, so it is
         // a container here: a checkbox would offer a filter the API says the reader may not have,
@@ -819,7 +811,57 @@ public partial class VariableSearch
                  $"{FacetName(HierarchyLevel.Variabelgruppe)}:",
                  IsGruppeChosen,
                  id => containers.Contains(id) ? null : ToggleGruppe(id), Counted),
-            T.NoVariabelgrupper);
+            T.NoVariabelgrupper,
+            Chosen: ChosenVariabelgrupper(facets));
+    }
+
+    /// <summary>Which variabelgrupper are ticked, whichever surface the reader ticked them on.</summary>
+    /// <remarks>Read off the answer and not off this facet's own values, which withhold the groups
+    /// the kilde tree offers; one entry per id, or one tick stands beside two chips.</remarks>
+    private IReadOnlyList<FacetValue> ChosenVariabelgrupper(FilterOptions facets) =>
+    [
+        .. ListedVariabelgrupper(facets)
+            .Where(gruppe => IsGruppeChosen(gruppe.Id))
+            .Select(VariabelgruppeValue)
+    ];
+
+    /// <summary>The standalone facet's own collection, one entry per id — the one call site of that
+    /// collapse, so the row and the chip over one id read one list rather than agreeing by luck.</summary>
+    private static IReadOnlyList<VariabelgruppeFacet> FacetVariabelgrupper(FilterOptions facets) =>
+        FilterHierarchy.OnePerId(facets.Variabelgrupper, gruppe => gruppe.Id, gruppe => gruppe.ParentId);
+
+    /// <summary>Every variabelgruppe either surface can name, one entry per id.</summary>
+    /// <remarks>The standalone facet's copy wins, since copies of one id differ in name as well as
+    /// in parent and <see cref="VariabelgruppeName"/> reads this list. (Fhi.Metadata-km3zb)</remarks>
+    private static IReadOnlyList<VariabelgruppeFacet> ListedVariabelgrupper(FilterOptions facets)
+    {
+        var standalone = FacetVariabelgrupper(facets);
+
+        var named = standalone.Select(gruppe => gruppe.Id).ToHashSet();
+
+        return
+        [
+            .. standalone,
+            .. FilterHierarchy
+                .OnePerId(facets.HierarchyVariabelgrupper, gruppe => gruppe.Id, gruppe => gruppe.ParentId)
+                .Where(gruppe => !named.Contains(gruppe.Id))
+        ];
+    }
+
+    /// <summary>A variabelgruppe as a chip names it: its words and its toggle, with neither a count
+    /// nor a tree. <see cref="ChosenVariabelgrupper"/> is its one caller — the facet draws its own
+    /// values through <see cref="Tree"/>.</summary>
+    private FacetValue VariabelgruppeValue(VariabelgruppeFacet gruppe)
+    {
+        var (label, language) = CatalogueName(gruppe.Name, null);
+
+        return new(FacetValueKey(HierarchyLevel.Variabelgruppe, gruppe.Id),
+            label,
+            language,
+            null,
+            IsGruppeChosen(gruppe.Id),
+            ToggleGruppe(gruppe.Id),
+            []);
     }
 
     private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
@@ -1558,8 +1600,8 @@ public partial class VariableSearch
                 foreach (var value in group.ChosenValues)
                 {
                     // A value with no checkbox has no removal to offer here: a kildetype heading is
-                    // a label rather than a filter, and a chosen variabelgruppe the API does not
-                    // offer gets its chip from UnfacetedHierarchyChips below instead.
+                    // a label rather than a filter. Every chosen variabelgruppe carries one now, the
+                    // opt-out included, so the fallback below is for one neither collection names.
                     if (value.Toggle is not { } toggle)
                     {
                         continue;
