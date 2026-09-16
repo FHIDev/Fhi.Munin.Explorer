@@ -3749,6 +3749,58 @@ public class VariableSearchTest : BunitContext
                          .Select(node => node.TextContent)));
     }
 
+
+    [Fact]
+    public void ExpandIcon_WhenASampleStandsInForStiler_ThenItSwapsImagesAndTurnsNothing()
+    {
+        // The sample drew the chevron twice and turned it: a `::before` glyph over the background
+        // image, and `rotate(90deg)` on an open row, where `icon_up.svg` turned points right. The
+        // Stiler comparison spells that selector the other way round, so it never saw either.
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-dataitem-main__expand-icon");
+
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        Assert.NotEmpty(rules);
+
+        Assert.All(rules, r => Assert.False(
+            r.Selector.Contains("::before", StringComparison.Ordinal)
+            || r.Selector.Contains(":before", StringComparison.Ordinal),
+            $"'{r.Selector}' draws a second chevron over the image the rules below it set."));
+
+        Assert.All(rules, r => Assert.False(
+            Squeezed(r.Declarations).Contains("transform:", StringComparison.OrdinalIgnoreCase),
+            $"'{r.Selector}' turns the chevron, and a turned `icon_up.svg` points right."));
+
+        // One image per direction, the pair Stiler swaps between.
+        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-right", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("icon_down.svg", StringComparison.Ordinal));
+
+        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("icon_up.svg", StringComparison.Ordinal));
+    }
+
+
+    [Fact]
+    public void SwitchThumb_WhenASampleStandsInForStiler_ThenItTravelsByTransformAlone()
+    {
+        // The sample kept an older `left: 14px` for the checked thumb beside the mirrored
+        // `left: 2px`, and the mirrored `translateX(12px)` still applied on top: 26px along a 12px
+        // travel, which put the thumb 9px outside its track (Fhi.Metadata-zqj5j).
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-switch__thumb");
+
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        Assert.NotEmpty(rules);
+
+        Assert.All(rules, r => Assert.False(
+            r.Selector.Contains("aria-checked", StringComparison.Ordinal)
+            && Squeezed(r.Declarations).Contains("left:", StringComparison.Ordinal),
+            $"'{r.Selector}' moves the thumb with `left`, which the travel below it adds to."));
+
+        Assert.Contains(rules, r => r.Selector.Contains("aria-checked", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("translateX(12px)", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void GroupCount_WhenAHostStylesIt_ThenTheTabularFiguresComeWithTheName()
     {

@@ -5176,6 +5176,32 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void ExpandIcon_WhenASampleStandsInForStiler_ThenItSwapsImagesAndTurnsNothing()
+    {
+        // The kilder row's twin of the variable row's guard: the same glyph drawn over the image
+        // below it, and the same turn on an open row, where `icon_up.svg` turned points right.
+        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-kilder__expand-icon");
+
+        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
+
+        Assert.NotEmpty(rules);
+
+        Assert.All(rules, r => Assert.False(
+            r.Selector.Contains(":before", StringComparison.Ordinal),
+            $"'{r.Selector}' draws a second chevron over the image the rules below it set."));
+
+        Assert.All(rules, r => Assert.False(
+            Squeezed(r.Declarations).Contains("transform:", StringComparison.OrdinalIgnoreCase),
+            $"'{r.Selector}' turns the chevron, and a turned `icon_up.svg` points right."));
+
+        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-right", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("icon_down.svg", StringComparison.Ordinal));
+
+        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("icon_up.svg", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Facets_WhenASampleStandsInForStiler_ThenTheSummaryIsLaidOutAsOneRow()
     {
         // Same half of the bug the fold's guard below answers, and the half this bead first shipped
@@ -5241,27 +5267,6 @@ public class KildeSearchTest : BunitContext
             BlocksFor(".munin-explorer-filters__facets[hidden]")
                 .Any(d => d.Contains("display:block", StringComparison.Ordinal)),
             "No rule undoes [hidden] on the facets once the host has room for a sidebar.");
-    }
-
-    [Fact]
-    public void ExpandIcon_WhenASampleStandsInForStiler_ThenTheDeclarationItNeedsIsABox()
-    {
-        // Same shape as the fold's guard above. `.icon` gives the chevron a 24px box on a Stiler
-        // host, and it is that box the toggle's target size rests on; a sample has no `.icon`, so a
-        // stand-in declaring only a colour would draw a control the reader cannot hit.
-        var rules = HostClassNames.SampleDeclarationsFor("munin-explorer-kilder__expand-icon");
-
-        static string Squeezed(string css) => new([.. css.Where(c => !char.IsWhiteSpace(c))]);
-
-        var blocks = rules.Select(r => Squeezed(r.Declarations)).ToList();
-
-        Assert.True(
-            blocks.Any(d => d.Contains("height:24px", StringComparison.Ordinal)),
-            "No rule gives the chevron the 24px height Stiler's `.icon` gives it.");
-
-        Assert.True(
-            blocks.Any(d => d.Contains("width:24px", StringComparison.Ordinal)),
-            "No rule gives the chevron the 24px width Stiler's `.icon` gives it.");
     }
 
     // ---------------------------------------------------------------------------------
