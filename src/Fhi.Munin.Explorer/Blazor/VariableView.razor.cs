@@ -137,12 +137,19 @@ public sealed partial class VariableView : ComponentBase
 
     /// <summary>Where the variable sits in the catalogue, as the open row's panel draws it.</summary>
     /// <remarks>
-    /// The kildetype falls back to this package's shipped table, because this view holds no facet
-    /// payload — the reading the Kildeinformasjon block already uses, so the page cannot name one
-    /// kildetype two ways. A property, because the contents nav asks the same question.
+    /// Derived once in <see cref="OnParametersSet"/> and held, because the contents nav asks the
+    /// same question as the block: the entry and the section it points at have to be answered by
+    /// one value rather than by two builds of it.
     /// </remarks>
-    private IReadOnlyList<KildeTrailBlock.Crumb> Placement =>
-        Variable is { } variable ? KildeTrailBlock.Steps(variable, T) : [];
+    private IReadOnlyList<KildeTrailBlock.Crumb> Placement { get; set; } = [];
+
+    /// <summary>The datasamlinger this view lists, which is the set the trail's last step counts.</summary>
+    /// <remarks>
+    /// <see cref="KildeTrailBlock.NamedDatasamlinger"/> rather than the payload's own list, because
+    /// the trail counts what that predicate answers: a list built off anything else stands under a
+    /// count of some other number, and an unnamed datasamling draws an empty bullet besides.
+    /// </remarks>
+    private IReadOnlyList<DatasamlingReference> Datasamlinger { get; set; } = [];
 
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>
@@ -274,6 +281,14 @@ public sealed partial class VariableView : ComponentBase
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
+        var variable = Variable;
+
+        // The kildetype is passed no facet name, and that is this view's answer rather than an
+        // omission: it holds no facet payload, so the trail falls back to the shipped table — the
+        // reading Kildeinformasjon below already uses, so the page cannot name one kildetype twice.
+        Placement = variable is null ? [] : KildeTrailBlock.Steps(variable, T, kildeTypeApiName: null);
+        Datasamlinger = variable is null ? [] : KildeTrailBlock.NamedDatasamlinger(variable);
+
         var toc = BuildToc();
 
         Toc = toc.Entries;
@@ -299,7 +314,7 @@ public sealed partial class VariableView : ComponentBase
         toc.Add(DataPeriod is not null, DetailSectionIds.DataPeriod, T.FieldDataPeriod);
         toc.Add(DataTypeLabel is not null, DetailSectionIds.DataType, T.FieldDataType);
         toc.Add(variable.AllVariabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
-        toc.Add(variable.AllDatasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
+        toc.Add(Datasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
 
         return toc;
     }

@@ -43,9 +43,12 @@ internal static class KildeTrailBlock
     /// <param name="kildeTypeApiName">
     /// The kildetype facet's <c>displayName</c>, for a caller holding the filters payload; null
     /// where it has none, which is what <see cref="Texts.KildeTypeNameFromApi"/> falls back from.
+    /// Required rather than defaulted: a caller that omits the facets it holds draws one kildetype
+    /// in two spellings beside a facet button that draws the other, and a default makes that the
+    /// easy path rather than a decision. (Fhi.Metadata-3n6e1)
     /// </param>
     internal static IReadOnlyList<Crumb> Steps(
-        VariableDetail detail, Texts texts, string? kildeTypeApiName = null)
+        VariableDetail detail, Texts texts, string? kildeTypeApiName)
     {
         var crumbs = new List<Crumb>(3);
 
@@ -115,11 +118,16 @@ internal static class KildeTrailBlock
 
         foreach (var crumb in steps)
         {
-            builder.OpenElement(2, "li");
+            // A region per step, because these sequence numbers are written by hand rather than by
+            // the Razor compiler: inside one the numbers below are a step's own, so a step that
+            // changes shape — text where a button was — diffs against its own frames and no other.
+            builder.OpenRegion(2);
+
+            builder.OpenElement(0, "li");
 
             if (crumb.Norwegian)
             {
-                builder.AddAttribute(3, "lang", "no");
+                builder.AddAttribute(1, "lang", "no");
             }
 
             if (crumb.OpensKilde && pressKilde.HasDelegate)
@@ -127,22 +135,24 @@ internal static class KildeTrailBlock
                 // Runa makes this step a link to its own kilde route. We have no routes — the host
                 // owns the URL — so the same affordance is the control the caller supplies,
                 // deliberately the same control as "Vis datakilde" further down its own panel.
-                builder.OpenElement(5, "button");
-                builder.AddAttribute(6, "class", "hd-button-reset munin-explorer-crumb");
-                builder.AddAttribute(7, "type", "button");
+                builder.OpenElement(2, "button");
+                builder.AddAttribute(3, "class", "hd-button-reset munin-explorer-crumb");
+                builder.AddAttribute(4, "type", "button");
                 // No aria-expanded and no aria-controls. Both describe a control that discloses
                 // something on the same screen, and this one replaces the list with the kilde's
                 // own view — so aria-controls would name an element that is not in the document.
-                builder.AddAttribute(10, "onclick", pressKilde);
-                builder.AddContent(11, crumb.Text);
+                builder.AddAttribute(5, "onclick", pressKilde);
+                builder.AddContent(6, crumb.Text);
                 builder.CloseElement();
             }
             else
             {
-                builder.AddContent(4, crumb.Text);
+                builder.AddContent(7, crumb.Text);
             }
 
             builder.CloseElement();
+
+            builder.CloseRegion();
         }
 
         builder.CloseElement();
@@ -152,9 +162,9 @@ internal static class KildeTrailBlock
     /// Every datasamling the variable sits in, less the ones the payload left unnamed.
     /// </summary>
     /// <remarks>
-    /// The one place that decides what counts as a datasamling, because three renders read it: this
-    /// trail's last step, the guard on the row, and the panel's own list of them. Written out twice
-    /// it drifts into a count standing over a list of some other number.
+    /// The one place that decides what counts as a datasamling: every surface that counts them and
+    /// every surface that lists them must derive both from this predicate, or a count ends up
+    /// standing over a list of some other number.
     /// </remarks>
     internal static IReadOnlyList<DatasamlingReference> NamedDatasamlinger(VariableDetail detail) =>
         detail.AllDatasamlinger

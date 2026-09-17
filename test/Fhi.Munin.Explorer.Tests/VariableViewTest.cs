@@ -1518,4 +1518,48 @@ public class VariableViewTest : BunitContext
         Assert.False(wrapper.HasAttribute("role"));
         Assert.Empty(section.QuerySelectorAll("button, a"));
     }
+
+    /// <summary>The names the Datasamlinger section lists, in the order it lists them.</summary>
+    private static IReadOnlyList<string> DatasamlingList(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll($"#{DetailSectionIds.DataCollections} ul > li")
+               .Select(item => item.QuerySelector("span")!.TextContent)];
+
+    [Fact]
+    public void Placement_WhenADatasamlingHasNoName_ThenItsCountAndTheListBelowItAgree()
+    {
+        // The two numbers this page is the first to put side by side. The trail counts what
+        // KildeTrailBlock.NamedDatasamlinger answers, so the list has to be the same predicate's:
+        // read off the payload instead, it stands under a count of some other number.
+        var cut = Render(Placed() with
+        {
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "Abortregisteret Utlevering" },
+                new() { Id = Guid.NewGuid(), Name = "Abortregisteret Statistikk" },
+                new() { Id = Guid.NewGuid() },
+            ],
+        });
+
+        Assert.Equal("2 datasamlinger", Steps(cut)[^1].TextContent);
+        Assert.Equal(["Abortregisteret Utlevering", "Abortregisteret Statistikk"], DatasamlingList(cut));
+    }
+
+    [Fact]
+    public void DataCollections_WhenEveryDatasamlingIsUnnamed_ThenNoSectionIsDrawnForThem()
+    {
+        // The end of the same rule. An unnamed datasamling is no step in the trail, so a list of
+        // them is a heading over empty bullets — and the nav would offer a link to it.
+        var cut = Render(Placed() with
+        {
+            DatasamlingName = null,
+            AllDatasamlinger = [new() { Id = Guid.NewGuid() }, new() { Id = Guid.NewGuid() }],
+        });
+
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.DataCollections}"));
+        Assert.DoesNotContain("Datasamlinger",
+                              cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent.Trim()));
+
+        // And the trail says nothing about them either, rather than counting what it cannot name.
+        Assert.Equal(["Sentralt helseregister", "Abortregisteret (ABR)"], Placement(cut));
+    }
 }

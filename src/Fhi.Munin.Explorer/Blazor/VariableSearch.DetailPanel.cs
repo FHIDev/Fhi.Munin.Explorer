@@ -83,9 +83,16 @@ public partial class VariableSearch
     private IReadOnlyList<KildeTrailBlock.Crumb> KildeSteps(VariableDetail detail) =>
         KildeTrailBlock.Steps(detail, T, FacetKildeTypeName(_facets, detail.KildeType));
 
+    private EventCallback<MouseEventArgs>? _pressKilde;
+
     /// <summary>What the trail's kilde step does here: disclose the kilde in place of the list.</summary>
+    /// <remarks>
+    /// Built once and held, as <c>ListState</c> is. An <see cref="EventCallback"/> compares by
+    /// receiver and delegate, so a lambda made per read never equals the last one and the trail
+    /// re-registers its <c>onclick</c> on every render.
+    /// </remarks>
     private EventCallback<MouseEventArgs> PressKilde =>
-        EventCallback.Factory.Create<MouseEventArgs>(
+        _pressKilde ??= EventCallback.Factory.Create<MouseEventArgs>(
             this, e => ToggleSourceFromControlAsync(SourceKind.Kilde, e));
 
     /// <summary>
