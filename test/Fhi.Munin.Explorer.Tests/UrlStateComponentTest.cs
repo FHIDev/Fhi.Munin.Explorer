@@ -1291,9 +1291,9 @@ public class UrlStateComponentTest : ExplorerTestContext
     [Fact]
     public void Kilder_WhenTheHostMovesItsVariableExplorer_ThenTheOpenDrawersLinkMovesWithIt()
     {
-        // The link's delegate is held for the component's life, so that it is not a changed
-        // parameter on every render — and a held one closed over nothing would answer off the path
-        // it was made with long after the host set another.
+        // The delegate closes over the path it was made against, so it is the re-making on a move
+        // that keeps the href current: one held for good would write the path the host has since
+        // left into the link the reader presses.
         var id = Guid.NewGuid();
 
         var cut = RenderOpenDrawer(id, b => b.Add(c => c.VariableExplorerPath, "/variabler"));
@@ -1303,6 +1303,24 @@ public class UrlStateComponentTest : ExplorerTestContext
         var link = Assert.Single(cut.Find(".munin-explorer-kilder__expanded").QuerySelectorAll("a"));
 
         Assert.Equal($"http://localhost/andre-variabler?kildeIds={id}", link.GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheHostWithdrawsItsVariableExplorer_ThenADelegateAlreadyGivenOutKeepsItsPath()
+    {
+        // What closing over the path buys, and the only place it shows: the child holds the
+        // delegate across renders, and one invoked after the parameter was cleared answers off the
+        // path it was made against rather than off the host's own front page.
+        var id = Guid.NewGuid();
+
+        var cut = RenderOpenDrawer(id, b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+
+        var held = cut.FindComponent<KildeSearch>().Instance.KildeVariablesHref;
+
+        cut.Render(b => b.Add(c => c.VariableExplorerPath, (string?)null));
+
+        Assert.NotNull(held);
+        Assert.Equal($"http://localhost/variabler?kildeIds={id}", held(id));
     }
 
     [Fact]
