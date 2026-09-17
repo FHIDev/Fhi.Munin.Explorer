@@ -298,11 +298,9 @@ public sealed partial class DatasamlingView : ComponentBase
 
     /// <summary>The catalogue's statistikktype in this package's vocabulary, for the row.</summary>
     /// <remarks>
-    /// Not one of <see cref="KildetypeLabel"/>'s four: StatistikkType is the collection's own field
-    /// rather than an inherited <c>Effective…</c> one, and no hero fact draws it.
-    /// <see cref="StatisticsHeading"/> resolves the same code again through
-    /// <see cref="StatisticsBlock"/>, and what keeps the row and the heading in one word is the
-    /// <see cref="Texts.StatisticsTypeLabel"/> both go through — neither reads the other.
+    /// Not one of <see cref="KildetypeLabel"/>'s four: the collection's own field, not an inherited
+    /// one, and no hero fact draws it. <see cref="StatisticsHeading"/> resolves the code itself, so
+    /// only the shared <see cref="Texts.StatisticsTypeLabel"/> keeps row and heading in one word.
     /// </remarks>
     private string? StatisticsTypeLabel =>
         Datasamling?.StatisticsType is { } type && !string.IsNullOrWhiteSpace(type)
