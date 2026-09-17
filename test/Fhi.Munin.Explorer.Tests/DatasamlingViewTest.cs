@@ -936,15 +936,13 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
+    public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowSaysNoneRatherThanYearOne()
     {
         // An absent sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "1. januar 0001"
         // before that. The kilde view had the same line, and the kilder table's Importert column
         // the same shape. (Fhi.Metadata-6r6rf)
         var cut = Render(Datasamling() with { LastUpdated = default, Created = default });
 
-        // The whole list, for the reason the kilde view test gives: these rows are last, so
-        // dropping them and everything after would pass an assertion that only asks for absence.
         // Both timestamps at once, because they are the same shape and the same fallback.
         var box = SourceInformation(cut);
 
