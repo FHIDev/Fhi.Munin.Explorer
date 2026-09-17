@@ -542,11 +542,12 @@ public class DatasamlingViewTest : BunitContext
     {
         // The wrapper goes INSIDE each emptiness check. Outside one it would draw a section holding
         // a heading and nothing else, which is worse than the bare heading it replaced. Both of
-        // this view's suppressible blocks are taken away at once — the criteria and the
-        // statistics.
+        // this view's suppressible blocks are taken away at once — the criteria, and all four
+        // facts of the statistics, the type included since it fills a row (Fhi.Metadata-35w0p.50).
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
+            StatisticsType = null,
             Frequency = null,
             CountingUnit = null,
             VariableCount = 0,
@@ -665,6 +666,7 @@ public class DatasamlingViewTest : BunitContext
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
+            StatisticsType = null,
             Frequency = null,
             CountingUnit = null,
             VariableCount = 0,
