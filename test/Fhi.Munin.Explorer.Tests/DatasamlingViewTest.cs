@@ -1171,6 +1171,28 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.NotEqual("", heading.TextContent.Trim());
         Assert.Equal(Datasamling().Code, heading.TextContent.Trim());
         Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__identifiers"));
+
+        // The sticky bar carries its own copy of the same rule, reading its own contract property.
+        // The name is asserted beside it: a bar that stopped rendering would pass the emptiness.
+        Assert.Equal(
+            Datasamling().Code,
+            cut.Find(".munin-explorer-page__stuckbar-name > span").TextContent.Trim());
+        Assert.Empty(cut.FindAll(".munin-explorer-page__stuckbar small"));
+    }
+
+    [Fact]
+    public void Stuckbar_Always_ThenItSaysWhatTheHeadingSays()
+    {
+        // The second of three hand-written copies of the rule, over a second contract property: a
+        // fix applied to one of them compiles and passes with the others left behind.
+        var cut = Render(Datasamling(), language: "en");
+
+        var heading = cut.Find("h2");
+        var name = cut.Find(".munin-explorer-page__stuckbar-name > span");
+
+        Assert.Equal(heading.TextContent.Trim(), name.TextContent.Trim());
+        Assert.Equal(heading.GetAttribute("lang"), name.GetAttribute("lang"));
+        Assert.Equal(Datasamling().Code, cut.Find(".munin-explorer-page__stuckbar small").TextContent.Trim());
     }
 
     [Fact]

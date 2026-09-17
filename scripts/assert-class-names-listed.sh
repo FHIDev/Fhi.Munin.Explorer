@@ -60,9 +60,9 @@ fi
 # purpose: three checks disagreeing about what a name is would each be right about a different set.
 # `*.js` is in it because the package's browser module writes a class name too — the sticky bar's
 # `--on` state, which no .cs or .razor spells and which a host still has to style
-# (Fhi.Metadata-35w0p.28). Deliberately over-inclusive — a name written down in prose is a name a reader will go looking for,
-# and the inventory has a `prose` kind for exactly that. `-` and `__` endings are stems finished
-# elsewhere and are not names.
+# (Fhi.Metadata-35w0p.28). Deliberately over-inclusive — a name written down in prose is a name a
+# reader will go looking for, and the inventory has a `prose` kind for exactly that. `-` and `__`
+# endings are stems finished elsewhere and are not names.
 #
 # That last clause is this check's one blind spot, and it is stated rather than hidden: a stem the
 # package finishes at RUNTIME is a real class no literal extraction can see. `RowCell.Write` builds

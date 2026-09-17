@@ -151,8 +151,8 @@ public partial class ExplorerInteropTest
     public void Import_WhenTheSourceIsRead_ThenSomethingLoadsTheModuleAndNothingWaitsOnTheAnswer()
     {
         // Two halves of one claim. Nothing loading it would leave the theory above vacuous, and a
-        // caller reading the answer would have made the module load-bearing — which is the one
-        // thing it may not be until a later bead argues for it.
+        // caller STORING the answer would have made the module load-bearing. Branching on it where
+        // it stands is allowed for one use only — retrying a failed import on a later render.
         var callers = Callers().ToList();
 
         Assert.NotEmpty(callers);
@@ -164,10 +164,12 @@ public partial class ExplorerInteropTest
                 var statement = Statement(source, call);
 
                 Assert.True(
-                    statement.StartsWith("await ", StringComparison.Ordinal)
+                    (statement.StartsWith("await ", StringComparison.Ordinal)
+                     || statement.StartsWith("if (await ", StringComparison.Ordinal))
                     && !statement.Contains('=', StringComparison.Ordinal),
-                    $"{file} keeps the answer to the import: '{statement}'. Nothing may depend on " +
-                    "the module, so the call is awaited and its result dropped.");
+                    $"{file} keeps the answer to the import: '{statement}'. Nothing rendered may " +
+                    "depend on the module, so the answer is dropped or branched on where it " +
+                    "stands — never stored.");
             }
         }
     }
@@ -288,6 +290,36 @@ public partial class ExplorerInteropTest
         Assert.True(await interop.TryLoadAsync());
 
         Assert.Equal(1, runtime.Imports);
+    }
+
+    [Fact]
+    public async Task TryLoadAsync_WhenTheHostServesNoModule_ThenItIsNotAskedForAgain()
+    {
+        // The caller retries a failed load on a later render, because an import a reconnecting
+        // circuit could not carry is "not yet". A 404 is not: without this, a host serving no
+        // module would pay one import round trip per render for the life of the circuit.
+        var runtime = new RefusingJsRuntime(new JSException("404"));
+        var interop = new ExplorerInterop(runtime);
+
+        Assert.False(await interop.TryLoadAsync());
+        Assert.False(await interop.TryLoadAsync());
+        Assert.False(await interop.TryLoadAsync());
+
+        Assert.Equal(1, runtime.Imports);
+    }
+
+    [Fact]
+    public async Task TryLoadAsync_WhenTheCircuitWasReconnecting_ThenAskingAgainStillGetsTheModule()
+    {
+        // The half the memory above must not swallow. A JSDisconnectedException is answered as null
+        // rather than as a refusal, so the next render's ask is the one that lands.
+        var runtime = new FlakyJsRuntime(new RecordingModule());
+        var interop = new ExplorerInterop(runtime);
+
+        Assert.False(await interop.TryLoadAsync());
+        Assert.True(await interop.TryLoadAsync());
+
+        Assert.Equal(2, runtime.Imports);
     }
 
     // -----------------------------------------------------------------------
@@ -413,11 +445,15 @@ public partial class ExplorerInteropTest
         }
     }
 
-    /// <summary>The statement holding the import at <paramref name="call"/>, trimmed.</summary>
+    /// <summary>The statement or branch condition holding the import at <paramref name="call"/>.</summary>
+    /// <remarks>
+    /// Ends at the first <c>;</c> or <c>{</c>, so an import read as an <c>if</c> condition is that
+    /// condition alone rather than the whole branch body dragged along behind it.
+    /// </remarks>
     private static string Statement(string source, int call)
     {
         var opens = source.LastIndexOfAny([';', '{', '}', '\n'], call) + 1;
-        var closes = source.IndexOf(';', call);
+        var closes = source.IndexOfAny([';', '{'], call);
 
         return source[opens..(closes < 0 ? source.Length : closes + 1)].Trim();
     }

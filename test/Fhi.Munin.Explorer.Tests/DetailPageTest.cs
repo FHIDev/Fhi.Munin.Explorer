@@ -1,6 +1,9 @@
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -443,11 +446,27 @@ public class DetailPageTest : ExplorerTestContext
             bar.QuerySelectorAll("dt").Select(dt => dt.TextContent.Trim()));
         Assert.Empty(bar.QuerySelectorAll("dl small"));
         Assert.DoesNotContain("Norsk helsenett", bar.TextContent, StringComparison.Ordinal);
+    }
 
-        // The action row again, which is what the reader came to the bar for.
+    [Fact]
+    public void Stuckbar_WhenTheCallerFilledTheActionRow_ThenTheBarRepeatsNoneOfIt()
+    {
+        // The fragment is the CALLER's. A second copy of it is a second tab stop for every control
+        // in it and a duplicate of every id the caller wrote — and the module unhides this bar, so
+        // neither stays inert. Every other part of the bar is text a reader cannot reach.
+        var cut = RenderSticky(withActions: true);
+
+        var bar = cut.Find(".munin-explorer-page__stuckbar");
+
+        Assert.Empty(bar.QuerySelectorAll(".munin-explorer-page__actions"));
+        Assert.Empty(bar.QuerySelectorAll("a, button, input, select, textarea, [tabindex]"));
+        Assert.DoesNotContain("Vis variabler", bar.TextContent, StringComparison.Ordinal);
+
+        // And the one copy the page has always had is still where the chrome draws it, which is
+        // the half an assertion about the bar alone would let anyone delete.
         Assert.Equal(
             "Vis variabler",
-            bar.QuerySelector(".munin-explorer-page__actions")!.TextContent.Trim());
+            Assert.Single(cut.FindAll(".munin-explorer-page__actions")).TextContent.Trim());
     }
 
     [Fact]
@@ -527,6 +546,194 @@ public class DetailPageTest : ExplorerTestContext
         // The bar's four names are new, and the samples are the only stylesheet they have here:
         // neither sample carries Stiler, so a name with no rule renders at browser defaults in both.
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(RenderSticky(withActions: true).FindAll("[class]"))));
+    }
+
+    // -----------------------------------------------------------------------
+    // What reaches the browser, and how often. OnAfterRenderAsync runs on EVERY render and this
+    // package's host keeps circuits alive for hours, so "once" and "again when it has to" both bite.
+
+    /// <summary>The bar and the hero row of the one page rendered, by id.</summary>
+    private (string Bar, string Row) Ids(IRenderedComponent<DetailPage> cut) =>
+        (cut.Find(".munin-explorer-page__stuckbar").Id ?? "", cut.Find(".munin-explorer-page__facts").Id ?? "");
+
+    [Fact]
+    public void Stuckbar_WhenThePageRendersAgain_ThenTheModuleIsImportedAndTheRowWatchedOnce()
+    {
+        // The latch is the only thing between one detail page and one module reference per render,
+        // each of them registered in the browser's table for the circuit's life and only the last
+        // of them ever released. Deleting it leaves every other assertion in this file green.
+        var module = new RecordingModule();
+        var runtime = new LendingJsRuntime(module);
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderSticky();
+        var (bar, _) = Ids(cut);
+
+        cut.Render();
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal([bar], module.ArgumentsOf("observeHeroFacts")));
+        Assert.Equal(1, runtime.Imports);
+    }
+
+    [Fact]
+    public void Stuckbar_WhenThePayloadArrivesAfterTheChassis_ThenTheLateRenderIsStillWatched()
+    {
+        // The other half of the same guard, and the reason it is not `firstRender`-only: a view
+        // renders its chassis while the catalogue is still being read, so the first render has no
+        // bar and no row at all. Latching on the first render would never watch the second.
+        var module = new RecordingModule();
+
+        Services.AddSingleton<IJSRuntime>(new LendingJsRuntime(module));
+
+        var cut = RenderPage(withContents: false);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-page__stuckbar"));
+        Assert.Empty(module.ArgumentsOf("observeHeroFacts"));
+
+        cut.Render(parameters => parameters
+            .Add(p => p.StickyName, "Tromsøundersøkelsen")
+            .Add(p => p.Facts, SixFacts()));
+
+        var (bar, _) = Ids(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal([bar], module.ArgumentsOf("observeHeroFacts")));
+    }
+
+    [Fact]
+    public void Stuckbar_WhenThePayloadEmptiesAndRefills_ThenTheNewBarIsWatchedAgain()
+    {
+        // The bar leaves the render tree with the facts, and the one that comes back is a NEW
+        // element wearing the same id — so the observer the module still holds watches a node the
+        // renderer detached. A latch that never reopens leaves that bar dead for good.
+        var module = new RecordingModule();
+
+        Services.AddSingleton<IJSRuntime>(new LendingJsRuntime(module));
+
+        var cut = RenderSticky();
+        var (bar, _) = Ids(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal([bar], module.ArgumentsOf("observeHeroFacts")));
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, []));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-page__stuckbar"));
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, SixFacts()));
+
+        // The same id both times, because the discriminator is the instance's — which is exactly
+        // why a count of the calls is the only thing that can tell a re-watch from a stale one.
+        cut.WaitForAssertion(() => Assert.Equal([bar, bar], module.ArgumentsOf("observeHeroFacts")));
+    }
+
+    [Fact]
+    public void Stuckbar_WhenTheImportFailedTheWayAReconnectDoes_ThenALaterRenderAsksAgain()
+    {
+        // "Not yet" rather than "not there": a circuit reconnecting answers an import with nothing
+        // at all. Latching before the import means no later render ever tries, and the bar is then
+        // permanently away with nothing anywhere saying why. (Fhi.Metadata-35w0p.28)
+        var module = new RecordingModule();
+        var runtime = new FlakyJsRuntime(module);
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderSticky();
+        var (bar, _) = Ids(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal(1, runtime.Imports));
+        Assert.Empty(module.ArgumentsOf("observeHeroFacts"));
+
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal([bar], module.ArgumentsOf("observeHeroFacts")));
+        Assert.Equal(2, runtime.Imports);
+    }
+
+    [Fact]
+    public void Stuckbar_WhenTheHostServesNoModuleAtAll_ThenItIsAskedForOnceAndNotAgain()
+    {
+        // The other side of the retry, and the reason the interop remembers a refusal: a 404 or a
+        // Content-Security-Policy is the host's answer for good, so retrying it every render would
+        // be one round trip per render for the life of the circuit.
+        var runtime = new RefusingJsRuntime(new JSException("404"));
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderSticky();
+
+        cut.Render();
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal(1, runtime.Imports));
+
+        // And the page is whole without it, which is the whole bargain.
+        Assert.True(cut.Find(".munin-explorer-page__stuckbar").HasAttribute("hidden"));
+        Assert.Equal("Tromsøundersøkelsen", cut.Find("h2").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Stuckbar_WhenTheModuleItselfIsFaulty_ThenTheCircuitSurvivesAndTheHostIsTold()
+    {
+        // A host serving a stale cached module whose exports have moved answers with a JSException,
+        // which the interop lets travel on. This continuation resumes after an await the renderer
+        // never waited for, so an escape takes the circuit — and the reader's page — down.
+        var recorder = new RecordingLoggerProvider();
+
+        Services.AddLogging(b => b
+            .AddProvider(recorder)
+            .SetMinimumLevel(LogLevel.Trace)
+            .AddFilter((category, _) =>
+                category?.StartsWith("Fhi.Munin.Explorer", StringComparison.Ordinal) == true));
+
+        Services.AddSingleton<IJSRuntime>(
+            new LendingJsRuntime(new RefusingModule(new JSException("observeHeroFacts is not a function"))));
+
+        var cut = RenderSticky();
+
+        cut.WaitForAssertion(() => Assert.Single(recorder.Entries));
+
+        var (_, row) = Ids(cut);
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Contains(row, entry.Message, StringComparison.Ordinal);
+        Assert.IsType<JSException>(entry.Exception);
+
+        // And the page it could not pin is still the whole page.
+        Assert.Equal("Tromsøundersøkelsen", cut.Find("h2").TextContent.Trim());
+        Assert.True(cut.Find(".munin-explorer-page__stuckbar").HasAttribute("hidden"));
+    }
+
+    [Fact]
+    public async Task Stuckbar_WhenThePageGoesAwayMidImport_ThenNothingIsLeftWatchingForIt()
+    {
+        // Disposal lands while the import is still in flight, so DisposeAsync had no module to
+        // reach and the late continuation is the only code left that can undo anything. Two things
+        // must hold: the arriving reference is released, and nothing is left watching the bar.
+        var module = new RecordingModule();
+        var runtime = new PendingJsRuntime(module);
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        RenderSticky();
+
+        await Renderer.DisposeComponents();
+
+        runtime.Answer();
+
+        Assert.True(
+            await module.ReachedAsync(RecordingModule.Released),
+            "the module that arrived after disposal was never released, so every mount and unmount " +
+            "of a detail page leaves one more reference in the browser's table for the circuit's life.");
+
+        var calls = module.Calls.Select(call => call.Identifier).ToList();
+        var watched = calls.LastIndexOf("observeHeroFacts");
+
+        Assert.True(
+            watched < 0 || calls.LastIndexOf("disconnectHeroFacts") > watched,
+            "an observer was connected after disposal and never disconnected, so it holds the bar " +
+            $"and the detached hero row for the circuit's life: {string.Join(", ", calls)}");
     }
 
     /// <summary>Which bar each observe call was given, paired with the row it was told to watch.</summary>

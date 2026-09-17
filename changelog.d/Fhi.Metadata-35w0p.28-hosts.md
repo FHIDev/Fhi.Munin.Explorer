@@ -16,6 +16,6 @@ category: Notes for hosts
   shows it — so a Content-Security-Policy that blocks the module, or a reader with JavaScript off,
   gets a page with no bar and no word missing. Do not style it visible: everything in it is already
   on the page above, and a second permanent copy of the page's own title is what the hidden state is
-  there to prevent. If you fill `DetailPage.Actions`, note that the row is now drawn twice — once
-  above the name block and once inside the bar — so anything in it carrying a DOM `id` of your own
-  will be on the page twice. (Fhi.Metadata-35w0p.28)
+  there to prevent. The bar is text and nothing else — `DetailPage.Actions` is **not** repeated in
+  it — so filling that fragment still puts each of your controls on the page exactly once, with
+  whatever `id`s you wrote still unique. (Fhi.Metadata-35w0p.28)

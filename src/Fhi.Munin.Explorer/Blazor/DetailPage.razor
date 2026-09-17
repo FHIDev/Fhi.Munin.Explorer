@@ -34,10 +34,9 @@
                     }
                 </dl>
 
-                @if (Actions is not null)
-                {
-                    <div class="munin-explorer-page__actions">@Actions</div>
-                }
+                @* Inert text and nothing else. @Actions is NOT repeated here: a second copy of the
+                   caller's fragment is a second tab stop and a duplicate of any id it carries, and
+                   the module unhides this bar where neither is inert. *@
             </div>
         </div>
     }

@@ -59,6 +59,8 @@
 // assertion that has quietly stopped measuring anything passes forever otherwise, which is the
 // failure this whole file is about.
 
+import { scrollPast, scrollToTop } from './reader-scroll.mjs';
+
 /** The contents nav of a detail view, in the column beside it. */
 const TOC = '.munin-explorer-page__toc';
 
@@ -378,9 +380,6 @@ const STUCKBAR_ON = 'munin-explorer-page__stuckbar--on';
 /** Short enough that a detail page's hero row starts well below the fold on either sample page. */
 const SHORT_VIEWPORT = { width: 1280, height: 300 };
 
-/** Long enough for an IntersectionObserver to have delivered, which is one frame. */
-const OBSERVER_SETTLE_MS = 400;
-
 /** The bar as the DOM has it, and as a screen reader would reach it. */
 async function barState(page, barId) {
   const dom = await page.locator(`#${barId}`).evaluate((bar, on) => ({
@@ -399,43 +398,6 @@ async function barState(page, barId) {
   }
 
   return { ...dom, tree: tree.replace(/\s+/g, ' ').trim() };
-}
-
-/**
- * Scrolls to `y` the way a reader does — a frame at a time, never in one jump.
- *
- * An IntersectionObserver notifies on a CROSSING, so a jump from below the hero row to above it
- * leaves both frames non-intersecting and delivers nothing at all: the bar would read stale and the
- * scan would be measuring the browser's notification rule rather than the module's predicate.
- */
-const scrollBy = (page, y) => page.evaluate(async to => {
-  // Smaller than the viewport, so the row cannot pass through unseen in a single step.
-  const step = Math.max(40, Math.floor(window.innerHeight / 4));
-
-  for (let at = window.scrollY; Math.abs(to - at) > step; at += to > at ? step : -step) {
-    window.scrollTo(0, at);
-    await new Promise(next => requestAnimationFrame(next));
-  }
-
-  window.scrollTo(0, to);
-}, y);
-
-/** Puts the reader back where a page load leaves them, with the hero row still below the fold. */
-async function scrollToTop(page) {
-  await scrollBy(page, 0);
-  await page.waitForTimeout(OBSERVER_SETTLE_MS);
-}
-
-/** Scrolls until the hero row has left the viewport upwards, which is the bar's whole trigger. */
-async function scrollPastHero(page, rowId) {
-  const past = await page.evaluate(id => {
-    const row = document.getElementById(id);
-
-    return row.getBoundingClientRect().top + window.scrollY + row.offsetHeight + 200;
-  }, rowId);
-
-  await scrollBy(page, past);
-  await page.waitForTimeout(OBSERVER_SETTLE_MS);
 }
 
 /** Where the hero row sits relative to the fold: below it, above it, or on screen. */
@@ -1074,7 +1036,7 @@ export const assertions = [
 
       // And that the page can be scrolled past it at all, checked here rather than in `measure`,
       // where a document too short to scroll would be reported as a defect in the component.
-      await scrollPastHero(page, rowId);
+      await scrollPast(page, rowId);
 
       const past = await heroAgainstFold(page, rowId);
 
@@ -1108,7 +1070,7 @@ export const assertions = [
           `meets "${name}" twice on a page that shows the bar to nobody`;
       }
 
-      await scrollPastHero(page, rowId);
+      await scrollPast(page, rowId);
 
       const after = await barState(page, barId);
 

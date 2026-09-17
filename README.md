@@ -515,8 +515,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     The same row is what the sticky bar watches, and the bar adds four names of its own —
     `munin-explorer-page__stuckbar`, its `--on` state, `munin-explorer-page__stuckbar-inner` and
     `munin-explorer-page__stuckbar-name`. It is a condensed repeat of the page's own opening: the
-    name, the first three hero facts, and the action row again, pinned to the top of the viewport
-    once the hero row has left it upwards. **Nothing on the server ever shows it.** The markup
+    name and the first three hero facts, pinned to the top of the viewport once the hero row has
+    left it upwards. Text only — `DetailPage.Actions` is deliberately *not* drawn a second time
+    there, because the fragment is the caller's and a second copy would be a second tab stop for
+    every control in it and a duplicate of every `id` the caller wrote. **Nothing on the server
+    ever shows it.** The markup
     renders it `hidden` with `aria-hidden="true"`, and the package's one browser module is the only
     thing that takes either off — so a host serving no module, or a reader with JavaScript off,
     never sees the bar and loses no word by not seeing it, because every word in it is still on the

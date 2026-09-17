@@ -1,9 +1,10 @@
 category: Added
 - **A detail page pins a condensed fact bar to the top of the viewport once its hero row scrolls
-  away.** The entity's name and code, the first three facts of the hero row and the page's action
-  row again — a summary of the summary, with every word in it still on the page below. `DetailPage`
-  draws it, so the kilde, datasamling and variable views get it at once; `VariableListView` names no
-  hero facts and so draws no bar. (Fhi.Metadata-35w0p.28)
+  away.** The entity's name and code and the first three facts of the hero row — a summary of the
+  summary, with every word in it still on the page below. Text only: `DetailPage.Actions` is not
+  repeated in it, so nothing a caller put in that fragment gains a second tab stop or a duplicate
+  `id`. `DetailPage` draws the bar, so the kilde, datasamling and variable views get it at once;
+  `VariableListView` names no hero facts and so draws no bar. (Fhi.Metadata-35w0p.28)
 - **`DetailPage` takes `StickyName`, `StickyNameLang` and `StickyCode` for it.** The name as the
   page's own heading says it, with a `lang` for the half the catalogue holds only in Norwegian, and
   the identifiers beside it — left out where the heading has already fallen back to the code. Unset,

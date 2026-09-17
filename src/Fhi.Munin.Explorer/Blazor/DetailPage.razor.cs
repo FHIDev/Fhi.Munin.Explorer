@@ -1,4 +1,6 @@
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -42,6 +44,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
 {
     [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<DetailPage>(Services);
 
     /// <summary>
     /// The view's own root class, worn beside <c>munin-explorer-page</c> rather than replaced by
@@ -92,12 +101,18 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The bar is <c>munin-explorer-page__stuckbar</c>: the name, the first
-    /// <see cref="StickyFactCount"/> facts of the hero row and <see cref="Actions"/> again, pinned
-    /// to the top of the viewport once the hero row has scrolled off it. It is a summary of a
-    /// summary — every word in it is still on the page — which is why it is rendered
-    /// <c>hidden</c> and only the package's browser module ever shows it. A host that does not
-    /// serve that module never sees it, and loses nothing by not seeing it.
+    /// The bar is <c>munin-explorer-page__stuckbar</c>: the name and the first
+    /// <see cref="StickyFactCount"/> facts of the hero row, pinned to the top of the viewport once
+    /// the hero row has scrolled off it. It is a summary of a summary — every word in it is still
+    /// on the page — which is why it is rendered <c>hidden</c> and only the package's browser
+    /// module ever shows it. A host that does not serve that module never sees it, and loses
+    /// nothing by not seeing it.
+    /// </para>
+    /// <para>
+    /// Text alone, and <see cref="Actions"/> is deliberately <em>not</em> repeated in it: the
+    /// fragment is the caller's, so a second copy would be a second tab stop for every control in
+    /// it and a duplicate of every <c>id</c> the caller wrote — in a bar the module unhides, where
+    /// neither stays inert.
     /// </para>
     /// <para>
     /// Resolve it through the same member the name block reads, as the hero facts are resolved:
@@ -260,25 +275,64 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     {
         // Not `firstRender` alone: a view renders its chassis before its payload arrives, and the
         // bar and the row it watches are both drawn only once there are facts to fill them.
-        if (_observed || !Sticky)
+        if (!Sticky)
+        {
+            // The bar left the render tree with the payload. A later one is a NEW element wearing
+            // the same id, and the observer the module still holds watches the row it replaced.
+            _observed = false;
+
+            return;
+        }
+
+        if (_observed)
         {
             return;
         }
 
+        // Latched before the awaits rather than after: the renderer does not wait for this
+        // continuation, so a render arriving mid-import would otherwise import the module twice.
         _observed = true;
 
-        var interop = new ExplorerInterop(JS);
+        // One interop for the component's life, assigned before the import so disposal can see it.
+        var interop = _interop ??= new ExplorerInterop(JS);
 
-        // Assigned before the import so disposal can see it, and released here where disposal
-        // already ran: this continuation resumes after an await the renderer does not wait for.
-        _interop = interop;
+        if (await interop.TryLoadAsync())
+        {
+            await ObserveAsync(interop);
+        }
+        else
+        {
+            // Not there YET, not not-there: a circuit reconnecting answers an import with nothing
+            // at all, and only a later render can ask again. A refusal is remembered by the interop.
+            _observed = false;
+        }
 
-        await interop.TryLoadAsync();
-        await interop.ObserveHeroFactsAsync(StuckbarId, FactsId);
-
+        // Disposal landed while the two calls above were in flight, so undoing them falls here —
+        // symmetrically with DisposeAsync, which had no module to reach while the import was out.
         if (_disposed)
         {
+            await interop.DisconnectHeroFactsAsync(StuckbarId);
             await interop.DisposeAsync();
+        }
+    }
+
+    /// <summary>Points the module at this page's bar and hero row, answering for a faulty module.</summary>
+    /// <remarks>
+    /// <see cref="ExplorerInterop.ObserveHeroFactsAsync"/> lets a <see cref="JSException"/> travel
+    /// on — a fault inside an export is a defect in the module, not an absent one — and here is the
+    /// last place to catch it: this continuation resumes after an await the renderer never waited
+    /// for, so an escape takes a legacy Blazor Server circuit down for a bar that repeats the page.
+    /// </remarks>
+    private async Task ObserveAsync(ExplorerInterop interop)
+    {
+        try
+        {
+            await interop.ObserveHeroFactsAsync(StuckbarId, FactsId);
+        }
+        catch (JSException ex)
+        {
+            Log?.LogWarning(
+                ex, "the browser module could not watch the hero fact row {FactsId}", FactsId);
         }
     }
 

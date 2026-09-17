@@ -5,10 +5,50 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <summary>A runtime that refuses every call, the way a host without the module does.</summary>
 internal sealed class RefusingJsRuntime(Exception thrown) : IJSRuntime
 {
-    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) => throw thrown;
+    /// <summary>How often an import was attempted — a refusal the caller retried is one more.</summary>
+    internal int Imports { get; private set; }
+
+    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
+        InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 
     public ValueTask<TValue> InvokeAsync<TValue>(
-        string identifier, CancellationToken cancellationToken, object?[]? args) => throw thrown;
+        string identifier, CancellationToken cancellationToken, object?[]? args)
+    {
+        if (identifier == "import")
+        {
+            Imports++;
+        }
+
+        throw thrown;
+    }
+}
+
+/// <summary>
+/// A runtime whose first import fails the way a reconnecting circuit does, and whose next answers.
+/// </summary>
+/// <remarks>
+/// The distinction the retry rests on: a <see cref="JSDisconnectedException"/> says "not yet" and a
+/// <see cref="JSException"/> says "not there". Only the first is worth a later render asking again.
+/// </remarks>
+internal sealed class FlakyJsRuntime(IJSObjectReference module) : IJSRuntime
+{
+    internal int Imports { get; private set; }
+
+    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
+        InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+    public ValueTask<TValue> InvokeAsync<TValue>(
+        string identifier, CancellationToken cancellationToken, object?[]? args)
+    {
+        if (identifier != "import")
+        {
+            return ValueTask.FromResult(default(TValue)!);
+        }
+
+        return ++Imports == 1
+            ? throw new JSDisconnectedException("the circuit is reconnecting")
+            : ValueTask.FromResult((TValue)(object)module);
+    }
 }
 
 /// <summary>A runtime that hands out one module, counting how often it was asked for it.</summary>
@@ -108,11 +148,57 @@ internal sealed class RefusingModule(Exception thrown) : IJSObjectReference
 /// </remarks>
 internal sealed class RecordingModule : IJSObjectReference
 {
+    // Written from a render continuation and read from the test, which are not the same thread.
+    private readonly Lock _gate = new();
     private readonly List<(string Identifier, object?[] Arguments)> _calls = [];
 
-    internal IReadOnlyList<(string Identifier, object?[] Arguments)> Calls => _calls;
+    internal IReadOnlyList<(string Identifier, object?[] Arguments)> Calls
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return [.. _calls];
+            }
+        }
+    }
 
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    /// <summary>Every call to <paramref name="identifier"/>, in order, with its first argument.</summary>
+    internal IReadOnlyList<string> ArgumentsOf(string identifier) =>
+    [
+        .. Calls.Where(call => call.Identifier == identifier)
+            .Select(call => (call.Arguments.ElementAtOrDefault(0) as string) ?? "")
+    ];
+
+    /// <summary>
+    /// Waits until <paramref name="identifier"/> has been called, for a continuation the test does
+    /// not hold and so cannot await. False where it never arrived.
+    /// </summary>
+    internal async Task<bool> ReachedAsync(string identifier)
+    {
+        for (var attempt = 0; attempt < 200; attempt++)
+        {
+            if (Calls.Any(call => call.Identifier == identifier))
+            {
+                return true;
+            }
+
+            await Task.Delay(25);
+        }
+
+        return false;
+    }
+
+    /// <summary>What a release is recorded under, so a test can wait for one it does not hold.</summary>
+    /// <remarks>Bracketed, so it can never collide with an export the module really has.</remarks>
+    internal const string Released = "[release]";
+
+    public ValueTask DisposeAsync()
+    {
+        Record(Released, []);
+
+        return ValueTask.CompletedTask;
+    }
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
         InvokeAsync<TValue>(identifier, CancellationToken.None, args);
@@ -120,9 +206,17 @@ internal sealed class RecordingModule : IJSObjectReference
     public ValueTask<TValue> InvokeAsync<TValue>(
         string identifier, CancellationToken cancellationToken, object?[]? args)
     {
-        _calls.Add((identifier, args ?? []));
+        Record(identifier, args ?? []);
 
         return ValueTask.FromResult(default(TValue)!);
+    }
+
+    private void Record(string identifier, object?[] arguments)
+    {
+        lock (_gate)
+        {
+            _calls.Add((identifier, arguments));
+        }
     }
 }
 

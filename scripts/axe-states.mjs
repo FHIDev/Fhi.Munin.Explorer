@@ -17,6 +17,8 @@
 // re-render landing on top of it. Such a failure reports as a state error rather than as a failing
 // test, so the bUnit test that cannot stage the press names the state it defers to.
 
+import { scrollPast } from './reader-scroll.mjs';
+
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
 
@@ -246,20 +248,9 @@ export const states = {
     const row = page.locator('.munin-explorer-page__facts').first();
     await row.waitFor({ state: 'visible', timeout: findTimeout });
 
-    // A frame at a time, never one jump: an IntersectionObserver notifies on a crossing, and a jump
-    // straight past the row leaves every frame non-intersecting and delivers nothing
-    // (Fhi.Metadata-14j7i).
-    await row.evaluate(async one => {
-      const past = one.getBoundingClientRect().top + window.scrollY + one.offsetHeight + 200;
-      const step = Math.max(40, Math.floor(window.innerHeight / 4));
-
-      for (let at = window.scrollY; past - at > step; at += step) {
-        window.scrollTo(0, at);
-        await new Promise(next => requestAnimationFrame(next));
-      }
-
-      window.scrollTo(0, past);
-    });
+    // Stepped rather than jumped, and shared with state-assertions.mjs so the step and the
+    // overshoot cannot drift apart between the two gates that depend on them (Fhi.Metadata-14j7i).
+    await scrollPast(page, await row.getAttribute('id'));
 
     // Waited for rather than assumed: a bar that never arrives is a state nobody entered, and axe
     // reports no violations in markup that is still display:none.
@@ -267,7 +258,6 @@ export const states = {
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
-
   // A kilde row opened on its datasamlinger. The panel only exists after a press, so everything
   // in it - the colspan cell, the nested tables, the headings and the live region - is invisible
   // to the kilder-list scan above (Fhi.Metadata-mq24y).

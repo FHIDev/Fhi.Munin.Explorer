@@ -2320,6 +2320,32 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal("ALS", Kilde().ShortName);
         Assert.Equal("K_ALS", cut.Find("h2").TextContent.Trim());
         Assert.Empty(cut.FindAll("p.munin-explorer-kilde__identifiers"));
+
+        // The sticky bar repeats this name block and has its own copy of the rule, so the code
+        // lands twice there for exactly the same reason it would have here. The name is asserted
+        // beside it, since a bar that stopped rendering would pass the emptiness on its own.
+        Assert.Equal("K_ALS", cut.Find(".munin-explorer-page__stuckbar-name > span").TextContent.Trim());
+        Assert.Empty(cut.FindAll(".munin-explorer-page__stuckbar small"));
+    }
+
+    [Fact]
+    public void Stuckbar_Always_ThenItSaysWhatTheHeadingSays()
+    {
+        // The rule is triplicated by hand across three views reading three different contract
+        // properties, which is the shape the heading tests above were split up to catch. A bar
+        // saying one thing while the heading says another is worse than no bar. (Fhi.Metadata-w13lk)
+        var cut = Render(Kilde(), language: "en");
+
+        var heading = cut.Find("h2");
+        var name = cut.Find(".munin-explorer-page__stuckbar-name > span");
+
+        Assert.Equal(heading.TextContent.Trim(), name.TextContent.Trim());
+        Assert.Equal(heading.GetAttribute("lang"), name.GetAttribute("lang"));
+
+        // And the identifiers beside it, which is the half the fallback case above drops.
+        Assert.Equal(
+            cut.Find("p.munin-explorer-kilde__identifiers").TextContent.Trim(),
+            cut.Find(".munin-explorer-page__stuckbar small").TextContent.Trim());
     }
 
     [Fact]
