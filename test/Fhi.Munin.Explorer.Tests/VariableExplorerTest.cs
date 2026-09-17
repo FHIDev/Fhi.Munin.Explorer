@@ -258,6 +258,28 @@ public class VariableExplorerTest : BunitContext
     }
 
     [Fact]
+    public void FiltersToggle_WhenTheSearchIsComposed_ThenItFoldsTheFacetsAndLeavesWithThemOnTheListTab()
+    {
+        // The list tab draws none of the search facets, so a Vis filtre left there would unfold
+        // nothing. (Fhi.Metadata-l9l2n.102)
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var toggle = cut.Find(".munin-explorer-filters__toggle");
+        var folded = cut.Find($"#{toggle.GetAttribute("aria-controls")}");
+
+        Assert.Equal("FIELDSET", folded.TagName);
+        Assert.True(folded.HasAttribute("hidden"));
+
+        Tab(cut, "Variabelliste").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__toggle"));
+
+        Tab(cut, "Søkeresultat").Click();
+
+        Assert.Single(cut.FindAll(".munin-explorer-filters__toggle"));
+    }
+
+    [Fact]
     public void Tabs_WhenTheKeyboardMovesAlongThem_ThenTheSelectionFollows()
     {
         // The unselected tab carries tabindex="-1" so the tablist costs one tab stop rather than

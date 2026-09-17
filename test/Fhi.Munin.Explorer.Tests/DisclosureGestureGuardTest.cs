@@ -287,24 +287,24 @@ public class DisclosureGestureGuardTest : BunitContext
     [Fact]
     public void VariableSearch_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Four, and three of them only exist once a row is open: the row's own name, then
-        // "Vis datakilde", "Vis datasamling" and — on the Data tab — "Vis koder".
+        // Five: Vis filtre, the row's own name, and three that exist only once a row is open —
+        // "Vis datakilde", "Vis datasamling" and, on the Data tab, "Vis koder".
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
 
-        AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 4);
+        AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 5);
     }
 
     [Fact]
     public void VariableSearchFilterTree_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Three, and two of them are the facet tree's own: the scene above answers the filters
+        // Four, and two of them are the facet tree's own: the scene above answers the filters
         // endpoint with nothing, so its panel draws no tree at all and the branch disclosures added
         // by Fhi.Metadata-adog5 were swept by neither half of this guard.
         Services.AddSingleton<IMuninExplorerClient>(new FacetTreeClient());
         Services.AddScoped<VariableListState>();
 
-        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 3);
+        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 4);
     }
 
     /// <summary>The same client, answering the filters endpoint with a tree two levels deep.</summary>
@@ -342,7 +342,7 @@ public class DisclosureGestureGuardTest : BunitContext
     {
         var cut = Render<VariableSearch>();
 
-        Press(cut, 0);
+        cut.Find("button.munin-explorer-dataitem-main__name").Click(new MouseEventArgs { Detail = 1 });
         cut.FindAll(".munin-explorer-meta__tabs [role=tab]")[1].Click();
 
         return cut;

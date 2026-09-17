@@ -264,7 +264,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     heading. The kilde list is the same bargain twice over, which is why it is a `<table>` of
     `<button>`s — an undrawn table still lines its columns up and an undrawn button is still
     visibly a control.
-    Kelda's facet panel adds two more, `munin-explorer-filters__toggle` and
+    Both facet panels add two more, `munin-explorer-filters__toggle` and
     `munin-explorer-filters__facets`, and they are handles for the same reason: the folding itself
     is the browser's `hidden` attribute, so a host that defines neither gets a panel that opens and
     closes at every width. What the rules buy is the sidebar — at desktop the samples take the
