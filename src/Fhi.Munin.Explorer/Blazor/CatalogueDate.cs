@@ -40,7 +40,7 @@ internal static class CatalogueDate
 
     /// <summary>A day the payload may not have carried at all, and null where it did not.</summary>
     /// <remarks>
-    /// Null is what a fact list already means by nothing to say, so the row is dropped as it is for a
+    /// Null is what a fact list means by nothing to say, so the row reads "Ingen" as it does for a
     /// <see cref="Period"/> with no ends. Both absences reach here: Munin omitting the key, which the
     /// contracts read as null since Fhi.Metadata-se0by, and a <c>default</c> from any other source.
     /// </remarks>

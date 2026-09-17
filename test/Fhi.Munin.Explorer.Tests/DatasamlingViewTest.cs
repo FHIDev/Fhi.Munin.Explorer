@@ -223,8 +223,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             EffectivePersonIdentificationLevel = null,
         }));
 
-        Assert.DoesNotContain("Type datakilde", Labels(hero));
-        Assert.DoesNotContain("Grad av personidentifikasjon", Labels(hero));
+        Assert.Equal(["Dataansvarlig", "Gyldighet", "Antall variabler", "Lovverk"], Labels(hero));
         Assert.DoesNotContain("Ikke oppgitt", hero.TextContent, StringComparison.Ordinal);
     }
 
@@ -612,6 +611,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // to keep the source box alive by reading "Ikke oppgitt". (Fhi.Metadata-35w0p.24)
         var cut = Render(Sparse());
 
+        Assert.Single(cut.FindAll(".munin-explorer-datasamling__main"));
         Assert.Empty(cut.FindAll($"#{DetailSectionIds.Source}"));
         Assert.Empty(cut.FindAll($"#{DetailSectionIds.Statistics}"));
     }
@@ -750,7 +750,10 @@ public class DatasamlingViewTest : ExplorerTestContext
     {
         // All four go. The source box used to survive on a kildetype row reading "Ikke oppgitt";
         // a box holding nothing at all is now no box, and so no entry. (Fhi.Metadata-35w0p.24)
-        Assert.Empty(Targets(Render(Sparse())));
+        var cut = Render(Sparse());
+
+        Assert.Single(cut.FindAll(".munin-explorer-datasamling__main"));
+        Assert.Empty(Targets(cut));
     }
 
     [Fact]

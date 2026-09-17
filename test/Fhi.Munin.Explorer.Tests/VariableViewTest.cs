@@ -977,7 +977,10 @@ public class VariableViewTest : ExplorerTestContext
     {
         // All three of its fields blank is a box with nothing at all, which is no box. It used to
         // survive on a kildetype row reading "Ikke oppgitt". (Fhi.Metadata-35w0p.24)
-        Assert.Empty(Render(Sparse()).FindAll($"#{DetailSectionIds.Source}"));
+        var cut = Render(Sparse());
+
+        Assert.Single(cut.FindAll(".munin-explorer-whole__main"));
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.Source}"));
     }
 
     [Fact]
@@ -1161,6 +1164,7 @@ public class VariableViewTest : ExplorerTestContext
         // (Fhi.Metadata-35w0p.24)
         var cut = Render(Sparse());
 
+        Assert.Single(cut.FindAll(".munin-explorer-whole__main"));
         Assert.Empty(Targets(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
     }

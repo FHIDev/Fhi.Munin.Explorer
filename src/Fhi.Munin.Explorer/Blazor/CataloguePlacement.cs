@@ -88,10 +88,10 @@ internal sealed record CataloguePlacement(
             return [(texts.FieldValidFrom, from, false)];
         }
 
-        // An open end after a known start is ongoing, as the period says, and not an absence.
+        // Here a section draws the start, so an open end is ongoing, as the period says, not absent.
         if (!toPlaced)
         {
-            return [(texts.FieldValidTo, to ?? (from is null ? null : texts.Ongoing), false)];
+            return [(texts.FieldValidTo, to ?? texts.Ongoing, false)];
         }
 
         return [];

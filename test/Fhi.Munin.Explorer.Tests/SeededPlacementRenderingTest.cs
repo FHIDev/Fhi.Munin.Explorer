@@ -281,6 +281,11 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
         var kilde = RenderKilde(Kilde(Section));
         var datasamling = RenderDatasamling(Datasamling(Section));
 
+        // The boxes are drawn, so the DoesNotContain below cannot pass on a box that is gone.
+        Assert.Contains("Type datakilde", BoxLabels(kilde, DetailSectionIds.Source));
+        Assert.Contains("Type datakilde", BoxLabels(datasamling, DetailSectionIds.Source));
+        Assert.Contains("Antall variabler", BoxLabels(datasamling, DetailSectionIds.Statistics));
+
         Assert.All(placed, label => Assert.DoesNotContain(label, BoxLabels(kilde, DetailSectionIds.Source)));
         Assert.All(placed, label => Assert.DoesNotContain(label, BoxLabels(datasamling, DetailSectionIds.Source)));
         Assert.All(["Statistikktype", "Frekvens", "Telleenhet"],
@@ -458,6 +463,22 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
            .Where(row => row.Item2 is "Gyldighet" or "Gyldig fra" or "Gyldig til");
 
     private const string Period = "3. februar 2023 – 5. april 2024";
+
+    [Fact]
+    public void Validity_WhenTheStartIsHeldOnlyInTheCuratedValues_ThenTheOpenEndStillReadsOngoing()
+    {
+        // The bag wins the merge, so a section can draw a start the typed column does not hold.
+        // Reading "ongoing" off the typed start would call that open end "Ingen". (Fhi.Metadata-35w0p.24)
+        var kilde = Kilde(section: null) with
+        {
+            PropertyMetadata = ValidityPlacement(from: true, to: true),
+            ValidFrom = null,
+            ValidTo = null,
+            AdditionalProperties = new Dictionary<string, string?> { [CatalogueColumns.ValidFrom] = "2023-02-03" },
+        };
+
+        Assert.Equal([("kilde", "Gyldig til", "Pågående")], [.. Validity("kilde", RenderKilde(kilde))]);
+    }
 
     [Fact]
     public void Validity_WhenNeitherEndIsPlaced_ThenBothFactBoxesDrawThePeriodUnderTheValidityLabel()
