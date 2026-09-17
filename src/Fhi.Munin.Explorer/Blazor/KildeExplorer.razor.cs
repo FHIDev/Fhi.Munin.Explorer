@@ -115,9 +115,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     /// <summary>
     /// Where the host mounted <see cref="VariableSearch"/>, so the chosen kilder can be handed
-    /// over to it. Leave it null and the selection column is not offered at all.
+    /// over to it. Leave it null and neither way over is offered: no selection column, and no link
+    /// on out of an expanded row.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// Two gestures reach that page and both are off this one path, so a host cannot end up with
+    /// them pointing at different variable explorers: the selection handover, which carries the
+    /// kilder the reader ticked, and <see cref="KildeSearch.KildeVariablesHref"/>, the link an
+    /// expanded row ends in, which carries the one kilde whose drawer is open.
+    /// </para>
     /// <para>
     /// The one thing only the host knows, and the reason it is a string: a delegate given to this
     /// component by a statically rendered parent would arrive empty. The handover is a full page
@@ -135,9 +142,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// <c>BlazorComponentPage</c> offers a fixed candidate list — <c>Language</c>, <c>SkjemaId</c>,
     /// <c>IsAuthenticated</c> — and drops every name outside it, so this parameter is reachable
     /// only from a host that writes the mount itself. Defaulting it to a guess such as
-    /// <c>"variabler"</c> would be worse than leaving it null: the column would be drawn and its
-    /// button would land on a page that host may not have. Null draws no column, which is the same
-    /// page that mount renders today.
+    /// <c>"variabler"</c> would be worse than leaving it null: the column and the link would both
+    /// be drawn, and both would land on a page that host may not have. Null draws neither, which is
+    /// the same page that mount renders today.
     /// </para>
     /// </remarks>
     [Parameter] public string? VariableExplorerPath { get; set; }
@@ -168,6 +175,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     /// <summary>The kilde list's own address, held for <see cref="_address"/>'s reason.</summary>
     private Func<string>? _listAddress;
+
+    /// <summary>The variable explorer's address, held for <see cref="_address"/>'s reason.</summary>
+    private Func<Guid?, string>? _variablesAddress;
 
     private EventCallback<IReadOnlyList<Guid>> Handover =>
         VariableExplorerPath is null
@@ -355,6 +365,21 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private Func<string> KilderHref =>
         _listAddress ??= () => _mirror.Address(Query(null, null));
 
+    /// <summary>
+    /// Where one kilde's variables are, for the link an expanded row ends in — null where the host
+    /// named no variable explorer, which is the same answer the selection handover gives.
+    /// </summary>
+    /// <remarks>
+    /// Off <see cref="VariableExplorerPath"/> for that handover's reason: only the host knows where
+    /// it mounted a <see cref="VariableSearch"/>. A link rather than the callback, because it is a
+    /// destination rather than a set to act on, and the two share
+    /// <see cref="VariableExplorerAddress"/> so a reader arriving either way arrives at one address.
+    /// </remarks>
+    private Func<Guid?, string>? KildeVariablesHref =>
+        VariableExplorerPath is null
+            ? null
+            : _variablesAddress ??= kilde => VariableExplorerAddress(kilde is { } id ? [id] : []);
+
     /// <summary>Follow the open kilde, and drop the datasamling that was a step inside it.</summary>
     /// <remarks>
     /// Without the second half the id would outlive the kilde it belongs to in a field nothing
@@ -372,16 +397,20 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// narrowed nothing, so it lands on the unfiltered variable list. The format is not restated
     /// here — <see cref="VariableFilter.ToQueryString"/> writes what its own <c>Parse</c> reads.
     /// </remarks>
-    private void ExploreVariables(IReadOnlyList<Guid> kildeIds)
+    private void ExploreVariables(IReadOnlyList<Guid> kildeIds) =>
+        Navigation.NavigateTo(VariableExplorerAddress(kildeIds), forceLoad: true);
+
+    /// <summary>The variable explorer's address, narrowed to <paramref name="kildeIds"/>.</summary>
+    /// <remarks>
+    /// Against the application base rather than the origin. <c>ToAbsoluteUri("variabler")</c> from
+    /// an app mounted under <c>/optimizely</c> keeps the prefix a literal path would drop —
+    /// identical locally, and out of the application behind a reverse proxy.
+    /// </remarks>
+    private string VariableExplorerAddress(IReadOnlyList<Guid> kildeIds)
     {
         var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
-
-        // Against the application base rather than the origin. NavigateTo("/variabler") from an app
-        // mounted under /optimizely drops the prefix, which is identical locally and sends the
-        // reader out of the application behind a reverse proxy — the trap the mirror avoids too.
         var path = (VariableExplorerPath ?? "").TrimStart('/');
-        var destination = Navigation.ToAbsoluteUri(query.Length == 0 ? path : path + "?" + query);
 
-        Navigation.NavigateTo(destination.ToString(), forceLoad: true);
+        return Navigation.ToAbsoluteUri(query.Length == 0 ? path : path + "?" + query).ToString();
     }
 }

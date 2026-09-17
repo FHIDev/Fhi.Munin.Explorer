@@ -23,6 +23,7 @@
              SelectedDatasamlingId="@_datasamling"
              DatasamlingHref="@_address"
              KilderHref="@_list"
+             KildeVariablesHref="@_variables"
              ExploreVariablesRequested="ExploreVariables" />
 
 @code {
@@ -44,10 +45,14 @@
     /// <inheritdoc cref="_address"/>
     private Func<string>? _list;
 
+    /// <inheritdoc cref="_address"/>
+    private Func<Guid?, string>? _variables;
+
     protected override void OnInitialized()
     {
         _address = Address;
         _list = Kilder;
+        _variables = Variables;
         ReadAddress();
         Nav.LocationChanged += Moved;
     }
@@ -123,6 +128,21 @@
         _arrival++;
 
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// The front page narrowed to one kilde, for the link an expanded row ends in.
+    /// </summary>
+    /// <remarks>
+    /// The same query <see cref="ExploreVariables"/> navigates to, written by the same
+    /// <c>VariableFilter</c>, so the single-kilde shortcut and the ticked-set handover land on one
+    /// page. A link rather than a press because it is a destination and not a set to act on.
+    /// </remarks>
+    private static string Variables(Guid? kilde)
+    {
+        var query = new VariableFilter { KildeIds = kilde is { } id ? [id] : [] }.ToQueryString();
+
+        return query.Length == 0 ? "/" : "/?" + query;
     }
 
     /// <summary>
