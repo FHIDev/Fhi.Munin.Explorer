@@ -1523,19 +1523,27 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>
     /// <see cref="Texts.KildeTypeNameFromApi"/> for a site holding a token and no facet of its
-    /// own — the kilde facet's group headings, and the open row's kilde trail.
+    /// own — the kilde facet's group headings.
     /// </summary>
     /// <remarks>
-    /// One reading for all of them, because falling back apart is what drew prose on the facet
+    /// One reading for every site, because falling back apart is what drew prose on the facet
     /// button and the bare token on the heading directly beneath it. The payload is a parameter
-    /// rather than the field, so a heading resolves out of the very object its button did.
+    /// rather than the field, so a heading resolves out of the very object its button did. The
+    /// open row's kilde trail is the third site and reaches the same call through
+    /// <see cref="KildeTrailBlock.Steps"/>, which takes the facet's word below as its fallback.
     /// </remarks>
     private string KildeTypeNameFromApi(FilterOptions? facets, string? value) =>
-        T.KildeTypeNameFromApi(
-            value,
-            facets?.KildeTyper
-                .FirstOrDefault(type => string.Equals(type.Value, value, StringComparison.OrdinalIgnoreCase))
-                ?.DisplayName);
+        T.KildeTypeNameFromApi(value, FacetKildeTypeName(facets, value));
+
+    /// <summary>The API's own word for a kildetype, out of the facets the filter panel loaded.</summary>
+    /// <remarks>
+    /// The lookup alone, because the trail resolves it through <see cref="KildeTrailBlock.Steps"/> and
+    /// the two sites would otherwise each hold a copy of the matching rule.
+    /// </remarks>
+    private static string? FacetKildeTypeName(FilterOptions? facets, string? value) =>
+        facets?.KildeTyper
+            .FirstOrDefault(type => string.Equals(type.Value, value, StringComparison.OrdinalIgnoreCase))
+            ?.DisplayName;
 
     /// <summary>
     /// The heading of the drill-in view while it is still empty, named after which of the two the

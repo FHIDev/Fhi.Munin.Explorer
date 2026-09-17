@@ -74,6 +74,20 @@
                 </DetailSection>
             }
 
+            @* The same trail the open row's panel draws, from one implementation. The wrapper is
+               what dresses it: the panel's rule is scoped to `munin-explorer-detail`, so outside
+               that panel the steps need `munin-explorer-breadcrumb`. (Fhi.Metadata-40y6v) *@
+            @if (Drawn(DetailSectionIds.Placement))
+            {
+                <DetailSection Id="@DetailSectionIds.Placement">
+                    @DetailBlocks.Heading(BlockLevel, T.GroupPlacement, "headline headline-s")
+                    @* No role="navigation": nothing here is pressable, and a landmark with no
+                       control is one a reader jumps to for nothing. The facts it repeats from
+                       Kildeinformasjon below are a path, not one fact under a second label. *@
+                    <div class="munin-explorer-breadcrumb">@KildeTrailBlock.Write(Placement, T)</div>
+                </DetailSection>
+            }
+
             @* The five blocks below are what the rail beside this column held, in the order it
                held them: the mockups put source information near the end of the page and name
                no position for the four with it. *@
@@ -123,7 +137,10 @@
                 <DetailSection Id="@DetailSectionIds.DataCollections">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingDataCollections, "headline headline-s")
                     <ul class="munin-explorer-whole__list">
-                        @foreach (var datasamling in variable.AllDatasamlinger)
+                        @* KildeTrailBlock.NamedDatasamlinger, which is also what the Plassering
+                           step above counts: two derivations of "which datasamlinger" put a count
+                           over a list of some other number. *@
+                        @foreach (var datasamling in Datasamlinger)
                         {
                             <li>
                                 <span lang="@CatalogueProperties.Foreign("no", Reader)">@datasamling.Name</span>

@@ -535,12 +535,14 @@ These are not style preferences — each one is a host that breaks otherwise.
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
     over the results — and without it a trail reads as plain text with no sign it can be pressed;
-    `munin-explorer-breadcrumb` is that hierarchy trail's own wrapper, the navigation landmark the
-    steps sit in and where the chevrons between them come from, and an undrawn one is a plain
-    numbered list; and inside the `munin-explorer-period*`
-    wrapper, `__track`, `__fill` and `__track--ongoing` are the period bar itself — only its width
-    comes from an inline style, so an undrawn bar renders as nothing at all. The period is still
-    legible without it, because the dates are next to it in words, in `__range`.
+    `munin-explorer-breadcrumb` is the wrapper a trail's steps sit in and where the chevrons
+    between them come from, and an undrawn one is a plain numbered list — it dresses two of them,
+    the hierarchy trail over the results and `VariableView`'s Plassering trail, and the
+    `role="navigation"` on the first of those is that trail's own rather than the name's;
+    and inside the `munin-explorer-period*` wrapper, `__track`, `__fill` and `__track--ongoing`
+    are the period bar itself — only its width comes from an inline style, so an undrawn bar
+    renders as nothing at all. The period is still legible without it, because the dates are next
+    to it in words, in `__range`.
     `munin-explorer-kilder-scroll` is the box the kilder table scrolls in, and it is the one name
     here whose cost is paid by the HOST's page rather than by the component's own. The table's
     eight columns want 779px at their narrowest — measured over 66 kilder — and helsedata's content

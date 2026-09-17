@@ -841,9 +841,9 @@ public class VariableViewTest : BunitContext
     private static IReadOnlyList<AngleSharp.Dom.IElement> Wrappers(IRenderedComponent<VariableView> cut) =>
         [.. cut.FindAll("section.munin-explorer-page__section")];
 
-    /// <summary>A variable with every one of this view's eight blocks filled in.</summary>
+    /// <summary>A variable with every one of this view's nine blocks filled in.</summary>
     /// <remarks>
-    /// The plain fixture fills three, so a list read off it would say nothing about the five that
+    /// The plain fixture fills four, so a list read off it would say nothing about the five that
     /// are drawn only when the catalogue has something to put in them.
     /// </remarks>
     private static VariableDetail Whole() => Detail() with
@@ -864,8 +864,9 @@ public class VariableViewTest : BunitContext
 
         Assert.Equal(
             [DetailSectionIds.Metadata, DetailSectionIds.Versions, DetailSectionIds.Statistics,
-             DetailSectionIds.Source, DetailSectionIds.DataPeriod, DetailSectionIds.DataType,
-             DetailSectionIds.VariableGroups, DetailSectionIds.DataCollections],
+             DetailSectionIds.Placement, DetailSectionIds.Source, DetailSectionIds.DataPeriod,
+             DetailSectionIds.DataType, DetailSectionIds.VariableGroups,
+             DetailSectionIds.DataCollections],
             Wrappers(cut).Select(section => section.Id!));
 
         Assert.All(Wrappers(cut), section =>
@@ -895,14 +896,14 @@ public class VariableViewTest : BunitContext
         Assert.Equal(Wrappers(norwegian).Select(s => s.Id!), Wrappers(english).Select(s => s.Id!));
 
         // Worth nothing unless the headings really do differ. Metadata is the same word in both,
-        // which is exactly why the ids cannot be read off them: six of these eight are not.
+        // which is exactly why the ids cannot be read off them: every other heading here is not.
         Assert.Equal(
-            ["Metadata", "Versjonshistorikk", "Kildeinformasjon", "Dataperiode", "Datatype",
-             "Variabelgrupper", "Datasamlinger"],
+            ["Metadata", "Versjonshistorikk", "Plassering", "Kildeinformasjon", "Dataperiode",
+             "Datatype", "Variabelgrupper", "Datasamlinger"],
             HeadingsExceptStatistics(norwegian));
         Assert.Equal(
-            ["Metadata", "Version history", "Source information", "Data period", "Data type",
-             "Variable groups", "Data collections"],
+            ["Metadata", "Version history", "Placement", "Source information", "Data period",
+             "Data type", "Variable groups", "Data collections"],
             HeadingsExceptStatistics(english));
     }
 
@@ -921,18 +922,19 @@ public class VariableViewTest : BunitContext
         // The wrapper goes INSIDE each emptiness check. Outside one it would draw a section holding
         // a heading and nothing else, which is worse than the bare heading it replaced. The plain
         // fixture carries no versions, no statistics, no data period and neither list, so five of
-        // the eight are suppressed here at once — including the statistics block, whose emptiness
+        // the nine are suppressed here at once — including the statistics block, whose emptiness
         // check lives in StatisticsBlock rather than in this view.
         var cut = Render(Detail());
 
-        Assert.Equal([DetailSectionIds.Metadata, DetailSectionIds.Source, DetailSectionIds.DataType],
+        Assert.Equal([DetailSectionIds.Metadata, DetailSectionIds.Placement, DetailSectionIds.Source,
+                      DetailSectionIds.DataType],
                      Wrappers(cut).Select(section => section.Id!));
         Assert.All(Wrappers(cut), section => Assert.True(
             section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
     }
 
     /// <summary>
-    /// A variable the catalogue has filled in nothing for, which is seven of the eight blocks gone.
+    /// A variable the catalogue has filled in nothing for, which is eight of the nine blocks gone.
     /// Shared with the contents tests below so both ask about the same payload.
     /// </summary>
     private static VariableDetail Sparse() => new()
@@ -962,7 +964,7 @@ public class VariableViewTest : BunitContext
     {
         // Plain ids are only safe because an explorer renders at most one detail view: VariableSearch
         // picks between the three arms of one if/else, KildeSearch between two. This view writes the
-        // most of the three - eight - so it is where a second use of one would first go unnoticed.
+        // most of the three - nine - so it is where a second use of one would first go unnoticed.
         var ids = Wrappers(Render(Whole())).Select(section => section.Id!).ToList();
 
         Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
@@ -1047,13 +1049,14 @@ public class VariableViewTest : BunitContext
     [Fact]
     public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
     {
-        // The plain fixture, which suppresses five of the eight — the statistics block among them,
+        // The plain fixture, which suppresses five of the nine — the statistics block among them,
         // whose emptiness check lives in StatisticsBlock rather than in this view. A nav offering
         // any of the five would be offering a link to an anchor that is not in the document.
         var cut = Render(Detail());
 
         Assert.Equal(
-            ["#" + DetailSectionIds.Metadata, "#" + DetailSectionIds.Source, "#" + DetailSectionIds.DataType],
+            ["#" + DetailSectionIds.Metadata, "#" + DetailSectionIds.Placement,
+             "#" + DetailSectionIds.Source, "#" + DetailSectionIds.DataType],
             Targets(cut));
     }
 
@@ -1070,12 +1073,12 @@ public class VariableViewTest : BunitContext
         // The statistics entry is left out of both, for the reason HeadingsExceptStatistics gives:
         // the catalogue's own statistikktype is inside that heading.
         Assert.Equal(
-            ["Metadata", "Versjonshistorikk", "Kildeinformasjon", "Dataperiode", "Datatype",
-             "Variabelgrupper", "Datasamlinger"],
+            ["Metadata", "Versjonshistorikk", "Plassering", "Kildeinformasjon", "Dataperiode",
+             "Datatype", "Variabelgrupper", "Datasamlinger"],
             Entries(norwegian).Where((_, index) => index != 2));
         Assert.Equal(
-            ["Metadata", "Version history", "Source information", "Data period", "Data type",
-             "Variable groups", "Data collections"],
+            ["Metadata", "Version history", "Placement", "Source information", "Data period",
+             "Data type", "Variable groups", "Data collections"],
             Entries(english).Where((_, index) => index != 2));
     }
 
@@ -1386,5 +1389,221 @@ public class VariableViewTest : BunitContext
 
         // And the free-text one is stored once, in Norwegian, however the reader is reading.
         Assert.Equal("no", Cell(hero, "Database reference").QuerySelector("span")!.GetAttribute("lang"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Plassering. The trail the open row's panel has always drawn, on the page that most
+    // needs it: "where does this variable come from" is the first question a variabel page
+    // answers, and until Fhi.Metadata-35w0p.47 only a panel inside a list could answer it.
+
+    /// <summary>
+    /// V_ABR.UTFORT as the catalogue holds it, read off the API on 2026-09-17: all three levels.
+    /// </summary>
+    private static VariableDetail Placed() => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = "V_ABR.UTFORT",
+        PreferredTerm = "Abort utført",
+        KildeName = "Abortregisteret",
+        KildeShortName = "ABR",
+        KildeType = "sentraltHelseregister",
+        DatasamlingName = "Abortregisteret Utlevering",
+        AllDatasamlinger = [new() { Id = Guid.NewGuid(), Name = "Abortregisteret Utlevering" }],
+    };
+
+    /// <summary>The trail's steps on the full page, in the order it draws them.</summary>
+    private static IReadOnlyList<string> Placement(IRenderedComponent<VariableView> cut) =>
+        [.. Steps(cut).Select(step => step.TextContent)];
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> Steps(IRenderedComponent<VariableView> cut) =>
+        cut.FindAll($"#{DetailSectionIds.Placement} ol > li");
+
+    [Fact]
+    public void Placement_WhenTheCatalogueHoldsEveryLevel_ThenTheWholePageDrawsTheTrailWidestFirst()
+    {
+        // V_ABR.UTFORT, a real variable in the catalogue: kildetype, kilde, datasamling. The panel
+        // inside the result list has drawn this for a year; this is the page drawing it.
+        var cut = Render(Placed());
+
+        Assert.Equal(["Sentralt helseregister", "Abortregisteret (ABR)", "Abortregisteret Utlevering"],
+                     Placement(cut));
+
+        // And under the heading the mockup names it with, inside a section the contents nav offers.
+        Assert.Equal("Plassering", cut.Find($"#{DetailSectionIds.Placement} .headline-s").TextContent.Trim());
+        Assert.Contains("Plassering",
+                        cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Placement_WhenALevelIsEmpty_ThenItIsLeftOutRatherThanWrittenAsNotSpecified()
+    {
+        // The rule that would have been re-derived wrongly by a second copy of the trail, asserted
+        // on the page that got the second caller. The payload is V_ABR.UTFORT with the datasamling
+        // level emptied rather than a variable that arrives that way, because all 46 037 variables
+        // the API answered on 2026-09-17 carry all three levels — so the rule is unreachable from
+        // the live catalogue and only a test can hold it. (Fhi.Metadata-35w0p.47)
+        var cut = Render(Placed() with { DatasamlingName = null, AllDatasamlinger = [] });
+
+        Assert.Equal(["Sentralt helseregister", "Abortregisteret (ABR)"], Placement(cut));
+        Assert.DoesNotContain("Ikke oppgitt", cut.Find($"#{DetailSectionIds.Placement}").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Placement_WhenTheCatalogueHoldsNoLevelAtAll_ThenThePageDrawsNoSectionForIt()
+    {
+        // The empty-level rule taken to its end: an empty trail is "Ikke oppgitt" once in a panel
+        // that has a row to fill, and on a page it is a heading over nothing — which is the empty
+        // block every other section here suppresses.
+        var cut = Render(Placed() with
+        {
+            KildeName = "",
+            KildeType = null,
+            DatasamlingName = null,
+            AllDatasamlinger = [],
+        });
+
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.Placement}"));
+        Assert.DoesNotContain("Plassering",
+                              cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Placement_WhenAStepIsMuninsNorwegianRatherThanOurProse_ThenOnlyThatStepIsMarked()
+    {
+        // Both kinds on one page: the kildetype is a vocabulary this package resolves, so it is in
+        // the reader's language and carries no mark, while the kilde is a name stored once in
+        // Norwegian. A screen reader reads an unmarked Norwegian name with English phonetics.
+        var steps = Steps(Render(Placed(), language: "en"));
+
+        Assert.Equal("Central health registry", steps[0].TextContent);
+        Assert.False(steps[0].HasAttribute("lang"));
+
+        Assert.Equal("Abortregisteret (ABR)", steps[1].TextContent);
+        Assert.Equal("no", steps[1].GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Placement_WhenTheVariableSitsInSeveralDatasamlinger_ThenTheLastStepCountsThem()
+    {
+        // A step is one place, so the level a variable can occupy several of at once is counted
+        // rather than named — our own prose about the catalogue, hence unmarked in either language.
+        var steps = Steps(Render(Placed() with
+        {
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "Abortregisteret Utlevering" },
+                new() { Id = Guid.NewGuid(), Name = "Abortregisteret Statistikk" },
+            ],
+        }));
+
+        Assert.Equal("2 datasamlinger", steps[^1].TextContent);
+        Assert.False(steps[^1].HasAttribute("lang"));
+    }
+
+    [Fact]
+    public void Placement_Always_ThenTheTrailSitsInTheWrapperThatDressesItHere()
+    {
+        // The defect this view would otherwise ship. The trail emits no class of its own, and what
+        // strips the list markers and draws the chevrons in the row panel is `.munin-explorer-detail
+        // dd ol` — a rule scoped to the panel. Outside it the steps fall back to a numbered vertical
+        // list, so the wrapper is what carries the look across. (Fhi.Metadata-35w0p.47)
+        var section = Render(Placed()).Find($"#{DetailSectionIds.Placement}");
+        var wrapper = Assert.Single(section.QuerySelectorAll(".munin-explorer-breadcrumb"));
+
+        Assert.Empty(section.QuerySelectorAll(".munin-explorer-detail"));
+        Assert.All(section.QuerySelectorAll("ol, li"), step => Assert.False(step.HasAttribute("class")));
+
+        // And not the landmark the trail over the results is: there is nothing here to press, so a
+        // reader jumping to it by landmark would arrive at text.
+        Assert.False(wrapper.HasAttribute("role"));
+        Assert.Empty(section.QuerySelectorAll("button, a"));
+    }
+
+    /// <summary>The names the Datasamlinger section lists, in the order it lists them.</summary>
+    private static IReadOnlyList<string> DatasamlingList(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll($"#{DetailSectionIds.DataCollections} ul > li")
+               .Select(item => item.QuerySelector("span")!.TextContent)];
+
+    [Fact]
+    public void Placement_WhenADatasamlingHasNoName_ThenItsCountAndTheListBelowItAgree()
+    {
+        // The two numbers this page is the first to put side by side. The trail counts what
+        // KildeTrailBlock.NamedDatasamlinger answers, so the list has to be the same predicate's:
+        // read off the payload instead, it stands under a count of some other number.
+        var cut = Render(Placed() with
+        {
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "Abortregisteret Utlevering" },
+                new() { Id = Guid.NewGuid(), Name = "Abortregisteret Statistikk" },
+                new() { Id = Guid.NewGuid() },
+            ],
+        });
+
+        Assert.Equal("2 datasamlinger", Steps(cut)[^1].TextContent);
+        Assert.Equal(["Abortregisteret Utlevering", "Abortregisteret Statistikk"], DatasamlingList(cut));
+    }
+
+    [Fact]
+    public void DataCollections_WhenEveryDatasamlingIsUnnamed_ThenNoSectionIsDrawnForThem()
+    {
+        // The end of the same rule. An unnamed datasamling is no step in the trail, so a list of
+        // them is a heading over empty bullets — and the nav would offer a link to it. DatasamlingName
+        // is cleared because the predicate falls back to it, which the next test is about.
+        var cut = Render(Placed() with
+        {
+            DatasamlingName = null,
+            AllDatasamlinger = [new() { Id = Guid.NewGuid() }, new() { Id = Guid.NewGuid() }],
+        });
+
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.DataCollections}"));
+        Assert.DoesNotContain("Datasamlinger",
+                              cut.FindAll(".munin-explorer-page__toc a").Select(link => link.TextContent.Trim()));
+
+        // And the trail says nothing about them either, rather than counting what it cannot name.
+        Assert.Equal(["Sentralt helseregister", "Abortregisteret (ABR)"], Placement(cut));
+    }
+
+    [Fact]
+    public void DataCollections_WhenOnlyThePrimaryDatasamlingIsNamed_ThenTheListHasTheStepTheTrailDrew()
+    {
+        // The fallback is inside NamedDatasamlinger rather than beside it, so it reaches both
+        // surfaces: named here and nowhere else, the trail's last step used to stand over a
+        // suppressed section the nav had no entry for.
+        var cut = Render(Placed() with
+        {
+            AllDatasamlinger = [new() { Id = Guid.NewGuid() }],
+        });
+
+        Assert.Equal("Abortregisteret Utlevering", Placement(cut)[^1]);
+        Assert.Equal(["Abortregisteret Utlevering"], DatasamlingList(cut));
+    }
+
+    [Fact]
+    public void Placement_WhenTheVariableIsReplacedAfterTheFirstRender_ThenBothAreTheNewVariablesOwn()
+    {
+        // Placement and Datasamlinger are cached and rebuilt only in OnParametersSet, as Toc is. Going
+        // stale is invisible to the nav test beside it — entries and sections still agree, the page
+        // just draws the last variable — and a host swapping SelectedVariableId is the way in.
+        var cut = Render(Placed());
+
+        Assert.Equal("Abortregisteret Utlevering", Placement(cut)[^1]);
+        Assert.Equal(["Abortregisteret Utlevering"], DatasamlingList(cut));
+
+        cut.Render(p => p.Add(c => c.Variable, Placed() with
+        {
+            KildeName = "Dødsårsaksregisteret",
+            KildeShortName = "DÅR",
+            DatasamlingName = "DÅR Statistikk",
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "DÅR Statistikk" },
+                new() { Id = Guid.NewGuid(), Name = "DÅR Utlevering" },
+            ],
+        }));
+
+        Assert.Equal(["Sentralt helseregister", "Dødsårsaksregisteret (DÅR)", "2 datasamlinger"],
+                     Placement(cut));
+        Assert.Equal(["DÅR Statistikk", "DÅR Utlevering"], DatasamlingList(cut));
     }
 }

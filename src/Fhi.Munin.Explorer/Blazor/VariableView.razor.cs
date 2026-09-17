@@ -135,6 +135,22 @@ public sealed partial class VariableView : ComponentBase
     private static readonly IReadOnlySet<string> DrawnElsewhere =
         new HashSet<string>(StringComparer.Ordinal) { "DataType", CatalogueColumns.Description };
 
+    /// <summary>Where the variable sits in the catalogue, as the open row's panel draws it.</summary>
+    /// <remarks>
+    /// Derived once in <see cref="OnParametersSet"/> and held, because the contents nav asks the
+    /// same question as the block: the entry and the section it points at have to be answered by
+    /// one value rather than by two builds of it.
+    /// </remarks>
+    private IReadOnlyList<KildeTrailBlock.Crumb> Placement { get; set; } = [];
+
+    /// <summary>The datasamlinger this view lists, which is the set the trail's last step counts.</summary>
+    /// <remarks>
+    /// <see cref="KildeTrailBlock.NamedDatasamlinger"/> rather than the payload's own list, because
+    /// the trail counts what that predicate answers: a list built off anything else stands under a
+    /// count of some other number, and an unnamed datasamling draws an empty bullet besides.
+    /// </remarks>
+    private IReadOnlyList<DatasamlingReference> Datasamlinger { get; set; } = [];
+
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>
     /// The third element says whether the value is the catalogue's own words, the same as the kilde
@@ -265,6 +281,14 @@ public sealed partial class VariableView : ComponentBase
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
+        var variable = Variable;
+
+        // The kildetype is passed no facet name, and that is this view's answer rather than an
+        // omission: it holds no facet payload, so the trail falls back to the shipped table — the
+        // reading Kildeinformasjon below already uses, so the page cannot name one kildetype twice.
+        Placement = variable is null ? [] : KildeTrailBlock.Steps(variable, T, kildeTypeApiName: null);
+        Datasamlinger = variable is null ? [] : KildeTrailBlock.NamedDatasamlinger(variable);
+
         var toc = BuildToc();
 
         Toc = toc.Entries;
@@ -285,11 +309,12 @@ public sealed partial class VariableView : ComponentBase
         toc.AddNamed(NamedSections);
         toc.Add(Versions.Count > 0, DetailSectionIds.Versions, T.HeadingVersionHistory);
         toc.Add(StatisticsBlock.AnyStatistics(variable), DetailSectionIds.Statistics, StatisticsHeading);
+        toc.Add(Placement.Count > 0, DetailSectionIds.Placement, T.GroupPlacement);
         toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
         toc.Add(DataPeriod is not null, DetailSectionIds.DataPeriod, T.FieldDataPeriod);
         toc.Add(DataTypeLabel is not null, DetailSectionIds.DataType, T.FieldDataType);
         toc.Add(variable.AllVariabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
-        toc.Add(variable.AllDatasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
+        toc.Add(Datasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
 
         return toc;
     }
