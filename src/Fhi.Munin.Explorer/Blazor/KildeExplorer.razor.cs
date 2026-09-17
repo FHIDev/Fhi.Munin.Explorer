@@ -373,15 +373,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// named no variable explorer, which is the same answer the selection handover gives.
     /// </summary>
     /// <remarks>
-    /// Off <see cref="VariableExplorerPath"/> for that handover's reason: only the host knows where
-    /// it mounted a <see cref="VariableSearch"/>. A link rather than the callback, because it is a
-    /// destination rather than a set to act on, and the two share
-    /// <see cref="VariableExplorerAddress"/> so a reader arriving either way arrives at one address.
-    /// <para>
-    /// Held for <see cref="DatasamlingHref"/>'s reason, but re-made whenever the path moves and
-    /// closed over the path it was made against: a delegate the child is still holding would
-    /// otherwise answer an address off a path the host has since changed or withdrawn.
-    /// </para>
+    /// Held for <see cref="DatasamlingHref"/>'s reason, and re-made whenever the path moves, closed
+    /// over the path it was made against: a delegate the child is still holding would otherwise
+    /// answer off a path the host has since changed or withdrawn.
     /// </remarks>
     private Func<Guid, string>? KildeVariablesHref
     {
@@ -429,8 +423,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// identical locally, and out of the application behind a reverse proxy.
     /// </remarks>
     /// <param name="path">
-    /// Where the host said its variable explorer is. Passed rather than read, so a held delegate
-    /// answers off the path it was made against and not off whatever the parameter says later.
+    /// Where the host said its variable explorer is — passed rather than read for
+    /// <see cref="KildeVariablesHref"/>'s reason.
     /// </param>
     /// <param name="kildeIds">The kilder the reader chose, which may be none at all.</param>
     private string VariableExplorerAddress(string path, IReadOnlyList<Guid> kildeIds)

@@ -1245,7 +1245,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// <remarks>
     /// Through <see cref="KildeExplorer"/> and not <c>KildeSearch</c> on purpose: the delegate under
     /// test is this component's, and a test handing a fabricated one to the child would stay green
-    /// with the forwarding in the markup deleted — which is the only mount helsedata has.
+    /// with the forwarding in the markup deleted. That mount is the only one helsedata has.
     /// </remarks>
     private IRenderedComponent<KildeExplorer> RenderOpenDrawer(
         Guid id, Action<ComponentParameterCollectionBuilder<KildeExplorer>>? parameters = null)
