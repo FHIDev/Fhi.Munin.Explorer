@@ -29,6 +29,8 @@
 #   unstyled-name         The sample styles a munin-explorer name that no non-empty Stiler rule names.
 #                         Context and property are empty; one line per name, however many rules.
 #                         Name its Stiler bead in a comment above it, or say why none is owed.
+#   invented-selector     The sample declares a property under a prefixed selector Stiler never
+#                         spells in that context, though Stiler styles every name in it.
 #
 # The context field is the normalised at-rule the rule sits inside, empty at the top level.
 #
@@ -57,6 +59,9 @@
 #
 # Stiler 0.1.75 retires three entries: the expand icon's width and the choicepicker's two
 # declarations now exist in the package. 214 entries remained then; no new exceptions were added.
+#
+# IT WAS 219 BEFORE Fhi.Metadata-796cw and 333 after it: the 114 invented-selector lines at the
+# bottom are a new family, not drift. Each was there before and compared by no kind at all.
 #
 # IT WAS 217 SINCE Fhi.Metadata-35w0p.6, and the three that arrived are the second family of
 # entries here with an expiry condition rather than drift. That bead stopped emitting the 320px
@@ -103,12 +108,11 @@
 # .munin-explorer rule, no drilldown grid-column). cuo0e is the reminder that a green line here is
 # not a promise: specificity is not compared, so its shape can recur without this list noticing.
 #
-# SILENCE HERE ABOUT A SELECTOR IS NOT AGREEMENT. A selector only the sample has is not compared
-# at all: invented-declaration is reported only under selectors Stiler ALSO has, and
-# missing-selector only for selectors Stiler has and the sample lacks - and, on a borrowed name,
-# not even then. Only unstyled-name reaches a sample-only selector, and only for a prefixed name no
-# non-empty Stiler rule names: a name Stiler styles under other selectors produces no line, and neither
-# does a borrowed name, whether the sample invents it or leaves it alone. Read a gap here as
+# SILENCE HERE ABOUT A SELECTOR IS NOT AGREEMENT. A borrowed selector only the sample has is not
+# compared at all: invented-declaration is reported only under selectors Stiler ALSO has, and
+# missing-selector is off for borrowed names. Under the prefix a sample-only selector is reached by
+# unstyled-name while any of its names is unstyled and by invented-selector once it styles them
+# all. Read a gap here as
 # "Stiler agrees" and a rule the sample invented reads as one the pin shares — which is how a
 # 320px overflow drawn by the sample's own `min-width: 21rem` on
 # `.munin-explorer-selection__explore` was written up as a defect helsedata.no has
@@ -468,3 +472,149 @@ unstyled-name||.munin-explorer-page__header|
 # The sample's heading reset under the chassis root. Fhi.Metadata-nvqny measured that Stiler's
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
+
+# INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
+# only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.79.
+
+# A hand-written rule the sample keeps beside its copy of Stiler's `.munin-explorer`-scoped one.
+# The scoped copy wins on specificity and declares each of these, so none of them draws.
+invented-selector||.munin-explorer-filters__active|align-items
+invented-selector||.munin-explorer-filters__active|display
+invented-selector||.munin-explorer-filters__active|flex-wrap
+invented-selector||.munin-explorer-filters__active|gap
+invented-selector||.munin-explorer-filters__active|margin-bottom
+invented-selector||.munin-explorer-filters__chip-remove:focus-visible|background-color
+invented-selector||.munin-explorer-filters__chip-remove:focus-visible|color
+invented-selector||.munin-explorer-filters__chip-remove:hover|background-color
+invented-selector||.munin-explorer-filters__chip-remove:hover|color
+invented-selector||.munin-explorer-filters__chip-remove|align-items
+invented-selector||.munin-explorer-filters__chip-remove|background
+invented-selector||.munin-explorer-filters__chip-remove|border
+invented-selector||.munin-explorer-filters__chip-remove|border-radius
+invented-selector||.munin-explorer-filters__chip-remove|color
+invented-selector||.munin-explorer-filters__chip-remove|cursor
+invented-selector||.munin-explorer-filters__chip-remove|display
+invented-selector||.munin-explorer-filters__chip-remove|flex
+invented-selector||.munin-explorer-filters__chip-remove|height
+invented-selector||.munin-explorer-filters__chip-remove|justify-content
+invented-selector||.munin-explorer-filters__chip-remove|margin
+invented-selector||.munin-explorer-filters__chip-remove|padding
+invented-selector||.munin-explorer-filters__chip-remove|width
+invented-selector||.munin-explorer-filters__chip|align-items
+invented-selector||.munin-explorer-filters__chip|background-color
+invented-selector||.munin-explorer-filters__chip|border
+invented-selector||.munin-explorer-filters__chip|border-radius
+invented-selector||.munin-explorer-filters__chip|color
+invented-selector||.munin-explorer-filters__chip|display
+invented-selector||.munin-explorer-filters__chip|gap
+invented-selector||.munin-explorer-filters__chip|padding
+invented-selector||.munin-explorer-selection|align-items
+invented-selector||.munin-explorer-selection|display
+invented-selector||.munin-explorer-selection|flex-wrap
+invented-selector||.munin-explorer-selection|gap
+invented-selector||.munin-explorer-switch:focus-visible|background-color
+invented-selector||.munin-explorer-switch:focus-visible|color
+invented-selector||.munin-explorer-switch:hover|background-color
+invented-selector||.munin-explorer-switch[aria-checked=true]|color
+invented-selector||.munin-explorer-switch|align-items
+invented-selector||.munin-explorer-switch|background
+invented-selector||.munin-explorer-switch|border
+invented-selector||.munin-explorer-switch|border-radius
+invented-selector||.munin-explorer-switch|color
+invented-selector||.munin-explorer-switch|cursor
+invented-selector||.munin-explorer-switch|display
+invented-selector||.munin-explorer-switch|gap
+invented-selector||.munin-explorer-switch|padding
+
+# The same hand-written rules where the scoped copy overrides nothing. Only the ribbon's 16px margin
+# draws today; measured in Edge, the chip is 34px and the switch 32px with or without their line, as
+# in Stiler, until a label wraps.
+invented-selector||.munin-explorer-filters__chip|min-height
+invented-selector||.munin-explorer-selection|margin-bottom
+invented-selector||.munin-explorer-switch|height
+
+# Stiler draws these under another selector, listed as missing-selector above: the ghost button with
+# `:not([aria-pressed])`, `.headline.munin-explorer-group`, `__tab button`, `__tab` (padding on the li),
+# and `__item:hover` (hover on the item, not the row). The pager's gap is a missing-declaration.
+invented-selector||.munin-explorer .hd-button-square.button-square--ghost[aria-disabled=true]|border-color
+invented-selector||.munin-explorer .hd-button-square.button-square--ghost|border
+invented-selector||.munin-explorer-data-list__item__row:hover|background
+invented-selector||.munin-explorer-group|margin
+invented-selector||.munin-explorer-meta__tab--active > .hd-button-reset|border-bottom-color
+invented-selector||.munin-explorer-meta__tab > .hd-button-reset|border-bottom
+invented-selector||.munin-explorer-meta__tab > .hd-button-reset|padding
+invented-selector||.munin-explorer-pagination-size .caption|margin-right
+
+# Duplicates, with the same value, of rules the sample also writes in Stiler's own spelling:
+# `> .icon` and `[data-nav-section]`.
+invented-selector||.munin-explorer-header__actions-button > .icon-layout|margin-right
+invented-selector||.munin-explorer-page__section|scroll-margin-top
+
+# Redundant: `.munin-explorer-hierarchy__nodes` already sets `padding-left: 0`, in the sample and in Stiler.
+invented-selector||.munin-explorer-hierarchy > .munin-explorer-hierarchy__nodes|padding-left
+
+# The samples have no icon font, so the trigger's icons are characters. Stiler has nothing to match.
+invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow-down::before|content
+invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before|content
+invented-selector||.munin-explorer-header__actions-button > .icon-layout::before|content
+
+# Ahead of the pin: Stiler gives every detail body two tracks until Fhi.Metadata-ex5wb.
+invented-selector|@media (min-width:1025px)|.munin-explorer-page__body:has( > .munin-explorer-page__toc)|align-items
+invented-selector|@media (min-width:1025px)|.munin-explorer-page__body:has( > .munin-explorer-page__toc)|grid-template-columns
+invented-selector|@media (min-width:1025px)|.munin-explorer-page__body:not(:has( > .munin-explorer-page__toc))|grid-template-columns
+
+# Ahead of the pin: Stiler PR 39406 adds this rule with the same three declarations (Fhi.Metadata-hiz1k).
+invented-selector||.munin-explorer-hierarchy__nodes > li|align-items
+invented-selector||.munin-explorer-hierarchy__nodes > li|display
+invented-selector||.munin-explorer-hierarchy__nodes > li|grid-template-columns
+
+# Stiler removed this rule in its PR 39242 because it matches nothing (Fhi.Metadata-2er4n). The sample
+# still carries it; deleting it there retires this line.
+invented-selector||.munin-explorer-filters__facets > [role=group]|margin-bottom
+
+# Drawn by the samples alone; Stiler 0.1.79 has no rule for these selectors and no Stiler bead asks for
+# one: tab colours, busy wave, invalid-field border, tab panel focus outline, the saved list's <table>,
+# the picker's marker reset, and spacing in the meta panel, fact lists, tree and alert.
+invented-selector|@media (prefers-reduced-motion:reduce)|.munin-explorer-alert .infobox[aria-busy=true]|animation
+invented-selector|@media (prefers-reduced-motion:reduce)|.munin-explorer-alert .infobox[aria-busy=true]|background-image
+invented-selector||.munin-explorer-alert .infobox[aria-busy=true]|animation
+invented-selector||.munin-explorer-alert .infobox[aria-busy=true]|background-image
+invented-selector||.munin-explorer-alert .infobox[aria-busy=true]|background-repeat
+invented-selector||.munin-explorer-alert .infobox[aria-busy=true]|background-size
+invented-selector||.munin-explorer-alert .munin-explorer-retry|margin-bottom
+invented-selector||.munin-explorer-dataitem-main__desiredData input[aria-invalid=true]|border
+invented-selector||.munin-explorer-meta__tab--active > .hd-button-reset|color
+invented-selector||.munin-explorer-meta__tab--active > .hd-button-reset|font-weight
+invented-selector||.munin-explorer-meta__tab > .hd-button-reset:hover|color
+invented-selector||.munin-explorer-meta__tab > .hd-button-reset|color
+invented-selector||.munin-explorer-meta__tab-content:focus-visible|outline
+invented-selector||.munin-explorer-meta__tab-content:focus-visible|outline-offset
+invented-selector||table.munin-explorer-data-list tbody th|color
+invented-selector||table.munin-explorer-data-list tbody th|font-weight
+invented-selector||table.munin-explorer-data-list tbody th|min-width
+invented-selector||table.munin-explorer-data-list td|border-bottom
+invented-selector||table.munin-explorer-data-list td|padding
+invented-selector||table.munin-explorer-data-list td|text-align
+invented-selector||table.munin-explorer-data-list td|vertical-align
+invented-selector||table.munin-explorer-data-list th|border-bottom
+invented-selector||table.munin-explorer-data-list th|padding
+invented-selector||table.munin-explorer-data-list th|text-align
+invented-selector||table.munin-explorer-data-list th|vertical-align
+invented-selector||table.munin-explorer-data-list thead th|background
+invented-selector||table.munin-explorer-data-list thead th|color
+invented-selector||table.munin-explorer-data-list thead th|font-weight
+invented-selector||table.munin-explorer-data-list|border-collapse
+invented-selector||table.munin-explorer-data-list|font-size
+invented-selector||table.munin-explorer-data-list|width
+invented-selector||.munin-explorer__dropdown > summary::-webkit-details-marker|display
+invented-selector||.munin-explorer__dropdown > summary|list-style
+invented-selector||.munin-explorer-hierarchy__branch|margin
+invented-selector||.munin-explorer-meta [role=tabpanel] > .munin-explorer-group:first-child|margin-top
+invented-selector||.munin-explorer-meta dl > dd|margin
+invented-selector||.munin-explorer-meta dl > dt|color
+invented-selector||.munin-explorer-meta h3:first-child|margin-top
+invented-selector||.munin-explorer-meta h3|margin-top
+invented-selector||.munin-explorer-meta__grid dd + dd|margin-top
+invented-selector||.munin-explorer-meta__grid dt|margin-bottom
+invented-selector||.munin-explorer-page__fields dd + dd|margin-top
+invented-selector||.munin-explorer-page__fields dt|margin-bottom
