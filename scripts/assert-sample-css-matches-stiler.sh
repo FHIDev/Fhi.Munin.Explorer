@@ -24,6 +24,8 @@
 #
 # Under the prefix it also reports an unstyled-name: a name the sample styles and no non-empty Stiler
 # rule names, which the declaration comparison above cannot see because there is nothing to compare.
+# Once Stiler styles the name, each declaration under a selector only the sample spells is an
+# invented-selector (Fhi.Metadata-796cw).
 #
 # Without the borrowed half the sample's invented `white-space: nowrap` on
 # `.dropdown-choicepicker__item` was invisible here, and a measurement taken against the sample

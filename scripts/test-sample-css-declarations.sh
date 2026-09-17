@@ -148,6 +148,43 @@ reports "a longer name in Stiler does not vouch for its stem" \
   '.munin-explorer-page__body { display: grid; }'
 
 # ---------------------------------------------------------------------------------------------
+# invented-selector (Fhi.Metadata-796cw). Once Stiler styles a name, a selector under it that only
+# the sample spells is compared by no other kind, so each of its declarations is a line of its own.
+
+reports "a declaration under a selector Stiler never spells, on a name it styles, is reported" \
+  'invented-selector||.munin-explorer-meta kbd|letter-spacing' \
+  '.munin-explorer-meta { padding: 0; } .munin-explorer-meta kbd { letter-spacing: 3px; }' \
+  '.munin-explorer-meta { padding: 0; }'
+
+reports "every declaration of such a rule is its own line" \
+  'invented-selector||.munin-explorer-meta kbd|color' \
+  '.munin-explorer-meta { padding: 0; } .munin-explorer-meta kbd { letter-spacing: 3px; color: red; }' \
+  '.munin-explorer-meta { padding: 0; }'
+
+reports "a selector Stiler spells only outside the sample's at-rule is still the sample's own" \
+  'invented-selector|@media (max-width:767px)|.munin-explorer-meta|padding' \
+  '@media (max-width: 767px) { .munin-explorer-meta { padding: 0; } }' \
+  '.munin-explorer-meta { margin: 0; }'
+
+omits_kind "a name Stiler never styles is left to unstyled-name" \
+  'invented-selector' \
+  '.munin-explorer-invented kbd { letter-spacing: 3px; }' \
+  '.munin-explorer-meta { padding: 0; }'
+
+omits_kind "a selector naming one unstyled name among styled ones is left to unstyled-name" \
+  'invented-selector' \
+  '.munin-explorer-meta .munin-explorer-invented { letter-spacing: 3px; }' \
+  '.munin-explorer-meta { padding: 0; }'
+
+silent "an empty block and an uncompared property under a sample-only selector report nothing" \
+  '.munin-explorer-meta { padding: 0; } .munin-explorer-meta kbd {} .munin-explorer-meta b { font-family: serif; }' \
+  '.munin-explorer-meta { padding: 0; }'
+
+silent "a borrowed selector only the sample has is still not an invented-selector" \
+  '.munin-explorer-meta { padding: 0; } .hd-button-square kbd { letter-spacing: 3px; }' \
+  '.munin-explorer-meta { padding: 0; } .hd-button-square { height: 44px; }'
+
+# ---------------------------------------------------------------------------------------------
 # The `font` shorthand. Stiler's responsive type sets size and line-height through it, and `font`
 # is not compared as a value, so a longhand beside it would read as invented against nothing. The
 # fix reads the size back OUT of the shorthand, which means agreement is silent and disagreement
@@ -273,6 +310,32 @@ guard_advises "the guard gives unstyled-name advice for an unstyled name" yes \
   '.munin-explorer-new { margin: 0; }'
 guard_advises "the guard gives no unstyled-name advice for a declaration divergence" no \
   '.munin-explorer-r1 { padding: 0; }'
+
+guard_says () { # name, extra sample css, baseline, expected exit, expected phrase
+  local floor="" i err code
+  for i in $(seq 1 100); do floor+=".munin-explorer-r$i { margin: 0; }"$'\n'; done
+  printf '%s' "$floor" > "$tmp/stiler.css"
+  printf '%s%s' "$floor" "$2" > "$tmp/sample.css"
+  printf '%s\n' "$3" > "$tmp/known.txt"
+  err="$(STILER_MAIN_CSS="$tmp/stiler.css" SAMPLE_CSS_MODERN="$tmp/sample.css" SAMPLE_CSS_LEGACY="$tmp/sample.css" \
+    KNOWN_DIVERGENCES="$tmp/known.txt" bash "$here/assert-sample-css-matches-stiler.sh" 2>&1)" && code=0 || code=$?
+  if [ "$code" = "$4" ] && printf '%s\n' "$err" | grep -qF -- "$5"; then
+    printf '  ok    %s\n' "$1"
+  else
+    printf '  FAIL  %s\n     wanted exit %s and "%s", got exit %s:\n%s\n' "$1" "$4" "$5" "$code" "$err"
+    fail=1
+  fi
+}
+
+guard_says "the guard fails on an unlisted invented-selector" \
+  '.munin-explorer-r1 kbd { letter-spacing: 3px; }' '' 1 \
+  'invented-selector||.munin-explorer-r1 kbd|letter-spacing'
+guard_says "the guard passes once that invented-selector is listed" \
+  '.munin-explorer-r1 kbd { letter-spacing: 3px; }' 'invented-selector||.munin-explorer-r1 kbd|letter-spacing' 0 \
+  'from the 1 divergence(s) listed'
+guard_says "the guard asks for the line to be deleted once the rule is gone" \
+  '' 'invented-selector||.munin-explorer-r1 kbd|letter-spacing' 1 \
+  'no longer describe a divergence'
 
 # An empty block draws nothing, so it neither needs a Stiler rule nor vouches for a name.
 silent "an empty prefixed block in the sample is not unstyled" \
