@@ -200,6 +200,35 @@ public sealed partial class KildeSearch : ComponentBase
     [Parameter] public Func<string>? KilderHref { get; set; }
 
     /// <summary>
+    /// Where one kilde's variables can be explored, given its id. Leave it unset and an opened
+    /// row's drawer ends at its datasamlinger.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The single-kilde shortcut out of an expanded row, and a different gesture from
+    /// <see cref="ExploreVariablesRequested"/> beside it: that one acts on the set the reader has
+    /// ticked, this one on the one kilde whose drawer is open. Neither stands in for the other, and
+    /// a host is free to wire one and not the other.
+    /// </para>
+    /// <para>
+    /// <see cref="DatasamlingHref"/>'s shape over a <c>Guid</c> rather than a <c>Guid?</c>, because
+    /// the drawer this link sits in is always open on one kilde — and with that one's reasons and
+    /// constraints: a link rather than a press, so middle-click and Ctrl+click work and the address
+    /// can be pasted; a delegate read at render time, because this package has no
+    /// <c>NavigationManager</c> and owns none of helsedata's addresses; and settable only by a
+    /// parent component, because Blazor throws on a delegate it cannot serialise into an
+    /// interactive root.
+    /// <see cref="KildeExplorer"/> is that answer already written, off its own
+    /// <see cref="KildeExplorer.VariableExplorerPath"/>.
+    /// </para>
+    /// <para>
+    /// Whether the address it returns resolves is the host's contract. This component renders what
+    /// the delegate says and can neither reach that page nor check it.
+    /// </para>
+    /// </remarks>
+    [Parameter] public Func<Guid, string>? KildeVariablesHref { get; set; }
+
+    /// <summary>
     /// Raised when the reader asks to explore variables for the kilder they have chosen, carrying
     /// the ids that go with them. Wire it, or no selection column is drawn.
     /// </summary>

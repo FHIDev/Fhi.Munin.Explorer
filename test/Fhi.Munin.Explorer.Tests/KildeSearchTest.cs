@@ -1134,6 +1134,87 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Equal(2, panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
     }
 
+    /// <summary>The kilde the drawer tests open, named so its id can be asserted in an address.</summary>
+    private static readonly Guid DrawerKilde = new("3f2a6c18-9d47-4b0e-8a51-7c6e2d905b13");
+
+    /// <summary>Kelda with one openable kilde, and the way onward wired or not.</summary>
+    /// <remarks>
+    /// The kilde carries a fixed id rather than a fresh one, because what the supplied half asserts
+    /// is the address the delegate produced for a named kilde — not that some address is there.
+    /// </remarks>
+    private IRenderedComponent<KildeSearch> RenderDrawer(bool wireVariables, string language = "no")
+    {
+        var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2) with { Id = DrawerKilde };
+
+        var cut = RenderWith(
+            new FakeClient(als).Describing(DetailWithCollections(als)),
+            p =>
+            {
+                p.Add(
+                    c => c.KildeVariablesHref,
+                    wireVariables ? (Func<Guid, string>)(id => $"/variabler?kilde={id}") : null);
+                p.Add(c => c.Language, language);
+            });
+
+        ExpandToggle(cut, "Als registeret").Click();
+
+        return cut;
+    }
+
+    [Fact]
+    public void ExpandedDrawer_WhenAVariablesAddressIsWired_ThenItEndsInTheLinkThatAddressNames()
+    {
+        // The discriminating half: the null one below passed before this link existed. Whether the
+        // address resolves is the host's contract — this package has no router, so the delegate is
+        // the only thing here that knows where a variable explorer is mounted.
+        var cut = RenderDrawer(wireVariables: true);
+
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+        var link = Assert.Single(panel.QuerySelectorAll("a"));
+
+        Assert.Equal($"/variabler?kilde={DrawerKilde}", link.GetAttribute("href"));
+
+        // The kilde's name is in the label for ExpandDatasamlinger's reason: every open drawer ends
+        // in one of these, and "Vis alle variabler" alone would say nothing about which.
+        Assert.Equal("Vis alle variabler i Als registeret", link.TextContent.Trim());
+
+        // Beside the tables and never inside one: DatasamlingTable is shared with KildeView, so a
+        // link put there would follow the component onto a surface this bead is not about. Last,
+        // so the drawer reads as the datasamlinger and then the step out of them.
+        var drawer = link.ParentElement!;
+
+        Assert.Contains("munin-explorer-kilder__expanded", drawer.ClassList);
+        Assert.Equal(2, drawer.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
+        Assert.Same(link, drawer.LastElementChild);
+    }
+
+    [Fact]
+    public void ExpandedDrawer_WhenTheReaderIsNotNorwegian_ThenTheLinkIsLabelledInTheirLanguage()
+    {
+        // LanguageTest asserts only that a sentence-building delegate is non-null in both arms, by
+        // its own convention that each is asserted where it is rendered. This is that assertion: an
+        // English arm left as a copy of the Norwegian is what nothing else here would notice.
+        var cut = RenderDrawer(wireVariables: true, language: "en");
+
+        var link = Assert.Single(cut.Find(".munin-explorer-kilder__expanded").QuerySelectorAll("a"));
+
+        Assert.Equal("Show all variables in Als registeret", link.TextContent.Trim());
+    }
+
+    [Fact]
+    public void ExpandedDrawer_WhenNoVariablesAddressIsWired_ThenTheDrawerEndsAtItsDatasamlinger()
+    {
+        // No dead href and no inert control either — a host that named no variable explorer has
+        // told this component nowhere to send anyone, and a button that does nothing reads as
+        // broken rather than as unoffered. Asserted on absence, which is what "render no link" is.
+        var panel = RenderDrawer(wireVariables: false).Find(".munin-explorer-kilder__expanded");
+
+        Assert.NotEmpty(panel.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger"));
+        Assert.Empty(panel.QuerySelectorAll("a"));
+        Assert.Empty(panel.QuerySelectorAll("button"));
+        Assert.DoesNotContain("Vis alle variabler", panel.TextContent, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// A pointer press on the row's chevron. <paramref name="clicks"/> is the browser's click count,
     /// so 2 is the second click of a double-click gesture and 0 is how a browser reports Enter or

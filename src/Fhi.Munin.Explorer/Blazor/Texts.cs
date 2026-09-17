@@ -456,6 +456,10 @@ internal sealed record Texts(
     Func<string, string> DatasamlingerFor,
     Func<int, string> DatasamlingerLoaded,
     string NoDatasamlinger,
+    // The way onward out of an opened drawer, carrying the kilde's name for ExpandDatasamlinger's
+    // reason: every open row ends in one of these. Not ExploreVariables below — that one acts on
+    // the ticked set, this one on the single kilde whose drawer it sits in.
+    Func<string, string> AllVariablesForKilde,
     // Three strings that all undo something and can be on screen together, so each is named for
     // its own noun: ClearSearch empties the box, ClearFilters unticks the facets, ClearSelection
     // drops the row ticks. (Fhi.Metadata-5ghur)
@@ -1175,6 +1179,7 @@ internal sealed record Texts(
         DatasamlingerFor: name => $"Datasamlinger for {name}",
         DatasamlingerLoaded: count => count == 1 ? "1 datasamling" : $"{count} datasamlinger",
         NoDatasamlinger: "Ingen datasamlinger registrert",
+        AllVariablesForKilde: name => $"Vis alle variabler i {name}",
         ClearSearch: "Tøm søket",
         SelectAllKilder: "Velg alle synlige kilder",
         ClearSelection: "Nullstill utvalg",
@@ -1553,6 +1558,7 @@ internal sealed record Texts(
         DatasamlingerFor: name => $"Data collections for {name}",
         DatasamlingerLoaded: count => count == 1 ? "1 data collection" : $"{count} data collections",
         NoDatasamlinger: "No data collections recorded",
+        AllVariablesForKilde: name => $"Show all variables in {name}",
         ClearSearch: "Clear search",
         SelectAllKilder: "Select all visible sources",
         ClearSelection: "Clear selection",

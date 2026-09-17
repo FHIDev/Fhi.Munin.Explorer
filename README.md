@@ -1194,11 +1194,14 @@ Four things are worth knowing before mounting one.
   `?sortDir=` for the kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
-- **`KildeExplorer` needs `VariableExplorerPath`** to offer the handover to the variable
-  explorer, because only the host knows where it mounted one. Leave it out and the selection column
-  is not drawn at all — which is deliberate, and the right answer for a CMS host that cannot set it
-  at all: a column whose button lands on a page that host may not have would be worse than no
-  column. It is relative to your application rather than to the domain — `"variabler"` and
+- **`KildeExplorer` needs `VariableExplorerPath`** to offer either way over to the variable
+  explorer, because only the host knows where it mounted one. Two gestures reach it and both are off
+  this one path, so they cannot end up pointing at different pages: the selection handover, which
+  carries the kilder the reader ticked, and the link an expanded row ends in, which carries the one
+  kilde whose drawer is open. Leave it out and neither the selection column nor that link is drawn at
+  all — which is deliberate, and the right answer for a CMS host that cannot set it
+  at all: a control that lands on a page that host may not have would be worse than no
+  control. It is relative to your application rather than to the domain — `"variabler"` and
   `"/variabler"` mean the same page, and a path base is kept either way — and a full URL is taken
   as given. A path rather than a callback on purpose: an `EventCallback` handed to an interactive
   component by a statically rendered parent serialises to an empty delegate.
