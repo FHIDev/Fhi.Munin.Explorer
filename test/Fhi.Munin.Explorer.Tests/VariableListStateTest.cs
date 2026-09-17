@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// sharing a circuit see each other's changes without refetching, and a signed-out reader costs
 /// the API nothing at all.
 /// </summary>
-public class VariableListStateTest : BunitContext
+public class VariableListStateTest : ExplorerTestContext
 {
     /// <summary>Counts what actually reached the API, which is the only honest witness for the trap below.</summary>
     private sealed class CountingClient : EmptyMuninExplorerClient

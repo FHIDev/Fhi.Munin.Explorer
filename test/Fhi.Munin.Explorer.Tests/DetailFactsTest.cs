@@ -15,7 +15,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// with its value — and the two cases that have no value to assert in a view: a note that is
 /// absent rather than empty, and a value in one language beside a note in the other.
 /// </remarks>
-public class DetailFactsTest : BunitContext
+public class DetailFactsTest : ExplorerTestContext
 {
     private IRenderedComponent<DetailFacts> Render(params DetailFact[] facts) =>
         Render<DetailFacts>(parameters => parameters.Add(p => p.Facts, facts));
@@ -24,6 +24,29 @@ public class DetailFactsTest : BunitContext
         cut.FindAll("dl.munin-explorer-page__facts > div")
            .FirstOrDefault(cell => cell.QuerySelector("dt")?.TextContent == label)
         ?? throw new InvalidOperationException($"No '{label}' cell in the row.");
+
+    [Fact]
+    public void Id_WhenAChassisFillsIt_ThenItIsOnTheListAndNotOnAnythingInsideIt()
+    {
+        // What it is for: the sticky bar appears when THIS element leaves the viewport, and the
+        // browser module is handed the id rather than the element. On a cell instead, the observer
+        // would follow one fact rather than the row.
+        var cut = Render<DetailFacts>(parameters => parameters
+            .Add(p => p.Facts, (IReadOnlyList<DetailFact>)[new DetailFact("Type", "Kvalitetsregister")])
+            .Add(p => p.Id, "munin-explorer-facts-a1b2c3d4"));
+
+        Assert.Equal("munin-explorer-facts-a1b2c3d4", cut.Find("dl.munin-explorer-page__facts").Id);
+        Assert.Empty(cut.FindAll("dl.munin-explorer-page__facts *[id]"));
+    }
+
+    [Fact]
+    public void Id_WhenNoCallerFillsIt_ThenNoAttributeIsWrittenAtAll()
+    {
+        // An empty id is a selector that matches nothing and an attribute a host's own `[id]` rule
+        // can still reach, so it is left off rather than written blank.
+        Assert.False(Render(new DetailFact("Type", "Kvalitetsregister"))
+            .Find("dl.munin-explorer-page__facts").HasAttribute("id"));
+    }
 
     [Fact]
     public void Facts_WhenAViewNamesSix_ThenEachIsOneWrapperHoldingOneLabelAndOneValue()

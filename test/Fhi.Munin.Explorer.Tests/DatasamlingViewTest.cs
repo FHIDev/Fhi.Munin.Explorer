@@ -25,7 +25,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// component is exactly where new names appear.
 /// </para>
 /// </remarks>
-public class DatasamlingViewTest : BunitContext
+public class DatasamlingViewTest : ExplorerTestContext
 {
     /// <summary>
     /// The live payload, captured: six curated keys, two of the four groups filled in, every
@@ -335,6 +335,11 @@ public class DatasamlingViewTest : BunitContext
             "munin-explorer-page__main",
             // The wrapper each block below the name sits in, so the contents nav can anchor on it.
             "munin-explorer-page__section",
+            // The sticky bar, drawn hidden on every detail page and shown by the browser module
+            // alone. Its `--on` state is written only from JavaScript, so it is not in this list.
+            "munin-explorer-page__stuckbar",
+            "munin-explorer-page__stuckbar-inner",
+            "munin-explorer-page__stuckbar-name",
             // The contents column, drawn now that the nav fills it. The nav inside wears
             // helsedata's own form-menu names, which is why it adds none of ours.
             "munin-explorer-page__toc",
@@ -1055,7 +1060,13 @@ public class DatasamlingViewTest : BunitContext
         var ids = Render(Datasamling()).FindAll("[id]").Select(e => e.Id!).ToList();
 
         Assert.DoesNotContain(ids, id => id.Length == 0);
-        Assert.All(ids, id => Assert.Contains(id, DetailSectionIdsUnderTest));
+
+        // The two the detail chassis writes are matched by stem rather than listed: each is
+        // finished with a fresh per-instance discriminator, which is what keeps two mounts on one
+        // host page from sharing a sticky bar.
+        Assert.Equal(2, ids.Count(DetailPage.IsChassisId));
+        Assert.All(ids.Where(id => !DetailPage.IsChassisId(id)),
+                   id => Assert.Contains(id, DetailSectionIdsUnderTest));
     }
 
     /// <summary>Every id this view is allowed to write when the host names none.</summary>
@@ -1160,6 +1171,28 @@ public class DatasamlingViewTest : BunitContext
         Assert.NotEqual("", heading.TextContent.Trim());
         Assert.Equal(Datasamling().Code, heading.TextContent.Trim());
         Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__identifiers"));
+
+        // The sticky bar carries its own copy of the same rule, reading its own contract property.
+        // The name is asserted beside it: a bar that stopped rendering would pass the emptiness.
+        Assert.Equal(
+            Datasamling().Code,
+            cut.Find(".munin-explorer-page__stuckbar-name > span").TextContent.Trim());
+        Assert.Empty(cut.FindAll(".munin-explorer-page__stuckbar small"));
+    }
+
+    [Fact]
+    public void Stuckbar_Always_ThenItSaysWhatTheHeadingSays()
+    {
+        // The second of three hand-written copies of the rule, over a second contract property: a
+        // fix applied to one of them compiles and passes with the others left behind.
+        var cut = Render(Datasamling(), language: "en");
+
+        var heading = cut.Find("h2");
+        var name = cut.Find(".munin-explorer-page__stuckbar-name > span");
+
+        Assert.Equal(heading.TextContent.Trim(), name.TextContent.Trim());
+        Assert.Equal(heading.GetAttribute("lang"), name.GetAttribute("lang"));
+        Assert.Equal(Datasamling().Code, cut.Find(".munin-explorer-page__stuckbar small").TextContent.Trim());
     }
 
     [Fact]

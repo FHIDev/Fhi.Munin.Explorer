@@ -1,4 +1,7 @@
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -38,8 +41,17 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// reason to mount it. It ships no CSS, like everything else in this package.
 /// </para>
 /// </remarks>
-public sealed partial class DetailPage : ComponentBase
+public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
 {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<DetailPage>(Services);
+
     /// <summary>
     /// The view's own root class, worn beside <c>munin-explorer-page</c> rather than replaced by
     /// it. Both are on the element for as long as Stiler styles either.
@@ -82,6 +94,53 @@ public sealed partial class DetailPage : ComponentBase
     /// </remarks>
     [Parameter]
     public IReadOnlyList<DetailFact>? Facts { get; set; }
+
+    /// <summary>
+    /// The name the sticky bar condenses the page to, as the heading above it says it. Unset, or
+    /// with no <see cref="Facts"/> left to show, draws no bar at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The bar is <c>munin-explorer-page__stuckbar</c>: the name and the first
+    /// <see cref="StickyFactCount"/> facts of the hero row, pinned to the top of the viewport once
+    /// the hero row has scrolled off it. It is a summary of a summary — every word in it is still
+    /// on the page — which is why it is rendered <c>hidden</c> and only the package's browser
+    /// module ever shows it. A host that does not serve that module never sees it, and loses
+    /// nothing by not seeing it.
+    /// </para>
+    /// <para>
+    /// Text alone, and <see cref="Actions"/> is deliberately <em>not</em> repeated in it: the
+    /// fragment is the caller's, so a second copy would be a second tab stop for every control in
+    /// it and a duplicate of every <c>id</c> the caller wrote — in a bar the module unhides, where
+    /// neither stays inert.
+    /// </para>
+    /// <para>
+    /// Resolve it through the same member the name block reads, as the hero facts are resolved:
+    /// a bar that says one thing while the heading says another is worse than no bar.
+    /// </para>
+    /// </remarks>
+    [Parameter]
+    public string? StickyName { get; set; }
+
+    /// <summary>
+    /// A <c>lang</c> for <see cref="StickyName"/> where it is not in the reader's language, on the
+    /// same terms as <see cref="DetailFact.Lang"/>. Null leaves it inheriting the host's own.
+    /// </summary>
+    [Parameter]
+    public string? StickyNameLang { get; set; }
+
+    /// <summary>
+    /// The identifiers under the name, drawn in the bar beside it. Unset draws the name alone.
+    /// </summary>
+    /// <remarks>
+    /// Left out where the heading has already fallen back to the code, for the reason the name
+    /// block leaves the identifiers out there: the code twice, side by side, is what a naive
+    /// fallback draws. A <c>&lt;small&gt;</c> rather than a class of its own — no host stylesheet
+    /// names one, and an element degrades to its own browser default where a name degrades to
+    /// nothing.
+    /// </remarks>
+    [Parameter]
+    public string? StickyCode { get; set; }
 
     /// <summary>
     /// The eyebrow: what kind of thing this page is about — <c>Datakilde</c>, <c>Datasamling</c>,
@@ -163,6 +222,154 @@ public sealed partial class DetailPage : ComponentBase
     /// </remarks>
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>How many of the hero row's facts the bar repeats.</summary>
+    /// <remarks>
+    /// Three, because Stiler hides everything past the second below 1024px: a bar that carried the
+    /// whole row would be six facts wide at desktop and the same two everywhere else.
+    /// </remarks>
+    private const int StickyFactCount = 3;
+
+    // Unique per instance so two detail pages on one host page cannot collide on DOM ids — and so
+    // the module watches each bar's own hero row rather than two observers sharing one bar.
+    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+
+    private ExplorerInterop? _interop;
+    private bool _observed;
+
+    /// <summary>The sticky bar's id, up to the per-instance discriminator that finishes it.</summary>
+    internal const string StuckbarIdStem = "munin-explorer-stuckbar-";
+
+    /// <summary>The same, for the hero fact row the bar watches.</summary>
+    internal const string FactsIdStem = "munin-explorer-facts-";
+
+    private string StuckbarId => StuckbarIdStem + _instance;
+
+    private string FactsId => FactsIdStem + _instance;
+
+    /// <summary>Whether <paramref name="id"/> is one of the two the chassis writes itself.</summary>
+    internal static bool IsChassisId(string id) =>
+        id.StartsWith(StuckbarIdStem, StringComparison.Ordinal)
+        || id.StartsWith(FactsIdStem, StringComparison.Ordinal);
+
+    /// <summary>The hero row as it will really be drawn, since a fact with no value is dropped.</summary>
+    /// <remarks>
+    /// Resolved here rather than left to <see cref="DetailFacts"/> alone, because the bar exists
+    /// only where that row does: a page whose facts the catalogue left empty has nothing to watch.
+    /// </remarks>
+    private IReadOnlyList<DetailFact> ShownFacts { get; set; } = [];
+
+    private IEnumerable<DetailFact> StickyFacts => ShownFacts.Take(StickyFactCount);
+
+    private bool Sticky => ShownFacts.Count > 0 && !string.IsNullOrWhiteSpace(StickyName);
+
+    /// <inheritdoc />
+    protected override void OnParametersSet() =>
+        ShownFacts = Facts is null
+            ? []
+            : [.. Facts.Where(fact => !string.IsNullOrWhiteSpace(fact.Value))];
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Not `firstRender` alone: a view renders its chassis before its payload arrives, and the
+        // bar and the row it watches are both drawn only once there are facts to fill them.
+        if (!Sticky)
+        {
+            await UnwatchedAsync();
+
+            return;
+        }
+
+        if (_observed)
+        {
+            return;
+        }
+
+        // Latched before the awaits rather than after: the renderer does not wait for this
+        // continuation, so a render arriving mid-import would otherwise import the module twice.
+        _observed = true;
+
+        // One interop for the component's life, assigned before the import so disposal can see it.
+        var interop = _interop ??= new ExplorerInterop(JS);
+
+        if (await interop.TryLoadAsync())
+        {
+            await ObserveAsync(interop);
+        }
+        else
+        {
+            // Not there YET, not not-there: a circuit reconnecting answers an import with nothing
+            // at all, and only a later render can ask again. A refusal is remembered by the interop.
+            _observed = false;
+        }
+    }
+
+    /// <summary>Lets go of the bar that left the render tree with the payload.</summary>
+    /// <remarks>
+    /// The latch reopens because the bar that comes back is a NEW element wearing the same id. The
+    /// observer the module still holds watches the row the renderer detached, and waiting for
+    /// disposal to drop it leaks one observer and one detached pair per empty-and-refill cycle.
+    /// </remarks>
+    private async Task UnwatchedAsync()
+    {
+        if (!_observed)
+        {
+            return;
+        }
+
+        // Reopened before the await, for the reason the latching above gives.
+        _observed = false;
+
+        if (_interop is { } interop)
+        {
+            await interop.DisconnectHeroFactsAsync(StuckbarId);
+        }
+    }
+
+    /// <summary>Points the module at this page's bar and hero row, answering for a faulty module.</summary>
+    /// <remarks>
+    /// <see cref="ExplorerInterop.ObserveHeroFactsAsync"/> lets a <see cref="JSException"/> travel
+    /// on — a fault inside an export is a defect in the module, not an absent one — and here is the
+    /// last place to catch it: this continuation resumes after an await the renderer never waited
+    /// for, so an escape takes a legacy Blazor Server circuit down for a bar that repeats the page.
+    /// </remarks>
+    private async Task ObserveAsync(ExplorerInterop interop)
+    {
+        try
+        {
+            await interop.ObserveHeroFactsAsync(StuckbarId, FactsId);
+        }
+        catch (JSException ex)
+        {
+            Log?.LogWarning(
+                ex, "the browser module could not watch the hero fact row {FactsId}", FactsId);
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The observer is disconnected rather than left to the page: a component swapped out of the
+    /// render tree on a circuit that lives on would otherwise leave one holding the elements it
+    /// watches. A browser already out of reach is the ordinary case and is tolerated, not thrown.
+    /// <para>
+    /// This is the whole undo, with no symmetric half in the render continuation: <c>_interop</c>
+    /// is assigned before that method's first await, so disposal never misses it, and an import
+    /// still in flight arrives to an interop that releases it rather than keeping it.
+    /// </para>
+    /// </remarks>
+    public async ValueTask DisposeAsync()
+    {
+        if (_interop is null)
+        {
+            return;
+        }
+
+        // Through the field rather than a local: CA2213 reads the disposal method literally and a
+        // local it cannot follow back reports the field as never disposed.
+        await _interop.DisconnectHeroFactsAsync(StuckbarId);
+        await _interop.DisposeAsync();
+    }
 
     private string RootClasses => Beside("munin-explorer-page", ViewRoot);
 

@@ -10,7 +10,7 @@ using static Fhi.Munin.Explorer.Tests.SortHeader;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-public class VariableSearchTest : BunitContext
+public class VariableSearchTest : ExplorerTestContext
 {
 
     private static Page<VariableSummary> OnePage(params VariableSummary[] rows) =>
@@ -5734,7 +5734,7 @@ public class VariableSearchTest : BunitContext
         // The glyphs are aria-hidden, so these words are the only place a reader who cannot see
         // them learns which categories THIS row carries: the datakategori facet above lists the
         // vocabulary and says nothing about which datasamling is in which. (Fhi.Metadata-evoil)
-        using var other = new BunitContext();
+        using var other = new ExplorerTestContext();
         var bare = RenderApart(other, new FilteringClient(OnePage(), FacetsWithCategories([], [])));
         var drawn = RenderWith(new FilteringClient(
             OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])));
@@ -14381,6 +14381,13 @@ public class VariableSearchTest : BunitContext
                 // the body, which wears the chassis name alone.
                 "munin-explorer-page",
                 "munin-explorer-kilde",
+                // The sticky bar, first in the chassis so it pins to the top of the page. Drawn on
+                // every page with a name and a hero row, this panel included, and always `hidden`:
+                // the browser module is the only thing that shows it, and bUnit runs none.
+                // `--on` is the module's to write and so is not here.
+                "munin-explorer-page__stuckbar",
+                "munin-explorer-page__stuckbar-inner",
+                "munin-explorer-page__stuckbar-name",
                 // The chassis's eyebrow, above the name block: this view draws one on every
                 // detail page, the drill-in panel's included.
                 "munin-explorer-page__eyebrow",

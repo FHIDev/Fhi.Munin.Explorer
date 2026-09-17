@@ -17,7 +17,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// type compiles and the blocks appear anyway. Hence: both roots, set by string name, asserted on
 /// the markup — and both values, since off is also what a parameter nobody reads produces.
 /// </remarks>
-public class KildeHostParameterTest : BunitContext
+public class KildeHostParameterTest : ExplorerTestContext
 {
     private const string Parameter = "ShowAccessAndPrices";
 

@@ -41,8 +41,9 @@ fi
 
 # The same extraction as assert-sample-css-in-step.sh: every munin-explorer* token under src/, minus
 # the two stem forms finished elsewhere ('-' is a runtime id prefix, '__' an interpolated modifier).
+# The browser module counts as src/ — it writes the sticky bar's `--on` state and nothing else does.
 extract() {
-  grep -rhoE --include='*.cs' --include='*.razor' --exclude-dir=bin --exclude-dir=obj \
+  grep -rhoE --include='*.cs' --include='*.razor' --include='*.js' --exclude-dir=bin --exclude-dir=obj \
          'munin-explorer[A-Za-z0-9_-]*' "$1" 2>/dev/null \
     | grep -vE -- '(-|__)$' \
     | sort -u

@@ -28,7 +28,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// separate assertion that it spells a fact the way the section below it does.
 /// </para>
 /// </remarks>
-public class SeededPlacementRenderingTest : BunitContext
+public class SeededPlacementRenderingTest : ExplorerTestContext
 {
     public SeededPlacementRenderingTest() =>
         Services.AddSingleton<IMuninExplorerClient>(new HierarchyClient());
@@ -193,11 +193,17 @@ public class SeededPlacementRenderingTest : BunitContext
     /// <summary>
     /// The page's text with the hero strip taken out, which is what a count is taken over.
     /// </summary>
+    /// <remarks>
+    /// The sticky bar goes with it: it repeats the first few of those same facts, so a page that
+    /// kept it would count each of them twice and every claim below would be about the repeat.
+    /// </remarks>
     private static string Body<T>(IRenderedComponent<T> cut) where T : IComponent
     {
         var page = (IElement)cut.Find(".munin-explorer-page").Clone(true);
 
-        foreach (var hero in page.QuerySelectorAll("dl.munin-explorer-page__facts").ToList())
+        foreach (var hero in page
+                     .QuerySelectorAll("dl.munin-explorer-page__facts, .munin-explorer-page__stuckbar")
+                     .ToList())
         {
             hero.Remove();
         }

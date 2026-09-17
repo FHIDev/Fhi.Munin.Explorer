@@ -64,9 +64,9 @@ public partial class ExplorerInteropTest
     [Fact]
     public void ModuleExports_WhenTheSourceIsRead_ThenTheWrapperNamesEveryOne()
     {
-        // The module is a seam and exports nothing today, so this walk reads nothing and the two
-        // theories below are what hold the matcher up. It is here for the first export, whose name
-        // is a literal in C# and a declaration in JS with nothing else holding the two together.
+        // Every export's name is a literal in C# and a declaration in JS, with nothing else holding
+        // the two spellings together. The theories below feed the matcher its own input, since this
+        // walk can only ever read the forms the module happens to use.
         var module = File.ReadAllText(ModuleInSource);
         var wrapper = File.ReadAllText(
             Repo.In("src", "Fhi.Munin.Explorer", "Blazor", nameof(ExplorerInterop) + ".cs"));
@@ -148,11 +148,11 @@ public partial class ExplorerInteropTest
     }
 
     [Fact]
-    public void Import_WhenTheSourceIsRead_ThenSomethingLoadsTheModuleAndNothingWaitsOnTheAnswer()
+    public void Import_WhenTheSourceIsRead_ThenSomethingLoadsTheModuleAndNothingStoresTheAnswer()
     {
         // Two halves of one claim. Nothing loading it would leave the theory above vacuous, and a
-        // caller reading the answer would have made the module load-bearing — which is the one
-        // thing it may not be until a later bead argues for it.
+        // caller STORING the answer would have made the module load-bearing. Branching on it where
+        // it stands is allowed for one use only — retrying a failed import on a later render.
         var callers = Callers().ToList();
 
         Assert.NotEmpty(callers);
@@ -164,10 +164,12 @@ public partial class ExplorerInteropTest
                 var statement = Statement(source, call);
 
                 Assert.True(
-                    statement.StartsWith("await ", StringComparison.Ordinal)
+                    (statement.StartsWith("await ", StringComparison.Ordinal)
+                     || statement.StartsWith("if (await ", StringComparison.Ordinal))
                     && !statement.Contains('=', StringComparison.Ordinal),
-                    $"{file} keeps the answer to the import: '{statement}'. Nothing may depend on " +
-                    "the module, so the call is awaited and its result dropped.");
+                    $"{file} keeps the answer to the import: '{statement}'. Nothing rendered may " +
+                    "depend on the module, so the answer is dropped or branched on where it " +
+                    "stands — never stored.");
             }
         }
     }
@@ -290,6 +292,182 @@ public partial class ExplorerInteropTest
         Assert.Equal(1, runtime.Imports);
     }
 
+    [Fact]
+    public async Task TryLoadAsync_WhenTheHostServesNoModule_ThenItIsNotAskedForAgain()
+    {
+        // The caller retries a failed load on a later render, because an import a reconnecting
+        // circuit could not carry is "not yet". A 404 is not: without this, a host serving no
+        // module would pay one import round trip per render for the life of the circuit.
+        var runtime = new RefusingJsRuntime(new JSException("404"));
+        var interop = new ExplorerInterop(runtime);
+
+        Assert.False(await interop.TryLoadAsync());
+        Assert.False(await interop.TryLoadAsync());
+        Assert.False(await interop.TryLoadAsync());
+
+        Assert.Equal(1, runtime.Imports);
+    }
+
+    [Fact]
+    public async Task TryLoadAsync_WhenASecondImportOverlapsTheFirst_ThenTheLaterOneIsReleased()
+    {
+        // The caller asks again while an import is in flight, because its own latch reopens when
+        // the bar leaves the render tree. Keeping the arrival that lands second drops the first,
+        // and nothing else holds it: one reference in the browser's table for the circuit's life.
+        var first = new CountingModule();
+        var second = new CountingModule();
+        var runtime = new StagingJsRuntime();
+        var interop = new ExplorerInterop(runtime);
+
+        var one = interop.TryLoadAsync();
+        var two = interop.TryLoadAsync();
+
+        Assert.Equal(2, runtime.Imports);
+
+        runtime.Answer(1, first);
+
+        Assert.True(await one);
+
+        runtime.Answer(2, second);
+
+        Assert.True(await two);
+
+        Assert.Equal(0, first.Disposals);
+        Assert.Equal(1, second.Disposals);
+    }
+
+    [Fact]
+    public async Task TryLoadAsync_WhenTheOverlappingImportFailsTolerably_ThenTheModuleKeptSurvivesIt()
+    {
+        // The same overlap, answered the other way round: the later import is the one a reconnect
+        // swallows, so it arrives as null. Assigning that null would leave a live module the
+        // interop believes it does not have — nothing releases it, and its observers stay on.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+        var interop = new ExplorerInterop(runtime);
+
+        var one = interop.TryLoadAsync();
+        var two = interop.TryLoadAsync();
+
+        runtime.Answer(1, module);
+
+        Assert.True(await one);
+
+        runtime.Answer(2, null);
+
+        Assert.True(await two);
+        Assert.True(interop.IsLoaded);
+
+        await interop.DisconnectHeroFactsAsync("bar-a1b2c3d4");
+
+        Assert.Equal(["bar-a1b2c3d4"], module.ArgumentsOf("disconnectHeroFacts"));
+    }
+
+    [Fact]
+    public async Task TryLoadAsync_WhenTheCircuitWasReconnecting_ThenAskingAgainStillGetsTheModule()
+    {
+        // The half the memory above must not swallow. A JSDisconnectedException is answered as null
+        // rather than as a refusal, so the next render's ask is the one that lands.
+        var runtime = new FlakyJsRuntime(new RecordingModule());
+        var interop = new ExplorerInterop(runtime);
+
+        Assert.False(await interop.TryLoadAsync());
+        Assert.True(await interop.TryLoadAsync());
+
+        Assert.Equal(2, runtime.Imports);
+    }
+
+    // -----------------------------------------------------------------------
+    // The exports, and which faults each of them may swallow
+
+    [Fact]
+    public async Task ObserveHeroFactsAsync_WhenTheModuleIsThere_ThenBothIdsReachTheExport()
+    {
+        // The ids are what scope one page's bar to one page's hero row, so a call that carried the
+        // wrong one would drive somebody else's bar and every count of the calls would still pass.
+        var module = new RecordingModule();
+        var interop = new ExplorerInterop(new LendingJsRuntime(module));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.ObserveHeroFactsAsync("bar-a1b2c3d4", "facts-a1b2c3d4");
+
+        var call = Assert.Single(module.Calls);
+
+        Assert.Equal("observeHeroFacts", call.Identifier);
+        Assert.Equal(["bar-a1b2c3d4", "facts-a1b2c3d4"], call.Arguments.Select(argument => argument as string));
+    }
+
+    [Fact]
+    public async Task ObserveHeroFactsAsync_WhenTheHostServesNoModule_ThenItDoesNothingAtAll()
+    {
+        // The designer's own note: uten JS dukker den bare aldri opp - ingenting går tapt. This is
+        // that sentence as a test, and the reason the bar is rendered hidden rather than shown.
+        var interop = new ExplorerInterop(new RefusingJsRuntime(new JSException("404")));
+
+        Assert.False(await interop.TryLoadAsync());
+
+        await interop.ObserveHeroFactsAsync("bar", "facts");
+    }
+
+    [Fact]
+    public async Task ObserveHeroFactsAsync_WhenTheExportItselfFaults_ThenItTravelsOn()
+    {
+        // The asymmetry with the disconnect below, and it is deliberate: a fault inside an export
+        // is a defect in the module, and one nothing rethrows is a bar that never works with
+        // nothing in any host's log to say so.
+        var interop = new ExplorerInterop(
+            new LendingJsRuntime(new RefusingModule(new JSException("observeHeroFacts is not a function"))));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await Assert.ThrowsAsync<JSException>(() => interop.ObserveHeroFactsAsync("bar", "facts"));
+    }
+
+    [Fact]
+    public async Task DisconnectHeroFactsAsync_WhenTheModuleIsThere_ThenTheBarsOwnIdReachesTheExport()
+    {
+        var module = new RecordingModule();
+        var interop = new ExplorerInterop(new LendingJsRuntime(module));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.DisconnectHeroFactsAsync("bar-a1b2c3d4");
+
+        var call = Assert.Single(module.Calls);
+
+        Assert.Equal("disconnectHeroFacts", call.Identifier);
+        Assert.Equal(["bar-a1b2c3d4"], call.Arguments.Select(argument => argument as string));
+    }
+
+    [Theory]
+    [InlineData(typeof(JSDisconnectedException))]
+    [InlineData(typeof(JSException))]
+    [InlineData(typeof(InvalidOperationException))]
+    [InlineData(typeof(ObjectDisposedException))]
+    [InlineData(typeof(OperationCanceledException))]
+    public async Task DisconnectHeroFactsAsync_WhenTheBrowserIsOutOfReach_ThenItSwallowsTheFault(Type thrown)
+    {
+        // This one runs from disposal, and a reader closing the tab mid-scroll is the normal way it
+        // is reached — so a throw here is an unhandled renderer fault in the host's log on every
+        // such close. JSException is in the list for that reason and is not in the observe's.
+        var interop = new ExplorerInterop(new LendingJsRuntime(new RefusingModule(Raise(thrown))));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.DisconnectHeroFactsAsync("bar");
+    }
+
+    [Fact]
+    public async Task DisconnectHeroFactsAsync_WhenTheModuleNeverLoaded_ThenThereIsNothingToDisconnect()
+    {
+        var interop = new ExplorerInterop(new RefusingJsRuntime(new JSException("404")));
+
+        Assert.False(await interop.TryLoadAsync());
+
+        await interop.DisconnectHeroFactsAsync("bar");
+    }
+
     // -----------------------------------------------------------------------
     // Reading the source
 
@@ -322,11 +500,15 @@ public partial class ExplorerInteropTest
         }
     }
 
-    /// <summary>The statement holding the import at <paramref name="call"/>, trimmed.</summary>
+    /// <summary>The statement or branch condition holding the import at <paramref name="call"/>.</summary>
+    /// <remarks>
+    /// Ends at the first <c>;</c> or <c>{</c>, so an import read as an <c>if</c> condition is that
+    /// condition alone rather than the whole branch body dragged along behind it.
+    /// </remarks>
     private static string Statement(string source, int call)
     {
         var opens = source.LastIndexOfAny([';', '{', '}', '\n'], call) + 1;
-        var closes = source.IndexOf(';', call);
+        var closes = source.IndexOfAny([';', '{'], call);
 
         return source[opens..(closes < 0 ? source.Length : closes + 1)].Trim();
     }

@@ -21,7 +21,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// directions of the shared state are asserted now, through the tabs and side by side the way
 /// helsedata's MuninUtforsker mounts them: Fhi.Metadata-ehghv.
 /// </remarks>
-public class VariableExplorerTest : BunitContext
+public class VariableExplorerTest : ExplorerTestContext
 {
     /// <summary>Exactly what helsedata's <c>BlazorComponentPage.TypeName</c> defaults to.</summary>
     private const string ShippedDefault = "Fhi.Munin.Explorer.Blazor.VariableExplorer";

@@ -27,7 +27,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <c>scripts/state-assertions.mjs</c>. These tests pin the string that assertion depends on.
 /// </para>
 /// </remarks>
-public class DetailTocTest : BunitContext
+public class DetailTocTest : ExplorerTestContext
 {
     private static readonly DetailTocEntry[] Three =
     [
