@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The package's one JavaScript module, imported once per component and disposed with it.
+/// The package's one JavaScript module, at most one per component and disposed with it.
 /// </summary>
 /// <remarks>
 /// Nothing rendered depends on it, and a refused import answers "not there" rather than throwing:
