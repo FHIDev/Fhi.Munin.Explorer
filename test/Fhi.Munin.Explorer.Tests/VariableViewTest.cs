@@ -1505,9 +1505,8 @@ public class VariableViewTest : BunitContext
     {
         // The defect this view would otherwise ship. The trail emits no class of its own, and what
         // strips the list markers and draws the chevrons in the row panel is `.munin-explorer-detail
-        // dd ol` — a rule scoped to the panel, in Stiler and in both samples alike. Outside it the
-        // steps would fall back to a numbered vertical list, so the wrapper is what carries the
-        // look across: `munin-explorer-breadcrumb`, which Stiler draws unscoped.
+        // dd ol` — a rule scoped to the panel. Outside it the steps fall back to a numbered vertical
+        // list, so the wrapper is what carries the look across. (Fhi.Metadata-35w0p.47)
         var section = Render(Placed()).Find($"#{DetailSectionIds.Placement}");
         var wrapper = Assert.Single(section.QuerySelectorAll(".munin-explorer-breadcrumb"));
 
