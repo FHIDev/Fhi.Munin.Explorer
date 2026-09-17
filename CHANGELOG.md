@@ -29,6 +29,1003 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 0.1.0-alpha.12 — 2026-09-17
+
+### Added
+
+- **`PropertyMetadataEntry` carries `GroupKey`, and `KildeSummary` carries `KodeverkShare` and `StatisticsShare`.**
+  The Explorer API now sends all three. `GroupKey` is the stable id of a property's section (for
+  example `om-registeret`) and is null where the group has no key. The two shares are percentages
+  of a kilde's visible variables with a kodeverk link or a statistikk entry, and are null when the
+  kilde has no visible variables. Nothing in the components reads them yet, and all three are
+  nullable, so a host on an older API is unaffected.
+- **The kilde, datasamling and variable pages get a contents nav.** A list of links down the left
+  of the page, one per section the page actually drew, so a reader can reach the metadata, the
+  datasamlinger, the version history or the statistics without scrolling for them. It fills the
+  contents column `DetailPage` has had since the chassis landed, and a page that drew no section
+  draws no column at all rather than an empty rail. The links are plain `#fragment` anchors — the
+  browser does the scrolling and the nav itself runs **no JavaScript**; the highlight that
+  follows the reader down the page is a separate change and needs a script, so it is not here.
+  Every entry is built from the same condition its section renders under, so a nav never offers a
+  link to a block the page suppressed, and the `href` values are the fixed English section ids in
+  both languages while the words translate — a link one reader sends another lands in the same
+  place whichever language either is reading. (Fhi.Metadata-35w0p.12)
+- **`DetailPage` takes any other attribute you write on it and puts it on the root element.**
+  A new `AdditionalAttributes` parameter, captured the ordinary Blazor way. It exists so a view
+  mounted on its own can mark its root — `data-munin-explorer-version` on the saved-list view is the whole of its use here.
+  A `class` written through it is dropped rather than honoured: the splat is written before the
+  element's own `class`, so `munin-explorer-page` cannot be taken off the root the layout rules key
+  on. Pass a view's own root name through `ViewRoot`. (Fhi.Metadata-35w0p.13)
+- **The package now ships one JavaScript module as a static web asset.**
+  `_content/Fhi.Munin.Explorer/explorer-interop.js`, loaded by dynamic import after the first
+  render and by nothing else — the same shape `Fhi.Helsedata.Soknader` already ships on this host.
+  Nothing rendered depends on it: a host that does not serve it draws exactly the page it drew
+  before. It ships no CSS, and that has not changed. (Fhi.Metadata-35w0p.14)
+- **`PropertyMetadataEntry` carries `GroupSortOrder`.** The Explorer API sends the order of the
+  section itself on the surface the payload was fetched for, so a section's position no longer has
+  to be inferred from whichever of its properties happen to hold a value. Nullable, like `GroupKey`
+  beside it: null means no placement names the section there, or the API predates the field.
+  (Fhi.Metadata-35w0p.19)
+- **A detail page's catch-all section now lists the complete record rather than the fields the other
+  sections did not want.** The section Munin keys `alle-metadatafelt` is drawn with a lead paragraph
+  and a collapsed `<details>` over every property the payload holds a value for — those the named
+  sections above already drew included — plus the counts and dates no property definition carries
+  (total variables, data collections, data period, last updated in Munin). The repetition is the
+  point: the sentence over it says nothing is left out, and on the Tromsø payload that is 34 rows
+  where the section drew 8. A source's name, code, short name and kildetype are in it too, which no
+  section drew before. The section is recognised by its `groupKey` and never by its heading, so a
+  curator renaming it in Munin changes what a reader sees and nothing else; a payload that carries
+  no `groupKey` has no such section and is drawn exactly as before. (Fhi.Metadata-35w0p.21)
+- **The three detail views open with a row of six facts under the name.** `DetailPage` draws it
+  between the name block and the body, so the kilde, datasamling and variable views get it at once.
+  Each fact is a label, a value and an optional second line carrying the qualifier that makes the
+  value honest — `630 variabler`, then `i 6 datasamlinger`. The second line is left out rather than
+  drawn empty when there is nothing to qualify, and a fact the catalogue has not filled in is
+  dropped rather than drawn blank, so the row is a summary of what the record actually has.
+  (Fhi.Metadata-35w0p.26)
+- **`DetailPage` takes a `Facts`, and `DetailFact` is what goes in it.** A label, a value and an
+  optional note — itself a label and a value — each value with its own `lang` for the half that is
+  the catalogue's Norwegian: a value and its note need not be in one language, so they are marked
+  apart. A datasamling's variable count is the case that needs both — the count is in no language
+  and the telleenhet under it is catalogue free text held only in Norwegian, so an English reader
+  gets `Counting unit: <span lang="no">Pasient</span>`, the unit marked and the label this package
+  translated left in the language it was translated into. Empty or unset draws no row at all.
+  (Fhi.Metadata-35w0p.26)
+- **A source and a datasamling lead with the same six facts, and a variable with six of its own.**
+  Kildetype, Dataansvarlig, Grad av personidentifikasjon, a period, a count and Lovverk on the two
+  entity pages — Dataperiode and the total variable count on a source, Gyldighet and the
+  collection's own count on a datasamling. A variable leads with Kodeverk, Statistikk, Opprinnelse,
+  Identifiseringsgrad, Databasereferanse and Dataperiode, and with neither Kilde nor Datasamling:
+  the breadcrumb directly above already names both. **Every one of them is still drawn in its
+  section below** — the row summarises the page rather than moving anything out of it, and each
+  value is resolved through the member that section reads, so the two cannot come out in different
+  words. (Fhi.Metadata-35w0p.26)
+- **A detail page pins a condensed fact bar to the top of the viewport once its hero row scrolls
+  away.** The entity's name and code and the first three facts of the hero row — a summary of the
+  summary, with every word in it still on the page below. Text only: `DetailPage.Actions` is not
+  repeated in it, so nothing a caller put in that fragment gains a second tab stop or a duplicate
+  `id`. `DetailPage` draws the bar, so the kilde, datasamling and variable views get it at once;
+  `VariableListView` names no hero facts and so draws no bar. (Fhi.Metadata-35w0p.28)
+- **`DetailPage` takes `StickyName`, `StickyNameLang` and `StickyCode` for it.** The name as the
+  page's own heading says it, with a `lang` for the half the catalogue holds only in Norwegian, and
+  the identifiers beside it — left out where the heading has already fallen back to the code. Unset,
+  or with no hero facts left after the blank ones are dropped, draws no bar at all. `DetailFacts`
+  takes an `Id` on the same change, because the bar appears when that row leaves the viewport and
+  the browser needs an element to watch. (Fhi.Metadata-35w0p.28)
+- **The package's browser module gains its first two exports, `observeHeroFacts` and
+  `disconnectHeroFacts`.** One `IntersectionObserver` per mounted detail page, keyed by that page's
+  own bar, so two explorers on one host page cannot fight over one bar. It shows the bar only when
+  the hero row has left the viewport **upwards** — a row still below the fold, which is how every
+  page load starts, leaves the bar hidden. Nothing about the scroll reaches the server: on a legacy
+  Blazor Server circuit a scroll-driven callback would be a round trip per frame. One limit comes
+  with the observer and is worth knowing: it notifies on a crossing, so a reader who JUMPS past the
+  hero row — an in-page anchor, the contents nav's own links included — gets no notification and so
+  no bar until they scroll. Fhi.Metadata-14j7i is that, and this change does not fix it.
+  (Fhi.Metadata-35w0p.28)
+- **The whole-variable view says where the variable comes from.** `VariableView` draws the kilde
+  trail — kildetype, then kilde, then datasamling — under a **Plassering** heading, with an entry
+  in the contents nav. The trail itself is not new: it has always been drawn inside the panel an
+  open row shows, and this is the same implementation with a second caller rather than a copy, so
+  the rule that leaves a level the catalogue holds nothing for out of the trail — rather than
+  writing "Ikke oppgitt" in it — holds on both surfaces. A variable placed nowhere at all draws no
+  section. No new class name: the steps are a bare `<ol>` in a `munin-explorer-breadcrumb` wrapper,
+  the name that already dresses the trail over the search results. The three facts it names are
+  drawn again under **Kildeinformasjon** further down, and deliberately: a path and a fact list are
+  different registers, and both spell the kildetype out of the same table so the page cannot name
+  one kildetype two ways. (Fhi.Metadata-35w0p.47)
+- **The three detail views open with page chrome: an eyebrow, a breadcrumb and an action row.**
+  `DetailPage` draws all three above the name block, so the kilde, datasamling and variable views
+  get them at once. The eyebrow names what kind of thing the page is about — Datakilde,
+  Datasamling, Variabel — and is a `<p>`, never a heading, so the page's outline is the one it
+  already had. The action row is a slot: it is emitted only when a caller fills it, and nothing in
+  this package fills it yet. `VariableListView` is untouched; its chrome is its own work.
+  (Fhi.Metadata-35w0p.49)
+- **`KildeView`, `DatasamlingView` and `VariableView` take a `Trail`, and `DetailTrailStep` is what
+  goes in it.** The steps above the page, outermost first; the view appends its own name as the
+  last step, which is marked `aria-current="page"` and is never a link. **Every step's target is
+  yours to supply** — this package has no router and knows no addresses — and a step whose `Href`
+  is null renders as plain text rather than as a link that goes nowhere. Pass no trail at all and
+  none is drawn: a trail whose only step is the page itself names nowhere to go. The markup is a
+  `<nav>` with an accessible name around an `<ol>`, wearing helsedata's own `breadcrumbs` class
+  names. (Fhi.Metadata-35w0p.49)
+- **The kildeutforsker wires that trail for real: Kildeutforsker › kilde › datasamling.** Both
+  targets come off the host's own address through `KildeExplorer`'s `UrlMirror`, the same source the
+  drill-in link already used, and the step back to the list keeps the order the reader chose. The
+  kilde's name on a datasamling page comes off that payload's own `parentKildeNavn`, so the trail
+  costs no second request. The variable explorer's drill-ins get no trail: opening one there is
+  component state and not an address, so there is no target to offer. (Fhi.Metadata-35w0p.49)
+- **`KildeSearch` takes a `KilderHref`.** The address of the kilde list, for the trail's first
+  step. Unset, an open kilde draws no trail at all, while an open datasamling still draws one —
+  rooted at the parent kilde alone, which `DatasamlingHref` is enough to reach. `KildeExplorer`
+  sets it for you. (Fhi.Metadata-35w0p.49)
+- **The kilde, datasamling and variable views draw each block as a `<section>` with a stable id.**
+  Every block heading below the page title — the catalogue metadata, the datasamlinger, the
+  inclusion criteria, the version history, the statistics and each fact box — now sits inside
+  `<section id="…" data-nav-section class="munin-explorer-page__section">`, which is what a
+  contents nav or a scroll-spy needs to anchor on; neither ships yet. The ids are fixed English
+  words (`metadata`, `criteria`, `source`, `statistics`, `datacollections`, `versions`,
+  `dataperiod`, `datatype`, `variablegroups`) rather than a slug of the heading, so a link into a
+  section is the same link for a Norwegian and an English reader and survives a label being
+  reworded. Nothing moved on the page, which is the whole acceptance: the wrapper carries no
+  spacing, and every block that drew something before draws the same thing now — where a block can
+  come out empty the section is emitted inside that check, never around it, so a datasamling that
+  counts nothing gets no empty box rather than a heading in a box. (Fhi.Metadata-35w0p.5)
+- **The datasamling page draws Opprettet i Munin and Statistikktype, and its parent kilde can be
+  a link.** All three facts were already on the payload and rendered nowhere. "Opprettet i Munin"
+  sits beside "Sist oppdatert i Munin" in Kildeinformasjon, worded that way because the bare
+  "Opprettet" is Kelda's column for the founding year the import file states. Statistikktype is a
+  row in the statistics block, resolved through the same vocabulary that names the heading over it
+  and yielding to a section the catalogue has placed the key in, as Frekvens and Telleenhet
+  already do. `DatasamlingView` gains a `KildeHref` parameter — `Func<Guid, string>?`, given the
+  owning kilde's id and answering an address — which makes the Kilde row the way back up to the
+  source; left unset, as it is everywhere but the kildeutforsker, the name is plain text rather
+  than a link that goes nowhere. No new class name. (Fhi.Metadata-35w0p.50)
+- **`FilterOptions` carries the whole variabelgruppe hierarchy and each group's visibility.**
+  `GET /api/explorer/filters` answers with a second variabelgruppe collection,
+  `hierarkiVariabelgrupper`, read as `FilterOptions.HierarchyVariabelgrupper`: every group the
+  current selection reaches, with the kilde, delkilde and datasamling it hangs under in
+  `VariabelgruppeFacet.Owners`. A host can draw a folder tree from the answer the facets already
+  come in, instead of one `kilder/{id}/hierarchy` call per source a reader expands.
+  `VariabelgruppeFacet` also gains the stored `Filter` value and the admin-curated `Global` flag,
+  so the two surfaces can be told apart: the tree shows every group, and the standalone facet
+  withholds the ones marked `"2"` — which arrive nonetheless, because the tree needs them, and
+  because an opted-out group still appears in `Variabelgrupper` as the trunk an offered descendant
+  nests under. `IsStandaloneFacetOption` is that test; which collection a row came from is not.
+  `Filter` is a `string?` rather than a bool, so a group whose source file left it unset stays
+  distinguishable from one that opted out. `HierarchyVariabelgrupper` is empty against an API
+  predating the change, where `Variabelgrupper` keeps reading as before — with `Filter` null,
+  `Global` false and `Owners` empty, since that API sends none of the three.
+- **Kilde and delkilde rows in the variable explorer's Kilde facet now lead with a folder glyph,
+  and a biobank kilde says so in a badge.** The folder is the same glyph at both levels, as in
+  Kelda's own hierarchy tree and in Runa: what tells a kilde from a delkilde is where its row sits,
+  so a second picture would invite a reader to look for a difference the tree does not draw. It
+  sits between the checkbox and the name, exactly where a datasamling's datakategori glyphs already
+  do, and the checkbox keeps its indentation whatever leads the name beside it. The glyph is
+  `aria-hidden` and is named nowhere: unlike a datakategori it repeats the nesting the list already
+  carries, so there is nothing for it to add in words.
+  The badge is read off the `kildeType` the `GET /api/explorer/filters` answer already carries for
+  each kilde, so nothing new is fetched to draw it, and it is real text inside the `<label>` rather
+  than a rule or a picture — it is part of the checkbox's accessible name, and it is a member of its
+  own separate from the glyphs, so turning decoration off cannot take it off the row. Biobank is the
+  whole of the vocabulary marked out: the API's kildetype list holds eight values and Prøvesamling
+  is not among them — that word is an EHDS datakategori, on a field the filters answer does not
+  carry for a kilde, so marking one is `Fhi.Metadata-wxn6g` rather than part of this. Any other
+  kildetype, and a kilde carrying none at all, wear no badge; an empty capsule would say they were
+  one of the kinds the badge names. The word is this package's own bilingual copy rather than the
+  API's resolved kildetype label, unlike every other kildetype word in this panel, because the badge
+  marks membership and is drawn under a group heading already carrying the API's word for the same
+  value. A chip for a badged kilde still carries the name alone.
+  (Fhi.Metadata-aw203)
+- **`DatasamlingFacet` carries the datasamling's data categories.** `GET /api/explorer/filters` sends
+  `categories` on every datasamling now, so a host drawing data-category glyphs beside a filter row
+  reads them off the facet it already has instead of one hierarchy request per kilde. The tokens are
+  the ones `HierarchyDatasamling.Categories` carries — EHDS CURIEs such as `ehds-cat:biobanks` and
+  bare codes such as `RPDG` both occur, so match whole tokens rather than a prefix — and the list is
+  empty rather than null against an API that predates the field. (Fhi.Metadata-bajdj)
+- **A datasamling in the Kilde facet now shows one glyph per datakategori it carries.** The same
+  EHDS glyphs and the same shared render order the kildeutforsker's hierarchy tree already draws,
+  read off the `categories` field of the `GET /api/explorer/filters` answer the row itself is built
+  from — so no kilde hierarchy is fetched to draw them and opening a branch still costs no request.
+  A datasamling hanging straight off its kilde is drawn exactly as one under a delkilde; `DelkildeId`
+  decides where the row hangs and nothing about the glyphs. The glyphs appear between the checkbox
+  and the name, as in Runa; the checkbox keeps the same indentation regardless of icon count.
+  A token the icon table does not know falls back to the catch-all glyph, as it
+  does in the hierarchy tree, and a datasamling with no categories at all draws nothing. The slot is
+  `aria-hidden` and the categories are named in `screenreader-only` words after the label instead,
+  the way the hierarchy tree names them, so the checkbox says which datakategorier its datasamling
+  carries rather than leaving the pairing to the glyphs alone. Those words are this package's prose
+  in the reader's language, so the `lang` marking a facet row puts on a catalogue name now sits on a
+  `<span>` around the name itself rather than on the `<label>` around the whole row, which would
+  have had a screen reader pronounce "Data category" as Norwegian (WCAG 3.1.2).
+  (Fhi.Metadata-evoil)
+- **`DetailNamedSection` and a `NamedSections` parameter on `KildeView`, `VariableView` and
+  `DatasamlingView` put a section of your own in the contents nav.** Each `DetailNamedSection` is an
+  id, a heading and a body; the view draws it as a section under a heading at the level of its own
+  blocks and adds the matching nav entry, both off the same value, so a listed section is always on
+  the page. `KildeView` and `DatasamlingView` draw them after their own blocks, `VariableView`
+  between the metadata and the version history. Give each an id no other element on the page has,
+  and none the views write (`metadata`, `criteria`, `source`, `statistics`, `datacollections`,
+  `versions`, `dataperiod`, `datatype`, `variablegroups`), or the id is on the page twice and the
+  nav's second link lands on the first. `Sections` is unchanged: still a
+  fragment, drawn right after the named sections, and not listed in the nav, because a view cannot
+  see an id or a heading inside a fragment. `KildeSearch.Sections` stays a fragment and is not
+  listed either. (Fhi.Metadata-fkiz9)
+- **The variable explorer's filter panel gains an Ikoner switch beside Nivålinjer, and
+  `VariableSearch` a two-way `ShowNodeIcons` to go with it.** It turns off the node icons the
+  panel's kilde tree draws in front of each name — the folder on a kilde or a delkilde, one glyph
+  per datakategori on a datasamling — and it reaches the kilde a reader drills into as well, so one
+  press decides both surfaces rather than leaving the pictures waiting one click away. The same
+  parameter name and the same on-by-default meaning `KildeView` and `KildeHierarchyView` already
+  carry, so a host setting it on more than one of them sets one thing.
+  Off costs every reader the same thing. The glyphs are `aria-hidden` and the `screenreader-only`
+  words beside them are those same categories said aloud, so the switch takes both or neither: a
+  datasamling stops naming its datakategorier on the row whether the reader is looking at the tree
+  or listening to it. Keeping the words behind an `Ikoner` switch that is off would leave a control
+  that does nothing at all for the reader pressing it, which is why `KildeHierarchyView`'s own
+  parameter has always taken both. Nothing else on the row moves: the filter it ticks, the counts
+  beside it, the level lines and the kildetype badge on a kilde are drawn exactly as before, and
+  the badge in particular is real text outside the icon slot, so it stays in the checkbox's
+  accessible name whichever way the switch is set.
+  It is a native `<button role="switch">` carrying `aria-checked`, the same control Nivålinjer is,
+  so it announces as on and off and answers Enter and Space with no key handler of this package's
+  own.
+  `ShowNodeIconsChanged` is what a host stores. Like `LevelLines` beside it the parameter is read
+  once at mount and owned by the component afterwards — the package makes no JS interop call and so
+  reaches no `localStorage`, and what is remembered about a reader is the host's own policy to set
+  — so a host that wants the choice to survive a visit stores what the callback raises and supplies
+  it at the next mount. A host that stores nothing gets the icons at every visit. No new class name
+  is added: the switch wears the pair Nivålinjer already wears.
+  (Fhi.Metadata-kd9ts)
+- **The variable explorer's filter panel folds behind a "Vis filtre" button on narrow screens.**
+  `VariableSearch`, standalone or inside `VariableExplorer`, now draws the same toggle the
+  kildeutforsker has, and the panel starts folded. Folding keeps every chosen filter, the open
+  facets and the results, and fetches nothing; the active-filter chips over the results stay on
+  screen and still remove a filter. On `Fhi.Helsedata.Stiler`, a host with room for a sidebar
+  shows the panel as before; see the note for hosts about any other stylesheet.
+  (Fhi.Metadata-l9l2n.102)
+- **A datasamling in the kildeutforsker's hierarchy can be opened on its own page.** Each
+  datasamling in `KildeView`'s tree now carries a link of its own, and `KildeExplorer` reads and
+  writes `?datasamling=` beside `?kilde=` so the address names the whole path the reader walked.
+  It is a plain `<a href>`: middle-click and Ctrl+click open a tab, the address pastes into a fresh
+  one, and Back returns to the kilde rather than to the list. The link is written in the node's
+  `<li>` after the `<details>` and never inside the `<summary>`, so the disclosure keeps its one
+  job and still expands and collapses on Enter and Space. Back lands on the kilde with its
+  hierarchy collapsed again, not expanded to where the reader was. `DatasamlingView`, which the
+  variable explorer already reached, is rendered unchanged — the route was what was missing, not
+  the view. `KildeSearch` gains `SelectedDatasamlingId` and `DatasamlingHref` for a host that owns
+  its own query string. A host's own query parameters survive a navigation the way they survive a
+  render: the explorer re-reads them off the address that arrived, so a navigation changing only
+  the host's own keys neither loses them nor puts back the ones it dropped — and it redraws its
+  own links from that address itself, rather than waiting for a render the host may never make.
+  (Fhi.Metadata-l9l2n.107)
+- **`KildeHierarchy` carries how many of the kilde's variables have expired.**
+  `GET /api/explorer/kilder/{id}/hierarchy` sends `historicalVariableCount` beside
+  `totalVariableCount`, and the contract now reads it as `HistoricalVariableCount`. The two are
+  disjoint: `TotalVariableCount` is what a reader can open today, `HistoricalVariableCount` the
+  variables whose every published version has expired. It reads as 0 against an API that predates
+  the field. (Fhi.Metadata-l9l2n.113)
+- **The contents nav is titled.** It carried only an `aria-label`, which names the landmark for a
+  screen reader and renders nothing at all, so a sighted reader met an untitled list of links above
+  the page's content. The nav now opens with a visible heading reading **Innhold** — or
+  **Contents** — matching what helsedata's own contents nav draws above the same list. The word is
+  the one the nav was already announcing itself by rather than a second string beside it, so the
+  heading and the accessible name cannot drift apart. (Fhi.Metadata-l9l2n.116)
+- **`KildeSearch.InitialDirection(KildeSortOrder)` is a new public method, and a supported entry
+  point rather than an accident of the explorer's URL code.** It answers which way a column runs
+  before anybody presses it: `Ascending` for `Name` and for `Standard`, `Descending` for
+  `Variables`, `SourceUpdated` and `Established`. A host needs it because `KildeSearch.Direction`
+  is a `SortDirection`, a struct with no unset state — it is `Ascending` whatever the order is, so
+  a host setting `Order` from a `?sort=` link and nothing else silently opens a count or date
+  column at its smallest value rather than at the end a reader of that link saw. Passing
+  `InitialDirection(order)` alongside `Order` is what reproduces a heading's first press, and is
+  what `KildeExplorer` does. Being public is a commitment: these per-column defaults are now part
+  of the package's surface, and changing one is a breaking change for hosts, not only for the
+  headings here. (Fhi.Metadata-l9l2n.88)
+- **The result list's save column has a header, and the Kolonner picker can hide it.** For a
+  signed-in reader the column of "Lagre i liste" buttons is headed "Variabelliste" ("Variable list"
+  in English), is listed first in Kolonner and starts on. Turning it off removes the header and
+  every row's button. It is not counted as the last column left, so the picker still refuses to
+  hide the last data column. Signed out, neither the column nor its picker entry appears.
+  (Fhi.Metadata-q7i5e)
+- **The filter panel has a builder for the kilde → delkilde → datasamling → variabelgruppe tree,
+  and nothing draws it yet.** It derives the whole tree from a single `GET /api/explorer/filters`
+  answer: every variabelgruppe the answer carries whatever the API's own facet opt-out says, each
+  one placed under the owning ids the payload names rather than under the group it nests in, and
+  every count left exactly as the cross-filtered answer sent it. The standalone Variabelgruppe
+  facet's own list is derived beside it, and still leaves out the groups the API opts out of that
+  facet whether or not one of them is selected. Both are internal and have no caller on any render
+  path, so this version compiles and configures exactly as the last one did and renders the same
+  panel bar the Fixed entry below; the panel is rewired onto them in a later change. `KildeLevels`
+  and `OnePerId`, which the panel's kilde facet has always used, moved here out of the panel and
+  are still called from it, which is why this internal type has four entry points where the tree
+  itself needs two. (Fhi.Metadata-raspm)
+- **The filter panel explains its datakategori glyphs in words, under an `Ikonforklaring`
+  legend.** The kilde tree draws one glyph per datakategori on a datasamling and a folder on the
+  levels above, and until now the only place those pictures were named was the
+  `screenreader-only` words on the row itself — so a sighted reader had nothing to read them by.
+  The legend lists the whole vocabulary rather than what the narrowing has left on screen, built
+  from `DataCategoryIcons.Order`, so it cannot pair a picture with the wrong word on a row that
+  draws several; the grouping folder is deliberately absent, because it says only what the nesting
+  already says. Every entry is localised in both `nb` and `en`. The glyphs stay `aria-hidden` and
+  the meaning is ordinary text, not a `title` and not an `alt` — the same words for every reader —
+  and they keep `currentColor`, so nothing here is told apart by hue alone. It is a `<details>`
+  resting shut, whose `<summary>` carries the control's accessible name and expanded state, and it
+  folds with the facets under `Utvid alle` and `Skjul alle`. It is drawn only while the `Ikoner`
+  switch is on: with the pictures gone there is nothing left for it to explain. (Fhi.Metadata-zllxt)
+
+### Changed
+
+- **The detail pages' fact lists wear the chassis's own class instead of the drill-in panel's.**
+  Every `<dl>` the kilde, datasamling and variable views draw is now
+  `munin-explorer-page__fields` rather than `munin-explorer-meta__grid`, and the language name over
+  a value the catalogue holds in more than one is `munin-explorer-page__language` rather than
+  `munin-explorer-meta__language`. Nothing else about the markup changes — the same rows, the same
+  `<div>` around each `dt`/`dd` pair, the same count of pairs on every page — and `Fhi.Helsedata.Stiler`
+  0.1.75 gives the fact list the panel's numbers unchanged, so on a host that has it the grid and the
+  type move nothing. A host carrying its own rule for the panel grid moves by whatever that rule
+  says instead; the sample stylesheets here are one such host, and their fact lists gain a 40px row
+  gap and a 24px bottom margin. The language marker is the exception on both: Stiler declares
+  `margin: 0` for it and none of the panel marker's uppercase, letter-spacing or grey, so the
+  language name draws at body size until `Fhi.Metadata-4ozhj` adds them.
+  The result row's drill-in panel keeps both of its own names and is untouched: `DetailBlocks` draws
+  both surfaces, so the one piece they share takes its class from the caller rather than deciding
+  for itself. Until now a detail page borrowed the panel's typography and grid, which is why
+  Stiler carried an override putting the panel's two lanes back to one there; neither surface could
+  be restyled without the other following it. (Fhi.Metadata-35w0p.11)
+- **`VariableListView` is drawn on the detail pages' chassis, and its heading is a real heading.**
+  The saved-list view was the one surface with no chassis at all: its root element carried no class,
+  so every layout rule the kilde, datasamling and variable views answer to missed it, and it sat at
+  whatever width and rhythm the host happened to give a bare `<div>`. It now renders through
+  `DetailPage` like the other three — `munin-explorer-page` on the root, the name block above the
+  fold, and the list, its controls and its pager in `munin-explorer-page__body` /
+  `munin-explorer-page__main`. The version marker `data-munin-explorer-version` has not moved: it is
+  still on the root element, which is now the chassis's. The table, the scroll container around it
+  and the pager are untouched, and paging stays flat.
+  The heading used to be assembled as a string and injected as raw markup, so it carried neither a
+  class nor an id — it missed `headline headline-s`, and no anchor on the page could reach it. It
+  comes from the same heading helper the other three views use now, at the level the host asked for,
+  with an id of its own. That id is minted per mount, as every id this view writes is, so it is an
+  anchor within one page load rather than a stable deep link. (Fhi.Metadata-35w0p.13)
+- **This view deliberately has no contents nav, so its body is one column and never a rail.**
+  The Kilde filter beside the list already does the grouping a contents nav would do, so
+  `DetailPage.Contents` is left null and `munin-explorer-page__toc` is not emitted. Both sample
+  stylesheets now take the second track back rather than merely not giving it — the rule that gives
+  a body two tracks is gated on the contents column, but the pinned Stiler's own copy is ungated and
+  was winning for a body with one child, which is a 250px empty rail down the left of a 1440px page.
+  (Fhi.Metadata-35w0p.13)
+- **A detail page's sections are identified and ordered by the catalogue rather than by its own
+  data.** Two properties are in the same section when they carry the same `groupKey`, so renaming a
+  section's title in one language no longer splits it in two; and the sections are ordered by
+  `groupSortOrder`, so filling in a previously-empty property no longer moves a section up the page.
+  Both are fallbacks rather than requirements — a payload carrying neither is grouped by its
+  headings and ordered by its members exactly as before, so upgrading this package never requires an
+  API of a particular age. A property the payload files under no section is still drawn nowhere,
+  which is unchanged: those are the column-backed keys each detail view already draws itself.
+  (Fhi.Metadata-35w0p.19)
+- **A detail fact the catalogue holds nothing for now reads "Ingen", muted, instead of being left out
+  or reading "Ikke oppgitt".** One rule for the fact boxes on all three detail pages — Kildeinformasjon
+  and Statistikk on the kilde and datasamling pages, Kildeinformasjon on the variable page — and for a
+  version's details: a row with no value is drawn with "Ingen" / "None", and a box where no row has a
+  value is not drawn at all, heading and contents-nav entry included. Kildetype and identification level
+  used to read "Ikke oppgitt", which kept their box drawn whatever the catalogue held; a source with
+  nothing filled in now has no Kildeinformasjon box. A fact a curated section already draws is still
+  left out of the box rather than reading "Ingen", and a validity with a start and no end still reads
+  "Pågående". The hero row above follows its own rule and drops a fact with no value, so a source or
+  datasamling with no kildetype or identification level no longer leads with "Ikke oppgitt" for them.
+  (Fhi.Metadata-35w0p.24)
+- **The result row's Data tab no longer says "Ingen kodeverk registrert" when it has statistics.**
+  The kodeverk section draws nothing when a variable has no kodeverk, as the whole-variable view already
+  did, so the two views agree. A tab with neither kodeverk nor statistics says so once:
+  "Ingen kodeverk eller statistikk registrert". (Fhi.Metadata-35w0p.24)
+- **The saved-list view fills the chassis action row, and its summary says how many kilder the
+  list draws from.** The list picker and the three download controls used to sit loose in the
+  flow — this was the one detail surface that passed the chassis no `Actions` at all. Both now
+  render in `munin-explorer-page__actions`, the row the other three detail views already fill,
+  with the download behind a `<details>` so the two formats and the kodeverk tick do not stand
+  across the row. The picker still appears only for a reader with more than one list, and the row
+  itself is drawn only when one of the two is in it — a reader whose single list is empty gets no
+  empty row. The line under the heading gains "fra N datakilder" / "from N sources", the distinct
+  kilder in the whole list, written once the membership read has finished, left out until then,
+  and dropped again when a variable is added or removed rather than left saying what it said
+  before the write. (Fhi.Metadata-35w0p.52)
+- **The kilde, datasamling and variable detail views read downwards in one column.** The sidebar
+  each of them kept beside the main column is gone, and every block that lived in it now sits in
+  the main flow: Kildeinformasjon and Statistikk on a kilde and a datasamling, and
+  Kildeinformasjon, Dataperiode, Datatype, Variabelgrupper and Datasamlinger on a variable. Nothing
+  was dropped, and the nine section ids a deep link uses are unchanged and still in the order they
+  were. Two things about the order are worth knowing. The moved blocks keep the position they were
+  already read in relative to the view's own blocks, so on a page with nothing passed into the
+  `Sections` slot the reading order is exactly what it was. And on a kilde and a datasamling, where
+  an explorer or a host does pass sections — Kelda's Variabler, Kriterier for tilgang til data and
+  Priser — those now come *after* the moved blocks rather than before them, because on those two
+  views the slot closes the column: a host's own sections are additions to the page the component
+  is. A variable is the exception and nothing there moves. Its slot stays between Metadata and
+  Versions, which is where the kodeverk block the variable explorer passes has always been drawn,
+  so the five moved blocks join the page after it rather than before it. That reordering applies at
+  every width. The layout change is desktop-only, since below 1024px the two columns already
+  stacked.
+  (Fhi.Metadata-35w0p.6)
+- **The kilde, datasamling and variable views now draw one shared page chassis.** A new
+  `DetailPage` component emits the root, the name block, the body grid, the contents column and the
+  main column once, and the three views supply content into it rather than each writing the same
+  three wrappers under a prefix of its own. The chassis wears `munin-explorer-page`,
+  `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc`. Each
+  view keeps the prefixed names it already had on the root and the main column — `munin-explorer-kilde`
+  and `munin-explorer-kilde__main` sit beside the chassis names there, and so do the `-datasamling`
+  and `-whole` equivalents — because one of them, `munin-explorer-kilde__datasamlinger`, is styled
+  by an expanded row in the kildeutforsker as well as by the detail page. The body is the one
+  element that does not keep its old name, which is a break and is written up under Removed. The
+  markup below the chassis is untouched, down to the count of `dt`/`dd` pairs.
+  (Fhi.Metadata-35w0p.9)
+- **Every facet that nests values is now a tree the reader opens branch by branch, and the Kilde
+  facet's datasamlinger are in it.** Any value with something under it — a kildetype group, a kilde,
+  a delkilde, and equally a variabelgruppe nested under another or a saved filter under another —
+  now carries a disclosure control of its own beside the checkbox, and every one of them starts
+  shut. Opening a branch narrows nothing, ticks nothing and asks the API for nothing: the whole tree
+  comes from the `GET /api/explorer/filters` answer the panel already had, so a reader can look
+  inside a kilde without filtering on it. The datasamling level is drawn from
+  `FilterOptions.Datasamlinger`, each row placed under the delkilde its `DelkildeId` names or
+  directly under its kilde where that is null — which is the majority of them — and the counts are
+  the cross-filtered ones the same answer carries. The values under a shut branch are not rendered
+  at all rather than hidden, so nothing inside one can be tabbed into; a value ticked inside a
+  branch stays ticked while it is shut, keeps its chip over the results and keeps its place in the
+  facet's own count. Utvid alle and Skjul alle reach the branches as well as the facets, and a term
+  typed into the Kilde facet's own search opens the branches down to what it matched — that search
+  matches the names of delkilder and datasamlinger too, and a match nobody can see would leave a
+  kilde on screen for no visible reason. (Fhi.Metadata-adog5)
+- **A property Munin keeps in a column of its own is drawn in the section the catalogue places it
+  in.** Beskrivelse, Lovverk, Dataansvarlig, Databehandler, GradAvPersonidentifikasjon, GyldigFra
+  and GyldigTil — and, on a datasamling, StatistikkType, TelleEnhet and Frekvens — arrive as typed
+  fields rather than in the `additionalProperties` bag, so the metadata sections had no value to
+  draw and a section holding only such keys came out empty. The kilde, datasamling and variable
+  views now merge those columns into the values they resolve properties from, and each fact box row
+  that would repeat one yields to the section that draws it, so a fact still appears exactly once.
+  A page reading an API whose placements have not been seeded is unchanged: the fact box keeps
+  drawing every one of them. Gyldighet is the one row the catalogue splits in two, so it yields per
+  end: with GyldigFra placed and GyldigTil not, the box drops the period and keeps the unplaced end
+  under its own label, leaving neither date undrawn. (Fhi.Metadata-bct95)
+- **The Kilde facet's tree now reaches the variabelgrupper, and every branch it gains starts
+  shut.** A datasamling holding variabelgrupper, a delkilde whose groups are in none of its
+  datasamlinger, and a group with groups nested under it are all branches now, opened by the same
+  control every other branch of that tree already had: a real button beside the row, named after
+  what it opens, carrying `aria-expanded`, and operable from the keyboard. A leaf gets no
+  disclosure at all, and what hangs under a shut branch is not rendered rather than hidden, so
+  nothing inside one can be tabbed into. Opening a branch narrows nothing and asks the API for
+  nothing — the whole tree, the groups included, is read off the `GET /api/explorer/filters` answer
+  the panel already had, so a kilde's groups still cost no request of their own and every count it
+  draws is the cross-filtered one that answer sent. The Kilde facet's own search now matches group
+  names too, and opens the branches down to what it matched. A group hangs under every datasamling its
+  variables are in, so one group can be drawn at more than one place in the tree, and each of those
+  places opens and shuts on its own. The groups are containers for now, so a group row is its name
+  alone — no count and no tick, the two things a checkbox carries: ticking one is wired to the
+  standalone Variabelgruppe facet's selection in a later change, and that facet itself is unchanged
+  here. No new class name — the branch row and its disclosure wear the two names
+  Fhi.Metadata-adog5 introduced. (Fhi.Metadata-g51gg)
+- **A variabelgruppe in the Kilde tree is a checkbox now, and it is the same selection as the
+  standalone Variabelgruppe facet's.** Both surfaces write and read the one
+  `VariableFilter.VariabelgruppeIds`, so ticking a group on either shows it ticked on the other,
+  and one tick produces exactly one chip over the results however many places the tree draws that
+  group at — a group hangs under every datasamling its variables are in, and every placement of it
+  carries the same state. Each row now carries its cross-filtered count beside the name, as the
+  levels above it already did. A group the API opts out of the standalone facet gets no checkbox
+  there whether or not it is selected — where that facet names the group at all it is to nest the
+  offered ones under it, so the row stays a container. The kilde tree is the one surface that
+  offers such a group, and its chip is the way off it from anywhere else on the page. One id the two
+  collections name differently is named by the facet's own copy wherever that facet reaches: its own
+  checkbox, the chip and the trail step agree, while the tree names its rows from the collection it
+  draws them out of. Shared links keep working — a `variabelgruppeIds` value restores as a tick in
+  the tree, and its name reaches the chip and the hierarchy trail out of the tree's own collection
+  rather than reading "Variabelgruppe". Opening
+  and shutting a branch still narrows nothing and asks the API for nothing, so a selection and its
+  chip survive folding the branch it was made in. No new class name. (Fhi.Metadata-km3zb)
+- **The variabelutforsker's kildetype group counts wear `munin-explorer-filters__groupcount`
+  instead of `munin-explorer-filters__chosen`.** The number beside a kildetype group in the Kilde
+  facet is that group's size, drawn whether or not anything in it is ticked, while `__chosen` means
+  how many values the reader chose — which is what the kildeutforsker's facet summaries use it for,
+  and they keep it. One class had come to carry both meanings, so the markup told anyone reading it
+  something false about half its uses. Both sample stylesheets add the new name to `__chosen`'s own
+  selector list rather than giving it a block of its own, so the two cannot drift apart, and the
+  merged `Fhi.Helsedata.Stiler` rule is written the same way — but it is in no published Stiler yet,
+  so a host draws these counts at browser defaults until that release is cut. The Notes-for-hosts
+  entry has the detail. (Fhi.Metadata-l9l2n.104)
+- **The kildeutforsker sorts by pressing a column heading, and the "Sorter etter" select is gone.**
+  Navn, Variabler, Sist endret and Opprettet each hold a `<button>` now; pressing one sorts on that
+  column and pressing it again reverses it, the two-state toggle the variabelutforsker has always
+  had. Where the two deliberately differ is the *first* press: there every column starts ascending,
+  while here a count or a date column starts at its largest value and only Navn starts at A. That
+  is what each column's old select label said it meant — "Flest variabler", "Sist endret (nyest
+  først)", "Opprettet (nyest først)" — so a `?sort=Variables` link made against 0.1.0-alpha.11
+  still opens the end of the list it opened then, rather than quietly the other one. The select
+  over the table has been removed rather than kept in step — two
+  controls for one piece of state is what this change exists to avoid — so the catalogue's own
+  order is what a first load and a clean URL give and is no longer re-selectable in the page. That
+  is intended: it is the absence of a sort rather than one of the five, and it was already the one
+  order never written to a host's URL. Hosts setting `KildeSearch.Order` should know that a member
+  now names a column rather than a direction, and that the new `Direction` parameter is `Ascending`
+  by default whatever the order is — a struct has no unset state to read a per-column default out
+  of, so a host that wants what a heading's first press gives passes the new public
+  `KildeSearch.InitialDirection(order)` alongside it (see Added). `KildeExplorer` carries the new
+  half in `?sortDir=`, omitted wherever the column is running the way that method says it runs, and
+  `Sist endret` is reachable only once its column is turned on in the picker. (Fhi.Metadata-l9l2n.88)
+- **"Lagre i liste" is a filled button.** It wore `button-square--ghost`, which draws no border
+  and no fill until hovered, so on every row it read as bold text. It now wears
+  `button-square--secondary` in both of its states. (Fhi.Metadata-q7i5e)
+- **The sample hosts follow Stiler 0.1.75, including the new branch disclosures.** HostileHost
+  pins the published package; ModernHost and LegacyHost carry its intervening rule changes and
+  the four arrow assets those rules use. Three obsolete stylesheet divergence entries are removed.
+
+### Fixed
+
+- **A variable name or column header cut off in the result list now shows its full text on
+  hover.** Stiler clips both to one line, and every non-empty data value already carried its full
+  text as a `title`, but the name and the headers did not. Measured on real data, 17 to 19 names
+  per page were clipped at every desktop width, and the Variabelgruppe header at 1300px. The name
+  span and a new unclassed `<span>` around each header's label now carry a `title`. An empty name
+  gets none. The title sits on the span and not on the `columnheader` or its sort button, where
+  Edge exposes it on the sorted column as a description repeating the name. Accessible names are
+  unchanged, and no class name is added. (Fhi.Metadata-1vm16)
+- **A variable's description renders its links and line breaks instead of printing them as
+  source.** The variable page's ingress, the description in Runa's row panel and each version's
+  description in the version history printed the catalogue's `<br>` tags and `[label](url)` links
+  literally, while the kilde, delkilde and datasamling descriptions already rendered them. All
+  three now go through the same renderer: links and line breaks only, no raw HTML, so a
+  description holding an HTML tag still shows the tag as text. The ingress keeps its `lang` and
+  class, and no class name is added. (Fhi.Metadata-35w0p.46)
+- **The whole-variable page no longer lists a datasamling the catalogue left unnamed.** Its
+  Datasamlinger section drew an empty bullet for one, and — now that the Plassering trail counts
+  them on the same page — a count of two could stand over a list of three. Both the section and
+  the trail's last step are the one predicate again, including its fallback to the primary
+  datasamling's name, so a variable the catalogue names no datasamling for at all draws neither
+  the section nor the contents entry rather than a heading over blank bullets.
+  (Fhi.Metadata-35w0p.47)
+- **The variabelgruppe filter panel draws an opted-out group as a container, not a checkbox.**
+  `GET /api/explorer/filters` returns a group marked `filter: "2"` in `variabelgrupper`
+  nonetheless, when an offered descendant has to nest under it. The panel ticked such a row like
+  any other and submitted it, offering a filter the API withholds; it is now drawn as the plain
+  label its children hang from, the way `VariabelgruppeFacet.IsStandaloneFacetOption` says to.
+  That label is marked with the catalogue's own language like the checkbox labels around it, so an
+  English reader hears a Norwegian group name in a Norwegian voice there as well as in its chip.
+  A reader who arrives with one already selected — through a shared link, or a host mounting with
+  `Filter` set — still has the chip over the results to take it off.
+- **Local testing documentation correctly names the variables that drive geometry assertions.**
+  The `running-locally.md` guide previously stated hand-written counts for the widths and states measured by `check-hostile-host.sh`. These counts had gone stale as the scripts evolved. The text now directs readers to `GEOMETRY_WIDTHS` and `TARGETS` as the sources of truth, ensuring the documentation stays accurate without manual updates. (Fhi.Metadata-d951y)
+- **The contents nav now lists the sections the explorers add to a detail page.** In the
+  kildeutforsker the nav on an open kilde stopped at Statistikk, although Variabler — and with
+  `ShowAccessAndPrices`, Kriterier for tilgang til data and Priser — were drawn below it, and the
+  whole-variable page in the variabelutforsker left out its Kodeverk section the same way. Each is
+  now a section of its own with a fixed English id (`variables`, `accesscriteria`, `prices`,
+  `codelists`), listed in page order, and Kodeverk is listed only for a variable that has one.
+  Runa's kilde page, which adds no sections, lists only the view's own. (Fhi.Metadata-fkiz9)
+- **The variable panel's kildesti no longer ends on one datasamling when the variable sits in
+  several.** The trail read the primary `datasamlingName` alone, so a variable in nineteen
+  datasamlinger was written up under one — not visibly incomplete, but confidently singular. The
+  last step now counts them ("19 datasamlinger"), and a "Datasamlinger" list beside the trail names
+  every one with its own validity period, which is what the whole-variable view one press further in
+  has always shown. A variable in exactly one still reads as that name, and a payload carrying no
+  list still falls back to the primary name. (Fhi.Metadata-l9l2n.108)
+- **A detail view's contents nav scrolls to its section instead of leaving the page.**
+  Every entry carried a bare `#id`, which a browser resolves against the document's
+  `<base href>` rather than against the page being read. helsedata's Optimizely host sets that to
+  `/`, so each press navigated to the site root and dropped both the route and the open
+  `?kilde=` — the reader lost their place entirely. The hrefs now carry this page's own path and
+  query in front of the fragment, taken from the address the explorer last wrote rather than from
+  `NavigationManager.Uri`, which a `history.replaceState` mirror leaves behind. Each target
+  section also carries `tabindex="-1"`, so on a host that does not intercept the press the
+  browser's own fragment jump moves keyboard focus into the section rather than only the
+  viewport. No JavaScript: fragment navigation is plain HTML. (Fhi.Metadata-l9l2n.114)
+- **The filter panel draws a datasamling once when the answer lists its id twice under different
+  delkilder.** The kilde facet split the copies across its two levels before settling repeated ids,
+  so such a datasamling was drawn both straight under its kilde and under a delkilde: one press
+  ticked both rows and the results carried two chips for one filter. The first copy the answer
+  lists is now the only one drawn, wherever it hangs. (Fhi.Metadata-raspm)
+- **The same for a delkilde whose two copies name different kilder.** Each kilde was handed its own
+  bucket of delkilder before repeated ids were settled, so the delkilde was drawn under both — the
+  second offering a filter none of its variables are behind. Repeated ids are now settled across
+  every kilde at once. (Fhi.Metadata-raspm)
+- **A chosen datasamling gets one chip when the answer lists its id twice.** The chips over the
+  results read the payload's datasamlinger straight while the panel drew the first copy alone, so
+  one press left two ways off one filter. (Fhi.Metadata-raspm)
+
+### Removed
+
+- **BREAKING for hosts: `munin-explorer-kilde__body` and its two siblings are no longer emitted.**
+  `munin-explorer-datasamling__body` and `munin-explorer-whole__body` go with it. The element all
+  three named — the grid the detail pages lay their columns out in — now wears
+  `munin-explorer-page__body` alone, so a rule of yours keyed on any of the three stops matching and
+  has to move to the chassis name. They are the only names this change drops. The element could not
+  keep both, which is the whole reason: every published `Fhi.Helsedata.Stiler` lays those three out
+  as a grid of their own, so an element wearing an old name and the chassis name would carry a
+  `grid-template-columns` from each block, and which one drew would be settled by the order a host
+  happened to load the two stylesheets in rather than by either of them meaning it.
+  (Fhi.Metadata-35w0p.9)
+
+### Notes for hosts
+
+- **Move any rule you keyed on `munin-explorer-meta__grid` for a detail page to
+  `munin-explorer-page__fields`.** The kilde, datasamling and variable views no longer put the
+  panel's class on their fact lists, so a rule of yours reaching one through that name stops
+  matching — quietly, because the element is still there and still a definition list. The same
+  move applies to `munin-explorer-meta__language`, which becomes `munin-explorer-page__language`
+  on those pages. Both old names stay exactly where they were on the result row's drill-in panel,
+  which still emits them, so a rule scoped to `.munin-explorer-meta` needs no change at all — and
+  the kodeverk and frequency tables, which key off that ancestor rather than off the `dl`, are
+  untouched on every surface. `Fhi.Helsedata.Stiler` 0.1.75 has rules for both new names already, in
+  the same `components/munin-explorer/_page.scss` the chassis landed in. The fact list's are the
+  panel's declaration for declaration — `1fr 1fr` with a 40px row gap and a 24px column gap, `font:
+  normal 1rem/160%`, `margin-bottom: 24px`, and below 1280px one column, a 16px gap,
+  `margin-bottom: 16px` and full width — but the language marker's is `margin: 0` alone, without the
+  uppercase, letter-spacing and grey the panel's marker carries, so **a host that keyed nothing on
+  either name still sees its language names change size and colour** on the three detail pages.
+  `Fhi.Metadata-4ozhj` is the Stiler bead that puts them back; a host that wants them sooner can
+  declare them itself. Both are handles otherwise: define neither and you get a definition list at
+  browser defaults, with each language still on its own line because the name is a `<p>`. Both
+  sample stylesheets stand in at Stiler's numbers, the bare language marker included.
+  (Fhi.Metadata-35w0p.11)
+- **`munin-explorer-page__toc` is now drawn on every detail page, so its rule finally matters.**
+  It was emitted by nothing until this version — the note under 0.1.x's chassis entry said so — and
+  the contents nav fills it now. The rules are `Fhi.Helsedata.Stiler`'s, in
+  `components/munin-explorer/_page.scss`: a `250px minmax(0, 1fr)` body above 1025px and a sticky
+  contents column. A host that defines nothing for the name still loses no words — the column
+  becomes a block in ordinary flow above the main one, which is a contents list above the content
+  it lists. Both sample stylesheets carry the stand-in, scoped to a body that has a contents column
+  (`Fhi.Metadata-ex5wb` is the bead that puts that gate into Stiler's own copy), because the column
+  is still drawn only when something fills it and a page with no sections fills nothing.
+  (Fhi.Metadata-35w0p.12)
+- **The nav itself borrows helsedata's `form-menu__list` and `form-menu__list__item`, and Stiler
+  declares them, so you write no rule for either.** They are global, unscoped classes in Stiler's
+  `pages/_healthregisterpage.scss` and they reach its compiled stylesheet, which is where the nav
+  gets its link colour and padding from. Both sample stylesheets carry a stand-in for hosts with no
+  Stiler, and that stand-in now declares what Stiler 0.1.42 declares — `margin` on the list,
+  `background-color` and `transition` on the link — after
+  `scripts/assert-sample-css-matches-stiler.sh` found it three declarations short of the real rule.
+  `form-menu__list__item` has no rule of its own anywhere, and nothing is emitted for the
+  active-item modifiers `form-menu__list__item--active` and `--active-child` either: with no scroll
+  tracking in this package an active item would be permanently wrong on every section but one.
+  (Fhi.Metadata-35w0p.12)
+- **One detail view per document.** The section ids the nav links to — `metadata`, `source`,
+  `statistics` and the rest — are fixed English literals with nothing per-instance in them, so that
+  a deep link one reader sends another lands in the same place whichever language either is
+  reading. The price is that two detail views in one document write each id twice, and a browser
+  resolves a fragment to the first match: the second view's contents nav would scroll the reader
+  into the first view's sections. Mount one. `VariableSearch` and `KildeSearch` already do — each
+  picks between the arms of one `if`/`else`. (Fhi.Metadata-35w0p.12)
+- **`DetailToc` and `DetailTocEntry` are new public types, and neither is one to mount.**
+  `DetailToc` is the nav the three detail views put in their own contents column, public only
+  because a Razor component has to be — the same reason `DetailPage` and `DetailSection` are — and
+  `DetailTocEntry` is the id-and-label pair it takes. Mounting one yourself gets a `<nav>` of links
+  to whatever ids you hand it. (Fhi.Metadata-35w0p.12)
+- **`munin-explorer-page__header` is a new class name, and no published `Fhi.Helsedata.Stiler`
+  carries a rule for it.** It is the name block of the saved-list view, which is the fourth surface
+  on the detail chassis and the only one with no prefix of its own — the other three wear
+  `munin-explorer-kilde__header`, `munin-explorer-datasamling__header` and
+  `munin-explorer-whole__header`, and Stiler's rules are keyed on those three names. A handle:
+  undefined, the heading is still a heading and still wears Stiler's own `headline headline-s`, so
+  what is lost is the separator and the space under the name block that the other three detail pages
+  have. Give it what those three declare — 16px of padding below, 16px of margin below, a 1px grey
+  rule along the bottom — and both sample stylesheets here stand in at exactly that.
+  `Fhi.Metadata-urbj0` is the bead that writes the rule in Stiler. (Fhi.Metadata-35w0p.13)
+- **`munin-explorer-page`, `munin-explorer-page__body` and `munin-explorer-page__main` are now worn
+  by a fourth view, and this one never draws `munin-explorer-page__toc`.** The saved-list view has no
+  contents nav by decision — the Kilde filter beside it does the same grouping job — so its body
+  always has exactly one child. **If you write the two-track body rule yourself, gate it on the
+  contents column**, as the note under the chassis's own entry said and as both sample stylesheets
+  do: `.munin-explorer-page__body:has(> .munin-explorer-page__toc)`. Ungated, a fixed 250px first
+  track puts this view's whole list, scroll container and pager in the rail. Stiler 0.1.75 publishes
+  that rule ungated, so a host on it draws exactly that until `Fhi.Metadata-ex5wb` lands; the sample
+  stylesheets take the track back explicitly for the same reason. (Fhi.Metadata-35w0p.13)
+- **A host with a strict Content-Security-Policy has one new path to allow.**
+  `_content/Fhi.Munin.Explorer/explorer-interop.js` is fetched as an ES module after the first
+  render. A host already calling `UseStaticFiles()` or `MapStaticAssets()` serves it with no
+  change; a host that blocks it loses nothing, because the explorer is fully usable without it
+  and the refusal is caught rather than left to break the circuit. (Fhi.Metadata-35w0p.14)
+- **Three new class names, and none of them is in Fhi.Helsedata.Stiler yet.**
+  `munin-explorer-complete-record` on the disclosure, `munin-explorer-complete-record__lead` on the
+  paragraph above it and `munin-explorer-complete-record__fields` on the list inside it. Both sample
+  stylesheets carry a rule for each; a host without one gets a native `<details>`, a paragraph and a
+  single-column definition list, which is legible but not the dense two-column grid the mockup
+  draws. Fhi.Helsedata.Stiler now carries a rule for all
+  three: they landed on 2026-09-16 as 9ae64786 (_detail.scss, _hierarchy.scss) and Stiler publishes
+  on merge to main, so a host taking Stiler from the feed gets them with its next version. This
+  package's samples still pin the version before that, which is a separate change.
+  (Fhi.Metadata-35w0p.21)
+- **New class name `munin-explorer-absent`, and Fhi.Helsedata.Stiler has no rule for it yet.** It is on
+  the `<dd>` of a detail fact the catalogue holds nothing for, and on the row panel's one line for a Data
+  tab with neither kodeverk nor statistics. Undrawn, "Ingen" reads at full weight, as though it were the
+  catalogue's value. Both sample stylesheets colour it `#51547b` (Stiler's `$grey60`), which clears WCAG
+  AA on white at 7.23:1 and on Stiler's `$grey10` page ground at 6.76:1; `$grey50` would not. The Stiler
+  rule is Fhi.Metadata-iwfji. (Fhi.Metadata-35w0p.24)
+- **`munin-explorer-page__facts` is a new class name, and `Fhi.Helsedata.Stiler` 0.1.75 already
+  carries a rule for it.** It is the hero row the three detail views now open with, and a host on
+  0.1.75 or later needs to do nothing: the rule is in the same
+  `components/munin-explorer/_page.scss` the rest of the chassis landed in, laying the list out as
+  six equal tracks at desktop, three below 1080px and two below 600px, with the label small and
+  uppercase, the value tabular and the note muted under it. A handle otherwise — undefined, the
+  `<dl>` is a definition list at browser defaults, with every label and value still on the page and
+  in the right order, so what is lost is the row rather than a word. Both sample stylesheets stand
+  in at exactly what the pinned 0.1.75 declares. (Fhi.Metadata-35w0p.26)
+- **The markup inside it is a `<div>` per fact, `<dt>` then `<dd>`, with an optional `<small>`.**
+  If you write your own rule, key the cells off `.munin-explorer-page__facts > div` rather than off
+  the `<dt>`/`<dd>` pair directly: a `<dl>` laid out as a grid puts each element in a track of its
+  own, and the wrapper is what keeps a label with its value. The `<dt>` deliberately wears no
+  `headline` class, unlike the fact lists further down the page, so nothing of Stiler's type scale
+  competes with the rule for it. (Fhi.Metadata-35w0p.26)
+- **`munin-explorer-page__stuckbar` and three names beside it are new, and `Fhi.Helsedata.Stiler`
+  0.1.79 already carries rules for all four.** The others are `munin-explorer-page__stuckbar--on`,
+  the shown state the browser module writes, `munin-explorer-page__stuckbar-inner` and
+  `munin-explorer-page__stuckbar-name`. A host on
+  0.1.79 or later needs to do nothing: the rules are in the same `components/munin-explorer/_page.scss`
+  the rest of the chassis landed in, and both sample stylesheets stand in at exactly what that pin
+  declares. Handles, all four — but read what an undefined one costs, because it is not the usual
+  answer: the bar is **not** a permanently visible band without them, since the markup renders it
+  `hidden` and only the module ever takes that off. Undefined, it is a block in ordinary flow at the
+  top of the page — which the reader has already scrolled past by the time the module shows it — so
+  what is lost is a pinned bar and what is gained is a layout jump. On an older Stiler, either take
+  the rules or write `position: sticky; top: 0` for the name yourself. (Fhi.Metadata-35w0p.28)
+- **The bar is a repeat, and a host may safely have none of it.** It renders `hidden` with
+  `aria-hidden="true"`, and `_content/Fhi.Munin.Explorer/explorer-interop.js` is the only thing that
+  shows it — so a Content-Security-Policy that blocks the module, or a reader with JavaScript off,
+  gets a page with no bar and no word missing. Do not style it visible: everything in it is already
+  on the page above, and a second permanent copy of the page's own title is what the hidden state is
+  there to prevent. The bar is text and nothing else — `DetailPage.Actions` is **not** repeated in
+  it — so filling that fragment still puts each of your controls on the page exactly once, with
+  whatever `id`s you wrote still unique. (Fhi.Metadata-35w0p.28)
+- **`munin-explorer-breadcrumb` now dresses a second trail.** The Plassering trail on the
+  whole-variable page is wrapped in it, so the rule a host already has for the trail over the
+  search results is what strips the list markers and draws the chevrons there too. No new class
+  name, and both sample stylesheets already carry the rules unchanged. `Fhi.Helsedata.Stiler`
+  declares the name — the divergence baseline reports no unstyled name for it — but whether its
+  breadcrumb partial includes the descendant `ol` and `li + li::before` rules could not be read
+  from this repository, and `Fhi.Metadata-40y6v` is open to settle it against a checkout. Until it
+  does, a Stiler host may draw these steps as a numbered list rather than a chevron-separated
+  path: the same steps in the same order, in the wrong shape. (Fhi.Metadata-35w0p.47)
+- **`munin-explorer-page__eyebrow` and `munin-explorer-page__actions` are new class names, and
+  `Fhi.Helsedata.Stiler` 0.1.75 already carries a rule for both.** They are the detail chassis's
+  chrome above the name block — the word naming the kind of page, and the row of page-level
+  controls. A host on 0.1.75 or later needs to do nothing. Handles, both: undefined, the eyebrow is
+  a paragraph above the title and the action row is its children in ordinary flow, so what is lost
+  is the pill and the spacing rather than any word. Both sample stylesheets stand in at exactly
+  what the pinned 0.1.75 declares. (Fhi.Metadata-35w0p.49)
+- **The breadcrumb wears helsedata's own `breadcrumbs` names and adds none of ours.** `breadcrumbs`
+  on the `<nav>`, `breadcrumbs__list` on the `<ol>`, `breadcrumbs__list-item` on each step,
+  `breadcrumbs__divider` on the separator and `breadcrumbs__last-crumb` on the current page — all
+  global, unscoped classes in Stiler's `layout/_breadcrumbs.scss`, so a host with Stiler gets the
+  site's own trail for nothing. **If your stylesheet writes the list rule against `ul` rather than
+  against the class, it will not match**: the list is an `<ol>`, because the steps are ordered and
+  that is what a breadcrumb tells a screen reader. Unstyled it is a numbered list, which still
+  reads correctly. Neither sample host stands these five in — a partial copy of a borrowed rule is
+  a divergence, not a stand-in. (Fhi.Metadata-35w0p.49)
+- **The detail views emit one new class name, `munin-explorer-page__section`, and nine bare element
+  ids.** The class is a handle in the plainest sense: the wrapper it dresses has no padding, border
+  or margin, so a host that defines nothing for it sees exactly the page it saw before. What a rule
+  buys is `scroll-margin`, so a heading reached by fragment clears a sticky header instead of
+  landing under it. `Fhi.Helsedata.Stiler` has the rules already — a new
+  `components/munin-explorer/_page.scss`, merged as PR 39299 on 2026-09-11, which hangs the offset
+  on the `data-nav-section` attribute the same elements carry — but that PR bumped no version, so
+  **no published Stiler carries them** and every host, whatever its pin, draws the wrapper undrawn
+  today. That costs nothing until the contents nav that uses it arrives. Both sample stylesheets
+  show the offset at Stiler's own 140px. The ids are the part to read twice: `metadata`, `criteria`,
+  `source`, `statistics`, `datacollections`, `versions`, `dataperiod`, `datatype` and
+  `variablegroups`, and they are written **bare**, without the per-instance discriminator every
+  other id this package writes carries — a deep link has to mean the same thing in the next reader's
+  browser, and an id minted at run time cannot. Within one mount they cannot repeat, since an
+  explorer renders at most one detail view. A page that mounts two explorers, or that already means
+  something of its own by `id="source"`, will have duplicates: if that is your page, keep your own
+  ids off those nine until `Fhi.Metadata-uobxg` settles it. (Fhi.Metadata-35w0p.5)
+- **`DetailSection` is a new public component, and it is not one to mount.** It is the wrapper the
+  three detail views draw each of their blocks in, public only because a Razor component has to be
+  — the same reason `KildeHierarchyView` and `VariableListFilters` are. It takes an `Id` and its
+  content and emits the `<section>` described above, so mounting one on your own page gets you an
+  element with an id and nothing in it. (Fhi.Metadata-35w0p.5)
+- **Three class names stop being emitted, and one rule you may have written no longer has an
+  element.** `munin-explorer-kilde__aside`, `munin-explorer-datasamling__aside` and
+  `munin-explorer-whole__aside` are gone from the markup; a rule for any of them now matches
+  nothing and can be deleted whenever it suits you. Two consequences are worth knowing rather than
+  discovering. Anything scoping `munin-explorer-meta__grid` to one lane inside those asides stops
+  applying, so the fact lists take the unscoped two-lane default, which is the right shape for a
+  full-width column — do not narrow the base rule to win it back, or the metadata groups lose their
+  two lanes with it. And `munin-explorer-kilde__body`, `munin-explorer-datasamling__body` and
+  `munin-explorer-whole__body` were grids whose second track is a fixed 320px above 1024px. With
+  nothing left to put in it that track was empty space to the right of the page: rendered in
+  `samples/LegacyHost` at a 1440px viewport before this change, the main column measured 954px
+  inside a 1298px body, the missing 344px being the track and its gap. Do not go and edit those
+  three rules, though — `Fhi.Metadata-35w0p.9`, in this same release, stops emitting all three
+  names, so the element is `munin-explorer-page__body` and nothing wears them at all. The entry
+  under Removed says what to move where. (Fhi.Metadata-35w0p.6)
+- **The detail views' shared chassis adds four class names to style.** `munin-explorer-page` on the
+  root of the kilde, datasamling and variable views, `munin-explorer-page__body` on the body, and
+  `munin-explorer-page__main` and `munin-explorer-page__toc` on the two columns inside it — the last
+  of those only on a page whose contents column is filled, which no page in this version is.
+  Handles, all four: a host that defines nothing for them gets the body and its columns as blocks in
+  ordinary flow, which is the single column those pages draw today. `Fhi.Helsedata.Stiler` has the rules
+  already — the same `components/munin-explorer/_page.scss` the section wrapper landed in, extended
+  by PR 39300 on 2026-09-11 with a `250px minmax(0, 1fr)` body above 1025px, a sticky contents
+  column and a `min-inline-size: 0` main column — but that PR bumped no version either, so **no
+  published Stiler carries them** and the body is a block whatever your pin says. Both sample
+  stylesheets stand in for the rules at Stiler's own numbers. The one place they deliberately differ
+  from what PR 39300 merged is the two-track rule, which they scope to
+  `.munin-explorer-page__body:has(> .munin-explorer-page__toc)`: `munin-explorer-page__toc` is
+  emitted only when something fills it and nothing does yet, so an ungated fixed first track would
+  lay the main column out in 250px of a 1440px page. If you write the rule yourself, scope it the
+  same way; `Fhi.Metadata-ex5wb` is the bead that puts the gate into Stiler's own copy before it
+  publishes. (Fhi.Metadata-35w0p.9)
+- **`DetailPage` is a new public component, and it is not one to mount.** It is the chassis the
+  three detail views draw themselves in, public only because a Razor component has to be — the
+  same reason `DetailSection` and `KildeHierarchyView` are. It takes the two class names the
+  calling view wore before the chassis existed, a header, a contents column and the main content,
+  and emits the wrappers described above; mounting one on your own page gets you three nested
+  empty divs. (Fhi.Metadata-35w0p.9)
+- **BREAKING for hosts: move any rule keyed on the detail views' `__body` names to
+  `munin-explorer-page__body`.** `munin-explorer-kilde__body`, `munin-explorer-datasamling__body`
+  and `munin-explorer-whole__body` are no longer emitted — the removal and why the element could
+  not keep both names are under Removed. What to do about it is one move: whatever your rule
+  declared, declare it on `munin-explorer-page__body` instead, and read the note above before you
+  give it a second track. Every other old name stays exactly where it was:
+  `munin-explorer-kilde`, `munin-explorer-datasamling` and `munin-explorer-whole` are still on the
+  roots, `munin-explorer-kilde__main` and its two siblings still on the main column, and
+  `munin-explorer-kilde__datasamlinger` still on the table it always named — that last one is why
+  the prefixes were kept at all, being styled inside an expanded row of the kildeutforsker's result
+  table as well as on the kilde page. A rule keyed on any of them draws what it drew before, and
+  needs no new rule. (Fhi.Metadata-35w0p.9)
+- **Two class names to style, and one disclosure that is no longer a `<summary>`.**
+  `munin-explorer-filters__branch` is the `<li>` of a facet value that has values under it, and
+  `munin-explorer-filters__disclosure` is the `<button aria-expanded>` inside it that opens the
+  branch. Both are handles: the button carries an arrow as text and a name from `aria-labelledby`, so
+  with no rule at all it is still visible, operable and announced, and the row simply draws as the
+  blocks it is made of instead of as a row. What a rule buys is the row itself and a 24×24 target,
+  which is WCAG 2.5.8 rather than decoration — and a focus state that survives an outline reset:
+  the disclosure is a tab stop on every branch of the tree. Both sample stylesheets carry the
+  rules to copy. The change to watch for is the kildetype groups inside the Kilde facet: they were
+  `<details>`/`<summary>` and inherited whatever you give `.munin-explorer-filters summary`, and
+  they are now ordinary branch rows, so a rule written for that summary no longer reaches them.
+  Use `Fhi.Helsedata.Stiler` **0.1.75 or later**, which supplies both rules (`Fhi.Metadata-cs3pt`).
+  Earlier versions leave the disclosures at browser defaults unless the host adds those rules.
+  The disclosure's accessible name keeps the UI action and catalogue name separately language-marked.
+  Both names are drawn by every facet that nests values and not by the Kilde facet alone: a
+  variabelgruppe nested under another is a branch row too, and it starts shut where it used to be
+  drawn unasked, so a rule scoped to the Kilde facet reaches neither it nor its disclosure.
+  (Fhi.Metadata-adog5)
+- **One class name to style on the variable explorer's Kilde facet.**
+  `munin-explorer-filters__badge` is the `<span>` holding the Biobank word on a kilde row. A handle:
+  the word is real text inside the `<label>`, so with no rule at all it is visible and part of the
+  checkbox's accessible name, and what a rule buys is the capsule that tells it from the name beside
+  it. Both sample stylesheets already carry the rule to copy, stood in from the pinned published
+  Stiler; which release first supplies it is `Fhi.Metadata-gegtb`.
+  The folder glyphs the same facet's kilde and delkilde rows now draw need no new name — they wear
+  the `munin-explorer-filters__icons` and `munin-explorer-filters__icon` pair a datasamling's
+  datakategori glyphs already wear, which `Fhi.Helsedata.Stiler` **0.1.75 or later** supplies. The
+  badge is deliberately outside that slot, so a rule — or a future icon toggle — that hides the
+  decoration must not hide the badge with it.
+  (Fhi.Metadata-aw203)
+- **Two class names to style on the variable explorer's Kilde facet.**
+  `munin-explorer-filters__icons` is the `<span>` holding a datasamling row's datakategori glyphs
+  and `munin-explorer-filters__icon` is each inline `<svg>` inside it. Handles both: the `<svg>`
+  carries `width`, `height` and `stroke="currentColor"` as attributes, so with no rule at all the
+  glyphs still draw at text size in the text colour, and the slot is `aria-hidden` either way. What
+  a rule buys is the row they sit in and the gap between them. Use `Fhi.Helsedata.Stiler` **0.1.75
+  or later**, which supplies both (`Fhi.Metadata-1t36m`); both sample stylesheets carry the rules to
+  copy for a host that has neither. The glyphs are drawn between the checkbox and the name, as in
+  Runa. Preserve that order and keep checkbox indentation independent of the number of glyphs.
+  (Fhi.Metadata-evoil)
+- **Four more bare section ids: `variables`, `accesscriteria`, `prices` and `codelists`.** They
+  join the nine the detail views already write without a per-instance discriminator, for the same
+  reason, so the same bound applies: a page that already means something of its own by
+  `id="prices"` will have a duplicate, and the nav's link lands on whichever comes first.
+  `Fhi.Metadata-uobxg` is where that bound gets settled. (Fhi.Metadata-fkiz9)
+- **Kelda's sections and the whole variable's Kodeverk now sit in `munin-explorer-page__section`
+  wrappers, so `Fhi.Helsedata.Stiler`'s rules for that name reach them.** No new class name.
+  `scroll-margin-top` puts a heading reached from the nav clear of a sticky header. And unless your
+  `KildeSearch.Sections` draws an element, the last of Kelda's sections — Variabler, or Priser with
+  `ShowAccessAndPrices` — is now the column's last child, so Stiler's `:last-child` rule gives it a
+  `min-height` of `calc(60vh - 120px)`: expect that much space under a one-line section at the
+  bottom of an open kilde. Stiler's reason is a scroll-spy, which could otherwise never mark the
+  nav's last entry active; Runa's kilde page already ended in a wrapped section and got the same
+  space. (Fhi.Metadata-fkiz9)
+- **The variable explorer's filter toolbar now lays out four controls, not three.**
+  `munin-explorer-filters__toolbar` holds Utvid alle, Skjul alle, Nivålinjer and now Ikoner, and
+  the second switch is a second member at its own natural width: the `min-width: 0` half of the
+  rule must keep selecting the two fold buttons alone, because with it the switch collapses to one
+  character wide. **The row has to be allowed to wrap.** Four controls are 291px of content, and at
+  the 320px width WCAG 1.4.10 names the component's mount is 226px — measured, the row hung 42px
+  past the viewport, since only the fold buttons shrink and a switch keeps its intrinsic width.
+  Both sample stylesheets add `flex-wrap: wrap` to `munin-explorer-filters__toolbar`;
+  `Fhi.Helsedata.Stiler` gains the same rule under `Fhi.Metadata-xfsvx`, and until that release a
+  host on a published Stiler needs the one declaration itself. A host that wrote a toolbar rule of
+  its own has one more member to fit and the same answer to give it.
+  No new class name comes with the switch: it wears `munin-explorer-switch` with
+  `munin-explorer-switch__track` and `munin-explorer-switch__thumb` inside it, exactly as
+  Nivålinjer does, so a host already drawing that control draws this one. A host on a published
+  Stiler still draws none of the three itself — that release is `Fhi.Metadata-aonvl` — and now has
+  two bare `<button>`s whose appearance never changes with their state rather than one.
+  (Fhi.Metadata-kd9ts)
+- **Stiler 0.1.68 carries the active-filter chips, the results toolbar and the kilder table's
+  sticky-header thresholds.** The README said no published Stiler had the thresholds yet and
+  pointed at 0.1.42 as the version pinned here; 0.1.68 is the version helsedata.no pins, and it has
+  all three. The branch disclosure rules for the variabelutforsker's Kilde facet are not in 0.1.68;
+  0.1.75 has them.
+- **BREAKING for hosts without Fhi.Helsedata.Stiler: the variable filter panel starts folded at
+  every width unless the host carries the `munin-explorer-filters__*` fold rules.** The panel is folded behind
+  "Vis filtre" by the `hidden` attribute, so a stylesheet with none of the rules shows the toggle
+  and a folded panel on a desktop as well, while one with a reset such as
+  `fieldset { display: block }` holds the panel open behind a toggle that says it is folded. `.munin-explorer-filters__facets[hidden]` needs
+  `display: none`, and once there is room for a sidebar `.munin-explorer-filters__toggle` needs
+  `display: none` while `.munin-explorer-filters__facets[hidden]` needs `display: block`.
+  `Fhi.Helsedata.Stiler` already carries all three. The fieldset itself wears
+  `munin-explorer-filters__facets`. The toggle sits beside that fieldset rather than inside it, so
+  a host rule scoped under `.munin-explorer-filters` does not reach the button.
+  (Fhi.Metadata-l9l2n.102)
+- **The variabelutforsker's facet panel emits one new class name,
+  `munin-explorer-filters__groupcount`.** It is the count beside a kildetype group in the Kilde
+  facet, and it replaces `munin-explorer-filters__chosen` there; `__chosen` itself is unchanged and
+  still worn by the kildeutforsker's facet summaries, so a host styling it needs no edit. A handle
+  rather than a name that carries meaning — the digits are markup, so an undefined one is still
+  read and announced, and what a rule buys is the dimming and `font-variant-numeric: tabular-nums`.
+  The tabular figures are the half worth copying: the counts stack, and two of different digit
+  widths above one another shift sideways as the facet is narrowed without them. The rule is merged
+  on `Fhi.Helsedata.Stiler`'s `main`, added to `__chosen`'s own selector list rather than copied
+  beside it, and it is **not in any published Stiler yet** — so every host draws these counts at the
+  page's own size and colour today, whatever its pin, and there is no newer pin to move to. Which
+  version will first carry it cannot be named from here: Stiler's csproj sits at `0.0.0-local` and
+  its pipeline stamps the real `0.1.x` when a release is cut, so the number exists only once that
+  happens. The merge is recorded in bead `Fhi.Metadata-l9l2n.73` — its close note names PR 39274,
+  merged 2026-09-11 — which is the only record of it this repository can reach; nothing here reads
+  Stiler. Both sample stylesheets show the rule. (Fhi.Metadata-l9l2n.104)
+- **The kildeutforsker's hierarchy emits one new class name, `munin-explorer-hierarchy__open`.**
+  It is the link that opens a datasamling in the tree. A handle rather than a name that carries
+  meaning — undefined, it is an ordinary `<a href>` and draws at the browser's own link style, so
+  what a rule buys is putting it back on the node's own line, since it is written after the
+  node's `<details>` rather than inside the `<summary>`. Both sample stylesheets show that rule.
+  No rule for it ships in `Fhi.Helsedata.Stiler` yet. A host on a Blazor `Router` should also know
+  that opening a datasamling remounts `KildeSearch`: the press is intercepted, `KildeExplorer`
+  reads the new address and rebuilds rather than forcing a page load, so the open kilde is fetched
+  again and its hierarchy comes back collapsed. (Fhi.Metadata-l9l2n.107)
+- **An `<h2>` now renders inside the contents nav, and it carries no class of its own.** The nav was
+  `<nav aria-label>` wrapping `ul.form-menu__list`; it is now that same nav with a heading in front
+  of the list. The element is deliberately bare, because helsedata's own contents nav draws an
+  unclassed `<h2>` in exactly this position and `Fhi.Helsedata.Stiler` already styles it there — a
+  new class name would have needed a new rule, and a name with no rule renders at the browser's own
+  heading size. A host carrying neither gets a default `<h2>` above the list, which is a title above
+  the thing it titles rather than anything broken. (Fhi.Metadata-l9l2n.116)
+- **The kilde table's sortable headings emit one new class name,
+  `munin-explorer-kilder__sort`.** It is the button inside each of the four sortable `<th>`s, worn
+  beside Stiler's own `hd-button-reset`, and it is a handle rather than a name that carries
+  meaning: undefined, the heading is still a real button, still reachable by Tab, and the sorted
+  column is still marked by the arrow beside its word and by `aria-sort` on the cell. What a rule
+  buys is the hover underline and the colour on the sorted column. `Fhi.Helsedata.Stiler` adds this
+  name to the two rules the variabelutforsker's header button already has — merged 2026-09-11 in PR
+  39282, recorded in bead `Fhi.Metadata-l9l2n.106` — rather than giving it a block of its own, so
+  the two cannot drift apart. Whether a published Stiler carries it cannot be read from this
+  repository; nothing here reads Stiler. Both sample stylesheets show the rule.
+  (Fhi.Metadata-l9l2n.88)
+- **Two new names size the save column: `munin-explorer-dataitem-main__save` on the button's
+  cell and `munin-explorer-dataitem-header__save` on the header cell above it.** Give both one
+  fixed width, `flex: 0 0 10rem`, where the result row is a flex row. Without it the cell sizes
+  to its button, so the "Variabelliste" header does not sit over the buttons, and pressing one
+  shifts the later columns in its row as the label changes length. The rule ships in
+  `Fhi.Helsedata.Stiler` under Fhi.Metadata-6u1iu, together with the header geometry the
+  alignment depends on: the header row loses its 36px left padding, Navn's header button takes a
+  3rem indent instead, and the Kode, Datatype and Status header cells get the 16px left padding
+  their values have. A failed save's sentence is now its own cell of the row,
+  `munin-explorer-data-list__save-status`, after the column strip: `.munin-explorer-data-list__item__row`
+  wraps, the cell takes the full width, and its alert is indented `3rem` with `12px` below while it
+  has text. Until a host's pinned Stiler carries that, the "Variabelliste" header shows but the
+  header cells sit out of line with the values under them, and a failed save's sentence sits in a
+  narrow cell beside the row's columns, squeezing that one row, instead of on a line below it.
+  (Fhi.Metadata-q7i5e)
+- **Two class names to know about, and no rule of yours to write on a Stiler that has
+  `components/munin-explorer/` from 0.1.75 onwards.** The legend wears
+  `munin-explorer-filters__legend` on the list and `munin-explorer-filters__legend-item` on each
+  row, and the glyph inside a row wears `munin-explorer-filters__icon` — the same name a facet
+  value's glyph already wears, as a direct child of the row rather than inside the
+  `munin-explorer-filters__icons` slot, which is what Stiler's rule for it selects. Both sample
+  stylesheets already carried the rules before any markup wore the names, copied off the published
+  0.1.75 and compared since against the 0.1.79 `samples/HostileHost` pins, so
+  `scripts/assert-sample-css-matches-stiler.sh` against that pin is the whole of the evidence on
+  this side that Stiler has them; nothing in this repository reads Stiler. Handles, both: the
+  `<svg>` carries its own `width`, `height` and `stroke` and the names are real text, so a host
+  that defines neither gets a list of glyphs and words at browser defaults and loses no word. What
+  the rules buy is the row each pairing sits on and the columns the eighteen of them are laid out
+  in. (Fhi.Metadata-zllxt)
+
 ## 0.1.0-alpha.11 — 2026-09-11
 
 ### Added
