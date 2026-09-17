@@ -6,7 +6,7 @@ category: Added
   only where the host has said where a variable explorer is: `KildeExplorer` offers it wherever
   `VariableExplorerPath` is set, off the same path as the selection handover it already drove, and a
   host mounting `KildeSearch` itself wires the new `KildeVariablesHref` parameter —
-  `Func<Guid?, string>?`, the shape `DatasamlingHref` has, answering an address for one kilde's id.
-  Unset, no link is rendered: not a dead href, not an inert button. It is the single-source shortcut
-  and does not replace "Utforsk variabler for utvalget", which acts on the rows the reader has
-  ticked. (Fhi.Metadata-35w0p.33)
+  `Func<Guid, string>?`, the shape `DatasamlingHref` has over an id that is always there, answering
+  an address for one kilde. Unset, no link is rendered: not a dead href, not an inert button. It is
+  the single-source shortcut and does not replace "Utforsk variabler for utvalget", which acts on
+  the rows the reader has ticked. (Fhi.Metadata-35w0p.33)

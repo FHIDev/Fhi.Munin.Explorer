@@ -177,7 +177,10 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private Func<string>? _listAddress;
 
     /// <summary>The variable explorer's address, held for <see cref="_address"/>'s reason.</summary>
-    private Func<Guid?, string>? _variablesAddress;
+    private Func<Guid, string>? _variablesAddress;
+
+    /// <summary>The path <see cref="_variablesAddress"/> was made against, so a moved one is seen.</summary>
+    private string? _variablesPath;
 
     private EventCallback<IReadOnlyList<Guid>> Handover =>
         VariableExplorerPath is null
@@ -374,11 +377,30 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// it mounted a <see cref="VariableSearch"/>. A link rather than the callback, because it is a
     /// destination rather than a set to act on, and the two share
     /// <see cref="VariableExplorerAddress"/> so a reader arriving either way arrives at one address.
+    /// <para>
+    /// Held for <see cref="DatasamlingHref"/>'s reason, but re-made whenever the path moves and
+    /// closed over the path it was made against: a delegate the child is still holding would
+    /// otherwise answer an address off a path the host has since changed or withdrawn.
+    /// </para>
     /// </remarks>
-    private Func<Guid?, string>? KildeVariablesHref =>
-        VariableExplorerPath is null
-            ? null
-            : _variablesAddress ??= kilde => VariableExplorerAddress(kilde is { } id ? [id] : []);
+    private Func<Guid, string>? KildeVariablesHref
+    {
+        get
+        {
+            if (VariableExplorerPath is not { } path)
+            {
+                return null;
+            }
+
+            if (_variablesPath != path)
+            {
+                (_variablesPath, _variablesAddress) =
+                    (path, kilde => VariableExplorerAddress(path, [kilde]));
+            }
+
+            return _variablesAddress;
+        }
+    }
 
     /// <summary>Follow the open kilde, and drop the datasamling that was a step inside it.</summary>
     /// <remarks>
@@ -398,7 +420,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// here — <see cref="VariableFilter.ToQueryString"/> writes what its own <c>Parse</c> reads.
     /// </remarks>
     private void ExploreVariables(IReadOnlyList<Guid> kildeIds) =>
-        Navigation.NavigateTo(VariableExplorerAddress(kildeIds), forceLoad: true);
+        Navigation.NavigateTo(VariableExplorerAddress(VariableExplorerPath ?? "", kildeIds), forceLoad: true);
 
     /// <summary>The variable explorer's address, narrowed to <paramref name="kildeIds"/>.</summary>
     /// <remarks>
@@ -406,11 +428,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// an app mounted under <c>/optimizely</c> keeps the prefix a literal path would drop —
     /// identical locally, and out of the application behind a reverse proxy.
     /// </remarks>
-    private string VariableExplorerAddress(IReadOnlyList<Guid> kildeIds)
+    /// <param name="path">
+    /// Where the host said its variable explorer is. Passed rather than read, so a held delegate
+    /// answers off the path it was made against and not off whatever the parameter says later.
+    /// </param>
+    /// <param name="kildeIds">The kilder the reader chose, which may be none at all.</param>
+    private string VariableExplorerAddress(string path, IReadOnlyList<Guid> kildeIds)
     {
         var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
-        var path = (VariableExplorerPath ?? "").TrimStart('/');
+        var relative = path.TrimStart('/');
 
-        return Navigation.ToAbsoluteUri(query.Length == 0 ? path : path + "?" + query).ToString();
+        return Navigation.ToAbsoluteUri(query.Length == 0 ? relative : relative + "?" + query).ToString();
     }
 }

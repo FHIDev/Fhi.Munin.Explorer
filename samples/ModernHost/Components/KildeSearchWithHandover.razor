@@ -46,7 +46,7 @@
     private Func<string>? _list;
 
     /// <inheritdoc cref="_address"/>
-    private Func<Guid?, string>? _variables;
+    private Func<Guid, string>? _variables;
 
     protected override void OnInitialized()
     {
@@ -134,13 +134,21 @@
     /// The front page narrowed to one kilde, for the link an expanded row ends in.
     /// </summary>
     /// <remarks>
-    /// The same query <see cref="ExploreVariables"/> navigates to, written by the same
-    /// <c>VariableFilter</c>, so the single-kilde shortcut and the ticked-set handover land on one
-    /// page. A link rather than a press because it is a destination and not a set to act on.
+    /// <see cref="Front"/> and not a second query of its own, so the single-kilde shortcut and the
+    /// ticked-set handover cannot end up on different pages. A link rather than a press because it
+    /// is a destination and not a set to act on.
     /// </remarks>
-    private static string Variables(Guid? kilde)
+    private static string Variables(Guid kilde) => Front([kilde]);
+
+    /// <summary>The front page showing <paramref name="kildeIds"/>, and all variables for none.</summary>
+    /// <remarks>
+    /// The one place either gesture's address is written. <c>VariableFilter.ToQueryString</c> writes
+    /// exactly what <c>VariableFilter.Parse</c> reads on the front page, so the two ends of the
+    /// handover cannot drift apart either.
+    /// </remarks>
+    private static string Front(IReadOnlyList<Guid> kildeIds)
     {
-        var query = new VariableFilter { KildeIds = kilde is { } id ? [id] : [] }.ToQueryString();
+        var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
 
         return query.Length == 0 ? "/" : "/?" + query;
     }
@@ -152,8 +160,7 @@
     /// <remarks>
     /// The host's job, because the host is the only side that knows where it mounted a
     /// <c>VariableSearch</c> — the package has no router and never touches the address bar. The
-    /// format is not restated here either: <c>VariableFilter.ToQueryString</c> writes exactly what
-    /// <c>VariableFilter.Parse</c> reads on the front page, so the two ends cannot drift apart.
+    /// address itself is <see cref="Front"/>'s, shared with the single-kilde link beside it.
     /// <para>
     /// An empty list is not a selection of none. It is what the component sends when the reader
     /// narrowed nothing, so it lands on the unfiltered variable list rather than on a query asking
@@ -165,10 +172,5 @@
     /// differs is the hosting model, which is why both samples are kept.
     /// </para>
     /// </remarks>
-    private void ExploreVariables(IReadOnlyList<Guid> kildeIds)
-    {
-        var query = new VariableFilter { KildeIds = kildeIds }.ToQueryString();
-
-        Nav.NavigateTo(query.Length == 0 ? "/" : "/?" + query);
-    }
+    private void ExploreVariables(IReadOnlyList<Guid> kildeIds) => Nav.NavigateTo(Front(kildeIds));
 }

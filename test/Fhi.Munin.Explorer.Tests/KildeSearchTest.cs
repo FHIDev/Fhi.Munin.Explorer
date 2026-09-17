@@ -1142,15 +1142,19 @@ public class KildeSearchTest : ExplorerTestContext
     /// The kilde carries a fixed id rather than a fresh one, because what the supplied half asserts
     /// is the address the delegate produced for a named kilde — not that some address is there.
     /// </remarks>
-    private IRenderedComponent<KildeSearch> RenderDrawer(bool wireVariables)
+    private IRenderedComponent<KildeSearch> RenderDrawer(bool wireVariables, string language = "no")
     {
         var als = Kilde("Als registeret", "K_ALS", datasamlinger: 2) with { Id = DrawerKilde };
 
         var cut = RenderWith(
             new FakeClient(als).Describing(DetailWithCollections(als)),
-            p => p.Add(
-                c => c.KildeVariablesHref,
-                wireVariables ? (Func<Guid?, string>)(id => $"/variabler?kilde={id}") : null));
+            p =>
+            {
+                p.Add(
+                    c => c.KildeVariablesHref,
+                    wireVariables ? (Func<Guid, string>)(id => $"/variabler?kilde={id}") : null);
+                p.Add(c => c.Language, language);
+            });
 
         ExpandToggle(cut, "Als registeret").Click();
 
@@ -1182,6 +1186,19 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Contains("munin-explorer-kilder__expanded", drawer.ClassList);
         Assert.Equal(2, drawer.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger").Length);
         Assert.Same(link, drawer.LastElementChild);
+    }
+
+    [Fact]
+    public void ExpandedDrawer_WhenTheReaderIsNotNorwegian_ThenTheLinkIsLabelledInTheirLanguage()
+    {
+        // LanguageTest asserts only that a sentence-building delegate is non-null in both arms, by
+        // its own convention that each is asserted where it is rendered. This is that assertion: an
+        // English arm left as a copy of the Norwegian is what nothing else here would notice.
+        var cut = RenderDrawer(wireVariables: true, language: "en");
+
+        var link = Assert.Single(cut.Find(".munin-explorer-kilder__expanded").QuerySelectorAll("a"));
+
+        Assert.Equal("Show all variables in Als registeret", link.TextContent.Trim());
     }
 
     [Fact]

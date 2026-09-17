@@ -1,4 +1,5 @@
 using System.Reflection;
+using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
@@ -32,12 +33,23 @@ public class KildeMountTest : ExplorerTestContext
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<KildeSummary>>(
-                [new KildeSummary { Id = KildeId, Name = "Als registeret", Code = "K_ALS" }]);
+                [new KildeSummary { Id = KildeId, Name = "Als registeret", Code = "K_ALS", DatasamlingCount = 1 }]);
 
+        /// <remarks>
+        /// With a datasamling under it, because a kilde reporting none is drawn with no expand
+        /// toggle at all — and the drawer is where the way on to its variables sits.
+        /// </remarks>
         public override Task<KildeDetail?> GetKildeAsync(
             Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<KildeDetail?>(
-                id == KildeId ? new KildeDetail { Id = id, PreferredTerm = "Als registeret" } : null);
+                id == KildeId
+                    ? new KildeDetail
+                    {
+                        Id = id,
+                        PreferredTerm = "Als registeret",
+                        Datasamlinger = [new() { Name = "Inklusjon", VariableCount = 12 }],
+                    }
+                    : null);
     }
 
     /// <summary>The type a CMS field holding <paramref name="name"/> resolves to, or null.</summary>
@@ -92,6 +104,14 @@ public class KildeMountTest : ExplorerTestContext
     private static void OpenTheKilde(IRenderedComponent<IComponent> cut) =>
         cut.Find(".munin-explorer-kilder tbody th button").Click();
 
+    /// <summary>The kilde's drawer, opened the way a reader opens it.</summary>
+    private static IElement OpenTheDrawer(IRenderedComponent<IComponent> cut)
+    {
+        cut.Find(".munin-explorer-kilder__expand-toggle").Click();
+
+        return cut.Find(".munin-explorer-kilder__expanded");
+    }
+
     // -----------------------------------------------------------------------
     // The name a host reaches for first is the one that owns the address bar.
 
@@ -132,6 +152,26 @@ public class KildeMountTest : ExplorerTestContext
         var cut = MountByName("KildeExplorer", "http://localhost/kilder", "/variabler");
 
         Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder__select"));
+    }
+
+    [Fact]
+    public void KildeExplorer_WhenTheHostCanOnlySetLanguage_ThenAnOpenDrawerOffersNoWayToTheVariables()
+    {
+        // The link's half of the CMS mount: no path, so nowhere to send anyone, so no link — and
+        // this is where a link drawn dead on helsedata's own mount would be seen.
+        var cut = MountByName("KildeExplorer", "http://localhost/kilder");
+
+        Assert.Empty(OpenTheDrawer(cut).QuerySelectorAll("a"));
+    }
+
+    [Fact]
+    public void KildeExplorer_WhenTheHostGivesAVariableExplorerPath_ThenAnOpenDrawerLinksToThatKildesVariables()
+    {
+        var cut = MountByName("KildeExplorer", "http://localhost/kilder", "/variabler");
+
+        var link = Assert.Single(OpenTheDrawer(cut).QuerySelectorAll("a"));
+
+        Assert.Equal($"http://localhost/variabler?kildeIds={KildeId}", link.GetAttribute("href"));
     }
 
     // -----------------------------------------------------------------------

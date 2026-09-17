@@ -412,21 +412,32 @@ public class UrlStateComponentTest : ExplorerTestContext
         protected override void NavigateToCore(string uri, bool forceLoad) => Went = ToAbsoluteUri(uri).ToString();
     }
 
-    private static KildeSummary Kilde(Guid id, string name) => new() { Id = id, Name = name, Code = "K" };
+    /// <summary>
+    /// A row in the kilde list. <paramref name="datasamlinger"/> is what decides whether it has a
+    /// drawer at all — <c>KildeSearch.CanExpand</c> draws no toggle on a kilde with none.
+    /// </summary>
+    private static KildeSummary Kilde(Guid id, string name, int datasamlinger = 0) =>
+        new() { Id = id, Name = name, Code = "K", DatasamlingCount = datasamlinger };
 
     /// <summary>Answers with one kilde, so there is a row to open and a selection to hand over.</summary>
     /// <remarks>
     /// And one datasamling under it, because the drill-in Kelda offers out of a kilde is a link
     /// this component builds the address for — the tree has to have a node to hang it on.
     /// </remarks>
-    private sealed class OneKildeClient(Guid id, Guid? datasamling = null) : EmptyMuninExplorerClient
+    private sealed class OneKildeClient(Guid id, Guid? datasamling = null, bool expandable = false)
+        : EmptyMuninExplorerClient
     {
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<KildeSummary>>([Kilde(id, "Als registeret")]);
+            Task.FromResult<IReadOnlyList<KildeSummary>>([Kilde(id, "Als registeret", expandable ? 1 : 0)]);
 
         public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
-            Task.FromResult<KildeDetail?>(new KildeDetail { Id = id, PreferredTerm = "Als registeret" });
+            Task.FromResult<KildeDetail?>(new KildeDetail
+            {
+                Id = id,
+                PreferredTerm = "Als registeret",
+                Datasamlinger = expandable ? [new() { Name = "Inklusjon", VariableCount = 12 }] : [],
+            });
 
         public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<KildeHierarchy?>(datasamling is { } open
@@ -1228,6 +1239,88 @@ public class UrlStateComponentTest : ExplorerTestContext
         Assert.Equal(
             $"http://localhost/variabler?kildeIds={id}",
             Navigation.Uri);
+    }
+
+    /// <summary>The kildeutforsker with its one row's drawer open, which is where the link sits.</summary>
+    /// <remarks>
+    /// Through <see cref="KildeExplorer"/> and not <c>KildeSearch</c> on purpose: the delegate under
+    /// test is this component's, and a test handing a fabricated one to the child would stay green
+    /// with the forwarding in the markup deleted — which is the only mount helsedata has.
+    /// </remarks>
+    private IRenderedComponent<KildeExplorer> RenderOpenDrawer(
+        Guid id, Action<ComponentParameterCollectionBuilder<KildeExplorer>>? parameters = null)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient(id, expandable: true));
+        Prepare();
+        Navigation.NavigateTo("http://localhost/kilder");
+
+        var cut = Render<KildeExplorer>(b => parameters?.Invoke(b));
+
+        cut.Find(".munin-explorer-kilder__expand-toggle").Click();
+
+        return cut;
+    }
+
+    [Fact]
+    public void Kilder_WhenAVariableExplorerPathIsGiven_ThenAnOpenDrawerEndsInThatKildesVariables()
+    {
+        var id = Guid.NewGuid();
+
+        var cut = RenderOpenDrawer(id, b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+
+        var link = Assert.Single(cut.Find(".munin-explorer-kilder__expanded").QuerySelectorAll("a"));
+
+        // The one kilde whose drawer is open, in the query the other explorer reads — the same
+        // address the ticked-set handover lands on, because both are off the one path.
+        Assert.Equal($"http://localhost/variabler?kildeIds={id}", link.GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Kilder_WhenNoVariableExplorerPathIsGiven_ThenAnOpenDrawerEndsAtItsDatasamlinger()
+    {
+        // The CMS mount, where the parameter cannot be set at all: no link rather than one that
+        // lands on a page that host may not have — the same answer the selection column gives.
+        var cut = RenderOpenDrawer(Guid.NewGuid());
+
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+
+        Assert.Empty(panel.QuerySelectorAll("a"));
+        Assert.DoesNotContain("Vis alle variabler", panel.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Kilder_WhenTheHostMovesItsVariableExplorer_ThenTheOpenDrawersLinkMovesWithIt()
+    {
+        // The link's delegate is held for the component's life, so that it is not a changed
+        // parameter on every render — and a held one closed over nothing would answer off the path
+        // it was made with long after the host set another.
+        var id = Guid.NewGuid();
+
+        var cut = RenderOpenDrawer(id, b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+
+        cut.Render(b => b.Add(c => c.VariableExplorerPath, "/andre-variabler"));
+
+        var link = Assert.Single(cut.Find(".munin-explorer-kilder__expanded").QuerySelectorAll("a"));
+
+        Assert.Equal($"http://localhost/andre-variabler?kildeIds={id}", link.GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheHostIsMountedUnderAPathBase_ThenTheLinkStaysInsideTheApplication()
+    {
+        // The href's half of the handover's trap below: "/variabler" written into an anchor as it
+        // stands resolves against the origin, which is the same address locally and outside the
+        // application behind the reverse proxy helsedata runs behind.
+        var id = Guid.NewGuid();
+
+        Services.AddSingleton<NavigationManager>(new BasedNavigationManager(
+            "http://localhost/optimizely/", "http://localhost/optimizely/kilder"));
+
+        var cut = RenderOpenDrawer(id, b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+
+        var link = Assert.Single(cut.Find(".munin-explorer-kilder__expanded").QuerySelectorAll("a"));
+
+        Assert.Equal($"http://localhost/optimizely/variabler?kildeIds={id}", link.GetAttribute("href"));
     }
 
     [Fact]
