@@ -1161,6 +1161,11 @@ public sealed partial class VariableSearch : ComponentBase
         // as its first column.
         HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
 
+        if (ColumnVisible(ResultColumn.SaveToList))
+        {
+            HeaderCell(builder, 150, "save", T.TabVariableList, sort: null);
+        }
+
         if (ColumnVisible(ResultColumn.Code))
         {
             HeaderCell(builder, 200, "code", T.FieldCode, sort: null);

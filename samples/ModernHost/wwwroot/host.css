@@ -1307,6 +1307,14 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   flex: 260 1 0;
 }
 
+/* Lagre i liste, and the "Variabelliste" header over it. A fixed width rather than a weight: the
+   button's words change when it is pressed, and a content-sized cell moved every later column in
+   the row. 10rem is the longest label, "Remove from list". (Fhi.Metadata-q7i5e) */
+.munin-explorer-dataitem-main__save,
+.munin-explorer-dataitem-header__save {
+  flex: 0 0 10rem;
+}
+
 /* --grey60 rather than the --grey30 every other border in this stylesheet uses. A field's own
    border is what says there is a field there at all, which makes it a non-text control indicator
    under WCAG 1.4.11 and owes 3:1: --grey30 measures 1.16:1 against the page ground and --grey40

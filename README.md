@@ -652,7 +652,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   `munin-explorer-dataitem-main__column` plus `munin-explorer-dataitem-main__` finished with the
   column key. The keys are a closed set of seven — `code`, `dataCollection`, `dataType`, `period`,
   `source`, `status` and `theme` — so those seven names are as real as any row below, and
-  `munin-explorer-dataitem-header__` takes the same completions on the header cells above them. The
+  `munin-explorer-dataitem-header__` takes the same completions on the header cells above them, plus
+  `save` over the signed-in reader's save button, whose own cell name is a literal in the table. The
   reconciliation reads literals out of `src/`, which is what makes it exact and is also its one
   limit; a name the package builds a piece at a time is named here instead, and adding a column key
   means adding it to this sentence.
@@ -756,6 +757,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main__desiredData` | handle |
   | `munin-explorer-dataitem-main__expand-icon` | handle |
   | `munin-explorer-dataitem-main__name` | handle |
+  | `munin-explorer-dataitem-main__save` | handle |
   | `munin-explorer-dataitem-period` | prose |
   | `munin-explorer-datasamling` | handle |
   | `munin-explorer-datasamling__criteria` | handle |
