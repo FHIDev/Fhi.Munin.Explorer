@@ -803,14 +803,14 @@ else
                                                 <dl class="munin-explorer-meta__grid">
                                                     <div>
                                                         <dt class="headline headline-xxs margin--none">@T.FieldKildePath</dt>
-                                                        <dd>@KildeTrail.Write(KildeSteps(detail), T, PressKilde)</dd>
+                                                        <dd>@KildeTrailBlock.Write(KildeSteps(detail), T, PressKilde)</dd>
                                                     </div>
 
                                                     @* The plural the trail above cannot carry.
                                                        Drawn only when there are several: a list of
                                                        one name is the step above said twice. *@
                                                     @{
-                                                        var datasamlinger = KildeTrail.NamedDatasamlinger(detail);
+                                                        var datasamlinger = KildeTrailBlock.NamedDatasamlinger(detail);
                                                     }
                                                     @if (datasamlinger.Count > 1)
                                                     {

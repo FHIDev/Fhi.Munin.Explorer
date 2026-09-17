@@ -1438,8 +1438,10 @@ public class VariableViewTest : BunitContext
     public void Placement_WhenALevelIsEmpty_ThenItIsLeftOutRatherThanWrittenAsNotSpecified()
     {
         // The rule that would have been re-derived wrongly by a second copy of the trail, asserted
-        // on the page that got the second caller. V_ABR.UTFORT with the datasamling level emptied:
-        // two steps, and no row saying the catalogue holds nothing there.
+        // on the page that got the second caller. The payload is V_ABR.UTFORT with the datasamling
+        // level emptied rather than a variable that arrives that way, because all 46 037 variables
+        // the API answered on 2026-09-17 carry all three levels — so the rule is unreachable from
+        // the live catalogue and only a test can hold it. (Fhi.Metadata-35w0p.47)
         var cut = Render(Placed() with { DatasamlingName = null, AllDatasamlinger = [] });
 
         Assert.Equal(["Sentralt helseregister", "Abortregisteret (ABR)"], Placement(cut));
@@ -1499,14 +1501,22 @@ public class VariableViewTest : BunitContext
     }
 
     [Fact]
-    public void Placement_Always_ThenTheTrailItselfCarriesNoClassNameAndNoControl()
+    public void Placement_Always_ThenTheTrailSitsInTheWrapperThatDressesItHere()
     {
-        // What makes the trail safe to draw in a styling context it was not written for: the only
-        // class it can emit is the one marking the kilde step pressable, and this view discloses
-        // nothing to press. Nothing here depends on a rule scoped to the row panel.
+        // The defect this view would otherwise ship. The trail emits no class of its own, and what
+        // strips the list markers and draws the chevrons in the row panel is `.munin-explorer-detail
+        // dd ol` — a rule scoped to the panel, in Stiler and in both samples alike. Outside it the
+        // steps would fall back to a numbered vertical list, so the wrapper is what carries the
+        // look across: `munin-explorer-breadcrumb`, which Stiler draws unscoped.
         var section = Render(Placed()).Find($"#{DetailSectionIds.Placement}");
+        var wrapper = Assert.Single(section.QuerySelectorAll(".munin-explorer-breadcrumb"));
 
+        Assert.Empty(section.QuerySelectorAll(".munin-explorer-detail"));
         Assert.All(section.QuerySelectorAll("ol, li"), step => Assert.False(step.HasAttribute("class")));
+
+        // And not the landmark the trail over the results is: there is nothing here to press, so a
+        // reader jumping to it by landmark would arrive at text.
+        Assert.False(wrapper.HasAttribute("role"));
         Assert.Empty(section.QuerySelectorAll("button, a"));
     }
 }

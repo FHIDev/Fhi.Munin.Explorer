@@ -5,6 +5,5 @@ category: Added
   open row shows, and this is the same implementation with a second caller rather than a copy, so
   the rule that leaves a level the catalogue holds nothing for out of the trail — rather than
   writing "Ikke oppgitt" in it — holds on both surfaces. A variable placed nowhere at all draws no
-  section. No new class name: the trail is a bare `<ol>` here, because the one name it can emit is
-  the one marking its kilde step pressable and this view has nothing to disclose.
-  (Fhi.Metadata-35w0p.47)
+  section. No new class name: the steps are a bare `<ol>` in a `munin-explorer-breadcrumb` wrapper,
+  the name that already dresses the trail over the search results. (Fhi.Metadata-35w0p.47)

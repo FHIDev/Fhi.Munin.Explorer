@@ -1530,14 +1530,14 @@ public sealed partial class VariableSearch : ComponentBase
     /// button and the bare token on the heading directly beneath it. The payload is a parameter
     /// rather than the field, so a heading resolves out of the very object its button did. The
     /// open row's kilde trail is the third site and reaches the same call through
-    /// <see cref="KildeTrail.Steps"/>, which takes the facet's word below as its fallback.
+    /// <see cref="KildeTrailBlock.Steps"/>, which takes the facet's word below as its fallback.
     /// </remarks>
     private string KildeTypeNameFromApi(FilterOptions? facets, string? value) =>
         T.KildeTypeNameFromApi(value, FacetKildeTypeName(facets, value));
 
     /// <summary>The API's own word for a kildetype, out of the facets the filter panel loaded.</summary>
     /// <remarks>
-    /// The lookup alone, because the trail resolves it through <see cref="KildeTrail.Steps"/> and
+    /// The lookup alone, because the trail resolves it through <see cref="KildeTrailBlock.Steps"/> and
     /// the two sites would otherwise each hold a copy of the matching rule.
     /// </remarks>
     private static string? FacetKildeTypeName(FilterOptions? facets, string? value) =>

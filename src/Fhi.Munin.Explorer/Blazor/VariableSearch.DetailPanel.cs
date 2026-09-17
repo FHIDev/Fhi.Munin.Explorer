@@ -80,8 +80,8 @@ public partial class VariableSearch
     /// The facet payload rather than the shipped table alone, because the facet button beside this
     /// panel reads the same vocabulary and the two must not fall back apart. (Fhi.Metadata-3n6e1)
     /// </remarks>
-    private IReadOnlyList<KildeTrail.Crumb> KildeSteps(VariableDetail detail) =>
-        KildeTrail.Steps(detail, T, FacetKildeTypeName(_facets, detail.KildeType));
+    private IReadOnlyList<KildeTrailBlock.Crumb> KildeSteps(VariableDetail detail) =>
+        KildeTrailBlock.Steps(detail, T, FacetKildeTypeName(_facets, detail.KildeType));
 
     /// <summary>What the trail's kilde step does here: disclose the kilde in place of the list.</summary>
     private EventCallback<MouseEventArgs> PressKilde =>
