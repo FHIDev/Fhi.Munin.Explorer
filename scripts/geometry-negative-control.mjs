@@ -18,6 +18,7 @@ const launchOptions = () => {
 };
 import { states } from './axe-states.mjs';
 import { assertions, selectors } from './geometry-assertions.mjs';
+import { scrollToTop } from './reader-scroll.mjs';
 
 const base = process.argv[2];
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
@@ -47,6 +48,30 @@ const cases = [
     apply: css(`.munin-explorer-page__fields dd, .munin-explorer-meta__grid dd,
                 .munin-explorer-page__facts dt, .munin-explorer-whole__code
                 { overflow-wrap: normal !important; }`),
+  },
+  {
+    assertion: 'the component stays inside the box the host gave it',
+    defect: 'an overflowing descendant becoming visible with its transparent ancestor',
+    path: '/kilder', state: 'kilder-list', width: 1440,
+    setup: page => page.evaluate(() => document.querySelector('.munin-explorer')
+      .insertAdjacentHTML('beforeend', '<div id="geometry-transparent" style="position:relative;width:1px;height:1px;opacity:0"><span style="position:absolute;left:4000px;width:20px;height:20px">test</span></div>')),
+    apply: page => page.locator('#geometry-transparent').evaluate(el => { el.style.opacity = '1'; }),
+  },
+  {
+    assertion: 'the component stays inside the box the host gave it',
+    defect: 'an overflowing descendant becoming visible with its visibility-hidden ancestor',
+    path: '/kilder', state: 'kilder-list', width: 1440,
+    setup: page => page.evaluate(() => document.querySelector('.munin-explorer')
+      .insertAdjacentHTML('beforeend', '<div id="geometry-invisible" style="position:relative;width:1px;height:1px;visibility:hidden"><span style="position:absolute;left:4000px;width:20px;height:20px">test</span></div>')),
+    apply: page => page.locator('#geometry-invisible').evaluate(el => { el.style.visibility = 'visible'; }),
+  },
+  {
+    assertion: 'no horizontal overflow',
+    defect: 'transparent content that still widens the document',
+    path: '/kilder', state: 'kilder-list', width: 1440,
+    setup: page => page.evaluate(() => document.querySelector('.munin-explorer')
+      .insertAdjacentHTML('beforeend', '<div id="geometry-transparent-layout" style="width:1px;height:1px;opacity:0"></div>')),
+    apply: page => page.locator('#geometry-transparent-layout').evaluate(el => { el.style.width = '4000px'; }),
   },
   {
     assertion: 'the component stays inside the box the host gave it',
@@ -203,8 +228,8 @@ try {
       await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
       await page.waitForTimeout(settleMs);
       await states[state](page);
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await page.waitForTimeout(250);
+      await scrollToTop(page);
+      await page.waitForFunction(() => window.scrollX === 0 && window.scrollY === 0);
       if (setup) {
         await setup(page);
         await page.waitForTimeout(250);

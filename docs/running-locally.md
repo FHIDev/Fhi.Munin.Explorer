@@ -31,6 +31,12 @@ are fixed, and the empty-result variant keeps the tree available with zero count
 uses the sample stylesheet; HostileHost scans the same tree states under Stiler at the configured
 desktop widths and at 320px. Report the stylesheet version, failures and any skips with a run.
 
+Geometry scans use the shared scroll-to-top helper and confirm the scroll position before
+measuring. Containment checks apply to visible content, including visibility inherited from
+ancestors. Document overflow is checked even when transparent content causes it; negative
+controls verify both behaviors. Scrolled layouts, including the shown sticky fact bar, remain
+outside this script's coverage.
+
 ## 1. Sample host (the normal way)
 
 ```bash
