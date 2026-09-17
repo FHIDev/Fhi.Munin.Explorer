@@ -125,7 +125,7 @@ rules:
         - src/**/*.cs
         - test/**/*.cs
     - id: xmldoc-mixed-compat-claim
-      category: other
+      category: documentation
       pattern: >-
         XML doc comment describes a compatibility/migration scenario where an old member and a new member coexist (e.g. deprecated collection kept populated alongside a newly added replacement)
       check: >-
@@ -139,21 +139,23 @@ rules:
       pattern: >-
         A changelog fragment in changelog.d/ contains Norwegian domain terms (e.g. datakategorier, datakategori) instead of English in its title or body
       check: >-
-        Verify every changelog.d/*.md fragment's title and body are English-only, translating any Norwegian terms that aren't on the approved untranslatable domain-term list (kilde, datasamling, variabelgruppe, kildetype, kodeverk)
+        Verify every changelog.d/*.md fragment's title and body are English-only, translating any Norwegian term the canonical list in AGENTS.md ("Norwegian stays where it is read, not called") does not keep untranslated. That list is kilde, datasamling, delkilde, variabelgruppe, kildetype and kodeverk with the kinds it comes in (helsefagligKodeverk, administrativtKodeverk, kildekodeverk), plus the Norwegian plurals the API uses for their collections — kilder, delkilder, datasamlinger, variabelgrupper, kildetyper. Read AGENTS.md rather than trusting this restatement of it, which can drift; terms it keeps already ship in CHANGELOG.md and must not be flagged
       source: copilot:PR#302
       added: "2026-09-14"
       paths:
-        - changelog.d/**
         - changelog.d/**/*.md
     - id: comment-history-not-incident-history
       category: style
       pattern: >-
-        A comment on a test (or other code) explains why it exists by narrating past states — old counts, prior capture behavior, bead/PR history — instead of stating the current invariant
+        A comment anywhere in the repository — a test, a source or Razor file, a script — explains why the code exists by narrating past states: old counts, prior capture behavior, bead/PR history, instead of stating the current invariant
       check: >-
         Verify the comment states only the present-tense invariant the code enforces; confirm any incident history, counts, or 'used to'/'previously' narrative is removed and belongs in the bead instead
       source: copilot:PR#302
       added: "2026-09-14"
       paths:
+        - scripts/**/*.sh
+        - src/**/*.cs
+        - src/**/*.razor
         - test/**/*.cs
     - id: doc-prose-grammar
       category: style
@@ -162,7 +164,7 @@ rules:
       check: >-
         Read each sentence as written and verify it is grammatical — in particular that omitted relative pronouns ('that', 'which', 'who'), articles, and prepositions are present where the sentence needs them, since the text is assembled or shipped verbatim with no chance to fix it later.
       source: copilot:PR#250
-      added: "2026-09-10"
+      added: "2026-09-14"
       paths:
         - changelog.d/**/*.md
         - src/**/*.cs
