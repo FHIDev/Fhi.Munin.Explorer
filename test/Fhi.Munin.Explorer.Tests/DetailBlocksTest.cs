@@ -30,13 +30,45 @@ public class DetailBlocksTest : ExplorerTestContext
         [Parameter]
         public bool Authored { get; set; }
 
+        [Parameter]
+        public string Language { get; set; } = ReaderLanguage.Norwegian;
+
         protected override void BuildRenderTree(RenderTreeBuilder builder) =>
-            builder.AddContent(0, DetailBlocks.LinkedFacts(Facts, ReaderLanguage.Norwegian, Authored));
+            builder.AddContent(0, DetailBlocks.LinkedFacts(Facts, Language, Authored));
     }
 
     private IRenderedComponent<Host> RenderList(
         bool authored, params (string Label, string? Value, bool Norwegian, string? Href)[] facts) =>
         Render<Host>(p => p.Add(c => c.Authored, authored).Add(c => c.Facts, facts));
+
+    [Fact]
+    public void LinkedFacts_WhenNoRowHasAValue_ThenNoListIsDrawnRatherThanARunOfNone()
+    {
+        // The half of the absence rule the views never reach, because each gates its section on
+        // AnyFacts first. The list answers it too, so a caller that forgets the gate draws nothing.
+        var cut = RenderList(authored: false, ("Lovverk", null, true, null), ("Frekvens", "  ", true, "/x"));
+
+        Assert.Empty(cut.FindAll("dl"));
+    }
+
+    [Fact]
+    public void LinkedFacts_WhenARowHasNoValueForAnEnglishReader_ThenItReadsNoneUnmarkedMutedAndGoesNowhere()
+    {
+        // "None" is this package's word, so it must not carry the catalogue's lang="no" that the row
+        // would wear with a value, nor the target. English, because a Norwegian reader marks nothing
+        // and could not tell. The filled sibling shows the marking is on for this reader.
+        var cut = Render<Host>(p => p
+            .Add(c => c.Language, "en")
+            .Add(c => c.Facts, [("Legal basis", null, true, "/lovverk"), ("Data controller", "St. Olavs hospital HF", true, null)]));
+
+        var absent = Cell(cut, "Legal basis");
+
+        Assert.Equal("None", absent.TextContent);
+        Assert.Equal(DetailBlocks.Absent, absent.ClassName);
+        Assert.Null(absent.GetAttribute("lang"));
+        Assert.Empty(absent.QuerySelectorAll("a"));
+        Assert.Equal("no", Cell(cut, "Data controller").GetAttribute("lang"));
+    }
 
     /// <summary>One row's value cell, asked for by the label beside it.</summary>
     private static IElement Cell(IRenderedComponent<Host> cut, string label) =>

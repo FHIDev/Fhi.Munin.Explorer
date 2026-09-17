@@ -24,6 +24,9 @@ internal static class DetailBlocks
     private const string PageFields = "munin-explorer-page__fields";
     private const string PageLanguage = "munin-explorer-page__language";
 
+    /// <summary>The one class that mutes what the catalogue holds nothing for, on a fact or a whole tab.</summary>
+    internal const string Absent = "munin-explorer-absent";
+
     /// <summary>A heading at the given level, so a view nests wherever it is put.</summary>
     internal static RenderFragment Heading(int level, string text, string cssClass,
                                            string? id = null, string? language = null) => builder =>
@@ -37,12 +40,14 @@ internal static class DetailBlocks
     };
 
     /// <summary>
-    /// A definition list of label and value, skipping anything the catalogue has not filled in.
+    /// A definition list of label and value, where a value the catalogue holds nothing for reads
+    /// <see cref="Texts.NoValue"/>, muted — and no list at all when it holds nothing for any row.
     /// </summary>
     /// <remarks>
     /// The emptiness question is answered here rather than at each call site, for the reason
     /// <see cref="StatisticsBlock"/> gives: a heading over an empty list passes any test written
-    /// with rich data only.
+    /// with rich data only. A row that should not be drawn at all is the caller's to leave out —
+    /// see <see cref="CataloguePlacement.UnlessPlaced"/>.
     /// </remarks>
     internal static RenderFragment Facts(
         IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts, string? language,
@@ -64,21 +69,20 @@ internal static class DetailBlocks
         IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> facts, string? language,
         bool authored = false) => builder =>
     {
-        var shown = Shown(facts);
-
-        if (shown.Count == 0)
+        if (Shown(facts).Count == 0)
         {
             return;
         }
 
         var reader = ReaderLanguage.Of(language);
+        var text = Texts.For(language);
 
         builder.OpenElement(0, "dl");
         builder.AddAttribute(1, "class", PageFields);
 
         var seq = 10;
 
-        foreach (var (label, value, norwegian, href) in shown)
+        foreach (var (label, value, norwegian, href) in facts)
         {
             builder.OpenElement(seq, "div");
 
@@ -87,33 +91,41 @@ internal static class DetailBlocks
             builder.AddContent(seq + 3, label);
             builder.CloseElement();
 
-            builder.OpenElement(seq + 4, "dd");
-            builder.AddAttribute(seq + 5, "lang", norwegian ? CatalogueProperties.Foreign("no", reader) : null);
+            var absent = string.IsNullOrWhiteSpace(value);
 
+            // An absent value is our word rather than the catalogue's, so it is unmarked and goes nowhere.
+            builder.OpenElement(seq + 4, "dd");
+            builder.AddAttribute(seq + 5, "lang", norwegian && !absent ? CatalogueProperties.Foreign("no", reader) : null);
+            builder.AddAttribute(seq + 6, "class", absent ? Absent : null);
+
+            if (absent)
+            {
+                builder.AddContent(seq + 7, text.NoValue);
+            }
             // A linked row is never rendered as markdown: a target and authored prose are two ways
             // to spend one dd, and the rule here is that the one a reader can press wins.
-            if (href is not null)
+            else if (href is not null)
             {
-                builder.OpenElement(seq + 6, "a");
-                builder.AddAttribute(seq + 7, "href", href);
-                builder.AddContent(seq + 8, value);
+                builder.OpenElement(seq + 8, "a");
+                builder.AddAttribute(seq + 9, "href", href);
+                builder.AddContent(seq + 10, value);
                 builder.CloseElement();
             }
             else if (authored)
             {
-                builder.AddContent(seq + 9, CatalogueMarkdown.Render(value));
+                builder.AddContent(seq + 11, CatalogueMarkdown.Render(value));
             }
             else
             {
-                builder.AddContent(seq + 10, value);
+                builder.AddContent(seq + 12, value);
             }
 
             builder.CloseElement();
 
             builder.CloseElement();
 
-            // Twenty rather than ten: a row's dd branches end at seq + 10, which under the old
-            // stride was the next row's own base. No rendered markup differs either way — the diff
+            // Twenty rather than ten: a row's dd branches run to seq + 12, past where the next row
+            // began under the old stride. No rendered markup differs either way — the diff
             // tolerates the repeat — so this is the numbering contract kept, not a defect fixed.
             seq += 20;
         }

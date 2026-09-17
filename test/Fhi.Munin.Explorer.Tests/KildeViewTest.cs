@@ -285,9 +285,9 @@ public class KildeViewTest : ExplorerTestContext
 
     /// <summary>One row's value cell, found by the label beside it rather than by its position.</summary>
     /// <remarks>
-    /// A row's index is a function of both the order the component lists its fields in and which of
-    /// them the fixture filled in, since a blank value draws no row — so an index in a test that
-    /// does not also assert the labels names a row that a field inserted upstream silently moves.
+    /// A row's index is a function of the order the component lists its fields in and of which rows a
+    /// placement takes out of the box — so an index in a test that does not also assert the labels
+    /// names a row that a field inserted upstream silently moves.
     /// Asking by label makes the assertion self-locating, and makes the failure say which row went
     /// missing rather than reading the wrong one's text back.
     /// </remarks>
@@ -299,6 +299,16 @@ public class KildeViewTest : ExplorerTestContext
 
     /// <inheritdoc cref="Fact"/>
     private static string Value(IElement list, string label) => Fact(list, label).TextContent;
+
+    /// <summary>All three marks of an absent fact in one check, so no test asserts the word without the muting.</summary>
+    private static void AssertAbsent(IElement list, string label)
+    {
+        var value = Fact(list, label);
+
+        Assert.Equal("Ingen", value.TextContent);
+        Assert.Equal(DetailBlocks.Absent, value.ClassName);
+        Assert.Null(value.GetAttribute("lang"));
+    }
 
     /// <summary>The datasamling rows, by the name each is headed with.</summary>
     private static IReadOnlyList<string> CollectionNames(IRenderedComponent<KildeView> cut) =>
@@ -533,12 +543,25 @@ public class KildeViewTest : ExplorerTestContext
     public void Kildetype_WhenTheKildeHasNone_ThenNoEmptyBadgeIsDrawnButTheRecordStillSaysSo(string? kildetype)
     {
         // A badge is a shape as much as a word, so an empty one is a stray coloured box. The
-        // source information is a record and answers the question either way — "Ikke oppgitt" is
+        // source information is a record and answers the question either way — a muted "Ingen" is
         // the answer there, and a missing row would leave a reader wondering whether it was asked.
         var cut = Render(Kilde() with { Kildetype = kildetype });
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilde__kildetype"));
-        Assert.Equal("Ikke oppgitt", Value(SourceInformation(cut), "Type datakilde"));
+        AssertAbsent(SourceInformation(cut), "Type datakilde");
+    }
+
+    [Fact]
+    public void SourceInformation_WhenKildetypeAndIdentificationLevelAreNull_ThenBothAreMutedNoneNotNotSpecified()
+    {
+        // The two rows whose words this package translates, and so the two that read "Ikke
+        // oppgitt" and kept the box alive whatever the catalogue held. (Fhi.Metadata-35w0p.24)
+        var cut = Render(Kilde() with { Kildetype = null, PersonIdentificationLevel = null });
+        var box = SourceInformation(cut);
+
+        AssertAbsent(box, "Type datakilde");
+        AssertAbsent(box, "Grad av personidentifikasjon");
+        Assert.DoesNotContain("Ikke oppgitt", box.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1442,18 +1465,16 @@ public class KildeViewTest : ExplorerTestContext
     };
 
     [Fact]
-    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenBothFactBoxesStillDrawARow()
+    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenOnlyTheCountsBoxIsDrawn()
     {
-        // Why both fact boxes survive their emptiness checks on a payload this bare:
-        // KildeTypeLabel answers "Ikke oppgitt" for a source carrying no kildetype and
-        // TotalVariables is an int, so no payload the catalogue can send empties either list.
+        // TotalVariables is an int, so the counts box always holds a fact and its missing period
+        // reads "Ingen". The source box holds none, so it is not drawn at all. (Fhi.Metadata-35w0p.24)
         var cut = Render(Sparse());
 
-        // Named rather than merely counted, so taking a fallback away fails here saying which row
-        // went, rather than somewhere else saying a box was empty.
-        Assert.Equal(["Type datakilde", "Grad av personidentifikasjon"], Labels(SourceInformation(cut)));
-        Assert.Equal(["Totalt antall variabler"], Labels(Statistics(cut)));
-        Assert.Equal(["0"], Values(Statistics(cut)));
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.Source}"));
+        Assert.Equal(["Totalt antall variabler", "Dataperiode"], Labels(Statistics(cut)));
+        Assert.Equal("0", Value(Statistics(cut), "Totalt antall variabler"));
+        AssertAbsent(Statistics(cut), "Dataperiode");
     }
 
     [Fact]
@@ -1568,11 +1589,10 @@ public class KildeViewTest : ExplorerTestContext
     [Fact]
     public void Contents_WhenTheCatalogueFilledInNothing_ThenOnlyTheBlocksWithNoEmptyStateAreNamed()
     {
-        // Three of the four survive a payload this bare, for three different reasons: the datasamling
-        // tree has no empty state at all, the counts box always has a total to report, and the source
-        // box falls back to "Ikke oppgitt". Only the curated metadata goes.
-        Assert.Equal(["#" + DetailSectionIds.DataCollections, "#" + DetailSectionIds.Source,
-                      "#" + DetailSectionIds.Statistics],
+        // Two of the four survive a payload this bare, for two different reasons: the datasamling
+        // tree has no empty state at all, and the counts box always has a total to report. The
+        // source box holds nothing, so it goes with the curated metadata. (Fhi.Metadata-35w0p.24)
+        Assert.Equal(["#" + DetailSectionIds.DataCollections, "#" + DetailSectionIds.Statistics],
                      Targets(Render(Sparse())));
     }
 
@@ -1682,7 +1702,7 @@ public class KildeViewTest : ExplorerTestContext
     // The hero row: the six facts a source leads with, under the name block.
     // ---------------------------------------------------------------------------------
 
-    /// <summary>The hero row, which a source always has: two of its six never resolve to nothing.</summary>
+    /// <summary>The hero row, which a source always has: its variable count never resolves to nothing.</summary>
     private static IElement Hero(IRenderedComponent<KildeView> cut) =>
         cut.Find("dl.munin-explorer-page__facts");
 
@@ -1710,6 +1730,18 @@ public class KildeViewTest : ExplorerTestContext
             ["Type datakilde", "Dataansvarlig", "Grad av personidentifikasjon", "Dataperiode",
              "Totalt antall variabler", "Lovverk"],
             Labels(Hero(Render(Kilde()))));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenKildetypeAndIdentificationLevelAreNull_ThenBothDropOutRatherThanReadNotSpecified()
+    {
+        // The hero reads the same member as the box below, which now answers nothing rather than
+        // "Ikke oppgitt" — so the hero drops the fact, its own rule for a missing value, instead of
+        // leading with a word that says nothing. (Fhi.Metadata-35w0p.24)
+        var hero = Hero(Render(Kilde() with { Kildetype = null, PersonIdentificationLevel = null }));
+
+        Assert.Equal(["Dataansvarlig", "Dataperiode", "Totalt antall variabler", "Lovverk"], Labels(hero));
+        Assert.DoesNotContain("Ikke oppgitt", hero.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1865,11 +1897,10 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SourceInformation_WhenTheCatalogueHasNotFilledInAField_ThenNoBlankRowIsDrawnForIt()
+    public void SourceInformation_WhenTheCatalogueHasNotFilledInAField_ThenTheRowSaysSoMuted()
     {
-        // A dt with an empty dd reads as a value that failed to draw. The two that stay are the two
-        // this package writes itself — a kildetype and an identification level always resolve to a
-        // word, "Ikke oppgitt" included.
+        // A dt with an empty dd reads as a value that failed to draw, and a row left out reads as a
+        // field that does not apply. "Ingen", muted, says the catalogue was asked and holds nothing.
         var kilde = Kilde() with
         {
             LegalBasis = null,
@@ -1879,8 +1910,13 @@ public class KildeViewTest : ExplorerTestContext
             ValidTo = null,
         };
 
-        Assert.Equal(["Type datakilde", "Grad av personidentifikasjon", "Sist oppdatert i Munin"],
-                     Labels(SourceInformation(Render(kilde))));
+        var box = SourceInformation(Render(kilde));
+
+        Assert.Equal(
+            ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin"],
+            Labels(box));
+        Assert.All(["Lovverk", "Dataansvarlig", "Databehandler", "Gyldighet"], label => AssertAbsent(box, label));
     }
 
     [Fact]
@@ -1912,19 +1948,14 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SourceInformation_WhenTheTimestampIsTheDefaultDate_ThenTheRowIsStillAbsent()
+    public void SourceInformation_WhenTheTimestampIsTheDefaultDate_ThenTheRowStillSaysNone()
     {
         // The other arm of DayOrNothing, and the one nothing reached once the contract went
         // nullable: a host substituting its own IMuninExplorerClient can deserialise with its own
         // options and hand over MinValue, which is the year 1 this bead removed. (Fhi.Metadata-se0by)
         var kilde = Kilde() with { LastUpdated = DateTimeOffset.MinValue };
 
-        // The whole list, for the reason the test below gives: this row is last in the block, so an
-        // assertion that only asks for its absence passes on a block that failed to render at all.
-        Assert.Equal(
-            ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet"],
-            Labels(SourceInformation(Render(kilde))));
+        AssertAbsent(SourceInformation(Render(kilde)), "Sist oppdatert i Munin");
     }
 
     [Fact]
@@ -1939,19 +1970,14 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
+    public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowSaysNoneRatherThanYearOne()
     {
         // A payload without sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "1. januar
         // 0001" before that, under a label saying when Munin last changed its own row. Either way
-        // the field is an absence and this block draws no row for one. (Fhi.Metadata-6r6rf)
+        // the field is an absence, and absence reads "Ingen". (Fhi.Metadata-6r6rf)
         var kilde = Kilde() with { LastUpdated = default };
 
-        // The whole list, not just the absence: dropping the row and everything after it would
-        // satisfy a DoesNotContain, and LastUpdated is last in this block.
-        Assert.Equal(
-            ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet"],
-            Labels(SourceInformation(Render(kilde))));
+        AssertAbsent(SourceInformation(Render(kilde)), "Sist oppdatert i Munin");
     }
 
     [Fact]
@@ -1964,11 +1990,11 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Statistics_WhenTheCatalogueKnowsNoDataDates_ThenNoEmptyPeriodRowIsDrawn()
+    public void Statistics_WhenTheCatalogueKnowsNoDataDates_ThenThePeriodRowSaysNone()
     {
         var cut = Render(Kilde() with { DataFrom = null, DataTo = null });
 
-        Assert.Equal(["Totalt antall variabler"], Labels(Statistics(cut)));
+        AssertAbsent(Statistics(cut), "Dataperiode");
     }
 
     [Fact]

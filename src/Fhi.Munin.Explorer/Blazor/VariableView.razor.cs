@@ -175,7 +175,11 @@ public sealed partial class VariableView : ComponentBase
             : [
                 (T.FieldKildeName, variable.KildeName, true),
                 (T.FieldKildeShortName, variable.KildeShortName, true),
-                (T.FacetKildeType, T.KildeTypeLabel(variable.KildeType, variable.KildeType), false),
+                (T.FacetKildeType,
+                 string.IsNullOrWhiteSpace(variable.KildeType)
+                     ? null
+                     : T.KildeTypeLabel(variable.KildeType, variable.KildeType),
+                 false),
             ];
 
     /// <summary>The years this variable's data covers, in words, or null when the catalogue has neither end.</summary>

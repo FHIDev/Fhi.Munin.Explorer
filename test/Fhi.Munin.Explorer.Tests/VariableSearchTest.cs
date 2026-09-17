@@ -10909,13 +10909,55 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Kodeverk_WhenNoneAreRegistered_ThenTheTabSaysSoRatherThanBeingBlank()
+    public void DataTab_WhenNeitherKodeverkNorStatisticsAreRegistered_ThenTheTabSaysSoOnceMuted()
     {
+        // Each section draws nothing when it has nothing, as the whole variable does, so without
+        // this line the tab would open onto a blank panel. (Fhi.Metadata-35w0p.24)
         var id = Guid.NewGuid();
         var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale")))
             .Knows(Detail(id) with { KodeverkLinks = [] }));
 
-        Assert.Equal("Ingen kodeverk registrert", Panel(cut).QuerySelector("[role=tabpanel] > p")!.TextContent);
+        var line = Assert.Single(Panel(cut).QuerySelectorAll("[role=tabpanel] > p"));
+
+        Assert.Equal("Ingen kodeverk eller statistikk registrert", line.TextContent);
+        Assert.Contains(DetailBlocks.Absent, line.ClassList);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public void Absence_WhenTheDataTabAndTheWholeVariableShowTheSameVariable_ThenTheyAgreeSectionBySection(
+        bool kodeverk, bool statistics)
+    {
+        // The row panel said "Ingen kodeverk registrert" where the whole variable drew no section,
+        // so one variable disagreed with itself, and no test rendered both. (Fhi.Metadata-35w0p.24)
+        var id = Guid.NewGuid();
+        var variable = Detail(id) with
+        {
+            KodeverkLinks = kodeverk ? Detail(id).KodeverkLinks : [],
+            Statistics = statistics
+                ? [new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022" } }]
+                : [],
+        };
+        var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(variable));
+
+        var tab = Panel(cut).QuerySelector("[role=tabpanel]")!;
+        var tabKodeverk = tab.QuerySelector("ul.munin-explorer-kodeverk") is not null;
+        var tabStatistics = tab.QuerySelector("table.munin-explorer-statistics") is not null;
+        var tabSaysNothingIsThere = tab.Children.Where(e => e.LocalName == "p").Select(p => p.TextContent).ToList();
+
+        WholeVariableToggle(cut).Click();
+
+        Assert.Equal(kodeverk, tabKodeverk);
+        Assert.Equal(statistics, tabStatistics);
+        Assert.Equal(kodeverk, cut.FindAll($"#{DetailSectionIds.CodeLists}").Count == 1);
+        Assert.Equal(statistics, cut.FindAll($"#{DetailSectionIds.Statistics}").Count == 1);
+
+        // Only the one line for a tab with nothing in it at all; a missing section says nothing.
+        Assert.Equal(kodeverk || statistics ? [] : ["Ingen kodeverk eller statistikk registrert"],
+                     tabSaysNothingIsThere);
     }
 
     [Fact]
@@ -13633,8 +13675,8 @@ public class VariableSearchTest : ExplorerTestContext
     {
         // The other half of the acceptance criterion, and the inheritance rule with it: this
         // datasamling sets none of dataansvarlig, databehandler, lovverk or identification level
-        // itself. Drawing its own values would report "Ikke oppgitt" four times for a datasamling
-        // whose controller is perfectly well known one level up.
+        // itself. Drawing its own values would report "Ingen" four times for a datasamling whose
+        // controller is perfectly well known one level up.
         var client = TwoRows();
 
         var cut = OpenOwner(client, 1);
@@ -13647,8 +13689,8 @@ public class VariableSearchTest : ExplorerTestContext
         // description and a page of inclusion criteria can be read (Fhi.Metadata-jgfum).
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
-             "Statistikktype", "Frekvens", "Antall variabler"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin", "Opprettet i Munin",
+             "Statistikktype", "Frekvens", "Telleenhet", "Antall variabler"],
             SourceLabels(cut));
 
         var values = SourceValues(cut);
@@ -13657,15 +13699,15 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("St. Olavs hospital HF", values[3]);
         Assert.Equal("Indirekte identifiserbar", values[5]);
         Assert.Equal("1. januar 2010 – Pågående", values[6]);
-        Assert.Equal("Årsbasert", values[8]);
-        Assert.Equal("Fortløpende", values[9]);
-        Assert.Equal("99", values[10]);
+        Assert.Equal("Årsbasert", values[9]);
+        Assert.Equal("Fortløpende", values[10]);
+        Assert.Equal("99", values[12]);
 
         var panel = SourcePanel(cut);
 
-        // Telleenhet arrives as an empty string, and an empty string draws no row at all rather
-        // than a label over "Ikke oppgitt" — the rule the two fact boxes already follow.
-        Assert.DoesNotContain("Telleenhet", panel.TextContent);
+        // Telleenhet arrives as an empty string, which reads "Ingen" like any other absence rather
+        // than "Ikke oppgitt" or a blank — the rule the fact boxes follow. (Fhi.Metadata-35w0p.24)
+        Assert.Equal("Ingen", values[11]);
 
         Assert.Equal(
             "Skjemaet inneholder opplysninger om utredning og oppstart av behandling.",

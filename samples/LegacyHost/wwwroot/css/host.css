@@ -1906,6 +1906,13 @@ table.munin-explorer-data-list tbody th {
   margin-top: 10px;
 }
 
+/* ---- what the catalogue holds nothing for ----
+   $grey60, not $grey50: the muted "Ingen" still has to clear WCAG AA on the $grey10 page ground.
+   Stiler's rule is Fhi.Metadata-iwfji. */
+.munin-explorer-absent {
+  color: #51547b;
+}
+
 /* ---- the contents nav inside that column ----
 
    `form-menu__list` and `form-menu__list__item` are borrowed: global, unscoped classes in Stiler's

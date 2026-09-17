@@ -142,7 +142,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
     /// <summary>One row's value cell, found by the label beside it rather than by its position.</summary>
     /// <remarks>
-    /// A blank value draws no row, so an index names a row that an upstream field silently moves.
+    /// A placement can take a row out of the box, so an index names a row that silently moves.
     /// Asking by label makes the failure say which row went missing.
     /// </remarks>
     private static string Value(IElement list, string label) =>
@@ -150,13 +150,23 @@ public class DatasamlingViewTest : ExplorerTestContext
         ?? throw new InvalidOperationException(
             $"No value cell in the '{label}' row, only: {string.Join(", ", Labels(list))}.");
 
+    /// <summary>All three marks of an absent fact in one check, so no test asserts the word without the muting.</summary>
+    private static void AssertAbsent(IElement list, string label)
+    {
+        var value = Row(list, label).QuerySelector("dd")!;
+
+        Assert.Equal("Ingen", value.TextContent);
+        Assert.Equal(DetailBlocks.Absent, value.ClassName);
+        Assert.Null(value.GetAttribute("lang"));
+    }
+
     /// <summary>The whole row, for a test asking what the value cell is made of.</summary>
     private static IElement Row(IElement list, string label) =>
         list.QuerySelectorAll("div").FirstOrDefault(row => row.QuerySelector("dt")?.TextContent == label)
         ?? throw new InvalidOperationException(
             $"No '{label}' row in this box, only: {string.Join(", ", Labels(list))}.");
 
-    /// <summary>The hero row, which a datasamling always has: two of its six never resolve to nothing.</summary>
+    /// <summary>The hero row, for a datasamling that has at least one of its six.</summary>
     private static IElement Hero(IRenderedComponent<DatasamlingView> cut) =>
         cut.Find("dl.munin-explorer-page__facts");
 
@@ -203,6 +213,21 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void HeroFacts_WhenKildetypeAndIdentificationLevelAreNull_ThenBothDropOutRatherThanReadNotSpecified()
+    {
+        // The hero reads the same member as the box below, which now answers nothing rather than
+        // "Ikke oppgitt". (Fhi.Metadata-35w0p.24)
+        var hero = Hero(Render(Datasamling() with
+        {
+            EffectiveKildetype = null,
+            EffectivePersonIdentificationLevel = null,
+        }));
+
+        Assert.Equal(["Dataansvarlig", "Gyldighet", "Antall variabler", "Lovverk"], Labels(hero));
+        Assert.DoesNotContain("Ikke oppgitt", hero.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HeroFacts_Always_ThenNothingIsTakenOutOfTheSectionsBelow()
     {
         // A summary, not a relocation. The fact box still draws all nine fields, Kilde and
@@ -215,7 +240,8 @@ public class DatasamlingViewTest : ExplorerTestContext
              "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
              "Opprettet i Munin"],
             Labels(SourceInformation(cut)));
-        Assert.Equal(["Statistikktype", "Antall variabler"], Labels(Box(cut, "Statistikk (Årsbasert)")));
+        Assert.Equal(["Statistikktype", "Frekvens", "Telleenhet", "Antall variabler"],
+                     Labels(Box(cut, "Statistikk (Årsbasert)")));
         Assert.Empty(cut.Find(".munin-explorer-page__body").QuerySelectorAll("dl.munin-explorer-page__facts"));
     }
 
@@ -313,6 +339,8 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(
         [
+            // A fact the catalogue holds nothing for; the fixture carries no Frekvens.
+            "munin-explorer-absent",
             "munin-explorer-datasamling",
             "munin-explorer-datasamling__criteria",
             "munin-explorer-datasamling__description",
@@ -327,7 +355,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             // so the outline a screen reader navigates by is the one the view already had.
             "munin-explorer-page__eyebrow",
             // The hero row under the name block, the source page's six over the collection's own
-            // values. Always drawn: two of the six fall back to Texts.NotSpecified.
+            // values.
             "munin-explorer-page__facts",
             // Every fact list this view draws, the chassis's own name since
             // Fhi.Metadata-35w0p.11 rather than the result row's drill-in panel's.
@@ -576,19 +604,15 @@ public class DatasamlingViewTest : ExplorerTestContext
     };
 
     [Fact]
-    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow()
+    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenNeitherFactBoxIsDrawn()
     {
-        // Why the source box survives its emptiness check on a payload this bare while the
-        // statistics box beside it does not: the kildetype and identification rows both answer
-        // "Ikke oppgitt" rather than nothing, and Statistics has no row with a fallback.
+        // The other half of the absence rule: a missing fact reads "Ingen", but a box with every
+        // fact missing is not drawn, heading included. The kildetype and identification rows used
+        // to keep the source box alive by reading "Ikke oppgitt". (Fhi.Metadata-35w0p.24)
         var cut = Render(Sparse());
 
-        // The whole list rather than the first row, and by label: a row added above this one is a
-        // new row appearing, not the fallback going, and the two should not fail alike.
-        var box = SourceInformation(cut);
-
-        Assert.Equal(["Type datakilde", "Grad av personidentifikasjon"], Labels(box));
-        Assert.Equal("Ikke oppgitt", Value(box, "Type datakilde"));
+        Assert.Single(cut.FindAll(".munin-explorer-datasamling__main"));
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.Source}"));
         Assert.Empty(cut.FindAll($"#{DetailSectionIds.Statistics}"));
     }
 
@@ -722,12 +746,14 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Contents_WhenTheCatalogueFilledInNothing_ThenOnlyTheSourceBoxIsNamed()
+    public void Contents_WhenTheCatalogueFilledInNothing_ThenNoBlockIsNamed()
     {
-        // Three of the four go. The source box survives because its kildetype row falls back to
-        // "Ikke oppgitt", which is a row and therefore content — the same reason the variable and
-        // kilde views keep theirs on a payload this bare.
-        Assert.Equal(["#" + DetailSectionIds.Source], Targets(Render(Sparse())));
+        // All four go. The source box used to survive on a kildetype row reading "Ikke oppgitt";
+        // a box holding nothing at all is now no box, and so no entry. (Fhi.Metadata-35w0p.24)
+        var cut = Render(Sparse());
+
+        Assert.Single(cut.FindAll(".munin-explorer-datasamling__main"));
+        Assert.Empty(Targets(cut));
     }
 
     [Fact]
@@ -738,7 +764,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // if one stops doing.
         var cut = Render(Sparse());
 
-        Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
+        Assert.Empty(Targets(cut));
 
         cut.Render(p => p.Add(c => c.Datasamling, Datasamling()));
 
@@ -825,11 +851,10 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SourceInformation_WhenNothingWasInheritedEither_ThenNoBlankRowIsDrawn()
+    public void SourceInformation_WhenNothingWasInheritedEither_ThenEachRowSaysSoMuted()
     {
-        // A dt with an empty dd reads as a value that failed to draw. The two that stay are the two
-        // this package writes itself — a kildetype and an identification level always resolve to a
-        // word, "Ikke oppgitt" included.
+        // A dt with an empty dd reads as a value that failed to draw, and a row left out reads as a
+        // field that does not apply. "Ingen", muted, says the catalogue was asked and holds nothing.
         var cut = Render(Datasamling() with
         {
             EffectiveLegalBasis = null,
@@ -839,10 +864,14 @@ public class DatasamlingViewTest : ExplorerTestContext
             EffectiveValidTo = null,
         });
 
+        var box = SourceInformation(cut);
+
         Assert.Equal(
-            ["Kilde", "Type datakilde", "Grad av personidentifikasjon", "Sist oppdatert i Munin",
-             "Opprettet i Munin"],
-            Labels(SourceInformation(cut)));
+            ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin", "Opprettet i Munin"],
+            Labels(box));
+        Assert.All(["Lovverk", "Dataansvarlig", "Databehandler", "Gyldighet"], label => AssertAbsent(box, label));
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister", Value(box, "Type datakilde"));
     }
 
     [Fact]
@@ -853,7 +882,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // taken a null — a blank row is all the change would have shown. (Fhi.Metadata-l9l2n.61)
         var cut = Render(Datasamling() with { EffectiveKildetype = null });
 
-        Assert.Equal("Ikke oppgitt", Value(SourceInformation(cut), "Type datakilde"));
+        AssertAbsent(SourceInformation(cut), "Type datakilde");
     }
 
     [Fact]
@@ -898,30 +927,31 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SourceInformation_WhenThePayloadCarriesNoCreatedTimestamp_ThenNoRowIsDrawn()
+    public void SourceInformation_WhenThePayloadCarriesNoCreatedTimestamp_ThenTheRowSaysSoRatherThanYearOne()
     {
         // The same fallback sistOppdatert has, and worth its own test because the two are read off
         // different contract fields: an absent opprettet drew "1. januar 0001" before
         // Fhi.Metadata-se0by, and a blank row reads as a value that failed to draw.
-        Assert.DoesNotContain("Opprettet i Munin",
-                              Labels(SourceInformation(Render(Datasamling() with { Created = null }))));
+        AssertAbsent(SourceInformation(Render(Datasamling() with { Created = null })), "Opprettet i Munin");
     }
 
     [Fact]
-    public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
+    public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowSaysNoneRatherThanYearOne()
     {
         // An absent sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "1. januar 0001"
         // before that. The kilde view had the same line, and the kilder table's Importert column
         // the same shape. (Fhi.Metadata-6r6rf)
         var cut = Render(Datasamling() with { LastUpdated = default, Created = default });
 
-        // The whole list, for the reason the kilde view test gives: these rows are last, so
-        // dropping them and everything after would pass an assertion that only asks for absence.
         // Both timestamps at once, because they are the same shape and the same fallback.
+        var box = SourceInformation(cut);
+
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet"],
-            Labels(SourceInformation(cut)));
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin", "Opprettet i Munin"],
+            Labels(box));
+        AssertAbsent(box, "Sist oppdatert i Munin");
+        AssertAbsent(box, "Opprettet i Munin");
     }
 
     // ---------------------------------------------------------------------------------
@@ -937,7 +967,8 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling());
 
         Assert.Contains("Statistikk (Årsbasert)", BlockHeadings(cut));
-        Assert.Equal(["Statistikktype", "Antall variabler"], Labels(Box(cut, "Statistikk (Årsbasert)")));
+        Assert.Equal(["Statistikktype", "Frekvens", "Telleenhet", "Antall variabler"],
+                     Labels(Box(cut, "Statistikk (Årsbasert)")));
         Assert.Equal("99", Value(Box(cut, "Statistikk (Årsbasert)"), "Antall variabler"));
     }
 
@@ -959,14 +990,13 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Statistics_WhenTheCatalogueNamesNoKind_ThenNoRowStandsInForIt()
+    public void Statistics_WhenTheCatalogueNamesNoKind_ThenTheRowSaysSoMuted()
     {
-        // The half that passed before the row existed, and therefore proves nothing alone: with
-        // Statistikktype drawn nowhere, "no row when absent" was true of the defect as well. It is
-        // here for what a blank row would look like — a field the catalogue failed to draw.
+        // A blank row reads as a field the catalogue failed to draw, and a row left out as a field
+        // that does not apply. (Fhi.Metadata-35w0p.24)
         var cut = Render(Datasamling() with { StatisticsType = null });
 
-        Assert.Equal(["Antall variabler"], Labels(Box(cut, "Statistikk")));
+        AssertAbsent(Box(cut, "Statistikk"), "Statistikktype");
     }
 
     [Fact]
@@ -976,8 +1006,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // actually is — the Kreftregister's is "Tilfelle" rather than a person.
         var cut = Render(Datasamling() with { CountingUnit = "Tilfelle" });
 
-        Assert.Equal(["Statistikktype", "Telleenhet", "Antall variabler"],
-                     Labels(Box(cut, "Statistikk (Årsbasert)")));
+        Assert.Equal("Tilfelle", Value(Box(cut, "Statistikk (Årsbasert)"), "Telleenhet"));
     }
 
     [Fact]
@@ -1002,7 +1031,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Statistics_WhenOnlyTheTypeIsKnown_ThenItIsTheOneRowUnderTheHeadingItNames()
+    public void Statistics_WhenOnlyTheTypeIsKnown_ThenItIsTheOneValueAndTheRestSayNone()
     {
         // The degenerate case, kept rather than suppressed: the heading's parenthesis is what makes
         // the section findable and the row is where the fact is stated, so one echoing the other is
@@ -1010,7 +1039,11 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling() with { Frequency = null, CountingUnit = null, VariableCount = 0 });
 
         Assert.Contains("Statistikk (Årsbasert)", BlockHeadings(cut));
-        Assert.Equal(["Statistikktype"], Labels(Box(cut, "Statistikk (Årsbasert)")));
+
+        var box = Box(cut, "Statistikk (Årsbasert)");
+
+        Assert.Equal("Årsbasert", Value(box, "Statistikktype"));
+        Assert.All(["Frekvens", "Telleenhet", "Antall variabler"], label => AssertAbsent(box, label));
     }
 
     // ---------------------------------------------------------------------------------

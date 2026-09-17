@@ -282,7 +282,7 @@ public sealed partial class KildeView : ComponentBase
     /// one page under two different words.
     /// </remarks>
     private string? KildetypeLabel =>
-        Kilde is { } kilde ? T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype) : null;
+        Kilde is { Kildetype: { } type } && !string.IsNullOrWhiteSpace(type) ? T.KildeTypeLabel(type, type) : null;
 
     /// <inheritdoc cref="KildetypeLabel"/>
     /// <remarks>
@@ -306,7 +306,9 @@ public sealed partial class KildeView : ComponentBase
 
             return placement.Placed(CatalogueColumns.PersonIdentification)
                 ? placement.Curated(CatalogueColumns.PersonIdentification)
-                : T.PersonIdentificationLabel(kilde.PersonIdentificationLevel);
+                : string.IsNullOrWhiteSpace(kilde.PersonIdentificationLevel)
+                    ? null
+                    : T.PersonIdentificationLabel(kilde.PersonIdentificationLevel);
         }
     }
 
@@ -315,7 +317,8 @@ public sealed partial class KildeView : ComponentBase
         Kilde is { } kilde ? CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T) : null;
 
     /// <inheritdoc cref="CataloguePlacement.UnlessPlaced"/>
-    private string? UnlessPlaced(string key, string? value) => Placement.UnlessPlaced(key, value);
+    private IReadOnlyList<(string Label, string? Value, bool Norwegian)> UnlessPlaced(
+        string key, (string Label, string? Value, bool Norwegian) row) => Placement.UnlessPlaced(key, row);
 
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? DataPeriod =>
@@ -349,11 +352,11 @@ public sealed partial class KildeView : ComponentBase
             ? []
             : [
                 (T.FacetKildeType, KildetypeLabel, false),
-                (T.FieldLegalBasis, UnlessPlaced(CatalogueColumns.LegalBasis, kilde.LegalBasis), true),
-                (T.FieldDataController, UnlessPlaced(CatalogueColumns.DataController, kilde.DataController), true),
-                (T.FieldDataProcessor, UnlessPlaced(CatalogueColumns.DataProcessor, kilde.DataProcessor), true),
-                (T.FieldPersonIdentification,
-                 UnlessPlaced(CatalogueColumns.PersonIdentification, PersonIdentification), false),
+                .. UnlessPlaced(CatalogueColumns.LegalBasis, (T.FieldLegalBasis, kilde.LegalBasis, true)),
+                .. UnlessPlaced(CatalogueColumns.DataController, (T.FieldDataController, kilde.DataController, true)),
+                .. UnlessPlaced(CatalogueColumns.DataProcessor, (T.FieldDataProcessor, kilde.DataProcessor, true)),
+                .. UnlessPlaced(CatalogueColumns.PersonIdentification,
+                                (T.FieldPersonIdentification, PersonIdentification, false)),
                 .. ValidityRows,
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(kilde.LastUpdated, Language), false),
             ];
