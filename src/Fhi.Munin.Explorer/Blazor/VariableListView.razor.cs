@@ -364,9 +364,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false, tableCell: true);
     };
 
+    // Withheld rather than passed empty: both controls in the row are conditional, and a fragment
+    // that renders nothing still draws the chassis's row — a gap under the chrome of the page.
+    private bool HasActions => Lists.Count > 1 || _page is { TotalCount: > 0 };
+
     /// <summary>
-    /// The list on screen, off <c>my/lists</c> for both halves — so this waits on no page read, and
-    /// no picker entry can contradict it about the same list.
+    /// The list on screen: its size and last change off <c>my/lists</c>, so neither can contradict
+    /// the picker, and its kilde count off the membership walk — left out until that walk is done,
+    /// since empty is how a refused one reads, and at zero, which "0 variabler" has already said.
     /// </summary>
     private string? ListMeta
     {
@@ -377,11 +382,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 return null;
             }
 
-            var count = T.ListVariableCount(shown.VariableCount);
+            List<string> parts = [T.ListVariableCount(shown.VariableCount)];
 
-            return CatalogueDate.DayOrNothing(shown.UpdatedAt, Language, DateWidth.Narrow) is { } day
-                ? $"{count} · {T.ListLastModified(day)}"
-                : count;
+            // The tally is the active list's, so it is only this list's while the two agree: a
+            // switch clears it before it awaits, but a notification can still render between them.
+            if (State is { KilderInListKnown: true, KilderInList.Count: > 0 } state
+                && state.ActiveListId == _shownList)
+            {
+                parts.Add(T.ListKildeCount(state.KilderInList.Count));
+            }
+
+            if (CatalogueDate.DayOrNothing(shown.UpdatedAt, Language, DateWidth.Narrow) is { } day)
+            {
+                parts.Add(T.ListLastModified(day));
+            }
+
+            return string.Join(" · ", parts);
         }
     }
 

@@ -221,6 +221,10 @@ public sealed partial class VariableListState
             _saved.ExceptWith(variableIds);
         }
 
+        // The walk that built the kilde tally did not see this write, and the ids alone do not say
+        // which kilder they belonged to — so the tally is dropped rather than left to lie.
+        ForgetKildeTally();
+
         return _saved.Count - before;
     }
 
@@ -407,6 +411,7 @@ public sealed partial class VariableListState
         // neither, so the sidebar cannot read a half-filled tally as the list's own kilder.
         _kilder.Clear();
         _kilder.AddRange(kilder.Select(k => new KildeInList(k.Key, k.Value.Name, k.Value.Count)));
+        _kilderStale = false;
 
         _membershipLoaded = true;
         RaiseChanged(listId, affectsRows: true);

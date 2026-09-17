@@ -51,12 +51,17 @@ public sealed partial class VariableListState
     /// </summary>
     public IReadOnlyList<KildeInList> KilderInList => _kilder;
 
+    // Set by a write the walk did not see, and cleared by the walk that publishes a tally again.
+    // The tally is dropped rather than adjusted: the ids of a write do not say which kilder held
+    // them, so a kilde whose last variable just left would stay counted.
+    private bool _kilderStale;
+
     /// <summary>
-    /// Whether the walk that fills <see cref="KilderInList"/> has finished. False while it is
-    /// running, and false when it was refused — a caller that read the empty tally as "no kilder"
-    /// would say so about a list it never managed to read.
+    /// Whether the walk that fills <see cref="KilderInList"/> has finished and still describes the
+    /// list. False while it runs, false when it was refused, and false after a write it did not
+    /// see — reading the empty tally as "no kilder" would say so about a list never read at all.
     /// </summary>
-    public bool KilderInListKnown => _membershipLoaded;
+    public bool KilderInListKnown => _membershipLoaded && !_kilderStale;
 
     /// <summary>
     /// The kilder the reader has ticked, as a snapshot. Empty means every kilde, never none.
@@ -117,5 +122,14 @@ public sealed partial class VariableListState
             _kildeFilter = [];
             KildeFilterVersion++;
         }
+    }
+
+    // A flag of its own rather than unloading the membership, which would walk the whole list
+    // again on every press — the burst VariableListStateTest pins. The narrowing stays too: the
+    // reader has not left the list, unlike in ForgetKilder above.
+    private void ForgetKildeTally()
+    {
+        _kilder.Clear();
+        _kilderStale = true;
     }
 }
