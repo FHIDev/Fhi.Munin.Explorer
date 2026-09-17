@@ -66,6 +66,7 @@ TARGETS=(
   "/::filters-node-icons-off"
   "/::variable-detail"
   "/kilder::kilde-drilldown"
+  "/kilder::kilde-stuckbar"
   "/kilder::kilde-hierarchy-collapsed"
   "/kilder::kilde-hierarchy-expanded"
   "/kilder::kilde-hierarchy-open"

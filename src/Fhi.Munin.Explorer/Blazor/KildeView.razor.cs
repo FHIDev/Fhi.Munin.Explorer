@@ -113,6 +113,18 @@ public sealed partial class KildeView : ComponentBase
 
     private string Reader => ReaderLanguage.Of(Language);
 
+    /// <summary>
+    /// The name the page's heading carries, resolved through the member the heading reads so the
+    /// sticky bar and the name block cannot say it in different words.
+    /// </summary>
+    private (string Text, bool Norwegian) StickyNamed => T.Named(Kilde?.PreferredTerm, Kilde?.Code);
+
+    private string? StickyNameLang => CatalogueProperties.Foreign(StickyNamed.Norwegian, Reader);
+
+    /// <summary>The identifiers beside the bar's name, on the name block's own terms.</summary>
+    /// <remarks>Nothing where the heading has already fallen back to the code. (Fhi.Metadata-w13lk)</remarks>
+    private string? StickyCode => StickyNamed.Norwegian ? Identifiers : null;
+
     /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
     private IReadOnlyList<DetailTrailStep>? PageTrail =>
         Kilde is { } kilde

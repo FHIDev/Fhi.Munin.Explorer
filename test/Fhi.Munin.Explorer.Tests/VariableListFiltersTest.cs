@@ -16,7 +16,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// list identically — a test that could not tell them apart is the whole reason this was still
 /// undone. Fhi.Metadata-uiqfs made the same mistake with the variable count.
 /// </remarks>
-public class VariableListFiltersTest : BunitContext
+public class VariableListFiltersTest : ExplorerTestContext
 {
     private static readonly Guid ListId = new("11111111-1111-1111-1111-111111111111");
 

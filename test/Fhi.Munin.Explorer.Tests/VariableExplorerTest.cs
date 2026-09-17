@@ -21,7 +21,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// directions of the shared state are asserted now, through the tabs and side by side the way
 /// helsedata's MuninUtforsker mounts them: Fhi.Metadata-ehghv.
 /// </remarks>
-public class VariableExplorerTest : BunitContext
+public class VariableExplorerTest : ExplorerTestContext
 {
     /// <summary>Exactly what helsedata's <c>BlazorComponentPage.TypeName</c> defaults to.</summary>
     private const string ShippedDefault = "Fhi.Munin.Explorer.Blazor.VariableExplorer";
@@ -255,6 +255,28 @@ public class VariableExplorerTest : BunitContext
         Assert.Equal("true", Tab(cut, "Variabelliste").GetAttribute("aria-selected"));
         Assert.True(Hidden(PanelFor(cut, Tab(cut, "Søkeresultat"))));
         Assert.False(Hidden(PanelFor(cut, Tab(cut, "Variabelliste"))));
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenTheSearchIsComposed_ThenItFoldsTheFacetsAndLeavesWithThemOnTheListTab()
+    {
+        // The list tab draws none of the search facets, so a Vis filtre left there would unfold
+        // nothing. (Fhi.Metadata-l9l2n.102)
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var toggle = cut.Find(".munin-explorer-filters__toggle");
+        var folded = cut.Find($"#{toggle.GetAttribute("aria-controls")}");
+
+        Assert.Equal("FIELDSET", folded.TagName);
+        Assert.True(folded.HasAttribute("hidden"));
+
+        Tab(cut, "Variabelliste").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__toggle"));
+
+        Tab(cut, "Søkeresultat").Click();
+
+        Assert.Single(cut.FindAll(".munin-explorer-filters__toggle"));
     }
 
     [Fact]

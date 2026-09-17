@@ -29,7 +29,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// asserted rather than a page of it, and the assertion is on all of it for that reason.
 /// </para>
 /// </remarks>
-public class KildeSortingTest : BunitContext
+public class KildeSortingTest : ExplorerTestContext
 {
     private static KildeSummary Kilde(
         string name,

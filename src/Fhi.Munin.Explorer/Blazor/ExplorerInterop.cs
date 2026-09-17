@@ -3,12 +3,15 @@ using Microsoft.JSInterop;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The package's one JavaScript module, imported once per component and disposed with it.
+/// The package's one JavaScript module, at most one per component and disposed with it.
 /// </summary>
 /// <remarks>
-/// Nothing reads it yet. It exists so a later enhancement has a module to put itself in, and a
-/// refused import answers "not there" rather than throwing: an unhandled rejection on a legacy
-/// Blazor Server circuit takes the circuit down, which costs the reader the page (Fhi.Metadata-35w0p.14).
+/// Nothing rendered depends on it, and a refused import answers "not there" rather than throwing:
+/// an unhandled rejection on a legacy Blazor Server circuit takes the circuit down, which costs the
+/// reader the page (Fhi.Metadata-35w0p.14). The module is optional on those terms, and so is every
+/// export where the module is absent. A <see cref="JSException"/> from an export that IS there
+/// means something else — a defect inside the module — and each export below says whether it
+/// answers for one or leaves it to its caller.
 /// </remarks>
 internal sealed class ExplorerInterop : IAsyncDisposable
 {
@@ -29,6 +32,10 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     private IJSObjectReference? _module;
     private bool _disposed;
 
+    // A 404 or a Content-Security-Policy is the host's answer for good, and the caller retries a
+    // failed load on a later render: without this, a host serving no module pays an import a render.
+    private bool _refused;
+
     internal ExplorerInterop(IJSRuntime js)
     {
         ArgumentNullException.ThrowIfNull(js);
@@ -42,16 +49,22 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     internal bool IsLoaded => _module is not null;
 
     /// <summary>
-    /// Imports the module at most once, and answers whether it is there.
+    /// Imports the module, keeping at most one however often it is asked, and answers whether it
+    /// is there.
     /// </summary>
     /// <remarks>
-    /// <b>Call from <c>OnAfterRenderAsync(firstRender: true)</c> and nowhere else.</b> There is no
-    /// DOM and no JS runtime during prerender, so an import from any earlier lifecycle method fails
-    /// for a reason that has nothing to do with whether the host serves the file.
+    /// <b>Call from <c>OnAfterRenderAsync</c> and nowhere else.</b> There is no DOM and no JS
+    /// runtime during prerender, so an import from any earlier lifecycle method fails for a reason
+    /// that has nothing to do with whether the host serves the file.
+    /// <para>
+    /// A later render may call it again, and should where the first answered false: an import a
+    /// reconnecting circuit could not carry is "not yet" rather than "not there". A host that
+    /// actually serves no such file is remembered, so asking again is free after the first answer.
+    /// </para>
     /// </remarks>
     internal async Task<bool> TryLoadAsync(CancellationToken cancellationToken = default)
     {
-        if (_module is null && !_disposed)
+        if (_module is null && !_disposed && !_refused)
         {
             var module = await Fetched(cancellationToken).ConfigureAwait(false);
 
@@ -64,6 +77,61 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
 
         return _module is not null;
+    }
+
+    /// <summary>
+    /// Shows the sticky fact bar <paramref name="barId"/> while the hero fact row
+    /// <paramref name="factsId"/> is off the top of the viewport, and hides it again otherwise.
+    /// </summary>
+    /// <remarks>
+    /// <b>Call it after <see cref="TryLoadAsync"/>, from the same render.</b> Where the module is
+    /// not there it does nothing, which is the required behaviour: the bar repeats what is on the
+    /// page already. Nothing about the scroll comes back to the server. Calling it again for the
+    /// same <paramref name="barId"/> replaces that bar's observer rather than adding a second.
+    /// <para>
+    /// A <see cref="JSException"/> travels on, unlike <see cref="DisconnectHeroFactsAsync"/>'s: this
+    /// one can only be raised by the export itself, which is a defect in the module and not a
+    /// browser out of reach, and one nothing reports is a bar that never works with nothing in any
+    /// host's log to say so. <b>The caller catches it</b> — see <see cref="DetailPage"/>, which
+    /// calls this from a render continuation where an escape would take the circuit down.
+    /// </para>
+    /// </remarks>
+    internal async Task ObserveHeroFactsAsync(string barId, string factsId)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        await Tolerated(() => module.InvokeVoidAsync("observeHeroFacts", barId, factsId))
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Stops watching for <paramref name="barId"/>, so the observer goes with the component rather
+    /// than with the page.
+    /// </summary>
+    /// <remarks>
+    /// Tolerates a <see cref="JSException"/> as well as the three <see cref="Tolerated{T}"/> covers,
+    /// unlike <see cref="ObserveHeroFactsAsync"/>: this one is called from disposal, where a throw
+    /// is unhandled in the renderer and takes the circuit down.
+    /// </remarks>
+    internal async Task DisconnectHeroFactsAsync(string barId)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        try
+        {
+            await Tolerated(() => module.InvokeVoidAsync("disconnectHeroFacts", barId))
+                .ConfigureAwait(false);
+        }
+        // The browser has moved on — a reconnect, or the page already gone. So has the observer.
+        catch (JSException)
+        {
+        }
     }
 
     /// <inheritdoc />
@@ -82,18 +150,24 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     }
 
     /// <summary>
-    /// Takes <paramref name="module"/> as this instance's, unless disposal got here first.
+    /// Takes <paramref name="module"/> as this instance's, unless there is already one or disposal
+    /// got here first. False means the caller still owns what it was handed.
     /// </summary>
     /// <remarks>
     /// The check and the assignment are one step because they are not on the same thread as
     /// <see cref="DisposeAsync"/>: read and assign apart and a disposal in between leaves the
     /// arriving reference on a dead instance, which is the leak this answers.
+    /// <para>
+    /// A module already here is refused too, since two imports can overlap: assigning anyway drops
+    /// a live reference nothing releases, or — where the later one failed tolerably and so arrives
+    /// as null — nulls a live one, leaving the observers it registered connected for good.
+    /// </para>
     /// </remarks>
     private bool Kept(IJSObjectReference? module)
     {
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || _module is not null || module is null)
             {
                 return false;
             }
@@ -116,10 +190,16 @@ internal sealed class ExplorerInterop : IAsyncDisposable
                 () => _js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath))
                 .ConfigureAwait(false);
         }
-        // The host serves no such file, or a Content-Security-Policy refused it. Only an import is
-        // ordinary this way: the same exception out of an export is a defect in the module itself.
+        // The host serves no such file, or a Content-Security-Policy refused it. Not a reconnect:
+        // JSDisconnectedException derives from this one, and Tolerated answers it inside the try
+        // above, so a dropped circuit is null without the latch and the caller may ask again.
         catch (JSException)
         {
+            lock (_gate)
+            {
+                _refused = true;
+            }
+
             return null;
         }
     }

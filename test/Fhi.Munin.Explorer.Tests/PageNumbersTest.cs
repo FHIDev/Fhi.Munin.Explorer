@@ -12,7 +12,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// stopped including the last page would still render, still read as a pager, and still leave the
 /// end of a 907-page list unreachable in one press.
 /// </remarks>
-public class PageNumbersTest : BunitContext
+public class PageNumbersTest : ExplorerTestContext
 {
     [Fact]
     public void Window_WhenOnTheFirstPageOfMany_ThenItRunsFromOneAndSkipsToTheLast()

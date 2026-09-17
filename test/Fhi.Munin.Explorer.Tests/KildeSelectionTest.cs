@@ -38,7 +38,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// one.
 /// </para>
 /// </remarks>
-public class KildeSelectionTest : BunitContext
+public class KildeSelectionTest : ExplorerTestContext
 {
     private static KildeSummary Kilde(string name, string code, string kildetype = "sentraltHelseregister") =>
         new()

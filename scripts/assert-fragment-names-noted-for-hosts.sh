@@ -62,7 +62,7 @@ fi
 # stderr kept, not dropped: what the floor is worth is the reason it tripped (Fhi.Metadata-yvldl).
 MIN_NAMES=10
 src_count="$(
-  grep -rhoE --include='*.cs' --include='*.razor' --exclude-dir=bin --exclude-dir=obj \
+  grep -rhoE --include='*.cs' --include='*.razor' --include='*.js' --exclude-dir=bin --exclude-dir=obj \
          'munin-explorer[A-Za-z0-9_-]*' src/ \
     | grep -vE -- '(-|__)$' \
     | sort -u \

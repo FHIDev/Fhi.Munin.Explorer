@@ -36,6 +36,17 @@ public sealed class DetailFacts : ComponentBase
     [Parameter, EditorRequired]
     public IReadOnlyList<DetailFact> Facts { get; set; } = [];
 
+    /// <summary>
+    /// An <c>id</c> for the <c>&lt;dl&gt;</c>, so something outside can find the row. Unset writes
+    /// no attribute.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="DetailPage"/> is what fills it: the sticky fact bar appears when this row leaves
+    /// the top of the viewport, and the browser module watching for that needs an element to watch.
+    /// </remarks>
+    [Parameter]
+    public string? Id { get; set; }
+
     /// <inheritdoc />
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
@@ -48,6 +59,7 @@ public sealed class DetailFacts : ComponentBase
 
         builder.OpenElement(0, "dl");
         builder.AddAttribute(1, "class", "munin-explorer-page__facts");
+        builder.AddAttribute(2, "id", Id);
 
         var seq = 10;
 
