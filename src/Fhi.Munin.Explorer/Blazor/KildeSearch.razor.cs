@@ -1178,6 +1178,22 @@ public sealed partial class KildeSearch : ComponentBase
             ? [.. KildeTrail, new DetailTrailStep(datasamling.ParentKildeName, kilde, CatalogueProperties.Foreign("no", Reader))]
             : KildeTrail;
 
+    /// <summary>
+    /// Where the open datasamling's own view sends a reader who presses its parent kilde.
+    /// </summary>
+    /// <remarks>
+    /// The id is ignored because this explorer holds one kilde open at a time and the open
+    /// datasamling hangs off it, so <see cref="KildeHref"/> is already that kilde's address — the
+    /// host's route takes a datasamling id, and there is no route here that takes a kilde's.
+    /// </remarks>
+    private Func<Guid, string>? ParentKildeHref =>
+        KildeHref is null ? null : _parentKildeHref ??= _ => KildeHref!;
+
+    // Held for the reason below, and reading KildeHref per call rather than closing over it: the
+    // address moves with the host's own. The ! covers the handing out, not the holding — a delegate
+    // kept past a cleared DatasamlingHref returns null out of a non-nullable return, not a throw.
+    private Func<Guid, string>? _parentKildeHref;
+
     // The held-delegate idiom KildeExplorer.DatasamlingHref explains, one layer down: the tree
     // takes a Guid where the host's route takes a Guid?, and an adapter written in the markup
     // would be a changed parameter on every render.

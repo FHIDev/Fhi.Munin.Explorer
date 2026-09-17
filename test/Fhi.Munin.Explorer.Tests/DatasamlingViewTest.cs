@@ -42,13 +42,15 @@ public class DatasamlingViewTest : BunitContext
         int headingLevel = 2,
         string? headingId = null,
         IReadOnlyList<DetailTrailStep>? trail = null,
-        RenderFragment? sections = null) =>
+        RenderFragment? sections = null,
+        Func<Guid, string>? kildeHref = null) =>
         Render<DatasamlingView>(b =>
         {
             b.Add(c => c.Datasamling, datasamling)
              .Add(c => c.Language, language)
              .Add(c => c.HeadingLevel, headingLevel)
              .Add(c => c.HeadingId, headingId)
+             .Add(c => c.KildeHref, kildeHref)
              .Add(c => c.Trail, trail);
 
             // Left unset rather than set to null when no explorer passes any, which is the state a
@@ -144,8 +146,13 @@ public class DatasamlingViewTest : BunitContext
     /// Asking by label makes the failure say which row went missing.
     /// </remarks>
     private static string Value(IElement list, string label) =>
+        Row(list, label).QuerySelector("dd")?.TextContent
+        ?? throw new InvalidOperationException(
+            $"No value cell in the '{label}' row, only: {string.Join(", ", Labels(list))}.");
+
+    /// <summary>The whole row, for a test asking what the value cell is made of.</summary>
+    private static IElement Row(IElement list, string label) =>
         list.QuerySelectorAll("div").FirstOrDefault(row => row.QuerySelector("dt")?.TextContent == label)
-            ?.QuerySelector("dd")?.TextContent
         ?? throw new InvalidOperationException(
             $"No '{label}' row in this box, only: {string.Join(", ", Labels(list))}.");
 
@@ -198,16 +205,17 @@ public class DatasamlingViewTest : BunitContext
     [Fact]
     public void HeroFacts_Always_ThenNothingIsTakenOutOfTheSectionsBelow()
     {
-        // A summary, not a relocation. The fact box still draws all eight fields, Kilde and
+        // A summary, not a relocation. The fact box still draws all nine fields, Kilde and
         // Databehandler included, and no key joins the drawnElsewhere set on account of the row —
         // that set names Beskrivelse, which the ingress draws, and nothing else.
         var cut = Render(Datasamling());
 
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
+             "Opprettet i Munin"],
             Labels(SourceInformation(cut)));
-        Assert.Equal(["Antall variabler"], Labels(Box(cut, "Statistikk (Årsbasert)")));
+        Assert.Equal(["Statistikktype", "Antall variabler"], Labels(Box(cut, "Statistikk (Årsbasert)")));
         Assert.Empty(cut.Find(".munin-explorer-page__body").QuerySelectorAll("dl.munin-explorer-page__facts"));
     }
 
@@ -534,11 +542,12 @@ public class DatasamlingViewTest : BunitContext
     {
         // The wrapper goes INSIDE each emptiness check. Outside one it would draw a section holding
         // a heading and nothing else, which is worse than the bare heading it replaced. Both of
-        // this view's suppressible blocks are taken away at once — the criteria and the
-        // statistics.
+        // this view's suppressible blocks are taken away at once — the criteria, and all four
+        // facts of the statistics, the type included since it fills a row (Fhi.Metadata-35w0p.50).
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
+            StatisticsType = null,
             Frequency = null,
             CountingUnit = null,
             VariableCount = 0,
@@ -657,6 +666,7 @@ public class DatasamlingViewTest : BunitContext
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
+            StatisticsType = null,
             Frequency = null,
             CountingUnit = null,
             VariableCount = 0,
@@ -796,7 +806,8 @@ public class DatasamlingViewTest : BunitContext
 
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
+             "Opprettet i Munin"],
             Labels(facts));
 
         Assert.Equal("Als registeret", Value(facts, "Kilde"));
@@ -824,7 +835,8 @@ public class DatasamlingViewTest : BunitContext
         });
 
         Assert.Equal(
-            ["Kilde", "Type datakilde", "Grad av personidentifikasjon", "Sist oppdatert i Munin"],
+            ["Kilde", "Type datakilde", "Grad av personidentifikasjon", "Sist oppdatert i Munin",
+             "Opprettet i Munin"],
             Labels(SourceInformation(cut)));
     }
 
@@ -840,15 +852,67 @@ public class DatasamlingViewTest : BunitContext
     }
 
     [Fact]
+    public void SourceInformation_WhenTheSurfaceAboveSuppliedAKildeAddress_ThenTheParentIsALink()
+    {
+        // The return path out of a collection. parentKildeId is on the payload for exactly this, so
+        // the link costs no second request — and it is the id that is handed out, not the name, so
+        // a host builds the address rather than searching for one. (Fhi.Metadata-35w0p.50)
+        var datasamling = Datasamling();
+
+        var cut = Render(datasamling, kildeHref: id => $"/kilder?kilde={id}");
+
+        var link = Assert.Single(Row(SourceInformation(cut), "Kilde").QuerySelectorAll("a"));
+
+        Assert.Equal($"/kilder?kilde={datasamling.ParentKildeId}", link.GetAttribute("href"));
+        Assert.Equal("Als registeret", link.TextContent);
+    }
+
+    [Fact]
+    public void SourceInformation_WhenNoKildeAddressWasSupplied_ThenTheParentIsPlainTextRatherThanADeadLink()
+    {
+        // The state every mount outside the kildeutforsker is in: this package has no router, so
+        // with nothing handed down the name is the fact and an <a href=""> would be a control that
+        // goes nowhere. Both states, because only the pair says the target is the host's.
+        var row = Row(SourceInformation(Render(Datasamling())), "Kilde");
+
+        Assert.Empty(row.QuerySelectorAll("a"));
+        Assert.Equal("Als registeret", row.QuerySelector("dd")!.TextContent);
+    }
+
+    [Fact]
+    public void SourceInformation_WhenTheCatalogueRecordedWhenItWasCreated_ThenTheRowSaysSoInMuninsWords()
+    {
+        // "Opprettet i Munin" rather than "Opprettet": the bare word is already spent on the
+        // founding year the import file states, which Kelda heads "Opprettet", and the two have
+        // been confused before. The twin of Sist oppdatert i Munin, formatted the same way.
+        var facts = SourceInformation(Render(Datasamling()));
+
+        Assert.Equal("19. mai 2026", Value(facts, "Opprettet i Munin"));
+        Assert.Equal("19 May 2026",
+                     Value(SourceInformation(Render(Datasamling(), language: "en")), "Created in Munin"));
+    }
+
+    [Fact]
+    public void SourceInformation_WhenThePayloadCarriesNoCreatedTimestamp_ThenNoRowIsDrawn()
+    {
+        // The same fallback sistOppdatert has, and worth its own test because the two are read off
+        // different contract fields: an absent opprettet drew "1. januar 0001" before
+        // Fhi.Metadata-se0by, and a blank row reads as a value that failed to draw.
+        Assert.DoesNotContain("Opprettet i Munin",
+                              Labels(SourceInformation(Render(Datasamling() with { Created = null }))));
+    }
+
+    [Fact]
     public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowIsAbsentRatherThanYearOne()
     {
         // An absent sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "1. januar 0001"
         // before that. The kilde view had the same line, and the kilder table's Importert column
         // the same shape. (Fhi.Metadata-6r6rf)
-        var cut = Render(Datasamling() with { LastUpdated = default });
+        var cut = Render(Datasamling() with { LastUpdated = default, Created = default });
 
-        // The whole list, for the reason the kilde view test gives: this row is last, so dropping
-        // it and everything after it would pass an assertion that only asks for its absence.
+        // The whole list, for the reason the kilde view test gives: these rows are last, so
+        // dropping them and everything after would pass an assertion that only asks for absence.
+        // Both timestamps at once, because they are the same shape and the same fallback.
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
              "Grad av personidentifikasjon", "Gyldighet"],
@@ -868,8 +932,36 @@ public class DatasamlingViewTest : BunitContext
         var cut = Render(Datasamling());
 
         Assert.Contains("Statistikk (Årsbasert)", BlockHeadings(cut));
-        Assert.Equal(["Antall variabler"], Labels(Box(cut, "Statistikk (Årsbasert)")));
+        Assert.Equal(["Statistikktype", "Antall variabler"], Labels(Box(cut, "Statistikk (Årsbasert)")));
         Assert.Equal("99", Value(Box(cut, "Statistikk (Årsbasert)"), "Antall variabler"));
+    }
+
+    [Fact]
+    public void Statistics_WhenTheCatalogueNamesTheKind_ThenARowCarriesItAndNotOnlyTheHeading()
+    {
+        // The discriminating half of the pair below, and the one that fails on a page where
+        // statistikkType is fetched, deserialised and thrown away: the heading's parenthesis is
+        // chrome that makes the section findable, and the row is where the fact is stated.
+        var cut = Render(Datasamling());
+
+        Assert.Equal("Årsbasert", Value(Box(cut, "Statistikk (Årsbasert)"), "Statistikktype"));
+
+        // The catalogue's token resolved to this package's word, which is what the heading spells
+        // too — one resolution, so a row and the heading over it cannot come out in two words.
+        var unknown = Render(Datasamling() with { StatisticsType = "kvartalsvis" });
+
+        Assert.Equal("kvartalsvis", Value(Box(unknown, "Statistikk (kvartalsvis)"), "Statistikktype"));
+    }
+
+    [Fact]
+    public void Statistics_WhenTheCatalogueNamesNoKind_ThenNoRowStandsInForIt()
+    {
+        // The half that passed before the row existed, and therefore proves nothing alone: with
+        // Statistikktype drawn nowhere, "no row when absent" was true of the defect as well. It is
+        // here for what a blank row would look like — a field the catalogue failed to draw.
+        var cut = Render(Datasamling() with { StatisticsType = null });
+
+        Assert.Equal(["Antall variabler"], Labels(Box(cut, "Statistikk")));
     }
 
     [Fact]
@@ -879,7 +971,8 @@ public class DatasamlingViewTest : BunitContext
         // actually is — the Kreftregister's is "Tilfelle" rather than a person.
         var cut = Render(Datasamling() with { CountingUnit = "Tilfelle" });
 
-        Assert.Equal(["Telleenhet", "Antall variabler"], Labels(Box(cut, "Statistikk (Årsbasert)")));
+        Assert.Equal(["Statistikktype", "Telleenhet", "Antall variabler"],
+                     Labels(Box(cut, "Statistikk (Årsbasert)")));
     }
 
     [Fact]
@@ -904,13 +997,15 @@ public class DatasamlingViewTest : BunitContext
     }
 
     [Fact]
-    public void Statistics_WhenOnlyTheTypeIsKnown_ThenTheHeadingDoesNotStandOverAnEmptyList()
+    public void Statistics_WhenOnlyTheTypeIsKnown_ThenItIsTheOneRowUnderTheHeadingItNames()
     {
-        // The type alone is not a number. Heading and list are answered by one question so they
-        // cannot disagree, which is the half that is easy to get wrong.
+        // The degenerate case, kept rather than suppressed: the heading's parenthesis is what makes
+        // the section findable and the row is where the fact is stated, so one echoing the other is
+        // still the record. Heading and list are answered by one question, so they cannot disagree.
         var cut = Render(Datasamling() with { Frequency = null, CountingUnit = null, VariableCount = 0 });
 
-        Assert.DoesNotContain("Statistikk (Årsbasert)", BlockHeadings(cut));
+        Assert.Contains("Statistikk (Årsbasert)", BlockHeadings(cut));
+        Assert.Equal(["Statistikktype"], Labels(Box(cut, "Statistikk (Årsbasert)")));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1012,7 +1107,8 @@ public class DatasamlingViewTest : BunitContext
 
         Assert.Equal(
             ["Source", "Type of data source", "Legal basis", "Data controller", "Data processor",
-             "Level of personal identification", "Validity", "Last updated in Munin"],
+             "Level of personal identification", "Validity", "Last updated in Munin",
+             "Created in Munin"],
             Labels(facts));
 
         Assert.Equal("National medical quality registry", Value(facts, "Type of data source"));

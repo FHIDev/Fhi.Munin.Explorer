@@ -47,9 +47,10 @@ internal static class CatalogueColumns
 
     /// <inheritdoc cref="Description"/>
     /// <remarks>
-    /// The one merged key no fact box yields to: <see cref="DatasamlingView"/> draws it as the
-    /// Statistikk heading rather than as a row, and a heading naming what the numbers count is not
-    /// the same fact twice however the catalogue places the key.
+    /// Read twice on one page: <see cref="DatasamlingView"/> yields its Statistikk row to a
+    /// placement as it does the others, and names the Statistikk heading off the same field
+    /// whether or not the key is placed — a heading is what makes the section findable rather than
+    /// the fact repeated.
     /// </remarks>
     internal const string StatisticsType = "StatistikkType";
 

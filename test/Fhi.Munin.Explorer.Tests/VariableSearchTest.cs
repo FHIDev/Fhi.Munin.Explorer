@@ -13115,8 +13115,8 @@ public class VariableSearchTest : BunitContext
         EffectiveValidFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
         EffectiveKildetype = "nasjonaltMedisinskKvalitetsregister",
         LastUpdated = new DateTimeOffset(2026, 3, 4, 9, 30, 0, TimeSpan.Zero),
-        // Every datasamling in the test catalogue carries a statistikktype, and it names the
-        // statistics heading rather than filling a row of its own.
+        // Every datasamling in the test catalogue carries a statistikktype. It names the statistics
+        // heading and fills a row of its own: the heading finds the section, the row states the fact.
         StatisticsType = "yearly",
         Frequency = "Fortløpende",
         // Observed as an empty string in the captured payload rather than as null, which is a
@@ -13293,7 +13293,7 @@ public class VariableSearchTest : BunitContext
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
              "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
-             "Frekvens", "Antall variabler"],
+             "Statistikktype", "Frekvens", "Antall variabler"],
             SourceLabels(cut));
 
         var values = SourceValues(cut);
@@ -13302,8 +13302,9 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("St. Olavs hospital HF", values[3]);
         Assert.Equal("Indirekte identifiserbar", values[5]);
         Assert.Equal("1. januar 2010 – Pågående", values[6]);
-        Assert.Equal("Fortløpende", values[8]);
-        Assert.Equal("99", values[9]);
+        Assert.Equal("Årsbasert", values[8]);
+        Assert.Equal("Fortløpende", values[9]);
+        Assert.Equal("99", values[10]);
 
         var panel = SourcePanel(cut);
 

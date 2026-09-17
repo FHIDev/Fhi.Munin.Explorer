@@ -284,14 +284,37 @@ public class SeededPlacementRenderingTest : BunitContext
             [CatalogueColumns.ValidFrom] = "3. februar 2023 – 5. april 2024",
             [CatalogueColumns.ValidTo] = "3. februar 2023 – 5. april 2024",
             // Unresolved, because the fact box draws the stored code rather than the vocabulary's
-            // word for it. Statistikktype is left out of the count entirely: no fact box draws it,
-            // and the heading that names it is written twice, in the nav and over the section.
+            // word for it. Statistikktype is left out of the count entirely: the heading, the nav
+            // entry and the row all read it off one field, so exactly-once is the wrong question.
             [CatalogueColumns.Frequency] = "manedlig",
         };
 
         facts.Remove(CatalogueColumns.StatisticsType);
 
         EachDrawnOnce(body, facts);
+    }
+
+    [Fact]
+    public void Statistics_WhenTheTypeIsPlacedAndNothingElseFillsTheBlock_ThenNoHeadingIsLeftOverNothing()
+    {
+        // Statistikktype is the one merged key whose heading does not yield — it names the section
+        // rather than repeating the fact — so heading and rows can disagree here and nowhere else.
+        // Gated on the heading this would be an empty section with a nav entry pointing into it.
+        var cut = RenderDatasamling(Datasamling(Section) with
+        {
+            Frequency = null,
+            CountingUnit = null,
+            VariableCount = 0,
+        });
+
+        Assert.Empty(cut.FindAll($"section#{DetailSectionIds.Statistics}"));
+        Assert.DoesNotContain("#" + DetailSectionIds.Statistics,
+                              cut.FindAll(".munin-explorer-page__toc a")
+                                 .Select(link => link.GetAttribute("href")!));
+
+        // Still on the page once, in the section the catalogue placed it in and in its words.
+        Assert.Equal("Telling av hendelser", SectionValue(cut, "Statistikktype"));
+        Assert.Equal(1, Occurrences(Body(cut), "Telling av hendelser"));
     }
 
     [Fact]

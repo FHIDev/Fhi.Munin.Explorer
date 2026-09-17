@@ -68,6 +68,18 @@ public sealed partial class DatasamlingView : ComponentBase
     [Parameter]
     public RenderFragment? Actions { get; set; }
 
+    /// <summary>
+    /// Where the owning kilde can be opened, given its id. Null, the default, draws its name as
+    /// plain text.
+    /// </summary>
+    /// <remarks>
+    /// The shape <see cref="KildeView.DatasamlingHref"/> uses, pointing the other way: this package
+    /// has no router and helsedata's addresses are not ours, so a target is something the surface
+    /// above hands down and a missing one is never a link that goes nowhere.
+    /// </remarks>
+    [Parameter]
+    public Func<Guid, string>? KildeHref { get; set; }
+
     private Texts T => Texts.For(Language);
 
     private string Reader => ReaderLanguage.Of(Language);
@@ -185,6 +197,7 @@ public sealed partial class DatasamlingView : ComponentBase
                   [
                       (T.FieldVariableCount, VariableCount, false),
                       (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false),
+                      (T.FieldCreatedInMunin, CatalogueDate.DayOrNothing(datasamling.Created, Language), false),
                   ]);
 
     /// <inheritdoc cref="Groups"/>
@@ -200,33 +213,40 @@ public sealed partial class DatasamlingView : ComponentBase
     /// The facts every datasamling has, labelled as the kilde view labels the same fields.
     /// </summary>
     /// <remarks>
-    /// The third element says whether the value is the catalogue's own words. The kildetype and the
-    /// identification level are vocabularies this package translates; the rest are stored once, in
-    /// Norwegian, however the reader is reading.
+    /// The third element says whether the value is the catalogue's own words, and the fourth is
+    /// where the row goes. The kildetype and the identification level are vocabularies this package
+    /// translates; the rest are stored once, in Norwegian, however the reader is reading.
     /// <para>
-    /// Six of them are column-backed properties the catalogue can place in a section of its own,
-    /// and each yields when it does — see <see cref="UnlessPlaced"/> and
-    /// <see cref="ValidityRows"/>. Kilde, Kildetype and Sist
-    /// oppdatert are not among them: no section can draw a fact nothing merges into the renderable
-    /// set.
+    /// Every row but Kilde, Kildetype and the two Munin timestamps is a column-backed property the
+    /// catalogue can place in a section of its own, and each yields when it does — see
+    /// <see cref="UnlessPlaced"/> and <see cref="ValidityRows"/>, which answers for Gyldig fra and
+    /// Gyldig til apart although they share one row. The four are not among them: no section can
+    /// draw a fact nothing merges into the renderable set, and the timestamps are Munin's own.
+    /// </para>
+    /// <para>
+    /// Kilde is the one row with somewhere to go, and only where <see cref="KildeHref"/> was wired:
+    /// the id is on the payload for exactly this, so the return path out of a collection costs no
+    /// second request (Fhi.Metadata-35w0p.50).
     /// </para>
     /// </remarks>
-    private IReadOnlyList<(string Label, string? Value, bool Norwegian)> SourceInformation =>
+    private IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> SourceInformation =>
         Datasamling is not { } datasamling
             ? []
             : [
-                (T.FieldSource, datasamling.ParentKildeName, true),
-                (T.FacetKildeType, KildetypeLabel, false),
+                (T.FieldSource, datasamling.ParentKildeName, true,
+                 KildeHref?.Invoke(datasamling.ParentKildeId)),
+                (T.FacetKildeType, KildetypeLabel, false, null),
                 (T.FieldLegalBasis,
-                 UnlessPlaced(CatalogueColumns.LegalBasis, datasamling.EffectiveLegalBasis), true),
+                 UnlessPlaced(CatalogueColumns.LegalBasis, datasamling.EffectiveLegalBasis), true, null),
                 (T.FieldDataController,
-                 UnlessPlaced(CatalogueColumns.DataController, datasamling.EffectiveDataController), true),
+                 UnlessPlaced(CatalogueColumns.DataController, datasamling.EffectiveDataController), true, null),
                 (T.FieldDataProcessor,
-                 UnlessPlaced(CatalogueColumns.DataProcessor, datasamling.EffectiveDataProcessor), true),
+                 UnlessPlaced(CatalogueColumns.DataProcessor, datasamling.EffectiveDataProcessor), true, null),
                 (T.FieldPersonIdentification,
-                 UnlessPlaced(CatalogueColumns.PersonIdentification, PersonIdentification), false),
-                .. ValidityRows,
-                (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false),
+                 UnlessPlaced(CatalogueColumns.PersonIdentification, PersonIdentification), false, null),
+                .. ValidityRows.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)),
+                (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false, null),
+                (T.FieldCreatedInMunin, CatalogueDate.DayOrNothing(datasamling.Created, Language), false, null),
             ];
 
     /// <inheritdoc cref="CataloguePlacement.ValidityRows"/>
@@ -276,6 +296,17 @@ public sealed partial class DatasamlingView : ComponentBase
         }
     }
 
+    /// <summary>The catalogue's statistikktype in this package's vocabulary, for the row.</summary>
+    /// <remarks>
+    /// Not one of <see cref="KildetypeLabel"/>'s four: the collection's own field, not an inherited
+    /// one, and no hero fact draws it. <see cref="StatisticsHeading"/> resolves the code itself, so
+    /// only the shared <see cref="Texts.StatisticsTypeLabel"/> keeps row and heading in one word.
+    /// </remarks>
+    private string? StatisticsTypeLabel =>
+        Datasamling?.StatisticsType is { } type && !string.IsNullOrWhiteSpace(type)
+            ? T.StatisticsTypeLabel(type)
+            : null;
+
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? Validity =>
         Datasamling is { } datasamling
@@ -298,16 +329,18 @@ public sealed partial class DatasamlingView : ComponentBase
     /// shown as a zero, for the same reason: both are what let a datasamling with no numbers at all
     /// draw no block.
     /// <para>
-    /// Frekvens and Telleenhet yield to a section that has been given their key, as the fact box
-    /// above does. The count is the collection's own number and has no property definition to be
-    /// placed. Statistikktype is drawn by no row here at all — see <see cref="StatisticsHeading"/>,
-    /// which is the surface that draws it and deliberately does not yield.
+    /// Statistikktype, Frekvens and Telleenhet all yield to a section that has been given their
+    /// key, as the fact box above does. The count is the collection's own number and has no
+    /// property definition to be placed. <see cref="StatisticsHeading"/> reads the type as well and
+    /// deliberately does not yield: the heading names the section and the row states the fact.
     /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> Statistics =>
         Datasamling is not { } datasamling
             ? []
             : [
+                (T.FieldStatisticsType,
+                 UnlessPlaced(CatalogueColumns.StatisticsType, StatisticsTypeLabel), false),
                 (T.FieldFrequency, UnlessPlaced(CatalogueColumns.Frequency, datasamling.Frequency), true),
                 (T.FieldCountingUnit, UnlessPlaced(CatalogueColumns.CountingUnit, datasamling.CountingUnit), true),
                 (T.FieldVariableCount, VariableCount, false),
@@ -368,6 +401,8 @@ public sealed partial class DatasamlingView : ComponentBase
     /// Read raw rather than through <see cref="UnlessPlaced"/>, alone among the merged keys: a
     /// heading naming what the numbers count is not the fact repeated, it is what makes the section
     /// findable, and a section placed StatistikkType and headed "Statistikk" would have lost it.
+    /// The block stays gated on <see cref="AnyStatistics"/>, so a placement that empties the rows
+    /// takes the heading and its nav entry with them rather than leaving them over nothing.
     /// </para>
     /// </remarks>
     private string StatisticsHeading =>
@@ -400,7 +435,8 @@ public sealed partial class DatasamlingView : ComponentBase
         toc.Add(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
         toc.Add(!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria),
                 DetailSectionIds.Criteria, T.FieldInclusionCriteria);
-        toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
+        toc.Add(DetailBlocks.AnyLinkedFacts(SourceInformation), DetailSectionIds.Source,
+                T.HeadingSourceInformation);
         toc.Add(AnyStatistics, DetailSectionIds.Statistics, StatisticsHeading);
         toc.AddNamed(NamedSections);
 
