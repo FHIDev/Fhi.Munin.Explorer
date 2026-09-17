@@ -168,7 +168,8 @@ public partial class VariableSearch
     /// <summary>A column's name, in the words the header above it uses.</summary>
     /// <remarks>
     /// The same strings the header cells and the rows' own screen-reader labels carry, so the
-    /// picker and the column it turns off are never two names for one thing. An unknown member
+    /// picker and the column it turns off are never two names for one thing. The save column is the
+    /// exception: its cells are buttons named by what they do, not by the column. An unknown member
     /// throws for the reason <see cref="Texts.FieldLabel"/> does: a column added to
     /// <see cref="ResultColumn"/> without a word here would sit in the list unlabelled.
     /// </remarks>

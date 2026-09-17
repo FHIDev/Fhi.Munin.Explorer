@@ -909,7 +909,7 @@ public class SaveToListTest : BunitContext
     }
 
     [Fact]
-    public void SaveButton_InBothStates_ThenItIsFilledSoItReadsAsAButtonBeforeItIsHovered()
+    public void SaveButton_WhenDrawnInEitherState_ThenItIsFilledSoItReadsAsAButtonBeforeItIsHovered()
     {
         // A ghost button has no border and no fill until hovered, so on every row it read as bold
         // text. The width rule hangs on the cell's class, so the cell keeps it in both states.
