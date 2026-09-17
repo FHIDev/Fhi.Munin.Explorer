@@ -6064,6 +6064,31 @@ public class KildeSearchTest : BunitContext
     }
 
     [Fact]
+    public void ParentKilde_WhenTheHostWithdrawsTheAddressAndWiresAnother_ThenTheRowFollowsItBothWays()
+    {
+        // The held delegate, memoised once and never cleared: only its per-call read of KildeHref
+        // keeps a re-wired address from resolving to the first one. Not visible in a single render,
+        // so a cache closing over the value passes the pair above and fails here — verified.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling);
+
+        Assert.Equal($"/kilder?kilde={kilde}", Assert.Single(KildeRow(cut).QuerySelectorAll("a")).GetAttribute("href"));
+
+        cut.Render(p => p.Add(c => c.DatasamlingHref, null));
+
+        Assert.Empty(KildeRow(cut).QuerySelectorAll("a"));
+        Assert.Equal("Als registeret", KildeRow(cut).QuerySelector("dd")!.TextContent);
+
+        cut.Render(p => p.Add(c => c.DatasamlingHref,
+                              (Func<Guid?, string>)(id => id is null ? "/annet?kilde=1" : "/annet")));
+
+        Assert.Equal("/annet?kilde=1",
+                     Assert.Single(KildeRow(cut).QuerySelectorAll("a")).GetAttribute("href"));
+    }
+
+    [Fact]
     public void DrillIn_WhenTheAddressNamesADatasamlingOfTheOpenKilde_ThenItsOwnViewReplacesTheKildesAndTheKildeIsNotFetched()
     {
         // DatasamlingView is Runa's component rendered unchanged, and the kilde's payload would be

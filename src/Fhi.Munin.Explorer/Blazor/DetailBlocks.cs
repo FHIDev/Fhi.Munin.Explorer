@@ -90,30 +90,31 @@ internal static class DetailBlocks
             builder.OpenElement(seq + 4, "dd");
             builder.AddAttribute(seq + 5, "lang", norwegian ? CatalogueProperties.Foreign("no", reader) : null);
 
-            // A target wins over markdown: the one row that carries one holds a catalogue name
-            // rather than authored prose, so there is nothing for the renderer to lose.
+            // A linked row is never rendered as markdown: a target and authored prose are two ways
+            // to spend one dd, and the rule here is that the one a reader can press wins.
             if (href is not null)
             {
-                builder.OpenElement(seq + 8, "a");
-                builder.AddAttribute(seq + 9, "href", href);
-                builder.AddContent(seq + 10, value);
+                builder.OpenElement(seq + 6, "a");
+                builder.AddAttribute(seq + 7, "href", href);
+                builder.AddContent(seq + 8, value);
                 builder.CloseElement();
             }
             else if (authored)
             {
-                builder.AddContent(seq + 7, CatalogueMarkdown.Render(value));
+                builder.AddContent(seq + 9, CatalogueMarkdown.Render(value));
             }
             else
             {
-                builder.AddContent(seq + 6, value);
+                builder.AddContent(seq + 10, value);
             }
 
             builder.CloseElement();
 
             builder.CloseElement();
 
-            // Twenty rather than ten: the link branch spends seq + 8 through seq + 10, which under
-            // the old stride was the next row's own base and its first two attributes.
+            // Twenty rather than ten: a row's dd branches end at seq + 10, which under the old
+            // stride was the next row's own base. No rendered markup differs either way — the diff
+            // tolerates the repeat — so this is the numbering contract kept, not a defect fixed.
             seq += 20;
         }
 

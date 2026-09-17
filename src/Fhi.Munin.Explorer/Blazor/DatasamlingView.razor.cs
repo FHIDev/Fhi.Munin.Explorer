@@ -217,11 +217,11 @@ public sealed partial class DatasamlingView : ComponentBase
     /// where the row goes. The kildetype and the identification level are vocabularies this package
     /// translates; the rest are stored once, in Norwegian, however the reader is reading.
     /// <para>
-    /// Six of them are column-backed properties the catalogue can place in a section of its own,
-    /// and each yields when it does — see <see cref="UnlessPlaced"/> and
-    /// <see cref="ValidityRows"/>. Kilde, Kildetype, Sist oppdatert and Opprettet are not among
-    /// them: no section can draw a fact nothing merges into the renderable set, and the two
-    /// timestamps are Munin's own row rather than anything the catalogue curates.
+    /// Every row but Kilde, Kildetype and the two Munin timestamps is a column-backed property the
+    /// catalogue can place in a section of its own, and each yields when it does — see
+    /// <see cref="UnlessPlaced"/> and <see cref="ValidityRows"/>, which answers for Gyldig fra and
+    /// Gyldig til apart although they share one row. The four are not among them: no section can
+    /// draw a fact nothing merges into the renderable set, and the timestamps are Munin's own.
     /// </para>
     /// <para>
     /// Kilde is the one row with somewhere to go, and only where <see cref="KildeHref"/> was wired:
@@ -296,10 +296,13 @@ public sealed partial class DatasamlingView : ComponentBase
         }
     }
 
-    /// <inheritdoc cref="KildetypeLabel"/>
+    /// <summary>The catalogue's statistikktype in this package's vocabulary, for the row.</summary>
     /// <remarks>
-    /// The word <see cref="StatisticsHeading"/> puts in its parentheses, resolved once: the row and
-    /// the heading over it are one fact, and two resolutions are how it comes out in two words.
+    /// Not one of <see cref="KildetypeLabel"/>'s four: StatistikkType is the collection's own field
+    /// rather than an inherited <c>Effective…</c> one, and no hero fact draws it.
+    /// <see cref="StatisticsHeading"/> resolves the same code again through
+    /// <see cref="StatisticsBlock"/>, and what keeps the row and the heading in one word is the
+    /// <see cref="Texts.StatisticsTypeLabel"/> both go through — neither reads the other.
     /// </remarks>
     private string? StatisticsTypeLabel =>
         Datasamling?.StatisticsType is { } type && !string.IsNullOrWhiteSpace(type)
@@ -400,6 +403,8 @@ public sealed partial class DatasamlingView : ComponentBase
     /// Read raw rather than through <see cref="UnlessPlaced"/>, alone among the merged keys: a
     /// heading naming what the numbers count is not the fact repeated, it is what makes the section
     /// findable, and a section placed StatistikkType and headed "Statistikk" would have lost it.
+    /// The block stays gated on <see cref="AnyStatistics"/>, so a placement that empties the rows
+    /// takes the heading and its nav entry with them rather than leaving them over nothing.
     /// </para>
     /// </remarks>
     private string StatisticsHeading =>
