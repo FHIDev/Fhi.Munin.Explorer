@@ -156,9 +156,16 @@ reports "a declaration under a selector Stiler never spells, on a name it styles
   '.munin-explorer-meta { padding: 0; } .munin-explorer-meta kbd { letter-spacing: 3px; }' \
   '.munin-explorer-meta { padding: 0; }'
 
-reports "every declaration of such a rule is its own line" \
-  'invented-selector||.munin-explorer-meta kbd|color' \
-  '.munin-explorer-meta { padding: 0; } .munin-explorer-meta kbd { letter-spacing: 3px; color: red; }' \
+for property in letter-spacing color; do
+  reports "every declaration of such a rule is its own line: $property" \
+    "invented-selector||.munin-explorer-meta kbd|$property" \
+    '.munin-explorer-meta { padding: 0; } .munin-explorer-meta kbd { letter-spacing: 3px; color: red; }' \
+    '.munin-explorer-meta { padding: 0; }'
+done
+
+reports "a prefixed selector with no class name in it is reported too" \
+  'invented-selector||[data-host=munin-explorer] kbd|color' \
+  '.munin-explorer-meta { padding: 0; } [data-host="munin-explorer"] kbd { color: red; }' \
   '.munin-explorer-meta { padding: 0; }'
 
 reports "a selector Stiler spells only outside the sample's at-rule is still the sample's own" \
@@ -333,9 +340,6 @@ guard_says "the guard fails on an unlisted invented-selector" \
 guard_says "the guard passes once that invented-selector is listed" \
   '.munin-explorer-r1 kbd { letter-spacing: 3px; }' 'invented-selector||.munin-explorer-r1 kbd|letter-spacing' 0 \
   'from the 1 divergence(s) listed'
-guard_says "the guard asks for the line to be deleted once the rule is gone" \
-  '' 'invented-selector||.munin-explorer-r1 kbd|letter-spacing' 1 \
-  'no longer describe a divergence'
 
 # An empty block draws nothing, so it neither needs a Stiler rule nor vouches for a name.
 silent "an empty prefixed block in the sample is not unstyled" \

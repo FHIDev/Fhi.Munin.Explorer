@@ -513,7 +513,7 @@ export function compare(samplePath, stilerPath) {
             context: sampleRule.context,
             selector: sampleRule.selector,
             property,
-            detail: `The sample declares '${property}: ${normaliseValue(value, sampleTokens)}' under a selector Stiler never spells, though Stiler styles every name in it.`,
+            detail: `The sample declares '${property}: ${normaliseValue(value, sampleTokens)}' under a selector Stiler never spells.`,
           });
         }
       }
