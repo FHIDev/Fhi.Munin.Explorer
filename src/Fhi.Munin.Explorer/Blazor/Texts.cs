@@ -107,6 +107,10 @@ internal sealed record Texts(
     // The whole Data tab when neither section has anything, since each section on its own draws
     // nothing then.
     string NoKodeverkOrStatistics,
+    // The sentence opening the kodeverk block, one per kind of kodeverk the variable carries.
+    string KodeverkLeadKildekodeverk,
+    string KodeverkLeadAdministrativt,
+    string KodeverkLeadHelsefaglig,
     string ShowCodes,
     string HideCodes,
     // The control on an unnamed kildekodeverk whose codes do not all fit inline. Runa's wording
@@ -789,6 +793,24 @@ internal sealed record Texts(
         _ => type
     };
 
+    /// <summary>The kodeverk lead: a sentence per kind the links carry, in payload order, or null if none has one.</summary>
+    public string? KodeverkLead(IEnumerable<string> kinds)
+    {
+        var sentences = kinds
+            .Select(kind => kind switch
+            {
+                _ when Is(kind, "Kildekodeverk") => KodeverkLeadKildekodeverk,
+                _ when Is(kind, "AdministrativtKodeverk") => KodeverkLeadAdministrativt,
+                _ when Is(kind, "HelsefagligKodeverk") => KodeverkLeadHelsefaglig,
+                _ => null
+            })
+            .OfType<string>()
+            .Distinct()
+            .ToList();
+
+        return sentences.Count == 0 ? null : string.Join(" ", sentences);
+    }
+
     private static bool Is(string value, string token) =>
         string.Equals(value, token, StringComparison.OrdinalIgnoreCase);
 
@@ -917,6 +939,9 @@ internal sealed record Texts(
         FieldKodeverkReference: "Referanse",
         KodeverkUnnamed: "Ukjent navn",
         NoKodeverkOrStatistics: "Ingen kodeverk eller statistikk registrert",
+        KodeverkLeadKildekodeverk: "Kildekodeverket er verdiene slik de er registrert i kildesystemet.",
+        KodeverkLeadAdministrativt: "Administrative kodeverk er nasjonale kodeverk.",
+        KodeverkLeadHelsefaglig: "Helsefaglige kodeverk er nasjonale kliniske kodeverk og terminologier.",
         ShowCodes: "Vis koder",
         HideCodes: "Skjul koder",
         ShowAllCodes: count => $"Vis alle ({count})",
@@ -1300,6 +1325,9 @@ internal sealed record Texts(
         FieldKodeverkReference: "Reference",
         KodeverkUnnamed: "Unnamed",
         NoKodeverkOrStatistics: "No code systems or statistics registered",
+        KodeverkLeadKildekodeverk: "The source code system holds the values as they are recorded in the source system.",
+        KodeverkLeadAdministrativt: "Administrative code systems are national code systems.",
+        KodeverkLeadHelsefaglig: "Clinical code systems are national clinical code systems and terminologies.",
         ShowCodes: "Show codes",
         HideCodes: "Hide codes",
         ShowAllCodes: count => $"Show all ({count})",

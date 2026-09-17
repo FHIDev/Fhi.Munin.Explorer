@@ -95,7 +95,7 @@ internal static class StatisticsBlock
     /// </remarks>
     internal static string Heading(string? statisticsType, Texts texts) =>
         statisticsType is { } type && !string.IsNullOrWhiteSpace(type)
-            ? $"{texts.HeadingStatistics} ({texts.StatisticsTypeLabel(type)})"
+            ? $"{texts.HeadingStatistics} ({texts.StatisticsTypeLabel(type).ToLowerInvariant()})"
             : texts.HeadingStatistics;
 
     /// <summary>

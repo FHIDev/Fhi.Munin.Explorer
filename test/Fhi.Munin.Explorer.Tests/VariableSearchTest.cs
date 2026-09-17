@@ -10313,7 +10313,7 @@ public class VariableSearchTest : ExplorerTestContext
         var panel = Panel(cut);
 
         Assert.Contains("Kildekodeverk", panel.TextContent);
-        Assert.Contains("Statistikk (Årsbasert)", panel.TextContent);
+        Assert.Contains("Statistikk (årsbasert)", panel.TextContent);
 
         // The table itself, not just its heading — and the dash for the column the payload holds
         // no number for, so a reader can tell "not measured" from a cell that failed to draw.
@@ -10828,6 +10828,47 @@ public class VariableSearchTest : ExplorerTestContext
             .Knows(Codes2337())
             .Knows(Codes3402());
 
+    private const string KodeverkLeadNorwegian =
+        "Kildekodeverket er verdiene slik de er registrert i kildesystemet. "
+        + "Administrative kodeverk er nasjonale kodeverk. "
+        + "Helsefaglige kodeverk er nasjonale kliniske kodeverk og terminologier.";
+
+    [Fact]
+    public void Kodeverk_WhenTheWholeVariableIsOpened_ThenTheLeadIsTheFirstThingUnderTheHeading()
+    {
+        // The fixture names Kildekodeverk, Administrativt, Kildekodeverk again, then Helsefaglig: one
+        // sentence per kind, in the order the payload first names each, and no kind twice.
+        // (Fhi.Metadata-35w0p.24)
+        var cut = OpenData(KodeverkRows());
+
+        WholeVariableToggle(cut).Click();
+
+        var section = cut.Find($"#{DetailSectionIds.CodeLists}");
+
+        Assert.Equal("Kodeverk", section.Children[0].TextContent);
+        Assert.Equal("P", section.Children[1].TagName);
+        Assert.Equal(DetailBlocks.Lead, section.Children[1].ClassName);
+        Assert.Equal(KodeverkLeadNorwegian, section.Children[1].TextContent);
+    }
+
+    [Theory]
+    [InlineData(null, KodeverkLeadNorwegian)]
+    [InlineData("en",
+        "The source code system holds the values as they are recorded in the source system. "
+        + "Administrative code systems are national code systems. "
+        + "Clinical code systems are national clinical code systems and terminologies.")]
+    public void Kodeverk_WhenTheDataTabIsOpen_ThenTheSameLeadOpensTheTab(string? language, string lead)
+    {
+        // The tab draws the same block as the whole variable, so it opens with the same sentence,
+        // in the reader's language, before the first kind's heading.
+        var cut = OpenData(KodeverkRows(), p => p.Add(c => c.Language, language));
+
+        var first = Panel(cut).QuerySelector("[role=tabpanel]")!.Children[0];
+
+        Assert.Equal(DetailBlocks.Lead, first.ClassName);
+        Assert.Equal(lead, first.TextContent);
+    }
+
     /// <summary>Open the first row and move to the Data tab, where the kodeverk live.</summary>
     private IRenderedComponent<VariableSearch> OpenData(
         DetailClient client, Action<ComponentParameterCollectionBuilder<VariableSearch>>? p = null)
@@ -10946,7 +10987,10 @@ public class VariableSearchTest : ExplorerTestContext
         var tab = Panel(cut).QuerySelector("[role=tabpanel]")!;
         var tabKodeverk = tab.QuerySelector("ul.munin-explorer-kodeverk") is not null;
         var tabStatistics = tab.QuerySelector("table.munin-explorer-statistics") is not null;
-        var tabSaysNothingIsThere = tab.Children.Where(e => e.LocalName == "p").Select(p => p.TextContent).ToList();
+        var tabSaysNothingIsThere = tab.Children
+            .Where(e => e.LocalName == "p" && !e.ClassList.Contains(DetailBlocks.Lead))
+            .Select(p => p.TextContent)
+            .ToList();
 
         WholeVariableToggle(cut).Click();
 
@@ -11848,6 +11892,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(
         [
+            "munin-explorer-lead",                  // ours, the sentence opening the kodeverk block
             "munin-explorer-group",                 // ours, already in use on the Details tab
             "munin-explorer-kodeverk",              // ours, a handle — the list of links
             "munin-explorer-kodeverk__item",
