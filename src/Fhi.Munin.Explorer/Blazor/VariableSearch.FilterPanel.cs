@@ -1143,6 +1143,21 @@ public partial class VariableSearch
         _ => string.Empty
     };
 
+    /// <summary>Whether the panel is unfolded on a narrow screen; a host with room for a sidebar shows it regardless.</summary>
+    private bool _filtersOpen;
+
+    private string FacetsId => $"munin-explorer-filters-{_instance}";
+
+    // A double-click's second click would fold straight back what the first unfolded, as it did on
+    // Kelda's toggle (Fhi.Metadata-zel47).
+    private void ToggleFiltersFromControl(MouseEventArgs released)
+    {
+        if (!RowPress.WasSelectionStandingStill(released))
+        {
+            _filtersOpen = !_filtersOpen;
+        }
+    }
+
     /// <summary>Open every facet and every branch of every facet tree at once, or fold them all.</summary>
     /// <remarks>
     /// The rebuild costs the dataperiode's date fields whatever was typed into them but not yet

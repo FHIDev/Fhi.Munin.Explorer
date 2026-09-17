@@ -1473,7 +1473,11 @@ public class VariableSearchTest : BunitContext
             // The clear control, inside the field. Present here because this render carries a
             // search — it is drawn only when there is something to clear. (Fhi.Metadata-ag4n7)
             "munin-explorer-search__clear",
+            // Vis filtre, beside the panel it folds on a narrow screen, as the kilde explorer's
+            // does; the panel wears __facets for Stiler's [hidden] rules. (Fhi.Metadata-l9l2n.102)
+            "munin-explorer-filters__toggle",
             "munin-explorer-filters",    // ours, a handle
+            "munin-explorer-filters__facets",
             // The toolbar row: a container of its own, because in inline flow the last button's
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
@@ -7452,6 +7456,157 @@ public class VariableSearchTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
+    // The fold over the filter panel on a narrow screen. Whether a host's stylesheet honours it
+    // is measured in a browser, not here. (Fhi.Metadata-l9l2n.102)
+    // ---------------------------------------------------------------------------------
+
+    private static IElement FiltersToggle(IRenderedComponent<VariableSearch> cut) =>
+        cut.Find(".munin-explorer-filters__toggle");
+
+    /// <summary>The element the toggle says it folds, found through aria-controls rather than by class.</summary>
+    private static IElement FoldedByToggle(IRenderedComponent<VariableSearch> cut) =>
+        cut.Find($"#{FiltersToggle(cut).GetAttribute("aria-controls")}");
+
+    private static void PressFiltersToggle(IRenderedComponent<VariableSearch> cut, long clicks = 1) =>
+        FiltersToggle(cut).Click(new MouseEventArgs { Detail = clicks });
+
+    [Fact]
+    public void FiltersToggle_WhenTheSearchFirstRenders_ThenTheWholeFieldsetIsFoldedBehindANativeButton()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var toggle = FiltersToggle(cut);
+
+        Assert.Equal("BUTTON", toggle.TagName);
+        Assert.Equal("button", toggle.GetAttribute("type"));
+        Assert.Equal("Vis filtre", AccessibleName.Of(toggle));
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+
+        // The fieldset is what folds, legend and all, so the group keeps its name once it is open.
+        var folded = FoldedByToggle(cut);
+
+        Assert.Equal("FIELDSET", folded.TagName);
+        Assert.True(folded.HasAttribute("hidden"));
+        Assert.Equal("LEGEND", folded.FirstElementChild!.TagName);
+        Assert.Equal("Filtre", folded.FirstElementChild.TextContent.Trim());
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenThePanelIsFolded_ThenItsToolbarAndFacetsAreFoldedWithIt()
+    {
+        // Utvid alle, Skjul alle and the two switches only operate the facets, so a fold leaving
+        // them on screen would offer controls over groups the reader cannot see.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var folded = FoldedByToggle(cut);
+
+        // And the toggle itself stays outside, or a folded panel would take its only way back open.
+        Assert.False(folded.Contains(FiltersToggle(cut)));
+        Assert.Equal(4, folded.QuerySelectorAll(".munin-explorer-filters__toolbar button").Length);
+        Assert.NotEmpty(Disclosures(cut));
+        Assert.All(Disclosures(cut), facet => Assert.Equal(folded.Id, facet.ParentElement!.Id));
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenPressedTwice_ThenItUnfoldsThePanelAndFoldsItAgain()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        PressFiltersToggle(cut);
+
+        Assert.Equal("Skjul filtre", AccessibleName.Of(FiltersToggle(cut)));
+        Assert.Equal("true", FiltersToggle(cut).GetAttribute("aria-expanded"));
+        Assert.False(FoldedByToggle(cut).HasAttribute("hidden"));
+
+        PressFiltersToggle(cut);
+
+        Assert.Equal("Vis filtre", AccessibleName.Of(FiltersToggle(cut)));
+        Assert.Equal("false", FiltersToggle(cut).GetAttribute("aria-expanded"));
+        Assert.True(FoldedByToggle(cut).HasAttribute("hidden"));
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenItIsActivatedFromTheKeyboard_ThenEachActivationToggles()
+    {
+        // Enter and Space arrive as a click counting zero. DisclosureGestureGuardTest sweeps the
+        // double-click and the shift-click; a guard catching this one would lock a keyboard reader out.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        PressFiltersToggle(cut, clicks: 0);
+
+        Assert.False(FoldedByToggle(cut).HasAttribute("hidden"));
+
+        PressFiltersToggle(cut, clicks: 0);
+
+        Assert.True(FoldedByToggle(cut).HasAttribute("hidden"));
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenAChosenFilterIsFoldedAway_ThenNothingIsFetchedAndItsChipStillRemovesIt()
+    {
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        PressFiltersToggle(cut);
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        var searches = client.SearchCalls;
+        var facetCalls = client.FacetCalls;
+
+        PressFiltersToggle(cut);
+        PressFiltersToggle(cut);
+        PressFiltersToggle(cut);
+
+        // Folding is the panel's own state: nothing asks the API again and nothing is unticked.
+        Assert.True(FoldedByToggle(cut).HasAttribute("hidden"));
+        Assert.Equal(searches, client.SearchCalls);
+        Assert.Equal(facetCalls, client.FacetCalls);
+        Assert.Equal([Dodsarsak], client.SearchFilter!.KildeIds);
+        Assert.Equal(["Dødsårsaksregisteret"], Chips(cut));
+        Assert.True(Facet(cut, "Dødsårsaksregisteret").QuerySelector("input[type=checkbox]")!.HasAttribute("checked"));
+
+        cut.Find(".munin-explorer-filters__chip-remove").Click();
+
+        Assert.Empty(Chips(cut));
+        Assert.True(client.SearchFilter?.IsEmpty);
+        Assert.True(FoldedByToggle(cut).HasAttribute("hidden"));
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenTheReaderIsReadingEnglish_ThenBothWordingsAreEnglish()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("Show filters", AccessibleName.Of(FiltersToggle(cut)));
+
+        PressFiltersToggle(cut);
+
+        Assert.Equal("Hide filters", AccessibleName.Of(FiltersToggle(cut)));
+    }
+
+    [Fact]
+    public void FiltersToggle_WhenTwoSearchesAreMountedOnOnePage_ThenEachControlsItsOwnPanel()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var first = Render<VariableSearch>();
+        var second = Render<VariableSearch>();
+
+        Assert.NotEqual(FiltersToggle(first).GetAttribute("aria-controls"),
+                        FiltersToggle(second).GetAttribute("aria-controls"));
+        Assert.Equal("FIELDSET", FoldedByToggle(first).TagName);
+        Assert.Equal("FIELDSET", FoldedByToggle(second).TagName);
+
+        PressFiltersToggle(first);
+        PressFiltersToggle(second);
+
+        // Both pressed once: a fold shared between the two would have folded the second back shut.
+        Assert.False(FoldedByToggle(first).HasAttribute("hidden"));
+        Assert.False(FoldedByToggle(second).HasAttribute("hidden"));
+    }
+
+    // ---------------------------------------------------------------------------------
     // The row of active-filter chips over the results, and the row the count shares with
     // the column picker. (Fhi.Metadata-l9l2n.68)
     // ---------------------------------------------------------------------------------
@@ -13154,7 +13309,9 @@ public class VariableSearchTest : BunitContext
             // No munin-explorer-search__clear here: this render leaves the box empty, and the
             // clear control is drawn only when there is something to clear. Render_Always is where
             // that name is pinned, because that one searches. (Fhi.Metadata-ag4n7)
+            "munin-explorer-filters__toggle",
             "munin-explorer-filters",    // ours, a handle
+            "munin-explorer-filters__facets",
             // The toolbar row: a container of its own, because in inline flow the last button's
             // trailing margin counted against the line and the row broke apart under a scrollbar.
             "munin-explorer-filters__toolbar",
