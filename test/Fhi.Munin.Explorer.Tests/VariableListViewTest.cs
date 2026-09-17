@@ -3279,9 +3279,12 @@ public class VariableListViewTest : BunitContext
     private const string ActionRow = ".munin-explorer-page__actions";
 
     /// <summary>A press with no pointer in it: detail 0 is how a browser reports Enter or Space.</summary>
-    /// <remarks>The same reading <see cref="PressDisclosure"/> is written against.</remarks>
+    /// <remarks>
+    /// The same reading <see cref="PressDisclosure"/> is written against. Scoped to the row rather
+    /// than the page, so it cannot find a button of that name which never moved into it.
+    /// </remarks>
     private static void KeyboardPress(IRenderedComponent<VariableListView> cut, string word) =>
-        cut.FindAll("button")
+        cut.FindAll($"{ActionRow} button")
            .First(b => b.TextContent.Trim() == word)
            .Click(new MouseEventArgs { Detail = 0 });
 
