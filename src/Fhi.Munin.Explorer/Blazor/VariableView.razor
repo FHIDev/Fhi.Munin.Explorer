@@ -81,12 +81,9 @@
             {
                 <DetailSection Id="@DetailSectionIds.Placement">
                     @DetailBlocks.Heading(BlockLevel, T.GroupPlacement, "headline headline-s")
-                    @* No role="navigation" and no label, unlike the trail over the results: nothing
-                       here is pressable, and a landmark holding no control is one a reader jumps to
-                       for nothing. The class is the wrapper's look, not its landmark. *@
-                    @* Kilde, kildetype and datasamling are drawn again in Kildeinformasjon below,
-                       and that is intended: a path and a fact list are different registers, which
-                       is why DrawnElsewhere — same fact, two labels — does not cover it. *@
+                    @* No role="navigation": nothing here is pressable, and a landmark with no
+                       control is one a reader jumps to for nothing. The facts it repeats from
+                       Kildeinformasjon below are a path, not one fact under a second label. *@
                     <div class="munin-explorer-breadcrumb">@KildeTrailBlock.Write(Placement, T)</div>
                 </DetailSection>
             }

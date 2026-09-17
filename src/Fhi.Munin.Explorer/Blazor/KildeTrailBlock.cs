@@ -41,11 +41,9 @@ internal static class KildeTrailBlock
     /// <param name="detail">The variable being placed.</param>
     /// <param name="texts">The reader's language, for the two steps that are our own prose.</param>
     /// <param name="kildeTypeApiName">
-    /// The kildetype facet's <c>displayName</c>, for a caller holding the filters payload; null
-    /// where it has none, which is what <see cref="Texts.KildeTypeNameFromApi"/> falls back from.
-    /// Required rather than defaulted: a caller that omits the facets it holds draws one kildetype
-    /// in two spellings beside a facet button that draws the other, and a default makes that the
-    /// easy path rather than a decision. (Fhi.Metadata-3n6e1)
+    /// The kildetype facet's <c>displayName</c>, or null for a caller holding no filters payload —
+    /// what <see cref="Texts.KildeTypeNameFromApi"/> falls back from. Not defaulted, because a
+    /// caller omitting facets it holds spells one kildetype two ways. (Fhi.Metadata-3n6e1)
     /// </param>
     internal static IReadOnlyList<Crumb> Steps(
         VariableDetail detail, Texts texts, string? kildeTypeApiName)

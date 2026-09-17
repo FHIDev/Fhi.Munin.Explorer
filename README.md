@@ -540,9 +540,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     the hierarchy trail over the results and `VariableView`'s Plassering trail, and the
     `role="navigation"` on the first of those is that trail's own rather than the name's;
     and inside the `munin-explorer-period*` wrapper, `__track`, `__fill` and `__track--ongoing`
-    are the period bar itself — only its width
-    comes from an inline style, so an undrawn bar renders as nothing at all. The period is still
-    legible without it, because the dates are next to it in words, in `__range`.
+    are the period bar itself — only its width comes from an inline style, so an undrawn bar
+    renders as nothing at all. The period is still legible without it, because the dates are next
+    to it in words, in `__range`.
     `munin-explorer-kilder-scroll` is the box the kilder table scrolls in, and it is the one name
     here whose cost is paid by the HOST's page rather than by the component's own. The table's
     eight columns want 779px at their narrowest — measured over 66 kilder — and helsedata's content
