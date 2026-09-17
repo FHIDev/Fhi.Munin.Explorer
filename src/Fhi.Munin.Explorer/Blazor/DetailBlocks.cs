@@ -27,7 +27,7 @@ internal static class DetailBlocks
     /// <summary>The one class that mutes what the catalogue holds nothing for, on a fact or a whole tab.</summary>
     internal const string Absent = "munin-explorer-absent";
 
-    /// <summary>The class on the one sentence that opens a detail block, so every block's lead reads alike.</summary>
+    /// <summary>The class on the sentence that opens the kodeverk block, in both places that block is drawn.</summary>
     internal const string Lead = "munin-explorer-lead";
 
     /// <summary>A block's lead sentence under its heading, or nothing where it has none.</summary>

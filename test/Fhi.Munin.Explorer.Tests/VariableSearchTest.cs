@@ -10851,6 +10851,28 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(KodeverkLeadNorwegian, section.Children[1].TextContent);
     }
 
+    [Fact]
+    public void Kodeverk_WhenHelsefagligComesFirstInThePayload_ThenItsSentenceLeads()
+    {
+        // The fixture above names its kinds in the same order the sentences are declared in, so it
+        // cannot tell payload order from a fixed one. This payload reverses them.
+        var id = Guid.NewGuid();
+        var variable = Detail(id) with
+        {
+            KodeverkLinks =
+            [
+                new() { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", DisplayName = "ICD-10" },
+                new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", DisplayName = "Kjønn" },
+            ],
+        };
+        var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(variable));
+
+        Assert.Equal(
+            "Helsefaglige kodeverk er nasjonale kliniske kodeverk og terminologier. "
+            + "Kildekodeverket er verdiene slik de er registrert i kildesystemet.",
+            Panel(cut).QuerySelector("[role=tabpanel]")!.Children[0].TextContent);
+    }
+
     [Theory]
     [InlineData(null, KodeverkLeadNorwegian)]
     [InlineData("en",

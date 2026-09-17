@@ -325,6 +325,21 @@ public class VariableViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Statistics_WhenTheReaderIsEnglish_ThenTheKindIsOurWordInLowerCase()
+    {
+        // Lower case is ours for the words this package owns, in either language, and only for
+        // those: an unknown token keeps its spelling (the Kvartalsvis case above). (Fhi.Metadata-35w0p.24)
+        var detail = Detail() with
+        {
+            DatasamlingStatisticsType = "accumulated",
+            Statistics = [new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022" } }],
+        };
+
+        Assert.Equal("Statistics (accumulated)",
+                     Render(detail, language: "en").Find($"#{DetailSectionIds.Statistics}").FirstElementChild!.TextContent);
+    }
+
+    [Fact]
     public void Statistics_WhenTheKindIsOneWeHaveNeverSeen_ThenItIsShownRatherThanHidden()
     {
         // Only 'yearly' has ever come back from the test API. An unknown kind is shown as it
@@ -1206,6 +1221,7 @@ public class VariableViewTest : ExplorerTestContext
     [InlineData("accumulated", "Statistikk (akkumulert)")]
     [InlineData("akkumulert", "Statistikk (akkumulert)")]
     [InlineData("kvartalsvis", "Statistikk (kvartalsvis)")]
+    [InlineData("Kvartalsvis", "Statistikk (Kvartalsvis)")]
     [InlineData(null, "Statistikk")]
     public void Contents_WhateverTheStatisticsTypeIs_ThenTheNavEntrySaysWhatTheHeadingSays(
         string? statisticsType, string expected)
