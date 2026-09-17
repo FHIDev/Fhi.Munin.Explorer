@@ -9,7 +9,7 @@ public partial class VariableSearch
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Runa's seven, in Runa's order. Navn is deliberately not among them, in Runa either: it is
+    /// Runa's seven data columns in Runa's order, after the signed-in reader's save column. Navn is deliberately not among them, in Runa either: it is
     /// the row's own disclosure button as well as its first column, so hiding it would take the
     /// control that opens the panel off the screen along with the value.
     /// </para>
@@ -33,7 +33,7 @@ public partial class VariableSearch
         DataPeriod,
     }
 
-    /// <summary>The columns the picker offers, in the order it lists them.</summary>
+    /// <summary>Every optional column, in the order the picker lists the ones it offers.</summary>
     /// <remarks>
     /// The enum itself rather than a list restating it: two copies of one list drift apart
     /// independently, and a column added to <see cref="ResultColumn"/> without a line here would
@@ -111,7 +111,7 @@ public partial class VariableSearch
     /// </summary>
     /// <remarks>
     /// The last visible column cannot be turned off, which is Runa's rule. Navn stays whatever
-    /// happens, so the rule is about the seven optional ones: a row of nothing but names is a list
+    /// happens, so the rule is about the seven data columns: a row of nothing but names is a list
     /// the picker could talk the reader into and not out of, since the way back is the same control
     /// that emptied it.
     /// <para>

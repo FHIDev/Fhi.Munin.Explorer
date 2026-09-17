@@ -851,6 +851,7 @@ public class SaveToListTest : BunitContext
     {
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))), signedIn: false);
 
+        Assert.Contains("Kilde", PickerNames(cut));
         Assert.DoesNotContain("Variabelliste", PickerNames(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__save"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__save"));

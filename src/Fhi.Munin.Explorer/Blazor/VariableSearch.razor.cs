@@ -1119,8 +1119,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// to put the ordering in; now there is, and leaving both would give the same choice two
     /// controls.
     /// <para>
-    /// Four of the eight columns map to a real <see cref="SortField"/>. Kode, Datatype, Status and
-    /// Dataperiode have none, so their headers are plain text rather than buttons that would
+    /// Four of the eight data columns map to a real <see cref="SortField"/>. Kode, Datatype, Status and
+    /// Dataperiode have none, nor does the save column, so their headers are plain text rather than buttons that would
     /// promise an ordering the API does not offer. The variable column maps to
     /// <see cref="SortField.Default"/>, which is honest rather than convenient: that member is
     /// documented as the API's own order and its wire token is literally <c>name</c>.
