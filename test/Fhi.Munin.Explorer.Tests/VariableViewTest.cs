@@ -327,8 +327,9 @@ public class VariableViewTest : ExplorerTestContext
     [Fact]
     public void Statistics_WhenTheReaderIsEnglish_ThenTheKindIsOurWordInLowerCase()
     {
-        // Lower case is ours for the words this package owns, in either language, and only for
-        // those: an unknown token keeps its spelling (the Kvartalsvis case above). (Fhi.Metadata-35w0p.24)
+        // Lower case is ours for the words this package owns, in either language, and only for those:
+        // an unknown token keeps its spelling, the Kvartalsvis case in Contents_WhateverTheStatisticsTypeIs_….
+        // (Fhi.Metadata-35w0p.24)
         var detail = Detail() with
         {
             DatasamlingStatisticsType = "accumulated",
