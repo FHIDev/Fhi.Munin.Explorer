@@ -253,6 +253,9 @@ internal sealed record Texts(
     // (day) — "Sist endret: 7. sep. 2026". The day and never a clock time: this renders inside a
     // Blazor Server circuit, so the hour would be the server's rather than the reader's.
     Func<string, string> ListLastModified,
+    // (count) — "fra 3 datakilder", the distinct kilder the whole list draws from. Off the
+    // membership walk rather than my/lists, so the surface saying it waits for that walk.
+    Func<int, string> ListKildeCount,
     // "Ønskede data" — the reader's own note about what they want out of a variable. The heading
     // names the column and, in every row, the field itself. Only the length refusal earns a
     // sentence of its own: the API names the ceiling, so the reader can be told what to shorten
@@ -1007,6 +1010,7 @@ internal sealed record Texts(
         NoVariablesForTheseKilder: "Ingen variabler fra de valgte kildene.",
         ListVariableCount: count => count == 1 ? "1 variabel" : $"{count} variabler",
         ListLastModified: day => $"Sist endret: {day}",
+        ListKildeCount: count => count == 1 ? "fra 1 datakilde" : $"fra {count} datakilder",
         FieldDesiredData: "Ønskede data",
         DesiredDataError: "Kunne ikke lagre ønskede data nå. Prøv igjen om litt.",
         DesiredDataTooLong: maxLength =>
@@ -1388,6 +1392,7 @@ internal sealed record Texts(
         NoVariablesForTheseKilder: "No variables from the selected sources.",
         ListVariableCount: count => count == 1 ? "1 variable" : $"{count} variables",
         ListLastModified: day => $"Last modified: {day}",
+        ListKildeCount: count => count == 1 ? "from 1 source" : $"from {count} sources",
         FieldDesiredData: "Desired data",
         DesiredDataError: "Could not save the desired data just now. Try again shortly.",
         DesiredDataTooLong: maxLength =>

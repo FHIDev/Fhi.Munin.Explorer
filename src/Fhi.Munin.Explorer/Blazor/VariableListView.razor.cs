@@ -365,8 +365,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     };
 
     /// <summary>
-    /// The list on screen, off <c>my/lists</c> for both halves — so this waits on no page read, and
-    /// no picker entry can contradict it about the same list.
+    /// The list on screen: its size and last change off <c>my/lists</c>, so neither can contradict
+    /// a picker entry about the same list, and how many kilder it draws from off the membership
+    /// walk — left out until that walk has finished, since empty is also how a refused one reads.
     /// </summary>
     private string? ListMeta
     {
@@ -377,11 +378,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 return null;
             }
 
-            var count = T.ListVariableCount(shown.VariableCount);
+            List<string> parts = [T.ListVariableCount(shown.VariableCount)];
 
-            return CatalogueDate.DayOrNothing(shown.UpdatedAt, Language, DateWidth.Narrow) is { } day
-                ? $"{count} · {T.ListLastModified(day)}"
-                : count;
+            // The tally is the active list's, so it is only this list's while the two agree: a
+            // switch clears it before it awaits, but a notification can still render between them.
+            if (State is { KilderInListKnown: true, KilderInList.Count: > 0 } state
+                && state.ActiveListId == _shownList)
+            {
+                parts.Add(T.ListKildeCount(state.KilderInList.Count));
+            }
+
+            if (CatalogueDate.DayOrNothing(shown.UpdatedAt, Language, DateWidth.Narrow) is { } day)
+            {
+                parts.Add(T.ListLastModified(day));
+            }
+
+            return string.Join(" · ", parts);
         }
     }
 

@@ -9,29 +9,69 @@
        and a version readable on two of the three mount points is a trap for whoever checks the
        third. (Fhi.Metadata-sqbei) *@
     <DetailPage ViewRoot="" ViewMain="" data-munin-explorer-version="@ExplorerVersion.Current">
+
+        @* The chassis's action row, which this surface alone did not fill: the picker and the
+           download sat loose in the flow while the other three put their actions here. *@
+        <Actions>
+            @* The picker is only a choice when there is one to make. With a single list it
+               would be a control whose every option is already selected. *@
+            @if (Lists.Count > 1)
+            {
+                <label class="munin-explorer-filters__facets">
+                    @T.ChooseList
+                    <select value="@_shownList" @onchange="ChooseListAsync">
+                        @* Every option says what its list holds, which is what makes
+                           helsedata's own overview readable at a glance — see ListOption. *@
+                        @foreach (var list in Lists)
+                        {
+                            <option value="@list.Id" selected="@(list.Id == _shownList)">@ListOption(list)</option>
+                        }
+                    </select>
+                </label>
+            }
+
+            @* Only when there is something to download. A button that exports an empty list would
+               produce a file with a header row and nothing under it. *@
+            @if (_page is not null && _page.TotalCount > 0)
+            {
+                @* Folded, so three controls do not stand across a row meant for actions. The user
+                   agent owns this toggle, which is why there is no handler and no aria-expanded. *@
+                <details>
+                    <summary>@T.DownloadList</summary>
+
+                    @* A named group, not just a visual one: three controls that only make sense
+                       together, and a screen reader moving between them otherwise hears three
+                       unrelated widgets. Named as the fold is, so the fold says what it opens. *@
+                    <div role="group" aria-label="@T.DownloadList">
+                        <label>
+                            <input type="checkbox"
+                                   checked="@_includeKodeverk"
+                                   @onchange="e => _includeKodeverk = e.Value is true" />
+                            @T.IncludeKodeverk
+                        </label>
+
+                        @* Two formats, two buttons. aria-disabled while a download is in flight
+                           rather than disabled, for the reason the pager gives: disabling the
+                           element that has focus drops focus to <body>. *@
+                        <button class="hd-button-square button-square--ghost-blue"
+                                type="button"
+                                aria-disabled="@AriaDisabled(!_downloading)"
+                                @onclick="() => DownloadAsync(ExportFormat.Xlsx)">@T.DownloadXlsx</button>
+
+                        <button class="hd-button-square button-square--ghost-blue"
+                                type="button"
+                                aria-disabled="@AriaDisabled(!_downloading)"
+                                @onclick="() => DownloadAsync(ExportFormat.Csv)">@T.DownloadCsv</button>
+                    </div>
+                </details>
+            }
+        </Actions>
         <Header>
             @* The chassis's own header name: the other three wear a prefixed one beside it and this
                view has none to wear. *@
             <div class="munin-explorer-page__header">
                 @DetailBlocks.Heading(TitleLevel, T.MyListsHeading, "headline headline-s margin--bottom",
                                       ListHeadingId)
-
-                @* The picker is only a choice when there is one to make. With a single list it
-                   would be a control whose every option is already selected. *@
-                @if (Lists.Count > 1)
-                {
-                    <label class="munin-explorer-filters__facets">
-                        @T.ChooseList
-                        <select value="@_shownList" @onchange="ChooseListAsync">
-                            @* Every option says what its list holds, which is what makes
-                               helsedata's own overview readable at a glance — see ListOption. *@
-                            @foreach (var list in Lists)
-                            {
-                                <option value="@list.Id" selected="@(list.Id == _shownList)">@ListOption(list)</option>
-                            }
-                        </select>
-                    </label>
-                }
 
                 @* The count off the same field the picker's options read, beside the day the
                    list last changed — see the remarks on ListMeta. *@
@@ -126,36 +166,6 @@
                             type="button"
                             aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0)"
                             @onclick="RenameListAsync">@T.SaveListName</button>
-                </div>
-            }
-
-            @* Only when there is something to download. A button that exports an empty list would
-               produce a file with a header row and nothing under it. *@
-            @if (_page is not null && _page.TotalCount > 0)
-            {
-                @* A named group, not just a visual one: three controls that only make sense together,
-                   and a screen reader moving between them otherwise hears three unrelated widgets. *@
-                <div role="group" aria-label="@T.DownloadList">
-                    <label>
-                        <input type="checkbox"
-                               checked="@_includeKodeverk"
-                               @onchange="e => _includeKodeverk = e.Value is true" />
-                        @T.IncludeKodeverk
-                    </label>
-
-                    @* Two formats, two buttons. aria-disabled while a download is in flight rather
-                       than disabled, for the reason the pager gives: disabling the element that has
-                       focus drops focus to <body>. Secondary actions, so ghost-blue — the same
-                       variant helsedata gives "Åpne variabelliste" on their own page. *@
-                    <button class="hd-button-square button-square--ghost-blue"
-                            type="button"
-                            aria-disabled="@AriaDisabled(!_downloading)"
-                            @onclick="() => DownloadAsync(ExportFormat.Xlsx)">@T.DownloadXlsx</button>
-
-                    <button class="hd-button-square button-square--ghost-blue"
-                            type="button"
-                            aria-disabled="@AriaDisabled(!_downloading)"
-                            @onclick="() => DownloadAsync(ExportFormat.Csv)">@T.DownloadCsv</button>
                 </div>
             }
 

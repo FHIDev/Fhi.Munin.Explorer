@@ -356,6 +356,12 @@ public class VariableListViewTest : BunitContext
         /// <summary>The ids the export was asked for, so a test can see what would be in the file.</summary>
         public IReadOnlyCollection<Guid>? ExportedIds { get; private set; }
 
+        /// <summary>The other two halves of the request, which the ids alone cannot show.</summary>
+        public ExportFormat? LastExportFormat { get; private set; }
+
+        /// <inheritdoc cref="LastExportFormat"/>
+        public bool? LastIncludeKodeverk { get; private set; }
+
         /// <summary>Set when the reader's lists cannot be read - a throttled call, for instance.</summary>
         public bool ListsThrow { get; init; }
 
@@ -378,6 +384,8 @@ public class VariableListViewTest : BunitContext
             CancellationToken cancellationToken = default)
         {
             ExportedIds = variableIds;
+            LastExportFormat = format;
+            LastIncludeKodeverk = includeKodeverk;
 
             if (ExportThrottles)
             {
@@ -3263,5 +3271,228 @@ public class VariableListViewTest : BunitContext
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"), Orphan()));
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    // -----------------------------------------------------------------------
+    // The chassis action row (Fhi.Metadata-35w0p.52)
+
+    private const string ActionRow = ".munin-explorer-page__actions";
+
+    /// <summary>A press with no pointer in it: detail 0 is how a browser reports Enter or Space.</summary>
+    /// <remarks>The same reading <see cref="PressDisclosure"/> is written against.</remarks>
+    private static void KeyboardPress(IRenderedComponent<VariableListView> cut, string word) =>
+        cut.FindAll("button")
+           .First(b => b.TextContent.Trim() == word)
+           .Click(new MouseEventArgs { Detail = 0 });
+
+    [Fact]
+    public async Task Download_WhenItIsOperatedByKeyboardAlone_ThenBothFormatsAndTheKodeverkBoxReachTheApi()
+    {
+        // The three controls moved into the action row behind a fold, and the row is where a
+        // reader arrives by tabbing. Not one pointer event in here: a fold that can only be worked
+        // with a mouse would be a regression the old loose row could not have had.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        var fold = cut.Find($"{ActionRow} details");
+
+        // The fold has to say what it opens, and it says it in the words the group is named by.
+        Assert.Equal("Last ned listen", fold.QuerySelector("summary")!.TextContent.Trim());
+        Assert.Equal(
+            "Last ned listen",
+            cut.Find($"{ActionRow} details [role=group]").GetAttribute("aria-label"));
+
+        // A <details> belongs to the user agent, so there is no handler to send Enter to. This is
+        // what Enter on the summary does in a browser; everything after it is dispatched.
+        ((AngleSharp.Html.Dom.IHtmlDetailsElement)fold).IsOpen = true;
+
+        await cut.InvokeAsync(() =>
+            cut.Find($"{ActionRow} [role=group] input[type=checkbox]").Change(true));
+        await cut.InvokeAsync(() => KeyboardPress(cut, "Last ned som Excel"));
+
+        Assert.Equal(ExportFormat.Xlsx, client.LastExportFormat);
+        Assert.Equal(true, client.LastIncludeKodeverk);
+        Assert.Single(client.ExportedIds!);
+
+        await cut.InvokeAsync(() => KeyboardPress(cut, "Last ned som CSV"));
+
+        // The format is the half a shared handler would get wrong, and the tick has to survive it.
+        Assert.Equal(ExportFormat.Csv, client.LastExportFormat);
+        Assert.Equal(true, client.LastIncludeKodeverk);
+    }
+
+    [Fact]
+    public void Selector_WhenTheReaderHasSeveralLists_ThenItIsInTheActionRowAndNowhereElse()
+    {
+        // Position is the defect, not visibility: the code has drawn the picker whenever there is
+        // more than one list all along, but loose in the name block rather than where actions live.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
+
+        Assert.Single(cut.FindAll("select"));
+        Assert.Single(cut.FindAll($"{ActionRow} select"));
+        Assert.Empty(cut.FindAll(".munin-explorer-page__header select"));
+
+        // The same container the download moved into, so the two cannot be split again quietly.
+        Assert.Single(cut.FindAll($"{ActionRow} details"));
+    }
+
+    [Fact]
+    public void Selector_WhenTheReaderHasExactlyOneList_ThenItRendersNowhereAtAll()
+    {
+        // Settled 2026-09-17 (Robin): it stays conditional. A picker whose every option is already
+        // chosen is a dead control, and moving it into the row is no reason to draw one.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Empty(cut.FindAll("select"));
+        Assert.Empty(cut.FindAll($"{ActionRow} select"));
+    }
+
+    private static readonly Guid AlsKildeId = new("aaaaaaaa-0000-0000-0000-0000000000a1");
+    private static readonly Guid TromsoKildeId = new("aaaaaaaa-0000-0000-0000-0000000000a2");
+
+    /// <summary>
+    /// Two lists whose entries name kilder: the first draws from two, the second from one.
+    /// </summary>
+    /// <remarks>
+    /// Its own fake because <see cref="ListClient"/> pages one set of items out for every list id,
+    /// which cannot tell a list of two kilder from a list of one.
+    /// </remarks>
+    private class KildeListClient : EmptyMuninExplorerClient
+    {
+        public static readonly Guid TwoKilderListId = new("44444444-4444-4444-4444-444444444444");
+        public static readonly Guid OneKildeListId = new("55555555-5555-5555-5555-555555555555");
+
+        private static VariableListItem Entry(string name, Guid kildeId, string kildeName) =>
+            new()
+            {
+                VariableId = Guid.NewGuid(),
+                AddedAt = DateTimeOffset.UtcNow,
+                VariableName = name,
+                VariableCode = $"V_BDR.{name.ToUpperInvariant()}",
+                KildeId = kildeId,
+                KildeName = kildeName,
+                DatasamlingName = "Inklusjon",
+                DataType = "2"
+            };
+
+        private static readonly Dictionary<Guid, VariableListItem[]> Held = new()
+        {
+            [TwoKilderListId] =
+            [
+                Entry("Alder", AlsKildeId, "Als registeret"),
+                Entry("Kjonn", AlsKildeId, "Als registeret"),
+                Entry("Roeyking", TromsoKildeId, "Tromsøundersøkelsen")
+            ],
+            [OneKildeListId] =
+            [
+                Entry("Blodtrykk", TromsoKildeId, "Tromsøundersøkelsen"),
+                Entry("Puls", TromsoKildeId, "Tromsøundersøkelsen")
+            ]
+        };
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>(
+            [
+                new VariableList
+                {
+                    Id = TwoKilderListId,
+                    Name = "Hjerte og kar",
+                    VariableCount = Held[TwoKilderListId].Length
+                },
+                new VariableList
+                {
+                    Id = OneKildeListId,
+                    Name = "Tromsøvariabler",
+                    VariableCount = Held[OneKildeListId].Length
+                }
+            ]);
+
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
+        {
+            var items = Held.TryGetValue(id, out var found) ? found : [];
+
+            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            {
+                Items = items,
+                TotalCount = items.Length,
+                PageNumber = page,
+                Size = pageSize,
+                TotalPages = 1
+            });
+        }
+    }
+
+    private IRenderedComponent<VariableListView> RenderKildeView(KildeListClient client)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        return Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+    }
+
+    [Fact]
+    public async Task ListMeta_WhenTheListDrawsFromSeveralKilder_ThenItSaysHowManyAndAgreesForAListOfOne()
+    {
+        // Both ways in one case, because the singular is the half a count-only implementation gets
+        // wrong: 44444444… holds three variables from two kilder, 55555555… two from one kilde.
+        var cut = RenderKildeView(new KildeListClient());
+
+        Assert.Contains("fra 2 datakilder", cut.Find("p.caption").TextContent);
+
+        await cut.InvokeAsync(() =>
+            cut.Find("select").Change(KildeListClient.OneKildeListId.ToString()));
+
+        var meta = cut.Find("p.caption").TextContent;
+
+        Assert.Contains("fra 1 datakilde", meta);
+        Assert.DoesNotContain("fra 1 datakilder", meta);
+    }
+
+    [Fact]
+    public async Task ListMeta_WhenTheKildeFilterIsTicked_ThenTheCountDoesNotMoveWithIt()
+    {
+        // The tally is built by the unfiltered membership walk, so it describes the list rather
+        // than the rows on screen. A count that fell to 1 here would be the page's, not the list's.
+        var cut = RenderKildeView(new KildeListClient());
+        var state = Services.GetRequiredService<VariableListState>();
+
+        Assert.Contains("fra 2 datakilder", cut.Find("p.caption").TextContent);
+
+        await cut.InvokeAsync(() => state.ToggleKildeFilter(AlsKildeId));
+
+        Assert.Contains("fra 2 datakilder", cut.Find("p.caption").TextContent);
+    }
+
+    [Fact]
+    public async Task ListMeta_WhenTheMembershipWalkWasRefused_ThenItSaysNothingAboutKilderRatherThanNone()
+    {
+        // An empty tally is also how a refused walk reads, and "fra 0 datakilder" over a list we
+        // never managed to read is worse than no number. Staged on the switch: a refusal on mount
+        // leaves no list on screen at all, so there is no summary line there to be wrong.
+        var cut = RenderKildeView(new RefusingKildeListClient());
+
+        Assert.Contains("fra 2 datakilder", cut.Find("p.caption").TextContent);
+
+        await cut.InvokeAsync(() =>
+            cut.Find("select").Change(KildeListClient.OneKildeListId.ToString()));
+
+        var meta = cut.Find("p.caption").TextContent;
+
+        // The size still comes off my/lists, which answered; only the kilde clause is withheld.
+        Assert.Contains("2 variabler", meta);
+        Assert.DoesNotContain("datakilde", meta);
+    }
+
+    /// <summary>The same two lists, with every read of the second one refused.</summary>
+    private sealed class RefusingKildeListClient : KildeListClient
+    {
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default) =>
+            id == OneKildeListId
+                ? throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30))
+                : base.GetMyListVariablesAsync(id, page, pageSize, kildeIds, cancellationToken);
     }
 }
