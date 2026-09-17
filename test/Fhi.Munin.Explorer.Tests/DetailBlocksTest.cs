@@ -15,7 +15,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// only reachable here is the combination no view produces yet — an authored list that also carries
 /// a target — and a second render of one list instance, which no view's own tests perform.
 /// </remarks>
-public class DetailBlocksTest : BunitContext
+public class DetailBlocksTest : ExplorerTestContext
 {
     /// <summary>A receiver for the fragment under test, which is not a component.</summary>
     /// <remarks>

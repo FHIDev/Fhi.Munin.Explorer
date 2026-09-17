@@ -15,7 +15,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// This is the part of the component with no visible symptom when it breaks. A missing callback
 /// looks like nothing at all until someone sends a colleague a link and it opens on the wrong list.
 /// </remarks>
-public class ShareableStateTest : BunitContext
+public class ShareableStateTest : ExplorerTestContext
 {
     private static VariableSummary Row(string name) => new()
     {

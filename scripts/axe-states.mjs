@@ -236,6 +236,26 @@ export const states = {
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
+  // The same drill-in scrolled past its own hero fact row, which is the only state in this file
+  // where the sticky bar is on screen at all: the markup renders it hidden and the package's
+  // browser module is what shows it, so axe sees none of it in any state above
+  // (Fhi.Metadata-35w0p.28).
+  'kilde-stuckbar': async page => {
+    await states['kilde-drilldown'](page);
+
+    const row = page.locator('.munin-explorer-page__facts').first();
+    await row.waitFor({ state: 'visible', timeout: findTimeout });
+
+    await row.evaluate(one =>
+      window.scrollTo(0, one.getBoundingClientRect().top + window.scrollY + one.offsetHeight + 200));
+
+    // Waited for rather than assumed: a bar that never arrives is a state nobody entered, and axe
+    // reports no violations in markup that is still display:none.
+    await page.locator('.munin-explorer-page__stuckbar--on')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
   // A kilde row opened on its datasamlinger. The panel only exists after a press, so everything
   // in it - the colspan cell, the nested tables, the headings and the live region - is invisible
   // to the kilder-list scan above (Fhi.Metadata-mq24y).

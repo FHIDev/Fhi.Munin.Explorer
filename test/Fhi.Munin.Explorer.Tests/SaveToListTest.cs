@@ -13,7 +13,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// rebuilt whenever the facet counts change, so a button holding its own answer shows the wrong
 /// word for a variable that is in the list.
 /// </summary>
-public class SaveToListTest : BunitContext
+public class SaveToListTest : ExplorerTestContext
 {
     private static readonly Guid ListId = Guid.NewGuid();
 

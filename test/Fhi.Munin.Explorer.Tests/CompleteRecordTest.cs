@@ -17,7 +17,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// so rows come from every entry with a value, duplicates included. That duplication is the
 /// requirement, so nothing here asserts a field appears once (Fhi.Metadata-35w0p.21).
 /// </remarks>
-public class CompleteRecordTest : BunitContext
+public class CompleteRecordTest : ExplorerTestContext
 {
     public CompleteRecordTest() =>
         Services.AddSingleton<IMuninExplorerClient>(new HierarchyClient());

@@ -20,7 +20,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// because a new <c>&lt;button aria-expanded&gt;</c> passes every other test here. What the
 /// enumeration below does and does not establish is on <see cref="Swept"/>.
 /// </remarks>
-public class DisclosureGestureGuardTest : BunitContext
+public class DisclosureGestureGuardTest : ExplorerTestContext
 {
     /// <summary>What a disclosure is, for both halves of this guard: the attribute, not a class.</summary>
     private const string Disclosure = "button[aria-expanded]";

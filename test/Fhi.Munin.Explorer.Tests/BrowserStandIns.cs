@@ -100,6 +100,32 @@ internal sealed class RefusingModule(Exception thrown) : IJSObjectReference
         string identifier, CancellationToken cancellationToken, object?[]? args) => throw thrown;
 }
 
+/// <summary>A module that remembers what it was called with.</summary>
+/// <remarks>
+/// The exports take ids rather than elements, so what a test has to be able to read back is the
+/// arguments: a call that reached the module with the wrong instance's id would drive the wrong
+/// bar, and counting calls alone cannot tell the two apart.
+/// </remarks>
+internal sealed class RecordingModule : IJSObjectReference
+{
+    private readonly List<(string Identifier, object?[] Arguments)> _calls = [];
+
+    internal IReadOnlyList<(string Identifier, object?[] Arguments)> Calls => _calls;
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
+        InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+    public ValueTask<TValue> InvokeAsync<TValue>(
+        string identifier, CancellationToken cancellationToken, object?[]? args)
+    {
+        _calls.Add((identifier, args ?? []));
+
+        return ValueTask.FromResult(default(TValue)!);
+    }
+}
+
 /// <summary>A module that counts its own disposals.</summary>
 internal sealed class CountingModule : IJSObjectReference
 {

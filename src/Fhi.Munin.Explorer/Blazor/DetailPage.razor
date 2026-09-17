@@ -4,6 +4,44 @@
    the layout rules key on: for a duplicated name, Blazor lets the later attribute win. *@
 <div @attributes="AdditionalAttributes" class="@RootClasses">
 
+    @* The sticky bar, first so it pins to the top of the page rather than to whatever is above it.
+       Rendered `hidden`: the browser module is the only thing that ever shows it, and a reader
+       without one loses nothing, because every word in it is already on the page. *@
+    @if (Sticky)
+    {
+        <div id="@StuckbarId" class="munin-explorer-page__stuckbar" hidden aria-hidden="true">
+            <div class="munin-explorer-page__stuckbar-inner">
+
+                @* A span, never an h*: the bar repeats the page's own title, and a heading here
+                   would announce a second copy of it in the outline a screen reader navigates by. *@
+                <span class="munin-explorer-page__stuckbar-name">
+                    <span lang="@StickyNameLang">@StickyName</span>
+                    @if (!string.IsNullOrWhiteSpace(StickyCode))
+                    {
+                        <small>@StickyCode</small>
+                    }
+                </span>
+
+                @* Label and value only — no <small> note, which is the qualifier the hero row has
+                   the width for and this one does not. *@
+                <dl>
+                    @foreach (var fact in StickyFacts)
+                    {
+                        <div>
+                            <dt>@fact.Label</dt>
+                            <dd><span lang="@fact.Lang">@fact.Value</span></dd>
+                        </div>
+                    }
+                </dl>
+
+                @if (Actions is not null)
+                {
+                    <div class="munin-explorer-page__actions">@Actions</div>
+                }
+            </div>
+        </div>
+    }
+
     @* The chrome, above the name block as the mockups arrange it. Every piece of it is drawn only
        when a caller filled it: a trail with no steps, an eyebrow with no word and an unfilled
        action row are each nothing at all rather than an empty box with a margin. *@
@@ -29,9 +67,9 @@
     @* The hero row, under the name block and above the body as the mockups arrange it. Drawn only
        where a view named facts the catalogue filled in — an empty <dl> is a pair of rules and a
        row of padding around nothing. *@
-    @if (Facts is { Count: > 0 } facts)
+    @if (ShownFacts.Count > 0)
     {
-        <DetailFacts Facts="facts" />
+        <DetailFacts Facts="ShownFacts" Id="@FactsId" />
     }
 
     @* The chassis name alone. Every published Stiler lays the three views' own `__body` names out

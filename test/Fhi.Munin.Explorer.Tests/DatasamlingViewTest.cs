@@ -25,7 +25,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// component is exactly where new names appear.
 /// </para>
 /// </remarks>
-public class DatasamlingViewTest : BunitContext
+public class DatasamlingViewTest : ExplorerTestContext
 {
     /// <summary>
     /// The live payload, captured: six curated keys, two of the four groups filled in, every
@@ -335,6 +335,11 @@ public class DatasamlingViewTest : BunitContext
             "munin-explorer-page__main",
             // The wrapper each block below the name sits in, so the contents nav can anchor on it.
             "munin-explorer-page__section",
+            // The sticky bar, drawn hidden on every detail page and shown by the browser module
+            // alone. Its `--on` state is written only from JavaScript, so it is not in this list.
+            "munin-explorer-page__stuckbar",
+            "munin-explorer-page__stuckbar-inner",
+            "munin-explorer-page__stuckbar-name",
             // The contents column, drawn now that the nav fills it. The nav inside wears
             // helsedata's own form-menu names, which is why it adds none of ours.
             "munin-explorer-page__toc",

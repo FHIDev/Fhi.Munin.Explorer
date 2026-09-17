@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// The whole variable: the view that opens in place of the list, because this package has no router
 /// and a detail page is therefore a view rather than a route.
 /// </summary>
-public class VariableViewTest : BunitContext
+public class VariableViewTest : ExplorerTestContext
 {
     private static PropertyMetadataEntry Entry(string key, int sortOrder, string group,
                                                string? optionsJson = null,

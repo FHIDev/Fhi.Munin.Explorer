@@ -251,7 +251,7 @@ names=()
 while read -r name; do
   names+=("$name")
 done < <(
-  grep -rhoE --include='*.cs' --include='*.razor' --exclude-dir=bin --exclude-dir=obj \
+  grep -rhoE --include='*.cs' --include='*.razor' --include='*.js' --exclude-dir=bin --exclude-dir=obj \
          'munin-explorer[A-Za-z0-9_-]*' src/ \
     | grep -vE -- '(-|__)$' \
     | sort -u

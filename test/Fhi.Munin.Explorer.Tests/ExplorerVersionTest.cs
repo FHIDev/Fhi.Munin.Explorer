@@ -19,7 +19,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// convincing version while telling the reader something false. The expectation is read off the
 /// assembly instead. (Fhi.Metadata-sqbei)
 /// </remarks>
-public class ExplorerVersionTest : BunitContext
+public class ExplorerVersionTest : ExplorerTestContext
 {
     private const string Attribute = "data-munin-explorer-version";
 

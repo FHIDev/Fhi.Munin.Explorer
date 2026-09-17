@@ -64,9 +64,9 @@ public partial class ExplorerInteropTest
     [Fact]
     public void ModuleExports_WhenTheSourceIsRead_ThenTheWrapperNamesEveryOne()
     {
-        // The module is a seam and exports nothing today, so this walk reads nothing and the two
-        // theories below are what hold the matcher up. It is here for the first export, whose name
-        // is a literal in C# and a declaration in JS with nothing else holding the two together.
+        // Every export's name is a literal in C# and a declaration in JS, with nothing else holding
+        // the two spellings together. The theories below feed the matcher its own input, since this
+        // walk can only ever read the forms the module happens to use.
         var module = File.ReadAllText(ModuleInSource);
         var wrapper = File.ReadAllText(
             Repo.In("src", "Fhi.Munin.Explorer", "Blazor", nameof(ExplorerInterop) + ".cs"));
@@ -288,6 +288,97 @@ public partial class ExplorerInteropTest
         Assert.True(await interop.TryLoadAsync());
 
         Assert.Equal(1, runtime.Imports);
+    }
+
+    // -----------------------------------------------------------------------
+    // The exports, and which faults each of them may swallow
+
+    [Fact]
+    public async Task ObserveHeroFactsAsync_WhenTheModuleIsThere_ThenBothIdsReachTheExport()
+    {
+        // The ids are what scope one page's bar to one page's hero row, so a call that carried the
+        // wrong one would drive somebody else's bar and every count of the calls would still pass.
+        var module = new RecordingModule();
+        var interop = new ExplorerInterop(new LendingJsRuntime(module));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.ObserveHeroFactsAsync("bar-a1b2c3d4", "facts-a1b2c3d4");
+
+        var call = Assert.Single(module.Calls);
+
+        Assert.Equal("observeHeroFacts", call.Identifier);
+        Assert.Equal(["bar-a1b2c3d4", "facts-a1b2c3d4"], call.Arguments.Select(argument => argument as string));
+    }
+
+    [Fact]
+    public async Task ObserveHeroFactsAsync_WhenTheHostServesNoModule_ThenItDoesNothingAtAll()
+    {
+        // The designer's own note: uten JS dukker den bare aldri opp - ingenting går tapt. This is
+        // that sentence as a test, and the reason the bar is rendered hidden rather than shown.
+        var interop = new ExplorerInterop(new RefusingJsRuntime(new JSException("404")));
+
+        Assert.False(await interop.TryLoadAsync());
+
+        await interop.ObserveHeroFactsAsync("bar", "facts");
+    }
+
+    [Fact]
+    public async Task ObserveHeroFactsAsync_WhenTheExportItselfFaults_ThenItTravelsOn()
+    {
+        // The asymmetry with the disconnect below, and it is deliberate: a fault inside an export
+        // is a defect in the module, and one nothing rethrows is a bar that never works with
+        // nothing in any host's log to say so.
+        var interop = new ExplorerInterop(
+            new LendingJsRuntime(new RefusingModule(new JSException("observeHeroFacts is not a function"))));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await Assert.ThrowsAsync<JSException>(() => interop.ObserveHeroFactsAsync("bar", "facts"));
+    }
+
+    [Fact]
+    public async Task DisconnectHeroFactsAsync_WhenTheModuleIsThere_ThenTheBarsOwnIdReachesTheExport()
+    {
+        var module = new RecordingModule();
+        var interop = new ExplorerInterop(new LendingJsRuntime(module));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.DisconnectHeroFactsAsync("bar-a1b2c3d4");
+
+        var call = Assert.Single(module.Calls);
+
+        Assert.Equal("disconnectHeroFacts", call.Identifier);
+        Assert.Equal(["bar-a1b2c3d4"], call.Arguments.Select(argument => argument as string));
+    }
+
+    [Theory]
+    [InlineData(typeof(JSDisconnectedException))]
+    [InlineData(typeof(JSException))]
+    [InlineData(typeof(InvalidOperationException))]
+    [InlineData(typeof(ObjectDisposedException))]
+    [InlineData(typeof(OperationCanceledException))]
+    public async Task DisconnectHeroFactsAsync_WhenTheBrowserIsOutOfReach_ThenItSwallowsTheFault(Type thrown)
+    {
+        // This one runs from disposal, and a reader closing the tab mid-scroll is the normal way it
+        // is reached — so a throw here is an unhandled renderer fault in the host's log on every
+        // such close. JSException is in the list for that reason and is not in the observe's.
+        var interop = new ExplorerInterop(new LendingJsRuntime(new RefusingModule(Raise(thrown))));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.DisconnectHeroFactsAsync("bar");
+    }
+
+    [Fact]
+    public async Task DisconnectHeroFactsAsync_WhenTheModuleNeverLoaded_ThenThereIsNothingToDisconnect()
+    {
+        var interop = new ExplorerInterop(new RefusingJsRuntime(new JSException("404")));
+
+        Assert.False(await interop.TryLoadAsync());
+
+        await interop.DisconnectHeroFactsAsync("bar");
     }
 
     // -----------------------------------------------------------------------

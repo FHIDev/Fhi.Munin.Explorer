@@ -41,7 +41,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// kilde open, because the two states share almost no markup.
 /// </para>
 /// </remarks>
-public class KildeSearchTest : BunitContext
+public class KildeSearchTest : ExplorerTestContext
 {
     private static KildeSummary Kilde(
         string name,

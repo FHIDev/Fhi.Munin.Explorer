@@ -14,7 +14,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// pinned here: that it lands in the contents column and not the main one, and that a view passing
 /// nothing gets no column at all. The three placements below are the whole of that promise.
 /// </remarks>
-public class DetailPageTest : BunitContext
+public class DetailPageTest : ExplorerTestContext
 {
     private IRenderedComponent<DetailPage> RenderPage(bool withContents) =>
         Render<DetailPage>(parameters =>
@@ -359,6 +359,178 @@ public class DetailPageTest : BunitContext
         // across a page that led with nothing — and the saved-list view leads with nothing.
         Assert.Empty(RenderPage(withContents: false).FindAll(".munin-explorer-page__facts"));
     }
+
+    // -----------------------------------------------------------------------
+    // The sticky fact bar. A bUnit render IS the JS-absent case — the module is never really
+    // imported here — so every assertion below is about the page a reader without it gets.
+
+    /// <summary>Six named facts, one of them blank, as a view that has not been filled in names them.</summary>
+    private static IReadOnlyList<DetailFact> SixFacts() =>
+    [
+        new DetailFact("Kildetype", "Helseundersøkelse"),
+        // The note is on a fact the BAR repeats, so the assertion that the bar leaves notes out is
+        // about something: on the fourth it would hold whether the bar dropped them or not.
+        new DetailFact("Dataansvarlig", "UiT", "no", NoteLabel: "Databehandler", Note: "Norsk helsenett"),
+        new DetailFact("Grad av personidentifikasjon", "Avidentifisert"),
+        new DetailFact("Dataperiode", "1974–", NoteLabel: "Gyldighet", Note: "1974–2026"),
+        new DetailFact("Totalt antall variabler", "630", Note: "i 6 datasamlinger"),
+        new DetailFact("Lovverk", null),
+    ];
+
+    private IRenderedComponent<DetailPage> RenderSticky(string? name = "Tromsøundersøkelsen", bool withActions = false) =>
+        Render<DetailPage>(parameters =>
+        {
+            parameters
+                .Add(p => p.ViewRoot, "munin-explorer-kilde")
+                .Add(p => p.ViewMain, "munin-explorer-kilde__main")
+                .Add(p => p.StickyName, name)
+                .Add(p => p.StickyNameLang, "no")
+                .Add(p => p.StickyCode, "K_TR (Tromsø)")
+                .Add(p => p.Facts, SixFacts())
+                .Add(p => p.Header, (RenderFragment)(builder => builder.AddMarkupContent(0, "<h2>Tromsøundersøkelsen</h2>")))
+                .Add(p => p.ChildContent, (RenderFragment)(builder => builder.AddMarkupContent(0, "<p>the sections</p>")));
+
+            if (withActions)
+            {
+                parameters.Add(p => p.Actions,
+                    (RenderFragment)(builder => builder.AddMarkupContent(0, "<button type=\"button\">Vis variabler</button>")));
+            }
+        });
+
+    [Fact]
+    public void Stuckbar_WhenTheModuleNeverRuns_ThenItIsInertAndThePageIsStillWhole()
+    {
+        // bUnit never runs the module, so this render is the no-JS case whole: the bar must be
+        // there and reach nobody, and nothing on the page may depend on the observer having run.
+        // "Uten JS dukker den bare aldri opp - ingenting går tapt."
+        var cut = RenderSticky();
+
+        var bar = cut.Find(".munin-explorer-page__stuckbar");
+
+        Assert.True(bar.HasAttribute("hidden"));
+        Assert.Equal("true", bar.GetAttribute("aria-hidden"));
+        Assert.DoesNotContain("munin-explorer-page__stuckbar--on", bar.ClassList);
+
+        // And the page it summarises, unchanged: the name block, the hero row with all five facts
+        // the catalogue filled in, and the body below it.
+        Assert.Equal("Tromsøundersøkelsen", cut.Find("h2").TextContent.Trim());
+        Assert.Equal(5, cut.Find(".munin-explorer-page__facts").Children.Length);
+        Assert.Equal("the sections", cut.Find(".munin-explorer-page__main").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Stuckbar_Always_ThenItRepeatsRatherThanReplacingAndIsNeverASecondHeading()
+    {
+        // The bar duplicates what is already on the page, so the one thing it must not do is join
+        // the outline: a heading here is the page's title announced twice.
+        var cut = RenderSticky(withActions: true);
+
+        var bar = cut.Find(".munin-explorer-page__stuckbar");
+
+        Assert.Empty(bar.QuerySelectorAll("h1, h2, h3, h4, h5, h6"));
+
+        var name = bar.QuerySelector(".munin-explorer-page__stuckbar-name")!;
+
+        Assert.Equal("SPAN", name.TagName);
+        Assert.Contains("Tromsøundersøkelsen", name.TextContent);
+        Assert.Contains("K_TR (Tromsø)", name.TextContent);
+        Assert.Equal("no", name.QuerySelector("span")!.GetAttribute("lang"));
+
+        // Three of the hero row's facts, label and value only: the <small> qualifier is what the
+        // hero row has the width for and a one-line bar does not.
+        Assert.Equal(
+            ["Kildetype", "Dataansvarlig", "Grad av personidentifikasjon"],
+            bar.QuerySelectorAll("dt").Select(dt => dt.TextContent.Trim()));
+        Assert.Empty(bar.QuerySelectorAll("dl small"));
+        Assert.DoesNotContain("Norsk helsenett", bar.TextContent, StringComparison.Ordinal);
+
+        // The action row again, which is what the reader came to the bar for.
+        Assert.Equal(
+            "Vis variabler",
+            bar.QuerySelector(".munin-explorer-page__actions")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Stuckbar_WhenAViewNamesNothingToCondenseTo_ThenNoBarIsDrawnAtAll()
+    {
+        // Both halves, because both are real: the saved-list view names no hero facts, and a view
+        // that has not been given a name has nothing to put in the bar's one unrepeated slot.
+        Assert.Empty(RenderSticky(name: null).FindAll(".munin-explorer-page__stuckbar"));
+        Assert.Empty(RenderPage(withContents: false).FindAll(".munin-explorer-page__stuckbar"));
+    }
+
+    [Fact]
+    public void Stuckbar_WhenTwoPagesAreMountedTogether_ThenEachDrivesItsOwn()
+    {
+        // Two explorers on one host page must not fight over one bar. The ids are what keeps them
+        // apart, so the assertion is that each observe call pairs a bar with ITS OWN hero row —
+        // two calls naming one bar would pass any count of them.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+
+        var cut = Render(builder =>
+        {
+            for (var page = 0; page < 2; page++)
+            {
+                builder.OpenComponent<DetailPage>(page * 10);
+                builder.AddComponentParameter(page * 10 + 1, nameof(DetailPage.ViewRoot), "munin-explorer-kilde");
+                builder.AddComponentParameter(page * 10 + 2, nameof(DetailPage.ViewMain), "munin-explorer-kilde__main");
+                builder.AddComponentParameter(page * 10 + 3, nameof(DetailPage.StickyName), "Tromsøundersøkelsen");
+                builder.AddComponentParameter(page * 10 + 4, nameof(DetailPage.Facts), SixFacts());
+                builder.CloseComponent();
+            }
+        });
+
+        var bars = cut.FindAll(".munin-explorer-page__stuckbar").Select(bar => bar.Id ?? "").ToList();
+        var rows = cut.FindAll(".munin-explorer-page__facts").Select(row => row.Id ?? "").ToList();
+
+        Assert.Equal(2, bars.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(2, rows.Distinct(StringComparer.Ordinal).Count());
+
+        // Sorted on both sides: which of the two renders first is not the claim, and the ids are
+        // fresh guids, so a stable order would be an assumption rather than an assertion.
+        string[] wanted = [$"{bars[0]} watches {rows[0]}", $"{bars[1]} watches {rows[1]}"];
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            wanted.Order(StringComparer.Ordinal),
+            Observed(module).Order(StringComparer.Ordinal)));
+    }
+
+    [Fact]
+    public void Stuckbar_WhenThePageGoesAway_ThenItsOwnObserverIsDisconnected()
+    {
+        // An observer outliving its component holds the elements it watches, and a host swapping a
+        // view out of the render tree leaves the circuit — and the observer — alive.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var cut = RenderSticky();
+
+        var bar = cut.Find(".munin-explorer-page__stuckbar").Id ?? "";
+        var row = cut.Find(".munin-explorer-page__facts").Id ?? "";
+
+        cut.WaitForAssertion(() => Assert.Equal([$"{bar} watches {row}"], Observed(module)));
+
+        DisposeComponents();
+
+        Assert.Equal(
+            [bar],
+            module.Invocations["disconnectHeroFacts"].Select(call => (call.Arguments[0] as string) ?? ""));
+    }
+
+    [Fact]
+    public void Stuckbar_Always_ThenEveryNameItEmitsHasARuleInBothSampleStylesheets()
+    {
+        // The bar's four names are new, and the samples are the only stylesheet they have here:
+        // neither sample carries Stiler, so a name with no rule renders at browser defaults in both.
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(RenderSticky(withActions: true).FindAll("[class]"))));
+    }
+
+    /// <summary>Which bar each observe call was given, paired with the row it was told to watch.</summary>
+    /// <remarks>
+    /// One string per call rather than a pair, so a failure prints which bar was pointed at which
+    /// row: two calls naming one bar is the defect, and a count of them cannot say so.
+    /// </remarks>
+    private static IEnumerable<string> Observed(BunitJSModuleInterop module) =>
+        module.Invocations["observeHeroFacts"]
+            .Select(call => $"{call.Arguments[0]} watches {call.Arguments[1]}");
 
     [Fact]
     public void Chrome_Always_ThenEveryNameItEmitsHasARuleSomeStylesheetSupplies()

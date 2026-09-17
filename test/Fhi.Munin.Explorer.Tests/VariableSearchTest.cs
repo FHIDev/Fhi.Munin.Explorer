@@ -10,7 +10,7 @@ using static Fhi.Munin.Explorer.Tests.SortHeader;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-public class VariableSearchTest : BunitContext
+public class VariableSearchTest : ExplorerTestContext
 {
 
     private static Page<VariableSummary> OnePage(params VariableSummary[] rows) =>
@@ -5718,7 +5718,7 @@ public class VariableSearchTest : BunitContext
         // The glyphs are aria-hidden, so these words are the only place a reader who cannot see
         // them learns which categories THIS row carries: the datakategori facet above lists the
         // vocabulary and says nothing about which datasamling is in which. (Fhi.Metadata-evoil)
-        using var other = new BunitContext();
+        using var other = new ExplorerTestContext();
         var bare = RenderApart(other, new FilteringClient(OnePage(), FacetsWithCategories([], [])));
         var drawn = RenderWith(new FilteringClient(
             OnePage(), FacetsWithCategories(["PHDR", "EINS"], [])));

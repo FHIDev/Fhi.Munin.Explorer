@@ -16,7 +16,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// without failing any behaviour test. The raw-HTML, <c>javascript:</c> and heading tests below
 /// are what make that loosening fail loudly instead.
 /// </remarks>
-public class CatalogueMarkdownTest : BunitContext
+public class CatalogueMarkdownTest : ExplorerTestContext
 {
     private IRenderedComponent<IComponent> Rendered(string text) => Render(CatalogueMarkdown.Render(text));
 

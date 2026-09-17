@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -38,8 +39,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// reason to mount it. It ships no CSS, like everything else in this package.
 /// </para>
 /// </remarks>
-public sealed partial class DetailPage : ComponentBase
+public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
 {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
     /// <summary>
     /// The view's own root class, worn beside <c>munin-explorer-page</c> rather than replaced by
     /// it. Both are on the element for as long as Stiler styles either.
@@ -82,6 +85,47 @@ public sealed partial class DetailPage : ComponentBase
     /// </remarks>
     [Parameter]
     public IReadOnlyList<DetailFact>? Facts { get; set; }
+
+    /// <summary>
+    /// The name the sticky bar condenses the page to, as the heading above it says it. Unset, or
+    /// with no <see cref="Facts"/> left to show, draws no bar at all.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The bar is <c>munin-explorer-page__stuckbar</c>: the name, the first
+    /// <see cref="StickyFactCount"/> facts of the hero row and <see cref="Actions"/> again, pinned
+    /// to the top of the viewport once the hero row has scrolled off it. It is a summary of a
+    /// summary — every word in it is still on the page — which is why it is rendered
+    /// <c>hidden</c> and only the package's browser module ever shows it. A host that does not
+    /// serve that module never sees it, and loses nothing by not seeing it.
+    /// </para>
+    /// <para>
+    /// Resolve it through the same member the name block reads, as the hero facts are resolved:
+    /// a bar that says one thing while the heading says another is worse than no bar.
+    /// </para>
+    /// </remarks>
+    [Parameter]
+    public string? StickyName { get; set; }
+
+    /// <summary>
+    /// A <c>lang</c> for <see cref="StickyName"/> where it is not in the reader's language, on the
+    /// same terms as <see cref="DetailFact.Lang"/>. Null leaves it inheriting the host's own.
+    /// </summary>
+    [Parameter]
+    public string? StickyNameLang { get; set; }
+
+    /// <summary>
+    /// The identifiers under the name, drawn in the bar beside it. Unset draws the name alone.
+    /// </summary>
+    /// <remarks>
+    /// Left out where the heading has already fallen back to the code, for the reason the name
+    /// block leaves the identifiers out there: the code twice, side by side, is what a naive
+    /// fallback draws. A <c>&lt;small&gt;</c> rather than a class of its own — no host stylesheet
+    /// names one, and an element degrades to its own browser default where a name degrades to
+    /// nothing.
+    /// </remarks>
+    [Parameter]
+    public string? StickyCode { get; set; }
 
     /// <summary>
     /// The eyebrow: what kind of thing this page is about — <c>Datakilde</c>, <c>Datasamling</c>,
@@ -163,6 +207,88 @@ public sealed partial class DetailPage : ComponentBase
     /// </remarks>
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>How many of the hero row's facts the bar repeats.</summary>
+    /// <remarks>
+    /// Three, because Stiler hides everything past the second below 1024px: a bar that carried the
+    /// whole row would be six facts wide at desktop and the same two everywhere else.
+    /// </remarks>
+    private const int StickyFactCount = 3;
+
+    // Unique per instance so two detail pages on one host page cannot collide on DOM ids — and so
+    // the module watches each bar's own hero row rather than two observers sharing one bar.
+    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+
+    private ExplorerInterop? _interop;
+    private bool _observed;
+    private bool _disposed;
+
+    private string StuckbarId => $"munin-explorer-stuckbar-{_instance}";
+
+    private string FactsId => $"munin-explorer-facts-{_instance}";
+
+    /// <summary>The hero row as it will really be drawn, since a fact with no value is dropped.</summary>
+    /// <remarks>
+    /// Resolved here rather than left to <see cref="DetailFacts"/> alone, because the bar exists
+    /// only where that row does: a page whose facts the catalogue left empty has nothing to watch.
+    /// </remarks>
+    private IReadOnlyList<DetailFact> ShownFacts { get; set; } = [];
+
+    private IEnumerable<DetailFact> StickyFacts => ShownFacts.Take(StickyFactCount);
+
+    private bool Sticky => ShownFacts.Count > 0 && !string.IsNullOrWhiteSpace(StickyName);
+
+    /// <inheritdoc />
+    protected override void OnParametersSet() =>
+        ShownFacts = Facts is null
+            ? []
+            : [.. Facts.Where(fact => !string.IsNullOrWhiteSpace(fact.Value))];
+
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Not `firstRender` alone: a view renders its chassis before its payload arrives, and the
+        // bar and the row it watches are both drawn only once there are facts to fill them.
+        if (_observed || !Sticky)
+        {
+            return;
+        }
+
+        _observed = true;
+
+        var interop = new ExplorerInterop(JS);
+
+        // Assigned before the import so disposal can see it, and released here where disposal
+        // already ran: this continuation resumes after an await the renderer does not wait for.
+        _interop = interop;
+
+        await interop.TryLoadAsync();
+        await interop.ObserveHeroFactsAsync(StuckbarId, FactsId);
+
+        if (_disposed)
+        {
+            await interop.DisposeAsync();
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The observer is disconnected rather than left to the page: a component swapped out of the
+    /// render tree on a circuit that lives on would otherwise leave one holding the elements it
+    /// watches. A browser already out of reach is the ordinary case and is tolerated, not thrown.
+    /// </remarks>
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+
+        if (_interop is not { } interop)
+        {
+            return;
+        }
+
+        await interop.DisconnectHeroFactsAsync(StuckbarId);
+        await interop.DisposeAsync();
+    }
 
     private string RootClasses => Beside("munin-explorer-page", ViewRoot);
 

@@ -512,6 +512,23 @@ These are not style preferences — each one is a host that breaks otherwise.
     facts, because a list of saved variables is not an entity with facts about it. Both sample
     stylesheets stand in at exactly what the pinned 0.1.75 declares, the `small` included.
 
+    The same row is what the sticky bar watches, and the bar adds four names of its own —
+    `munin-explorer-page__stuckbar`, its `--on` state, `munin-explorer-page__stuckbar-inner` and
+    `munin-explorer-page__stuckbar-name`. It is a condensed repeat of the page's own opening: the
+    name, the first three hero facts, and the action row again, pinned to the top of the viewport
+    once the hero row has left it upwards. **Nothing on the server ever shows it.** The markup
+    renders it `hidden` with `aria-hidden="true"`, and the package's one browser module is the only
+    thing that takes either off — so a host serving no module, or a reader with JavaScript off,
+    never sees the bar and loses no word by not seeing it, because every word in it is still on the
+    page above. Handles, all four, and the kind is worth spelling out because the failure is not the
+    usual one: undefined, the bar is not a permanently visible band — it is a block in ordinary flow
+    at the top of the page, which the reader has already scrolled past by the time the module shows
+    it, so what an undefined rule costs is a layout jump rather than anything readable.
+    `Fhi.Helsedata.Stiler` 0.1.79 — the pin `samples/HostileHost` restores — carries all four in
+    `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at exactly what it
+    declares. `VariableListView` draws no bar: it names no hero facts, and the bar exists only where
+    that row does.
+
     The same three add `munin-explorer-page__fields` on every fact list they draw, and
     `munin-explorer-page__language` on the language name above a value the catalogue holds in more
     than one. Both used to be the drill-in panel's own `munin-explorer-meta__grid` and
@@ -619,10 +636,12 @@ These are not style preferences — each one is a host that breaks otherwise.
 
   Ids are otherwise a separate family, each suffixed with a per-instance discriminator so two
   mounts on one page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`,
-  `-toggle-*`, `-detail-*`, `-tab-*`, `-source-*` and the rest. `munin-explorer-source-*` is
-  worth naming, because it reads like a class and is not one: the drill-in region it identifies
-  wears the class `munin-explorer-drilldown`, so a host or a test reaching for
-  `.munin-explorer-source` comes up empty.
+  `-toggle-*`, `-detail-*`, `-tab-*`, `-source-*`, `-stuckbar-*`, `-facts-*` and the rest.
+  `munin-explorer-source-*` is worth naming, because it reads like a class and is not one: the
+  drill-in region it identifies wears the class `munin-explorer-drilldown`, so a host or a test
+  reaching for `.munin-explorer-source` comes up empty. The last two are the pair the sticky bar
+  turns on — the bar and the hero fact row it watches — and they are ids rather than classes for
+  exactly the reason the family exists: two detail pages on one host page each drive their own bar.
 
   One family more is written by interpolation rather than as a literal, so the table below cannot
   carry it and this paragraph has to: `RowCell.Write` dresses each result column as
@@ -820,6 +839,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-page__language` | handle |
   | `munin-explorer-page__main` | handle |
   | `munin-explorer-page__section` | handle |
+  | `munin-explorer-page__stuckbar` | handle |
+  | `munin-explorer-page__stuckbar--on` | handle |
+  | `munin-explorer-page__stuckbar-inner` | handle |
+  | `munin-explorer-page__stuckbar-name` | handle |
   | `munin-explorer-page__toc` | handle |
   | `munin-explorer-pagination` | handle |
   | `munin-explorer-pagination-content` | handle |

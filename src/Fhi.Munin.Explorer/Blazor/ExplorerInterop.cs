@@ -6,9 +6,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// The package's one JavaScript module, imported once per component and disposed with it.
 /// </summary>
 /// <remarks>
-/// Nothing reads it yet. It exists so a later enhancement has a module to put itself in, and a
-/// refused import answers "not there" rather than throwing: an unhandled rejection on a legacy
-/// Blazor Server circuit takes the circuit down, which costs the reader the page (Fhi.Metadata-35w0p.14).
+/// Nothing rendered depends on it, and a refused import answers "not there" rather than throwing:
+/// an unhandled rejection on a legacy Blazor Server circuit takes the circuit down, which costs the
+/// reader the page (Fhi.Metadata-35w0p.14). Every export is optional on those terms.
 /// </remarks>
 internal sealed class ExplorerInterop : IAsyncDisposable
 {
@@ -64,6 +64,53 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
 
         return _module is not null;
+    }
+
+    /// <summary>
+    /// Shows the sticky fact bar <paramref name="barId"/> while the hero fact row
+    /// <paramref name="factsId"/> is off the top of the viewport, and hides it again otherwise.
+    /// </summary>
+    /// <remarks>
+    /// <b>Call it after <see cref="TryLoadAsync"/>, from the same first render.</b> Where the module
+    /// is not there it does nothing, which is the required behaviour: the bar repeats what is on the
+    /// page already. Nothing about the scroll comes back to the server.
+    /// </remarks>
+    internal async Task ObserveHeroFactsAsync(string barId, string factsId)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        await Tolerated(() => module.InvokeVoidAsync("observeHeroFacts", barId, factsId))
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Stops watching for <paramref name="barId"/>, so the observer goes with the component rather
+    /// than with the page.
+    /// </summary>
+    /// <remarks>
+    /// Tolerates a <see cref="JSException"/> as well as the three <see cref="Tolerated{T}"/> covers,
+    /// unlike <see cref="ObserveHeroFactsAsync"/>: this one is called from disposal, where a throw
+    /// is unhandled in the renderer and takes the circuit down.
+    /// </remarks>
+    internal async Task DisconnectHeroFactsAsync(string barId)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        try
+        {
+            await Tolerated(() => module.InvokeVoidAsync("disconnectHeroFacts", barId))
+                .ConfigureAwait(false);
+        }
+        // The browser has moved on — a reconnect, or the page already gone. So has the observer.
+        catch (JSException)
+        {
+        }
     }
 
     /// <inheritdoc />
