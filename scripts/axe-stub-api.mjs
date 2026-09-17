@@ -16,6 +16,7 @@ import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { TREE_SEARCH, EMPTY_SEARCH, treeFilters } from './tree-fixture.mjs';
 
 const port = Number(process.argv[2]);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -209,6 +210,19 @@ function control(url, request, response) {
 
 function serve(url, request, response) {
   const path = url.pathname;
+  const search = url.searchParams.get('search');
+  if (search === TREE_SEARCH || search === EMPTY_SEARCH) {
+    const empty = search === EMPTY_SEARCH;
+    if (path === '/api/explorer/filters') {
+      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(treeFilters(empty)));
+      return;
+    }
+    if (path === '/api/explorer/variables' && empty) {
+      response.writeHead(200, { 'content-type': 'application/json' })
+        .end(JSON.stringify({ items: [], totalCount: 0, page: 1, size: 25, totalPages: 0 }));
+      return;
+    }
+  }
   const route = routes.find(([pattern]) => pattern.test(path));
 
   if (route === undefined) {

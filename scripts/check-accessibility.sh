@@ -36,7 +36,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's is not — so
 #     neither its chip row nor the hierarchy trail over its results is ever on screen for axe,
 #     and a green run says nothing about either (Fhi.Metadata-oj286);
-#   - error and empty states, which need the stub to answer differently than it does;
+#   - error states; empty results and a facet search matching nothing are covered by tree-*;
 #   - hierarchy branches beyond the two opened levels in kilde-hierarchy-expanded;
 #   - the English texts, and samples/LegacyHost, the same component in the other host;
 #   - the list tab's own create, rename and delete forms, and the annotation field in a row.
@@ -64,6 +64,10 @@ TARGETS=(
   "$REFLOW_TARGET"
   "/::filters-level-lines"
   "/::filters-node-icons-off"
+  "/::tree-collapsed"
+  "/::tree-populated"
+  "/::tree-empty-results"
+  "/::tree-no-match"
   "/::variable-detail"
   "/kilder::kilde-drilldown"
   "/kilder::kilde-hierarchy-collapsed"

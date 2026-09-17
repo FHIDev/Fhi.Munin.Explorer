@@ -24,7 +24,8 @@
 # own tick beside it is a question a render tree cannot answer. (Fhi.Metadata-kd9ts)
 #
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
-#   - the six assertions it stages are the whole of it; the clicks each one needs to reach its
+#   - the assertions in state-assertions.mjs and tree-assertions.mjs are the whole of it;
+#     the clicks each one needs to reach its
 #     subject are setup rather than subject. scripts/state-assertions.mjs lists what that leaves
 #     out — the kildeutforsker's copy of the same picker, the facet panel's other refusal path,
 #     the contents nav's focus step, and every other control in the component;
@@ -66,6 +67,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # NavigationManager; `/utforsker` mounts VariableExplorer, which moves the address bar with
 # history.replaceState and so has to hand the nav an address Blazor was never told about.
 TARGETS=(
+  "/::tree-collapsed"
+  "/::tree-populated"
+  "/::tree-empty-results"
   "/::variables-list"
   "/kilder::kilde-hierarchy-collapsed"
   "/utforsker::variable-whole"
@@ -216,8 +220,8 @@ EOF
 fi
 
 cat <<'EOF'
-A refused press left the DOM and the component agreeing, and each assertion still fires against
-the defect it exists for.
+A refused press left the DOM and the component agreeing. The populated tree checks also passed,
+and every assertion detected its deliberately introduced defect.
 
 Read that for what it is. Two REFUSED presses were staged in the variable explorer - the picker's
 last visible column, and a facet value pressed a second time while its own refetch was in flight -
@@ -226,4 +230,9 @@ panel's Ikoner switch. The two contents navs are read rather than pressed, and w
 is the address the browser resolved each href to. All of it against the sample stylesheet. The
 header of this script and of scripts/state-assertions.mjs list what that leaves out - the contents
 nav's focus step in particular, which this host's router takes over.
+
+The tree fixtures cover Filter="1"/"2"/unset, repeated placements, direct datasamlinger, groups
+at delkilde and kilde level, an opted-out container, 120 child groups, and empty results. Their
+assertions check shared selection, chip removal, independent disclosure, and facet-search focus.
+They exercise browser state against synthetic responses, not the API's cross-filtering logic.
 EOF

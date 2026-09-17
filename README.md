@@ -915,6 +915,10 @@ the two setup traps that cost the most time.
 
 ## Build
 
+The browser guards also exercise deterministic variabelgruppe trees, including empty results and
+120 child groups. See [the browser fixture coverage](docs/running-locally.md#browser-tree-fixtures)
+for the scenarios and the limits of these checks.
+
 ```bash
 dotnet build
 dotnet test

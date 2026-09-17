@@ -11,6 +11,26 @@ The second exists to answer two questions the first cannot: *does it look right 
 
 ---
 
+## Browser tree fixtures
+
+`check-component-state.sh`, `check-accessibility.sh` and `check-hostile-host.sh` share the
+`tree-collapsed`, `tree-populated` and `tree-empty-results` states. The accessibility and
+hostile-host guards also scan `tree-no-match`. These opt into synthetic stub responses using
+the reserved search terms `browser-tree-fixture` and `browser-tree-empty`; ordinary searches
+still use the captured catalogue. The live API does not recognize these terms specially.
+
+The fixture includes `Filter="1"`, `Filter="2"` and unset groups, a group repeated under two
+datasamlinger, a direct datasamling, groups attached directly to a delkilde or kilde, an opted-out
+ancestor with an offered child, and a branch with 120 child groups. Component-state checks
+exercise shared selection and clearing, one chip per group, keyboard disclosure independently
+of selection, and focus restoration when a facet search matches nothing. Each assertion must
+also detect a deliberately introduced DOM defect.
+
+These checks verify browser behavior, not API query semantics: fixture counts and membership
+are fixed, and the empty-result variant keeps the tree available with zero counts. ModernHost
+uses the sample stylesheet; HostileHost scans the same tree states under Stiler at the configured
+desktop widths and at 320px. Report the stylesheet version, failures and any skips with a run.
+
 ## 1. Sample host (the normal way)
 
 ```bash

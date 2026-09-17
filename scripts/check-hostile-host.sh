@@ -67,6 +67,10 @@ TARGETS=(
   "/::variable-detail"
   "/::variable-whole"
   "/::explorer-search-code"
+  "/::tree-collapsed"
+  "/::tree-populated"
+  "/::tree-empty-results"
+  "/::tree-no-match"
   "/kilder::kilder-list"
   "/kilder::kilder-counts"
   "/kilder::kilde-hierarchy-collapsed"
@@ -266,6 +270,7 @@ reflow "" \
 # The states the stub's long code reaches: the row panel's Kode, the whole-variable page's heading
 # and fact row, and the result count that quotes a searched term (Fhi.Metadata-ofg1h).
 reflow "" "/::variable-detail" "/::variable-whole" "/::explorer-search-code"
+reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tree-no-match"
 
 # An assertion that has quietly stopped measuring anything reports success forever, so each one is
 # handed a page carrying the defect it was written for and required to say so.
