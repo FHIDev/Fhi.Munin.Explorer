@@ -165,7 +165,7 @@ SETTLE_MS="${ACCESSIBILITY_SETTLE_MS:-4000}"
 
 # Playwright brings its own browser, so nothing here depends on what the runner has.
 echo "==> installing the scanner"
-npm install --no-save --silent \
+npm install --prefix "$ROOT" --no-save --silent \
     "playwright@${PLAYWRIGHT_VERSION}" \
     "@axe-core/playwright@${AXE_PLAYWRIGHT_VERSION}" >/tmp/npm-install.log 2>&1 || {
   echo "could not install the scanner - TOOLING failure." >&2
@@ -177,7 +177,7 @@ npm install --no-save --silent \
 # cannot succeed at all - the pinned fetcher calls fs.rmdir(recursive), removed in that version,
 # which leaves a half-written cache with a chrome.dll and no chrome.exe (Fhi.Metadata-wgwa0).
 if [ -z "${PLAYWRIGHT_BROWSER_CHANNEL:-}" ]; then
-  npx --yes playwright install chromium >/tmp/pw-install.log 2>&1 || {
+  npx --prefix "$ROOT" --yes playwright install chromium >/tmp/pw-install.log 2>&1 || {
     echo "could not install chromium - TOOLING failure." >&2
     echo "on Node 26 try PLAYWRIGHT_BROWSER_CHANNEL=msedge to use an installed browser." >&2
     tail -10 /tmp/pw-install.log >&2

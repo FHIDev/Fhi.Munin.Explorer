@@ -167,7 +167,8 @@ fi
 SETTLE_MS="${ACCESSIBILITY_SETTLE_MS:-4000}"
 
 echo "==> installing the driver"
-npm install --no-save --silent "playwright@${PLAYWRIGHT_VERSION}" >/tmp/state-npm-install.log 2>&1 || {
+# Without a manifest, npm otherwise finds a parent checkout's node_modules from a worktree.
+npm install --prefix "$ROOT" --no-save --silent "playwright@${PLAYWRIGHT_VERSION}" >/tmp/state-npm-install.log 2>&1 || {
   echo "could not install the driver - TOOLING failure." >&2
   tail -10 /tmp/state-npm-install.log >&2
   exit 2
@@ -177,7 +178,7 @@ npm install --no-save --silent "playwright@${PLAYWRIGHT_VERSION}" >/tmp/state-np
 # succeed at all - the pinned fetcher calls fs.rmdir(recursive), removed in that version, which
 # leaves a half-written cache with a chrome.dll and no chrome.exe (Fhi.Metadata-2nfvm).
 if [ -z "${PLAYWRIGHT_BROWSER_CHANNEL:-}" ]; then
-  npx --yes playwright install chromium >/tmp/state-pw-install.log 2>&1 || {
+  npx --prefix "$ROOT" --yes playwright install chromium >/tmp/state-pw-install.log 2>&1 || {
     echo "could not install chromium - TOOLING failure." >&2
     echo "on Node 26 try PLAYWRIGHT_BROWSER_CHANNEL=msedge to use an installed browser." >&2
     tail -10 /tmp/state-pw-install.log >&2
