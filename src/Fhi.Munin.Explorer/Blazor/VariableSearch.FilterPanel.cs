@@ -1123,6 +1123,14 @@ public partial class VariableSearch
     /// <summary>Whether a facet is drawn open: the last fold press, or the facet's own default.</summary>
     private bool FacetOpen(FacetGroup group) => _foldAll ?? group.OpenByDefault;
 
+    /// <summary>The icon legend's disclosure key, on the generation the facets' keys carry.</summary>
+    private string LegendKey => $"icon-legend#{_foldGeneration}";
+
+    /// <summary>Whether the icon legend is drawn open. It folds with the facets rather than apart
+    /// from them: one disclosure left standing open under a pressed Skjul alle reads as the press
+    /// not having worked.</summary>
+    private bool LegendOpen => _foldAll ?? false;
+
     /// <summary>What the last fold press did, for the panel's live region.</summary>
     /// <remarks>
     /// Empty until a press, or the region would speak on every mount. A second identical press is
@@ -1195,6 +1203,41 @@ public partial class VariableSearch
 
         return RaiseAsync(ShowNodeIconsChanged, _showNodeIcons, Log);
     }
+
+    /// <summary>The words for the glyphs the tree draws: one row per datakategori.</summary>
+    /// <remarks>
+    /// The whole vocabulary, never the rows on screen: a legend that grew and shrank as the facets
+    /// narrowed would read as a second facet rather than as the key to the pictures.
+    /// (Fhi.Metadata-zllxt)
+    /// </remarks>
+    private RenderFragment IconLegendList => builder =>
+    {
+        builder.OpenElement(0, "ul");
+        builder.AddAttribute(1, "class", "munin-explorer-filters__legend");
+
+        foreach (var icon in DataCategoryIcons.All)
+        {
+            builder.OpenElement(2, "li");
+            builder.SetKey(icon.Key);
+            builder.AddAttribute(3, "class", "munin-explorer-filters__legend-item");
+
+            // A direct child of the row, which is what Stiler's rule selects: the slot a value row
+            // wears would put a second box between this glyph and the word explaining it.
+            builder.AddContent(4, (RenderFragment)(nested =>
+                NodeIcons.WriteGlyph(nested, icon, NodeIconClasses.Facets.Glyph)));
+
+            // The name in a box of its own, so a long one wraps beside the glyph rather than under
+            // it — an anonymous flex item cannot be the thing a rule gives room to shrink.
+            builder.OpenElement(5, "span");
+            builder.AddContent(
+                6, T.DataCategoryNames.TryGetValue(icon.Key, out var name) ? name : icon.Key);
+            builder.CloseElement();
+
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
 
     /// <summary>A facet's own label, saying how many of its values are chosen.</summary>
     /// <remarks>

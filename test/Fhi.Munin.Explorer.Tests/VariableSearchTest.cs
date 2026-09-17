@@ -1486,6 +1486,12 @@ public class VariableSearchTest : BunitContext
             // The number beside a facet value, in an element of its own so a host can dim it —
             // the same name the kilde explorer's facets wear. (Fhi.Metadata-cgk85)
             "munin-explorer-filters__count",
+            // The Ikonforklaring legend under the facets. Its glyph wears the facet value's own
+            // name, which no value row in this render draws, so the legend is what brings it into
+            // this list — and it wears that name alone, having no slot. (Fhi.Metadata-zllxt)
+            "munin-explorer-filters__legend",
+            "munin-explorer-filters__legend-item",
+            "munin-explorer-filters__icon",
             // The row the count shares with the column picker, above the results container and
             // outside it — the name the kildeutforsker already emits. (Fhi.Metadata-l9l2n.68)
             "munin-explorer-results__toolbar",
@@ -3411,9 +3417,15 @@ public class VariableSearchTest : BunitContext
     /// inside the kilde facet are disclosures too, and counting their summaries here would report
     /// "Biobank 1" as a facet of the panel. (Fhi.Metadata-l9l2n.67)
     /// </para>
+    /// <para>
+    /// The Ikonforklaring legend is a direct child too and is dropped: it narrows nothing, and
+    /// counting it here would report the key to the glyphs as an eleventh facet. (Fhi.Metadata-zllxt)
+    /// </para>
     /// </remarks>
     private static IReadOnlyList<string> FacetHeadings(IRenderedComponent<VariableSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-filters > details > summary").Select(s => s.TextContent)];
+        [.. cut.FindAll(".munin-explorer-filters > details")
+            .Where(facet => facet.QuerySelector(".munin-explorer-filters__legend") is null)
+            .Select(facet => facet.QuerySelector("summary")!.TextContent)];
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> DateInputs(
         IRenderedComponent<VariableSearch> cut) =>
@@ -5794,6 +5806,139 @@ public class VariableSearchTest : BunitContext
         Assert.Equal("Tromsø 1", slot.NextElementSibling!.TextContent);
     }
 
+    // ---- the Ikonforklaring legend under the facets (Fhi.Metadata-zllxt) ----
+
+    /// <summary>The legend's own disclosure, or null where the panel drew none.</summary>
+    private static IElement? LegendDisclosure(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll(".munin-explorer-filters > details")
+            .SingleOrDefault(facet => facet.QuerySelector(".munin-explorer-filters__legend") is not null);
+
+    /// <summary>One entry per row: the datakategori its glyph names, and the words beside it.</summary>
+    private static IReadOnlyList<(string Key, string Words)> LegendEntries(
+        IRenderedComponent<VariableSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters__legend > .munin-explorer-filters__legend-item")
+            .Select(row => (
+                row.QuerySelector("svg")!.GetAttribute("data-node-icon")!,
+                row.TextContent.Trim()))];
+
+    [Fact]
+    public void Filter_WhenThePanelIsDrawn_ThenTheLegendNamesEveryGlyphInTheTreesOwnOrder()
+    {
+        // Read off DataCategoryIcons rather than typed out here: a legend built from the rows on
+        // screen would shrink as the facets narrowed, and one in an order of its own would pair a
+        // picture with the wrong word on a row drawing several.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["PHDR"], [])));
+
+        var texts = Texts.For("no");
+        var expected = DataCategoryIcons.Order
+            .Select(key => (Key: key, Words: texts.DataCategoryNames[key]))
+            .ToList();
+
+        Assert.Equal(expected, LegendEntries(cut));
+        Assert.DoesNotContain(DataCategoryIcons.Grouping, LegendEntries(cut).Select(entry => entry.Key));
+    }
+
+    [Fact]
+    public void Filter_WhenAnEnglishReaderMeetsTheLegend_ThenEveryEntryIsInEnglish()
+    {
+        // Half a translated vocabulary renders as the other language in place, with nothing thrown:
+        // the legend is eighteen strings and the only surface that shows all of them at once.
+        var cut = RenderWith(
+            new FilteringClient(OnePage(), FacetsWithCategories(["PHDR"], [])),
+            b => b.Add(c => c.Language, "en"));
+
+        var texts = Texts.For("en");
+        var expected = DataCategoryIcons.Order
+            .Select(key => (Key: key, Words: texts.DataCategoryNames[key]))
+            .ToList();
+
+        Assert.Equal(expected, LegendEntries(cut));
+        Assert.Equal("Icon legend", LegendDisclosure(cut)!.QuerySelector("summary")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Filter_WhenTheLegendIsDrawn_ThenItsGlyphsStayDecorationAndItsWordsAreText()
+    {
+        // The point of the legend: the meaning is readable text for every reader alike. A `title`
+        // or an `alt` on the glyph would be the same words for some of them and for nobody else,
+        // and a glyph that reached the accessibility tree would have the row announced twice.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["PHDR"], [])));
+
+        var rows = cut.FindAll(".munin-explorer-filters__legend-item");
+
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row =>
+        {
+            var glyph = row.QuerySelector("svg")!;
+
+            Assert.Equal("true", glyph.GetAttribute("aria-hidden"));
+            Assert.Equal("false", glyph.GetAttribute("focusable"));
+            Assert.False(glyph.HasAttribute("title"));
+            Assert.False(glyph.HasAttribute("alt"));
+
+            // No per-category colour: the glyphs take the text colour here exactly as they do on
+            // the rows, so nothing in the legend is told apart by hue alone (WCAG 1.4.1).
+            Assert.Equal("currentColor", glyph.GetAttribute("stroke"));
+
+            // The word is a box of its own beside the glyph, which is what a rule can give room to
+            // wrap rather than truncate — and the row is text and nothing pressable.
+            Assert.NotEmpty(row.QuerySelector("span")!.TextContent.Trim());
+            Assert.Empty(row.QuerySelectorAll("button, input, a"));
+        });
+
+        // One glyph per row, with no slot around it: Stiler's rule selects the glyph as a direct
+        // child of the row, and a slot between them is what that rule could not reach past.
+        Assert.All(rows, row => Assert.Equal(
+            "svg", row.FirstElementChild!.TagName, ignoreCase: true));
+    }
+
+    [Fact]
+    public void Filter_WhenTheLegendIsDrawn_ThenItIsANamedDisclosureThatRestsShut()
+    {
+        // A <details>, so the control carries its own name and expanded state. Shut at rest: it is
+        // eighteen rows of reference under the facets, and a panel that opened with them all would
+        // push the results off the screen. (Fhi.Metadata-l9l2n.67)
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["PHDR"], [])));
+
+        var legend = LegendDisclosure(cut)!;
+
+        Assert.Equal("Ikonforklaring", AccessibleName.Of(legend.QuerySelector("summary")!));
+        Assert.False(legend.HasAttribute("open"));
+
+        // And it folds with the facets rather than apart from them: one disclosure still open under
+        // a pressed Skjul alle reads as the press not having worked.
+        ClickToolbar(cut, "Utvid alle");
+
+        Assert.True(LegendDisclosure(cut)!.HasAttribute("open"));
+
+        ClickToolbar(cut, "Skjul alle");
+
+        Assert.False(LegendDisclosure(cut)!.HasAttribute("open"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheNodeIconsAreOff_ThenTheLegendGoesWithThem()
+    {
+        // It explains the pictures, so with the pictures gone it explains nothing — the same
+        // bargain the spoken categories make with that switch, one press covering both.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(), FacetsWithCategories(["PHDR"], [])));
+
+        Assert.NotNull(LegendDisclosure(cut));
+
+        NodeIconsSwitch(cut).Click();
+
+        Assert.Null(LegendDisclosure(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__legend"));
+
+        NodeIconsSwitch(cut).Click();
+
+        Assert.NotNull(LegendDisclosure(cut));
+    }
+
     // ---- folder glyphs and kildetype badges on the kilde levels (Fhi.Metadata-aw203) ----
 
     private static readonly Guid Kreftregisteret = new("aaaaaaaa-0000-0000-0000-000000000004");
@@ -5976,7 +6121,9 @@ public class VariableSearchTest : BunitContext
         var cut = RenderWith(new FilteringClient(OnePage(), facets));
         ExpandBranches(cut);
 
-        var rows = FilterPanel(cut).QuerySelectorAll("li");
+        // The facet values' rows alone: a legend row holds a glyph and a word rather than a
+        // control, so it has neither a checkbox nor a disclosure to lead it. (Fhi.Metadata-zllxt)
+        var rows = FilterPanel(cut).QuerySelectorAll("li:not(.munin-explorer-filters__legend-item)");
 
         Assert.NotEmpty(rows);
         Assert.All(rows, row => Assert.Equal(
@@ -8560,7 +8707,12 @@ public class VariableSearchTest : BunitContext
         Assert.NotEmpty(panel.QuerySelectorAll("details > summary"));
         Assert.NotEmpty(panel.QuerySelectorAll("ul li > label > input[type=checkbox]"));
         Assert.All(panel.QuerySelectorAll("details"), d => Assert.False(d.HasAttribute("class")));
-        Assert.All(panel.QuerySelectorAll("ul"), u => Assert.False(u.HasAttribute("class")));
+
+        // Every list but the icon legend's, whose two names are not invented here: Stiler carries
+        // the rules and the samples stand in at them, so it is the one list in the panel a host is
+        // told about rather than one more shape. (Fhi.Metadata-zllxt)
+        Assert.All(panel.QuerySelectorAll("ul:not(.munin-explorer-filters__legend)"),
+                   u => Assert.False(u.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("li > label"), l => Assert.False(l.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("li > label > input"), i => Assert.False(i.HasAttribute("class")));
 
@@ -13012,6 +13164,12 @@ public class VariableSearchTest : BunitContext
             "munin-explorer-switch",
             "munin-explorer-switch__track",
             "munin-explorer-switch__thumb",
+            // The Ikonforklaring legend under the facets. Its glyph wears the facet value's own
+            // name, which no value row in this render draws, so the legend is what brings it into
+            // this list — and it wears that name alone, having no slot. (Fhi.Metadata-zllxt)
+            "munin-explorer-filters__legend",
+            "munin-explorer-filters__legend-item",
+            "munin-explorer-filters__icon",
             // The chip row. This client answers the facet endpoint with nothing in it, so the
             // chosen kilde is named by no facet — and it still gets a chip, because the trail no
             // longer removes anything and every chosen value needs one. (Fhi.Metadata-oj286)

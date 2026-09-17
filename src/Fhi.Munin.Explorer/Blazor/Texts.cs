@@ -320,6 +320,10 @@ internal sealed record Texts(
     string CollapseAllFacets,
     string LevelLines,
     string NodeIcons,
+    // The heading over the words for those glyphs, listed under the facets. Its own member rather
+    // than NodeIcons reused: that one names the switch that draws the pictures, and a legend
+    // wearing the same word would read as a second control for it. (Fhi.Metadata-zllxt)
+    string IconLegend,
     // A branch of the source tree opens and shuts on a control of its own, beside the checkbox and
     // never part of it: expanding narrows nothing. Named after the node, because "Vis" repeated
     // down a tree says nothing about which branch it opens. (Fhi.Metadata-adog5)
@@ -1051,6 +1055,7 @@ internal sealed record Texts(
         CollapseAllFacets: "Skjul alle",
         LevelLines: "Nivålinjer",
         NodeIcons: "Ikoner",
+        IconLegend: "Ikonforklaring",
         ExpandBranch: "Vis nivåene under",
         CollapseBranch: "Skjul nivåene under",
         FacetsExpanded: "Alle filtre er utvidet.",
@@ -1431,6 +1436,7 @@ internal sealed record Texts(
         CollapseAllFacets: "Collapse all",
         LevelLines: "Level lines",
         NodeIcons: "Icons",
+        IconLegend: "Icon legend",
         ExpandBranch: "Show the levels under",
         CollapseBranch: "Hide the levels under",
         FacetsExpanded: "All filters expanded.",

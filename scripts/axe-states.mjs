@@ -159,6 +159,14 @@ export const states = {
       .locator('.munin-explorer-filters__badge')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // The Ikonforklaring legend, which Utvid alle opens with the facets: axe skips what a shut
+    // <details> hides, so without the press its eighteen rows would be scanned in no state at all.
+    // (Fhi.Metadata-zllxt)
+    await page
+      .locator('.munin-explorer-filters__legend-item')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
   // The result count quotes the search term, and a searched code is one unbroken word. The stub
@@ -197,6 +205,12 @@ export const states = {
 
     if (await panel.locator('.munin-explorer-filters__badge').count() === 0) {
       throw new Error('Turning the node icons off took the kildetype badge with them');
+    }
+
+    // And the legend goes with the pictures it explains, rather than standing over a tree that
+    // draws none. (Fhi.Metadata-zllxt)
+    if (await panel.locator('.munin-explorer-filters__legend').count() !== 0) {
+      throw new Error('The icon legend outlived the glyphs it names');
     }
   },
 
