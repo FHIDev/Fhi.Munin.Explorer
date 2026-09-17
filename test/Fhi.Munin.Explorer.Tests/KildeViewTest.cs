@@ -41,7 +41,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// added or renamed here has to be answered in both.
 /// </para>
 /// </remarks>
-public class KildeViewTest : BunitContext
+public class KildeViewTest : ExplorerTestContext
 {
     public KildeViewTest() => Services.AddSingleton<IMuninExplorerClient>(new HierarchyClient());
 
@@ -434,6 +434,11 @@ public class KildeViewTest : BunitContext
             "munin-explorer-page__main",
             // The wrapper each block below the name sits in, so the contents nav can anchor on it.
             "munin-explorer-page__section",
+            // The sticky bar, drawn hidden on every detail page and shown by the browser module
+            // alone. Its `--on` state is written only from JavaScript, so it is not in this list.
+            "munin-explorer-page__stuckbar",
+            "munin-explorer-page__stuckbar-inner",
+            "munin-explorer-page__stuckbar-name",
             // The contents column, drawn now that the nav fills it. The nav inside wears
             // helsedata's own form-menu names, which is why it adds none of ours.
             "munin-explorer-page__toc",
@@ -607,7 +612,13 @@ public class KildeViewTest : BunitContext
         var ids = Render(Kilde()).FindAll("[id]").Select(e => e.Id!).ToList();
 
         Assert.DoesNotContain(ids, id => id.Length == 0);
-        Assert.All(ids, id => Assert.Contains(id, DetailSectionIdsUnderTest));
+
+        // The two the detail chassis writes are matched by stem rather than listed: each is
+        // finished with a fresh per-instance discriminator, which is what keeps two mounts on one
+        // host page from sharing a sticky bar.
+        Assert.Equal(2, ids.Count(DetailPage.IsChassisId));
+        Assert.All(ids.Where(id => !DetailPage.IsChassisId(id)),
+                   id => Assert.Contains(id, DetailSectionIdsUnderTest));
     }
 
     /// <summary>Every id this view is allowed to write when the host names none.</summary>
@@ -2309,6 +2320,32 @@ public class KildeViewTest : BunitContext
         Assert.Equal("ALS", Kilde().ShortName);
         Assert.Equal("K_ALS", cut.Find("h2").TextContent.Trim());
         Assert.Empty(cut.FindAll("p.munin-explorer-kilde__identifiers"));
+
+        // The sticky bar repeats this name block and has its own copy of the rule, so the code
+        // lands twice there for exactly the same reason it would have here. The name is asserted
+        // beside it, since a bar that stopped rendering would pass the emptiness on its own.
+        Assert.Equal("K_ALS", cut.Find(".munin-explorer-page__stuckbar-name > span").TextContent.Trim());
+        Assert.Empty(cut.FindAll(".munin-explorer-page__stuckbar small"));
+    }
+
+    [Fact]
+    public void Stuckbar_Always_ThenItSaysWhatTheHeadingSays()
+    {
+        // The rule is triplicated by hand across three views reading three different contract
+        // properties, which is the shape the heading tests above were split up to catch. A bar
+        // saying one thing while the heading says another is worse than no bar. (Fhi.Metadata-w13lk)
+        var cut = Render(Kilde(), language: "en");
+
+        var heading = cut.Find("h2");
+        var name = cut.Find(".munin-explorer-page__stuckbar-name > span");
+
+        Assert.Equal(heading.TextContent.Trim(), name.TextContent.Trim());
+        Assert.Equal(heading.GetAttribute("lang"), name.GetAttribute("lang"));
+
+        // And the identifiers beside it, which is the half the fallback case above drops.
+        Assert.Equal(
+            cut.Find("p.munin-explorer-kilde__identifiers").TextContent.Trim(),
+            cut.Find(".munin-explorer-page__stuckbar small").TextContent.Trim());
     }
 
     [Fact]

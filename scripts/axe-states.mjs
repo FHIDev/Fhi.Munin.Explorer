@@ -18,6 +18,7 @@
 // test, so the bUnit test that cannot stage the press names the state it defers to.
 
 import { treeStates } from './tree-states.mjs';
+import { scrollPast } from './reader-scroll.mjs';
 
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
@@ -254,6 +255,26 @@ export const states = {
 
     await page
       .locator('.munin-explorer-drilldown[aria-busy="false"]')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+  // The same drill-in scrolled past its own hero fact row, which is the only state in this file
+  // where the sticky bar is on screen at all: the markup renders it hidden and the package's
+  // browser module is what shows it, so axe sees none of it in any state above
+  // (Fhi.Metadata-35w0p.28).
+  'kilde-stuckbar': async page => {
+    await states['kilde-drilldown'](page);
+
+    const row = page.locator('.munin-explorer-page__facts').first();
+    await row.waitFor({ state: 'visible', timeout: findTimeout });
+
+    // Stepped rather than jumped, and shared with state-assertions.mjs so the step and the
+    // overshoot cannot drift apart between the two gates that depend on them (Fhi.Metadata-14j7i).
+    await scrollPast(page, await row.getAttribute('id'));
+
+    // Waited for rather than assumed: a bar that never arrives is a state nobody entered, and axe
+    // reports no violations in markup that is still display:none.
+    await page.locator('.munin-explorer-page__stuckbar--on')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },

@@ -42,7 +42,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <see cref="Texts"/>, so the Norwegian never reaches that file even when the leak does.
 /// </para>
 /// </remarks>
-public class KildeSectionsTest : BunitContext
+public class KildeSectionsTest : ExplorerTestContext
 {
     private static KildeHierarchy? Hierarchy(Guid id)
     {

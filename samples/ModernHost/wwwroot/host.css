@@ -674,7 +674,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* Kelda's facet panel, which is the same handle holding nearly the same shape: a <details> per
    facet, dressed by the disclosure rules above, with a checkbox per value instead of a nested tree.
-   Its two names below are the package's own.
+   Its two names below are the package's own, and the variable explorer's panel folds under them
+   too (Fhi.Metadata-l9l2n.102).
 
    The folding is the browser's `hidden` attribute rather than a class, so a host that supplies none
    of these rules still gets a panel that opens and closes — what it does not get is the sidebar,

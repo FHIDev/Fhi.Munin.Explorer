@@ -20,7 +20,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// with a component that throws while rendering — a silent data error turned into a dead page,
 /// which is worse than the blindness this replaces (Fhi.Metadata-l9l2n.47).
 /// </remarks>
-public class ExceptionLoggingTest : BunitContext
+public class ExceptionLoggingTest : ExplorerTestContext
 {
     /// <summary>The exception a fake throws, recognisable by reference when it is read back.</summary>
     private static readonly HttpRequestException Sentinel = new("SENTINEL-7f3a: the API is down");

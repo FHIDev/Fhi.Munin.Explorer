@@ -51,10 +51,9 @@
    are spelled out for hosts in the doc comment on the component class in the codebehind. *@
 
 @* One of the few names here that is ours rather than helsedata's — the others are
-   `munin-explorer-filters`, `-detail`, `-drilldown` and `-group` further down. None of them
-   carry styling: nothing in this package, in Stiler or in helsedata's `variables.css` defines a
-   rule for any of them. They exist so the component, and the parts of it a host or a test wants
-   to reach, can be found in the DOM of a CMS page that renders a hundred other things. *@
+   `munin-explorer-filters`, `-detail`, `-drilldown` and `-group` further down. Stiler carries
+   rules for all of them under components/munin-explorer/; they are also how a host or a test
+   finds the component in the DOM of a CMS page that renders a hundred other things. *@
 @* data-munin-explorer-version is not a class and no stylesheet can have a rule for it. It is the
    only way to read which version of this package is serving a host's page: the RCL renders through
    the host's circuit and ships no versioned static asset to fingerprint. (Fhi.Metadata-sqbei) *@
@@ -224,16 +223,10 @@ else
 
     @* The filters.
 
-       A stack of disclosures above the results, not a sidebar beside them. A sidebar is a layout,
-       and a layout is a class name — helsedata's own variable page styles one from
-       `filter-search-explorer` in its page-specific variables.css, a rule this repository has not
-       read back — the result vocabulary below comes from that same stylesheet, so what is
-       unverified here is the one name and not the file. The standing rule is that a class name
-       goes into this markup only once it has been read off the host's compiled CSS, so the panel
-       is built out of names that have been: `form-fieldset` and `form-element__label` from the
+       A stack of disclosures above the results on a narrow screen, folded behind Vis filtre, and a
+       sidebar beside them once Stiler has the room. Beyond the handles, the panel is built from
+       names read off the host's compiled CSS: `form-fieldset` and `form-element__label` from the
        sort control, `hd-button-square` with the same filled/ghost pair, `caption` and `infobox`.
-       When those sidebar names can be verified, this block is what moves into it — the markup
-       below is already a list of facets and nothing about it assumes it is stacked.
 
        Two shapes here are elements rather than classes, for the same reason:
 
@@ -252,9 +245,8 @@ else
          raw browser default. Values are toggle buttons rather than checkboxes for the same reason:
          Stiler has a square button and this component already draws one in two states.
 
-       `munin-explorer-filters` carries no styling, in this package or in Stiler. It is the same
-       kind of name as the `munin-explorer` root above it: a hook for a host that wants to place
-       the panel, and nothing this markup relies on. *@
+       `munin-explorer-filters` is the panel's handle and Stiler's sidebar at desktop width;
+       `__facets`, on the same element, is what folds on a narrow screen. *@
     @* The saved list's own panel takes this slot, and has to be HERE rather than beside the rows:
        Stiler places the filter column with `.munin-explorer > .munin-explorer-filters`, a child
        combinator, and the rows render two levels down in the tab panel. (Fhi.Metadata-mm4hu) *@
@@ -269,11 +261,22 @@ else
        of its own scoped to the list. *@
     @if (_facets is not null && _resultsTab != ExplorerTab.VariableList)
     {
+        @* Beside the fieldset rather than in it, so the fold takes the toolbar too while Stiler's
+           `.munin-explorer > .munin-explorer-filters > …` chains still match. (Fhi.Metadata-l9l2n.102) *@
+        <button class="hd-button-square button-square--ghost margin-bottom munin-explorer-filters__toggle"
+                type="button"
+                aria-expanded="@(_filtersOpen ? "true" : "false")"
+                aria-controls="@FacetsId"
+                @onclick="ToggleFiltersFromControl">@(_filtersOpen ? T.HideFilters : T.ShowFilters)</button>
+
         @* `data-level-lines` rather than a class of our own. A class on the <ul> already there would
            render fine unstyled; what it would cost is inventory — the README contract, both sample
            stylesheets and the name guard. A host that ignores the marker loses lines, not
            information. (Fhi.Metadata-wcbxi) *@
-        <fieldset class="form-fieldset munin-explorer-filters" aria-busy="@Busy"
+        <fieldset class="form-fieldset munin-explorer-filters munin-explorer-filters__facets"
+                  id="@FacetsId"
+                  hidden="@(!_filtersOpen)"
+                  aria-busy="@Busy"
                   data-level-lines="@LevelLinesMarker">
             @* No count in the legend. The count line over the results and the chip row beside it
                both say the number already, and this said it without saying which.
@@ -689,8 +692,7 @@ else
                            page's own.
 
                            `munin-explorer-detail` is a handle, like `munin-explorer` and
-                           `munin-explorer-filters`: nothing in this package or in Stiler defines
-                           a rule for it. What dresses the panel is base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">, <ol> and
+                           `munin-explorer-filters`, with rules in Stiler's _detail.scss. Beyond those, the panel leans on base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">, <ol> and
                            <ul>, for the reason the filter panel is built from <details> and <ul> —
                            Stiler has no definition list, no breadcrumb and no key/value block whose
                            names can be read back off its compiled stylesheet, and a name it has

@@ -16,7 +16,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// thrown, and a string translated in one language and not the other renders as the wrong one in
 /// place — neither shows up as an exception, a warning, or a failing render.
 /// </remarks>
-public class LanguageTest : BunitContext
+public class LanguageTest : ExplorerTestContext
 {
     private static Page<VariableSummary> OnePage() =>
         new()

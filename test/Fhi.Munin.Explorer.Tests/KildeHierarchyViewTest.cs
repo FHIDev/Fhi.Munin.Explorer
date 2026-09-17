@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-public sealed class KildeHierarchyViewTest : BunitContext
+public sealed class KildeHierarchyViewTest : ExplorerTestContext
 {
     private sealed class Client : EmptyMuninExplorerClient
     {

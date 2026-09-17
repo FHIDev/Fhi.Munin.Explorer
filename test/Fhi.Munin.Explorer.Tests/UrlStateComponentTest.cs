@@ -19,7 +19,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// wrong render mode draws a working explorer whose URL simply never moves. So the assertions are
 /// on what reached <c>history.replaceState</c>, not on what the page looks like.
 /// </remarks>
-public class UrlStateComponentTest : BunitContext
+public class UrlStateComponentTest : ExplorerTestContext
 {
     private const string ReplaceState = "history.replaceState";
 

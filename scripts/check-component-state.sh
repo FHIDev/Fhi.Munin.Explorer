@@ -23,12 +23,20 @@
 # the glyph slot sits inside the label the checkbox is in, so what a redraw does to the browser's
 # own tick beside it is a question a render tree cannot answer. (Fhi.Metadata-kd9ts)
 #
+# And it asks a detail page's sticky fact bar when it appears, which is neither a press nor a render
+# tree question at all: the bar is drawn hidden and an IntersectionObserver shows it, so the answer
+# depends on a viewport and a scroll position. The half that matters is the one a headless assertion
+# can still pin — that the bar is away on a viewport short enough for the hero row to start BELOW the
+# fold, which is where a page load starts and where dropping the `boundingClientRect.top < 0` half of
+# the predicate would flash it. (Fhi.Metadata-35w0p.28)
+#
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
 #   - the assertions in state-assertions.mjs and tree-assertions.mjs are the whole of it;
 #     the clicks each one needs to reach its
 #     subject are setup rather than subject. scripts/state-assertions.mjs lists what that leaves
 #     out — the kildeutforsker's copy of the same picker, the facet panel's other refusal path,
-#     the contents nav's focus step, and every other control in the component;
+#     the contents nav's focus step, the sticky bar's paint timing, and every other control in the
+#     component;
 #   - one press per call site. The picker's other columns and the panel's other facets go the same
 #     way by construction, but by construction is not measured;
 #   - the sample stylesheet, not helsedata's. This runs ModernHost, as check-accessibility.sh does,
@@ -228,9 +236,12 @@ Read that for what it is. Two REFUSED presses were staged in the variable explor
 last visible column, and a facet value pressed a second time while its own refetch was in flight -
 and three the component ACCEPTS beside them: the facet tree's two branch disclosures, and the
 panel's Ikoner switch. The two contents navs are read rather than pressed, and what is asked there
-is the address the browser resolved each href to. All of it against the sample stylesheet. The
-header of this script and of scripts/state-assertions.mjs list what that leaves out - the contents
-nav's focus step in particular, which this host's router takes over.
+is the address the browser resolved each href to. The two detail pages are SCROLLED rather than
+pressed, on a viewport short enough for the hero row to start below the fold, and what is asked is
+whether the sticky bar stayed away before the scroll and arrived after it. All of it against the
+sample stylesheet. The header of this script and of scripts/state-assertions.mjs list what that
+leaves out - the contents nav's focus step in particular, which this host's router takes over, and
+the bar painting for a single frame, which nothing headless sees.
 
 The tree fixtures cover Filter="1"/"2"/unset, repeated placements, direct datasamlinger, groups
 at delkilde and kilde level, an opted-out container, 120 child groups, and empty results. Their

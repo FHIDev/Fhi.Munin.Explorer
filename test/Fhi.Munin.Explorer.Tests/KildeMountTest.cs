@@ -19,7 +19,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// component that string reaches. Hence: resolved by name, parameters set by name, asserted on the
 /// rendered markup and on what reached <c>history.replaceState</c>.
 /// </remarks>
-public class KildeMountTest : BunitContext
+public class KildeMountTest : ExplorerTestContext
 {
     private const string ReplaceState = "history.replaceState";
 

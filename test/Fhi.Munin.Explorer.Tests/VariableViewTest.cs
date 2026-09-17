@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// The whole variable: the view that opens in place of the list, because this package has no router
 /// and a detail page is therefore a view rather than a route.
 /// </summary>
-public class VariableViewTest : BunitContext
+public class VariableViewTest : ExplorerTestContext
 {
     private static PropertyMetadataEntry Entry(string key, int sortOrder, string group,
                                                string? optionsJson = null,
@@ -803,6 +803,34 @@ public class VariableViewTest : BunitContext
 
         Assert.Equal("ALSFRSR1Tale", cut.Find("h2").TextContent.Trim());
         Assert.Empty(cut.FindAll("p.munin-explorer-whole__code"));
+
+        // The sticky bar carries its own copy of the same rule, reading its own contract property.
+        // From the fuller fixture, because the plain one names no hero facts and so draws no bar
+        // at all — an assertion about the code off this render would hold whatever the bar did.
+        var pinned = Render(Whole() with { PreferredTerm = "" });
+
+        Assert.Equal(
+            "ALSFRSR1Tale",
+            pinned.Find(".munin-explorer-page__stuckbar-name > span").TextContent.Trim());
+        Assert.Empty(pinned.FindAll(".munin-explorer-page__stuckbar small"));
+    }
+
+    [Fact]
+    public void Stuckbar_Always_ThenItSaysWhatTheHeadingSays()
+    {
+        // The third copy of the rule and the third contract property. This view had no assertion
+        // about the bar at all — not even that it renders — while the chassis test fed the two
+        // parameters in as literals, so nothing held the wiring between them.
+        var cut = Render(Whole(), language: "en");
+
+        var heading = cut.Find("h2");
+        var name = cut.Find(".munin-explorer-page__stuckbar-name > span");
+
+        Assert.Equal(heading.TextContent.Trim(), name.TextContent.Trim());
+        Assert.Equal(heading.GetAttribute("lang"), name.GetAttribute("lang"));
+        Assert.Equal(
+            cut.Find("p.munin-explorer-whole__code").TextContent.Trim(),
+            cut.Find(".munin-explorer-page__stuckbar small").TextContent.Trim());
     }
 
     [Fact]

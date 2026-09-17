@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// The saved-list view: what is in the list the reader is looking at, and the two things they can
 /// do to it. Shares its state with the explorer's save button, and owns its own paging.
 /// </summary>
-public class VariableListViewTest : BunitContext
+public class VariableListViewTest : ExplorerTestContext
 {
     private static readonly Guid ListId = new("11111111-1111-1111-1111-111111111111");
 

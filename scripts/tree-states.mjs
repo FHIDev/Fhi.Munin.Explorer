@@ -32,6 +32,11 @@ async function load(page, empty = false) {
   const box = page.locator('input.searchbox__freetext').first();
   await box.fill(empty ? EMPTY_SEARCH : TREE_SEARCH);
   await page.getByRole('button', { name: 'Søk', exact: true }).click();
+  await boxes(tree(page), names.kilde).waitFor({ state: 'attached' });
+  // Narrow layouts now start with the whole filter panel folded behind its own toggle.
+  if (!await panel(page).isVisible()) {
+    await page.getByRole('button', { name: 'Vis filtre', exact: true }).click();
+  }
   await boxes(tree(page), names.kilde).waitFor({ state: 'visible' });
   await until(async () => await panel(page).getAttribute('aria-busy') === 'false', 'tree response rendered');
   if (await tree(page).locator('button[aria-expanded="true"]').count()) {
