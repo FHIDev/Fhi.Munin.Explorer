@@ -3278,11 +3278,8 @@ public class VariableListViewTest : BunitContext
 
     private const string ActionRow = ".munin-explorer-page__actions";
 
-    /// <summary>A press with no pointer in it: detail 0 is how a browser reports Enter or Space.</summary>
-    /// <remarks>
-    /// The same reading <see cref="PressDisclosure"/> is written against. Scoped to the row rather
-    /// than the page, so it cannot find a button of that name which never moved into it.
-    /// </remarks>
+    // Detail 0 is how a browser reports Enter or Space, the reading PressDisclosure is written
+    // against. Scoped to the row, so it cannot find a button of that name that never moved in.
     private static void KeyboardPress(IRenderedComponent<VariableListView> cut, string word) =>
         cut.FindAll($"{ActionRow} button")
            .First(b => b.TextContent.Trim() == word)
@@ -3342,33 +3339,43 @@ public class VariableListViewTest : BunitContext
     [Fact]
     public void Selector_WhenTheReaderHasExactlyOneList_ThenItRendersNowhereAtAll()
     {
-        // Settled 2026-09-17 (Robin): it stays conditional. A picker whose every option is already
-        // chosen is a dead control, and moving it into the row is no reason to draw one.
+        // A picker whose every option is already chosen is a dead control, and moving it into the
+        // row is no reason to draw one.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
         Assert.Empty(cut.FindAll("select"));
         Assert.Empty(cut.FindAll($"{ActionRow} select"));
     }
 
+    [Fact]
+    public void Actions_WhenTheOneListIsEmpty_ThenTheRowIsNotDrawnAtAll()
+    {
+        // Both controls in the row are conditional and both are off here, but a fragment that
+        // renders nothing is still a fragment — the chassis draws the row for any non-null one,
+        // and Stiler gives it 24px of margin (DetailPageTest.Actions_WhenNoViewFillsIt...).
+        var cut = RenderView(new ListClient());
+
+        Assert.Empty(cut.FindAll(ActionRow));
+    }
+
     private static readonly Guid AlsKildeId = new("aaaaaaaa-0000-0000-0000-0000000000a1");
     private static readonly Guid TromsoKildeId = new("aaaaaaaa-0000-0000-0000-0000000000a2");
 
-    /// <summary>
-    /// Two lists whose entries name kilder: the first draws from two, the second from one.
-    /// </summary>
-    /// <remarks>
-    /// Its own fake because <see cref="ListClient"/> pages one set of items out for every list id,
-    /// which cannot tell a list of two kilder from a list of one.
-    /// </remarks>
+    /// <summary>A kilde no list holds yet, so an entry of it is the first the tally has seen.</summary>
+    private static readonly Guid MorBarnKildeId = new("aaaaaaaa-0000-0000-0000-0000000000a3");
+
+    // Its own fake because the shared ListClient pages one set of items out for every list id, so
+    // it cannot tell a list of two kilder from one of one.
     private class KildeListClient : EmptyMuninExplorerClient
     {
         public static readonly Guid TwoKilderListId = new("44444444-4444-4444-4444-444444444444");
         public static readonly Guid OneKildeListId = new("55555555-5555-5555-5555-555555555555");
 
-        private static VariableListItem Entry(string name, Guid kildeId, string kildeName) =>
+        private static VariableListItem Entry(
+            string name, Guid kildeId, string kildeName, Guid? variableId = null) =>
             new()
             {
-                VariableId = Guid.NewGuid(),
+                VariableId = variableId ?? Guid.NewGuid(),
                 AddedAt = DateTimeOffset.UtcNow,
                 VariableName = name,
                 VariableCode = $"V_BDR.{name.ToUpperInvariant()}",
@@ -3378,7 +3385,9 @@ public class VariableListViewTest : BunitContext
                 DataType = "2"
             };
 
-        private static readonly Dictionary<Guid, VariableListItem[]> Held = new()
+        // Written to by the two mutations, so a walk after one of them answers what the list holds
+        // now. Per instance: a static one would carry a test's removals into the next test.
+        private readonly Dictionary<Guid, VariableListItem[]> _held = new()
         {
             [TwoKilderListId] =
             [
@@ -3393,6 +3402,33 @@ public class VariableListViewTest : BunitContext
             ]
         };
 
+        /// <summary>The id of one named entry, so a test can take that variable out of its list.</summary>
+        public Guid EntryId(Guid listId, string name) =>
+            _held[listId].First(entry => entry.VariableName == name).VariableId;
+
+        // Whatever is added is of a kilde the list did not hold, which is the half a stale tally
+        // gets wrong in the other direction: the new kilde is missing rather than over-counted.
+        public override Task<bool> AddVariablesToMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            _held[id] =
+            [
+                .. _held[id],
+                .. variableIds.Select(v =>
+                    Entry("Vekt", MorBarnKildeId, "Mor og barn-undersøkelsen", v))
+            ];
+
+            return Task.FromResult(true);
+        }
+
+        public override Task<bool> RemoveVariablesFromMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            _held[id] = [.. _held[id].Where(entry => !variableIds.Contains(entry.VariableId))];
+
+            return Task.FromResult(true);
+        }
+
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>(
@@ -3401,13 +3437,13 @@ public class VariableListViewTest : BunitContext
                 {
                     Id = TwoKilderListId,
                     Name = "Hjerte og kar",
-                    VariableCount = Held[TwoKilderListId].Length
+                    VariableCount = _held[TwoKilderListId].Length
                 },
                 new VariableList
                 {
                     Id = OneKildeListId,
                     Name = "Tromsøvariabler",
-                    VariableCount = Held[OneKildeListId].Length
+                    VariableCount = _held[OneKildeListId].Length
                 }
             ]);
 
@@ -3415,7 +3451,7 @@ public class VariableListViewTest : BunitContext
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
             CancellationToken cancellationToken = default)
         {
-            var items = Held.TryGetValue(id, out var found) ? found : [];
+            var items = _held.TryGetValue(id, out var found) ? found : [];
 
             return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
@@ -3486,6 +3522,50 @@ public class VariableListViewTest : BunitContext
         // The size still comes off my/lists, which answered; only the kilde clause is withheld.
         Assert.Contains("2 variabler", meta);
         Assert.DoesNotContain("datakilde", meta);
+    }
+
+    [Fact]
+    public async Task ListMeta_WhenAVariableIsAdded_ThenTheKildeTallyDoesNotStandAsItWas()
+    {
+        // The walk that built the tally did not see this write, and the variable added is the
+        // list's first from a third kilde — so a tally left standing goes on saying two.
+        var client = new KildeListClient();
+        var cut = RenderKildeView(client);
+        var state = Services.GetRequiredService<VariableListState>();
+
+        Assert.Contains("fra 2 datakilder", cut.Find("p.caption").TextContent);
+
+        await cut.InvokeAsync(() =>
+            state.AddVariablesAsync(KildeListClient.TwoKilderListId, [Guid.NewGuid()]));
+
+        var meta = cut.Find("p.caption").TextContent;
+
+        Assert.DoesNotContain("fra 2 datakilder", meta);
+
+        // The size is off my/lists, which the write moved rather than invalidated, so the caption
+        // is still drawn — this is the kilde clause going, not the whole line.
+        Assert.Contains("4 variabler", meta);
+    }
+
+    [Fact]
+    public async Task ListMeta_WhenAVariableIsRemoved_ThenTheKildeTallyDoesNotStandAsItWas()
+    {
+        // The list's only Tromsø variable, so the removal takes a whole kilde with it: a tally
+        // left standing counts a kilde the list no longer draws a single variable from.
+        var client = new KildeListClient();
+        var cut = RenderKildeView(client);
+        var state = Services.GetRequiredService<VariableListState>();
+
+        Assert.Contains("fra 2 datakilder", cut.Find("p.caption").TextContent);
+
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(
+            KildeListClient.TwoKilderListId,
+            [client.EntryId(KildeListClient.TwoKilderListId, "Roeyking")]));
+
+        var meta = cut.Find("p.caption").TextContent;
+
+        Assert.DoesNotContain("fra 2 datakilder", meta);
+        Assert.Contains("2 variabler", meta);
     }
 
     /// <summary>The same two lists, with every read of the second one refused.</summary>

@@ -364,10 +364,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false, tableCell: true);
     };
 
+    // Withheld rather than passed empty: both controls in the row are conditional, and a fragment
+    // that renders nothing still draws the chassis's row — a gap under the chrome of the page.
+    private bool HasActions => Lists.Count > 1 || _page is { TotalCount: > 0 };
+
     /// <summary>
     /// The list on screen: its size and last change off <c>my/lists</c>, so neither can contradict
-    /// a picker entry about the same list, and how many kilder it draws from off the membership
-    /// walk — left out until that walk has finished, since empty is also how a refused one reads.
+    /// the picker, and its kilde count off the membership walk — left out until that walk is done,
+    /// since empty is how a refused one reads, and at zero, which "0 variabler" has already said.
     /// </summary>
     private string? ListMeta
     {
