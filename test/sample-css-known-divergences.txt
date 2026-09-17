@@ -534,8 +534,8 @@ invented-selector||.munin-explorer-selection|margin-bottom
 invented-selector||.munin-explorer-switch|height
 
 # Stiler draws these under another selector, listed as missing-selector above: the ghost button with
-# `:not([aria-pressed])`, `.headline.munin-explorer-group`, `__tab button`, and `__item:hover`, which
-# puts the hover on the item where the sample puts it on the row.
+# `:not([aria-pressed])`, `.headline.munin-explorer-group`, `__tab button`, `__tab` (padding on the li),
+# and `__item:hover` (hover on the item, not the row). The pager's gap is a missing-declaration.
 invented-selector||.munin-explorer .hd-button-square.button-square--ghost[aria-disabled=true]|border-color
 invented-selector||.munin-explorer .hd-button-square.button-square--ghost|border
 invented-selector||.munin-explorer-data-list__item__row:hover|background
@@ -543,6 +543,7 @@ invented-selector||.munin-explorer-group|margin
 invented-selector||.munin-explorer-meta__tab--active > .hd-button-reset|border-bottom-color
 invented-selector||.munin-explorer-meta__tab > .hd-button-reset|border-bottom
 invented-selector||.munin-explorer-meta__tab > .hd-button-reset|padding
+invented-selector||.munin-explorer-pagination-size .caption|margin-right
 
 # Duplicates, with the same value, of rules the sample also writes in Stiler's own spelling:
 # `> .icon` and `[data-nav-section]`.
@@ -571,9 +572,9 @@ invented-selector||.munin-explorer-hierarchy__nodes > li|grid-template-columns
 # still carries it; deleting it there retires this line.
 invented-selector||.munin-explorer-filters__facets > [role=group]|margin-bottom
 
-# Drawn by the samples alone; Stiler 0.1.79 has no rule for any of these selectors and no Stiler bead
-# names them: the tab colours, the busy wave, the invalid-field border, the tab panel's focus outline,
-# the saved list's <table>, the picker's marker reset, and spacing in the fact lists, tree and alert.
+# Drawn by the samples alone; Stiler 0.1.79 has no rule for these selectors and no Stiler bead asks for
+# one: tab colours, busy wave, invalid-field border, tab panel focus outline, the saved list's <table>,
+# the picker's marker reset, and spacing in the meta panel, fact lists, tree and alert.
 invented-selector|@media (prefers-reduced-motion:reduce)|.munin-explorer-alert .infobox[aria-busy=true]|animation
 invented-selector|@media (prefers-reduced-motion:reduce)|.munin-explorer-alert .infobox[aria-busy=true]|background-image
 invented-selector||.munin-explorer-alert .infobox[aria-busy=true]|animation
@@ -617,4 +618,3 @@ invented-selector||.munin-explorer-meta__grid dd + dd|margin-top
 invented-selector||.munin-explorer-meta__grid dt|margin-bottom
 invented-selector||.munin-explorer-page__fields dd + dd|margin-top
 invented-selector||.munin-explorer-page__fields dt|margin-bottom
-invented-selector||.munin-explorer-pagination-size .caption|margin-right
