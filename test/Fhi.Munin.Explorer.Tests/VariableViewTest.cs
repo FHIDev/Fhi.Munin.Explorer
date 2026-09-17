@@ -563,6 +563,22 @@ public class VariableViewTest : ExplorerTestContext
         Assert.Equal(["1. jan. 2020", "Pågående"], values.Skip(1).Select(v => v.InnerHtml));
     }
 
+    [Fact]
+    public void Versions_WhenAnOpenedVersionHasNoDescriptionOrStart_ThenThoseReadNoneMuted()
+    {
+        // The version panel is the one Facts caller outside the fact boxes, so the absence rule
+        // reaches it too and nothing else pins that. The open end stays "Pågående", not absent.
+        var detail = Detail() with { Versions = [Version(Guid.NewGuid(), description: "")] };
+
+        var cut = Render(detail);
+        PressVersion(cut);
+
+        var values = cut.FindAll(".munin-explorer-versions__detail dd");
+
+        Assert.Equal(["Ingen", "Ingen", "Pågående"], values.Select(v => v.TextContent));
+        Assert.Equal([DetailBlocks.Absent, DetailBlocks.Absent, ""], values.Select(v => v.ClassName ?? ""));
+    }
+
     /// <summary>
     /// A pointer press on the first version's disclosure. <paramref name="clicks"/> is the browser's
     /// click count, so 2 is the second click of a double-click gesture and 0 is how a browser

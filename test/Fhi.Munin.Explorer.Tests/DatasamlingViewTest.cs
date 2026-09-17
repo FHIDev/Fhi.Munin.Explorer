@@ -142,7 +142,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
     /// <summary>One row's value cell, found by the label beside it rather than by its position.</summary>
     /// <remarks>
-    /// A blank value draws no row, so an index names a row that an upstream field silently moves.
+    /// A placement can take a row out of the box, so an index names a row that silently moves.
     /// Asking by label makes the failure say which row went missing.
     /// </remarks>
     private static string Value(IElement list, string label) =>
@@ -150,7 +150,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         ?? throw new InvalidOperationException(
             $"No value cell in the '{label}' row, only: {string.Join(", ", Labels(list))}.");
 
-    /// <summary>That the row is drawn, muted, saying the catalogue holds nothing.</summary>
+    /// <summary>All three marks of an absent fact in one check, so no test asserts the word without the muting.</summary>
     private static void AssertAbsent(IElement list, string label)
     {
         var value = Row(list, label).QuerySelector("dd")!;

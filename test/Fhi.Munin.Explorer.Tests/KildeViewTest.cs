@@ -285,9 +285,9 @@ public class KildeViewTest : ExplorerTestContext
 
     /// <summary>One row's value cell, found by the label beside it rather than by its position.</summary>
     /// <remarks>
-    /// A row's index is a function of both the order the component lists its fields in and which of
-    /// them the fixture filled in, since a blank value draws no row — so an index in a test that
-    /// does not also assert the labels names a row that a field inserted upstream silently moves.
+    /// A row's index is a function of the order the component lists its fields in and of which rows a
+    /// placement takes out of the box — so an index in a test that does not also assert the labels
+    /// names a row that a field inserted upstream silently moves.
     /// Asking by label makes the assertion self-locating, and makes the failure say which row went
     /// missing rather than reading the wrong one's text back.
     /// </remarks>
@@ -300,7 +300,7 @@ public class KildeViewTest : ExplorerTestContext
     /// <inheritdoc cref="Fact"/>
     private static string Value(IElement list, string label) => Fact(list, label).TextContent;
 
-    /// <summary>That the row is drawn, muted, saying the catalogue holds nothing.</summary>
+    /// <summary>All three marks of an absent fact in one check, so no test asserts the word without the muting.</summary>
     private static void AssertAbsent(IElement list, string label)
     {
         var value = Fact(list, label);

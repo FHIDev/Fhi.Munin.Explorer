@@ -292,7 +292,7 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
                    label => Assert.DoesNotContain(label, BoxLabels(datasamling, DetailSectionIds.Statistics)));
     }
 
-    /// <summary>The labels in one of a view's own fact boxes, or none when the box is not drawn.</summary>
+    /// <summary>Scoped to the box's own section, so a label a curated section draws does not count as the box's.</summary>
     private static IReadOnlyList<string> BoxLabels<T>(IRenderedComponent<T> cut, string sectionId) where T : IComponent =>
         [.. cut.FindAll($"section#{sectionId} dl.munin-explorer-page__fields dt").Select(dt => dt.TextContent)];
 
