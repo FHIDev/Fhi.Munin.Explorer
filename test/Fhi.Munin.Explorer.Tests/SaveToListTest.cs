@@ -395,10 +395,9 @@ public class SaveToListTest : BunitContext
     [Fact]
     public void Row_WhenTheReaderIsSignedIn_ThenTheSaveButtonSitsInACellOfItsRow()
     {
-        // Fhi.Metadata-3b1l4. The result row is a role="row" now, and a row owns nothing but
-        // cells — so the save button and the alert line beside it share a wrapper that is one.
-        // Signed out there is no button and no cell; this is the only render that reaches the
-        // shape, which is why it is asserted here.
+        // Fhi.Metadata-3b1l4. The result row is a role="row" now, and a row owns nothing but cells, so
+        // the button has one of its own. Its failure line is a separate cell after the columns
+        // (Fhi.Metadata-q7i5e). Signed out there is neither, so this render is where the shape is asserted.
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
         var button = cut.Find(".munin-explorer-dataitem-main button[aria-pressed]");
@@ -874,6 +873,7 @@ public class SaveToListTest : BunitContext
         Assert.DoesNotContain("Variabelliste", PickerNames(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__save"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__save"));
+        Assert.Empty(cut.FindAll(".munin-explorer-data-list__save-status"));
     }
 
     [Fact]
@@ -897,6 +897,7 @@ public class SaveToListTest : BunitContext
 
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__save"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
+        Assert.Empty(cut.FindAll(".munin-explorer-data-list__save-status"));
         Assert.False(PickerBox(cut, "Variabelliste").HasAttribute("checked"));
         Assert.Equal(0, client.AddCalls);
 
@@ -904,6 +905,7 @@ public class SaveToListTest : BunitContext
 
         Assert.Single(cut.FindAll(".munin-explorer-dataitem-header__save"));
         Assert.Equal(2, cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]").Count);
+        Assert.Equal(2, cut.FindAll(".munin-explorer-data-list__save-status").Count);
     }
 
     [Fact]
