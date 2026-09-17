@@ -252,8 +252,8 @@ else
          raw browser default. Values are toggle buttons rather than checkboxes for the same reason:
          Stiler has a square button and this component already draws one in two states.
 
-       `munin-explorer-filters` is the panel's handle: Stiler places it as the sidebar, and with
-       `__facets` beside it folds the panel on a narrow screen. *@
+       `munin-explorer-filters` is the panel's handle and Stiler's sidebar at desktop width;
+       `__facets`, on the same element, is what folds on a narrow screen. *@
     @* The saved list's own panel takes this slot, and has to be HERE rather than beside the rows:
        Stiler places the filter column with `.munin-explorer > .munin-explorer-filters`, a child
        combinator, and the rows render two levels down in the tab panel. (Fhi.Metadata-mm4hu) *@
