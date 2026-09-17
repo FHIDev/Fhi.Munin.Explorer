@@ -284,9 +284,8 @@ public class SeededPlacementRenderingTest : BunitContext
             [CatalogueColumns.ValidFrom] = "3. februar 2023 – 5. april 2024",
             [CatalogueColumns.ValidTo] = "3. februar 2023 – 5. april 2024",
             // Unresolved, because the fact box draws the stored code rather than the vocabulary's
-            // word for it. Statistikktype is left out of the count entirely: its fact box row draws
-            // the same unresolved code the heading does, in the nav and over the section as well,
-            // so the exactly-once question is the wrong one to ask about it.
+            // word for it. Statistikktype is left out of the count entirely: the heading, the nav
+            // entry and the row all read it off one field, so exactly-once is the wrong question.
             [CatalogueColumns.Frequency] = "manedlig",
         };
 

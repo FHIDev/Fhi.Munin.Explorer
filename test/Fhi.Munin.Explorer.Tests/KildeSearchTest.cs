@@ -6022,6 +6022,47 @@ public class KildeSearchTest : BunitContext
         Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown button.hd-button-square"));
     }
 
+    /// <summary>The Kilde row of an open datasamling's fact box, found by its label.</summary>
+    private static IElement KildeRow(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find($"section#{DetailSectionIds.Source} dl")
+           .QuerySelectorAll("div")
+           .FirstOrDefault(row => row.QuerySelector("dt")?.TextContent == "Kilde")
+        ?? throw new InvalidOperationException(
+            "The open datasamling's fact box has no Kilde row, so the view drew no source at all.");
+
+    [Fact]
+    public void ParentKilde_WhenADatasamlingIsOpen_ThenItsKildeRowLinksBackToTheKildeItHangsOff()
+    {
+        // The wiring rather than the view: DatasamlingView's own tests hand it a lambda, so with
+        // the KildeHref attribute deleted from the markup here the return path is gone from the one
+        // surface that has it and every one of those still passes. (Fhi.Metadata-35w0p.50)
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling);
+
+        var link = Assert.Single(KildeRow(cut).QuerySelectorAll("a"));
+
+        Assert.Equal($"/kilder?kilde={kilde}", link.GetAttribute("href"));
+        Assert.Equal("Als registeret", link.TextContent);
+    }
+
+    [Fact]
+    public void ParentKilde_WhenNoAddressIsWiredAtAll_ThenTheKildeRowIsPlainTextRatherThanADeadLink()
+    {
+        // The other half of the pair, on the surface the pair is for: a host that wired no
+        // DatasamlingHref has told this component nowhere to send anyone, and the name is still the
+        // fact. The way back out of the drill-in is the button, which needs no address.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        var row = KildeRow(
+            RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling, wireHref: false));
+
+        Assert.Empty(row.QuerySelectorAll("a"));
+        Assert.Equal("Als registeret", row.QuerySelector("dd")!.TextContent);
+    }
+
     [Fact]
     public void DrillIn_WhenTheAddressNamesADatasamlingOfTheOpenKilde_ThenItsOwnViewReplacesTheKildesAndTheKildeIsNotFetched()
     {

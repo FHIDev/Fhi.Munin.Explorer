@@ -112,8 +112,8 @@ internal static class DetailBlocks
 
             builder.CloseElement();
 
-            // Twenty rather than ten, because a row's value has three mutually exclusive shapes and
-            // each needs a sequence number of its own.
+            // Twenty rather than ten: the link branch spends seq + 8 through seq + 10, which under
+            // the old stride was the next row's own base and its first two attributes.
             seq += 20;
         }
 

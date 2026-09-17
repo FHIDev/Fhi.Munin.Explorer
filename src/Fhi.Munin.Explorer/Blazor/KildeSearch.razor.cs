@@ -1190,7 +1190,8 @@ public sealed partial class KildeSearch : ComponentBase
         KildeHref is null ? null : _parentKildeHref ??= _ => KildeHref!;
 
     // Held for the reason below, and reading KildeHref per call rather than closing over it: the
-    // address moves with the host's own, and a frozen one would send the reader to a stale kilde.
+    // address moves with the host's own. The ! is the guard above — the delegate is handed out only
+    // while KildeHref has a value, so clearing DatasamlingHref withdraws it rather than nulling it.
     private Func<Guid, string>? _parentKildeHref;
 
     // The held-delegate idiom KildeExplorer.DatasamlingHref explains, one layer down: the tree

@@ -999,9 +999,9 @@ public class DatasamlingViewTest : BunitContext
     [Fact]
     public void Statistics_WhenOnlyTheTypeIsKnown_ThenItIsTheOneRowUnderTheHeadingItNames()
     {
-        // The type used to be the one thing here that could not hold the block open, because it
-        // was drawn by the heading and by no row. Heading and list are answered by one question so
-        // they cannot disagree, which is the half that is easy to get wrong.
+        // The degenerate case, kept rather than suppressed: the heading's parenthesis is what makes
+        // the section findable and the row is where the fact is stated, so one echoing the other is
+        // still the record. Heading and list are answered by one question, so they cannot disagree.
         var cut = Render(Datasamling() with { Frequency = null, CountingUnit = null, VariableCount = 0 });
 
         Assert.Contains("Statistikk (Årsbasert)", BlockHeadings(cut));
