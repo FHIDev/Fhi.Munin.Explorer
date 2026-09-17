@@ -395,22 +395,19 @@ public class SaveToListTest : ExplorerTestContext
     [Fact]
     public void Row_WhenTheReaderIsSignedIn_ThenTheSaveButtonSitsInACellOfItsRow()
     {
-        // Fhi.Metadata-3b1l4. The result row is a role="row" now, and a row owns nothing but
-        // cells — so the save button and the alert line beside it share a wrapper that is one.
-        // Signed out there is no button and no cell; this is the only render that reaches the
-        // shape, which is why it is asserted here.
+        // Fhi.Metadata-3b1l4. The result row is a role="row" now, and a row owns nothing but cells, so
+        // the button has one of its own. Its failure line is a separate cell after the columns
+        // (Fhi.Metadata-q7i5e). Signed out there is neither, so this render is where the shape is asserted.
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
         var button = cut.Find(".munin-explorer-dataitem-main button[aria-pressed]");
         var cell = button.ParentElement!;
 
         Assert.Equal("cell", cell.GetAttribute("role"));
-        Assert.False(cell.HasAttribute("class"));
+        Assert.Equal("munin-explorer-dataitem-main__save", cell.ClassName);
 
-        // The failure line comes inside with it, so a save that went wrong is announced in the
-        // same cell as the control that failed rather than loose between the columns.
-        Assert.Equal("alert", cell.Children[^1].GetAttribute("role"));
         Assert.Equal("none", cell.ParentElement!.GetAttribute("role"));
+        Assert.Empty(cell.QuerySelectorAll("[role=alert]"));
     }
 
     [Fact]
@@ -620,9 +617,30 @@ public class SaveToListTest : ExplorerTestContext
 
         var cut = RenderSignedIn(client);
 
-        var alert = cut.FindAll(".munin-explorer-dataitem-main [role=alert]");
+        var alert = cut.FindAll(".munin-explorer-data-list__save-status [role=alert]");
         Assert.Single(alert);
         Assert.Equal("", alert[0].TextContent.Trim());
+    }
+
+    [Fact]
+    public void Row_WhenASaveFails_ThenItsSentenceIsACellOfTheSameRowOutsideTheColumns()
+    {
+        // In the save cell the sentence had a fixed width and the columns a fixed height, so it was
+        // cut off and pushed the button out of the row. Outside the column strip it takes a line of
+        // its own; still a cell of that row, so it is heard with the row it concerns.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))) { FailAdd = true };
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        var alert = cut.Find("[role=alert]:not(:empty)");
+        var cell = alert.ParentElement!;
+
+        Assert.Contains("Kunne ikke lagre", alert.TextContent);
+        Assert.Equal("cell", cell.GetAttribute("role"));
+        Assert.Null(alert.Closest(".munin-explorer-dataitem-main"));
+        Assert.Equal("munin-explorer-data-list__item__row", cell.ParentElement!.ClassName);
+        Assert.Same(SaveButton(cut).Closest("[role=row]"), alert.Closest("[role=row]"));
     }
 
     [Fact]
@@ -639,7 +657,7 @@ public class SaveToListTest : ExplorerTestContext
 
         SaveButton(cut).Click();
 
-        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+        var alert = cut.Find(".munin-explorer-data-list__save-status [role=alert]");
 
         Assert.Contains("for mange forespørsler", alert.TextContent);
         Assert.DoesNotContain("Kunne ikke lagre", alert.TextContent);
@@ -659,7 +677,7 @@ public class SaveToListTest : ExplorerTestContext
 
         SaveButton(cut).Click();
 
-        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+        var alert = cut.Find(".munin-explorer-data-list__save-status [role=alert]");
 
         Assert.Contains("Kunne ikke lagre", alert.TextContent);
         Assert.DoesNotContain("for mange forespørsler", alert.TextContent);
@@ -678,7 +696,7 @@ public class SaveToListTest : ExplorerTestContext
 
         SaveButton(cut).Click();
 
-        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+        var alert = cut.Find(".munin-explorer-data-list__save-status [role=alert]");
 
         Assert.Contains("ikke logget inn", alert.TextContent);
         Assert.DoesNotContain("Kunne ikke lagre nå", alert.TextContent);
@@ -796,6 +814,135 @@ public class SaveToListTest : ExplorerTestContext
 
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
         Assert.Equal(1, client.AddCalls);
+    }
+
+    // ---- the save column: a header, a place in the picker, and a button that looks like one ----
+    // (Fhi.Metadata-q7i5e)
+
+    /// <summary>The header row's cell names, in order.</summary>
+    private static IReadOnlyList<string> HeaderNames(IRenderedComponent<VariableSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-dataitem-header [role=columnheader]").Select(h => h.TextContent.Trim())];
+
+    /// <summary>The picker's column names, in the order it lists them.</summary>
+    private static IReadOnlyList<string> PickerNames(IRenderedComponent<VariableSearch> cut) =>
+        [.. cut.FindAll(".dropdown-choicepicker__item .form-control__label").Select(l => l.TextContent.Trim())];
+
+    private static IElement PickerBox(IRenderedComponent<VariableSearch> cut, string label) =>
+        cut.FindAll(".dropdown-choicepicker__item")
+            .Single(i => i.QuerySelector(".form-control__label")!.TextContent.Trim() == label)
+            .QuerySelector("input[type=checkbox]")!;
+
+    private static void PressColumn(IRenderedComponent<VariableSearch> cut, string label)
+    {
+        var box = PickerBox(cut, label);
+        box.Change(!box.HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void Header_WhenTheReaderIsSignedIn_ThenTheSaveColumnIsNamedWhereItsCellsAre()
+    {
+        // Without a name of its own, every header after Navn sat one column to the left of its
+        // values: the save cell was a column the header row did not know about.
+        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+
+        var headers = HeaderNames(cut);
+        var cells = cut.Find(".munin-explorer-dataitem-main").Children;
+
+        Assert.Equal("Variabelliste", headers[1]);
+        Assert.Equal("munin-explorer-dataitem-main__save", cells[1].ClassName);
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-header [role=columnheader].munin-explorer-dataitem-header__save"));
+    }
+
+    [Fact]
+    public void Header_WhenThePageIsEnglish_ThenTheSaveColumnIsCalledVariableList()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+        Services.AddScoped<VariableListState>();
+        var cut = Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, "en"));
+
+        Assert.Equal("Variable list", HeaderNames(cut)[1]);
+        Assert.Equal("Variable list", PickerNames(cut)[0]);
+    }
+
+    [Fact]
+    public void Picker_WhenTheReaderIsSignedOut_ThenItHasNoSaveColumnAndTheHeaderHasNoCellForOne()
+    {
+        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))), signedIn: false);
+
+        Assert.Contains("Kilde", PickerNames(cut));
+        Assert.DoesNotContain("Variabelliste", PickerNames(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__save"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__save"));
+        Assert.Empty(cut.FindAll(".munin-explorer-data-list__save-status"));
+    }
+
+    [Fact]
+    public void Picker_WhenTheReaderIsSignedIn_ThenTheSaveColumnIsListedFirstAndStartsOn()
+    {
+        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+
+        Assert.Equal("Variabelliste", PickerNames(cut)[0]);
+        Assert.True(PickerBox(cut, "Variabelliste").HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void Picker_WhenTheSaveColumnIsTurnedOffAndOn_ThenItsHeaderAndEveryButtonGoAndComeBack()
+    {
+        var client = new ListClient(OnePage(
+            Variable("Alder ved diagnose", "V_BDR.ALDER"),
+            Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
+        var cut = RenderSignedIn(client);
+
+        PressColumn(cut, "Variabelliste");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__save"));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
+        Assert.Empty(cut.FindAll(".munin-explorer-data-list__save-status"));
+        Assert.False(PickerBox(cut, "Variabelliste").HasAttribute("checked"));
+        Assert.Equal(0, client.AddCalls);
+
+        PressColumn(cut, "Variabelliste");
+
+        Assert.Single(cut.FindAll(".munin-explorer-dataitem-header__save"));
+        Assert.Equal(2, cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]").Count);
+        Assert.Equal(2, cut.FindAll(".munin-explorer-data-list__save-status").Count);
+    }
+
+    [Fact]
+    public void Picker_WhenOneDataColumnIsLeft_ThenItIsLockedWhileTheSaveColumnCanStillBeTurnedOff()
+    {
+        // The lock exists so a row never shows nothing but a name. A save button says nothing about
+        // the variable, so it neither counts as the column that is left nor is ever locked itself.
+        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+
+        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        {
+            PressColumn(cut, column);
+        }
+
+        Assert.Equal("true", PickerBox(cut, "Dataperiode").GetAttribute("aria-disabled"));
+        Assert.Null(PickerBox(cut, "Variabelliste").GetAttribute("aria-disabled"));
+
+        PressColumn(cut, "Variabelliste");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__save"));
+        Assert.Equal("true", PickerBox(cut, "Dataperiode").GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void SaveButton_WhenDrawnInEitherState_ThenItIsFilledSoItReadsAsAButtonBeforeItIsHovered()
+    {
+        // A ghost button has no border and no fill until hovered, so on every row it read as bold
+        // text. The width rule hangs on the cell's class, so the cell keeps it in both states.
+        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+
+        Assert.Equal("hd-button-square button-square--secondary", SaveButton(cut).ClassName);
+
+        SaveButton(cut).Click();
+
+        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+        Assert.Equal("hd-button-square button-square--secondary", SaveButton(cut).ClassName);
+        Assert.Equal("munin-explorer-dataitem-main__save", SaveButton(cut).ParentElement!.ClassName);
     }
 
     [Fact]

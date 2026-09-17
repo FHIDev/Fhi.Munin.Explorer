@@ -9,7 +9,7 @@ public partial class VariableSearch
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Runa's seven, in Runa's order. Navn is deliberately not among them, in Runa either: it is
+    /// Runa's seven data columns in Runa's order, after the signed-in reader's save column. Navn is deliberately not among them, in Runa either: it is
     /// the row's own disclosure button as well as its first column, so hiding it would take the
     /// control that opens the panel off the screen along with the value.
     /// </para>
@@ -21,6 +21,9 @@ public partial class VariableSearch
     /// </remarks>
     private enum ResultColumn
     {
+        // First because its cell is: the save button sits right after the name. A signed-in
+        // reader's control rather than a fact about the variable. (Fhi.Metadata-q7i5e)
+        SaveToList,
         Code,
         Kilde,
         Datasamling,
@@ -30,13 +33,19 @@ public partial class VariableSearch
         DataPeriod,
     }
 
-    /// <summary>The columns the picker offers, in the order it lists them.</summary>
+    /// <summary>Every optional column, in the order the picker lists the ones it offers.</summary>
     /// <remarks>
     /// The enum itself rather than a list restating it: two copies of one list drift apart
     /// independently, and a column added to <see cref="ResultColumn"/> without a line here would
     /// be one the reader could see but not turn off.
     /// </remarks>
     private static readonly ResultColumn[] OptionalColumns = Enum.GetValues<ResultColumn>();
+
+    /// <summary>The columns that say something about the variable, which is all the last-column rule counts.</summary>
+    private static readonly ResultColumn[] DataColumns = [.. OptionalColumns.Where(c => c != ResultColumn.SaveToList)];
+
+    /// <summary>What the picker lists: the save column only for a reader who has the button.</summary>
+    private IEnumerable<ResultColumn> OfferedColumns => ShowSaveButton ? OptionalColumns : DataColumns;
 
     /// <summary>
     /// The columns the reader has turned off, seeded with the one that starts off.
@@ -67,10 +76,12 @@ public partial class VariableSearch
     private bool _statusColumnChosen;
 
     /// <summary>Whether a column is on screen.</summary>
-    private bool ColumnVisible(ResultColumn column) =>
-        column == ResultColumn.Status && !_statusColumnChosen
-            ? ShowStatusColumn || StatusIsAllThatIsLeft
-            : !_hiddenColumns.Contains(column);
+    private bool ColumnVisible(ResultColumn column) => column switch
+    {
+        ResultColumn.SaveToList => ShowSaveButton && !_hiddenColumns.Contains(column),
+        ResultColumn.Status when !_statusColumnChosen => ShowStatusColumn || StatusIsAllThatIsLeft,
+        _ => !_hiddenColumns.Contains(column),
+    };
 
     /// <summary>
     /// Whether Status is the only optional column the reader has not turned off.
@@ -90,17 +101,17 @@ public partial class VariableSearch
     /// </para>
     /// </remarks>
     private bool StatusIsAllThatIsLeft =>
-        OptionalColumns.All(c => c == ResultColumn.Status || _hiddenColumns.Contains(c));
+        DataColumns.All(c => c == ResultColumn.Status || _hiddenColumns.Contains(c));
 
-    /// <summary>How many of the optional columns are on screen.</summary>
-    private int VisibleColumnCount => OptionalColumns.Count(ColumnVisible);
+    /// <summary>How many of the data columns are on screen.</summary>
+    private int VisibleColumnCount => DataColumns.Count(ColumnVisible);
 
     /// <summary>
     /// Whether this column is the only one left, and so refuses to be turned off.
     /// </summary>
     /// <remarks>
     /// The last visible column cannot be turned off, which is Runa's rule. Navn stays whatever
-    /// happens, so the rule is about the seven optional ones: a row of nothing but names is a list
+    /// happens, so the rule is about the seven data columns: a row of nothing but names is a list
     /// the picker could talk the reader into and not out of, since the way back is the same control
     /// that emptied it.
     /// <para>
@@ -111,7 +122,8 @@ public partial class VariableSearch
     /// a filter nobody associates with columns would together empty every row down to its name.
     /// </para>
     /// </remarks>
-    private bool ColumnLocked(ResultColumn column) => ColumnVisible(column) && VisibleColumnCount == 1;
+    private bool ColumnLocked(ResultColumn column) =>
+        column != ResultColumn.SaveToList && ColumnVisible(column) && VisibleColumnCount == 1;
 
     /// <summary>Turns a column on or off, unless it is the last one left.</summary>
     /// <remarks>
@@ -156,12 +168,15 @@ public partial class VariableSearch
     /// <summary>A column's name, in the words the header above it uses.</summary>
     /// <remarks>
     /// The same strings the header cells and the rows' own screen-reader labels carry, so the
-    /// picker and the column it turns off are never two names for one thing. An unknown member
+    /// picker and the column it turns off are never two names for one thing. The save column is the
+    /// exception: its cells are buttons named by what they do, not by the column. An unknown member
     /// throws for the reason <see cref="Texts.FieldLabel"/> does: a column added to
     /// <see cref="ResultColumn"/> without a word here would sit in the list unlabelled.
     /// </remarks>
     private string ColumnLabel(ResultColumn column) => column switch
     {
+        // The tab's own word, so the column and the place its button puts a variable are one name.
+        ResultColumn.SaveToList => T.TabVariableList,
         ResultColumn.Code => T.FieldCode,
         ResultColumn.Kilde => T.FieldSource,
         ResultColumn.Datasamling => T.FieldDataCollection,
@@ -186,7 +201,7 @@ public partial class VariableSearch
         Blazor.ColumnPicker.For(
             this,
             T.Columns,
-            [.. OptionalColumns.Select(column => new Blazor.ColumnPicker.Choice(
+            [.. OfferedColumns.Select(column => new Blazor.ColumnPicker.Choice(
                 ColumnLabel(column),
                 ColumnVisible(column),
                 ColumnLocked(column),

@@ -1119,8 +1119,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// to put the ordering in; now there is, and leaving both would give the same choice two
     /// controls.
     /// <para>
-    /// Four of the eight columns map to a real <see cref="SortField"/>. Kode, Datatype, Status and
-    /// Dataperiode have none, so their headers are plain text rather than buttons that would
+    /// Four columns map to a real <see cref="SortField"/>: Navn, Kilde, Datasamling and Variabelgruppe. Kode,
+    /// Datatype, Status, Dataperiode and the save column have none, so their headers are plain text rather than buttons that would
     /// promise an ordering the API does not offer. The variable column maps to
     /// <see cref="SortField.Default"/>, which is honest rather than convenient: that member is
     /// documented as the API's own order and its wire token is literally <c>name</c>.
@@ -1160,6 +1160,11 @@ public sealed partial class VariableSearch : ComponentBase
         // Navn is not in the picker and has no condition here: it is the row's disclosure as well
         // as its first column.
         HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
+
+        if (ColumnVisible(ResultColumn.SaveToList))
+        {
+            HeaderCell(builder, 150, "save", T.TabVariableList, sort: null);
+        }
 
         if (ColumnVisible(ResultColumn.Code))
         {

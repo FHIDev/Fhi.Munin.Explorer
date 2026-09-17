@@ -469,6 +469,13 @@ unstyled-name||.munin-explorer-meta__language|
 # Fhi.Metadata-urbj0.
 unstyled-name||.munin-explorer-page__header|
 
+# Fhi.Metadata-q7i5e; the Stiler rule is Fhi.Metadata-6u1iu. These lines go when the pin moves to
+# the release that carries it.
+unstyled-name||.munin-explorer-data-list__save-status|
+invented-declaration||.munin-explorer-data-list__item__row|flex-wrap
+unstyled-name||.munin-explorer-dataitem-header__save|
+unstyled-name||.munin-explorer-dataitem-main__save|
+
 # The sample's heading reset under the chassis root. Fhi.Metadata-nvqny measured that Stiler's
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
