@@ -66,14 +66,9 @@ public partial class VariableSearch
 
         var saved = ListState!.IsSaved(v.Id);
 
-        // A row with no entry reads as SaveFailure.None, which is what an untried — or a since
-        // retried — row is.
-        _saveError.TryGetValue(v.Id, out var failure);
-
-        // A cell around the button and the line beside it. The result row is a role="row" now, and
-        // a row owns nothing but cells — a bare <button> in one is a structure error axe reports
-        // and a reader hears as a control adrift between the columns. The alert span comes inside
-        // with it, so a failure stays in the same cell as the control that failed.
+        // A cell around the button. The result row is a role="row" now, and a row owns nothing but
+        // cells — a bare <button> in one is a structure error axe reports and a reader hears as a
+        // control adrift between the columns.
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "role", "cell");
 
@@ -122,18 +117,30 @@ public partial class VariableSearch
         builder.AddContent(11, saved ? T.RemoveFromList : T.SaveToList);
         builder.CloseElement();
 
-        // Said in the row rather than the component's alert region: the other rows are unaffected,
-        // and the reader needs it beside the control that did not do what they asked.
-        //
-        // The container is always here, empty when nothing is wrong — the same shape the component's
-        // own alert region uses (VariableSearch.razor:286). A role="alert" element that is
-        // inserted and filled in the same DOM update is announced unreliably; one that is already
-        // there and gains text is announced.
-        builder.OpenElement(12, "span");
-        builder.AddAttribute(13, "role", "alert");
-        builder.AddAttribute(14, "aria-live", "assertive");
-        builder.AddAttribute(15, "aria-atomic", "true");
-        builder.AddContent(16, failure switch
+        // The cell.
+        builder.CloseElement();
+    };
+
+    // In the row, beside the control that failed, but not in its fixed-size cell, where the sentence
+    // was cut off (Fhi.Metadata-q7i5e). Always present and empty until needed: a role="alert"
+    // inserted and filled in one update is announced unreliably.
+    private RenderFragment RowSaveStatus(VariableSummary v) => builder =>
+    {
+        if (!ColumnVisible(ResultColumn.SaveToList))
+        {
+            return;
+        }
+
+        _saveError.TryGetValue(v.Id, out var failure);
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "role", "cell");
+        builder.AddAttribute(2, "class", "munin-explorer-data-list__save-status");
+        builder.OpenElement(3, "span");
+        builder.AddAttribute(4, "role", "alert");
+        builder.AddAttribute(5, "aria-live", "assertive");
+        builder.AddAttribute(6, "aria-atomic", "true");
+        builder.AddContent(7, failure switch
         {
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.SignInRequired => T.SignInRequiredError,
@@ -141,8 +148,6 @@ public partial class VariableSearch
             _ => null
         });
         builder.CloseElement();
-
-        // The cell.
         builder.CloseElement();
     };
 

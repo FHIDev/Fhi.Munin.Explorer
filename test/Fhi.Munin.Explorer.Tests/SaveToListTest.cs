@@ -407,10 +407,8 @@ public class SaveToListTest : BunitContext
         Assert.Equal("cell", cell.GetAttribute("role"));
         Assert.Equal("munin-explorer-dataitem-main__save", cell.ClassName);
 
-        // The failure line comes inside with it, so a save that went wrong is announced in the
-        // same cell as the control that failed rather than loose between the columns.
-        Assert.Equal("alert", cell.Children[^1].GetAttribute("role"));
         Assert.Equal("none", cell.ParentElement!.GetAttribute("role"));
+        Assert.Empty(cell.QuerySelectorAll("[role=alert]"));
     }
 
     [Fact]
@@ -620,9 +618,30 @@ public class SaveToListTest : BunitContext
 
         var cut = RenderSignedIn(client);
 
-        var alert = cut.FindAll(".munin-explorer-dataitem-main [role=alert]");
+        var alert = cut.FindAll(".munin-explorer-data-list__save-status [role=alert]");
         Assert.Single(alert);
         Assert.Equal("", alert[0].TextContent.Trim());
+    }
+
+    [Fact]
+    public void Row_WhenASaveFails_ThenItsSentenceIsACellOfTheSameRowOutsideTheColumns()
+    {
+        // In the save cell the sentence had a fixed width and the columns a fixed height, so it was
+        // cut off and pushed the button out of the row. Outside the column strip it takes a line of
+        // its own; still a cell of that row, so it is heard with the row it concerns.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))) { FailAdd = true };
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        var alert = cut.Find("[role=alert]:not(:empty)");
+        var cell = alert.ParentElement!;
+
+        Assert.Contains("Kunne ikke lagre", alert.TextContent);
+        Assert.Equal("cell", cell.GetAttribute("role"));
+        Assert.Null(alert.Closest(".munin-explorer-dataitem-main"));
+        Assert.Equal("munin-explorer-data-list__item__row", cell.ParentElement!.ClassName);
+        Assert.Same(SaveButton(cut).Closest("[role=row]"), alert.Closest("[role=row]"));
     }
 
     [Fact]
@@ -639,7 +658,7 @@ public class SaveToListTest : BunitContext
 
         SaveButton(cut).Click();
 
-        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+        var alert = cut.Find(".munin-explorer-data-list__save-status [role=alert]");
 
         Assert.Contains("for mange forespørsler", alert.TextContent);
         Assert.DoesNotContain("Kunne ikke lagre", alert.TextContent);
@@ -659,7 +678,7 @@ public class SaveToListTest : BunitContext
 
         SaveButton(cut).Click();
 
-        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+        var alert = cut.Find(".munin-explorer-data-list__save-status [role=alert]");
 
         Assert.Contains("Kunne ikke lagre", alert.TextContent);
         Assert.DoesNotContain("for mange forespørsler", alert.TextContent);
@@ -678,7 +697,7 @@ public class SaveToListTest : BunitContext
 
         SaveButton(cut).Click();
 
-        var alert = cut.Find(".munin-explorer-dataitem-main [role=alert]");
+        var alert = cut.Find(".munin-explorer-data-list__save-status [role=alert]");
 
         Assert.Contains("ikke logget inn", alert.TextContent);
         Assert.DoesNotContain("Kunne ikke lagre nå", alert.TextContent);

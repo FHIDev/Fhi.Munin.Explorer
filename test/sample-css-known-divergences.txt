@@ -471,6 +471,8 @@ unstyled-name||.munin-explorer-page__header|
 
 # Fhi.Metadata-q7i5e; the Stiler rule is Fhi.Metadata-6u1iu. These lines go when the pin moves to
 # the release that carries it.
+unstyled-name||.munin-explorer-data-list__save-status|
+invented-declaration||.munin-explorer-data-list__item__row|flex-wrap
 unstyled-name||.munin-explorer-dataitem-header__save|
 unstyled-name||.munin-explorer-dataitem-main__save|
 

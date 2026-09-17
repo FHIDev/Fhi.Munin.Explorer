@@ -1315,6 +1315,22 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   flex: 0 0 10rem;
 }
 
+/* A failed save's sentence, on a line of its own under the row's columns rather than cut off in
+   the fixed-width save cell. The cell is always there and empty until needed, so the spacing sits
+   on the alert and only while it has text. (Fhi.Metadata-q7i5e) */
+.munin-explorer-data-list__item__row {
+  flex-wrap: wrap;
+}
+
+.munin-explorer-data-list__save-status {
+  flex: 0 0 100%;
+}
+
+.munin-explorer-data-list__save-status > [role="alert"]:not(:empty) {
+  display: block;
+  padding: 0 0 12px 3rem;
+}
+
 /* --grey60 rather than the --grey30 every other border in this stylesheet uses. A field's own
    border is what says there is a field there at all, which makes it a non-text control indicator
    under WCAG 1.4.11 and owes 3:1: --grey30 measures 1.16:1 against the page ground and --grey40

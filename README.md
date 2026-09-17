@@ -741,6 +741,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-data-list__item__row` | handle |
   | `munin-explorer-data-list__item__row--header` | handle |
   | `munin-explorer-data-list__result` | handle |
+  | `munin-explorer-data-list__save-status` | handle |
   | `munin-explorer-dataitem-header` | handle |
   | `munin-explorer-dataitem-header__button` | handle |
   | `munin-explorer-dataitem-header__code` | handle |
