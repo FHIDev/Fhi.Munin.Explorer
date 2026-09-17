@@ -53,10 +53,7 @@ internal sealed record CataloguePlacement(
     /// The same fact in a section and in a fact box is two rows under one label in two different
     /// words, which reads as two legitimate rows; dropped outright it would be a blank field on a
     /// public page wherever Munin's placements have not arrived (Fhi.Metadata-bct95).
-    /// <para>
-    /// The row goes rather than its value, because a row with no value is drawn as absent: "drawn in
-    /// another section" and "the catalogue holds nothing" are different facts (Fhi.Metadata-35w0p.24).
-    /// </para>
+    /// <para>The row goes, not its value: a row with no value reads "Ingen" (Fhi.Metadata-35w0p.24).</para>
     /// </remarks>
     internal IReadOnlyList<TRow> UnlessPlaced<TRow>(string key, TRow row) => Placed(key) ? [] : [row];
 

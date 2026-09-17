@@ -24,10 +24,7 @@ internal static class DetailBlocks
     private const string PageFields = "munin-explorer-page__fields";
     private const string PageLanguage = "munin-explorer-page__language";
 
-    /// <summary>
-    /// The class on whatever says the catalogue holds nothing: a fact's value, or a whole tab.
-    /// One name for the package's one absence rule, so every surface mutes it the same way.
-    /// </summary>
+    /// <summary>The one class that mutes what the catalogue holds nothing for, on a fact or a whole tab.</summary>
     internal const string Absent = "munin-explorer-absent";
 
     /// <summary>A heading at the given level, so a view nests wherever it is put.</summary>
