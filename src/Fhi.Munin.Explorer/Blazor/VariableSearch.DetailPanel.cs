@@ -75,76 +75,18 @@ public partial class VariableSearch
     /// </remarks>
     private string DetailStatusClass => _detailError is null ? "caption" : "infobox infobox--bg-yellow";
 
-    /// <summary>One step of the kilde trail, and whether it is Munin's Norwegian or our own prose.</summary>
-    /// <summary>
-    /// One step of the kilde trail, and whether it is Munin's Norwegian or our own prose.
-    /// </summary>
-    /// <param name="Text">The step's own words.</param>
-    /// <param name="Norwegian">
-    /// Whether the words are Munin's Norwegian rather than our prose, which decides whether the
-    /// step is marked <c>lang="no"</c>.
-    /// </param>
-    /// <param name="OpensKilde">
-    /// Whether this step opens the kilde panel. Runa makes the kilde a link to its own kilde route;
-    /// this component has no routes — the host owns the URL — so the same affordance becomes the
-    /// control that discloses the kilde in place. A reader clicks the kilde and gets the kilde
-    /// either way; only the mechanism differs, and the mechanism is the one thing an embedded
-    /// component cannot borrow.
-    /// </param>
-    private sealed record Crumb(string Text, bool Norwegian, bool OpensKilde = false);
-
-    /// <summary>
-    /// The variable's place in the catalogue, widest first: kildetype, kilde, datasamling.
-    /// </summary>
+    /// <summary>The kilde trail's steps, with the kildetype resolved out of the loaded facets.</summary>
     /// <remarks>
-    /// A level with nothing in it is left out rather than written as "Ikke oppgitt": a trail is
-    /// read as a path, and a step saying nothing is worse than a shorter path. All three missing
-    /// leaves an empty list, which the markup reports as "Ikke oppgitt" once.
-    /// <para>
-    /// The last step is the one level a variable can occupy several of at once, and a step is one
-    /// place: it counts them rather than naming them, and <see cref="DatasamlingList"/> beside the
-    /// trail names every one.
-    /// </para>
+    /// The facet payload rather than the shipped table alone, because the facet button beside this
+    /// panel reads the same vocabulary and the two must not fall back apart. (Fhi.Metadata-3n6e1)
     /// </remarks>
-    private IReadOnlyList<Crumb> KildeCrumbs(VariableDetail detail)
-    {
-        var crumbs = new List<Crumb>(3);
+    private IReadOnlyList<KildeTrail.Crumb> KildeSteps(VariableDetail detail) =>
+        KildeTrail.Steps(detail, T, FacetKildeTypeName(_facets, detail.KildeType));
 
-        if (!string.IsNullOrWhiteSpace(detail.KildeType))
-        {
-            // The one step that is a vocabulary rather than a name out of the catalogue, so it
-            // follows Language either way — the API resolves it against Accept-Language, and the
-            // shipped table behind that is the reader's language too. Hence not marked Norwegian.
-            crumbs.Add(new Crumb(KildeTypeNameFromApi(_facets, detail.KildeType), Norwegian: false));
-        }
-
-        if (!string.IsNullOrWhiteSpace(detail.KildeName))
-        {
-            var shortName = DisplayText.Trimmed(detail.KildeShortName);
-            var sameThingTwice = shortName is null
-                || string.Equals(shortName, detail.KildeName, StringComparison.OrdinalIgnoreCase);
-
-            crumbs.Add(new Crumb(
-                sameThingTwice ? detail.KildeName : $"{detail.KildeName} ({shortName})",
-                Norwegian: true,
-                OpensKilde: true));
-        }
-
-        var datasamlinger = DatasamlingNames(detail);
-
-        if (datasamlinger.Count == 1)
-        {
-            crumbs.Add(new Crumb(datasamlinger[0], Norwegian: true));
-        }
-        else if (datasamlinger.Count > 1)
-        {
-            // Our own prose about the catalogue rather than a name out of it, so it follows
-            // Language and is not marked Norwegian — the same reason the kildetype step is not.
-            crumbs.Add(new Crumb(T.DatasamlingCountCrumb(datasamlinger.Count), Norwegian: false));
-        }
-
-        return crumbs;
-    }
+    /// <summary>What the trail's kilde step does here: disclose the kilde in place of the list.</summary>
+    private EventCallback<MouseEventArgs> PressKilde =>
+        EventCallback.Factory.Create<MouseEventArgs>(
+            this, e => ToggleSourceFromControlAsync(SourceKind.Kilde, e));
 
     /// <summary>
     /// Every variabelgruppe the variable is in, by name.
@@ -164,42 +106,6 @@ public partial class VariableSearch
         if (names.Count == 0 && !string.IsNullOrWhiteSpace(detail.VariabelgruppeName))
         {
             names.Add(detail.VariabelgruppeName);
-        }
-
-        return names;
-    }
-
-    /// <summary>
-    /// Every datasamling the variable sits in, less the ones the payload left unnamed.
-    /// </summary>
-    /// <remarks>
-    /// The one place that decides what counts as a datasamling, because three renders read it: the
-    /// trail's count, the guard on the row, and <see cref="DatasamlingList"/>. Written out twice it
-    /// drifts into a count standing over a list of some other number.
-    /// </remarks>
-    private static IReadOnlyList<DatasamlingReference> NamedDatasamlinger(VariableDetail detail) =>
-        detail.AllDatasamlinger
-            .Where(datasamling => !string.IsNullOrWhiteSpace(datasamling.Name))
-            .ToList();
-
-    /// <summary>
-    /// Every datasamling the variable sits in, by name.
-    /// </summary>
-    /// <remarks>
-    /// <see cref="VariableDetail.AllDatasamlinger"/> rather than the primary one alone, for the
-    /// reason <see cref="VariabelgruppeNames"/> reads its own list: a variable in nineteen of them
-    /// written up under one reads as singular rather than as incomplete. The primary name is the
-    /// fallback for a payload that carries no list.
-    /// </remarks>
-    private static IReadOnlyList<string> DatasamlingNames(VariableDetail detail)
-    {
-        var names = NamedDatasamlinger(detail)
-            .Select(datasamling => datasamling.Name)
-            .ToList();
-
-        if (names.Count == 0 && !string.IsNullOrWhiteSpace(detail.DatasamlingName))
-        {
-            names.Add(detail.DatasamlingName);
         }
 
         return names;
@@ -230,69 +136,6 @@ public partial class VariableSearch
         else
         {
             builder.AddContent(4, value);
-        }
-
-        builder.CloseElement();
-    };
-
-    /// <summary>
-    /// The kilde trail as an ordered list, one step per level.
-    /// </summary>
-    /// <remarks>
-    /// An <c>&lt;ol&gt;</c> and no class name, for the reason the filter panel's nested
-    /// <c>&lt;ul&gt;</c> carries none: Stiler has no breadcrumb rule that can be read back off its
-    /// compiled stylesheet, and a name it has never heard of renders as a raw browser default. The
-    /// list is also what says "these are steps in order" without a separator character — a "›"
-    /// between spans is either read out as a symbol or skipped in silence, and neither says the
-    /// kilde sits inside the kildetype. A host draws the chevrons; a host that draws nothing gets a
-    /// numbered list that still reads correctly.
-    /// </remarks>
-    private RenderFragment KildeTrail(VariableDetail detail) => builder =>
-    {
-        var crumbs = KildeCrumbs(detail);
-
-        if (crumbs.Count == 0)
-        {
-            builder.AddContent(0, T.NotSpecified);
-
-            return;
-        }
-
-        builder.OpenElement(1, "ol");
-
-        foreach (var crumb in crumbs)
-        {
-            builder.OpenElement(2, "li");
-
-            if (crumb.Norwegian)
-            {
-                builder.AddAttribute(3, "lang", "no");
-            }
-
-            if (crumb.OpensKilde)
-            {
-                // Runa makes this step a link to its own kilde route. We have no routes — the host
-                // owns the URL — so the same affordance is the control that discloses the kilde
-                // below instead, deliberately the same control as "Vis datakilde" further down.
-                builder.OpenElement(5, "button");
-                builder.AddAttribute(6, "class", "hd-button-reset munin-explorer-crumb");
-                builder.AddAttribute(7, "type", "button");
-                // No aria-expanded and no aria-controls. Both describe a control that discloses
-                // something on the same screen, and this one does not: it replaces the list with
-                // the kilde's own view. aria-controls would also dangle — the element it named
-                // does not exist while this button is the thing on screen.
-                builder.AddAttribute(10, "onclick",
-                    EventCallback.Factory.Create<MouseEventArgs>(
-                        this, e => ToggleSourceFromControlAsync(SourceKind.Kilde, e)));
-                builder.AddContent(11, crumb.Text);
-                builder.CloseElement();
-            }
-            else
-            {
-                builder.AddContent(4, crumb.Text);
-            }
-
-            builder.CloseElement();
         }
 
         builder.CloseElement();

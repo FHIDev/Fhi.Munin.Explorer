@@ -5116,6 +5116,46 @@ public class VariableSearchTest : BunitContext
                      Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
     }
 
+    [Fact]
+    public void Trail_WhenTheRowPanelDrawsIt_ThenTheMarkupIsWhatItWasBeforeTheTrailWasLiftedOut()
+    {
+        // The regression half of having one trail and two callers: lifting it out of this panel is
+        // only safe if the caller that already had it renders exactly what it rendered before. The
+        // string below was read off the panel before the extraction, and "it still looks right" is
+        // what let four defects reach helsedata.no on 2026-09-03. (Fhi.Metadata-35w0p.47)
+        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
+            .Knows(Detail(TaleId))
+            .Knows(Kilde())
+            .Knows(Datasamling()));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(
+            """<ol><li>Nasjonalt medisinsk kvalitetsregister</li>"""
+            + """<li lang="no"><button class="hd-button-reset munin-explorer-crumb" type="button">"""
+            + """Als registeret (ALS)</button></li><li lang="no">Inklusjon</li></ol>""",
+            Pinned(TrailValue(cut).InnerHtml));
+
+        // The one thing the comparison above cannot see, because the handler id is normalised out
+        // of it: the step is still wired to the press that discloses the kilde.
+        Assert.True(TrailValue(cut).QuerySelector("button")!.HasAttribute("blazor:onclick"));
+    }
+
+    /// <summary>The trail's own <c>dd</c>, found by the label beside it rather than by position.</summary>
+    private static IElement TrailValue(IRenderedComponent<VariableSearch> cut) =>
+        Panel(cut).QuerySelectorAll("dl.munin-explorer-meta__grid > div")
+            .Single(field => field.QuerySelector("dt")!.TextContent.Trim() == Texts.For("no").FieldKildePath)
+            .QuerySelector("dd")!;
+
+    /// <summary>Rendered markup with bUnit's own event-handler bookkeeping taken out.</summary>
+    /// <remarks>
+    /// <c>blazor:onclick</c> carries a render-counter id rather than anything this component writes
+    /// down, so a pinned string holding one would go red on any unrelated change to the render
+    /// order — which is a pin nobody would trust for long.
+    /// </remarks>
+    private static string Pinned(string markup) =>
+        System.Text.RegularExpressions.Regex.Replace(markup, " blazor:[^=]+=\"[^\"]*\"", "");
+
     [Theory]
     [InlineData("no", "nb", "Sentralt helseregister, som master data sier det")]
     [InlineData("en", "en", "Central health registry, as the master data has it")]

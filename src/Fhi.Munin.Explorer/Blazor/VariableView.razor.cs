@@ -135,6 +135,24 @@ public sealed partial class VariableView : ComponentBase
     private static readonly IReadOnlySet<string> DrawnElsewhere =
         new HashSet<string>(StringComparer.Ordinal) { "DataType", CatalogueColumns.Description };
 
+    /// <summary>
+    /// Where the variable sits in the catalogue, one step per level, as the open row's panel
+    /// draws it.
+    /// </summary>
+    /// <remarks>
+    /// The same call the panel makes, so the empty-level rule — a level with nothing in it is left
+    /// out rather than written as "Ikke oppgitt" — holds here without being restated. The kildetype
+    /// falls back to the table shipped in this package, which is what this view has: it holds no
+    /// facet payload, and it is the reading the Kildeinformasjon block below it already uses, so
+    /// the page cannot name one kildetype two ways. (Fhi.Metadata-35w0p.47)
+    /// <para>
+    /// A property rather than a call in the markup, because the contents nav asks the same
+    /// question: the section is drawn exactly when there is a step to put in it.
+    /// </para>
+    /// </remarks>
+    private IReadOnlyList<KildeTrail.Crumb> Placement =>
+        Variable is { } variable ? KildeTrail.Steps(variable, T) : [];
+
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>
     /// The third element says whether the value is the catalogue's own words, the same as the kilde
@@ -285,6 +303,7 @@ public sealed partial class VariableView : ComponentBase
         toc.AddNamed(NamedSections);
         toc.Add(Versions.Count > 0, DetailSectionIds.Versions, T.HeadingVersionHistory);
         toc.Add(StatisticsBlock.AnyStatistics(variable), DetailSectionIds.Statistics, StatisticsHeading);
+        toc.Add(Placement.Count > 0, DetailSectionIds.Placement, T.GroupPlacement);
         toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
         toc.Add(DataPeriod is not null, DetailSectionIds.DataPeriod, T.FieldDataPeriod);
         toc.Add(DataTypeLabel is not null, DetailSectionIds.DataType, T.FieldDataType);

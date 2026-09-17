@@ -74,9 +74,23 @@
                 </DetailSection>
             }
 
-            @* The five blocks below are what the rail beside this column held, in the order it
-               held them: the mockups put source information near the end of the page and name
-               no position for the four with it. *@
+            @* The five blocks after the trail are what the rail beside this column held, in the
+               order it held them: the mockups put source information near the end of the page and
+               name no position for the four with it. Plassering leads them because they are the
+               blocks saying where the variable lives and it is the shortest statement of that. *@
+
+            @* The first question the page answers, and the same <ol> the open row's panel draws —
+               one implementation, so the rule that leaves an empty level out rather than writing
+               "Ikke oppgitt" cannot hold on one surface and not the other. No press is handed to
+               it: this view discloses nothing, and the class the trail can emit is the one that
+               marks that control. *@
+            @if (Drawn(DetailSectionIds.Placement))
+            {
+                <DetailSection Id="@DetailSectionIds.Placement">
+                    @DetailBlocks.Heading(BlockLevel, T.GroupPlacement, "headline headline-s")
+                    @KildeTrail.Write(Placement, T)
+                </DetailSection>
+            }
 
             @* Checked although it does not empty under this package's own texts: the row that
                keeps it full falls back to Texts.NotSpecified, a string the host constructs, so

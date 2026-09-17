@@ -20,6 +20,8 @@ internal static class DetailSectionIds
 
     internal const string Source = "source";
 
+    internal const string Placement = "placement";
+
     internal const string Statistics = "statistics";
 
     internal const string DataCollections = "datacollections";
