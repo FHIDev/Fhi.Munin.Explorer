@@ -1060,7 +1060,13 @@ public class DatasamlingViewTest : ExplorerTestContext
         var ids = Render(Datasamling()).FindAll("[id]").Select(e => e.Id!).ToList();
 
         Assert.DoesNotContain(ids, id => id.Length == 0);
-        Assert.All(ids, id => Assert.Contains(id, DetailSectionIdsUnderTest));
+
+        // The two the detail chassis writes are matched by stem rather than listed: each is
+        // finished with a fresh per-instance discriminator, which is what keeps two mounts on one
+        // host page from sharing a sticky bar.
+        Assert.Equal(2, ids.Count(DetailPage.IsChassisId));
+        Assert.All(ids.Where(id => !DetailPage.IsChassisId(id)),
+                   id => Assert.Contains(id, DetailSectionIdsUnderTest));
     }
 
     /// <summary>Every id this view is allowed to write when the host names none.</summary>

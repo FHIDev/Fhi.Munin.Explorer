@@ -467,17 +467,23 @@ public class DetailPageTest : ExplorerTestContext
         // two calls naming one bar would pass any count of them.
         var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
 
+        // Both mounts written out rather than looped: ASP0006 refuses a computed sequence number,
+        // and two components sharing one would be a render-tree diff the renderer cannot separate.
         var cut = Render(builder =>
         {
-            for (var page = 0; page < 2; page++)
-            {
-                builder.OpenComponent<DetailPage>(page * 10);
-                builder.AddComponentParameter(page * 10 + 1, nameof(DetailPage.ViewRoot), "munin-explorer-kilde");
-                builder.AddComponentParameter(page * 10 + 2, nameof(DetailPage.ViewMain), "munin-explorer-kilde__main");
-                builder.AddComponentParameter(page * 10 + 3, nameof(DetailPage.StickyName), "Tromsøundersøkelsen");
-                builder.AddComponentParameter(page * 10 + 4, nameof(DetailPage.Facts), SixFacts());
-                builder.CloseComponent();
-            }
+            builder.OpenComponent<DetailPage>(0);
+            builder.AddComponentParameter(1, nameof(DetailPage.ViewRoot), "munin-explorer-kilde");
+            builder.AddComponentParameter(2, nameof(DetailPage.ViewMain), "munin-explorer-kilde__main");
+            builder.AddComponentParameter(3, nameof(DetailPage.StickyName), "Tromsøundersøkelsen");
+            builder.AddComponentParameter(4, nameof(DetailPage.Facts), SixFacts());
+            builder.CloseComponent();
+
+            builder.OpenComponent<DetailPage>(5);
+            builder.AddComponentParameter(6, nameof(DetailPage.ViewRoot), "munin-explorer-kilde");
+            builder.AddComponentParameter(7, nameof(DetailPage.ViewMain), "munin-explorer-kilde__main");
+            builder.AddComponentParameter(8, nameof(DetailPage.StickyName), "Tromsøundersøkelsen");
+            builder.AddComponentParameter(9, nameof(DetailPage.Facts), SixFacts());
+            builder.CloseComponent();
         });
 
         var bars = cut.FindAll(".munin-explorer-page__stuckbar").Select(bar => bar.Id ?? "").ToList();
@@ -496,7 +502,7 @@ public class DetailPageTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Stuckbar_WhenThePageGoesAway_ThenItsOwnObserverIsDisconnected()
+    public async Task Stuckbar_WhenThePageGoesAway_ThenItsOwnObserverIsDisconnected()
     {
         // An observer outliving its component holds the elements it watches, and a host swapping a
         // view out of the render tree leaves the circuit — and the observer — alive.
@@ -508,7 +514,7 @@ public class DetailPageTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal([$"{bar} watches {row}"], Observed(module)));
 
-        DisposeComponents();
+        await Renderer.DisposeComponents();
 
         Assert.Equal(
             [bar],

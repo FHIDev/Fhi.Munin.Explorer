@@ -223,9 +223,20 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     private bool _observed;
     private bool _disposed;
 
-    private string StuckbarId => $"munin-explorer-stuckbar-{_instance}";
+    /// <summary>The sticky bar's id, up to the per-instance discriminator that finishes it.</summary>
+    internal const string StuckbarIdStem = "munin-explorer-stuckbar-";
 
-    private string FactsId => $"munin-explorer-facts-{_instance}";
+    /// <summary>The same, for the hero fact row the bar watches.</summary>
+    internal const string FactsIdStem = "munin-explorer-facts-";
+
+    private string StuckbarId => StuckbarIdStem + _instance;
+
+    private string FactsId => FactsIdStem + _instance;
+
+    /// <summary>Whether <paramref name="id"/> is one of the two the chassis writes itself.</summary>
+    internal static bool IsChassisId(string id) =>
+        id.StartsWith(StuckbarIdStem, StringComparison.Ordinal)
+        || id.StartsWith(FactsIdStem, StringComparison.Ordinal);
 
     /// <summary>The hero row as it will really be drawn, since a fact with no value is dropped.</summary>
     /// <remarks>
@@ -281,13 +292,15 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     {
         _disposed = true;
 
-        if (_interop is not { } interop)
+        if (_interop is null)
         {
             return;
         }
 
-        await interop.DisconnectHeroFactsAsync(StuckbarId);
-        await interop.DisposeAsync();
+        // Through the field rather than a local: CA2213 reads the disposal method literally and a
+        // local it cannot follow back reports the field as never disposed.
+        await _interop.DisconnectHeroFactsAsync(StuckbarId);
+        await _interop.DisposeAsync();
     }
 
     private string RootClasses => Beside("munin-explorer-page", ViewRoot);

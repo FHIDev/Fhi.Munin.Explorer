@@ -43,7 +43,11 @@
 //     nothing headless in this repository sees it;
 //   - the sticky bar under TWO mounted explorers, and under a circuit dropped mid-scroll. Both are
 //     asserted in bUnit instead — the ids the module is handed, and the disconnect on disposal —
-//     because neither sample host mounts two detail pages on one page.
+//     because neither sample host mounts two detail pages on one page;
+//   - the sticky bar after a JUMP rather than a scroll — a contents-nav press, which is an in-page
+//     anchor. An IntersectionObserver notifies on a crossing, so a jump straight past the hero row
+//     delivers nothing and leaves the bar as it was (Fhi.Metadata-14j7i). The scrolls below are
+//     stepped for exactly that reason: they measure the predicate, not the notification rule.
 //
 // HOW IT DIFFERS FROM geometry-assertions.mjs. Those bodies run inside the page, because measuring
 // a box is an expression. These do not: a state assertion has to PRESS something first, and a press
@@ -397,18 +401,40 @@ async function barState(page, barId) {
   return { ...dom, tree: tree.replace(/\s+/g, ' ').trim() };
 }
 
+/**
+ * Scrolls to `y` the way a reader does — a frame at a time, never in one jump.
+ *
+ * An IntersectionObserver notifies on a CROSSING, so a jump from below the hero row to above it
+ * leaves both frames non-intersecting and delivers nothing at all: the bar would read stale and the
+ * scan would be measuring the browser's notification rule rather than the module's predicate.
+ */
+const scrollBy = (page, y) => page.evaluate(async to => {
+  // Smaller than the viewport, so the row cannot pass through unseen in a single step.
+  const step = Math.max(40, Math.floor(window.innerHeight / 4));
+
+  for (let at = window.scrollY; Math.abs(to - at) > step; at += to > at ? step : -step) {
+    window.scrollTo(0, at);
+    await new Promise(next => requestAnimationFrame(next));
+  }
+
+  window.scrollTo(0, to);
+}, y);
+
 /** Puts the reader back where a page load leaves them, with the hero row still below the fold. */
 async function scrollToTop(page) {
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await scrollBy(page, 0);
   await page.waitForTimeout(OBSERVER_SETTLE_MS);
 }
 
 /** Scrolls until the hero row has left the viewport upwards, which is the bar's whole trigger. */
 async function scrollPastHero(page, rowId) {
-  await page.evaluate(id => {
+  const past = await page.evaluate(id => {
     const row = document.getElementById(id);
-    window.scrollTo(0, row.getBoundingClientRect().top + window.scrollY + row.offsetHeight + 200);
+
+    return row.getBoundingClientRect().top + window.scrollY + row.offsetHeight + 200;
   }, rowId);
+
+  await scrollBy(page, past);
   await page.waitForTimeout(OBSERVER_SETTLE_MS);
 }
 

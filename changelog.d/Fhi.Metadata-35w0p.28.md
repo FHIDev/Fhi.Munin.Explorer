@@ -15,5 +15,8 @@ category: Added
   own bar, so two explorers on one host page cannot fight over one bar. It shows the bar only when
   the hero row has left the viewport **upwards** — a row still below the fold, which is how every
   page load starts, leaves the bar hidden. Nothing about the scroll reaches the server: on a legacy
-  Blazor Server circuit a scroll-driven callback would be a round trip per frame.
+  Blazor Server circuit a scroll-driven callback would be a round trip per frame. One limit comes
+  with the observer and is worth knowing: it notifies on a crossing, so a reader who JUMPS past the
+  hero row — an in-page anchor, the contents nav's own links included — gets no notification and so
+  no bar until they scroll. Fhi.Metadata-14j7i is that, and this change does not fix it.
   (Fhi.Metadata-35w0p.28)

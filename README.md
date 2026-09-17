@@ -524,6 +524,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     usual one: undefined, the bar is not a permanently visible band — it is a block in ordinary flow
     at the top of the page, which the reader has already scrolled past by the time the module shows
     it, so what an undefined rule costs is a layout jump rather than anything readable.
+    One limit is the observer's own and shows on a host: it notifies on a crossing, so a reader who
+    jumps past the hero row rather than scrolling — an in-page anchor, which is what the contents
+    nav's own links are — reaches the foot of the page with no bar until they scroll a little.
+    `Fhi.Metadata-14j7i` is that, measured rather than reasoned about.
     `Fhi.Helsedata.Stiler` 0.1.79 — the pin `samples/HostileHost` restores — carries all four in
     `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at exactly what it
     declares. `VariableListView` draws no bar: it names no hero facts, and the bar exists only where

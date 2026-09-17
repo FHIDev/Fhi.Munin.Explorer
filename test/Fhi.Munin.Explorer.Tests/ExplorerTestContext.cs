@@ -20,8 +20,13 @@ namespace Fhi.Munin.Explorer.Tests;
 /// to be whole fails rather than passing on a stand-in. Plan a call explicitly — with
 /// <c>JSInterop.SetupModule</c> — where a test is about what reached the browser.
 /// </para>
+/// <para>
+/// Not abstract, though every test class here derives from it: a test that needs a second context
+/// of its own — one render apart from the class's — constructs this rather than a bare
+/// <see cref="BunitContext"/>, which would render under strict mode and answer for nothing.
+/// </para>
 /// </remarks>
-public abstract class ExplorerTestContext : BunitContext
+public class ExplorerTestContext : BunitContext
 {
-    protected ExplorerTestContext() => JSInterop.Mode = JSRuntimeMode.Loose;
+    public ExplorerTestContext() => JSInterop.Mode = JSRuntimeMode.Loose;
 }

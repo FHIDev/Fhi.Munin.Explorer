@@ -246,8 +246,20 @@ export const states = {
     const row = page.locator('.munin-explorer-page__facts').first();
     await row.waitFor({ state: 'visible', timeout: findTimeout });
 
-    await row.evaluate(one =>
-      window.scrollTo(0, one.getBoundingClientRect().top + window.scrollY + one.offsetHeight + 200));
+    // A frame at a time, never one jump: an IntersectionObserver notifies on a crossing, and a jump
+    // straight past the row leaves every frame non-intersecting and delivers nothing
+    // (Fhi.Metadata-14j7i).
+    await row.evaluate(async one => {
+      const past = one.getBoundingClientRect().top + window.scrollY + one.offsetHeight + 200;
+      const step = Math.max(40, Math.floor(window.innerHeight / 4));
+
+      for (let at = window.scrollY; past - at > step; at += step) {
+        window.scrollTo(0, at);
+        await new Promise(next => requestAnimationFrame(next));
+      }
+
+      window.scrollTo(0, past);
+    });
 
     // Waited for rather than assumed: a bar that never arrives is a state nobody entered, and axe
     // reports no violations in markup that is still display:none.
