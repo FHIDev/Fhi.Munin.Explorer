@@ -105,8 +105,9 @@ internal enum PanelTab
 /// button in its two states for the values, and what a host supplies is base styling for those
 /// three elements rather than three more names. List indentation is the part that matters: without
 /// it the hierarchy still nests in the accessibility tree but reads flat on screen.
-/// <c>munin-explorer-filters</c> is a DOM handle for placing the panel, and carries no styling,
-/// exactly like the <c>munin-explorer</c> root.
+/// <c>munin-explorer-filters</c> is Stiler's sidebar; narrower, the fieldset (also <c>__facets</c>)
+/// folds behind a <c>__toggle</c> beside it. Without Stiler, hide the toggle and give
+/// <c>.munin-explorer-filters__facets[hidden]</c> <c>display: block</c> at sidebar width.
 /// </para>
 /// <para>
 /// The hierarchy trail over the results adds one name of ours — <c>munin-explorer-breadcrumb</c> —
