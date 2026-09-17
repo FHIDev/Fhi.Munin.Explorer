@@ -96,7 +96,7 @@ internal enum PanelTab
 /// exists to avoid.
 /// </para>
 /// <para>
-/// The filter panel adds no class name to that list. Stiler has no accordion, no tree and no
+/// The filter panel adds no name of helsedata's to that list. Stiler has no accordion, no tree and no
 /// checkbox whose names can be read back off its compiled stylesheet — and helsedata's own sidebar
 /// is styled from <c>filter-search-explorer</c> in its page-specific <c>variables.css</c>, a rule
 /// this repository has not read back — the result vocabulary comes from that same stylesheet, so
@@ -105,9 +105,9 @@ internal enum PanelTab
 /// button in its two states for the values, and what a host supplies is base styling for those
 /// three elements rather than three more names. List indentation is the part that matters: without
 /// it the hierarchy still nests in the accessibility tree but reads flat on screen.
-/// <c>munin-explorer-filters</c> is Stiler's sidebar; narrower, the fieldset (also <c>__facets</c>)
-/// folds behind a <c>__toggle</c> beside it. Without Stiler, hide the toggle and give
-/// <c>.munin-explorer-filters__facets[hidden]</c> <c>display: block</c> at sidebar width.
+/// Under Stiler <c>munin-explorer-filters</c> is a sidebar from 1024px; narrower, the fieldset (also <c>munin-explorer-filters__facets</c>) folds behind <c>munin-explorer-filters__toggle</c>.
+/// A host drawing its own sidebar hides that toggle there and sets <c>.munin-explorer-filters__facets[hidden] { display: block }</c>,
+/// keeping <c>display: none</c> on it below that width if a reset gives fieldsets a display.
 /// </para>
 /// <para>
 /// The hierarchy trail over the results adds one name of ours — <c>munin-explorer-breadcrumb</c> —
@@ -146,8 +146,8 @@ internal enum PanelTab
 /// disclosure that opens it. Stiler has no definition list, no breadcrumb and no key/value block
 /// that can be read back off its compiled stylesheet, so what a host supplies is base styling for
 /// those three elements — a host that supplies none still gets a panel that reads correctly, just
-/// an unindented one. <c>munin-explorer-detail</c> is a DOM handle like
-/// <c>munin-explorer-filters</c>, and carries no styling.
+/// an unindented one. <c>munin-explorer-detail</c> is a handle that Stiler also dresses, in
+/// <c>components/munin-explorer/_detail.scss</c>.
 /// </para>
 /// <para>
 /// The kilde and datasamling do not open inside that panel: they take over the component's own

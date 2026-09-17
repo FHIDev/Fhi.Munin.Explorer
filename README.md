@@ -268,7 +268,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     `munin-explorer-filters__facets`, and they are handles for the same reason: the folding itself
     is the browser's `hidden` attribute, so a host that defines neither gets a panel that opens and
     closes at every width — unless a reset such as `div { display: block }` reaches the kilde
-    explorer's `<div>` and holds it open; the variable explorer folds a `<fieldset>` instead. What the rules buy is the sidebar — at desktop the samples take the
+    explorer's `<div>` and holds it open; the variable explorer folds a `<fieldset>`, which such a
+    reset does not reach. What the rules buy is the sidebar — at desktop the samples take the
     folding away and put the toggle off screen, because a button offering to unfold a panel that is
     already open is a control that does nothing.
     Both explorers' facet values add one more, `munin-explorer-filters__count`, worn by the number
