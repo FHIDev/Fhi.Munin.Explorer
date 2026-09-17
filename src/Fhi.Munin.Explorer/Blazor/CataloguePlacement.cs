@@ -46,15 +46,19 @@ internal sealed record CataloguePlacement(
             : null;
 
     /// <summary>
-    /// A fact box's value, or nothing where the catalogue has placed the key in a section of its
-    /// own and that section is drawing it.
+    /// A fact box's row, or no row where the catalogue has placed the key in a section of its own
+    /// and that section is drawing it.
     /// </summary>
     /// <remarks>
     /// The same fact in a section and in a fact box is two rows under one label in two different
     /// words, which reads as two legitimate rows; dropped outright it would be a blank field on a
     /// public page wherever Munin's placements have not arrived (Fhi.Metadata-bct95).
+    /// <para>
+    /// The row goes rather than its value, because a row with no value is drawn as absent: "drawn in
+    /// another section" and "the catalogue holds nothing" are different facts (Fhi.Metadata-35w0p.24).
+    /// </para>
     /// </remarks>
-    internal string? UnlessPlaced(string key, string? value) => Placed(key) ? null : value;
+    internal IReadOnlyList<TRow> UnlessPlaced<TRow>(string key, TRow row) => Placed(key) ? [] : [row];
 
     /// <summary>
     /// The validity as a fact box shows it: the period, the one end no section has taken, or no row
@@ -87,9 +91,10 @@ internal sealed record CataloguePlacement(
             return [(texts.FieldValidFrom, from, false)];
         }
 
+        // An open end after a known start is ongoing, as the period says, and not an absence.
         if (!toPlaced)
         {
-            return [(texts.FieldValidTo, to, false)];
+            return [(texts.FieldValidTo, to ?? (from is null ? null : texts.Ongoing), false)];
         }
 
         return [];

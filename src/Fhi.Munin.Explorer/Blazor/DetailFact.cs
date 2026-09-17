@@ -12,9 +12,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </para>
 /// <para>
 /// A fact whose <c>Value</c> is null or blank is dropped by <see cref="DetailFacts"/> rather than
-/// drawn empty, which is what <see cref="DetailBlocks"/> does for the fact lists further down the
-/// page. A page can therefore lead with fewer cells than it named, and the hero row is the
-/// summary of what this record actually has.
+/// drawn empty — unlike the fact lists further down the page, where <see cref="DetailBlocks"/> draws
+/// it as a muted "Ingen". A page can therefore lead with fewer cells than it named, and the hero row
+/// is the summary of what this record actually has.
 /// </para>
 /// </remarks>
 /// <param name="Label">The field's name in the reader's language.</param>

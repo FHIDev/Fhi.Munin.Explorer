@@ -271,6 +271,27 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
     }
 
     [Fact]
+    public void ColumnBackedFacts_WhenThePlacementsHaveArrived_ThenTheBoxesLeaveThoseRowsOutRatherThanSayingNone()
+    {
+        // A row with no value now reads "Ingen", so a fact that yields to a section has to take its
+        // row with it: "drawn in another section" is not "the catalogue holds nothing". Counting
+        // values cannot see this, since "Ingen" is not the value. (Fhi.Metadata-35w0p.24)
+        string[] placed = ["Lovverk", "Dataansvarlig", "Databehandler", "Grad av personidentifikasjon"];
+
+        var kilde = RenderKilde(Kilde(Section));
+        var datasamling = RenderDatasamling(Datasamling(Section));
+
+        Assert.All(placed, label => Assert.DoesNotContain(label, BoxLabels(kilde, DetailSectionIds.Source)));
+        Assert.All(placed, label => Assert.DoesNotContain(label, BoxLabels(datasamling, DetailSectionIds.Source)));
+        Assert.All(["Statistikktype", "Frekvens", "Telleenhet"],
+                   label => Assert.DoesNotContain(label, BoxLabels(datasamling, DetailSectionIds.Statistics)));
+    }
+
+    /// <summary>The labels in one of a view's own fact boxes, or none when the box is not drawn.</summary>
+    private static IReadOnlyList<string> BoxLabels<T>(IRenderedComponent<T> cut, string sectionId) where T : IComponent =>
+        [.. cut.FindAll($"section#{sectionId} dl.munin-explorer-page__fields dt").Select(dt => dt.TextContent)];
+
+    [Fact]
     public void ColumnBackedFacts_WhenThePlacementsHaveArrived_ThenTheDatasamlingPageDrawsEachExactlyOnce()
     {
         // The three a collection has beyond a source's seven are the point of doing it here as
@@ -347,10 +368,11 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ColumnBackedFacts_WhenAColumnIsEmpty_ThenNothingDrawsARowForIt()
+    public void ColumnBackedFacts_WhenAColumnIsEmpty_ThenOnlyTheFactBoxDrawsARowAndItSaysSo()
     {
         // A null column has to be absent from the merged values rather than present and empty:
-        // present, it draws a labelled row with nothing in it and keeps its whole section alive.
+        // present, the section draws a labelled row with nothing in it beside the fact box's own.
+        // The fact box keeps the row, reading "Ingen" (Fhi.Metadata-35w0p.24).
         var kilde = Kilde(Section) with
         {
             LegalBasis = null,
@@ -358,11 +380,17 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
             ValidTo = null,
         };
 
-        var body = Body(RenderKilde(kilde));
+        var cut = RenderKilde(kilde);
+        var body = Body(cut);
 
-        Assert.DoesNotContain("Lovverk", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("Databehandler", body, StringComparison.Ordinal);
-        Assert.DoesNotContain("Gyldig til", body, StringComparison.Ordinal);
+        Assert.Equal(1, Occurrences(body, "Lovverk"));
+        Assert.Equal(1, Occurrences(body, "Databehandler"));
+        Assert.Equal("Ingen", SectionValue(cut, "Lovverk"));
+        Assert.Equal("Ingen", SectionValue(cut, "Databehandler"));
+
+        // An open end after a start the section draws is ongoing, as a whole period would say.
+        Assert.Equal(1, Occurrences(body, "Gyldig til"));
+        Assert.Equal("Pågående", SectionValue(cut, "Gyldig til"));
         Assert.Contains("Gyldig fra", body, StringComparison.Ordinal);
     }
 

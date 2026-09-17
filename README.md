@@ -650,6 +650,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     renders is a bare `<button>` whose appearance never changes with the state. Operable and
     correctly announced, since `aria-checked` carries the state, but with no visible on/off mark:
     a sighted reader loses what a screen reader user still hears.
+    `munin-explorer-absent` is the muting on a value the catalogue holds nothing for — a detail
+    fact's "Ingen" / "None", and the row panel's one line for a Data tab with neither kodeverk nor
+    statistics. Undrawn, "Ingen" reads at full weight, as though it were the catalogue's own value.
 
   The detail views' section ids are the one exception to the paragraph below, and a deliberate
   one: `metadata`, `criteria`, `source`, `statistics`, `datacollections`, `versions`, `dataperiod`,
@@ -751,6 +754,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | Class name | Kind |
   | --- | --- |
   | `munin-explorer` | handle |
+  | `munin-explorer-absent` | meaning |
   | `munin-explorer-alert` | handle |
   | `munin-explorer-breadcrumb` | meaning |
   | `munin-explorer-codes` | handle |

@@ -101,9 +101,7 @@
             @* Last of this view's own blocks, because the mockups put source information near
                the end of the page rather than in a rail beside it. *@
 
-            @* Both boxes are checked although neither empties under this package's own texts:
-               the row that keeps the first full falls back to Texts.NotSpecified, a string the
-               host constructs, so presence follows the content rather than that string. *@
+            @* A box with no value at all is not drawn; one with some draws the rest as "Ingen". *@
             @if (Drawn(DetailSectionIds.Source))
             {
                 <DetailSection Id="@DetailSectionIds.Source">

@@ -280,6 +280,8 @@ public class UrlStateComponentTest : ExplorerTestContext
             {
                 Id = id,
                 PreferredTerm = id == SpeechId ? "1. Tale" : "2. Spyttsekresjon",
+                // One fact, so the whole variable has a section and its contents nav a link to test.
+                KildeName = "Als registeret",
             });
     }
 

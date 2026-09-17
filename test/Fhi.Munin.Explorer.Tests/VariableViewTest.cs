@@ -771,16 +771,16 @@ public class VariableViewTest : ExplorerTestContext
     [Fact]
     public void SourceInformation_WhenTheOwningKildeHasNoKildetype_ThenTheRowSaysSoRatherThanDroppingOut()
     {
-        // DetailBlocks.Facts drops a blank value entirely, so a reading site letting the API's null
-        // through raw loses the row rather than drawing an empty one — and no compiler says so,
-        // because the label helper has always taken a null. (Fhi.Metadata-l9l2n.61)
+        // The row stays and says the catalogue holds none, muted, rather than "Ikke oppgitt" — the
+        // word that kept this box drawn whatever the variable carried. (Fhi.Metadata-35w0p.24)
         var facts = Render(Detail() with { KildeType = null })
             .Find($"#{DetailSectionIds.Source} dl.munin-explorer-page__fields");
 
         Assert.Equal(
             ["Kildenavn", "Kortnavn", "Type datakilde"],
             facts.QuerySelectorAll("dt").Select(dt => dt.TextContent.Trim()));
-        Assert.Equal("Ikke oppgitt", facts.QuerySelectorAll("dd")[2].TextContent.Trim());
+        Assert.Equal("Ingen", facts.QuerySelectorAll("dd")[2].TextContent.Trim());
+        Assert.Equal(DetailBlocks.Absent, facts.QuerySelectorAll("dd")[2].ClassName);
     }
 
     [Fact]
@@ -973,18 +973,32 @@ public class VariableViewTest : ExplorerTestContext
     };
 
     [Fact]
-    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxStillDrawsARow()
+    public void Sections_WhenTheCatalogueHasFilledInNothing_ThenTheSourceBoxIsNotDrawn()
     {
-        // Why the source box survives its emptiness check on a payload this bare: KildeTypeLabel
-        // answers "Ikke oppgitt" for a variable naming no source, so the list keeps a row even
-        // with all three of its fields blank.
-        var facts = Render(Sparse())
+        // All three of its fields blank is a box with nothing at all, which is no box. It used to
+        // survive on a kildetype row reading "Ikke oppgitt". (Fhi.Metadata-35w0p.24)
+        Assert.Empty(Render(Sparse()).FindAll($"#{DetailSectionIds.Source}"));
+    }
+
+    [Fact]
+    public void Sections_WhenOneSourceFieldIsFilledIn_ThenTheOtherTwoSayNoneMuted()
+    {
+        // The half of the rule the empty box cannot show: one fact keeps the box, and the two the
+        // catalogue holds nothing for read "Ingen" in the muted class rather than dropping out.
+        var facts = Render(Sparse() with { KildeName = "Norsk pasientregister" })
             .Find($"#{DetailSectionIds.Source} dl.munin-explorer-page__fields");
 
-        // The whole list rather than its first row: a row added above this one is a new row
-        // appearing, not the fallback going, and the two should not fail alike.
-        Assert.Equal(["Type datakilde"], facts.QuerySelectorAll("dt").Select(dt => dt.TextContent.Trim()));
-        Assert.Equal("Ikke oppgitt", facts.QuerySelector("dd")!.TextContent.Trim());
+        Assert.Equal(["Kildenavn", "Kortnavn", "Type datakilde"],
+                     facts.QuerySelectorAll("dt").Select(dt => dt.TextContent.Trim()));
+
+        var values = facts.QuerySelectorAll("dd");
+
+        Assert.Null(values[0].GetAttribute("class"));
+        Assert.All(values.Skip(1), dd =>
+        {
+            Assert.Equal("Ingen", dd.TextContent);
+            Assert.Equal(DetailBlocks.Absent, dd.ClassName);
+        });
     }
 
     [Fact]
@@ -1140,15 +1154,15 @@ public class VariableViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Contents_WhenTheCatalogueFilledInNothing_ThenOneEntrySurvivesAndTheColumnIsStillDrawn()
+    public void Contents_WhenTheCatalogueFilledInNothing_ThenNoEntrySurvivesAndNoColumnIsDrawn()
     {
-        // Sparse() suppresses seven of the eight and the source box keeps the last one, so the
-        // emptiest nav this view can reach is one entry and the column is drawn. The no-entries
-        // path — a null Column, no rail at all — is unreachable here and pinned in DetailTocTest.
+        // Sparse() suppresses all eight now that the source box no longer keeps itself alive on
+        // "Ikke oppgitt", so this view reaches the no-entries path: a null Column, no rail at all.
+        // (Fhi.Metadata-35w0p.24)
         var cut = Render(Sparse());
 
-        Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
-        Assert.Single(cut.FindAll(".munin-explorer-page__toc"));
+        Assert.Empty(Targets(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
     }
 
     [Fact]
@@ -1159,7 +1173,7 @@ public class VariableViewTest : ExplorerTestContext
         // and both lists all hang off Variable — and this is what says so if one stops being.
         var cut = Render(Sparse());
 
-        Assert.Equal(["#" + DetailSectionIds.Source], Targets(cut));
+        Assert.Empty(Targets(cut));
 
         cut.Render(p => p.Add(c => c.Variable, Whole()));
 

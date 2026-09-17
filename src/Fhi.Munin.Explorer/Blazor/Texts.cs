@@ -42,6 +42,9 @@ internal sealed record Texts(
     // one alert region, so both buttons can be on screen at once and have to be told apart.
     string RetrySearch,
     string NotSpecified,
+    // A detail fact the catalogue holds nothing for, drawn muted beside the facts it does hold.
+    // Not NotSpecified: that word stands in for a name or a cell, this one answers a field.
+    string NoValue,
     string SortDefault,
     // The first column's header. Runa calls it Navn; helsedata calls the same column
     // Variabel. Runa decides what the component says.
@@ -101,7 +104,9 @@ internal sealed record Texts(
     // instead of letting the reference impersonate the name.
     string FieldKodeverkReference,
     string KodeverkUnnamed,
-    string NoKodeverk,
+    // The whole Data tab when neither section has anything, since each section on its own draws
+    // nothing then.
+    string NoKodeverkOrStatistics,
     string ShowCodes,
     string HideCodes,
     // The control on an unnamed kildekodeverk whose codes do not all fit inline. Runa's wording
@@ -882,6 +887,7 @@ internal sealed record Texts(
         Retrying: "Prøver igjen …",
         RetrySearch: "Prøv søket på nytt",
         NotSpecified: "Ikke oppgitt",
+        NoValue: "Ingen",
         SortDefault: "Standard",
         BackToVariables: "← Tilbake til variabler",
         ShowKildeVariables: "Vis bare variabler fra denne datakilden",
@@ -910,7 +916,7 @@ internal sealed record Texts(
         FieldDescription: "Beskrivelse",
         FieldKodeverkReference: "Referanse",
         KodeverkUnnamed: "Ukjent navn",
-        NoKodeverk: "Ingen kodeverk registrert",
+        NoKodeverkOrStatistics: "Ingen kodeverk eller statistikk registrert",
         ShowCodes: "Vis koder",
         HideCodes: "Skjul koder",
         ShowAllCodes: count => $"Vis alle ({count})",
@@ -1264,6 +1270,7 @@ internal sealed record Texts(
         Retrying: "Trying again …",
         RetrySearch: "Try the search again",
         NotSpecified: "Not specified",
+        NoValue: "None",
         SortDefault: "Default",
         BackToVariables: "← Back to variables",
         ShowKildeVariables: "Show only variables from this data source",
@@ -1292,7 +1299,7 @@ internal sealed record Texts(
         FieldDescription: "Description",
         FieldKodeverkReference: "Reference",
         KodeverkUnnamed: "Unnamed",
-        NoKodeverk: "No code systems registered",
+        NoKodeverkOrStatistics: "No code systems or statistics registered",
         ShowCodes: "Show codes",
         HideCodes: "Hide codes",
         ShowAllCodes: count => $"Show all ({count})",

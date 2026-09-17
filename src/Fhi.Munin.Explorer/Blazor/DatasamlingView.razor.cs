@@ -17,7 +17,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Every inherited field is drawn from its <c>Effective…</c> value. Munin lets a datasamling
 /// inherit dataansvarlig, databehandler, lovverk, identification level and validity from its
 /// delkilde or its kilde, and the own value is null when nothing is set at that level — so drawing
-/// the own values reports "Ikke oppgitt" for a datasamling whose controller is perfectly well known
+/// the own values reports "Ingen" for a datasamling whose controller is perfectly well known
 /// one level up. What applies is what the reader is asking about; where it was written down is a
 /// curation detail.
 /// </para>
@@ -220,7 +220,10 @@ public sealed partial class DatasamlingView : ComponentBase
             : new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.Description };
 
     /// <inheritdoc cref="CataloguePlacement.UnlessPlaced"/>
-    private string? UnlessPlaced(string key, string? value) => Placement.UnlessPlaced(key, value);
+    private IReadOnlyList<TRow> UnlessPlaced<TRow>(string key, TRow row) => Placement.UnlessPlaced(key, row);
+
+    private static (string Label, string? Value, bool Norwegian, string? Href) Unlinked(
+        string label, string? value, bool norwegian) => (label, value, norwegian, null);
 
     /// <summary>
     /// The facts every datasamling has, labelled as the kilde view labels the same fields.
@@ -249,14 +252,14 @@ public sealed partial class DatasamlingView : ComponentBase
                 (T.FieldSource, datasamling.ParentKildeName, true,
                  KildeHref?.Invoke(datasamling.ParentKildeId)),
                 (T.FacetKildeType, KildetypeLabel, false, null),
-                (T.FieldLegalBasis,
-                 UnlessPlaced(CatalogueColumns.LegalBasis, datasamling.EffectiveLegalBasis), true, null),
-                (T.FieldDataController,
-                 UnlessPlaced(CatalogueColumns.DataController, datasamling.EffectiveDataController), true, null),
-                (T.FieldDataProcessor,
-                 UnlessPlaced(CatalogueColumns.DataProcessor, datasamling.EffectiveDataProcessor), true, null),
-                (T.FieldPersonIdentification,
-                 UnlessPlaced(CatalogueColumns.PersonIdentification, PersonIdentification), false, null),
+                .. UnlessPlaced(CatalogueColumns.LegalBasis,
+                                Unlinked(T.FieldLegalBasis, datasamling.EffectiveLegalBasis, true)),
+                .. UnlessPlaced(CatalogueColumns.DataController,
+                                Unlinked(T.FieldDataController, datasamling.EffectiveDataController, true)),
+                .. UnlessPlaced(CatalogueColumns.DataProcessor,
+                                Unlinked(T.FieldDataProcessor, datasamling.EffectiveDataProcessor, true)),
+                .. UnlessPlaced(CatalogueColumns.PersonIdentification,
+                                Unlinked(T.FieldPersonIdentification, PersonIdentification, false)),
                 .. ValidityRows.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)),
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false, null),
                 (T.FieldCreatedInMunin, CatalogueDate.DayOrNothing(datasamling.Created, Language), false, null),
@@ -282,8 +285,9 @@ public sealed partial class DatasamlingView : ComponentBase
     /// </remarks>
     private string? KildetypeLabel =>
         Datasamling is { } datasamling
-            ? T.KildeTypeLabel(datasamling.EffectiveKildetype, datasamling.EffectiveKildetype)
-            : null;
+            && !string.IsNullOrWhiteSpace(datasamling.EffectiveKildetype)
+                ? T.KildeTypeLabel(datasamling.EffectiveKildetype, datasamling.EffectiveKildetype)
+                : null;
 
     /// <inheritdoc cref="KildetypeLabel"/>
     /// <remarks>
@@ -305,7 +309,9 @@ public sealed partial class DatasamlingView : ComponentBase
 
             return placement.Placed(CatalogueColumns.PersonIdentification)
                 ? placement.Curated(CatalogueColumns.PersonIdentification)
-                : T.PersonIdentificationLabel(datasamling.EffectivePersonIdentificationLevel);
+                : string.IsNullOrWhiteSpace(datasamling.EffectivePersonIdentificationLevel)
+                    ? null
+                    : T.PersonIdentificationLabel(datasamling.EffectivePersonIdentificationLevel);
         }
     }
 
@@ -337,10 +343,8 @@ public sealed partial class DatasamlingView : ComponentBase
     /// </summary>
     /// <remarks>
     /// Frekvens is in the contract and in Runa's block, and no datasamling in the test catalogue
-    /// has one — it draws when the catalogue starts carrying it and no row until then, which is
-    /// what keeps it out of <see cref="AnyStatistics"/>. A count of nothing is left out rather than
-    /// shown as a zero, for the same reason: both are what let a datasamling with no numbers at all
-    /// draw no block.
+    /// has one, so it reads "Ingen" until the catalogue carries it. A count of nothing reads "Ingen"
+    /// too rather than a zero, which is what lets a datasamling with no numbers at all draw no block.
     /// <para>
     /// Statistikktype, Frekvens and Telleenhet all yield to a section that has been given their
     /// key, as the fact box above does. The count is the collection's own number and has no
@@ -352,10 +356,10 @@ public sealed partial class DatasamlingView : ComponentBase
         Datasamling is not { } datasamling
             ? []
             : [
-                (T.FieldStatisticsType,
-                 UnlessPlaced(CatalogueColumns.StatisticsType, StatisticsTypeLabel), false),
-                (T.FieldFrequency, UnlessPlaced(CatalogueColumns.Frequency, datasamling.Frequency), true),
-                (T.FieldCountingUnit, UnlessPlaced(CatalogueColumns.CountingUnit, datasamling.CountingUnit), true),
+                .. UnlessPlaced(CatalogueColumns.StatisticsType,
+                                (T.FieldStatisticsType, StatisticsTypeLabel, false)),
+                .. UnlessPlaced(CatalogueColumns.Frequency, (T.FieldFrequency, datasamling.Frequency, true)),
+                .. UnlessPlaced(CatalogueColumns.CountingUnit, (T.FieldCountingUnit, datasamling.CountingUnit, true)),
                 (T.FieldVariableCount, VariableCount, false),
             ];
 
@@ -376,7 +380,7 @@ public sealed partial class DatasamlingView : ComponentBase
     /// directly above already names the source, and a fact strip that repeats the chrome spends a
     /// slot on something the reader has just read. Telleenhet qualifies the count rather than
     /// taking a slot of its own, and Frekvens qualifies nothing today — no datasamling in the
-    /// catalogue carries one — so it stays in Statistikk where an empty row draws nothing.
+    /// catalogue carries one — so it stays in Statistikk, where an empty row reads "Ingen".
     /// </para>
     /// </remarks>
     private IReadOnlyList<DetailFact> HeroFacts =>

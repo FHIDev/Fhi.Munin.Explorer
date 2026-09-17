@@ -405,13 +405,9 @@ public partial class VariableSearch
     /// </remarks>
     private RenderFragment KodeverkGroups(VariableDetail detail) => builder =>
     {
+        // Nothing, as the whole variable draws no section: the tab says so once for both blocks.
         if (detail.KodeverkLinks.Count == 0)
         {
-            builder.OpenElement(0, "p");
-            builder.AddAttribute(1, "class", "caption");
-            builder.AddContent(2, T.NoKodeverk);
-            builder.CloseElement();
-
             return;
         }
 
