@@ -236,7 +236,6 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
 
     private ExplorerInterop? _interop;
     private bool _observed;
-    private bool _disposed;
 
     /// <summary>The sticky bar's id, up to the per-instance discriminator that finishes it.</summary>
     internal const string StuckbarIdStem = "munin-explorer-stuckbar-";
@@ -277,9 +276,7 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
         // bar and the row it watches are both drawn only once there are facts to fill them.
         if (!Sticky)
         {
-            // The bar left the render tree with the payload. A later one is a NEW element wearing
-            // the same id, and the observer the module still holds watches the row it replaced.
-            _observed = false;
+            await UnwatchedAsync();
 
             return;
         }
@@ -306,13 +303,27 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
             // at all, and only a later render can ask again. A refusal is remembered by the interop.
             _observed = false;
         }
+    }
 
-        // Disposal landed while the two calls above were in flight, so undoing them falls here —
-        // symmetrically with DisposeAsync, which had no module to reach while the import was out.
-        if (_disposed)
+    /// <summary>Lets go of the bar that left the render tree with the payload.</summary>
+    /// <remarks>
+    /// The latch reopens because the bar that comes back is a NEW element wearing the same id. The
+    /// observer the module still holds watches the row the renderer detached, and waiting for
+    /// disposal to drop it leaks one observer and one detached pair per empty-and-refill cycle.
+    /// </remarks>
+    private async Task UnwatchedAsync()
+    {
+        if (!_observed)
+        {
+            return;
+        }
+
+        // Reopened before the await, for the reason the latching above gives.
+        _observed = false;
+
+        if (_interop is { } interop)
         {
             await interop.DisconnectHeroFactsAsync(StuckbarId);
-            await interop.DisposeAsync();
         }
     }
 
@@ -341,11 +352,14 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     /// The observer is disconnected rather than left to the page: a component swapped out of the
     /// render tree on a circuit that lives on would otherwise leave one holding the elements it
     /// watches. A browser already out of reach is the ordinary case and is tolerated, not thrown.
+    /// <para>
+    /// This is the whole undo, with no symmetric half in the render continuation: <c>_interop</c>
+    /// is assigned before that method's first await, so disposal never misses it, and an import
+    /// still in flight arrives to an interop that releases it rather than keeping it.
+    /// </para>
     /// </remarks>
     public async ValueTask DisposeAsync()
     {
-        _disposed = true;
-
         if (_interop is null)
         {
             return;

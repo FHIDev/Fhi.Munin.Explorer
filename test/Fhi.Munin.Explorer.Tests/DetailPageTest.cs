@@ -620,11 +620,20 @@ public class DetailPageTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll(".munin-explorer-page__stuckbar"));
 
+        // Reopening the latch alone would leave the module's observer holding the detached row and
+        // the detached bar until disposal — one more of each per cycle on a host that narrows a
+        // filter to nothing and widens it again.
+        cut.WaitForAssertion(() => Assert.Equal([bar], module.ArgumentsOf("disconnectHeroFacts")));
+
         cut.Render(parameters => parameters.Add(p => p.Facts, SixFacts()));
 
-        // The same id both times, because the discriminator is the instance's — which is exactly
-        // why a count of the calls is the only thing that can tell a re-watch from a stale one.
-        cut.WaitForAssertion(() => Assert.Equal([bar, bar], module.ArgumentsOf("observeHeroFacts")));
+        // The same id every time, because the discriminator is the instance's — which is exactly
+        // why the order of the calls is the only thing that can tell a re-watch from a stale one.
+        cut.WaitForAssertion(() => Assert.Equal(
+            ["observeHeroFacts", "disconnectHeroFacts", "observeHeroFacts"],
+            module.Calls.Select(call => call.Identifier)));
+
+        Assert.Equal([bar, bar], module.ArgumentsOf("observeHeroFacts"));
     }
 
     [Fact]
@@ -727,13 +736,44 @@ public class DetailPageTest : ExplorerTestContext
             "the module that arrived after disposal was never released, so every mount and unmount " +
             "of a detail page leaves one more reference in the browser's table for the circuit's life.");
 
-        var calls = module.Calls.Select(call => call.Identifier).ToList();
-        var watched = calls.LastIndexOf("observeHeroFacts");
+        // And nothing was ever watched, which is the shape this interleaving really has: the
+        // interop refuses the module that arrives after disposal, so the load answers false and
+        // the observe is never reached. The sibling below drives the other shape.
+        var calls = module.Calls.Select(call => call.Identifier);
+
+        Assert.Equal([RecordingModule.Released], calls);
+    }
+
+    [Fact]
+    public async Task Stuckbar_WhenThePageGoesAwayMidObserve_ThenTheBarIsDisconnectedAndReleased()
+    {
+        // Disposal landing after the module was kept, which is where the disconnect has to run:
+        // the observer is registered in the module's own map by then, and one left there holds the
+        // bar and the detached hero row for the life of a circuit this host keeps up for hours.
+        var module = new RecordingModule(stalls: "observeHeroFacts");
+
+        Services.AddSingleton<IJSRuntime>(new LendingJsRuntime(module));
+
+        RenderSticky();
+
+        Assert.True(await module.ReachedAsync("observeHeroFacts"));
+
+        await Renderer.DisposeComponents();
+
+        module.Answer();
 
         Assert.True(
-            watched < 0 || calls.LastIndexOf("disconnectHeroFacts") > watched,
-            "an observer was connected after disposal and never disconnected, so it holds the bar " +
-            $"and the detached hero row for the circuit's life: {string.Join(", ", calls)}");
+            await module.ReachedAsync("disconnectHeroFacts"),
+            "the bar was observed and never disconnected, so the observer holds it and the detached " +
+            "hero row for the circuit's life.");
+
+        Assert.True(await module.ReachedAsync(RecordingModule.Released));
+
+        var calls = module.Calls.Select(call => call.Identifier).ToList();
+
+        Assert.Equal(
+            ["observeHeroFacts", "disconnectHeroFacts", RecordingModule.Released],
+            calls);
     }
 
     /// <summary>Which bar each observe call was given, paired with the row it was told to watch.</summary>

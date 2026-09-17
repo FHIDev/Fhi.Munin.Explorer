@@ -148,7 +148,7 @@ public partial class ExplorerInteropTest
     }
 
     [Fact]
-    public void Import_WhenTheSourceIsRead_ThenSomethingLoadsTheModuleAndNothingWaitsOnTheAnswer()
+    public void Import_WhenTheSourceIsRead_ThenSomethingLoadsTheModuleAndNothingStoresTheAnswer()
     {
         // Two halves of one claim. Nothing loading it would leave the theory above vacuous, and a
         // caller STORING the answer would have made the module load-bearing. Branching on it where
@@ -306,6 +306,61 @@ public partial class ExplorerInteropTest
         Assert.False(await interop.TryLoadAsync());
 
         Assert.Equal(1, runtime.Imports);
+    }
+
+    [Fact]
+    public async Task TryLoadAsync_WhenASecondImportOverlapsTheFirst_ThenTheLaterOneIsReleased()
+    {
+        // The caller asks again while an import is in flight, because its own latch reopens when
+        // the bar leaves the render tree. Keeping the arrival that lands second drops the first,
+        // and nothing else holds it: one reference in the browser's table for the circuit's life.
+        var first = new CountingModule();
+        var second = new CountingModule();
+        var runtime = new StagingJsRuntime();
+        var interop = new ExplorerInterop(runtime);
+
+        var one = interop.TryLoadAsync();
+        var two = interop.TryLoadAsync();
+
+        Assert.Equal(2, runtime.Imports);
+
+        runtime.Answer(1, first);
+
+        Assert.True(await one);
+
+        runtime.Answer(2, second);
+
+        Assert.True(await two);
+
+        Assert.Equal(0, first.Disposals);
+        Assert.Equal(1, second.Disposals);
+    }
+
+    [Fact]
+    public async Task TryLoadAsync_WhenTheOverlappingImportFailsTolerably_ThenTheModuleKeptSurvivesIt()
+    {
+        // The same overlap, answered the other way round: the later import is the one a reconnect
+        // swallows, so it arrives as null. Assigning that null would leave a live module the
+        // interop believes it does not have — nothing releases it, and its observers stay on.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+        var interop = new ExplorerInterop(runtime);
+
+        var one = interop.TryLoadAsync();
+        var two = interop.TryLoadAsync();
+
+        runtime.Answer(1, module);
+
+        Assert.True(await one);
+
+        runtime.Answer(2, null);
+
+        Assert.True(await two);
+        Assert.True(interop.IsLoaded);
+
+        await interop.DisconnectHeroFactsAsync("bar-a1b2c3d4");
+
+        Assert.Equal(["bar-a1b2c3d4"], module.ArgumentsOf("disconnectHeroFacts"));
     }
 
     [Fact]

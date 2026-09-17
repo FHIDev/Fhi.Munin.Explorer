@@ -49,7 +49,8 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     internal bool IsLoaded => _module is not null;
 
     /// <summary>
-    /// Imports the module at most once, and answers whether it is there.
+    /// Imports the module, keeping at most one however often it is asked, and answers whether it
+    /// is there.
     /// </summary>
     /// <remarks>
     /// <b>Call from <c>OnAfterRenderAsync</c> and nowhere else.</b> There is no DOM and no JS
@@ -149,18 +150,24 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     }
 
     /// <summary>
-    /// Takes <paramref name="module"/> as this instance's, unless disposal got here first.
+    /// Takes <paramref name="module"/> as this instance's, unless there is already one or disposal
+    /// got here first. False means the caller still owns what it was handed.
     /// </summary>
     /// <remarks>
     /// The check and the assignment are one step because they are not on the same thread as
     /// <see cref="DisposeAsync"/>: read and assign apart and a disposal in between leaves the
     /// arriving reference on a dead instance, which is the leak this answers.
+    /// <para>
+    /// A module already here is refused too, since two imports can overlap: assigning anyway drops
+    /// a live reference nothing releases, or — where the later one failed tolerably and so arrives
+    /// as null — nulls a live one, leaving the observers it registered connected for good.
+    /// </para>
     /// </remarks>
     private bool Kept(IJSObjectReference? module)
     {
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || _module is not null || module is null)
             {
                 return false;
             }
@@ -183,11 +190,15 @@ internal sealed class ExplorerInterop : IAsyncDisposable
                 () => _js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath))
                 .ConfigureAwait(false);
         }
-        // The host serves no such file, or a Content-Security-Policy refused it. Only an import is
-        // ordinary this way: the same exception out of an export is a defect in the module itself.
+        // The host serves no such file, or a Content-Security-Policy refused it. Not a reconnect:
+        // JSDisconnectedException derives from this one, and Tolerated answers it inside the try
+        // above, so a dropped circuit is null without the latch and the caller may ask again.
         catch (JSException)
         {
-            _refused = true;
+            lock (_gate)
+            {
+                _refused = true;
+            }
 
             return null;
         }

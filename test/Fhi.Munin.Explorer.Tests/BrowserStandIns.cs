@@ -5,8 +5,11 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <summary>A runtime that refuses every call, the way a host without the module does.</summary>
 internal sealed class RefusingJsRuntime(Exception thrown) : IJSRuntime
 {
+    private int _imports;
+
     /// <summary>How often an import was attempted — a refusal the caller retried is one more.</summary>
-    internal int Imports { get; private set; }
+    /// <remarks>Counted atomically: written from a render continuation and read from the test.</remarks>
+    internal int Imports => Volatile.Read(ref _imports);
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
         InvokeAsync<TValue>(identifier, CancellationToken.None, args);
@@ -16,7 +19,7 @@ internal sealed class RefusingJsRuntime(Exception thrown) : IJSRuntime
     {
         if (identifier == "import")
         {
-            Imports++;
+            Interlocked.Increment(ref _imports);
         }
 
         throw thrown;
@@ -32,7 +35,10 @@ internal sealed class RefusingJsRuntime(Exception thrown) : IJSRuntime
 /// </remarks>
 internal sealed class FlakyJsRuntime(IJSObjectReference module) : IJSRuntime
 {
-    internal int Imports { get; private set; }
+    private int _imports;
+
+    /// <inheritdoc cref="RefusingJsRuntime.Imports" />
+    internal int Imports => Volatile.Read(ref _imports);
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
         InvokeAsync<TValue>(identifier, CancellationToken.None, args);
@@ -45,7 +51,7 @@ internal sealed class FlakyJsRuntime(IJSObjectReference module) : IJSRuntime
             return ValueTask.FromResult(default(TValue)!);
         }
 
-        return ++Imports == 1
+        return Interlocked.Increment(ref _imports) == 1
             ? throw new JSDisconnectedException("the circuit is reconnecting")
             : ValueTask.FromResult((TValue)(object)module);
     }
@@ -58,7 +64,10 @@ internal sealed class FlakyJsRuntime(IJSObjectReference module) : IJSRuntime
 /// </remarks>
 internal sealed class LendingJsRuntime(IJSObjectReference module) : IJSRuntime
 {
-    internal int Imports { get; private set; }
+    private int _imports;
+
+    /// <inheritdoc cref="RefusingJsRuntime.Imports" />
+    internal int Imports => Volatile.Read(ref _imports);
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
         InvokeAsync<TValue>(identifier, CancellationToken.None, args);
@@ -71,7 +80,7 @@ internal sealed class LendingJsRuntime(IJSObjectReference module) : IJSRuntime
             return ValueTask.FromResult(default(TValue)!);
         }
 
-        Imports++;
+        Interlocked.Increment(ref _imports);
 
         return ValueTask.FromResult((TValue)(object)module);
     }
@@ -146,11 +155,20 @@ internal sealed class RefusingModule(Exception thrown) : IJSObjectReference
 /// arguments: a call that reached the module with the wrong instance's id would drive the wrong
 /// bar, and counting calls alone cannot tell the two apart.
 /// </remarks>
-internal sealed class RecordingModule : IJSObjectReference
+/// <param name="stalls">
+/// An export that is recorded and then held until <see cref="RecordingModule.Answer"/>, for a test
+/// staging a disposal that lands while that call is still out. Null holds nothing.
+/// </param>
+internal sealed class RecordingModule(string? stalls = null) : IJSObjectReference
 {
     // Written from a render continuation and read from the test, which are not the same thread.
     private readonly Lock _gate = new();
     private readonly List<(string Identifier, object?[] Arguments)> _calls = [];
+
+    private readonly TaskCompletionSource _held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Lets the held export return, as a browser that has caught up would.</summary>
+    internal void Answer() => _held.TrySetResult();
 
     internal IReadOnlyList<(string Identifier, object?[] Arguments)> Calls
     {
@@ -203,12 +221,18 @@ internal sealed class RecordingModule : IJSObjectReference
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
         InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 
-    public ValueTask<TValue> InvokeAsync<TValue>(
+    public async ValueTask<TValue> InvokeAsync<TValue>(
         string identifier, CancellationToken cancellationToken, object?[]? args)
     {
+        // Recorded before the hold, so a test waiting for the call to have STARTED can see it.
         Record(identifier, args ?? []);
 
-        return ValueTask.FromResult(default(TValue)!);
+        if (identifier == stalls)
+        {
+            await _held.Task;
+        }
+
+        return default!;
     }
 
     private void Record(string identifier, object?[] arguments)
@@ -244,4 +268,73 @@ internal sealed class CountingModule : IJSObjectReference
     public ValueTask<TValue> InvokeAsync<TValue>(
         string identifier, CancellationToken cancellationToken, object?[]? args) =>
         ValueTask.FromResult(default(TValue)!);
+}
+
+/// <summary>A runtime whose imports are held and answered one at a time, in the order a test says.</summary>
+/// <remarks>
+/// <see cref="PendingJsRuntime"/> answers every import with the one reference and all of them at
+/// once, which can neither tell a second arrival being released from a first never asked for, nor
+/// stage the order two overlapping imports land in — and that order decides which one is kept.
+/// </remarks>
+internal sealed class StagingJsRuntime : IJSRuntime
+{
+    private readonly Lock _gate = new();
+    private readonly List<TaskCompletionSource<IJSObjectReference>> _held = [];
+
+    /// <summary>How many imports are waiting, so a test can see the overlap it staged.</summary>
+    internal int Imports
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _held.Count;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Answers the <paramref name="import"/>th import, counted from one, with
+    /// <paramref name="module"/> — or, where that is null, the way a reconnecting circuit does.
+    /// </summary>
+    internal void Answer(int import, IJSObjectReference? module)
+    {
+        TaskCompletionSource<IJSObjectReference> held;
+
+        lock (_gate)
+        {
+            held = _held[import - 1];
+        }
+
+        if (module is null)
+        {
+            held.SetException(new JSDisconnectedException("the circuit is reconnecting"));
+        }
+        else
+        {
+            held.SetResult(module);
+        }
+    }
+
+    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
+        InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+    public async ValueTask<TValue> InvokeAsync<TValue>(
+        string identifier, CancellationToken cancellationToken, object?[]? args)
+    {
+        if (identifier != "import")
+        {
+            return default!;
+        }
+
+        var mine = new TaskCompletionSource<IJSObjectReference>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        lock (_gate)
+        {
+            _held.Add(mine);
+        }
+
+        return (TValue)(object)await mine.Task;
+    }
 }
