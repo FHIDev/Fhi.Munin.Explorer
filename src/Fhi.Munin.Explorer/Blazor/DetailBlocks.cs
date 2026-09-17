@@ -46,6 +46,22 @@ internal static class DetailBlocks
     /// </remarks>
     internal static RenderFragment Facts(
         IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts, string? language,
+        bool authored = false) => LinkedFacts(Unlinked(facts), language, authored);
+
+    /// <summary>
+    /// The same list, where a row's value can be somewhere the reader goes.
+    /// </summary>
+    /// <remarks>
+    /// A target the surface above hands down, as <see cref="DetailTrailStep.Href"/> is: this package
+    /// has no router, so a null <c>Href</c> is a row drawn as plain text rather than as a link that
+    /// goes nowhere.
+    /// <para>
+    /// A name of its own rather than an overload of <see cref="Facts"/>: every <c>cref</c> to either
+    /// would be ambiguous, and a doc comment is not worth a signature spelled out in one.
+    /// </para>
+    /// </remarks>
+    internal static RenderFragment LinkedFacts(
+        IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> facts, string? language,
         bool authored = false) => builder =>
     {
         var shown = Shown(facts);
@@ -62,7 +78,7 @@ internal static class DetailBlocks
 
         var seq = 10;
 
-        foreach (var (label, value, norwegian) in shown)
+        foreach (var (label, value, norwegian, href) in shown)
         {
             builder.OpenElement(seq, "div");
 
@@ -74,7 +90,16 @@ internal static class DetailBlocks
             builder.OpenElement(seq + 4, "dd");
             builder.AddAttribute(seq + 5, "lang", norwegian ? CatalogueProperties.Foreign("no", reader) : null);
 
-            if (authored)
+            // A target wins over markdown: the one row that carries one holds a catalogue name
+            // rather than authored prose, so there is nothing for the renderer to lose.
+            if (href is not null)
+            {
+                builder.OpenElement(seq + 8, "a");
+                builder.AddAttribute(seq + 9, "href", href);
+                builder.AddContent(seq + 10, value);
+                builder.CloseElement();
+            }
+            else if (authored)
             {
                 builder.AddContent(seq + 7, CatalogueMarkdown.Render(value));
             }
@@ -86,7 +111,10 @@ internal static class DetailBlocks
             builder.CloseElement();
 
             builder.CloseElement();
-            seq += 10;
+
+            // Twenty rather than ten, because a row's value has three mutually exclusive shapes and
+            // each needs a sequence number of its own.
+            seq += 20;
         }
 
         builder.CloseElement();
@@ -100,11 +128,21 @@ internal static class DetailBlocks
     /// decided there could otherwise disagree and leave an empty <c>section</c> behind.
     /// </remarks>
     internal static bool AnyFacts(IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) =>
+        Shown(Unlinked(facts)).Count > 0;
+
+    /// <summary>The same question about a list that carries targets — see <see cref="LinkedFacts"/>.</summary>
+    internal static bool AnyLinkedFacts(
+        IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> facts) =>
         Shown(facts).Count > 0;
 
-    private static List<(string Label, string? Value, bool Norwegian)> Shown(
-        IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) =>
+    private static List<(string Label, string? Value, bool Norwegian, string? Href)> Shown(
+        IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> facts) =>
         [.. facts.Where(f => !string.IsNullOrWhiteSpace(f.Value))];
+
+    /// <summary>A list of facts none of which goes anywhere, which is most of them.</summary>
+    private static List<(string Label, string? Value, bool Norwegian, string? Href)> Unlinked(
+        IReadOnlyList<(string Label, string? Value, bool Norwegian)> facts) =>
+        [.. facts.Select(f => (f.Label, f.Value, f.Norwegian, (string?)null))];
 
     /// <summary>
     /// A row's value as one <c>dd</c> per language the catalogue holds it in, and the sequence

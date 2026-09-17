@@ -79,12 +79,12 @@
             {
                 <DetailSection Id="@DetailSectionIds.Source">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                    @DetailBlocks.Facts(SourceInformation, Language)
+                    @DetailBlocks.LinkedFacts(SourceInformation, Language)
                 </DetailSection>
             }
 
-            @* A datasamling that counts nothing gets no block, and the type names the heading
-               rather than filling a row. *@
+            @* A datasamling that counts nothing at all gets no block. The type names the heading
+               and fills a row: one makes the section findable, the other states the fact. *@
             @if (Drawn(DetailSectionIds.Statistics))
             {
                 <DetailSection Id="@DetailSectionIds.Statistics">

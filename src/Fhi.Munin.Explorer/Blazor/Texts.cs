@@ -143,6 +143,10 @@ internal sealed record Texts(
     string FieldPersonIdentification,
     string FieldValidity,
     string FieldInclusionCriteria,
+    // The kind of statistics a datasamling keeps, as a row rather than only in the heading over
+    // them. The value behind it goes through StatisticsTypeLabel, so the row and the heading it
+    // sits under cannot spell one fact two ways.
+    string FieldStatisticsType,
     string FieldFrequency,
     string FieldCountingUnit,
     string FieldVariableCount,
@@ -170,6 +174,10 @@ internal sealed record Texts(
     string HeadingSourceInformation,
     string HeadingStatistics,
     string FieldLastUpdated,
+    // Not ColumnEstablished, which is the founding year the import file states — see the note
+    // there. This one is Munin's own row timestamp, the twin of FieldLastUpdated, and is worded
+    // "i Munin" for the same reason that one is.
+    string FieldCreatedInMunin,
     string FieldTotalVariables,
     // The catch-all section's own prose. Its HEADING is not here: that one is the catalogue's, out
     // of groupTranslations, so a curator renaming the section renames what a reader sees and these
@@ -417,7 +425,8 @@ internal sealed record Texts(
     string ColumnVariableCount,
     // The founding year the import file states, which Kelda heads "Opprettet" and translates
     // "Established". Named for the year and not for the word, because the word also names
-    // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column.
+    // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column,
+    // and FieldCreatedInMunin on a detail page.
     string ColumnEstablished,
     // Three of the ten columns behind the kilde table's picker. The other seven wear names this
     // record already holds. Both dates below are the ones ColumnEstablished warns about: Imported
@@ -927,6 +936,7 @@ internal sealed record Texts(
         FieldPersonIdentification: "Grad av personidentifikasjon",
         FieldValidity: "Gyldighet",
         FieldInclusionCriteria: "Inklusjons- og eksklusjonskriterier",
+        FieldStatisticsType: "Statistikktype",
         FieldFrequency: "Frekvens",
         FieldCountingUnit: "Telleenhet",
         FieldVariableCount: "Antall variabler",
@@ -940,6 +950,7 @@ internal sealed record Texts(
         HeadingSourceInformation: "Kildeinformasjon",
         HeadingStatistics: "Statistikk",
         FieldLastUpdated: "Sist oppdatert i Munin",
+        FieldCreatedInMunin: "Opprettet i Munin",
         FieldTotalVariables: "Totalt antall variabler",
         CompleteRecordLeadKilde:
             "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne kilden, "
@@ -1305,6 +1316,7 @@ internal sealed record Texts(
         FieldPersonIdentification: "Level of personal identification",
         FieldValidity: "Validity",
         FieldInclusionCriteria: "Inclusion and exclusion criteria",
+        FieldStatisticsType: "Statistics type",
         FieldFrequency: "Frequency",
         FieldCountingUnit: "Counting unit",
         FieldVariableCount: "Number of variables",
@@ -1318,6 +1330,7 @@ internal sealed record Texts(
         HeadingSourceInformation: "Source information",
         HeadingStatistics: "Statistics",
         FieldLastUpdated: "Last updated in Munin",
+        FieldCreatedInMunin: "Created in Munin",
         FieldTotalVariables: "Total number of variables",
         CompleteRecordLeadKilde:
             "The sections above are a selection. Below are all the fields Munin holds about this "
