@@ -5784,11 +5784,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Filter_WhenThePanelIsDrawn_ThenTheLegendNamesEveryGlyphInTheTreesOwnOrder()
     {
-        // The whole vocabulary and the shared order, read off DataCategoryIcons rather than typed
-        // out here: a legend built from the rows on screen would shrink as the facets narrowed, and
-        // one in an order of its own would pair a picture with the wrong word on a row drawing
-        // several. The grouping folder is no datakategori and is absent, as it is from the words a
-        // row says aloud.
+        // Read off DataCategoryIcons rather than typed out here: a legend built from the rows on
+        // screen would shrink as the facets narrowed, and one in an order of its own would pair a
+        // picture with the wrong word on a row drawing several.
         var cut = RenderWith(new FilteringClient(
             OnePage(), FacetsWithCategories(["PHDR"], [])));
 
@@ -5859,10 +5857,9 @@ public class VariableSearchTest : BunitContext
     [Fact]
     public void Filter_WhenTheLegendIsDrawn_ThenItIsANamedDisclosureThatRestsShut()
     {
-        // A <details> and nothing invented, so the control carries its own name and its own
-        // expanded state. Shut at rest: it is eighteen rows of reference under the facets, and a
-        // panel that opened with them all would push the results off the screen — the defect
-        // Fhi.Metadata-l9l2n.67 closed for the facets themselves.
+        // A <details>, so the control carries its own name and expanded state. Shut at rest: it is
+        // eighteen rows of reference under the facets, and a panel that opened with them all would
+        // push the results off the screen. (Fhi.Metadata-l9l2n.67)
         var cut = RenderWith(new FilteringClient(
             OnePage(), FacetsWithCategories(["PHDR"], [])));
 

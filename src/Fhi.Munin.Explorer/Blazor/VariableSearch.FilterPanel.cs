@@ -1126,12 +1126,9 @@ public partial class VariableSearch
     /// <summary>The icon legend's disclosure key, on the generation the facets' keys carry.</summary>
     private string LegendKey => $"icon-legend#{_foldGeneration}";
 
-    /// <summary>Whether the icon legend is drawn open. Shut until a fold press says otherwise.</summary>
-    /// <remarks>
-    /// It folds with the facets rather than apart from them: Utvid alle and Skjul alle are how a
-    /// reader tidies this panel, and one disclosure left standing open under a pressed Skjul alle
-    /// is the press not having worked.
-    /// </remarks>
+    /// <summary>Whether the icon legend is drawn open. It folds with the facets rather than apart
+    /// from them: one disclosure left standing open under a pressed Skjul alle reads as the press
+    /// not having worked.</summary>
     private bool LegendOpen => _foldAll ?? false;
 
     /// <summary>What the last fold press did, for the panel's live region.</summary>
@@ -1207,20 +1204,11 @@ public partial class VariableSearch
         return RaiseAsync(ShowNodeIconsChanged, _showNodeIcons, Log);
     }
 
-    /// <summary>The words for the glyphs the tree draws: one row per datakategori, in the order
-    /// the tree draws several of them in.</summary>
+    /// <summary>The words for the glyphs the tree draws: one row per datakategori.</summary>
     /// <remarks>
-    /// Built from <see cref="DataCategoryIcons.Order"/> and never from the rows on screen: a legend
-    /// that grew and shrank as the facets narrowed would read as a second facet rather than as the
-    /// key to the pictures. The grouping folder is outside that order and so absent here, for the
-    /// reason <see cref="NodeIcons.SpokenCategories"/> withholds it — it says only what the nesting
-    /// around a row already says.
-    /// <para>
-    /// Every glyph stays <c>aria-hidden</c> and its name beside it is ordinary text, so a row is
-    /// one reading rather than a picture announced and then explained. No per-category colour: the
-    /// glyphs are drawn in <c>currentColor</c> on the rows, and a legend that coloured them would
-    /// be the one place the vocabulary is told apart by hue. (Fhi.Metadata-zllxt)
-    /// </para>
+    /// The whole vocabulary, never the rows on screen: a legend that grew and shrank as the facets
+    /// narrowed would read as a second facet rather than as the key to the pictures.
+    /// (Fhi.Metadata-zllxt)
     /// </remarks>
     private RenderFragment IconLegendList => builder =>
     {
