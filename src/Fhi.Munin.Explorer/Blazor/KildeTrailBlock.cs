@@ -71,11 +71,11 @@ internal static class KildeTrailBlock
                 OpensKilde: true));
         }
 
-        var datasamlinger = DatasamlingNames(detail);
+        var datasamlinger = NamedDatasamlinger(detail);
 
         if (datasamlinger.Count == 1)
         {
-            crumbs.Add(new Crumb(datasamlinger[0], Norwegian: true));
+            crumbs.Add(new Crumb(datasamlinger[0].Name, Norwegian: true));
         }
         else if (datasamlinger.Count > 1)
         {
@@ -157,37 +157,29 @@ internal static class KildeTrailBlock
     };
 
     /// <summary>
-    /// Every datasamling the variable sits in, less the ones the payload left unnamed.
+    /// Every datasamling the variable sits in, less the ones the payload left unnamed, falling
+    /// back to the primary one when that leaves none.
     /// </summary>
     /// <remarks>
-    /// The one place that decides what counts as a datasamling: every surface that counts them and
-    /// every surface that lists them must derive both from this predicate, or a count ends up
-    /// standing over a list of some other number.
+    /// The one place that decides what counts as a datasamling: count and list must both derive
+    /// from it, or a count stands over a list of some other number. The fallback is inside it for
+    /// that reason rather than beside it — a payload naming only the primary one is still one.
     /// </remarks>
-    internal static IReadOnlyList<DatasamlingReference> NamedDatasamlinger(VariableDetail detail) =>
-        detail.AllDatasamlinger
+    internal static IReadOnlyList<DatasamlingReference> NamedDatasamlinger(VariableDetail detail)
+    {
+        var named = detail.AllDatasamlinger
             .Where(datasamling => !string.IsNullOrWhiteSpace(datasamling.Name))
             .ToList();
 
-    /// <summary>
-    /// Every datasamling the variable sits in, by name.
-    /// </summary>
-    /// <remarks>
-    /// <see cref="VariableDetail.AllDatasamlinger"/> rather than the primary one alone: a variable
-    /// in nineteen of them written up under one reads as singular rather than as incomplete. The
-    /// primary name is the fallback for a payload that carries no list.
-    /// </remarks>
-    private static IReadOnlyList<string> DatasamlingNames(VariableDetail detail)
-    {
-        var names = NamedDatasamlinger(detail)
-            .Select(datasamling => datasamling.Name)
-            .ToList();
-
-        if (names.Count == 0 && !string.IsNullOrWhiteSpace(detail.DatasamlingName))
+        if (named.Count == 0 && !string.IsNullOrWhiteSpace(detail.DatasamlingName))
         {
-            names.Add(detail.DatasamlingName);
+            named.Add(new DatasamlingReference
+            {
+                Id = detail.DatasamlingId ?? Guid.Empty,
+                Name = detail.DatasamlingName,
+            });
         }
 
-        return names;
+        return named;
     }
 }

@@ -87,9 +87,8 @@ public partial class VariableSearch
 
     /// <summary>What the trail's kilde step does here: disclose the kilde in place of the list.</summary>
     /// <remarks>
-    /// Built once and held, as <c>ListState</c> is. An <see cref="EventCallback"/> compares by
-    /// receiver and delegate, so a lambda made per read never equals the last one and the trail
-    /// re-registers its <c>onclick</c> on every render.
+    /// Held rather than rebuilt per read to save the allocation, not to spare the diff: the two
+    /// compare equal either way, so the <c>onclick</c> was never re-registered.
     /// </remarks>
     private EventCallback<MouseEventArgs> PressKilde =>
         _pressKilde ??= EventCallback.Factory.Create<MouseEventArgs>(

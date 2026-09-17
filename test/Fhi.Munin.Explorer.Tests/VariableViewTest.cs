@@ -1548,7 +1548,8 @@ public class VariableViewTest : BunitContext
     public void DataCollections_WhenEveryDatasamlingIsUnnamed_ThenNoSectionIsDrawnForThem()
     {
         // The end of the same rule. An unnamed datasamling is no step in the trail, so a list of
-        // them is a heading over empty bullets — and the nav would offer a link to it.
+        // them is a heading over empty bullets — and the nav would offer a link to it. DatasamlingName
+        // is cleared because the predicate falls back to it, which the next test is about.
         var cut = Render(Placed() with
         {
             DatasamlingName = null,
@@ -1561,5 +1562,48 @@ public class VariableViewTest : BunitContext
 
         // And the trail says nothing about them either, rather than counting what it cannot name.
         Assert.Equal(["Sentralt helseregister", "Abortregisteret (ABR)"], Placement(cut));
+    }
+
+    [Fact]
+    public void DataCollections_WhenOnlyThePrimaryDatasamlingIsNamed_ThenTheListHasTheStepTheTrailDrew()
+    {
+        // The fallback is inside NamedDatasamlinger rather than beside it, so it reaches both
+        // surfaces: named here and nowhere else, the trail's last step used to stand over a
+        // suppressed section the nav had no entry for.
+        var cut = Render(Placed() with
+        {
+            AllDatasamlinger = [new() { Id = Guid.NewGuid() }],
+        });
+
+        Assert.Equal("Abortregisteret Utlevering", Placement(cut)[^1]);
+        Assert.Equal(["Abortregisteret Utlevering"], DatasamlingList(cut));
+    }
+
+    [Fact]
+    public void Placement_WhenTheVariableIsReplacedAfterTheFirstRender_ThenBothAreTheNewVariablesOwn()
+    {
+        // Placement and Datasamlinger are cached and rebuilt only in OnParametersSet, as Toc is. Going
+        // stale is invisible to the nav test beside it — entries and sections still agree, the page
+        // just draws the last variable — and a host swapping SelectedVariableId is the way in.
+        var cut = Render(Placed());
+
+        Assert.Equal("Abortregisteret Utlevering", Placement(cut)[^1]);
+        Assert.Equal(["Abortregisteret Utlevering"], DatasamlingList(cut));
+
+        cut.Render(p => p.Add(c => c.Variable, Placed() with
+        {
+            KildeName = "Dødsårsaksregisteret",
+            KildeShortName = "DÅR",
+            DatasamlingName = "DÅR Statistikk",
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "DÅR Statistikk" },
+                new() { Id = Guid.NewGuid(), Name = "DÅR Utlevering" },
+            ],
+        }));
+
+        Assert.Equal(["Sentralt helseregister", "Dødsårsaksregisteret (DÅR)", "2 datasamlinger"],
+                     Placement(cut));
+        Assert.Equal(["DÅR Statistikk", "DÅR Utlevering"], DatasamlingList(cut));
     }
 }
