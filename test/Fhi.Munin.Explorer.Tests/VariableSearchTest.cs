@@ -7269,9 +7269,8 @@ public class VariableSearchTest : BunitContext
     }
 
     // ---------------------------------------------------------------------------------
-    // The fold over the filter panel on a narrow screen, the kildeutforsker's own control.
-    // Whether a host's stylesheet honours it is measured in a browser, not here.
-    // (Fhi.Metadata-l9l2n.102)
+    // The fold over the filter panel on a narrow screen. Whether a host's stylesheet honours it
+    // is measured in a browser, not here. (Fhi.Metadata-l9l2n.102)
     // ---------------------------------------------------------------------------------
 
     private static IElement FiltersToggle(IRenderedComponent<VariableSearch> cut) =>
