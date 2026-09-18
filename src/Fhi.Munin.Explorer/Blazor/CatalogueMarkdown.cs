@@ -161,16 +161,15 @@ internal static partial class CatalogueMarkdown
 
         var sliced = SlicedSpans(document).ToList();
 
-        // A definition that a paragraph's span also covers starts where the paragraph does, and
-        // was written before the text after it.
+        // Markdig keeps a paragraph's span over the definitions it lifted out of it, so a paragraph
+        // is placed by where its own text starts.
         return document
             .SelectMany(block => block is LinkReferenceDefinitionGroup group
                 ? group.OfType<LinkReferenceDefinition>()
                        .Where(definition => !lent.Contains(definition)
                                             && !sliced.Any(span => Covers(span, definition.Span)))
                 : Enumerable.Repeat(block, 1))
-            .OrderBy(block => block.Span.Start)
-            .ThenBy(block => block is LinkReferenceDefinition ? 0 : 1);
+            .OrderBy(block => block is ParagraphBlock { Inline.FirstChild: { } first } ? first.Span.Start : block.Span.Start);
     }
 
     /// <summary>The spans <see cref="Block"/> draws as source text, where a definition already shows.</summary>

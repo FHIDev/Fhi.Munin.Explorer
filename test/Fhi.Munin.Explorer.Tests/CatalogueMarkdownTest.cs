@@ -186,6 +186,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
 
     [Theory]
     [InlineData("Tekst\n\n[a]: https://x.no\nmer tekst", "Tekst<br /><br />[a]: https://x.no<br /><br />mer tekst")]
+    [InlineData("[a]: https://x.no\n[b]: https://y.no\nTekst", "[a]: https://x.no<br /><br />[b]: https://y.no<br /><br />Tekst")]
     [InlineData("> [a]: https://x.no\n\nTekst", "&gt; [a]: https://x.no<br /><br />Tekst")]
     [InlineData("- [a]: https://x.no\n- Tekst", "- [a]: https://x.no<br />- Tekst")]
     [InlineData("1. [a]: https://x.no", "1. [a]: https://x.no")]
