@@ -35,10 +35,12 @@ public sealed record SectionPlacement
 
     /// <summary>The heading per language code (<c>no</c>, <c>en</c>); empty where none is curated.</summary>
     /// <remarks>
-    /// What a view does with it differs by kind. A property section is titled from here, so a
-    /// curator renaming it renames what a reader sees. A built-in section already has a word of its
-    /// own — one that can follow the payload, as the kilde page's does when the source has
-    /// delkilder — and keeps it; the placement decides where that section goes, not what it is called.
+    /// Carried for the contract's sake, and read by no view in this package: a property section is
+    /// titled from <see cref="PropertyMetadataEntry.GroupTranslations"/>, which the same curation
+    /// feeds, and a built-in section keeps the word the view has for it — one that can follow the
+    /// payload, as the kilde page's does when the source has delkilder. A placement decides where a
+    /// section goes and never what it is called, so renaming one here renames nothing a reader sees
+    /// unless the property metadata beside it is renamed too.
     /// </remarks>
     [JsonPropertyName("groupTranslations")]
     public IReadOnlyDictionary<string, string> Translations { get; init; } =
@@ -49,7 +51,10 @@ public sealed record SectionPlacement
     /// </summary>
     /// <remarks>
     /// Null is not a position of zero: the API has already sorted this collection, so the order to
-    /// draw in is the order it arrived in whether or not a placement named each entry.
+    /// draw in is the order it arrived in whether or not a placement named each entry. The views
+    /// here therefore never re-sort on this value — an unplaced entry has no band to sort by, and
+    /// sorting the rest around it would move it somewhere the API did not put it. It is here for a
+    /// host laying the sections out itself, which can then read the band a curator chose.
     /// </remarks>
     [JsonPropertyName("groupSortOrder")] public int? SortOrder { get; init; }
 

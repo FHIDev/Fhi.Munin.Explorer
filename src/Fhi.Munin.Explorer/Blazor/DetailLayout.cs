@@ -54,6 +54,12 @@ internal static class DetailLayout
     /// curated group named <c>statistikk</c> swallow this package's block of that name — and the
     /// block, having no row of its own in the payload, would then be drawn nowhere.
     /// </para>
+    /// <para>
+    /// A section counts as placed only once it has been found, so a row whose flag sends it to the
+    /// pool the other kind is in falls to the unplaced tail rather than off the page: the split
+    /// above is what keeps two kinds apart, and this is what keeps a wrong flag from deleting a
+    /// section and every field in it.
+    /// </para>
     /// </remarks>
     internal static IReadOnlyList<DetailLayoutSection> Order(
         IReadOnlyList<SectionPlacement> placements,
@@ -61,11 +67,15 @@ internal static class DetailLayout
         IReadOnlyList<DetailLayoutSection> blocks)
     {
         List<DetailLayoutSection> ordered = [];
+
+        // Two sets rather than one: the first is which rows have been read, the second which
+        // sections they actually found, and only the second decides what the tail leaves out.
+        HashSet<string> addressed = new(StringComparer.Ordinal);
         HashSet<string> placed = new(StringComparer.Ordinal);
 
         foreach (var placement in placements)
         {
-            if (string.IsNullOrEmpty(placement.Key) || !placed.Add(placement.Key))
+            if (string.IsNullOrEmpty(placement.Key) || !addressed.Add(placement.Key))
             {
                 continue;
             }
@@ -73,6 +83,7 @@ internal static class DetailLayout
             if (Find(placement.IsBuiltIn ? blocks : groups, placement.Key) is { } section)
             {
                 ordered.Add(section);
+                placed.Add(placement.Key);
             }
         }
 

@@ -68,6 +68,13 @@ public class KildeLayoutTest : ExplorerTestContext
     /// Transcribed from <c>0013_SeedPropertyPlacements.sql</c> and
     /// <c>0014_SeedBuiltInSectionPlacements.sql</c>, read on Munin <c>main</c> 2026-09-18. The
     /// catch-all's own band is 9000 + rank, so it is last whatever sections a page has.
+    /// <para>
+    /// Seven sections where the mockup draws eight, and the missing one is deliberate on Munin's
+    /// side rather than a gap here: 0013 seeds no <c>formaal</c> section and places the mockup's
+    /// Formål rows — <c>Formaal</c> and <c>FormaalFlerspraklig</c>, at 1002 and 1003 — inside
+    /// <c>om-registeret</c>. So Innhold is the seed's second section where the mockup calls it the
+    /// third, and both of the bead's senses of that word are asserted below either way.
+    /// </para>
     /// </remarks>
     private static IReadOnlyList<SectionPlacement> Seeded =>
     [
@@ -291,6 +298,65 @@ public class KildeLayoutTest : ExplorerTestContext
 
         Assert.Contains("Metadata", headings);
         Assert.Contains("Kontakt", Page(half).Find("#" + DetailSectionIds.Metadata).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Section_WhenAPlacementRowNamesTheWrongKindOfSection_ThenItFallsToTheTailRatherThanOffThePage()
+    {
+        // A row whose isBuiltIn contradicts what its key names finds nothing in the pool it is sent
+        // to, and counting that key as placed on the row alone would leave the section out of the
+        // other pool's fallback as well — off the page, with every field it holds.
+        var builtInGroup = Unplaced() with
+        {
+            Sections =
+            [
+                .. Seeded.Select(section =>
+                    section.Key == "innhold" ? section with { IsBuiltIn = true } : section),
+            ],
+        };
+
+        var curatedBlock = Unplaced() with
+        {
+            Sections =
+            [
+                .. Seeded.Select(section =>
+                    section.Key == SectionKeys.DataCollections ? section with { IsBuiltIn = false } : section),
+            ],
+        };
+
+        Assert.Contains("Innhold", Headings(Page(builtInGroup)));
+        Assert.Contains("Delkilder og datasamlinger", Headings(Page(curatedBlock)));
+        Assert.NotEmpty(Rows(Page(curatedBlock).Find("#" + DetailSectionIds.DataCollections)));
+
+        var before = Facts(Page(Unplaced()));
+
+        foreach (var crossed in new[] { builtInGroup, curatedBlock })
+        {
+            var after = Facts(Page(crossed));
+
+            Assert.True(after.Terms >= before.Terms && after.Values >= before.Values,
+                        $"A row in the wrong pool left the page stating {after} where the unplaced "
+                        + $"one states {before}.");
+        }
+    }
+
+    [Fact]
+    public void Sections_WhenTheirBandsDisagreeWithTheOrderTheyArriveIn_ThenThePageDrawsTheArrivalOrder()
+    {
+        // The contract is the order the API sent and not groupSortOrder, which is why nothing here
+        // re-sorts on it: an entry no placement names carries no band to sort by. Pinned because
+        // nothing else on this side would notice the API's own ordering changing.
+        var scrambled = Unplaced() with
+        {
+            Sections =
+            [
+                Section("kontakt", "Kontakt", "Contact", 6000),
+                Section("innhold", "Innhold", "Content", 2000),
+                Section("om-registeret", "Om registeret", "About the registry", null),
+            ],
+        };
+
+        Assert.Equal(["Kontakt", "Innhold", "Om registeret"], Headings(Page(scrambled)).Take(3));
     }
 
     /// <summary>The mockup's own section names, which must reach the page as data and never as markup.</summary>
