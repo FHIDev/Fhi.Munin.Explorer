@@ -152,8 +152,8 @@ public class MuninExplorerClientTest
         Assert.NotNull(kilde);
         Assert.Equal("K_ALS", kilde.Code);
 
-        // The hand-built sources elsewhere still spell K_ALS's old name: the corpus is coherent per
-        // file, not as one.
+        // datasamling.json, variable.json and variables.json are older captures and still spell
+        // K_ALS's old name: the corpus is coherent per file, not as one.
         Assert.Equal("ALS Registeret", kilde.PreferredTerm);
         Assert.Equal(245, kilde.TotalVariables);
         Assert.Equal(9, kilde.Datasamlinger.Count);

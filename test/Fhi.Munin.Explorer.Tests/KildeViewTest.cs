@@ -1032,7 +1032,7 @@ public class KildeViewTest : ExplorerTestContext
     public void Metadata_WhenHasLegalBasisHoldsATranslationLovverkLacks_ThenTheTranslationIsNotLost()
     {
         // THE TRAP, proven the other way: K_ALS's hasLegalBasis was once Lovverk plus an English
-        // translation, and an exclusion keyed on "Lovverk is non-blank" shipped and deleted it
+        // translation, which an exclusion keyed on "Lovverk is non-blank" would have deleted
         // (Fhi.Metadata-43jrq). Inline since the catalogue dropped the translation.
         var kilde = Kilde() with
         {
