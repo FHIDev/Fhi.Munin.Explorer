@@ -680,6 +680,16 @@ These are not style preferences — each one is a host that breaks otherwise.
   `-` on the way in, since nothing constrains a key at the source. A group the payload places
   nowhere keeps its old home inside `metadata` and adds no id at all.
 
+  `DatasamlingView` writes a second such family, and it is the one a host cannot read off a list
+  here: a section the catalogue has *placed* is anchored on `metadata-` finished with that section's
+  own `groupKey` — `metadata-om-datasamlingen`, `metadata-datakilde`, `metadata-alle-metadatafelt`
+  and whatever else Munin's placement rows declare. The key and never the heading, for the reason
+  above: a curator renames a title in one language at a time, and the key is the same in both. It
+  is stemmed on `metadata` so it can collide with neither the bare ids above nor a host's own, and
+  anything a fragment cannot carry becomes a hyphen. Which sections exist is Munin's to decide, so
+  the set is open and a host that means something by an `id` of its own should not start it
+  `metadata-`. (`Fhi.Metadata-lr6yh`)
+
   Ids are otherwise a separate family, each suffixed with a per-instance discriminator so two
   mounts on one page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`,
   `-toggle-*`, `-detail-*`, `-tab-*`, `-source-*`, `-stuckbar-*`, `-facts-*` and the rest.

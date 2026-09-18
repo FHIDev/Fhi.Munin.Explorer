@@ -25,9 +25,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 public sealed class DetailSection : ComponentBase
 {
     /// <summary>
-    /// The element id, which a reader's deep link ends in. A fixed English literal, or a catalogue
-    /// section's own key under a <c>section-</c> prefix; never derived from the heading, since the
-    /// headings are bilingual and a derived id would differ between nb and en.
+    /// The element id, which a reader's deep link ends in. A fixed English literal, or the
+    /// catalogue's own section key — never the heading, which is bilingual and would give a reader
+    /// in one language a link that resolves for nobody in the other.
     /// </summary>
     /// <remarks>
     /// Nothing per-instance goes in it, so a page mounts one detail view. Two of them write these
