@@ -152,13 +152,12 @@ public class MuninExplorerClientTest
         Assert.NotNull(kilde);
         Assert.Equal("K_ALS", kilde.Code);
 
-        // Not a contradiction of the test above, whose kilder.json has been re-taken twice since —
-        // for its Opprettet key, then for K_NKR-NAKKE's null kildetype. This capture and the four
-        // siblings carrying K_ALS's old name are older: the corpus is coherent per file, not as one.
-        Assert.Equal("Als registeret", kilde.PreferredTerm);
-        Assert.Equal(230, kilde.TotalVariables);
+        // The hand-built sources elsewhere still spell K_ALS's old name: the corpus is coherent per
+        // file, not as one.
+        Assert.Equal("ALS Registeret", kilde.PreferredTerm);
+        Assert.Equal(245, kilde.TotalVariables);
         Assert.Equal(9, kilde.Datasamlinger.Count);
-        Assert.Equal(72, kilde.PropertyMetadata.Count);
+        Assert.Equal(73, kilde.PropertyMetadata.Count);
         Assert.Null(kilde.DataTo); // ongoing collection
 
         // Inheritance: no own data controller, but an effective one resolved from the kilde.
