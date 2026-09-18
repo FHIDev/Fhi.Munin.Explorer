@@ -858,8 +858,8 @@ public class KildeViewTest : ExplorerTestContext
     [Fact]
     public void Metadata_WhenAQualityNoteCarriesAMarkdownLink_ThenThePageDrawsAnAnchorLabelledWithTheDoi()
     {
-        // K_TR as Georgi found it on HostileHost (Fhi.Metadata-x0etk): the section printed the
-        // bracket syntax. Through the whole view, so the page's own path is pinned, not the helper's.
+        // Through the whole view rather than the helper, so the page's own path to the metadata
+        // rows is what is pinned.
         var kilde = Kilde() with
         {
             PropertyMetadata = [Entry("Kvalitetsnote", 10, "Datakvalitet")],
