@@ -107,6 +107,13 @@ public sealed record DatasamlingDetail
     /// <summary>Labels, grouping and order for the keys in <see cref="AdditionalProperties"/>.</summary>
     [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadataEntry> PropertyMetadata { get; init; } = [];
 
+    /// <summary>Every section this page draws, property and built-in alike, in render order.</summary>
+    /// <remarks>
+    /// Empty against an API that predates the field — see <see cref="SectionPlacement"/> for what a
+    /// view draws then. Carried rather than drawn: the datasamling page still orders its own blocks.
+    /// </remarks>
+    [JsonPropertyName("sections")] public IReadOnlyList<SectionPlacement> Sections { get; init; } = [];
+
     /// <summary>Owning delkilde, or null when the datasamling hangs directly off the kilde.</summary>
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }
 

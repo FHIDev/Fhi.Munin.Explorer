@@ -154,7 +154,11 @@ public sealed class DetailToc : ComponentBase, IDisposable
 
             builder.OpenElement(seq + 2, "a");
             builder.AddAttribute(seq + 3, "href", $"{page}#{entry.Id}");
-            builder.AddContent(seq + 4, entry.Label);
+
+            // The heading this repeats is marked where the words are the catalogue's rather than
+            // the reader's, and the link has to say the same — WCAG 3.1.2.
+            builder.AddAttribute(seq + 4, "lang", entry.Language);
+            builder.AddContent(seq + 5, entry.Label);
             builder.CloseElement();
 
             builder.CloseElement();
