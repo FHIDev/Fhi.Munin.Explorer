@@ -193,7 +193,7 @@ internal static class DetailBlocks
             if (row.Values.Count == 1)
             {
                 builder.AddAttribute(seq + 1, "lang", CatalogueProperties.Foreign(slot.Language, reader));
-                Text(builder, seq + 2, slot.Text, row.Href);
+                Text(builder, seq + 2, slot.Text, row);
             }
             else
             {
@@ -204,7 +204,7 @@ internal static class DetailBlocks
 
                 builder.OpenElement(seq + 13, "span");
                 builder.AddAttribute(seq + 14, "lang", CatalogueProperties.Foreign(slot.Language, reader));
-                Text(builder, seq + 15, slot.Text, row.Href);
+                Text(builder, seq + 15, slot.Text, row);
                 builder.CloseElement();
             }
 
@@ -216,19 +216,27 @@ internal static class DetailBlocks
     }
 
     /// <summary>
-    /// A value, as a link where the catalogue types the property as a URL. Consumes five sequence
-    /// numbers from <paramref name="seq"/>.
+    /// A value, as a link where the catalogue types the property as a URL and as markdown where the
+    /// row is authored. Consumes six sequence numbers from <paramref name="seq"/>.
     /// </summary>
     /// <remarks>
     /// A field that exists to be followed should be followable (FHIDev/Munin#5385). <c>rel</c>
     /// guards the middle-click and ctrl-click paths; there is no <c>target</c>, so a reader stays
     /// on the page they were reading.
     /// </remarks>
-    private static void Text(RenderTreeBuilder builder, int seq, string value, string? href)
+    private static void Text(RenderTreeBuilder builder, int seq, string value, PropertyRow row)
     {
-        if (href is null)
+        if (row.Href is not { } href)
         {
-            builder.AddContent(seq, value);
+            if (row.Authored)
+            {
+                builder.AddContent(seq + 5, CatalogueMarkdown.Render(value));
+            }
+            else
+            {
+                builder.AddContent(seq, value);
+            }
+
             return;
         }
 

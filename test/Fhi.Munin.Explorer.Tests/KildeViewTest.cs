@@ -856,6 +856,28 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Metadata_WhenAQualityNoteCarriesAMarkdownLink_ThenThePageDrawsAnAnchorLabelledWithTheDoi()
+    {
+        // K_TR as Georgi found it on HostileHost (Fhi.Metadata-x0etk): the section printed the
+        // bracket syntax. Through the whole view, so the page's own path is pinned, not the helper's.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Kvalitetsnote", 10, "Datakvalitet")],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Kvalitetsnote"] = "[10.1093/ije/dyr049](https://doi.org/10.1093/ije/dyr049)",
+            },
+        };
+
+        var cut = Render(kilde);
+
+        var link = Assert.Single(cut.FindAll("dd a[href='https://doi.org/10.1093/ije/dyr049']"));
+
+        Assert.Equal("10.1093/ije/dyr049", link.TextContent);
+        Assert.DoesNotContain("](https://doi.org", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Metadata_WhenOnlyThePlainDescriptionKeyIsCurated_ThenItIsExcludedToo()
     {
         // THE THIRD TRAP. The captured source carries BeskrivelseFlerspraklig, so a fix covering

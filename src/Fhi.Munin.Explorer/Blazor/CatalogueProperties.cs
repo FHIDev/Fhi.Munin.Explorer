@@ -18,11 +18,13 @@ internal readonly record struct LocalisedText(string Text, string Language);
 /// types, whose bags the catalogue leaves open.
 /// </param>
 /// <param name="Href">Where the value should link, for the properties the catalogue types as a URL.</param>
+/// <param name="Authored">Drawn through <see cref="CatalogueMarkdown"/>; see <see cref="CatalogueProperties.AuthoredKeys"/>.</param>
 internal readonly record struct PropertyRow(
     string Label,
     string LabelLanguage,
     IReadOnlyList<LocalisedText> Values,
-    string? Href = null);
+    string? Href = null,
+    bool Authored = false);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
 /// <remarks>
@@ -61,6 +63,21 @@ internal static class CatalogueProperties
     /// match on "Alle metadatafelt" would turn it back into an ordinary group with no failing test.
     /// </remarks>
     internal const string CatchAllGroupKey = "alle-metadatafelt";
+
+    /// <summary>Free-text keys authored with markdown links and <c>&lt;br&gt;</c>. Named, not typed, as 5bcr7
+    /// named its fields: a type rule would reach any field that later takes the type. No
+    /// <c>BeskrivelseFlerspraklig</c>: the page ingress already renders it.</summary>
+    internal static readonly IReadOnlySet<string> AuthoredKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "BeskrivelseEngelsk",
+        "Kvalitetsnote",
+        "Innsamlingsmetode",
+        "InklusjonsOgEksklusjonskriterier",
+        "Forskrift",
+        "GeografiskAvgrensning",
+        "FormaalFlerspraklig",
+        "Kommentar",
+    };
 
     /// <summary>The only two cultures this package ever formats in, resolved once.</summary>
     /// <remarks>
@@ -251,7 +268,7 @@ internal static class CatalogueProperties
                 continue;
             }
 
-            rows.Add(new PropertyRow(label, labelLanguage, resolved));
+            rows.Add(new PropertyRow(label, labelLanguage, resolved, Authored: AuthoredKeys.Contains(entry.Key)));
         }
 
         return rows;
