@@ -143,7 +143,7 @@ internal static class DetailBlocks
 
             builder.CloseElement();
 
-            // Twenty rather than ten: a row's dd branches run to seq + 12, past where the next row
+            // Twenty rather than ten: a row's dd branches run to seq + 13, past where the next row
             // began under the old stride. No rendered markup differs either way — the diff
             // tolerates the repeat — so this is the numbering contract kept, not a defect fixed.
             seq += 20;

@@ -123,6 +123,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
     [Theory]
     [InlineData("- first\n\n  second", "- first<br /><br />second")]
     [InlineData("- first\n  second", "- first<br />second")]
+    [InlineData("- first\n  - nested\n\n  after", "- first<br />- nested<br /><br />after")]
     public void Render_WhenAListItemHoldsTwoBlocks_ThenTheBlankLineBetweenThemSurvives(string text, string markup)
     {
         Assert.Equal(markup, Rendered(text).Markup);

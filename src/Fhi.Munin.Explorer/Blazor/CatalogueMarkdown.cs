@@ -260,7 +260,7 @@ internal static partial class CatalogueMarkdown
 
                     // A blank line between an item's blocks is kept, as it is between the blocks of a document.
                     if (previous.Span.End < child.Span.Start
-                        && source[(previous.Span.End + 1)..child.Span.Start].Count(c => c == '\n') > 1)
+                        && source[previous.Span.End..child.Span.Start].Count(c => c == '\n') > 1)
                     {
                         Break(builder, ref seq);
                     }
