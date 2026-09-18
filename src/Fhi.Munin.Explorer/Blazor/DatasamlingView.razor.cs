@@ -253,7 +253,8 @@ public sealed partial class DatasamlingView : ComponentBase
                  KildeHref?.Invoke(datasamling.ParentKildeId)),
                 (T.FacetKildeType, KildetypeLabel, false, null),
                 .. UnlessPlaced(CatalogueColumns.LegalBasis,
-                                (T.FieldLegalBasis, CatalogueMarkdown.Words(datasamling.EffectiveLegalBasis), true,
+                                (T.FieldLegalBasis, CatalogueMarkdown.Words(datasamling.EffectiveLegalBasis),
+                                 CatalogueMarkdown.Prose(datasamling.EffectiveLegalBasis),
                                  CatalogueMarkdown.Link(datasamling.EffectiveLegalBasis)?.Href)),
                 .. UnlessPlaced(CatalogueColumns.DataController,
                                 Unlinked(T.FieldDataController, datasamling.EffectiveDataController, true)),
@@ -397,7 +398,9 @@ public sealed partial class DatasamlingView : ComponentBase
                                NoteLabel: T.FieldCountingUnit, Note: datasamling.CountingUnit,
                                NoteLang: CatalogueProperties.Foreign("no", Reader)),
                 new DetailFact(T.FieldLegalBasis, CatalogueMarkdown.Words(datasamling.EffectiveLegalBasis),
-                               CatalogueProperties.Foreign("no", Reader)),
+                               CatalogueMarkdown.Prose(datasamling.EffectiveLegalBasis)
+                                   ? CatalogueProperties.Foreign("no", Reader)
+                                   : null),
             ];
 
     /// <summary>Whether the statistics block has a row to draw, heading and section included.</summary>

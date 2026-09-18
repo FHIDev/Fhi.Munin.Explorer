@@ -84,20 +84,34 @@ public class AuthoredPropertiesTest : ExplorerTestContext
     [Fact]
     public void Group_WhenAnUnlistedKeyCarriesTheSameMarkup_ThenItStaysLiteralText()
     {
-        // The list decides, not the type: Formaal is Text as well, and nobody authored markup in it.
+        // The list decides, not the type: Merknad is Text as well, and nobody authored markup in it.
         var cut = RenderGroup(
-            [Entry("Formaal", 10), Entry("Kvalitetsnote", 20)],
+            [Entry("Merknad", 10), Entry("Kvalitetsnote", 20)],
             new()
             {
-                ["Formaal"] = "[Lenke](https://example.org)<br>",
+                ["Merknad"] = "[Lenke](https://example.org)<br>",
                 ["Kvalitetsnote"] = "[Lenke](https://example.org)",
             });
 
-        var plain = Cell(cut, "Formaal");
+        var plain = Cell(cut, "Merknad");
 
         Assert.Empty(plain.QuerySelectorAll("a, br"));
         Assert.Equal("[Lenke](https://example.org)<br>", plain.TextContent);
         Assert.Single(Cell(cut, "Kvalitetsnote").QuerySelectorAll("a"));
+    }
+
+    [Theory]
+    [InlineData("Formaal")]
+    [InlineData("JuridiskNote")]
+    public void Group_WhenK_MSISsReferenceStyleKeysCarryALink_ThenItRendersAsAnAnchor(string key)
+    {
+        // Both hold reference-style links only, which an inline-link measurement cannot see.
+        var cut = RenderGroup(
+            [Entry(key, 10)],
+            new() { [key] = "Se [MSIS-forskriften].\n\n[MSIS-forskriften]: https://lovdata.no/msis" });
+
+        Assert.Equal("https://lovdata.no/msis",
+                     Assert.Single(Cell(cut, key).QuerySelectorAll("a")).GetAttribute("href"));
     }
 
     [Theory]

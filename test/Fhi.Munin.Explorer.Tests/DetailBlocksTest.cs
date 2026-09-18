@@ -101,6 +101,18 @@ public class DetailBlocksTest : ExplorerTestContext
     }
 
     [Fact]
+    public void LinkedFacts_WhenATargetIsAnAbsoluteAddress_ThenOnlyThatAnchorCarriesRel()
+    {
+        // A catalogue URL is guarded as the metadata rows guard theirs; a host's own path is not.
+        var cut = RenderList(authored: false,
+                             ("Lovverk", "Helseregisterloven", true, "https://lovdata.no/lov"),
+                             ("Kilde", "Als registeret", false, "/kilder?kilde=1"));
+
+        Assert.Equal("noopener noreferrer", Cell(cut, "Lovverk").QuerySelector("a")!.GetAttribute("rel"));
+        Assert.Null(Cell(cut, "Kilde").QuerySelector("a")!.GetAttribute("rel"));
+    }
+
+    [Fact]
     public void LinkedFacts_WhenTheRowsChangeUnderAListAlreadyOnScreen_ThenTheDomFollowsThemRatherThanTheFirstDraw()
     {
         // Not a test of the per-row stride, which nothing can see: measured at 10 and at 20, every

@@ -167,8 +167,28 @@ public class CatalogueMarkdownTest : ExplorerTestContext
     {
         var cut = Rendered("Se [ref].\n\n[ref]: javascript:alert(1)");
 
-        Assert.Empty(cut.FindAll("a"));
-        Assert.Contains("Se [ref].", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("Se [ref].<br /><br />[ref]: javascript:alert(1)", cut.Markup);
+    }
+
+    [Theory]
+    [InlineData("Tekst\n\n[Kilde]: https://fhi.no", "Tekst<br /><br />[Kilde]: https://fhi.no")]
+    [InlineData("Tekst\n\n[Merk]: Foreløpig", "Tekst<br /><br />[Merk]: Foreløpig")]
+    [InlineData("Se [1].\n\n[1]: www.lovdata.no", "Se [1].<br /><br />[1]: www.lovdata.no")]
+    [InlineData("*se [a]*\n\n[a]: https://x.no", "*se [a]*<br /><br />[a]: https://x.no")]
+    [InlineData("[a]: Først\n\nMidt\n\n[b]: Sist", "[a]: Først<br /><br />Midt<br /><br />[b]: Sist")]
+    public void Render_WhenNoDrawnAnchorTakesADefinitionsUrl_ThenTheDefinitionIsDrawnAsItsSource(
+        string text, string markup)
+    {
+        // Unused, not an address, a scheme the anchor refuses, or cited only from literal text:
+        // hiding any of them would lose what the curator wrote.
+        Assert.Equal(markup, Rendered(text).Markup);
+    }
+
+    [Fact]
+    public void Render_WhenADefinitionComesBeforeItsLink_ThenTheLinkStillTakesItAndNothingElseIsDrawn()
+    {
+        Assert.Equal("Se <a href=\"https://x.no\" rel=\"noopener noreferrer\">a</a>.",
+                     Rendered("[a]: https://x.no\n\nSe [a].").Markup);
     }
 
     [Fact]

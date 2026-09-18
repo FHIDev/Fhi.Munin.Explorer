@@ -78,6 +78,8 @@ internal static class CatalogueProperties
         "Forskrift",
         "GeografiskAvgrensning",
         "FormaalFlerspraklig",
+        "Formaal",
+        "JuridiskNote",
         "Kommentar",
     };
 
@@ -262,7 +264,7 @@ internal static class CatalogueProperties
             // prose in no language, so it stays unmarked (WCAG 3.1.2); a worded one is Norwegian.
             if (Typed(entry, UrlType) && CatalogueMarkdown.Link(raw) is { } link)
             {
-                var labelIsTheAddress = link.Href == link.Label || link.Href == $"https://{link.Label}";
+                var labelIsTheAddress = CatalogueMarkdown.IsAddress(link);
 
                 rows.Add(new PropertyRow(label, labelLanguage,
                                          [new LocalisedText(link.Label, labelIsTheAddress ? reader : "no")],

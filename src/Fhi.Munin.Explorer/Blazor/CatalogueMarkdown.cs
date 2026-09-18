@@ -108,6 +108,13 @@ internal static partial class CatalogueMarkdown
     /// <summary>A value's words: the label where the whole value is one allowed link, else the value.</summary>
     internal static string? Words(string? raw) => Link(raw)?.Label ?? raw;
 
+    /// <summary>Whether a link's label is only its own address, which is prose in no language (WCAG 3.1.2).</summary>
+    internal static bool IsAddress((string Label, string Href) link) =>
+        link.Href == link.Label || link.Href == $"https://{link.Label}";
+
+    /// <summary>Whether a value's words are the catalogue's prose rather than an address.</summary>
+    internal static bool Prose(string? raw) => Link(raw) is not { } link || !IsAddress(link);
+
     /// <summary>The catalogue text as a fragment: anchors, breaks, and literal text for the rest.</summary>
     internal static RenderFragment Render(string? text) => builder =>
     {
@@ -142,9 +149,43 @@ internal static partial class CatalogueMarkdown
         }
     };
 
-    /// <summary>The blocks that draw anything: a reference definition only lends its URL to a link.</summary>
-    private static IEnumerable<Block> Drawn(ContainerBlock blocks) =>
-        blocks.Where(block => block is not (LinkReferenceDefinitionGroup or LinkReferenceDefinition));
+    /// <summary>The blocks in source order, each reference definition drawn as its source unless a drawn
+    /// anchor took its URL. Markdig files the definitions in one group whose span means nothing.</summary>
+    private static IEnumerable<Block> Drawn(MarkdownDocument document)
+    {
+        var lent = Paragraphs(document)
+            .SelectMany(paragraph => paragraph.Inline is { } inlines ? Anchored(inlines) : [])
+            .Select(link => link.Reference)
+            .OfType<LinkReferenceDefinition>()
+            .ToHashSet();
+
+        return document
+            .SelectMany(block => block is LinkReferenceDefinitionGroup group
+                ? group.OfType<LinkReferenceDefinition>().Where(definition => !lent.Contains(definition))
+                : Enumerable.Repeat(block, 1))
+            .OrderBy(block => block.Span.Start);
+    }
+
+    /// <summary>The paragraphs <see cref="Block"/> walks inline by inline, and no others.</summary>
+    private static IEnumerable<ParagraphBlock> Paragraphs(ContainerBlock container) =>
+        container.SelectMany(block => block switch
+        {
+            ParagraphBlock paragraph => [paragraph],
+            ListBlock list => list.OfType<ListItemBlock>().Where(Walked).SelectMany(Paragraphs),
+            _ => Enumerable.Empty<ParagraphBlock>(),
+        });
+
+    /// <summary>The links <see cref="Inlines"/> draws as anchors, found by the same cases.</summary>
+    private static IEnumerable<LinkInline> Anchored(ContainerInline container) =>
+        container.SelectMany(inline => inline switch
+        {
+            LinkInline { IsImage: false } link when AllowedScheme(link.Url) => [link],
+            DelimiterInline delimiter => Anchored(delimiter),
+            _ => Enumerable.Empty<LinkInline>(),
+        });
+
+    /// <summary>Whether an item's children are walked, or the item is drawn as its source.</summary>
+    private static bool Walked(ListItemBlock item) => item.Count > 0 && item[0].Span.Start > item.Span.Start;
 
     private static void Block(RenderTreeBuilder builder, ref int seq, Block block, string source)
     {
@@ -181,7 +222,7 @@ internal static partial class CatalogueMarkdown
 
             firstItem = false;
 
-            if (item.Count == 0 || item[0].Span.Start <= item.Span.Start)
+            if (!Walked(item))
             {
                 PlainLines(builder, ref seq, Sliced(source, item.Span));
                 continue;
@@ -191,7 +232,7 @@ internal static partial class CatalogueMarkdown
 
             var firstChild = true;
 
-            foreach (var child in Drawn(item))
+            foreach (var child in item)
             {
                 if (!firstChild)
                 {

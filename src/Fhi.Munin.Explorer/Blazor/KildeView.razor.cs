@@ -352,7 +352,8 @@ public sealed partial class KildeView : ComponentBase
             : [
                 (T.FacetKildeType, KildetypeLabel, false, null),
                 .. UnlessPlaced(CatalogueColumns.LegalBasis,
-                                (T.FieldLegalBasis, CatalogueMarkdown.Words(kilde.LegalBasis), true,
+                                (T.FieldLegalBasis, CatalogueMarkdown.Words(kilde.LegalBasis),
+                                 CatalogueMarkdown.Prose(kilde.LegalBasis),
                                  CatalogueMarkdown.Link(kilde.LegalBasis)?.Href)),
                 .. UnlessPlaced(CatalogueColumns.DataController,
                                 (T.FieldDataController, kilde.DataController, true, (string?)null)),
@@ -415,7 +416,7 @@ public sealed partial class KildeView : ComponentBase
                                    ? T.DatasamlingCountCrumb(DataCollections.Count)
                                    : null),
                 new DetailFact(T.FieldLegalBasis, CatalogueMarkdown.Words(kilde.LegalBasis),
-                               CatalogueProperties.Foreign("no", Reader)),
+                               CatalogueMarkdown.Prose(kilde.LegalBasis) ? CatalogueProperties.Foreign("no", Reader) : null),
             ];
 
     /// <summary>The sections this view draws, in the order it draws them.</summary>

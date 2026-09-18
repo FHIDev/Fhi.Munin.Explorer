@@ -631,6 +631,18 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void SourceInformation_WhenAnUnplacedLegalBasisIsABareAddress_ThenItLinksAndIsNotMarkedNorwegian()
+    {
+        // 149 Lovverk values are a bare URL: an address is prose in no language (WCAG 3.1.2).
+        var cut = Render(Sparse() with { EffectiveLegalBasis = "https://lovdata.no/lov/2014-06-20-43" }, language: "en");
+
+        var cell = Row(SourceInformation(cut), "Legal basis").QuerySelector("dd")!;
+
+        Assert.Null(cell.GetAttribute("lang"));
+        Assert.Equal("https://lovdata.no/lov/2014-06-20-43", cell.QuerySelector("a")!.GetAttribute("href"));
+    }
+
+    [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenNeitherFactBoxIsDrawn()
     {
         // The other half of the absence rule: a missing fact reads "Ingen", but a box with every
