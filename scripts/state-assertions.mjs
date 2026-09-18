@@ -19,7 +19,8 @@
 //     itself rather than leaving the browser to make the fragment jump that carries focus. What is
 //     asserted below is therefore the half the component owns — that every target is focusable —
 //     and a host that does not intercept is not measured anywhere;
-//   - every OTHER control the component draws. Five presses are measured here, all in the variable
+//   - every OTHER control the component draws. tree-assertions.mjs adds the deterministic tree
+//     cases; the five presses defined in this file are all in the variable
 //     explorer. TWO the component refuses: the picker's refusal to hide the last column, and a
 //     facet press dropped because a fetch was already in flight. THREE it accepts, and each is
 //     here because the browser holds state the render tree has not got — the facet tree's two
@@ -59,6 +60,8 @@
 // assertion that has quietly stopped measuring anything passes forever otherwise, which is the
 // failure this whole file is about.
 
+// Deterministic tree coverage and its controls live together, independently of capture contents.
+import { treeAssertions } from './tree-assertions.mjs';
 import { scrollPast, scrollToTop } from './reader-scroll.mjs';
 
 /** The contents nav of a detail view, in the column beside it. */
@@ -408,6 +411,7 @@ const heroAgainstFold = (page, rowId) => page.evaluate(id => {
 }, rowId);
 
 export const assertions = [
+  ...treeAssertions,
   {
     name: 'every contents-nav link resolves to this page rather than to the host base',
     // Nothing about one defect is encoded here: it asks what the BROWSER makes of each href and

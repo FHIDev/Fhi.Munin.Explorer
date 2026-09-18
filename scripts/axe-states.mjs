@@ -17,6 +17,7 @@
 // re-render landing on top of it. Such a failure reports as a state error rather than as a failing
 // test, so the bUnit test that cannot stage the press names the state it defers to.
 
+import { treeStates } from './tree-states.mjs';
 import { scrollPast } from './reader-scroll.mjs';
 
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
@@ -34,6 +35,11 @@ async function press(scope, name) {
 }
 
 export const states = {
+  // The script guards inventory these literal names without launching a browser.
+  'tree-collapsed': treeStates['tree-collapsed'],
+  'tree-populated': treeStates['tree-populated'],
+  'tree-empty-results': treeStates['tree-empty-results'],
+  'tree-no-match': treeStates['tree-no-match'],
   'kilde-hierarchy-collapsed': async page => {
     const name = page.getByRole('button', { name: 'Tromsøundersøkelsen', exact: true });
     await name.waitFor({ state: 'visible', timeout: findTimeout });

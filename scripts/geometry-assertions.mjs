@@ -82,6 +82,9 @@ export const assertions = [
       for (const el of mount.querySelectorAll('*')) {
         const r = el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) continue;
+        // Invisible ancestors retain descendant rectangles. The bounds check measures painted
+        // content; document overflow is checked independently even when its cause is transparent.
+        if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
         const style = getComputedStyle(el);
         // Deliberately out of the flow, placed against the viewport rather than the mount.
         if (style.position === 'fixed') continue;

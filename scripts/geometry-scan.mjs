@@ -11,6 +11,7 @@
 // `.munin-explorer` grid switches on at 1024px, so a page that fits at 1689 can overflow at 1024.
 import { states } from './axe-states.mjs';
 import { assertions, selectors } from './geometry-assertions.mjs';
+import { scrollToTop } from './reader-scroll.mjs';
 
 // PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an installed browser instead of the bundled chromium.
 // Opt-in and unset in CI: a channel renders a different engine build, so a geometry number from
@@ -204,8 +205,8 @@ try {
         // Entering a state can click something that scrolls. The header is `position: absolute`
         // at top 0, so "is this control under the header" is a question about scroll offset 0 and
         // means nothing anywhere else.
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await page.waitForTimeout(250);
+        await scrollToTop(page);
+        await page.waitForFunction(() => window.scrollX === 0 && window.scrollY === 0);
       }
 
       for (const { name, kind, states: appliesTo, body } of applicable) {
