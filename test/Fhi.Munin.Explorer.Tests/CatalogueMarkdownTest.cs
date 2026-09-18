@@ -102,8 +102,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
     {
         var cut = Rendered("Lovverk:\n- Helseregisterloven\n- Personopplysningsloven");
 
-        Assert.Contains("- Helseregisterloven", cut.Markup, StringComparison.Ordinal);
-        Assert.True(cut.FindAll("br").Count >= 2);
+        Assert.Equal("Lovverk:<br /><br />- Helseregisterloven<br />- Personopplysningsloven", cut.Markup);
     }
 
     [Fact]
@@ -140,6 +139,42 @@ public class CatalogueMarkdownTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll("a, script, h1"));
         Assert.Equal(hostile, cut.Nodes.Select(n => n.TextContent).Aggregate(string.Concat));
+    }
+
+    [Theory]
+    [InlineData("x [a\nb", "x [a<br />b")]
+    [InlineData("- [abc def\n- b", "- [abc def<br />- b")]
+    [InlineData("- ![a\n- b", "- ![a<br />- b")]
+    public void Render_WhenABracketNeverCloses_ThenNoTextAfterItIsLost(string text, string markup)
+    {
+        Assert.Equal(markup, Rendered(text).Markup);
+    }
+
+    [Fact]
+    public void Render_WhenALinkIsReferenceStyle_ThenItRendersOnceAndItsDefinitionIsNotDrawn()
+    {
+        // K_MSIS's criteria are written this way; the definition must lend the link its URL and
+        // draw nothing of its own.
+        var cut = Rendered("Se [MSIS-forskriften].\n\n[MSIS-forskriften]: https://lovdata.no/msis");
+
+        Assert.Equal(
+            "Se <a href=\"https://lovdata.no/msis\" rel=\"noopener noreferrer\">MSIS-forskriften</a>.",
+            cut.Markup);
+    }
+
+    [Fact]
+    public void Render_WhenAReferenceDefinitionHasADisallowedScheme_ThenTheLabelStaysText()
+    {
+        var cut = Rendered("Se [ref].\n\n[ref]: javascript:alert(1)");
+
+        Assert.Empty(cut.FindAll("a"));
+        Assert.Contains("Se [ref].", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Render_WhenAListItemsTextStartsOnTheNextLine_ThenTheBreakAfterTheMarkerSurvives()
+    {
+        Assert.Equal("-<br />  foo<br />- b", Rendered("-\n  foo\n- b").Markup);
     }
 
     [Fact]

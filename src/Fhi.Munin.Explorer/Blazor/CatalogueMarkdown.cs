@@ -126,7 +126,7 @@ internal static partial class CatalogueMarkdown
 
         var first = true;
 
-        foreach (var block in Markdown.Parse(source, Pipeline))
+        foreach (var block in Drawn(Markdown.Parse(source, Pipeline)))
         {
             if (!first)
             {
@@ -138,6 +138,10 @@ internal static partial class CatalogueMarkdown
             Block(builder, ref seq, block, source);
         }
     };
+
+    /// <summary>The blocks that draw anything: a reference definition only lends its URL to a link.</summary>
+    private static IEnumerable<Block> Drawn(ContainerBlock blocks) =>
+        blocks.Where(block => block is not (LinkReferenceDefinitionGroup or LinkReferenceDefinition));
 
     private static void Block(RenderTreeBuilder builder, ref int seq, Block block, string source)
     {
@@ -180,16 +184,19 @@ internal static partial class CatalogueMarkdown
                 continue;
             }
 
-            builder.AddContent(seq++, source[item.Span.Start..item[0].Span.Start]);
+            PlainLines(builder, ref seq, source[item.Span.Start..item[0].Span.Start]);
 
-            for (var i = 0; i < item.Count; i++)
+            var firstChild = true;
+
+            foreach (var child in Drawn(item))
             {
-                if (i > 0)
+                if (!firstChild)
                 {
                     Break(builder, ref seq);
                 }
 
-                Block(builder, ref seq, item[i], source);
+                firstChild = false;
+                Block(builder, ref seq, child, source);
             }
         }
     }
@@ -213,6 +220,11 @@ internal static partial class CatalogueMarkdown
                     break;
                 case LinkInline { IsImage: false } link when AllowedScheme(link.Url):
                     Anchor(builder, ref seq, link, source);
+                    break;
+                // An unmatched [ or ![ spans only itself and holds the text after it as children.
+                case DelimiterInline delimiter:
+                    PlainLines(builder, ref seq, Sliced(source, delimiter.Span));
+                    Inlines(builder, ref seq, delimiter, source);
                     break;
                 default:
                     PlainLines(builder, ref seq, Sliced(source, inline.Span));
