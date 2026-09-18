@@ -419,45 +419,156 @@ public sealed partial class KildeView : ComponentBase
                                CatalogueMarkdown.Prose(kilde.LegalBasis) ? CatalogueProperties.Foreign("no", Reader) : null),
             ];
 
-    /// <summary>The sections this view draws, in the order it draws them.</summary>
+    /// <summary>The contents nav, one entry per section this view drew, in that order.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
-    private IReadOnlySet<string> DrawnIds { get; set; } = new HashSet<string>();
+    /// <summary>The same sections as markup — see <see cref="BuildLayout"/>.</summary>
+    private IReadOnlyList<DetailLayoutSection> Layout { get; set; } = [];
 
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
-        var toc = BuildToc();
-
-        Toc = toc.Entries;
-        DrawnIds = toc.Drawn;
+        Layout = BuildLayout();
+        Toc = BuildToc(Layout);
     }
 
-    /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
-    private DetailTocBuilder BuildToc()
+    /// <summary>
+    /// Every section this page draws, in the order the payload puts them.
+    /// </summary>
+    /// <remarks>
+    /// A group the payload names no section for keeps the Metadata block rather than being dropped:
+    /// a heading is a curator's to reword, so it can carry no <c>id</c> a reader could share.
+    /// </remarks>
+    private IReadOnlyList<DetailLayoutSection> BuildLayout()
     {
-        if (Kilde is null)
+        if (Kilde is not { } kilde)
         {
-            return new();
+            return [];
         }
 
-        DetailTocBuilder toc = new();
+        HashSet<string> named = new(
+            kilde.Sections.Select(section => section.Key).Where(key => !string.IsNullOrEmpty(key)),
+            StringComparer.Ordinal);
 
-        toc.Add(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
+        IReadOnlyList<PropertyGroup> ungrouped =
+            [.. Groups.Where(group => group.Key is null || !named.Contains(group.Key))];
+
+        List<DetailLayoutSection> groups =
+        [
+            .. Groups.Where(group => group.Key is not null && named.Contains(group.Key))
+                     .Select(group => new DetailLayoutSection(
+                         group.Key, DetailSectionIds.ForGroupKey(group.Key!), group.Name,
+                         CatalogueProperties.Foreign(group.NameLanguage, Reader),
+                         DetailBlocks.GroupBody(group, Language, CompleteRecordFacts))),
+        ];
+
+        return DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
+    }
+
+    /// <summary>
+    /// This view's own sections, each under the key a placement row moves it by, in the order the
+    /// view falls back to for whichever of them the payload places nowhere.
+    /// </summary>
+    /// <remarks>
+    /// Kildeinformasjon and Statistikk are named by no mockup and reserved by no seed yet, so they
+    /// draw here, at the end, rather than being dropped. Both carry a key regardless, so the first
+    /// seed that names one moves it with no release of this package.
+    /// </remarks>
+    /// <param name="ungrouped">The groups the Metadata block gathers, and whether it draws at all.</param>
+    private IReadOnlyList<DetailLayoutSection> Blocks(IReadOnlyList<PropertyGroup> ungrouped)
+    {
+        List<DetailLayoutSection> blocks = [];
+
+        if (ungrouped.Count > 0)
+        {
+            blocks.Add(new(null, DetailSectionIds.Metadata, T.HeadingMetadata, null,
+                           MetadataBody(ungrouped)));
+        }
 
         // The tree's own status line carries the loading, empty and error states, so this block has
         // no empty state to suppress it on.
-        toc.Always(DetailSectionIds.DataCollections, DataCollectionsHeading ?? DefaultDataCollectionsHeading);
+        blocks.Add(new(SectionKeys.DataCollections, DetailSectionIds.DataCollections,
+                       DataCollectionsHeading ?? DefaultDataCollectionsHeading, null, DataCollectionsBody));
 
-        toc.Add(DetailBlocks.AnyLinkedFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
-        toc.Add(DetailBlocks.AnyFacts(Statistics), DetailSectionIds.Statistics, T.HeadingStatistics);
-        toc.AddNamed(NamedSections);
+        if (DetailBlocks.AnyLinkedFacts(SourceInformation))
+        {
+            blocks.Add(new(SectionKeys.SourceInformation, DetailSectionIds.Source, T.HeadingSourceInformation,
+                           null, DetailBlocks.LinkedFacts(SourceInformation, Language)));
+        }
 
-        return toc;
+        if (DetailBlocks.AnyFacts(Statistics))
+        {
+            blocks.Add(new(SectionKeys.Statistics, DetailSectionIds.Statistics, T.HeadingStatistics,
+                           null, DetailBlocks.Facts(Statistics, Language)));
+        }
+
+        return blocks;
     }
 
-    /// <summary>Whether this view's own block is drawn; a named section never switches one on.</summary>
-    private bool Drawn(string id) => DrawnIds.Contains(id);
+    /// <summary>The property groups the payload files under no section of its own.</summary>
+    private RenderFragment MetadataBody(IReadOnlyList<PropertyGroup> ungrouped) => builder =>
+    {
+        var seq = 0;
+
+        foreach (var group in ungrouped)
+        {
+            builder.AddContent(seq++, DetailBlocks.Group(group, GroupLevel, Language, CompleteRecordFacts));
+        }
+    };
+
+    /// <summary>The delkilde and datasamling tree, and the catalogue's own words about it below.</summary>
+    private RenderFragment DataCollectionsBody => builder =>
+    {
+        if (Kilde is not { } kilde)
+        {
+            return;
+        }
+
+        builder.OpenComponent<KildeHierarchyView>(0);
+        builder.AddComponentParameter(1, nameof(KildeHierarchyView.KildeId), kilde.Id);
+        builder.AddComponentParameter(2, nameof(KildeHierarchyView.Language), Language);
+        builder.AddComponentParameter(3, nameof(KildeHierarchyView.ShowNodeIcons), ShowNodeIcons);
+        builder.AddComponentParameter(4, nameof(KildeHierarchyView.DatasamlingHref), DatasamlingHref);
+        builder.CloseComponent();
+
+        if (DataCollections.Count == 0 && Delkilder.Count == 0)
+        {
+            return;
+        }
+
+        builder.OpenElement(10, "details");
+        // Keyed on the source, so opening one kilde's disclosure does not leave the next one open.
+        builder.SetKey(kilde.Id);
+        builder.AddAttribute(11, "class", "munin-explorer-hierarchy__metadata");
+
+        builder.OpenElement(12, "summary");
+        builder.AddContent(13, T.HierarchyMetadata);
+        builder.CloseElement();
+
+        builder.AddContent(14, DataCollectionStructure);
+
+        builder.CloseElement();
+    };
+
+    /// <summary>The nav, read off the drawn sections so a link cannot point at a block left out.</summary>
+    private IReadOnlyList<DetailTocEntry> BuildToc(IReadOnlyList<DetailLayoutSection> layout)
+    {
+        DetailTocBuilder toc = new();
+
+        if (Kilde is null)
+        {
+            return toc.Entries;
+        }
+
+        foreach (var section in layout)
+        {
+            toc.Always(section.Id, section.Heading, section.HeadingLanguage);
+        }
+
+        toc.AddNamed(NamedSections);
+
+        return toc.Entries;
+    }
 
     /// <summary>
     /// The heading for the datasamling section, when the explorer using this view wants a word of

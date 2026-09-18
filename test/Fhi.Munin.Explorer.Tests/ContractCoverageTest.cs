@@ -113,6 +113,60 @@ public class ContractCoverageTest
         Assert.Equal(1000, entry!.GroupSortOrder);
     }
 
+    /// <summary>A detail payload carrying nothing but the collection this pins.</summary>
+    /// <remarks>
+    /// Wrapped in the containing object rather than read as a bare array, so <c>sections</c> itself
+    /// is pinned as well as the four names inside a row.
+    /// </remarks>
+    private const string SectionsPayload =
+        """
+        {
+          "sections": [
+            {
+              "groupKey": "innhold",
+              "groupTranslations": { "no": "Innhold", "en": "Content" },
+              "groupSortOrder": 2000,
+              "isBuiltIn": false
+            },
+            {
+              "groupKey": "datasamlinger",
+              "groupTranslations": { "no": "Datasamlinger", "en": "Data collections" },
+              "groupSortOrder": 3000,
+              "isBuiltIn": true
+            }
+          ]
+        }
+        """;
+
+    [Fact]
+    public void Sections_WhenTheApiOrdersThePagesSections_ThenEveryWireNameIsCovered()
+    {
+        // Inline for the reason above: the sections collection reached Munin after every capture
+        // under Testdata/ was taken, so the strict read of those captures cannot see this field at
+        // all. Worth pinning rather than trusting to the record's own names, because three of the
+        // four wire names inside a row are spelled "group…" and the C# ones are not.
+        // (Fhi.Metadata-35w0p.22)
+        var kilde = JsonSerializer.Deserialize<KildeDetail>(SectionsPayload, Strict);
+
+        Assert.NotNull(kilde);
+
+        var sections = kilde.Sections;
+
+        Assert.Equal(["innhold", "datasamlinger"], sections.Select(section => section.Key));
+        Assert.Equal([2000, 3000], sections.Select(section => section.SortOrder));
+        Assert.Equal([false, true], sections.Select(section => section.IsBuiltIn));
+        Assert.Equal("Content", sections[0].Translations["en"]);
+    }
+
+    [Fact]
+    public void Sections_WhenTheOtherTwoDetailEndpointsSendThem_ThenTheyArriveThereToo()
+    {
+        // All three endpoints carry the collection, so all three can lose it to one mistyped
+        // property name — and each fails alone, since each spells the name in its own record.
+        Assert.Equal(2, JsonSerializer.Deserialize<DatasamlingDetail>(SectionsPayload, Strict)!.Sections.Count);
+        Assert.Equal(2, JsonSerializer.Deserialize<VariableDetail>(SectionsPayload, Strict)!.Sections.Count);
+    }
+
     [Fact]
     public void KildeList_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<IReadOnlyList<KildeSummary>>("kilder.json");

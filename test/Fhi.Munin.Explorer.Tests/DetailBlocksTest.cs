@@ -13,7 +13,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <remarks>
 /// The three detail views fill it and their own tests pin the facts each of them chooses. What is
 /// only reachable here is the combination no view produces yet — an authored list that also carries
-/// a target — and a second render of one list instance, which no view's own tests perform.
+/// a target — a second render of one list instance, and a group drawn both ways at once.
 /// </remarks>
 public class DetailBlocksTest : ExplorerTestContext
 {
@@ -162,5 +162,88 @@ public class DetailBlocksTest : ExplorerTestContext
 
         Assert.Equal("/kilder?kilde=1", Assert.Single(cut.FindAll("dd a")).GetAttribute("href"));
         Assert.Equal("Als registeret", cut.Find("dd").TextContent);
+    }
+
+    /// <summary>A receiver for one group, drawn with its heading or without it.</summary>
+    private sealed class GroupHost : ComponentBase
+    {
+        [Parameter]
+        public PropertyGroup Group { get; set; } = new("", ReaderLanguage.Norwegian, []);
+
+        [Parameter]
+        public bool WithHeading { get; set; }
+
+        [Parameter]
+        public CompleteRecordExtras? CompleteRecord { get; set; }
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder) =>
+            builder.AddContent(
+                0,
+                WithHeading
+                    ? DetailBlocks.Group(Group, 3, ReaderLanguage.Norwegian, CompleteRecord)
+                    : DetailBlocks.GroupBody(Group, ReaderLanguage.Norwegian, CompleteRecord));
+    }
+
+    private static PropertyGroup Rows(string? key) =>
+        new("Innhold", ReaderLanguage.Norwegian,
+            [
+                new PropertyRow("Formål", "no", [new LocalisedText("Overvåking", "no")]),
+                new PropertyRow("Lovverk", "no", [new LocalisedText("Helseregisterloven", "no")],
+                                Href: "https://lovdata.no/lov"),
+            ],
+            key);
+
+    private string Markup(PropertyGroup group, bool withHeading, CompleteRecordExtras? completeRecord = null) =>
+        Render<GroupHost>(p => p
+            .Add(c => c.Group, group)
+            .Add(c => c.WithHeading, withHeading)
+            .Add(c => c.CompleteRecord, completeRecord)).Markup;
+
+    [Fact]
+    public void GroupBody_WhenTheSameGroupIsDrawnWithItsHeadingAndWithout_ThenTheBodyIsTheSameMarkupEitherWay()
+    {
+        // Group delegates its body to GroupBody, whose dl restarts at sequence 0 where it used to
+        // continue at 4 in the same frame. Hand-written numbers shared by two call sites that wrap
+        // them differently are what diffs correctly and renders wrong, one page apart.
+        var withHeading = Markup(Rows(key: "innhold"), withHeading: true);
+        var alone = Markup(Rows(key: "innhold"), withHeading: false);
+
+        Assert.StartsWith("<h3 class=\"headline headline-xxs margin--none munin-explorer-group\">Innhold</h3>",
+                          withHeading, StringComparison.Ordinal);
+        Assert.Equal(alone, withHeading[withHeading.IndexOf("</h3>", StringComparison.Ordinal)..][5..]);
+
+        // So the equality above cannot be two empty bodies agreeing.
+        Assert.Contains("<dl class=\"munin-explorer-page__fields\"", alone, StringComparison.Ordinal);
+        Assert.Contains("Overvåking", alone, StringComparison.Ordinal);
+        Assert.Contains("https://lovdata.no/lov", alone, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GroupBody_WhenTheCatchAllIsDrawnWithoutItsHeading_ThenItStillReachesItsCompleteRecordExtras()
+    {
+        // The early return moved into the delegated fragment with the split, so the catch-all's
+        // disclosure and its four extra facts now depend on a call site that passes no heading at
+        // all — the one the kilde page uses for every placed section.
+        var extras = new CompleteRecordExtras(
+            "Alt Munin har om denne kilden.", [("Totalt antall variabler", "12", false)]);
+
+        var markup = Markup(Rows(CatalogueProperties.CatchAllGroupKey), withHeading: false, extras);
+
+        Assert.Contains("munin-explorer-complete-record__lead", markup, StringComparison.Ordinal);
+        Assert.Contains("Alt Munin har om denne kilden.", markup, StringComparison.Ordinal);
+        Assert.Contains("Totalt antall variabler", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GroupBody_WhenAnOrdinaryGroupIsDrawnWithCompleteRecordExtras_ThenItIsStillAPlainFieldList()
+    {
+        // The catch-all is told by its key and never by its heading, and the split must not have
+        // moved that test onto the other side of the early return.
+        var extras = new CompleteRecordExtras("Alt Munin har.", [("Totalt antall variabler", "12", false)]);
+
+        var markup = Markup(Rows(key: "innhold"), withHeading: false, extras);
+
+        Assert.DoesNotContain("munin-explorer-complete-record", markup, StringComparison.Ordinal);
+        Assert.Contains("Helseregisterloven", markup, StringComparison.Ordinal);
     }
 }
