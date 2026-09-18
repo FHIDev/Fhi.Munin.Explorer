@@ -667,6 +667,17 @@ These are not style preferences — each one is a host that breaks otherwise.
   bound on that — `Fhi.Metadata-uobxg` records it, and the chassis bead that adds the contents nav
   is where it gets settled.
 
+  `KildeView` writes one id more, and it is the catalogue's rather than ours: where the payload
+  places a property group as a section of its own, that section's id is the group's own **key** —
+  `om-registeret`, `innhold`, `tilgang-og-ansvar`, `alle-metadatafelt` and whatever else a curator
+  adds. The key and not the heading, for the reason the fixed words above are fixed: a heading is
+  bilingual and a curator's to reword, where the key is neither. So the set is open, and it is open
+  on Munin's side — an id here can appear or change without this package being released, which is
+  the whole point of drawing the page from the placement data (`Fhi.Metadata-35w0p.22`). Nothing
+  reconciles those keys against the fixed words above, so a curator minting `source` as a group key
+  would put that id on the page twice; a group the payload places nowhere keeps its old home inside
+  `metadata` and adds no id at all.
+
   Ids are otherwise a separate family, each suffixed with a per-instance discriminator so two
   mounts on one page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`,
   `-toggle-*`, `-detail-*`, `-tab-*`, `-source-*`, `-stuckbar-*`, `-facts-*` and the rest.

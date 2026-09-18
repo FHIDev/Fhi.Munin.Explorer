@@ -114,6 +114,40 @@ public class ContractCoverageTest
     }
 
     [Fact]
+    public void Sections_WhenTheApiOrdersThePagesSections_ThenEveryWireNameIsCovered()
+    {
+        // Inline for the reason above: the sections collection reached Munin after every capture
+        // under Testdata/ was taken. Worth pinning rather than trusting to the record's own names,
+        // because three of the four wire names are spelled "group…" and the C# ones are not — a
+        // typo in any of them deserialises to an empty section list, which draws as a page that has
+        // simply not been placed yet. (Fhi.Metadata-35w0p.22)
+        var sections = JsonSerializer.Deserialize<IReadOnlyList<SectionPlacement>>(
+            """
+            [
+              {
+                "groupKey": "innhold",
+                "groupTranslations": { "no": "Innhold", "en": "Content" },
+                "groupSortOrder": 2000,
+                "isBuiltIn": false
+              },
+              {
+                "groupKey": "datasamlinger",
+                "groupTranslations": { "no": "Datasamlinger", "en": "Data collections" },
+                "groupSortOrder": 3000,
+                "isBuiltIn": true
+              }
+            ]
+            """,
+            Strict);
+
+        Assert.NotNull(sections);
+        Assert.Equal(["innhold", "datasamlinger"], sections.Select(section => section.Key));
+        Assert.Equal([2000, 3000], sections.Select(section => section.SortOrder));
+        Assert.Equal([false, true], sections.Select(section => section.IsBuiltIn));
+        Assert.Equal("Content", sections[0].Translations["en"]);
+    }
+
+    [Fact]
     public void KildeList_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<IReadOnlyList<KildeSummary>>("kilder.json");
 
