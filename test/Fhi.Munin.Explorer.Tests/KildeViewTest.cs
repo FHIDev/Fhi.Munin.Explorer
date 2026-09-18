@@ -1742,6 +1742,21 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void LegalBasis_WhenTheColumnIsOneMarkdownLink_ThenTheHeroShowsItsWordsAndTheBoxLinksIt()
+    {
+        // K_MSIS's Lovverk column. Unplaced in this fixture, so the box draws it beside the hero.
+        var cut = Render(Kilde() with { LegalBasis = "[Helseregisterloven § 11](https://lovdata.no/lov/2014-06-20-43)" });
+
+        Assert.Equal("Helseregisterloven § 11", HeroValue(Hero(cut), "Lovverk").Trim());
+
+        var link = Assert.Single(SourceInformation(cut).QuerySelectorAll("a"));
+
+        Assert.Equal("https://lovdata.no/lov/2014-06-20-43", link.GetAttribute("href"));
+        Assert.Equal("Helseregisterloven § 11", link.TextContent);
+        Assert.DoesNotContain("](https://lovdata", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HeroFacts_Always_ThenTheyAreTheSixTheMockupLeadsWith()
     {
         // The mockup's sixth is Tilgang, and the catalogue has no access field for a source — so

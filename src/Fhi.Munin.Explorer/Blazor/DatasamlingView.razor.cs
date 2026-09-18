@@ -253,7 +253,8 @@ public sealed partial class DatasamlingView : ComponentBase
                  KildeHref?.Invoke(datasamling.ParentKildeId)),
                 (T.FacetKildeType, KildetypeLabel, false, null),
                 .. UnlessPlaced(CatalogueColumns.LegalBasis,
-                                Unlinked(T.FieldLegalBasis, datasamling.EffectiveLegalBasis, true)),
+                                (T.FieldLegalBasis, CatalogueMarkdown.Words(datasamling.EffectiveLegalBasis), true,
+                                 CatalogueMarkdown.Link(datasamling.EffectiveLegalBasis)?.Href)),
                 .. UnlessPlaced(CatalogueColumns.DataController,
                                 Unlinked(T.FieldDataController, datasamling.EffectiveDataController, true)),
                 .. UnlessPlaced(CatalogueColumns.DataProcessor,
@@ -395,7 +396,7 @@ public sealed partial class DatasamlingView : ComponentBase
                 new DetailFact(T.FieldVariableCount, VariableCount,
                                NoteLabel: T.FieldCountingUnit, Note: datasamling.CountingUnit,
                                NoteLang: CatalogueProperties.Foreign("no", Reader)),
-                new DetailFact(T.FieldLegalBasis, datasamling.EffectiveLegalBasis,
+                new DetailFact(T.FieldLegalBasis, CatalogueMarkdown.Words(datasamling.EffectiveLegalBasis),
                                CatalogueProperties.Foreign("no", Reader)),
             ];
 

@@ -317,8 +317,7 @@ public sealed partial class KildeView : ComponentBase
         Kilde is { } kilde ? CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T) : null;
 
     /// <inheritdoc cref="CataloguePlacement.UnlessPlaced"/>
-    private IReadOnlyList<(string Label, string? Value, bool Norwegian)> UnlessPlaced(
-        string key, (string Label, string? Value, bool Norwegian) row) => Placement.UnlessPlaced(key, row);
+    private IReadOnlyList<TRow> UnlessPlaced<TRow>(string key, TRow row) => Placement.UnlessPlaced(key, row);
 
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? DataPeriod =>
@@ -347,18 +346,22 @@ public sealed partial class KildeView : ComponentBase
     /// can draw it. Sist oppdatert has no property definition at all.
     /// </para>
     /// </remarks>
-    private IReadOnlyList<(string Label, string? Value, bool Norwegian)> SourceInformation =>
+    private IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> SourceInformation =>
         Kilde is not { } kilde
             ? []
             : [
-                (T.FacetKildeType, KildetypeLabel, false),
-                .. UnlessPlaced(CatalogueColumns.LegalBasis, (T.FieldLegalBasis, kilde.LegalBasis, true)),
-                .. UnlessPlaced(CatalogueColumns.DataController, (T.FieldDataController, kilde.DataController, true)),
-                .. UnlessPlaced(CatalogueColumns.DataProcessor, (T.FieldDataProcessor, kilde.DataProcessor, true)),
+                (T.FacetKildeType, KildetypeLabel, false, null),
+                .. UnlessPlaced(CatalogueColumns.LegalBasis,
+                                (T.FieldLegalBasis, CatalogueMarkdown.Words(kilde.LegalBasis), true,
+                                 CatalogueMarkdown.Link(kilde.LegalBasis)?.Href)),
+                .. UnlessPlaced(CatalogueColumns.DataController,
+                                (T.FieldDataController, kilde.DataController, true, (string?)null)),
+                .. UnlessPlaced(CatalogueColumns.DataProcessor,
+                                (T.FieldDataProcessor, kilde.DataProcessor, true, (string?)null)),
                 .. UnlessPlaced(CatalogueColumns.PersonIdentification,
-                                (T.FieldPersonIdentification, PersonIdentification, false)),
-                .. ValidityRows,
-                (T.FieldLastUpdated, CatalogueDate.DayOrNothing(kilde.LastUpdated, Language), false),
+                                (T.FieldPersonIdentification, PersonIdentification, false, (string?)null)),
+                .. ValidityRows.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)),
+                (T.FieldLastUpdated, CatalogueDate.DayOrNothing(kilde.LastUpdated, Language), false, null),
             ];
 
     /// <inheritdoc cref="CataloguePlacement.ValidityRows"/>
@@ -411,7 +414,7 @@ public sealed partial class KildeView : ComponentBase
                                Note: DataCollections.Count > 0
                                    ? T.DatasamlingCountCrumb(DataCollections.Count)
                                    : null),
-                new DetailFact(T.FieldLegalBasis, kilde.LegalBasis,
+                new DetailFact(T.FieldLegalBasis, CatalogueMarkdown.Words(kilde.LegalBasis),
                                CatalogueProperties.Foreign("no", Reader)),
             ];
 
@@ -445,7 +448,7 @@ public sealed partial class KildeView : ComponentBase
         // no empty state to suppress it on.
         toc.Always(DetailSectionIds.DataCollections, DataCollectionsHeading ?? DefaultDataCollectionsHeading);
 
-        toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
+        toc.Add(DetailBlocks.AnyLinkedFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
         toc.Add(DetailBlocks.AnyFacts(Statistics), DetailSectionIds.Statistics, T.HeadingStatistics);
         toc.AddNamed(NamedSections);
 

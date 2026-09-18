@@ -135,10 +135,4 @@ public class AuthoredPropertiesTest : ExplorerTestContext
             ["https://www.fhi.no/nois", "https://www.fhi.no/en/nois"],
             cut.FindAll("dd span a").Select(a => a.GetAttribute("href")));
     }
-
-    [Fact]
-    public void AuthoredKeys_LeaveOutBeskrivelseFlerspraklig_BecauseThePageIngressAlreadyRendersIt()
-    {
-        Assert.DoesNotContain("BeskrivelseFlerspraklig", CatalogueProperties.AuthoredKeys);
-    }
 }

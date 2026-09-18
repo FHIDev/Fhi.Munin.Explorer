@@ -105,6 +105,9 @@ internal static partial class CatalogueMarkdown
         return (label.Length > 0 ? label : link.Url!, link.Url!);
     }
 
+    /// <summary>A value's words: the label where the whole value is one allowed link, else the value.</summary>
+    internal static string? Words(string? raw) => Link(raw)?.Label ?? raw;
+
     /// <summary>The catalogue text as a fragment: anchors, breaks, and literal text for the rest.</summary>
     internal static RenderFragment Render(string? text) => builder =>
     {

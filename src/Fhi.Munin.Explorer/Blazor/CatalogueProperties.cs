@@ -65,10 +65,12 @@ internal static class CatalogueProperties
     internal const string CatchAllGroupKey = "alle-metadatafelt";
 
     /// <summary>Free-text keys authored with markdown links and <c>&lt;br&gt;</c>. Named, not typed, as 5bcr7
-    /// named its fields: a type rule would reach any field that later takes the type. No
-    /// <c>BeskrivelseFlerspraklig</c>: the page ingress already renders it.</summary>
+    /// named its fields: a type rule would reach any field that later takes the type. This decides how
+    /// a key is drawn; whether it is drawn at all stays with <c>drawnElsewhere</c>.</summary>
     internal static readonly IReadOnlySet<string> AuthoredKeys = new HashSet<string>(StringComparer.Ordinal)
     {
+        CatalogueColumns.Description,
+        "BeskrivelseFlerspraklig",
         "BeskrivelseEngelsk",
         "Kvalitetsnote",
         "Innsamlingsmetode",

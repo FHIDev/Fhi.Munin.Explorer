@@ -177,6 +177,18 @@ public class DatasamlingViewTest : ExplorerTestContext
             $"No '{label}' cell in the hero row, only: {string.Join(", ", Labels(hero))}.");
 
     [Fact]
+    public void HeroFacts_WhenTheLegalBasisIsOneMarkdownLink_ThenTheCellShowsItsWords()
+    {
+        // Three of K_MSIS's datasamlinger inherit its Lovverk in this shape.
+        var cut = Render(Datasamling() with
+        {
+            EffectiveLegalBasis = "[Helseregisterloven § 11](https://lovdata.no/lov/2014-06-20-43)",
+        });
+
+        Assert.Equal("Helseregisterloven § 11", Cell(Hero(cut), "Lovverk").QuerySelector("dd")!.TextContent.Trim());
+    }
+
+    [Fact]
     public void HeroFacts_Always_ThenTheyAreTheSourcePagesSixOverThisCollectionsOwnValues()
     {
         // The same six as a source, deliberately: a reader moving between a source and one of its
@@ -602,6 +614,21 @@ public class DatasamlingViewTest : ExplorerTestContext
         Code = "D",
         PreferredTerm = "D",
     };
+
+    [Fact]
+    public void SourceInformation_WhenAnUnplacedLegalBasisIsOneMarkdownLink_ThenTheBoxLinksIt()
+    {
+        // Sparse places nothing, so the box is the only surface offering this link.
+        var cut = Render(Sparse() with
+        {
+            EffectiveLegalBasis = "[Helseregisterloven § 11](https://lovdata.no/lov/2014-06-20-43)",
+        });
+
+        var link = Assert.Single(Row(SourceInformation(cut), "Lovverk").QuerySelectorAll("a"));
+
+        Assert.Equal("https://lovdata.no/lov/2014-06-20-43", link.GetAttribute("href"));
+        Assert.Equal("Helseregisterloven § 11", link.TextContent);
+    }
 
     [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenNeitherFactBoxIsDrawn()
