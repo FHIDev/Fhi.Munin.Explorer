@@ -1913,6 +1913,13 @@ table.munin-explorer-data-list tbody th {
   color: #51547b;
 }
 
+/* ---- the sentence that opens a detail block ----
+   Stiler's own complete-record lead declaration, so the lead sentences read as that one does.
+   Stiler's rule for this name is Fhi.Metadata-3z2s3. */
+.munin-explorer-lead {
+  margin: 0 0 8px;
+}
+
 /* ---- the contents nav inside that column ----
 
    `form-menu__list` and `form-menu__list__item` are borrowed: global, unscoped classes in Stiler's

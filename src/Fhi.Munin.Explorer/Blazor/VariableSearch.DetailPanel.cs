@@ -411,6 +411,8 @@ public partial class VariableSearch
             return;
         }
 
+        builder.AddContent(1, DetailBlocks.LeadParagraph(T.KodeverkLead(detail.KodeverkLinks.Select(link => link.KodeverkType))));
+
         // Numbered before grouping, so a line's number is its place in the payload rather than its
         // place under a heading — which is what keeps the ids unique across the whole panel.
         var links = detail.KodeverkLinks.Select((link, index) => (Link: link, Index: index));

@@ -858,6 +858,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kodeverk__item` | handle |
   | `munin-explorer-kodeverk__name` | handle |
   | `munin-explorer-kodeverk__reference` | handle |
+  | `munin-explorer-lead` | handle |
   | `munin-explorer-list-scroll` | meaning |
   | `munin-explorer-meta` | handle |
   | `munin-explorer-meta__grid` | handle |

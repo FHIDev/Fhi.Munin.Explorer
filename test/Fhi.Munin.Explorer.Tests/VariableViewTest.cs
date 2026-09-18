@@ -313,7 +313,7 @@ public class VariableViewTest : ExplorerTestContext
     [Fact]
     public void Statistics_WhenTheKindIsKnown_ThenTheHeadingSaysWhichKind()
     {
-        // "Statistikk (Årsbasert)". The kind changes what the numbers mean, so it belongs in the
+        // "Statistikk (årsbasert)". The kind changes what the numbers mean, so it belongs in the
         // heading rather than being left for the reader to assume.
         var detail = Detail() with
         {
@@ -321,7 +321,23 @@ public class VariableViewTest : ExplorerTestContext
             Statistics = [new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022" } }],
         };
 
-        Assert.Contains("Statistikk (Årsbasert)", Render(detail).Markup, StringComparison.Ordinal);
+        Assert.Contains("Statistikk (årsbasert)", Render(detail).Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Statistics_WhenTheReaderIsEnglish_ThenTheKindIsOurWordInLowerCase()
+    {
+        // Lower case is ours for the words this package owns, in either language, and only for those:
+        // an unknown token keeps its spelling, the Kvartalsvis case in Contents_WhateverTheStatisticsTypeIs_….
+        // (Fhi.Metadata-35w0p.24)
+        var detail = Detail() with
+        {
+            DatasamlingStatisticsType = "accumulated",
+            Statistics = [new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022" } }],
+        };
+
+        Assert.Equal("Statistics (accumulated)",
+                     Render(detail, language: "en").Find($"#{DetailSectionIds.Statistics}").FirstElementChild!.TextContent);
     }
 
     [Fact]
@@ -1202,10 +1218,11 @@ public class VariableViewTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("yearly", "Statistikk (Årsbasert)")]
-    [InlineData("accumulated", "Statistikk (Akkumulert)")]
-    [InlineData("akkumulert", "Statistikk (Akkumulert)")]
+    [InlineData("yearly", "Statistikk (årsbasert)")]
+    [InlineData("accumulated", "Statistikk (akkumulert)")]
+    [InlineData("akkumulert", "Statistikk (akkumulert)")]
     [InlineData("kvartalsvis", "Statistikk (kvartalsvis)")]
+    [InlineData("Kvartalsvis", "Statistikk (Kvartalsvis)")]
     [InlineData(null, "Statistikk")]
     public void Contents_WhateverTheStatisticsTypeIs_ThenTheNavEntrySaysWhatTheHeadingSays(
         string? statisticsType, string expected)
@@ -1361,9 +1378,10 @@ public class VariableViewTest : ExplorerTestContext
         // whole reason these go through CatalogueProperties.
         Assert.Equal("Direkte fra skjema", HeroValue(hero, "Opprinnelse"));
 
-        // Statistikk is the two halves the heading below joins, read off the same two members.
+        // Statistikk is the two halves the heading below joins, read off the same two members; the
+        // heading carries the word in lower case, the hero as a value of its own.
         Assert.Equal(cut.Find($"#{DetailSectionIds.Statistics}").FirstElementChild!.TextContent,
-                     $"Statistikk ({HeroValue(hero, "Statistikk")})");
+                     $"Statistikk ({HeroValue(hero, "Statistikk").ToLowerInvariant()})");
     }
 
     [Fact]

@@ -27,6 +27,23 @@ internal static class DetailBlocks
     /// <summary>The one class that mutes what the catalogue holds nothing for, on a fact or a whole tab.</summary>
     internal const string Absent = "munin-explorer-absent";
 
+    /// <summary>The class on the sentence that opens the kodeverk block, in both places that block is drawn.</summary>
+    internal const string Lead = "munin-explorer-lead";
+
+    /// <summary>A block's lead sentence under its heading, or nothing where it has none.</summary>
+    internal static RenderFragment LeadParagraph(string? text) => builder =>
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        builder.OpenElement(0, "p");
+        builder.AddAttribute(1, "class", Lead);
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
     /// <summary>A heading at the given level, so a view nests wherever it is put.</summary>
     internal static RenderFragment Heading(int level, string text, string cssClass,
                                            string? id = null, string? language = null) => builder =>

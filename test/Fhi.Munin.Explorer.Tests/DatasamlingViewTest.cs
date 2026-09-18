@@ -208,7 +208,7 @@ public class DatasamlingViewTest : ExplorerTestContext
                      Value(hero, "Grad av personidentifikasjon"));
         Assert.Equal(Value(source, "Gyldighet"), Value(hero, "Gyldighet"));
         Assert.Equal(Value(source, "Lovverk"), Value(hero, "Lovverk"));
-        Assert.Equal(Value(Box(cut, "Statistikk (Årsbasert)"), "Antall variabler"),
+        Assert.Equal(Value(Box(cut, "Statistikk (årsbasert)"), "Antall variabler"),
                      Value(hero, "Antall variabler"));
     }
 
@@ -241,7 +241,7 @@ public class DatasamlingViewTest : ExplorerTestContext
              "Opprettet i Munin"],
             Labels(SourceInformation(cut)));
         Assert.Equal(["Statistikktype", "Frekvens", "Telleenhet", "Antall variabler"],
-                     Labels(Box(cut, "Statistikk (Årsbasert)")));
+                     Labels(Box(cut, "Statistikk (årsbasert)")));
         Assert.Empty(cut.Find(".munin-explorer-page__body").QuerySelectorAll("dl.munin-explorer-page__facts"));
     }
 
@@ -262,7 +262,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal("Telleenhet: Pasient",
                      Cell(Hero(cut), "Antall variabler").QuerySelector("small")!.TextContent);
-        Assert.Equal("Pasient", Value(Box(cut, "Statistikk (Årsbasert)"), "Telleenhet"));
+        Assert.Equal("Pasient", Value(Box(cut, "Statistikk (årsbasert)"), "Telleenhet"));
     }
 
     [Fact]
@@ -773,8 +773,8 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("yearly", "Statistikk (Årsbasert)")]
-    [InlineData("accumulated", "Statistikk (Akkumulert)")]
+    [InlineData("yearly", "Statistikk (årsbasert)")]
+    [InlineData("accumulated", "Statistikk (akkumulert)")]
     [InlineData(null, "Statistikk")]
     public void Contents_WhateverTheStatisticsTypeIs_ThenTheNavEntrySaysWhatTheHeadingSays(
         string? statisticsType, string expected)
@@ -966,10 +966,10 @@ public class DatasamlingViewTest : ExplorerTestContext
         // off the same field.
         var cut = Render(Datasamling());
 
-        Assert.Contains("Statistikk (Årsbasert)", BlockHeadings(cut));
+        Assert.Contains("Statistikk (årsbasert)", BlockHeadings(cut));
         Assert.Equal(["Statistikktype", "Frekvens", "Telleenhet", "Antall variabler"],
-                     Labels(Box(cut, "Statistikk (Årsbasert)")));
-        Assert.Equal("99", Value(Box(cut, "Statistikk (Årsbasert)"), "Antall variabler"));
+                     Labels(Box(cut, "Statistikk (årsbasert)")));
+        Assert.Equal("99", Value(Box(cut, "Statistikk (årsbasert)"), "Antall variabler"));
     }
 
     [Fact]
@@ -980,7 +980,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // chrome that makes the section findable, and the row is where the fact is stated.
         var cut = Render(Datasamling());
 
-        Assert.Equal("Årsbasert", Value(Box(cut, "Statistikk (Årsbasert)"), "Statistikktype"));
+        Assert.Equal("Årsbasert", Value(Box(cut, "Statistikk (årsbasert)"), "Statistikktype"));
 
         // The catalogue's token resolved to this package's word, which is what the heading spells
         // too — one resolution, so a row and the heading over it cannot come out in two words.
@@ -1006,7 +1006,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // actually is — the Kreftregister's is "Tilfelle" rather than a person.
         var cut = Render(Datasamling() with { CountingUnit = "Tilfelle" });
 
-        Assert.Equal("Tilfelle", Value(Box(cut, "Statistikk (Årsbasert)"), "Telleenhet"));
+        Assert.Equal("Tilfelle", Value(Box(cut, "Statistikk (årsbasert)"), "Telleenhet"));
     }
 
     [Fact]
@@ -1038,9 +1038,9 @@ public class DatasamlingViewTest : ExplorerTestContext
         // still the record. Heading and list are answered by one question, so they cannot disagree.
         var cut = Render(Datasamling() with { Frequency = null, CountingUnit = null, VariableCount = 0 });
 
-        Assert.Contains("Statistikk (Årsbasert)", BlockHeadings(cut));
+        Assert.Contains("Statistikk (årsbasert)", BlockHeadings(cut));
 
-        var box = Box(cut, "Statistikk (Årsbasert)");
+        var box = Box(cut, "Statistikk (årsbasert)");
 
         Assert.Equal("Årsbasert", Value(box, "Statistikktype"));
         Assert.All(["Frekvens", "Telleenhet", "Antall variabler"], label => AssertAbsent(box, label));

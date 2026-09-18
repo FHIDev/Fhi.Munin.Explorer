@@ -95,8 +95,15 @@ internal static class StatisticsBlock
     /// </remarks>
     internal static string Heading(string? statisticsType, Texts texts) =>
         statisticsType is { } type && !string.IsNullOrWhiteSpace(type)
-            ? $"{texts.HeadingStatistics} ({texts.StatisticsTypeLabel(type)})"
+            ? $"{texts.HeadingStatistics} ({KindWord(type, texts)})"
             : texts.HeadingStatistics;
+
+    // Our word for a kind in lower case, as UI asked (Fhi.Metadata-35w0p.24); a token we have no
+    // word for keeps the spelling it arrived in, as the row beside the heading shows it.
+    private static string KindWord(string type, Texts texts) =>
+        IsAccumulated(type) || type.Equals("yearly", StringComparison.OrdinalIgnoreCase)
+            ? texts.StatisticsTypeLabel(type).ToLowerInvariant()
+            : type;
 
     /// <summary>
     /// The columns Runa shows, in Runa's order.
