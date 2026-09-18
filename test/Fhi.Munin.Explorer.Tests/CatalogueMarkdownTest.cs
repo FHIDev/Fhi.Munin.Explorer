@@ -107,6 +107,42 @@ public class CatalogueMarkdownTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Render_WhenAListItemCarriesALink_ThenTheLinkIsLiveAndTheMarkerStaysLiteral()
+    {
+        // K_KK's Kvalitetsnote shape: the links sit inside list items, not in a paragraph.
+        var cut = Rendered("Kilder:\n- Se [veilederen](https://example.org/v)\n- Annet");
+
+        var anchor = Assert.Single(cut.FindAll("a"));
+
+        Assert.Equal("https://example.org/v", anchor.GetAttribute("href"));
+        Assert.Equal("veilederen", anchor.TextContent);
+        Assert.Contains("- Se ", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("<br />- Annet", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("](https://", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Render_WhenAListIsNumberedAndLoose_ThenItsMarkersAndBlankLinesSurvive()
+    {
+        var cut = Rendered("1. Første\n\n2. Andre");
+
+        Assert.Equal("1. Første<br /><br />2. Andre", cut.Markup);
+    }
+
+    [Theory]
+    [InlineData("- [klikk](javascript:alert(1))")]
+    [InlineData("- <script>alert(1)</script>")]
+    [InlineData("- # Overskrift")]
+    public void Render_WhenAListItemCarriesHostileInput_ThenItStaysText(string hostile)
+    {
+        // Walking list items must not open a way round the guarantee the class exists for.
+        var cut = Rendered(hostile);
+
+        Assert.Empty(cut.FindAll("a, script, h1"));
+        Assert.Equal(hostile, cut.Nodes.Select(n => n.TextContent).Aggregate(string.Concat));
+    }
+
+    [Fact]
     public void Render_WhenTheTextExceedsTheCap_ThenItRendersAsPlainLinesWithoutParsing()
     {
         var text = "[x](https://uit.no) " + new string('a', CatalogueMarkdown.MaxParsedLength);

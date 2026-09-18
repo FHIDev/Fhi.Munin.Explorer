@@ -135,17 +135,64 @@ internal static partial class CatalogueMarkdown
             }
 
             first = false;
-
-            if (block is ParagraphBlock { Inline: { } inlines })
-            {
-                Inlines(builder, ref seq, inlines, source);
-            }
-            else
-            {
-                PlainLines(builder, ref seq, Sliced(source, block.Span));
-            }
+            Block(builder, ref seq, block, source);
         }
     };
+
+    private static void Block(RenderTreeBuilder builder, ref int seq, Block block, string source)
+    {
+        switch (block)
+        {
+            case ParagraphBlock { Inline: { } inlines }:
+                Inlines(builder, ref seq, inlines, source);
+                break;
+            case ListBlock list:
+                ListItems(builder, ref seq, list, source);
+                break;
+            default:
+                PlainLines(builder, ref seq, Sliced(source, block.Span));
+                break;
+        }
+    }
+
+    /// <summary>A list as the lines it was written in, its markers literal and its items' links live.</summary>
+    private static void ListItems(RenderTreeBuilder builder, ref int seq, ListBlock list, string source)
+    {
+        var firstItem = true;
+
+        foreach (var item in list.OfType<ListItemBlock>())
+        {
+            if (!firstItem)
+            {
+                Break(builder, ref seq);
+
+                if (list.IsLoose)
+                {
+                    Break(builder, ref seq);
+                }
+            }
+
+            firstItem = false;
+
+            if (item.Count == 0 || item[0].Span.Start <= item.Span.Start)
+            {
+                PlainLines(builder, ref seq, Sliced(source, item.Span));
+                continue;
+            }
+
+            builder.AddContent(seq++, source[item.Span.Start..item[0].Span.Start]);
+
+            for (var i = 0; i < item.Count; i++)
+            {
+                if (i > 0)
+                {
+                    Break(builder, ref seq);
+                }
+
+                Block(builder, ref seq, item[i], source);
+            }
+        }
+    }
 
     private static void Inlines(RenderTreeBuilder builder, ref int seq, ContainerInline container, string source)
     {
