@@ -673,6 +673,42 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Placement_WhenTwoSectionKeysSlugAlike_ThenTheirIdsAreStillDistinct()
+    {
+        // A key is whatever a curator typed and everything but an ASCII letter or digit becomes a
+        // hyphen, so two keys can reach one id — and a repeated id draws two sections under one
+        // anchor, with the contents nav's second link landing on the first.
+        var placed = Placed();
+
+        var twin = new PropertyMetadataEntry
+        {
+            Key = "Oppdateringsrutine",
+            SortOrder = 4001,
+            Type = "Text",
+            GroupKey = "om_datasamlingen",
+            GroupSortOrder = 4000,
+            DisplayNameTranslations =
+                new Dictionary<string, string> { ["no"] = "Oppdateringsrutine", ["en"] = "Update routine" },
+            GroupTranslations =
+                new Dictionary<string, string> { ["no"] = "Om datasamlingen", ["en"] = "About the data collection" },
+        };
+
+        var cut = Render(placed with
+        {
+            PropertyMetadata = [.. placed.PropertyMetadata, twin],
+            AdditionalProperties = new Dictionary<string, string?>(placed.AdditionalProperties)
+            {
+                ["Oppdateringsrutine"] = "Oppdateres årlig i mars.",
+            },
+        });
+
+        var ids = Wrappers(cut).Select(section => section.Id!).ToList();
+
+        Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Contains("metadata-om-datasamlingen-2", ids);
+    }
+
+    [Fact]
     public void Placement_WhenItTookTheSourceFields_ThenWhatIsLeftOfTheBoxFollowsThemIntoThatSection()
     {
         // The rename this bead is named for, done by the data: Kildeinformasjon became Datakilde,

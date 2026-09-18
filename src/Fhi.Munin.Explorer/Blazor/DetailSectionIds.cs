@@ -51,13 +51,30 @@ internal static class DetailSectionIds
     /// Stemmed on <see cref="Metadata"/>, so a curator's key can collide with neither the literals
     /// above nor a host's own. The key and never the heading, for the reason this whole type exists:
     /// the headings are bilingual and a link into a section is one reader's to send another.
+    /// <para>
+    /// Two keys can slug alike, since everything but an ASCII letter or digit becomes a hyphen, so
+    /// <paramref name="taken"/> carries the ids already handed out and a repeat is numbered apart
+    /// rather than left drawing two sections under one anchor.
+    /// </para>
     /// </remarks>
-    internal static string? Placed(string? groupKey)
+    internal static string? Placed(string? groupKey, ISet<string> taken)
     {
         var slug = string.Concat((groupKey ?? "").ToLowerInvariant()
                                                 .Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-'))
                          .Trim('-');
 
-        return slug.Length == 0 ? null : $"{Metadata}-{slug}";
+        if (slug.Length == 0)
+        {
+            return null;
+        }
+
+        var id = $"{Metadata}-{slug}";
+
+        for (var n = 2; !taken.Add(id); n++)
+        {
+            id = $"{Metadata}-{slug}-{n}";
+        }
+
+        return id;
     }
 }

@@ -500,6 +500,7 @@ public sealed partial class DatasamlingView : ComponentBase
 
         List<PageSection> sections = [];
         List<PropertyGroup> unplaced = [];
+        HashSet<string> ids = new(StringComparer.Ordinal);
         var sourceDrawn = false;
         var statisticsDrawn = false;
 
@@ -507,7 +508,7 @@ public sealed partial class DatasamlingView : ComponentBase
         {
             // A section of the page needs a declared position and an id a reader can be sent; a group
             // with either missing stays where the unplaced ones have always been drawn.
-            if (!group.Placed || DetailSectionIds.Placed(group.Key) is not { } id)
+            if (!group.Placed || DetailSectionIds.Placed(group.Key, ids) is not { } id)
             {
                 unplaced.Add(group);
                 continue;
