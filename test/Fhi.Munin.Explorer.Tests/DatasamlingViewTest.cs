@@ -119,20 +119,31 @@ public class DatasamlingViewTest : ExplorerTestContext
     /// Either box is drawn only when it has a row, so a position would hand back the wrong one
     /// without being able to say it had. The heading can say it.
     /// </remarks>
-    private static IElement Box(IRenderedComponent<DatasamlingView> cut, string heading)
+    private static IElement Box(IRenderedComponent<DatasamlingView> cut, string heading) =>
+        Section(cut, heading).QuerySelector("dl")
+        ?? throw new InvalidOperationException(
+            $"The '{heading}' section holds no box, so it drew no facts at all.");
+
+    /// <summary>The whole section under one heading, which can hold more than one list.</summary>
+    /// <remarks>
+    /// A section the catalogue placed draws its own rows and then whatever a fact box handed it, so
+    /// asking for the first list alone answers about half of it.
+    /// </remarks>
+    private static IElement Section(IRenderedComponent<DatasamlingView> cut, string heading)
     {
         var main = cut.Find(".munin-explorer-datasamling__main");
 
-        var found = main.Children.FirstOrDefault(
-                        e => e.QuerySelector("h3, h4, h5, h6")?.TextContent == heading)
-                    ?? throw new InvalidOperationException(
-                        $"No '{heading}' section in the main column, only: "
-                        + $"{string.Join(", ", main.QuerySelectorAll("h3, h4, h5, h6").Select(e => e.TextContent))}.");
-
-        return found.QuerySelector("dl")
+        return main.Children.FirstOrDefault(
+                   e => e.QuerySelector("h3, h4, h5, h6")?.TextContent == heading)
                ?? throw new InvalidOperationException(
-                   $"The '{heading}' section holds no box, so it drew no facts at all.");
+                   $"No '{heading}' section in the main column, only: "
+                   + $"{string.Join(", ", main.QuerySelectorAll("h3, h4, h5, h6").Select(e => e.TextContent))}.");
     }
+
+    /// <summary>Every label one section draws, across each of its lists, in document order.</summary>
+    private static IReadOnlyList<string> SectionLabels(
+        IRenderedComponent<DatasamlingView> cut, string heading) =>
+        [.. Section(cut, heading).QuerySelectorAll("dt").Select(e => e.TextContent)];
 
     private static IElement SourceInformation(IRenderedComponent<DatasamlingView> cut) =>
         Box(cut, Texts.For(cut.Instance.Language).HeadingSourceInformation);
@@ -537,6 +548,249 @@ public class DatasamlingViewTest : ExplorerTestContext
         // nothing to do with a heading promising a block.
         Assert.DoesNotContain("Metadata", BlockHeadings(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-group"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The placement: which sections this page has, what they are called and what order
+    // they come in, none of it written down here. (Fhi.Metadata-lr6yh)
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The four sections Munin's placement rows declare for a datasamling, read off
+    /// <c>api/explorer/datasamling/{id}</c> on runa, 2026-09-18.
+    /// </summary>
+    /// <remarks>
+    /// Hand-written rather than captured because the fixture above predates groupKey, groupSortOrder
+    /// and sections entirely — re-capturing it is Fhi.Metadata-dmr8c's, and with the stale one this
+    /// half of the view has nothing to be driven by.
+    /// </remarks>
+    private static readonly (string Key, int Order, string No, string En)[] SeededSections =
+    [
+        ("om-datasamlingen", 1001, "Om datasamlingen", "About the data collection"),
+        ("variabler", 2001, "Variabler", "Variables"),
+        ("datakilde", 3001, "Datakilde", "Data source"),
+        (CatalogueProperties.CatchAllGroupKey, 9001, "Alle metadatafelt", "All metadata fields"),
+    ];
+
+    /// <summary>
+    /// The catalogue's own word for the one coded value in this payload, which is not the word
+    /// <c>Texts.PersonIdentificationLabel</c> has — so a row drawn twice reads as two facts.
+    /// </summary>
+    private const string IdentificationOptions =
+        """
+        [{"value":"indirectlyIdentifiable","label":"Indirekte personidentifiserbar",
+          "labelEn":"Indirectly identifiable"}]
+        """;
+
+    /// <summary>One definition, filed in the section the placement rows put it in.</summary>
+    private static PropertyMetadataEntry Definition(
+        string key, string label, string type, int sortOrder, string groupKey, string? optionsJson = null)
+    {
+        var section = SeededSections.Single(s => s.Key == groupKey);
+
+        return new PropertyMetadataEntry
+        {
+            Key = key,
+            SortOrder = sortOrder,
+            Type = type,
+            OptionsJson = optionsJson,
+            GroupKey = section.Key,
+            GroupSortOrder = section.Order,
+            DisplayNameTranslations = new Dictionary<string, string> { ["no"] = label, ["en"] = label },
+            GroupTranslations = new Dictionary<string, string> { ["no"] = section.No, ["en"] = section.En },
+        };
+    }
+
+    /// <summary>The captured payload with runa's placement rows written onto it.</summary>
+    /// <remarks>
+    /// Kvalitetsnote is in it because the seed puts it in om-datasamlingen at 1007 and nothing in
+    /// this view draws it in markup of its own — the placement is the whole of that section's
+    /// arrival (Fhi.Metadata-wfhu8).
+    /// </remarks>
+    private static DatasamlingDetail Placed() => Datasamling() with
+    {
+        PropertyMetadata =
+        [
+            Definition(CatalogueColumns.Description, "Beskrivelse", "Text", 1001, "om-datasamlingen"),
+            Definition(CatalogueColumns.ValidFrom, "Gyldig fra", "Date", 1003, "om-datasamlingen"),
+            Definition(CatalogueColumns.ValidTo, "Gyldig til", "Date", 1004, "om-datasamlingen"),
+            Definition("Kvalitetsnote", "Kvalitetsnote", "Text", 1007, "om-datasamlingen"),
+            Definition(CatalogueColumns.StatisticsType, "Statistikktype", "SingleSelect", 2001,
+                       "variabler", """[{"value":"yearly","label":"Årsbasert","labelEn":"Yearly"}]"""),
+            Definition(CatalogueColumns.CountingUnit, "Telleenhet", "String", 2002, "variabler"),
+            Definition(CatalogueColumns.Frequency, "Frekvens", "SingleSelect", 2003, "variabler"),
+            Definition(CatalogueColumns.DataController, "Dataansvarlig", "String", 3001, "datakilde"),
+            Definition(CatalogueColumns.DataProcessor, "Databehandler", "String", 3002, "datakilde"),
+            Definition(CatalogueColumns.PersonIdentification, "Grad av personidentifikasjon",
+                       "SingleSelect", 3003, "datakilde", IdentificationOptions),
+            Definition(CatalogueColumns.LegalBasis, "Lovverk", "Url", 3004, "datakilde"),
+            Definition("AnbefalteBruksomraader", "Anbefalte bruksområder", "Text", 9007,
+                       CatalogueProperties.CatchAllGroupKey),
+        ],
+        AdditionalProperties = new Dictionary<string, string?>
+        {
+            ["Kvalitetsnote"] = "Dekningsgraden er målt mot Norsk pasientregister.",
+            ["AnbefalteBruksomraader"] = "Kvalitetsforbedring;Forskning;Statistikk",
+        },
+    };
+
+    [Fact]
+    public void Placement_WhenTheCatalogueDeclaresIt_ThenThePageIsItsSectionsUnderItsHeadingsInItsOrder()
+    {
+        // The whole bead in one assertion. Not one of these words is written in DatasamlingView:
+        // the mockup's sections are Munin's placement rows to declare and a curator's to rename,
+        // so a renamed section reaches the page without this package being touched.
+        var cut = Render(Placed());
+
+        // Read as the whole list rather than searched for, so the view's own three headings going
+        // is asserted with it: Metadata wrapped the groups, Kildeinformasjon is what the placement
+        // calls Datakilde, and Statistikk is inside Variabler.
+        Assert.Equal(
+            ["Om datasamlingen", "Variabler", "Datakilde", "Inklusjons- og eksklusjonskriterier",
+             "Alle metadatafelt"],
+            BlockHeadings(cut));
+    }
+
+    [Fact]
+    public void Placement_WhenTheCatalogueDeclaresIt_ThenTheIdsAreItsKeysAndReadTheSameInBothLanguages()
+    {
+        // THE TRAP again, one level down: the headings are the curator's and translate, so an id
+        // slugged from one would break every deep link the moment the other reader opened it. The
+        // groupKey is the same in both, which is why it is what the id is built from.
+        var norwegian = Render(Placed());
+        var english = Render(Placed(), language: "en");
+
+        Assert.Equal(
+            ["metadata-om-datasamlingen", "metadata-variabler", "metadata-datakilde",
+             DetailSectionIds.Criteria, "metadata-alle-metadatafelt"],
+            Wrappers(norwegian).Select(section => section.Id!));
+
+        Assert.Equal(Wrappers(norwegian).Select(s => s.Id!), Wrappers(english).Select(s => s.Id!));
+        Assert.Equal(Wrappers(english).Select(s => "#" + s.Id), Targets(english));
+        Assert.Equal(["About the data collection", "Variables", "Data source",
+                      "Inclusion and exclusion criteria", "All metadata fields"],
+                     BlockHeadings(english));
+    }
+
+    [Fact]
+    public void Placement_WhenTwoSectionKeysSlugAlike_ThenTheirIdsAreStillDistinct()
+    {
+        // A key is whatever a curator typed and everything but an ASCII letter or digit becomes a
+        // hyphen, so two keys can reach one id — and a repeated id draws two sections under one
+        // anchor, with the contents nav's second link landing on the first.
+        var placed = Placed();
+
+        var twin = new PropertyMetadataEntry
+        {
+            Key = "Oppdateringsrutine",
+            SortOrder = 4001,
+            Type = "Text",
+            GroupKey = "om_datasamlingen",
+            GroupSortOrder = 4000,
+            DisplayNameTranslations =
+                new Dictionary<string, string> { ["no"] = "Oppdateringsrutine", ["en"] = "Update routine" },
+            GroupTranslations =
+                new Dictionary<string, string> { ["no"] = "Om datasamlingen", ["en"] = "About the data collection" },
+        };
+
+        var cut = Render(placed with
+        {
+            PropertyMetadata = [.. placed.PropertyMetadata, twin],
+            AdditionalProperties = new Dictionary<string, string?>(placed.AdditionalProperties)
+            {
+                ["Oppdateringsrutine"] = "Oppdateres årlig i mars.",
+            },
+        });
+
+        var ids = Wrappers(cut).Select(section => section.Id!).ToList();
+
+        Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
+        Assert.Contains("metadata-om-datasamlingen-2", ids);
+    }
+
+    [Fact]
+    public void Placement_WhenItTookTheSourceFields_ThenWhatIsLeftOfTheBoxFollowsThemIntoThatSection()
+    {
+        // The rename this bead is named for, done by the data: Kildeinformasjon became Datakilde,
+        // and the rows the placement did not take — the parent, its kildetype, the open end of the
+        // validity and Munin's two timestamps — are in that one section rather than heading a
+        // second one about the same subject.
+        var labels = SectionLabels(Render(Placed()), "Datakilde");
+
+        Assert.Equal(
+            ["Dataansvarlig", "Databehandler", "Grad av personidentifikasjon", "Lovverk",
+             "Kilde", "Type datakilde", "Gyldig til", "Sist oppdatert i Munin", "Opprettet i Munin"],
+            labels);
+    }
+
+    [Fact]
+    public void Placement_WhenItTookTheStatisticsFields_ThenTheCountFollowsThemAndNothingIsDropped()
+    {
+        // Epic decision 2: the mockup names no Statistikk section and none of its fields may be lost
+        // for that. StatistikkType, TelleEnhet and Frekvens are placed in Variabler, and the count —
+        // the collection's own number, which has no definition to place — goes with them.
+        Assert.Equal(["Statistikktype", "Frekvens", "Telleenhet", "Antall variabler"],
+                     SectionLabels(Render(Placed()), "Variabler"));
+    }
+
+    [Fact]
+    public void Placement_WhenItDeclaresASectionThisViewDrawsNothingFor_ThenNoEmptyWrapperIsLeft()
+    {
+        // Two of the four are empty here: nothing is placed in Variabler once the three statistics
+        // fields and the count are gone, and Datakilde's four are unset with nothing inherited.
+        var cut = Render(Placed() with
+        {
+            EffectiveLegalBasis = null,
+            EffectiveDataController = null,
+            EffectiveDataProcessor = null,
+            EffectivePersonIdentificationLevel = null,
+            EffectiveKildetype = null,
+            EffectiveValidFrom = null,
+            EffectiveValidTo = null,
+            ParentKildeName = "",
+            StatisticsType = null,
+            Frequency = null,
+            CountingUnit = null,
+            VariableCount = 0,
+            LastUpdated = null,
+            Created = null,
+        });
+
+        Assert.Equal(
+            ["metadata-om-datasamlingen", DetailSectionIds.Criteria, "metadata-alle-metadatafelt"],
+            Wrappers(cut).Select(section => section.Id!));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+    }
+
+    [Fact]
+    public void Placement_WhenTheCatalogueNamesASectionButNotWhereItGoes_ThenTheFactBoxKeepsItsOwn()
+    {
+        // The half-rolled-out payload: groupKey without groupSortOrder. A section of the page needs
+        // a declared position, so these groups stay under the view's own Metadata heading — and the
+        // fact box must not have yielded to a section that never became one, which is the one way
+        // this could leave a public field drawn nowhere at all.
+        var cut = Render(Placed() with
+        {
+            PropertyMetadata = [.. Placed().PropertyMetadata.Select(e => e with { GroupSortOrder = null })],
+        });
+
+        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon",
+                      "Statistikk (årsbasert)"],
+                     BlockHeadings(cut));
+        Assert.Contains("Kilde", Labels(SourceInformation(cut)));
+        Assert.Contains("Antall variabler", SectionLabels(cut, "Statistikk (årsbasert)"));
+    }
+
+    [Fact]
+    public void Placement_WhenTheCatalogueDeclaresIt_ThenNoFactTheOldLayoutDrewIsLost()
+    {
+        // The bead's own verification, encoded: count the rendered dt/dd pairs before and after the
+        // placement arrives — equal or higher, never lower. Placement moves rows between sections
+        // and splits the validity into its two ends, so the labels differ and the count cannot fall.
+        var before = Render(Datasamling()).FindAll(".munin-explorer-page__body dd").Count;
+        var after = Render(Placed()).FindAll(".munin-explorer-page__body dd").Count;
+
+        Assert.True(after >= before, $"The placement lost rows: {before} values before, {after} after.");
     }
 
     // ---------------------------------------------------------------------------------

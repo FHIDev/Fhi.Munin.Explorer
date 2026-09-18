@@ -244,6 +244,11 @@ public sealed partial class DatasamlingView : ComponentBase
     /// the id is on the payload for exactly this, so the return path out of a collection costs no
     /// second request (Fhi.Metadata-35w0p.50).
     /// </para>
+    /// <para>
+    /// What is left after the yielding follows the yielded fields into their section rather than
+    /// heading one of its own — see <see cref="BuildSections"/>, and Fhi.Metadata-lr6yh for why a
+    /// page carrying both Kildeinformasjon and Datakilde was the defect.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> SourceInformation =>
         Datasamling is not { } datasamling
@@ -349,9 +354,8 @@ public sealed partial class DatasamlingView : ComponentBase
     /// too rather than a zero, which is what lets a datasamling with no numbers at all draw no block.
     /// <para>
     /// Statistikktype, Frekvens and Telleenhet all yield to a section that has been given their
-    /// key, as the fact box above does. The count is the collection's own number and has no
-    /// property definition to be placed. <see cref="StatisticsHeading"/> reads the type as well and
-    /// deliberately does not yield: the heading names the section and the row states the fact.
+    /// key, as the fact box above does, and what is left follows them into it. The count is the
+    /// collection's own number and has no property definition to be placed.
     /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> Statistics =>
@@ -421,49 +425,163 @@ public sealed partial class DatasamlingView : ComponentBase
     /// <para>
     /// Read raw rather than through <see cref="UnlessPlaced"/>, alone among the merged keys: a
     /// heading naming what the numbers count is not the fact repeated, it is what makes the section
-    /// findable, and a section placed StatistikkType and headed "Statistikk" would have lost it.
-    /// The block stays gated on <see cref="AnyStatistics"/>, so a placement that empties the rows
-    /// takes the heading and its nav entry with them rather than leaving them over nothing.
+    /// findable. It heads the block only where the catalogue placed none of those keys — where it
+    /// placed them the curator's own section name is the heading, which is the placement deciding
+    /// the page rather than this view (Fhi.Metadata-lr6yh).
     /// </para>
     /// </remarks>
     private string StatisticsHeading =>
         StatisticsBlock.Heading(Datasamling?.StatisticsType, T);
 
-    /// <summary>The sections this view draws, in the order it draws them.</summary>
-    private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
+    /// <summary>One section of the page: what anchors it, what heads it and what fills it.</summary>
+    /// <remarks>
+    /// <c>CatchAll</c> marks the complete record, which closes the page by construction, so a block
+    /// the catalogue gave no position to is drawn ahead of it rather than after it.
+    /// </remarks>
+    private sealed record PageSection(
+        string Id, string Heading, string? HeadingLanguage, RenderFragment Body, bool CatchAll = false);
 
-    private IReadOnlySet<string> DrawnIds { get; set; } = new HashSet<string>();
+    /// <summary>The sections this view draws, in the order it draws them.</summary>
+    private IReadOnlyList<PageSection> PageSections { get; set; } = [];
+
+    /// <inheritdoc cref="PageSections"/>
+    private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
-        var toc = BuildToc();
-
-        Toc = toc.Entries;
-        DrawnIds = toc.Drawn;
-    }
-
-    /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
-    private DetailTocBuilder BuildToc()
-    {
-        if (Datasamling is not { } datasamling)
-        {
-            return new();
-        }
+        var sections = BuildSections();
 
         DetailTocBuilder toc = new();
 
-        toc.Add(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
-        toc.Add(!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria),
-                DetailSectionIds.Criteria, T.FieldInclusionCriteria);
-        toc.Add(DetailBlocks.AnyLinkedFacts(SourceInformation), DetailSectionIds.Source,
-                T.HeadingSourceInformation);
-        toc.Add(AnyStatistics, DetailSectionIds.Statistics, StatisticsHeading);
+        foreach (var section in sections)
+        {
+            toc.Always(section.Id, section.Heading);
+        }
+
         toc.AddNamed(NamedSections);
 
-        return toc;
+        PageSections = sections;
+        Toc = toc.Entries;
     }
 
-    /// <summary>Whether this view's own block is drawn; a named section never switches one on.</summary>
-    private bool Drawn(string id) => DrawnIds.Contains(id);
+    /// <summary>
+    /// The page in one pass: the sections the catalogue placed, under its headings and in its order,
+    /// with everything it placed nowhere drawn ahead of the complete record.
+    /// </summary>
+    /// <remarks>
+    /// No section list is written down here, which is the point of it: the sections are Munin's
+    /// placement rows to declare and a curator's to rename (Fhi.Metadata-lr6yh).
+    /// <para>
+    /// A fact box whose own fields the catalogue placed follows them into that section, so no page
+    /// carries two headings about one subject; a box it placed nothing from keeps a section of its
+    /// own, which is what every payload predating the placement rows gets. The criteria block cannot
+    /// be placed at all yet — the DatasamlingDetalj surface has no built-in placement row seeded.
+    /// </para>
+    /// </remarks>
+    private List<PageSection> BuildSections()
+    {
+        if (Datasamling is not { } datasamling)
+        {
+            return [];
+        }
+
+        var placement = Placement;
+        var sourceFacts = SourceInformation;
+        var source = DetailBlocks.AnyLinkedFacts(sourceFacts)
+            ? placement.SectionOf(CatalogueColumns.LegalBasis, CatalogueColumns.DataController,
+                                  CatalogueColumns.DataProcessor, CatalogueColumns.PersonIdentification)
+            : null;
+
+        var statistics = AnyStatistics
+            ? placement.SectionOf(CatalogueColumns.StatisticsType, CatalogueColumns.Frequency,
+                                  CatalogueColumns.CountingUnit)
+            : null;
+
+        List<PageSection> sections = [];
+        List<PropertyGroup> unplaced = [];
+        HashSet<string> ids = new(StringComparer.Ordinal);
+        var sourceDrawn = false;
+        var statisticsDrawn = false;
+
+        foreach (var group in Groups)
+        {
+            // A section of the page needs a declared position and an id a reader can be sent; a group
+            // with either missing stays where the unplaced ones have always been drawn.
+            if (!group.Placed || DetailSectionIds.Placed(group.Key, ids) is not { } id)
+            {
+                unplaced.Add(group);
+                continue;
+            }
+
+            List<(string Label, string? Value, bool Norwegian, string? Href)> facts = [];
+
+            if (string.Equals(group.Key, source, StringComparison.Ordinal))
+            {
+                facts.AddRange(sourceFacts);
+                sourceDrawn = true;
+            }
+
+            if (string.Equals(group.Key, statistics, StringComparison.Ordinal))
+            {
+                facts.AddRange(Statistics.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)));
+                statisticsDrawn = true;
+            }
+
+            var body = DetailBlocks.GroupBody(group, Language, CompleteRecordFacts);
+
+            sections.Add(new PageSection(
+                id, group.Name, CatalogueProperties.Foreign(group.NameLanguage, Reader),
+                facts.Count == 0 ? body : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language)),
+                string.Equals(group.Key, CatalogueProperties.CatchAllGroupKey, StringComparison.Ordinal)));
+        }
+
+        List<PageSection> unpositioned = [];
+
+        if (unplaced.Count > 0)
+        {
+            unpositioned.Add(new PageSection(DetailSectionIds.Metadata, T.HeadingMetadata, null,
+                                             UnplacedGroups(unplaced)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
+        {
+            unpositioned.Add(new PageSection(
+                DetailSectionIds.Criteria, T.FieldInclusionCriteria, null,
+                DetailBlocks.Prose(datasamling.InclusionAndExclusionCriteria,
+                                   "munin-explorer-datasamling__criteria",
+                                   CatalogueProperties.Foreign("no", Reader))));
+        }
+
+        // Asked of what was drawn rather than of what was placed: a placed section whose every row
+        // came out empty is no section, and a box that had yielded to it would be on no surface at all.
+        if (!sourceDrawn && DetailBlocks.AnyLinkedFacts(sourceFacts))
+        {
+            unpositioned.Add(new PageSection(DetailSectionIds.Source, T.HeadingSourceInformation, null,
+                                             DetailBlocks.LinkedFacts(sourceFacts, Language)));
+        }
+
+        if (!statisticsDrawn && AnyStatistics)
+        {
+            unpositioned.Add(new PageSection(DetailSectionIds.Statistics, StatisticsHeading, null,
+                                             DetailBlocks.Facts(Statistics, Language)));
+        }
+
+        var closing = sections.FindIndex(section => section.CatchAll);
+
+        sections.InsertRange(closing < 0 ? sections.Count : closing, unpositioned);
+
+        return sections;
+    }
+
+    /// <summary>Every group the catalogue titled but gave no position, drawn where they always were.</summary>
+    private RenderFragment UnplacedGroups(IReadOnlyList<PropertyGroup> groups) => builder =>
+    {
+        var seq = 0;
+
+        foreach (var group in groups)
+        {
+            builder.AddContent(seq++, DetailBlocks.Group(group, GroupLevel, Language, CompleteRecordFacts));
+        }
+    };
 }
