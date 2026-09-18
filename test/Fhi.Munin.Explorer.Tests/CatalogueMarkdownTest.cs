@@ -120,6 +120,24 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         Assert.DoesNotContain("](https://", cut.Markup, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("- first\n\n  second", "- first<br /><br />second")]
+    [InlineData("- first\n  second", "- first<br />second")]
+    public void Render_WhenAListItemHoldsTwoBlocks_ThenTheBlankLineBetweenThemSurvives(string text, string markup)
+    {
+        Assert.Equal(markup, Rendered(text).Markup);
+    }
+
+    [Theory]
+    [InlineData("[lovdata.no](https://lovdata.no)")]
+    [InlineData("[lovdata.no](http://lovdata.no)")]
+    [InlineData("https://lovdata.no")]
+    public void Prose_WhenTheLabelIsOnlyItsOwnAddress_ThenItIsNotProseWhateverTheScheme(string value)
+    {
+        Assert.False(CatalogueMarkdown.Prose(value));
+        Assert.True(CatalogueMarkdown.Prose("[Helseregisterloven](http://lovdata.no)"));
+    }
+
     [Fact]
     public void Render_WhenAListIsNumberedAndLoose_ThenItsMarkersAndBlankLinesSurvive()
     {

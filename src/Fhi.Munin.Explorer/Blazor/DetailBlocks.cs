@@ -125,9 +125,9 @@ internal static class DetailBlocks
             {
                 builder.OpenElement(seq + 8, "a");
                 builder.AddAttribute(seq + 9, "href", href);
-                builder.AddAttribute(seq + 13, "rel",
+                builder.AddAttribute(seq + 10, "rel",
                                      CatalogueMarkdown.AllowedScheme(href) ? "noopener noreferrer" : null);
-                builder.AddContent(seq + 10, value);
+                builder.AddContent(seq + 13, value);
                 builder.CloseElement();
             }
             else if (authored)

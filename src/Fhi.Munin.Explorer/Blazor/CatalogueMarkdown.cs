@@ -110,7 +110,7 @@ internal static partial class CatalogueMarkdown
 
     /// <summary>Whether a link's label is only its own address, which is prose in no language (WCAG 3.1.2).</summary>
     internal static bool IsAddress((string Label, string Href) link) =>
-        link.Href == link.Label || link.Href == $"https://{link.Label}";
+        link.Href == link.Label || link.Href == $"https://{link.Label}" || link.Href == $"http://{link.Label}";
 
     /// <summary>Whether a value's words are the catalogue's prose rather than an address.</summary>
     internal static bool Prose(string? raw) => Link(raw) is not { } link || !IsAddress(link);
@@ -250,16 +250,23 @@ internal static partial class CatalogueMarkdown
 
             PlainLines(builder, ref seq, source[item.Span.Start..item[0].Span.Start]);
 
-            var firstChild = true;
+            Block? previous = null;
 
             foreach (var child in item)
             {
-                if (!firstChild)
+                if (previous is not null)
                 {
                     Break(builder, ref seq);
+
+                    // A blank line between an item's blocks is kept, as it is between the blocks of a document.
+                    if (previous.Span.End < child.Span.Start
+                        && source[(previous.Span.End + 1)..child.Span.Start].Count(c => c == '\n') > 1)
+                    {
+                        Break(builder, ref seq);
+                    }
                 }
 
-                firstChild = false;
+                previous = child;
                 Block(builder, ref seq, child, source);
             }
         }
