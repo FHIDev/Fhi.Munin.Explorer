@@ -184,6 +184,19 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         Assert.Equal(markup, Rendered(text).Markup);
     }
 
+    [Theory]
+    [InlineData("Tekst\n\n[a]: https://x.no\nmer tekst", "Tekst<br /><br />[a]: https://x.no<br /><br />mer tekst")]
+    [InlineData("> [a]: https://x.no\n\nTekst", "&gt; [a]: https://x.no<br /><br />Tekst")]
+    [InlineData("- [a]: https://x.no\n- Tekst", "- [a]: https://x.no<br />- Tekst")]
+    [InlineData("1. [a]: https://x.no", "1. [a]: https://x.no")]
+    [InlineData("- [a]: https://x.no\n\n  Tekst", "- [a]: https://x.no<br /><br />  Tekst")]
+    public void Render_WhenAnUnusedDefinitionSitsInsideOtherText_ThenItIsDrawnOnceWhereItWasWritten(
+        string text, string markup)
+    {
+        // Markdig lifts every definition out to one group; a source slice may already show it.
+        Assert.Equal(markup, Rendered(text).Markup);
+    }
+
     [Fact]
     public void Render_WhenADefinitionComesBeforeItsLink_ThenTheLinkStillTakesItAndNothingElseIsDrawn()
     {

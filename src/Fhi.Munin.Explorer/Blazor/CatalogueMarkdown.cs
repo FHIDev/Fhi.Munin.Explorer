@@ -49,7 +49,7 @@ internal static partial class CatalogueMarkdown
     private static partial Regex BrTag();
 
     /// <summary>The schemes a link is allowed to carry; anything else renders as text.</summary>
-    private static bool AllowedScheme(string? url) =>
+    internal static bool AllowedScheme(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri)
         && uri.Scheme is "http" or "https" or "mailto";
 
@@ -159,12 +159,33 @@ internal static partial class CatalogueMarkdown
             .OfType<LinkReferenceDefinition>()
             .ToHashSet();
 
+        var sliced = SlicedSpans(document).ToList();
+
+        // A definition that a paragraph's span also covers starts where the paragraph does, and
+        // was written before the text after it.
         return document
             .SelectMany(block => block is LinkReferenceDefinitionGroup group
-                ? group.OfType<LinkReferenceDefinition>().Where(definition => !lent.Contains(definition))
+                ? group.OfType<LinkReferenceDefinition>()
+                       .Where(definition => !lent.Contains(definition)
+                                            && !sliced.Any(span => Covers(span, definition.Span)))
                 : Enumerable.Repeat(block, 1))
-            .OrderBy(block => block.Span.Start);
+            .OrderBy(block => block.Span.Start)
+            .ThenBy(block => block is LinkReferenceDefinition ? 0 : 1);
     }
+
+    /// <summary>The spans <see cref="Block"/> draws as source text, where a definition already shows.</summary>
+    private static IEnumerable<SourceSpan> SlicedSpans(ContainerBlock container) =>
+        container.SelectMany(block => block switch
+        {
+            LinkReferenceDefinitionGroup or ParagraphBlock => Enumerable.Empty<SourceSpan>(),
+            ListBlock list => list.OfType<ListItemBlock>().SelectMany(item => Walked(item)
+                ? SlicedSpans(item).Prepend(new SourceSpan(item.Span.Start, item[0].Span.Start - 1))
+                : [item.Span]),
+            _ => [block.Span],
+        });
+
+    private static bool Covers(SourceSpan outer, SourceSpan inner) =>
+        inner.Start >= outer.Start && inner.Start <= outer.End;
 
     /// <summary>The paragraphs <see cref="Block"/> walks inline by inline, and no others.</summary>
     private static IEnumerable<ParagraphBlock> Paragraphs(ContainerBlock container) =>

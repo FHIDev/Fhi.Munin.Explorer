@@ -100,12 +100,15 @@ public class DetailBlocksTest : ExplorerTestContext
         Assert.Equal("Skjemaet", prose.TextContent);
     }
 
-    [Fact]
-    public void LinkedFacts_WhenATargetIsAnAbsoluteAddress_ThenOnlyThatAnchorCarriesRel()
+    [Theory]
+    [InlineData("https://lovdata.no/lov")]
+    [InlineData("https://lovdata.no/lov/a 11")]
+    public void LinkedFacts_WhenATargetIsAnAbsoluteAddress_ThenOnlyThatAnchorCarriesRel(string address)
     {
         // A catalogue URL is guarded as the metadata rows guard theirs; a host's own path is not.
+        // The space is a URL CatalogueMarkdown.Link accepts and a well-formedness check would not.
         var cut = RenderList(authored: false,
-                             ("Lovverk", "Helseregisterloven", true, "https://lovdata.no/lov"),
+                             ("Lovverk", "Helseregisterloven", true, address),
                              ("Kilde", "Als registeret", false, "/kilder?kilde=1"));
 
         Assert.Equal("noopener noreferrer", Cell(cut, "Lovverk").QuerySelector("a")!.GetAttribute("rel"));

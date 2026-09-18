@@ -126,7 +126,7 @@ internal static class DetailBlocks
                 builder.OpenElement(seq + 8, "a");
                 builder.AddAttribute(seq + 9, "href", href);
                 builder.AddAttribute(seq + 13, "rel",
-                                     Uri.IsWellFormedUriString(href, UriKind.Absolute) ? "noopener noreferrer" : null);
+                                     CatalogueMarkdown.AllowedScheme(href) ? "noopener noreferrer" : null);
                 builder.AddContent(seq + 10, value);
                 builder.CloseElement();
             }

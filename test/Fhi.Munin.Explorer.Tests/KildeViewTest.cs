@@ -1757,6 +1757,16 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void LegalBasis_WhenTheColumnIsABareAddress_ThenNeitherTheHeroNorTheBoxMarksItNorwegian()
+    {
+        // An address is prose in no language (WCAG 3.1.2); English, since Norwegian marks nothing.
+        var cut = Render(Kilde() with { LegalBasis = "https://lovdata.no/lov/2014-06-20-43" }, language: "en");
+
+        Assert.Empty(Fact(Hero(cut), "Legal basis").QuerySelectorAll("[lang]"));
+        Assert.Null(Fact(SourceInformation(cut), "Legal basis").GetAttribute("lang"));
+    }
+
+    [Fact]
     public void HeroFacts_Always_ThenTheyAreTheSixTheMockupLeadsWith()
     {
         // The mockup's sixth is Tilgang, and the catalogue has no access field for a source — so

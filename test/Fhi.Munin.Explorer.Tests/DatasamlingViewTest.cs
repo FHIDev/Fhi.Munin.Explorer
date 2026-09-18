@@ -189,6 +189,15 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void HeroFacts_WhenTheLegalBasisIsABareAddress_ThenTheCellMarksNoLanguage()
+    {
+        var cut = Render(Datasamling() with { EffectiveLegalBasis = "https://lovdata.no/lov/2014-06-20-43" },
+                         language: "en");
+
+        Assert.Empty(Cell(Hero(cut), "Legal basis").QuerySelectorAll("dd [lang]"));
+    }
+
+    [Fact]
     public void HeroFacts_Always_ThenTheyAreTheSourcePagesSixOverThisCollectionsOwnValues()
     {
         // The same six as a source, deliberately: a reader moving between a source and one of its
