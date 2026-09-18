@@ -49,7 +49,7 @@ internal static partial class CatalogueMarkdown
     private static partial Regex BrTag();
 
     /// <summary>The schemes a link is allowed to carry; anything else renders as text.</summary>
-    private static bool AllowedScheme(string? url) =>
+    internal static bool AllowedScheme(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri)
         && uri.Scheme is "http" or "https" or "mailto";
 
@@ -105,6 +105,16 @@ internal static partial class CatalogueMarkdown
         return (label.Length > 0 ? label : link.Url!, link.Url!);
     }
 
+    /// <summary>A value's words: the label where the whole value is one allowed link, else the value.</summary>
+    internal static string? Words(string? raw) => Link(raw)?.Label ?? raw;
+
+    /// <summary>Whether a link's label is only its own address, which is prose in no language (WCAG 3.1.2).</summary>
+    internal static bool IsAddress((string Label, string Href) link) =>
+        link.Href == link.Label || link.Href == $"https://{link.Label}" || link.Href == $"http://{link.Label}";
+
+    /// <summary>Whether a value's words are the catalogue's prose rather than an address.</summary>
+    internal static bool Prose(string? raw) => Link(raw) is not { } link || !IsAddress(link);
+
     /// <summary>The catalogue text as a fragment: anchors, breaks, and literal text for the rest.</summary>
     internal static RenderFragment Render(string? text) => builder =>
     {
@@ -126,7 +136,7 @@ internal static partial class CatalogueMarkdown
 
         var first = true;
 
-        foreach (var block in Markdown.Parse(source, Pipeline))
+        foreach (var block in Drawn(Markdown.Parse(source, Pipeline)))
         {
             if (!first)
             {
@@ -135,17 +145,132 @@ internal static partial class CatalogueMarkdown
             }
 
             first = false;
-
-            if (block is ParagraphBlock { Inline: { } inlines })
-            {
-                Inlines(builder, ref seq, inlines, source);
-            }
-            else
-            {
-                PlainLines(builder, ref seq, Sliced(source, block.Span));
-            }
+            Block(builder, ref seq, block, source);
         }
     };
+
+    /// <summary>The blocks in source order, each reference definition drawn as its source unless a drawn
+    /// anchor took its URL. Markdig files the definitions in one group whose span means nothing.</summary>
+    private static IEnumerable<Block> Drawn(MarkdownDocument document)
+    {
+        var lent = Paragraphs(document)
+            .SelectMany(paragraph => paragraph.Inline is { } inlines ? Anchored(inlines) : [])
+            .Select(link => link.Reference)
+            .OfType<LinkReferenceDefinition>()
+            .ToHashSet();
+
+        var sliced = SlicedSpans(document).ToList();
+
+        // Markdig keeps a paragraph's span over the definitions it lifted out of it, so a paragraph
+        // is placed by where its own text starts.
+        return document
+            .SelectMany(block => block is LinkReferenceDefinitionGroup group
+                ? group.OfType<LinkReferenceDefinition>()
+                       .Where(definition => !lent.Contains(definition)
+                                            && !sliced.Any(span => Covers(span, definition.Span)))
+                : Enumerable.Repeat(block, 1))
+            .OrderBy(block => block is ParagraphBlock { Inline.FirstChild: { } first } ? first.Span.Start : block.Span.Start);
+    }
+
+    /// <summary>The spans <see cref="Block"/> draws as source text, where a definition already shows.</summary>
+    private static IEnumerable<SourceSpan> SlicedSpans(ContainerBlock container) =>
+        container.SelectMany(block => block switch
+        {
+            LinkReferenceDefinitionGroup or ParagraphBlock => Enumerable.Empty<SourceSpan>(),
+            ListBlock list => list.OfType<ListItemBlock>().SelectMany(item => Walked(item)
+                ? SlicedSpans(item).Prepend(new SourceSpan(item.Span.Start, item[0].Span.Start - 1))
+                : [item.Span]),
+            _ => [block.Span],
+        });
+
+    private static bool Covers(SourceSpan outer, SourceSpan inner) =>
+        inner.Start >= outer.Start && inner.Start <= outer.End;
+
+    /// <summary>The paragraphs <see cref="Block"/> walks inline by inline, and no others.</summary>
+    private static IEnumerable<ParagraphBlock> Paragraphs(ContainerBlock container) =>
+        container.SelectMany(block => block switch
+        {
+            ParagraphBlock paragraph => [paragraph],
+            ListBlock list => list.OfType<ListItemBlock>().Where(Walked).SelectMany(Paragraphs),
+            _ => Enumerable.Empty<ParagraphBlock>(),
+        });
+
+    /// <summary>The links <see cref="Inlines"/> draws as anchors, found by the same cases.</summary>
+    private static IEnumerable<LinkInline> Anchored(ContainerInline container) =>
+        container.SelectMany(inline => inline switch
+        {
+            LinkInline { IsImage: false } link when AllowedScheme(link.Url) => [link],
+            DelimiterInline delimiter => Anchored(delimiter),
+            _ => Enumerable.Empty<LinkInline>(),
+        });
+
+    /// <summary>Whether an item's children are walked, or the item is drawn as its source.</summary>
+    private static bool Walked(ListItemBlock item) => item.Count > 0 && item[0].Span.Start > item.Span.Start;
+
+    private static void Block(RenderTreeBuilder builder, ref int seq, Block block, string source)
+    {
+        switch (block)
+        {
+            case ParagraphBlock { Inline: { } inlines }:
+                Inlines(builder, ref seq, inlines, source);
+                break;
+            case ListBlock list:
+                ListItems(builder, ref seq, list, source);
+                break;
+            default:
+                PlainLines(builder, ref seq, Sliced(source, block.Span));
+                break;
+        }
+    }
+
+    /// <summary>A list as the lines it was written in, its markers literal and its items' links live.</summary>
+    private static void ListItems(RenderTreeBuilder builder, ref int seq, ListBlock list, string source)
+    {
+        var firstItem = true;
+
+        foreach (var item in list.OfType<ListItemBlock>())
+        {
+            if (!firstItem)
+            {
+                Break(builder, ref seq);
+
+                if (list.IsLoose)
+                {
+                    Break(builder, ref seq);
+                }
+            }
+
+            firstItem = false;
+
+            if (!Walked(item))
+            {
+                PlainLines(builder, ref seq, Sliced(source, item.Span));
+                continue;
+            }
+
+            PlainLines(builder, ref seq, source[item.Span.Start..item[0].Span.Start]);
+
+            Block? previous = null;
+
+            foreach (var child in item)
+            {
+                if (previous is not null)
+                {
+                    Break(builder, ref seq);
+
+                    // A blank line between an item's blocks is kept, as it is between the blocks of a document.
+                    if (previous.Span.End < child.Span.Start
+                        && source[previous.Span.End..child.Span.Start].Count(c => c == '\n') > 1)
+                    {
+                        Break(builder, ref seq);
+                    }
+                }
+
+                previous = child;
+                Block(builder, ref seq, child, source);
+            }
+        }
+    }
 
     private static void Inlines(RenderTreeBuilder builder, ref int seq, ContainerInline container, string source)
     {
@@ -166,6 +291,11 @@ internal static partial class CatalogueMarkdown
                     break;
                 case LinkInline { IsImage: false } link when AllowedScheme(link.Url):
                     Anchor(builder, ref seq, link, source);
+                    break;
+                // An unmatched [ or ![ spans only itself and holds the text after it as children.
+                case DelimiterInline delimiter:
+                    PlainLines(builder, ref seq, Sliced(source, delimiter.Span));
+                    Inlines(builder, ref seq, delimiter, source);
                     break;
                 default:
                     PlainLines(builder, ref seq, Sliced(source, inline.Span));

@@ -102,8 +102,132 @@ public class CatalogueMarkdownTest : ExplorerTestContext
     {
         var cut = Rendered("Lovverk:\n- Helseregisterloven\n- Personopplysningsloven");
 
-        Assert.Contains("- Helseregisterloven", cut.Markup, StringComparison.Ordinal);
-        Assert.True(cut.FindAll("br").Count >= 2);
+        Assert.Equal("Lovverk:<br /><br />- Helseregisterloven<br />- Personopplysningsloven", cut.Markup);
+    }
+
+    [Fact]
+    public void Render_WhenAListItemCarriesALink_ThenTheLinkIsLiveAndTheMarkerStaysLiteral()
+    {
+        // K_KK's Kvalitetsnote shape: the links sit inside list items, not in a paragraph.
+        var cut = Rendered("Kilder:\n- Se [veilederen](https://example.org/v)\n- Annet");
+
+        var anchor = Assert.Single(cut.FindAll("a"));
+
+        Assert.Equal("https://example.org/v", anchor.GetAttribute("href"));
+        Assert.Equal("veilederen", anchor.TextContent);
+        Assert.Contains("- Se ", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("<br />- Annet", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("](https://", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("- first\n\n  second", "- first<br /><br />second")]
+    [InlineData("- first\n  second", "- first<br />second")]
+    [InlineData("- first\n  - nested\n\n  after", "- first<br />- nested<br /><br />after")]
+    public void Render_WhenAListItemHoldsTwoBlocks_ThenTheBlankLineBetweenThemSurvives(string text, string markup)
+    {
+        Assert.Equal(markup, Rendered(text).Markup);
+    }
+
+    [Theory]
+    [InlineData("[lovdata.no](https://lovdata.no)")]
+    [InlineData("[lovdata.no](http://lovdata.no)")]
+    [InlineData("https://lovdata.no")]
+    public void Prose_WhenTheLabelIsOnlyItsOwnAddress_ThenItIsNotProseWhateverTheScheme(string value)
+    {
+        Assert.False(CatalogueMarkdown.Prose(value));
+        Assert.True(CatalogueMarkdown.Prose("[Helseregisterloven](http://lovdata.no)"));
+    }
+
+    [Fact]
+    public void Render_WhenAListIsNumberedAndLoose_ThenItsMarkersAndBlankLinesSurvive()
+    {
+        var cut = Rendered("1. Første\n\n2. Andre");
+
+        Assert.Equal("1. Første<br /><br />2. Andre", cut.Markup);
+    }
+
+    [Theory]
+    [InlineData("- [klikk](javascript:alert(1))")]
+    [InlineData("- <script>alert(1)</script>")]
+    [InlineData("- # Overskrift")]
+    public void Render_WhenAListItemCarriesHostileInput_ThenItStaysText(string hostile)
+    {
+        // Walking list items must not open a way round the guarantee the class exists for.
+        var cut = Rendered(hostile);
+
+        Assert.Empty(cut.FindAll("a, script, h1"));
+        Assert.Equal(hostile, cut.Nodes.Select(n => n.TextContent).Aggregate(string.Concat));
+    }
+
+    [Theory]
+    [InlineData("x [a\nb", "x [a<br />b")]
+    [InlineData("- [abc def\n- b", "- [abc def<br />- b")]
+    [InlineData("- ![a\n- b", "- ![a<br />- b")]
+    public void Render_WhenABracketNeverCloses_ThenNoTextAfterItIsLost(string text, string markup)
+    {
+        Assert.Equal(markup, Rendered(text).Markup);
+    }
+
+    [Fact]
+    public void Render_WhenALinkIsReferenceStyle_ThenItRendersOnceAndItsDefinitionIsNotDrawn()
+    {
+        // K_MSIS's criteria are written this way; the definition must lend the link its URL and
+        // draw nothing of its own.
+        var cut = Rendered("Se [MSIS-forskriften].\n\n[MSIS-forskriften]: https://lovdata.no/msis");
+
+        Assert.Equal(
+            "Se <a href=\"https://lovdata.no/msis\" rel=\"noopener noreferrer\">MSIS-forskriften</a>.",
+            cut.Markup);
+    }
+
+    [Fact]
+    public void Render_WhenAReferenceDefinitionHasADisallowedScheme_ThenTheLabelStaysText()
+    {
+        var cut = Rendered("Se [ref].\n\n[ref]: javascript:alert(1)");
+
+        Assert.Equal("Se [ref].<br /><br />[ref]: javascript:alert(1)", cut.Markup);
+    }
+
+    [Theory]
+    [InlineData("Tekst\n\n[Kilde]: https://fhi.no", "Tekst<br /><br />[Kilde]: https://fhi.no")]
+    [InlineData("Tekst\n\n[Merk]: Foreløpig", "Tekst<br /><br />[Merk]: Foreløpig")]
+    [InlineData("Se [1].\n\n[1]: www.lovdata.no", "Se [1].<br /><br />[1]: www.lovdata.no")]
+    [InlineData("*se [a]*\n\n[a]: https://x.no", "*se [a]*<br /><br />[a]: https://x.no")]
+    [InlineData("[a]: Først\n\nMidt\n\n[b]: Sist", "[a]: Først<br /><br />Midt<br /><br />[b]: Sist")]
+    public void Render_WhenNoDrawnAnchorTakesADefinitionsUrl_ThenTheDefinitionIsDrawnAsItsSource(
+        string text, string markup)
+    {
+        // Unused, not an address, a scheme the anchor refuses, or cited only from literal text:
+        // hiding any of them would lose what the curator wrote.
+        Assert.Equal(markup, Rendered(text).Markup);
+    }
+
+    [Theory]
+    [InlineData("Tekst\n\n[a]: https://x.no\nmer tekst", "Tekst<br /><br />[a]: https://x.no<br /><br />mer tekst")]
+    [InlineData("[a]: https://x.no\n[b]: https://y.no\nTekst", "[a]: https://x.no<br /><br />[b]: https://y.no<br /><br />Tekst")]
+    [InlineData("> [a]: https://x.no\n\nTekst", "&gt; [a]: https://x.no<br /><br />Tekst")]
+    [InlineData("- [a]: https://x.no\n- Tekst", "- [a]: https://x.no<br />- Tekst")]
+    [InlineData("1. [a]: https://x.no", "1. [a]: https://x.no")]
+    [InlineData("- [a]: https://x.no\n\n  Tekst", "- [a]: https://x.no<br /><br />  Tekst")]
+    public void Render_WhenAnUnusedDefinitionSitsInsideOtherText_ThenItIsDrawnOnceWhereItWasWritten(
+        string text, string markup)
+    {
+        // Markdig lifts every definition out to one group; a source slice may already show it.
+        Assert.Equal(markup, Rendered(text).Markup);
+    }
+
+    [Fact]
+    public void Render_WhenADefinitionComesBeforeItsLink_ThenTheLinkStillTakesItAndNothingElseIsDrawn()
+    {
+        Assert.Equal("Se <a href=\"https://x.no\" rel=\"noopener noreferrer\">a</a>.",
+                     Rendered("[a]: https://x.no\n\nSe [a].").Markup);
+    }
+
+    [Fact]
+    public void Render_WhenAListItemsTextStartsOnTheNextLine_ThenTheBreakAfterTheMarkerSurvives()
+    {
+        Assert.Equal("-<br />  foo<br />- b", Rendered("-\n  foo\n- b").Markup);
     }
 
     [Fact]

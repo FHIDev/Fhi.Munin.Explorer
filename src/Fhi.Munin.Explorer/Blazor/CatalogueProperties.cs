@@ -18,11 +18,13 @@ internal readonly record struct LocalisedText(string Text, string Language);
 /// types, whose bags the catalogue leaves open.
 /// </param>
 /// <param name="Href">Where the value should link, for the properties the catalogue types as a URL.</param>
+/// <param name="Authored">Drawn through <see cref="CatalogueMarkdown"/>; see <see cref="CatalogueProperties.AuthoredKeys"/>.</param>
 internal readonly record struct PropertyRow(
     string Label,
     string LabelLanguage,
     IReadOnlyList<LocalisedText> Values,
-    string? Href = null);
+    string? Href = null,
+    bool Authored = false);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
 /// <remarks>
@@ -61,6 +63,25 @@ internal static class CatalogueProperties
     /// match on "Alle metadatafelt" would turn it back into an ordinary group with no failing test.
     /// </remarks>
     internal const string CatchAllGroupKey = "alle-metadatafelt";
+
+    /// <summary>Free-text keys authored with markdown links and <c>&lt;br&gt;</c>. Named, not typed, as 5bcr7
+    /// named its fields: a type rule would reach any field that later takes the type. This decides how
+    /// a key is drawn; whether it is drawn at all stays with <c>drawnElsewhere</c>.</summary>
+    internal static readonly IReadOnlySet<string> AuthoredKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        CatalogueColumns.Description,
+        "BeskrivelseFlerspraklig",
+        "BeskrivelseEngelsk",
+        "Kvalitetsnote",
+        "Innsamlingsmetode",
+        "InklusjonsOgEksklusjonskriterier",
+        "Forskrift",
+        "GeografiskAvgrensning",
+        "FormaalFlerspraklig",
+        "Formaal",
+        "JuridiskNote",
+        "Kommentar",
+    };
 
     /// <summary>The only two cultures this package ever formats in, resolved once.</summary>
     /// <remarks>
@@ -243,7 +264,7 @@ internal static class CatalogueProperties
             // prose in no language, so it stays unmarked (WCAG 3.1.2); a worded one is Norwegian.
             if (Typed(entry, UrlType) && CatalogueMarkdown.Link(raw) is { } link)
             {
-                var labelIsTheAddress = link.Href == link.Label || link.Href == $"https://{link.Label}";
+                var labelIsTheAddress = CatalogueMarkdown.IsAddress(link);
 
                 rows.Add(new PropertyRow(label, labelLanguage,
                                          [new LocalisedText(link.Label, labelIsTheAddress ? reader : "no")],
@@ -251,7 +272,7 @@ internal static class CatalogueProperties
                 continue;
             }
 
-            rows.Add(new PropertyRow(label, labelLanguage, resolved));
+            rows.Add(new PropertyRow(label, labelLanguage, resolved, Authored: AuthoredKeys.Contains(entry.Key)));
         }
 
         return rows;

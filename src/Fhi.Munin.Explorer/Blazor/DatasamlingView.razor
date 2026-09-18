@@ -67,7 +67,7 @@
                     @DetailBlocks.Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
                     <p class="munin-explorer-datasamling__criteria"
                        lang="@CatalogueProperties.Foreign("no", Reader)">
-                        @datasamling.InclusionAndExclusionCriteria
+                        @CatalogueMarkdown.Render(datasamling.InclusionAndExclusionCriteria)
                     </p>
                 </DetailSection>
             }

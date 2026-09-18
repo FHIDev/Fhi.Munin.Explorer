@@ -313,6 +313,26 @@ public class CompleteRecordTest : ExplorerTestContext
         return string.Join("\n", markup);
     }
 
+    [Fact]
+    public void CompleteRecord_WhenTheDescriptionsCarryLinks_ThenItsRowsRenderThemRatherThanTheSource()
+    {
+        // The one section meant to repeat the descriptions, so it must draw them as the ingress does.
+        var tromso = Tromso();
+        var values = new Dictionary<string, string?>(tromso.AdditionalProperties)
+        {
+            ["BeskrivelseFlerspraklig"] = """{"nb":"Se [UiT](https://uit.no/nb)."}""",
+        };
+
+        var fields = RenderKilde(tromso with { Description = "Se [UiT](https://uit.no).", AdditionalProperties = values })
+            .Find(Fields);
+
+        var hrefs = fields.QuerySelectorAll("a").Select(a => a.GetAttribute("href")).ToList();
+
+        Assert.Contains("https://uit.no", hrefs);
+        Assert.Contains("https://uit.no/nb", hrefs);
+        Assert.DoesNotContain("](https://uit.no", fields.TextContent, StringComparison.Ordinal);
+    }
+
     // -----------------------------------------------------------------------
     // Criterion 8 — the claim is true in the language it is made in
 

@@ -177,6 +177,27 @@ public class DatasamlingViewTest : ExplorerTestContext
             $"No '{label}' cell in the hero row, only: {string.Join(", ", Labels(hero))}.");
 
     [Fact]
+    public void HeroFacts_WhenTheLegalBasisIsOneMarkdownLink_ThenTheCellShowsItsWords()
+    {
+        // Three of K_MSIS's datasamlinger inherit its Lovverk in this shape.
+        var cut = Render(Datasamling() with
+        {
+            EffectiveLegalBasis = "[Helseregisterloven § 11](https://lovdata.no/lov/2014-06-20-43)",
+        });
+
+        Assert.Equal("Helseregisterloven § 11", Cell(Hero(cut), "Lovverk").QuerySelector("dd")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheLegalBasisIsABareAddress_ThenTheCellMarksNoLanguage()
+    {
+        var cut = Render(Datasamling() with { EffectiveLegalBasis = "https://lovdata.no/lov/2014-06-20-43" },
+                         language: "en");
+
+        Assert.Empty(Cell(Hero(cut), "Legal basis").QuerySelectorAll("dd [lang]"));
+    }
+
+    [Fact]
     public void HeroFacts_Always_ThenTheyAreTheSourcePagesSixOverThisCollectionsOwnValues()
     {
         // The same six as a source, deliberately: a reader moving between a source and one of its
@@ -604,6 +625,33 @@ public class DatasamlingViewTest : ExplorerTestContext
     };
 
     [Fact]
+    public void SourceInformation_WhenAnUnplacedLegalBasisIsOneMarkdownLink_ThenTheBoxLinksIt()
+    {
+        // Sparse places nothing, so the box is the only surface offering this link.
+        var cut = Render(Sparse() with
+        {
+            EffectiveLegalBasis = "[Helseregisterloven § 11](https://lovdata.no/lov/2014-06-20-43)",
+        });
+
+        var link = Assert.Single(Row(SourceInformation(cut), "Lovverk").QuerySelectorAll("a"));
+
+        Assert.Equal("https://lovdata.no/lov/2014-06-20-43", link.GetAttribute("href"));
+        Assert.Equal("Helseregisterloven § 11", link.TextContent);
+    }
+
+    [Fact]
+    public void SourceInformation_WhenAnUnplacedLegalBasisIsABareAddress_ThenItLinksAndIsNotMarkedNorwegian()
+    {
+        // 149 Lovverk values are a bare URL: an address is prose in no language (WCAG 3.1.2).
+        var cut = Render(Sparse() with { EffectiveLegalBasis = "https://lovdata.no/lov/2014-06-20-43" }, language: "en");
+
+        var cell = Row(SourceInformation(cut), "Legal basis").QuerySelector("dd")!;
+
+        Assert.Null(cell.GetAttribute("lang"));
+        Assert.Equal("https://lovdata.no/lov/2014-06-20-43", cell.QuerySelector("a")!.GetAttribute("href"));
+    }
+
+    [Fact]
     public void Sections_WhenTheCatalogueHasFilledInNothing_ThenNeitherFactBoxIsDrawn()
     {
         // The other half of the absence rule: a missing fact reads "Ingen", but a box with every
@@ -808,6 +856,23 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Contains("Inklusjons- og eksklusjonskriterier", BlockHeadings(cut));
         Assert.DoesNotContain("Inklusjons- og eksklusjonskriterier", Labels(SourceInformation(cut)));
+    }
+
+    [Fact]
+    public void Criteria_WhenAuthoredWithBrAndALink_ThenTheSectionRendersThemRatherThanTheSource()
+    {
+        // The column-backed copy of InklusjonsOgEksklusjonskriterier, which the metadata rows'
+        // key list cannot reach (Fhi.Metadata-x0etk).
+        var cut = Render(Datasamling() with
+        {
+            InclusionAndExclusionCriteria = "Alle over 18 år.<br>Se [veilederen](https://example.org/veileder).",
+        });
+
+        var criteria = cut.Find(".munin-explorer-datasamling__criteria");
+
+        Assert.Single(criteria.QuerySelectorAll("br"));
+        Assert.Equal("https://example.org/veileder", Assert.Single(criteria.QuerySelectorAll("a")).GetAttribute("href"));
+        Assert.DoesNotContain("<br>", criteria.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]

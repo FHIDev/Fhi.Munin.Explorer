@@ -125,7 +125,9 @@ internal static class DetailBlocks
             {
                 builder.OpenElement(seq + 8, "a");
                 builder.AddAttribute(seq + 9, "href", href);
-                builder.AddContent(seq + 10, value);
+                builder.AddAttribute(seq + 10, "rel",
+                                     CatalogueMarkdown.AllowedScheme(href) ? "noopener noreferrer" : null);
+                builder.AddContent(seq + 13, value);
                 builder.CloseElement();
             }
             else if (authored)
@@ -141,7 +143,7 @@ internal static class DetailBlocks
 
             builder.CloseElement();
 
-            // Twenty rather than ten: a row's dd branches run to seq + 12, past where the next row
+            // Twenty rather than ten: a row's dd branches run to seq + 13, past where the next row
             // began under the old stride. No rendered markup differs either way — the diff
             // tolerates the repeat — so this is the numbering contract kept, not a defect fixed.
             seq += 20;
@@ -193,7 +195,7 @@ internal static class DetailBlocks
             if (row.Values.Count == 1)
             {
                 builder.AddAttribute(seq + 1, "lang", CatalogueProperties.Foreign(slot.Language, reader));
-                Text(builder, seq + 2, slot.Text, row.Href);
+                Text(builder, seq + 2, slot.Text, row);
             }
             else
             {
@@ -204,7 +206,7 @@ internal static class DetailBlocks
 
                 builder.OpenElement(seq + 13, "span");
                 builder.AddAttribute(seq + 14, "lang", CatalogueProperties.Foreign(slot.Language, reader));
-                Text(builder, seq + 15, slot.Text, row.Href);
+                Text(builder, seq + 15, slot.Text, row);
                 builder.CloseElement();
             }
 
@@ -216,19 +218,27 @@ internal static class DetailBlocks
     }
 
     /// <summary>
-    /// A value, as a link where the catalogue types the property as a URL. Consumes five sequence
-    /// numbers from <paramref name="seq"/>.
+    /// A value, as a link where the catalogue types the property as a URL and as markdown where the
+    /// row is authored. Consumes six sequence numbers from <paramref name="seq"/>.
     /// </summary>
     /// <remarks>
     /// A field that exists to be followed should be followable (FHIDev/Munin#5385). <c>rel</c>
     /// guards the middle-click and ctrl-click paths; there is no <c>target</c>, so a reader stays
     /// on the page they were reading.
     /// </remarks>
-    private static void Text(RenderTreeBuilder builder, int seq, string value, string? href)
+    private static void Text(RenderTreeBuilder builder, int seq, string value, PropertyRow row)
     {
-        if (href is null)
+        if (row.Href is not { } href)
         {
-            builder.AddContent(seq, value);
+            if (row.Authored)
+            {
+                builder.AddContent(seq + 5, CatalogueMarkdown.Render(value));
+            }
+            else
+            {
+                builder.AddContent(seq, value);
+            }
+
             return;
         }
 

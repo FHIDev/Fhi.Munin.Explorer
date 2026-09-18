@@ -856,6 +856,28 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Metadata_WhenAQualityNoteCarriesAMarkdownLink_ThenThePageDrawsAnAnchorLabelledWithTheDoi()
+    {
+        // Through the whole view rather than the helper, so the page's own path to the metadata
+        // rows is what is pinned.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Kvalitetsnote", 10, "Datakvalitet")],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Kvalitetsnote"] = "[10.1093/ije/dyr049](https://doi.org/10.1093/ije/dyr049)",
+            },
+        };
+
+        var cut = Render(kilde);
+
+        var link = Assert.Single(cut.FindAll("dd a[href='https://doi.org/10.1093/ije/dyr049']"));
+
+        Assert.Equal("10.1093/ije/dyr049", link.TextContent);
+        Assert.DoesNotContain("](https://doi.org", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Metadata_WhenOnlyThePlainDescriptionKeyIsCurated_ThenItIsExcludedToo()
     {
         // THE THIRD TRAP. The captured source carries BeskrivelseFlerspraklig, so a fix covering
@@ -1717,6 +1739,31 @@ public class KildeViewTest : ExplorerTestContext
         var note = cell.QuerySelector("small");
 
         return note is null ? cell.TextContent : cell.TextContent[..^note.TextContent.Length];
+    }
+
+    [Fact]
+    public void LegalBasis_WhenTheColumnIsOneMarkdownLink_ThenTheHeroShowsItsWordsAndTheBoxLinksIt()
+    {
+        // K_MSIS's Lovverk column. Unplaced in this fixture, so the box draws it beside the hero.
+        var cut = Render(Kilde() with { LegalBasis = "[Helseregisterloven § 11](https://lovdata.no/lov/2014-06-20-43)" });
+
+        Assert.Equal("Helseregisterloven § 11", HeroValue(Hero(cut), "Lovverk").Trim());
+
+        var link = Assert.Single(SourceInformation(cut).QuerySelectorAll("a"));
+
+        Assert.Equal("https://lovdata.no/lov/2014-06-20-43", link.GetAttribute("href"));
+        Assert.Equal("Helseregisterloven § 11", link.TextContent);
+        Assert.DoesNotContain("](https://lovdata", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LegalBasis_WhenTheColumnIsABareAddress_ThenNeitherTheHeroNorTheBoxMarksItNorwegian()
+    {
+        // An address is prose in no language (WCAG 3.1.2); English, since Norwegian marks nothing.
+        var cut = Render(Kilde() with { LegalBasis = "https://lovdata.no/lov/2014-06-20-43" }, language: "en");
+
+        Assert.Empty(Fact(Hero(cut), "Legal basis").QuerySelectorAll("[lang]"));
+        Assert.Null(Fact(SourceInformation(cut), "Legal basis").GetAttribute("lang"));
     }
 
     [Fact]
