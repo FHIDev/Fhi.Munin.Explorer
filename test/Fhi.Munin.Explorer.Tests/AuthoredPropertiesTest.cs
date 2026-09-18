@@ -6,10 +6,8 @@ using Microsoft.AspNetCore.Components;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>
-/// The catalogue's free-text metadata values that are authored with markdown links and
-/// <c>&lt;br&gt;</c>, rendered through the path every detail page and Runa's row panel share.
-/// </summary>
+/// <summary>Metadata values authored with markdown links and <c>&lt;br&gt;</c>, rendered through the
+/// path every detail page and Runa's row panel share.</summary>
 public class AuthoredPropertiesTest : ExplorerTestContext
 {
     private static PropertyMetadataEntry Entry(string key, int sortOrder, string type = "Text") =>

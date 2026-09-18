@@ -811,6 +811,23 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Criteria_WhenAuthoredWithBrAndALink_ThenTheSectionRendersThemRatherThanTheSource()
+    {
+        // The column-backed copy of InklusjonsOgEksklusjonskriterier, which the metadata rows'
+        // key list cannot reach (Fhi.Metadata-x0etk).
+        var cut = Render(Datasamling() with
+        {
+            InclusionAndExclusionCriteria = "Alle over 18 år.<br>Se [veilederen](https://example.org/veileder).",
+        });
+
+        var criteria = cut.Find(".munin-explorer-datasamling__criteria");
+
+        Assert.Single(criteria.QuerySelectorAll("br"));
+        Assert.Equal("https://example.org/veileder", Assert.Single(criteria.QuerySelectorAll("a")).GetAttribute("href"));
+        Assert.DoesNotContain("<br>", criteria.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Criteria_WhenTheCatalogueHasNone_ThenNoHeadingPromisesAny()
     {
         // A third of the datasamlinger measured have none, so this is the ordinary case rather than
