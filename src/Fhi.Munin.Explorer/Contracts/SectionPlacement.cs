@@ -38,23 +38,24 @@ public sealed record SectionPlacement
     /// Carried for the contract's sake, and read by no view in this package: a property section is
     /// titled from <see cref="PropertyMetadataEntry.GroupTranslations"/>, which the same curation
     /// feeds, and a built-in section keeps the word the view has for it — one that can follow the
-    /// payload, as the kilde page's does when the source has delkilder. A placement decides where a
-    /// section goes and never what it is called, so renaming one here renames nothing a reader sees
-    /// unless the property metadata beside it is renamed too.
+    /// payload, as the kilde page's does when the source has delkilder. So a rename here reaches a
+    /// property section only when the property metadata beside it is renamed too, and reaches a
+    /// built-in section never: renaming one of those is a release of this package.
     /// </remarks>
     [JsonPropertyName("groupTranslations")]
     public IReadOnlyDictionary<string, string> Translations { get; init; } =
         new Dictionary<string, string>();
 
     /// <summary>
-    /// The section's own ascending order on this surface. Null where no placement names it.
+    /// The section's own ascending order on this surface. Null where the section is in the page's
+    /// order but no band was set for it, and against an API that predates the field.
     /// </summary>
     /// <remarks>
     /// Null is not a position of zero: the API has already sorted this collection, so the order to
-    /// draw in is the order it arrived in whether or not a placement named each entry. The views
-    /// here therefore never re-sort on this value — an unplaced entry has no band to sort by, and
-    /// sorting the rest around it would move it somewhere the API did not put it. It is here for a
-    /// host laying the sections out itself, which can then read the band a curator chose.
+    /// draw in is the order it arrived in, band or no band. The views here therefore never re-sort
+    /// on this value — a section with no band has nothing to sort by, and sorting the rest around
+    /// it would move it somewhere the API did not put it. It is here for a host laying the sections
+    /// out itself, which can then read the band a curator chose.
     /// </remarks>
     [JsonPropertyName("groupSortOrder")] public int? SortOrder { get; init; }
 

@@ -20,11 +20,15 @@ internal sealed class DetailTocBuilder
     internal IReadOnlySet<string> Drawn => _drawn;
 
     /// <summary>Name the section with this id, under the same condition its block renders under.</summary>
-    internal void Add(bool drawn, string id, string heading)
+    /// <remarks>
+    /// <paramref name="language"/> is the heading's own <c>lang</c>, which the entry carries for the
+    /// reason <see cref="DetailTocEntry.Language"/> gives.
+    /// </remarks>
+    internal void Add(bool drawn, string id, string heading, string? language = null)
     {
         if (drawn)
         {
-            _entries.Add(new DetailTocEntry(id, heading));
+            _entries.Add(new DetailTocEntry(id, heading, language));
             _drawn.Add(id);
         }
     }
@@ -34,7 +38,8 @@ internal sealed class DetailTocBuilder
     /// Apart from <see cref="Add"/> so the call site says which of the predicates is not one,
     /// rather than passing a <c>true</c> a reader has to open the view to explain.
     /// </remarks>
-    internal void Always(string id, string heading) => Add(true, id, heading);
+    internal void Always(string id, string heading, string? language = null) =>
+        Add(true, id, heading, language);
 
     /// <summary>Listed wherever the view draws them, which differs between the views.</summary>
     internal void AddNamed(IReadOnlyList<DetailNamedSection>? sections)

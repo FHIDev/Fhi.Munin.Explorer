@@ -419,42 +419,30 @@ public sealed partial class KildeView : ComponentBase
                                CatalogueMarkdown.Prose(kilde.LegalBasis) ? CatalogueProperties.Foreign("no", Reader) : null),
             ];
 
-    /// <summary>The sections this view draws, in the order it draws them.</summary>
+    /// <summary>The contents nav, one entry per section this view drew, in that order.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
     /// <summary>The same sections as markup — see <see cref="BuildLayout"/>.</summary>
     private IReadOnlyList<DetailLayoutSection> Layout { get; set; } = [];
 
-    /// <summary>Property groups no section of the payload names, which the Metadata block gathers.</summary>
-    private IReadOnlyList<PropertyGroup> Ungrouped { get; set; } = [];
-
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
         Layout = BuildLayout();
-        Toc = BuildToc().Entries;
+        Toc = BuildToc(Layout);
     }
 
     /// <summary>
     /// Every section this page draws, in the order the payload puts them.
     /// </summary>
     /// <remarks>
-    /// The catalogue's sections and this view's own blocks go through
-    /// <see cref="DetailLayout.Order"/> together, so a built-in section can sit between two
-    /// property ones — which the kilde mockup's Datasamlinger does — and so a reordering is an
-    /// edit a curator makes rather than a release of this package (Fhi.Metadata-35w0p.22).
-    /// <para>
-    /// A group the payload names no section for keeps the Metadata block it has always been drawn
-    /// in: its heading is the only thing identifying it, and a heading is bilingual and a curator's
-    /// to reword, so it can carry no <c>id</c> a reader could share.
-    /// </para>
+    /// A group the payload names no section for keeps the Metadata block rather than being dropped:
+    /// a heading is a curator's to reword, so it can carry no <c>id</c> a reader could share.
     /// </remarks>
     private IReadOnlyList<DetailLayoutSection> BuildLayout()
     {
         if (Kilde is not { } kilde)
         {
-            Ungrouped = [];
-
             return [];
         }
 
@@ -462,18 +450,19 @@ public sealed partial class KildeView : ComponentBase
             kilde.Sections.Select(section => section.Key).Where(key => !string.IsNullOrEmpty(key)),
             StringComparer.Ordinal);
 
-        Ungrouped = [.. Groups.Where(group => group.Key is null || !named.Contains(group.Key))];
+        IReadOnlyList<PropertyGroup> ungrouped =
+            [.. Groups.Where(group => group.Key is null || !named.Contains(group.Key))];
 
         List<DetailLayoutSection> groups =
         [
             .. Groups.Where(group => group.Key is not null && named.Contains(group.Key))
                      .Select(group => new DetailLayoutSection(
-                         group.Key, group.Key!, group.Name,
+                         group.Key, DetailSectionIds.ForGroupKey(group.Key!), group.Name,
                          CatalogueProperties.Foreign(group.NameLanguage, Reader),
                          DetailBlocks.GroupBody(group, Language, CompleteRecordFacts))),
         ];
 
-        return DetailLayout.Order(kilde.Sections, groups, Blocks());
+        return DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
     }
 
     /// <summary>
@@ -482,17 +471,18 @@ public sealed partial class KildeView : ComponentBase
     /// </summary>
     /// <remarks>
     /// Kildeinformasjon and Statistikk are named by no mockup and reserved by no seed yet, so they
-    /// draw here, at the end, rather than being dropped — the decision that no field of the page
-    /// this replaces is lost. Both carry a key regardless, so the first seed that names one moves
-    /// it with no release of this package.
+    /// draw here, at the end, rather than being dropped. Both carry a key regardless, so the first
+    /// seed that names one moves it with no release of this package.
     /// </remarks>
-    private IReadOnlyList<DetailLayoutSection> Blocks()
+    /// <param name="ungrouped">The groups the Metadata block gathers, and whether it draws at all.</param>
+    private IReadOnlyList<DetailLayoutSection> Blocks(IReadOnlyList<PropertyGroup> ungrouped)
     {
         List<DetailLayoutSection> blocks = [];
 
-        if (Ungrouped.Count > 0)
+        if (ungrouped.Count > 0)
         {
-            blocks.Add(new(null, DetailSectionIds.Metadata, T.HeadingMetadata, null, MetadataBody));
+            blocks.Add(new(null, DetailSectionIds.Metadata, T.HeadingMetadata, null,
+                           MetadataBody(ungrouped)));
         }
 
         // The tree's own status line carries the loading, empty and error states, so this block has
@@ -516,11 +506,11 @@ public sealed partial class KildeView : ComponentBase
     }
 
     /// <summary>The property groups the payload files under no section of its own.</summary>
-    private RenderFragment MetadataBody => builder =>
+    private RenderFragment MetadataBody(IReadOnlyList<PropertyGroup> ungrouped) => builder =>
     {
         var seq = 0;
 
-        foreach (var group in Ungrouped)
+        foreach (var group in ungrouped)
         {
             builder.AddContent(seq++, DetailBlocks.Group(group, GroupLevel, Language, CompleteRecordFacts));
         }
@@ -561,25 +551,23 @@ public sealed partial class KildeView : ComponentBase
     };
 
     /// <summary>The nav, read off the drawn sections so a link cannot point at a block left out.</summary>
-    private DetailTocBuilder BuildToc()
+    private IReadOnlyList<DetailTocEntry> BuildToc(IReadOnlyList<DetailLayoutSection> layout)
     {
         DetailTocBuilder toc = new();
 
         if (Kilde is null)
         {
-            return toc;
+            return toc.Entries;
         }
 
-        foreach (var section in Layout)
+        foreach (var section in layout)
         {
-            // Already the sections that draw: BuildLayout leaves out every block whose predicate
-            // failed and every group the catalogue had no filled row for.
-            toc.Add(true, section.Id, section.Heading);
+            toc.Always(section.Id, section.Heading, section.HeadingLanguage);
         }
 
         toc.AddNamed(NamedSections);
 
-        return toc;
+        return toc.Entries;
     }
 
     /// <summary>

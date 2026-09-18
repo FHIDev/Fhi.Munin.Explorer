@@ -115,10 +115,8 @@ public class ContractCoverageTest
 
     /// <summary>A detail payload carrying nothing but the collection this pins.</summary>
     /// <remarks>
-    /// Wrapped in the containing object rather than read as a bare array, because the array on its
-    /// own pins the four names inside the row and not the one that carries the collection onto the
-    /// page — and a typo there is the silent half: the detail reads back with no sections and the
-    /// view draws a page that has simply not been placed yet.
+    /// Wrapped in the containing object rather than read as a bare array, so <c>sections</c> itself
+    /// is pinned as well as the four names inside a row.
     /// </remarks>
     private const string SectionsPayload =
         """

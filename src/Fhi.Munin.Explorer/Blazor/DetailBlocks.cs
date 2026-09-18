@@ -287,13 +287,9 @@ internal static class DetailBlocks
     };
 
     /// <summary>
-    /// The same group without its heading, for a page that draws it as a section of its own.
+    /// The same group without its heading, for a page that draws it as a section of its own and
+    /// heads it at the level its neighbours wear (Fhi.Metadata-35w0p.22).
     /// </summary>
-    /// <remarks>
-    /// The heading moves rather than doubling: a section's own is a page heading at the level and
-    /// size its neighbours wear, where <see cref="Group"/>'s sits inside a block among several
-    /// (Fhi.Metadata-35w0p.22).
-    /// </remarks>
     internal static RenderFragment GroupBody(PropertyGroup group, string? language,
                                              CompleteRecordExtras? completeRecord = null) => builder =>
     {
