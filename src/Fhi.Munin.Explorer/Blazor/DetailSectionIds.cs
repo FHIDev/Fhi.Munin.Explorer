@@ -43,4 +43,21 @@ internal static class DetailSectionIds
     internal const string Prices = "prices";
 
     internal const string CodeLists = "codelists";
+
+    /// <summary>
+    /// The id of a section the catalogue placed, or nothing where its key anchors no fragment.
+    /// </summary>
+    /// <remarks>
+    /// Stemmed on <see cref="Metadata"/>, so a curator's key can collide with neither the literals
+    /// above nor a host's own. The key and never the heading, for the reason this whole type exists:
+    /// the headings are bilingual and a link into a section is one reader's to send another.
+    /// </remarks>
+    internal static string? Placed(string? groupKey)
+    {
+        var slug = string.Concat((groupKey ?? "").ToLowerInvariant()
+                                                .Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-'))
+                         .Trim('-');
+
+        return slug.Length == 0 ? null : $"{Metadata}-{slug}";
+    }
 }

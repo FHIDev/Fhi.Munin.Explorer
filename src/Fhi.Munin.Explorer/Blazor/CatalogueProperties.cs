@@ -30,12 +30,18 @@ internal readonly record struct PropertyRow(
 /// <remarks>
 /// <c>Key</c> identifies the group where the payload names one; <c>Name</c> only titles it, and a
 /// curator can rename that. Null against an API that predates the field.
+/// <para>
+/// <c>Placed</c> says the payload declared where this group belongs rather than the position having
+/// been inferred from its members — which is what lets a detail view give it a section of the page
+/// and leave the rest where they have always been drawn.
+/// </para>
 /// </remarks>
 internal sealed record PropertyGroup(
     string Name,
     string NameLanguage,
     IReadOnlyList<PropertyRow> Rows,
-    string? Key = null);
+    string? Key = null,
+    bool Placed = false);
 
 /// <summary>
 /// Resolving the catalogue's own properties: their names, their groups, and the words behind their
@@ -489,7 +495,8 @@ internal static class CatalogueProperties
                 .DefaultIfEmpty(int.MaxValue)
                 .Min();
 
-            resolved.Add((new PropertyGroup(group.Name, group.Language, rows, group.Key),
+            resolved.Add((new PropertyGroup(group.Name, group.Language, rows, group.Key,
+                                            group.PlacedOrder is not null),
                           group.PlacedOrder is null,
                           order));
         }

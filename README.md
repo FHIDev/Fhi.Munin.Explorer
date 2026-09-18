@@ -667,6 +667,16 @@ These are not style preferences — each one is a host that breaks otherwise.
   bound on that — `Fhi.Metadata-uobxg` records it, and the chassis bead that adds the contents nav
   is where it gets settled.
 
+  `DatasamlingView` writes one family more, and it is the one a host cannot read off a list here:
+  a section the catalogue has *placed* is anchored on `metadata-` finished with that section's own
+  `groupKey` — `metadata-om-datasamlingen`, `metadata-datakilde`, `metadata-alle-metadatafelt` and
+  whatever else Munin's placement rows declare. The key and never the heading, for the reason
+  above: a curator renames a title in one language at a time, and the key is the same in both. It
+  is stemmed on `metadata` so it can collide with neither the bare ids above nor a host's own, and
+  anything a fragment cannot carry becomes a hyphen. Which sections exist is Munin's to decide, so
+  the set is open and a host that means something by an `id` of its own should not start it
+  `metadata-`. (`Fhi.Metadata-lr6yh`)
+
   Ids are otherwise a separate family, each suffixed with a per-instance discriminator so two
   mounts on one page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`,
   `-toggle-*`, `-detail-*`, `-tab-*`, `-source-*`, `-stuckbar-*`, `-facts-*` and the rest.
