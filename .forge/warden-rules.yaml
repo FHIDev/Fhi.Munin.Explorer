@@ -171,3 +171,214 @@ rules:
       paths:
         - changelog.d/**/*.md
         - src/**/*.cs
+    - id: collapse-before-per-id-lookup
+      category: correctness
+      pattern: >-
+        A collection of records sharing a logical ID is grouped/partitioned by a secondary key (e.g. by parent/owner) before a downstream step deduplicates to one entry per ID (e.g. via OnePerId)
+      check: >-
+        Verify deduplication by ID happens globally, before grouping by the secondary key — not per-group afterward — otherwise the same ID can survive as a duplicate in multiple buckets and be exposed twice to callers (e.g. as duplicate selectable options).
+      source: copilot:PR#312
+      added: "2026-09-15"
+      paths:
+        - src/**/*.cs
+    - id: dedupe-applied-to-selection-not-render
+      category: correctness
+      pattern: >-
+        De-duplicating a repeated-ID payload (e.g. from `levels`) but then a sibling method still enumerates the raw, non-deduplicated collection (e.g. `facets.Datasamlinger`) when building selectable/rendered items or chips
+      check: >-
+        When a payload is known to contain duplicate IDs and one code path de-duplicates by ID, verify every other code path that consumes the same raw collection to build selection state or UI output (chips, selected rows, etc.) applies the same ID de-duplication — and that a selected-state rendering test exists covering the duplicate-ID case.
+      source: copilot:PR#312
+      added: "2026-09-15"
+      paths:
+        - src/**/*.cs
+    - id: comment-ceiling-internal-docs
+      category: style
+      pattern: >-
+        Internal (non-public-API) XML doc comments or block comments on types, members, or private helpers that run longer than three lines
+      check: >-
+        Confirm internal documentation is condensed to non-obvious invariants within a three-line ceiling; verify the published-API XML doc exception is not being claimed for internal-only types or members
+      source: copilot:PR#312
+      added: "2026-09-15"
+      paths:
+        - src/**/*.cs
+    - id: norwegian-identifier-not-in-domain-list
+      category: style
+      pattern: >-
+        A new C# identifier (class, property, local, method, etc.) uses a Norwegian word or abbreviation that is not one of the repository's approved closed-list domain terms (`kilde`, `datasamling`, `variabelgruppe`, `kildetype`, `kodeverk`)
+      check: >-
+        Verify every non-English identifier token is one of the exact approved domain terms and is not an abbreviation or variant of one (e.g. `gruppe` instead of `variabelgruppe`); all other identifiers must be English per AGENTS.md
+      source: copilot:PR#312
+      added: "2026-09-15"
+      paths:
+        - src/**/*.cs
+    - id: comment-doc-exceeds-three-line-ceiling
+      category: style
+      pattern: >-
+        A new test class (or other non-public-package code) carries a multi-line documentation comment/summary above the repository's three-line ceiling for comments
+      check: >-
+        Verify class/method doc comments outside the package's public XML docs are at most three lines and state only the non-obvious reason for the code's existence (e.g. why a mapping is tested separately from markup), not a restatement of what the code does
+      source: copilot:PR#312
+      added: "2026-09-15"
+      paths:
+        - test/**/*.cs
+    - id: test-identifiers-full-domain-term
+      category: style
+      pattern: >-
+        A test file introduces a new helper/local/method name that abbreviates a Norwegian domain term (e.g. `Gruppe`/`gruppe`/`grupper` instead of `Variabelgruppe`/`variabelgruppe`/`variabelgrupper`)
+      check: >-
+        Verify all new test identifiers (helper names, locals, call sites) spell out the full domain term rather than an abbreviation, consistent with the English/full-domain-term identifier rule that applies to production code
+      source: copilot:PR#312
+      added: "2026-09-15"
+      paths:
+        - test/**/*.cs
+    - id: no-duplicate-css-rules
+      category: style
+      pattern: >-
+        A new CSS block is added to a stylesheet that duplicates an existing, unchanged rule already present elsewhere in the same file (e.g. a Stiler-aligned selector re-declared with identical or overlapping properties)
+      check: >-
+        Search the target stylesheet for an existing selector/rule covering the same element before adding a new block; if one already exists and is unchanged, remove the new duplicate and keep the original rather than leaving two copies in the cascade
+      source: copilot:PR#311
+      added: "2026-09-15"
+      paths:
+        - samples/**/*.css
+    - id: icon-only-content-needs-text-alternative
+      category: ui
+      pattern: >-
+        A UI element conveys meaning solely through an icon/glyph (e.g. category icons in a filter row), with no adjacent visible text carrying the same information
+      check: >-
+        Verify the icon has an accompanying screen-reader-only text description (not just an unchanged accessible name on the container) so the association it conveys survives for assistive tech, following the existing pattern (e.g. KildeHierarchyView.razor.cs) rather than hiding the icon slot entirely
+      source: copilot:PR#311
+      added: "2026-09-15"
+      paths:
+        - src/**/*.cs
+    - id: comment-block-exceeds-three-line-ceiling
+      category: style
+      pattern: >-
+        A multi-line comment block (implementation note, rationale, etc.) exceeding three lines
+      check: >-
+        Verify the comment is trimmed to three lines or fewer, keeping only the why (e.g. a limitation or reason for a design choice) and moving any incident history or rationale to the linked bead/issue rather than the file
+      source: copilot:PR#311
+      added: "2026-09-15"
+      paths:
+        - scripts/**/*.mjs
+    - id: comment-length-ceiling
+      category: style
+      pattern: >-
+        A code comment (XML doc, inline note, or block comment) is added or extended, especially inside a private/internal member
+      check: >-
+        Verify internal comments stay within the three-line ceiling (why, not what) per AGENTS.md; compress rather than appending to already-long documentation, and move any longer explanation to the bead, PR description, or AGENTS.md
+      source: copilot:PR#311
+      added: "2026-09-15"
+      paths:
+        - src/**/*.cs
+    - id: comment-xml-doc-exceeds-three-line-ceiling
+      category: style
+      pattern: >-
+        A newly added or edited XML doc comment (or any comment) spans more than three lines, narrating implementation detail step-by-step instead of stating only the non-obvious reason for the approach
+      check: >-
+        Verify the comment is at most three lines and states only the why (the reason for the chosen approach), not a line-by-line narration of what the code does; move any excess rationale to the bead, PR description, or AGENTS.md
+      source: copilot:PR#328
+      added: "2026-09-16"
+      paths:
+        - src/**/*.cs
+    - id: comment-restates-existing-explicit-code
+      category: style
+      pattern: >-
+        An implementation comment is added or extended to describe ownership/behavior that an adjacent, already-explicit line of code (e.g. a named call like `Chosen:`) already makes clear
+      check: >-
+        Verify the comment adds a non-obvious reason (the 'why') rather than restating what an adjacent line of code already states, and that the total comment stays within the repository's three-line ceiling
+      source: copilot:PR#328
+      added: "2026-09-16"
+      paths:
+        - src/**/*.cs
+    - id: private-xml-comment-ceiling
+      category: style
+      pattern: >-
+        A private/internal member (not part of the package's published public API) carries an XML doc comment (`///`) longer than three lines
+      check: >-
+        Confirm the member is actually public API surface intended for external consumers; if it's private/internal, condense the comment to the three-line ceiling (state only the invariant, not rationale or usage prose), since AGENTS.md reserves longer XML documentation for published API only
+      source: copilot:PR#328
+      added: "2026-09-16"
+      paths:
+        - src/**/*.cs
+    - id: test-helper-comment-length
+      category: style
+      pattern: >-
+        A private test-helper method's doc comment exceeds the three-line ceiling from AGENTS.md 'Comments', often restating what the helper name and fixture values already make clear
+      check: >-
+        Verify comments above test helpers stay within the three-line ceiling and only explain non-obvious why, not the what already conveyed by the name and fixture data
+      source: copilot:PR#328
+      added: "2026-09-16"
+      paths:
+        - test/**/*.cs
+    - id: responsive-toolbar-fit-at-reflow-width
+      category: ui
+      pattern: >-
+        A new toggle/control is added to a fixed-width, no-wrap toolbar (fixed gaps, controls without min-width: 0) inside a component that must render at the 320px WCAG reflow width
+      check: >-
+        Verify the toolbar's controls can shrink or wrap at 320px viewport width without overflow or clipping — check that new children get min-width: 0 (or the toolbar allows wrapping), and confirm a 320px layout/geometry test covers the new control before shipping
+      source: copilot:PR#333
+      added: "2026-09-16"
+      paths:
+        - src/**/*.razor
+    - id: docs-invalidated-by-new-parameter
+      category: other
+      pattern: >-
+        A new public parameter, member, or code path is added that contradicts an existing XML doc comment/remarks elsewhere in the codebase (e.g. a remarks block claiming a capability isn't exposed, or a usage requirement that is no longer universally true)
+      check: >-
+        Search for existing public documentation (XML doc comments, remarks, README) that makes claims about what is or isn't supported, and update it to reflect the new parameter/behavior so consumers relying on IntelliSense aren't given contradictory guidance
+      source: copilot:PR#333
+      added: "2026-09-16"
+      paths:
+        - src/**/*.cs
+    - id: pr-body-closes-bead-mismatch
+      category: other
+      pattern: >-
+        A PR whose diff completes a bead's acceptance criteria (implementation + changelog fragment present) but whose PR body uses `Bead: <id>` instead of `Closes-Bead: <id>`, or relies on a GitHub issue reference instead
+      check: >-
+        Verify the PR body's bead line matches the actual completion state: use `Closes-Bead: <id>` only when the work fully satisfies the bead's criteria, and confirm it's a standalone line (not a GitHub `Closes #N` reference, which does not close beads since beads aren't GitHub issues)
+      source: copilot:PR#343
+      added: "2026-09-17"
+      paths:
+        - changelog.d/**
+        - changelog.d/**/*.md
+    - id: private-member-comment-ceiling
+      category: style
+      pattern: >-
+        A private field, property, or method has a doc/summary comment longer than three lines, especially one that just restates what the identifier name and type already make obvious
+      check: >-
+        Confirm the comment is at most three lines and states a non-obvious why (hidden constraint, invariant, or workaround) rather than paraphrasing the member's name/behavior; condense or remove it if it merely restates what's recoverable from the identifier
+      source: copilot:PR#343
+      added: "2026-09-17"
+      paths:
+        - src/**/*.cs
+    - id: test-comment-exceeds-ceiling
+      category: style
+      pattern: >-
+        A test or code comment longer than three lines, explaining what an assertion checks rather than why it matters
+      check: >-
+        Verify comments stay within the three-line ceiling and state only the non-obvious why (e.g. why a shared ordering/grouping invariant matters), trimming any restatement of what the test already shows
+      source: copilot:PR#343
+      added: "2026-09-17"
+      paths:
+        - test/**/*.cs
+    - id: warden-rule-preserves-norwegian-domain-terms
+      category: other
+      pattern: >-
+        A review rule (e.g. in .forge/warden-rules.yaml) instructs translating or flagging Norwegian identifiers to enforce the English-identifiers convention
+      check: >-
+        Verify the rule's exception list matches AGENTS.md in full, including `delkilde` and the Norwegian plural forms alongside `kilde`, `datasamling`, `variabelgruppe`, `kildetype`, and `kodeverk` — not just a subset — so it doesn't flag valid domain vocabulary already used in changelog fragments and code
+      source: copilot:PR#307
+      added: "2026-09-17"
+      paths:
+        - .forge/**/*.yaml
+    - id: warden-rule-path-scope-matches-stated-scope
+      category: other
+      pattern: >-
+        A review rule's description states a scope broader than 'tests' (e.g. 'covers comments in other code' or applies repo-wide per AGENTS.md), but the rule's path filter (e.g. in .forge/warden-rules.yaml) only matches test files
+      check: >-
+        Confirm the rule's path/file-glob filter actually matches every file type the rule's own description or the referenced convention claims to cover (source C#/Razor, scripts, etc.), not just test files
+      source: copilot:PR#307
+      added: "2026-09-17"
+      paths:
+        - .forge/**/*.yaml
