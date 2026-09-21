@@ -856,10 +856,10 @@ public class DetailPageTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task Contents_WhenAFailedImportResetsALaterLatch_ThenDisposalStillDisconnectsTheSpy()
+    public async Task Contents_WhenAnImportFailsWhileALaterOneSucceeds_ThenDisposalDisconnectsTheSpy()
     {
-        // The column leaves and returns while the first import hangs; that import then fails and
-        // clears the latch the return set, and the second import registers a spy the latch denies.
+        // The column leaves and returns while the first import hangs; that import then fails after
+        // the return latched, and the second import registers the spy disposal has to undo.
         var module = new RecordingModule();
         var runtime = new StagingJsRuntime();
 
@@ -918,6 +918,67 @@ public class DetailPageTest : ExplorerTestContext
 
         Assert.True(await module.ReachedAsync("disconnectContents"));
         Assert.Equal([column], module.ArgumentsOf("disconnectContents"));
+    }
+
+    [Fact]
+    public async Task Contents_WhenAStaleImportSucceedsAfterItsLatchWasCleared_ThenNoSpyOutlivesTheColumn()
+    {
+        // The mirror image: the later import fails and clears the latch, then the first one
+        // succeeds. Spying from that stale render would leave a spy no latch accounts for.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+        cut.Render(parameters => parameters.Add(p => p.Contents,
+            (RenderFragment)(builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>"))));
+
+        runtime.Answer(2, null);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        runtime.Answer(1, module);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+        await Task.Delay(200);
+
+        Assert.Equal(
+            module.ArgumentsOf("observeContents").Count,
+            module.ArgumentsOf("disconnectContents").Count);
+    }
+
+    [Fact]
+    public async Task Stuckbar_WhenAStaleImportSucceedsAfterItsLatchWasCleared_ThenNoObserverOutlivesTheBar()
+    {
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderSticky();
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, []));
+        cut.Render(parameters => parameters.Add(p => p.Facts, SixFacts()));
+
+        runtime.Answer(2, null);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        runtime.Answer(1, module);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, []));
+        await Task.Delay(200);
+
+        Assert.Equal(
+            module.ArgumentsOf("observeHeroFacts").Count,
+            module.ArgumentsOf("disconnectHeroFacts").Count);
     }
 
     [Fact]

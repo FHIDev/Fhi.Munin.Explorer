@@ -238,7 +238,8 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     private bool _observed;
     private bool _spied;
 
-    // Count every latch and unlatch of their flag, so a failed import clears only the latch it set.
+    // Bumped on every latch and every removal: only the render whose turn is still current may
+    // start its feature after the import, or clear its latch when the import fails.
     private int _observeTurn;
     private int _spyTurn;
 
@@ -317,12 +318,12 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
 
         if (await interop.TryLoadAsync())
         {
-            if (watch)
+            if (watch && observeTurn == _observeTurn)
             {
                 await ObserveAsync(interop);
             }
 
-            if (spy)
+            if (spy && spyTurn == _spyTurn)
             {
                 await SpyAsync(interop);
             }
@@ -430,7 +431,7 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
             return;
         }
 
-        // Both unconditionally, since a failed import can reset a latch a later render set; and
+        // Both unconditionally, since a disconnect for a feature never started is a no-op; and
         // through the field, since CA2213 cannot follow a local back to it.
         await _interop.DisconnectHeroFactsAsync(StuckbarId);
         await _interop.DisconnectContentsAsync(ContentsId);
