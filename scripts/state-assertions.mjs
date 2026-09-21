@@ -48,7 +48,9 @@
 //   - the sticky bar after a JUMP rather than a scroll — a contents-nav press, which is an in-page
 //     anchor. An IntersectionObserver notifies on a crossing, so a jump straight past the hero row
 //     delivers nothing and leaves the bar as it was (Fhi.Metadata-14j7i). The scrolls below are
-//     stepped for exactly that reason: they measure the predicate, not the notification rule.
+//     stepped for exactly that reason: they measure the predicate, not the notification rule;
+//   - the contents-nav mark after a PRESS. Under Stiler the bar's reveal lands a jump 76px short
+//     (Fhi.Metadata-79t6z), so the mark is asserted at scroll positions and at each jump line.
 //
 // HOW IT DIFFERS FROM geometry-assertions.mjs. Those bodies run inside the page, because measuring
 // a box is an expression. These do not: a state assertion has to PRESS something first, and a press
@@ -1203,24 +1205,36 @@ export const assertions = [
 
       // A section scrolled to its own jump line is the reader in that section, which is where a
       // fragment jump lands; the tail sections that cannot reach the line are the end case above.
+      let reached = 0;
+
       for (const id of ids) {
         const landed = await page.evaluate(target => {
           const section = document.getElementById(target);
+          const root = document.scrollingElement;
 
           section.scrollIntoView({ behavior: 'instant' });
 
-          return Math.abs(section.getBoundingClientRect().top - (parseFloat(getComputedStyle(section).scrollMarginTop) || 0)) <= 1;
+          const line = (parseFloat(getComputedStyle(root).scrollPaddingTop) || 0)
+            + (parseFloat(getComputedStyle(section).scrollMarginTop) || 0);
+
+          return Math.abs(section.getBoundingClientRect().top - line) <= 1;
         }, id);
 
         await settle();
 
         if (landed) {
+          reached++;
+
           const finding = wrong(await marks(), `with #${id} scrolled to its jump line`, id);
 
           if (finding !== null) {
             return finding;
           }
         }
+      }
+
+      if (reached === 0) {
+        throw new Error('no section could be scrolled to its jump line, so where the line sits was never measured');
       }
 
       return null;
@@ -1234,6 +1248,7 @@ export const assertions = [
         const fresh = column.cloneNode(true);
 
         column.replaceWith(fresh);
+        fresh.querySelectorAll('[aria-current]').forEach(link => link.removeAttribute('aria-current'));
 
         document.addEventListener('scroll', () => {
           let current = null;

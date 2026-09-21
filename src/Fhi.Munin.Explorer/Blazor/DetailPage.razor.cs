@@ -301,7 +301,7 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
         }
 
         // Latched before the awaits rather than after: the renderer does not wait for this
-        // continuation, so a render arriving mid-import would otherwise import the module twice.
+        // continuation, so a render arriving mid-import would otherwise start the same feature twice.
         _observed |= watch;
         _spied |= spy;
 
@@ -405,9 +405,9 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
 
     /// <inheritdoc />
     /// <remarks>
-    /// The observer is disconnected rather than left to the page: a component swapped out of the
-    /// render tree on a circuit that lives on would otherwise leave one holding the elements it
-    /// watches. A browser already out of reach is the ordinary case and is tolerated, not thrown.
+    /// The observer and the spy are disconnected rather than left to the page: a component swapped
+    /// out of the render tree on a circuit that lives on would otherwise leave them holding the
+    /// elements they watch. A browser already out of reach is the ordinary case and is tolerated.
     /// <para>
     /// This is the whole undo, with no symmetric half in the render continuation: <c>_interop</c>
     /// is assigned before that method's first await, so disposal never misses it, and an import
@@ -421,15 +421,10 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
             return;
         }
 
-        // Through the field rather than a local: CA2213 reads the disposal method literally and a
-        // local it cannot follow back reports the field as never disposed.
+        // Both unconditionally, since a failed import can reset a latch a later render set; and
+        // through the field, since CA2213 cannot follow a local back to it.
         await _interop.DisconnectHeroFactsAsync(StuckbarId);
-
-        if (_spied)
-        {
-            await _interop.DisconnectContentsAsync(ContentsId);
-        }
-
+        await _interop.DisconnectContentsAsync(ContentsId);
         await _interop.DisposeAsync();
     }
 

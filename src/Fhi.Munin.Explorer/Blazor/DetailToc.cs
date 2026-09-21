@@ -10,7 +10,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Fragment links and no script at all, so the scrolling is the host's to do and
+/// Fragment links and no script of its own, so the scrolling is the host's to do and
 /// <c>scroll-margin-top</c> on <see cref="DetailSection"/>'s wrapper is what puts the heading clear
 /// of a sticky site header. Whether the jump carries keyboard FOCUS as well as the viewport depends
 /// on the host: a browser making the fragment jump itself moves focus to the target, and a Blazor

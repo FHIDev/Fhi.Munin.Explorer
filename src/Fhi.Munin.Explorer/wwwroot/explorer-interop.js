@@ -61,13 +61,13 @@ const spies = new Map();
 /** Marks the contents nav entry in `columnId` whose section the reader is in with
  * `aria-current="location"`, and no other. Calling it again for the same column replaces the spy. */
 export function observeContents(columnId) {
+  disconnectContents(columnId);
+
   const column = document.getElementById(columnId);
 
   if (column === null) {
     return;
   }
-
-  disconnectContents(columnId);
 
   const spy = { column, clicked: null, frame: 0 };
   const schedule = () => {
@@ -77,18 +77,23 @@ export function observeContents(columnId) {
     });
   };
   const click = (event) => {
-    spy.clicked = event.target.closest?.('a[href*="#"]') ?? null;
-    schedule();
+    // A modified or middle press opens another tab and leaves this one where it is.
+    if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+      spy.clicked = event.target.closest?.('a[href*="#"]') ?? null;
+      schedule();
+    }
   };
   const unpin = () => {
     spy.clicked = null;
   };
 
   // Entries and sections are looked up afresh on every pass, so a re-render replacing them is
-  // followed rather than leaving the spy on detached nodes.
+  // followed, and a section growing without a scroll moves the mark too.
   const rendered = new MutationObserver(schedule);
+  const resized = new ResizeObserver(schedule);
 
   rendered.observe(column, { childList: true, subtree: true, characterData: true });
+  resized.observe(column.closest('.munin-explorer-page') ?? column);
   column.addEventListener('click', click);
   document.addEventListener('scroll', schedule, { capture: true, passive: true });
   window.addEventListener('resize', schedule, { passive: true });
@@ -100,6 +105,7 @@ export function observeContents(columnId) {
   spies.set(columnId, () => {
     cancelAnimationFrame(spy.frame);
     rendered.disconnect();
+    resized.disconnect();
     column.removeEventListener('click', click);
     document.removeEventListener('scroll', schedule, { capture: true });
     window.removeEventListener('resize', schedule);
@@ -120,13 +126,15 @@ export function disconnectContents(columnId) {
   spies.delete(columnId);
 }
 
-/** Sets the one current entry: the last section whose heading has reached its jump line. */
+/** Sets the one current entry: the last section whose top has reached its jump line. */
 function markCurrent(spy) {
   const page = spy.column.closest('.munin-explorer-page') ?? document;
   const entries = [];
 
   for (const link of spy.column.querySelectorAll('a[href*="#"]')) {
-    const section = page.querySelector(`#${CSS.escape(decodeURIComponent(link.hash.slice(1)))}`);
+    // The id as DetailToc wrote it: `hash` percent-encodes, and one bad entry must not stop the rest.
+    const id = link.getAttribute('href').split('#')[1];
+    const section = id ? page.querySelector(`#${CSS.escape(id)}`) : null;
 
     if (section !== null) {
       entries.push({ link, section, top: section.getBoundingClientRect().top });
@@ -137,35 +145,37 @@ function markCurrent(spy) {
     return;
   }
 
-  // The jump line is the section's own scroll-margin-top, so a click and a scroll to the same
-  // place mark the same entry, at whichever width Stiler moves that margin.
+  // The jump line is where a fragment jump puts a section — its scroll-margin-top plus the
+  // scroller's scroll-padding-top — so a click and a scroll to the same place mark the same entry.
+  const root = document.scrollingElement ?? document.documentElement;
+  const padding = parseFloat(getComputedStyle(root).scrollPaddingTop) || 0;
   let current = entries[0];
 
   for (const entry of entries) {
-    if (entry.top <= (parseFloat(getComputedStyle(entry.section).scrollMarginTop) || 0) + 1) {
+    if (entry.top <= padding + (parseFloat(getComputedStyle(entry.section).scrollMarginTop) || 0) + 1) {
       current = entry;
     }
   }
 
   // At the end of the scroll the sections below the line can never reach it, so the last one
-  // is current, unless the reader pressed one of those and has not scrolled since.
-  if (scrolledToEnd()) {
-    current = entries.find((entry) => entry.link === spy.clicked && entry.top > current.top)
+  // is current, unless the reader pressed one of those and has not wheeled, touched or typed since.
+  if (scrolledToEnd(root)) {
+    current = entries.find((entry) => entry.link === spy.clicked && entry.top >= current.top)
       ?? entries[entries.length - 1];
   }
 
   for (const { link } of entries) {
     if (link === current.link) {
-      link.setAttribute('aria-current', 'location');
-    } else {
+      if (link.getAttribute('aria-current') !== 'location') {
+        link.setAttribute('aria-current', 'location');
+      }
+    } else if (link.hasAttribute('aria-current')) {
       link.removeAttribute('aria-current');
     }
   }
 }
 
 /** Whether the document has scrolled at all, and cannot scroll any further down. */
-function scrolledToEnd() {
-  const root = document.scrollingElement ?? document.documentElement;
-
+function scrolledToEnd(root) {
   return root.scrollTop > 0 && root.scrollTop + root.clientHeight >= root.scrollHeight - 1;
 }
