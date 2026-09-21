@@ -69,7 +69,7 @@ export function observeContents(columnId) {
     return;
   }
 
-  const spy = { column, clicked: null, frame: 0, scroller: null, lastTop: 0 };
+  const spy = { column, clicked: null, frame: 0, scroller: null, lastRoot: null, lastTop: 0 };
   const schedule = () => {
     spy.frame ||= requestAnimationFrame(() => {
       spy.frame = 0;
@@ -162,10 +162,11 @@ function markCurrent(spy) {
   const root = spy.scroller?.isConnected ? spy.scroller : document.scrollingElement ?? document.documentElement;
 
   // Any move up, a scrollbar drag included, ends the reader's press: the pin is for where it landed.
-  if (root.scrollTop < spy.lastTop - 1) {
+  if (root === spy.lastRoot && root.scrollTop < spy.lastTop - 1) {
     spy.clicked = null;
   }
 
+  spy.lastRoot = root;
   spy.lastTop = root.scrollTop;
 
   // The jump line is where a fragment jump puts a section — its scroll-margin-top plus the

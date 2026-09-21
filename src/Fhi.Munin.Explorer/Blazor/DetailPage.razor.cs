@@ -238,8 +238,8 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     private bool _observed;
     private bool _spied;
 
-    // Bumped on every latch and every removal: only the render whose turn is still current may
-    // start its feature after the import, or clear its latch when the import fails.
+    // Bumped on every latch and every removal. After the import, a render clears its latch on
+    // failure only on its current turn, and starts its feature as Owns allows.
     private int _observeTurn;
     private int _spyTurn;
 
@@ -338,7 +338,7 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     }
 
     // A render whose import just arrived starts its feature on its own turn, or on a stale one that
-    // finds the feature present and unlatched: the render that cleared the latch failed its import.
+    // finds the feature present and unlatched, since no render then holds it to start.
     private static bool Owns(ref bool latched, ref int current, int turn, bool present)
     {
         if (turn == current)
