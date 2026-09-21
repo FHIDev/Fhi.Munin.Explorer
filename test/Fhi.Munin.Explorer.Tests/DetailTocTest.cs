@@ -14,9 +14,8 @@ namespace Fhi.Munin.Explorer.Tests;
 /// here is the markup itself: the names it borrows, the shape of the list, and the two states no
 /// view reaches, an entry list that is empty and one whose labels say nothing about the hrefs.
 /// <para>
-/// No JavaScript anywhere in it, and no <c>form-menu__list__item--active</c>: with nothing tracking
-/// the scroll position an active item is permanently wrong on every section but one, so the
-/// highlight waits for the scroll-spy rather than being faked here.
+/// No JavaScript anywhere in it, and no mark on any entry: the browser module sets
+/// <c>aria-current</c> on the current one, and a bUnit render is the page without that module.
 /// </para>
 /// <para>
 /// <b>What the href tests here cannot prove.</b> They read the <c>href</c> ATTRIBUTE, which is a
@@ -167,9 +166,20 @@ public class DetailTocTest : ExplorerTestContext
 
         Assert.Equal("form-menu__list", nav.Children[1].ClassName);
 
-        // Exactly the base name on every item, which is also what says no item was marked active:
-        // --active and --active-child are the modifiers the scroll-spy will add, in chain B.
+        // Exactly the base name on every item: --active and --active-child draw helsedata's
+        // application-form panel, not the contents rail's mark.
         Assert.All(cut.FindAll("li"), item => Assert.Equal("form-menu__list__item", item.ClassName));
+    }
+
+    [Fact]
+    public void Render_WithoutTheBrowserModule_ThenNoLinkCarriesAriaCurrentInAnyForm()
+    {
+        // Stiler draws the mark on the attribute's presence, so a "false" here would draw every
+        // entry as current on a page the module never reached.
+        var cut = RenderToc(Three);
+
+        Assert.Equal(Three.Length, cut.FindAll("a[href]").Count);
+        Assert.Empty(cut.FindAll("[aria-current]"));
     }
 
     [Fact]

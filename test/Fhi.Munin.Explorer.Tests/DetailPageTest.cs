@@ -772,7 +772,7 @@ public class DetailPageTest : ExplorerTestContext
         var calls = module.Calls.Select(call => call.Identifier).ToList();
 
         Assert.Equal(
-            ["observeHeroFacts", "disconnectHeroFacts", RecordingModule.Released],
+            ["observeHeroFacts", "disconnectHeroFacts", "disconnectContents", RecordingModule.Released],
             calls);
     }
 
@@ -784,6 +784,393 @@ public class DetailPageTest : ExplorerTestContext
     private static IEnumerable<string> Observed(BunitJSModuleInterop module) =>
         module.Invocations["observeHeroFacts"]
             .Select(call => $"{call.Arguments[0]} watches {call.Arguments[1]}");
+
+    // -----------------------------------------------------------------------
+    // The contents column's scroll-spy. The module does the marking and bUnit never runs it, so
+    // these pin what reaches it: which column, how often, and that it is let go of again.
+
+    private static string ColumnId(IRenderedComponent<DetailPage> cut) =>
+        cut.Find(".munin-explorer-page__toc").Id ?? "";
+
+    [Fact]
+    public void Contents_WhenTheColumnIsDrawn_ThenTheSpyIsGivenThatColumnsOwnId()
+    {
+        var module = new RecordingModule();
+
+        Services.AddSingleton<IJSRuntime>(new LendingJsRuntime(module));
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        Assert.StartsWith(DetailPage.ContentsIdStem, column, StringComparison.Ordinal);
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+    }
+
+    [Fact]
+    public void Contents_WhenNoColumnIsDrawn_ThenNothingIsImportedOrSpied()
+    {
+        var runtime = new LendingJsRuntime(new RecordingModule());
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        RenderPage(withContents: false);
+
+        Assert.Equal(0, runtime.Imports);
+    }
+
+    [Fact]
+    public void Contents_WhenTheBarIsDrawnWithoutAColumn_ThenOnlyTheBarIsWatched()
+    {
+        // Without the Contents check the spy is handed an id no element carries.
+        var module = new RecordingModule();
+
+        Services.AddSingleton<IJSRuntime>(new LendingJsRuntime(module));
+
+        var cut = RenderSticky();
+        var (bar, _) = Ids(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal([bar], module.ArgumentsOf("observeHeroFacts")));
+        Assert.Empty(module.ArgumentsOf("observeContents"));
+    }
+
+    [Fact]
+    public async Task Contents_WhenARenderLandsMidImport_ThenTheColumnIsSpiedOnce()
+    {
+        // The latch is set before the import is awaited; set after it, this render starts a second
+        // import and a second spy on the same column.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.Render();
+
+        runtime.Answer(1, module);
+
+        Assert.True(await module.ReachedAsync("observeContents"));
+        Assert.Equal(1, runtime.Imports);
+        Assert.Equal([column], module.ArgumentsOf("observeContents"));
+    }
+
+    [Fact]
+    public async Task Contents_WhenAnImportFailsWhileALaterOneSucceeds_ThenDisposalDisconnectsTheSpy()
+    {
+        // The column leaves and returns while the first import hangs; that import then fails after
+        // the return latched, and the second import registers the spy disposal has to undo.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+        cut.Render(parameters => parameters.Add(p => p.Contents,
+            (RenderFragment)(builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>"))));
+
+        Assert.Equal(2, runtime.Imports);
+
+        // The failed continuation leaves nothing to observe; the waits below give it time to run first.
+        runtime.Answer(1, null);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        runtime.Answer(2, module);
+
+        Assert.True(await module.ReachedAsync("observeContents"));
+
+        await Renderer.DisposeComponents();
+
+        Assert.True(await module.ReachedAsync(RecordingModule.Released));
+        Assert.Equal([column], module.ArgumentsOf("disconnectContents"));
+    }
+
+    [Fact]
+    public async Task Contents_WhenAFailedImportFinishesAfterALaterLatch_ThenRemovingTheColumnStillDisconnectsTheSpy()
+    {
+        // The same interleaving while the page lives: a stale failure must not clear the latch the
+        // later render set, or the column's removal skips the disconnect and the spy stays attached.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+        cut.Render(parameters => parameters.Add(p => p.Contents,
+            (RenderFragment)(builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>"))));
+
+        runtime.Answer(1, null);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        runtime.Answer(2, module);
+
+        Assert.True(await module.ReachedAsync("observeContents"));
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+
+        Assert.True(await module.ReachedAsync("disconnectContents"));
+        Assert.Equal([column], module.ArgumentsOf("disconnectContents"));
+    }
+
+    [Fact]
+    public async Task Contents_WhenAStaleImportSucceedsAfterItsLatchWasCleared_ThenNoSpyOutlivesTheColumn()
+    {
+        // The mirror image: the later import fails and clears the latch, then the first one
+        // succeeds. The present column must be spied, and under a latch its removal will see.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+        cut.Render(parameters => parameters.Add(p => p.Contents,
+            (RenderFragment)(builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>"))));
+
+        runtime.Answer(2, null);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        runtime.Answer(1, module);
+
+        Assert.True(await module.ReachedAsync("observeContents"));
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+        await Task.Delay(200);
+
+        Assert.Equal(
+            module.ArgumentsOf("observeContents").Count,
+            module.ArgumentsOf("disconnectContents").Count);
+    }
+
+    [Fact]
+    public async Task Stuckbar_WhenAStaleImportSucceedsAfterItsLatchWasCleared_ThenNoObserverOutlivesTheBar()
+    {
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderSticky();
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, []));
+        cut.Render(parameters => parameters.Add(p => p.Facts, SixFacts()));
+
+        runtime.Answer(2, null);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        runtime.Answer(1, module);
+
+        Assert.True(await module.ReachedAsync("observeHeroFacts"));
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, []));
+        await Task.Delay(200);
+
+        Assert.Equal(
+            module.ArgumentsOf("observeHeroFacts").Count,
+            module.ArgumentsOf("disconnectHeroFacts").Count);
+    }
+
+    [Fact]
+    public async Task Stuckbar_WhenAFailedImportFinishesAfterALaterLatch_ThenEmptyingTheFactsStillDisconnectsTheBar()
+    {
+        // The spy's interleaving above, for the bar: a stale failure must not clear the latch the
+        // refill set, or emptying the facts again skips the disconnect and the observer stays on.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderSticky();
+        var (bar, _) = Ids(cut);
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, []));
+        cut.Render(parameters => parameters.Add(p => p.Facts, SixFacts()));
+
+        runtime.Answer(1, null);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        runtime.Answer(2, module);
+
+        Assert.True(await module.ReachedAsync("observeHeroFacts"));
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, []));
+
+        Assert.True(await module.ReachedAsync("disconnectHeroFacts"));
+        Assert.Equal([bar], module.ArgumentsOf("disconnectHeroFacts"));
+    }
+
+    [Fact]
+    public void Contents_WhenThePageRendersAgain_ThenTheColumnIsSpiedOnce()
+    {
+        var module = new RecordingModule();
+        var runtime = new LendingJsRuntime(module);
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.Render();
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+        Assert.Equal(1, runtime.Imports);
+    }
+
+    [Fact]
+    public void Contents_WhenTheColumnArrivesAfterTheBarIsWatched_ThenItIsSpiedOnTheSameImport()
+    {
+        var module = new RecordingModule();
+        var runtime = new LendingJsRuntime(module);
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderSticky();
+
+        cut.Render(parameters => parameters.Add(p => p.Contents,
+            (RenderFragment)(builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>"))));
+
+        var column = ColumnId(cut);
+        var (bar, _) = Ids(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+        Assert.Equal([bar], module.ArgumentsOf("observeHeroFacts"));
+        Assert.Equal(1, runtime.Imports);
+    }
+
+    [Fact]
+    public void Contents_WhenTheColumnLeavesAndReturns_ThenTheOldSpyIsDisconnectedAndANewOneStarted()
+    {
+        // The column that comes back is a new element under the same id, and the spy the module
+        // still holds is attached to the detached one.
+        var module = new RecordingModule();
+
+        Services.AddSingleton<IJSRuntime>(new LendingJsRuntime(module));
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+
+        cut.Render(parameters => parameters.Add(p => p.Contents,
+            (RenderFragment)(builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>"))));
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            ["observeContents", "disconnectContents", "observeContents"],
+            module.Calls.Select(call => call.Identifier)));
+
+        Assert.All(module.Calls, call => Assert.Equal(column, call.Arguments[0] as string));
+    }
+
+    [Fact]
+    public async Task Contents_WhenThePageGoesAway_ThenItsSpyIsDisconnected()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["observeContents"]));
+
+        await Renderer.DisposeComponents();
+
+        Assert.Equal(
+            [column],
+            module.Invocations["disconnectContents"].Select(call => (call.Arguments[0] as string) ?? ""));
+    }
+
+    [Fact]
+    public void Contents_WhenTwoPagesAreMountedTogether_ThenEachSpiesItsOwnColumn()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+
+        RenderFragment nav = builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>");
+
+        var cut = Render(builder =>
+        {
+            builder.OpenComponent<DetailPage>(0);
+            builder.AddComponentParameter(1, nameof(DetailPage.ViewRoot), "munin-explorer-kilde");
+            builder.AddComponentParameter(2, nameof(DetailPage.ViewMain), "munin-explorer-kilde__main");
+            builder.AddComponentParameter(3, nameof(DetailPage.Contents), nav);
+            builder.CloseComponent();
+
+            builder.OpenComponent<DetailPage>(4);
+            builder.AddComponentParameter(5, nameof(DetailPage.ViewRoot), "munin-explorer-kilde");
+            builder.AddComponentParameter(6, nameof(DetailPage.ViewMain), "munin-explorer-kilde__main");
+            builder.AddComponentParameter(7, nameof(DetailPage.Contents), nav);
+            builder.CloseComponent();
+        });
+
+        var columns = cut.FindAll(".munin-explorer-page__toc").Select(column => column.Id ?? "").ToList();
+
+        Assert.Equal(2, columns.Distinct(StringComparer.Ordinal).Count());
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            columns.Order(StringComparer.Ordinal),
+            module.Invocations["observeContents"]
+                .Select(call => (call.Arguments[0] as string) ?? "")
+                .Order(StringComparer.Ordinal)));
+    }
+
+    [Fact]
+    public void Contents_WhenTheImportFailedTheWayAReconnectDoes_ThenALaterRenderSpiesTheColumn()
+    {
+        var module = new RecordingModule();
+        var runtime = new FlakyJsRuntime(module);
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal(1, runtime.Imports));
+        Assert.Empty(module.ArgumentsOf("observeContents"));
+
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+    }
+
+    [Fact]
+    public void Contents_WhenTheModuleItselfIsFaulty_ThenTheCircuitSurvivesAndTheHostIsTold()
+    {
+        var recorder = new RecordingLoggerProvider();
+
+        Services.AddLogging(b => b
+            .AddProvider(recorder)
+            .SetMinimumLevel(LogLevel.Trace)
+            .AddFilter((category, _) =>
+                category?.StartsWith("Fhi.Munin.Explorer", StringComparison.Ordinal) == true));
+
+        Services.AddSingleton<IJSRuntime>(
+            new LendingJsRuntime(new RefusingModule(new JSException("observeContents is not a function"))));
+
+        var cut = RenderPage(withContents: true);
+
+        cut.WaitForAssertion(() => Assert.Single(recorder.Entries));
+
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Contains(ColumnId(cut), entry.Message, StringComparison.Ordinal);
+        Assert.IsType<JSException>(entry.Exception);
+        Assert.Equal("the contents nav", cut.Find(".munin-explorer-page__toc nav").TextContent);
+    }
 
     [Fact]
     public void Chrome_Always_ThenEveryNameItEmitsHasARuleSomeStylesheetSupplies()
