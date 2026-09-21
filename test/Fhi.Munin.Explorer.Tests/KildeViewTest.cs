@@ -708,8 +708,8 @@ public class KildeViewTest : ExplorerTestContext
     // ---------------------------------------------------------------------------------
 
     /// <summary>
-    /// The live payload, captured: 73 curated keys across thirteen groups, eighteen filled in. The
-    /// hand-written sources above carry two groups between them. (Fhi.Metadata-6a8wp)
+    /// The live payload, captured with its placements: seven sections, the last of them the complete
+    /// record. The hand-written sources above carry two groups between them. (Fhi.Metadata-6a8wp)
     /// </summary>
     private static KildeDetail Barnediabetes() =>
         JsonSerializer.Deserialize<KildeDetail>(
@@ -717,34 +717,81 @@ public class KildeViewTest : ExplorerTestContext
         ?? throw new InvalidOperationException("kilde-barnediabetes.json no longer reads as a KildeDetail.");
 
     /// <summary>
-    /// The fixture where hasLegalBasis and TittelFlerspraklig genuinely diverge from Lovverk and
-    /// PreferredTerm — a translation the plain field lacks, not a repeat of it (Fhi.Metadata-43jrq).
+    /// The fixture where TittelFlerspraklig genuinely diverges from PreferredTerm — a translation
+    /// the plain field lacks, not a repeat of it (Fhi.Metadata-43jrq).
     /// </summary>
-    private static KildeDetail AlsRegisteret() =>
-        JsonSerializer.Deserialize<KildeDetail>(
-            TestData.Read("kilde.json"), MuninExplorerClient.Json)
-        ?? throw new InvalidOperationException("kilde.json no longer reads as a KildeDetail.");
-
-    /// <inheritdoc cref="AlsRegisteret"/>
     private static KildeDetail KildeMedDelkilder() =>
         JsonSerializer.Deserialize<KildeDetail>(
             TestData.Read("kilde-med-delkilder.json"), MuninExplorerClient.Json)
         ?? throw new InvalidOperationException("kilde-med-delkilder.json no longer reads as a KildeDetail.");
 
+    /// <summary>
+    /// What the named sections draw. The complete record repeats every field by design, so a search
+    /// reaching into it finds whatever it looks for, whether or not its own section drew it.
+    /// </summary>
+    private static IReadOnlyList<string> NamedSectionCells(IRenderedComponent<KildeView> cut, string cell) =>
+        [.. cut.FindAll($"dl.munin-explorer-page__fields {cell}").Select(e => e.TextContent)];
+
+    private static PropertyMetadataEntry Placed(
+        string key, int sortOrder, string groupKey, string group, string? displayName = null) =>
+        Entry(key, sortOrder, group, displayName) with { GroupKey = groupKey };
+
+    private static SectionPlacement Section(string key, string name, int sortOrder) =>
+        new()
+        {
+            Key = key,
+            SortOrder = sortOrder,
+            Translations = new Dictionary<string, string> { ["no"] = name },
+        };
+
+    /// <summary>
+    /// A placed source curating its description again as BeskrivelseFlerspraklig, once beside two
+    /// other fields and once alone, plus a section curated and never filled in.
+    /// </summary>
+    /// <remarks>
+    /// Hand-built because the captures stopped carrying these shapes: Barnediabetes now places
+    /// BeskrivelseFlerspraklig in the complete record, and leaves no placed section empty.
+    /// </remarks>
+    private static KildeDetail DescribedTwice() => Kilde() with
+    {
+        Description = "Norsk register for ALS og andre motonevronsykdommer.\nRegisteret ble opprettet i 2010.",
+        PropertyMetadata =
+        [
+            Placed("BeskrivelseFlerspraklig", 10, "om-registeret", "Om registeret", "Beskrivelse"),
+            Placed("Formaal", 20, "om-registeret", "Om registeret", "Formål"),
+            Placed("Bruksomraader", 30, "om-registeret", "Om registeret", "Anbefalte bruksområder"),
+            Placed("Beskrivelse", 10, "beskrivelse", "Beskrivelse"),
+            Placed("Datakvalitet", 10, "datakvalitet", "Datakvalitet"),
+        ],
+        Sections =
+        [
+            Section("om-registeret", "Om registeret", 1000),
+            Section("beskrivelse", "Beskrivelse", 2000),
+            Section("datakvalitet", "Datakvalitet", 3000),
+        ],
+        AdditionalProperties = new Dictionary<string, string?>
+        {
+            ["BeskrivelseFlerspraklig"] =
+                """{"nb":"Norsk register for ALS og andre motonevronsykdommer.\nRegisteret ble opprettet i 2010."}""",
+            ["Formaal"] = "Kvalitetssikring av behandlingen.",
+            ["Bruksomraader"] = "Forskning, Statistikk, Kvalitetsforbedring",
+        },
+    };
+
     [Theory]
-    [InlineData("no", new[] { "Datainnsamling", "Beskrivelse", "EHDS / HealthDCAT-AP",
-                              "Kontakt", "Versjonering", "Helsedatatilgangsorgan (overstyring)" })]
-    [InlineData("en", new[] { "Data Collection", "Description", "EHDS / HealthDCAT-AP",
-                              "Contact", "Versioning", "Health Data Access Body (override)" })]
-    public void Metadata_WhenARealSourceIsDrawn_ThenEveryGroupItFilledInIsThereInTheReadersLanguage(
+    [InlineData("no", new[] { "Om registeret", "Innhold", "Datasamlinger", "Tilgang og ansvar",
+                              "Rettslig grunnlag", "Kontakt", "Alle metadatafelt", "Kildeinformasjon", "Statistikk" })]
+    [InlineData("en", new[] { "About the registry", "Content", "Data collections", "Access and responsibility",
+                              "Legal basis", "Contact", "All metadata fields", "Source information", "Statistics" })]
+    public void Sections_WhenARealSourceIsDrawn_ThenEverySectionItPlacesIsThereInTheReadersLanguage(
         string language, string[] expected)
     {
-        // A list, not a search: a group that stops being drawn fails here rather than going
-        // unreported, and the catalogue's own order is asserted with it. Formål is absent because
-        // its only member duplicates FormaalFlerspraklig (Fhi.Metadata-43jrq).
+        // A list, not a search: a section that stops being drawn fails here rather than going
+        // unreported, and the payload's own order is asserted with it. The last two are named by no
+        // placement yet, so they trail (Fhi.Metadata-35w0p.22).
         var cut = Render(Barnediabetes(), language);
 
-        Assert.Equal(expected, cut.FindAll(".munin-explorer-group").Select(e => e.TextContent));
+        Assert.Equal(expected, BlockHeadings(cut));
     }
 
     /// <summary>
@@ -759,8 +806,8 @@ public class KildeViewTest : ExplorerTestContext
     /// the reader changes language, so a fresh one would miss the cache on its reference alone.
     /// </remarks>
     [Theory]
-    [InlineData("no", "Datainnsamling")]
-    [InlineData("en", "Data Collection")]
+    [InlineData("no", "Om registeret")]
+    [InlineData("en", "About the registry")]
     public void Metadata_WhenOnlyTheLanguageChanges_ThenTheCachedGroupsAreResolvedAgain(
         string language, string expected)
     {
@@ -769,30 +816,26 @@ public class KildeViewTest : ExplorerTestContext
 
         cut.Render(b => b.Add(c => c.Kilde, kilde).Add(c => c.Language, language));
 
-        Assert.Equal(expected, cut.FindAll(".munin-explorer-group")[0].TextContent);
+        Assert.Equal(expected, BlockHeadings(cut)[0]);
     }
 
     [Theory]
     [InlineData("no")]
     [InlineData("en")]
-    public void Metadata_WhenARealSourceIsDrawn_ThenItsDescriptionIsPrintedOnceAndNotAgainAsAField(
+    public void Metadata_WhenTheDescriptionIsCuratedAgainAsAField_ThenItIsPrintedOnceAndNotAgainAsAField(
         string language)
     {
         // Counted over the whole render rather than asserted on one element: where the second copy
-        // came from is the thing under test, so naming the EHDS group would pass if it moved.
+        // came from is the thing under test, so naming its section would pass if it moved.
         // (Fhi.Metadata-8yqoz)
-        var kilde = Barnediabetes();
+        var kilde = DescribedTwice();
         var cut = Render(kilde, language);
-
-        var description = kilde.Description!;
-
-        Assert.True(description.Length > 1000, "the captured description should be the long one");
 
         // Line by line since Fhi.Metadata-5bcr7: the ingress renders the description's own line
         // breaks as elements, so the raw string no longer appears contiguously anywhere.
-        var lines = description.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var lines = kilde.Description!.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        Assert.True(lines.Length > 1, "the captured description should span several lines");
+        Assert.Equal(2, lines.Length);
 
         foreach (var line in lines)
         {
@@ -805,34 +848,20 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("no", "EHDS / HealthDCAT-AP")]
-    [InlineData("en", "EHDS / HealthDCAT-AP")]
-    public void Metadata_WhenTheDescriptionIsExcluded_ThenItsGroupKeepsTheRestOfItsFields(
-        string language, string group)
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Metadata_WhenTheDescriptionIsExcluded_ThenItsSectionKeepsTheRestOfItsFields(string language)
     {
         // THE TRAP: Groups drops a group whose every key is unset, so an exclusion can take the
-        // group with it. Five of the six populated EHDS keys survive, so it must still draw rows.
-        // The sibling test pins the surviving group names; this one catches a hollow heading.
-        var kilde = Barnediabetes();
-        var cut = Render(kilde, language);
+        // group with it. Om registeret keeps two other fields, so it must still draw them; the
+        // Beskrivelse section held only the description, so it must not draw a hollow heading.
+        var cut = Render(DescribedTwice(), language);
 
-        var heading = cut.FindAll(".munin-explorer-group")
-                         .SingleOrDefault(e => e.TextContent == group);
+        var rows = cut.Find("section#section-om-registeret dl.munin-explorer-page__fields");
 
-        Assert.NotNull(heading);
-
-        // THAT group's own rows, reached through its sibling <dl>. A global count of <dt> passes
-        // while this very group is empty, on the strength of the six other groups' rows — which
-        // would leave the test green over exactly the hollow heading it exists to catch.
-        var rows = heading!.NextElementSibling;
-
-        Assert.NotNull(rows);
-        Assert.Equal("DL", rows!.TagName);
-        Assert.True(rows.QuerySelectorAll("dt").Length >= 4,
-                    $"the EHDS group should keep its other fields, found {rows.QuerySelectorAll("dt").Length}");
-
-        // And what it lost is the description, not something else.
-        Assert.DoesNotContain(kilde.Description!, rows.TextContent, StringComparison.Ordinal);
+        Assert.Equal(["Formål", "Anbefalte bruksområder"], Labels(rows));
+        Assert.Contains("Om registeret", BlockHeadings(cut));
+        Assert.DoesNotContain("Beskrivelse", BlockHeadings(cut));
     }
 
     [Fact]
@@ -916,27 +945,17 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("no", new[] { "Identifikasjon", "Kvalitet", "Juridisk", "Identifikatorer", "Samsvar" })]
-    [InlineData("en", new[] { "Identification", "Quality", "Legal", "Identifiers", "Compliance" })]
-    public void Metadata_WhenARealSourceLeavesAGroupUnset_ThenNoHeadingPromisesIt(
-        string language, string[] unset)
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Sections_WhenAPlacedSectionIsCuratedButLeftUnset_ThenNoHeadingPromisesIt(string language)
     {
-        // Five of this source's thirteen groups are curated and empty. A heading with nothing under
-        // it counts as a missing section rather than a drawn one.
-        var cut = Render(Barnediabetes(), language);
+        // Most sources leave some curated groups empty. A heading with nothing under it counts as a
+        // missing section rather than a drawn one. Inline: Barnediabetes now fills every section.
+        var cut = Render(DescribedTwice(), language);
 
-        // Counted first: every assertion below passes over a view that drew no group at all, which
-        // is the very regression this source was captured for.
-        Assert.NotEmpty(cut.FindAll(".munin-explorer-group"));
-
-        Assert.All(unset, name => Assert.DoesNotContain(
-            name, cut.FindAll(".munin-explorer-group").Select(e => e.TextContent)));
-
-        foreach (var heading in cut.FindAll(".munin-explorer-group"))
-        {
-            Assert.Equal("DL", heading.NextElementSibling?.TagName);
-            Assert.NotEmpty(heading.NextElementSibling!.QuerySelectorAll("dd"));
-        }
+        // Counted first: the assertion below passes over a view that drew no section at all.
+        Assert.Contains("Om registeret", BlockHeadings(cut));
+        Assert.DoesNotContain("Datakvalitet", BlockHeadings(cut));
     }
 
     [Theory]
@@ -945,15 +964,18 @@ public class KildeViewTest : ExplorerTestContext
     public void Metadata_WhenARealSourceStoresAValuePerLanguage_ThenTheReaderSeesWordsAndNotTheEnvelope(
         string language)
     {
-        // Two of this source's Flerspraklig siblings are still drawn as their own row —
-        // BeskrivelseFlerspraklig is the one duplicating the header (Fhi.Metadata-8yqoz) — and
-        // both are stored under nb alone: an English host falls back to them rather than blanks.
+        // FormaalFlerspraklig and TittelFlerspraklig are drawn in named sections, each stored under
+        // nb alone: an English host falls back to them rather than blanks. The envelope checks cover
+        // the complete record as well, which draws every such value a second time.
         var cut = Render(Barnediabetes(), language);
+
+        var named = NamedSectionCells(cut, "dd");
+
+        Assert.Contains(named, v => v.StartsWith("Barnediabetesregisterets formål er:", StringComparison.Ordinal));
+        Assert.Contains("Barnediabetes", named);
 
         var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent).ToList();
 
-        Assert.Contains(values, v => v.StartsWith("Barnediabetesregisterets formål er:", StringComparison.Ordinal));
-        Assert.Contains("Barnediabetes", values);
         Assert.All(values, v => Assert.DoesNotContain("\"nb\":", v, StringComparison.Ordinal));
         Assert.All(values, v => Assert.DoesNotContain("\"value\":", v, StringComparison.Ordinal));
     }
@@ -989,7 +1011,7 @@ public class KildeViewTest : ExplorerTestContext
         // prose. Two rows under the same stripped label would be worse than the qualifier ever was.
         var cut = Render(Barnediabetes(), language);
 
-        Assert.Single(cut.FindAll(".munin-explorer-kilde__main dt"), e => e.TextContent == label);
+        Assert.Single(NamedSectionCells(cut, "dt"), text => text == label);
     }
 
     [Theory]
@@ -1003,20 +1025,30 @@ public class KildeViewTest : ExplorerTestContext
         // so a value-blind exclusion here would risk deleting real content (Fhi.Metadata-43jrq).
         var cut = Render(Barnediabetes(), language);
 
-        Assert.Contains(label, cut.FindAll(".munin-explorer-kilde__main dt").Select(e => e.TextContent));
+        Assert.Contains(label, NamedSectionCells(cut, "dt"));
     }
 
     [Fact]
     public void Metadata_WhenHasLegalBasisHoldsATranslationLovverkLacks_ThenTheTranslationIsNotLost()
     {
-        // THE TRAP, proven the other way: kilde.json's hasLegalBasis is Lovverk plus an English
-        // translation appended after a semicolon. An exclusion keyed on "Lovverk is non-blank"
-        // would have deleted that translation from the page (Fhi.Metadata-43jrq).
-        var cut = Render(AlsRegisteret());
+        // THE TRAP, proven the other way: K_ALS's hasLegalBasis was once Lovverk plus an English
+        // translation, which an exclusion keyed on "Lovverk is non-blank" would have deleted
+        // (Fhi.Metadata-43jrq). Inline since the catalogue dropped the translation.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Placed("hasLegalBasis", 10, "rettslig-grunnlag", "Rettslig grunnlag")],
+            Sections = [Section("rettslig-grunnlag", "Rettslig grunnlag", 5000)],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["hasLegalBasis"] = Kilde().LegalBasis
+                                    + "; Submission of information from each health trust to the quality registers.",
+            },
+        };
 
-        var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent);
+        var cut = Render(kilde);
 
-        Assert.Contains(values, v => v.Contains("Submission of information", StringComparison.Ordinal));
+        Assert.Contains(NamedSectionCells(cut, "dd"),
+                        v => v.Contains("Submission of information", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1026,20 +1058,21 @@ public class KildeViewTest : ExplorerTestContext
         // shows TittelFlerspraklig can hold a translation PreferredTerm never had.
         var cut = Render(Barnediabetes());
 
-        Assert.Contains("Barnediabetes",
-            cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent));
+        Assert.Contains("Barnediabetes", NamedSectionCells(cut, "dd"));
     }
 
     [Fact]
     public void Metadata_WhenTittelFlersprakligHoldsATranslationPreferredTermLacks_ThenTheTranslationIsNotLost()
     {
         // THE TRAP again: kilde-med-delkilder.json's TittelFlerspraklig carries an English title
-        // ("The Tromsø Study") that PreferredTerm ("Tromsøundersøkelsen") never had.
-        var cut = Render(KildeMedDelkilder());
+        // ("The Tromsø Study") that PreferredTerm ("Tromsøundersøkelsen") never had. Read off its own
+        // row in English: a Norwegian page draws nb, and Telefonnummer quotes the title in passing.
+        var cut = Render(KildeMedDelkilder(), "en");
 
-        var values = cut.FindAll(".munin-explorer-kilde__main dd").Select(e => e.TextContent);
+        var title = cut.FindAll("dl.munin-explorer-page__fields > div")
+                       .Single(row => row.QuerySelector("dt")!.TextContent == "Title");
 
-        Assert.Contains(values, v => v.Contains("The Tromsø Study", StringComparison.Ordinal));
+        Assert.Contains("The Tromsø Study", title.QuerySelector("dd")!.TextContent, StringComparison.Ordinal);
     }
 
     // ---------------------------------------------------------------------------------

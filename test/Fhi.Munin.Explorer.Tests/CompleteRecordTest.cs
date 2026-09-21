@@ -39,11 +39,26 @@ public class CompleteRecordTest : ExplorerTestContext
             TestData.Read("kilde-med-delkilder.json"), MuninExplorerClient.Json)
         ?? throw new InvalidOperationException("kilde-med-delkilder.json no longer reads as a KildeDetail.");
 
-    /// <summary>Barnediabetes, captured before placements existed: no groupKey on any of its entries.</summary>
-    private static KildeDetail Barnediabetes() =>
-        JsonSerializer.Deserialize<KildeDetail>(
-            TestData.Read("kilde-barnediabetes.json"), MuninExplorerClient.Json)
-        ?? throw new InvalidOperationException("kilde-barnediabetes.json no longer reads as a KildeDetail.");
+    /// <summary>
+    /// Barnediabetes as an API from before placements sends it: no groupKey, no groupSortOrder, no
+    /// sections.
+    /// </summary>
+    /// <remarks>
+    /// Derived from the capture rather than captured, since no environment serves that shape any more
+    /// and the capture itself must stay free to refresh (Fhi.Metadata-l9l2n.118).
+    /// </remarks>
+    private static KildeDetail UnplacedBarnediabetes()
+    {
+        var kilde = JsonSerializer.Deserialize<KildeDetail>(
+                        TestData.Read("kilde-barnediabetes.json"), MuninExplorerClient.Json)
+                    ?? throw new InvalidOperationException("kilde-barnediabetes.json no longer reads as a KildeDetail.");
+
+        return kilde with
+        {
+            PropertyMetadata = [.. kilde.PropertyMetadata.Select(entry => entry with { GroupKey = null, GroupSortOrder = null })],
+            Sections = [],
+        };
+    }
 
     private static DatasamlingDetail Datasamling() =>
         JsonSerializer.Deserialize<DatasamlingDetail>(
@@ -187,10 +202,9 @@ public class CompleteRecordTest : ExplorerTestContext
     [Fact]
     public void CatchAll_WhenThePayloadPredatesGroupKey_ThenNoSectionClaimsToBeTheCompleteRecord()
     {
-        // Barnediabetes was captured before placements existed. Nothing in it can be recognised as
-        // the catch-all, and inventing one out of the leftovers would put the completeness sentence
-        // over a page where it is not true.
-        var cut = RenderKilde(Barnediabetes());
+        // Nothing in a pre-placement payload can be recognised as the catch-all, and inventing one
+        // out of the leftovers would put the completeness sentence over a page where it is not true.
+        var cut = RenderKilde(UnplacedBarnediabetes());
 
         Assert.NotEmpty(Headings(cut));
         Assert.Empty(cut.FindAll(Disclosure));
