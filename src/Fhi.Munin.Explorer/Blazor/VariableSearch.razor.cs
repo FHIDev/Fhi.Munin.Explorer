@@ -1027,7 +1027,7 @@ public sealed partial class VariableSearch : ComponentBase
         //
         // It wears `munin-explorer-dataitem-main__name`, the class the button already had, and the
         // button keeps it too. That is deliberate rather than sloppy: the class is what sizes this
-        // column (`flex: 210 1 0`, in Stiler and in both sample stylesheets), so the wrapper has to
+        // column (its `flex` weight, in Stiler and in both sample stylesheets), so the wrapper has to
         // carry it or the name column stops lining up with its header — and the button has to keep
         // it or it draws as a browser default button. Every rule on the name is either inherited
         // or harmless twice; the only one that repeats is an empty `::after` overlay with
