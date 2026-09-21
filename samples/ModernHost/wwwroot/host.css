@@ -1193,10 +1193,8 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 
 /* ---- the column header ----
 
-   The header and the rows have to size their columns alike, or the columns line up with nothing.
-   Both are flex rows with the same per-column flex shares (below), and the header's name button
-   clears the chevron with its own padding. Get this wrong and every row sizes its own columns,
-   which is what the sample looked like before the header existed. */
+   Header and rows are flex rows with the same per-column flex shares (below), or the columns line
+   up with nothing; the header's name button clears the chevron with its own padding. */
 
 .munin-explorer-data-list__header {
   border-bottom: 2px solid var(--grey30);
@@ -1872,8 +1870,7 @@ table.munin-explorer-data-list tbody th {
     align-items: start;
   }
 
-  /* Taken back rather than merely not given, so a lone main column never lands in a 250px rail.
-     The saved-list view is the one that never draws a contents column. */
+  /* One track for a body without a contents column; the saved-list view never draws one. */
   .munin-explorer-page__body:not(:has(> .munin-explorer-page__toc)) {
     grid-template-columns: minmax(0, 1fr);
   }
