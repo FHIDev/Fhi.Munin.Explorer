@@ -636,10 +636,10 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.DoesNotContain(ids, id => id.Length == 0);
 
-        // The two the detail chassis writes are matched by stem rather than listed: each is
+        // The three the detail chassis writes are matched by stem rather than listed: each is
         // finished with a fresh per-instance discriminator, which is what keeps two mounts on one
-        // host page from sharing a sticky bar.
-        Assert.Equal(2, ids.Count(DetailPage.IsChassisId));
+        // host page from sharing a sticky bar or a contents column.
+        Assert.Equal(3, ids.Count(DetailPage.IsChassisId));
         Assert.All(ids.Where(id => !DetailPage.IsChassisId(id)),
                    id => Assert.Contains(id, DetailSectionIdsUnderTest));
     }

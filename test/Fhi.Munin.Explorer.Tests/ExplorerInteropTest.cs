@@ -468,6 +468,77 @@ public partial class ExplorerInteropTest
         await interop.DisconnectHeroFactsAsync("bar");
     }
 
+    [Fact]
+    public async Task ObserveContentsAsync_WhenTheModuleIsThere_ThenTheColumnsIdReachesTheExport()
+    {
+        var module = new RecordingModule();
+        var interop = new ExplorerInterop(new LendingJsRuntime(module));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.ObserveContentsAsync("contents-a1b2c3d4");
+
+        var call = Assert.Single(module.Calls);
+
+        Assert.Equal("observeContents", call.Identifier);
+        Assert.Equal(["contents-a1b2c3d4"], call.Arguments.Select(argument => argument as string));
+    }
+
+    [Fact]
+    public async Task ObserveContentsAsync_WhenTheHostServesNoModule_ThenItDoesNothingAtAll()
+    {
+        var interop = new ExplorerInterop(new RefusingJsRuntime(new JSException("404")));
+
+        Assert.False(await interop.TryLoadAsync());
+
+        await interop.ObserveContentsAsync("contents");
+    }
+
+    [Fact]
+    public async Task ObserveContentsAsync_WhenTheExportItselfFaults_ThenItTravelsOn()
+    {
+        // As for the hero facts: a fault inside the export is a defect in the module, and the
+        // caller logs it rather than this swallowing it.
+        var interop = new ExplorerInterop(
+            new LendingJsRuntime(new RefusingModule(new JSException("observeContents is not a function"))));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await Assert.ThrowsAsync<JSException>(() => interop.ObserveContentsAsync("contents"));
+    }
+
+    [Fact]
+    public async Task DisconnectContentsAsync_WhenTheModuleIsThere_ThenTheColumnsIdReachesTheExport()
+    {
+        var module = new RecordingModule();
+        var interop = new ExplorerInterop(new LendingJsRuntime(module));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.DisconnectContentsAsync("contents-a1b2c3d4");
+
+        var call = Assert.Single(module.Calls);
+
+        Assert.Equal("disconnectContents", call.Identifier);
+        Assert.Equal(["contents-a1b2c3d4"], call.Arguments.Select(argument => argument as string));
+    }
+
+    [Theory]
+    [InlineData(typeof(JSDisconnectedException))]
+    [InlineData(typeof(JSException))]
+    [InlineData(typeof(InvalidOperationException))]
+    [InlineData(typeof(ObjectDisposedException))]
+    [InlineData(typeof(OperationCanceledException))]
+    public async Task DisconnectContentsAsync_WhenTheBrowserIsOutOfReach_ThenItSwallowsTheFault(Type thrown)
+    {
+        // Called from disposal, where a throw is an unhandled renderer fault.
+        var interop = new ExplorerInterop(new LendingJsRuntime(new RefusingModule(Raise(thrown))));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.DisconnectContentsAsync("contents");
+    }
+
     // -----------------------------------------------------------------------
     // Reading the source
 

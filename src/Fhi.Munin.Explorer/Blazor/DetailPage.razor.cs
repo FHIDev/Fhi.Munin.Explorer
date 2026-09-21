@@ -236,6 +236,7 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
 
     private ExplorerInterop? _interop;
     private bool _observed;
+    private bool _spied;
 
     /// <summary>The sticky bar's id, up to the per-instance discriminator that finishes it.</summary>
     internal const string StuckbarIdStem = "munin-explorer-stuckbar-";
@@ -243,14 +244,20 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     /// <summary>The same, for the hero fact row the bar watches.</summary>
     internal const string FactsIdStem = "munin-explorer-facts-";
 
+    /// <summary>The same, for the contents column the scroll-spy marks.</summary>
+    internal const string ContentsIdStem = "munin-explorer-contents-";
+
     private string StuckbarId => StuckbarIdStem + _instance;
 
     private string FactsId => FactsIdStem + _instance;
 
-    /// <summary>Whether <paramref name="id"/> is one of the two the chassis writes itself.</summary>
+    private string ContentsId => ContentsIdStem + _instance;
+
+    /// <summary>Whether <paramref name="id"/> is one of those the chassis writes itself.</summary>
     internal static bool IsChassisId(string id) =>
         id.StartsWith(StuckbarIdStem, StringComparison.Ordinal)
-        || id.StartsWith(FactsIdStem, StringComparison.Ordinal);
+        || id.StartsWith(FactsIdStem, StringComparison.Ordinal)
+        || id.StartsWith(ContentsIdStem, StringComparison.Ordinal);
 
     /// <summary>The hero row as it will really be drawn, since a fact with no value is dropped.</summary>
     /// <remarks>
@@ -277,31 +284,80 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
         if (!Sticky)
         {
             await UnwatchedAsync();
-
-            return;
         }
 
-        if (_observed)
+        // The contents column comes and goes with the payload on the same terms.
+        if (Contents is null)
+        {
+            await UnspiedAsync();
+        }
+
+        var watch = Sticky && !_observed;
+        var spy = Contents is not null && !_spied;
+
+        if (!watch && !spy)
         {
             return;
         }
 
         // Latched before the awaits rather than after: the renderer does not wait for this
         // continuation, so a render arriving mid-import would otherwise import the module twice.
-        _observed = true;
+        _observed |= watch;
+        _spied |= spy;
 
         // One interop for the component's life, assigned before the import so disposal can see it.
         var interop = _interop ??= new ExplorerInterop(JS);
 
         if (await interop.TryLoadAsync())
         {
-            await ObserveAsync(interop);
+            if (watch)
+            {
+                await ObserveAsync(interop);
+            }
+
+            if (spy)
+            {
+                await SpyAsync(interop);
+            }
         }
         else
         {
             // Not there YET, not not-there: a circuit reconnecting answers an import with nothing
             // at all, and only a later render can ask again. A refusal is remembered by the interop.
-            _observed = false;
+            _observed &= !watch;
+            _spied &= !spy;
+        }
+    }
+
+    /// <summary>Lets go of the contents column that left the render tree with the payload.</summary>
+    /// <remarks>On the terms of <see cref="UnwatchedAsync"/>, for the column rather than the bar.</remarks>
+    private async Task UnspiedAsync()
+    {
+        if (!_spied)
+        {
+            return;
+        }
+
+        _spied = false;
+
+        if (_interop is { } interop)
+        {
+            await interop.DisconnectContentsAsync(ContentsId);
+        }
+    }
+
+    /// <summary>Starts the scroll-spy on this page's contents column, answering for a faulty module.</summary>
+    /// <remarks>On the terms of <see cref="ObserveAsync"/>: an escape here takes the circuit down.</remarks>
+    private async Task SpyAsync(ExplorerInterop interop)
+    {
+        try
+        {
+            await interop.ObserveContentsAsync(ContentsId);
+        }
+        catch (JSException ex)
+        {
+            Log?.LogWarning(
+                ex, "the browser module could not follow the contents column {ContentsId}", ContentsId);
         }
     }
 
@@ -368,6 +424,12 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
         // Through the field rather than a local: CA2213 reads the disposal method literally and a
         // local it cannot follow back reports the field as never disposed.
         await _interop.DisconnectHeroFactsAsync(StuckbarId);
+
+        if (_spied)
+        {
+            await _interop.DisconnectContentsAsync(ContentsId);
+        }
+
         await _interop.DisposeAsync();
     }
 

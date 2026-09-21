@@ -785,6 +785,202 @@ public class DetailPageTest : ExplorerTestContext
         module.Invocations["observeHeroFacts"]
             .Select(call => $"{call.Arguments[0]} watches {call.Arguments[1]}");
 
+    // -----------------------------------------------------------------------
+    // The contents column's scroll-spy. The module does the marking and bUnit never runs it, so
+    // these pin what reaches it: which column, how often, and that it is let go of again.
+
+    private static string ColumnId(IRenderedComponent<DetailPage> cut) =>
+        cut.Find(".munin-explorer-page__toc").Id ?? "";
+
+    [Fact]
+    public void Contents_WhenTheColumnIsDrawn_ThenTheSpyIsGivenThatColumnsOwnId()
+    {
+        var module = new RecordingModule();
+
+        Services.AddSingleton<IJSRuntime>(new LendingJsRuntime(module));
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        Assert.StartsWith(DetailPage.ContentsIdStem, column, StringComparison.Ordinal);
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+    }
+
+    [Fact]
+    public void Contents_WhenNoColumnIsDrawn_ThenNothingIsImportedOrSpied()
+    {
+        // Without the Contents check the spy is handed an id no element carries, and the module is
+        // imported for a page with nothing for it to do.
+        var runtime = new LendingJsRuntime(new RecordingModule());
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        RenderPage(withContents: false);
+
+        Assert.Equal(0, runtime.Imports);
+    }
+
+    [Fact]
+    public void Contents_WhenThePageRendersAgain_ThenTheColumnIsSpiedOnce()
+    {
+        var module = new RecordingModule();
+        var runtime = new LendingJsRuntime(module);
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.Render();
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+        Assert.Equal(1, runtime.Imports);
+    }
+
+    [Fact]
+    public void Contents_WhenTheColumnArrivesAfterTheBarIsWatched_ThenItIsSpiedOnTheSameImport()
+    {
+        var module = new RecordingModule();
+        var runtime = new LendingJsRuntime(module);
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderSticky();
+
+        cut.Render(parameters => parameters.Add(p => p.Contents,
+            (RenderFragment)(builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>"))));
+
+        var column = ColumnId(cut);
+        var (bar, _) = Ids(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+        Assert.Equal([bar], module.ArgumentsOf("observeHeroFacts"));
+        Assert.Equal(1, runtime.Imports);
+    }
+
+    [Fact]
+    public void Contents_WhenTheColumnLeavesAndReturns_ThenTheOldSpyIsDisconnectedAndANewOneStarted()
+    {
+        // The column that comes back is a new element under the same id, and the spy the module
+        // still holds is attached to the detached one.
+        var module = new RecordingModule();
+
+        Services.AddSingleton<IJSRuntime>(new LendingJsRuntime(module));
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-page__toc"));
+
+        cut.Render(parameters => parameters.Add(p => p.Contents,
+            (RenderFragment)(builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>"))));
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            ["observeContents", "disconnectContents", "observeContents"],
+            module.Calls.Select(call => call.Identifier)));
+
+        Assert.All(module.Calls, call => Assert.Equal(column, call.Arguments[0] as string));
+    }
+
+    [Fact]
+    public async Task Contents_WhenThePageGoesAway_ThenItsSpyIsDisconnected()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["observeContents"]));
+
+        await Renderer.DisposeComponents();
+
+        Assert.Equal(
+            [column],
+            module.Invocations["disconnectContents"].Select(call => (call.Arguments[0] as string) ?? ""));
+    }
+
+    [Fact]
+    public void Contents_WhenTwoPagesAreMountedTogether_ThenEachSpiesItsOwnColumn()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+
+        RenderFragment nav = builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>");
+
+        var cut = Render(builder =>
+        {
+            builder.OpenComponent<DetailPage>(0);
+            builder.AddComponentParameter(1, nameof(DetailPage.ViewRoot), "munin-explorer-kilde");
+            builder.AddComponentParameter(2, nameof(DetailPage.ViewMain), "munin-explorer-kilde__main");
+            builder.AddComponentParameter(3, nameof(DetailPage.Contents), nav);
+            builder.CloseComponent();
+
+            builder.OpenComponent<DetailPage>(4);
+            builder.AddComponentParameter(5, nameof(DetailPage.ViewRoot), "munin-explorer-kilde");
+            builder.AddComponentParameter(6, nameof(DetailPage.ViewMain), "munin-explorer-kilde__main");
+            builder.AddComponentParameter(7, nameof(DetailPage.Contents), nav);
+            builder.CloseComponent();
+        });
+
+        var columns = cut.FindAll(".munin-explorer-page__toc").Select(column => column.Id ?? "").ToList();
+
+        Assert.Equal(2, columns.Distinct(StringComparer.Ordinal).Count());
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            columns.Order(StringComparer.Ordinal),
+            module.Invocations["observeContents"]
+                .Select(call => (call.Arguments[0] as string) ?? "")
+                .Order(StringComparer.Ordinal)));
+    }
+
+    [Fact]
+    public void Contents_WhenTheImportFailedTheWayAReconnectDoes_ThenALaterRenderSpiesTheColumn()
+    {
+        var module = new RecordingModule();
+        var runtime = new FlakyJsRuntime(module);
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal(1, runtime.Imports));
+        Assert.Empty(module.ArgumentsOf("observeContents"));
+
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal([column], module.ArgumentsOf("observeContents")));
+    }
+
+    [Fact]
+    public void Contents_WhenTheModuleItselfIsFaulty_ThenTheCircuitSurvivesAndTheHostIsTold()
+    {
+        var recorder = new RecordingLoggerProvider();
+
+        Services.AddLogging(b => b
+            .AddProvider(recorder)
+            .SetMinimumLevel(LogLevel.Trace)
+            .AddFilter((category, _) =>
+                category?.StartsWith("Fhi.Munin.Explorer", StringComparison.Ordinal) == true));
+
+        Services.AddSingleton<IJSRuntime>(
+            new LendingJsRuntime(new RefusingModule(new JSException("observeContents is not a function"))));
+
+        var cut = RenderPage(withContents: true);
+
+        cut.WaitForAssertion(() => Assert.Single(recorder.Entries));
+
+        var entry = Assert.Single(recorder.Entries);
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Contains(ColumnId(cut), entry.Message, StringComparison.Ordinal);
+        Assert.IsType<JSException>(entry.Exception);
+        Assert.Equal("the contents nav", cut.Find(".munin-explorer-page__toc nav").TextContent);
+    }
+
     [Fact]
     public void Chrome_Always_ThenEveryNameItEmitsHasARuleSomeStylesheetSupplies()
     {

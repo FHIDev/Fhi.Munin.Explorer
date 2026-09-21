@@ -134,6 +134,38 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
+    /// <summary>Starts the scroll-spy on the contents column <paramref name="columnId"/>.</summary>
+    /// <remarks>On <see cref="ObserveHeroFactsAsync"/>'s terms, a <see cref="JSException"/> included.</remarks>
+    internal async Task ObserveContentsAsync(string columnId)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        await Tolerated(() => module.InvokeVoidAsync("observeContents", columnId)).ConfigureAwait(false);
+    }
+
+    /// <summary>Stops the scroll-spy for <paramref name="columnId"/>.</summary>
+    /// <remarks>On <see cref="DisconnectHeroFactsAsync"/>'s terms: it runs from disposal too.</remarks>
+    internal async Task DisconnectContentsAsync(string columnId)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        try
+        {
+            await Tolerated(() => module.InvokeVoidAsync("disconnectContents", columnId))
+                .ConfigureAwait(false);
+        }
+        // The browser has moved on, and so has the spy.
+        catch (JSException)
+        {
+        }
+    }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {

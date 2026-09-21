@@ -1119,4 +1119,136 @@ export const assertions = [
       }, { id: rowId, on: STUCKBAR_ON });
     },
   },
+  {
+    name: 'exactly one contents-nav entry is current, and it follows the reader to the last',
+    // Stiler keys the mark on the attribute's PRESENCE, so "false" on an entry draws it as current
+    // just as "location" does (Fhi.Metadata-35w0p.15).
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed', 'variable-whole'],
+
+    async stage(page) {
+      await page.locator(`${TOC} a`).first().waitFor({ state: 'visible', timeout: findTimeout });
+
+      const ids = await page.locator(`${TOC} a`).evaluateAll(links =>
+        links.map(link => link.getAttribute('href')?.split('#')[1] ?? ''));
+
+      if (ids.length < 2 || ids.includes('')) {
+        throw new Error(`${TOC} drew ${ids.length} link(s), some without a #fragment, so there is ` +
+          'no second entry for the mark to move to');
+      }
+
+      if (await page.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight)) {
+        throw new Error('the page does not scroll, so the mark has nowhere to follow the reader');
+      }
+
+      return { ids };
+    },
+
+    async measure(page, { ids }) {
+      const marks = () => page.locator(`${TOC} a`).evaluateAll(links => links
+        .filter(link => link.hasAttribute('aria-current'))
+        .map(link => ({ id: link.getAttribute('href')?.split('#')[1] ?? '', value: link.getAttribute('aria-current') })));
+
+      const wrong = (found, where, wanted) => {
+        if (found.length !== 1 || found[0].value !== 'location') {
+          return `${where}, the nav marks ${found.length === 0 ? 'no entry' : found.map(one => `#${one.id}="${one.value}"`).join(', ')}: ` +
+            'exactly one link must carry aria-current, as "location", and no other link may carry it in any form';
+        }
+
+        return wanted !== undefined && found[0].id !== wanted
+          ? `${where}, the nav marks #${found[0].id} where #${wanted} is the section the reader is in`
+          : null;
+      };
+
+      const settle = () => page.evaluate(() => new Promise(done =>
+        requestAnimationFrame(() => requestAnimationFrame(done))));
+
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+      await settle();
+
+      const top = wrong(await marks(), 'at the top of the page', ids[0]);
+
+      if (top !== null) {
+        return top;
+      }
+
+      // Every reachable position a quarter viewport apart, the way a reader scrolls.
+      for (;;) {
+        const moved = await page.evaluate(() => {
+          const before = window.scrollY;
+
+          window.scrollBy({ top: Math.floor(innerHeight / 4), behavior: 'instant' });
+
+          return window.scrollY !== before;
+        });
+
+        await settle();
+
+        const finding = wrong(await marks(), `at scrollY ${await page.evaluate(() => Math.round(window.scrollY))}`);
+
+        if (finding !== null) {
+          return finding;
+        }
+
+        if (!moved) {
+          break;
+        }
+      }
+
+      const end = wrong(await marks(), 'scrolled to the end', ids[ids.length - 1]);
+
+      if (end !== null) {
+        return end;
+      }
+
+      // A section scrolled to its own jump line is the reader in that section, which is where a
+      // fragment jump lands; the tail sections that cannot reach the line are the end case above.
+      for (const id of ids) {
+        const landed = await page.evaluate(target => {
+          const section = document.getElementById(target);
+
+          section.scrollIntoView({ behavior: 'instant' });
+
+          return Math.abs(section.getBoundingClientRect().top - (parseFloat(getComputedStyle(section).scrollMarginTop) || 0)) <= 1;
+        }, id);
+
+        await settle();
+
+        if (landed) {
+          const finding = wrong(await marks(), `with #${id} scrolled to its jump line`, id);
+
+          if (finding !== null) {
+            return finding;
+          }
+        }
+      }
+
+      return null;
+    },
+
+    // The commonest scroll-spy defect put back by hand: a spy that marks the current entry and
+    // never unmarks the last one. The real spy is left holding a detached copy of the column.
+    async control(page) {
+      await page.evaluate(toc => {
+        const column = document.querySelector(toc);
+        const fresh = column.cloneNode(true);
+
+        column.replaceWith(fresh);
+
+        document.addEventListener('scroll', () => {
+          let current = null;
+
+          for (const link of fresh.querySelectorAll('a')) {
+            const section = document.getElementById(link.getAttribute('href').split('#')[1]);
+
+            if (section.getBoundingClientRect().top <= (parseFloat(getComputedStyle(section).scrollMarginTop) || 0) + 1) {
+              current = link;
+            }
+          }
+
+          (current ?? fresh.querySelector('a')).setAttribute('aria-current', 'location');
+        }, { capture: true, passive: true });
+      }, TOC);
+    },
+  },
 ];

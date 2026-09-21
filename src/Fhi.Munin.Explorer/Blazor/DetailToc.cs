@@ -16,10 +16,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// on the host: a browser making the fragment jump itself moves focus to the target, and a Blazor
 /// <c>Router</c> intercepting a same-page press scrolls without it. This component's half is that
 /// the target can take focus at all — <see cref="DetailSection"/> writes <c>tabindex="-1"</c> for
-/// it. The one thing that would need script is the highlight following the reader down the page,
-/// and it is deliberately not here: the nav is the whole navigational benefit and it ships now.
-/// The package does ship a JavaScript module since Fhi.Metadata-35w0p.14, and this nav uses none
-/// of it — the scrolling is still the browser's.
+/// it. The current entry's <c>aria-current</c> is set by the browser module through
+/// <see cref="DetailPage"/>, never here: Stiler keys the mark on its presence, so without the module
+/// no link carries it at all.
 /// </para>
 /// <para>
 /// Each href carries this page's own path and query in front of the <c>#</c>. A bare <c>#id</c> is
@@ -40,16 +39,12 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// on.
 /// </para>
 /// <para>
-/// So no <c>form-menu__list__item--active</c> is emitted either. With nothing tracking the scroll
-/// position, any item marked active is permanently wrong everywhere else on the page, and a
-/// highlight that lies is worse than no highlight.
-/// </para>
-/// <para>
 /// The list wears helsedata's own <c>form-menu__list</c> names rather than anything under this
 /// package's prefix: they are global, unscoped classes in <c>Fhi.Helsedata.Stiler</c> and reach its
 /// compiled stylesheet, so the nav takes that site's link colour and padding for nothing and this
 /// package adds no rule for them. <c>form-menu__list__item</c> carries no rule of its own anywhere
-/// — only the active modifiers do, and neither is emitted here.
+/// — only the active modifiers do, and neither is emitted: they draw helsedata's application-form
+/// panel rather than the contents rail's mark.
 /// </para>
 /// <para>
 /// Goes in <see cref="DetailPage.Contents"/>, which draws the column around it. This component

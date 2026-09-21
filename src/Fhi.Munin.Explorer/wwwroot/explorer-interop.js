@@ -54,3 +54,118 @@ export function disconnectHeroFacts(barId) {
   observers.get(barId)?.disconnect();
   observers.delete(barId);
 }
+
+// One scroll-spy per mounted contents column, keyed by the column's id, each holding its own undo.
+const spies = new Map();
+
+/** Marks the contents nav entry in `columnId` whose section the reader is in with
+ * `aria-current="location"`, and no other. Calling it again for the same column replaces the spy. */
+export function observeContents(columnId) {
+  const column = document.getElementById(columnId);
+
+  if (column === null) {
+    return;
+  }
+
+  disconnectContents(columnId);
+
+  const spy = { column, clicked: null, frame: 0 };
+  const schedule = () => {
+    spy.frame ||= requestAnimationFrame(() => {
+      spy.frame = 0;
+      markCurrent(spy);
+    });
+  };
+  const click = (event) => {
+    spy.clicked = event.target.closest?.('a[href*="#"]') ?? null;
+    schedule();
+  };
+  const unpin = () => {
+    spy.clicked = null;
+  };
+
+  // Entries and sections are looked up afresh on every pass, so a re-render replacing them is
+  // followed rather than leaving the spy on detached nodes.
+  const rendered = new MutationObserver(schedule);
+
+  rendered.observe(column, { childList: true, subtree: true, characterData: true });
+  column.addEventListener('click', click);
+  document.addEventListener('scroll', schedule, { capture: true, passive: true });
+  window.addEventListener('resize', schedule, { passive: true });
+
+  for (const gesture of ['wheel', 'touchstart', 'keydown']) {
+    window.addEventListener(gesture, unpin, { capture: true, passive: true });
+  }
+
+  spies.set(columnId, () => {
+    cancelAnimationFrame(spy.frame);
+    rendered.disconnect();
+    column.removeEventListener('click', click);
+    document.removeEventListener('scroll', schedule, { capture: true });
+    window.removeEventListener('resize', schedule);
+
+    for (const gesture of ['wheel', 'touchstart', 'keydown']) {
+      window.removeEventListener(gesture, unpin, { capture: true });
+    }
+  });
+
+  markCurrent(spy);
+}
+
+/**
+ * Stops the scroll-spy for `columnId`, leaving the nav's links as they are.
+ */
+export function disconnectContents(columnId) {
+  spies.get(columnId)?.();
+  spies.delete(columnId);
+}
+
+/** Sets the one current entry: the last section whose heading has reached its jump line. */
+function markCurrent(spy) {
+  const page = spy.column.closest('.munin-explorer-page') ?? document;
+  const entries = [];
+
+  for (const link of spy.column.querySelectorAll('a[href*="#"]')) {
+    const section = page.querySelector(`#${CSS.escape(decodeURIComponent(link.hash.slice(1)))}`);
+
+    if (section !== null) {
+      entries.push({ link, section, top: section.getBoundingClientRect().top });
+    }
+  }
+
+  if (entries.length === 0) {
+    return;
+  }
+
+  // The jump line is the section's own scroll-margin-top, so a click and a scroll to the same
+  // place mark the same entry, at whichever width Stiler moves that margin.
+  let current = entries[0];
+
+  for (const entry of entries) {
+    if (entry.top <= (parseFloat(getComputedStyle(entry.section).scrollMarginTop) || 0) + 1) {
+      current = entry;
+    }
+  }
+
+  // At the end of the scroll the sections below the line can never reach it, so the last one
+  // is current, unless the reader pressed one of those and has not scrolled since.
+  if (scrolledToEnd()) {
+    current = entries.find((entry) => entry.link === spy.clicked && entry.top > current.top)
+      ?? entries[entries.length - 1];
+  }
+
+  for (const { link } of entries) {
+    if (link === current.link) {
+      link.setAttribute('aria-current', 'location');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  }
+}
+
+/** Whether the document has scrolled at all, and cannot scroll any further down. */
+function scrolledToEnd() {
+  const root = document.scrollingElement ?? document.documentElement;
+
+  return root.scrollTop > 0 && root.scrollTop + root.clientHeight >= root.scrollHeight - 1;
+}

@@ -691,12 +691,14 @@ These are not style preferences — each one is a host that breaks otherwise.
 
   Ids are otherwise a separate family, each suffixed with a per-instance discriminator so two
   mounts on one page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`,
-  `-toggle-*`, `-detail-*`, `-tab-*`, `-source-*`, `-stuckbar-*`, `-facts-*` and the rest.
+  `-toggle-*`, `-detail-*`, `-tab-*`, `-source-*`, `-contents-*`, `-stuckbar-*`, `-facts-*` and the rest.
   `munin-explorer-source-*` is worth naming, because it reads like a class and is not one: the
   drill-in region it identifies wears the class `munin-explorer-drilldown`, so a host or a test
   reaching for `.munin-explorer-source` comes up empty. The last two are the pair the sticky bar
   turns on — the bar and the hero fact row it watches — and they are ids rather than classes for
   exactly the reason the family exists: two detail pages on one host page each drive their own bar.
+  `munin-explorer-contents-*` is the contents column, for the same reason: the module marks the
+  entry the reader is in with `aria-current="location"`, in that column's nav and no other.
 
   One family more is written by interpolation rather than as a literal, so the table below cannot
   carry it and this paragraph has to: `RowCell.Write` dresses each result column as
