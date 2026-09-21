@@ -238,6 +238,9 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     private bool _observed;
     private bool _spied;
 
+    // Counts every latch and unlatch of _spied, so a failed import clears only the latch it set.
+    private int _spyTurn;
+
     /// <summary>The sticky bar's id, up to the per-instance discriminator that finishes it.</summary>
     internal const string StuckbarIdStem = "munin-explorer-stuckbar-";
 
@@ -305,6 +308,8 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
         _observed |= watch;
         _spied |= spy;
 
+        var turn = spy ? ++_spyTurn : _spyTurn;
+
         // One interop for the component's life, assigned before the import so disposal can see it.
         var interop = _interop ??= new ExplorerInterop(JS);
 
@@ -325,7 +330,7 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
             // Not there YET, not not-there: a circuit reconnecting answers an import with nothing
             // at all, and only a later render can ask again. A refusal is remembered by the interop.
             _observed &= !watch;
-            _spied &= !spy;
+            _spied &= !(spy && turn == _spyTurn);
         }
     }
 
@@ -339,6 +344,7 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
         }
 
         _spied = false;
+        _spyTurn++;
 
         if (_interop is { } interop)
         {

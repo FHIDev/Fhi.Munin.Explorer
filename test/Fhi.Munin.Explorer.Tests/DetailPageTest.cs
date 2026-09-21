@@ -890,6 +890,37 @@ public class DetailPageTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Contents_WhenAFailedImportFinishesAfterALaterLatch_ThenRemovingTheColumnStillDisconnectsTheSpy()
+    {
+        // The same interleaving while the page lives: a stale failure must not clear the latch the
+        // later render set, or the column's removal skips the disconnect and the spy stays attached.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderPage(withContents: true);
+        var column = ColumnId(cut);
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+        cut.Render(parameters => parameters.Add(p => p.Contents,
+            (RenderFragment)(builder => builder.AddMarkupContent(0, "<nav>the contents nav</nav>"))));
+
+        runtime.Answer(1, null);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        runtime.Answer(2, module);
+
+        Assert.True(await module.ReachedAsync("observeContents"));
+
+        cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
+
+        Assert.True(await module.ReachedAsync("disconnectContents"));
+        Assert.Equal([column], module.ArgumentsOf("disconnectContents"));
+    }
+
+    [Fact]
     public void Contents_WhenThePageRendersAgain_ThenTheColumnIsSpiedOnce()
     {
         var module = new RecordingModule();
