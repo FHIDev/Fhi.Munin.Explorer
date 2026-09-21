@@ -312,10 +312,9 @@ Read the run for exactly what it is: three assertions, two pages, three states, 
 stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
 its own after the six widths. It runs every assertion in every state, except that a state failing
 today leaves out only its failing assertions, through `GEOMETRY_EXCEPT`, with the reason beside
-it. Two of the three exceptions are open defects whose beads end by deleting them:
-`Fhi.Metadata-jcdil` on `explorer-list-tab`, `Fhi.Metadata-s9h1k` on the three `kilde-hierarchy-*`
-states. The third is kept on purpose: under real Stiler the closed column picker hangs 2px off the
-left edge on the kilder states, and `Fhi.Metadata-abmom`'s close reason records why that stays.
+it. One exception is left, and it is kept on purpose: under real Stiler the closed column picker
+hangs 2px off the left edge on the kilder states, and `Fhi.Metadata-abmom`'s close reason records
+why that stays.
 
 **It scans states, not only pages.** A page in its default state is not the page a reader uses,
 and for a while the default state was the whole of this check: the level lines shipped at 1.16:1

@@ -256,15 +256,12 @@ reflow() {
 
 echo
 echo "==> measuring the reflow width WCAG 1.4.10 names"
-reflow "" "/::explorer-tabs"
+reflow "" "/::explorer-tabs" "/::explorer-list-tab"
 # The closed column picker hangs 2px off the left edge; Fhi.Metadata-abmom records why that stays.
 reflow "the component stays inside the box the host gave it" \
   "/kilder::kilder-list" "/kilder::kilder-counts" "/kilder::kilde-facets"
-# The list picker's <select> is as wide as its longest option (Fhi.Metadata-jcdil).
-reflow "no horizontal overflow,the component stays inside the box the host gave it" \
-  "/::explorer-list-tab"
 # Fhi.Metadata-s9h1k's exception went with Stiler 0.1.79, which breaks a long value rather than
-# widening its column; samples/HostileHost pins that release.
+# widening its column; samples/HostileHost pins a release at or after it.
 reflow "" \
   "/kilder::kilde-hierarchy-collapsed" "/kilder::kilde-hierarchy-expanded" "/kilder::kilde-hierarchy-metadata"
 # The states the stub's long code reaches: the row panel's Kode, the whole-variable page's heading

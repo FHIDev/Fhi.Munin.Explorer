@@ -212,9 +212,6 @@ missing-declaration||.munin-explorer-dataitem-main__column|text-overflow
 missing-declaration||.munin-explorer-dataitem-main__column|white-space
 missing-declaration||.munin-explorer-dataitem-main__expand-icon|margin
 missing-declaration||.munin-explorer-dataitem-main__name|display
-missing-declaration||.munin-explorer-dataitem-main__name|overflow
-missing-declaration||.munin-explorer-dataitem-main__name|text-overflow
-missing-declaration||.munin-explorer-dataitem-main__name|white-space
 missing-declaration||.munin-explorer-dataitem-main|cursor
 missing-declaration||.munin-explorer-dataitem-main|height
 missing-declaration||.munin-explorer-dataitem-main|overflow
@@ -439,14 +436,6 @@ missing-declaration||.datasourcecard__intro p|-webkit-line-clamp
 # rule into a sample-only declaration.
 invented-declaration||.munin-explorer-page__fields dd|margin
 
-# The filter panel's toolbar wraps in the stand-in and does not in Stiler. Ikoner made the row four
-# controls wide (Fhi.Metadata-kd9ts): only the two buttons take the `min-width: 0` beside them, a
-# switch keeps its intrinsic width, and at 320px the row measured 291px of content hanging 42px
-# past the viewport in a 226px mount - WCAG 1.4.10, and check-accessibility.sh measures it now.
-# `flex-wrap: wrap` is the fix in both stylesheets; Fhi.Metadata-xfsvx is the same rule in
-# Stiler, and deleting this line is that bead's last step.
-invented-declaration||.munin-explorer-filters__toolbar|flex-wrap
-
 # UNSTYLED NAMES, the fifth kind (Fhi.Metadata-sepe7): the sample styles a name that no non-empty
 # Stiler rule names, so on helsedata it renders at browser defaults whatever the stand-in draws.
 
@@ -454,31 +443,8 @@ invented-declaration||.munin-explorer-filters__toolbar|flex-wrap
 # Stiler bead is owed: Fhi.Metadata-vnhd4 fixes the comment and deletes the rule and this line.
 unstyled-name||.munin-explorer-dataitem-period|
 
-# Fhi.Metadata-o3slu. Stiler 0.1.80 has the rule; this line goes when the pin moves to it.
-unstyled-name||.munin-explorer-hierarchy__open|
-
-# Fhi.Metadata-35w0p.59, .60 and .61 (Stiler PR 39406). Stiler 0.1.80 has all three rules; these
-# lines go when the pin moves to it.
-unstyled-name||.munin-explorer-complete-record|
-unstyled-name||.munin-explorer-complete-record__fields|
-unstyled-name||.munin-explorer-complete-record__lead|
-
 # Fhi.Metadata-l9l2n.109.
 unstyled-name||.munin-explorer-meta__language|
-
-# Fhi.Metadata-urbj0.
-unstyled-name||.munin-explorer-page__header|
-
-# Fhi.Metadata-q7i5e; the Stiler rule is Fhi.Metadata-6u1iu. These lines go when the pin moves to
-# the release that carries it.
-unstyled-name||.munin-explorer-data-list__save-status|
-invented-declaration||.munin-explorer-data-list__item__row|flex-wrap
-unstyled-name||.munin-explorer-dataitem-header__save|
-unstyled-name||.munin-explorer-dataitem-main__save|
-
-# New in Fhi.Metadata-35w0p.24. The Stiler rule is Fhi.Metadata-iwfji; this line goes when the pin
-# moves to the Stiler version that carries it.
-unstyled-name||.munin-explorer-absent|
 
 # New in Fhi.Metadata-35w0p.24's lead sentences. The Stiler rule is Fhi.Metadata-3z2s3; this line goes
 # when the pin moves to the Stiler version that carries it.
@@ -573,15 +539,9 @@ invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow
 invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before|content
 invented-selector||.munin-explorer-header__actions-button > .icon-layout::before|content
 
-# Ahead of the pin: Stiler gives every detail body two tracks until Fhi.Metadata-ex5wb.
-invented-selector|@media (min-width:1025px)|.munin-explorer-page__body:has( > .munin-explorer-page__toc)|align-items
-invented-selector|@media (min-width:1025px)|.munin-explorer-page__body:has( > .munin-explorer-page__toc)|grid-template-columns
+# Stiler gates the two tracks on :has() and leaves a one-child body alone; the sample also takes
+# them back explicitly, against an ungated copy read after it.
 invented-selector|@media (min-width:1025px)|.munin-explorer-page__body:not(:has( > .munin-explorer-page__toc))|grid-template-columns
-
-# Ahead of the pin: Stiler PR 39406 adds this rule with the same three declarations (Fhi.Metadata-hiz1k).
-invented-selector||.munin-explorer-hierarchy__nodes > li|align-items
-invented-selector||.munin-explorer-hierarchy__nodes > li|display
-invented-selector||.munin-explorer-hierarchy__nodes > li|grid-template-columns
 
 # Stiler removed this rule in its PR 39242 because it matches nothing (Fhi.Metadata-2er4n). The sample
 # still carries it; deleting it there retires this line.
