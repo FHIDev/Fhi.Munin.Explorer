@@ -921,6 +921,36 @@ public class DetailPageTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Stuckbar_WhenAFailedImportFinishesAfterALaterLatch_ThenEmptyingTheFactsStillDisconnectsTheBar()
+    {
+        // The spy's interleaving above, for the bar: a stale failure must not clear the latch the
+        // refill set, or emptying the facts again skips the disconnect and the observer stays on.
+        var module = new RecordingModule();
+        var runtime = new StagingJsRuntime();
+
+        Services.AddSingleton<IJSRuntime>(runtime);
+
+        var cut = RenderSticky();
+        var (bar, _) = Ids(cut);
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, []));
+        cut.Render(parameters => parameters.Add(p => p.Facts, SixFacts()));
+
+        runtime.Answer(1, null);
+        await Task.Delay(200);
+        await cut.InvokeAsync(() => { });
+
+        runtime.Answer(2, module);
+
+        Assert.True(await module.ReachedAsync("observeHeroFacts"));
+
+        cut.Render(parameters => parameters.Add(p => p.Facts, []));
+
+        Assert.True(await module.ReachedAsync("disconnectHeroFacts"));
+        Assert.Equal([bar], module.ArgumentsOf("disconnectHeroFacts"));
+    }
+
+    [Fact]
     public void Contents_WhenThePageRendersAgain_ThenTheColumnIsSpiedOnce()
     {
         var module = new RecordingModule();
