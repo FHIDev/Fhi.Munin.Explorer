@@ -675,7 +675,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   are fixed English words rather than a slug of the heading for the same reason — the headings are
   bilingual, so a derived id would differ between `nb` and `en`. Within one mount they cannot
   repeat: an explorer renders at most one detail view, and each view emits each id at most once —
-  unless a host mounting a view hands it a `DetailNamedSection` with one of these ids.
+  unless a host mounting a view hands it a `DetailNamedSection` with one of these ids. `variables`
+  is the one of the four an explorer names that a view writes too: `DatasamlingView`'s last resort
+  for the variable table, on a page where neither the placement nor the statistics gave it a
+  section, and neither explorer hands that view a named section of any id.
   Two mounts on one page, or a host page that already means something by `id="source"`, are the
   bound on that — `Fhi.Metadata-uobxg` records it, and the chassis bead that adds the contents nav
   is where it gets settled.
@@ -1209,10 +1212,15 @@ a requirement it did not have before `Fhi.Metadata-mg08i`, because until then it
 `Datasamling` parameter carried. A datasamling payload states how many variables the collection
 holds and names none of them, so the table under the collection's own section is a second call:
 `SearchVariablesAsync` narrowed to that datasamling, one page at a time, at the same page size the
-result list uses. It is drawn inside whichever section the catalogue's placement rows put "Antall
-variabler" in — "Variabler" on today's data — so the page gains no heading and no contents-nav
-entry of its own, and a payload predating those rows draws it beside that count in the view's own
-statistics block. Changing `Datasamling` resets it to page 1 and cancels the call in flight.
+result list uses. It is drawn inside the section the catalogue declares for that count's
+neighbours — "Variabler" on today's data — so the page gains no heading of this package's; a
+section the placement named and the collection filled nothing into is the table's, under the
+curator's own name. A payload predating those rows draws the table beside the count in the view's
+own statistics block, and one that counts nothing and places nothing draws the view's own
+"Variabler" section, which is the only case where this view heads the table itself: a table the
+view fetched and drew nowhere is what that last arm exists to prevent. Changing `Datasamling`
+resets it to page 1 and cancels the call in flight, and the pager is named for this table rather
+than "Paginering", so it is told apart from a result list's own in a landmark list.
 
 Each row carries a node icon in front of its name — a folder on a delkilde, one glyph per
 datakategori on a datasamling, and nothing on a variabelgruppe, which is the mapping Kelda's own

@@ -346,7 +346,7 @@ internal static class CatalogueProperties
     /// and not another would split it. With a key present nothing ever compares headings.
     /// </para>
     /// </remarks>
-    private static (string Name, string Language)? GroupName(PropertyMetadataEntry entry, string reader)
+    internal static (string Name, string Language)? GroupName(PropertyMetadataEntry entry, string reader)
     {
         var (rawName, language) = Localised(entry.GroupTranslations, reader);
 

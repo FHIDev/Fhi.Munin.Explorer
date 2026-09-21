@@ -674,11 +674,13 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     /// a curator's to rename, and a group no row names keeps the Metadata block rather than being
     /// dropped (Fhi.Metadata-lr6yh).
     /// <para>
-    /// The variable table follows the statistics the way those facts already follow the placement —
-    /// it is drawn under whichever section holds Antall variabler, which is the row it enumerates.
-    /// That is what puts it under the catalogue's own Variabler heading with no second heading and
-    /// no key of this package's, and what leaves a payload predating the placement rows drawing it
-    /// beside that count in the view's own block (Fhi.Metadata-mg08i).
+    /// The variable table follows the count it enumerates, so the page gains no second heading and
+    /// no key of this package's: it is drawn in whichever section the catalogue declares Antall
+    /// variabler's neighbours for, whether or not this collection fills one of them in — a section
+    /// the placement named and nothing filled is the table's, under the curator's own name. A
+    /// payload predating the placement rows draws it beside the count in the view's own statistics
+    /// block, and one with neither in the view's own Variabler block, because a table the view
+    /// fetched and drew nowhere is the defect this arrangement exists to avoid (Fhi.Metadata-mg08i).
     /// </para>
     /// </remarks>
     private IReadOnlyList<DetailLayoutSection> BuildLayout()
@@ -707,10 +709,17 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
                                   CatalogueColumns.CountingUnit)
             : null;
 
+        // Declared rather than placed, alone among these three: the table enumerates the count, and
+        // a collection whose numbers are all blank draws no row for it to follow while still having
+        // rows of its own to draw (Fhi.Metadata-mg08i).
+        var variables = placement.DeclaredSectionOf(
+            CatalogueColumns.StatisticsType, CatalogueColumns.Frequency, CatalogueColumns.CountingUnit);
+
         List<DetailLayoutSection> groups = [];
         HashSet<string> ids = new(StringComparer.Ordinal);
         var sourceDrawn = false;
         var statisticsDrawn = false;
+        var variablesDrawn = false;
 
         foreach (var group in Groups.Where(group => group.Key is not null && named.Contains(group.Key)))
         {
@@ -722,13 +731,14 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
                 sourceDrawn = true;
             }
 
-            var variablesHere = string.Equals(group.Key, statistics, StringComparison.Ordinal);
-
-            if (variablesHere)
+            if (string.Equals(group.Key, statistics, StringComparison.Ordinal))
             {
                 facts.AddRange(Statistics.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)));
                 statisticsDrawn = true;
             }
+
+            var variablesHere = string.Equals(group.Key, variables?.Key, StringComparison.Ordinal);
+            variablesDrawn |= variablesHere;
 
             var body = DetailBlocks.GroupBody(group, Language, CompleteRecordFacts);
 
@@ -742,8 +752,20 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
                            variablesHere ? DetailBlocks.Both(body, VariablesBlock) : body));
         }
 
-        return DetailLayout.Order(datasamling.Sections, groups,
-                                  Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn));
+        // The catalogue named a section for these and this payload filled none of it in, so the
+        // section is the table's and keeps the curator's own name and place — where a block of this
+        // view's would take a package word to the tail of the page.
+        if (!variablesDrawn && variables is { } declared && named.Contains(declared.Key))
+        {
+            groups.Add(new(declared.Key, DetailSectionIds.ReserveGroupId(declared.Key, ids), declared.Name,
+                           CatalogueProperties.Foreign(declared.Language, Reader), VariablesBlock));
+
+            variablesDrawn = true;
+        }
+
+        return DetailLayout.Order(
+            datasamling.Sections, groups,
+            Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn, variablesDrawn));
     }
 
     /// <summary>
@@ -760,7 +782,8 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
         IReadOnlyList<PropertyGroup> ungrouped,
         IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> sourceFacts,
         bool sourceDrawn,
-        bool statisticsDrawn)
+        bool statisticsDrawn,
+        bool variablesDrawn)
     {
         List<DetailLayoutSection> blocks = [];
 
@@ -787,8 +810,20 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
 
         if (!statisticsDrawn && AnyStatistics)
         {
+            var facts = DetailBlocks.Facts(Statistics, Language);
+
             blocks.Add(new(SectionKeys.Statistics, DetailSectionIds.Statistics, StatisticsHeading, null,
-                           DetailBlocks.Both(DetailBlocks.Facts(Statistics, Language), VariablesBlock)));
+                           variablesDrawn ? facts : DetailBlocks.Both(facts, VariablesBlock)));
+
+            variablesDrawn = true;
+        }
+
+        // The one place this view heads the table itself, and the last resort: a collection with no
+        // numbers at all draws neither the placed section nor the statistics block, and the table
+        // still has a page to be on (Fhi.Metadata-mg08i).
+        if (!variablesDrawn)
+        {
+            blocks.Add(new(null, DetailSectionIds.Variables, T.HeadingVariables, null, VariablesBlock));
         }
 
         return blocks;

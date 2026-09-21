@@ -211,6 +211,9 @@ internal sealed record Texts(
     // API's rather than the payload's variableCount, so a caption reporting a different total from
     // the Antall variabler row beside it is a disagreement worth hearing rather than one hidden.
     Func<int, string> VariablesCaption,
+    // Named apart from Pagination, which the two result lists wear: a host is free to mount this
+    // view beside one, and two navigation landmarks under one name cannot be told apart.
+    string VariablesPagination,
 
     // The variable detail view: its own fact blocks, and the statistics table's columns.
     string FieldKildeName,
@@ -1026,6 +1029,7 @@ internal sealed record Texts(
         VariablesRetry: "Prøv å laste variablene på nytt",
         VariablesEmpty: "Ingen variabler er registrert i denne datasamlingen.",
         VariablesCaption: total => $"Variabler i datasamlingen, {total} totalt",
+        VariablesPagination: "Paginering for variablene i datasamlingen",
         FieldKildeName: "Kildenavn",
         FieldKildeShortName: "Kortnavn",
         FieldVariableGroups: "Variabelgrupper",
@@ -1419,6 +1423,7 @@ internal sealed record Texts(
         VariablesRetry: "Retry loading the variables",
         VariablesEmpty: "No variables are recorded in this data collection.",
         VariablesCaption: total => $"Variables in this data collection, {total} in total",
+        VariablesPagination: "Pagination for the variables in this data collection",
         FieldKildeName: "Source name",
         FieldKildeShortName: "Short name",
         FieldVariableGroups: "Variable groups",

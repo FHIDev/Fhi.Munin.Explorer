@@ -12,4 +12,7 @@ category: Notes for hosts
   one costs borders, padding and column widths rather than structure or words. Both sample
   stylesheets show a stand-in; the Stiler rules are `Fhi.Metadata-w4lys`. The loading, failure and
   pagination controls beside them add no name: they are the ones the result list already writes.
+  The pager is named "Paginering for variablene i datasamlingen" rather than "Paginering", so a
+  host mounting this view beside a surface that draws its own pager has two navigation landmarks a
+  reader can tell apart.
   (Fhi.Metadata-mg08i)

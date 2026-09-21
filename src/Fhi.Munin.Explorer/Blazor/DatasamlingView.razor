@@ -115,9 +115,10 @@
 
         @if (VariablePageCount > 1)
         {
-            @* The result list's own pager, class names and all. A div with role="navigation" rather
-               than a <nav> so it can be named apart from the host page's own landmarks. *@
-            <div class="munin-explorer-pagination" role="navigation" aria-label="@T.Pagination">
+            @* The result list's own pager, class names and all, under a name of this table's own.
+               "Paginering" is what the two result lists call theirs, and a host is free to mount
+               this view beside one: two landmarks under one name are one the reader cannot pick. *@
+            <div class="munin-explorer-pagination" role="navigation" aria-label="@T.VariablesPagination">
                 <div class="munin-explorer-pagination-content">
                     <button class="hd-button-square button-square--ghost"
                             type="button"

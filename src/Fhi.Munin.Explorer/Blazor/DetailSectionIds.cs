@@ -36,7 +36,8 @@ internal static class DetailSectionIds
     internal const string VariableGroups = "variablegroups";
 
     // The four below are the explorers' own, handed to a view as DetailNamedSection. The view's ids
-    // and these share one document, which is why they are listed together.
+    // and these share one document, which is why they are listed together. Variables is the one a
+    // view writes too — DatasamlingView's own last resort, on a page no explorer names one for.
     internal const string Variables = "variables";
 
     internal const string AccessCriteria = "accesscriteria";

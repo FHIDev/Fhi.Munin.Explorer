@@ -66,6 +66,36 @@ internal sealed record CataloguePlacement(
         return null;
     }
 
+    /// <summary>
+    /// The section the catalogue declares these keys belong to — its key and the curator's title
+    /// for it — whether or not this payload fills any of them.
+    /// </summary>
+    /// <remarks>
+    /// The question a block that is not those rows asks. <see cref="SectionOf"/> is the narrower
+    /// one and is what a fact yields to, since a value the payload does not carry is drawn nowhere;
+    /// a table enumerating them has something to draw either way, and an empty count is no reason
+    /// to head it in this package's own words (Fhi.Metadata-mg08i).
+    /// </remarks>
+    internal (string Key, string Name, string Language)? DeclaredSectionOf(params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var declared = Metadata.Where(
+                e => string.Equals(e.Key, key, StringComparison.Ordinal)
+                     && !string.IsNullOrWhiteSpace(e.GroupKey));
+
+            foreach (var entry in declared)
+            {
+                if (CatalogueProperties.GroupName(entry, Reader) is { } title)
+                {
+                    return (entry.GroupKey!, title.Name, title.Language);
+                }
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>One curated property's first value, resolved exactly as its section resolves it.</summary>
     internal string? Curated(string key) =>
         CatalogueProperties.Row(Metadata, Values, Reader, key) is { Values: [var first, ..] }

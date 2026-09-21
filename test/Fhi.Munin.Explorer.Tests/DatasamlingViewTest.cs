@@ -850,8 +850,9 @@ public class DatasamlingViewTest : ExplorerTestContext
     [Fact]
     public void Placement_WhenItDeclaresASectionThisViewDrawsNothingFor_ThenNoEmptyWrapperIsLeft()
     {
-        // Two of the four are empty here: nothing is placed in Variabler once the three statistics
-        // fields and the count are gone, and Datakilde's four are unset with nothing inherited.
+        // Datakilde is the empty one: its four are unset with nothing inherited. Variabler is not,
+        // once the three statistics fields and the count are gone — the table this view fetched is
+        // drawn there, and it keeps the section under the curator's own name (Fhi.Metadata-mg08i).
         var cut = Render(Placed() with
         {
             EffectiveLegalBasis = null,
@@ -871,9 +872,12 @@ public class DatasamlingViewTest : ExplorerTestContext
         });
 
         Assert.Equal(
-            ["section-om-datasamlingen", "section-alle-metadatafelt", DetailSectionIds.Criteria],
+            ["section-om-datasamlingen", "section-variabler", "section-alle-metadatafelt",
+             DetailSectionIds.Criteria],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal("Variabler", Section(cut, "Variabler").FirstElementChild!.TextContent);
+        Assert.Empty(Section(cut, "Variabler").QuerySelectorAll("dt"));
     }
 
     [Fact]
@@ -1022,6 +1026,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // a heading and nothing else, which is worse than the bare heading it replaced. Both of
         // this view's suppressible blocks are taken away at once — the criteria, and all four
         // facts of the statistics, the type included since it fills a row (Fhi.Metadata-35w0p.50).
+        // Variabler is not one of them: no payload field can empty a table this view fetched.
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
@@ -1031,7 +1036,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             VariableCount = 0,
         });
 
-        Assert.Equal([DetailSectionIds.Metadata, DetailSectionIds.Source],
+        Assert.Equal([DetailSectionIds.Metadata, DetailSectionIds.Source, DetailSectionIds.Variables],
                      Wrappers(cut).Select(section => section.Id!));
         Assert.All(Wrappers(cut), section => Assert.True(
             section.Children.Length > 1, $"Section '{section.Id}' holds its heading and nothing else."));
@@ -1163,7 +1168,8 @@ public class DatasamlingViewTest : ExplorerTestContext
     public void Contents_WhenABlockDrawsNothing_ThenItGetsNoEntryEither()
     {
         // The payload Sections_WhenABlockDrawsNothing uses, asked one column over: the criteria and
-        // the statistics both go, so the nav is down to the two blocks that are left.
+        // the statistics both go, so the nav is down to the blocks that are left — the variable
+        // table among them, since it is on the page whatever the catalogue filled in.
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
@@ -1173,7 +1179,9 @@ public class DatasamlingViewTest : ExplorerTestContext
             VariableCount = 0,
         });
 
-        Assert.Equal(["#" + DetailSectionIds.Metadata, "#" + DetailSectionIds.Source], Targets(cut));
+        Assert.Equal(["#" + DetailSectionIds.Metadata, "#" + DetailSectionIds.Source,
+                      "#" + DetailSectionIds.Variables],
+                     Targets(cut));
     }
 
     [Fact]
@@ -1218,14 +1226,15 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Contents_WhenTheCatalogueFilledInNothing_ThenNoBlockIsNamed()
+    public void Contents_WhenTheCatalogueFilledInNothing_ThenOnlyTheVariableTableIsNamed()
     {
         // All four go. The source box used to survive on a kildetype row reading "Ikke oppgitt";
         // a box holding nothing at all is now no box, and so no entry. (Fhi.Metadata-35w0p.24)
+        // What is left is the one section no payload field can empty, because this view fetches it.
         var cut = Render(Sparse());
 
         Assert.Single(cut.FindAll(".munin-explorer-datasamling__main"));
-        Assert.Empty(Targets(cut));
+        Assert.Equal(["#" + DetailSectionIds.Variables], Targets(cut));
     }
 
     [Fact]
@@ -1236,7 +1245,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // if one stops doing.
         var cut = Render(Sparse());
 
-        Assert.Empty(Targets(cut));
+        Assert.Equal(["#" + DetailSectionIds.Variables], Targets(cut));
 
         cut.Render(p => p.Add(c => c.Datasamling, Datasamling()));
 
@@ -1514,8 +1523,10 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         // The whole list rather than the two headings this is about: it used to be scoped to the
         // aside, where "nothing else was drawn there" came free, and filtering the headings down to
-        // what it compares against would give that half away.
-        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon"],
+        // what it compares against would give that half away. Variabler is the table's, not the
+        // statistics', and a collection counting nothing still has variables to list.
+        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon",
+                      "Variabler"],
                      BlockHeadings(cut));
     }
 
@@ -2046,5 +2057,83 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         pending.SetResult(PageOf(1, 1));
         await pending.Task;
+    }
+
+    [Fact]
+    public void Variables_WhenTheCollectionCountsNothingAndPlacesNothing_ThenTheTableStillHasASection()
+    {
+        // The gap the second review found: every other home for the table is conditioned on the
+        // statistics having a row, so a collection with no numbers at all fetched its variables and
+        // had nowhere to draw them — rows, empty paragraph, failure and retry alike.
+        var counting = Datasamling() with
+        {
+            StatisticsType = null,
+            Frequency = null,
+            CountingUnit = null,
+            VariableCount = 0,
+        };
+
+        var section = Section(Render(counting), "Variabler");
+
+        Assert.Equal(DetailSectionIds.Variables, section.Id);
+        Assert.Single(section.QuerySelectorAll("table.munin-explorer-datasamling__variabler"));
+
+        // The view's own heading here, so it is a word this package owes both languages.
+        Assert.Equal("Variables", BlockHeadings(Render(counting, language: "en"))[^1]);
+    }
+
+    [Fact]
+    public void Variables_WhenTheCollectionHasNoneAndCountsNothing_ThenTheEmptyParagraphIsStillReached()
+    {
+        // The same gap read from the states: sixteen of the 85 datasamlinger measured hold no
+        // variables, and it is exactly those whose numbers are blank — so the sentence saying so
+        // was the one the missing section swallowed.
+        Variables.Answer = _ => Task.FromResult(new Page<VariableSummary> { PageNumber = 1, Size = 20 });
+
+        var cut = Render(Sparse());
+
+        Assert.Equal("Ingen variabler er registrert i denne datasamlingen.",
+                     Section(cut, "Variabler")
+                         .QuerySelector("p.munin-explorer-datasamling__variabler-tom")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Variables_WhenThePlacedSectionDrewNoRowsOfItsOwn_ThenTheTableKeepsItUnderTheCuratorsName()
+    {
+        // The section the placement declared is still that section: the table is what fills it, so
+        // the page does not lose the curator's heading and gain a package word at its foot.
+        var cut = Render(Placed() with
+        {
+            StatisticsType = null,
+            Frequency = null,
+            CountingUnit = null,
+            VariableCount = 0,
+        });
+
+        Assert.Equal(["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt",
+                      "Inklusjons- og eksklusjonskriterier"],
+                     BlockHeadings(cut));
+
+        var section = Section(cut, "Variabler");
+
+        Assert.Equal("section-variabler", section.Id);
+        Assert.Single(section.QuerySelectorAll("table.munin-explorer-datasamling__variabler"));
+        Assert.Equal(BlockHeadings(cut).Count, TocLinks(cut).Count);
+    }
+
+    [Fact]
+    public void Variables_WhenThePagerIsDrawn_ThenItIsNamedApartFromEveryOtherPagerInThePackage()
+    {
+        // Two navigation landmarks called "Paginering" are one a reader moving by landmark cannot
+        // choose between, and a host is free to mount this view beside a surface that draws one.
+        Variables.Answer = page => Task.FromResult(PageOf(page, 45));
+
+        Assert.Equal("Paginering for variablene i datasamlingen",
+                     Render(Datasamling()).Find(".munin-explorer-pagination").GetAttribute("aria-label"));
+        Assert.Equal("Pagination for the variables in this data collection",
+                     Render(Datasamling(), language: "en")
+                         .Find(".munin-explorer-pagination").GetAttribute("aria-label"));
+
+        Assert.NotEqual(Texts.For(null).Pagination, Texts.For(null).VariablesPagination);
     }
 }
