@@ -69,7 +69,7 @@ export function observeContents(columnId) {
     return;
   }
 
-  const spy = { column, clicked: null, frame: 0 };
+  const spy = { column, clicked: null, frame: 0, scroller: null };
   const schedule = () => {
     spy.frame ||= requestAnimationFrame(() => {
       spy.frame = 0;
@@ -86,6 +86,18 @@ export function observeContents(columnId) {
   const unpin = () => {
     spy.clicked = null;
   };
+  // The scroller is the element seen scrolling the page, never one guessed from its styles: an
+  // `overflow-x: hidden` wrapper computes as `overflow-y: auto` and would freeze the mark.
+  const page = column.closest('.munin-explorer-page') ?? column;
+  const scrolled = (event) => {
+    if (event.target === document) {
+      spy.scroller = null;
+    } else if (event.target !== column && event.target.contains?.(page)) {
+      spy.scroller = event.target;
+    }
+
+    schedule();
+  };
 
   // Entries and sections are looked up afresh on every pass, so a re-render is followed. The main
   // column is watched rather than the page, whose size the bold current entry itself can change.
@@ -99,7 +111,7 @@ export function observeContents(columnId) {
     resized.observe(main);
   }
   column.addEventListener('click', click);
-  document.addEventListener('scroll', schedule, { capture: true, passive: true });
+  document.addEventListener('scroll', scrolled, { capture: true, passive: true });
   window.addEventListener('resize', schedule, { passive: true });
 
   for (const gesture of ['wheel', 'touchstart', 'keydown']) {
@@ -111,7 +123,7 @@ export function observeContents(columnId) {
     rendered.disconnect();
     resized.disconnect();
     column.removeEventListener('click', click);
-    document.removeEventListener('scroll', schedule, { capture: true });
+    document.removeEventListener('scroll', scrolled, { capture: true });
     window.removeEventListener('resize', schedule);
 
     for (const gesture of ['wheel', 'touchstart', 'keydown']) {
@@ -151,7 +163,7 @@ function markCurrent(spy) {
 
   // The jump line is where a fragment jump puts a section — its scroll-margin-top plus the
   // scroller's scroll-padding-top — so a click and a scroll to the same place mark the same entry.
-  const root = scrollerOf(page === document ? spy.column : page);
+  const root = spy.scroller?.isConnected ? spy.scroller : document.scrollingElement ?? document.documentElement;
   const origin = root === document.scrollingElement ? 0 : root.getBoundingClientRect().top + root.clientTop;
   const padding = pixels(getComputedStyle(root).scrollPaddingTop, root.clientHeight);
   let current = entries[0];
@@ -182,25 +194,12 @@ function markCurrent(spy) {
   }
 }
 
-/** The nearest ancestor of `element` that scrolls, or the document where none does. */
-function scrollerOf(element) {
-  for (let at = element.parentElement; at !== null && at !== document.body; at = at.parentElement) {
-    const overflow = getComputedStyle(at).overflowY;
-
-    if ((overflow === 'auto' || overflow === 'scroll') && at.scrollHeight > at.clientHeight) {
-      return at;
-    }
-  }
-
-  return document.scrollingElement ?? document.documentElement;
-}
-
 /** A computed length in px; a percentage is of the scrollport's height, as scroll-padding's is. */
 function pixels(value, height) {
   return (value.endsWith('%') ? parseFloat(value) * height / 100 : parseFloat(value)) || 0;
 }
 
-/** Whether the document has scrolled at all, and cannot scroll any further down. */
+/** Whether `root` has scrolled at all, and cannot scroll any further down. */
 function scrolledToEnd(root) {
   return root.scrollTop > 0 && root.scrollTop + root.clientHeight >= root.scrollHeight - 1;
 }
