@@ -924,7 +924,7 @@ public class DetailPageTest : ExplorerTestContext
     public async Task Contents_WhenAStaleImportSucceedsAfterItsLatchWasCleared_ThenNoSpyOutlivesTheColumn()
     {
         // The mirror image: the later import fails and clears the latch, then the first one
-        // succeeds. Spying from that stale render would leave a spy no latch accounts for.
+        // succeeds. The present column must be spied, and under a latch its removal will see.
         var module = new RecordingModule();
         var runtime = new StagingJsRuntime();
 
@@ -941,8 +941,8 @@ public class DetailPageTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         runtime.Answer(1, module);
-        await Task.Delay(200);
-        await cut.InvokeAsync(() => { });
+
+        Assert.True(await module.ReachedAsync("observeContents"));
 
         cut.Render(parameters => parameters.Add(p => p.Contents, (RenderFragment?)null));
         await Task.Delay(200);
@@ -970,8 +970,8 @@ public class DetailPageTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         runtime.Answer(1, module);
-        await Task.Delay(200);
-        await cut.InvokeAsync(() => { });
+
+        Assert.True(await module.ReachedAsync("observeHeroFacts"));
 
         cut.Render(parameters => parameters.Add(p => p.Facts, []));
         await Task.Delay(200);

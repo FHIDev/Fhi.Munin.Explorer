@@ -318,12 +318,12 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
 
         if (await interop.TryLoadAsync())
         {
-            if (watch && observeTurn == _observeTurn)
+            if (watch && Owns(ref _observed, ref _observeTurn, observeTurn, Sticky))
             {
                 await ObserveAsync(interop);
             }
 
-            if (spy && spyTurn == _spyTurn)
+            if (spy && Owns(ref _spied, ref _spyTurn, spyTurn, Contents is not null))
             {
                 await SpyAsync(interop);
             }
@@ -335,6 +335,26 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
             _observed &= !(watch && observeTurn == _observeTurn);
             _spied &= !(spy && spyTurn == _spyTurn);
         }
+    }
+
+    // A render whose import just arrived starts its feature on its own turn, or on a stale one that
+    // finds the feature present and unlatched: the render that cleared the latch failed its import.
+    private static bool Owns(ref bool latched, ref int current, int turn, bool present)
+    {
+        if (turn == current)
+        {
+            return true;
+        }
+
+        if (!present || latched)
+        {
+            return false;
+        }
+
+        latched = true;
+        current++;
+
+        return true;
     }
 
     /// <summary>Lets go of the contents column that left the render tree with the payload.</summary>

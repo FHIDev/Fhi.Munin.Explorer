@@ -69,7 +69,7 @@ export function observeContents(columnId) {
     return;
   }
 
-  const spy = { column, clicked: null, frame: 0, scroller: null };
+  const spy = { column, clicked: null, frame: 0, scroller: null, lastTop: 0 };
   const schedule = () => {
     spy.frame ||= requestAnimationFrame(() => {
       spy.frame = 0;
@@ -79,7 +79,8 @@ export function observeContents(columnId) {
   const click = (event) => {
     // A modified or middle press opens another tab and leaves this one where it is.
     if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
-      spy.clicked = event.target.closest?.('a[href*="#"]') ?? null;
+      // The section's id rather than the link, which a re-render can replace.
+      spy.clicked = event.target.closest?.('a[href*="#"]')?.getAttribute('href').split('#')[1] ?? null;
       schedule();
     }
   };
@@ -146,24 +147,29 @@ export function disconnectContents(columnId) {
 function markCurrent(spy) {
   const page = spy.column.closest('.munin-explorer-page') ?? document;
   const entries = [];
+  const links = [...spy.column.querySelectorAll('a[href*="#"]')];
 
-  for (const link of spy.column.querySelectorAll('a[href*="#"]')) {
+  for (const link of links) {
     // The id as DetailToc wrote it: `hash` percent-encodes, and one bad entry must not stop the rest.
     const id = link.getAttribute('href').split('#')[1];
     const section = id ? page.querySelector(`#${CSS.escape(id)}`) : null;
 
     if (section !== null) {
-      entries.push({ link, section, top: section.getBoundingClientRect().top });
+      entries.push({ id, link, section, top: section.getBoundingClientRect().top });
     }
   }
 
-  if (entries.length === 0) {
-    return;
+  const root = spy.scroller?.isConnected ? spy.scroller : document.scrollingElement ?? document.documentElement;
+
+  // Any move up, a scrollbar drag included, ends the reader's press: the pin is for where it landed.
+  if (root.scrollTop < spy.lastTop - 1) {
+    spy.clicked = null;
   }
+
+  spy.lastTop = root.scrollTop;
 
   // The jump line is where a fragment jump puts a section — its scroll-margin-top plus the
   // scroller's scroll-padding-top — so a click and a scroll to the same place mark the same entry.
-  const root = spy.scroller?.isConnected ? spy.scroller : document.scrollingElement ?? document.documentElement;
   const origin = root === document.scrollingElement ? 0 : root.getBoundingClientRect().top + root.clientTop;
   const padding = pixels(getComputedStyle(root).scrollPaddingTop, root.clientHeight);
   let current = entries[0];
@@ -177,14 +183,16 @@ function markCurrent(spy) {
   }
 
   // At the end of the scroll the sections below the line can never reach it, so the last one is
-  // current, unless the reader pressed that one or a lower one and has not wheeled, touched or typed.
-  if (scrolledToEnd(root)) {
-    current = entries.find((entry) => entry.link === spy.clicked && entry.top >= current.top)
+  // current, unless the reader pressed one of those and has not since wheeled, touched, typed or
+  // scrolled up.
+  if (current !== undefined && scrolledToEnd(root)) {
+    current = entries.find((entry) => entry.id === spy.clicked && entry.top >= current.top)
       ?? entries[entries.length - 1];
   }
 
-  for (const { link } of entries) {
-    if (link === current.link) {
+  // Every link, not only those with a section: one whose section has gone must lose its mark too.
+  for (const link of links) {
+    if (link === current?.link) {
       if (link.getAttribute('aria-current') !== 'location') {
         link.setAttribute('aria-current', 'location');
       }
