@@ -276,14 +276,25 @@ internal static class DetailBlocks
     internal static RenderFragment Group(PropertyGroup group, int level, string? language,
                                          CompleteRecordExtras? completeRecord = null) => builder =>
     {
-        var reader = ReaderLanguage.Of(language);
-        var text = Texts.For(language);
-
         builder.OpenElement(0, $"h{level}");
         builder.AddAttribute(1, "class", "headline headline-xxs margin--none munin-explorer-group");
-        builder.AddAttribute(2, "lang", CatalogueProperties.Foreign(group.NameLanguage, reader));
+        builder.AddAttribute(2, "lang",
+                             CatalogueProperties.Foreign(group.NameLanguage, ReaderLanguage.Of(language)));
         builder.AddContent(3, group.Name);
         builder.CloseElement();
+
+        builder.AddContent(4, GroupBody(group, language, completeRecord));
+    };
+
+    /// <summary>
+    /// The same group without its heading, for a page that draws it as a section of its own and
+    /// heads it at the level its neighbours wear (Fhi.Metadata-35w0p.22).
+    /// </summary>
+    internal static RenderFragment GroupBody(PropertyGroup group, string? language,
+                                             CompleteRecordExtras? completeRecord = null) => builder =>
+    {
+        var reader = ReaderLanguage.Of(language);
+        var text = Texts.For(language);
 
         if (completeRecord is { } extras
             && string.Equals(group.Key, CatalogueProperties.CatchAllGroupKey, StringComparison.Ordinal))
@@ -292,8 +303,8 @@ internal static class DetailBlocks
             return;
         }
 
-        builder.OpenElement(4, "dl");
-        builder.AddAttribute(5, "class", PageFields);
+        builder.OpenElement(0, "dl");
+        builder.AddAttribute(1, "class", PageFields);
 
         Rows(builder, 10, group.Rows, reader, text);
 

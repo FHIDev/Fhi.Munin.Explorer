@@ -54,67 +54,15 @@
         </Header>
         <ChildContent>
 
-            @* Every block below is a <section> carrying a fixed English id, and draws exactly when
-               its predicate in BuildToc holds — the one its nav entry is added under, so the nav can
-               never link to a block left out, in either language. *@
-
-            @* The catalogue's own metadata. Which groups exist, what they are called and what
-               order they come in all arrive with the payload — see CatalogueProperties.Groups
-               for the two rules that decide which of them a reader actually sees.
-
-               The four block headings below wear headline-s, the same size as the name above
-               them, because Stiler's scale has nothing verified between it and the headline-xxs
-               the field labels wear. A smaller-sounding name invented to sit in that gap —
-               headline-sm was here until Fhi.Metadata-e4bj2 — is a name no stylesheet defines,
-               so it renders as a bare <h*> at the browser's own size instead. *@
-            @if (Drawn(DetailSectionIds.Metadata))
+            @* One pass, in the order BuildLayout resolved: nothing about which sections there are
+               or where they go is decided here. `block` rather than `section`, because @section
+               opens an MVC Razor directive before it is ever read as a loop variable. *@
+            @foreach (var block in Layout)
             {
-                <DetailSection Id="@DetailSectionIds.Metadata">
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
-
-                    @foreach (var group in Groups)
-                    {
-                        @DetailBlocks.Group(group, GroupLevel, Language, CompleteRecordFacts)
-                    }
-                </DetailSection>
-            }
-
-            @* Always true, because this block has no empty state: the tree always draws, its
-               status line carrying the loading, empty, error and retry states, and its nodes
-               come off a different request than these counts, which could hide a real one. *@
-            @if (Drawn(DetailSectionIds.DataCollections))
-            {
-                <DetailSection Id="@DetailSectionIds.DataCollections">
-                    @DetailBlocks.Heading(BlockLevel, DataCollectionsHeading ?? DefaultDataCollectionsHeading, "headline headline-s")
-                    <KildeHierarchyView KildeId="@kilde.Id" Language="@Language" ShowNodeIcons="@ShowNodeIcons"
-                                        DatasamlingHref="@DatasamlingHref" />
-                    @if (DataCollections.Count > 0 || Delkilder.Count > 0)
-                    {
-                        <details class="munin-explorer-hierarchy__metadata" @key="kilde.Id">
-                            <summary>@T.HierarchyMetadata</summary>
-                            @DataCollectionStructure
-                        </details>
-                    }
-                </DetailSection>
-            }
-
-            @* Last of this view's own blocks, because the mockups put source information near
-               the end of the page rather than in a rail beside it. *@
-
-            @* A box with no value at all is not drawn; one with some draws the rest as "Ingen". *@
-            @if (Drawn(DetailSectionIds.Source))
-            {
-                <DetailSection Id="@DetailSectionIds.Source">
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                    @DetailBlocks.LinkedFacts(SourceInformation, Language)
-                </DetailSection>
-            }
-
-            @if (Drawn(DetailSectionIds.Statistics))
-            {
-                <DetailSection Id="@DetailSectionIds.Statistics">
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingStatistics, "headline headline-s")
-                    @DetailBlocks.Facts(Statistics, Language)
+                <DetailSection Id="@block.Id">
+                    @DetailBlocks.Heading(BlockLevel, block.Heading, "headline headline-s",
+                                          language: block.HeadingLanguage)
+                    @block.Body
                 </DetailSection>
             }
 
