@@ -488,6 +488,12 @@ unstyled-name||.munin-explorer-lead|
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
 
+# New in Fhi.Metadata-mg08i: the datasamling page's variable table and the paragraph that stands in
+# for it. The Stiler rules are Fhi.Metadata-w4lys, merged as PR 39467 after 0.1.79 was cut, so these
+# two lines go when the pin moves to the release that carries it.
+unstyled-name||.munin-explorer-datasamling__variabler|
+unstyled-name||.munin-explorer-datasamling__variabler-tom|
+
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
 # only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.79.
 

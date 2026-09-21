@@ -1,5 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -22,12 +24,28 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// curation detail.
 /// </para>
 /// <para>
+/// <b>Register <see cref="IMuninExplorerClient"/> with <c>AddMuninExplorer</c> before mounting
+/// this view.</b> The payload carries a variable count and no variables, so the table under the
+/// collection's own section is a second request this view makes for itself — the arrangement
+/// <see cref="KildeHierarchyView"/> already uses, and what keeps both explorers mounting this view
+/// with the parameters they always passed.
+/// </para>
+/// <para>
 /// Ships no CSS, like everything else in this package: it emits the host's class names so the
 /// surrounding site styles it.
 /// </para>
 /// </remarks>
-public sealed partial class DatasamlingView : ComponentBase
+public sealed partial class DatasamlingView : ComponentBase, IDisposable
 {
+    [Inject] private IMuninExplorerClient Client { get; set; } = default!;
+
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    private ILogger? _log;
+
+    /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
+    private ILogger? Log => _log ??= ExplorerLog.For<DatasamlingView>(Services);
+
     /// <summary>The datasamling to show. Nothing renders until this is set.</summary>
     [Parameter, EditorRequired]
     public DatasamlingDetail? Datasamling { get; set; }
@@ -439,11 +457,213 @@ public sealed partial class DatasamlingView : ComponentBase
     /// <summary>The contents nav, one entry per section this view drew, in that order.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
+    /// <summary>Rows per page in the variable table — the package's own default everywhere else.</summary>
+    /// <remarks>
+    /// <see cref="ExplorerUrlState.DefaultPageSize"/> rather than a number of this view's own, so a
+    /// reader moving between the result list and a collection's page counts in the same pages. No
+    /// size control beside it: this pager owns no query key, so a size the reader chose would be
+    /// forgotten the moment they opened another collection.
+    /// </remarks>
+    private const int VariablesPageSize = ExplorerUrlState.DefaultPageSize;
+
+    private Guid? _variablesFor;
+    private CancellationTokenSource? _variablesRequest;
+    private IReadOnlyList<VariableSummary> _variables = [];
+    private int _variablesPage = 1;
+    private int _variablesTotal;
+    private int _variablesPages;
+    private bool _variablesLoading;
+    private bool _variablesFailed;
+    private bool _variablesRateLimited;
+    private bool _variablesRetryShown;
+    private bool _disposed;
+
+    /// <summary>Whether the retry on offer can do anything, which throttling is not.</summary>
+    /// <remarks>Only waiting helps a 429, so pressing again is what the reader must not be invited to do.</remarks>
+    private bool CanRetryVariables => _variablesFailed && !_variablesLoading && !_variablesRateLimited;
+
+    /// <summary>How many pages the last answer said there are; none before one has arrived.</summary>
+    private int VariablePageCount => _variablesPages;
+
+    /// <summary>The fallback count, for an answer that left <c>totalPages</c> at zero.</summary>
+    private static int PagesOver(int total, int size) => total <= 0 ? 0 : (total + size - 1) / size;
+
+    /// <summary>
+    /// What the alert region over the table says, and nothing once a first load has settled.
+    /// </summary>
+    /// <remarks>
+    /// A successful empty answer says nothing here: its sentence is the paragraph that replaces the
+    /// table, so a reader is not told twice — and a failure must never reach that paragraph, which
+    /// is what the ordering of these arms is for.
+    /// </remarks>
+    private string VariablesStatus =>
+        _variablesLoading ? T.VariablesLoading
+        : _variablesRateLimited ? T.RateLimitError
+        : _variablesFailed ? T.VariablesError
+        : _variablesRetryShown ? T.VariablesLoaded : "";
+
+    /// <summary>Whether the table itself is what the section draws.</summary>
+    private bool AnyVariables => !_variablesLoading && !_variablesFailed && _variables.Count > 0;
+
+    /// <summary>The paragraph's case: a load that came back with nothing at all to show.</summary>
+    private bool NoVariables =>
+        !_variablesLoading && !_variablesFailed && !_variablesRateLimited && _variables.Count == 0;
+
+    /// <summary>The reader's word for a stored datatype, never the stored value itself.</summary>
+    /// <remarks>
+    /// This surface fetches no filters, so the shipped table is the whole of what it has to go on —
+    /// the bound <c>KildeView</c> and <c>VariableView</c> share (Fhi.Metadata-vcxoc).
+    /// <see cref="Texts.DataTypeLabel"/> canonicalises first, so a legacy spelling and its code come
+    /// out as one word rather than as two rows that look like two datatypes.
+    /// </remarks>
+    private string? DataTypeName(string? stored) =>
+        string.IsNullOrWhiteSpace(stored) ? null : T.DataTypeLabel(stored);
+
+    /// <summary>Written the way the result list writes it, so the pager reads the same on both.</summary>
+    private static string AriaDisabled(bool enabled) => enabled ? "false" : "true";
+
     /// <inheritdoc />
-    protected override void OnParametersSet()
+    protected override Task OnParametersSetAsync()
     {
         Layout = BuildLayout();
         Toc = BuildToc(Layout);
+
+        if (Datasamling?.Id is not { } id)
+        {
+            _variablesFor = null;
+            _variablesRequest?.Cancel();
+            _variables = [];
+            _variablesTotal = 0;
+            _variablesPages = 0;
+
+            return Task.CompletedTask;
+        }
+
+        if (_variablesFor == id)
+        {
+            return Task.CompletedTask;
+        }
+
+        // A different collection is a different list: the page the reader was on says nothing about
+        // this one, and the old total would size a pager over rows that are no longer there.
+        _variablesFor = id;
+        _variablesTotal = 0;
+        _variablesPages = 0;
+        _variablesRetryShown = false;
+
+        return LoadVariablesAsync(1);
+    }
+
+    private Task RetryVariablesAsync() =>
+        CanRetryVariables ? LoadVariablesAsync(_variablesPage) : Task.CompletedTask;
+
+    /// <summary>
+    /// Moves the table to <paramref name="page"/>, or does nothing where that page cannot exist.
+    /// </summary>
+    /// <remarks>
+    /// The clamp is here rather than on each pager button, which is why both of them are
+    /// <c>aria-disabled</c> and never <c>disabled</c>: disabling the control under the reader's
+    /// focus drops that focus to <c>&lt;body&gt;</c>, with nothing on screen to say why.
+    /// </remarks>
+    private Task GoToVariablePageAsync(int page) =>
+        page < 1 || page > VariablePageCount || page == _variablesPage || _variablesLoading
+            ? Task.CompletedTask
+            : LoadVariablesAsync(page);
+
+    /// <summary>
+    /// One page of the collection's variables, from the search endpoint narrowed to this
+    /// datasamling.
+    /// </summary>
+    /// <remarks>
+    /// <c>IncludeHistorical</c> stays at its default: the payload's own variableCount counts the
+    /// current ones, and the fact row saying so is drawn on this very page, so a total that counted
+    /// history would contradict it (Fhi.Metadata-ivxpi).
+    /// </remarks>
+    private async Task LoadVariablesAsync(int page)
+    {
+        if (Datasamling?.Id is not { } id)
+        {
+            return;
+        }
+
+        _variablesRequest?.Cancel();
+        using var request = new CancellationTokenSource();
+        _variablesRequest = request;
+        _variablesPage = page;
+        _variables = [];
+        _variablesLoading = true;
+        _variablesFailed = false;
+        _variablesRateLimited = false;
+
+        try
+        {
+            var answer = await Client.SearchVariablesAsync(
+                search: null,
+                filter: new VariableFilter { DatasamlingIds = [id] },
+                page: page,
+                pageSize: VariablesPageSize,
+                cancellationToken: request.Token);
+
+            // A superseded call must not write over the list the reader is looking at, which is the
+            // whole reason each load carries its own source rather than sharing one.
+            if (_disposed || request.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _variables = answer.Items;
+            _variablesTotal = answer.TotalCount;
+
+            // The server's own count wins, as VariableSearch.TotalPages explains: it is the side
+            // that clamps the page size, so arithmetic over a size it quietly changed would offer
+            // a Neste for a page that is not there.
+            _variablesPages = answer.TotalPages > 0
+                ? answer.TotalPages
+                : PagesOver(answer.TotalCount, answer.Size > 0 ? answer.Size : VariablesPageSize);
+        }
+        catch (MuninExplorerRateLimitedException ex)
+        {
+            // Inside the guard, not above it: a call this view cancelled on a new datasamling comes
+            // back as a cancellation that nothing failed and nobody should read about.
+            if (!_disposed && !request.IsCancellationRequested)
+            {
+                Log?.LogWarning(
+                    ex, "the rate limiter refused the variables of datasamling {DatasamlingId} page {Page}",
+                    id, page);
+
+                _variablesRateLimited = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            // The same guard, and for the same reason: HttpClient's own timeout is a
+            // TaskCanceledException worth logging, and this view's own Cancel is not.
+            if (!_disposed && !request.IsCancellationRequested)
+            {
+                Log?.LogError(
+                    ex, "could not load the variables of datasamling {DatasamlingId} page {Page}", id, page);
+
+                _variablesFailed = true;
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(_variablesRequest, request))
+            {
+                _variablesRequest = null;
+                _variablesLoading = false;
+                _variablesRetryShown |= _variablesFailed;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _disposed = true;
+        _variablesRequest?.Cancel();
+        _variablesRequest?.Dispose();
+        _variablesRequest = null;
     }
 
     /// <summary>
@@ -453,6 +673,13 @@ public sealed partial class DatasamlingView : ComponentBase
     /// No section list is written down here: the sections are Munin's placement rows to declare and
     /// a curator's to rename, and a group no row names keeps the Metadata block rather than being
     /// dropped (Fhi.Metadata-lr6yh).
+    /// <para>
+    /// The variable table follows the statistics the way those facts already follow the placement —
+    /// it is drawn under whichever section holds Antall variabler, which is the row it enumerates.
+    /// That is what puts it under the catalogue's own Variabler heading with no second heading and
+    /// no key of this package's, and what leaves a payload predating the placement rows drawing it
+    /// beside that count in the view's own block (Fhi.Metadata-mg08i).
+    /// </para>
     /// </remarks>
     private IReadOnlyList<DetailLayoutSection> BuildLayout()
     {
@@ -495,7 +722,9 @@ public sealed partial class DatasamlingView : ComponentBase
                 sourceDrawn = true;
             }
 
-            if (string.Equals(group.Key, statistics, StringComparison.Ordinal))
+            var variablesHere = string.Equals(group.Key, statistics, StringComparison.Ordinal);
+
+            if (variablesHere)
             {
                 facts.AddRange(Statistics.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)));
                 statisticsDrawn = true;
@@ -503,11 +732,14 @@ public sealed partial class DatasamlingView : ComponentBase
 
             var body = DetailBlocks.GroupBody(group, Language, CompleteRecordFacts);
 
+            if (facts.Count > 0)
+            {
+                body = DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language));
+            }
+
             groups.Add(new(group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
                            CatalogueProperties.Foreign(group.NameLanguage, Reader),
-                           facts.Count == 0
-                               ? body
-                               : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language))));
+                           variablesHere ? DetailBlocks.Both(body, VariablesBlock) : body));
         }
 
         return DetailLayout.Order(datasamling.Sections, groups,
@@ -556,7 +788,7 @@ public sealed partial class DatasamlingView : ComponentBase
         if (!statisticsDrawn && AnyStatistics)
         {
             blocks.Add(new(SectionKeys.Statistics, DetailSectionIds.Statistics, StatisticsHeading, null,
-                           DetailBlocks.Facts(Statistics, Language)));
+                           DetailBlocks.Both(DetailBlocks.Facts(Statistics, Language), VariablesBlock)));
         }
 
         return blocks;

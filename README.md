@@ -578,6 +578,19 @@ These are not style preferences — each one is a host that breaks otherwise.
     time against the pin. So the language name draws at body size on a host that has Stiler until
     `Fhi.Metadata-4ozhj` lands, and the sample stand-ins draw it that way too rather than inventing
     the look the guard cannot see.
+    The datasamling page adds two more for the variable table it fetches for itself,
+    `munin-explorer-datasamling__variabler` on the `<table>` and
+    `munin-explorer-datasamling__variabler-tom` on the paragraph that replaces it when the
+    collection has none. Handles both, and the reason is the shape rather than the rules: the table
+    is a real `<table>` with a `<th scope="col">` per column and a `<th scope="row">` on the code,
+    so undrawn it still lines its columns up and still tells a screen reader which heading a cell
+    belongs to, and the empty case is a paragraph either way. What the rules buy is the borders,
+    the padding and the column widths that stop a Norwegian beskrivelse squeezing the other three
+    columns to slivers. They are `Fhi.Helsedata.Stiler` PR 39467's — merged, and in no published
+    version at the pin this repository restores, so both sample stylesheets stand in meanwhile and
+    `test/sample-css-known-divergences.txt` records the two names as unstyled until the pin moves.
+    The loading, failure and pager controls beside them add no name: they are the ones the result
+    list already writes.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
     `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
@@ -818,6 +831,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-datasamling__header` | handle |
   | `munin-explorer-datasamling__identifiers` | handle |
   | `munin-explorer-datasamling__main` | handle |
+  | `munin-explorer-datasamling__variabler` | handle |
+  | `munin-explorer-datasamling__variabler-tom` | handle |
   | `munin-explorer-detail` | handle |
   | `munin-explorer-drilldown` | handle |
   | `munin-explorer-filters` | handle |
@@ -1188,6 +1203,16 @@ through either explorer or mounted directly. Register the client with `AddMuninE
 mounting `KildeView`. `KildeHierarchyView` can also be mounted with `KildeId` and `Language`.
 The new hierarchy class names are listed above;
 their helsedata styling is tracked in `Fhi.Metadata-wihod` and is not supplied by this package.
+
+`DatasamlingView` fetches for itself on the same terms, so **it needs `AddMuninExplorer` too** —
+a requirement it did not have before `Fhi.Metadata-mg08i`, because until then it drew only what its
+`Datasamling` parameter carried. A datasamling payload states how many variables the collection
+holds and names none of them, so the table under the collection's own section is a second call:
+`SearchVariablesAsync` narrowed to that datasamling, one page at a time, at the same page size the
+result list uses. It is drawn inside whichever section the catalogue's placement rows put "Antall
+variabler" in — "Variabler" on today's data — so the page gains no heading and no contents-nav
+entry of its own, and a payload predating those rows draws it beside that count in the view's own
+statistics block. Changing `Datasamling` resets it to page 1 and cancels the call in flight.
 
 Each row carries a node icon in front of its name — a folder on a delkilde, one glyph per
 datakategori on a datasamling, and nothing on a variabelgruppe, which is the mapping Kelda's own

@@ -199,6 +199,19 @@ internal sealed record Texts(
     string FieldName,
     string VariableCountSuffix,
 
+    // The datasamling page's variable table, which is a second request and so has the states a
+    // request has. A 429 reuses RateLimitError rather than adding a sixth: the cause and the
+    // remedy are the same whichever call the limiter refused.
+    string VariablesLoading,
+    string VariablesLoaded,
+    string VariablesError,
+    string VariablesRetry,
+    string VariablesEmpty,
+    // (total) — the table's own name, said to a screen reader and not drawn. The number is the
+    // API's rather than the payload's variableCount, so a caption reporting a different total from
+    // the Antall variabler row beside it is a disagreement worth hearing rather than one hidden.
+    Func<int, string> VariablesCaption,
+
     // The variable detail view: its own fact blocks, and the statistics table's columns.
     string FieldKildeName,
     string FieldKildeShortName,
@@ -1007,6 +1020,12 @@ internal sealed record Texts(
         HeadingDataCollections: "Datasamlinger",
         FieldName: "Navn",
         VariableCountSuffix: "variabler",
+        VariablesLoading: "Laster variabler …",
+        VariablesLoaded: "Variablene er lastet.",
+        VariablesError: "Kunne ikke laste variablene nå.",
+        VariablesRetry: "Prøv å laste variablene på nytt",
+        VariablesEmpty: "Ingen variabler er registrert i denne datasamlingen.",
+        VariablesCaption: total => $"Variabler i datasamlingen, {total} totalt",
         FieldKildeName: "Kildenavn",
         FieldKildeShortName: "Kortnavn",
         FieldVariableGroups: "Variabelgrupper",
@@ -1394,6 +1413,12 @@ internal sealed record Texts(
         HeadingDataCollections: "Data collections",
         FieldName: "Name",
         VariableCountSuffix: "variables",
+        VariablesLoading: "Loading variables …",
+        VariablesLoaded: "The variables have loaded.",
+        VariablesError: "Could not load the variables right now.",
+        VariablesRetry: "Retry loading the variables",
+        VariablesEmpty: "No variables are recorded in this data collection.",
+        VariablesCaption: total => $"Variables in this data collection, {total} in total",
         FieldKildeName: "Source name",
         FieldKildeShortName: "Short name",
         FieldVariableGroups: "Variable groups",

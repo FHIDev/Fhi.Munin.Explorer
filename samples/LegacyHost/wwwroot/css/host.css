@@ -1971,6 +1971,63 @@ table.munin-explorer-data-list tbody th {
   max-width: 65ch;
 }
 
+/* The datasamling page's own variable table, fetched a page at a time and drawn under whichever
+   section holds Antall variabler. Same shape as the datasamlinger table below — the two are the
+   same kind of thing — with the code and name columns pinned, because a beskrivelse left free
+   takes the width a code cannot wrap out of. Stands in for Fhi.Helsedata.Stiler PR 39467, which no
+   published version carries yet. */
+.munin-explorer-datasamling__variabler {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.munin-explorer-datasamling__variabler th,
+.munin-explorer-datasamling__variabler td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--grey30);
+
+  /* The catalogue stores beskrivelse as markdown, so the cells carry bare URLs — one unbroken
+     token long enough to push a column past its share and the table past its container. */
+  overflow-wrap: anywhere;
+}
+
+.munin-explorer-datasamling__variabler thead th {
+  background: var(--grey10);
+  color: var(--grey60);
+  font-weight: 600;
+}
+
+/* The code is a <th scope="row">, which browsers centre and bold by default. It labels the row
+   rather than heading it. */
+.munin-explorer-datasamling__variabler tbody th {
+  font-weight: 600;
+}
+
+.munin-explorer-datasamling__variabler tr > :nth-child(1) {
+  width: 22%;
+}
+
+.munin-explorer-datasamling__variabler tr > :nth-child(2) {
+  width: 26%;
+}
+
+/* As narrow as the word and no narrower, the idiom the count column next door uses. */
+.munin-explorer-datasamling__variabler tbody td:nth-child(4) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* A collection the catalogue records no variables for: a sentence where the table would be, held
+   to the measure the prose above it is held to. */
+.munin-explorer-datasamling__variabler-tom {
+  margin: 0 0 24px;
+  max-width: 65ch;
+  color: var(--grey60);
+}
+
 /* The datasamlinger table. Same shape as the Data tab's code table — the two are the same kind of
    thing, a list of rows with a heading each — with the name column left to wrap, because a
    datasamling name is a Norwegian sentence and nowrap on it is a horizontal scrollbar. */

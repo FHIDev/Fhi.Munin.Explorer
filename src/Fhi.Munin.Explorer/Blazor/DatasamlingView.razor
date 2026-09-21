@@ -57,3 +57,84 @@
         </ChildContent>
     </DetailPage>
 }
+
+@code {
+    // A real table rather than a list of divs: it is what ties a cell to its column heading for a
+    // screen reader, and an undrawn one still lines its columns up where an unknown class name
+    // draws nothing at all. Which section it lands in is BuildLayout's.
+    private RenderFragment VariablesBlock => @<text>
+        <p class="caption" role="status">@VariablesStatus</p>
+
+        @* Never `disabled`: the offer is spent, and taking the focus of whoever just pressed it
+           away to <body> is a worse answer than a button that says so. *@
+        @if (_variablesRetryShown)
+        {
+            <button type="button" class="hd-button-square button-square--ghost-blue munin-explorer-retry"
+                    aria-disabled="@(CanRetryVariables ? null : "true")"
+                    @onclick="RetryVariablesAsync">@T.VariablesRetry</button>
+        }
+
+        @if (AnyVariables)
+        {
+            <table class="munin-explorer-datasamling__variabler">
+
+                @* The table's own name, and the API's total rather than the payload's count: a
+                   reader hearing one page of twenty is owed how many there are altogether. *@
+                <caption class="screenreader-only">@T.VariablesCaption(_variablesTotal)</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">@T.FieldCode</th>
+                        <th scope="col">@T.FieldName</th>
+                        <th scope="col">@T.FieldDescription</th>
+                        <th scope="col">@T.FieldDataType</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var variable in _variables)
+                    {
+                        <tr @key="variable.Id">
+                            @* The code, not the name: it is the one value of the row that is stable,
+                               unique and language-free, so it is what the other cells are about. *@
+                            <th scope="row">@variable.Code</th>
+                            <td lang="@CatalogueProperties.Foreign("no", Reader)">@variable.PreferredTerm</td>
+                            <td lang="@CatalogueProperties.Foreign("no", Reader)">@CatalogueMarkdown.Render(variable.Description)</td>
+
+                            @* The stored value is a code — live rows carry "2" — and a legacy row
+                               carries a word. DataTypeLabel canonicalises before it looks up, so the
+                               two land on one name and neither reaches the page raw. *@
+                            <td>@DataTypeName(variable.DataType)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else if (NoVariables)
+        {
+            <p class="munin-explorer-datasamling__variabler-tom">@T.VariablesEmpty</p>
+        }
+
+        @if (VariablePageCount > 1)
+        {
+            @* The result list's own pager, class names and all. A div with role="navigation" rather
+               than a <nav> so it can be named apart from the host page's own landmarks. *@
+            <div class="munin-explorer-pagination" role="navigation" aria-label="@T.Pagination">
+                <div class="munin-explorer-pagination-content">
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            aria-label="@T.PreviousLabel"
+                            aria-disabled="@AriaDisabled(_variablesPage > 1)"
+                            @onclick="() => GoToVariablePageAsync(_variablesPage - 1)">@T.Previous</button>
+
+                    @PageNumbers.Write(this, _variablesPage, VariablePageCount, GoToVariablePageAsync,
+                                       T.GoToPageLabel, T.CurrentPageLabel)
+
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            aria-label="@T.NextLabel"
+                            aria-disabled="@AriaDisabled(_variablesPage < VariablePageCount)"
+                            @onclick="() => GoToVariablePageAsync(_variablesPage + 1)">@T.Next</button>
+                </div>
+            </div>
+        }
+    </text>;
+}

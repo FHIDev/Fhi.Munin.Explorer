@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -27,6 +28,66 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class DatasamlingViewTest : ExplorerTestContext
 {
+    public DatasamlingViewTest() => Services.AddSingleton<IMuninExplorerClient>(Variables);
+
+    /// <summary>
+    /// The one call this view makes for itself, recorded rather than only answered.
+    /// </summary>
+    /// <remarks>
+    /// What the arguments were is half of what these tests are about — the filter has to carry this
+    /// datasamling and nothing else, and IncludeHistorical has to stay off, neither of which is
+    /// visible in the rows that come back (Fhi.Metadata-ivxpi).
+    /// </remarks>
+    private sealed class VariablesClient : EmptyMuninExplorerClient
+    {
+        internal List<(VariableFilter? Filter, int Page, int Size, CancellationToken Token)> Calls { get; } = [];
+
+        internal Func<int, Task<Page<VariableSummary>>> Answer { get; set; } =
+            page => Task.FromResult(PageOf(page, 2));
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default)
+        {
+            Calls.Add((filter, page, pageSize, cancellationToken));
+
+            return Answer(page);
+        }
+    }
+
+    private VariablesClient Variables { get; } = new();
+
+    /// <summary>One row, named by its code, which is what every assertion here reads it back by.</summary>
+    private static VariableSummary Variable(string code, string term, string? description = null,
+                                            string? dataType = "2") =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Code = code,
+            PreferredTerm = term,
+            Description = description,
+            DataType = dataType,
+        };
+
+    /// <summary>A page of <paramref name="total"/> variables, twenty at a time as the view asks.</summary>
+    private static Page<VariableSummary> PageOf(int page, int total, string prefix = "V_ALS.F1")
+    {
+        var first = (page - 1) * 20;
+        var count = Math.Clamp(total - first, 0, 20);
+
+        return new Page<VariableSummary>
+        {
+            Items = [.. Enumerable.Range(first + 1, count)
+                                  .Select(n => Variable($"{prefix}.NR{n}", $"Variabel {n}"))],
+            TotalCount = total,
+            PageNumber = page,
+            Size = 20,
+            TotalPages = (total + 19) / 20,
+        };
+    }
+
     /// <summary>
     /// The live payload, captured: six curated keys, two of the four groups filled in, every
     /// inherited field null on the datasamling itself and set on its <c>Effective…</c> twin.
@@ -379,6 +440,9 @@ public class DatasamlingViewTest : ExplorerTestContext
             "munin-explorer-datasamling__header",
             "munin-explorer-datasamling__identifiers",
             "munin-explorer-datasamling__main",
+            // The variable table, fetched into whichever section holds Antall variabler. Its empty
+            // twin, `__variabler-tom`, is drawn instead where the collection has none.
+            "munin-explorer-datasamling__variabler",
             "munin-explorer-group",                   // shared with the kilde and variable views
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
@@ -1663,5 +1727,324 @@ public class DatasamlingViewTest : ExplorerTestContext
             .Find("h2").GetAttribute("lang"));
 
         Assert.Equal("no", Render(Datasamling(), language: "en").Find("h2").GetAttribute("lang"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The variable table. The payload counts the collection's variables and names none of
+    // them, so this is a second request — and everything below is about the states a
+    // request has, not only about the rows. (Fhi.Metadata-mg08i)
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>The table, or nothing where the section drew the empty paragraph instead.</summary>
+    private static IElement Table(IRenderedComponent<DatasamlingView> cut) =>
+        cut.Find("table.munin-explorer-datasamling__variabler");
+
+    private static IReadOnlyList<string> Cells(IElement row) =>
+        [.. row.Children.Select(cell => cell.TextContent.Trim())];
+
+    [Fact]
+    public void Variables_WhenTheCollectionHasThem_ThenTheTableIsTheFourAgreedColumnsInOrder()
+    {
+        // The agreed Stiler contract, column for column: a real table, a th per column heading and
+        // a th scope="row" on the code, which is what ties a cell to both for a screen reader.
+        Variables.Answer = _ => Task.FromResult(new Page<VariableSummary>
+        {
+            Items = [Variable("V_ALS.F1.ALSFRSR1TALE", "Tale", "Talefunksjon.", "2")],
+            TotalCount = 1,
+            PageNumber = 1,
+            Size = 20,
+            TotalPages = 1,
+        });
+
+        var table = Table(Render(Datasamling()));
+
+        Assert.Equal(["Kode", "Navn", "Beskrivelse", "Datatype"],
+                     table.QuerySelectorAll("thead th").Select(th => th.TextContent.Trim()));
+        Assert.All(table.QuerySelectorAll("thead th"),
+                   th => Assert.Equal("col", th.GetAttribute("scope")));
+
+        var row = table.QuerySelector("tbody tr")!;
+
+        Assert.Equal("TH", row.Children[0].TagName);
+        Assert.Equal("row", row.Children[0].GetAttribute("scope"));
+        Assert.Equal(["V_ALS.F1.ALSFRSR1TALE", "Tale", "Talefunksjon.", "Heltall"], Cells(row));
+
+        // The table's own name, said and not drawn: a reader hearing twenty rows is owed the total.
+        Assert.Equal("Variabler i datasamlingen, 1 totalt",
+                     table.QuerySelector("caption")!.TextContent.Trim());
+        Assert.Contains("screenreader-only", table.QuerySelector("caption")!.ClassList);
+
+        Assert.Equal("Variables in this data collection, 1 in total",
+                     Table(Render(Datasamling(), language: "en"))
+                         .QuerySelector("caption")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Variables_WhenTheCatalogueStoredTheDatatypeAsAWord_ThenItReadsAsTheCodeItMeans()
+    {
+        // Variables predating the codes hold words. Canonicalising first is what puts the legacy
+        // spelling and the code on one name instead of two rows that look like two datatypes; the
+        // raw stored value must never reach the page.
+        Variables.Answer = _ => Task.FromResult(new Page<VariableSummary>
+        {
+            Items = [Variable("V_ALS.F1.A", "A", dataType: "Integer"),
+                     Variable("V_ALS.F1.B", "B", dataType: "2")],
+            TotalCount = 2,
+            PageNumber = 1,
+            Size = 20,
+            TotalPages = 1,
+        });
+
+        var rows = Table(Render(Datasamling())).QuerySelectorAll("tbody tr");
+
+        Assert.Equal(["Heltall", "Heltall"], rows.Select(row => Cells(row)[3]));
+        Assert.Equal(["Integer", "Integer"],
+                     Table(Render(Datasamling(), language: "en"))
+                         .QuerySelectorAll("tbody tr").Select(row => Cells(row)[3]));
+    }
+
+    [Fact]
+    public void Variables_WhenTheViewAsksForThem_ThenItNarrowsToThisCollectionAndLeavesHistoryOut()
+    {
+        // The whole of what the request has to say, and none of it is visible in the rows that come
+        // back: a filter that lost its DatasamlingIds answers with the whole catalogue, and
+        // IncludeHistorical on measures 26 where the Antall variabler row beside it says 23.
+        var datasamling = Datasamling();
+
+        Render(datasamling);
+
+        var call = Assert.Single(Variables.Calls);
+
+        Assert.Equal([datasamling.Id], call.Filter!.DatasamlingIds);
+        Assert.False(call.Filter.IncludeHistorical);
+        Assert.Equal(1, call.Page);
+        Assert.Equal(ExplorerUrlState.DefaultPageSize, call.Size);
+    }
+
+    [Fact]
+    public void Variables_WhenThereIsMoreThanOnePage_ThenThePagerFetchesTheNextAndKeepsTheFilter()
+    {
+        // The reader has to be able to reach every variable the count promises. A view that fetched
+        // page one and called it the list would hide the other twenty-five without saying so.
+        var datasamling = Datasamling();
+
+        Variables.Answer = page => Task.FromResult(PageOf(page, 45));
+
+        var cut = Render(datasamling);
+
+        var rows = Table(cut).QuerySelectorAll("tbody tr");
+
+        Assert.Equal(20, rows.Length);
+        Assert.Equal("V_ALS.F1.NR1", Cells(rows[0])[0]);
+        Assert.Equal("V_ALS.F1.NR20", Cells(rows[19])[0]);
+
+        cut.Find(".munin-explorer-pagination-content button[aria-label='Neste side']").Click();
+
+        Assert.Equal("V_ALS.F1.NR21", Cells(Table(cut).QuerySelector("tbody tr")!)[0]);
+
+        var second = Variables.Calls[^1];
+
+        Assert.Equal(2, second.Page);
+        Assert.Equal([datasamling.Id], second.Filter!.DatasamlingIds);
+        Assert.False(second.Filter.IncludeHistorical);
+
+        // Three pages over 45 rows, and the one in force says which it is.
+        Assert.Equal(["1", "2", "3"],
+                     cut.FindAll(".munin-explorer-pagination-pages button").Select(b => b.TextContent));
+        Assert.Equal("2",
+                     cut.Find(".munin-explorer-pagination-pages button[aria-current=page]").TextContent);
+    }
+
+    [Fact]
+    public void Variables_WhenTheCollectionFitsOnOnePage_ThenNoPagerIsDrawn()
+    {
+        // "Side 1 av 1" between two buttons that can never do anything is furniture.
+        Assert.Empty(Render(Datasamling()).FindAll(".munin-explorer-pagination"));
+    }
+
+    [Fact]
+    public void Variables_WhenTheDatasamlingChanges_ThenTheTableGoesBackToItsFirstPage()
+    {
+        // A page number is about one collection. Carried over, the reader lands on page three of a
+        // list that has one, and the API answers an out-of-range page with nothing at all.
+        Variables.Answer = page => Task.FromResult(PageOf(page, 45));
+
+        var cut = Render(Datasamling());
+
+        cut.Find(".munin-explorer-pagination-content button[aria-label='Neste side']").Click();
+        Assert.Equal(2, Variables.Calls[^1].Page);
+
+        var next = Datasamling() with { Id = Guid.NewGuid() };
+
+        cut.Render(b => b.Add(c => c.Datasamling, next));
+
+        Assert.Equal(1, Variables.Calls[^1].Page);
+        Assert.Equal([next.Id], Variables.Calls[^1].Filter!.DatasamlingIds);
+    }
+
+    [Fact]
+    public void Variables_WhenTheParametersAreSetAgainWithTheSameCollection_ThenNothingIsRefetched()
+    {
+        // A re-render is not a new question. Refetching on every parameter set would also throw
+        // away the page the reader is on, since every load starts at the page it was given.
+        var datasamling = Datasamling();
+        var cut = Render(datasamling);
+
+        cut.Render(b => b.Add(c => c.Language, "en"));
+
+        Assert.Single(Variables.Calls);
+    }
+
+    [Fact]
+    public async Task Variables_WhenASupersededAnswerArrivesLast_ThenItDoesNotReplaceTheRowsOnScreen()
+    {
+        // The race the cancellation exists for: the reader opens one collection, then another
+        // before the first has answered. Without the guard the first answer lands last and the page
+        // shows one collection's name over another's variables.
+        TaskCompletionSource<Page<VariableSummary>> first = new();
+
+        Variables.Answer = page => Variables.Calls.Count == 1
+            ? first.Task
+            : Task.FromResult(PageOf(page, 1, "V_MSIS.F1"));
+
+        var cut = Render(Datasamling());
+
+        Assert.Empty(cut.FindAll("table.munin-explorer-datasamling__variabler"));
+
+        cut.Render(b => b.Add(c => c.Datasamling, Datasamling() with { Id = Guid.NewGuid() }));
+
+        Assert.Equal("V_MSIS.F1.NR1", Cells(Table(cut).QuerySelector("tbody tr")!)[0]);
+
+        await cut.InvokeAsync(() => first.SetResult(PageOf(1, 1)));
+
+        Assert.Equal("V_MSIS.F1.NR1", Cells(Table(cut).QuerySelector("tbody tr")!)[0]);
+    }
+
+    [Fact]
+    public void Variables_WhenTheCollectionHasNone_ThenTheParagraphSaysSoAndNoTableIsDrawn()
+    {
+        // A genuine empty answer, which is a different thing from a failure and has to read as one.
+        Variables.Answer = _ => Task.FromResult(new Page<VariableSummary> { PageNumber = 1, Size = 20 });
+
+        var cut = Render(Datasamling());
+
+        Assert.Empty(cut.FindAll("table.munin-explorer-datasamling__variabler"));
+        Assert.Equal("Ingen variabler er registrert i denne datasamlingen.",
+                     cut.Find("p.munin-explorer-datasamling__variabler-tom").TextContent.Trim());
+
+        Assert.Equal("No variables are recorded in this data collection.",
+                     Render(Datasamling(), language: "en")
+                         .Find("p.munin-explorer-datasamling__variabler-tom").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Variables_WhenTheLoadFails_ThenItSaysSoAndOffersARetryRatherThanReadingAsEmpty()
+    {
+        // The failure this bead names: an error drawn as "no variables" tells the reader a fact
+        // about the catalogue that nobody checked. The empty paragraph must not be on screen.
+        Variables.Answer = _ => Task.FromException<Page<VariableSummary>>(new HttpRequestException("down"));
+
+        var cut = Render(Datasamling());
+
+        Assert.Equal("Kunne ikke laste variablene nå.", cut.Find("p[role=status]").TextContent.Trim());
+        Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__variabler-tom"));
+        Assert.Empty(cut.FindAll("table.munin-explorer-datasamling__variabler"));
+
+        var retry = cut.Find("button.munin-explorer-retry");
+
+        Assert.Equal("Prøv å laste variablene på nytt", retry.TextContent.Trim());
+        Assert.Null(retry.GetAttribute("aria-disabled"));
+
+        Variables.Answer = page => Task.FromResult(PageOf(page, 1));
+        retry.Click();
+
+        Assert.Equal("V_ALS.F1.NR1", Cells(Table(cut).QuerySelector("tbody tr")!)[0]);
+        Assert.Equal(1, Variables.Calls[^1].Page);
+    }
+
+    [Fact]
+    public void Variables_WhenTheLimiterRefuses_ThenItSaysToWaitAndOffersNoRetryToPress()
+    {
+        // Throttling is neither a fault nor an empty collection, and pressing again is the one
+        // thing that cannot help — the rule the kilde hierarchy already follows.
+        Variables.Answer =
+            _ => Task.FromException<Page<VariableSummary>>(new MuninExplorerRateLimitedException());
+
+        var cut = Render(Datasamling());
+
+        Assert.Equal(Texts.For(null).RateLimitError, cut.Find("p[role=status]").TextContent.Trim());
+        Assert.Empty(cut.FindAll("button.munin-explorer-retry"));
+        Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__variabler-tom"));
+    }
+
+    [Fact]
+    public void Variables_WhenTheCatalogueHasPlacedTheStatistics_ThenTheTableSharesThatOneHeading()
+    {
+        // The whole of the section half: the table is merged into the section the placement put the
+        // count in, so the page gains no second Variabler heading and no nav entry of its own.
+        var cut = Render(Placed());
+
+        Assert.Equal(
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt",
+             "Inklusjons- og eksklusjonskriterier"],
+            BlockHeadings(cut));
+
+        Assert.Single(Section(cut, "Variabler").QuerySelectorAll("table.munin-explorer-datasamling__variabler"));
+        Assert.Equal(["Statistikktype", "Frekvens", "Telleenhet", "Antall variabler"],
+                     SectionLabels(cut, "Variabler"));
+        Assert.Equal(BlockHeadings(cut).Count, TocLinks(cut).Count);
+    }
+
+    [Fact]
+    public void Variables_WhenThePlacementReordersTheSections_ThenTheTableTravelsWithTheCount()
+    {
+        // The table is drawn under whichever section holds Antall variabler rather than at a place
+        // of its own, so a curator moving that section moves the table with it.
+        var placed = Placed();
+
+        var cut = Render(placed with
+        {
+            Sections = Placements([.. SeededSections.Select(
+                section => section.Key == "variabler"
+                    ? (section.Key, 5001, section.No, section.En)
+                    : section)]),
+        });
+
+        Assert.Equal(
+            ["Om datasamlingen", "Datakilde", "Variabler", "Alle metadatafelt",
+             "Inklusjons- og eksklusjonskriterier"],
+            BlockHeadings(cut));
+
+        Assert.Single(Section(cut, "Variabler").QuerySelectorAll("table.munin-explorer-datasamling__variabler"));
+    }
+
+    [Fact]
+    public void Variables_WhenTheCatalogueNamesNoSectionAtAll_ThenTheTableFollowsTheCountIntoTheOldBlock()
+    {
+        // The payload predating the placement rows. The count is in the view's own statistics
+        // block there, so the table is too — one rule, and no section this view invents.
+        var cut = Render(Datasamling() with { Sections = [] });
+
+        Assert.Single(Section(cut, "Statistikk (årsbasert)")
+                          .QuerySelectorAll("table.munin-explorer-datasamling__variabler"));
+    }
+
+    [Fact]
+    public async Task Variables_WhenTheViewGoesAway_ThenTheRequestInFlightIsCancelledAndAnsweredIntoNothing()
+    {
+        // A circuit that dropped the view must not be written into, and a late answer must not
+        // throw on its way past a component that is gone.
+        TaskCompletionSource<Page<VariableSummary>> pending = new();
+
+        Variables.Answer = _ => pending.Task;
+
+        Render(Datasamling());
+
+        await DisposeAsync();
+
+        Assert.True(Variables.Calls[0].Token.IsCancellationRequested);
+
+        pending.SetResult(PageOf(1, 1));
+        await pending.Task;
     }
 }
