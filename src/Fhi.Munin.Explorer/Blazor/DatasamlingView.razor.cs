@@ -425,9 +425,9 @@ public sealed partial class DatasamlingView : ComponentBase
     /// <para>
     /// Read raw rather than through <see cref="UnlessPlaced"/>, alone among the merged keys: a
     /// heading naming what the numbers count is not the fact repeated, it is what makes the section
-    /// findable. It heads the block only where the catalogue placed none of those keys — where it
-    /// placed them the curator's own section name is the heading, which is the placement deciding
-    /// the page rather than this view (Fhi.Metadata-lr6yh).
+    /// findable. It heads the block only where the page drew no section the numbers went into —
+    /// asked of what was drawn and not of what was placed, since a key placed in a section this
+    /// payload has no row for leaves the block to draw them (Fhi.Metadata-lr6yh).
     /// </para>
     /// </remarks>
     private string StatisticsHeading =>
@@ -461,13 +461,6 @@ public sealed partial class DatasamlingView : ComponentBase
             return [];
         }
 
-        HashSet<string> named = new(
-            datasamling.Sections.Select(section => section.Key).Where(key => !string.IsNullOrEmpty(key)),
-            StringComparer.Ordinal);
-
-        IReadOnlyList<PropertyGroup> ungrouped =
-            [.. Groups.Where(group => group.Key is null || !named.Contains(group.Key))];
-
         var placement = Placement;
         var sourceFacts = SourceInformation;
         var source = DetailBlocks.AnyLinkedFacts(sourceFacts)
@@ -480,38 +473,47 @@ public sealed partial class DatasamlingView : ComponentBase
                                   CatalogueColumns.CountingUnit)
             : null;
 
-        List<DetailLayoutSection> groups = [];
-        HashSet<string> ids = new(StringComparer.Ordinal);
-        var sourceDrawn = false;
-        var statisticsDrawn = false;
+        var (groups, ungrouped) = DetailLayout.Split(
+            datasamling.Sections, Groups, Language, CompleteRecordFacts,
+            (group, rows) => Yielded(group, rows, sourceFacts, source, statistics));
 
-        foreach (var group in Groups.Where(group => group.Key is not null && named.Contains(group.Key)))
+        // Whether each box yielded is asked of the section list, not of the loop that filled it:
+        // the two answers are the same fact only where the section it yielded into is on the page.
+        return DetailLayout.Order(
+            datasamling.Sections, groups,
+            Blocks(datasamling, ungrouped, sourceFacts,
+                   DetailLayout.Draws(groups, source), DetailLayout.Draws(groups, statistics)));
+    }
+
+    /// <summary>
+    /// One placed group's own rows, and whatever fact box the placement sent into its section.
+    /// </summary>
+    /// <remarks>
+    /// A box yields as a whole or not at all — <see cref="CataloguePlacement.SectionOf"/> — so the
+    /// keys it asks about have to have been placed in one section for anything to arrive here.
+    /// </remarks>
+    private RenderFragment Yielded(
+        PropertyGroup group,
+        RenderFragment rows,
+        IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> sourceFacts,
+        string? source,
+        string? statistics)
+    {
+        List<(string Label, string? Value, bool Norwegian, string? Href)> facts = [];
+
+        if (string.Equals(group.Key, source, StringComparison.Ordinal))
         {
-            List<(string Label, string? Value, bool Norwegian, string? Href)> facts = [];
-
-            if (string.Equals(group.Key, source, StringComparison.Ordinal))
-            {
-                facts.AddRange(sourceFacts);
-                sourceDrawn = true;
-            }
-
-            if (string.Equals(group.Key, statistics, StringComparison.Ordinal))
-            {
-                facts.AddRange(Statistics.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)));
-                statisticsDrawn = true;
-            }
-
-            var body = DetailBlocks.GroupBody(group, Language, CompleteRecordFacts);
-
-            groups.Add(new(group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
-                           CatalogueProperties.Foreign(group.NameLanguage, Reader),
-                           facts.Count == 0
-                               ? body
-                               : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language))));
+            facts.AddRange(sourceFacts);
         }
 
-        return DetailLayout.Order(datasamling.Sections, groups,
-                                  Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn));
+        if (string.Equals(group.Key, statistics, StringComparison.Ordinal))
+        {
+            facts.AddRange(Statistics.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)));
+        }
+
+        return facts.Count == 0
+            ? rows
+            : DetailBlocks.Both(rows, DetailBlocks.LinkedFacts(facts, Language));
     }
 
     /// <summary>
@@ -522,6 +524,12 @@ public sealed partial class DatasamlingView : ComponentBase
     /// Asked of what was drawn and not of what was placed: a placed section whose every row came
     /// out empty is no section, and a box that had yielded to it would be on no surface at all. The
     /// criteria block carries no key because no built-in row is seeded for this surface yet.
+    /// <para>
+    /// The source block keeps <c>Kildeinformasjon</c> although this bead renames that section to
+    /// Datakilde: it draws exactly where the box did not yield, so on a payload carrying a Datakilde
+    /// of its own — placed elsewhere, or titled inside the Metadata block — that word would head two
+    /// different sets of rows, which is the defect the yielding ends (Fhi.Metadata-lr6yh).
+    /// </para>
     /// </remarks>
     private IReadOnlyList<DetailLayoutSection> Blocks(
         DatasamlingDetail datasamling,
@@ -562,25 +570,7 @@ public sealed partial class DatasamlingView : ComponentBase
         return blocks;
     }
 
-    /// <summary>The nav, read off the drawn sections so a link cannot point at a block left out.</summary>
-    private IReadOnlyList<DetailTocEntry> BuildToc(IReadOnlyList<DetailLayoutSection> layout)
-    {
-        DetailTocBuilder toc = new();
-
-        if (Datasamling is null)
-        {
-            return toc.Entries;
-        }
-
-        foreach (var section in layout)
-        {
-            // The heading's own lang goes with it: the words are the curator's, and a nav link
-            // repeating them unmarked is announced in the reader's phonetics (WCAG 3.1.2).
-            toc.Always(section.Id, section.Heading, section.HeadingLanguage);
-        }
-
-        toc.AddNamed(NamedSections);
-
-        return toc.Entries;
-    }
+    /// <inheritdoc cref="KildeView.BuildToc"/>
+    private IReadOnlyList<DetailTocEntry> BuildToc(IReadOnlyList<DetailLayoutSection> layout) =>
+        Datasamling is null ? [] : DetailTocBuilder.For(layout, NamedSections);
 }

@@ -446,23 +446,8 @@ public sealed partial class KildeView : ComponentBase
             return [];
         }
 
-        HashSet<string> named = new(
-            kilde.Sections.Select(section => section.Key).Where(key => !string.IsNullOrEmpty(key)),
-            StringComparer.Ordinal);
-
-        IReadOnlyList<PropertyGroup> ungrouped =
-            [.. Groups.Where(group => group.Key is null || !named.Contains(group.Key))];
-
-        HashSet<string> ids = new(StringComparer.Ordinal);
-
-        List<DetailLayoutSection> groups =
-        [
-            .. Groups.Where(group => group.Key is not null && named.Contains(group.Key))
-                     .Select(group => new DetailLayoutSection(
-                         group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
-                         CatalogueProperties.Foreign(group.NameLanguage, Reader),
-                         DetailBlocks.GroupBody(group, Language, CompleteRecordFacts))),
-        ];
+        var (groups, ungrouped) =
+            DetailLayout.Split(kilde.Sections, Groups, Language, CompleteRecordFacts);
 
         return DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
     }
@@ -542,24 +527,12 @@ public sealed partial class KildeView : ComponentBase
     };
 
     /// <summary>The nav, read off the drawn sections so a link cannot point at a block left out.</summary>
-    private IReadOnlyList<DetailTocEntry> BuildToc(IReadOnlyList<DetailLayoutSection> layout)
-    {
-        DetailTocBuilder toc = new();
-
-        if (Kilde is null)
-        {
-            return toc.Entries;
-        }
-
-        foreach (var section in layout)
-        {
-            toc.Always(section.Id, section.Heading, section.HeadingLanguage);
-        }
-
-        toc.AddNamed(NamedSections);
-
-        return toc.Entries;
-    }
+    /// <remarks>
+    /// Nothing at all before the payload arrives, named sections included: an entry naming one of
+    /// those on a page with no sections above it is a nav for a view that has drawn nothing.
+    /// </remarks>
+    private IReadOnlyList<DetailTocEntry> BuildToc(IReadOnlyList<DetailLayoutSection> layout) =>
+        Kilde is null ? [] : DetailTocBuilder.For(layout, NamedSections);
 
     /// <summary>
     /// The heading for the datasamling section, when the explorer using this view wants a word of

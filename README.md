@@ -678,9 +678,11 @@ These are not style preferences — each one is a host that breaks otherwise.
   two sets apart: a curator minting `source` or `metadata` as a group key writes `section-source`,
   not a second copy of the fixed id. Characters a fragment link cannot address are replaced with
   `-` on the way in, since nothing constrains a key at the source — which two keys can come out of
-  alike, so a repeat is numbered (`section-om-registeret-2`) rather than anchoring both sections at
-  once. A group the payload places nowhere keeps its old home inside `metadata` and adds no id at
-  all.
+  alike. The one the replacing rewrote then carries a short digest of its own key
+  (`section-om-registeret-4f2a`) rather than anchoring the same section as the other: an id a key
+  gets is the key's own, so adding a section above an older one leaves every link a reader has
+  already shared where it was. A group the payload places nowhere keeps its old home inside
+  `metadata` and adds no id at all.
 
   A datasamling page writes the same family, from the same keys, since `Fhi.Metadata-lr6yh`: it too
   draws whatever sections the placement rows declare, so `#metadata` there becomes one

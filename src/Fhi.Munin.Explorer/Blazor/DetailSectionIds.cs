@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
@@ -49,30 +52,68 @@ internal static class DetailSectionIds
     internal const string GroupPrefix = "section-";
 
     /// <summary>
+    /// Every id above, for seeding a reservation set so a derived one cannot land on one of them.
+    /// </summary>
+    /// <remarks>
+    /// The prefix separates the two namespaces today; this is what keeps it true, since
+    /// <see cref="ReserveGroupId"/> would otherwise be reserving against half the page's ids.
+    /// </remarks>
+    internal static IReadOnlySet<string> Fixed { get; } = new HashSet<string>(
+        [
+            Metadata, Criteria, Source, Placement, Statistics, DataCollections, Versions,
+            DataPeriod, DataType, VariableGroups, Variables, AccessCriteria, Prices, CodeLists,
+        ],
+        StringComparer.Ordinal);
+
+    /// <summary>
     /// The <c>id</c> a section the catalogue placed anchors at, built from its group key and
     /// reserved in <paramref name="taken"/> so the next caller cannot be handed it again.
     /// </summary>
     /// <remarks>
     /// Prefixed because the keys are an open set a curator mints where the words above are a closed
     /// one, and stripped of what a fragment link cannot address, which no key is checked for at the
-    /// source (Fhi.Metadata-35w0p.22). Two keys can strip alike, so a repeat is numbered apart
-    /// rather than left anchoring two sections at once — which of them keeps the unnumbered id
-    /// follows the order they are asked in (Fhi.Metadata-lr6yh).
+    /// source (Fhi.Metadata-35w0p.22). Two keys can strip alike, so the one the stripping rewrote
+    /// carries a digest of itself rather than a number: numbered, which key holds the plain id
+    /// would follow the order the page asks in, and a section added above an older one would move
+    /// the deep link a reader had already shared. <paramref name="taken"/> is the backstop for a
+    /// collision the digest did not separate (Fhi.Metadata-lr6yh).
     /// </remarks>
     internal static string ReserveGroupId(string key, ISet<string> taken)
     {
-        var stem = GroupPrefix + new string([
+        var stripped = new string([
             .. key.Select(character =>
                 char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '-'),
         ]);
 
-        var id = stem;
+        var stem = GroupPrefix + stripped;
+        var id = string.Equals(stripped, key, StringComparison.Ordinal) ? stem : $"{stem}-{Digest(key)}";
+        var unique = id;
 
-        for (var n = 2; !taken.Add(id); n++)
+        for (var n = 2; !taken.Add(unique); n++)
         {
-            id = $"{stem}-{n}";
+            unique = $"{id}-{n}";
         }
 
-        return id;
+        return unique;
+    }
+
+    /// <summary>A short stable digest of a key, for telling apart two that strip to one stem.</summary>
+    /// <remarks>
+    /// FNV-1a rather than <see cref="string.GetHashCode()"/>, which is salted per process: an id
+    /// that differed between two runs would resolve for the reader who sent the link and nobody else.
+    /// </remarks>
+    private static string Digest(string key)
+    {
+        var hash = 2166136261;
+
+        unchecked
+        {
+            foreach (var b in Encoding.UTF8.GetBytes(key))
+            {
+                hash = (hash ^ b) * 16777619;
+            }
+        }
+
+        return hash.ToString("x8", CultureInfo.InvariantCulture)[..4];
     }
 }

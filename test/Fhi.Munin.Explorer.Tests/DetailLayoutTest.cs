@@ -80,6 +80,38 @@ public class DetailLayoutTest
     }
 
     [Fact]
+    public void Order_WhenRowsNameSomeOfTheSections_ThenEverySectionItWasGivenIsStillOneOfTheAnswer()
+    {
+        // What a fact box's yielding rests on. A view asks DetailLayout.Draws whether the section
+        // it is about to yield into is among the ones it built, and that is only the same question
+        // as "is it on the page" for as long as this rearranges its input without dropping from it.
+        // (Fhi.Metadata-lr6yh)
+        DetailLayoutSection[] groups = [Section("innhold", "Innhold"), Section("kontakt", "Kontakt")];
+
+        DetailLayoutSection[] blocks =
+            [Section(null, "Metadata"), Section(SectionKeys.Statistics, "Statistikk")];
+
+        var ordered = DetailLayout.Order([Places("kontakt"), Places("mangler")], groups, blocks);
+
+        Assert.Equal(["Kontakt", "Innhold", "Metadata", "Statistikk"], Headings(ordered));
+        Assert.All([.. groups, .. blocks], section => Assert.Contains(section, ordered));
+        Assert.Equal(groups.Length + blocks.Length, ordered.Count);
+    }
+
+    [Fact]
+    public void Draws_WhenNoSectionCarriesTheKey_ThenItSaysSoRatherThanMatchingTheKeylessOnes()
+    {
+        // Null is every view's own "the catalogue placed this nowhere", and the keyless sections
+        // are its blocks: answering true for that pair would have a box yield into the Metadata
+        // block it is drawn beside.
+        DetailLayoutSection[] sections = [Section(null, "Metadata"), Section("innhold", "Innhold")];
+
+        Assert.False(DetailLayout.Draws(sections, null));
+        Assert.False(DetailLayout.Draws(sections, "kontakt"));
+        Assert.True(DetailLayout.Draws(sections, "innhold"));
+    }
+
+    [Fact]
     public void Order_WhenARowNamesASectionNeitherPoolHas_ThenNothingIsDrawnForItAndTheRestKeepTheirOrder()
     {
         // Another page's built-in, or a section whose every property is empty on this payload.

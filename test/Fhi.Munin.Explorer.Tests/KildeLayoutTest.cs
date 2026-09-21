@@ -333,8 +333,9 @@ public class KildeLayoutTest : ExplorerTestContext
         // The first values a curator types that reach an id and an href unfiltered. Nothing
         // constrains a key at the source, and a nav entry pointing at a fragment the browser cannot
         // resolve is a control that scrolls nowhere, with nothing failing anywhere to say so.
-        // All three strip to the id "om-registeret" is already anchored at, so the section that
-        // gets there second is numbered apart rather than left sharing the anchor.
+        // The first two strip to the id "om-registeret" is already anchored at, so the one the
+        // stripping rewrote carries a digest of its own key rather than sharing that anchor — and
+        // carries it whatever else the page holds, which is what a shared deep link needs.
         var cut = Page(ReKeyed(Placed(), "innhold", key));
         var id = Nav(cut).Single(entry => entry.Label == "Innhold").Href[1..];
 

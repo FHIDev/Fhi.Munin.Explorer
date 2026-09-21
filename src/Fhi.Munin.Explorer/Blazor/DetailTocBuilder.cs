@@ -49,4 +49,32 @@ internal sealed class DetailTocBuilder
             _entries.Add(section.Entry);
         }
     }
+
+    /// <summary>
+    /// The nav for a view whose sections are a resolved layout: one entry per section it drew, in
+    /// that order, and the explorer's own sections after them.
+    /// </summary>
+    /// <remarks>
+    /// Read off the layout rather than off the predicates that built it, so a link cannot point at
+    /// a block left out. Shared because both detail views had a loop of this each
+    /// (Fhi.Metadata-lr6yh).
+    /// <para>
+    /// Each heading's own <c>lang</c> goes with it: the words are the curator's, and a nav link
+    /// repeating them unmarked is announced in the reader's phonetics (WCAG 3.1.2).
+    /// </para>
+    /// </remarks>
+    internal static IReadOnlyList<DetailTocEntry> For(
+        IReadOnlyList<DetailLayoutSection> layout, IReadOnlyList<DetailNamedSection>? named)
+    {
+        DetailTocBuilder toc = new();
+
+        foreach (var section in layout)
+        {
+            toc.Always(section.Id, section.Heading, section.HeadingLanguage);
+        }
+
+        toc.AddNamed(named);
+
+        return toc.Entries;
+    }
 }

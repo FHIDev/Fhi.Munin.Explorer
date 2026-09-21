@@ -656,9 +656,9 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Placed());
 
         // Read as the whole list rather than searched for, so the view's own three headings going
-        // is asserted with it: Metadata wrapped the groups, Kildeinformasjon is what the placement
-        // calls Datakilde, and Statistikk is inside Variabler. The criteria block carries no key
-        // the placement can address, so it falls to the view's own order, after the placed ones.
+        // is asserted with it: Metadata wrapped the groups, the source box has been taken into the
+        // section the placement calls Datakilde, and Statistikk is inside Variabler. The criteria
+        // block carries no key the placement can address, so it falls to the view's own order.
         Assert.Equal(
             ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt",
              "Inklusjons- og eksklusjonskriterier"],
@@ -727,13 +727,17 @@ public class DatasamlingViewTest : ExplorerTestContext
                      BlockHeadings(english));
     }
 
-    [Fact]
-    public void Placement_WhenTwoSectionKeysStripAlike_ThenTheirIdsAreStillDistinct()
+    /// <summary>
+    /// The page's sections with a second key that strips to the first's id, placed at one band.
+    /// </summary>
+    /// <remarks>
+    /// The band is the argument so the same two keys can be asked in either order: which of them a
+    /// page draws first is exactly what an id must not depend on.
+    /// </remarks>
+    private IReadOnlyList<(string Heading, string Id)> StrippedAlike(int band)
     {
-        // A repeated id draws two sections under one anchor, with the contents nav's second link
-        // landing on the first. (Fhi.Metadata-lr6yh)
         (string Key, int Order, string No, string En)[] sections =
-            [.. SeededSections, ("om datasamlingen", 4000, "Oppdatering", "Updates")];
+            [.. SeededSections, ("om datasamlingen", band, "Oppdatering", "Updates")];
 
         var placed = Placed();
 
@@ -752,10 +756,33 @@ public class DatasamlingViewTest : ExplorerTestContext
             },
         });
 
-        var ids = Wrappers(cut).Select(section => section.Id!).ToList();
+        return [.. Wrappers(cut).Select(
+            section => (section.FirstElementChild!.TextContent.Trim(), section.Id!))];
+    }
 
-        Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
-        Assert.Contains("section-om-datasamlingen-2", ids);
+    /// <summary>One of those sections' ids, named by its heading rather than by its position.</summary>
+    private static string IdOf(IReadOnlyList<(string Heading, string Id)> sections, string heading) =>
+        sections.Single(section => section.Heading == heading).Id;
+
+    [Fact]
+    public void Placement_WhenTwoSectionKeysStripAlike_ThenTheirIdsAreDistinctAndNeitherFollowsTheOrder()
+    {
+        // A repeated id draws two sections under one anchor. Numbering the repeat ends that and
+        // starts something else, since the number follows the order the keys are asked in: a
+        // section placed above an older one takes its id, and the link a reader already shared
+        // lands one section off. The rewritten key carries a digest of itself. (Fhi.Metadata-lr6yh)
+        var below = StrippedAlike(4000);
+        var above = StrippedAlike(500);
+        var ids = below.Select(section => section.Id).ToList();
+
+        Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
+
+        // The key a fragment can already carry keeps the plain id; the one the stripping rewrote is
+        // the one that moves aside, whichever of the two the page draws first.
+        Assert.Equal("section-om-datasamlingen", IdOf(below, "Om datasamlingen"));
+        Assert.StartsWith("section-om-datasamlingen-", IdOf(below, "Oppdatering"), StringComparison.Ordinal);
+        Assert.Equal(IdOf(below, "Om datasamlingen"), IdOf(above, "Om datasamlingen"));
+        Assert.Equal(IdOf(below, "Oppdatering"), IdOf(above, "Oppdatering"));
     }
 
     [Fact]
@@ -771,6 +798,59 @@ public class DatasamlingViewTest : ExplorerTestContext
             ["Dataansvarlig", "Databehandler", "Grad av personidentifikasjon", "Lovverk",
              "Kilde", "Type datakilde", "Gyldig til", "Sist oppdatert i Munin", "Opprettet i Munin"],
             labels);
+    }
+
+    [Fact]
+    public void Placement_WhenTheSourceKeysAreSplitBetweenTwoSections_ThenTheBoxKeepsItsOwnRatherThanFollowingOne()
+    {
+        // Munin places one property at a time, so nothing stops a curator filing Dataansvarlig in
+        // Om datasamlingen and the other three in Datakilde. Following the first placed key would
+        // send every row the box still holds under a heading that does not name them, chosen by the
+        // order this view happens to list its keys in. (Fhi.Metadata-lr6yh)
+        var placed = Placed();
+
+        var cut = Render(placed with
+        {
+            PropertyMetadata =
+            [
+                .. placed.PropertyMetadata.Where(entry => entry.Key != CatalogueColumns.DataController),
+                Definition(CatalogueColumns.DataController, "Dataansvarlig", "String", 1005,
+                           "om-datasamlingen"),
+            ],
+        });
+
+        // Each placed key is still drawn by the section it was placed in, and neither section has
+        // been handed rows about the other's subject.
+        Assert.Contains("Dataansvarlig", SectionLabels(cut, "Om datasamlingen"));
+        Assert.Equal(["Databehandler", "Grad av personidentifikasjon", "Lovverk"],
+                     SectionLabels(cut, "Datakilde"));
+
+        Assert.Equal(["Kilde", "Type datakilde", "Gyldig til", "Sist oppdatert i Munin",
+                      "Opprettet i Munin"],
+                     Labels(SourceInformation(cut)));
+    }
+
+    [Fact]
+    public void Placement_WhenTheSectionTheBoxWouldYieldIntoDrawsNothing_ThenTheBoxKeepsEveryRow()
+    {
+        // A placement row names datakilde and the four source keys are filed there, but this
+        // payload has a value for none of them, so no section of that name is drawn. Yielding on
+        // what was placed rather than on what was drawn would leave every row the box holds on no
+        // surface at all. (Fhi.Metadata-lr6yh)
+        var cut = Render(Placed() with
+        {
+            EffectiveLegalBasis = null,
+            EffectiveDataController = null,
+            EffectiveDataProcessor = null,
+            EffectivePersonIdentificationLevel = null,
+        });
+
+        Assert.DoesNotContain("section-datakilde", Wrappers(cut).Select(section => section.Id!));
+        Assert.Equal(
+            ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
+             "Grad av personidentifikasjon", "Gyldig til", "Sist oppdatert i Munin",
+             "Opprettet i Munin"],
+            Labels(SourceInformation(cut)));
     }
 
     [Fact]
@@ -849,6 +929,14 @@ public class DatasamlingViewTest : ExplorerTestContext
                      SectionLabels(cut, "Metadata"));
         Assert.Contains("Kilde", Labels(SourceInformation(cut)));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+
+        // And it keeps its own word for it: the group no row named is titled Datakilde inside the
+        // Metadata block, so heading this box Datakilde too would put one word over two different
+        // sets of rows on the page a rollout actually produces. (Fhi.Metadata-lr6yh)
+        Assert.Contains("Datakilde",
+                        Section(cut, "Metadata").QuerySelectorAll(".munin-explorer-group")
+                                                .Select(heading => heading.TextContent.Trim()));
+        Assert.Equal(BlockHeadings(cut).Distinct(StringComparer.Ordinal), BlockHeadings(cut));
     }
 
     [Fact]

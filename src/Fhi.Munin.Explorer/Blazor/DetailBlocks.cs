@@ -283,7 +283,7 @@ internal static class DetailBlocks
     /// Several groups one after another, for the block a view gathers the unplaced ones under.
     /// </summary>
     /// <remarks>
-    /// Both detail views draw that block, and drew it from a private copy of this loop each until
+    /// All three views draw that block, and drew it from a private copy of this loop each until
     /// the second copy went one release without the first's changes (Fhi.Metadata-lr6yh).
     /// </remarks>
     internal static RenderFragment Groups(IReadOnlyList<PropertyGroup> groups, int level,

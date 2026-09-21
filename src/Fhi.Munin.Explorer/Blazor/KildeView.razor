@@ -54,7 +54,10 @@
                opens an MVC Razor directive before it is ever read as a loop variable. *@
             @foreach (var block in Layout)
             {
-                <DetailSection Id="@block.Id">
+                @* Keyed on the id so a reordered layout moves each section rather than rewriting
+                   the one in that position, which would leave a fragment jump's focus on a
+                   section the reader never asked for. *@
+                <DetailSection Id="@block.Id" @key="block.Id">
                     @DetailBlocks.Heading(BlockLevel, block.Heading, "headline headline-s",
                                           language: block.HeadingLanguage)
                     @block.Body

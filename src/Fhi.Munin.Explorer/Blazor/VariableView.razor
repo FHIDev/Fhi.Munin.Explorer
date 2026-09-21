@@ -43,11 +43,7 @@
             {
                 <DetailSection Id="@DetailSectionIds.Metadata">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
-
-                    @foreach (var group in Groups)
-                    {
-                        @DetailBlocks.Group(group, GroupLevel, Language, CompleteRecordFacts)
-                    }
+                    @DetailBlocks.Groups(Groups, GroupLevel, Language, CompleteRecordFacts)
                 </DetailSection>
             }
 

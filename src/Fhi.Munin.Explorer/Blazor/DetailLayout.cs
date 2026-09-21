@@ -34,6 +34,69 @@ internal sealed record DetailLayoutSection(
 internal static class DetailLayout
 {
     /// <summary>
+    /// The sections the placement rows name, built from the curated groups, and the groups no row
+    /// names, for the block a view gathers those under.
+    /// </summary>
+    /// <param name="placements">The page's sections as the API ordered them; empty on an older API.</param>
+    /// <param name="groups">Every curated group this payload has, in the order the catalogue gathered them.</param>
+    /// <param name="language">The reader's language, which titles the groups and marks the foreign ones.</param>
+    /// <param name="completeRecord">The catch-all group's extras, or null on a surface that has none.</param>
+    /// <param name="body">
+    /// What goes under a section's heading, given the group and its own rows, where the view has
+    /// something to add to them. Null draws the group's rows alone.
+    /// </param>
+    /// <remarks>
+    /// Both detail views want exactly this, down to the reservation set seeded with the ids they
+    /// write themselves. Written twice, the next change to how a placed group becomes a section
+    /// reaches one of them and misses the other (Fhi.Metadata-lr6yh).
+    /// </remarks>
+    internal static (IReadOnlyList<DetailLayoutSection> Sections, IReadOnlyList<PropertyGroup> Ungrouped) Split(
+        IReadOnlyList<SectionPlacement> placements,
+        IReadOnlyList<PropertyGroup> groups,
+        string? language,
+        CompleteRecordExtras? completeRecord = null,
+        Func<PropertyGroup, RenderFragment, RenderFragment>? body = null)
+    {
+        var reader = ReaderLanguage.Of(language);
+
+        HashSet<string> named = new(
+            placements.Select(placement => placement.Key).Where(key => !string.IsNullOrEmpty(key)),
+            StringComparer.Ordinal);
+
+        HashSet<string> ids = new(DetailSectionIds.Fixed, StringComparer.Ordinal);
+
+        List<DetailLayoutSection> sections = [];
+        List<PropertyGroup> ungrouped = [];
+
+        foreach (var group in groups)
+        {
+            if (group.Key is not { } key || !named.Contains(key))
+            {
+                ungrouped.Add(group);
+                continue;
+            }
+
+            var rows = DetailBlocks.GroupBody(group, language, completeRecord);
+
+            sections.Add(new(key, DetailSectionIds.ReserveGroupId(key, ids), group.Name,
+                             CatalogueProperties.Foreign(group.NameLanguage, reader),
+                             body is null ? rows : body(group, rows)));
+        }
+
+        return (sections, ungrouped);
+    }
+
+    /// <summary>Whether one of these sections is the one under this key, and so whether it draws.</summary>
+    /// <remarks>
+    /// Asked of what <see cref="Order"/> is handed rather than of the loop that built it: Order
+    /// rearranges its input and drops none of it, so a key here is a key on the page. A fact box
+    /// yielding into a section nobody drew is a public field on no surface (Fhi.Metadata-lr6yh).
+    /// </remarks>
+    internal static bool Draws(IReadOnlyList<DetailLayoutSection> sections, string? key) =>
+        key is not null
+        && sections.Any(section => string.Equals(section.Key, key, StringComparison.Ordinal));
+
+    /// <summary>
     /// The sections to draw, placed ones first in the catalogue's order and the rest after.
     /// </summary>
     /// <param name="placements">The page's sections as the API ordered them; empty on an older API.</param>

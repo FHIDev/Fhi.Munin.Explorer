@@ -42,6 +42,7 @@
                section list is written here, which is the whole of Fhi.Metadata-lr6yh. *@
             @foreach (var block in Layout)
             {
+                @* Keyed for the reason KildeView's identical loop is. *@
                 <DetailSection Id="@block.Id" @key="block.Id">
                     @DetailBlocks.Heading(BlockLevel, block.Heading, "headline headline-s",
                                           language: block.HeadingLanguage)

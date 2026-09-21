@@ -40,30 +40,47 @@ internal sealed record CataloguePlacement(
         CatalogueProperties.Placed(Metadata, Values, Reader, key, DrawnElsewhere);
 
     /// <summary>
-    /// The section the catalogue has put the first of these keys in, or nothing where it has placed
-    /// none of them. The group's key and never its title, which a curator renames one language at a
-    /// time.
+    /// The one section the catalogue has put all of these keys in, or nothing where it has placed
+    /// none of them or split them between sections. The group's key and never its title, which a
+    /// curator renames one language at a time.
     /// </summary>
     /// <remarks>
+    /// Agreement, because the caller routes a whole fact box by this one answer and Munin places one
+    /// property at a time: the first placed key's section would take every leftover row under a
+    /// heading that does not name them, chosen by the order of the caller's own arguments. Split,
+    /// the box keeps the view's section instead (Fhi.Metadata-lr6yh).
+    /// <para>
     /// A name, not a promise that the page draws it: the caller asks this to find where its fields
-    /// went and must still check whether that section was emitted, since only what was drawn can
-    /// hold what the box yielded (Fhi.Metadata-lr6yh).
+    /// went and must still check whether that section was emitted — <see cref="DetailLayout.Draws"/>
+    /// — since only what was drawn can hold what the box yielded.
+    /// </para>
     /// </remarks>
     internal string? SectionOf(params string[] keys)
     {
+        string? agreed = null;
+
         foreach (var key in keys.Where(Placed))
         {
             var entry = Metadata.FirstOrDefault(
                 e => string.Equals(e.Key, key, StringComparison.Ordinal)
                      && !string.IsNullOrWhiteSpace(e.GroupKey));
 
-            if (entry?.GroupKey is { } section)
+            if (entry?.GroupKey is not { } section)
             {
-                return section;
+                continue;
+            }
+
+            if (agreed is null)
+            {
+                agreed = section;
+            }
+            else if (!string.Equals(agreed, section, StringComparison.Ordinal))
+            {
+                return null;
             }
         }
 
-        return null;
+        return agreed;
     }
 
     /// <summary>One curated property's first value, resolved exactly as its section resolves it.</summary>
