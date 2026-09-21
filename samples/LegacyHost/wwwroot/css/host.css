@@ -1193,12 +1193,10 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 
 /* ---- the column header ----
 
-   The header and the rows have to share one grid template, or the columns line up with nothing.
-   helsedata solved it by giving `variable-dataitem-header` and `variable-dataitem-main` the same
-   track list, and munin-explorer-dataitem-header and munin-explorer-dataitem-main carry that
-   over; the header has no chevron, so its first cell starts in track 2 and the rest flow after
-   it. Get this wrong and every row sizes its own columns, which is what the sample looked
-   like before the header existed. */
+   The header and the rows have to size their columns alike, or the columns line up with nothing.
+   Both are flex rows with the same per-column flex shares (below), and the header's name button
+   clears the chevron with its own padding. Get this wrong and every row sizes its own columns,
+   which is what the sample looked like before the header existed. */
 
 .munin-explorer-data-list__header {
   border-bottom: 2px solid var(--grey30);
@@ -1276,13 +1274,14 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
      Navn 210   Kode 246   Kilde 96   Datasamling 212   Variabelgruppe 160
      Datatype 114   Status 98
 
-   Kode is the WIDEST, which is the opposite of what it looks like it should be. A variable code
+   Stiler has since doubled Navn to 420, below; the rest keep Runa's numbers.
+   In Runa Kode is the WIDEST, which is the opposite of what it looks like it should be. A variable code
    is one unbreakable token — V_ALS.F1.MRCAPUTJERNAVSWI has nowhere to wrap — so a narrow code
    column either breaks mid-identifier or pushes everything else out of line. A name has spaces
    and wraps gracefully, so the name is the column that should give way.
 
    `flex: <width> 1 0` makes grow proportional to those numbers, so the ratios hold at any
-   container width rather than only at Runa's. Stiler gives Navn 420, twice Runa's share. */
+   container width rather than only at Runa's. */
 .munin-explorer-dataitem-main__name,
 .munin-explorer-dataitem-header__name {
   flex: 420 1 0;
@@ -1873,9 +1872,8 @@ table.munin-explorer-data-list tbody th {
     align-items: start;
   }
 
-  /* Taken back rather than merely not given: an ungated copy of the rule above, from any stylesheet
-     this one is read after, would otherwise leave a lone main column in a 250px rail. The
-     saved-list view is the one that never draws a contents column. */
+  /* Taken back rather than merely not given, so a lone main column never lands in a 250px rail.
+     The saved-list view is the one that never draws a contents column. */
   .munin-explorer-page__body:not(:has(> .munin-explorer-page__toc)) {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3383,15 +3381,6 @@ table.munin-explorer-data-list tbody th {
   outline: none;
 }
 
-.munin-explorer .munin-explorer-switch:focus-visible .munin-explorer-switch__thumb {
-  background: rgb(255, 255, 255);
-}
-
-.munin-explorer .munin-explorer-switch:focus-visible .munin-explorer-switch__track {
-  background: rgb(81, 84, 123);
-  border-color: rgb(255, 255, 255);
-}
-
 .munin-explorer .munin-explorer-switch__track {
   background: rgb(239, 240, 250);
   border: 1px solid rgb(81, 84, 123);
@@ -3422,6 +3411,17 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer .munin-explorer-switch[aria-checked=true] .munin-explorer-switch__thumb {
   background: rgb(255, 255, 255);
   transform: translateX(12px);
+}
+
+/* After the checked pair on purpose: both are (0,4,0), so order decides, and a focused switch that
+   is on would otherwise draw its track's border in the colour it sits on. */
+.munin-explorer .munin-explorer-switch:focus-visible .munin-explorer-switch__thumb {
+  background: rgb(255, 255, 255);
+}
+
+.munin-explorer .munin-explorer-switch:focus-visible .munin-explorer-switch__track {
+  background: rgb(81, 84, 123);
+  border-color: rgb(255, 255, 255);
 }
 
 @media (prefers-reduced-motion:reduce) {

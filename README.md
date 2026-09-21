@@ -495,9 +495,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     The contents column is drawn only when something fills it, which since
     `Fhi.Metadata-35w0p.12` is the contents nav — and only when the view drew a section
     for it to link to, so a view with none still has no rail. Both sample stylesheets scope the
-    two-track rule to a body that has one; 0.1.75 publishes it ungated and `Fhi.Metadata-ex5wb` is
-    the bead that gates it there. Ungated, a fixed 250px first track would lay a lone main column
-    out in it.
+    two-track rule to a body that has one, as Stiler has since `Fhi.Metadata-ex5wb`. Ungated, a
+    fixed 250px first track would lay a lone main column out in it.
     `VariableListView` is a fourth surface on that chassis since `Fhi.Metadata-35w0p.13`, and the
     one with no prefix of its own: it wears `munin-explorer-page` and `munin-explorer-page__body`
     and `munin-explorer-page__main` with nothing beside them, and it is the view that never has a
