@@ -274,22 +274,35 @@ internal static class DetailBlocks
     /// way, which is what a surface with no such section wants.
     /// </remarks>
     internal static RenderFragment Group(PropertyGroup group, int level, string? language,
-                                         CompleteRecordExtras? completeRecord = null) => builder =>
-    {
-        builder.OpenElement(0, $"h{level}");
-        builder.AddAttribute(1, "class", "headline headline-xxs margin--none munin-explorer-group");
-        builder.AddAttribute(2, "lang",
-                             CatalogueProperties.Foreign(group.NameLanguage, ReaderLanguage.Of(language)));
-        builder.AddContent(3, group.Name);
-        builder.CloseElement();
-
-        builder.AddContent(4, GroupBody(group, language, completeRecord));
-    };
+                                         CompleteRecordExtras? completeRecord = null) =>
+        Both(Heading(level, group.Name, "headline headline-xxs margin--none munin-explorer-group",
+                     language: CatalogueProperties.Foreign(group.NameLanguage, ReaderLanguage.Of(language))),
+             GroupBody(group, language, completeRecord));
 
     /// <summary>
-    /// The same group without its heading, for a page that draws it as a section of its own and
-    /// heads it at the level its neighbours wear (Fhi.Metadata-35w0p.22).
+    /// Several groups one after another, for the block a view gathers the unplaced ones under.
     /// </summary>
+    /// <remarks>
+    /// Both detail views draw that block, and drew it from a private copy of this loop each until
+    /// the second copy went one release without the first's changes (Fhi.Metadata-lr6yh).
+    /// </remarks>
+    internal static RenderFragment Groups(IReadOnlyList<PropertyGroup> groups, int level,
+                                          string? language,
+                                          CompleteRecordExtras? completeRecord = null) => builder =>
+    {
+        var seq = 0;
+
+        foreach (var group in groups)
+        {
+            builder.AddContent(seq++, Group(group, level, language, completeRecord));
+        }
+    };
+
+    /// <summary>The same group without its heading, for a caller that heads the section itself.</summary>
+    /// <remarks>
+    /// A group the catalogue placed is a section of the page rather than a block inside one, so its
+    /// name heads that section and wears the size the other section headings wear.
+    /// </remarks>
     internal static RenderFragment GroupBody(PropertyGroup group, string? language,
                                              CompleteRecordExtras? completeRecord = null) => builder =>
     {
@@ -308,6 +321,34 @@ internal static class DetailBlocks
 
         Rows(builder, 10, group.Rows, reader, text);
 
+        builder.CloseElement();
+    };
+
+    /// <summary>Two fragments as one, so a section can hold a block and a fact list under one heading.</summary>
+    internal static RenderFragment Both(RenderFragment first, RenderFragment second) => builder =>
+    {
+        builder.AddContent(0, first);
+        builder.AddContent(1, second);
+    };
+
+    /// <summary>
+    /// A block of the catalogue's own prose, or nothing where it holds none.
+    /// </summary>
+    /// <remarks>
+    /// Drawn through <see cref="CatalogueMarkdown"/> because these fields are authored with links
+    /// and line breaks, and marked with the language the catalogue stores them in.
+    /// </remarks>
+    internal static RenderFragment Prose(string? text, string cssClass, string? language) => builder =>
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        builder.OpenElement(0, "p");
+        builder.AddAttribute(1, "class", cssClass);
+        builder.AddAttribute(2, "lang", language);
+        builder.AddContent(3, CatalogueMarkdown.Render(text));
         builder.CloseElement();
     };
 

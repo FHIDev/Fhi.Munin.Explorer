@@ -39,6 +39,33 @@ internal sealed record CataloguePlacement(
     internal bool Placed(string key) =>
         CatalogueProperties.Placed(Metadata, Values, Reader, key, DrawnElsewhere);
 
+    /// <summary>
+    /// The section the catalogue has put the first of these keys in, or nothing where it has placed
+    /// none of them. The group's key and never its title, which a curator renames one language at a
+    /// time.
+    /// </summary>
+    /// <remarks>
+    /// A name, not a promise that the page draws it: the caller asks this to find where its fields
+    /// went and must still check whether that section was emitted, since only what was drawn can
+    /// hold what the box yielded (Fhi.Metadata-lr6yh).
+    /// </remarks>
+    internal string? SectionOf(params string[] keys)
+    {
+        foreach (var key in keys.Where(Placed))
+        {
+            var entry = Metadata.FirstOrDefault(
+                e => string.Equals(e.Key, key, StringComparison.Ordinal)
+                     && !string.IsNullOrWhiteSpace(e.GroupKey));
+
+            if (entry?.GroupKey is { } section)
+            {
+                return section;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>One curated property's first value, resolved exactly as its section resolves it.</summary>
     internal string? Curated(string key) =>
         CatalogueProperties.Row(Metadata, Values, Reader, key) is { Values: [var first, ..] }

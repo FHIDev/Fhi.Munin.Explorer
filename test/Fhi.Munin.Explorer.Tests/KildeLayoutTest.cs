@@ -112,7 +112,8 @@ public class KildeLayoutTest : ExplorerTestContext
                })];
 
     /// <summary>The anchor a placed group's section carries, which is its key and not its heading.</summary>
-    private static string Anchor(string groupKey) => DetailSectionIds.ForGroupKey(groupKey);
+    private static string Anchor(string groupKey) =>
+        DetailSectionIds.ReserveGroupId(groupKey, new HashSet<string>(StringComparer.Ordinal));
 
     /// <summary>
     /// Every label and value the page states, outside the hero strip.
@@ -332,12 +333,18 @@ public class KildeLayoutTest : ExplorerTestContext
         // The first values a curator types that reach an id and an href unfiltered. Nothing
         // constrains a key at the source, and a nav entry pointing at a fragment the browser cannot
         // resolve is a control that scrolls nowhere, with nothing failing anywhere to say so.
+        // All three strip to the id "om-registeret" is already anchored at, so the section that
+        // gets there second is numbered apart rather than left sharing the anchor.
         var cut = Page(ReKeyed(Placed(), "innhold", key));
-        var id = Anchor(key);
+        var id = Nav(cut).Single(entry => entry.Label == "Innhold").Href[1..];
 
         Assert.Matches("^[A-Za-z0-9_-]+$", id);
+        Assert.StartsWith(Anchor(key), id, StringComparison.Ordinal);
         Assert.Contains(id, Sections(cut).Select(section => section.Id));
-        Assert.Contains(("#" + id, "Innhold"), Nav(cut));
+
+        var ids = Sections(cut).Select(section => section.Id).ToList();
+
+        Assert.Equal(ids.Distinct(StringComparer.Ordinal), ids);
         Assert.All(Nav(cut), entry => Assert.NotNull(cut.Find(entry.Href)));
     }
 

@@ -244,6 +244,11 @@ public sealed partial class DatasamlingView : ComponentBase
     /// the id is on the payload for exactly this, so the return path out of a collection costs no
     /// second request (Fhi.Metadata-35w0p.50).
     /// </para>
+    /// <para>
+    /// What is left after the yielding follows the yielded fields into their section rather than
+    /// heading one of its own — see <see cref="BuildLayout"/>, and Fhi.Metadata-lr6yh for why a
+    /// page carrying both Kildeinformasjon and Datakilde was the defect.
+    /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> SourceInformation =>
         Datasamling is not { } datasamling
@@ -349,9 +354,8 @@ public sealed partial class DatasamlingView : ComponentBase
     /// too rather than a zero, which is what lets a datasamling with no numbers at all draw no block.
     /// <para>
     /// Statistikktype, Frekvens and Telleenhet all yield to a section that has been given their
-    /// key, as the fact box above does. The count is the collection's own number and has no
-    /// property definition to be placed. <see cref="StatisticsHeading"/> reads the type as well and
-    /// deliberately does not yield: the heading names the section and the row states the fact.
+    /// key, as the fact box above does, and what is left follows them into it. The count is the
+    /// collection's own number and has no property definition to be placed.
     /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> Statistics =>
@@ -421,49 +425,162 @@ public sealed partial class DatasamlingView : ComponentBase
     /// <para>
     /// Read raw rather than through <see cref="UnlessPlaced"/>, alone among the merged keys: a
     /// heading naming what the numbers count is not the fact repeated, it is what makes the section
-    /// findable, and a section placed StatistikkType and headed "Statistikk" would have lost it.
-    /// The block stays gated on <see cref="AnyStatistics"/>, so a placement that empties the rows
-    /// takes the heading and its nav entry with them rather than leaving them over nothing.
+    /// findable. It heads the block only where the catalogue placed none of those keys — where it
+    /// placed them the curator's own section name is the heading, which is the placement deciding
+    /// the page rather than this view (Fhi.Metadata-lr6yh).
     /// </para>
     /// </remarks>
     private string StatisticsHeading =>
         StatisticsBlock.Heading(Datasamling?.StatisticsType, T);
 
     /// <summary>The sections this view draws, in the order it draws them.</summary>
-    private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
+    private IReadOnlyList<DetailLayoutSection> Layout { get; set; } = [];
 
-    private IReadOnlySet<string> DrawnIds { get; set; } = new HashSet<string>();
+    /// <summary>The contents nav, one entry per section this view drew, in that order.</summary>
+    private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
-        var toc = BuildToc();
-
-        Toc = toc.Entries;
-        DrawnIds = toc.Drawn;
+        Layout = BuildLayout();
+        Toc = BuildToc(Layout);
     }
 
-    /// <summary>This view's own predicates, which are what the nav and the blocks both read.</summary>
-    private DetailTocBuilder BuildToc()
+    /// <summary>
+    /// Every section this page draws, in the order the payload puts them.
+    /// </summary>
+    /// <remarks>
+    /// No section list is written down here: the sections are Munin's placement rows to declare and
+    /// a curator's to rename, and a group no row names keeps the Metadata block rather than being
+    /// dropped (Fhi.Metadata-lr6yh).
+    /// </remarks>
+    private IReadOnlyList<DetailLayoutSection> BuildLayout()
     {
         if (Datasamling is not { } datasamling)
         {
-            return new();
+            return [];
         }
 
-        DetailTocBuilder toc = new();
+        HashSet<string> named = new(
+            datasamling.Sections.Select(section => section.Key).Where(key => !string.IsNullOrEmpty(key)),
+            StringComparer.Ordinal);
 
-        toc.Add(Groups.Count > 0, DetailSectionIds.Metadata, T.HeadingMetadata);
-        toc.Add(!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria),
-                DetailSectionIds.Criteria, T.FieldInclusionCriteria);
-        toc.Add(DetailBlocks.AnyLinkedFacts(SourceInformation), DetailSectionIds.Source,
-                T.HeadingSourceInformation);
-        toc.Add(AnyStatistics, DetailSectionIds.Statistics, StatisticsHeading);
-        toc.AddNamed(NamedSections);
+        IReadOnlyList<PropertyGroup> ungrouped =
+            [.. Groups.Where(group => group.Key is null || !named.Contains(group.Key))];
 
-        return toc;
+        var placement = Placement;
+        var sourceFacts = SourceInformation;
+        var source = DetailBlocks.AnyLinkedFacts(sourceFacts)
+            ? placement.SectionOf(CatalogueColumns.LegalBasis, CatalogueColumns.DataController,
+                                  CatalogueColumns.DataProcessor, CatalogueColumns.PersonIdentification)
+            : null;
+
+        var statistics = AnyStatistics
+            ? placement.SectionOf(CatalogueColumns.StatisticsType, CatalogueColumns.Frequency,
+                                  CatalogueColumns.CountingUnit)
+            : null;
+
+        List<DetailLayoutSection> groups = [];
+        HashSet<string> ids = new(StringComparer.Ordinal);
+        var sourceDrawn = false;
+        var statisticsDrawn = false;
+
+        foreach (var group in Groups.Where(group => group.Key is not null && named.Contains(group.Key)))
+        {
+            List<(string Label, string? Value, bool Norwegian, string? Href)> facts = [];
+
+            if (string.Equals(group.Key, source, StringComparison.Ordinal))
+            {
+                facts.AddRange(sourceFacts);
+                sourceDrawn = true;
+            }
+
+            if (string.Equals(group.Key, statistics, StringComparison.Ordinal))
+            {
+                facts.AddRange(Statistics.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)));
+                statisticsDrawn = true;
+            }
+
+            var body = DetailBlocks.GroupBody(group, Language, CompleteRecordFacts);
+
+            groups.Add(new(group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
+                           CatalogueProperties.Foreign(group.NameLanguage, Reader),
+                           facts.Count == 0
+                               ? body
+                               : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language))));
+        }
+
+        return DetailLayout.Order(datasamling.Sections, groups,
+                                  Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn));
     }
 
-    /// <summary>Whether this view's own block is drawn; a named section never switches one on.</summary>
-    private bool Drawn(string id) => DrawnIds.Contains(id);
+    /// <summary>
+    /// This view's own sections, each under the key a placement row moves it by, in the order the
+    /// view falls back to for whichever of them the payload places nowhere.
+    /// </summary>
+    /// <remarks>
+    /// Asked of what was drawn and not of what was placed: a placed section whose every row came
+    /// out empty is no section, and a box that had yielded to it would be on no surface at all. The
+    /// criteria block carries no key because no built-in row is seeded for this surface yet.
+    /// </remarks>
+    private IReadOnlyList<DetailLayoutSection> Blocks(
+        DatasamlingDetail datasamling,
+        IReadOnlyList<PropertyGroup> ungrouped,
+        IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> sourceFacts,
+        bool sourceDrawn,
+        bool statisticsDrawn)
+    {
+        List<DetailLayoutSection> blocks = [];
+
+        if (ungrouped.Count > 0)
+        {
+            blocks.Add(new(null, DetailSectionIds.Metadata, T.HeadingMetadata, null,
+                           DetailBlocks.Groups(ungrouped, GroupLevel, Language, CompleteRecordFacts)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
+        {
+            blocks.Add(new(null, DetailSectionIds.Criteria, T.FieldInclusionCriteria, null,
+                           DetailBlocks.Prose(datasamling.InclusionAndExclusionCriteria,
+                                              "munin-explorer-datasamling__criteria",
+                                              CatalogueProperties.Foreign("no", Reader))));
+        }
+
+        if (!sourceDrawn && DetailBlocks.AnyLinkedFacts(sourceFacts))
+        {
+            blocks.Add(new(SectionKeys.SourceInformation, DetailSectionIds.Source,
+                           T.HeadingSourceInformation, null,
+                           DetailBlocks.LinkedFacts(sourceFacts, Language)));
+        }
+
+        if (!statisticsDrawn && AnyStatistics)
+        {
+            blocks.Add(new(SectionKeys.Statistics, DetailSectionIds.Statistics, StatisticsHeading, null,
+                           DetailBlocks.Facts(Statistics, Language)));
+        }
+
+        return blocks;
+    }
+
+    /// <summary>The nav, read off the drawn sections so a link cannot point at a block left out.</summary>
+    private IReadOnlyList<DetailTocEntry> BuildToc(IReadOnlyList<DetailLayoutSection> layout)
+    {
+        DetailTocBuilder toc = new();
+
+        if (Datasamling is null)
+        {
+            return toc.Entries;
+        }
+
+        foreach (var section in layout)
+        {
+            // The heading's own lang goes with it: the words are the curator's, and a nav link
+            // repeating them unmarked is announced in the reader's phonetics (WCAG 3.1.2).
+            toc.Always(section.Id, section.Heading, section.HeadingLanguage);
+        }
+
+        toc.AddNamed(NamedSections);
+
+        return toc.Entries;
+    }
 }

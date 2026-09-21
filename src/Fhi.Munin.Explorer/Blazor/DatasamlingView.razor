@@ -31,66 +31,21 @@
                     <p class="caption margin--none munin-explorer-datasamling__identifiers">@datasamling.Code</p>
                 }
 
-                @if (Description is { } description)
-                {
-                    <p class="ingress munin-explorer-datasamling__description"
-                       lang="@CatalogueProperties.Foreign("no", Reader)">@CatalogueMarkdown.Render(description)</p>
-                }
+                @DetailBlocks.Prose(Description, "ingress munin-explorer-datasamling__description",
+                                    CatalogueProperties.Foreign("no", Reader))
             </div>
         </Header>
         <ChildContent>
 
-            @* Every block below is a <section> carrying a fixed English id, and draws exactly when
-               its predicate in BuildToc holds — the one its nav entry is added under, so the nav can
-               never link to a block left out, in either language. *@
-
-            @* The catalogue's own metadata, resolved from the payload exactly as the kilde and
-               variable views resolve theirs. The flat list this view replaced drew none of it,
-               and every datasamling measured carries between three and eleven curated keys. *@
-            @if (Drawn(DetailSectionIds.Metadata))
+            @* One pass, in the order BuildLayout resolved. Which sections this page has, what
+               they are called and where they sit is the catalogue's placement to decide — no
+               section list is written here, which is the whole of Fhi.Metadata-lr6yh. *@
+            @foreach (var block in Layout)
             {
-                <DetailSection Id="@DetailSectionIds.Metadata">
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
-
-                    @foreach (var group in Groups)
-                    {
-                        @DetailBlocks.Group(group, GroupLevel, Language, CompleteRecordFacts)
-                    }
-                </DetailSection>
-            }
-
-            @* Who is in the data and who is not — the first question a researcher asks about a
-               datasamling, and prose rather than a field, so it sits in the main column. *@
-            @if (Drawn(DetailSectionIds.Criteria))
-            {
-                <DetailSection Id="@DetailSectionIds.Criteria">
-                    @DetailBlocks.Heading(BlockLevel, T.FieldInclusionCriteria, "headline headline-s")
-                    <p class="munin-explorer-datasamling__criteria"
-                       lang="@CatalogueProperties.Foreign("no", Reader)">
-                        @CatalogueMarkdown.Render(datasamling.InclusionAndExclusionCriteria)
-                    </p>
-                </DetailSection>
-            }
-
-            @* Last of this view's own blocks, because the mockups put source information near
-               the end of the page rather than in a rail beside it. *@
-
-            @* A box with no value at all is not drawn; one with some draws the rest as "Ingen". *@
-            @if (Drawn(DetailSectionIds.Source))
-            {
-                <DetailSection Id="@DetailSectionIds.Source">
-                    @DetailBlocks.Heading(BlockLevel, T.HeadingSourceInformation, "headline headline-s")
-                    @DetailBlocks.LinkedFacts(SourceInformation, Language)
-                </DetailSection>
-            }
-
-            @* A datasamling that counts nothing at all gets no block. The type names the heading
-               and fills a row: one makes the section findable, the other states the fact. *@
-            @if (Drawn(DetailSectionIds.Statistics))
-            {
-                <DetailSection Id="@DetailSectionIds.Statistics">
-                    @DetailBlocks.Heading(BlockLevel, StatisticsHeading, "headline headline-s")
-                    @DetailBlocks.Facts(Statistics, Language)
+                <DetailSection Id="@block.Id" @key="block.Id">
+                    @DetailBlocks.Heading(BlockLevel, block.Heading, "headline headline-s",
+                                          language: block.HeadingLanguage)
+                    @block.Body
                 </DetailSection>
             }
 
