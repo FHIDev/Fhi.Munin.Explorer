@@ -279,6 +279,25 @@ internal static class DetailBlocks
                      language: CatalogueProperties.Foreign(group.NameLanguage, ReaderLanguage.Of(language))),
              GroupBody(group, language, completeRecord));
 
+    /// <summary>
+    /// Several groups one after another, for the block a view gathers the unplaced ones under.
+    /// </summary>
+    /// <remarks>
+    /// Both detail views draw that block, and drew it from a private copy of this loop each until
+    /// the second copy went one release without the first's changes (Fhi.Metadata-lr6yh).
+    /// </remarks>
+    internal static RenderFragment Groups(IReadOnlyList<PropertyGroup> groups, int level,
+                                          string? language,
+                                          CompleteRecordExtras? completeRecord = null) => builder =>
+    {
+        var seq = 0;
+
+        foreach (var group in groups)
+        {
+            builder.AddContent(seq++, Group(group, level, language, completeRecord));
+        }
+    };
+
     /// <summary>The same group without its heading, for a caller that heads the section itself.</summary>
     /// <remarks>
     /// A group the catalogue placed is a section of the page rather than a block inside one, so its

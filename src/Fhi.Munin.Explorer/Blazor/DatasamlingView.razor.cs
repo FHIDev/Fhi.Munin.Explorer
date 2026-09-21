@@ -246,7 +246,7 @@ public sealed partial class DatasamlingView : ComponentBase
     /// </para>
     /// <para>
     /// What is left after the yielding follows the yielded fields into their section rather than
-    /// heading one of its own — see <see cref="BuildSections"/>, and Fhi.Metadata-lr6yh for why a
+    /// heading one of its own — see <see cref="BuildLayout"/>, and Fhi.Metadata-lr6yh for why a
     /// page carrying both Kildeinformasjon and Datakilde was the defect.
     /// </para>
     /// </remarks>
@@ -433,58 +433,40 @@ public sealed partial class DatasamlingView : ComponentBase
     private string StatisticsHeading =>
         StatisticsBlock.Heading(Datasamling?.StatisticsType, T);
 
-    /// <summary>One section of the page: what anchors it, what heads it and what fills it.</summary>
-    /// <remarks>
-    /// <c>CatchAll</c> marks the complete record, which closes the page by construction, so a block
-    /// the catalogue gave no position to is drawn ahead of it rather than after it.
-    /// </remarks>
-    private sealed record PageSection(
-        string Id, string Heading, string? HeadingLanguage, RenderFragment Body, bool CatchAll = false);
-
     /// <summary>The sections this view draws, in the order it draws them.</summary>
-    private IReadOnlyList<PageSection> PageSections { get; set; } = [];
+    private IReadOnlyList<DetailLayoutSection> Layout { get; set; } = [];
 
-    /// <inheritdoc cref="PageSections"/>
+    /// <summary>The contents nav, one entry per section this view drew, in that order.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
     /// <inheritdoc />
     protected override void OnParametersSet()
     {
-        var sections = BuildSections();
-
-        DetailTocBuilder toc = new();
-
-        foreach (var section in sections)
-        {
-            toc.Always(section.Id, section.Heading);
-        }
-
-        toc.AddNamed(NamedSections);
-
-        PageSections = sections;
-        Toc = toc.Entries;
+        Layout = BuildLayout();
+        Toc = BuildToc(Layout);
     }
 
     /// <summary>
-    /// The page in one pass: the sections the catalogue placed, under its headings and in its order,
-    /// with everything it placed nowhere drawn ahead of the complete record.
+    /// Every section this page draws, in the order the payload puts them.
     /// </summary>
     /// <remarks>
-    /// No section list is written down here, which is the point of it: the sections are Munin's
-    /// placement rows to declare and a curator's to rename (Fhi.Metadata-lr6yh).
-    /// <para>
-    /// A fact box whose own fields the catalogue placed follows them into that section, so no page
-    /// carries two headings about one subject; a box it placed nothing from keeps a section of its
-    /// own, which is what every payload predating the placement rows gets. The criteria block cannot
-    /// be placed at all yet — the DatasamlingDetalj surface has no built-in placement row seeded.
-    /// </para>
+    /// No section list is written down here: the sections are Munin's placement rows to declare and
+    /// a curator's to rename, and a group no row names keeps the Metadata block rather than being
+    /// dropped (Fhi.Metadata-lr6yh).
     /// </remarks>
-    private List<PageSection> BuildSections()
+    private IReadOnlyList<DetailLayoutSection> BuildLayout()
     {
         if (Datasamling is not { } datasamling)
         {
             return [];
         }
+
+        HashSet<string> named = new(
+            datasamling.Sections.Select(section => section.Key).Where(key => !string.IsNullOrEmpty(key)),
+            StringComparer.Ordinal);
+
+        IReadOnlyList<PropertyGroup> ungrouped =
+            [.. Groups.Where(group => group.Key is null || !named.Contains(group.Key))];
 
         var placement = Placement;
         var sourceFacts = SourceInformation;
@@ -498,22 +480,13 @@ public sealed partial class DatasamlingView : ComponentBase
                                   CatalogueColumns.CountingUnit)
             : null;
 
-        List<PageSection> sections = [];
-        List<PropertyGroup> unplaced = [];
+        List<DetailLayoutSection> groups = [];
         HashSet<string> ids = new(StringComparer.Ordinal);
         var sourceDrawn = false;
         var statisticsDrawn = false;
 
-        foreach (var group in Groups)
+        foreach (var group in Groups.Where(group => group.Key is not null && named.Contains(group.Key)))
         {
-            // A section of the page needs a declared position and an id a reader can be sent; a group
-            // with either missing stays where the unplaced ones have always been drawn.
-            if (!group.Placed || DetailSectionIds.Placed(group.Key, ids) is not { } id)
-            {
-                unplaced.Add(group);
-                continue;
-            }
-
             List<(string Label, string? Value, bool Norwegian, string? Href)> facts = [];
 
             if (string.Equals(group.Key, source, StringComparison.Ordinal))
@@ -530,58 +503,84 @@ public sealed partial class DatasamlingView : ComponentBase
 
             var body = DetailBlocks.GroupBody(group, Language, CompleteRecordFacts);
 
-            sections.Add(new PageSection(
-                id, group.Name, CatalogueProperties.Foreign(group.NameLanguage, Reader),
-                facts.Count == 0 ? body : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language)),
-                string.Equals(group.Key, CatalogueProperties.CatchAllGroupKey, StringComparison.Ordinal)));
+            groups.Add(new(group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
+                           CatalogueProperties.Foreign(group.NameLanguage, Reader),
+                           facts.Count == 0
+                               ? body
+                               : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language))));
         }
 
-        List<PageSection> unpositioned = [];
+        return DetailLayout.Order(datasamling.Sections, groups,
+                                  Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn));
+    }
 
-        if (unplaced.Count > 0)
+    /// <summary>
+    /// This view's own sections, each under the key a placement row moves it by, in the order the
+    /// view falls back to for whichever of them the payload places nowhere.
+    /// </summary>
+    /// <remarks>
+    /// Asked of what was drawn and not of what was placed: a placed section whose every row came
+    /// out empty is no section, and a box that had yielded to it would be on no surface at all. The
+    /// criteria block carries no key because no built-in row is seeded for this surface yet.
+    /// </remarks>
+    private IReadOnlyList<DetailLayoutSection> Blocks(
+        DatasamlingDetail datasamling,
+        IReadOnlyList<PropertyGroup> ungrouped,
+        IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> sourceFacts,
+        bool sourceDrawn,
+        bool statisticsDrawn)
+    {
+        List<DetailLayoutSection> blocks = [];
+
+        if (ungrouped.Count > 0)
         {
-            unpositioned.Add(new PageSection(DetailSectionIds.Metadata, T.HeadingMetadata, null,
-                                             UnplacedGroups(unplaced)));
+            blocks.Add(new(null, DetailSectionIds.Metadata, T.HeadingMetadata, null,
+                           DetailBlocks.Groups(ungrouped, GroupLevel, Language, CompleteRecordFacts)));
         }
 
         if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
         {
-            unpositioned.Add(new PageSection(
-                DetailSectionIds.Criteria, T.FieldInclusionCriteria, null,
-                DetailBlocks.Prose(datasamling.InclusionAndExclusionCriteria,
-                                   "munin-explorer-datasamling__criteria",
-                                   CatalogueProperties.Foreign("no", Reader))));
+            blocks.Add(new(null, DetailSectionIds.Criteria, T.FieldInclusionCriteria, null,
+                           DetailBlocks.Prose(datasamling.InclusionAndExclusionCriteria,
+                                              "munin-explorer-datasamling__criteria",
+                                              CatalogueProperties.Foreign("no", Reader))));
         }
 
-        // Asked of what was drawn rather than of what was placed: a placed section whose every row
-        // came out empty is no section, and a box that had yielded to it would be on no surface at all.
         if (!sourceDrawn && DetailBlocks.AnyLinkedFacts(sourceFacts))
         {
-            unpositioned.Add(new PageSection(DetailSectionIds.Source, T.HeadingSourceInformation, null,
-                                             DetailBlocks.LinkedFacts(sourceFacts, Language)));
+            blocks.Add(new(SectionKeys.SourceInformation, DetailSectionIds.Source,
+                           T.HeadingSourceInformation, null,
+                           DetailBlocks.LinkedFacts(sourceFacts, Language)));
         }
 
         if (!statisticsDrawn && AnyStatistics)
         {
-            unpositioned.Add(new PageSection(DetailSectionIds.Statistics, StatisticsHeading, null,
-                                             DetailBlocks.Facts(Statistics, Language)));
+            blocks.Add(new(SectionKeys.Statistics, DetailSectionIds.Statistics, StatisticsHeading, null,
+                           DetailBlocks.Facts(Statistics, Language)));
         }
 
-        var closing = sections.FindIndex(section => section.CatchAll);
-
-        sections.InsertRange(closing < 0 ? sections.Count : closing, unpositioned);
-
-        return sections;
+        return blocks;
     }
 
-    /// <summary>Every group the catalogue titled but gave no position, drawn where they always were.</summary>
-    private RenderFragment UnplacedGroups(IReadOnlyList<PropertyGroup> groups) => builder =>
+    /// <summary>The nav, read off the drawn sections so a link cannot point at a block left out.</summary>
+    private IReadOnlyList<DetailTocEntry> BuildToc(IReadOnlyList<DetailLayoutSection> layout)
     {
-        var seq = 0;
+        DetailTocBuilder toc = new();
 
-        foreach (var group in groups)
+        if (Datasamling is null)
         {
-            builder.AddContent(seq++, DetailBlocks.Group(group, GroupLevel, Language, CompleteRecordFacts));
+            return toc.Entries;
         }
-    };
+
+        foreach (var section in layout)
+        {
+            // The heading's own lang goes with it: the words are the curator's, and a nav link
+            // repeating them unmarked is announced in the reader's phonetics (WCAG 3.1.2).
+            toc.Always(section.Id, section.Heading, section.HeadingLanguage);
+        }
+
+        toc.AddNamed(NamedSections);
+
+        return toc.Entries;
+    }
 }

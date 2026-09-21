@@ -31,19 +31,16 @@
                     <p class="caption margin--none munin-explorer-datasamling__identifiers">@datasamling.Code</p>
                 }
 
-                @if (Description is { } description)
-                {
-                    <p class="ingress munin-explorer-datasamling__description"
-                       lang="@CatalogueProperties.Foreign("no", Reader)">@CatalogueMarkdown.Render(description)</p>
-                }
+                @DetailBlocks.Prose(Description, "ingress munin-explorer-datasamling__description",
+                                    CatalogueProperties.Foreign("no", Reader))
             </div>
         </Header>
         <ChildContent>
 
-            @* One pass, in the order BuildSections resolved. Which sections this page has, what
+            @* One pass, in the order BuildLayout resolved. Which sections this page has, what
                they are called and where they sit is the catalogue's placement to decide — no
                section list is written here, which is the whole of Fhi.Metadata-lr6yh. *@
-            @foreach (var block in PageSections)
+            @foreach (var block in Layout)
             {
                 <DetailSection Id="@block.Id" @key="block.Id">
                     @DetailBlocks.Heading(BlockLevel, block.Heading, "headline headline-s",

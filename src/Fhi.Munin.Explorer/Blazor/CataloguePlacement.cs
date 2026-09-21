@@ -41,12 +41,13 @@ internal sealed record CataloguePlacement(
 
     /// <summary>
     /// The section the catalogue has put the first of these keys in, or nothing where it has placed
-    /// none of them.
+    /// none of them. The group's key and never its title, which a curator renames one language at a
+    /// time.
     /// </summary>
     /// <remarks>
-    /// How a fact box finds where its own fields went, so the rows it keeps land beside them rather
-    /// than under a second heading about the same subject. Answered with the group's key and never
-    /// its title, which a curator can rename in one language at a time.
+    /// A name, not a promise that the page draws it: the caller asks this to find where its fields
+    /// went and must still check whether that section was emitted, since only what was drawn can
+    /// hold what the box yielded (Fhi.Metadata-lr6yh).
     /// </remarks>
     internal string? SectionOf(params string[] keys)
     {

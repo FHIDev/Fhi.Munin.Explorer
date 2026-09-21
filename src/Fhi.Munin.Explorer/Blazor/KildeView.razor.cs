@@ -453,11 +453,13 @@ public sealed partial class KildeView : ComponentBase
         IReadOnlyList<PropertyGroup> ungrouped =
             [.. Groups.Where(group => group.Key is null || !named.Contains(group.Key))];
 
+        HashSet<string> ids = new(StringComparer.Ordinal);
+
         List<DetailLayoutSection> groups =
         [
             .. Groups.Where(group => group.Key is not null && named.Contains(group.Key))
                      .Select(group => new DetailLayoutSection(
-                         group.Key, DetailSectionIds.ForGroupKey(group.Key!), group.Name,
+                         group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
                          CatalogueProperties.Foreign(group.NameLanguage, Reader),
                          DetailBlocks.GroupBody(group, Language, CompleteRecordFacts))),
         ];
@@ -482,7 +484,7 @@ public sealed partial class KildeView : ComponentBase
         if (ungrouped.Count > 0)
         {
             blocks.Add(new(null, DetailSectionIds.Metadata, T.HeadingMetadata, null,
-                           MetadataBody(ungrouped)));
+                           DetailBlocks.Groups(ungrouped, GroupLevel, Language, CompleteRecordFacts)));
         }
 
         // The tree's own status line carries the loading, empty and error states, so this block has
@@ -504,17 +506,6 @@ public sealed partial class KildeView : ComponentBase
 
         return blocks;
     }
-
-    /// <summary>The property groups the payload files under no section of its own.</summary>
-    private RenderFragment MetadataBody(IReadOnlyList<PropertyGroup> ungrouped) => builder =>
-    {
-        var seq = 0;
-
-        foreach (var group in ungrouped)
-        {
-            builder.AddContent(seq++, DetailBlocks.Group(group, GroupLevel, Language, CompleteRecordFacts));
-        }
-    };
 
     /// <summary>The delkilde and datasamling tree, and the catalogue's own words about it below.</summary>
     private RenderFragment DataCollectionsBody => builder =>

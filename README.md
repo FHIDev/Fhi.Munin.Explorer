@@ -667,32 +667,27 @@ These are not style preferences — each one is a host that breaks otherwise.
   bound on that — `Fhi.Metadata-uobxg` records it, and the chassis bead that adds the contents nav
   is where it gets settled.
 
-  `KildeView` writes one family more, and its names are the catalogue's rather than ours: where the
-  payload places a property group as a section of its own, that section's id is the group's own
-  **key** under a `section-` prefix — `section-om-registeret`, `section-innhold`,
-  `section-tilgang-og-ansvar`, `section-alle-metadatafelt` and whatever else a curator adds. The key
+  The detail views write one family more, and its names are the catalogue's rather than ours: where
+  the payload places a property group as a section of its own, that section's id is the group's own
+  **key** under a `section-` prefix — `section-om-registeret`, `section-om-datasamlingen`,
+  `section-datakilde`, `section-alle-metadatafelt` and whatever else a curator adds. The key
   and not the heading, for the reason the fixed words above are fixed: a heading is bilingual and a
   curator's to reword, where the key is neither. So the set is open, and it is open on Munin's side
   — an id here can appear or change without this package being released, which is the whole point of
   drawing the page from the placement data (`Fhi.Metadata-35w0p.22`). The prefix is what keeps the
   two sets apart: a curator minting `source` or `metadata` as a group key writes `section-source`,
   not a second copy of the fixed id. Characters a fragment link cannot address are replaced with
-  `-` on the way in, since nothing constrains a key at the source. A group the payload places
-  nowhere keeps its old home inside `metadata` and adds no id at all.
+  `-` on the way in, since nothing constrains a key at the source — which two keys can come out of
+  alike, so a repeat is numbered (`section-om-registeret-2`) rather than anchoring both sections at
+  once. A group the payload places nowhere keeps its old home inside `metadata` and adds no id at
+  all.
 
-  `DatasamlingView` writes a second such family, and it is the one a host cannot read off a list
-  here: a section the catalogue has *placed* is anchored on `metadata-` finished with that section's
-  own `groupKey` — `metadata-om-datasamlingen`, `metadata-datakilde`, `metadata-alle-metadatafelt`
-  and whatever else Munin's placement rows declare. The key and never the heading, for the reason
-  above: a curator renames a title in one language at a time, and the key is the same in both. It
-  is stemmed on `metadata` so it can collide with neither the bare ids above nor a host's own, and
-  anything a fragment cannot carry becomes a hyphen — which two keys can come out of alike, so a
-  repeat is numbered (`metadata-om-datasamlingen-2`) rather than anchoring both sections at once.
-  The bare `metadata` id has not gone with them: it is what the groups the catalogue titled but
-  placed nowhere are drawn under, so a partly-placed payload writes it beside the new ones and a
-  payload predating the placement rows writes it alone. Which sections exist is Munin's to decide, so
-  the set is open and a host that means something by an `id` of its own should not start it
-  `metadata-`. (`Fhi.Metadata-lr6yh`)
+  A datasamling page writes the same family, from the same keys, since `Fhi.Metadata-lr6yh`: it too
+  draws whatever sections the placement rows declare, so `#metadata` there becomes one
+  `#section-<group key>` per placed section. Bare `#metadata` has not gone with them — it is what
+  the groups the catalogue titled but placed nowhere are drawn under, so a partly-placed payload
+  writes it beside the new ones and a payload predating the placement rows writes it alone. A host
+  that means something by an `id` of its own should not start it `section-`.
 
   Ids are otherwise a separate family, each suffixed with a per-instance discriminator so two
   mounts on one page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`,

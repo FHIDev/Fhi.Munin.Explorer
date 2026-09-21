@@ -42,14 +42,9 @@
                     <p class="munin-explorer-kilde__kildetype">@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</p>
                 }
 
-                @if (!string.IsNullOrWhiteSpace(kilde.Description))
-                {
-                    @* Norwegian whatever the reader's language: the catalogue stores one description,
-                       authored with markdown links and line breaks (FHIDev/Munin#5385). *@
-                    <p class="ingress munin-explorer-kilde__description" lang="@CatalogueProperties.Foreign("no", Reader)">
-                        @CatalogueMarkdown.Render(kilde.Description)
-                    </p>
-                }
+                @* Norwegian whatever the reader's language: the catalogue stores one description. *@
+                @DetailBlocks.Prose(kilde.Description, "ingress munin-explorer-kilde__description",
+                                    CatalogueProperties.Foreign("no", Reader))
             </div>
         </Header>
         <ChildContent>

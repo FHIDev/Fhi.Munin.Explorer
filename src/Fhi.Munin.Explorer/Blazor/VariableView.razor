@@ -28,11 +28,8 @@
                     <p class="caption margin--none munin-explorer-whole__code">@variable.Code</p>
                 }
 
-                @if (!string.IsNullOrWhiteSpace(variable.Description))
-                {
-                    <p class="ingress munin-explorer-whole__description"
-                       lang="@CatalogueProperties.Foreign("no", Reader)">@CatalogueMarkdown.Render(variable.Description)</p>
-                }
+                @DetailBlocks.Prose(variable.Description, "ingress munin-explorer-whole__description",
+                                    CatalogueProperties.Foreign("no", Reader))
             </div>
         </Header>
         <ChildContent>

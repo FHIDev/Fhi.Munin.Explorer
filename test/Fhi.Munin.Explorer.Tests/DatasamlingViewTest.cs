@@ -560,9 +560,8 @@ public class DatasamlingViewTest : ExplorerTestContext
     /// <c>api/explorer/datasamling/{id}</c> on runa, 2026-09-18.
     /// </summary>
     /// <remarks>
-    /// Hand-written rather than captured because the fixture above predates groupKey, groupSortOrder
-    /// and sections entirely — re-capturing it is Fhi.Metadata-dmr8c's, and with the stale one this
-    /// half of the view has nothing to be driven by.
+    /// Handwritten because the captured fixture predates <c>sections</c> entirely; re-capturing it
+    /// is Fhi.Metadata-dmr8c's.
     /// </remarks>
     private static readonly (string Key, int Order, string No, string En)[] SeededSections =
     [
@@ -571,6 +570,18 @@ public class DatasamlingViewTest : ExplorerTestContext
         ("datakilde", 3001, "Datakilde", "Data source"),
         (CatalogueProperties.CatchAllGroupKey, 9001, "Alle metadatafelt", "All metadata fields"),
     ];
+
+    /// <summary>The same rows as the page's section collection, in the order the API sends them.</summary>
+    private static IReadOnlyList<SectionPlacement> Placements(
+        params (string Key, int Order, string No, string En)[] sections) =>
+        [.. sections.OrderBy(section => section.Order)
+                    .Select(section => new SectionPlacement
+                    {
+                        Key = section.Key,
+                        SortOrder = section.Order,
+                        Translations =
+                            new Dictionary<string, string> { ["no"] = section.No, ["en"] = section.En },
+                    })];
 
     /// <summary>
     /// The catalogue's own word for the one coded value in this payload, which is not the word
@@ -584,9 +595,11 @@ public class DatasamlingViewTest : ExplorerTestContext
 
     /// <summary>One definition, filed in the section the placement rows put it in.</summary>
     private static PropertyMetadataEntry Definition(
-        string key, string label, string type, int sortOrder, string groupKey, string? optionsJson = null)
+        string key, string label, string type, int sortOrder, string groupKey,
+        string? optionsJson = null,
+        (string Key, int Order, string No, string En)[]? sections = null)
     {
-        var section = SeededSections.Single(s => s.Key == groupKey);
+        var section = (sections ?? SeededSections).Single(s => s.Key == groupKey);
 
         return new PropertyMetadataEntry
         {
@@ -603,12 +616,12 @@ public class DatasamlingViewTest : ExplorerTestContext
 
     /// <summary>The captured payload with runa's placement rows written onto it.</summary>
     /// <remarks>
-    /// Kvalitetsnote is in it because the seed puts it in om-datasamlingen at 1007 and nothing in
-    /// this view draws it in markup of its own — the placement is the whole of that section's
-    /// arrival (Fhi.Metadata-wfhu8).
+    /// Kvalitetsnote is in it because the seed puts it in om-datasamlingen at 1007, and nothing in
+    /// this view draws it in markup of its own (Fhi.Metadata-wfhu8).
     /// </remarks>
     private static DatasamlingDetail Placed() => Datasamling() with
     {
+        Sections = Placements(SeededSections),
         PropertyMetadata =
         [
             Definition(CatalogueColumns.Description, "Beskrivelse", "Text", 1001, "om-datasamlingen"),
@@ -644,11 +657,53 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         // Read as the whole list rather than searched for, so the view's own three headings going
         // is asserted with it: Metadata wrapped the groups, Kildeinformasjon is what the placement
-        // calls Datakilde, and Statistikk is inside Variabler.
+        // calls Datakilde, and Statistikk is inside Variabler. The criteria block carries no key
+        // the placement can address, so it falls to the view's own order, after the placed ones.
         Assert.Equal(
-            ["Om datasamlingen", "Variabler", "Datakilde", "Inklusjons- og eksklusjonskriterier",
-             "Alle metadatafelt"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt",
+             "Inklusjons- og eksklusjonskriterier"],
             BlockHeadings(cut));
+    }
+
+    /// <summary>The same payload with Kvalitetsnote given a section of its own.</summary>
+    /// <remarks>
+    /// The live seed files it inside om-datasamlingen, so the sixth section of the mockup arrives
+    /// as a row in Munin rather than a release here — which is what this fixture proves
+    /// (Fhi.Metadata-wfhu8).
+    /// </remarks>
+    private static DatasamlingDetail QualityNoteSectioned()
+    {
+        (string Key, int Order, string No, string En)[] sections =
+            [.. SeededSections, ("kvalitetsnote", 1500, "Kvalitetsnote", "Quality note")];
+
+        var placed = Placed();
+
+        return placed with
+        {
+            Sections = Placements(sections),
+            PropertyMetadata =
+            [
+                .. placed.PropertyMetadata.Where(e => e.Key != "Kvalitetsnote"),
+                Definition("Kvalitetsnote", "Kvalitetsnote", "Text", 1007, "kvalitetsnote",
+                           sections: sections),
+            ],
+        };
+    }
+
+    [Fact]
+    public void Placement_WhenARowGivesKvalitetsnoteASectionOfItsOwn_ThenThePageDrawsSixSections()
+    {
+        // Nothing in this package moved the field: the same view, the same fixture, one extra
+        // placement row, and the sixth section arrives in the band the row put it in.
+        var cut = Render(QualityNoteSectioned());
+
+        Assert.Equal(
+            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt",
+             "Inklusjons- og eksklusjonskriterier"],
+            BlockHeadings(cut));
+
+        Assert.Equal(["Kvalitetsnote"], SectionLabels(cut, "Kvalitetsnote"));
+        Assert.DoesNotContain("Kvalitetsnote", SectionLabels(cut, "Om datasamlingen"));
     }
 
     [Fact]
@@ -661,41 +716,36 @@ public class DatasamlingViewTest : ExplorerTestContext
         var english = Render(Placed(), language: "en");
 
         Assert.Equal(
-            ["metadata-om-datasamlingen", "metadata-variabler", "metadata-datakilde",
-             DetailSectionIds.Criteria, "metadata-alle-metadatafelt"],
+            ["section-om-datasamlingen", "section-variabler", "section-datakilde",
+             "section-alle-metadatafelt", DetailSectionIds.Criteria],
             Wrappers(norwegian).Select(section => section.Id!));
 
         Assert.Equal(Wrappers(norwegian).Select(s => s.Id!), Wrappers(english).Select(s => s.Id!));
         Assert.Equal(Wrappers(english).Select(s => "#" + s.Id), Targets(english));
-        Assert.Equal(["About the data collection", "Variables", "Data source",
-                      "Inclusion and exclusion criteria", "All metadata fields"],
+        Assert.Equal(["About the data collection", "Variables", "Data source", "All metadata fields",
+                      "Inclusion and exclusion criteria"],
                      BlockHeadings(english));
     }
 
     [Fact]
-    public void Placement_WhenTwoSectionKeysSlugAlike_ThenTheirIdsAreStillDistinct()
+    public void Placement_WhenTwoSectionKeysStripAlike_ThenTheirIdsAreStillDistinct()
     {
-        // A key is whatever a curator typed and everything but an ASCII letter or digit becomes a
-        // hyphen, so two keys can reach one id — and a repeated id draws two sections under one
-        // anchor, with the contents nav's second link landing on the first.
-        var placed = Placed();
+        // A repeated id draws two sections under one anchor, with the contents nav's second link
+        // landing on the first. (Fhi.Metadata-lr6yh)
+        (string Key, int Order, string No, string En)[] sections =
+            [.. SeededSections, ("om datasamlingen", 4000, "Oppdatering", "Updates")];
 
-        var twin = new PropertyMetadataEntry
-        {
-            Key = "Oppdateringsrutine",
-            SortOrder = 4001,
-            Type = "Text",
-            GroupKey = "om_datasamlingen",
-            GroupSortOrder = 4000,
-            DisplayNameTranslations =
-                new Dictionary<string, string> { ["no"] = "Oppdateringsrutine", ["en"] = "Update routine" },
-            GroupTranslations =
-                new Dictionary<string, string> { ["no"] = "Om datasamlingen", ["en"] = "About the data collection" },
-        };
+        var placed = Placed();
 
         var cut = Render(placed with
         {
-            PropertyMetadata = [.. placed.PropertyMetadata, twin],
+            Sections = Placements(sections),
+            PropertyMetadata =
+            [
+                .. placed.PropertyMetadata,
+                Definition("Oppdateringsrutine", "Oppdateringsrutine", "Text", 4001,
+                           "om datasamlingen", sections: sections),
+            ],
             AdditionalProperties = new Dictionary<string, string?>(placed.AdditionalProperties)
             {
                 ["Oppdateringsrutine"] = "Oppdateres årlig i mars.",
@@ -705,7 +755,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var ids = Wrappers(cut).Select(section => section.Id!).ToList();
 
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
-        Assert.Contains("metadata-om-datasamlingen-2", ids);
+        Assert.Contains("section-om-datasamlingen-2", ids);
     }
 
     [Fact]
@@ -757,22 +807,18 @@ public class DatasamlingViewTest : ExplorerTestContext
         });
 
         Assert.Equal(
-            ["metadata-om-datasamlingen", DetailSectionIds.Criteria, "metadata-alle-metadatafelt"],
+            ["section-om-datasamlingen", "section-alle-metadatafelt", DetailSectionIds.Criteria],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
     }
 
     [Fact]
-    public void Placement_WhenTheCatalogueNamesASectionButNotWhereItGoes_ThenTheFactBoxKeepsItsOwn()
+    public void Placement_WhenTheCatalogueNamesNoSectionAtAll_ThenTheFactBoxKeepsItsOwn()
     {
-        // The half-rolled-out payload: groupKey without groupSortOrder. A section of the page needs
-        // a declared position, so these groups stay under the view's own Metadata heading — and the
+        // The payload that predates the placement rows: groups titled, no section collection. The
         // fact box must not have yielded to a section that never became one, which is the one way
         // this could leave a public field drawn nowhere at all.
-        var cut = Render(Placed() with
-        {
-            PropertyMetadata = [.. Placed().PropertyMetadata.Select(e => e with { GroupSortOrder = null })],
-        });
+        var cut = Render(Placed() with { Sections = [] });
 
         Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon",
                       "Statistikk (årsbasert)"],
@@ -780,6 +826,66 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Contains("Kilde", Labels(SourceInformation(cut)));
         Assert.Contains("Antall variabler", SectionLabels(cut, "Statistikk (årsbasert)"));
     }
+
+    [Fact]
+    public void Placement_WhenOnlySomeGroupsArePlaced_ThenBareMetadataIsDrawnBesideTheNewIds()
+    {
+        // The shape a rollout actually produces, and the one the host note promises: a page can
+        // carry #metadata and the placed ids at once, and a group no row names is drawn under the
+        // view's own heading rather than dropped. (Fhi.Metadata-lr6yh)
+        var cut = Render(Placed() with
+        {
+            Sections = Placements([.. SeededSections.Where(s => s.Key != "datakilde")]),
+        });
+
+        Assert.Equal(
+            ["section-om-datasamlingen", "section-variabler", "section-alle-metadatafelt",
+             DetailSectionIds.Metadata, DetailSectionIds.Criteria, DetailSectionIds.Source],
+            Wrappers(cut).Select(section => section.Id!));
+
+        // The unplaced group's own rows are under Metadata, and the fact box that would have
+        // yielded to Datakilde keeps its own section because no such section was drawn.
+        Assert.Equal(["Dataansvarlig", "Databehandler", "Grad av personidentifikasjon", "Lovverk"],
+                     SectionLabels(cut, "Metadata"));
+        Assert.Contains("Kilde", Labels(SourceInformation(cut)));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+    }
+
+    [Fact]
+    public void Placement_WhenAGroupIsNamedInNorwegianOnly_ThenTheHeadingAndItsNavLinkAreBothMarked()
+    {
+        // A section headed in the curator's word on an English page: unmarked, a screen reader
+        // announces the heading in Norwegian and the nav link repeating it in English phonetics
+        // (WCAG 3.1.2). The nav entry carries the heading's own lang for that reason.
+        var placed = Placed();
+
+        var cut = Render(
+            placed with
+            {
+                PropertyMetadata =
+                [
+                    .. placed.PropertyMetadata.Select(entry => entry with
+                    {
+                        GroupTranslations = new Dictionary<string, string>
+                        {
+                            ["no"] = entry.GroupTranslations["no"],
+                        },
+                    }),
+                ],
+            },
+            language: "en");
+
+        Assert.Equal(["no", "no", "no", "no", null], Headings(cut).Select(h => h.GetAttribute("lang")));
+        Assert.Equal(["no", "no", "no", "no", null], TocLinks(cut).Select(a => a.GetAttribute("lang")));
+    }
+
+    /// <summary>Each section's own heading, in document order.</summary>
+    private static IReadOnlyList<IElement> Headings(IRenderedComponent<DatasamlingView> cut) =>
+        [.. Wrappers(cut).Select(section => section.QuerySelector("h3, h4, h5, h6")!)];
+
+    /// <summary>The contents nav's links, in document order.</summary>
+    private static IReadOnlyList<IElement> TocLinks(IRenderedComponent<DatasamlingView> cut) =>
+        [.. cut.FindAll(".munin-explorer-page__toc a")];
 
     [Fact]
     public void Placement_WhenTheCatalogueDeclaresIt_ThenNoFactTheOldLayoutDrewIsLost()
