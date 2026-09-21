@@ -151,11 +151,14 @@ function markCurrent(spy) {
 
   // The jump line is where a fragment jump puts a section — its scroll-margin-top plus the
   // scroller's scroll-padding-top — so a click and a scroll to the same place mark the same entry.
-  const root = document.scrollingElement ?? document.documentElement;
+  const root = scrollerOf(page === document ? spy.column : page);
+  const origin = root === document.scrollingElement ? 0 : root.getBoundingClientRect().top + root.clientTop;
   const padding = pixels(getComputedStyle(root).scrollPaddingTop, root.clientHeight);
   let current = entries[0];
 
   for (const entry of entries) {
+    entry.top -= origin;
+
     if (entry.top <= padding + (parseFloat(getComputedStyle(entry.section).scrollMarginTop) || 0) + 1) {
       current = entry;
     }
@@ -177,6 +180,19 @@ function markCurrent(spy) {
       link.removeAttribute('aria-current');
     }
   }
+}
+
+/** The nearest ancestor of `element` that scrolls, or the document where none does. */
+function scrollerOf(element) {
+  for (let at = element.parentElement; at !== null && at !== document.body; at = at.parentElement) {
+    const overflow = getComputedStyle(at).overflowY;
+
+    if ((overflow === 'auto' || overflow === 'scroll') && at.scrollHeight > at.clientHeight) {
+      return at;
+    }
+  }
+
+  return document.scrollingElement ?? document.documentElement;
 }
 
 /** A computed length in px; a percentage is of the scrollport's height, as scroll-padding's is. */
