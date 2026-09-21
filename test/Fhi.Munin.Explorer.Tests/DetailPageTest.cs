@@ -874,7 +874,7 @@ public class DetailPageTest : ExplorerTestContext
 
         Assert.Equal(2, runtime.Imports);
 
-        // The failed continuation leaves nothing to observe, so the dispatcher is drained behind it.
+        // The failed continuation leaves nothing to observe; the waits below give it time to run first.
         runtime.Answer(1, null);
         await Task.Delay(200);
         await cut.InvokeAsync(() => { });

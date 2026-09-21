@@ -87,13 +87,17 @@ export function observeContents(columnId) {
     spy.clicked = null;
   };
 
-  // Entries and sections are looked up afresh on every pass, so a re-render replacing them is
-  // followed, and a section growing without a scroll moves the mark too.
+  // Entries and sections are looked up afresh on every pass, so a re-render is followed. The main
+  // column is watched rather than the page, whose size the bold current entry itself can change.
   const rendered = new MutationObserver(schedule);
   const resized = new ResizeObserver(schedule);
 
   rendered.observe(column, { childList: true, subtree: true, characterData: true });
-  resized.observe(column.closest('.munin-explorer-page') ?? column);
+  const main = column.closest('.munin-explorer-page')?.querySelector('.munin-explorer-page__main');
+
+  if (main) {
+    resized.observe(main);
+  }
   column.addEventListener('click', click);
   document.addEventListener('scroll', schedule, { capture: true, passive: true });
   window.addEventListener('resize', schedule, { passive: true });
@@ -148,7 +152,7 @@ function markCurrent(spy) {
   // The jump line is where a fragment jump puts a section — its scroll-margin-top plus the
   // scroller's scroll-padding-top — so a click and a scroll to the same place mark the same entry.
   const root = document.scrollingElement ?? document.documentElement;
-  const padding = parseFloat(getComputedStyle(root).scrollPaddingTop) || 0;
+  const padding = pixels(getComputedStyle(root).scrollPaddingTop, root.clientHeight);
   let current = entries[0];
 
   for (const entry of entries) {
@@ -157,8 +161,8 @@ function markCurrent(spy) {
     }
   }
 
-  // At the end of the scroll the sections below the line can never reach it, so the last one
-  // is current, unless the reader pressed one of those and has not wheeled, touched or typed since.
+  // At the end of the scroll the sections below the line can never reach it, so the last one is
+  // current, unless the reader pressed that one or a lower one and has not wheeled, touched or typed.
   if (scrolledToEnd(root)) {
     current = entries.find((entry) => entry.link === spy.clicked && entry.top >= current.top)
       ?? entries[entries.length - 1];
@@ -173,6 +177,11 @@ function markCurrent(spy) {
       link.removeAttribute('aria-current');
     }
   }
+}
+
+/** A computed length in px; a percentage is of the scrollport's height, as scroll-padding's is. */
+function pixels(value, height) {
+  return (value.endsWith('%') ? parseFloat(value) * height / 100 : parseFloat(value)) || 0;
 }
 
 /** Whether the document has scrolled at all, and cannot scroll any further down. */

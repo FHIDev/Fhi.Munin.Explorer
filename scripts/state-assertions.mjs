@@ -1214,7 +1214,8 @@ export const assertions = [
 
           section.scrollIntoView({ behavior: 'instant' });
 
-          const line = (parseFloat(getComputedStyle(root).scrollPaddingTop) || 0)
+          const padding = getComputedStyle(root).scrollPaddingTop;
+          const line = ((padding.endsWith('%') ? parseFloat(padding) * root.clientHeight / 100 : parseFloat(padding)) || 0)
             + (parseFloat(getComputedStyle(section).scrollMarginTop) || 0);
 
           return Math.abs(section.getBoundingClientRect().top - line) <= 1;
