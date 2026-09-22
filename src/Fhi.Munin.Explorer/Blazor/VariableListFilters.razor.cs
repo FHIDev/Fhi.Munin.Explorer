@@ -65,6 +65,18 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
     /// <summary>
+    /// How many kilder were on offer when the reader asked to see past the cap, or null while they
+    /// have not.
+    /// </summary>
+    /// <remarks>
+    /// A field rather than a set of keys, unlike the two explorers' panels: there is one facet here
+    /// and there is not going to be a second — see the class remarks for why the list tab has a
+    /// panel of its own at all. The count rather than a flag, because the kilder are replaced
+    /// whenever the reader's active list is — see <see cref="FacetLimits.StillExpanded"/>.
+    /// </remarks>
+    private int? _kilderExpandedAt;
+
+    /// <summary>
     /// The list's kilder, in the catalogue's own order rather than the reader's. These are
     /// Norwegian names whoever is reading, so æ, ø and å belong at the end of the alphabet.
     /// </summary>
@@ -87,54 +99,27 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
 
     private bool IsChosen(Guid kildeId) => State?.IsKildeChosen(kildeId) == true;
 
-    /// <summary>Whether the reader has asked to see past the cap on this one facet.</summary>
+    /// <summary>Whether the reader has lifted the cap, over a list that is still no longer.</summary>
+    private bool KilderExpanded => FacetLimits.StillExpanded(_kilderExpandedAt, Kilder.Count);
+
+    /// <summary>The kilder the panel draws, and how many the cap is holding back.</summary>
     /// <remarks>
-    /// A field rather than a set of keys, unlike the two explorers' panels: there is one facet
-    /// here and there is not going to be a second — see the class remarks for why the list tab has
-    /// a panel of its own at all.
+    /// <see cref="FacetLimits"/>'s own cap, the one both explorers apply, so a reader who has met
+    /// one of those panels meets no second rule here. Computed once per render and handed to the
+    /// list, the control and its words together — see <see cref="CappedValues{T}"/> for why the
+    /// three must not each derive their own.
     /// </remarks>
-    private bool _kilderExpanded;
-
-    /// <summary>The kilder the panel draws: the first ten, and any ticked one past them.</summary>
-    /// <remarks>
-    /// <see cref="FacetLimits.FacetSearchThreshold"/>, the number both explorers cap their facets
-    /// at, so a reader who has met one of those panels meets no second rule here. A ticked kilde
-    /// survives the cap wherever it sorts: a panel that hid the reader's own choice would read as
-    /// a filter dropped, while the rows beside it stayed narrowed.
-    /// </remarks>
-    private IReadOnlyList<KildeInList> VisibleKilder
-    {
-        get
-        {
-            var kilder = Kilder;
-
-            if (_kilderExpanded || kilder.Count <= FacetLimits.FacetSearchThreshold)
-            {
-                return kilder;
-            }
-
-            return
-            [
-                .. kilder.Take(FacetLimits.FacetSearchThreshold),
-                .. kilder.Skip(FacetLimits.FacetSearchThreshold).Where(kilde => IsChosen(kilde.Id))
-            ];
-        }
-    }
-
-    /// <summary>How many kilder the cap is holding back right now.</summary>
-    /// <remarks>
-    /// Subtracted from what is drawn rather than counted off the threshold, so the ticked kilder
-    /// the cap let through are discounted and the number on the control is what pressing it adds.
-    /// </remarks>
-    private int HiddenKildeCount => Kilder.Count - VisibleKilder.Count;
+    private CappedValues<KildeInList> DrawnKilder() =>
+        FacetLimits.Cap(Kilder, KilderExpanded, kilde => IsChosen(kilde.Id));
 
     /// <summary>Whether the panel draws the control that reveals what the cap is holding back.</summary>
-    private bool ShowsRestControl =>
-        Kilder.Count > FacetLimits.FacetSearchThreshold && (_kilderExpanded || HiddenKildeCount > 0);
+    /// <remarks><paramref name="hidden"/> is the render's own count, never a second sum of the same kilder.</remarks>
+    private bool ShowsRestControl(int hidden) =>
+        FacetLimits.IsLong(Kilder.Count) && (KilderExpanded || hidden > 0);
 
     /// <summary>What the control says: the remainder it would reveal, or the offer to put it back.</summary>
-    private string RestControlText =>
-        _kilderExpanded ? T.ShowFewerFacetValues : T.ShowMoreFacetValues(HiddenKildeCount);
+    private string RestControlText(int hidden) =>
+        KilderExpanded ? T.ShowFewerFacetValues : T.ShowMoreFacetValues(hidden);
 
     /// <summary>The id joining the kilde list to the control that reveals the rest of it.</summary>
     private string KildeOptionsId => $"munin-explorer-list-kilde-options-{_instance}";
@@ -147,10 +132,12 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     /// </remarks>
     private void ToggleKilderExpandedFromControl(MouseEventArgs released)
     {
-        if (!RowPress.WasSelectionStandingStill(released))
+        if (RowPress.WasSelectionStandingStill(released))
         {
-            _kilderExpanded = !_kilderExpanded;
+            return;
         }
+
+        _kilderExpandedAt = KilderExpanded ? null : Kilder.Count;
     }
 
     /// <summary>Whether the whole list has been read, which is what makes the empty sentence true.</summary>

@@ -344,23 +344,25 @@ else
                     }
                     else if (group.Values.Count > 0)
                     {
-                        @FacetList(VisibleValues(group), FacetOptionsId(group.Key))
+                        var drawn = VisibleValues(group);
+
+                        @FacetList(drawn.Visible, FacetOptionsId(group.Key))
 
                         @* The rest of a long facet, behind a real button so it is in the tab order
-                           and Enter and Space work without a handler of our own. The count is
-                           recomputed per render, because a stale "Vis 40 til" is worse than none.
-
-                           No class of ours: the ghost square is what the toolbar above already
-                           wears, so the control is dressed by a name Stiler defines and invents no
-                           inventory. The facet's own label is said after the words, because several
-                           of these can be on screen and "Vis 40 til" names none of them. *@
-                        @if (ShowsRestControl(group))
+                           and Enter and Space work without a handler of our own. List and words both
+                           off `drawn`, computed once, so the count cannot name a remainder the list
+                           does not have. `hd-button-square button-square--ghost` is the toolbar's own
+                           pair, which Stiler carries scoped `:not([aria-pressed])` — this button has
+                           aria-expanded and no aria-pressed, so the rule reaches it. The label is
+                           said after the words: several of these can be on screen and "Vis 40 til"
+                           names none of them. *@
+                        @if (ShowsRestControl(group, drawn.Hidden))
                         {
                             <button class="hd-button-square button-square--ghost"
                                     type="button"
-                                    aria-expanded="@(IsFacetExpanded(group.Key) ? "true" : "false")"
+                                    aria-expanded="@(IsFacetExpanded(group) ? "true" : "false")"
                                     aria-controls="@FacetOptionsId(group.Key)"
-                                    @onclick="e => ToggleFacetExpandedFromControl(group.Key, e)">@RestControlText(group)@(" ")<span class="screenreader-only">@group.Label</span></button>
+                                    @onclick="e => ToggleFacetExpandedFromControl(group, e)">@RestControlText(group, drawn.Hidden)@(" ")<span class="screenreader-only">@group.Label</span></button>
                         }
                     }
                     else

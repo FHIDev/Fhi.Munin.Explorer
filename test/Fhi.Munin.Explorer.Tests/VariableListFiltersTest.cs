@@ -81,7 +81,8 @@ public class VariableListFiltersTest : ExplorerTestContext
         /// <summary>Two lists rather than one, which is what puts the picker on screen.</summary>
         public bool TwoLists { get; init; }
 
-        private readonly List<VariableListItem> _second = [Item(Årsaksregisteret, 1)];
+        /// <summary>What the second list holds. One kilde unless a test needs a longer one.</summary>
+        public VariableListItem[] Second { get; init; } = [Item(Årsaksregisteret, 1)];
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
@@ -94,7 +95,7 @@ public class VariableListFiltersTest : ExplorerTestContext
                 {
                     Id = SecondListId,
                     Name = "Hjerte og kar",
-                    VariableCount = _second.Count,
+                    VariableCount = Second.Length,
                 });
             }
 
@@ -145,7 +146,7 @@ public class VariableListFiltersTest : ExplorerTestContext
         private Page<VariableListItem> Answer(
             Guid id, int page, int pageSize, IReadOnlyCollection<Guid>? kildeIds)
         {
-            var all = id == SecondListId ? _second : _items;
+            IReadOnlyList<VariableListItem> all = id == SecondListId ? Second : _items;
 
             var matching = kildeIds is { Count: > 0 }
                 ? all.Where(i => i.KildeId is { } k && kildeIds.Contains(k)).ToList()
@@ -342,6 +343,25 @@ public class VariableListFiltersTest : ExplorerTestContext
 
         // And the remainder is one smaller, because the ticked kilde is now above the cap.
         Assert.Equal("Vis 13 til Kilde", AccessibleName.Of(RestControl(cut)!));
+    }
+
+    [Fact]
+    public void FacetCap_WhenTheReaderSwitchesToALongerList_ThenTheLiftedCapGoesBackOn()
+    {
+        // The cap is lifted over the kilder that were on offer, and the next list is a different
+        // set of them: a flag carried across would draw all 30 of the new list uncapped, which is
+        // the tall panel the cap exists to prevent.
+        var client = new ListClient(ManyKilder(14)) { TwoLists = true, Second = ManyKilder(30) };
+        var cut = RenderBoth(client);
+
+        KeyboardPress(RestControl(cut.Filters)!);
+
+        Assert.Equal(14, Facets(cut.Filters).Count);
+
+        cut.View.Find("select").Change(ListClient.SecondListId.ToString());
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, Facets(cut.Filters).Count);
+        Assert.Equal("Vis 20 til Kilde", AccessibleName.Of(RestControl(cut.Filters)!));
     }
 
     [Fact]

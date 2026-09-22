@@ -195,6 +195,19 @@ public sealed partial class KildeSearch
     /// </remarks>
     private readonly Dictionary<string, ElementReference> _facetSearchFields = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Which facets the reader has asked to see the whole of, and how long each was when they asked.
+    /// </summary>
+    /// <remarks>
+    /// Keyed on the facet rather than on its disclosure, so a facet the reader folds by hand keeps
+    /// its lifted cap: folding a facet away is not a decision to hide values inside it again.
+    /// Ordinal, like every other key this component compares. The length is kept for the rule in
+    /// <see cref="FacetLimits.StillExpanded"/>, which this panel alone cannot need — its options are
+    /// counted over a list fetched once — and carries anyway, so all three panels answer "is this
+    /// still expanded?" the same way rather than two of them being right by accident.
+    /// </remarks>
+    private readonly Dictionary<string, int> _expandedFacets = new(StringComparer.Ordinal);
+
     /// <summary>Whether the panel is unfolded. See the markup for why the reader can still see it while this is false.</summary>
     private bool _filtersOpen;
 
@@ -584,13 +597,15 @@ public sealed partial class KildeSearch
         FoldAllFacetValues(open);
     }
 
-    /// <summary>Whether <paramref name="facet"/> is long enough to be given a search box.</summary>
+    /// <summary>Whether <paramref name="facet"/> is long enough to be given a search box — and a cap.</summary>
     /// <remarks>
-    /// <see cref="Facet.Options"/> is counted over the whole list, so the answer does not change as
-    /// the reader ticks and the box cannot come and go under their hand.
+    /// One threshold decides both halves, so changing the search-box rule here changes which facets
+    /// are capped as well: see <see cref="FacetLimits"/>, whose predicate all three panels ask so
+    /// that "long" cannot mean two things. <see cref="Facet.Options"/> is counted over the whole
+    /// list, so the answer does not change as the reader ticks and neither control can come and go
+    /// under their hand.
     /// </remarks>
-    private static bool IsSearchable(Facet facet) =>
-        facet.Options.Count > FacetLimits.FacetSearchThreshold;
+    private static bool IsSearchable(Facet facet) => FacetLimits.IsLong(facet.Options.Count);
 
     /// <summary>What is in one facet's search field, as the reader typed it.</summary>
     private string FacetSearchValue(string key) =>
@@ -642,10 +657,10 @@ public sealed partial class KildeSearch
             return false;
         }
 
-        return VisibleOptions(Build(definition)).Any(option => !Matches(option, term));
+        return VisibleOptions(Build(definition)).Visible.Any(option => !Matches(option, term));
     }
 
-    /// <summary>The options of <paramref name="facet"/> the panel is drawing: its search, then its cap.</summary>
+    /// <summary>The options of <paramref name="facet"/> the panel draws, and what its cap holds back.</summary>
     /// <remarks>
     /// Matched over the whole label rather than over the text on screen, which is cut at
     /// <see cref="FacetLabelLimit"/>: the 200-character databehandler is findable by any word in
@@ -660,39 +675,26 @@ public sealed partial class KildeSearch
     /// <para>
     /// A term takes the cap off rather than being capped in turn: the two narrow the same list, so
     /// a term that matched the twentieth value and a cap that hid it would leave the reader typing
-    /// a value they can see in the catalogue and getting nothing. A ticked value survives the cap
-    /// for the mirror-image reason — a panel that hid the reader's own choice would read as a
-    /// filter that had been dropped, while the list beside it stayed narrowed.
+    /// a value they can see in the catalogue and getting nothing.
+    /// </para>
+    /// <para>
+    /// The drawn list and the remainder come back together, from one pass, and the render passes
+    /// both to the list, the control and its words — see <see cref="CappedValues{T}"/> for why they
+    /// must not each derive their own.
     /// </para>
     /// </remarks>
-    private IReadOnlyList<FacetOption> VisibleOptions(Facet facet)
+    private CappedValues<FacetOption> VisibleOptions(Facet facet)
     {
         if (FacetSearchTerm(facet.Key) is { } term)
         {
-            return [.. facet.Options.Where(option => Matches(option, term))];
+            return FacetLimits.Uncapped<FacetOption>([.. facet.Options.Where(option => Matches(option, term))]);
         }
 
-        if (IsFacetExpanded(facet.Key) || facet.Options.Count <= FacetLimits.FacetSearchThreshold)
-        {
-            return facet.Options;
-        }
-
-        return
-        [
-            .. facet.Options.Take(FacetLimits.FacetSearchThreshold),
-            .. facet.Options
-                .Skip(FacetLimits.FacetSearchThreshold)
-                .Where(option => IsChosen(facet.Key, option.Value))
-        ];
+        return FacetLimits.Cap(
+            facet.Options,
+            IsFacetExpanded(facet),
+            option => IsChosen(facet.Key, option.Value));
     }
-
-    /// <summary>Which facets the reader has asked to see the whole of, by their keys.</summary>
-    /// <remarks>
-    /// Keyed on the facet rather than on its disclosure, so a facet the reader folds by hand keeps
-    /// its lifted cap: folding a facet away is not a decision to hide values inside it again.
-    /// Ordinal, like every other key this component compares.
-    /// </remarks>
-    private readonly HashSet<string> _expandedFacets = new(StringComparer.Ordinal);
 
     /// <summary>Lift every facet's cap at once, or put all of them back.</summary>
     /// <remarks>
@@ -710,54 +712,54 @@ public sealed partial class KildeSearch
 
         foreach (var facet in Facets)
         {
-            _expandedFacets.Add(facet.Key);
+            _expandedFacets[facet.Key] = facet.Options.Count;
         }
     }
 
-    /// <summary>Whether the reader has pressed this facet's own "Vis N til".</summary>
-    private bool IsFacetExpanded(string key) => _expandedFacets.Contains(key);
+    /// <summary>Whether the reader has pressed this facet's own "Vis N til", over these values.</summary>
+    private bool IsFacetExpanded(Facet facet) =>
+        FacetLimits.StillExpanded(
+            _expandedFacets.TryGetValue(facet.Key, out var asked) ? asked : null,
+            facet.Options.Count);
 
     /// <summary>Show the rest of a facet's values, or take them back behind the cap.</summary>
     /// <remarks>
     /// The standing-gesture clause every other disclosure here carries: the second click of a
     /// double-click and a shift-click both stand still, and neither is a press. (Fhi.Metadata-zel47)
     /// </remarks>
-    private void ToggleFacetExpandedFromControl(string key, MouseEventArgs released)
+    private void ToggleFacetExpandedFromControl(Facet facet, MouseEventArgs released)
     {
         if (RowPress.WasSelectionStandingStill(released))
         {
             return;
         }
 
-        if (!_expandedFacets.Add(key))
+        if (IsFacetExpanded(facet))
         {
-            _expandedFacets.Remove(key);
+            _expandedFacets.Remove(facet.Key);
+        }
+        else
+        {
+            _expandedFacets[facet.Key] = facet.Options.Count;
         }
     }
-
-    /// <summary>How many of a facet's values the cap is holding back right now.</summary>
-    /// <remarks>
-    /// Subtracted from what is drawn rather than counted off the threshold, so the ticked values
-    /// the cap let through are discounted and the number on the control is what pressing it would
-    /// actually add. Nought while a term is in the box, where there is no cap to hold anything.
-    /// </remarks>
-    private int HiddenOptionCount(Facet facet) =>
-        FacetSearchTerm(facet.Key) is null ? facet.Options.Count - VisibleOptions(facet).Count : 0;
 
     /// <summary>Whether the facet draws the control that reveals what the cap is holding back.</summary>
     /// <remarks>
     /// Not while the facet's own search is running: a term draws every value it matches, so a
     /// control offering more would be offering nothing. An expanded facet keeps it either way,
-    /// because that is the only way back.
+    /// because that is the only way back. <paramref name="hidden"/> is the render's own count, never
+    /// a second sum of the same values.
     /// </remarks>
-    private bool ShowsRestControl(Facet facet) =>
+    private bool ShowsRestControl(Facet facet, int hidden) =>
         IsSearchable(facet)
         && FacetSearchTerm(facet.Key) is null
-        && (IsFacetExpanded(facet.Key) || HiddenOptionCount(facet) > 0);
+        && (IsFacetExpanded(facet) || hidden > 0);
 
     /// <summary>What the control says: the remainder it would reveal, or the offer to put it back.</summary>
-    private string RestControlText(Facet facet) =>
-        IsFacetExpanded(facet.Key) ? T.ShowFewerFacetValues : T.ShowMoreFacetValues(HiddenOptionCount(facet));
+    private string RestControlText(Facet facet, int hidden) =>
+        IsFacetExpanded(facet) ? T.ShowFewerFacetValues : T.ShowMoreFacetValues(hidden);
+
 
     /// <summary>The id joining a facet's value list to the control that reveals the rest of it.</summary>
     private string FacetOptionsId(string key) => $"munin-explorer-facet-options-{_instance}-{key}";

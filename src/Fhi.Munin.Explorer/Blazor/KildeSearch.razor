@@ -292,7 +292,8 @@ else
                        the second reading takes the box away the moment it works. Nor is the ternary that
                        twice: a facet fallen under the threshold holding a term would filter on with no box. *@
                     var searchable = IsSearchable(facet);
-                    var options = searchable ? VisibleOptions(facet) : facet.Options;
+                    var drawn = searchable ? VisibleOptions(facet) : FacetLimits.Uncapped(facet.Options);
+                    var options = drawn.Visible;
 
                     @* A native <details> per facet, the shape the variable explorer's panel already
                        uses under this same handle. The facet half of the key is what stops a facet
@@ -390,20 +391,20 @@ else
                         }
 
                         @* The rest of a long facet, behind a real button so it is in the tab order
-                           and Enter and Space work without a handler of our own. The count is
-                           recomputed per render, because a stale "Vis 14 til" is worse than none.
-
-                           No class of ours: the ghost square is what the fold row above already
-                           wears, so the control is dressed by a name Stiler defines and invents no
-                           inventory. The facet's heading is said after the words, because several
-                           of these can be on screen and "Vis 2 til" names none of them. *@
-                        @if (ShowsRestControl(facet))
+                           and Enter and Space work without a handler of our own. List and words both
+                           off `drawn`, computed once above, so the count cannot name a remainder the
+                           list does not have. `hd-button-square button-square--ghost` is the fold
+                           row's own pair, which Stiler carries scoped `:not([aria-pressed])` — this
+                           button has aria-expanded and no aria-pressed, so the rule reaches it. The
+                           heading is said after the words: several of these can be on screen and
+                           "Vis 2 til" names none of them. *@
+                        @if (ShowsRestControl(facet, drawn.Hidden))
                         {
                             <button class="hd-button-square button-square--ghost"
                                     type="button"
-                                    aria-expanded="@(IsFacetExpanded(facet.Key) ? "true" : "false")"
+                                    aria-expanded="@(IsFacetExpanded(facet) ? "true" : "false")"
                                     aria-controls="@FacetOptionsId(facet.Key)"
-                                    @onclick="e => ToggleFacetExpandedFromControl(facet.Key, e)">@RestControlText(facet)@(" ")<span class="screenreader-only">@facet.Heading</span></button>
+                                    @onclick="e => ToggleFacetExpandedFromControl(facet, e)">@RestControlText(facet, drawn.Hidden)@(" ")<span class="screenreader-only">@facet.Heading</span></button>
                         }
                     </details>
                 }

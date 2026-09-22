@@ -3615,6 +3615,93 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void FacetCap_WhenADatasamlingUnderAKildePastTheCapIsTicked_ThenItsKildeIsDrawnAnyway()
+    {
+        // The cap keeps a value with anything ticked anywhere beneath it, and this is the arm that
+        // says so: a ticked datasamling is reachable only through the kilde above it, so a cap that
+        // dropped the ancestor would hide the filter and leave the narrowed result list unexplained.
+        var cut = RenderWith(new FilteringClient(OnePage(), ManyDatasamlinger(kilder: 24, each: 3)));
+
+        // Past the cap and shut at rest, so both have to be opened to reach the row at all.
+        ClickToolbar(cut, "Utvid alle");
+        TickWhereItStands(cut, "Datasamling 20-0");
+        ClickToolbar(cut, "Skjul alle");
+
+        var drawn = KildeRows(cut);
+
+        Assert.Contains("Kilde 20", drawn);
+        Assert.DoesNotContain("Kilde 21", drawn);
+        Assert.Equal(FacetLimits.FacetSearchThreshold + 1, drawn.Count);
+    }
+
+    [Fact]
+    public void FacetCap_WhenALaterAnswerLengthensTheFacet_ThenTheLiftedCapGoesBackOn()
+    {
+        // A lifted cap is keyed on the facet, and the key outlives the values: "show me all 14 of
+        // these" must not become "show me all 39 of the next search's", which is the tall panel the
+        // cap exists to prevent, back after any later search.
+        var cut = RenderWith(new GrowingFacetsClient(
+            OnePage(), FacetsWithManyKilder(24), FacetsWithManyKilder(40)));
+
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal(24, KildeRows(cut).Count);
+
+        SearchAgain(cut);
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, KildeRows(cut).Count);
+        Assert.Equal("Vis 30 til Kilde", AccessibleName.Of(RestControl(cut)!));
+    }
+
+    [Fact]
+    public void FacetCap_WhenALaterAnswerShortensTheFacet_ThenTheLiftedCapStaysOff()
+    {
+        // The mirror image, and deliberately not symmetrical: a reader who asked to see 24 has
+        // already asked for more than the 16 now on offer, so re-capping would take back a control
+        // they pressed without anything having happened that they could see.
+        var cut = RenderWith(new GrowingFacetsClient(
+            OnePage(), FacetsWithManyKilder(24), FacetsWithManyKilder(16)));
+
+        KeyboardPress(RestControl(cut)!);
+        SearchAgain(cut);
+
+        Assert.Equal(16, KildeRows(cut).Count);
+        Assert.Equal("true", RestControl(cut)!.GetAttribute("aria-expanded"));
+    }
+
+    /// <summary>Run another search, which is what asks the API for a fresh facet payload.</summary>
+    private static void SearchAgain(IRenderedComponent<VariableSearch> cut)
+    {
+        cut.Find(".searchbox__freetext").Change("noe annet");
+        cut.Find("form").Submit();
+    }
+
+    /// <summary>A client whose second and later answers carry a different facet payload.</summary>
+    /// <remarks>
+    /// <see cref="FilteringClient"/> hands back one payload for the life of a test, which is right
+    /// for everything else here and cannot show a facet whose length changed under a key the reader
+    /// had already lifted the cap on.
+    /// </remarks>
+    private sealed class GrowingFacetsClient(
+        Page<VariableSummary> answer, FilterOptions first, FilterOptions later)
+        : EmptyMuninExplorerClient
+    {
+        private int _asked;
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(answer with { PageNumber = page });
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_asked++ == 0 ? first : later);
+    }
+
+    [Fact]
     public void FacetCap_WhenTheFacetIsSearched_ThenEveryMatchIsDrawnAndTheControlIsGone()
     {
         // The facet's two narrowing controls must not fight: a term matching the twentieth kilde has
