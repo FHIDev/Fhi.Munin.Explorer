@@ -465,10 +465,14 @@ async function chevronPictures(page, { toggle, icon }) {
     ([one, state]) => document.querySelector(one)?.getAttribute('aria-expanded') === state,
     [toggle, want], { timeout: findTimeout });
 
-  // `none` rather than a throw: a chevron drawing nothing at all is a finding to report, and it is
-  // the defect the resting `icon-keyboard-arrow-up` rule was added to both samples for.
-  const drawn = () => button().locator(icon).evaluate(one =>
-    /[^\/"']+\.svg/.exec(getComputedStyle(one).backgroundImage)?.[0] ?? 'none');
+  // `none` rather than a throw for either way a chevron draws nothing — no glyph span at all, or a
+  // span with no picture, the defect the resting `icon-keyboard-arrow-up` rule was added for. Read
+  // inside the button so a missing span is a reading rather than a locator timing out.
+  const drawn = () => button().evaluate((one, within) => {
+    const glyph = one.querySelector(within);
+    return glyph === null ? 'none'
+      : /[^\/"']+\.svg/.exec(getComputedStyle(glyph).backgroundImage)?.[0] ?? 'none';
+  }, icon);
 
   if (await button().getAttribute('aria-expanded') !== 'false') {
     await button().click();
@@ -515,16 +519,17 @@ const chevronAssertions = CHEVRONS.map(chevron => ({
       .join('; ');
   },
 
-  // The cascade regression itself: drop the `[aria-expanded=false]` rules and the legacy unscoped
-  // override underneath takes the shut row, which is what a Stiler that never scoped its own rules
-  // would draw on helsedata.no — with every test in test/ and both sample guards green.
+  // Both halves, because breaking one proves only that one fires: dropping the
+  // `[aria-expanded=false]` rules leaves the legacy unscoped override drawing the shut row, which
+  // is the Stiler that never scoped its own rules, and dropping the `icon-keyboard-arrow-up` rules
+  // leaves the open row nothing to draw at all. Both shipped green past every test in test/.
   //
   // Matched on a pattern rather than on the stylesheet's own text: the CSSOM hands back a
   // selectorText it has normalised, quoting the unquoted `false` this file writes.
   async control(page) {
     await page.evaluate(() => {
-      const scoped = /\[aria-expanded\s*=\s*["']?false["']?\]/;
-      let deleted = 0;
+      const shut = /\[aria-expanded\s*=\s*["']?false["']?\]/;
+      const deleted = { shut: 0, open: 0 };
 
       for (const sheet of document.styleSheets) {
         let rules;
@@ -536,17 +541,23 @@ const chevronAssertions = CHEVRONS.map(chevron => ({
 
         for (let at = rules.length - 1; at >= 0; at -= 1) {
           const selector = rules[at].selectorText ?? '';
+          if (!selector.includes('expand-icon')) continue;
 
-          if (scoped.test(selector) && selector.includes('expand-icon')) {
+          const half = shut.test(selector) ? 'shut'
+            : selector.includes('icon-keyboard-arrow-up') ? 'open' : null;
+
+          if (half !== null) {
             sheet.deleteRule(at);
-            deleted += 1;
+            deleted[half] += 1;
           }
         }
       }
 
-      // Louder than a control that silently removes nothing: that reads as an assertion which has
-      // stopped measuring, and sends the next reader after a defect that is not there.
-      if (deleted === 0) throw new Error('no [aria-expanded=false] chevron rule was reachable to delete');
+      // Louder than a control that silently removes nothing, per half: that reads as an assertion
+      // which has stopped measuring, and sends the next reader after a defect that is not there.
+      for (const [half, count] of Object.entries(deleted)) {
+        if (count === 0) throw new Error(`no ${half}-state chevron rule was reachable to delete`);
+      }
     });
   },
 }));
