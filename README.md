@@ -264,6 +264,15 @@ These are not style preferences — each one is a host that breaks otherwise.
     heading. The kilde list is the same bargain twice over, which is why it is a `<table>` of
     `<button>`s — an undrawn table still lines its columns up and an undrawn button is still
     visibly a control.
+    The drawer's datasamling marks add two, `munin-explorer-kilde__datasamling-select` and the
+    `munin-explorer-kilde__datasamlinger--selectable` modifier that comes with it, and they are
+    handles on the same terms: the column is a `<td>` holding a real checkbox, so undefined it is
+    visible, operable and named, and what the rules buy is a 32px column and a box big enough for
+    WCAG 2.5.5. The modifier earns its place because Stiler sizes that table's columns by position
+    — a column in front of Navn moves every one of those rules along one, so the modifier is where
+    they are re-anchored and the plain table `KildeView` draws keeps them exactly as they were. A
+    host that defines the cell class and not the modifier gets the column and a table whose four
+    other columns are each sized for the one beside it.
     Both facet panels add two more, `munin-explorer-filters__toggle` and
     `munin-explorer-filters__facets`, and they are handles for the same reason: the folding itself
     is the browser's `hidden` attribute, so a host that defines neither gets a panel that opens and
@@ -871,7 +880,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-hierarchy__metadata` | handle |
   | `munin-explorer-hierarchy__nodes` | handle |
   | `munin-explorer-hierarchy__open` | handle |
+  | `munin-explorer-kilde__datasamling-select` | handle |
   | `munin-explorer-kilde__datasamlinger` | handle |
+  | `munin-explorer-kilde__datasamlinger--selectable` | meaning |
   | `munin-explorer-kilde__delkilde` | handle |
   | `munin-explorer-kilde__delkilde-description` | handle |
   | `munin-explorer-kilde__delkilde-name` | handle |
@@ -1238,8 +1249,8 @@ Four things are worth knowing before mounting one.
 - **Your own parameters are safe.** Each component reads and rewrites only the keys it owns —
   `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=`, `?datasamling=`, `?sort=`,
   `?sortDir=`, `?search=`, the four facet keys (`?kildetype=`, `?kategori=`, `?tilgangsniva=`,
-  `?databehandler=`), `?columns=` and `?selected=` for the kildeutforsker — and carries everything
-  else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
+  `?databehandler=`), `?columns=`, `?selected=` and `?selectedDatasamling=` for the
+  kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
 - **`KildeExplorer` needs `VariableExplorerPath`** to offer navigation to the variable

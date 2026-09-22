@@ -502,32 +502,64 @@ else
         {
             <p class="infobox infobox--bg-yellow">@_error</p>
         }
+        @* The union's own failure, in the region the list's already uses rather than a second one:
+           two assertive regions race to be announced and the reader cannot tell which spoke. The
+           button is inside it for the same reason the variable explorer's retries are — the failure
+           and the way out of it are one utterance. (Fhi.Metadata-75yov) *@
+        @if (UnionAlertShown)
+        {
+            @* The sentence stays while the retry runs and says so with aria-busy, rather than
+               leaving at the first yield to report a problem solved by a fetch still in flight. *@
+            <p class="infobox infobox--bg-yellow"
+               aria-busy="@(UnionPending || _retryingUnion ? "true" : null)">@T.SelectionDatasamlingerError</p>
+        }
+        @* Inert rather than absent once it has nothing left to retry, exactly as the variable
+           explorer's two are: a button leaving with the sentence it answers would drop the focus of
+           the reader who just pressed it to <body> — the pager's rule. (Fhi.Metadata-75yov) *@
+        @if (_unionRetryShown)
+        {
+            <button class="hd-button-square button-square--secondary margin-right margin-bottom munin-explorer-retry"
+                    type="button"
+                    aria-disabled="@(CanRetryUnion ? null : "true")"
+                    @onclick="RetryUnionAsync">@T.RetrySelectionDatasamlinger</button>
+        }
     </div>
 
     @* Drawn only where the host wired ExploreVariablesRequested — a column with nowhere to go is
        worse than no column. The count is rendered while empty on purpose: a live region filled in
        the same update that inserts it is announced unreliably. (Fhi.Metadata-5ghur) *@
-    @if (Selectable && (visible.Count > 0 || TickedCount > 0))
+    @if (Selectable && (visible.Count > 0 || TickedCount > 0 || TotalMarkCount > 0))
     {
         @* Handover, then reset, then count: everything that comes and goes is to the right of
            everything that does not, so the reset arrives without displacing the handover. The
            handover resizes across its labels; Stiler declined a floor. (Fhi.Metadata-kvgu7) *@
         <div class="munin-explorer-selection">
+            @* aria-busy rather than disabled while the union is still being fetched: disabling
+               would drop the focus of the reader who is standing on it, and the press is refused
+               in ExploreVariablesAsync either way. *@
             <button class="hd-button-square button-square--primary"
                     type="button"
+                    aria-busy="@(UnionPending ? "true" : null)"
                     @onclick="() => ExploreVariablesAsync(visible)">@ExploreLabel</button>
 
-            @if (TickedCount > 0)
+            @if (TickedCount > 0 || TotalMarkCount > 0)
             {
                 <button class="hd-button-square button-square--secondary"
                         type="button"
-                        @onclick="ClearTicksAsync">@T.ClearSelection</button>
+                        @onclick="ClearSelectionAsync">@T.ClearSelection</button>
             }
 
             <p class="caption margin--none" role="status" aria-live="polite" aria-atomic="true">
-                @(TickedCount > 0 ? T.SelectedKildeCount(TickedCount) : null)
+                @SelectionLine
             </p>
         </div>
+
+        @* Outside the bar and not in it: the bar is a row of controls, and a sentence of this
+           length in it would either stretch the row or squeeze the button beside it. *@
+        @if (MixedSelectionNote is { } note)
+        {
+            <p class="caption margin--none">@note</p>
+        }
     }
 
     @if (visible.Count > 0)
@@ -714,6 +746,14 @@ else
                                         lang="@CatalogueProperties.Foreign(RowName(kilde).Norwegian, Reader)"
                                         @onclick="e => SelectFromNameAsync(kilde, e)"
                                         @onclick:stopPropagation="true">@RowName(kilde).Text</button>
+                                @* Drawn whether or not the row is open, because a mark made in the
+                                   drawer outlives the drawer being shut and would otherwise be a
+                                   selection with nothing on screen saying so. helsedata's own
+                                   classes: the count needs no name of ours. (Fhi.Metadata-75yov) *@
+                                @if (Markable && MarkCountFor(kilde.Id) > 0)
+                                {
+                                    <p class="caption margin--none">@T.MarkedDatasamlingCount(MarkCountFor(kilde.Id))</p>
+                                }
                             </th>
                             @if (ColumnVisible(KildeColumn.Code))
                             {
@@ -798,7 +838,7 @@ else
                                             {
                                                 @GroupHeading(heading, group.Code, group.Depth)
                                             }
-                                            @DatasamlingTable.For(group.Rows, T, Language, Reader)
+                                            @DatasamlingTable.For(group.Rows, T, Language, Reader, MarksFor(kilde.Id))
                                         }
 
                                         @* Beside the tables and never in one: DatasamlingTable is

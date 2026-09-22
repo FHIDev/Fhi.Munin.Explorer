@@ -1764,4 +1764,197 @@ public class UrlStateComponentTest : ExplorerTestContext
         Assert.Equal(["Als registeret"], [.. cut.FindAll(".munin-explorer-kilder__name").Select(b => b.TextContent.Trim())]);
         Assert.Empty(JSInterop.Invocations[ReplaceState]);
     }
+
+    // -----------------------------------------------------------------------------------------
+    // Datasamling marks in the address: ?selectedDatasamling=<kildeId>:<datasamlingId>, repeated
+    // (Fhi.Metadata-75yov, innmeldt sak #6098).
+    //
+    // The address IS the session here. There is no Web Storage anywhere in this package, and a
+    // mark that outlived the link would be a selection the reader could not see they still had.
+
+    private static readonly Guid MarkKildeOne = new("aaaaaaaa-0000-0000-0000-000000000001");
+    private static readonly Guid MarkKildeTwo = new("aaaaaaaa-0000-0000-0000-000000000002");
+
+    private static readonly Guid MarkOneA = new("bbbbbbbb-0000-0000-0000-000000000001");
+    private static readonly Guid MarkOneB = new("bbbbbbbb-0000-0000-0000-000000000002");
+    private static readonly Guid MarkTwoA = new("bbbbbbbb-0000-0000-0000-000000000003");
+
+    /// <summary>Two kilder with two datasamlinger each, so a mark under one is not every mark.</summary>
+    private sealed class TwoDrawersClient : EmptyMuninExplorerClient
+    {
+        private static KildeSummary Row(Guid id, string name) =>
+            new() { Id = id, Name = name, Code = "K", IsActive = true, DatasamlingCount = 2 };
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+            [
+                Row(MarkKildeOne, "Als registeret"),
+                Row(MarkKildeTwo, "Dødsårsaksregisteret"),
+            ]);
+
+        public override Task<KildeDetail?> GetKildeAsync(
+            Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeDetail?>(id == MarkKildeOne
+                ? new KildeDetail
+                {
+                    Id = id,
+                    PreferredTerm = "Als registeret",
+                    Datasamlinger =
+                    [
+                        new() { Id = MarkOneA, Name = "Inklusjon", VariableCount = 7 },
+                        new() { Id = MarkOneB, Name = "Oppfølging", VariableCount = 3 },
+                    ],
+                }
+                : new KildeDetail
+                {
+                    Id = id,
+                    PreferredTerm = "Dødsårsaksregisteret",
+                    Datasamlinger = [new() { Id = MarkTwoA, Name = "Dødsfall", VariableCount = 5 }],
+                });
+    }
+
+    private IRenderedComponent<KildeExplorer> RenderDrawers(string url)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new TwoDrawersClient());
+        Prepare();
+        Navigation.NavigateTo(url);
+
+        return MountDrawers();
+    }
+
+    /// <summary>A second mount at the address the mirror last wrote, which is what Back reloads.</summary>
+    private IRenderedComponent<KildeExplorer> MountDrawers()
+    {
+        if (Mirrored() is { } mirrored)
+        {
+            Navigation.NavigateTo(mirrored);
+        }
+
+        return Render<KildeExplorer>(b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+    }
+
+    private static IElement DrawerRow(IRenderedComponent<KildeExplorer> cut, string name) =>
+        cut.FindAll(".munin-explorer-kilder tbody tr")
+           .Single(row => row.QuerySelector("th button")?.TextContent.Trim() == name);
+
+    private static void OpenDrawer(IRenderedComponent<KildeExplorer> cut, string name) =>
+        DrawerRow(cut, name).QuerySelector(".munin-explorer-kilder__expand-toggle")!.Click();
+
+    private static IReadOnlyList<IElement> DrawerBoxes(IRenderedComponent<KildeExplorer> cut, Guid kilde) =>
+        [.. cut.FindAll(".munin-explorer-kilder__expanded")
+               .Single(panel => panel.Id?.EndsWith(kilde.ToString(), StringComparison.Ordinal) == true)
+               .QuerySelectorAll("td.munin-explorer-kilde__datasamling-select input")];
+
+    private static IElement DrawerBox(IRenderedComponent<KildeExplorer> cut, Guid kilde, string datasamling) =>
+        DrawerBoxes(cut, kilde).Single(box => box.GetAttribute("aria-label") == $"Velg {datasamling}");
+
+    private static IElement Handover(IRenderedComponent<KildeExplorer> cut) =>
+        cut.Find(".munin-explorer-selection button.button-square--primary");
+
+    [Fact]
+    public void Kilder_WhenDatasamlingerAreMarkedUnderTwoKilder_ThenTheAddressCarriesBothAndTheHandoverSendsThem()
+    {
+        var cut = RenderDrawers("http://localhost/kilder");
+
+        OpenDrawer(cut, "Als registeret");
+        OpenDrawer(cut, "Dødsårsaksregisteret");
+        DrawerBox(cut, MarkKildeOne, "Inklusjon").Change(true);
+        DrawerBox(cut, MarkKildeTwo, "Dødsfall").Change(true);
+
+        Assert.Equal(
+            [
+                ("selectedDatasamling", $"{MarkKildeOne}:{MarkOneA}"),
+                ("selectedDatasamling", $"{MarkKildeTwo}:{MarkTwoA}"),
+            ],
+            MirroredPairs());
+
+        Handover(cut).Click();
+
+        // Read back through the parser the other explorer reads it with, not by string comparison:
+        // what has to hold is that the variable explorer opens on these collections and on no
+        // kilde at all. kildeIds beside them would AND, and drop every variable pinned into
+        // another kilde's datasamling.
+        var filter = VariableFilter.Parse(new Uri(Navigation.Uri).Query);
+
+        Assert.Equal([MarkOneA, MarkTwoA], filter.DatasamlingIds);
+        Assert.Empty(filter.KildeIds);
+        Assert.StartsWith("http://localhost/variabler?", Navigation.Uri, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Kilder_WhenTheMarkedAddressIsReloaded_ThenBothRowsOpenThemselvesWithTheMarksOn()
+    {
+        // What Back lands on. The rows open without a press because a mark inside a shut drawer is
+        // a selection with nothing on screen saying so — and the count in the bar is what says how
+        // many there are in total.
+        var cut = RenderDrawers("http://localhost/kilder");
+
+        OpenDrawer(cut, "Als registeret");
+        OpenDrawer(cut, "Dødsårsaksregisteret");
+        DrawerBox(cut, MarkKildeOne, "Inklusjon").Change(true);
+        DrawerBox(cut, MarkKildeTwo, "Dødsfall").Change(true);
+
+        var restored = MountDrawers();
+
+        Assert.Equal(2, restored.FindAll(".munin-explorer-kilder__expanded").Count);
+        Assert.True(DrawerBox(restored, MarkKildeOne, "Inklusjon").HasAttribute("checked"));
+        Assert.True(DrawerBox(restored, MarkKildeTwo, "Dødsfall").HasAttribute("checked"));
+        Assert.False(DrawerBox(restored, MarkKildeOne, "Oppfølging").HasAttribute("checked"));
+
+        Assert.Equal("2 datasamlinger valgt",
+                     restored.Find(".munin-explorer-selection p[role=status]").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Kilder_WhenTheAddressIsBare_ThenNothingIsMarkedAndNoWebStorageIsTouched()
+    {
+        // The discriminating half of the round trip above, and the whole of decision 1: the marks
+        // are the address and nothing else. A component that remembered them anywhere would open
+        // this page with somebody else's selection on it.
+        var cut = RenderDrawers("http://localhost/kilder");
+
+        OpenDrawer(cut, "Als registeret");
+
+        Assert.All(DrawerBoxes(cut, MarkKildeOne), box => Assert.False(box.HasAttribute("checked")));
+        Assert.Null(DrawerRow(cut, "Als registeret").QuerySelector("th p"));
+
+        DrawerBox(cut, MarkKildeOne, "Inklusjon").Change(true);
+        Handover(cut).Click();
+
+        Assert.DoesNotContain(JSInterop.Invocations, call =>
+            call.Identifier.Contains("sessionStorage", StringComparison.OrdinalIgnoreCase)
+            || call.Identifier.Contains("localStorage", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Kilder_WhenAMarkIsUndone_ThenTheKeyLeavesTheAddressWithIt()
+    {
+        // A key at its default is not written — the rule every other key here follows — so a
+        // shared link never claims a selection the sender had already dropped.
+        var cut = RenderDrawers("http://localhost/kilder");
+
+        OpenDrawer(cut, "Als registeret");
+        DrawerBox(cut, MarkKildeOne, "Inklusjon").Change(true);
+
+        Assert.Contains(("selectedDatasamling", $"{MarkKildeOne}:{MarkOneA}"), MirroredPairs());
+
+        DrawerBox(cut, MarkKildeOne, "Inklusjon").Change(false);
+
+        Assert.DoesNotContain(MirroredPairs(), pair => pair.Key == "selectedDatasamling");
+    }
+
+    [Fact]
+    public void Kilder_WhenTheAddressCarriesNonsenseMarks_ThenTheyAreDroppedRatherThanDrawn()
+    {
+        // A query is whatever a stranger typed. A value that is not two ids names no datasamling
+        // this catalogue has, and carrying it forward would write it back into every later link.
+        var cut = RenderDrawers(
+            "http://localhost/kilder?selectedDatasamling=not-a-pair"
+            + $"&selectedDatasamling={MarkKildeOne}%3A{MarkOneA}"
+            + $"&selectedDatasamling={MarkKildeOne}%3A{MarkOneA}");
+
+        Assert.Equal([("selectedDatasamling", $"{MarkKildeOne}:{MarkOneA}")], MirroredPairs());
+        Assert.True(DrawerBox(cut, MarkKildeOne, "Inklusjon").HasAttribute("checked"));
+    }
 }

@@ -15,13 +15,29 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </remarks>
 internal static class DatasamlingTable
 {
+    /// <summary>The marks a reader can put on these rows, and who to tell about a press.</summary>
+    /// <remarks>
+    /// Optional rather than a second table: <see cref="KildeView"/> renders the same rows with no
+    /// marks at all, and two tables would be two places for the columns to stop agreeing. Which
+    /// kilde a mark belongs to is the caller's to remember — see <c>KildeSearch.Selection.cs</c>,
+    /// where the pair is what the address carries. (Fhi.Metadata-75yov)
+    /// </remarks>
+    internal sealed record Selection(
+        Func<Guid, bool> IsMarked,
+        Func<Guid, bool, Task> Toggle,
+        IHandleEvent Receiver);
+
     /// <summary>The table as a fragment, for callers that write markup rather than build it.</summary>
     internal static RenderFragment For(
-        IReadOnlyList<KildeDatasamling> rows, Texts texts, string? language, string reader) => builder =>
+        IReadOnlyList<KildeDatasamling> rows,
+        Texts texts,
+        string? language,
+        string reader,
+        Selection? selection = null) => builder =>
     {
         var seq = 0;
 
-        Render(builder, ref seq, rows, texts, language, reader);
+        Render(builder, ref seq, rows, texts, language, reader, selection);
     };
 
     /// <summary>
@@ -34,7 +50,8 @@ internal static class DatasamlingTable
         IReadOnlyList<KildeDatasamling> rows,
         Texts texts,
         string? language,
-        string reader)
+        string reader,
+        Selection? selection = null)
     {
         if (rows.Count == 0)
         {
@@ -42,10 +59,22 @@ internal static class DatasamlingTable
         }
 
         builder.OpenElement(seq++, "table");
-        builder.AddAttribute(seq++, "class", "munin-explorer-kilde__datasamlinger");
+
+        // The modifier, and not the leading cell's class alone: Stiler sizes this table's columns
+        // by position, so a column in front of Navn moves every one of those rules along and the
+        // plain table has to keep today's. (Fhi.Metadata-h6dx7)
+        builder.AddAttribute(seq++, "class", selection is null
+            ? "munin-explorer-kilde__datasamlinger"
+            : "munin-explorer-kilde__datasamlinger munin-explorer-kilde__datasamlinger--selectable");
 
         builder.OpenElement(seq++, "thead");
         builder.OpenElement(seq++, "tr");
+
+        if (selection is not null)
+        {
+            SelectHeaderCell(builder, ref seq, texts.SelectDatasamlingColumn);
+        }
+
         HeaderCell(builder, ref seq, texts.FieldName);
         HeaderCell(builder, ref seq, texts.FieldDescription);
         HeaderCell(builder, ref seq, texts.FieldValidity);
@@ -58,6 +87,11 @@ internal static class DatasamlingTable
         foreach (var row in rows)
         {
             builder.OpenElement(seq++, "tr");
+
+            if (selection is not null)
+            {
+                SelectCell(builder, ref seq, row, texts, selection);
+            }
 
             // The name is a th, not a td: it is what the rest of the row is about, and a screen
             // reader reading a cell out of context should hear which datasamling it belongs to.
@@ -85,6 +119,55 @@ internal static class DatasamlingTable
         }
 
         builder.CloseElement();
+        builder.CloseElement();
+    }
+
+    /// <summary>
+    /// The leading heading, which holds a word a sighted reader never sees.
+    /// </summary>
+    /// <remarks>
+    /// Empty would be the tidier-looking cell and is the wrong one: a screen reader announces a
+    /// checkbox with the column it stands in, and a nameless column names none of them.
+    /// </remarks>
+    private static void SelectHeaderCell(RenderTreeBuilder builder, ref int seq, string label)
+    {
+        builder.OpenElement(seq++, "th");
+        builder.AddAttribute(seq++, "scope", "col");
+        builder.AddAttribute(seq++, "class", "munin-explorer-kilde__datasamling-select");
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "screenreader-only");
+        builder.AddContent(seq++, label);
+        builder.CloseElement();
+        builder.CloseElement();
+    }
+
+    /// <summary>One row's mark. A td, not a th: the box is a control over the row, not its label.</summary>
+    /// <remarks>
+    /// <c>SetUpdatesAttributeName</c> for <see cref="ColumnPicker"/>'s reason: the browser ticks
+    /// the box itself before any handler runs, so a render equal to the one before it leaves the
+    /// DOM saying something the component does not.
+    /// </remarks>
+    private static void SelectCell(
+        RenderTreeBuilder builder,
+        ref int seq,
+        KildeDatasamling row,
+        Texts texts,
+        Selection selection)
+    {
+        var named = texts.Named(row.Name, row.ShortName);
+
+        builder.OpenElement(seq++, "td");
+        builder.AddAttribute(seq++, "class", "munin-explorer-kilde__datasamling-select");
+
+        builder.OpenElement(seq++, "input");
+        builder.AddAttribute(seq++, "type", "checkbox");
+        builder.AddAttribute(seq++, "aria-label", texts.SelectDatasamling(named.Text));
+        builder.AddAttribute(seq++, "checked", selection.IsMarked(row.Id));
+        builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(
+            selection.Receiver, e => selection.Toggle(row.Id, e.Value is true)));
+        builder.SetUpdatesAttributeName("checked");
+        builder.CloseElement();
+
         builder.CloseElement();
     }
 

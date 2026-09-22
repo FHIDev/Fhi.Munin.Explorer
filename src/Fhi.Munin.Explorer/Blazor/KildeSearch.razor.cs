@@ -94,7 +94,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>munin-explorer-kilder__bar</c> and <c>munin-explorer-kilder__bar-fill</c> for the
 /// proportion bar under a non-zero variable count, its width inline,
 /// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
-/// <see cref="ExploreVariablesRequested"/> gets in front of them,
+/// <see cref="ExploreVariablesRequested"/> gets in front of them, with
+/// <c>munin-explorer-kilde__datasamlinger--selectable</c> and
+/// <c>munin-explorer-kilde__datasamling-select</c> for the matching column an expanded row's
+/// datasamling table gets once <see cref="ExploreDatasamlingerRequested"/> is wired too (a
+/// modifier and not a cell class alone, because Stiler sizes that table's columns by position),
 /// <c>munin-explorer-kilder__sort</c> for the button inside each of the four sortable column
 /// headings, and <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c>
 /// for the facet panel's disclosure, and <c>munin-explorer-filters__count</c> for the number
@@ -546,6 +550,30 @@ public sealed partial class KildeSearch : ComponentBase
             ? Task.CompletedTask
             : ToggleDatasamlingerAsync(kilde);
 
+    /// <summary>Open every row holding a mark, and fetch what those rows draw.</summary>
+    /// <remarks>
+    /// One call per row rather than one per mark, and none at all for a row already in hand — the
+    /// address can name several marks under one kilde. Which rows those are, and how few of them
+    /// an untrusted query may open, is <see cref="MarkedRowsToOpen"/>'s to say.
+    /// </remarks>
+    private async Task OpenMarkedRowsAsync()
+    {
+        foreach (var kilde in MarkedRowsToOpen())
+        {
+            _expanded.Add(kilde);
+
+            if (!_datasamlinger.ContainsKey(kilde) && !_datasamlingerLoading.Contains(kilde))
+            {
+                await LoadDatasamlingerAsync(kilde);
+            }
+        }
+
+        if (_marked.Count > 0)
+        {
+            StateHasChanged();
+        }
+    }
+
     private async Task LoadDatasamlingerAsync(Guid id)
     {
         var generation = _datasamlingerGeneration[id] =
@@ -811,6 +839,7 @@ public sealed partial class KildeSearch : ComponentBase
         _search = Search;
         SeedFacetChoices();
         SeedTicks();
+        SeedMarks();
         SeedColumns();
         _selectedId = SelectedKildeId;
 
@@ -847,6 +876,15 @@ public sealed partial class KildeSearch : ComponentBase
         // The render that puts the list on screen — or, on a deep link, the named drilldown that
         // has replaced it.
         StateHasChanged();
+
+        // A row the address marked opens itself, because a mark the reader cannot see is a
+        // selection they cannot undo. Nothing at all without marks. (Fhi.Metadata-75yov)
+        await OpenMarkedRowsAsync();
+
+        // Ticks and marks arrive together from the address whenever a reader shares a link or
+        // navigates back, and every later mark and tick tops the union up but none of these did —
+        // so the first press handed over the marks alone, and said so nowhere. (Fhi.Metadata-75yov)
+        await EnsureUnionAsync();
 
         // The datasamling instead of the kilde, not beside it: the drill-in draws one view, and the
         // kilde's own payload would be fetched for nothing.

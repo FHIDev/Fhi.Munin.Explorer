@@ -591,7 +591,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-size: 0.875rem;
 }
 
-.munin-explorer-filters li > label input[type="checkbox"] { margin-top: 4px; flex: none; }
+.munin-explorer-filters li > label input[type=checkbox] { margin-top: 4px; flex: none; }
 
 /* Disclosure and selection stay beside each other; children take their own line.
    A filled focus state survives the host reset that removes button outlines. (Fhi.Metadata-cs3pt) */
@@ -2139,6 +2139,60 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-kilde__datasamlinger td,
 .munin-explorer-kilde__datasamlinger th {
   overflow-wrap: anywhere;
+}
+
+/* ---- the drawer's leading checkbox column ----
+
+   Read off Fhi.Helsedata.Stiler's `components/munin-explorer/_trail.scss` rather than invented
+   here, the same bargain as the column grid above: a stand-in that disagrees with Stiler is a
+   stand-in that lies about what a host gets. Every rule is scoped under the modifier, so the plain
+   table — KildeView's, and the drill-in's — keeps the rules above byte for byte.
+
+   The modifier exists because the block above addresses this table's columns by POSITION. A column
+   in front of Navn moves every one of them along one, so `--selectable` re-anchors the three
+   Stiler pins (Navn, Gyldighet, Variabler) and puts Beskrivelse back to auto, which is what makes
+   the two tables measure the same. (Fhi.Metadata-h6dx7) */
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(1) {
+  width: 32px;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(2) {
+  width: 30%;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(3) {
+  width: auto;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(4) {
+  width: 24%;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(4) {
+  white-space: normal;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(5) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* 32px of column and a 24x24 box, matching the kilde table's own `munin-explorer-kilder__select`.
+   A distinct name rather than that one reused: `_kilder.scss` carries a
+   `:has(.munin-explorer-kilder__select)` rule that would move the KILDE table's own column
+   breakpoints if this cell answered to it. The left edges still differ by a fixed 13px, because the
+   expanded panel indents its contents — that indent is what says "inside this row". */
+.munin-explorer-kilde__datasamlinger--selectable .munin-explorer-kilde__datasamling-select {
+  padding-left: 4px;
+  padding-right: 4px;
+  text-align: center;
+  vertical-align: top;
+}
+
+.munin-explorer-kilde__datasamlinger--selectable .munin-explorer-kilde__datasamling-select input[type=checkbox] {
+  height: 24px;
+  margin: 0;
+  width: 24px;
 }
 
 /* ---- the delkilde tree ----

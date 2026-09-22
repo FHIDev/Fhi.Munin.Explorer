@@ -104,13 +104,9 @@ public class KildeSelectionTest : ExplorerTestContext
         cut.Find($".munin-explorer-kilder thead .{HostClassNames.KilderSelect} input");
 
     /// <summary>Tick the row whose name button reads <paramref name="name"/>.</summary>
-    /// <remarks>
-    /// Found by name on every call rather than held, for the reason the facet helper next door
-    /// gives: ticking re-renders, and an element found before that belongs to the markup as it was.
-    /// </remarks>
+    /// <remarks>Found through <see cref="NamedRow"/>, which says why it is found and not held.</remarks>
     private static void TickRow(IRenderedComponent<KildeSearch> cut, string name, bool ticked = true) =>
-        cut.FindAll(".munin-explorer-kilder tbody tr")
-           .Single(row => row.QuerySelector("th button")!.TextContent.Trim() == name)
+        NamedRow(cut, name)
            .QuerySelector($".{HostClassNames.KilderSelect} input")!
            .Change(ticked);
 
@@ -1134,4 +1130,736 @@ public class KildeSelectionTest : ExplorerTestContext
         Assert.Equal("Velg K_ALS",
                      AccessibleName.Of(cut.Find($"tbody .{HostClassNames.KilderSelect} input[type=checkbox]")));
     }
+
+    // ---------------------------------------------------------------------------------
+    // Marking datasamlinger inside an expanded row, and the union they travel in
+    // (Fhi.Metadata-75yov, innmeldt sak #6098).
+    //
+    // What has no visible symptom here is the same thing as above, one level in: WHICH ids leave.
+    // A selection holding a mark travels as datasamlingIds ALONE — every ticked kilde expanded to
+    // all of its own — because Munin ANDs the two filters, so a handover carrying both would
+    // silently drop every variable pinned into another kilde's datasamling. Both payloads render
+    // identically, and the one that is wrong is wrong only in the argument the host is handed.
+    // ---------------------------------------------------------------------------------
+
+    private static readonly Guid KildeOne = new("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid KildeTwo = new("22222222-2222-2222-2222-222222222222");
+    private static readonly Guid KildeThree = new("33333333-3333-3333-3333-333333333333");
+
+    private static readonly Guid CollectionOneA = new("a1a1a1a1-0000-0000-0000-000000000001");
+    private static readonly Guid CollectionOneB = new("a1a1a1a1-0000-0000-0000-000000000002");
+    private static readonly Guid CollectionOneC = new("a1a1a1a1-0000-0000-0000-000000000003");
+    private static readonly Guid CollectionTwoA = new("a2a2a2a2-0000-0000-0000-000000000001");
+    private static readonly Guid CollectionTwoB = new("a2a2a2a2-0000-0000-0000-000000000002");
+
+    private static KildeSummary Row(Guid id, string name, int datasamlinger) =>
+        new()
+        {
+            Id = id,
+            Code = "K",
+            Name = name,
+            Kildetype = "sentraltHelseregister",
+            IsActive = true,
+            DelkildeCount = 0,
+            DatasamlingCount = datasamlinger,
+            TotalVariables = 42,
+            AdditionalProperties = new Dictionary<string, string?>(StringComparer.Ordinal),
+        };
+
+    private static KildeDatasamling Collection(Guid id, string name) =>
+        new() { Id = id, Name = name, VariableCount = 7 };
+
+    /// <summary>Kilde one: two datasamlinger of its own and a third under a delkilde.</summary>
+    /// <remarks>
+    /// The third one is what tells a flattening that stops at the top level from one that does not,
+    /// and a ticked kilde promising it in its count while the handover leaves it out is exactly the
+    /// failure nobody would see on screen.
+    /// </remarks>
+    private static KildeDetail DetailOne() =>
+        new()
+        {
+            Id = KildeOne,
+            PreferredTerm = "Als registeret",
+            Datasamlinger =
+            [
+                Collection(CollectionOneA, "Inklusjon"),
+                Collection(CollectionOneB, "Oppfølging"),
+            ],
+            Delkilder =
+            [
+                new()
+                {
+                    Id = new("d1d1d1d1-0000-0000-0000-000000000001"),
+                    Name = "Bølge 4",
+                    Datasamlinger = [Collection(CollectionOneC, "Bølge 4 - serie 49")],
+                },
+            ],
+        };
+
+    private static KildeDetail DetailTwo() =>
+        new()
+        {
+            Id = KildeTwo,
+            PreferredTerm = "Dødsårsaksregisteret",
+            Datasamlinger =
+            [
+                Collection(CollectionTwoA, "Dødsfall"),
+                Collection(CollectionTwoB, "Underliggende årsak"),
+            ],
+        };
+
+    /// <summary>Kilder whose drawers answer, with a hand on each fetch.</summary>
+    /// <remarks>
+    /// The calls are recorded because half of what this section pins is what is NOT asked for: a
+    /// ticked kilde the list already says holds no datasamling must cost no round trip, and one
+    /// already in hand must cost no second.
+    /// </remarks>
+    private sealed class DrawerClient(params KildeSummary[] kilder) : EmptyMuninExplorerClient
+    {
+        private readonly Dictionary<Guid, KildeDetail> _details = [];
+
+        public List<Guid> Fetched { get; } = [];
+
+        public HashSet<Guid> Failing { get; } = [];
+
+        public Dictionary<Guid, TaskCompletionSource<KildeDetail?>> Held { get; } = [];
+
+        public DrawerClient Describing(params KildeDetail[] details)
+        {
+            foreach (var detail in details)
+            {
+                _details[detail.Id] = detail;
+            }
+
+            return this;
+        }
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(kilder);
+
+        public override Task<IReadOnlyList<PropertyMetadataEntry>> GetKildePropertyMetadataAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<PropertyMetadataEntry>>([]);
+
+        public override Task<KildeDetail?> GetKildeAsync(
+            Guid id, CancellationToken cancellationToken = default)
+        {
+            Fetched.Add(id);
+
+            if (Held.TryGetValue(id, out var held))
+            {
+                return held.Task;
+            }
+
+            return Failing.Contains(id)
+                ? Task.FromException<KildeDetail?>(new HttpRequestException("the catalogue is down"))
+                : Task.FromResult<KildeDetail?>(_details.GetValueOrDefault(id));
+        }
+    }
+
+    /// <summary>The three kilder decision 5 is written over, with kilde three holding none.</summary>
+    private static DrawerClient ThreeKilder() =>
+        new DrawerClient(
+            Row(KildeOne, "Als registeret", datasamlinger: 3),
+            Row(KildeTwo, "Dødsårsaksregisteret", datasamlinger: 2),
+            Row(KildeThree, "Reseptregisteret", datasamlinger: 0))
+            .Describing(DetailOne(), DetailTwo());
+
+    /// <summary>
+    /// Render with BOTH handovers wired, which is the only state a datasamling can be marked in.
+    /// </summary>
+    /// <remarks>
+    /// Two lists rather than one: which of the two a press lands in is the whole of decision 4, and
+    /// a single list would record that something was handed over without recording what.
+    /// </remarks>
+    private (IRenderedComponent<KildeSearch> Cut,
+             List<IReadOnlyList<Guid>> Kilder,
+             List<IReadOnlyList<Guid>> Datasamlinger) RenderMarkable(
+        IMuninExplorerClient client,
+        Action<ComponentParameterCollectionBuilder<KildeSearch>>? parameters = null)
+    {
+        Services.AddSingleton(client);
+
+        List<IReadOnlyList<Guid>> kilder = [];
+        List<IReadOnlyList<Guid>> datasamlinger = [];
+
+        var cut = Render<KildeSearch>(b =>
+        {
+            b.Add(c => c.ExploreVariablesRequested,
+                EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, kilder.Add));
+            b.Add(c => c.ExploreDatasamlingerRequested,
+                EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, datasamlinger.Add));
+
+            parameters?.Invoke(b);
+        });
+
+        return (cut, kilder, datasamlinger);
+    }
+
+    /// <summary>The row whose name button reads <paramref name="name"/>.</summary>
+    /// <remarks>
+    /// Found on every call rather than held: every press re-renders, so an element found before it
+    /// belongs to the markup as it was. Matched with a null-conditional because an expanded row
+    /// puts a second tr in the tbody, and that one carries no name button of its own.
+    /// </remarks>
+    private static IElement NamedRow(IRenderedComponent<KildeSearch> cut, string name) =>
+        cut.FindAll(".munin-explorer-kilder tbody tr")
+           .Single(row => row.QuerySelector("th button")?.TextContent.Trim() == name);
+
+    private static void Expand(IRenderedComponent<KildeSearch> cut, string name) =>
+        NamedRow(cut, name).QuerySelector(".munin-explorer-kilder__expand-toggle")!.Click();
+
+    /// <summary>One opened row's drawer, found by the kilde its panel id ends in.</summary>
+    private static IElement Drawer(IRenderedComponent<KildeSearch> cut, Guid kilde) =>
+        cut.FindAll(".munin-explorer-kilder__expanded")
+           .Single(panel => panel.Id?.EndsWith(kilde.ToString(), StringComparison.Ordinal) == true);
+
+    private static IReadOnlyList<IElement> MarkBoxes(IRenderedComponent<KildeSearch> cut, Guid kilde) =>
+        [.. Drawer(cut, kilde).QuerySelectorAll("td.munin-explorer-kilde__datasamling-select input")];
+
+    /// <summary>Mark the datasamling whose box is named for <paramref name="datasamling"/>.</summary>
+    private static void Mark(
+        IRenderedComponent<KildeSearch> cut, Guid kilde, string datasamling, bool marked = true) =>
+        MarkBoxes(cut, kilde)
+            .Single(box => AccessibleName.Of(box) == $"Velg {datasamling}")
+            .Change(marked);
+
+    /// <summary>What one row says under its name, or null where it says nothing.</summary>
+    private static string? RowMarkCount(IRenderedComponent<KildeSearch> cut, string name) =>
+        NamedRow(cut, name).QuerySelector("th p")?.TextContent.Trim();
+
+    /// <summary>
+    /// The selection bar's own count line.
+    /// </summary>
+    /// <remarks>
+    /// Not <see cref="SelectionLine"/>: that one takes the last status region on screen, and an
+    /// open drawer puts its own below this one.
+    /// </remarks>
+    private static string BarLine(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find(".munin-explorer-selection p[role=status]").TextContent.Trim();
+
+    /// <summary>The union's retry, which is inside the alert region rather than beside it.</summary>
+    private static IElement RetryButton(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find("[role=alert] button.munin-explorer-retry");
+
+    [Fact]
+    public void Marks_WhenNothingIsMarked_ThenEveryBoxIsClearAndNoRowCounts()
+    {
+        // The fresh state, and the discriminating half of every assertion below: a column drawn
+        // pre-ticked would pass "the mark is checked" without anything having been pressed.
+        var (cut, _, _) = RenderMarkable(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+
+        Assert.Equal(3, MarkBoxes(cut, KildeOne).Count);
+        Assert.All(MarkBoxes(cut, KildeOne), box => Assert.False(box.HasAttribute("checked")));
+        Assert.Null(RowMarkCount(cut, "Als registeret"));
+        Assert.Equal("", BarLine(cut));
+    }
+
+    [Fact]
+    public void Marks_WhenARowIsTicked_ThenItsDatasamlingerAreNotMarked()
+    {
+        // Decision 3: the two selections are independent. A tick that pre-marked the drawer would
+        // read as helpful and would then travel as a mark, which is a different query.
+        var (cut, _, _) = RenderMarkable(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+        TickRow(cut, "Als registeret");
+
+        Assert.All(MarkBoxes(cut, KildeOne), box => Assert.False(box.HasAttribute("checked")));
+        Assert.Null(RowMarkCount(cut, "Als registeret"));
+        Assert.Equal("1 kilde valgt", BarLine(cut));
+    }
+
+    [Fact]
+    public void Marks_WhenTwoAreMadeUnderOneRow_ThenTheRowCountsThemOpenAndShut()
+    {
+        // The other direction of decision 3, and the reason the count is outside the drawer: a mark
+        // survives the drawer being closed, and a selection with nothing on screen saying so is one
+        // the reader cannot undo.
+        var (cut, _, _) = RenderMarkable(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+        Mark(cut, KildeOne, "Inklusjon");
+        Mark(cut, KildeOne, "Oppfølging");
+
+        Assert.False(NamedRow(cut, "Als registeret")
+                        .QuerySelector($".{HostClassNames.KilderSelect} input")!
+                        .HasAttribute("checked"));
+
+        Assert.Equal("2 datasamlinger merket", RowMarkCount(cut, "Als registeret"));
+        Assert.Equal("2 datasamlinger valgt", BarLine(cut));
+
+        Expand(cut, "Als registeret");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("2 datasamlinger merket", RowMarkCount(cut, "Als registeret"));
+    }
+
+    [Fact]
+    public void Handover_WhenDatasamlingerAreMarkedUnderTwoKilder_ThenItSendsThoseAndNoKildeIds()
+    {
+        // The reporter's own case: marks across several kilder, handed to the variable explorer as
+        // the collections they are. kildeIds beside them would AND with these and answer with the
+        // variables that are in both, which is not the selection anybody made.
+        var client = ThreeKilder();
+        var (cut, kilder, datasamlinger) = RenderMarkable(client);
+
+        Expand(cut, "Als registeret");
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeOne, "Inklusjon");
+        Mark(cut, KildeTwo, "Dødsfall");
+
+        ExploreButton(cut).Click();
+
+        Assert.Equal([CollectionOneA, CollectionTwoA], Assert.Single(datasamlinger));
+        Assert.Empty(kilder);
+    }
+
+    [Fact]
+    public void Handover_WhenAKildeIsTickedAndADatasamlingIsMarked_ThenTheUnionTravelsAsCollections()
+    {
+        // Decision 5, the whole of it in one press: a ticked kilde expands to every datasamling it
+        // owns, delkilder included, the marks join them, and nothing is counted twice. Ticked
+        // WITHOUT opening the row, because the fetch that makes the expansion possible is the thing
+        // that has to happen on its own.
+        var client = ThreeKilder();
+        var (cut, kilder, datasamlinger) = RenderMarkable(client);
+
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeTwo, "Dødsfall");
+        TickRow(cut, "Als registeret");
+
+        // Once for the row the reader opened and once for the one they ticked, and never for the
+        // kilde the list already says holds none.
+        Assert.Equal([KildeTwo, KildeOne], client.Fetched);
+
+        ExploreButton(cut).Click();
+
+        Assert.Equal(
+            [CollectionOneA, CollectionOneB, CollectionOneC, CollectionTwoA],
+            Assert.Single(datasamlinger));
+
+        Assert.Empty(kilder);
+    }
+
+    [Fact]
+    public void Handover_WhenAKildeWithNoDatasamlingerIsTicked_ThenNothingIsFetchedAndTheNoteNamesIt()
+    {
+        // A kilde holding nothing contributes nothing, and saying so is the only honest answer: the
+        // reader ticked it and the selection it reaches is unchanged. Asking the API about it would
+        // spend a round trip to learn what the row already says.
+        var client = ThreeKilder();
+        var (cut, _, datasamlinger) = RenderMarkable(client);
+
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeTwo, "Dødsfall");
+        TickRow(cut, "Reseptregisteret");
+
+        Assert.DoesNotContain(KildeThree, client.Fetched);
+
+        ExploreButton(cut).Click();
+
+        Assert.Equal([CollectionTwoA], Assert.Single(datasamlinger));
+
+        var note = cut.Find(".munin-explorer-selection + p").TextContent;
+
+        Assert.Contains("Reseptregisteret", note, StringComparison.Ordinal);
+        Assert.Contains("ikke ligger i en datasamling", note, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Handover_WhileATickedKildesDatasamlingerAreStillComing_ThenItIsBusyAndGoesNowhere()
+    {
+        // Handing over here would send a narrower selection than the reader made and say so
+        // nowhere. aria-busy rather than disabled: disabling would drop the focus of the reader
+        // standing on the button, which is the pager's rule.
+        var client = ThreeKilder();
+
+        client.Held[KildeOne] = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var (cut, _, datasamlinger) = RenderMarkable(client);
+
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeTwo, "Dødsfall");
+        TickRow(cut, "Als registeret");
+
+        Assert.Equal("true", ExploreButton(cut).GetAttribute("aria-busy"));
+
+        await ExploreButton(cut).ClickAsync(new());
+
+        Assert.Empty(datasamlinger);
+
+        await cut.InvokeAsync(() => client.Held[KildeOne].SetResult(DetailOne()));
+
+        cut.WaitForAssertion(() => Assert.Null(ExploreButton(cut).GetAttribute("aria-busy")));
+
+        // Awaited rather than pressed the way its siblings are: past the await above, the
+        // synchronous press returns before the handler has run, and the assertion below it read an
+        // empty list in most runs.
+        await ExploreButton(cut).ClickAsync(new());
+
+        Assert.Equal(
+            [CollectionOneA, CollectionOneB, CollectionOneC, CollectionTwoA],
+            Assert.Single(datasamlinger));
+    }
+
+    [Fact]
+    public void Handover_WhenATickedKildesDatasamlingerCannotBeHad_ThenItSaysSoAndGoesNowhere()
+    {
+        // A half-built union is the one outcome with no symptom: the press would land on a variable
+        // list narrower than the reader asked for, and nothing on either page would say which rows
+        // were missing.
+        var client = ThreeKilder();
+
+        client.Failing.Add(KildeOne);
+
+        var (cut, _, datasamlinger) = RenderMarkable(client);
+
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeTwo, "Dødsfall");
+        TickRow(cut, "Als registeret");
+
+        Assert.Contains("Kunne ikke hente datasamlingene",
+                        cut.Find("[role=alert]").TextContent,
+                        StringComparison.Ordinal);
+
+        ExploreButton(cut).Click();
+
+        Assert.Empty(datasamlinger);
+
+        // The way out of it, and the reason the offer is beside the sentence rather than under it:
+        // a retry that answers is the only thing that lets the press through.
+        client.Failing.Clear();
+        RetryButton(cut).Click();
+
+        Assert.DoesNotContain("Kunne ikke hente datasamlingene",
+                              cut.Find("[role=alert]").TextContent,
+                              StringComparison.Ordinal);
+
+        ExploreButton(cut).Click();
+
+        Assert.Equal(
+            [CollectionOneA, CollectionOneB, CollectionOneC, CollectionTwoA],
+            Assert.Single(datasamlinger));
+    }
+
+    [Fact]
+    public void RetrySelection_WhenItAnswers_ThenTheOfferGoesInertRatherThanLeavingTheDom()
+    {
+        // Every other retry in this package outlives the sentence it answers by exactly one fetch,
+        // and this one said in prose that it did: a button leaving with its message drops the focus
+        // of the reader who just pressed it to <body>, which is the pager's rule.
+        var client = ThreeKilder();
+
+        client.Failing.Add(KildeOne);
+
+        var (cut, _, _) = RenderMarkable(client);
+
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeTwo, "Dødsfall");
+        TickRow(cut, "Als registeret");
+
+        Assert.Null(RetryButton(cut).GetAttribute("aria-disabled"));
+
+        client.Failing.Clear();
+        RetryButton(cut).Click();
+
+        Assert.Equal("true", RetryButton(cut).GetAttribute("aria-disabled"));
+
+        // And inert means inert, since aria-disabled stops no press: a second one asks for nothing.
+        var asked = client.Fetched.Count;
+
+        RetryButton(cut).Click();
+
+        Assert.Equal(asked, client.Fetched.Count);
+    }
+
+    [Fact]
+    public void RetrySelection_WhenATickedKildeIsNotPublished_ThenItAsksAgainRatherThanRetiringTheWarning()
+    {
+        // The unpublished kilde is recorded as a null detail AND an error, so a retry that cleared
+        // only the error left the union exactly as incomplete with nothing on screen saying so —
+        // the reader told the problem is solved by a button that made no attempt to solve it.
+        var client = new DrawerClient(
+            Row(KildeOne, "Als registeret", datasamlinger: 3),
+            Row(KildeTwo, "Dødsårsaksregisteret", datasamlinger: 2))
+            .Describing(DetailOne());
+
+        var (cut, _, datasamlinger) = RenderMarkable(client);
+
+        Expand(cut, "Als registeret");
+        Mark(cut, KildeOne, "Inklusjon");
+        TickRow(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal([KildeOne, KildeTwo], client.Fetched);
+
+        RetryButton(cut).Click();
+
+        Assert.Equal([KildeOne, KildeTwo, KildeTwo], client.Fetched);
+
+        Assert.Contains("Kunne ikke hente datasamlingene",
+                        cut.Find("[role=alert]").TextContent,
+                        StringComparison.Ordinal);
+
+        ExploreButton(cut).Click();
+
+        Assert.Empty(datasamlinger);
+    }
+
+    [Fact]
+    public void Handover_WhenTheAddressCarriesATickAndAMark_ThenTheUnionIsBuiltBeforeTheFirstPress()
+    {
+        // The ordinary round trip the feature is built on: KildeExplorer writes ?selected= and
+        // ?selectedDatasamling= together, so any shared link or back-navigation out of a mixed
+        // selection reopens the list holding both halves and never through a tick or a mark press.
+        var client = ThreeKilder();
+
+        var (cut, _, datasamlinger) = RenderMarkable(client, b =>
+        {
+            b.Add(c => c.TickedKildeIds, (IReadOnlyList<Guid>)[KildeOne]);
+            b.Add(c => c.MarkedDatasamlinger,
+                (IReadOnlyList<string>)[KildeSearch.MarkValue(KildeTwo, CollectionTwoA)]);
+        });
+
+        // The only assertion of the bar's two-sentence arm: dropping the joining space, returning
+        // one half or swapping the order all render as a line somebody would read past.
+        Assert.Equal("1 kilde valgt 1 datasamling valgt", BarLine(cut));
+
+        ExploreButton(cut).Click();
+
+        Assert.Equal(
+            [CollectionOneA, CollectionOneB, CollectionOneC, CollectionTwoA],
+            Assert.Single(datasamlinger));
+    }
+
+    [Fact]
+    public void Marks_WhenOnlyTheKildeHandoverIsWired_ThenTheAddressSeedsNoMarkAtAll()
+    {
+        // Markable gates the checkbox column, and a mark seeded past that gate would count in the
+        // bar, force rows open and fetch for them — all of it ending on a primary button that takes
+        // the marked branch and raises a callback the host never wired.
+        var client = ThreeKilder();
+
+        var (cut, handovers) = RenderSelectable(client, b => b.Add(
+            c => c.MarkedDatasamlinger,
+            (IReadOnlyList<string>)[KildeSearch.MarkValue(KildeTwo, CollectionTwoA)]));
+
+        Assert.Empty(client.Fetched);
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("", BarLine(cut));
+
+        ExploreButton(cut).Click();
+
+        Assert.Empty(Assert.Single(handovers));
+    }
+
+    [Fact]
+    public void Marks_WhenTheAddressNamesRowsTheListHasNot_ThenNoneOfThemIsFetched()
+    {
+        // ?selectedDatasamling= is the first query key where an untrusted value becomes an outbound
+        // request, and the API counts its rate limit per address with helsedata's cluster reaching
+        // it as one. An id no row holds, or one the row says holds nothing, is answered unasked.
+        var client = ThreeKilder();
+
+        var (cut, _, _) = RenderMarkable(client, b => b.Add(
+            c => c.MarkedDatasamlinger,
+            (IReadOnlyList<string>)
+            [
+                KildeSearch.MarkValue(Guid.NewGuid(), Guid.NewGuid()),
+                KildeSearch.MarkValue(KildeThree, CollectionTwoA),
+            ]));
+
+        Assert.Empty(client.Fetched);
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+
+        // Kept all the same, for the reason a tick the search has hidden is: the bar has to count
+        // what the address holds, or the reader has a selection they cannot undo.
+        Assert.Equal("2 datasamlinger valgt", BarLine(cut));
+    }
+
+    [Fact]
+    public void Marks_WhenTheAddressNamesMoreRowsThanTheCap_ThenOnlyTheFirstTwentyOpen()
+    {
+        // UrlMirror admits 500 values per key, and each distinct kilde among them used to be one
+        // sequential catalogue fetch on the visitor's circuit before the page settled. The marks
+        // past the cap are still held and still travel; only their drawers stay shut.
+        var rows = Enumerable
+            .Range(1, 25)
+            .Select(n => Row(new Guid($"000000{n:D2}-0000-0000-0000-000000000000"),
+                             $"Kilde {n}",
+                             datasamlinger: 2))
+            .ToArray();
+
+        var client = new DrawerClient(rows);
+
+        var (cut, _, _) = RenderMarkable(client, b => b.Add(
+            c => c.MarkedDatasamlinger,
+            (IReadOnlyList<string>)[.. rows.Select(row => KildeSearch.MarkValue(row.Id, CollectionOneA))]));
+
+        Assert.Equal(20, client.Fetched.Count);
+        Assert.Equal(20, cut.FindAll(".munin-explorer-kilder__expanded").Count);
+        Assert.Equal("25 datasamlinger valgt", BarLine(cut));
+    }
+
+    [Fact]
+    public void ClearSelection_WhenBothAreHeld_ThenItEmptiesTheTicksAndTheMarks()
+    {
+        // One control for one selection. A reset that left the marks behind would leave a handover
+        // still promising them under a bar saying nothing is chosen.
+        var (cut, _, _) = RenderMarkable(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+        Mark(cut, KildeOne, "Inklusjon");
+        TickRow(cut, "Dødsårsaksregisteret");
+
+        ResetButtons(cut).Single().Click();
+
+        Assert.Equal("", BarLine(cut));
+        Assert.Null(RowMarkCount(cut, "Als registeret"));
+        Assert.All(MarkBoxes(cut, KildeOne), box => Assert.False(box.HasAttribute("checked")));
+        Assert.Empty(ResetButtons(cut));
+    }
+
+    [Fact]
+    public void ClearSelection_WhenOnlyMarksAreHeld_ThenTheResetIsStillOffered()
+    {
+        // The reset used to be drawn off the tick count alone, so a selection made entirely of
+        // marks had nothing to undo it.
+        var (cut, _, _) = RenderMarkable(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+        Mark(cut, KildeOne, "Inklusjon");
+
+        Assert.Single(ResetButtons(cut));
+    }
+
+    [Fact]
+    public void Marks_WhenTheHostWiredOnlyTheKildeHandover_ThenNoDatasamlingCanBeMarked()
+    {
+        // The state helsedata's own CMS mount is in until it passes VariableExplorerPath, and the
+        // state a host composing KildeSearch itself is in until it wires the second callback: a
+        // checkbox whose press had nowhere to go would be a control that quietly does nothing.
+        var (cut, _) = RenderSelectable(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+
+        var drawer = Drawer(cut, KildeOne);
+
+        Assert.Empty(drawer.QuerySelectorAll(".munin-explorer-kilde__datasamling-select"));
+        Assert.Empty(drawer.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger--selectable"));
+        Assert.Null(RowMarkCount(cut, "Als registeret"));
+    }
+
+    [Fact]
+    public void Drawer_WhenNoHandoverIsWiredAtAll_ThenTheTableIsTheOneKildeViewDraws()
+    {
+        // Criterion 6's other half, asserted where the same DatasamlingTable is reached with no
+        // selection: the modifier and the column are the only difference between the two, so a
+        // table that grew either without a handover would have changed KildeView's as well.
+        Services.AddSingleton<IMuninExplorerClient>(ThreeKilder());
+
+        var cut = Render<KildeSearch>();
+
+        Expand(cut, "Als registeret");
+
+        var table = Drawer(cut, KildeOne).QuerySelector("table")!;
+
+        Assert.Equal("munin-explorer-kilde__datasamlinger", table.GetAttribute("class"));
+        Assert.Equal(["Navn", "Beskrivelse", "Gyldighet", "Totalt antall variabler"],
+                     table.QuerySelectorAll("thead th").Select(th => th.TextContent));
+    }
+
+    [Fact]
+    public void Drawer_WhenBothHandoversAreWired_ThenTheTableWearsTheModifierAndALeadingColumn()
+    {
+        // The markup agreed with the Stiler half (Fhi.Metadata-h6dx7). The modifier is not
+        // decoration: Stiler sizes this table's columns by position, so a column in front of Navn
+        // is what those rules are re-anchored against — renamed here alone, every column but the
+        // first is sized for the one beside it.
+        var (cut, _, _) = RenderMarkable(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+
+        var table = Drawer(cut, KildeOne).QuerySelector("table")!;
+
+        Assert.Equal(
+            "munin-explorer-kilde__datasamlinger munin-explorer-kilde__datasamlinger--selectable",
+            table.GetAttribute("class"));
+
+        var heading = table.QuerySelector("thead th")!;
+
+        Assert.Contains("munin-explorer-kilde__datasamling-select", heading.ClassList);
+        Assert.Equal("col", heading.GetAttribute("scope"));
+
+        // Screenreader-only rather than empty: a checkbox is announced with the column it stands
+        // in, so a nameless column names none of the boxes under it.
+        Assert.Equal("Velg", heading.TextContent.Trim());
+        Assert.Contains("screenreader-only", heading.QuerySelector("span")!.ClassList);
+
+        Assert.Equal(["Velg", "Navn", "Beskrivelse", "Gyldighet", "Totalt antall variabler"],
+                     table.QuerySelectorAll("thead th").Select(th => th.TextContent));
+
+        // Every box named for its own row, for the reason the kilde column's are: "Velg" repeated
+        // down a column tells a reader moving between controls nothing about which row they are in.
+        Assert.Equal(["Velg Inklusjon", "Velg Oppfølging", "Velg Bølge 4 - serie 49"],
+                     MarkBoxes(cut, KildeOne).Select(AccessibleName.Of));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCanBeMarked_ThenEveryClassNameIsOneSomeStylesheetDefines()
+    {
+        // The state the guard next door cannot reach: it renders the list with every row shut, so
+        // the drawer's two new names are not in its DOM at all.
+        var (cut, _, _) = RenderMarkable(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+        Mark(cut, KildeOne, "Inklusjon");
+
+        Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
+    public void Render_WhenADatasamlingCanBeMarked_ThenItAddsExactlyTwoNamesToTheOpenDrawer()
+    {
+        // The exact-list guard next door, asked as a difference rather than as a literal list: what
+        // an open drawer writes is already pinned by KildeSearchTest, and what this bead adds to it
+        // is two names and no more. A third addition is news that has to be answered in both sample
+        // stylesheets and in Fhi.Helsedata.Stiler first.
+        Services.AddSingleton<IMuninExplorerClient>(ThreeKilder());
+
+        // Two renders of the same list, differing in the second callback alone, so the kilde
+        // column and the bar are on both sides and cancel out.
+        var plain = Render<KildeSearch>(b => b.Add(
+            c => c.ExploreVariablesRequested,
+            EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, _ => { })));
+
+        var marked = Render<KildeSearch>(b =>
+        {
+            b.Add(c => c.ExploreVariablesRequested,
+                EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, _ => { }));
+            b.Add(c => c.ExploreDatasamlingerRequested,
+                EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, _ => { }));
+        });
+
+        Expand(plain, "Als registeret");
+        Expand(marked, "Als registeret");
+        Mark(marked, KildeOne, "Inklusjon");
+
+        Assert.Equal(
+        [
+            "munin-explorer-kilde__datasamling-select",
+            "munin-explorer-kilde__datasamlinger--selectable",
+        ],
+        Invented(marked).Except(Invented(plain), StringComparer.Ordinal).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>Every name under this package's own prefix that one render wrote.</summary>
+    private static IReadOnlyList<string> Invented(IRenderedComponent<KildeSearch> cut) =>
+        [.. HostClassNames.Of(cut.FindAll("[class]"))
+                          .Where(HostClassNames.IsOwnStructureName)
+                          .Distinct(StringComparer.Ordinal)
+                          .Order(StringComparer.Ordinal)];
 }
