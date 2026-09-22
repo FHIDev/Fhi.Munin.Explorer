@@ -25,7 +25,7 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Five of the ten below are invariants. If that ratio ever inverts, this file has become a
+// Seven of the twelve below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
@@ -482,6 +482,90 @@ export const assertions = [
         const th = table.tHead?.rows[0]?.cells[cell.cellIndex];
         return (th?.textContent ?? '').trim() || `column ${cell.cellIndex}`;
       }
+    },
+  },
+
+  {
+    name: "the detail page's main column is the wider part of its body",
+    kind: 'invariant',
+    // The chassis `DetailPage` puts every detail view inside is two tracks — a contents rail and
+    // the reading column — and which of the two is the narrow one is decided entirely by Stiler's
+    // `.munin-explorer-page__body:has(> .munin-explorer-page__toc)`. Nothing else here can see
+    // that: the three bUnit assertions that shipped the chassis compare `body.ClassName` to a
+    // string, which pins the spelling of the fix and not the layout it was for, and every other
+    // invariant in this file holds with the main column in a 320px rail.
+    //
+    // Measured as a comparison rather than against the 250px the rule names, so a track that is
+    // retuned is not a failure and a main column in the RAIL is. Above the breakpoint the two also
+    // have to share a row: a grid whose rule has gone lays them out stacked and full width, where
+    // the width comparison alone would go quiet on the one page it was written for.
+    //
+    // 1025, because that is where Stiler turns the second track on — `$desktop-all`, the exact
+    // complement of its `$tablet`. Below it the body is one column and the only honest statement
+    // left is that the rail has not become the wider of the two.
+    //
+    // The row check is a statement about scroll offset 0, which is where everything in this file
+    // is measured: the rail is `position: sticky`, so anywhere else it has left its own row on
+    // purpose and the two tops legitimately differ.
+    body: () => {
+      const width = Math.round(window.innerWidth);
+      const twoTracks = width >= 1025;
+      for (const body of document.querySelectorAll('.munin-explorer-page__body')) {
+        const children = [...body.children];
+        const toc = children.find(el => el.classList.contains('munin-explorer-page__toc'));
+        // A body with no contents column is one track by design — the saved-list view never draws
+        // one — so there is nothing to compare and nothing to report.
+        if (toc === undefined) continue;
+        const main = children.find(el => el.classList.contains('munin-explorer-page__main'));
+        if (main === undefined) {
+          return `at ${width}px a body with a contents column has no ` +
+            '.munin-explorer-page__main beside it — nothing was measured';
+        }
+
+        const rail = toc.getBoundingClientRect();
+        const column = main.getBoundingClientRect();
+        if (twoTracks) {
+          if (column.width <= rail.width) {
+            return `at ${width}px the main column is ${column.width.toFixed(1)}px wide beside a ` +
+              `${rail.width.toFixed(1)}px contents rail — the reading column is in the rail's track`;
+          }
+          if (Math.abs(column.top - rail.top) > 1) {
+            return `at ${width}px the main column starts at ${column.top.toFixed(1)} and the ` +
+              `contents rail at ${rail.top.toFixed(1)} — they are stacked, not two tracks of a row`;
+          }
+        } else if (column.width < rail.width) {
+          return `at ${width}px the stacked main column is ${column.width.toFixed(1)}px wide ` +
+            `under a ${rail.width.toFixed(1)}px contents rail`;
+        }
+      }
+      return null;
+    },
+  },
+
+  {
+    name: 'the detail page body holds only its columns',
+    kind: 'invariant',
+    // The track count is declared, so the body has room for exactly the two children `DetailPage`
+    // writes. A third — a view rendering outside `ChildContent`, or a host slot — wraps onto a
+    // second row and lands in the 250px rail, with every other assertion in this file green: it
+    // fits, it is not hidden, and its text has boxes.
+    //
+    // Structure rather than geometry on purpose. Where the wrapped child ends up depends on what
+    // the tracks are that day, and the defect is the same one whatever the answer: the body is not
+    // a general container and nothing but the two columns may be put in it.
+    body: () => {
+      for (const body of document.querySelectorAll('.munin-explorer-page__body')) {
+        for (const child of body.children) {
+          if (child.classList.contains('munin-explorer-page__toc')) continue;
+          if (child.classList.contains('munin-explorer-page__main')) continue;
+          const cls = child.className && typeof child.className === 'string'
+            ? '.' + child.className.trim().split(/\s+/).join('.')
+            : ' with no class';
+          return `the page body holds ${child.tagName.toLowerCase()}${cls}, which is neither ` +
+            'its contents column nor its main column';
+        }
+      }
+      return null;
     },
   },
 ];

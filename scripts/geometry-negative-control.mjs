@@ -177,6 +177,26 @@ const cases = [
       '{ text-align: left !important; }'),
   },
   {
+    assertion: "the detail page's main column is the wider part of its body",
+    defect: "the reading column placed in the contents rail's track",
+    path: '/', state: 'variable-whole', width: 1440,
+    // The two tracks swapped, which is the arrangement every other assertion in the file stays
+    // green through: the body is still two tracks and still one row, and only which child sits in
+    // which has moved.
+    apply: css('.munin-explorer-page__body ' +
+      '{ grid-template-columns: minmax(0, 1fr) 320px !important; }\n' +
+      '.munin-explorer-page__main { grid-column: 2 !important; }'),
+  },
+  {
+    assertion: 'the detail page body holds only its columns',
+    defect: 'a third child in a body with two tracks declared',
+    path: '/', state: 'variable-whole', width: 1440,
+    // A real element rather than a pseudo-element: `::after` is not a child, so a break written
+    // that way would leave the assertion holding for the right reason and read as a false alarm.
+    apply: page => page.evaluate(() => document.querySelector('.munin-explorer-page__body')
+      .insertAdjacentHTML('beforeend', '<div>a view rendered outside ChildContent</div>')),
+  },
+  {
     assertion: 'no page shell class inside a tab panel',
     defect: 'a nested view wearing the page shell class',
     path: '/', state: 'explorer-tabs', width: 1440,
