@@ -310,8 +310,8 @@ public partial class VariableSearch
     /// <summary>One bound, written the way the reader's own language writes a day.</summary>
     /// <remarks>
     /// Unmarked: the field's name is this package's word and the date is formatted for the reader,
-    /// so both are already in the reader's own language. Through <see cref="CatalogueDate.Day"/>
-    /// and narrow, so a chip in the sidebar reads like the dates in the results beside it.
+    /// so both are in the reader's own language. Narrow, through
+    /// <see cref="CatalogueDate.Day(DateOnly, string, DateWidth)"/>, so a chip reads like the results.
     /// </remarks>
     private FacetValue DateValue(string key, string field, DateOnly date, Func<Task> clear) =>
         new(key,
