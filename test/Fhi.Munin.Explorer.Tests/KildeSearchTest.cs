@@ -5021,7 +5021,7 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void FacetSearch_Always_ThenTheBoxOffersTheValuesAndNotADatasamling()
+    public void FacetSearch_Always_ThenItKeepsTheSharedValuesWording()
     {
         // The variable explorer's kilde box says it finds a datasamling, because its search walks
         // the tree below a kilde. These match their own facet's values and nothing else, so one
