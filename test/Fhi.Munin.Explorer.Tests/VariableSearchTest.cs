@@ -4530,6 +4530,30 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Filter_WhenTheKildeSearchIsDrawn_ThenItsPlaceholderNamesDatasamlingToo()
+    {
+        // The box has always matched datasamlinger — the test above is that behaviour — and the
+        // generic "Søk i verdiene" it wore never said so, which left the only route to one
+        // undiscoverable to a reader who knows the datasamling and not its kilde.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                                 FacetsWithDatasamlinger()));
+
+        Assert.Equal("Søk etter kilde eller datasamling",
+                     KildeSearchField(cut).GetAttribute("placeholder"));
+    }
+
+    [Fact]
+    public void Filter_WhenTheKildeSearchIsDrawnInEnglish_ThenItsPlaceholderNamesTheDataCollection()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")),
+                                                 FacetsWithDatasamlinger()),
+                             b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("Search for a source or data collection",
+                     KildeSearchField(cut).GetAttribute("placeholder"));
+    }
+
+    [Fact]
     public void Filter_WhenTheKildeSearchMatchesDeepInTheTree_ThenThePathDownToItIsOpened()
     {
         // Three branches stand between the kilde the search kept and the datasamling that kept it,

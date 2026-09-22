@@ -513,6 +513,10 @@ internal sealed record Texts(
     // for the kildeutforsker, and the kilde facet alone in VariableSearch.FilterPanel.cs.
     Func<string, string> FacetSearchLabel,
     string FacetSearchPlaceholder,
+    // The variable explorer's kilde facet has a placeholder of its own because its box searches
+    // the whole tree below a kilde, datasamlinger included, and nothing else said so.
+    // (Fhi.Metadata-35w0p.38)
+    string KildeFacetSearchPlaceholder,
     string FacetSearchNoMatch,
     // The control that reveals the values a long facet's cap is holding back, and what it says once
     // it has. The number is the remainder the panel computes per render, never one written here.
@@ -1226,6 +1230,7 @@ internal sealed record Texts(
         FacetAccessLevel: "Tilgangsnivå",
         FacetSearchLabel: heading => $"Søk i {heading}",
         FacetSearchPlaceholder: "Søk i verdiene",
+        KildeFacetSearchPlaceholder: "Søk etter kilde eller datasamling",
         FacetSearchNoMatch: "Ingen verdier passer søket",
         ShowMoreFacetValues: hidden => $"Vis {hidden} til",
         ShowFewerFacetValues: "Vis færre",
@@ -1610,6 +1615,7 @@ internal sealed record Texts(
         FacetAccessLevel: "Access level",
         FacetSearchLabel: heading => $"Search in {heading}",
         FacetSearchPlaceholder: "Search the values",
+        KildeFacetSearchPlaceholder: "Search for a source or data collection",
         FacetSearchNoMatch: "No values match the search",
         ShowMoreFacetValues: hidden => $"Show {hidden} more",
         ShowFewerFacetValues: "Show fewer",
