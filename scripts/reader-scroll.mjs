@@ -19,8 +19,8 @@ const scrollLikeAReader = (page, y) => page.evaluate(async to => {
   // Smaller than the viewport, so nothing can pass through unseen in a single step.
   const step = Math.max(40, Math.floor(window.innerHeight / 4));
 
-  // Instant, because Stiler's `html { scroll-behavior: smooth }` would animate each step and land
-  // late, a few pixels off, while the page is still growing.
+  // Instant: Stiler's `html { scroll-behavior: smooth }` would otherwise animate each step, so a
+  // step would not be where the next frame's observer reads it.
   for (let at = window.scrollY; Math.abs(to - at) > step; at += to > at ? step : -step) {
     window.scrollTo({ top: at, left: 0, behavior: 'instant' });
     await new Promise(next => requestAnimationFrame(next));
@@ -52,6 +52,8 @@ export async function scrollPast(page, id) {
 export async function scrollToTop(page) {
   await scrollLikeAReader(page, 0);
   await page.waitForTimeout(OBSERVER_SETTLE_MS);
-  // Once more: after a deep hierarchy state the page settles 2-14px down, cause not yet found.
+  // Once more, then settle again so a caller's scroll-0 check still sees a page that will not stay
+  // there: after a deep hierarchy state it lands 2-14px down, cause not yet found.
   await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
+  await page.waitForTimeout(OBSERVER_SETTLE_MS);
 }
