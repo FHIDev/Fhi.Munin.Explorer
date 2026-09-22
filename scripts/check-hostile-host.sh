@@ -82,7 +82,7 @@ TARGETS=(
   "/kilder::kilde-hierarchy-expanded"
   "/kilder::kilde-hierarchy-metadata"
   # hierarchy-fixture.mjs: shapes hierarchy.json lacks, its empty and failing answers, and the variable
-  # explorer's drill-in with Ikoner on and off (Fhi.Metadata-zkl14).
+  # explorer's drill-in with Ikoner on and off, for Fhi.Metadata-zkl14.
   "/kilder?kilde=dddddddd-0000-4000-8000-000000000001::kilde-hierarchy-deep"
   "/kilder?kilde=dddddddd-0000-4000-8000-000000000002::kilde-hierarchy-empty"
   "/kilder?kilde=dddddddd-0000-4000-8000-000000000003::kilde-hierarchy-error"
@@ -276,7 +276,13 @@ reflow "the component stays inside the box the host gave it" \
 # widening its column; samples/HostileHost pins a release at or after it.
 reflow "" \
   "/kilder::kilde-hierarchy-collapsed" "/kilder::kilde-hierarchy-expanded" "/kilder::kilde-hierarchy-metadata"
-reflow ""   "/kilder?kilde=dddddddd-0000-4000-8000-000000000001::kilde-hierarchy-deep" "/kilder?kilde=dddddddd-0000-4000-8000-000000000002::kilde-hierarchy-empty"   "/kilder?kilde=dddddddd-0000-4000-8000-000000000003::kilde-hierarchy-error"   "/::variable-kilde-hierarchy" "/::variable-kilde-hierarchy-icons-off"
+reflow "" \
+  "/kilder?kilde=dddddddd-0000-4000-8000-000000000001::kilde-hierarchy-deep" \
+  "/kilder?kilde=dddddddd-0000-4000-8000-000000000002::kilde-hierarchy-empty" \
+  "/kilder?kilde=dddddddd-0000-4000-8000-000000000003::kilde-hierarchy-error"
+# The drill-in's nowrap "Vis bare variabler fra denne datakilden" button overflows (Fhi.Metadata-l1xch).
+reflow "no horizontal overflow,the component stays inside the box the host gave it" \
+  "/::variable-kilde-hierarchy" "/::variable-kilde-hierarchy-icons-off"
 # The states the stub's long code reaches: the row panel's Kode, the whole-variable page's heading
 # and fact row, and the result count that quotes a searched term (Fhi.Metadata-ofg1h).
 reflow "" "/::variable-detail" "/::variable-whole" "/::explorer-search-code"
