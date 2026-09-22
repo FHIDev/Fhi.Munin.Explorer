@@ -52,4 +52,6 @@ export async function scrollPast(page, id) {
 export async function scrollToTop(page) {
   await scrollLikeAReader(page, 0);
   await page.waitForTimeout(OBSERVER_SETTLE_MS);
+  // Once more: after a deep hierarchy state the page settles 2-14px down, cause not yet found.
+  await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
 }
