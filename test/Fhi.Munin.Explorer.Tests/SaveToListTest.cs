@@ -933,7 +933,8 @@ public class SaveToListTest : ExplorerTestContext
     public void SaveButton_WhenDrawnInEitherState_ThenItIsGhostBlueSoAPageDoesNotReadAsManyPrimaryActions()
     {
         // The filled variant is a primary-weight treatment, and this button is drawn once per row.
-        // The width rule hangs on the cell's class, so the cell keeps it in both states.
+        // A class string is all bUnit can see: that ghost-blue's --primary text is affordance
+        // enough without a border is a judgement, recorded in the fragment. (Fhi.Metadata-35w0p.64)
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
         Assert.Equal("hd-button-square button-square--ghost-blue", SaveButton(cut).ClassName);
@@ -942,6 +943,8 @@ public class SaveToListTest : ExplorerTestContext
 
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
         Assert.Equal("hd-button-square button-square--ghost-blue", SaveButton(cut).ClassName);
+
+        // The width rule hangs on the cell's class, so the cell keeps it in both states.
         Assert.Equal("munin-explorer-dataitem-main__save", SaveButton(cut).ParentElement!.ClassName);
     }
 

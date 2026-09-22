@@ -362,9 +362,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 .hd-button-square.button-square--ghost { border: none; color: var(--dark); }
 .hd-button-square.button-square--ghost:hover { background-color: var(--grey30); color: var(--dark); }
 
-/* components/buttons/_squarebutton.scss — the blue ghost, Stiler's own. The way out of a
-   drilldown wears it: a plain ghost shows nothing until :hover, and this is navigation.
-   --primary on the page ground is 6.57:1. (Fhi.Metadata-l9l2n.34) */
+/* components/buttons/_squarebutton.scss — the blue ghost, Stiler's own. Worn where a plain
+   ghost's --dark text would read as prose rather than a control: the way out of a drilldown
+   (Fhi.Metadata-l9l2n.34) and the result row's save button (Fhi.Metadata-35w0p.64). --primary
+   on the page ground is 6.57:1; neither wearer gets the scoped border below. */
 .hd-button-square.button-square--ghost-blue { border: none; color: var(--primary); }
 .hd-button-square.button-square--ghost-blue:hover { background-color: var(--grey30); color: var(--primary); }
 
