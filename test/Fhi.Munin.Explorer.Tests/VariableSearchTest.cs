@@ -12606,9 +12606,10 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(["Value", "Name", "Valid from", "Valid to"],
                      Panel(cut).QuerySelectorAll(".munin-explorer-codes thead th").Select(th => th.TextContent));
 
-        // The date follows the page too, but its format is pinned by
-        // Codes_WhenAValidityDateIsShown_ThenItIsTheHouseDayFormatAndNotTheCulturesShortDate
-        // rather than a second time here.
+        // The date follows the page too. The format itself is pinned by
+        // Codes_WhenAValidityDateIsShown_ThenItIsTheHouseDayFormatAndNotTheCulturesShortDate.
+        Assert.Equal(CatalogueDate.Day(ValidFrom2336, "en", DateWidth.Narrow),
+                     Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")[2].TextContent);
     }
 
     [Fact]
