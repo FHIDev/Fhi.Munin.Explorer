@@ -468,15 +468,21 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         typeof(VariableView),
     ];
 
+    /// <summary>The component sources, which are the only place a disclosure can be drawn.</summary>
+    /// <remarks>
+    /// Blazor/ rather than the project, because obj/ holds generated sources that would answer for
+    /// the files they were generated from.
+    /// </remarks>
+    private static IEnumerable<string> Sources() =>
+        Directory
+            .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer", "Blazor"), "*.*", SearchOption.AllDirectories)
+            .Where(path => path.EndsWith(".razor", StringComparison.Ordinal)
+                           || path.EndsWith(".cs", StringComparison.Ordinal));
+
     [Fact]
     public void Disclosures_Always_ThenEveryOneIsInAComponentTheSweepRenders()
     {
-        // Blazor/ rather than the project, because obj/ holds generated sources that would answer
-        // for the files they were generated from.
-        var elsewhere = Directory
-            .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer", "Blazor"), "*.*", SearchOption.AllDirectories)
-            .Where(path => path.EndsWith(".razor", StringComparison.Ordinal)
-                           || path.EndsWith(".cs", StringComparison.Ordinal))
+        var elsewhere = Sources()
             .Where(path => Renders(File.ReadAllText(path)))
             .Select(path => Path.GetFileName(path)!)
             .Where(name => !Swept.Any(c => name.StartsWith($"{c.Name}.", StringComparison.Ordinal)))
@@ -517,10 +523,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         // Every file rather than the swept ones, because this half needs no scene, and three of the
         // seven that draw a native disclosure are in none — DetailBlocks, KildeHierarchyView and
         // KildeView, whose disclosures the sweep above therefore never collects.
-        var taken = Directory
-            .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer", "Blazor"), "*.*", SearchOption.AllDirectories)
-            .Where(path => path.EndsWith(".razor", StringComparison.Ordinal)
-                           || path.EndsWith(".cs", StringComparison.Ordinal))
+        var taken = Sources()
             .SelectMany(path => NativeDisclosuresIn(File.ReadAllText(path))
                 .Where(opened => TakenFromTheUserAgent(opened.Attributes))
                 .Select(opened =>
@@ -533,11 +536,21 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Assert.Equal([], taken);
     }
 
+    /// <summary>A native disclosure as this package draws one, read no further than the element.</summary>
+    /// <remarks>
+    /// Deliberately wider than what <see cref="NativeDisclosuresIn"/> can read, so that the two
+    /// disagreeing says the scan walked past one — which is the only way a source check of this
+    /// shape fails, since a pattern that stops matching reports nothing rather than a hole.
+    /// </remarks>
+    private const string DrawnPattern =
+        """<(?:details|summary)\b|OpenElement\([^;]*?,\s*"(?:details|summary)"\s*\)""";
+
     /// <summary>Each <c>&lt;details&gt;</c> and <c>&lt;summary&gt;</c> in <paramref name="source"/>, with what it is opened with.</summary>
     /// <remarks>
     /// Both spellings, because this package writes markup two ways: a Razor tag, and a
     /// <c>RenderTreeBuilder</c> whose <c>AddAttribute</c> calls up to the next element or content
-    /// are the ones belonging to it.
+    /// are the ones belonging to it. The sequence number is an expression rather than a literal
+    /// because <c>seq</c>, <c>seq + 1</c> and <c>seq++</c> are all live in these files.
     /// </remarks>
     private static IEnumerable<(string Element, string Attributes)> NativeDisclosuresIn(string source)
     {
@@ -550,12 +563,40 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
 
         foreach (Match opened in Regex.Matches(
                      code,
-                     """OpenElement\(\s*\d+\s*,\s*"(details|summary)"\s*\)\s*;(.*?)(?=\s*\w+\.(?:OpenElement|OpenComponent|AddContent|AddMarkupContent|CloseElement)\()""",
+                     """OpenElement\([^;"]*,\s*"(details|summary)"\s*\)\s*;(.*?)(?=\s*\w+\.(?:OpenElement|OpenComponent|AddContent|AddMarkupContent|CloseElement)\()""",
                      RegexOptions.Singleline))
         {
             yield return (opened.Groups[1].Value, opened.Groups[2].Value);
         }
     }
+
+    [Fact]
+    public void NativeDisclosureScan_Always_ThenItReadsEveryOneTheSourceDraws()
+    {
+        var unread = Sources()
+            .Select(path => (Name: Path.GetFileName(path)!, Source: File.ReadAllText(path)))
+            .Select(file => (
+                file.Name,
+                Drawn: Regex.Matches(WithoutProse(file.Source), DrawnPattern).Count,
+                Read: NativeDisclosuresIn(file.Source).Count()))
+            .Where(file => file.Read != file.Drawn)
+            .Select(file => $"{file.Name}: {file.Drawn} drawn, {file.Read} read")
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        // Named rather than counted, so a failure says which file holds the shape the scan cannot
+        // read, and which way round the two disagree.
+        Assert.Equal([], unread);
+
+        // And pinned, because a scan reading nothing agrees with a source drawing nothing — which
+        // is what a wrong path, or a rewrite past both patterns at once, would leave behind.
+        Assert.Equal(
+            NativeDisclosuresDrawn,
+            Sources().Sum(path => NativeDisclosuresIn(File.ReadAllText(path)).Count()));
+    }
+
+    /// <summary>How many <c>&lt;details&gt;</c> and <c>&lt;summary&gt;</c> elements <c>src/</c> draws.</summary>
+    private const int NativeDisclosuresDrawn = 16;
 
     /// <summary>Whether what a native disclosure was opened with means the package drives it.</summary>
     /// <remarks>
