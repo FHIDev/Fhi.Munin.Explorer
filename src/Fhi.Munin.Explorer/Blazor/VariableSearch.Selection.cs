@@ -31,20 +31,91 @@ public partial class VariableSearch
 
     /// <summary>Open the whole variable, or close it and put the reader back in the list.</summary>
     /// <remarks>
-    /// Nothing is fetched: the panel already holds the detail this view draws, because opening the
-    /// row fetched it. Going deeper should not cost a round trip for something already in hand.
+    /// Nothing is fetched on the way in from the panel: it already holds the detail this view draws,
+    /// because opening the row fetched it. Going deeper should not cost a round trip for something
+    /// already in hand.
     /// </remarks>
     private Task ToggleWholeVariableAsync()
     {
-        _wholeVariable = !_wholeVariable;
+        if (_wholeVariable)
+        {
+            return CloseWholeVariableAsync();
+        }
+
+        _beforeWhole = new(_selectedId, _tab);
+        _wholeVariable = true;
 
         return Task.CompletedTask;
     }
 
+    // Which row was open, and on which tab, when the whole variable was asked for: Back puts the
+    // list back as it was, not as the name press left it. (Fhi.Metadata-35w0p.34)
+    private readonly record struct Disclosed(Guid? Row, PanelTab Tab);
+
+    private Disclosed? _beforeWhole;
+
     // The same question the row asks, because the name is the row's most copyable text and a drag
     // that begins and ends inside this button lands its click here: a reader taking the term must
-    // not open the panel over the selection they just made. RowPress says which gestures those are.
-    private Task ToggleDetailFromRowHeadingAsync(VariableSummary v, MouseEventArgs released) =>
+    // not leave the list over the selection they just made. RowPress says which gestures those are.
+    private Task OpenWholeVariableFromNameAsync(VariableSummary v, MouseEventArgs released) =>
+        _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : OpenWholeVariableAsync(v);
+
+    /// <summary>Open <paramref name="v"/>'s whole variable in place of the list, from its name.</summary>
+    /// <remarks>
+    /// The detail is the panel's own, so a row that is not already open is selected and fetched as
+    /// the chevron would; the view is set first so the fetch paints its status there, not in a panel.
+    /// </remarks>
+    private async Task OpenWholeVariableAsync(VariableSummary v)
+    {
+        _beforeWhole = new(_selectedId, _tab);
+        _wholeVariable = true;
+
+        if (IsSelected(v))
+        {
+            return;
+        }
+
+        _selectedId = v.Id;
+        _tab = PanelTab.Details;
+
+        await LoadDetailAsync(v.Id);
+        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
+    }
+
+    /// <summary>Leave the whole variable and put back the row disclosure it was opened over.</summary>
+    private async Task CloseWholeVariableAsync()
+    {
+        _wholeVariable = false;
+
+        var before = _beforeWhole;
+        _beforeWhole = null;
+
+        if (before is not { } was || was.Row == _selectedId)
+        {
+            return;
+        }
+
+        // The row that was open may have left the page while the view covered it; the rule
+        // DropSelectionIfGoneAsync follows then applies, and nothing is left open.
+        if (was.Row is not { } row || !IsOnScreen(row))
+        {
+            ClearSelection();
+            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null, Log);
+
+            return;
+        }
+
+        _selectedId = row;
+        _tab = was.Tab;
+
+        await LoadDetailAsync(row);
+        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
+    }
+
+    // The same question the row asks, because a gesture that begins and ends inside this button
+    // lands its click here: the second click of a double-click toggled the panel straight back
+    // shut, and a drag over the chevron is no more a press. RowPress says which gestures those are.
+    private Task ToggleDetailFromChevronAsync(VariableSummary v, MouseEventArgs released) =>
         _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : ToggleDetailAsync(v);
 
     // One gesture at a time, because a pointer has one: the row it went down on is part of what
@@ -63,14 +134,13 @@ public partial class VariableSearch
     /// <summary>Open or close this row's panel from a press anywhere on the row's column strip.</summary>
     /// <remarks>
     /// <para>
-    /// The row is a pointer shortcut onto the name button in it, and nothing more: unlike Kelda's,
-    /// Runa's name has no second destination to be freed up for, so it stays the disclosure that
-    /// carries <c>aria-expanded</c> and the panel's own <c>aria-labelledby</c>. The row adds no tab
-    /// stop, because everything it reaches is on that button already (WCAG 2.1.1).
+    /// The row is a pointer shortcut onto the chevron in it, and nothing more, as Kelda's row is. It
+    /// adds no tab stop, because everything it reaches is on that button already (WCAG 2.1.1). The
+    /// name and the chevron both stop their click, so neither press also toggles the row.
     /// </para>
     /// <para>
     /// Highlighting a code to copy it is not a request to open the panel. Which gestures those are
-    /// is <see cref="RowPress"/>'s to say, and the name button in the row asks it the same way, so
+    /// is <see cref="RowPress"/>'s to say, and the controls in the row ask it the same way, so
     /// the rule is one sentence in one place rather than a clause per handler.
     /// </para>
     /// </remarks>
@@ -224,6 +294,7 @@ public partial class VariableSearch
         // The whole-variable view belongs to the row that opened it. Left set, it would reappear
         // over whichever variable was opened next.
         _wholeVariable = false;
+        _beforeWhole = null;
 
         _tab = PanelTab.Details;
 

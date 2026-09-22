@@ -45,18 +45,9 @@ public partial class VariableSearch
     /// </remarks>
     private string? DetailControls(VariableSummary v) => IsSelected(v) ? DetailId(v) : null;
 
-    // No aria-labelledby on the toggle, and nothing to build one from. It used to have a helper
-    // here, written when the disclosure was a separate button reading "Vis detaljer": twenty-five
-    // of those say nothing about which row they open, so it pointed at the button and then at the
-    // row's name to make "Vis detaljer 1. Tale" — each half in its own language, which an
-    // aria-label could not do, because the words are ours and follow Language while the variable's
-    // name is Munin's and is Norwegian whatever the surrounding UI is.
-    //
-    // The name IS the disclosure now (RowHeading), so the button's own content is the variable's
-    // name and it announces as "1. Tale" already. The old helper would have named it "1. Tale
-    // 1. Tale", and it had no caller — it was orphaned when the separate button went. The rule it
-    // recorded is still the rule; it is the save button beside this one that needs it now, and
-    // RowSaveButton is where it lives.
+    // No aria-labelledby on the chevron: it is named by ExpandLabel, one aria-label in the reader's
+    // language around Munin's name, which is the trade Kelda's chevron makes too. The two-language
+    // aria-labelledby rule lives on RowSaveButton, the one control here that still needs it.
 
     /// <summary>What the panel's status line says: that it is loading, or why it is empty.</summary>
     private string? DetailStatus => _detailLoading ? T.DetailLoading : _detailError;
