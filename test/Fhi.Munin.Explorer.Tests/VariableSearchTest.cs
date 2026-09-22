@@ -14697,6 +14697,57 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(new VariableFilter { KildeIds = [parent] }, reported);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Source_WhenAFailedRetreatRestoresACollectionParent_ThenItsFilterKeepsTheRequestedTarget(bool pending)
+    {
+        VariableFilter? reported = null;
+        var parent = Guid.NewGuid();
+        var source = Kilde() with { Id = parent };
+        var client = new DetailClient(new Page<VariableSummary>
+        {
+            Items = [Row(TaleId, "1. Tale")],
+            TotalCount = 30,
+            PageNumber = 1,
+            Size = 25,
+            TotalPages = 2
+        }).Knows(Detail(TaleId)).Knows(Datasamling() with { ParentKildeId = parent }).Knows(source);
+        client.StallKilde = pending;
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[1].Click();
+        cut.FindAll(".munin-explorer-datasamling > .munin-explorer-page__actions button")
+            .Single(button => AccessibleName.Of(button) == "Vis datakilden").Click();
+
+        // The source view hides the pager; exercise its rollback directly to pin the snapshot
+        // contract, including a parent different from the variable's original kilde.
+        client.Then(new Page<VariableSummary>()).Then(null);
+        var retreat = Task.CompletedTask;
+        await cut.InvokeAsync(() =>
+        {
+            retreat = (Task)typeof(VariableSearch).GetMethod("GoToPageAsync",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(cut.Instance, [2])!;
+        });
+
+        Assert.Equal(pending ? 2 : 1, client.KildeCalls);
+        Assert.Equal(parent, client.LastSourceId);
+        if (pending)
+        {
+            await cut.InvokeAsync(() => client.AnswerStalledKilde(source));
+            Assert.Empty(cut.FindAll(".munin-explorer-kilde"));
+            await cut.InvokeAsync(() => client.AnswerStalledKilde(source));
+        }
+
+        await cut.InvokeAsync(() => retreat);
+        cut.Render();
+        Assert.Single(cut.FindAll(".munin-explorer-kilde"));
+        Assert.Equal(3, client.SearchCalls);
+        NarrowButton(cut).Click();
+        Assert.Equal(new VariableFilter { KildeIds = [parent] }, reported);
+    }
+
     [Fact]
     public void Source_WhenTheCollectionSectionActionIsPressed_ThenItReplacesTheFacetAndClosesDetail()
     {
