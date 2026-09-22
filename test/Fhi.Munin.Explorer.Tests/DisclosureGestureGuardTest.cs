@@ -82,7 +82,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
 
     /// <summary>The same rule one step out, for a <c>&lt;summary&gt;</c> the rule above cannot name.</summary>
     /// <remarks>
-    /// Which is every one of them: none of the seventeen this suite collects has an id, and the four
+    /// Which is every one of them: none of the twenty-six this suite collects has an id, and the six
     /// that have a class wear the column picker's borrowed Stiler string, which is no locator at all.
     /// Its own text last, because that is the label the reader presses.
     /// </remarks>
@@ -398,7 +398,9 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         // kilder have no datasamlinger, which is what keeps the count exact.
         Services.AddSingleton<IMuninExplorerClient>(new LongFacetClient());
 
-        AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 2);
+        // Three native, the same three as the scenes above: the cap is drawn inside the Databehandler
+        // fold rather than beside it, so a facet past the threshold adds no <details> of its own.
+        AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 2, native: 3);
     }
 
     [Fact]
@@ -409,7 +411,9 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Services.AddSingleton<IMuninExplorerClient>(new LongKildeFacetClient());
         Services.AddScoped<VariableListState>();
 
-        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 3);
+        // Six native, the same six as the filter-tree scene: the kilde facet draws its Type datakilde
+        // and Kilde folds whether or not the cap is past the threshold.
+        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 3, native: 6);
     }
 
     [Fact]
@@ -420,8 +424,12 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Services.AddSingleton<IMuninExplorerClient>(new LongListClient());
         Services.AddScoped<VariableListState>();
 
+        // No native: this panel draws its one facet as a labelled group rather than a <details>, and
+        // the column picker belongs to the table it sits beside rather than to the panel.
         AssertStandingGesturesAreRefused(
-            () => Render<VariableListFilters>(b => b.Add(c => c.IsAuthenticated, true)), expected: 1);
+            () => Render<VariableListFilters>(b => b.Add(c => c.IsAuthenticated, true)),
+            expected: 1,
+            native: 0);
     }
 
     /// <summary>Kelda's list, with a databehandler facet longer than the panel draws.</summary>
