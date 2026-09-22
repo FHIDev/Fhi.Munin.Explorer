@@ -75,6 +75,13 @@ internal sealed class UrlMirror
             : null;
 
     /// <summary>
+    /// Every value the incoming query gave <paramref name="name"/>, decoded and in order, empty ones
+    /// included — so a repeated key reads whole, and <c>?columns=</c> is told apart from no key.
+    /// </summary>
+    public IReadOnlyList<string> Values(string name) =>
+        [.. _owned.Where(pair => string.Equals(pair.Name, name, StringComparison.OrdinalIgnoreCase)).Select(pair => pair.Value)];
+
+    /// <summary>
     /// This page's address carrying <paramref name="query"/> as the owned keys, for an
     /// <c>&lt;a href&gt;</c> the browser resolves on its own.
     /// </summary>

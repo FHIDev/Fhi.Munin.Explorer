@@ -692,11 +692,10 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Kilder_WhenTheLinkCarriesASearchKeldaCannotMaintain_ThenItIsLeftAloneRatherThanErased()
+    public void Kilder_WhenALinkCarriesASearchBesideAKilde_ThenClosingTheKildeKeepsTheSearch()
     {
-        // KildeExplorer owns ?kilde= and nothing else, and cannot own ?search=: the search box is
-        // KildeSearch's and raises no SearchChanged, so a ?search= adopted here would be erased on
-        // the first render after load. Carried through instead, like any key that is not ours.
+        // ?search= is owned since Fhi.Metadata-nvf2w, and KildeSearch hands it back through
+        // SearchChanged, so the search the link arrived with is still written after the drill-in.
         var id = Guid.NewGuid();
 
         var cut = RenderKilder(id, $"http://localhost/kilder?search=als&kilde={id}");
@@ -767,8 +766,12 @@ public class UrlStateComponentTest : ExplorerTestContext
         Sort(chosen, order);
 
         // No sortDir either way: the first press lands on the direction the column runs by default,
-        // and that is the one the URL leaves unsaid.
-        Assert.Equal($"/kilder?sort={order}", Mirrored());
+        // and that is the one the URL leaves unsaid. The column the reader turned on rides beside it.
+        Assert.Equal(
+            order == KildeSortOrder.SourceUpdated
+                ? $"/kilder?sort={order}&columns=kildetype&columns=datasamlinger&columns=variabler&columns=sistEndret"
+                : $"/kilder?sort={order}",
+            Mirrored());
 
         // Mounted afresh on the URL the first one wrote, which is what a reload is. The client is
         // registered already, so this goes through Render rather than through RenderKilder — bUnit
@@ -777,13 +780,7 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         var reloaded = Render<KildeExplorer>();
 
-        // The column is off again on a fresh mount — the picker's choice is not in the URL — so an
-        // order behind it comes back with nothing marked, while the rows are in it all the same.
-        if (order == KildeSortOrder.SourceUpdated)
-        {
-            ShowColumn(reloaded, "Sist endret");
-        }
-
+        // The column the reader turned on comes back with the address (Fhi.Metadata-nvf2w).
         var expected = KildeSearch.InitialDirection(order) == SortDirection.Ascending
             ? "ascending"
             : "descending";
@@ -1414,5 +1411,340 @@ public class UrlStateComponentTest : ExplorerTestContext
         cut.FindAll("button").First(button => button.TextContent.Contains("Utforsk", StringComparison.Ordinal)).Click();
 
         Assert.StartsWith("http://localhost/optimizely/variabler?kildeIds=", navigation.Went, StringComparison.Ordinal);
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // The list's own state in the address: search, facets, ticks and columns (Fhi.Metadata-nvf2w).
+
+    private static readonly Guid Als = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid Barnediabetes = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    private static readonly Guid Resept = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private static readonly Guid Inklusjon = Guid.Parse("44444444-4444-4444-4444-444444444444");
+
+    /// <summary>
+    /// Three kilder spread over two facets, so OR within one and AND across two give three
+    /// different lists; Als has a datasamling to drill into.
+    /// </summary>
+    private sealed class FacetedKilderClient : EmptyMuninExplorerClient
+    {
+        private static KildeSummary Row(Guid id, string name, string kildetype, string processor) =>
+            new()
+            {
+                Id = id,
+                Name = name,
+                Code = "K",
+                Kildetype = kildetype,
+                DataProcessor = processor,
+                IsActive = true,
+                DatasamlingCount = 1,
+            };
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+            [
+                Row(Als, "Als registeret", "sentraltHelseregister", "Folkehelseinstituttet"),
+                Row(Barnediabetes, "Barnediabetesregisteret", "nasjonaltMedisinskKvalitetsregister", "St. Olavs hospital HF"),
+                Row(Resept, "Reseptregisteret", "Biobank", "St. Olavs hospital HF"),
+            ]);
+
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeDetail?>(new KildeDetail { Id = id, PreferredTerm = "Als registeret" });
+
+        public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeHierarchy?>(new KildeHierarchy
+            {
+                KildeId = id,
+                DirectDatasamlinger = [new() { Id = Inklusjon, Name = "Inklusjon" }],
+            });
+
+        public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<DatasamlingDetail?>(new()
+            {
+                Id = id,
+                Code = "K_ALS.INKLUSJON",
+                PreferredTerm = "Inklusjon",
+                ParentKildeName = "Als registeret",
+                ParentKildeId = Als,
+                VariableCount = 12,
+            });
+    }
+
+    private IRenderedComponent<KildeExplorer> RenderFaceted(string url, bool selectable = false)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new FacetedKilderClient());
+        Prepare();
+        Navigation.NavigateTo(url);
+
+        return MountHere(selectable);
+    }
+
+    /// <summary>A second mount at the address the mirror last wrote, which is what a reload draws.</summary>
+    private IRenderedComponent<KildeExplorer> MountFaceted(bool selectable = false)
+    {
+        Navigation.NavigateTo(Mirrored()!);
+
+        return MountHere(selectable);
+    }
+
+    private IRenderedComponent<KildeExplorer> MountHere(bool selectable) =>
+        Render<KildeExplorer>(b =>
+        {
+            if (selectable)
+            {
+                b.Add(c => c.VariableExplorerPath, "/variabler");
+            }
+        });
+
+    private static IElement SearchField(IRenderedComponent<KildeExplorer> cut) =>
+        cut.Find("input.searchbox__freetext");
+
+    private static IElement FacetBox(IRenderedComponent<KildeExplorer> cut, string heading, string choice) =>
+        cut.FindAll(".munin-explorer-filters__facets > details")
+           .Single(facet => facet.QuerySelector("summary h4")!.TextContent.Trim() == heading)
+           .QuerySelectorAll("li label")
+           .First(label => label.TextContent.Trim().StartsWith(choice, StringComparison.Ordinal))
+           .QuerySelector("input")!;
+
+    private static IElement RowBox(IRenderedComponent<KildeExplorer> cut, string name) =>
+        cut.FindAll(".munin-explorer-kilder tbody tr")
+           .Single(row => row.QuerySelector("th button")!.TextContent.Trim() == name)
+           .QuerySelector($".{HostClassNames.KilderSelect} input")!;
+
+    private static IReadOnlyList<string> KilderHeaders(IRenderedComponent<KildeExplorer> cut) =>
+        KildeColumns.Headers(cut.FindComponent<KildeSearch>());
+
+    /// <summary>The query of the last address the mirror wrote, one decoded pair per entry.</summary>
+    private IReadOnlyList<(string Key, string Value)> MirroredPairs() =>
+        [.. new Uri(new Uri("http://localhost"), Mirrored()!).Query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pair => pair.Split('=', 2))
+            .Select(pair => (Uri.UnescapeDataString(pair[0]), pair.Length > 1 ? Uri.UnescapeDataString(pair[1]) : ""))];
+
+    private static IReadOnlyList<(string Key, string Value)> Pairs(string href) =>
+        [.. new Uri(new Uri("http://localhost"), href).Query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(pair => pair.Split('=', 2))
+            .Select(pair => (Uri.UnescapeDataString(pair[0]), pair.Length > 1 ? Uri.UnescapeDataString(pair[1]) : ""))];
+
+    [Fact]
+    public void Kilder_WhenTheReaderCommitsASearch_ThenTheAddressCarriesItAndALinkRestoresIt()
+    {
+        var cut = RenderFaceted("http://localhost/kilder");
+
+        SearchField(cut).Change("resept");
+
+        Assert.Equal("/kilder?search=resept", Mirrored());
+
+        var restored = MountFaceted();
+
+        Assert.Equal("resept", SearchField(restored).GetAttribute("value"));
+        Assert.Equal(["Reseptregisteret"], RowNames(restored));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderClearsTheSearch_ThenTheKeyLeavesTheAddress()
+    {
+        var cut = RenderFaceted("http://localhost/kilder?search=resept");
+
+        cut.Find(".munin-explorer-search__clear").Click();
+
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderTicksFacetValues_ThenEachIsARepeatedKeyAndALinkRestoresThem()
+    {
+        var cut = RenderFaceted("http://localhost/kilder");
+
+        FacetBox(cut, "Kildetype", "Sentralt helseregister").Change(true);
+        FacetBox(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister").Change(true);
+
+        Assert.Equal(["Als registeret", "Barnediabetesregisteret"], RowNames(cut));
+
+        FacetBox(cut, "Databehandler", "St. Olavs hospital HF").Change(true);
+
+        Assert.Equal(
+            [
+                ("kildetype", "sentraltHelseregister"),
+                ("kildetype", "nasjonaltMedisinskKvalitetsregister"),
+                ("databehandler", "St. Olavs hospital HF"),
+            ],
+            MirroredPairs());
+
+        var restored = MountFaceted();
+
+        Assert.True(FacetBox(restored, "Kildetype", "Sentralt helseregister").HasAttribute("checked"));
+        Assert.True(FacetBox(restored, "Kildetype", "Nasjonalt medisinsk kvalitetsregister").HasAttribute("checked"));
+        Assert.True(FacetBox(restored, "Databehandler", "St. Olavs hospital HF").HasAttribute("checked"));
+        Assert.False(FacetBox(restored, "Databehandler", "Folkehelseinstituttet").HasAttribute("checked"));
+
+        // OR within kildetype leaves Als and Barnediabetes; AND with databehandler leaves one.
+        Assert.Equal(["Barnediabetesregisteret"], RowNames(restored));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderTicksTwoKilder_ThenSelectedIsRepeatedAndALinkRestoresTheTicks()
+    {
+        var cut = RenderFaceted("http://localhost/kilder", selectable: true);
+
+        RowBox(cut, "Als registeret").Change(true);
+        RowBox(cut, "Reseptregisteret").Change(true);
+
+        Assert.Equal([("selected", Als.ToString()), ("selected", Resept.ToString())], MirroredPairs());
+
+        var restored = MountFaceted(selectable: true);
+
+        Assert.True(RowBox(restored, "Als registeret").HasAttribute("checked"));
+        Assert.True(RowBox(restored, "Reseptregisteret").HasAttribute("checked"));
+        Assert.False(RowBox(restored, "Barnediabetesregisteret").HasAttribute("checked"));
+        Assert.Contains(restored.FindAll("p[role=status]"), line => line.TextContent.Trim() == "2 kilder valgt");
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderChangesTheColumns_ThenTheAddressCarriesTheSetAndDropsItAtTheDefaults()
+    {
+        var cut = RenderFaceted("http://localhost/kilder");
+        var defaults = KilderHeaders(cut);
+
+        KildeColumns.ToggleColumn(cut.FindComponent<KildeSearch>(), "Kode");
+        KildeColumns.ToggleColumn(cut.FindComponent<KildeSearch>(), "Kildetype");
+
+        Assert.Equal(
+            [("columns", "kode"), ("columns", "datasamlinger"), ("columns", "variabler")],
+            MirroredPairs());
+
+        var chosen = KilderHeaders(cut);
+        var restored = MountFaceted();
+
+        Assert.Equal(chosen, KilderHeaders(restored));
+        Assert.Contains("Kode", chosen);
+        Assert.DoesNotContain("Kildetype", chosen);
+
+        KildeColumns.ToggleColumn(cut.FindComponent<KildeSearch>(), "Kode");
+        KildeColumns.ToggleColumn(cut.FindComponent<KildeSearch>(), "Kildetype");
+
+        Assert.Equal(defaults, KilderHeaders(cut));
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkHidesEveryOptionalColumn_ThenAnEmptyColumnsKeyIsKept()
+    {
+        var cut = RenderFaceted("http://localhost/kilder?columns=");
+
+        Assert.DoesNotContain("Kildetype", KilderHeaders(cut));
+        Assert.DoesNotContain(KilderHeaders(cut), header => header.StartsWith("Variabler", StringComparison.Ordinal));
+        Assert.Equal("/kilder?columns=", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkCarriesValuesThatDoNotParse_ThenTheyAreDroppedFromTheAddress()
+    {
+        var cut = RenderFaceted(
+            "http://localhost/kilder?selected=not-a-guid&columns=kildetype&columns=datasamlinger&columns=variabler&kildetype=&search=%20");
+
+        Assert.Equal(["Als registeret", "Barnediabetesregisteret", "Reseptregisteret"], RowNames(cut));
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    /// <summary>Search, one facet and one tick, set by hand on the list, with a host key beside them.</summary>
+    private IRenderedComponent<KildeExplorer> RenderWithListState()
+    {
+        var cut = RenderFaceted("http://localhost/kilder?utm_source=nyhetsbrev", selectable: true);
+
+        SearchField(cut).Change("register");
+        FacetBox(cut, "Kildetype", "Sentralt helseregister").Change(true);
+        RowBox(cut, "Als registeret").Change(true);
+
+        return cut;
+    }
+
+    private static void AssertCarriesTheList(string href)
+    {
+        var pairs = Pairs(href);
+
+        Assert.Contains(("utm_source", "nyhetsbrev"), pairs);
+        Assert.Contains(("search", "register"), pairs);
+        Assert.Contains(("kildetype", "sentraltHelseregister"), pairs);
+        Assert.Contains(("selected", Als.ToString()), pairs);
+    }
+
+    [Fact]
+    public void Kilder_WhenAKildeIsOpenFromAWorkedList_ThenTheKilderCrumbCarriesTheListState()
+    {
+        var cut = RenderWithListState();
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+
+        AssertCarriesTheList(cut.Find("nav.breadcrumbs a").GetAttribute("href")!);
+    }
+
+    [Fact]
+    public void Kilder_WhenADatasamlingIsOpenFromAWorkedList_ThenTheWayBackToTheKildeCarriesTheListState()
+    {
+        var cut = RenderWithListState();
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+
+        // The drill-in is a link; a Router host intercepts it, which is what Move stages.
+        Move(cut.WaitForElement("a.munin-explorer-hierarchy__open").GetAttribute("href")!);
+
+        var back = cut.WaitForElement(".munin-explorer-drilldown > a.hd-button-square");
+
+        Assert.Contains("Tilbake", back.TextContent, StringComparison.Ordinal);
+        AssertCarriesTheList(back.GetAttribute("href")!);
+        Assert.Contains(("kilde", Als.ToString()), Pairs(back.GetAttribute("href")!));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderHandsOverAndComesBack_ThenTheListIsRestoredFromTheAddress()
+    {
+        var cut = RenderWithListState();
+
+        cut.FindAll("button").First(button => button.TextContent.Contains("Utforsk", StringComparison.Ordinal)).Click();
+
+        // Browser Back reloads Kelda from the last address the mirror wrote.
+        var restored = MountFaceted(selectable: true);
+
+        Assert.Equal("register", SearchField(restored).GetAttribute("value"));
+        Assert.True(FacetBox(restored, "Kildetype", "Sentralt helseregister").HasAttribute("checked"));
+        Assert.True(RowBox(restored, "Als registeret").HasAttribute("checked"));
+        Assert.Equal(["Als registeret"], RowNames(restored));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheListIsWorkedAndHandedOver_ThenNoWebStorageIsTouched()
+    {
+        var cut = RenderWithListState();
+
+        KildeColumns.ToggleColumn(cut.FindComponent<KildeSearch>(), "Kode");
+        cut.FindAll("button").First(button => button.TextContent.Contains("Utforsk", StringComparison.Ordinal)).Click();
+
+        Assert.NotEmpty(JSInterop.Invocations[ReplaceState]);
+        Assert.DoesNotContain(JSInterop.Invocations, call =>
+            call.Identifier.Contains("sessionStorage", StringComparison.OrdinalIgnoreCase)
+            || call.Identifier.Contains("localStorage", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Kilder_WhenKildeSearchIsMountedAlone_ThenItFiltersAsBeforeAndWritesNoAddress()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new FacetedKilderClient());
+        Prepare();
+        Navigation.NavigateTo("http://localhost/kilder");
+
+        var cut = Render<KildeSearch>();
+
+        cut.Find("input.searchbox__freetext").Change("register");
+        cut.FindAll(".munin-explorer-filters__facets > details")
+           .Single(facet => facet.QuerySelector("summary h4")!.TextContent.Trim() == "Kildetype")
+           .QuerySelectorAll("li label")
+           .First(label => label.TextContent.Trim().StartsWith("Sentralt helseregister", StringComparison.Ordinal))
+           .QuerySelector("input")!
+           .Change(true);
+
+        Assert.Equal(["Als registeret"], [.. cut.FindAll(".munin-explorer-kilder__name").Select(b => b.TextContent.Trim())]);
+        Assert.Empty(JSInterop.Invocations[ReplaceState]);
     }
 }

@@ -114,13 +114,23 @@ public sealed partial class KildeSearch : ComponentBase
     /// Initial search text. Set by the host; the component owns it afterwards.
     /// </summary>
     /// <remarks>
-    /// Read once, on initialisation, exactly as <see cref="VariableSearch.Search"/> is. There is
-    /// no <c>SearchChanged</c> beside it, and that is the Kelda parity decision rather than an
-    /// omission: search, filters and column choices are component state that goes away on refresh.
-    /// What is worth putting in a host's URL is which kilde is open and which order the list is in
-    /// — <see cref="SelectedKildeIdChanged"/> and <see cref="OrderChanged"/>.
+    /// Read once, on initialisation, exactly as <see cref="Order"/> is: a starting point rather than
+    /// a live parameter. To follow the reader, take <see cref="SearchChanged"/> — or write the pair
+    /// as <c>@bind-Search</c>. <see cref="FacetChoices"/>, <see cref="TickedKildeIds"/> and
+    /// <see cref="VisibleColumns"/> are the same bargain, so a host can put the whole list in its
+    /// address and hand a reader back the list they left (Fhi.Metadata-nvf2w).
     /// </remarks>
     [Parameter] public string? Search { get; set; }
+
+    /// <summary>
+    /// Raised when the reader commits a search or clears it, with the trimmed term — null for none.
+    /// </summary>
+    /// <remarks>
+    /// On commit, never per keystroke: the field binds on <c>onchange</c>, so this carries a finished
+    /// word. The <see cref="SelectedKildeIdChanged"/> warning applies: created in a statically
+    /// rendered parent it arrives empty and never fires.
+    /// </remarks>
+    [Parameter] public EventCallback<string?> SearchChanged { get; set; }
 
     /// <inheritdoc cref="VariableSearch.Language"/>
     [Parameter] public string Language { get; set; } = "no";
@@ -799,6 +809,9 @@ public sealed partial class KildeSearch : ComponentBase
     protected override async Task OnInitializedAsync()
     {
         _search = Search;
+        SeedFacetChoices();
+        SeedTicks();
+        SeedColumns();
         _selectedId = SelectedKildeId;
 
         // Only with a kilde. A datasamling opens in place of the kilde it belongs to and the way
@@ -1002,6 +1015,9 @@ public sealed partial class KildeSearch : ComponentBase
         _search = null;
     }
 
+    /// <summary>Tell the host the search the list is now narrowed by.</summary>
+    private Task SearchCommittedAsync() => RaiseAsync(SearchChanged, SearchText, Log);
+
     /// <summary>Take focus off the control about to vanish, then clear the search.</summary>
     /// <remarks>
     /// Focus moves first, the same order the variable explorer's follows and for the same reason:
@@ -1015,7 +1031,14 @@ public sealed partial class KildeSearch : ComponentBase
             await _searchField.FocusAsync();
         }
 
+        var had = SearchText is not null;
+
         ClearSearch();
+
+        if (had)
+        {
+            await SearchCommittedAsync();
+        }
     }
 
     // The same question the row asks: the name is the row's most copyable text and this button

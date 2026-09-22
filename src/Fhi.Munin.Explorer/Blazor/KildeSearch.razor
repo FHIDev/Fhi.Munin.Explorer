@@ -189,6 +189,7 @@ else
                    @ref="_searchField"
                    @bind="_search"
                    @bind:event="onchange"
+                   @bind:after="SearchCommittedAsync"
                    placeholder="@T.KildeSearchPlaceholder"
                    autocomplete="off"
                    maxlength="200" />
@@ -391,7 +392,7 @@ else
                                         <label title="@option.Title" lang="@option.Language">
                                             <input type="checkbox"
                                                    checked="@IsChosen(facet.Key, option.Value)"
-                                                   @onchange="e => Choose(facet.Key, option.Value, e.Value is true)" />
+                                                   @onchange="e => ChooseAsync(facet.Key, option.Value, e.Value is true)" />
                                             @option.Text@(" ")<span class="munin-explorer-filters__count">@option.CountText</span>
                                         </label>
                                     </li>
@@ -520,7 +521,7 @@ else
             {
                 <button class="hd-button-square button-square--secondary"
                         type="button"
-                        @onclick="ClearTicks">@T.ClearSelection</button>
+                        @onclick="ClearTicksAsync">@T.ClearSelection</button>
             }
 
             <p class="caption margin--none" role="status" aria-live="polite" aria-atomic="true">
@@ -576,7 +577,7 @@ else
                                 <input type="checkbox"
                                        aria-label="@T.SelectAllKilder"
                                        checked="@AllVisibleTicked(visible)"
-                                       @onchange="() => TickAllVisible(visible)" />
+                                       @onchange="() => TickAllVisibleAsync(visible)" />
                             </th>
                         }
                         @* The four sortable headings, drawn by SortableHeader: a th with a button
@@ -696,7 +697,7 @@ else
                                     <input type="checkbox"
                                            aria-label="@T.SelectKilde(RowName(kilde).Text)"
                                            checked="@IsTicked(kilde.Id)"
-                                           @onchange="e => Tick(kilde.Id, e.Value is true)"
+                                           @onchange="e => TickAsync(kilde.Id, e.Value is true)"
                                            @onclick:stopPropagation="true" />
                                 </td>
                             }

@@ -45,12 +45,13 @@ public sealed partial class KildeSearch
     /// hidden rather than as what is shown, so the table's default view is the one this component
     /// already shipped and a column added to the enum appears rather than disappears.
     /// <para>
-    /// Not persisted and not in the host's URL, which is what Kelda does today: the choice lasts as
-    /// long as the page does. Whether it should be remembered is a decision of its own — this
-    /// component owns no storage and no URL (Fhi.Metadata-ay3zz).
+    /// Not persisted by this component, which owns no storage and no URL (Fhi.Metadata-ay3zz): it
+    /// leaves through <see cref="VisibleColumnsChanged"/> for a host that keeps it in its address.
     /// </para>
     /// </remarks>
-    private readonly HashSet<KildeColumn> _hiddenColumns =
+    private readonly HashSet<KildeColumn> _hiddenColumns = [.. DefaultHidden];
+
+    private static readonly KildeColumn[] DefaultHidden =
     [
         KildeColumn.Code,
         KildeColumn.Delkilder,
@@ -72,13 +73,77 @@ public sealed partial class KildeSearch
     /// Opprettet are drawn whatever the picker says, so the emptiest table this control can reach
     /// still says what each kilde is and whether it is active. Kelda has no lock either.
     /// </remarks>
-    private void ToggleColumn(KildeColumn column)
+    private Task ToggleColumnAsync(KildeColumn column)
     {
         if (!_hiddenColumns.Remove(column))
         {
             _hiddenColumns.Add(column);
         }
+
+        return RaiseAsync(VisibleColumnsChanged, VisibleColumnKeys(), Log);
     }
+
+    /// <summary>
+    /// The optional columns on screen when the list opens, by <see cref="ColumnKeys"/> — null for
+    /// the default set. Set by the host, typically from its own URL; the component owns the choice
+    /// afterwards.
+    /// </summary>
+    /// <remarks>
+    /// Read once, on initialisation, as <see cref="Search"/> is. An empty list hides every optional
+    /// column; a key outside <see cref="ColumnKeys"/> is dropped. Navn, Status and Opprettet are
+    /// drawn whatever this says.
+    /// </remarks>
+    [Parameter] public IReadOnlyList<string>? VisibleColumns { get; set; }
+
+    /// <summary>
+    /// Raised on every press in the column picker, with the optional columns now on screen in
+    /// <see cref="ColumnKeys"/> order — and null when that is the default set again. Gives a host
+    /// <c>@bind-VisibleColumns</c>.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<string>?> VisibleColumnsChanged { get; set; }
+
+    /// <summary>
+    /// Every optional column's key, in the order the picker lists them. The names are Munin's own
+    /// Kelda's where it has the same column, and <c>kode</c> for the one it does not.
+    /// </summary>
+    public static IReadOnlyList<string> ColumnKeys { get; } = [.. OptionalColumns.Select(ColumnKey)];
+
+    /// <summary>The keys of the columns on screen before the reader chooses, in picker order.</summary>
+    internal static IReadOnlyList<string> DefaultColumnKeys { get; } =
+        [.. OptionalColumns.Where(column => !DefaultHidden.Contains(column)).Select(ColumnKey)];
+
+    private static string ColumnKey(KildeColumn column) => column switch
+    {
+        KildeColumn.Code => "kode",
+        KildeColumn.Kildetype => "kildetype",
+        KildeColumn.Datasamlinger => "datasamlinger",
+        KildeColumn.Variables => "variabler",
+        KildeColumn.Delkilder => "delkilder",
+        KildeColumn.DataController => "dataansvarlig",
+        KildeColumn.DataProcessor => "databehandler",
+        KildeColumn.PersonIdentification => "grad",
+        KildeColumn.Validity => "gyldighetsperiode",
+        KildeColumn.Imported => "importert",
+        KildeColumn.SourceUpdated => "sistEndret",
+        _ => throw new ArgumentOutOfRangeException(nameof(column), column, "No key for this column.")
+    };
+
+    private void SeedColumns()
+    {
+        if (VisibleColumns is not { } shown)
+        {
+            return;
+        }
+
+        _hiddenColumns.Clear();
+        _hiddenColumns.UnionWith(OptionalColumns.Where(column =>
+            !shown.Contains(ColumnKey(column), StringComparer.OrdinalIgnoreCase)));
+    }
+
+    private IReadOnlyList<string>? VisibleColumnKeys() =>
+        _hiddenColumns.SetEquals(DefaultHidden)
+            ? null
+            : [.. OptionalColumns.Where(ColumnVisible).Select(ColumnKey)];
 
     /// <summary>A column's name, in the words the header above it uses.</summary>
     /// <remarks>
@@ -104,7 +169,7 @@ public sealed partial class KildeSearch
 
     /// <summary>The picker, drawn by the shared <see cref="Fhi.Munin.Explorer.Blazor.ColumnPicker"/>.</summary>
     /// <remarks>
-    /// No hint, because no column here can lock — see <see cref="ToggleColumn"/>. The markup and
+    /// No hint, because no column here can lock — see <see cref="ToggleColumnAsync"/>. The markup and
     /// the borrowed Stiler names are the variable explorer's, shared rather than copied.
     /// </remarks>
     private RenderFragment ColumnPicker() =>
@@ -115,7 +180,7 @@ public sealed partial class KildeSearch
                 ColumnLabel(column),
                 ColumnVisible(column),
                 Locked: false,
-                () => ToggleColumn(column)))]);
+                () => ToggleColumnAsync(column)))]);
 
     /// <summary>The validity period, with an open end read as ongoing.</summary>
     /// <remarks>

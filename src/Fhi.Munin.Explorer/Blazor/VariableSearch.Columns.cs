@@ -205,6 +205,11 @@ public partial class VariableSearch
                 ColumnLabel(column),
                 ColumnVisible(column),
                 ColumnLocked(column),
-                () => ToggleColumn(column)))],
+                () =>
+                {
+                    ToggleColumn(column);
+
+                    return Task.CompletedTask;
+                }))],
             (ColumnsHintId, T.LastColumnHint));
 }
