@@ -36,9 +36,9 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     /// <remarks>
     /// The package draws the shapes but decides nothing about their size or colour. Each glyph is
     /// an inline <c>&lt;svg&gt;</c> at <c>1em</c> in <c>currentColor</c>, wearing
-    /// <c>munin-explorer-hierarchy__icon</c> and a <c>data-node-icon</c> naming its datakategori,
-    /// so a host stylesheet is what makes a category recognisable at a glance rather than only
-    /// distinguishable by shape.
+    /// <c>munin-explorer-hierarchy__icon</c> and a <c>data-node-icon</c> naming its datakategori.
+    /// helsedata's stylesheet colours no datakategori, deliberately: shape and the spoken words tell
+    /// them apart, and only the delkilde folder is muted.
     /// <para>
     /// A way of drawing the tree rather than something the reader is looking at, so like
     /// <see cref="VariableSearch.LevelLines"/> it is read once at mount and the package remembers

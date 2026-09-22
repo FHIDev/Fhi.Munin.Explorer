@@ -1231,8 +1231,10 @@ each summary; Enter or Space toggles it. Descriptions and validity periods remai
 disclosure below the hierarchy. `KildeView` owns this presentation, so it is the same when reached
 through either explorer or mounted directly. Register the client with `AddMuninExplorer` before
 mounting `KildeView`. `KildeHierarchyView` can also be mounted with `KildeId` and `Language`.
-The new hierarchy class names are listed above;
-their helsedata styling is tracked in `Fhi.Metadata-wihod` and is not supplied by this package.
+The hierarchy's class names are in the inventory above, and their rules are Stiler's, not this
+package's (`Fhi.Metadata-wihod`, Stiler PR 39239). The tree is measured in `samples/HostileHost`
+against the Stiler it pins, 0.1.91 today. `KildeView` has no `LevelLines`: the detail tree's rails are
+the stylesheet's, drawn for every reader, while `LevelLines` is the filter panel's own preference.
 
 Each row carries a node icon in front of its name — a folder on a delkilde, one glyph per
 datakategori on a datasamling, and nothing on a variabelgruppe, which is the mapping Kelda's own
@@ -1251,9 +1253,11 @@ the reader pressing it. What that costs is the same either way — the row stops
 datasamling's datakategorier — and nothing else on it moves, the kildetype badge included.
 Each one is `1em` in `currentColor` and wears
 `munin-explorer-hierarchy__icon` with a `data-node-icon` naming its datakategori — `PHDR`, `EINS`,
-`other` and the rest, plus `kilde` for the folder — which is the hook a stylesheet colours them
-through. Undefined, they draw at text size in the text colour, so what a host without the rules
-loses is the colour that tells two categories apart at a glance and not the categories themselves.
+`other` and the rest, plus `kilde` for the folder. Stiler gives no datakategori a colour of its own,
+on purpose: the shape and the spoken words already tell categories apart, and a glyph in
+`currentColor` follows every state of its row for free. Only the folder is muted, since it is
+structure rather than content. Undefined, they draw at text size in the text colour, which is the
+delivered design without the folder's grey.
 
 Four things are worth knowing before mounting one.
 

@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { TREE_SEARCH, EMPTY_SEARCH, treeFilters } from './tree-fixture.mjs';
+import * as detailTree from './hierarchy-fixture.mjs';
 
 const port = Number(process.argv[2]);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -164,6 +165,11 @@ function pagedListVariables(body, query) {
   });
 }
 
+// Opened by id only, from ?kilde= or the variable explorer's "Vis datakilde", so no list, facet or
+// count elsewhere changes. The failing one answers its detail and refuses its hierarchy.
+const syntheticKilder = new Set([detailTree.HIERARCHY_KILDE, detailTree.EMPTY_KILDE,
+  detailTree.FAILING_KILDE, detailTree.VARIABLE_KILDE]);
+
 // A fetch held open for a while, one request per hold asked for and none unless asked. It is how
 // scripts/state-scan.mjs stages a press the component DROPS - `if (_loading) return` - which no
 // browser can stage on its own: the request is the HOST's, made over the circuit, so Playwright's
@@ -210,6 +216,18 @@ function control(url, request, response) {
 
 function serve(url, request, response) {
   const path = url.pathname;
+  const [, kildeId, hierarchyAsked] = path.match(/^\/api\/explorer\/kilder\/([^/]+)(\/hierarchy)?$/) ?? [];
+  if (syntheticKilder.has(kildeId)) {
+    if (hierarchyAsked && kildeId === detailTree.FAILING_KILDE) {
+      response.writeHead(500, { 'content-type': 'application/json' }).end('null');
+      return;
+    }
+    const body = hierarchyAsked
+      ? detailTree.hierarchy(kildeId, kildeId === detailTree.EMPTY_KILDE)
+      : detailTree.detail(study, kildeId);
+    response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(body));
+    return;
+  }
   const search = url.searchParams.get('search');
   if (search === TREE_SEARCH || search === EMPTY_SEARCH) {
     const empty = search === EMPTY_SEARCH;

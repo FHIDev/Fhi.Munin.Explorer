@@ -3208,7 +3208,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 
-/* Provisional helsedata-based stand-in; published rules are tracked by Fhi.Metadata-wihod. */
+/* Stand-in for Stiler's published hierarchy rules; assert-sample-css-matches-stiler.sh compares them. */
 .munin-explorer-hierarchy {
   color: var(--dark);
   font-size: 0.875rem;
