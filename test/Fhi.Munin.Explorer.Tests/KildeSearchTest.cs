@@ -1016,6 +1016,179 @@ public class KildeSearchTest : ExplorerTestContext
             cells.Select(cell => cell.TextContent.Trim()).Order(StringComparer.Ordinal));
     }
 
+    // The three kilder the bar is specified against (Fhi.Metadata-35w0p.30): a zero, a small count
+    // and the largest, which 23 is 0.9% of. Two kildetyper, so a facet can take the largest away.
+    private static FakeClient BarKilder() => new(
+        Kilde("Hjerte- og karregisteret", "K_HKR", kildetype: "nasjonaltMedisinskKvalitetsregister",
+            datasamlinger: 0, variables: 0),
+        Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
+            datasamlinger: 23, variables: 23),
+        Kilde("Dødsårsaksregisteret", "K_DAR", datasamlinger: 2506, variables: 2506));
+
+    /// <summary>The cell under the Variabler heading in the row whose name cell carries the code.</summary>
+    private static IElement VariablesCell(IRenderedComponent<KildeSearch> cut, string code)
+    {
+        var column = cut.FindAll(".munin-explorer-kilder thead th")
+            .ToList()
+            .FindIndex(th => th.TextContent.Contains("Variabler", StringComparison.Ordinal));
+        Assert.True(column >= 0, "No Variabler heading in the table.");
+
+        var row = cut.FindAll(".munin-explorer-kilder tbody tr")
+            .Single(tr => tr.QuerySelector("th")?.TextContent.Contains(code, StringComparison.Ordinal) == true);
+
+        return row.Children[column];
+    }
+
+    private static string? FillWidth(IRenderedComponent<KildeSearch> cut, string code) =>
+        VariablesCell(cut, code).QuerySelector(".munin-explorer-kilder__bar-fill")?.GetAttribute("style");
+
+    [Fact]
+    public void Bar_WhenAVariableCountIsAboveZero_ThenItsCellHoldsOneTrackWithOneFillAfterTheDigits()
+    {
+        var cut = RenderWith(BarKilder());
+
+        foreach (var code in (string[])["K_ALS", "K_DAR"])
+        {
+            var cell = VariablesCell(cut, code);
+            var bars = cell.QuerySelectorAll("span.munin-explorer-kilder__bar");
+
+            var bar = Assert.Single(bars);
+            Assert.Same(cell, bar.ParentElement);
+            Assert.Single(bar.QuerySelectorAll("span.munin-explorer-kilder__bar-fill"));
+            Assert.Single(bar.Children);
+
+            // After the digits: the text node comes first and the track is the cell's last child.
+            Assert.Equal(NodeType.Text, cell.FirstChild!.NodeType);
+            Assert.Same(bar, cell.LastChild);
+        }
+    }
+
+    [Theory]
+    [InlineData("nb-NO")]
+    [InlineData("en-US")]
+    public void Bar_WhenDrawn_ThenItsFillIsAWholePercentOfTheLargestCountInAnyCulture(string culture)
+    {
+        var previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+        try
+        {
+            var cut = RenderWith(BarKilder());
+
+            Assert.Equal("width:100%", FillWidth(cut, "K_DAR"));
+            // 23 * 100 / 2506 is 0.92, rounded to 1.
+            Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    [Theory]
+    [InlineData(5, 8, "width:63%")]    // 62.5: away from zero, where banker's rounding says 62
+    [InlineData(1, 1000, "width:1%")]  // 0.1 rounds to 0 and is clamped up: a non-zero count draws
+    [InlineData(999, 1000, "width:100%")]
+    [InlineData(1, 3, "width:33%")]
+    public void Bar_WhenTheShareIsNotWhole_ThenItRoundsHalfAwayFromZeroAndNeverDrawsZero(
+        int count, int largest, string expected)
+    {
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", variables: count),
+            Kilde("Dødsårsaksregisteret", "K_DAR", variables: largest)));
+
+        Assert.Equal(expected, FillWidth(cut, "K_ALS"));
+    }
+
+    [Fact]
+    public void Bar_WhenAFacetTakesTheLargestAway_ThenTheLargestDrawnRowIsTheWholeWidth()
+    {
+        var cut = RenderWith(BarKilder());
+
+        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+
+        Assert.DoesNotContain(
+            cut.FindAll(".munin-explorer-kilder tbody th"),
+            th => th.TextContent.Contains("K_DAR", StringComparison.Ordinal));
+        Assert.Equal("width:100%", FillWidth(cut, "K_ALS"));
+
+        Untick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+
+        Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
+        Assert.Equal("width:100%", FillWidth(cut, "K_DAR"));
+    }
+
+    [Fact]
+    public void Bar_WhenTheVariableCountIsZero_ThenTheCellHasNoBarAndStillReadsADimmedZero()
+    {
+        var cut = RenderWith(BarKilder());
+
+        var cell = VariablesCell(cut, "K_HKR");
+
+        // The control: this render does draw bars, so the zero's absence is a decision about it.
+        Assert.NotNull(VariablesCell(cut, "K_ALS").QuerySelector(".munin-explorer-kilder__bar"));
+
+        // Absent rather than an empty track: a grey track with nothing in it reads as a measurement.
+        Assert.Null(cell.QuerySelector(".munin-explorer-kilder__bar"));
+        Assert.Equal("0", cell.TextContent);
+        Assert.Contains("munin-explorer-kilder__count--zero", cell.ClassList);
+    }
+
+    [Fact]
+    public void Bar_WhenEveryDrawnRowCountsZero_ThenNoRowHasABar()
+    {
+        var cut = RenderWith(new FakeClient(
+            Kilde("Hjerte- og karregisteret", "K_HKR", kildetype: "biobank", variables: 0),
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank", variables: 0),
+            Kilde("Dødsårsaksregisteret", "K_DAR", variables: 2506)));
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilder__bar"));
+
+        // The largest drawn count is now 0 too, which must not be divided by.
+        Tick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal(2, cut.FindAll(".munin-explorer-kilder tbody tr").Count);
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__bar"));
+    }
+
+    [Fact]
+    public void Bar_WhenDrawn_ThenItIsHiddenFromTheAccessibilityTreeAndTheDigitsAreTheCellsText()
+    {
+        var cut = RenderWith(BarKilder());
+
+        var bars = cut.FindAll("span.munin-explorer-kilder__bar");
+        Assert.Equal(2, bars.Count);
+
+        foreach (var span in bars.Concat(cut.FindAll("span.munin-explorer-kilder__bar-fill")))
+        {
+            Assert.Equal("", span.TextContent);
+            Assert.False(span.HasAttribute("title"));
+            Assert.False(span.HasAttribute("aria-label"));
+        }
+
+        Assert.All(bars, bar => Assert.Equal("true", bar.GetAttribute("aria-hidden")));
+
+        Assert.Equal("0", VariablesCell(cut, "K_HKR").TextContent.Trim());
+        Assert.Equal("23", VariablesCell(cut, "K_ALS").TextContent.Trim());
+        Assert.Equal("2506", VariablesCell(cut, "K_DAR").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Bar_WhenEveryColumnIsOn_ThenOnlyTheVariablerCellsCarryOne()
+    {
+        var cut = RenderWith(BarKilder());
+        TurnEveryColumnOn(cut);
+
+        var bars = cut.FindAll(".munin-explorer-kilder__bar");
+
+        // The same two as with the default columns: Delkilder and Datasamlinger add none.
+        Assert.Equal(2, bars.Count);
+        Assert.All(bars, bar => Assert.Contains(
+            bar.ParentElement,
+            (IElement[])[VariablesCell(cut, "K_ALS"), VariablesCell(cut, "K_DAR")]));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder thead .munin-explorer-kilder__bar"));
+    }
+
     [Fact]
     public void ZeroCount_WhenAHostStylesIt_ThenTheDeclarationItNeedsRecessesRatherThanHides()
     {
@@ -5619,6 +5792,9 @@ public class KildeSearchTest : ExplorerTestContext
             // And the count of header cells it is holding, for a stylesheet that has to vary the box
             // by how wide the table is. Seven here: four always drawn, three optional columns on.
             "munin-explorer-kilder-scroll--cols-7",
+            // The proportion bar under a non-zero variable count (Fhi.Metadata-35w0p.30).
+            "munin-explorer-kilder__bar",
+            "munin-explorer-kilder__bar-fill",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
             "munin-explorer-kilder__expand-icon",

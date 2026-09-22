@@ -2321,6 +2321,24 @@ table.munin-explorer-data-list tbody th {
   color: var(--grey60);
 }
 
+/* ---- the proportion bar under a non-zero variable count ----
+   Stiler's rules as merged by Fhi.Metadata-35w0p.68. A block under the digits, not beside them, so
+   the column does not widen; the fill's width is inline from the component, never set here. */
+.munin-explorer-kilder .munin-explorer-kilder__bar {
+  background-color: var(--grey40);
+  display: block;
+  height: 6px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.munin-explorer-kilder .munin-explorer-kilder__bar-fill {
+  background-color: var(--primary);
+  display: block;
+  height: 100%;
+  margin-left: auto;
+}
+
 /* The checkbox column, in front of the eight. It is only ever rendered by a host that wired
    ExploreVariablesRequested, which is the handover the ticks exist for.
 
