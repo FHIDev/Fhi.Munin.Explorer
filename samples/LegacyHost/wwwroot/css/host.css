@@ -4160,6 +4160,9 @@ table.munin-explorer-data-list tbody th {
   width: 1rem;
 }
 
+/* Transition debris mirrored from Stiler 0.1.91: the package emits no `-right` now, and the
+   unscoped `-down` below it still means "expanded". Deleting either before Stiler does would be a
+   fresh missing-selector divergence, so both wait on Fhi.Metadata-trfs0. */
 .munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-right {
   background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
 }
@@ -4234,6 +4237,9 @@ table.munin-explorer-data-list tbody th {
   opacity: 0.6;
 }
 
+/* The same debris on the Runa row, on the same terms and waiting on the same bead: a `-right` the
+   package never writes again, and an unscoped `-down` still mapped to the expanded glyph.
+   (Fhi.Metadata-trfs0) */
 .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-right {
   background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
 }

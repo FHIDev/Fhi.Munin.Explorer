@@ -35,9 +35,11 @@
 //     whether or not the call is there. An assertion on that path would hold either way, which is
 //     no assertion at all — and it is why the comment beside that call names only the path the
 //     call is load-bearing on;
-//   - whether the control LOOKS ticked. This reads `input.checked` and `aria-pressed`, which is
-//     what a screen reader is told; a stylesheet drawing a mark of its own over the top is the
-//     layout gate's business, not this one's;
+//   - whether a TICKED control looks ticked. This reads `input.checked` and `aria-pressed`, which
+//     is what a screen reader is told; a stylesheet drawing a mark of its own over the top is the
+//     layout gate's business. The row chevron is the exception, and why is on its assertion: its
+//     picture is the only thing that tells a sighted reader shut from open, and which picture it
+//     is depends on `aria-expanded` reaching the cascade (Fhi.Metadata-l9l2n.84);
 //   - the sticky bar PAINTING for a frame. The bar assertion below reads the state the observer
 //     settled on, which is what the predicate decides; a load that painted the bar once and
 //     corrected itself on the next frame would still read as clean here. That is paint timing, and
@@ -411,6 +413,143 @@ const heroAgainstFold = (page, rowId) => page.evaluate(id => {
 
   return { top: box.top, bottom: box.bottom, fold: window.innerHeight, scrollY: window.scrollY };
 }, rowId);
+
+/**
+ * The row disclosures whose GLYPH is their state, one per surface.
+ *
+ * Since Fhi.Metadata-l9l2n.84 the glyph class alone no longer names the picture:
+ * `icon-keyboard-arrow-down` resolves to icon_up.svg through the legacy unscoped override Stiler
+ * 0.1.91 and both samples still carry, and the shut row is rescued only by the
+ * `[aria-expanded=false]` rule beside it out-specifying that one. So which picture a reader sees is
+ * a question about a cascade, and nothing else resolves one: bUnit has no CSS at all, and the
+ * sample-stylesheet guards match selector text.
+ */
+const CHEVRONS = [
+  {
+    surface: "Kelda's kilde row",
+    state: 'kilder-list',
+    toggle: '.munin-explorer-kilder__expand-toggle',
+    icon: '.munin-explorer-kilder__expand-icon',
+  },
+  {
+    surface: "Runa's result row",
+    state: 'variables-list',
+    toggle: '.munin-explorer-dataitem__expand-toggle',
+    icon: '.munin-explorer-dataitem-main__expand-icon',
+  },
+];
+
+/** The four states and the file each one owes, which is the whole of what a reader can see. */
+const CHEVRON_GLYPHS = [
+  ['shut, pointer away', 'icon_down.svg'],
+  ['shut, row hovered', 'icon_down--blue.svg'],
+  ['open, pointer away', 'icon_up.svg'],
+  ['open, row hovered', 'icon_up--blue.svg'],
+];
+
+/** Somewhere no row is, so a `:hover` rule is out of the cascade for the readings that want it. */
+const POINTER_AWAY = { x: 0, y: 0 };
+
+/**
+ * Drive one chevron through its four states and hand back the picture drawn in each.
+ *
+ * The toggle is re-found for every reading rather than held: a press re-renders the row and the
+ * span carrying the glyph class is replaced under it. Hovering the toggle hovers its row as well,
+ * which is what the `tr:hover` and `__item__row:hover` rules key on.
+ */
+async function chevronPictures(page, { toggle, icon }) {
+  const button = () => page.locator(toggle).first();
+  await button().waitFor({ state: 'visible', timeout: findTimeout });
+
+  const settle = want => page.waitForFunction(
+    ([one, state]) => document.querySelector(one)?.getAttribute('aria-expanded') === state,
+    [toggle, want], { timeout: findTimeout });
+
+  // `none` rather than a throw: a chevron drawing nothing at all is a finding to report, and it is
+  // the defect the resting `icon-keyboard-arrow-up` rule was added to both samples for.
+  const drawn = () => button().locator(icon).evaluate(one =>
+    /[^\/"']+\.svg/.exec(getComputedStyle(one).backgroundImage)?.[0] ?? 'none');
+
+  if (await button().getAttribute('aria-expanded') !== 'false') {
+    await button().click();
+    await settle('false');
+  }
+
+  const pictures = [];
+  await page.mouse.move(POINTER_AWAY.x, POINTER_AWAY.y);
+  pictures.push(await drawn());
+  await button().hover();
+  pictures.push(await drawn());
+
+  await button().click();
+  await settle('true');
+  await page.mouse.move(POINTER_AWAY.x, POINTER_AWAY.y);
+  pictures.push(await drawn());
+  await button().hover();
+  pictures.push(await drawn());
+
+  return pictures;
+}
+
+/** One assertion per surface: the same four states and the same four files, different names. */
+const chevronAssertions = CHEVRONS.map(chevron => ({
+  name: `${chevron.surface} draws the chevron of the state it is in, at rest and under the pointer`,
+  kind: 'invariant',
+  states: [chevron.state],
+
+  // Nothing to arrange: the row is the page's own first one, and the assertion presses it itself.
+  async stage(page) {
+    await page.locator(chevron.toggle).first().waitFor({ state: 'visible', timeout: findTimeout });
+    return chevron;
+  },
+
+  async measure(page, staged) {
+    const pictures = await chevronPictures(page, staged);
+
+    const wrong = CHEVRON_GLYPHS
+      .map(([state, owed], at) => ({ state, owed, drawn: pictures[at] }))
+      .filter(one => one.drawn !== one.owed);
+
+    return wrong.length === 0 ? null : wrong
+      .map(one => `${one.state}: ${one.owed} owed, ${one.drawn} drawn`)
+      .join('; ');
+  },
+
+  // The cascade regression itself: drop the `[aria-expanded=false]` rules and the legacy unscoped
+  // override underneath takes the shut row, which is what a Stiler that never scoped its own rules
+  // would draw on helsedata.no — with every test in test/ and both sample guards green.
+  //
+  // Matched on a pattern rather than on the stylesheet's own text: the CSSOM hands back a
+  // selectorText it has normalised, quoting the unquoted `false` this file writes.
+  async control(page) {
+    await page.evaluate(() => {
+      const scoped = /\[aria-expanded\s*=\s*["']?false["']?\]/;
+      let deleted = 0;
+
+      for (const sheet of document.styleSheets) {
+        let rules;
+        try {
+          rules = sheet.cssRules;
+        } catch {
+          continue;
+        }
+
+        for (let at = rules.length - 1; at >= 0; at -= 1) {
+          const selector = rules[at].selectorText ?? '';
+
+          if (scoped.test(selector) && selector.includes('expand-icon')) {
+            sheet.deleteRule(at);
+            deleted += 1;
+          }
+        }
+      }
+
+      // Louder than a control that silently removes nothing: that reads as an assertion which has
+      // stopped measuring, and sends the next reader after a defect that is not there.
+      if (deleted === 0) throw new Error('no [aria-expanded=false] chevron rule was reachable to delete');
+    });
+  },
+}));
 
 export const assertions = [
   {
@@ -1311,4 +1450,5 @@ export const assertions = [
       }, TOC);
     },
   },
+  ...chevronAssertions,
 ];

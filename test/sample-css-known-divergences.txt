@@ -566,8 +566,7 @@ invented-selector||.munin-explorer-header__actions-button > .icon-layout::before
 
 # Same absent icon font, one row lower: Stiler draws the resting expanded chevron from its own
 # `.icon-keyboard-arrow-up`, so its munin-explorer partials only need the deviations. A sample host
-# has neither, and without these two the expanded chevron is blank between hovers on both surfaces
-# (Fhi.Metadata-l9l2n.84). They go when the icons become masks or the sample grows the icon set.
+# has neither, and without these two the chevron is blank between hovers (Fhi.Metadata-l9l2n.84).
 invented-selector||.munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-up|background-image
 invented-selector||.munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-up|background-image
 
