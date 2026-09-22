@@ -66,7 +66,7 @@ public class HttpClientRegistrationTest
         var thrown = Assert.Throws<InvalidOperationException>(
             () => services.AddMuninExplorer(o => o.ApiBaseUrl = null));
 
-        Assert.Contains("https://runa.munin.skytest.fhi.no", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("https://explorer.munin.skytest.fhi.no", thrown.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(
             "https://munin.skytest.fhi.no", // internal-host-on-purpose
             thrown.Message,

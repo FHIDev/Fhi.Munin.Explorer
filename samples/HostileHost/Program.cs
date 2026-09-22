@@ -19,7 +19,7 @@ builder.Services.AddServerSideBlazor();
 // the whole reason the page is worth scanning. Authentication is LegacyHost's subject.
 builder.Services.AddMuninExplorer(
     builder.Configuration,
-    developmentFallback: builder.Environment.IsDevelopment() ? "https://runa.munin.skytest.fhi.no" : null);
+    developmentFallback: builder.Environment.IsDevelopment() ? "https://explorer.munin.skytest.fhi.no" : null);
 
 var app = builder.Build();
 
