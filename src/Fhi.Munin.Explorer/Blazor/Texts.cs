@@ -183,6 +183,7 @@ internal sealed record Texts(
 
     // Headings and fields the kilde view needs, which the variable panel has no use for.
     string HeadingMetadata,
+    string HeadingAboutDatasamling,
     string HeadingSourceInformation,
     string HeadingStatistics,
     string FieldLastUpdated,
@@ -1014,6 +1015,7 @@ internal sealed record Texts(
         EyebrowVariable: "Variabel",
         TrailLabel: "Brødsmulesti",
         HeadingMetadata: "Metadata",
+        HeadingAboutDatasamling: "Om datasamlingen",
         HeadingSourceInformation: "Kildeinformasjon",
         HeadingStatistics: "Statistikk",
         FieldLastUpdated: "Sist oppdatert i Munin",
@@ -1412,6 +1414,7 @@ internal sealed record Texts(
         EyebrowVariable: "Variable",
         TrailLabel: "Breadcrumb",
         HeadingMetadata: "Metadata",
+        HeadingAboutDatasamling: "About the data collection",
         HeadingSourceInformation: "Source information",
         HeadingStatistics: "Statistics",
         FieldLastUpdated: "Last updated in Munin",

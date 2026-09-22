@@ -638,9 +638,66 @@ public sealed partial class DatasamlingView : ComponentBase
             statisticsDrawn = true;
         }
 
-        return DetailLayout.Order(datasamling.Sections, groups,
-                                  Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn));
+        var blocks = Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn);
+        if (blocks.Any(block => block.Id == DetailSectionIds.Criteria)
+            && groups.All(group => group.Key != AboutSectionKey)
+            && datasamling.Sections.FirstOrDefault(section => section.Key == AboutSectionKey) is { } about)
+        {
+            var (heading, language) = CatalogueProperties.Localised(about.Translations, Reader);
+            groups.Add(new(AboutSectionKey, DetailSectionIds.ReserveGroupId(AboutSectionKey, ids),
+                           string.IsNullOrWhiteSpace(heading) ? T.HeadingAboutDatasamling : heading,
+                           CatalogueProperties.Foreign(language, Reader), _ => { }));
+        }
+
+        return NestCriteria(DetailLayout.Order(datasamling.Sections, groups, blocks));
     }
+
+    private const string AboutSectionKey = "om-datasamlingen";
+
+    private IReadOnlyList<DetailLayoutSection> NestCriteria(IReadOnlyList<DetailLayoutSection> layout)
+    {
+        var criteria = layout.FirstOrDefault(section => section.Id == DetailSectionIds.Criteria);
+        if (criteria is null)
+        {
+            return layout;
+        }
+
+        var about = layout.FirstOrDefault(section => section.Key == AboutSectionKey);
+        var nested = CriteriaSubsection(criteria);
+        List<DetailLayoutSection> sections = [];
+        foreach (var section in layout)
+        {
+            if (section == criteria)
+            {
+                if (about is null)
+                {
+                    var ids = new HashSet<string>(layout.Select(item => item.Id), StringComparer.Ordinal);
+                    sections.Add(new(AboutSectionKey, DetailSectionIds.ReserveGroupId(AboutSectionKey, ids),
+                                     T.HeadingAboutDatasamling, null, nested));
+                }
+
+                continue;
+            }
+
+            sections.Add(section == about
+                ? section with { Body = DetailBlocks.Both(section.Body, nested) }
+                : section);
+        }
+
+        return sections;
+    }
+
+    private RenderFragment CriteriaSubsection(DetailLayoutSection criteria) => builder =>
+    {
+        // Keep existing deep links focusable without making this subsection a scrollspy target.
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "id", criteria.Id);
+        builder.AddAttribute(2, "tabindex", "-1");
+        builder.AddContent(3, DetailBlocks.Heading(GroupLevel, criteria.Heading, "headline headline-xxs",
+                                                  language: criteria.HeadingLanguage));
+        builder.AddContent(4, criteria.Body);
+        builder.CloseElement();
+    };
 
     /// <summary>
     /// This view's own sections, each under the key a placement row moves it by, in the order the
