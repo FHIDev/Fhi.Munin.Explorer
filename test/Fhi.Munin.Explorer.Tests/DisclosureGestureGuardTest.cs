@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -67,23 +68,23 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
             "\n",
             cut.FindAll(Disclosure).Select(b => $"{Named(b)} = {b.GetAttribute("aria-expanded")}"));
 
-    /// <summary>What a control is called here: its id, or its class where it has no id.</summary>
+    /// <summary>What a control is called here: its id, a summary's own rule, or its class.</summary>
     /// <remarks>
     /// One rule for both halves: a scene whose disclosures share a class would otherwise be told
-    /// by the weaker of two names that the control it pressed is still the one in hand.
+    /// by the weaker of two names that the control it pressed is still the one in hand. The summary
+    /// arm outranks the class arm so that every native disclosure is named the same way.
     /// </remarks>
     private static string? Named(IElement control) =>
         control.Id is { Length: > 0 } id ? id
-        : control.ClassName is { Length: > 0 } css ? css
         : control.LocalName == "summary" ? NativeNamed(control)
-        : control.ClassName;
+        : control.ClassName is { Length: > 0 } css ? css
+        : null;
 
-    /// <summary>The same rule one step out, for a <c>&lt;summary&gt;</c> that carries neither.</summary>
+    /// <summary>The same rule one step out, for a <c>&lt;summary&gt;</c> the rule above cannot name.</summary>
     /// <remarks>
-    /// Which is nearly all of them: of the seventeen this suite collects, one has a class and none
-    /// has an id, so the rule above alone would report the empty string and send nobody anywhere.
-    /// Its own text last, because that is the label the reader presses and so the one a failure can
-    /// be acted on by.
+    /// Which is every one of them: none of the seventeen this suite collects has an id, and the four
+    /// that have a class wear the column picker's borrowed Stiler string, which is no locator at all.
+    /// Its own text last, because that is the label the reader presses.
     /// </remarks>
     private static string NativeNamed(IElement summary) =>
         summary.ParentElement is { } details && details.Id is { Length: > 0 } id
@@ -126,16 +127,18 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         element.Attributes.Any(a => a.Name.StartsWith("blazor:on", StringComparison.Ordinal))
         || element.HasAttribute("aria-expanded");
 
+    /// <summary>Every native disclosure on screen the package, rather than the browser, drives.</summary>
+    private static List<string?> TakenBack<T>(IRenderedComponent<T> cut) where T : IComponent =>
+        cut.FindAll(NativeDisclosure)
+            .Where(summary => Driven(summary) || Driven(summary.ParentElement!))
+            .Select(Named)
+            .ToList();
+
     /// <summary>That every native disclosure on screen is still the user agent's.</summary>
     /// <remarks>Named rather than counted, so a failure says which one the package took back.</remarks>
     private static void AssertNativeDisclosuresAreTheUserAgents<T>(IRenderedComponent<T> cut)
         where T : IComponent =>
-        Assert.Equal(
-            [],
-            cut.FindAll(NativeDisclosure)
-                .Where(summary => Driven(summary) || Driven(summary.ParentElement!))
-                .Select(Named)
-                .ToList());
+        Assert.Equal([], TakenBack(cut));
 
     /// <summary>
     /// Puts every disclosure <paramref name="scene"/> draws through both standing gestures, from
@@ -341,6 +344,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     public void KildeSearch_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
         // Two: the facet panel's fold control and the row's chevron.
+        // Three native: the Kildetype and Databehandler facet folds, and the column picker.
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
 
         AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 2, native: 3);
@@ -349,8 +353,9 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void KildeSearchSelectable_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // The same two: the mode a host wiring ExploreVariablesRequested gets adds a column of tick
-        // boxes and no disclosure, and the scene above never enters those branches to say so.
+        // The same two, and the same three native: the mode a host wiring ExploreVariablesRequested
+        // gets adds a column of tick boxes and no disclosure of either shape, and the scene above
+        // never enters those branches to say so.
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
 
         AssertStandingGesturesAreRefused(
@@ -368,6 +373,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
 
+        // Four native: the Variabelgruppe and Andre filtre folds, the legend, and the column picker.
         AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 5, native: 4);
     }
 
@@ -380,6 +386,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Services.AddSingleton<IMuninExplorerClient>(new FacetTreeClient());
         Services.AddScoped<VariableListState>();
 
+        // Six native: the four of the scene above, plus the tree's own Type datakilde and Kilde.
         AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 4, native: 6);
     }
 
@@ -427,7 +434,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // One: a version row in the history.
+        // One: a version row in the history. None native — a version row is a button.
         var detail = Variable() with
         {
             VersionId = Guid.NewGuid(),
@@ -441,7 +448,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableListView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Three: create, rename and the delete confirmation.
+        // Three: create, rename and the delete confirmation. One native: the download fold.
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
 
@@ -524,10 +531,8 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         // seven that draw a native disclosure are in none — DetailBlocks, KildeHierarchyView and
         // KildeView, whose disclosures the sweep above therefore never collects.
         var taken = Sources()
-            .SelectMany(path => NativeDisclosuresIn(File.ReadAllText(path))
-                .Where(opened => TakenFromTheUserAgent(opened.Attributes))
-                .Select(opened =>
-                    $"{Path.GetFileName(path)}: <{opened.Element} {Regex.Replace(opened.Attributes, @"\s+", " ").Trim()}>"))
+            .SelectMany(path => TakenIn(File.ReadAllText(path))
+                .Select(one => $"{Path.GetFileName(path)}: {one}"))
             .Order(StringComparer.Ordinal)
             .ToList();
 
@@ -600,9 +605,99 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
 
     /// <summary>Whether what a native disclosure was opened with means the package drives it.</summary>
     /// <remarks>
-    /// An event handler in either spelling, or an <c>aria-expanded</c> — which on a
-    /// <c>&lt;details&gt;</c> is a second opinion about the <c>open</c> attribute and drifts from it.
+    /// A handler in any spelling this package writes one in, or an <c>aria-expanded</c> — on a
+    /// <c>&lt;details&gt;</c> a second opinion about <c>open</c> that drifts from it. A splat and a
+    /// computed name read as driven: unreadable is loud here, where a missed spelling is silent.
     /// </remarks>
     private static bool TakenFromTheUserAgent(string attributes) =>
-        Regex.IsMatch(attributes, """@on[a-z]+|"on[a-z]+"|aria-expanded""");
+        Regex.IsMatch(
+            attributes,
+            """@on[a-z]+|\bon[a-z]+\s*=|@attributes\b|aria-expanded"""
+            + """|Add\w*Attributes?\([^,]+,\s*(?:"on[a-z]+"|[^\s"])""");
+
+    /// <summary>The source half over one source: each native disclosure it reads as driven.</summary>
+    private static IEnumerable<string> TakenIn(string source) =>
+        NativeDisclosuresIn(source)
+            .Where(opened => TakenFromTheUserAgent(opened.Attributes))
+            .Select(opened => $"<{opened.Element} {Regex.Replace(opened.Attributes, @"\s+", " ").Trim()}>");
+
+    [Theory]
+    // A scan only ever run over clean sources asserts nothing: both detectors were replaceable by
+    // `false` with every other test in this class green (Fhi.Metadata-cq29d). So the taken shapes
+    // are fed in directly, in both the spellings this package writes markup in.
+    [InlineData("""<details><summary>Kolonner</summary></details>""", 2, 0)]
+    [InlineData("""<details @key="K" open="@Open"><summary>Kolonner</summary></details>""", 2, 0)]
+    [InlineData("""<details><summary @onclick="Toggle">Kolonner</summary></details>""", 2, 1)]
+    [InlineData("""<details @ontoggle="Toggle"><summary>Kolonner</summary></details>""", 2, 1)]
+    [InlineData("""<details onclick="toggle()"><summary>Kolonner</summary></details>""", 2, 1)]
+    [InlineData("""<details aria-expanded="true"><summary>Kolonner</summary></details>""", 2, 1)]
+    // And the two a name alone gets wrong in opposite directions: a splat, whose attributes are
+    // somewhere else entirely, and a class value that merely begins the way an event name does.
+    [InlineData("""<details @attributes="Extra"><summary>Kolonner</summary></details>""", 2, 1)]
+    [InlineData("""<details class="once"><summary>Kolonner</summary></details>""", 2, 0)]
+    // And the builder, where the attributes are statements rather than an attribute list — so a
+    // lookahead that stopped one call early would read the element and score it clean.
+    [InlineData(
+        """b.OpenElement(4, "details"); b.AddAttribute(5, "class", "dropdown"); b.OpenElement(6, "summary"); b.AddContent(7, label);""",
+        2, 0)]
+    [InlineData(
+        """b.OpenElement(seq + 1, "details"); b.AddAttribute(seq + 2, "class", Fold); b.CloseElement();""",
+        1, 0)]
+    [InlineData("""b.OpenElement(4, "details"); b.AddAttribute(5, "ontoggle", cb); b.CloseElement();""", 1, 1)]
+    [InlineData("""b.OpenElement(4, "summary"); b.AddAttribute(5, name, value); b.CloseElement();""", 1, 1)]
+    [InlineData("""b.OpenElement(4, "details"); b.AddMultipleAttributes(5, extra); b.CloseElement();""", 1, 1)]
+    [InlineData("""b.OpenElement(4, "details"); b.AddAttribute(5, "aria-expanded", "true"); b.CloseElement();""", 1, 1)]
+    [InlineData("nothing here draws a disclosure", 0, 0)]
+    public void Fixture_WhenTheSourceHalfReadsIt_ThenOnlyADrivenDisclosureIsTaken(
+        string source, int drawn, int taken)
+    {
+        // Both, because a scan reading nothing scores nothing taken — which is the clean fixtures
+        // passing for the reason the sources they stand in for must not.
+        Assert.Equal(drawn, NativeDisclosuresIn(source).Count());
+        Assert.Equal(taken, TakenIn(source).Count());
+    }
+
+    /// <summary>A native disclosure the package drives, in each of the two places it can be driven.</summary>
+    /// <remarks>
+    /// A fixture rather than a scene: every page this suite renders is clean, so nothing else here
+    /// runs <see cref="Driven"/> down a matching path and it was <c>false</c>-replaceable too.
+    /// </remarks>
+    private sealed class TakenBackDisclosure : ComponentBase
+    {
+        [Parameter] public bool OnTheSummary { get; set; }
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            builder.OpenElement(0, "details");
+
+            if (!OnTheSummary)
+            {
+                builder.AddAttribute(1, "aria-expanded", "true");
+            }
+
+            builder.OpenElement(2, "summary");
+
+            if (OnTheSummary)
+            {
+                builder.AddAttribute(
+                    3, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => { }));
+            }
+
+            builder.AddContent(4, "Kolonner");
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NativeDisclosure_WhenThePackageDrivesIt_ThenTheRenderedHalfNamesIt(bool onTheSummary)
+    {
+        var cut = Render<TakenBackDisclosure>(b => b.Add(c => c.OnTheSummary, onTheSummary));
+
+        // The name rather than the count, because naming it is the whole of what this half offers
+        // a reader — and the label it reports is the one on screen.
+        Assert.Equal(["summary \"Kolonner\""], TakenBack(cut));
+    }
 }
