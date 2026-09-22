@@ -212,6 +212,9 @@ missing-declaration||.munin-explorer-dataitem-main__column|text-overflow
 missing-declaration||.munin-explorer-dataitem-main__column|white-space
 missing-declaration||.munin-explorer-dataitem-main__expand-icon|margin
 missing-declaration||.munin-explorer-dataitem-main__name|display
+# Left out on purpose: without Stiler's stacked rows at 1280px and below, it shrinks the name to 0px
+# wide at 320 (Fhi.Metadata-hiz1k). It can come in with the @media (max-width:1280px) row collapse.
+missing-declaration||.munin-explorer-dataitem-main__name|min-width
 missing-declaration||.munin-explorer-dataitem-main|cursor
 missing-declaration||.munin-explorer-dataitem-main|height
 missing-declaration||.munin-explorer-dataitem-main|overflow

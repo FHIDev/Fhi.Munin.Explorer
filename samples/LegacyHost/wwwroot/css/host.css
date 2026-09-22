@@ -1241,12 +1241,17 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   padding-left: 16px;
 }
 
+/* Stiler also gives the name itself `min-width: 0`, safe there because its rows stack at 1280px and
+   below. The sample's rows never stack, so at 320px that shrank the name to 0px wide. */
 .munin-explorer-dataitem-main__name,
 .munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text {
-  min-width: 0;
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
+}
+
+.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text {
+  min-width: 0;
 }
 
 @media not all and (max-width: 1280px) {
