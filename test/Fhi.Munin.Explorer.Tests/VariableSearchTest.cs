@@ -523,7 +523,7 @@ public class VariableSearchTest : ExplorerTestContext
         TurnEveryColumnOn(cut);
 
         // Navn is left out on purpose: it orders by SortField.Default, which is announced as
-        // "Standard" rather than as the word over the column. FieldLabel's remarks say why.
+        // "Standard" rather than as the word over the column. SortField.Default's remarks say why.
         foreach (var label in new[]
                  {
                      "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"
