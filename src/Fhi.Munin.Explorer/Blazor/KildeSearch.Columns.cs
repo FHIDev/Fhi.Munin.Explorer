@@ -184,10 +184,9 @@ public sealed partial class KildeSearch
 
     /// <summary>The validity period, with an open end read as ongoing.</summary>
     /// <remarks>
-    /// <see cref="CatalogueDate.Period"/> rather than a copy: it already decides what an open end
-    /// and a missing start mean, and the kilde view draws the same field through it. Kelda writes a
-    /// missing start as "?"; the shared helper lets an end stand alone instead, on the ground that a
-    /// start the catalogue never gave would be an invention (Fhi.Metadata-n39ea).
+    /// <see cref="CatalogueDate.Period"/> rather than a copy: one helper decides what an open end
+    /// and an unknown start mean, so this column and the kilde view beside it cannot word the same
+    /// kilde's validity two ways (Fhi.Metadata-msax9).
     /// </remarks>
     private string ValidityPeriod(KildeSummary kilde) =>
         Value(CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T, DateWidth.Narrow));

@@ -2000,18 +2000,18 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SourceInformation_WhenAValidityStartIsTheDefaultDate_ThenTheEndStandsAlone()
+    public void SourceInformation_WhenAValidityStartIsTheDefaultDate_ThenItReadsAsAQuestionMark()
     {
-        // The other end, and the one worth writing down: the row reads "5. mai 2020" with no start,
-        // which is what a null start has always rendered — an end standing alone. It is NOT the year
-        // 1 and it is NOT a start date, and only a test says which. (Fhi.Metadata-se0by)
+        // The other end, and the one worth writing down: the default start is read as no date and
+        // written "?", the same as a null start. It is NOT the year 1, and an end left standing
+        // alone would read as a start. (Fhi.Metadata-se0by, Fhi.Metadata-msax9)
         var kilde = Kilde() with
         {
             ValidFrom = DateTimeOffset.MinValue,
             ValidTo = new DateTimeOffset(2020, 5, 5, 0, 0, 0, TimeSpan.Zero),
         };
 
-        Assert.Equal("5. mai 2020", Value(SourceInformation(Render(kilde)), "Gyldighet"));
+        Assert.Equal("? – 5. mai 2020", Value(SourceInformation(Render(kilde)), "Gyldighet"));
     }
 
     [Fact]
@@ -2110,20 +2110,18 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Period_WhenOnlyTheEndIsKnown_ThenTheDateStandsAloneRatherThanBesideABlankHalf()
+    public void Period_WhenOnlyTheEndIsKnown_ThenTheStartIsAQuestionMarkRatherThanTheEndAlone()
     {
-        // The third shape, and the one with no good answer: an en-dash with nothing before it reads
-        // as a value that failed to draw, and a start date the catalogue never gave would be an
-        // invention. So the end stands alone — which does read as a start, and is pinned here
-        // because it is a decision rather than an accident. VariableView's own copy of Period does
-        // the same, so changing it is a change to both.
+        // The third shape: an en-dash with nothing before it reads as a value that failed to draw,
+        // and an end standing alone reads as a start. "?" says the catalogue never gave one, which
+        // is the reading every surface now shares (Fhi.Metadata-msax9).
         var kilde = Kilde() with
         {
             ValidFrom = null,
             ValidTo = new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero),
         };
 
-        Assert.Equal("31. desember 2024", Value(SourceInformation(Render(kilde)), "Gyldighet"));
+        Assert.Equal("? – 31. desember 2024", Value(SourceInformation(Render(kilde)), "Gyldighet"));
     }
 
     // ---------------------------------------------------------------------------------

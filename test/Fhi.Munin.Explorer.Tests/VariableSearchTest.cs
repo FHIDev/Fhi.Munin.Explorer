@@ -13932,8 +13932,8 @@ public class VariableSearchTest : ExplorerTestContext
     public void Detail_WhenAMembershipPeriodIsMissingOrDefault_ThenItReadsAsEveryOtherViewWritesIt()
     {
         // Through CatalogueDate.Period rather than the panel's dataperiode wording: a default at
-        // either end is no date rather than the year 1, and an end with no start stands alone —
-        // an en-dash with nothing before it reads as a value that failed to draw.
+        // either end is no date rather than the year 1, and an unknown start is written "?" — an
+        // end standing alone would read as a start (Fhi.Metadata-msax9).
         var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
             .Knows(Detail(TaleId) with
             {
@@ -13956,13 +13956,12 @@ public class VariableSearchTest : ExplorerTestContext
         var listed = Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent).ToList();
 
         Assert.DoesNotContain(listed, line => line.Contains("0001", StringComparison.Ordinal));
-        Assert.DoesNotContain(listed, line => line.Contains('?', StringComparison.Ordinal));
 
-        // The end standing alone at both ends of the list, and the open period in between.
-        Assert.DoesNotContain("–", listed[0], StringComparison.Ordinal);
+        // The unknown start at both ends of the list, and the open period in between.
+        Assert.Contains("(? – ", listed[0], StringComparison.Ordinal);
         Assert.Contains("2024", listed[0], StringComparison.Ordinal);
         Assert.EndsWith("Pågående)", listed[1], StringComparison.Ordinal);
-        Assert.DoesNotContain("–", listed[2], StringComparison.Ordinal);
+        Assert.Contains("(? – ", listed[2], StringComparison.Ordinal);
         Assert.Contains("2020", listed[2], StringComparison.Ordinal);
     }
 
