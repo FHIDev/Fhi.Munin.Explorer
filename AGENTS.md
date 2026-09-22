@@ -291,10 +291,11 @@ only stays inside 320px because the label rule carries `overflow-wrap: anywhere`
 (`Fhi.Metadata-7484a`). `check-hostile-host.sh` measures the unfolded panel at 320 as well, and does
 not run in CI.
 
-It runs three of the ten assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
-overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. The
-other seven were **measured there and then excluded**, which is a different claim from "they are
-written for HostileHost" and the only one the numbers support:
+It runs three of the twelve assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
+overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. Seven
+of the nine left out were **measured there and then excluded**, which is a different claim from
+"they are written for HostileHost" and the only one the numbers support; the last two have nothing
+to measure on these pages at all:
 
 - `the tablist clears the header`, `exactly one tab panel has content` and `no page shell class
   inside a tab panel` are scoped to the two `explorer-*` states, which are the composed
@@ -309,8 +310,14 @@ written for HostileHost" and the only one the numbers support:
 - the two `kilder` pins hold at 320, and are left out because what they exist to catch is a Stiler
   rule going missing, which the sample stylesheet can only stand in for. `check-hostile-host.sh`
   measures them against the real one at six widths.
+- `the detail page's main column is the wider part of its body` and `the detail page's two columns
+  share a row` measure a `.munin-explorer-page__body`, the detail views' chassis, which none of the
+  four states driven here opens. That is a statement about the states and not about the pages: both
+  draw one in a detail state — `/` in `variable-whole`, `/kilder` in `kilde-drilldown`, which axe
+  scans above — so adding either state to this run would measure them. They run and find nothing
+  rather than failing, so they were never measured here in the sense the seven above were.
 
-Read the run for exactly what it is: three assertions, two pages, three states, against the sample
+Read the run for exactly what it is: three assertions, two pages, four states, against the sample
 stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
 its own after the six widths. It runs every assertion in every state, except that a state failing
 today leaves out only its failing assertions, through `GEOMETRY_EXCEPT`, with the reason beside
