@@ -412,7 +412,7 @@ public sealed partial class DatasamlingView : ComponentBase
                     new DetailFact(T.FacetKildeType, KildetypeLabel),
                     VariablesFact,
                     ValidityFact,
-                    new DetailFact(T.HeroPersonIdentification, PersonIdentification),
+                    IdentificationFact,
                     CategoryFact,
                 }.OfType<DetailFact>()];
 
@@ -427,6 +427,25 @@ public sealed partial class DatasamlingView : ComponentBase
     private DetailFact ValidityFact => new(T.FieldValidity, Validity);
 
     private IReadOnlyList<DetailFact> CompactFacts => [SourceFact, VariablesFact, ValidityFact];
+
+    private DetailFact IdentificationFact
+    {
+        get
+        {
+            var value = Datasamling?.EffectivePersonIdentificationLevel ?? Datasamling?.PersonIdentificationLevel;
+            var definition = Datasamling?.PropertyMetadata.FirstOrDefault(entry =>
+                entry.Key == CatalogueColumns.PersonIdentification);
+            var word = !string.IsNullOrWhiteSpace(value) && definition is not null
+                && Placement.Placed(CatalogueColumns.PersonIdentification)
+                ? CatalogueProperties.Word(definition, value, Reader)
+                : null;
+
+            // The effective column can be newer than a legacy numeric value left in the property bag.
+            return new DetailFact(T.HeroPersonIdentification,
+                word?.Label ?? (string.IsNullOrWhiteSpace(value) ? null : T.PersonIdentificationLabel(value)),
+                word is { } named ? CatalogueProperties.Foreign(named.Language, Reader) : null);
+        }
+    }
 
     private DetailFact? CategoryFact
     {

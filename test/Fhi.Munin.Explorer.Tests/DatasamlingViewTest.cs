@@ -451,6 +451,28 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Contains(expected, cut.Find(".munin-explorer-page__body").TextContent);
     }
 
+    [Theory]
+    [InlineData("nb", "Avidentifiserte data")]
+    [InlineData("en", "De-identified data")]
+    public void HeroFacts_WhenThePropertyBagHasAStaleIdentificationCode_ThenTheEffectiveValueIsTranslated(
+        string language, string expected)
+    {
+        var data = Placed();
+        var cut = Render(data with
+        {
+            EffectivePersonIdentificationLevel = "deIdentified",
+            AdditionalProperties = new Dictionary<string, string?>(data.AdditionalProperties)
+            {
+                [CatalogueColumns.PersonIdentification] = "2",
+            },
+            PropertyMetadata = [.. data.PropertyMetadata.Select(entry => entry.Key == CatalogueColumns.PersonIdentification
+                ? entry with { OptionsJson = "[{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"}]" }
+                : entry)],
+        }, language: language);
+
+        Assert.Equal(expected, Value(Hero(cut), language == "en" ? "Personal identification" : "Personidentifikasjon"));
+    }
+
     [Fact]
     public void HeroFacts_WhenTheCatalogueRenamesACategory_ThenBothTheLabelAndValueFollowIt()
     {
