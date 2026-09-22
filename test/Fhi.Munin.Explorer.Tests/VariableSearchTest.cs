@@ -11755,7 +11755,9 @@ public class VariableSearchTest : ExplorerTestContext
         var second = rows[1].QuerySelectorAll("td").Select(td => td.TextContent).ToArray();
 
         Assert.Equal("0: Tap av produktiv tale", second[1]);
-        Assert.Equal("31. mar. 2020", second[3]);
+        // "mars" rather than "mar.": nb-NO abbreviates March to the whole word, so a narrow
+        // date is not always shorter than a full one.
+        Assert.Equal("31. mars 2020", second[3]);
     }
 
     [Theory]
