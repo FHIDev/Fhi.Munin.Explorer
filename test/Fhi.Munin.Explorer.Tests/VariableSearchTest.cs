@@ -1993,25 +1993,16 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Render_Always_ThenTheRowNameCarriesItsFullTextOnHover()
+    public void Render_WhenTheNameIsLong_ThenItCarriesNoTooltip()
     {
         const string name = "Utleveringens ICD10-refusjonskode (beskrivelse) iht. klassifisering i Farmalogg";
         var cut = RenderWith(new FakeClient(OnePage(Variable(name, "V_LMR.KODE"))));
 
-        var text = cut.Find("button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text");
+        var button = cut.Find("button.munin-explorer-dataitem-main__name");
 
-        Assert.Equal(name, text.TextContent);
-        Assert.Equal(name, text.GetAttribute("title"));
-    }
-
-    [Fact]
-    public void Render_WhenTheNameIsEmpty_ThenNoEmptyTooltipIsDrawn()
-    {
-        var cut = RenderWith(new FakeClient(OnePage(Variable("", "V_LMR.KODE"))));
-
-        var text = cut.Find("button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__column__text");
-
-        Assert.False(text.HasAttribute("title"));
+        Assert.Equal(name, button.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent);
+        Assert.Empty(button.QuerySelectorAll("[title]"));
+        Assert.False(button.HasAttribute("title"));
     }
 
     [Fact]

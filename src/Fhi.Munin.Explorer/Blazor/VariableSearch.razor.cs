@@ -1099,8 +1099,7 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(17, "id", RowHeadingId(v));
         // Munin's variable names are Norwegian whatever language the surrounding UI is in.
         builder.AddAttribute(18, "lang", "no");
-        // Stiler clips the name to one line; the data cells get their tooltip from RowCell.
-        builder.AddAttribute(19, "title", string.IsNullOrWhiteSpace(v.PreferredTerm) ? null : v.PreferredTerm);
+        // No title: Stiler wraps the name since 0.1.88, so a tooltip would repeat what is on screen.
         builder.AddContent(20, v.PreferredTerm);
         builder.CloseElement();
 
