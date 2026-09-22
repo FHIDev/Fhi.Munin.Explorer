@@ -5869,13 +5869,17 @@ public class KildeSearchTest : ExplorerTestContext
             Squeezed(r.Declarations).Contains("transform:", StringComparison.OrdinalIgnoreCase),
             $"'{r.Selector}' turns the chevron, and a turned `icon_up.svg` points right."));
 
-        // The pairing the component now emits. `-down` is the collapsed row, and the rule that
-        // says so is the one scoped to [aria-expanded=false]: the unscoped `-down` override beside
-        // it still means "expanded", until step three takes it away. (Fhi.Metadata-l9l2n.84)
+        // One image per direction at rest, plus the blue pair on hover. `-down` is collapsed only
+        // under [aria-expanded=false]; the unscoped override still means "expanded" until step three.
+        // The resting `-up` has no Stiler twin: Stiler's icon set draws it. (Fhi.Metadata-l9l2n.84)
         Assert.Contains(rules, r => r.Selector.Contains("[aria-expanded=false]", StringComparison.Ordinal)
                                     && r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
                                     && !r.Selector.Contains(":hover", StringComparison.Ordinal)
                                     && Squeezed(r.Declarations).Contains("icon_down.svg", StringComparison.Ordinal));
+
+        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-up", StringComparison.Ordinal)
+                                    && !r.Selector.Contains(":hover", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("icon_up.svg", StringComparison.Ordinal));
 
         Assert.Contains(rules, r => r.Selector.Contains(":hover", StringComparison.Ordinal)
                                     && r.Selector.Contains("icon-keyboard-arrow-up", StringComparison.Ordinal)

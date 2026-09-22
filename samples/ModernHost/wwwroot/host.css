@@ -4180,6 +4180,13 @@ table.munin-explorer-data-list tbody th {
   background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
 }
 
+/* Stiler needs no rule for the resting expanded chevron — its own icon set draws
+   `.icon-keyboard-arrow-up`. A sample host has no icon font, so without this one the expanded
+   chevron is blank until the row is hovered. (Fhi.Metadata-l9l2n.84) */
+.munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-up {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
+}
+
 .munin-explorer-kilder > tbody > tr:hover .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-up {
   background-image: url(../img/icons/keyboard-arrow/icon_up--blue.svg);
 }
@@ -4237,6 +4244,12 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-data-list__item__row [aria-expanded=false] .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-down {
   background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
+}
+
+/* Same hole on the Runa row, and the same reason: Stiler's icon set draws the resting
+   `.icon-keyboard-arrow-up` and a sample host has no icon font. (Fhi.Metadata-l9l2n.84) */
+.munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-up {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
 }
 
 .munin-explorer-data-list__item__row:hover .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-up {

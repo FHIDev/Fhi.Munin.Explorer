@@ -6,4 +6,8 @@ category: Notes for hosts
   by one of those overrides and points up. A host supplying its own rules for
   `munin-explorer-kilder__expand-icon` or `munin-explorer-dataitem-main__expand-icon` should key
   them on the class names above rather than on `icon-keyboard-arrow-right`, which the component no
-  longer emits. (Fhi.Metadata-l9l2n.84)
+  longer emits — and, if it draws them from images rather than from Stiler's icon set, owes the
+  expanded chevron a resting rule for `icon-keyboard-arrow-up` as well. Stiler needs none, because
+  its own `.icon-keyboard-arrow-up` draws that glyph and only the deviations from it are scoped to
+  these names; both sample stylesheets, which carry no icon font, now show the extra rule.
+  (Fhi.Metadata-l9l2n.84)
