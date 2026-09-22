@@ -1420,6 +1420,22 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void DataCollections_WhenTheKildeExplorerCanMarkThem_ThenThisViewStillCannot()
+    {
+        // The two views share DatasamlingTable so they cannot report the same kilde differently,
+        // and the marks are the one thing that must not come along: this view has no selection, no
+        // handover and no reader asking for either. What would carry them is the modifier — Stiler
+        // sizes this table's columns by position, so the modifier arriving here would re-anchor
+        // every one of them against a column that is not there. (Fhi.Metadata-75yov)
+        var table = Render(Kilde()).Find("table.munin-explorer-kilde__datasamlinger");
+
+        Assert.Equal("munin-explorer-kilde__datasamlinger", table.GetAttribute("class"));
+        Assert.Empty(table.QuerySelectorAll(".munin-explorer-kilde__datasamling-select"));
+        Assert.Empty(table.QuerySelectorAll("input"));
+        Assert.Equal(4, table.QuerySelectorAll("thead th").Length);
+    }
+
+    [Fact]
     public void DataCollections_WhenTheKildeHasNone_ThenTheHierarchyReportsItsEmptyState()
     {
         var cut = Render(Kilde() with { Datasamlinger = [], Delkilder = [] });

@@ -28,8 +28,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <b>It reads and writes <c>?kilde=</c>, <c>?datasamling=</c>, <c>?sort=</c>,
 /// <c>?sortDir=</c>, and the list's own state — <c>?search=</c>, one repeated key per facet
 /// (<c>?kildetype=</c>, <c>?kategori=</c>, <c>?tilgangsniva=</c>, <c>?databehandler=</c>),
-/// <c>?columns=</c> and <c>?selected=</c> — and nothing else.</b> A host's own parameters are
-/// carried through untouched, and the list state rides on every link this component builds, so a
+/// <c>?columns=</c>, <c>?selected=</c> and <c>?selectedDatasamling=</c> — and nothing else.</b> A
+/// host's own parameters are carried through untouched, and the list state rides on every link this component builds, so a
 /// round trip away from the list and back finds it as it was left (Fhi.Metadata-nvf2w). <c>?sort=</c> is
 /// omitted while the list is in the order the catalogue sent it, so a link made before this
 /// component could sort still opens the same page, and <c>?sortDir=</c> is omitted with it and
@@ -119,6 +119,22 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// <remarks>An id that does not parse is dropped on read.</remarks>
     public const string TickedQueryKey = "selected";
 
+    /// <summary>The marks key: one <c>&lt;kildeId&gt;:&lt;datasamlingId&gt;</c> per marked
+    /// datasamling, repeated.</summary>
+    /// <remarks>
+    /// Beside <see cref="TickedQueryKey"/> rather than folded into it: the two selections are
+    /// independent, and a reader can hold both at once. The kilde half is the top-level row that
+    /// owns the panel the mark was made in — also for a datasamling under a delkilde — so the list
+    /// can open that row and count its marks without fetching anything first. A value that is not
+    /// a pair of ids is dropped on read.
+    /// <para>
+    /// The address is the whole of the session: nothing is kept in <c>sessionStorage</c> or
+    /// <c>localStorage</c>, so a bare address opens an unmarked list and the marks last exactly as
+    /// long as the link that carries them. (Fhi.Metadata-75yov)
+    /// </para>
+    /// </remarks>
+    public const string MarkedQueryKey = "selectedDatasamling";
+
     /// <summary>The longest search or facet value a link may carry: the search field's own <c>maxlength</c>.</summary>
     private const int MaxSearchLength = 200;
 
@@ -194,6 +210,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     private IReadOnlyList<Guid>? _ticked;
 
+    private IReadOnlyList<string>? _marked;
+
     private IReadOnlyList<string>? _columns;
 
     private UrlMirror _mirror = default!;
@@ -232,13 +250,24 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             ? default
             : EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, ExploreVariables);
 
+    /// <summary>The marks' own way over, wired on the same one path <see cref="Handover"/> is.</summary>
+    /// <remarks>
+    /// A second callback rather than a widened first one: <c>ExploreVariablesRequested</c> is a
+    /// published parameter carrying kilde ids, and changing its payload would break every host
+    /// composing <see cref="KildeSearch"/> itself.
+    /// </remarks>
+    private EventCallback<IReadOnlyList<Guid>> DatasamlingHandover =>
+        string.IsNullOrWhiteSpace(VariableExplorerPath)
+            ? default
+            : EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, ExploreDatasamlinger);
+
     protected override void OnInitialized()
     {
         InteractiveMount.Require(RendererInfo.IsInteractive, nameof(KildeExplorer));
 
         _mirror = new UrlMirror(Navigation, JS, Owns);
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = Read(_mirror);
-        (_search, _facets, _ticked, _columns) = ReadList(_mirror);
+        (_search, _facets, _ticked, _marked, _columns) = ReadList(_mirror);
 
         Navigation.LocationChanged += Moved;
     }
@@ -293,12 +322,19 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         IReadOnlyList<Guid> ticked =
             [.. mirror.Values(TickedQueryKey).Select(value => Guid.TryParse(value, out var id) ? id : (Guid?)null).OfType<Guid>().Distinct()];
 
+        IReadOnlyList<string> marked =
+            [.. mirror.Values(MarkedQueryKey)
+                      .Select(KildeSearch.ParseMark)
+                      .OfType<(Guid Kilde, Guid Datasamling)>()
+                      .Distinct()
+                      .Select(mark => KildeSearch.MarkValue(mark.Kilde, mark.Datasamling))];
+
         var named = mirror.Values(ColumnsQueryKey);
         IReadOnlyList<string>? columns = named.Count == 0
             ? null
             : [.. KildeSearch.ColumnKeys.Where(key => named.Contains(key, StringComparer.OrdinalIgnoreCase))];
 
-        return new(search, facets, ticked, Defaulted(columns));
+        return new(search, facets, ticked, marked, Defaulted(columns));
     }
 
     /// <summary>Null for the default column set, however it was spelled, so it is never written.</summary>
@@ -312,6 +348,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         string? Search,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? Facets,
         IReadOnlyList<Guid>? Ticked,
+        IReadOnlyList<string>? Marked,
         IReadOnlyList<string>? Columns)
     {
         /// <summary>These keys as a query string, omitting what is at its default.</summary>
@@ -338,6 +375,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             }
 
             pairs.AddRange((Ticked ?? []).Select(id => Pair(TickedQueryKey, id.ToString())));
+            pairs.AddRange((Marked ?? []).Select(mark => Pair(MarkedQueryKey, mark)));
 
             return string.Join("&", pairs);
         }
@@ -345,7 +383,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         private static string Pair(string key, string value) => key + "=" + Uri.EscapeDataString(value);
     }
 
-    private ListState List => new(_search, _facets, _ticked, _columns);
+    private ListState List => new(_search, _facets, _ticked, _marked, _columns);
 
     /// <summary>
     /// Read the address again when something moved the page under a standing circuit, and draw
@@ -404,7 +442,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         }
 
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = arrived;
-        (_search, _facets, _ticked, _columns) = list;
+        (_search, _facets, _ticked, _marked, _columns) = list;
         _arrival++;
 
         StateHasChanged();
@@ -420,6 +458,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         || string.Equals(key, SearchQueryKey, StringComparison.OrdinalIgnoreCase)
         || string.Equals(key, ColumnsQueryKey, StringComparison.OrdinalIgnoreCase)
         || string.Equals(key, TickedQueryKey, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(key, MarkedQueryKey, StringComparison.OrdinalIgnoreCase)
         || KildeSearch.FacetKeys.Contains(key, StringComparer.OrdinalIgnoreCase);
 
     protected override Task OnAfterRenderAsync(bool firstRender) =>
@@ -546,6 +585,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private void ExploreVariables(IReadOnlyList<Guid> kildeIds) =>
         Navigation.NavigateTo(VariableExplorerAddress(VariableExplorerPath ?? "",
                               new VariableFilter { KildeIds = kildeIds }), forceLoad: true);
+
+    /// <summary>The same journey for a selection holding marks, which travels as collections.</summary>
+    /// <remarks>
+    /// <c>DatasamlingIds</c> alone and never beside <c>KildeIds</c>: the API ANDs the two, so a
+    /// query carrying both would drop every variable pinned into another kilde's datasamling —
+    /// which is exactly what a reader marking across kilder is asking for.
+    /// </remarks>
+    private void ExploreDatasamlinger(IReadOnlyList<Guid> datasamlingIds) =>
+        Navigation.NavigateTo(VariableExplorerAddress(VariableExplorerPath ?? "",
+                              new VariableFilter { DatasamlingIds = datasamlingIds }), forceLoad: true);
 
     /// <summary>The variable explorer's address, narrowed to <paramref name="filter"/>.</summary>
     /// <remarks>
