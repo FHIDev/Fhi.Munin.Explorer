@@ -54,9 +54,10 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
 
     /// <summary>What every surface has to write, or null where the catalogue gave neither end.</summary>
     /// <remarks>
-    /// The join is written out here rather than read back off <see cref="CatalogueDate.Period"/>,
-    /// which is the decision under test; only the day's format is borrowed, so an ICU release that
-    /// renames a month still moves all four surfaces together rather than reddening them.
+    /// The join and the "?" are written out here rather than read back off
+    /// <see cref="CatalogueDate.Period"/>, because they are the decision under test. The day's
+    /// format and the vocabulary are borrowed, so neither an ICU release that renames a month nor
+    /// a reworded <see cref="Texts.Ongoing"/> reddens this rather than moving all four together.
     /// </remarks>
     private static string? Expected(string? from, string? to, string? language)
     {
@@ -68,22 +69,23 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
         var start = Known(from) is { } f ? CatalogueDate.Day(f, language, DateWidth.Narrow) : "?";
         var end = Known(to) is { } t
             ? CatalogueDate.Day(t, language, DateWidth.Narrow)
-            : language == "en" ? "Ongoing" : "Pågående";
+            : Texts.For(language).Ongoing;
 
         return $"{start} – {end}";
     }
-
-    private static string NotSpecified(string? language) =>
-        language == "en" ? "Not specified" : "Ikke oppgitt";
 
     /// <summary>The markup a reader is shown, with the ids and the wiring between them taken out.</summary>
     /// <remarks>
     /// Every component here stamps its ids with eight random hex digits, which spell "0001" about
     /// once in thirteen thousand renders — a flake in the one assertion below that reads the whole
-    /// page rather than one cell of it. No date is ever written into any of these attributes.
+    /// page rather than one cell of it. Only the attributes that carry one of those ids: an
+    /// <c>aria-label</c> is a place a date can legitimately go, so it stays in what is swept.
     /// </remarks>
     private static string Shown(string markup) =>
-        Regex.Replace(markup, "\\s(id|for|name|href|aria-[a-z]+)=\"[^\"]*\"", " ");
+        Regex.Replace(
+            markup,
+            "\\s(id|for|name|href|aria-(labelledby|describedby|controls|owns|details))=\"[^\"]*\"",
+            " ");
 
     private static VariableSummary Row(string? from, string? to) => new()
     {
@@ -210,9 +212,9 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
                           .QuerySelector("dd")!;
         var blocks = page.FindAll($"#{DetailSectionIds.DataPeriod} p");
 
-        Assert.Equal(expected ?? NotSpecified(language), cell.TextContent.Trim());
-        Assert.Equal(expected ?? NotSpecified(language), saved.TextContent.Trim());
-        Assert.Equal(expected ?? NotSpecified(language), panel.TextContent.Trim());
+        Assert.Equal(expected ?? Texts.For(language).NotSpecified, cell.TextContent.Trim());
+        Assert.Equal(expected ?? Texts.For(language).NotSpecified, saved.TextContent.Trim());
+        Assert.Equal(expected ?? Texts.For(language).NotSpecified, panel.TextContent.Trim());
 
         if (expected is null)
         {
@@ -226,7 +228,7 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
         }
 
         // The bar is the panel's illustration of the same two dates, and it is not drawn without
-        // them. Its track says which end is open, which is the one thing the words do not.
+        // them.
         var bars = search.FindAll(".munin-explorer-period__range");
 
         if (expected is null)
@@ -236,9 +238,26 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
         else
         {
             Assert.Equal(expected, bars[0].TextContent.Trim());
+        }
+
+        // The track is the half of the illustration the words do not carry, and it is drawn only
+        // where the share it draws can be measured: no start, no lifetime, no bar.
+        var tracks = search.FindAll(".munin-explorer-period__track");
+
+        if (Known(from) is null)
+        {
+            Assert.Empty(tracks);
+            Assert.Empty(search.FindAll(".munin-explorer-period__fill"));
+        }
+        else
+        {
+            // A full fill means an open end and nothing else — the same fact as the modifier
+            // class, said by the one attribute a reader actually sees.
             Assert.Equal(Known(to) is null,
-                         search.Find(".munin-explorer-period__track")
-                               .ClassList.Contains("munin-explorer-period__track--ongoing"));
+                         tracks[0].ClassList.Contains("munin-explorer-period__track--ongoing"));
+            Assert.Equal(Known(to) is null,
+                         search.Find(".munin-explorer-period__fill")
+                               .GetAttribute("style") == "width:100%");
         }
 
         // The year 1 is not a date the catalogue gave, so no surface may print one — in a cell, in

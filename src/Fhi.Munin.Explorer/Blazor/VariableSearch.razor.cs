@@ -1332,11 +1332,16 @@ public sealed partial class VariableSearch : ComponentBase
     /// The data period, drawn as Runa draws it: the two dates, and a bar beneath them.
     /// </summary>
     /// <remarks>
+    /// Drawn at all only where <see cref="PeriodText"/> has words for the two dates, so what counts
+    /// as no period is <see cref="CatalogueDate.Period"/>'s answer here as on every other surface.
+    /// <para>
     /// The bar's width is the share of the variable's own lifetime that its data covers —
     /// <c>(to - from) / (now - from)</c> — so a register that stopped collecting years ago reads as
     /// visibly short, and one still collecting fills the bar. That is Runa's rule, not an
     /// invention: a period with no end is drawn full and in a different colour rather than as an
-    /// unknown, because "no end date" means still running.
+    /// unknown, because "no end date" means still running. An unknown START is not the same thing:
+    /// there is no lifetime to take a share of, so the words stand alone and no track is drawn.
+    /// </para>
     /// <para>
     /// Floored at 5% so a period of days is still a mark rather than nothing at all, and capped at
     /// 100% because a <c>to</c> in the future would otherwise overflow the track.
@@ -1355,8 +1360,6 @@ public sealed partial class VariableSearch : ComponentBase
             return;
         }
 
-        var ongoing = CatalogueDate.Written(to) is null;
-
         builder.OpenElement(1, "div");
         builder.AddAttribute(2, "class", "munin-explorer-period");
 
@@ -1365,28 +1368,40 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddContent(5, range);
         builder.CloseElement();
 
-        builder.OpenElement(8, "div");
-        builder.AddAttribute(9, "class",
-            ongoing
-                ? "munin-explorer-period__track munin-explorer-period__track--ongoing"
-                : "munin-explorer-period__track");
-        // Decorative: the dates above say the same thing, and a bar a screen reader announces as
-        // "94 percent" would describe a proportion nobody asked about.
-        builder.AddAttribute(10, "aria-hidden", "true");
+        // A full track beside "?" would illustrate coverage nobody measured, and it would be the
+        // track a fully covered period gets: without a start there is no share, so there is no bar.
+        if (CatalogueDate.Written(from) is { } start)
+        {
+            var ongoing = CatalogueDate.Written(to) is null;
 
-        builder.OpenElement(11, "div");
-        builder.AddAttribute(12, "class", "munin-explorer-period__fill");
-        builder.AddAttribute(13, "style", $"width:{PeriodShare(from, to)}%");
-        builder.CloseElement();
+            builder.OpenElement(8, "div");
+            builder.AddAttribute(9, "class",
+                ongoing
+                    ? "munin-explorer-period__track munin-explorer-period__track--ongoing"
+                    : "munin-explorer-period__track");
+            // Decorative: the dates above say the same thing, and a bar a screen reader announces
+            // as "94 percent" would describe a proportion nobody asked about.
+            builder.AddAttribute(10, "aria-hidden", "true");
 
-        builder.CloseElement();
+            builder.OpenElement(11, "div");
+            builder.AddAttribute(12, "class", "munin-explorer-period__fill");
+            builder.AddAttribute(13, "style", $"width:{PeriodShare(start, to)}%");
+            builder.CloseElement();
+
+            builder.CloseElement();
+        }
+
         builder.CloseElement();
     };
 
     /// <summary>The share of the variable's lifetime its data covers, as a whole percent.</summary>
-    private static int PeriodShare(DateTimeOffset? from, DateTimeOffset? to)
+    /// <remarks>
+    /// The start is a date rather than a maybe because <see cref="PeriodBar"/> draws no track
+    /// without one: 100 here means an open end, which is Runa's rule, and never an unknown start.
+    /// </remarks>
+    private static int PeriodShare(DateTimeOffset start, DateTimeOffset? to)
     {
-        if (CatalogueDate.Written(from) is not { } start || CatalogueDate.Written(to) is not { } end)
+        if (CatalogueDate.Written(to) is not { } end)
         {
             return 100;
         }

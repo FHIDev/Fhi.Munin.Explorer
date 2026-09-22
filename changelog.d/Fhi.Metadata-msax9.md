@@ -7,6 +7,8 @@ category: Changed
   which writes the "?" — an explicit question mark says the catalogue gave no start, where an end
   standing alone reads as a start and a bare dash reads as a value that failed to draw. The same
   reading now applies to every other field drawn through that helper: a kilde's and a datasamling's
-  validity, a kilde's dataperiode, and a datasamling membership in the open panel. A period with
-  neither end still says "Ikke oppgitt", and an open end still says "Pågående", whichever way the
-  payload carries the absence. (Fhi.Metadata-msax9)
+  validity, a kilde's dataperiode, and a datasamling membership in the open panel. The panel's
+  coverage bar follows the words: the track beneath them is drawn only where the start is known,
+  since a full track beside "?" illustrates a coverage nobody measured, and a full one still means
+  an open end. A period with neither end still says "Ikke oppgitt", and an open end still
+  says "Pågående", whichever way the payload carries the absence. (Fhi.Metadata-msax9)
