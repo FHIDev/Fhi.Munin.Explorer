@@ -509,11 +509,14 @@ internal sealed record Texts(
     // The box that narrows a long facet's own values, and the sentence for when it narrows them to
     // none. The label takes the facet's heading because several boxes can be on screen at once, and
     // controls all announcing "Søk i verdiene" are controls a screen reader cannot tell apart.
-    // Which facets get one is each panel's own answer, not this record's — KildeSearch.Filters.cs
-    // for the kildeutforsker, and the kilde facet alone in VariableSearch.FilterPanel.cs.
+    // Which facets get one is each panel's own answer — KildeSearch.Filters.cs for the
+    // kildeutforsker, and VariableSearch.FilterPanel.cs's kilde facet, which words its own box.
     Func<string, string> FacetSearchLabel,
     string FacetSearchPlaceholder,
     string FacetSearchNoMatch,
+    // That kilde facet's own placeholder, because its box searches the whole tree below a kilde,
+    // datasamlinger included, and nothing else said so. (Fhi.Metadata-35w0p.38)
+    string FacetSearchPlaceholderKilder,
     // The control that reveals the values a long facet's cap is holding back, and what it says once
     // it has. The number is the remainder the panel computes per render, never one written here.
     Func<int, string> ShowMoreFacetValues,
@@ -1230,6 +1233,7 @@ internal sealed record Texts(
         FacetSearchLabel: heading => $"Søk i {heading}",
         FacetSearchPlaceholder: "Søk i verdiene",
         FacetSearchNoMatch: "Ingen verdier passer søket",
+        FacetSearchPlaceholderKilder: "Søk etter kilde eller datasamling",
         ShowMoreFacetValues: hidden => $"Vis {hidden} til",
         ShowFewerFacetValues: "Vis færre",
         FacetChosen: chosen => $"{chosen} valgt",
@@ -1615,6 +1619,7 @@ internal sealed record Texts(
         FacetSearchLabel: heading => $"Search in {heading}",
         FacetSearchPlaceholder: "Search the values",
         FacetSearchNoMatch: "No values match the search",
+        FacetSearchPlaceholderKilder: "Search for a source or data collection",
         ShowMoreFacetValues: hidden => $"Show {hidden} more",
         ShowFewerFacetValues: "Show fewer",
         FacetChosen: chosen => $"{chosen} selected",

@@ -5161,6 +5161,17 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void FacetSearch_Always_ThenItKeepsTheSharedValuesWording()
+    {
+        // The variable explorer's kilde box says it finds a datasamling, because its search walks
+        // the tree below a kilde. These match their own facet's values and nothing else, so one
+        // placeholder shared with that box would promise what they do not do. (Fhi.Metadata-35w0p.38)
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Assert.Equal("Søk i verdiene", FacetSearch(cut, "Databehandler")!.GetAttribute("placeholder"));
+    }
+
+    [Fact]
     public void FacetSearch_WhenTwoFacetsBothHaveABox_ThenTypingInOneLeavesTheOtherAlone()
     {
         // One field per facet, not one for the panel. Two boxes sharing a state would narrow both
