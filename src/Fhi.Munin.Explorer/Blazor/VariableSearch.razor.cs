@@ -292,6 +292,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// </remarks>
     [Parameter] public string Language { get; set; } = "no";
 
+    /// <summary>An address for this search narrowed to a collection. Null uses the filtering callback.</summary>
+    /// <remarks>Supply from a fully interactive parent. Preserve the search's other facets in the address.</remarks>
+    [Parameter] public Func<Guid, string>? DatasamlingVariablesHref { get; set; }
+
     /// <summary>
     /// The reader's own variable lists, drawn behind a second tab beside the results.
     /// </summary>

@@ -27,6 +27,83 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class DatasamlingViewTest : ExplorerTestContext
 {
+    [Theory]
+    [InlineData("nb", "Vis 1 variabel")]
+    [InlineData("en", "View 1 variable")]
+    public void Variables_WhenThereIsOneVariable_ThenTheLinkUsesSingularWording(string language, string text)
+    {
+        var cut = Render<DatasamlingView>(b => b
+            .Add(c => c.Datasamling, Placed() with { VariableCount = 1 })
+            .Add(c => c.Language, language)
+            .Add(c => c.VariablesHref, "/variables"));
+
+        Assert.Equal(text, cut.Find("#section-variabler a").TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task Variables_WhenTheHostSignalsNavigation_ThenTheFrameworkReceivesTheSignal()
+    {
+        var signal = new NavigationException("/variables");
+        var cut = Render<DatasamlingView>(b => b.Add(c => c.Datasamling, Placed())
+            .Add(c => c.ShowVariables, () => Task.FromException(signal)));
+
+        var thrown = await Assert.ThrowsAsync<NavigationException>(() =>
+            cut.Find("#section-variabler button").ClickAsync(new()));
+
+        Assert.Same(signal, thrown);
+    }
+
+    [Theory]
+    [InlineData("nb", "Vis alle 99 variabler")]
+    [InlineData("en", "View all 99 variables")]
+    public void Variables_WhenTheHostSuppliesATarget_ThenThePlacedSectionLinksWithoutATable(
+        string language, string text)
+    {
+        var cut = Render<DatasamlingView>(b => b
+            .Add(c => c.Datasamling, Placed())
+            .Add(c => c.Language, language)
+            .Add(c => c.VariablesHref, "/variables?datasamlingIds=collection"));
+
+        var section = cut.Find("#section-variabler");
+        Assert.Equal(text, Assert.Single(section.QuerySelectorAll("a")).TextContent.Trim());
+        Assert.Equal("/variables?datasamlingIds=collection", section.QuerySelector("a")!.GetAttribute("href"));
+        Assert.Empty(section.QuerySelectorAll("table"));
+        Assert.Contains("99", section.TextContent);
+        Assert.Empty(cut.FindAll("#" + DetailSectionIds.Statistics));
+    }
+
+    [Fact]
+    public void Variables_WhenOnlyTheCountIsKnown_ThenTheDeclaredSectionStillContainsTheLink()
+    {
+        var cut = Render<DatasamlingView>(b => b
+            .Add(c => c.Datasamling, Placed() with { StatisticsType = null, Frequency = null, CountingUnit = null })
+            .Add(c => c.VariablesHref, "/variables"));
+
+        Assert.Contains("Vis alle 99 variabler", cut.Find("#section-variabler").TextContent);
+        Assert.Empty(cut.FindAll("#" + DetailSectionIds.Statistics));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void Variables_WhenTheHostSuppliesNoTarget_ThenTheCountHasNoDeadLink(string? href)
+    {
+        var cut = Render<DatasamlingView>(b => b.Add(c => c.Datasamling, Placed())
+            .Add(c => c.VariablesHref, href));
+
+        Assert.Empty(cut.Find("#section-variabler").QuerySelectorAll("a, button"));
+    }
+
+    [Fact]
+    public void Variables_WhenTheCollectionHasNoVariables_ThenNoViewAllLinkIsPromised()
+    {
+        var cut = Render<DatasamlingView>(b => b.Add(c => c.Datasamling, Placed() with { VariableCount = 0 })
+            .Add(c => c.VariablesHref, "/variables"));
+
+        Assert.Empty(cut.Find("#section-variabler").QuerySelectorAll("a, button"));
+    }
+
     /// <summary>
     /// The live payload, captured: six curated keys, two of the four groups filled in, every
     /// inherited field null on the datasamling itself and set on its <c>Effective…</c> twin.

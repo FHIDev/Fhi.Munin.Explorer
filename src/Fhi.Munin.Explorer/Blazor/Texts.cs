@@ -563,6 +563,7 @@ internal sealed record Texts(
     // heads a column of numbers in the kilde list and is named for it, so a column that becomes
     // "Antall variabler" must not rename a section heading on its way past.
     string HeadingVariables,
+    Func<int, string> AllVariablesInDatasamling,
     string HeadingAccessCriteria,
     string HeadingPrices,
     // The bodies of the two static blocks. Munin's Kelda writes them as markdown with links out to
@@ -1272,6 +1273,7 @@ internal sealed record Texts(
             ["other"] = "Annet"
         },
         HeadingVariables: "Variabler",
+        AllVariablesInDatasamling: count => count == 1 ? "Vis 1 variabel" : $"Vis alle {count} variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
         HeadingPrices: "Priser",
         BodyAccessCriteria: "Kriteriene for tilgang til data fra denne kilden, og hvordan du søker, "
@@ -1658,6 +1660,7 @@ internal sealed record Texts(
             ["other"] = "Other"
         },
         HeadingVariables: "Variables",
+        AllVariablesInDatasamling: count => count == 1 ? "View 1 variable" : $"View all {count} variables",
         HeadingAccessCriteria: "Criteria for access to data",
         HeadingPrices: "Prices",
         BodyAccessCriteria: "The criteria for access to data from this source, and how to apply for it, "

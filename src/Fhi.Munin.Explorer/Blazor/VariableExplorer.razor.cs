@@ -152,6 +152,16 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     // link naming the view before last would take the reader off this page.
     private string PageAddress => _mirror.Address(Linkable(_state.ToState()).ToQueryString());
 
+    private Func<Guid, string>? _collectionVariablesAddress;
+
+    private Func<Guid, string> DatasamlingVariablesHref => _collectionVariablesAddress ??= id =>
+        _mirror.Address(Linkable(_state.ToState() with
+        {
+            Filter = _state.Filter with { DatasamlingIds = [id] },
+            Page = 1,
+            SelectedVariableId = null,
+        }).ToQueryString());
+
     private bool Owns(string key) =>
         ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key);
 

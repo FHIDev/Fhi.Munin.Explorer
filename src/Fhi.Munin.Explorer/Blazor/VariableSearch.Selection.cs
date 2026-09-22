@@ -327,7 +327,7 @@ public partial class VariableSearch
     /// <para>
     /// Closed before the filter is applied, not after: the drill-in renders <em>instead of</em>
     /// the list, so applying first would fetch rows behind a view that is still covering them.
-    /// <see cref="ClearSource"/> rather than <see cref="CloseSourceAsync"/>, so that pressing this
+    /// <see cref="ClearSelection"/> rather than <see cref="CloseSourceAsync"/>, so that pressing this
     /// while the owner is still loading disowns that fetch instead of leaving it to land into a
     /// panel that has gone.
     /// </para>
@@ -343,9 +343,17 @@ public partial class VariableSearch
             ? _filter with { KildeIds = [id] }
             : _filter with { DatasamlingIds = [id] };
 
-        ClearSource();
+        ClearSelection();
+        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
 
-        await ApplyFilterAsync(narrowed);
+        if (narrowed == _filter)
+        {
+            await GoToPageAsync(1);
+        }
+        else
+        {
+            await ApplyFilterAsync(narrowed);
+        }
     }
 
     /// <summary>

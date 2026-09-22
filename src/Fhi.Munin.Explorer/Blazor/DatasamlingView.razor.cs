@@ -1,5 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -28,6 +30,27 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </remarks>
 public sealed partial class DatasamlingView : ComponentBase
 {
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+
+    private ILogger? _log;
+    private ILogger? Log => _log ??= ExplorerLog.For<DatasamlingView>(Services);
+
+    private async Task ShowVariablesAsync()
+    {
+        try
+        {
+            await ShowVariables.InvokeAsync();
+        }
+        catch (NavigationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Log?.LogError(ex, "a host callback threw");
+        }
+    }
+
     /// <summary>The datasamling to show. Nothing renders until this is set.</summary>
     [Parameter, EditorRequired]
     public DatasamlingDetail? Datasamling { get; set; }
@@ -79,6 +102,15 @@ public sealed partial class DatasamlingView : ComponentBase
     /// </remarks>
     [Parameter]
     public Func<Guid, string>? KildeHref { get; set; }
+
+    /// <summary>The host's variable explorer filtered to this collection. Null omits the link.</summary>
+    [Parameter]
+    public string? VariablesHref { get; set; }
+
+    /// <summary>Fallback when the containing interactive search owns filtering instead of an address.</summary>
+    /// <remarks>Requires a fully interactive parent; ignored when VariablesHref is supplied.</remarks>
+    [Parameter]
+    public EventCallback ShowVariables { get; set; }
 
     private Texts T => Texts.For(Language);
 
@@ -475,9 +507,10 @@ public sealed partial class DatasamlingView : ComponentBase
                                   CatalogueColumns.DataProcessor, CatalogueColumns.PersonIdentification)
             : null;
 
+        var variablesSection = datasamling.Sections.FirstOrDefault(section => section.Key == "variabler");
         var statistics = AnyStatistics
-            ? placement.SectionOf(CatalogueColumns.StatisticsType, CatalogueColumns.Frequency,
-                                  CatalogueColumns.CountingUnit)
+            ? variablesSection?.Key ?? placement.SectionOf(CatalogueColumns.StatisticsType,
+                                                           CatalogueColumns.Frequency, CatalogueColumns.CountingUnit)
             : null;
 
         List<DetailLayoutSection> groups = [];
@@ -503,11 +536,24 @@ public sealed partial class DatasamlingView : ComponentBase
 
             var body = DetailBlocks.GroupBody(group, Language, CompleteRecordFacts);
 
+            var content = facts.Count == 0
+                ? body
+                : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language));
+
             groups.Add(new(group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
                            CatalogueProperties.Foreign(group.NameLanguage, Reader),
-                           facts.Count == 0
-                               ? body
-                               : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language))));
+                           group.Key == statistics ? DetailBlocks.Both(content, VariablesNavigation) : content));
+        }
+
+        // The count has no property definition: an empty statistics bag must not hide its link.
+        if (!statisticsDrawn && AnyStatistics && variablesSection is not null)
+        {
+            var (heading, language) = CatalogueProperties.Localised(variablesSection.Translations, Reader);
+            groups.Add(new(variablesSection.Key, DetailSectionIds.ReserveGroupId(variablesSection.Key, ids),
+                           string.IsNullOrWhiteSpace(heading) ? T.HeadingVariables : heading,
+                           CatalogueProperties.Foreign(language, Reader),
+                           DetailBlocks.Both(DetailBlocks.Facts(Statistics, Language), VariablesNavigation)));
+            statisticsDrawn = true;
         }
 
         return DetailLayout.Order(datasamling.Sections, groups,
@@ -555,8 +601,9 @@ public sealed partial class DatasamlingView : ComponentBase
 
         if (!statisticsDrawn && AnyStatistics)
         {
-            blocks.Add(new(SectionKeys.Statistics, DetailSectionIds.Statistics, StatisticsHeading, null,
-                           DetailBlocks.Facts(Statistics, Language)));
+            blocks.Add(new(SectionKeys.Statistics, DetailSectionIds.Statistics,
+                           HasVariablesNavigation ? T.HeadingVariables : StatisticsHeading, null,
+                           DetailBlocks.Both(DetailBlocks.Facts(Statistics, Language), VariablesNavigation)));
         }
 
         return blocks;

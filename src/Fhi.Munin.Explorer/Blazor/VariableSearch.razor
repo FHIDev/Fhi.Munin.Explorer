@@ -153,6 +153,8 @@ else if (_sourceKind is not null)
             <DatasamlingView Datasamling="datasamling"
                              Language="@Language"
                              HeadingLevel="@RowLevel"
+                             ShowVariables="ShowSourceVariablesAsync"
+                             VariablesHref="@DatasamlingVariablesHref?.Invoke(datasamling.Id)"
                              HeadingId="@SourceHeadingId" />
         }
     </div>

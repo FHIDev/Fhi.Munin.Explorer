@@ -21,6 +21,50 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class UrlStateComponentTest : ExplorerTestContext
 {
+    [Theory]
+    [InlineData("nb", "/variabler")]
+    [InlineData("en", "/en/variables")]
+    public void CollectionLink_WhenOpenedFromKilder_ThenItUsesTheHostPathAndOnlyTheCurrentCollection(
+        string language, string path)
+    {
+        var kilde = Guid.NewGuid();
+        var collection = Guid.NewGuid();
+        Services.AddSingleton<NavigationManager>(new BasedNavigationManager(
+            "http://localhost/optimizely/", $"http://localhost/optimizely/kilder?kilde={kilde}&datasamling={collection}"));
+        Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient(kilde, collection));
+        Prepare();
+        var cut = Render<KildeExplorer>(b => b.Add(c => c.VariableExplorerPath, path)
+            .Add(c => c.Language, language));
+
+        var view = cut.FindComponent<DatasamlingView>();
+        Assert.Equal($"http://localhost/optimizely{path}?datasamlingIds={collection}", view.Instance.VariablesHref);
+
+        cut.Render(b => b.Add(c => c.VariableExplorerPath, "/moved"));
+        Assert.Equal($"http://localhost/optimizely/moved?datasamlingIds={collection}",
+            cut.FindComponent<DatasamlingView>().Instance.VariablesHref);
+        cut.Render(b => b.Add(c => c.VariableExplorerPath, " "));
+        Assert.Null(cut.FindComponent<DatasamlingView>().Instance.VariablesHref);
+    }
+
+    [Fact]
+    public void CollectionLink_WhenOpenedFromVariables_ThenItPreservesOtherFacetsAndResetsDetailAndPage()
+    {
+        var collection = Guid.NewGuid();
+        var oldCollection = Guid.NewGuid();
+        var variable = Guid.NewGuid();
+        RenderExplorer($"http://localhost/variables?search=test&page=3&variabelId={variable}&datasamlingIds={oldCollection}&dataTypes=1&lang=en", out var cut);
+
+        var href = cut.FindComponent<VariableSearch>().Instance.DatasamlingVariablesHref!(collection);
+        var state = ExplorerUrlState.Parse(new Uri(new Uri("http://localhost"), href).Query);
+
+        Assert.Equal([collection], state.Filter.DatasamlingIds);
+        Assert.Equal(["1"], state.Filter.DataTypes);
+        Assert.Equal("test", state.Search);
+        Assert.Equal(1, state.Page);
+        Assert.Null(state.SelectedVariableId);
+        Assert.Contains("lang=en", href);
+    }
+
     private const string ReplaceState = "history.replaceState";
 
     /// <summary>Cleared by the one test that mounts a component the way a host must not.</summary>
@@ -940,14 +984,17 @@ public class UrlStateComponentTest : ExplorerTestContext
         Assert.StartsWith("Variabler", SortedColumn(cut)!, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void Kilder_WhenNoVariableExplorerPathIsGiven_ThenNoHandoverIsOffered()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public void Kilder_WhenNoVariableExplorerPathIsGiven_ThenNoHandoverIsOffered(string? path)
     {
         // The package cannot know where a host mounted the other explorer, and a selection column
         // leading nowhere is worse than none.
         var id = Guid.NewGuid();
 
-        var cut = RenderKilder(id, "http://localhost/kilder");
+        var cut = RenderKilder(id, "http://localhost/kilder", b => b.Add(c => c.VariableExplorerPath, path));
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder__select"));
     }

@@ -14686,6 +14686,22 @@ public class VariableSearchTest : ExplorerTestContext
             .Single(button => button.TextContent.StartsWith("Vis bare variabler", StringComparison.Ordinal));
 
     [Fact]
+    public void Source_WhenTheCollectionSectionActionIsPressed_ThenItReplacesTheFacetAndClosesDetail()
+    {
+        VariableFilter? reported = null;
+        var cut = RenderWith(TwoRows(), b => b
+            .Add(c => c.Filter, new VariableFilter { DatasamlingIds = [Guid.NewGuid()], DataTypes = ["Integer"] })
+            .Add(c => c.FilterChanged, f => reported = f));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[1].Click();
+        cut.Find(".munin-explorer-datasamling .munin-explorer-page__body button").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.Equal(new VariableFilter { DatasamlingIds = [InklusjonId], DataTypes = ["Integer"] }, reported);
+    }
+
+    [Fact]
     public void Source_WhenTheKildesVariablesAreAskedFor_ThenTheViewClosesAndTheFilterIsSet()
     {
         // The acceptance criterion, and the trap it warns about. A list that merely came back
