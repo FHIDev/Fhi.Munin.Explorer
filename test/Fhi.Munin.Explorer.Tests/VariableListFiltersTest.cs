@@ -2,6 +2,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -80,7 +81,8 @@ public class VariableListFiltersTest : ExplorerTestContext
         /// <summary>Two lists rather than one, which is what puts the picker on screen.</summary>
         public bool TwoLists { get; init; }
 
-        private readonly List<VariableListItem> _second = [Item(Årsaksregisteret, 1)];
+        /// <summary>What the second list holds. One kilde unless a test needs a longer one.</summary>
+        public VariableListItem[] Second { get; init; } = [Item(Årsaksregisteret, 1)];
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
@@ -93,7 +95,7 @@ public class VariableListFiltersTest : ExplorerTestContext
                 {
                     Id = SecondListId,
                     Name = "Hjerte og kar",
-                    VariableCount = _second.Count,
+                    VariableCount = Second.Length,
                 });
             }
 
@@ -144,7 +146,7 @@ public class VariableListFiltersTest : ExplorerTestContext
         private Page<VariableListItem> Answer(
             Guid id, int page, int pageSize, IReadOnlyCollection<Guid>? kildeIds)
         {
-            var all = id == SecondListId ? _second : _items;
+            IReadOnlyList<VariableListItem> all = id == SecondListId ? Second : _items;
 
             var matching = kildeIds is { Count: > 0 }
                 ? all.Where(i => i.KildeId is { } k && kildeIds.Contains(k)).ToList()
@@ -249,6 +251,125 @@ public class VariableListFiltersTest : ExplorerTestContext
         Assert.Equal(
             ["Kreftregisteret (1)", "Reseptregisteret (1)", "Årsaksregisteret (1)"],
             Facets(cut.Filters));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The cap on a long facet. One rule for all three panels — Fhi.Metadata-35w0p.31.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>A list drawing on <paramref name="kilder"/> kilder, one variable from each.</summary>
+    private static VariableListItem[] ManyKilder(int kilder) =>
+    [
+        .. Enumerable.Range(0, kilder).Select(index => new VariableListItem
+        {
+            VariableId = Guid.NewGuid(),
+            AddedAt = DateTimeOffset.UtcNow,
+            VariableName = $"Variabel {index:00}",
+            VariableCode = $"V{index:00}",
+            KildeId = new Guid($"bbbbbbbb-0000-0000-0000-{index:000000000000}"),
+            KildeName = $"Kilde {index:00}",
+        })
+    ];
+
+    /// <summary>The panel's "Vis N til", or null where it is hiding nothing.</summary>
+    /// <remarks>
+    /// Found by the attribute rather than by a class: the control wears Stiler's own ghost square
+    /// and invents no name of ours, and it is the only disclosure this panel draws.
+    /// </remarks>
+    private static AngleSharp.Dom.IElement? RestControl(IRenderedComponent<VariableListFilters> cut) =>
+        cut.FindAll(".munin-explorer-filters button[aria-expanded]").SingleOrDefault();
+
+    /// <summary>
+    /// The activation a native <c>&lt;button&gt;</c> reports for Enter and for Space: a click
+    /// carrying no count, which is the browser saying no pointer produced it.
+    /// </summary>
+    private static void KeyboardPress(AngleSharp.Dom.IElement control) =>
+        control.Click(new MouseEventArgs { Detail = 0 });
+
+    [Fact]
+    public void FacetCap_WhenTheListDrawsOnManyKilder_ThenTheThresholdManyAreDrawnAndTheRestAreOffered()
+    {
+        // The same cap the two explorers apply, so a reader meets one facet behaviour and not a
+        // third here. No pointer gesture: the press below is the click Enter and Space produce.
+        var cut = RenderBoth(new ListClient(ManyKilder(24))).Filters;
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, Facets(cut).Count);
+
+        var control = RestControl(cut)!;
+
+        Assert.Equal("BUTTON", control.TagName);
+        Assert.Equal("button", control.GetAttribute("type"));
+        Assert.Null(control.GetAttribute("tabindex"));
+        Assert.Equal("false", control.GetAttribute("aria-expanded"));
+        Assert.Equal("Vis 14 til Kilde", AccessibleName.Of(control));
+
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal(24, Facets(cut).Count);
+        Assert.Equal("true", RestControl(cut)!.GetAttribute("aria-expanded"));
+        Assert.Equal("Vis færre Kilde", AccessibleName.Of(RestControl(cut)!));
+
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, Facets(cut).Count);
+    }
+
+    [Fact]
+    public void FacetCap_WhenTheListSitsOnTheThreshold_ThenNothingIsHiddenAndNoControlIsDrawn()
+    {
+        var cut = RenderBoth(new ListClient(ManyKilder(FacetLimits.FacetSearchThreshold))).Filters;
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, Facets(cut).Count);
+        Assert.Null(RestControl(cut));
+    }
+
+    [Fact]
+    public void FacetCap_WhenAKildePastTheCapIsTicked_ThenItIsDrawnWithoutPressingTheControl()
+    {
+        // A reader who ticks the twentieth kilde and puts the rest away again must still see their
+        // own choice: the rows beside this panel stay narrowed either way, so a swallowed tick
+        // reads as a filter nobody can find the control for.
+        var cut = RenderBoth(new ListClient(ManyKilder(24))).Filters;
+
+        KeyboardPress(RestControl(cut)!);
+        Boxes(cut)[19].Change(true);
+        KeyboardPress(RestControl(cut)!);
+
+        var drawn = Facets(cut);
+
+        Assert.Contains("Kilde 19 (1)", drawn);
+        Assert.DoesNotContain("Kilde 20 (1)", drawn);
+        Assert.Equal(FacetLimits.FacetSearchThreshold + 1, drawn.Count);
+
+        // And the remainder is one smaller, because the ticked kilde is now above the cap.
+        Assert.Equal("Vis 13 til Kilde", AccessibleName.Of(RestControl(cut)!));
+    }
+
+    [Fact]
+    public void FacetCap_WhenTheReaderSwitchesToALongerList_ThenTheLiftedCapGoesBackOn()
+    {
+        // The cap is lifted over the kilder that were on offer, and the next list is a different
+        // set of them: a flag carried across would draw all 30 of the new list uncapped, which is
+        // the tall panel the cap exists to prevent.
+        var client = new ListClient(ManyKilder(14)) { TwoLists = true, Second = ManyKilder(30) };
+        var cut = RenderBoth(client);
+
+        KeyboardPress(RestControl(cut.Filters)!);
+
+        Assert.Equal(14, Facets(cut.Filters).Count);
+
+        cut.View.Find("select").Change(ListClient.SecondListId.ToString());
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, Facets(cut.Filters).Count);
+        Assert.Equal("Vis 20 til Kilde", AccessibleName.Of(RestControl(cut.Filters)!));
+
+        // And the way back out: the panel is still carrying the length the reader lifted the cap
+        // over, so one press has to reach the whole of the longer list — a control that needs a
+        // second press to do anything reads as a dead button.
+        KeyboardPress(RestControl(cut.Filters)!);
+
+        Assert.Equal(30, Facets(cut.Filters).Count);
+        Assert.Equal("true", RestControl(cut.Filters)!.GetAttribute("aria-expanded"));
     }
 
     [Fact]

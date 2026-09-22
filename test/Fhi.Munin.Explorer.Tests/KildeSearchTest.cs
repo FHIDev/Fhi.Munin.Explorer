@@ -1,4 +1,4 @@
-using System.Reflection;
+using System.Globalization;
 using System.Text.Json;
 using AngleSharp.Dom;
 using Bunit;
@@ -4668,16 +4668,14 @@ public class KildeSearchTest : ExplorerTestContext
     // The search inside a facet.
     // ---------------------------------------------------------------------------------
 
-    /// <summary>The threshold the panel applies, read off the component rather than repeated here.</summary>
+    /// <summary>The threshold the panel applies, read off the package rather than repeated here.</summary>
     /// <remarks>
-    /// Reflected rather than written down as a literal, so the number stays decided in exactly one
+    /// Referenced rather than written down as a literal, so the number stays decided in exactly one
     /// place: a test carrying its own copy keeps passing while the two disagree, which is the whole
-    /// failure "decide it once and apply it uniformly" exists to prevent.
+    /// failure "decide it once and apply it uniformly" exists to prevent. It decides two things
+    /// now — which facets get a search box, and how many values one of them draws at rest.
     /// </remarks>
-    private static int SearchThreshold =>
-        (int)typeof(KildeSearch)
-            .GetField("FacetSearchThreshold", BindingFlags.NonPublic | BindingFlags.Static)!
-            .GetRawConstantValue()!;
+    private static int SearchThreshold => FacetLimits.FacetSearchThreshold;
 
     /// <summary>
     /// The four spellings of one organisation the live catalogue really holds.
@@ -4787,6 +4785,12 @@ public class KildeSearchTest : ExplorerTestContext
         var cut = RenderWith(CatalogueWithOneBigFacet());
 
         Assert.Equal(5, Choices(Facet(cut, "Kildetype")).Count);
+
+        // The long facet is capped at rest, so its size is asked of it with the cap lifted. That is
+        // the second thing the threshold now decides, and the reason this reads it rather than
+        // counting what is drawn.
+        ShowRest(cut, "Databehandler");
+
         Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
 
         // Read against the threshold rather than against 5 and 12, so this test says which side of
@@ -4815,8 +4819,11 @@ public class KildeSearchTest : ExplorerTestContext
     {
         var cut = RenderWith(CatalogueWithProcessors(SearchThreshold + 1));
 
-        Assert.Equal(SearchThreshold + 1, Choices(Facet(cut, "Databehandler")).Count);
         Assert.NotNull(FacetSearch(cut, "Databehandler"));
+
+        ShowRest(cut, "Databehandler");
+
+        Assert.Equal(SearchThreshold + 1, Choices(Facet(cut, "Databehandler")).Count);
     }
 
     [Fact]
@@ -4858,6 +4865,8 @@ public class KildeSearchTest : ExplorerTestContext
         // the catalogue (Fhi.Metadata-4kxfv) and until it happens four spellings are four values
         // with four counts of one.
         var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        ShowRest(cut, "Databehandler");
 
         var choices = Choices(Facet(cut, "Databehandler"));
 
@@ -4922,6 +4931,10 @@ public class KildeSearchTest : ExplorerTestContext
     public void FacetSearch_WhenTheSearchIsCleared_ThenEveryValueComesBack()
     {
         var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        // Past the cap first, so "every value" really is every value rather than the ten the facet
+        // draws at rest.
+        ShowRest(cut, "Databehandler");
 
         var all = Choices(Facet(cut, "Databehandler"));
 
@@ -5016,7 +5029,9 @@ public class KildeSearchTest : ExplorerTestContext
 
         var kategoriBefore = ChoiceValues(Facet(cut, "Kategori"));
 
-        Assert.Equal(12, kategoriBefore.Count);
+        // Capped, because this facet is long — which is the same thing its box says. Counted as the
+        // panel draws it, since what this test is about is the box in the OTHER facet not touching it.
+        Assert.Equal(SearchThreshold, kategoriBefore.Count);
         Assert.NotNull(FacetSearch(cut, "Kategori"));
 
         SearchFacet(cut, "Databehandler", "universitetet");
@@ -5078,7 +5093,8 @@ public class KildeSearchTest : ExplorerTestContext
 
         SearchFacet(cut, "Databehandler", string.Empty);
 
-        Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
+        // Back to what the facet draws at rest, which is the cap rather than all twelve.
+        Assert.Equal(SearchThreshold, Choices(Facet(cut, "Databehandler")).Count);
         Assert.Equal(rescues, JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count);
     }
 
@@ -5108,6 +5124,233 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.False(box.HasAttribute("enterkeyhint"));
         Assert.Null(box.Closest("form"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The cap on a long facet, and the control that lifts it.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>One facet's "Vis N til", or null for a facet the panel is hiding nothing in.</summary>
+    /// <remarks>
+    /// Found by the attribute rather than by a class, because the control wears Stiler's own ghost
+    /// square and invents no name: a <c>&lt;details&gt;</c> discloses through its summary, so the
+    /// one button inside a facet carrying <c>aria-expanded</c> is this and can be nothing else.
+    /// </remarks>
+    private static IElement? RestControl(IRenderedComponent<KildeSearch> cut, string heading) =>
+        Facet(cut, heading).QuerySelector("button[aria-expanded]");
+
+    /// <summary>
+    /// The activation a native <c>&lt;button&gt;</c> reports for Enter and for Space: a click
+    /// carrying no count.
+    /// </summary>
+    /// <remarks>
+    /// <c>detail</c> is how many clicks a pointer gesture was, so nought is the browser saying no
+    /// pointer produced this one — which is how the keyboard and assistive tooling activate a
+    /// button. <c>RowPress</c> reads the same field to tell the two apart.
+    /// </remarks>
+    private static void KeyboardPress(IElement control) =>
+        control.Click(new MouseEventArgs { Detail = 0 });
+
+    /// <summary>Press one facet's "Vis N til", the way a reader on the keyboard does.</summary>
+    private static void ShowRest(IRenderedComponent<KildeSearch> cut, string heading) =>
+        KeyboardPress(RestControl(cut, heading)!);
+
+    /// <summary>What a facet's control says about itself, its own heading included.</summary>
+    private static string RestName(IRenderedComponent<KildeSearch> cut, string heading) =>
+        AccessibleName.Of(RestControl(cut, heading)!);
+
+    [Fact]
+    public void FacetCap_WhenAFacetIsPastTheThreshold_ThenItDrawsTheThresholdManyAndOffersTheRest()
+    {
+        // The defect: nothing capped the list, so databehandler drew all 24 of its values and the
+        // filter panel grew longer than the results it filters. Twenty-four is the size Kelda's
+        // mockup labels, and "Vis 14 til" is the number the mockup's own button carries.
+        var cut = RenderWith(CatalogueWithProcessors(24));
+
+        Assert.Equal(SearchThreshold, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal("Vis 14 til Databehandler", RestName(cut, "Databehandler"));
+
+        ShowRest(cut, "Databehandler");
+
+        Assert.Equal(24, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal("Vis færre Databehandler", RestName(cut, "Databehandler"));
+
+        ShowRest(cut, "Databehandler");
+
+        Assert.Equal(SearchThreshold, Choices(Facet(cut, "Databehandler")).Count);
+    }
+
+    [Fact]
+    public void FacetCap_WhenAFacetSitsOnTheThreshold_ThenNothingIsHiddenAndNoControlIsDrawn()
+    {
+        // The boundary, pinned on the same side as the search box's: the rule is MORE than the
+        // threshold, so a facet sitting exactly on it draws everything and offers nothing.
+        var cut = RenderWith(CatalogueWithProcessors(SearchThreshold));
+
+        Assert.Equal(SearchThreshold, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Null(RestControl(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetCap_WhenUtvidAlleIsPressed_ThenItReachesPastTheCapAndSkjulAllePutsItBack()
+    {
+        // The one control that offers to open everything has to mean it: a cap it stopped at would
+        // leave fourteen values behind a press the reader has just been told they need not make.
+        var cut = RenderWith(CatalogueWithProcessors(24));
+
+        FoldAll(cut, expand: true);
+
+        Assert.Equal(24, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal("true", RestControl(cut, "Databehandler")!.GetAttribute("aria-expanded"));
+
+        FoldAll(cut, expand: false);
+
+        Assert.Equal(SearchThreshold, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal("false", RestControl(cut, "Databehandler")!.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void FacetCap_WhenAValuePastTheCapIsTicked_ThenItIsDrawnWithoutPressingTheControl()
+    {
+        // A reader who ticks the twentieth value, folds the panel away and comes back must find
+        // their own choice rather than a list that swallowed it. Read back with the cap ON — the
+        // control is pressed twice, so the second assertion is about a collapsed facet.
+        var cut = RenderWith(CatalogueWithProcessors(24));
+
+        ShowRest(cut, "Databehandler");
+        Tick(cut, "Databehandler", "Databehandler 19");
+        ShowRest(cut, "Databehandler");
+
+        // Every disclosure rebuilt under a new key, which is what a fold press does — and the caps
+        // lifted and put back with them, which is what Skjul alle does after Utvid alle.
+        FoldAll(cut, true);
+        FoldAll(cut, false);
+
+        var drawn = ChoiceValues(Facet(cut, "Databehandler"));
+
+        Assert.Contains("Databehandler 19", drawn);
+        Assert.DoesNotContain("Databehandler 20", drawn);
+        Assert.Equal(SearchThreshold + 1, drawn.Count);
+        Assert.Equal("false", RestControl(cut, "Databehandler")!.GetAttribute("aria-expanded"));
+
+        // And it is still the filter in force, which is the half a hidden checkbox cannot show.
+        Assert.Equal(["Kilde 19"], RowNames(cut));
+    }
+
+    [Fact]
+    public void FacetCap_WhenASearchTermIsPresent_ThenEveryMatchIsDrawnAndTheControlIsGone()
+    {
+        // The two controls narrow the same list, so one of them has to give way. The search does
+        // not: a term matching the twentieth value has to show it, and a button offering to reveal
+        // more while every match is already on screen would be offering nothing.
+        var cut = RenderWith(CatalogueWithProcessors(24));
+
+        Assert.NotNull(RestControl(cut, "Databehandler"));
+
+        SearchFacet(cut, "Databehandler", "Databehandler 19");
+
+        Assert.Equal(["Databehandler 19"], ChoiceValues(Facet(cut, "Databehandler")));
+        Assert.Null(RestControl(cut, "Databehandler"));
+
+        // A term every value answers draws all 24, well past what the facet draws at rest.
+        SearchFacet(cut, "Databehandler", "databehandler ");
+
+        Assert.Equal(24, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Null(RestControl(cut, "Databehandler"));
+
+        SearchFacet(cut, "Databehandler", string.Empty);
+
+        Assert.Equal(SearchThreshold, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.NotNull(RestControl(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void FacetCap_WhenTheHiddenValuesChange_ThenTheControlCountsThemAgainRatherThanRepeatingItself()
+    {
+        // A stale "Vis 14 til" is worse than no button. The number is what the facet HAS less what
+        // it DRAWS, computed here rather than written down, so a hard-coded remainder fails this
+        // however plausible it looks — and ticking a hidden value pulls it above the cap, which is
+        // exactly the change a cached count would miss.
+        var cut = RenderWith(CatalogueWithProcessors(24));
+
+        Assert.Equal(
+            24 - Choices(Facet(cut, "Databehandler")).Count,
+            Hidden(RestName(cut, "Databehandler")));
+
+        SearchFacet(cut, "Databehandler", "Databehandler 19");
+        Tick(cut, "Databehandler", "Databehandler 19");
+        SearchFacet(cut, "Databehandler", string.Empty);
+
+        var drawn = Choices(Facet(cut, "Databehandler")).Count;
+
+        Assert.Equal(SearchThreshold + 1, drawn);
+        Assert.Equal(24 - drawn, Hidden(RestName(cut, "Databehandler")));
+    }
+
+    /// <summary>The number a "Vis N til" is offering, read back off the words on it.</summary>
+    private static int Hidden(string name) =>
+        int.Parse(string.Concat(name.Where(char.IsDigit)), CultureInfo.InvariantCulture);
+
+    [Fact]
+    public void FacetCap_Always_ThenTheControlIsAButtonTheKeyboardCanReachAndOperate()
+    {
+        // No pointer gesture anywhere in this test. A native <button> is in the tab order without
+        // being given a tabindex, and the platform activates it on Enter and on Space — which it
+        // delivers as a click carrying no count. That is what KeyboardPress sends.
+        var cut = RenderWith(CatalogueWithProcessors(24));
+        var control = RestControl(cut, "Databehandler")!;
+
+        Assert.Equal("BUTTON", control.TagName);
+        Assert.Equal("button", control.GetAttribute("type"));
+        Assert.False(control.HasAttribute("disabled"));
+        Assert.Null(control.GetAttribute("tabindex"));
+        Assert.Equal("false", control.GetAttribute("aria-expanded"));
+
+        KeyboardPress(RestControl(cut, "Databehandler")!);
+
+        Assert.Equal("true", RestControl(cut, "Databehandler")!.GetAttribute("aria-expanded"));
+
+        KeyboardPress(RestControl(cut, "Databehandler")!);
+
+        Assert.Equal("false", RestControl(cut, "Databehandler")!.GetAttribute("aria-expanded"));
+
+        // And nothing of ours listens for the keys themselves: a keydown handler beside the
+        // platform's own activation would fire twice on Enter, which reads as a control that does
+        // nothing at all.
+        // bUnit refuses an event the markup handles nowhere, so the refusal IS the assertion.
+        Assert.Throws<MissingEventHandlerException>(
+            () => RestControl(cut, "Databehandler")!.KeyDown(new KeyboardEventArgs { Key = "Enter" }));
+        Assert.Throws<MissingEventHandlerException>(
+            () => RestControl(cut, "Databehandler")!.KeyUp(new KeyboardEventArgs { Key = " " }));
+
+        Assert.Equal("false", RestControl(cut, "Databehandler")!.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void FacetCap_WhenTheControlPointsAtItsValues_ThenTheIdReallyIsOnTheListItNames()
+    {
+        // aria-controls that names nothing is a dangling pointer rather than a relationship, and
+        // two mounts on one page must not share the id — the same rule the facet search box follows.
+        var cut = RenderWith(CatalogueWithProcessors(24));
+
+        var controls = RestControl(cut, "Databehandler")!.GetAttribute("aria-controls");
+
+        Assert.False(string.IsNullOrWhiteSpace(controls));
+        Assert.Equal(controls, Facet(cut, "Databehandler").QuerySelector("ul")!.GetAttribute("id"));
+    }
+
+    [Fact]
+    public void FacetCap_WhenTheReaderReadsInEnglish_ThenTheControlIsInEnglishToo()
+    {
+        var cut = RenderWith(
+            CatalogueWithProcessors(24),
+            parameters => parameters.Add(component => component.Language, "en"));
+
+        Assert.Equal("Show 14 more Data processor", RestName(cut, "Data processor"));
+
+        ShowRest(cut, "Data processor");
+
+        Assert.Equal("Show fewer Data processor", RestName(cut, "Data processor"));
     }
 
     /// <summary>

@@ -30,8 +30,10 @@
                an empty list for one we never managed to look at. *@
             @if (Kilder.Count > 0)
             {
-                <ul>
-                    @foreach (var kilde in Kilder)
+                var drawn = DrawnKilder();
+
+                <ul id="@KildeOptionsId">
+                    @foreach (var kilde in drawn.Visible)
                     {
                         @* Keyed on the kilde: the tally is built off the unfiltered walk so the
                            options never move under a tick, and the key is what keeps a checkbox
@@ -49,6 +51,18 @@
                         </li>
                     }
                 </ul>
+
+                @* The rest of a long list, behind a real button so Enter and Space work without a
+                   handler of our own; list and words both off `drawn`, computed once above. Stiler
+                   scopes the ghost pair `:not([aria-pressed])`, and this carries aria-expanded. *@
+                @if (ShowsRestControl(drawn.Hidden))
+                {
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            aria-expanded="@(KilderExpanded ? "true" : "false")"
+                            aria-controls="@KildeOptionsId"
+                            @onclick="ToggleKilderExpandedFromControl">@RestControlText(drawn.Hidden)@(" ")<span class="screenreader-only">@T.FieldSource</span></button>
+                }
             }
             else if (Known)
             {

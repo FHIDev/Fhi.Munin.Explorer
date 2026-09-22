@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Display;
 using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -64,6 +65,17 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
     /// <summary>
+    /// How many kilder were on offer when the reader asked to see past the cap, or null while they
+    /// have not.
+    /// </summary>
+    /// <remarks>
+    /// A field rather than a set of keys, unlike the two explorers' panels: there is one facet here
+    /// and not going to be a second. The count rather than a flag, because the kilder are replaced
+    /// whenever the reader's active list is — see <see cref="FacetLimits.StillExpanded"/>.
+    /// </remarks>
+    private int? _kilderExpandedAt;
+
+    /// <summary>
     /// The list's kilder, in the catalogue's own order rather than the reader's. These are
     /// Norwegian names whoever is reading, so æ, ø and å belong at the end of the alphabet.
     /// </summary>
@@ -85,6 +97,46 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     private IReadOnlyCollection<Guid> Chosen => State?.KildeFilter ?? [];
 
     private bool IsChosen(Guid kildeId) => State?.IsKildeChosen(kildeId) == true;
+
+    /// <summary>Whether the reader has lifted the cap, over a list that is still no longer.</summary>
+    private bool KilderExpanded => FacetLimits.StillExpanded(_kilderExpandedAt, Kilder.Count);
+
+    /// <summary>The kilder the panel draws, and how many the cap is holding back.</summary>
+    /// <remarks>
+    /// <see cref="FacetLimits"/>'s own cap, the one both explorers apply, so a reader who has met
+    /// one of those panels meets no second rule here. Computed once per render and handed to the
+    /// list, the control and its words together — <see cref="CappedValues{T}"/> says why not apart.
+    /// </remarks>
+    private CappedValues<KildeInList> DrawnKilder() =>
+        FacetLimits.Cap(Kilder, KilderExpanded, kilde => IsChosen(kilde.Id));
+
+    /// <summary>Whether the panel draws the control that reveals what the cap is holding back.</summary>
+    /// <remarks><paramref name="hidden"/> is the render's own count, never a second sum of the same kilder.</remarks>
+    private bool ShowsRestControl(int hidden) =>
+        FacetLimits.IsLong(Kilder.Count) && (KilderExpanded || hidden > 0);
+
+    /// <summary>What the control says: the remainder it would reveal, or the offer to put it back.</summary>
+    private string RestControlText(int hidden) =>
+        KilderExpanded ? T.ShowFewerFacetValues : T.ShowMoreFacetValues(hidden);
+
+    /// <summary>The id joining the kilde list to the control that reveals the rest of it.</summary>
+    private string KildeOptionsId => $"munin-explorer-list-kilde-options-{_instance}";
+
+    /// <summary>Show the rest of the kilder, or take them back behind the cap.</summary>
+    /// <remarks>
+    /// The standing-gesture clause every other disclosure in this package carries: the second click
+    /// of a double-click and a shift-click both stand still, and neither is a press.
+    /// (Fhi.Metadata-zel47)
+    /// </remarks>
+    private void ToggleKilderExpandedFromControl(MouseEventArgs released)
+    {
+        if (RowPress.WasSelectionStandingStill(released))
+        {
+            return;
+        }
+
+        _kilderExpandedAt = KilderExpanded ? null : Kilder.Count;
+    }
 
     /// <summary>Whether the whole list has been read, which is what makes the empty sentence true.</summary>
     private bool Known => State?.KilderInListKnown == true;

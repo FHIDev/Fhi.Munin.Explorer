@@ -43,8 +43,17 @@ public partial class VariableSearch
         RenderFragment? Body = null,
         IReadOnlyList<FacetValue>? Chosen = null,
         bool Searchable = false,
-        bool NameInChips = false)
+        bool NameInChips = false,
+        int? ValuesBeforeSearch = null)
     {
+        /// <summary>How many top-level values the facet holds before its own search narrows it.</summary>
+        /// <remarks>
+        /// The length a lifted cap is judged against — see <see cref="FacetLimits.StillExpanded"/>.
+        /// Only a searchable facet passes one: for every other, <c>Values</c> is the whole of it
+        /// already, and a term's survivors are not what the reader asked to see the whole of.
+        /// </remarks>
+        public int TotalValues => ValuesBeforeSearch ?? Values.Count;
+
         /// <summary>What is chosen in this facet: the summary's count, and the row of chips.</summary>
         /// <remarks>
         /// One projection for both, so the number on a folded facet and the chips over the results
@@ -467,9 +476,14 @@ public partial class VariableSearch
         // crowded. So the kilder are lifted out of it.
         var values = grouped.Count == 1 ? grouped[0].Children : grouped;
 
+        // The top level as it stands with no term, because that is the length a lifted cap is
+        // recorded against: recording the survivors of a search would put the cap back over the
+        // whole facet the moment the reader cleared the box.
+        var unsearched = KildeSearchTerm is null ? values.Count : TopLevelKilder(ListedKilder(facets));
+
         return new FacetGroup(FacetName(HierarchyLevel.Kilde), T.FieldSource, OpenByDefault: true, values,
                               EmptyText: empty, Chosen: ChosenKilder(facets, levels),
-                              Searchable: true);
+                              Searchable: true, ValuesBeforeSearch: unsearched);
     }
 
     /// <summary>Which of the three source levels are ticked, whatever the facet's own search is showing.</summary>
@@ -596,6 +610,19 @@ public partial class VariableSearch
 
     private static bool LabelMatches(string label, string term) =>
         label.Contains(term, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>How many rows <paramref name="kilder"/> would put on the facet's top level.</summary>
+    /// <remarks>
+    /// <see cref="KildeGroup"/>'s grouping counted rather than built, for the length the cap is
+    /// judged against while a term narrows the facet: one kildetype lifts its kilder out of the
+    /// heading, so the top level is then the kilder themselves.
+    /// </remarks>
+    private static int TopLevelKilder(IReadOnlyList<KildeFacet> kilder)
+    {
+        var types = kilder.Select(KildeTypeKey).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+
+        return types == 1 ? kilder.Count : types;
+    }
 
     /// <summary>A kilde's kildetype, or the empty string when it has none — never null, so it can be a key.</summary>
     private static string KildeTypeKey(KildeFacet kilde) =>
@@ -1170,6 +1197,7 @@ public partial class VariableSearch
         _foldGeneration++;
 
         FoldAllBranches(open);
+        FoldAllFacetValues(open);
     }
 
     /// <summary>Whether the tree draws a guide line per level.</summary>
@@ -1262,6 +1290,114 @@ public partial class VariableSearch
     /// </remarks>
     private static string GroupLabel(FacetGroup group) =>
         group.SelectedCount == 0 ? group.Label : $"{group.Label} ({group.SelectedCount})";
+
+    /// <summary>
+    /// Which facets the reader has asked to see the whole of, and how long each was when they asked.
+    /// </summary>
+    /// <remarks>
+    /// Keyed on the facet rather than on its disclosure: folding a facet away is not a decision to
+    /// hide its values again. The length because the keys outlive the values behind them — this
+    /// panel's facets are rebuilt per answer. See <see cref="FacetLimits.StillExpanded"/>.
+    /// </remarks>
+    private readonly Dictionary<string, int> _expandedFacets = new(StringComparer.Ordinal);
+
+    /// <summary>Lift every facet's cap at once, or put all of them back.</summary>
+    /// <remarks>
+    /// Utvid alle reaches the branches already; it has to reach past the cap too, or the control
+    /// that offers to open everything stops ten values into the kilde tree and says nothing of it.
+    /// </remarks>
+    private void FoldAllFacetValues(bool open)
+    {
+        _expandedFacets.Clear();
+
+        if (!open)
+        {
+            return;
+        }
+
+        foreach (var group in FacetGroups)
+        {
+            // Only the facets the cap can apply to, asked through the same predicate every other
+            // call site here asks, so the stored set holds no key a lifted cap could never honour.
+            if (FacetLimits.IsLong(group.TotalValues))
+            {
+                _expandedFacets[group.Key] = group.TotalValues;
+            }
+        }
+    }
+
+    /// <summary>Whether the reader has pressed this facet's own "Vis N til", over these values.</summary>
+    private bool IsFacetExpanded(FacetGroup group) =>
+        FacetLimits.StillExpanded(
+            _expandedFacets.TryGetValue(group.Key, out var asked) ? asked : null,
+            group.TotalValues);
+
+    /// <summary>Show the rest of a facet's values, or take them back behind the cap.</summary>
+    /// <remarks>
+    /// The standing-gesture clause every other disclosure here carries: the second click of a
+    /// double-click and a shift-click both stand still, and neither is a press. (Fhi.Metadata-zel47)
+    /// </remarks>
+    private void ToggleFacetExpandedFromControl(FacetGroup group, MouseEventArgs released)
+    {
+        if (RowPress.WasSelectionStandingStill(released))
+        {
+            return;
+        }
+
+        if (IsFacetExpanded(group))
+        {
+            _expandedFacets.Remove(group.Key);
+        }
+        else
+        {
+            _expandedFacets[group.Key] = group.TotalValues;
+        }
+    }
+
+    /// <summary>Whether a facet's own search box is narrowing it right now.</summary>
+    /// <remarks>
+    /// The kilde facet is the only searchable one, and its values arrive already narrowed — see
+    /// <see cref="VisibleKilder"/> — so this is what tells a short facet from one a term has cut
+    /// down to a few. Capping the second would hide a value the reader typed the name of.
+    /// </remarks>
+    private bool IsFacetSearched(FacetGroup group) => group.Searchable && KildeSearchTerm is not null;
+
+    /// <summary>The top-level values a facet draws, and how many its cap is holding back.</summary>
+    /// <remarks>
+    /// <see cref="FacetLimits"/>'s predicate, so "long" means one thing here and the same in
+    /// Kelda's. The cap is the top level only: a branch is shut at rest, so a kilde's datasamlinger
+    /// sit behind a press already. List and remainder come back together, per <see cref="CappedValues{T}"/>.
+    /// </remarks>
+    private CappedValues<FacetValue> VisibleValues(FacetGroup group) =>
+        IsFacetSearched(group)
+            ? FacetLimits.Uncapped(group.Values)
+            : FacetLimits.Cap(group.Values, IsFacetExpanded(group), AnySelected);
+
+    /// <summary>Whether a value, or anything nested under it, is ticked.</summary>
+    /// <remarks>
+    /// The whole subtree, because a ticked datasamling is only reachable through the kilde above
+    /// it: a cap that kept the ticked row and dropped its ancestor would hide the filter anyway.
+    /// </remarks>
+    private static bool AnySelected(FacetValue value) =>
+        value.Selected || value.Children.Any(AnySelected);
+
+    /// <summary>Whether the facet draws the control that reveals what the cap is holding back.</summary>
+    /// <remarks>
+    /// Not while the facet's own search is running: a term draws every value it matches, so a
+    /// control offering more would offer nothing. An expanded facet keeps it, that being the only
+    /// way back. <paramref name="hidden"/> is the render's own count, never a second sum of it.
+    /// </remarks>
+    private bool ShowsRestControl(FacetGroup group, int hidden) =>
+        !IsFacetSearched(group)
+        && FacetLimits.IsLong(group.Values.Count)
+        && (IsFacetExpanded(group) || hidden > 0);
+
+    /// <summary>What the control says: the remainder it would reveal, or the offer to put it back.</summary>
+    private string RestControlText(FacetGroup group, int hidden) =>
+        IsFacetExpanded(group) ? T.ShowFewerFacetValues : T.ShowMoreFacetValues(hidden);
+
+    /// <summary>The id joining a facet's value list to the control that reveals the rest of it.</summary>
+    private string FacetOptionsId(string key) => $"munin-explorer-facet-options-{_instance}-{key}";
 
     /// <summary>A facet's values as a nested list of checkboxes.</summary>
     /// <remarks>
