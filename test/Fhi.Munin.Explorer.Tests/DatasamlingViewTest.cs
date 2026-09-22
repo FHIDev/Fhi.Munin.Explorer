@@ -28,6 +28,73 @@ namespace Fhi.Munin.Explorer.Tests;
 public class DatasamlingViewTest : ExplorerTestContext
 {
     [Theory]
+    [InlineData("nb", "Vis bare variabler fra denne datasamlingen", "Vis datakilden", "Vis variablene")]
+    [InlineData("en", "Show only variables from this data collection", "View the data source", "View variables")]
+    public void Actions_WhenTargetsAreSupplied_ThenIdentityPrecedesActionsAndAllVariableLinksAgree(
+        string language, string variablesText, string sourceText, string compactText)
+    {
+        var collection = Placed();
+        var target = $"/cms/variables?datasamlingIds={collection.Id}";
+        Guid? requestedKilde = null;
+        var cut = Render<DatasamlingView>(b => b.Add(c => c.Datasamling, collection)
+            .Add(c => c.Language, language).Add(c => c.VariablesHref, target)
+            .Add(c => c.ShowVariables, () => throw new InvalidOperationException("address takes precedence"))
+            .Add(c => c.ShowKilde, _ => throw new InvalidOperationException("address takes precedence"))
+            .Add(c => c.KildeHref, id => { requestedKilde = id; return $"/cms/kilder?kilde={id}"; }));
+
+        var children = cut.Find(".munin-explorer-datasamling").Children.ToList();
+        var header = cut.Find(".munin-explorer-datasamling__header");
+        var actions = cut.Find(".munin-explorer-datasamling > .munin-explorer-page__actions");
+        var headerIndex = children.FindIndex(child => child.ClassList.Contains("munin-explorer-datasamling__header"));
+        var actionsIndex = children.FindIndex(child => child.ClassList.Contains("munin-explorer-page__actions"));
+        var factsIndex = children.FindIndex(child => child.ClassList.Contains("munin-explorer-page__facts"));
+        Assert.True(headerIndex >= 0 && headerIndex < actionsIndex);
+        Assert.True(actionsIndex < factsIndex);
+        Assert.Contains(collection.ParentKildeName, header.QuerySelector("nav")!.TextContent);
+        var links = actions.QuerySelectorAll("a");
+        Assert.Empty(actions.QuerySelectorAll("button"));
+        Assert.Equal(variablesText, AccessibleName.Of(links[0]));
+        Assert.Equal(sourceText, AccessibleName.Of(links[1]));
+        Assert.Equal(collection.ParentKildeId, requestedKilde);
+        Assert.Equal($"/cms/kilder?kilde={collection.ParentKildeId}", links[1].GetAttribute("href"));
+        var compact = cut.Find(".munin-explorer-page__stuckbar a");
+        Assert.Equal(compactText, AccessibleName.Of(compact));
+        Assert.All(new[] { links[0], compact, cut.Find("#section-variabler a") },
+            link => Assert.Equal(target, link.GetAttribute("href")));
+        Assert.True(cut.Find(".munin-explorer-page__stuckbar").HasAttribute("hidden"));
+        var ids = cut.FindAll("[id]").Select(element => element.Id).ToArray();
+        Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public void Actions_WhenOnlyCallbacksExist_ThenEveryPressUsesTheCurrentCollection()
+    {
+        var count = 0;
+        Guid? source = null;
+        var cut = Render<DatasamlingView>(b => b.Add(c => c.Datasamling, Placed())
+            .Add(c => c.ShowVariables, () => count++)
+            .Add(c => c.ShowKilde, id => source = id));
+        cut.Find(".munin-explorer-datasamling > .munin-explorer-page__actions button").Click();
+        cut.Find("#section-variabler button").Click();
+        cut.Find(".munin-explorer-page__stuckbar button").Click();
+        Assert.Equal(3, count);
+        var next = Placed() with { ParentKildeId = Guid.NewGuid() };
+        cut.Render(b => b.Add(c => c.Datasamling, next));
+        cut.FindAll(".munin-explorer-datasamling > .munin-explorer-page__actions button")[1].Click();
+        Assert.Equal(next.ParentKildeId, source);
+    }
+
+    [Fact]
+    public void Actions_WhenNoTargetExistsOrTheCollectionIsEmpty_ThenNoInertActionIsDrawn()
+    {
+        var cut = Render<DatasamlingView>(b => b.Add(c => c.Datasamling, Placed()));
+        Assert.Empty(cut.FindAll(".munin-explorer-page__actions"));
+        cut.Render(b => b.Add(c => c.Datasamling, Placed() with { VariableCount = 0, ParentKildeId = Guid.Empty })
+            .Add(c => c.VariablesHref, "/variables").Add(c => c.KildeHref, _ => "/source"));
+        Assert.Empty(cut.FindAll(".munin-explorer-page__actions"));
+    }
+
+    [Theory]
     [InlineData("nb", "Vis 1 variabel")]
     [InlineData("en", "View 1 variable")]
     public void Variables_WhenThereIsOneVariable_ThenTheLinkUsesSingularWording(string language, string text)
@@ -173,11 +240,13 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Trail_WhenNoCallerSuppliesSteps_ThenNoBreadcrumbIsDrawn()
+    public void Trail_WhenNoCallerSuppliesSteps_ThenOnlyTheCatalogueSourceTrailIsDrawn()
     {
-        // The state every mount of this view is in today outside the kildeutforsker: no addresses
-        // to offer, so no trail rather than one step that goes nowhere.
-        Assert.Empty(Render(Datasamling()).FindAll("nav.breadcrumbs"));
+        var cut = Render(Datasamling());
+        Assert.Empty(cut.FindAll(".munin-explorer-page > nav.breadcrumbs"));
+        var trail = cut.Find(".munin-explorer-datasamling__header nav.breadcrumbs");
+        Assert.Contains(Datasamling().ParentKildeName, trail.TextContent);
+        Assert.Empty(trail.QuerySelectorAll("a"));
     }
 
     /// <summary>Markup a host might hang after the view's sections, carrying no class of its own.</summary>

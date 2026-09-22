@@ -517,9 +517,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     the word naming what kind of thing the page is about, `Datakilde` / `Datasamling` /
     `Variabel`, and it is a `<p>` and never an `<h*>`: a heading there would put a second title in
     the outline a screen reader navigates by. The action row holds page-level controls and is
-    emitted only when a caller fills it, which no call site in this package does yet — the way out
-    of a drill-in belongs to the drill-in, has to be on screen before the view exists, and
-    repeating it here would draw the same control twice. Both are handles: undefined, the eyebrow
+    emitted only when a caller fills it. Datasamling actions sit after the title, code and source
+    trail, before the hero facts, using `DetailPage.ActionsAfterHeader`; other views retain the
+    default placement above the header. Both are handles: undefined, the eyebrow
     is a paragraph above the title and the row is its children in ordinary flow, and no word is
     lost either way. Stiler 0.1.75 — the pin `samples/HostileHost` restores — carries a rule for
     each, in the same `components/munin-explorer/_page.scss`, and both sample stylesheets already
@@ -548,9 +548,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     can select a different subset. The datasamling hero uses source, source type, variable count,
     validity, personal identification and the catalogue's data category, in that order. Its compact
     bar repeats source, variable count and validity, omitting absent values without substituting
-    other fields. Controller and legal basis remain in the body. Text only — `DetailPage.Actions` is deliberately *not* drawn a second time
-    there, because the fragment is the caller's and a second copy would be a second tab stop for
-    every control in it and a duplicate of every `id` the caller wrote. **Nothing on the server
+    other fields. Controller and legal basis remain in the body. `DetailPage.Actions` is never
+    copied into the bar. `StickyActionText`, `StickyActionHref` and `StickyAction` supply a dedicated
+    compact primary action without arbitrary markup or ids; an address takes precedence over a
+    callback. The datasamling supplies its existing collection-filtered target here too. The action
+    uses the existing `munin-explorer-page__actions` wrapper, which Stiler hides below 1025px.
+    A focused compact action keeps the bar visible until focus leaves it. **Nothing on the server
     ever shows it.** The markup
     renders it `hidden` with `aria-hidden="true"`, and the package's one browser module is the only
     thing that takes either off — so a host serving no module, or a reader with JavaScript off,
@@ -1239,7 +1242,7 @@ Four things are worth knowing before mounting one.
   overwritten.
 - **`KildeExplorer` needs `VariableExplorerPath`** to offer navigation to the variable
   explorer, because only the host knows where it mounted one. The selection handover, expanded
-  kilde row and datasamling's Variables section use this path. The collection link starts a fresh
+  kilde row and datasamling's header, compact bar and Variables section use this path. The collection link starts a fresh
   search with exactly that `DatasamlingIds` selection, at page one with no variable detail open.
   Leave the path out and neither the selection column nor those links are drawn at
   all — which is deliberate, and the right answer for a CMS host that cannot set it
@@ -1261,6 +1264,14 @@ Four things are worth knowing before mounting one.
   filter callback instead; a standalone detail can supply `ShowVariables` from a fully interactive
   parent. An address takes precedence over that callback. These delegate/callback parameters must
   be supplied inside the interactive boundary, not from a static SSR parent.
+- **Datasamling actions share that same navigation contract.** The header offers the collection's
+  variables and its data source below the identity and source trail. `KildeHref` supplies the source
+  address, or `ShowKilde` receives the current payload's `ParentKildeId` inside an interactive parent.
+  Missing targets produce no controls; zero variables produces no variable action. `KildeExplorer`
+  supplies `KildeSearch.KildeDetailHref` by actual parent id and retains the host's path and query
+  parameters. `VariableSearch` opens that parent in its existing source panel. Additional host
+  `DatasamlingView.Actions` appear after the built-in actions, once. The compact action stays hidden
+  without the optional browser module; header and section actions remain usable.
 - **The two static blocks over an open kilde are off unless you ask for them.**
   `ShowAccessAndPrices` — declared on `KildeSearch` and on `KildeExplorer` — draws
   "Kriterier for tilgang til data" and "Priser", both of which send the reader to helsedata.no.

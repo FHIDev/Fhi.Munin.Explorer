@@ -6609,12 +6609,12 @@ public class KildeSearchTest : ExplorerTestContext
 
         var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling, wireList: true);
 
-        var steps = cut.FindAll("nav.breadcrumbs li");
+        var steps = cut.FindAll(".munin-explorer-page > nav.breadcrumbs li");
 
         Assert.Equal(["Kildeutforsker", "Als registeret", "Inklusjon"],
                      steps.Select(step => step.TextContent.Trim()));
         Assert.Equal(["/kilder", $"/kilder?kilde={kilde}"],
-                     cut.FindAll("nav.breadcrumbs a").Select(link => link.GetAttribute("href")));
+                     cut.FindAll(".munin-explorer-page > nav.breadcrumbs a").Select(link => link.GetAttribute("href")));
         Assert.Equal("page", steps[^1].GetAttribute("aria-current"));
     }
 
@@ -6626,7 +6626,7 @@ public class KildeSearchTest : ExplorerTestContext
         var cut = RenderDrillIn(new DrillInClient(kilde, Guid.NewGuid()), kilde, datasamling: null, wireList: true);
 
         Assert.Equal(["Kildeutforsker", "Als registeret"],
-                     cut.FindAll("nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
+                     cut.FindAll(".munin-explorer-page > nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
     }
 
     [Fact]
@@ -6642,9 +6642,9 @@ public class KildeSearchTest : ExplorerTestContext
         var cut = RenderDrillIn(client, kilde, datasamling, wireList: true);
 
         Assert.Equal(["Kildeutforsker", "Inklusjon"],
-                     cut.FindAll("nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
-        Assert.Equal(["/kilder"], cut.FindAll("nav.breadcrumbs a").Select(link => link.GetAttribute("href")));
-        Assert.DoesNotContain("", cut.FindAll("nav.breadcrumbs a").Select(link => link.TextContent.Trim()));
+                     cut.FindAll(".munin-explorer-page > nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
+        Assert.Equal(["/kilder"], cut.FindAll(".munin-explorer-page > nav.breadcrumbs a").Select(link => link.GetAttribute("href")));
+        Assert.DoesNotContain("", cut.FindAll(".munin-explorer-page > nav.breadcrumbs a").Select(link => link.TextContent.Trim()));
     }
 
     [Fact]
@@ -6658,7 +6658,7 @@ public class KildeSearchTest : ExplorerTestContext
         var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling);
 
         Assert.Equal(["Als registeret", "Inklusjon"],
-                     cut.FindAll("nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
+                     cut.FindAll(".munin-explorer-page > nav.breadcrumbs li").Select(step => step.TextContent.Trim()));
     }
 
     [Fact]
@@ -6671,7 +6671,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         var cut = RenderDrillIn(new DrillInClient(kilde, datasamling), kilde, datasamling, wireHref: false);
 
-        Assert.Empty(cut.FindAll("nav.breadcrumbs"));
+        Assert.Empty(cut.FindAll(".munin-explorer-page > nav.breadcrumbs"));
         Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown button.hd-button-square"));
     }
 

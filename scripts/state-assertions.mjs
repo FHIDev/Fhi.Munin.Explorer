@@ -413,6 +413,47 @@ const heroAgainstFold = (page, rowId) => page.evaluate(id => {
 }, rowId);
 
 export const assertions = [
+  {
+    name: 'the compact collection action remains focused until focus leaves the returning hero',
+    kind: 'invariant',
+    states: ['variable-datasamling'],
+    async stage(page) {
+      await page.setViewportSize({ width: 1440, height: 700 });
+      const root = page.locator('.munin-explorer-datasamling');
+      const barId = await root.locator(STUCKBAR).getAttribute('id');
+      const rowId = await root.locator(HERO).getAttribute('id');
+      const action = root.locator(':scope > .munin-explorer-page__actions a').first();
+      const href = await action.getAttribute('href');
+      if (!href || !barId || !rowId) throw new Error('collection action and observed hero must exist');
+      return { barId, rowId, href };
+    },
+    async measure(page, { barId, rowId, href }) {
+      const bar = page.locator(`#${barId}`);
+      const action = bar.locator('a');
+      await scrollPast(page, rowId);
+      await action.waitFor({ state: 'visible', timeout: findTimeout });
+      if (await action.getAttribute('href') !== href) return 'compact action and header disagree on destination';
+      await action.focus();
+      await scrollToTop(page);
+      if (!await bar.isVisible() || !await action.evaluate(e => e === document.activeElement)) {
+        return 'returning hero hid the focused compact action';
+      }
+      await page.locator('.munin-explorer-datasamling > .munin-explorer-page__actions a').first().focus();
+      await page.waitForTimeout(100);
+      return await bar.isVisible() ? 'bar stayed visible after focus left it and the hero returned' : null;
+    },
+    async control(page, { barId, rowId }) {
+      await page.evaluate(({ barId, rowId }) => {
+        const bar = document.getElementById(barId);
+        new IntersectionObserver(([entry]) => {
+          if (entry.isIntersecting && bar.contains(document.activeElement)) {
+            bar.hidden = true;
+            bar.classList.remove('munin-explorer-page__stuckbar--on');
+          }
+        }).observe(document.getElementById(rowId));
+      }, { barId, rowId });
+    },
+  },
   ...treeAssertions,
   {
     name: 'every contents-nav link resolves to this page rather than to the host base',

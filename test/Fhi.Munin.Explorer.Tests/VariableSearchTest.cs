@@ -14675,9 +14675,27 @@ public class VariableSearchTest : ExplorerTestContext
     /// region — and so a rename fails this helper rather than moving the click onto "Tilbake".
     /// </remarks>
     private static AngleSharp.Dom.IElement NarrowButton(IRenderedComponent<VariableSearch> cut) =>
-        SourcePanel(cut).Children
-            .Where(child => child.TagName == "BUTTON")
+        SourcePanel(cut).QuerySelectorAll(":scope > button, .munin-explorer-datasamling > .munin-explorer-page__actions button")
             .Single(button => button.TextContent.StartsWith("Vis bare variabler", StringComparison.Ordinal));
+
+    [Fact]
+    public void Source_WhenTheCollectionSourceActionIsPressed_ThenItOpensItsParentAndCanFilterThatSource()
+    {
+        VariableFilter? reported = null;
+        var parent = Guid.NewGuid();
+        var client = TwoRows().Knows(Datasamling() with { ParentKildeId = parent })
+            .Knows(Kilde() with { Id = parent });
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[1].Click();
+        cut.FindAll(".munin-explorer-datasamling > .munin-explorer-page__actions button")
+            .Single(button => AccessibleName.Of(button) == "Vis datakilden").Click();
+        Assert.Equal(parent, client.LastSourceId);
+        Assert.Single(cut.FindAll(".munin-explorer-kilde"));
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
+        NarrowButton(cut).Click();
+        Assert.Equal(new VariableFilter { KildeIds = [parent] }, reported);
+    }
 
     [Fact]
     public void Source_WhenTheCollectionSectionActionIsPressed_ThenItReplacesTheFacetAndClosesDetail()

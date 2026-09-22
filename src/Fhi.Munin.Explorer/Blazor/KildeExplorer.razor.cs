@@ -183,6 +183,11 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// <summary>The kilde list's own address, held for <see cref="_address"/>'s reason.</summary>
     private Func<string>? _listAddress;
 
+    private Func<Guid, string>? _kildeDetailAddress;
+
+    private Func<Guid, string> KildeDetailHref =>
+        _kildeDetailAddress ??= id => _mirror.Address(Query(id, null));
+
     /// <summary>The variable explorer's address, held for <see cref="_address"/>'s reason.</summary>
     private Func<Guid, string>? _variablesAddress;
     private Func<Guid, string>? _collectionVariablesAddress;

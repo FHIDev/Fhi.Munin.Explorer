@@ -333,6 +333,28 @@ public class DetailPageTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Actions_WhenPlacementChanges_ThenTheFragmentIsDrawnExactlyOnce()
+    {
+        var cut = RenderChrome(withActions: true);
+        cut.Render(b => b.Add(c => c.ActionsAfterHeader, true));
+        var row = Assert.Single(cut.FindAll(".munin-explorer-page__actions"));
+        var children = cut.Find(".munin-explorer-page").Children.ToList();
+        Assert.True(children.IndexOf(row) > children.FindIndex(child => child.TextContent == "the name block"));
+    }
+
+    [Fact]
+    public void Stuckbar_WhenADedicatedTargetIsSupplied_ThenItDoesNotCopyTheHostFragment()
+    {
+        var cut = RenderSticky(withActions: true);
+        cut.Render(b => b.Add(c => c.StickyActionText, "View variables")
+            .Add(c => c.StickyActionHref, "/variables"));
+        var bar = cut.Find(".munin-explorer-page__stuckbar");
+        Assert.Equal("/variables", Assert.Single(bar.QuerySelectorAll("a")).GetAttribute("href"));
+        Assert.Empty(bar.QuerySelectorAll("[id], button"));
+        Assert.DoesNotContain("Vis variabler", bar.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Facts_WhenAViewNamesThem_ThenTheRowSitsBetweenTheNameBlockAndTheBody()
     {
         // Where it sits is the whole of what the chassis promises about this fragment. Rendered

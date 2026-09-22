@@ -336,9 +336,14 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // The whole variable, which is a view and not the panel above it: `VariableView` with a contents
-  // nav of its own. The one state in either sample drawing that nav under `VariableExplorer`, whose
-  // query moves by history.replaceState and so is past NavigationManager (Fhi.Metadata-l9l2n.114).
+  'variable-datasamling': async page => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await states['variable-detail'](page);
+    await press(page, 'Vis datasamling');
+    await page.locator('.munin-explorer-datasamling').waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // The whole variable supplies the contents nav under VariableExplorer's mirrored URL.
   'variable-whole': async page => {
     await states['variable-detail'](page);
     await press(page, 'Vis hele variabelen');

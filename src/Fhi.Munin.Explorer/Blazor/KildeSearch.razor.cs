@@ -204,6 +204,10 @@ public sealed partial class KildeSearch : ComponentBase
     /// </remarks>
     [Parameter] public Func<string>? KilderHref { get; set; }
 
+    /// <summary>Host address for a kilde by id, including a collection's actual parent.</summary>
+    /// <remarks>Supply inside the interactive boundary. Without it, parent links use the open kilde only.</remarks>
+    [Parameter] public Func<Guid, string>? KildeDetailHref { get; set; }
+
     /// <summary>
     /// Where one kilde's variables can be explored, given its id. Leave it unset and an opened
     /// row's drawer ends at its datasamlinger.
@@ -1187,11 +1191,13 @@ public sealed partial class KildeSearch : ComponentBase
     /// The address of the open kilde without the datasamling, for the way back out of one.
     /// </summary>
     /// <remarks>
-    /// Null when the host wired no <see cref="DatasamlingHref"/>, and then the drill-in keeps the
+    /// Uses the collection's parent id when KildeDetailHref is supplied, otherwise the open kilde.
+    /// Null when neither host target is supplied, and then the drill-in keeps the
     /// button back to the list it has always had: a control with nowhere to go is worse than the
     /// coarser one.
     /// </remarks>
-    private string? KildeHref => DatasamlingHref?.Invoke(null);
+    private string? KildeHref => _datasamling is { ParentKildeId: var id } && id != Guid.Empty
+        && KildeDetailHref is not null ? KildeDetailHref(id) : DatasamlingHref?.Invoke(null);
 
     /// <summary>
     /// The steps above an open kilde: the list it was opened from, and nothing else. Empty when no
@@ -1220,9 +1226,8 @@ public sealed partial class KildeSearch : ComponentBase
     /// Where the open datasamling's own view sends a reader who presses its parent kilde.
     /// </summary>
     /// <remarks>
-    /// The id is ignored because this explorer holds one kilde open at a time and the open
-    /// datasamling hangs off it, so <see cref="KildeHref"/> is already that kilde's address — the
-    /// host's route takes a datasamling id, and there is no route here that takes a kilde's.
+    /// KildeHref resolves the current payload's parent through the host, falling back to the open
+    /// kilde on hosts that only supply DatasamlingHref.
     /// </remarks>
     private Func<Guid, string>? ParentKildeHref =>
         KildeHref is null ? null : _parentKildeHref ??= _ => KildeHref!;

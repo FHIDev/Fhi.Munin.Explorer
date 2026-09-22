@@ -88,7 +88,7 @@ public sealed partial class DatasamlingView : ComponentBase
     [Parameter]
     public IReadOnlyList<DetailTrailStep>? Trail { get; set; }
 
-    /// <inheritdoc cref="KildeView.Actions"/>
+    /// <summary>Additional subject actions, after the built-in links below the identity and source trail.</summary>
     [Parameter]
     public RenderFragment? Actions { get; set; }
 
@@ -104,7 +104,8 @@ public sealed partial class DatasamlingView : ComponentBase
     [Parameter]
     public Func<Guid, string>? KildeHref { get; set; }
 
-    /// <summary>The host's variable explorer filtered to this collection. Null omits the link.</summary>
+    /// <summary>The host's variable explorer filtered to this collection, shared by header, compact bar and Variables section.</summary>
+    /// <remarks>Null or blank uses ShowVariables instead, or omits the actions when no callback exists.</remarks>
     [Parameter]
     public string? VariablesHref { get; set; }
 
@@ -112,6 +113,41 @@ public sealed partial class DatasamlingView : ComponentBase
     /// <remarks>Requires a fully interactive parent; ignored when VariablesHref is supplied.</remarks>
     [Parameter]
     public EventCallback ShowVariables { get; set; }
+
+    /// <summary>Open the current collection's parent kilde when no KildeHref is supplied.</summary>
+    /// <remarks>Requires an interactive parent. The id comes from the collection payload.</remarks>
+    [Parameter]
+    public EventCallback<Guid> ShowKilde { get; set; }
+
+    private string? ParentKildeAddress => Datasamling is { ParentKildeId: var id } && id != Guid.Empty
+        ? KildeHref?.Invoke(id) : null;
+
+    private IReadOnlyList<DetailTrailStep>? SourceTrail =>
+        Datasamling is { } datasamling && !string.IsNullOrWhiteSpace(datasamling.ParentKildeName)
+            ? [new(datasamling.ParentKildeName, ParentKildeAddress, CatalogueProperties.Foreign("no", Reader)),
+               new(StickyNamed.Text, null, StickyNameLang)]
+            : null;
+
+    private async Task ShowKildeAsync()
+    {
+        if (Datasamling is not { ParentKildeId: var id } || id == Guid.Empty)
+        {
+            return;
+        }
+
+        try
+        {
+            await ShowKilde.InvokeAsync(id);
+        }
+        catch (NavigationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Log?.LogError(ex, "a host callback threw");
+        }
+    }
 
     private Texts T => Texts.For(Language);
 

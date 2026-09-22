@@ -30,19 +30,30 @@ export function observeHeroFacts(barId, factsId) {
 
   disconnectHeroFacts(barId);
 
+  let above = false;
+  const update = () => {
+    // Keep the action reachable until focus leaves; hiding its ancestor would strand keyboard focus.
+    const on = above || bar.contains(document.activeElement);
+    bar.classList.toggle(SHOWN, on);
+    bar.hidden = !on;
+    bar.setAttribute('aria-hidden', String(!on));
+  };
+  const focusout = () => queueMicrotask(update);
+  bar.addEventListener('focusout', focusout);
+
   const observer = new IntersectionObserver(([entry]) => {
     // BOTH halves. `!isIntersecting` is also true of a hero row still BELOW the fold, which is how
     // a short viewport starts before the reader has scrolled at all — so dropping `top < 0` shows
     // the bar on load rather than on the row leaving upwards.
-    const on = !entry.isIntersecting && entry.boundingClientRect.top < 0;
-
-    bar.classList.toggle(SHOWN, on);
-    bar.hidden = !on;
-    bar.setAttribute('aria-hidden', String(!on));
+    above = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+    update();
   });
 
   observer.observe(facts);
-  observers.set(barId, observer);
+  observers.set(barId, () => {
+    observer.disconnect();
+    bar.removeEventListener('focusout', focusout);
+  });
 }
 
 /**
@@ -51,7 +62,7 @@ export function observeHeroFacts(barId, factsId) {
  * Called when the component goes away: an observer outliving it holds the elements it watches.
  */
 export function disconnectHeroFacts(barId) {
-  observers.get(barId)?.disconnect();
+  observers.get(barId)?.();
   observers.delete(barId);
 }
 

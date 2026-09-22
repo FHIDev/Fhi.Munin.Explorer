@@ -117,10 +117,9 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     /// nothing by not seeing it.
     /// </para>
     /// <para>
-    /// Text alone, and <see cref="Actions"/> is deliberately <em>not</em> repeated in it: the
-    /// fragment is the caller's, so a second copy would be a second tab stop for every control in
-    /// it and a duplicate of every <c>id</c> the caller wrote — in a bar the module unhides, where
-    /// neither stays inert.
+    /// <see cref="Actions"/> is never repeated: the fragment may carry arbitrary ids and controls.
+    /// A compact primary action uses <see cref="StickyActionText"/>, <see cref="StickyActionHref"/>
+    /// and <see cref="StickyAction"/> instead, rendering one control without a caller-supplied id.
     /// </para>
     /// <para>
     /// Resolve it through the same member the name block reads, as the hero facts are resolved:
@@ -189,7 +188,7 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     public string? TrailLabel { get; set; }
 
     /// <summary>
-    /// What the reader can do from this page, gathered into one row above the name block. The row's
+    /// What the reader can do from this page, above the name block unless ActionsAfterHeader is set. The row's
     /// element is drawn only when this is set, so a page with no page-level action has no row.
     /// </summary>
     /// <remarks>
@@ -199,6 +198,41 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     /// </remarks>
     [Parameter]
     public RenderFragment? Actions { get; set; }
+
+    /// <summary>Place actions after the identity block and before facts. Defaults to above the header.</summary>
+    [Parameter]
+    public bool ActionsAfterHeader { get; set; }
+
+    /// <summary>
+    /// A compact primary action's accessible text. Blank omits the action. The caller must also
+    /// provide the same destination or callback on the full page, which remains usable without JS.
+    /// </summary>
+    [Parameter]
+    public string? StickyActionText { get; set; }
+
+    /// <summary>Host-supplied destination for the compact action; takes precedence over its callback.</summary>
+    [Parameter]
+    public string? StickyActionHref { get; set; }
+
+    /// <summary>Fallback for an interactive parent with no address. Ignored when a destination is supplied.</summary>
+    [Parameter]
+    public EventCallback StickyAction { get; set; }
+
+    private async Task InvokeStickyActionAsync()
+    {
+        try
+        {
+            await StickyAction.InvokeAsync();
+        }
+        catch (NavigationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Log?.LogError(ex, "a host callback threw");
+        }
+    }
 
     /// <summary>
     /// The contents column, beside the main one. Its element is drawn only when this is set, so a

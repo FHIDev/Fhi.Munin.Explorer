@@ -38,6 +38,9 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         var view = cut.FindComponent<DatasamlingView>();
         Assert.Equal($"http://localhost/optimizely{path}?datasamlingIds={collection}", view.Instance.VariablesHref);
+        Assert.Equal(view.Instance.VariablesHref,
+            cut.Find(".munin-explorer-datasamling > .munin-explorer-page__actions a").GetAttribute("href"));
+        Assert.Equal($"/optimizely/kilder?kilde={kilde}", view.Instance.KildeHref!(kilde));
 
         cut.Render(b => b.Add(c => c.VariableExplorerPath, "/moved"));
         Assert.Equal($"http://localhost/optimizely/moved?datasamlingIds={collection}",
@@ -496,13 +499,15 @@ public class UrlStateComponentTest : ExplorerTestContext
         /// Named parent and all: <c>KildeSearch.DatasamlingTrail</c> drops the middle step when
         /// <c>parentKildeNavn</c> is blank, and a one-crumb trail asserts only the list's address.
         /// </remarks>
-        public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
+        public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid collectionId, CancellationToken cancellationToken = default) =>
             Task.FromResult<DatasamlingDetail?>(new()
             {
-                Id = id,
+                Id = collectionId,
                 Code = "K_ALS.INKLUSJON",
                 PreferredTerm = "Inklusjon",
                 ParentKildeName = "Als registeret",
+                ParentKildeId = id,
+                VariableCount = 12,
             });
     }
 

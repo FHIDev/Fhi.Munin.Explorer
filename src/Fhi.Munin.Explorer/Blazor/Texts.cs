@@ -59,6 +59,8 @@ internal sealed record Texts(
     // and two buttons that both only name a destination read as the same button twice.
     string ShowKildeVariables,
     string ShowDatasamlingVariables,
+    string ViewDatasamlingKilde,
+    string ViewVariables,
     string Ongoing,
 
     // Runa's own words for two fields we had named differently. The trail through the
@@ -938,6 +940,8 @@ internal sealed record Texts(
         BackToVariables: "← Tilbake til variabler",
         ShowKildeVariables: "Vis bare variabler fra denne datakilden",
         ShowDatasamlingVariables: "Vis bare variabler fra denne datasamlingen",
+        ViewDatasamlingKilde: "Vis datakilden",
+        ViewVariables: "Vis variablene",
         Ongoing: "Pågående",
         FieldKildePath: "Kildesti",
         FieldDataPeriod: "Dataperiode",
@@ -1334,6 +1338,8 @@ internal sealed record Texts(
         BackToVariables: "← Back to variables",
         ShowKildeVariables: "Show only variables from this data source",
         ShowDatasamlingVariables: "Show only variables from this data collection",
+        ViewDatasamlingKilde: "View the data source",
+        ViewVariables: "View variables",
         Ongoing: "Ongoing",
         FieldKildePath: "Source path",
         FieldDataPeriod: "Data period",

@@ -34,9 +34,21 @@
                     }
                 </dl>
 
-                @* Inert text and nothing else. @Actions is NOT repeated here: a second copy of the
-                   caller's fragment is a second tab stop and a duplicate of any id it carries, and
-                   the module unhides this bar where neither is inert. *@
+                @if (!string.IsNullOrWhiteSpace(StickyActionText) &&
+                     (!string.IsNullOrWhiteSpace(StickyActionHref) || StickyAction.HasDelegate))
+                {
+                    <div class="munin-explorer-page__actions">
+                        @if (!string.IsNullOrWhiteSpace(StickyActionHref))
+                        {
+                            <a href="@StickyActionHref">@StickyActionText</a>
+                        }
+                        else
+                        {
+                            <button type="button" class="hd-button-square button-square--secondary"
+                                    @onclick="InvokeStickyActionAsync">@StickyActionText</button>
+                        }
+                    </div>
+                }
             </div>
         </div>
     }
@@ -56,12 +68,17 @@
         <p class="munin-explorer-page__eyebrow">@Eyebrow</p>
     }
 
-    @if (Actions is not null)
+    @if (Actions is not null && !ActionsAfterHeader)
     {
         <div class="munin-explorer-page__actions">@Actions</div>
     }
 
     @Header
+
+    @if (Actions is not null && ActionsAfterHeader)
+    {
+        <div class="munin-explorer-page__actions">@Actions</div>
+    }
 
     @* The hero row, under the name block and above the body as the mockups arrange it. Drawn only
        where a view named facts the catalogue filled in — an empty <dl> is a pair of rules and a
