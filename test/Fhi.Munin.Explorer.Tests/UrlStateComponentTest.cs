@@ -437,6 +437,35 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Selection_WhenAHostDeclinesTheInstrumentKey_ThenItsOwnValueIsLeftWhereItIs()
+    {
+        // Declining this one cannot leave the link alone the way ?variabelId= can: the whole of an
+        // instrument address is that single key, so an href built anyway would be the page the
+        // reader is on, carrying the host's own value back out. None is offered instead.
+        var cut = RenderVariables("http://localhost/variabler?instrumentId=vertens-egen",
+                                  b => b.Add(c => c.DeclinedKeys, ["instrumentId"]));
+
+        Assert.Null(cut.FindComponent<VariableSearch>().Instance.InstrumentHref);
+        Assert.Equal("/variabler?instrumentId=vertens-egen", Mirrored());
+    }
+
+    [Fact]
+    public void Selection_WhenTheReaderLeavesAnInstrument_ThenTheKeyGoesRatherThanGoingStale()
+    {
+        // The address a shared link carries opens the page; leaving has to take the key back out,
+        // for the reason a closed variable's does. The rest of the view is untouched, because
+        // nothing under the instrument was ever torn down.
+        var instrument = Guid.NewGuid();
+        var cut = RenderVariables($"http://localhost/variabler?search=svelging&instrumentId={instrument}");
+
+        Assert.Equal($"/variabler?search=svelging&instrumentId={instrument}", Mirrored());
+
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        Assert.Equal("/variabler?search=svelging", Mirrored());
+    }
+
+    [Fact]
     public void Selection_WhenTheReaderClosesTheVariable_ThenTheKeyGoesRatherThanGoingStale()
     {
         // A URL still naming a closed variable sends the next reader somewhere the sender was not.

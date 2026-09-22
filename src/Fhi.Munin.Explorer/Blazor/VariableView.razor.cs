@@ -62,6 +62,10 @@ public sealed partial class VariableView : ComponentBase
     [Parameter]
     public IReadOnlyList<DetailTrailStep>? Trail { get; set; }
 
+    /// <inheritdoc cref="VariableSearch.InstrumentHref"/>
+    [Parameter]
+    public Func<Guid, string>? InstrumentHref { get; set; }
+
     /// <inheritdoc cref="KildeView.Actions"/>
     [Parameter]
     public RenderFragment? Actions { get; set; }
@@ -170,6 +174,13 @@ public sealed partial class VariableView : ComponentBase
     /// payload naming none of them drew a heading and a contents entry over nothing.
     /// </remarks>
     private IReadOnlyList<VariabelgruppeReference> Variabelgrupper { get; set; } = [];
+
+    /// <summary>The instruments this view lists, which is what its contents entry answers to.</summary>
+    /// <remarks>
+    /// Read straight off the payload, unlike <see cref="Datasamlinger"/> and
+    /// <see cref="Variabelgrupper"/> beside it, which are derived.
+    /// </remarks>
+    private IReadOnlyList<InstrumentReference> Instruments => Variable?.Instruments ?? [];
 
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>
@@ -339,6 +350,7 @@ public sealed partial class VariableView : ComponentBase
         toc.Add(DataPeriod is not null, DetailSectionIds.DataPeriod, T.FieldDataPeriod);
         toc.Add(DataTypeLabel is not null, DetailSectionIds.DataType, T.FieldDataType);
         toc.Add(Variabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
+        toc.Add(Instruments.Count > 0, DetailSectionIds.Instruments, T.FieldInstruments);
         toc.Add(Datasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
 
         return toc;

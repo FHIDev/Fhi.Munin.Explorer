@@ -35,6 +35,12 @@ internal static class DetailSectionIds
 
     internal const string VariableGroups = "variablegroups";
 
+    /// <summary>The instruments a variable was collected with, on the variable page.</summary>
+    internal const string Instruments = "instruments";
+
+    /// <summary>An instrument's own validity period, which no other view has a block for.</summary>
+    internal const string Validity = "validity";
+
     // The four below are the explorers' own, handed to a view as DetailNamedSection. The view's ids
     // and these share one document, which is why they are listed together.
     internal const string Variables = "variables";

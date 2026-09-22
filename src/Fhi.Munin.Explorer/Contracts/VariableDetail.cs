@@ -94,6 +94,16 @@ public sealed record VariableDetail
     /// <summary>Every datasamling the variable is pinned into, each with the period it applied there.</summary>
     [JsonPropertyName("alleDatasamlinger")] public IReadOnlyList<DatasamlingReference> AllDatasamlinger { get; init; } = [];
 
+    /// <summary>
+    /// The instruments the variable was collected with. Empty where it belongs to none, and empty
+    /// against an API that predates the field.
+    /// </summary>
+    /// <remarks>
+    /// A list although practice has one: the catalogue links a variable to as many as a curator
+    /// gives it, and only the enabled ones are sent.
+    /// </remarks>
+    [JsonPropertyName("instrumenter")] public IReadOnlyList<InstrumentReference> Instruments { get; init; } = [];
+
     /// <summary>Labels, grouping and order for the keys in <see cref="AdditionalProperties"/>.</summary>
     [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadataEntry> PropertyMetadata { get; init; } = [];
 
@@ -213,6 +223,36 @@ public sealed record VariabelgruppeReference
 
     /// <summary>Parent group, so the caller can show the full path rather than a bare leaf name.</summary>
     [JsonPropertyName("parentId")] public Guid? ParentId { get; init; }
+}
+
+/// <summary>An instrument a variable was collected with, as listed on the variable detail.</summary>
+/// <remarks>
+/// The id is the key of <c>GET /api/explorer/instrument/{id}</c>, which is where the rest of what
+/// the catalogue holds about it lives — see <see cref="InstrumentDetail"/>.
+/// </remarks>
+public sealed record InstrumentReference
+{
+    [JsonPropertyName("id")] public Guid Id { get; init; }
+
+    /// <summary>Stable instrument code.</summary>
+    [JsonPropertyName("code")] public string Code { get; init; } = "";
+
+    /// <summary>Display name, stored in Norwegian; the English one is in <see cref="AdditionalProperties"/>.</summary>
+    [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
+
+    /// <summary>
+    /// Curated free-form metadata, filtered as <see cref="InstrumentDetail.AdditionalProperties"/>
+    /// is. Carried on a reference for one key in particular: <c>NavnEngelsk</c>, which is what an
+    /// English reader is shown the instrument as without a second request.
+    /// </summary>
+    /// <remarks>
+    /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
+    /// see <see cref="KildeSummary.AdditionalProperties"/> for what an explicit JSON null does
+    /// to that initialiser and what reads it instead.
+    /// </remarks>
+    [JsonPropertyName("additionalProperties")]
+    public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
+        new Dictionary<string, string?>();
 }
 
 /// <summary>A datasamling a variable is pinned into, with the period it applied there.</summary>

@@ -175,6 +175,16 @@ internal sealed record Texts(
     string EyebrowKilde,
     string EyebrowDatasamling,
     string EyebrowVariable,
+    string EyebrowInstrument,
+
+    // The instrument surfaces. A refusal by the rate limiter says RateLimitError instead, as every
+    // other fetch here does; AllVariablesInInstrument is its own member rather than
+    // AllVariablesInDatasamling reused, for the reason HeadingVariables gives.
+    string FieldInstruments,
+    string InstrumentLoading,
+    string InstrumentMissing,
+    string InstrumentError,
+    Func<int, string> AllVariablesInInstrument,
 
     // The breadcrumb landmark's name. Not HierarchyTrail, which names the filter trail over the
     // results: that one narrows a list and this one leaves the page, and a reader hearing the same
@@ -1030,6 +1040,12 @@ internal sealed record Texts(
         EyebrowKilde: "Datakilde",
         EyebrowDatasamling: "Datasamling",
         EyebrowVariable: "Variabel",
+        EyebrowInstrument: "Instrument",
+        FieldInstruments: "Instrumenter",
+        InstrumentLoading: "Henter instrumentet …",
+        InstrumentMissing: "Fant ingen detaljer for dette instrumentet.",
+        InstrumentError: "Kunne ikke hente instrumentet nå. Prøv igjen om litt.",
+        AllVariablesInInstrument: count => count == 1 ? "Vis 1 variabel" : $"Vis alle {count} variabler",
         TrailLabel: "Brødsmulesti",
         HeadingMetadata: "Metadata",
         HeadingSourceInformation: "Kildeinformasjon",
@@ -1441,6 +1457,12 @@ internal sealed record Texts(
         EyebrowKilde: "Data source",
         EyebrowDatasamling: "Data collection",
         EyebrowVariable: "Variable",
+        EyebrowInstrument: "Instrument",
+        FieldInstruments: "Instruments",
+        InstrumentLoading: "Loading the instrument …",
+        InstrumentMissing: "No details were found for this instrument.",
+        InstrumentError: "Could not load the instrument right now. Please try again shortly.",
+        AllVariablesInInstrument: count => count == 1 ? "View 1 variable" : $"View all {count} variables",
         TrailLabel: "Breadcrumb",
         HeadingMetadata: "Metadata",
         HeadingSourceInformation: "Source information",

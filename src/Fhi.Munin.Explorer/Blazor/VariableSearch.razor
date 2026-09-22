@@ -76,7 +76,44 @@
    reader gets a full width to read in, which three levels of nesting cannot give, and the
    search, filters, page and open row are all still there on return because none of it was
    torn down. *@
-@if (_wholeVariable)
+@if (_instrumentId is not null)
+{
+    @* An instrument, in place, and tested first of the three: a link carrying both an instrument
+       and a variable was made on the instrument page, so that is the page it has to reopen — with
+       the variable it names left as the open row underneath. *@
+    <div class="munin-explorer-drilldown"
+         id="@InstrumentRegionId"
+         role="region"
+         aria-labelledby="@InstrumentHeadingId"
+         aria-busy="@InstrumentBusy">
+        @* The list, which is the only thing this view ever covers: it opens from the address bar
+           alone, and the press that would put the whole variable underneath is not on the page
+           while it is open. A way out must not promise a page it does not go to. *@
+        <button class="hd-button-square button-square--ghost-blue margin-bottom"
+                type="button"
+                @onclick="CloseInstrumentAsync">@T.BackToVariables</button>
+
+        @if (_instrument is { } instrument)
+        {
+            <InstrumentView Instrument="instrument"
+                            Language="@Language"
+                            HeadingLevel="@RowLevel"
+                            HeadingId="@InstrumentHeadingId"
+                            VariablesHref="@InstrumentVariablesHref?.Invoke(instrument.Id)" />
+        }
+        else
+        {
+            @* Still on its way, or not published. The heading stands in for InstrumentView's so the
+               region keeps its name meanwhile. *@
+            @InstrumentHeading
+            <p class="@InstrumentStatusClass"
+               role="status"
+               aria-live="polite"
+               aria-atomic="true">@InstrumentStatus</p>
+        }
+    </div>
+}
+else if (_wholeVariable)
 {
     @* The whole variable, in place. Same shape as the kilde drill-in beneath it, and for the same
        reason: with no router, a detail page is a view this component swaps to rather than a route
@@ -99,6 +136,7 @@
                           Language="@Language"
                           HeadingLevel="@RowLevel"
                           HeadingId="@WholeVariableHeadingId"
+                          InstrumentHref="@InstrumentHref"
                           NamedSections="@KodeverkSections(whole)" />
         }
         else
@@ -885,6 +923,17 @@ else
                                                         <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
                                                         <dd>@NameList([.. KildeTrailBlock.NamedVariabelgrupper(detail).Select(gruppe => gruppe.Name)])</dd>
                                                     </div>
+
+                                                    @* Absent rather than "Ikke oppgitt": most
+                                                       variables belong to no instrument, so the
+                                                       row would be empty on nearly every panel. *@
+                                                    @if (detail.Instruments is { Count: > 0 } instruments)
+                                                    {
+                                                        <div>
+                                                            <dt class="headline headline-xxs margin--none">@T.FieldInstruments</dt>
+                                                            <dd>@InstrumentList(instruments)</dd>
+                                                        </div>
+                                                    }
 
                                                     <div>
                                                         <dt class="headline headline-xxs margin--none">@T.FieldDataPeriod</dt>

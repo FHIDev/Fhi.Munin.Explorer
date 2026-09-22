@@ -18,9 +18,9 @@ internal enum DateWidth
 /// A catalogue date as a reader reads it: one day, or a period with an open end shown as ongoing.
 /// </summary>
 /// <remarks>
-/// Shared by the three detail views, whose private copies had already drifted apart. Two decisions
-/// live here and only one is the caller's: the ordinal dot follows the reader, the month's width
-/// follows the column (Fhi.Metadata-n39ea).
+/// Shared by the detail views, three of which had private copies that had already drifted apart.
+/// Two decisions live here and only one is the caller's: the ordinal dot follows the reader, the
+/// month's width follows the column (Fhi.Metadata-n39ea).
 /// </remarks>
 internal static class CatalogueDate
 {

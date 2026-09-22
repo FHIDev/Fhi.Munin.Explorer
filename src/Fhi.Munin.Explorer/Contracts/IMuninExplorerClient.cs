@@ -160,6 +160,28 @@ public interface IMuninExplorerClient
     /// <summary>Fetch one datasamling. Null when no such datasamling is published.</summary>
     Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Fetch one instrument — the questionnaire or scale a variable was collected with. Null when
+    /// the instrument is unknown, disabled, or linked to no variable the explorer publishes.
+    /// </summary>
+    /// <remarks>
+    /// The ids come from <see cref="VariableDetail.Instruments"/>. The variables themselves are not
+    /// in the answer; ask <see cref="SearchVariablesAsync"/> with
+    /// <see cref="VariableFilter.InstrumentIds"/> for those.
+    /// <para>
+    /// It has a body for the reason <see cref="GetKildePropertyMetadataAsync"/> does, and answers
+    /// the same way that one does: this interface is already on the feed, and a member arriving
+    /// without a default stops the build of any host that implements the contract rather than
+    /// consuming <c>MuninExplorerClient</c>. Null is what the rest of this package already treats
+    /// as "no such instrument", so a host that has not caught up draws a variable's instruments and
+    /// a not-found page behind them, rather than failing anywhere.
+    /// </para>
+    /// </remarks>
+    /// <param name="id">The instrument's id.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<InstrumentDetail?> GetInstrumentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult<InstrumentDetail?>(null);
+
     /// <summary>Fetch one variable with version history, kodeverk and statistics. Null when not published.</summary>
     /// <param name="id">The variable's id.</param>
     /// <param name="includeHistorical">
