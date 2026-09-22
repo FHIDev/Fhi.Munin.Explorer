@@ -56,9 +56,13 @@ REFLOW_TARGET="/kilder::kilder-list"
 REFLOW_TICKED_TARGET="/kilder::kilder-ticked"
 
 # And the variable explorer, measured at 320px and scanned by axe as well — it is first in TARGETS
-# below rather than repeated here. Its filter panel's toolbar is the one row in the component that
-# grows a control at a time, and the fourth put 291px of it in a 226px mount. (Fhi.Metadata-kd9ts)
+# below rather than repeated here. At rest, with the filter panel folded behind Vis filtre.
 REFLOW_EXPLORER_TARGET="/::variables-list"
+
+# And the panel unfolded, the only 320px state here that draws its toolbar (the fourth control put
+# 291px of it in a 226px mount, Fhi.Metadata-kd9ts) and its facet values, whose unbroken
+# variabelgruppe name only the label rule wraps (Fhi.Metadata-7484a).
+REFLOW_FACETS_TARGET="/::filters-level-lines"
 TARGETS=(
   "$REFLOW_EXPLORER_TARGET"
   "$REFLOW_TARGET"
@@ -209,11 +213,9 @@ fi
 # the second ticks one, since the ribbon is widest there and the untouched page fits 320 whether or
 # not the handover can wrap.
 #
-# And the variable explorer in its resting state, which is the only place the filter panel's
-# toolbar is measured at this width at all — check-hostile-host.sh's own 320px step does not run in
-# CI. Resting rather than behind a press on purpose: the toolbar is drawn from first paint, and the
-# states that unfold the facets put an unbroken datasamling name 142px past the edge - measured the
-# same with Ikoner on and off, so it is Fhi.Metadata-7484a and not this. (Fhi.Metadata-kd9ts)
+# And the variable explorer twice: at rest, and with Vis filtre and Utvid alle pressed. The panel
+# folds below 1024px, so only the second draws its toolbar and facets, and check-hostile-host.sh's
+# 320px step does not run in CI. (Fhi.Metadata-kd9ts, Fhi.Metadata-7484a)
 #
 # Three of the ten assertions. Four of the seven left out were measured here first; the other three
 # are scoped to the explorer-* states, which are /utforsker and none of these. Which and why:
@@ -225,7 +227,8 @@ GEOMETRY_WIDTHS=320 \
 GEOMETRY_EXCEPT= \
 GEOMETRY_ASSERTIONS='no horizontal overflow,hidden means hidden,text a reader is meant to see has a box to see it in' \
   node "$ROOT/scripts/geometry-scan.mjs" \
-    "${BASE}${REFLOW_TARGET}" "${BASE}${REFLOW_TICKED_TARGET}" "${BASE}${REFLOW_EXPLORER_TARGET}"
+    "${BASE}${REFLOW_TARGET}" "${BASE}${REFLOW_TICKED_TARGET}" "${BASE}${REFLOW_EXPLORER_TARGET}" \
+    "${BASE}${REFLOW_FACETS_TARGET}"
 reflow_status=$?
 set -e
 
@@ -267,16 +270,17 @@ if [ "$findings" -ne 0 ]; then
 fi
 
 cat <<'EOF'
-No violations detected, and the kildeutforsker and the variable explorer's front page fit 320px.
+No violations detected, and the kildeutforsker and the variable explorer's front page fit 320px,
+the explorer's with its facets unfolded as well as at rest.
 
 Read that literally. This gate sees the sample stylesheet, not the one the component
 ships into, and automated checking cannot see missing structure at all. A green run is
 evidence of no detected regression, and nothing more.
 
 The 320px measurement is narrower still: three of the ten assertions, on two pages, in
-three states - and the variable explorer's is its RESTING page, so nothing behind a press
-in the filter panel was measured. Every other width and every other assertion belongs to
-check-hostile-host.sh.
+four states - the variable explorer at rest and with Vis filtre and Utvid alle pressed,
+and nothing else behind a press in the filter panel. Every other width and every other
+assertion belongs to check-hostile-host.sh.
 
 Why, at length: AGENTS.md, "Accessibility is a requirement, not a preference".
 EOF

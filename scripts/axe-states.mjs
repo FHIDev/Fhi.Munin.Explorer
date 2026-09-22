@@ -235,6 +235,14 @@ export const states = {
   // deliberately NOT pressed — the lines are on at first render since Fhi.Metadata-dfygj, so
   // pressing it would scan this state with them gone.
   'filters-level-lines': async page => {
+    // Below the sample's 1024px breakpoint the panel is folded behind this toggle, and 320px never
+    // reached the state at all (Fhi.Metadata-7484a).
+    const toggle = page.locator('.munin-explorer-filters__toggle');
+    await toggle.waitFor({ state: 'attached', timeout: findTimeout });
+    if (await toggle.isVisible()) {
+      await toggle.click();
+    }
+
     const panel = page.locator('.munin-explorer-filters');
     await panel.waitFor({ state: 'visible', timeout: findTimeout });
 
@@ -264,6 +272,14 @@ export const states = {
     // kilde to biobank so there is such a row on screen at all. (Fhi.Metadata-aw203)
     await page
       .locator('.munin-explorer-filters__badge')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // And the unbroken name the 320px reflow run exists for: a re-capture without it would leave
+    // that run green over a tree with nothing to wrap. (Fhi.Metadata-7484a)
+    await page
+      .locator('.munin-explorer-filters li > label',
+        { hasText: 'Analysesett_avansert_behandling_Parkinson' })
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
 

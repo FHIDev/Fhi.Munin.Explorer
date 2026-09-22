@@ -282,12 +282,14 @@ could only pin as text — the explore button's width floor overflowed the page 
 `Fhi.Metadata-l9l2n.65`, and `KildeSelectionTest` can say the declaration is there and not that the
 page fits.
 
-The variable explorer's `/` is measured beside them, in `variables-list`, and it is there for the
-filter panel's toolbar: that row grows a control at a time, and the fourth took it to 291px of
-content in a 226px mount, 42px past the viewport. `check-hostile-host.sh` measures a `/` of its own
-at 320 and does not run in CI, so without this target nothing a pull request has to pass looks at
-that row at all (`Fhi.Metadata-kd9ts`). The resting page rather than a press: unfolding the facets
-puts an unbroken datasamling name 142px past the edge, which is `Fhi.Metadata-7484a`.
+The variable explorer's `/` is measured beside them twice. `variables-list` is the page at rest,
+where below 1024px the filter panel is folded behind Vis filtre and draws nothing.
+`filters-level-lines` presses Vis filtre and Utvid alle, and it is the one that measures the panel:
+its toolbar, which grows a control at a time and whose fourth took it to 291px of content in a 226px
+mount (`Fhi.Metadata-kd9ts`), and its facet values, where a variabelgruppe name with no break in it
+only stays inside 320px because the label rule carries `overflow-wrap: anywhere`
+(`Fhi.Metadata-7484a`). `check-hostile-host.sh` measures the unfolded panel at 320 as well, and does
+not run in CI.
 
 It runs three of the ten assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
 overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. The
