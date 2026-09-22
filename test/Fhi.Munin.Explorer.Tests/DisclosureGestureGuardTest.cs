@@ -18,12 +18,38 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <remarks>
 /// Every round of this defect was found by hand rather than by the suite (Fhi.Metadata-zel47),
 /// because a new <c>&lt;button aria-expanded&gt;</c> passes every other test here. What the
-/// enumeration below does and does not establish is on <see cref="Swept"/>.
+/// enumeration below does and does not establish is on <see cref="Swept"/>. The package's other
+/// shape of disclosure is gestured by nothing and pinned instead — see <see cref="NativeDisclosure"/>.
 /// </remarks>
 public class DisclosureGestureGuardTest : ExplorerTestContext
 {
-    /// <summary>What a disclosure is, for both halves of this guard: the attribute, not a class.</summary>
+    /// <summary>What a gestured disclosure is, for both halves of this guard: the attribute, not a class.</summary>
     private const string Disclosure = "button[aria-expanded]";
+
+    /// <summary>The package's other disclosure: the element, whose state belongs to the user agent.</summary>
+    /// <remarks>
+    /// <para>
+    /// These are collected and pinned but never gestured, and that is a finding rather than an
+    /// omission (Fhi.Metadata-cq29d). Measured in Chromium against a bare <c>&lt;details&gt;</c>: a
+    /// double-click toggles twice and ends where it began, from shut and from open alike, so the
+    /// invariant above holds — but a shift-click toggles once and the disclosure DOES move. That is
+    /// the summary's activation behaviour, identical on every <c>&lt;details&gt;</c> on the web, and
+    /// refusing it would take a <c>preventDefault</c> this package ships no script for.
+    /// </para>
+    /// <para>
+    /// Measured in bUnit, gesturing one asserts nothing either way: a handler-free
+    /// <c>&lt;summary&gt;</c> raises <c>MissingEventHandlerException</c> rather than toggling, and
+    /// AngleSharp's own <c>HtmlDetailsElement</c> has no activation behaviour, so <c>open</c> never
+    /// moves however it is clicked. A widened gesture sweep would be green for reasons that have
+    /// nothing to do with this package — the shape the bead above exists to prevent.
+    /// </para>
+    /// <para>
+    /// So what is asserted is the one half that IS ours: that these are still the user agent's. A
+    /// handler or an <c>aria-expanded</c> on one is the package taking the toggle back, and a
+    /// disclosure the package drives has to be a <see cref="Disclosure"/> the sweep gestures.
+    /// </para>
+    /// </remarks>
+    private const string NativeDisclosure = "details > summary";
 
     // -----------------------------------------------------------------------
     // The sweep
@@ -46,8 +72,25 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     /// One rule for both halves: a scene whose disclosures share a class would otherwise be told
     /// by the weaker of two names that the control it pressed is still the one in hand.
     /// </remarks>
-    private static string? Named(IElement button) =>
-        button.Id is { Length: > 0 } id ? id : button.ClassName;
+    private static string? Named(IElement control) =>
+        control.Id is { Length: > 0 } id ? id
+        : control.ClassName is { Length: > 0 } css ? css
+        : control.LocalName == "summary" ? NativeNamed(control)
+        : control.ClassName;
+
+    /// <summary>The same rule one step out, for a <c>&lt;summary&gt;</c> that carries neither.</summary>
+    /// <remarks>
+    /// Which is nearly all of them: of the seventeen this suite collects, one has a class and none
+    /// has an id, so the rule above alone would report the empty string and send nobody anywhere.
+    /// Its own text last, because that is the label the reader presses and so the one a failure can
+    /// be acted on by.
+    /// </remarks>
+    private static string NativeNamed(IElement summary) =>
+        summary.ParentElement is { } details && details.Id is { Length: > 0 } id
+            ? $"details#{id} > summary"
+            : summary.ParentElement is { ClassName: { Length: > 0 } css }
+                ? $"details.{css.Replace(' ', '.')} > summary"
+                : $"summary \"{summary.TextContent.Trim()}\"";
 
     /// <summary>Whether the control at <paramref name="at"/> is still the one that was pressed.</summary>
     private static bool Survives<T>(IRenderedComponent<T> cut, int at, string? named) where T : IComponent
@@ -72,6 +115,29 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         cut.FindAll(Disclosure)[at].Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
 
     /// <summary>
+    /// Whether the package, rather than the browser, is driving <paramref name="element"/>.
+    /// </summary>
+    /// <remarks>
+    /// bUnit writes a handler out as <c>blazor:onclick</c> and the like, which is exact where
+    /// clicking is not: a press on a handler-free element is dispatched to whichever ancestor has
+    /// one, so "did it throw" answers for the ancestor as readily as for the control.
+    /// </remarks>
+    private static bool Driven(IElement element) =>
+        element.Attributes.Any(a => a.Name.StartsWith("blazor:on", StringComparison.Ordinal))
+        || element.HasAttribute("aria-expanded");
+
+    /// <summary>That every native disclosure on screen is still the user agent's.</summary>
+    /// <remarks>Named rather than counted, so a failure says which one the package took back.</remarks>
+    private static void AssertNativeDisclosuresAreTheUserAgents<T>(IRenderedComponent<T> cut)
+        where T : IComponent =>
+        Assert.Equal(
+            [],
+            cut.FindAll(NativeDisclosure)
+                .Where(summary => Driven(summary) || Driven(summary.ParentElement!))
+                .Select(Named)
+                .ToList());
+
+    /// <summary>
     /// Puts every disclosure <paramref name="scene"/> draws through both standing gestures, from
     /// shut and from open, and through the deliberate presses that must still work between them.
     /// </summary>
@@ -80,12 +146,18 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     /// that opened it takes its neighbours down with it, and the next control would then be asked of
     /// a page that no longer draws it.
     /// </remarks>
-    private static void AssertStandingGesturesAreRefused<T>(Func<IRenderedComponent<T>> scene, int expected)
+    private static void AssertStandingGesturesAreRefused<T>(
+        Func<IRenderedComponent<T>> scene, int expected, int native)
         where T : IComponent
     {
         // Pinned rather than merely non-empty: a component that stopped drawing its disclosures
         // would otherwise pass this by leaving nothing to check.
-        Assert.Equal(expected, scene().FindAll(Disclosure).Count);
+        var first = scene();
+        Assert.Equal(expected, first.FindAll(Disclosure).Count);
+
+        // The same pin for the other shape, and the whole of what this guard can ask of one.
+        Assert.Equal(native, first.FindAll(NativeDisclosure).Count);
+        AssertNativeDisclosuresAreTheUserAgents(first);
 
         for (var at = 0; at < expected; at++)
         {
@@ -109,6 +181,9 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
             // The control is live, so a guard refusing every press would fail here rather than pass
             // by never toggling at all.
             Assert.NotEqual(shut, Disclosed(cut));
+
+            // Asked again with something open, which is the only state several of them are drawn in.
+            AssertNativeDisclosuresAreTheUserAgents(cut);
 
             // "Vis datakilde" and "Vis datasamling" put the owner's view where the list was, taking
             // themselves with it, so there is no from-open half to ask of those two.
@@ -268,7 +343,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         // Two: the facet panel's fold control and the row's chevron.
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
 
-        AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 2);
+        AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 2, native: 3);
     }
 
     [Fact]
@@ -281,7 +356,8 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         AssertStandingGesturesAreRefused(
             () => Render<KildeSearch>(b => b.Add(
                 c => c.ExploreVariablesRequested, (IReadOnlyList<Guid> _) => { })),
-            expected: 2);
+            expected: 2,
+            native: 3);
     }
 
     [Fact]
@@ -292,7 +368,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
 
-        AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 5);
+        AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 5, native: 4);
     }
 
     [Fact]
@@ -304,7 +380,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Services.AddSingleton<IMuninExplorerClient>(new FacetTreeClient());
         Services.AddScoped<VariableListState>();
 
-        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 4);
+        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 4, native: 6);
     }
 
     /// <summary>The same client, answering the filters endpoint with a tree two levels deep.</summary>
@@ -359,7 +435,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         };
 
         AssertStandingGesturesAreRefused(
-            () => Render<VariableView>(b => b.Add(c => c.Variable, detail)), expected: 1);
+            () => Render<VariableView>(b => b.Add(c => c.Variable, detail)), expected: 1, native: 0);
     }
 
     [Fact]
@@ -370,7 +446,9 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Services.AddScoped<VariableListState>();
 
         AssertStandingGesturesAreRefused(
-            () => Render<VariableListView>(b => b.Add(c => c.IsAuthenticated, true)), expected: 3);
+            () => Render<VariableListView>(b => b.Add(c => c.IsAuthenticated, true)),
+            expected: 3,
+            native: 1);
     }
 
     // -----------------------------------------------------------------------
@@ -417,10 +495,73 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     /// </remarks>
     private static bool Renders(string source)
     {
-        var code = Regex.Replace(
-            RazorSource.WithoutComments(source), @"^\s*///?.*$", " ", RegexOptions.Multiline);
+        var code = WithoutProse(source);
 
         return code.Contains("aria-expanded=", StringComparison.Ordinal)
                || code.Contains("\"aria-expanded\"", StringComparison.Ordinal);
     }
+
+    /// <summary><paramref name="source"/> with the comments of both kinds blanked out.</summary>
+    /// <remarks>
+    /// The doc comments matter to the native half rather than to <see cref="Renders"/>: every file
+    /// here spells <c>&lt;summary&gt;</c> dozens of times in its XML docs, and every one of those
+    /// would read as a disclosure.
+    /// </remarks>
+    private static string WithoutProse(string source) =>
+        Regex.Replace(
+            RazorSource.WithoutComments(source), @"^\s*///?.*$", " ", RegexOptions.Multiline);
+
+    [Fact]
+    public void NativeDisclosures_Always_ThenTheUserAgentStillOwnsEveryOne()
+    {
+        // Every file rather than the swept ones, because this half needs no scene, and three of the
+        // seven that draw a native disclosure are in none — DetailBlocks, KildeHierarchyView and
+        // KildeView, whose disclosures the sweep above therefore never collects.
+        var taken = Directory
+            .EnumerateFiles(Repo.In("src", "Fhi.Munin.Explorer", "Blazor"), "*.*", SearchOption.AllDirectories)
+            .Where(path => path.EndsWith(".razor", StringComparison.Ordinal)
+                           || path.EndsWith(".cs", StringComparison.Ordinal))
+            .SelectMany(path => NativeDisclosuresIn(File.ReadAllText(path))
+                .Where(opened => TakenFromTheUserAgent(opened.Attributes))
+                .Select(opened =>
+                    $"{Path.GetFileName(path)}: <{opened.Element} {Regex.Replace(opened.Attributes, @"\s+", " ").Trim()}>"))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        // Named rather than counted, so a failure says which element in which file, with the
+        // attribute that took it back.
+        Assert.Equal([], taken);
+    }
+
+    /// <summary>Each <c>&lt;details&gt;</c> and <c>&lt;summary&gt;</c> in <paramref name="source"/>, with what it is opened with.</summary>
+    /// <remarks>
+    /// Both spellings, because this package writes markup two ways: a Razor tag, and a
+    /// <c>RenderTreeBuilder</c> whose <c>AddAttribute</c> calls up to the next element or content
+    /// are the ones belonging to it.
+    /// </remarks>
+    private static IEnumerable<(string Element, string Attributes)> NativeDisclosuresIn(string source)
+    {
+        var code = WithoutProse(source);
+
+        foreach (Match tag in Regex.Matches(code, @"<(details|summary)\b([^>]*)>"))
+        {
+            yield return (tag.Groups[1].Value, tag.Groups[2].Value);
+        }
+
+        foreach (Match opened in Regex.Matches(
+                     code,
+                     """OpenElement\(\s*\d+\s*,\s*"(details|summary)"\s*\)\s*;(.*?)(?=\s*\w+\.(?:OpenElement|OpenComponent|AddContent|AddMarkupContent|CloseElement)\()""",
+                     RegexOptions.Singleline))
+        {
+            yield return (opened.Groups[1].Value, opened.Groups[2].Value);
+        }
+    }
+
+    /// <summary>Whether what a native disclosure was opened with means the package drives it.</summary>
+    /// <remarks>
+    /// An event handler in either spelling, or an <c>aria-expanded</c> — which on a
+    /// <c>&lt;details&gt;</c> is a second opinion about the <c>open</c> attribute and drifts from it.
+    /// </remarks>
+    private static bool TakenFromTheUserAgent(string attributes) =>
+        Regex.IsMatch(attributes, """@on[a-z]+|"on[a-z]+"|aria-expanded""");
 }
