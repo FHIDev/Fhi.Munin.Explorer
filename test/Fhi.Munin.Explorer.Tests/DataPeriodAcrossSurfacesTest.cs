@@ -81,9 +81,8 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     /// <summary>The markup a reader is shown, with the ids and the wiring between them taken out.</summary>
     /// <remarks>
     /// Every component here stamps its ids with eight random hex digits, which spell "0001" about
-    /// once in thirteen thousand renders — a flake in the one assertion below that reads the whole
-    /// page rather than one cell of it. The list is every idref attribute the markup writes today
-    /// and grows with it; an <c>aria-label</c> can legitimately hold a date, so it stays swept.
+    /// once in thirteen thousand renders, flaking the assertion below that reads the whole page.
+    /// The list is every idref the markup writes; an <c>aria-label</c> may hold a date, so it stays.
     /// </remarks>
     private static string Shown(string markup) =>
         Regex.Replace(
