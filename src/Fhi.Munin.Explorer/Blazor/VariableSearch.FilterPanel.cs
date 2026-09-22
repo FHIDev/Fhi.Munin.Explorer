@@ -1170,6 +1170,7 @@ public partial class VariableSearch
         _foldGeneration++;
 
         FoldAllBranches(open);
+        FoldAllFacetValues(open);
     }
 
     /// <summary>Whether the tree draws a guide line per level.</summary>
@@ -1265,11 +1266,30 @@ public partial class VariableSearch
 
     /// <summary>Which facets the reader has asked to see the whole of, by their keys.</summary>
     /// <remarks>
-    /// Keyed on the facet rather than on its disclosure, so <see cref="FoldAll"/> rebuilding every
-    /// <c>&lt;details&gt;</c> leaves this standing: folding a facet away is not a decision to hide
-    /// its values again once it is open.
+    /// Keyed on the facet rather than on its disclosure, so a facet the reader folds by hand keeps
+    /// its lifted cap: folding a facet away is not a decision to hide its values again.
     /// </remarks>
     private readonly HashSet<string> _expandedFacets = new(StringComparer.Ordinal);
+
+    /// <summary>Lift every facet's cap at once, or put all of them back.</summary>
+    /// <remarks>
+    /// Utvid alle reaches the branches already; it has to reach past the cap too, or the control
+    /// that offers to open everything stops ten values into the kilde tree and says nothing of it.
+    /// </remarks>
+    private void FoldAllFacetValues(bool open)
+    {
+        _expandedFacets.Clear();
+
+        if (!open)
+        {
+            return;
+        }
+
+        foreach (var group in FacetGroups)
+        {
+            _expandedFacets.Add(group.Key);
+        }
+    }
 
     /// <summary>Whether the reader has pressed this facet's own "Vis N til".</summary>
     private bool IsFacetExpanded(string key) => _expandedFacets.Contains(key);

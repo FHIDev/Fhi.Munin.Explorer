@@ -580,6 +580,8 @@ public sealed partial class KildeSearch
     {
         _foldAll = open;
         _foldGeneration++;
+
+        FoldAllFacetValues(open);
     }
 
     /// <summary>Whether <paramref name="facet"/> is long enough to be given a search box.</summary>
@@ -686,11 +688,31 @@ public sealed partial class KildeSearch
 
     /// <summary>Which facets the reader has asked to see the whole of, by their keys.</summary>
     /// <remarks>
-    /// Keyed on the facet rather than on the disclosure, so <see cref="FoldAll"/> rebuilding every
-    /// <c>&lt;details&gt;</c> leaves this alone: folding a facet away is not a decision to hide
-    /// values again once it is open. Ordinal, like every other key this component compares.
+    /// Keyed on the facet rather than on its disclosure, so a facet the reader folds by hand keeps
+    /// its lifted cap: folding a facet away is not a decision to hide values inside it again.
+    /// Ordinal, like every other key this component compares.
     /// </remarks>
     private readonly HashSet<string> _expandedFacets = new(StringComparer.Ordinal);
+
+    /// <summary>Lift every facet's cap at once, or put all of them back.</summary>
+    /// <remarks>
+    /// Utvid alle has to reach past the cap as well as past the fold, or the control that offers to
+    /// open everything stops ten values into a facet and says nothing about it.
+    /// </remarks>
+    private void FoldAllFacetValues(bool open)
+    {
+        _expandedFacets.Clear();
+
+        if (!open)
+        {
+            return;
+        }
+
+        foreach (var facet in Facets)
+        {
+            _expandedFacets.Add(facet.Key);
+        }
+    }
 
     /// <summary>Whether the reader has pressed this facet's own "Vis N til".</summary>
     private bool IsFacetExpanded(string key) => _expandedFacets.Contains(key);

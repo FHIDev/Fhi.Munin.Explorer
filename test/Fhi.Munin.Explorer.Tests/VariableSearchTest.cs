@@ -3575,6 +3575,24 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void FacetCap_WhenUtvidAlleIsPressed_ThenItReachesPastTheCapAndSkjulAllePutsItBack()
+    {
+        // Utvid alle already walks the branches; a cap it stopped at would leave the one control
+        // that offers to open everything opening ten values and saying nothing about the rest.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithManyKilder()));
+
+        ClickToolbar(cut, "Utvid alle");
+
+        Assert.Equal(24, KildeRows(cut).Count);
+        Assert.Equal("true", RestControl(cut)!.GetAttribute("aria-expanded"));
+
+        ClickToolbar(cut, "Skjul alle");
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, KildeRows(cut).Count);
+        Assert.Equal("false", RestControl(cut)!.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
     public void FacetCap_WhenAKildePastTheCapIsTicked_ThenItIsDrawnWithoutPressingTheControl()
     {
         // The reader ticks the twentieth kilde through the facet's own search, clears the box and
@@ -7354,7 +7372,7 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Branches_WhenTheCatalogueIsLarge_ThenAShutPanelDrawsTheKilderAndAnOpenKildeOnlyItsOwn()
+    public void Branches_WhenTheCatalogueIsLarge_ThenAShutPanelDrawsTheCappedKilderAndAnOpenKildeOnlyItsOwn()
     {
         // The crowding argument this bead was held over, measured on a payload of its own rather
         // than on a catalogue total that moves: with one kildetype its heading is lifted away, so
@@ -7365,7 +7383,8 @@ public class VariableSearchTest : ExplorerTestContext
         var kilder = facets.Kilder.Count;
         var each = facets.Datasamlinger.Count / kilder;
 
-        Assert.Equal(kilder, KildeTypeGroups(cut).Count);
+        Assert.Equal(FacetLimits.FacetSearchThreshold, KildeTypeGroups(cut).Count);
+        Assert.True(kilder > FacetLimits.FacetSearchThreshold, "the payload has to outrun the cap");
         Assert.DoesNotContain("Datasamling ", FilterPanel(cut).TextContent, StringComparison.Ordinal);
 
         var shut = RowsInThePanel(cut);

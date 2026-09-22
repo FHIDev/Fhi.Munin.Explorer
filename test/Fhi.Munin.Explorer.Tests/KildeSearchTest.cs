@@ -5192,6 +5192,24 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void FacetCap_WhenUtvidAlleIsPressed_ThenItReachesPastTheCapAndSkjulAllePutsItBack()
+    {
+        // The one control that offers to open everything has to mean it: a cap it stopped at would
+        // leave fourteen values behind a press the reader has just been told they need not make.
+        var cut = RenderWith(CatalogueWithProcessors(24));
+
+        FoldAll(cut, expand: true);
+
+        Assert.Equal(24, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal("true", RestControl(cut, "Databehandler")!.GetAttribute("aria-expanded"));
+
+        FoldAll(cut, expand: false);
+
+        Assert.Equal(SearchThreshold, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal("false", RestControl(cut, "Databehandler")!.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
     public void FacetCap_WhenAValuePastTheCapIsTicked_ThenItIsDrawnWithoutPressingTheControl()
     {
         // A reader who ticks the twentieth value, folds the panel away and comes back must find
@@ -5203,9 +5221,10 @@ public class KildeSearchTest : ExplorerTestContext
         Tick(cut, "Databehandler", "Databehandler 19");
         ShowRest(cut, "Databehandler");
 
-        // Every disclosure in the panel rebuilt under a new key, which is what a fold press does.
-        FoldAll(cut, false);
+        // Every disclosure rebuilt under a new key, which is what a fold press does — and the caps
+        // lifted and put back with them, which is what Skjul alle does after Utvid alle.
         FoldAll(cut, true);
+        FoldAll(cut, false);
 
         var drawn = ChoiceValues(Facet(cut, "Databehandler"));
 
