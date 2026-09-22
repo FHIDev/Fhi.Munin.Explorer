@@ -581,9 +581,9 @@ public class InstrumentTest : ExplorerTestContext
     [Fact]
     public void InstrumentPage_WhenTheFetchHasLanded_ThenTheRegionStopsAdvertisingItselfAsBusy()
     {
-        // The flag is raised beside the id at the top of OnInitializedAsync and lowered in the same
-        // method's finally, so that a path raising it and never reaching the fetch cannot leave a
-        // screen reader told this region is busy for the rest of the circuit with nothing in flight.
+        // The other side of the two tests above: the region that announced itself busy while the
+        // fetch was in flight stops saying so once the answer lands, and takes the loading line
+        // with it, so a screen reader is not left told it is busy with nothing on its way.
         var cut = RenderSearch(new InstrumentClient(instrument: Instrument()), instrumentId: Sf36);
 
         var region = cut.Find(".munin-explorer-drilldown");
