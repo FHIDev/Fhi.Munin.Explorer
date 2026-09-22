@@ -1012,37 +1012,43 @@ public sealed partial class VariableSearch : ComponentBase
         builder.CloseElement();
     };
 
-    /// <summary>The row's disclosure: the chevron that opens and closes its panel.</summary>
+    /// <summary>The row's disclosure: the chevron that opens and closes its panel, in a cell of its own.</summary>
     /// <remarks>
-    /// The shape is Stiler's :has()-gated contract (Fhi.Metadata-35w0p.65, .67): first direct child of
-    /// munin-explorer-dataitem-main, glyph only, and hd-button-reset, without which the box is 44x36 and
-    /// the header indent misses. Reverses Fhi.Metadata-zqe14 (Fhi.Metadata-35w0p.34).
+    /// The cell is the first direct child of munin-explorer-dataitem-main because a row owns only cells;
+    /// Stiler keys its rules through it (Fhi.Metadata-35w0p.72). hd-button-reset is part of that contract.
+    /// Reverses Fhi.Metadata-zqe14 (Fhi.Metadata-35w0p.34).
     /// </remarks>
     private RenderFragment RowExpandToggle(VariableSummary v) => builder =>
     {
-        builder.OpenElement(0, "button");
-        builder.AddAttribute(1, "type", "button");
-        builder.AddAttribute(2, "class", "hd-button-reset munin-explorer-dataitem__expand-toggle");
-        builder.AddAttribute(3, "aria-expanded", DetailExpanded(v));
-        builder.AddAttribute(4, "aria-controls", DetailControls(v));
-        builder.AddAttribute(5, "aria-label", ExpandLabel(v));
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "role", "cell");
+        builder.AddAttribute(2, "class", "munin-explorer-dataitem__expand-cell");
+
+        builder.OpenElement(3, "button");
+        builder.AddAttribute(4, "type", "button");
+        builder.AddAttribute(12, "class", "hd-button-reset munin-explorer-dataitem__expand-toggle");
+        builder.AddAttribute(13, "aria-expanded", DetailExpanded(v));
+        builder.AddAttribute(14, "aria-controls", DetailControls(v));
+        builder.AddAttribute(15, "aria-label", ExpandLabel(v));
 
         // Never disabled, including while its own fetch runs: pressing it again is how the panel
         // is closed, and disabling the element that has focus drops focus to <body>.
-        builder.AddAttribute(6, "onclick",
+        builder.AddAttribute(16, "onclick",
             EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleDetailFromChevronAsync(v, e)));
 
         // The click stops here, or the row behind toggles as well and one press would open the
         // panel and close it again. The mousedown does not: the row measures a click against the
         // press it saw, and a drag begun here lands its click there. (Fhi.Metadata-l9l2n.81)
-        builder.AddEventStopPropagationAttribute(7, "onclick", true);
+        builder.AddEventStopPropagationAttribute(17, "onclick", true);
 
-        builder.OpenElement(8, "span");
-        builder.AddAttribute(9, "class",
+        builder.OpenElement(18, "span");
+        builder.AddAttribute(19, "class",
             IsSelected(v)
                 ? "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon"
                 : "icon icon-keyboard-arrow-right munin-explorer-dataitem-main__expand-icon");
-        builder.AddAttribute(10, "aria-hidden", "true");
+        builder.AddAttribute(20, "aria-hidden", "true");
+        builder.CloseElement();
+
         builder.CloseElement();
 
         builder.CloseElement();
@@ -1200,8 +1206,16 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(7, "class", "munin-explorer-dataitem-header");
         builder.AddAttribute(8, "role", "row");
 
-        // Navn is not in the picker and has no condition here: it is the row's disclosure as well
-        // as its first column.
+        // The chevron cell's column, heard and not seen, as Kelda's control column is: without it
+        // every header would name the cell one column to its left. Out of flow, so the header's
+        // indent stays Stiler's (Fhi.Metadata-35w0p.67).
+        builder.OpenElement(90, "div");
+        builder.AddAttribute(91, "role", "columnheader");
+        builder.AddAttribute(92, "class", "screenreader-only");
+        builder.AddContent(93, T.ColumnVariableDetail);
+        builder.CloseElement();
+
+        // Navn is not in the picker and has no condition here.
         HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
 
         if (ColumnVisible(ResultColumn.SaveToList))

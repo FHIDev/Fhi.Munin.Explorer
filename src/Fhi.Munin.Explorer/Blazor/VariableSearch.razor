@@ -710,7 +710,7 @@ else
                              @onmousedown="e => RowPressed(v, e)"
                              @onmouseup="e => RowReleased(v, e)"
                              @onclick="e => ToggleDetailFromRowAsync(v, e)">
-                        @* First and a direct child: Stiler's rules for it are keyed on that. *@
+                        @* The chevron's cell, first and a direct child: Stiler keys its rules on that. *@
                         @RowExpandToggle(v)
                         @RowHeading(v)
                         @RowSaveButton(v)

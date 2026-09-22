@@ -223,6 +223,7 @@ internal sealed record Texts(
     // The row's chevron, named for its variable for ExpandDatasamlinger's reason. (Fhi.Metadata-35w0p.34)
     Func<string, string> ExpandVariableDetail,
     Func<string, string> CollapseVariableDetail,
+    string ColumnVariableDetail,
     // The row's save action, in both of its states. One control, two words: the button says
     // what pressing it does, not what the variable currently is.
     string SaveToList,
@@ -1046,6 +1047,7 @@ internal sealed record Texts(
         ShowWholeVariable: "Vis hele variabelen",
         ExpandVariableDetail: name => $"Vis detaljer for {name}",
         CollapseVariableDetail: name => $"Skjul detaljer for {name}",
+        ColumnVariableDetail: "Vis detaljer",
         SaveToList: "Lagre i liste",
         RemoveFromList: "Fjern fra liste",
         FirstListName: "Min variabelliste",
@@ -1440,6 +1442,7 @@ internal sealed record Texts(
         ShowWholeVariable: "Show the whole variable",
         ExpandVariableDetail: name => $"Show details for {name}",
         CollapseVariableDetail: name => $"Hide details for {name}",
+        ColumnVariableDetail: "Show details",
         SaveToList: "Save to list",
         RemoveFromList: "Remove from list",
         FirstListName: "My variable list",

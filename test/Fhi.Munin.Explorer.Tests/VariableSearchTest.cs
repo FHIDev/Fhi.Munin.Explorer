@@ -1228,8 +1228,9 @@ public class VariableSearchTest : ExplorerTestContext
 
         // One header row of column headers, and one data row per result.
         Assert.Equal("row", cut.Find(".munin-explorer-dataitem-header").GetAttribute("role"));
-        // Navn plus the five optional columns that start on — Kode and Status start off.
-        Assert.Equal(6, cut.FindAll("[role='columnheader']").Count);
+        // The chevron's column, Navn, and the five optional columns that start on — Kode and Status
+        // start off.
+        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
 
         var row = cut.Find("li.munin-explorer-data-list__item");
 
@@ -1238,7 +1239,8 @@ public class VariableSearchTest : ExplorerTestContext
         // The name is the row's header, the way Kelda's <th scope="row"> is.
         Assert.Equal("rowheader",
                      row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
-        Assert.Equal(5, row.QuerySelectorAll("[role='cell']").Length);
+        // The chevron's cell and the five optional columns: one per header either side of the name.
+        Assert.Equal(6, row.QuerySelectorAll("[role='cell']").Length);
 
         // The two wrappers between the row and its cells are layout only. They have to say so, or
         // they sit in the tree as anonymous groups between a row and the columns it owns.
@@ -2010,7 +2012,8 @@ public class VariableSearchTest : ExplorerTestContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        var headers = cut.FindAll("[role='columnheader']");
+        // The chevron's column is heard and not seen, so it has nothing to show on hover.
+        var headers = cut.FindAll("[role='columnheader']:not(.screenreader-only)");
 
         Assert.Equal(["Navn", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode"],
                      headers.Select(h => h.QuerySelector("span[title]")?.GetAttribute("title")));

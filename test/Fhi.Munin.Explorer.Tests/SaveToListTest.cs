@@ -846,12 +846,11 @@ public class SaveToListTest : ExplorerTestContext
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
         var headers = HeaderNames(cut);
-        // Past the chevron, which the header indents for rather than naming (Fhi.Metadata-35w0p.67).
-        var cells = cut.Find(".munin-explorer-dataitem-main").Children
-            .Where(c => !c.ClassList.Contains("munin-explorer-dataitem__expand-toggle")).ToList();
+        var cells = cut.Find(".munin-explorer-dataitem-main").Children;
 
-        Assert.Equal("Variabelliste", headers[1]);
-        Assert.Equal("munin-explorer-dataitem-main__save", cells[1].ClassName);
+        // Third on both sides: the chevron's cell and its screen-reader-only header come first.
+        Assert.Equal("Variabelliste", headers[2]);
+        Assert.Equal("munin-explorer-dataitem-main__save", cells[2].ClassName);
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-header [role=columnheader].munin-explorer-dataitem-header__save"));
     }
 
@@ -862,7 +861,7 @@ public class SaveToListTest : ExplorerTestContext
         Services.AddScoped<VariableListState>();
         var cut = Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, "en"));
 
-        Assert.Equal("Variable list", HeaderNames(cut)[1]);
+        Assert.Equal("Variable list", HeaderNames(cut)[2]);
         Assert.Equal("Variable list", PickerNames(cut)[0]);
     }
 

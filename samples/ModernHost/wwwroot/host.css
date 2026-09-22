@@ -2365,6 +2365,12 @@ table.munin-explorer-data-list tbody th {
   display: inline-flex;
 }
 
+/* The cell around it, which a row needs because a row owns only cells. Kept at the button's own
+   width in the flex row. Stiler's rule for this name is Fhi.Metadata-35w0p.72. */
+.munin-explorer-dataitem__expand-cell {
+  flex: 0 0 auto;
+}
+
 /* Measured in the sample before this was written: on grey10 alone the panel was invisible against
    the white table, so six datasamlinger read as six more kilder, under a second header row nobody
    had said was nested. The inset and the rule down the left are what say "inside this row". */

@@ -817,6 +817,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main__name` | handle |
   | `munin-explorer-dataitem-main__save` | handle |
   | `munin-explorer-dataitem-period` | prose |
+  | `munin-explorer-dataitem__expand-cell` | handle |
   | `munin-explorer-dataitem__expand-toggle` | handle |
   | `munin-explorer-datasamling` | handle |
   | `munin-explorer-datasamling__criteria` | handle |

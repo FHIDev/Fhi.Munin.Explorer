@@ -186,6 +186,7 @@ public class RunaRowGesturesTest : ExplorerTestContext
             Assert.Equal("false", chevron.GetAttribute("aria-expanded"));
             Assert.False(chevron.HasAttribute("aria-controls"));
             Assert.Single(Strip(cut, i).QuerySelectorAll(Chevron));
+            Assert.False(chevron.HasAttribute("role"));
         }
 
         Press(Chevrons(cut)[0]);
@@ -313,9 +314,14 @@ public class RunaRowGesturesTest : ExplorerTestContext
         {
             var chevron = Chevrons(cut)[i];
             var strip = Strip(cut, i);
+            var cell = strip.FirstElementChild!;
 
-            Assert.Same(strip, chevron.ParentElement);
-            Assert.Same(chevron, strip.FirstElementChild);
+            // The cell is the direct first child, because a row owns only cells; the button is its
+            // only child (Fhi.Metadata-35w0p.72 keys on both).
+            Assert.Equal("DIV", cell.TagName);
+            Assert.Equal("cell", cell.GetAttribute("role"));
+            Assert.Equal("munin-explorer-dataitem__expand-cell", cell.ClassName);
+            Assert.Equal(chevron.OuterHtml, Assert.Single(cell.Children).OuterHtml);
             Assert.True(chevron.HasAttribute("aria-expanded"));
             Assert.Equal("", chevron.TextContent.Trim());
 
@@ -355,7 +361,8 @@ public class RunaRowGesturesTest : ExplorerTestContext
         // body:not(.is-tabbing) button:focus removes any outline; the indicator is Stiler's surface.
         var css = Regex.Replace(File.ReadAllText(path), @"/\*.*?\*/", " ", RegexOptions.Singleline);
         var rules = Regex.Matches(css, @"([^{}]+)\{([^{}]*)\}")
-            .Where(m => m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-toggle", StringComparison.Ordinal))
+            .Where(m => m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-", StringComparison.Ordinal))
+            .Where(m => !m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-cell", StringComparison.Ordinal))
             .ToList();
 
         var rule = Assert.Single(rules);
@@ -364,5 +371,12 @@ public class RunaRowGesturesTest : ExplorerTestContext
             ["align-items: center", "cursor: pointer", "display: inline-flex", "padding: 8px 12px"],
             rule.Groups[2].Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Order(StringComparer.Ordinal));
+
+        // The cell only holds its width in the flex row: no padding or margin to line anything up.
+        var cell = Assert.Single(
+            Regex.Matches(css, @"([^{}]+)\{([^{}]*)\}"),
+            m => m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-cell", StringComparison.Ordinal));
+        Assert.Equal(".munin-explorer-dataitem__expand-cell", cell.Groups[1].Value.Trim());
+        Assert.Equal("flex: 0 0 auto;", cell.Groups[2].Value.Trim());
     }
 }
