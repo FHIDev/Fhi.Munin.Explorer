@@ -1,12 +1,12 @@
 // Opt-in browser data for the kilde detail hierarchy: shapes hierarchy.json, one captured kilde,
-// does not contain. Served only for the ids below, so every captured payload stays as it was.
+// does not contain. Served only for the ids below, so no captured kilde answers differently.
 export const HIERARCHY_KILDE = 'dddddddd-0000-4000-8000-000000000001';
 export const EMPTY_KILDE = 'dddddddd-0000-4000-8000-000000000002';
 export const FAILING_KILDE = 'dddddddd-0000-4000-8000-000000000003';
 
-// The kilde the variable explorer's "Vis datakilde" asks for, from variable.json. Nothing else
-// opens it, and served the capture it gets Tromsø's hierarchy, which the view refuses as foreign.
-export const VARIABLE_KILDE = '8ec4c2c4-662d-47a5-a946-f1086a014070';
+// The stub puts this id on variable.json's kilde, so "Vis datakilde" opens the tree and the
+// captured kilde the kildeutforsker lists first is left as it was.
+export const VARIABLE_KILDE = 'dddddddd-0000-4000-8000-000000000004';
 
 // One unbroken word as long as the catalogue's longest code, which is what decides reflow width.
 export const LONG_WORD = 'V_LMR.VARE_ADMINISTRASJONSVEI_BESKRIVELSE';

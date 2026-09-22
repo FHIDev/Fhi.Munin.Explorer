@@ -94,6 +94,7 @@ async function deep(page) {
   if (!await icons(rows(followUp, names.wave)) || !await spoken(rows(followUp, names.wave))) {
     throw new Error('A categorised datasamling drew no glyphs or said nothing');
   }
+  if (await rows(main, names.empty).count() !== 1) throw new Error(`${names.empty} is not drawn`);
   if (await rows(main, names.empty).locator('.munin-explorer-hierarchy__count').count()) {
     throw new Error('A group of nought drew a count');
   }
@@ -109,8 +110,12 @@ async function drilled(page, iconsOff) {
   const row = page.locator('button.munin-explorer-dataitem-main__name').first();
   await row.waitFor({ state: 'visible', timeout: 15_000 });
   if (iconsOff) {
+    // The facets are a fetch of their own: wait for the panel, or for the toggle folding it away.
+    const toggle = page.getByRole('button', { name: 'Vis filtre', exact: true });
+    await until(async () => await page.locator('.munin-explorer-filters').isVisible() ||
+      await toggle.isVisible(), 'filter panel or its toggle');
     if (!await page.locator('.munin-explorer-filters').isVisible()) {
-      await page.getByRole('button', { name: 'Vis filtre', exact: true }).click();
+      await toggle.click();
     }
     const control = page.locator('.munin-explorer-filters').getByRole('switch', { name: 'Ikoner', exact: true });
     await control.click();

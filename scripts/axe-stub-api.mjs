@@ -128,6 +128,8 @@ if (typeof detail.code !== 'string') {
 }
 
 detail.code = longCode;
+// And its kilde, so the drill-in opens hierarchy-fixture.mjs's tree and not a captured kilde's.
+detail.kildeId = detailTree.VARIABLE_KILDE;
 bodies.set(detailRoute, JSON.stringify(detail));
 
 const variablesRoute = routes.find(([, source]) => source === 'variables.json')[0];
