@@ -1686,4 +1686,62 @@ public class VariableViewTest : ExplorerTestContext
                      Placement(cut));
         Assert.Equal(["DÅR Statistikk", "DÅR Utlevering"], DatasamlingList(cut));
     }
+
+    // ---------------------------------------------------------------------------------
+    // Variabelgrupper. The list next to Datasamlinger, which answered "which of them" off
+    // the payload while its neighbour asked the predicate. (Fhi.Metadata-jrgnt)
+
+    /// <summary>The names the Variabelgrupper section lists, in the order it lists them.</summary>
+    private static IReadOnlyList<string> VariabelgruppeList(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll($"#{DetailSectionIds.VariableGroups} ul > li").Select(item => item.TextContent)];
+
+    [Fact]
+    public void VariableGroups_WhenAGroupHasNoName_ThenOnlyTheNamedOnesAreListed()
+    {
+        // Both spellings of unnamed in one payload, because the API can answer either: an absent
+        // "name" leaves the record's own "" and an explicit JSON null leaves null. Listed as the
+        // payload holds them, each draws a bullet with nothing beside it.
+        var cut = Render(Whole() with
+        {
+            AllVariabelgrupper =
+            [
+                new() { Id = Guid.NewGuid(), Name = "Funksjonsmål" },
+                new() { Id = Guid.NewGuid() },
+                new() { Id = Guid.NewGuid(), Name = null! },
+            ],
+        });
+
+        Assert.Equal(["Funksjonsmål"], VariabelgruppeList(cut));
+    }
+
+    [Fact]
+    public void VariableGroups_WhenEveryGroupIsUnnamed_ThenNoSectionIsDrawnForThem()
+    {
+        // The end of the rule Datasamlinger already follows: a list of groups the catalogue named
+        // none of is a heading over empty bullets, and the nav would offer a link to it.
+        // VariabelgruppeName is null here because the predicate falls back to it.
+        var cut = Render(Whole() with
+        {
+            VariabelgruppeName = null,
+            AllVariabelgrupper = [new() { Id = Guid.NewGuid() }, new() { Id = Guid.NewGuid() }],
+        });
+
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.VariableGroups}"));
+        Assert.DoesNotContain("#" + DetailSectionIds.VariableGroups, Targets(cut));
+    }
+
+    [Fact]
+    public void VariableGroups_WhenOnlyThePrimaryGroupIsNamed_ThenTheListHasThatName()
+    {
+        // The fallback that keeps the section from vanishing for a payload carrying no usable list,
+        // which is the half a filter alone would have taken away.
+        var cut = Render(Whole() with
+        {
+            VariabelgruppeName = "Funksjonsmål",
+            AllVariabelgrupper = [new() { Id = Guid.NewGuid() }],
+        });
+
+        Assert.Equal(["Funksjonsmål"], VariabelgruppeList(cut));
+        Assert.Contains("#" + DetailSectionIds.VariableGroups, Targets(cut));
+    }
 }

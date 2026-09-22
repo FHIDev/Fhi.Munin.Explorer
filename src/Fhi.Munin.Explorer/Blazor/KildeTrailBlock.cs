@@ -12,6 +12,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// One implementation and two callers — the panel an open row shows, and <see cref="VariableView"/>
 /// — because the piece a second copy re-derives wrongly is <see cref="Steps"/>'s empty-level rule.
 /// (Fhi.Metadata-35w0p.47)
+/// <para>
+/// The membership predicates below are here for that reason rather than because they are trail
+/// steps: <see cref="NamedVariabelgrupper"/> feeds no step at all, and is beside its datasamling
+/// twin so the two adjacent lists on a variable page cannot answer the question two ways.
+/// </para>
 /// </remarks>
 internal static class KildeTrailBlock
 {
@@ -181,5 +186,29 @@ internal static class KildeTrailBlock
         }
 
         return named;
+    }
+
+    /// <summary>
+    /// Every variabelgruppe the variable is in, by name, less the ones the payload left unnamed,
+    /// falling back to the primary one when that leaves none.
+    /// </summary>
+    /// <remarks>
+    /// Beside <see cref="NamedDatasamlinger"/> and for its reason: the panel lists these and the
+    /// whole-variable page both lists them and offers a contents entry for the section, so two
+    /// readings put an empty bullet under a heading over nothing.
+    /// </remarks>
+    internal static IReadOnlyList<string> NamedVariabelgrupper(VariableDetail detail)
+    {
+        var names = detail.AllVariabelgrupper
+            .Select(gruppe => gruppe.Name)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToList();
+
+        if (names.Count == 0 && !string.IsNullOrWhiteSpace(detail.VariabelgruppeName))
+        {
+            names.Add(detail.VariabelgruppeName);
+        }
+
+        return names;
     }
 }

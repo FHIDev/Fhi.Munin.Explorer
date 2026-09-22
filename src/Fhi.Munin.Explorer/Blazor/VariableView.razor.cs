@@ -163,6 +163,14 @@ public sealed partial class VariableView : ComponentBase
     /// </remarks>
     private IReadOnlyList<DatasamlingReference> Datasamlinger { get; set; } = [];
 
+    /// <summary>The variabelgrupper this view lists, which is the set its contents entry answers to.</summary>
+    /// <remarks>
+    /// <see cref="KildeTrailBlock.NamedVariabelgrupper"/> rather than the payload's own list, the
+    /// same bargain <see cref="Datasamlinger"/> makes: an unnamed group drew an empty bullet, and a
+    /// payload naming none of them drew a heading and a contents entry over nothing.
+    /// </remarks>
+    private IReadOnlyList<string> Variabelgrupper { get; set; } = [];
+
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>
     /// The third element says whether the value is the catalogue's own words, the same as the kilde
@@ -304,6 +312,7 @@ public sealed partial class VariableView : ComponentBase
         // reading Kildeinformasjon below already uses, so the page cannot name one kildetype twice.
         Placement = variable is null ? [] : KildeTrailBlock.Steps(variable, T, kildeTypeApiName: null);
         Datasamlinger = variable is null ? [] : KildeTrailBlock.NamedDatasamlinger(variable);
+        Variabelgrupper = variable is null ? [] : KildeTrailBlock.NamedVariabelgrupper(variable);
 
         var toc = BuildToc();
 
@@ -329,7 +338,7 @@ public sealed partial class VariableView : ComponentBase
         toc.Add(DetailBlocks.AnyFacts(SourceInformation), DetailSectionIds.Source, T.HeadingSourceInformation);
         toc.Add(DataPeriod is not null, DetailSectionIds.DataPeriod, T.FieldDataPeriod);
         toc.Add(DataTypeLabel is not null, DetailSectionIds.DataType, T.FieldDataType);
-        toc.Add(variable.AllVariabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
+        toc.Add(Variabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
         toc.Add(Datasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
 
         return toc;
