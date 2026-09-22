@@ -129,6 +129,95 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // A long facet at rest, capped, and the control that lifts the cap pressed twice. The only state
+  // here where the cap is on — every other opens its facets through Utvid alle, which lifts them —
+  // and the only runner where the press lands on a DOM bUnit did not draw. (Fhi.Metadata-35w0p.31)
+  'facet-cap': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+
+    // Pressed only where it is on screen, on kilde-facets' terms: above the sample's 1024px
+    // breakpoint the toggle is display:none and the panel is unfolded already.
+    const toggle = page.locator('.munin-explorer-filters__toggle');
+    if (await toggle.isVisible()) {
+      await toggle.click();
+    }
+
+    // The capped facet is found by the control, not by a heading: the fixture decides which facet
+    // runs past ten and a name written here would rot the moment it re-captures.
+    const facet = page.locator('.munin-explorer-filters__facets > details')
+      .filter({ has: page.locator(':scope > button[aria-expanded]') })
+      .first();
+    const control = facet.locator(':scope > button[aria-expanded]');
+    await control.waitFor({ state: 'attached', timeout: findTimeout });
+
+    const summary = facet.locator(':scope > summary');
+    await summary.focus();
+    await page.keyboard.press('Enter');
+    await control.waitFor({ state: 'visible', timeout: findTimeout });
+
+    const values = facet.locator(':scope > ul');
+
+    // The control names the list it reveals, and names the one that is actually there: an
+    // aria-controls pointing at an id nothing carries is a reference a screen reader drops in
+    // silence.
+    const controls = await control.getAttribute('aria-controls');
+    if (await values.getAttribute('id') !== controls) {
+      throw new Error('The control names an id its facet\'s value list does not carry');
+    }
+
+    // Counted through the id rather than over every facet's rows: the others are shut and still
+    // render their values, so a page-wide count never moves.
+    const rows = () => values.locator(':scope > li').count();
+    const rowsAre = (how, n) => page.waitForFunction(
+      ([id, want, mode]) => {
+        const drawn = document.getElementById(id)?.querySelectorAll(':scope > li').length;
+        return mode === 'more' ? drawn > want : drawn === want;
+      },
+      [controls, n, how],
+      { timeout: findTimeout });
+
+    const capped = await rows();
+    const offer = (await control.innerText()).replace(/\s+/g, ' ').trim();
+    const promised = Number(offer.match(/\d+/)?.[0]);
+
+    if (await control.getAttribute('aria-expanded') !== 'false') {
+      throw new Error('A capped facet drew its control already expanded');
+    }
+    if (!Number.isInteger(promised) || promised < 1) {
+      throw new Error(`The control offers no number to reveal: ${offer}`);
+    }
+
+    await control.click();
+    await rowsAre('more', capped);
+
+    // The count on the button was a promise about the list: what the press revealed has to be
+    // exactly it, or the reader was told a number the panel does not have.
+    const revealed = await rows() - capped;
+    if (revealed !== promised) {
+      throw new Error(`The control offered ${promised} more values and revealed ${revealed}`);
+    }
+    if (await control.getAttribute('aria-expanded') !== 'true') {
+      throw new Error('The press revealed the rest and left aria-expanded false');
+    }
+
+    // And back, because the way out is the half a cap is judged on. The DOM and the component
+    // have to agree twice, not once.
+    await control.click();
+    await rowsAre('same', capped);
+
+    if (await control.getAttribute('aria-expanded') !== 'false') {
+      throw new Error('The second press put the cap back and left aria-expanded true');
+    }
+    if ((await control.innerText()).replace(/\s+/g, ' ').trim() !== offer) {
+      throw new Error('The control came back offering a different remainder than it began with');
+    }
+
+    // Left expanded for the scan: the revealed values are markup no other state puts on screen,
+    // and axe reports no violations in what a cap is holding back.
+    await control.click();
+    await rowsAre('more', capped);
+  },
+
   // The filter tree unfolded, with the guide lines drawn (Fhi.Metadata-wcbxi): axe skips what a
   // closed <details> hides, and since Fhi.Metadata-adog5 it would see nothing of the source tree
   // at all — a shut branch renders no values, so every level below the first is absent rather than

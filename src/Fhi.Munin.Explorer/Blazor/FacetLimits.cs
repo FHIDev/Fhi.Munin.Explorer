@@ -11,10 +11,8 @@ internal readonly record struct CappedValues<T>(IReadOnlyList<T> Visible, int Hi
 /// <summary>What makes a facet long, for every filter panel this package draws.</summary>
 /// <remarks>
 /// One number and one predicate for three surfaces — Kelda's facets, the variabelutforsker's and
-/// the saved list's — so a reader meets one facet behaviour rather than three, and so "long" cannot
-/// come to mean one thing in one panel and another next door. It decides both halves at once: past
-/// it a facet gets a search box of its own, and it is how many values are drawn before the rest go
-/// behind "Vis N til".
+/// the saved list's — so "long" cannot come to mean one thing in one panel and another next door.
+/// It decides both halves: which facets get a search box, and how many values are drawn at rest.
 /// </remarks>
 internal static class FacetLimits
 {
@@ -39,11 +37,9 @@ internal static class FacetLimits
     /// covers one that now holds <paramref name="count"/>.
     /// </summary>
     /// <remarks>
-    /// A lifted cap outlives the values behind it: a facet is rebuilt whenever the query or the
-    /// result set changes and keeps its key, so "show me all 39 databehandlere" would otherwise
-    /// draw the next search's 80 uncapped — the tall panel this cap exists to prevent, back after
-    /// any later search. A facet that has grown past what the reader agreed to see is capped again;
-    /// one that has shrunk is not, since they already asked for more than it now holds.
+    /// A lifted cap outlives the values behind it: a facet keeps its key when the query rebuilds
+    /// it, so "show me all 39 databehandlere" would otherwise draw the next search's 80 in full.
+    /// Grown past what they agreed to see it is capped again; shrunk it is not, they asked for more.
     /// </remarks>
     internal static bool StillExpanded(int? asked, int count) => asked is { } many && count <= many;
 

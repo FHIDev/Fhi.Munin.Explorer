@@ -70,8 +70,7 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     /// </summary>
     /// <remarks>
     /// A field rather than a set of keys, unlike the two explorers' panels: there is one facet here
-    /// and there is not going to be a second — see the class remarks for why the list tab has a
-    /// panel of its own at all. The count rather than a flag, because the kilder are replaced
+    /// and not going to be a second. The count rather than a flag, because the kilder are replaced
     /// whenever the reader's active list is — see <see cref="FacetLimits.StillExpanded"/>.
     /// </remarks>
     private int? _kilderExpandedAt;
@@ -106,8 +105,7 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     /// <remarks>
     /// <see cref="FacetLimits"/>'s own cap, the one both explorers apply, so a reader who has met
     /// one of those panels meets no second rule here. Computed once per render and handed to the
-    /// list, the control and its words together — see <see cref="CappedValues{T}"/> for why the
-    /// three must not each derive their own.
+    /// list, the control and its words together — <see cref="CappedValues{T}"/> says why not apart.
     /// </remarks>
     private CappedValues<KildeInList> DrawnKilder() =>
         FacetLimits.Cap(Kilder, KilderExpanded, kilde => IsChosen(kilde.Id));

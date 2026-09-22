@@ -199,12 +199,9 @@ public sealed partial class KildeSearch
     /// Which facets the reader has asked to see the whole of, and how long each was when they asked.
     /// </summary>
     /// <remarks>
-    /// Keyed on the facet rather than on its disclosure, so a facet the reader folds by hand keeps
-    /// its lifted cap: folding a facet away is not a decision to hide values inside it again.
-    /// Ordinal, like every other key this component compares. The length is kept for the rule in
-    /// <see cref="FacetLimits.StillExpanded"/>, which this panel alone cannot need — its options are
-    /// counted over a list fetched once — and carries anyway, so all three panels answer "is this
-    /// still expanded?" the same way rather than two of them being right by accident.
+    /// Keyed on the facet rather than on its disclosure: folding a facet away is not a decision to
+    /// hide the values inside it again. The length is what <see cref="FacetLimits.StillExpanded"/>
+    /// reads; this panel counts over a list fetched once and keeps it so all three answer alike.
     /// </remarks>
     private readonly Dictionary<string, int> _expandedFacets = new(StringComparer.Ordinal);
 
@@ -747,9 +744,8 @@ public sealed partial class KildeSearch
     /// <summary>Whether the facet draws the control that reveals what the cap is holding back.</summary>
     /// <remarks>
     /// Not while the facet's own search is running: a term draws every value it matches, so a
-    /// control offering more would be offering nothing. An expanded facet keeps it either way,
-    /// because that is the only way back. <paramref name="hidden"/> is the render's own count, never
-    /// a second sum of the same values.
+    /// control offering more would offer nothing. An expanded facet keeps it, that being the only
+    /// way back. <paramref name="hidden"/> is the render's own count, never a second sum of it.
     /// </remarks>
     private bool ShowsRestControl(Facet facet, int hidden) =>
         IsSearchable(facet)
@@ -759,7 +755,6 @@ public sealed partial class KildeSearch
     /// <summary>What the control says: the remainder it would reveal, or the offer to put it back.</summary>
     private string RestControlText(Facet facet, int hidden) =>
         IsFacetExpanded(facet) ? T.ShowFewerFacetValues : T.ShowMoreFacetValues(hidden);
-
 
     /// <summary>The id joining a facet's value list to the control that reveals the rest of it.</summary>
     private string FacetOptionsId(string key) => $"munin-explorer-facet-options-{_instance}-{key}";

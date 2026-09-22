@@ -1268,10 +1268,9 @@ public partial class VariableSearch
     /// Which facets the reader has asked to see the whole of, and how long each was when they asked.
     /// </summary>
     /// <remarks>
-    /// Keyed on the facet rather than on its disclosure, so a facet the reader folds by hand keeps
-    /// its lifted cap: folding a facet away is not a decision to hide its values again. The length
-    /// is kept because the keys outlive the values behind them — this panel's facets are rebuilt out
-    /// of every answer the API sends. See <see cref="FacetLimits.StillExpanded"/>.
+    /// Keyed on the facet rather than on its disclosure: folding a facet away is not a decision to
+    /// hide its values again. The length because the keys outlive the values behind them — this
+    /// panel's facets are rebuilt per answer. See <see cref="FacetLimits.StillExpanded"/>.
     /// </remarks>
     private readonly Dictionary<string, int> _expandedFacets = new(StringComparer.Ordinal);
 
@@ -1333,11 +1332,9 @@ public partial class VariableSearch
 
     /// <summary>The top-level values a facet draws, and how many its cap is holding back.</summary>
     /// <remarks>
-    /// <see cref="FacetLimits"/>'s predicate, the same one that decides a facet is long enough for
-    /// a search box, so "long" means one thing in this panel and the same thing in Kelda's. The cap
-    /// is the top level only: a branch is shut at rest and discloses its own children, so a kilde's
-    /// datasamlinger are already behind a press. The drawn list and the remainder come back together
-    /// — see <see cref="CappedValues{T}"/> for why they must not be derived apart.
+    /// <see cref="FacetLimits"/>'s predicate, so "long" means one thing here and the same in
+    /// Kelda's. The cap is the top level only: a branch is shut at rest, so a kilde's datasamlinger
+    /// sit behind a press already. List and remainder come back together, per <see cref="CappedValues{T}"/>.
     /// </remarks>
     private CappedValues<FacetValue> VisibleValues(FacetGroup group) =>
         IsFacetSearched(group)
@@ -1355,9 +1352,8 @@ public partial class VariableSearch
     /// <summary>Whether the facet draws the control that reveals what the cap is holding back.</summary>
     /// <remarks>
     /// Not while the facet's own search is running: a term draws every value it matches, so a
-    /// control offering more would be offering nothing. An expanded facet keeps it either way,
-    /// because that is the only way back. <paramref name="hidden"/> is the render's own count, never
-    /// a second sum of the same values.
+    /// control offering more would offer nothing. An expanded facet keeps it, that being the only
+    /// way back. <paramref name="hidden"/> is the render's own count, never a second sum of it.
     /// </remarks>
     private bool ShowsRestControl(FacetGroup group, int hidden) =>
         !IsFacetSearched(group)

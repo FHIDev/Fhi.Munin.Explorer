@@ -52,13 +52,9 @@
                     }
                 </ul>
 
-                @* The rest of a long list, behind a real button so it is in the tab order and Enter
-                   and Space work without a handler of our own. The cap is both explorers' own, and
-                   list and words both come off `drawn`, computed once above, so the count cannot
-                   name a remainder this list does not have. `hd-button-square button-square--ghost`
-                   is the pair the press above already wears, which Stiler carries scoped
-                   `:not([aria-pressed])` — this button has aria-expanded and no aria-pressed, so
-                   the rule reaches it. *@
+                @* The rest of a long list, behind a real button so Enter and Space work without a
+                   handler of our own; list and words both off `drawn`, computed once above. Stiler
+                   scopes the ghost pair `:not([aria-pressed])`, and this carries aria-expanded. *@
                 @if (ShowsRestControl(drawn.Hidden))
                 {
                     <button class="hd-button-square button-square--ghost"
