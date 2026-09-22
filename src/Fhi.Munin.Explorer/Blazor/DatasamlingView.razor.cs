@@ -476,6 +476,11 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     private bool _variablesFailed;
     private bool _variablesRateLimited;
     private bool _variablesRetryShown;
+
+    // A pager button has been pressed since this collection was opened. A retreat can land on a
+    // collection that now fits one page, and dropping the pager there takes Neste out of the
+    // document under the finger that pressed it — the failure the retreat exists to avoid.
+    private bool _variablesKeepPager;
     private bool _disposed;
 
     /// <summary>Whether the retry on offer can do anything, which throttling is not.</summary>
@@ -485,6 +490,13 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     /// <summary>How many pages the last answer said there are; none before one has arrived.</summary>
     private int VariablePageCount => _variablesPages;
 
+    /// <summary>Whether the pager belongs on screen at all.</summary>
+    /// <remarks>
+    /// More than one page, or a pager the reader is already standing on — see
+    /// <see cref="_variablesKeepPager"/>, and <c>VariableSearch.ShowPager</c>, which reads the same.
+    /// </remarks>
+    private bool ShowVariablePager => VariablePageCount > 1 || _variablesKeepPager;
+
     /// <summary>The fallback count, for an answer that left <c>totalPages</c> at zero.</summary>
     private static int PagesOver(int total, int size) => total <= 0 ? 0 : (total + size - 1) / size;
 
@@ -493,13 +505,14 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     /// </summary>
     /// <remarks>
     /// A successful empty answer says nothing here: its sentence is the paragraph that replaces the
-    /// table, so a reader is not told twice — and a failure must never reach that paragraph, which
-    /// is what the ordering of these arms is for.
+    /// table, so a reader is not told twice. A page with no rows over a collection that has some is
+    /// the exception — it draws no paragraph, and unsaid it would be a blank section under a pager.
     /// </remarks>
     private string VariablesStatus =>
         _variablesLoading ? T.VariablesLoading
         : _variablesRateLimited ? T.RateLimitError
         : _variablesFailed ? T.VariablesError
+        : VariablePageEmpty ? T.VariablesPageEmpty
         : _variablesRetryShown ? T.VariablesLoaded : "";
 
     /// <summary>Whether the table itself is what the section draws.</summary>
@@ -515,6 +528,16 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     private bool NoVariables =>
         !_variablesLoading && !_variablesFailed && !_variablesRateLimited
         && _variables.Count == 0 && _variablesTotal == 0;
+
+    /// <summary>The state <see cref="NoVariables"/> carves out: no rows over a total that has some.</summary>
+    /// <remarks>
+    /// <see cref="RetreatFromEmptyVariablePageAsync"/> leaves it where there is a page to leave it
+    /// for, and page 1 and a second empty answer are both settled states it cannot. Said in
+    /// <see cref="VariablesStatus"/> rather than drawn, so neither is a blank section.
+    /// </remarks>
+    private bool VariablePageEmpty =>
+        !_variablesLoading && !_variablesFailed && !_variablesRateLimited
+        && _variables.Count == 0 && _variablesTotal > 0;
 
     /// <summary>The reader's word for a stored datatype, never the stored value itself.</summary>
     /// <remarks>
@@ -557,6 +580,7 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
         _variablesTotal = 0;
         _variablesPages = 0;
         _variablesRetryShown = false;
+        _variablesKeepPager = false;
 
         return LoadVariablesAsync(1);
     }
@@ -580,8 +604,8 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     /// <para>
     /// The clamp in <see cref="GoToVariablePageAsync"/> measures its target against the count the
     /// <em>previous</em> answer carried, so a collection losing rows between two requests leaves the
-    /// reader past the end: a total saying rows exist, none to show, and — once the new count is
-    /// under two pages — not even a pager to press back with.
+    /// reader past the end: a total saying rows exist and none to show.
+    /// <see cref="_variablesKeepPager"/> is what keeps the pager through the step back.
     /// </para>
     /// <para>
     /// One step only, as <c>VariableSearch.RetreatFromEmptyPageAsync</c> takes it, and no rollback
@@ -612,10 +636,18 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     /// <c>aria-disabled</c> and never <c>disabled</c>: disabling the control under the reader's
     /// focus drops that focus to <c>&lt;body&gt;</c>, with nothing on screen to say why.
     /// </remarks>
-    private Task GoToVariablePageAsync(int page) =>
-        page < 1 || page > VariablePageCount || page == _variablesPage || _variablesLoading
-            ? Task.CompletedTask
-            : ShowVariablePageAsync(page);
+    private Task GoToVariablePageAsync(int page)
+    {
+        if (page < 1 || page > VariablePageCount || page == _variablesPage || _variablesLoading)
+        {
+            return Task.CompletedTask;
+        }
+
+        // Before the fetch, because the retreat it may set off is the press this latch is about.
+        _variablesKeepPager = true;
+
+        return ShowVariablePageAsync(page);
+    }
 
     /// <summary>
     /// One page of the collection's variables, from the search endpoint narrowed to this

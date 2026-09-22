@@ -15,6 +15,10 @@ category: Added
   page and cancels the call in flight, a load that fails says so and offers a retry rather than
   reading as a collection with nothing in it, and a collection that really has none says that
   instead. A collection that loses rows while the reader is deeper in it steps them back to a page
-  that still has some, rather than stranding them on an empty one under a pager the smaller count
-  no longer draws.
+  that still has some, and the pager stays on screen through that step even where the smaller count
+  would no longer draw one, so the button under the reader's finger is not taken out of the
+  document. Where there is nowhere to step back to — page one itself, or a server that answers a
+  second page with nothing too — the live region says this page has no variables although the
+  collection has, rather than settling into a section with a heading, a pager and nothing between
+  them.
   (Fhi.Metadata-mg08i)

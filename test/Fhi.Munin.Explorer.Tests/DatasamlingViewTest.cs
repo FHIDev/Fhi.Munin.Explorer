@@ -1913,6 +1913,13 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(10, rows.Length);
         Assert.Equal("V_ALS.F1.NR1", Cells(rows[0])[0]);
+
+        // Ten rows are one page, so the count alone would drop the pager in this very render and
+        // take the pressed button out of the document, dropping the reader's focus to <body>.
+        Assert.Equal(
+            "true",
+            cut.Find(".munin-explorer-pagination-content button[aria-label='Neste side']")
+               .GetAttribute("aria-disabled"));
     }
 
     [Fact]
@@ -1949,6 +1956,11 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal([2, 1], Variables.Calls.Skip(1).Select(c => c.Page));
         Assert.Empty(cut.FindAll("table.munin-explorer-datasamling__variabler"));
         Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__variabler-tom"));
+
+        // Rows, paragraph and pager are all the reader has here, and two of them are nothing: the
+        // live region is what stops the section from settling blank under a pager that still draws.
+        Assert.Equal("Denne siden har ingen variabler å vise, men datasamlingen har variabler.",
+                     cut.Find("p[role=status]").TextContent.Trim());
     }
 
     [Fact]
@@ -1962,6 +1974,14 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Single(Variables.Calls);
         Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__variabler-tom"));
+
+        // Nowhere to step to is not nothing to say. A reader who pressed nothing reaches this one,
+        // so the sentence is the whole of what the section gives them.
+        Assert.Equal("Denne siden har ingen variabler å vise, men datasamlingen har variabler.",
+                     cut.Find("p[role=status]").TextContent.Trim());
+
+        Assert.Equal("This page has no variables to show, although the data collection has some.",
+                     Render(Datasamling(), language: "en").Find("p[role=status]").TextContent.Trim());
     }
 
     [Fact]
@@ -2042,6 +2062,31 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal("V_ALS.F1.NR1", Cells(Table(cut).QuerySelector("tbody tr")!)[0]);
         Assert.Equal(1, Variables.Calls[^1].Page);
+    }
+
+    [Fact]
+    public void Variables_WhenARetryLandsPastTheEndOfAShrunkenCollection_ThenItStepsBackToRows()
+    {
+        // The retry is one of the routes that can strand: the page turn that failed was already
+        // past the end, and the collection it is refetched against has since lost the rows that
+        // made that page exist. Without the retreat the reader gets a pager over nothing.
+        Variables.Answer = page => Variables.Calls.Count == 3
+            ? Task.FromException<Page<VariableSummary>>(new HttpRequestException("down"))
+            : Task.FromResult(PageOf(page, Variables.Calls.Count < 3 ? 45 : 10));
+
+        var cut = Render(Datasamling());
+
+        cut.Find(".munin-explorer-pagination-content button[aria-label='Neste side']").Click();
+        cut.Find(".munin-explorer-pagination-content button[aria-label='Neste side']").Click();
+
+        cut.Find("button.munin-explorer-retry").Click();
+
+        Assert.Equal([2, 3, 3, 1], Variables.Calls.Skip(1).Select(c => c.Page));
+
+        var rows = Table(cut).QuerySelectorAll("tbody tr");
+
+        Assert.Equal(10, rows.Length);
+        Assert.Equal("V_ALS.F1.NR1", Cells(rows[0])[0]);
     }
 
     [Fact]

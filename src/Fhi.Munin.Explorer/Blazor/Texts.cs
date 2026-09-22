@@ -207,6 +207,10 @@ internal sealed record Texts(
     string VariablesError,
     string VariablesRetry,
     string VariablesEmpty,
+    // The page the reader is standing on has no rows although the collection has some: a page past
+    // the end of a collection that shrank, or a count the search endpoint disagrees with its own
+    // items about. Apart from VariablesEmpty, which is a claim about the catalogue itself.
+    string VariablesPageEmpty,
     // (total) — the table's own name, said to a screen reader and not drawn. The number is the
     // API's rather than the payload's variableCount, so a caption reporting a different total from
     // the Antall variabler row beside it is a disagreement worth hearing rather than one hidden.
@@ -1028,6 +1032,7 @@ internal sealed record Texts(
         VariablesError: "Kunne ikke laste variablene nå.",
         VariablesRetry: "Prøv å laste variablene på nytt",
         VariablesEmpty: "Ingen variabler er registrert i denne datasamlingen.",
+        VariablesPageEmpty: "Denne siden har ingen variabler å vise, men datasamlingen har variabler.",
         VariablesCaption: total => $"Variabler i datasamlingen, {total} totalt",
         VariablesPagination: "Paginering for variablene i datasamlingen",
         FieldKildeName: "Kildenavn",
@@ -1422,6 +1427,8 @@ internal sealed record Texts(
         VariablesError: "Could not load the variables right now.",
         VariablesRetry: "Retry loading the variables",
         VariablesEmpty: "No variables are recorded in this data collection.",
+        VariablesPageEmpty:
+            "This page has no variables to show, although the data collection has some.",
         VariablesCaption: total => $"Variables in this data collection, {total} in total",
         VariablesPagination: "Pagination for the variables in this data collection",
         FieldKildeName: "Source name",
