@@ -1132,11 +1132,16 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("   ")]
-    public void Criteria_WhenPlacedButEmpty_ThenNoSectionAndNoNavLinkAreLeft(string? criteria)
+    [InlineData(null, null)]
+    [InlineData("", "")]
+    [InlineData("   ", "   ")]
+    public void Criteria_WhenPlacedButEmpty_ThenNoSectionAndNoNavLinkAreLeft(string? own, string? effective)
     {
-        var cut = Render(CriteriaSeeded() with { InclusionAndExclusionCriteria = criteria });
+        var cut = Render(CriteriaSeeded() with
+        {
+            InclusionAndExclusionCriteria = own,
+            EffectiveInclusionAndExclusionCriteria = effective,
+        });
 
         Assert.Empty(cut.FindAll("#" + DetailSectionIds.Criteria));
         Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
@@ -1144,6 +1149,45 @@ public class DatasamlingViewTest : ExplorerTestContext
             ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+    }
+
+    [Theory]
+    [InlineData(null, "Arvede kriterier.", "Arvede kriterier.", "no")]
+    [InlineData(null, "Arvede kriterier.", "Arvede kriterier.", "en")]
+    [InlineData("Egne kriterier.", "Gjeldende kriterier.", "Gjeldende kriterier.", "no")]
+    [InlineData("Egne kriterier.", null, "Egne kriterier.", "en")]
+    public void Criteria_WhenTheApiResolvesTheValue_ThenTheResolvedTextOrLegacyFallbackIsDrawn(
+        string? own, string? effective, string expected, string language)
+    {
+        var cut = Render(CriteriaSeeded() with
+        {
+            InclusionAndExclusionCriteria = own,
+            EffectiveInclusionAndExclusionCriteria = effective,
+        }, language: language);
+
+        var criteria = Assert.Single(cut.FindAll(".munin-explorer-datasamling__criteria"));
+        Assert.Equal(expected, criteria.TextContent.Trim());
+        Assert.Equal(language == "en" ? "no" : null, criteria.GetAttribute("lang"));
+        Assert.Contains("#" + DetailSectionIds.Criteria, Targets(cut));
+    }
+
+    [Fact]
+    public void Criteria_WhenInheritedTextChangesOnTheMountedPage_ThenContentAndNavigationFollow()
+    {
+        var empty = CriteriaSeeded() with { InclusionAndExclusionCriteria = null };
+        var cut = Render(empty);
+        Assert.Empty(cut.FindAll("#" + DetailSectionIds.Criteria));
+
+        cut.Render(p => p.Add(c => c.Datasamling, empty with
+        {
+            EffectiveInclusionAndExclusionCriteria = "Arvede kriterier.",
+        }));
+        Assert.Equal("Arvede kriterier.", cut.Find(".munin-explorer-datasamling__criteria").TextContent.Trim());
+        Assert.Contains("#" + DetailSectionIds.Criteria, Targets(cut));
+
+        cut.Render(p => p.Add(c => c.Datasamling, empty));
+        Assert.Empty(cut.FindAll("#" + DetailSectionIds.Criteria));
+        Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
     }
 
     [Fact]

@@ -665,11 +665,12 @@ public sealed partial class DatasamlingView : ComponentBase
                            DetailBlocks.Groups(ungrouped, GroupLevel, Language, CompleteRecordFacts)));
         }
 
-        if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
+        var criteria = datasamling.EffectiveInclusionAndExclusionCriteria ?? datasamling.InclusionAndExclusionCriteria;
+        if (!string.IsNullOrWhiteSpace(criteria))
         {
             blocks.Add(new(SectionKeys.InclusionAndExclusionCriteria, DetailSectionIds.Criteria,
                            T.FieldInclusionCriteria, null,
-                           DetailBlocks.Prose(datasamling.InclusionAndExclusionCriteria,
+                           DetailBlocks.Prose(criteria,
                                               "munin-explorer-datasamling__criteria",
                                               CatalogueProperties.Foreign("no", Reader))));
         }

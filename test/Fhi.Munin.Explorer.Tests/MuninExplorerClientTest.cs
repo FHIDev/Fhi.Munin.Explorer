@@ -317,10 +317,26 @@ public class MuninExplorerClientTest
         Assert.Equal("Als registeret", datasamling.ParentKildeName);
         Assert.Null(datasamling.ParentDelkildeId); // hangs directly off the kilde
         Assert.NotNull(datasamling.InclusionAndExclusionCriteria);
+        Assert.Null(datasamling.EffectiveInclusionAndExclusionCriteria);
 
         // Own value absent, effective value inherited from the kilde.
         Assert.Null(datasamling.LegalBasis);
         Assert.NotNull(datasamling.EffectiveLegalBasis);
+    }
+
+    [Fact]
+    public async Task GetDatasamlingAsync_WhenCriteriaAreInherited_ThenTheResolvedValueIsReadSeparatelyFromTheOwnValue()
+    {
+        var datasamling = await WithJson("""
+            {
+              "inklusjonsOgEksklusjonskriterier": null,
+              "effectiveInklusjonsOgEksklusjonskriterier": "Inkluderer voksne. Ekskluderer barn."
+            }
+            """).GetDatasamlingAsync(Guid.NewGuid());
+
+        Assert.NotNull(datasamling);
+        Assert.Null(datasamling.InclusionAndExclusionCriteria);
+        Assert.Equal("Inkluderer voksne. Ekskluderer barn.", datasamling.EffectiveInclusionAndExclusionCriteria);
     }
 
     [Fact]
