@@ -107,7 +107,7 @@ async function status(page, text) {
 
 // The variable explorer's drill-in, reached the way a reader reaches it: a row, then its kilde.
 async function drilled(page, iconsOff) {
-  const row = page.locator('button.munin-explorer-dataitem-main__name').first();
+  const row = page.locator('button.munin-explorer-dataitem__expand-toggle').first();
   await row.waitFor({ state: 'visible', timeout: 15_000 });
   if (iconsOff) {
     // The facets are a fetch of their own: wait for the panel, or for the toggle folding it away.
