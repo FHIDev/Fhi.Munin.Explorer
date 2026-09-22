@@ -3956,12 +3956,12 @@ public class KildeSearchTest : ExplorerTestContext
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister"),
             Kilde("Den norske mor, far og barn-undersøkelsen", "K_MOBA", kildetype: "biobank")));
 
-        Assert.Equal("Kildetype", Summary(cut, "Kildetype"));
+        Assert.Equal("Kildetype 3 verdier", Summary(cut, "Kildetype"));
 
         Tick(cut, "Kildetype", "Biobank");
         Tick(cut, "Kildetype", "Sentralt helseregister");
 
-        Assert.Equal("Kildetype 2 valgt", Summary(cut, "Kildetype"));
+        Assert.Equal("Kildetype 3 verdier 2 valgt", Summary(cut, "Kildetype"));
         Assert.Equal(["Dødsårsaksregisteret", "Den norske mor, far og barn-undersøkelsen"], RowNames(cut));
     }
 
@@ -3991,11 +3991,11 @@ public class KildeSearchTest : ExplorerTestContext
 
         Tick(cut, "Kildetype", "Biobank");
 
-        Assert.Equal("Kildetype 1 valgt", Summary(cut, "Kildetype"));
+        Assert.Equal("Kildetype 2 verdier 1 valgt", Summary(cut, "Kildetype"));
 
         Untick(cut, "Kildetype", "Biobank");
 
-        Assert.Equal("Kildetype", Summary(cut, "Kildetype"));
+        Assert.Equal("Kildetype 2 verdier", Summary(cut, "Kildetype"));
         Assert.Empty(cut.FindAll(".munin-explorer-filters__chosen"));
     }
 
@@ -4025,6 +4025,146 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.False(summary.HasAttribute("aria-expanded"));
     }
 
+    /// <summary>What a facet's summary says its size is, off the one element that says it.</summary>
+    private static string FacetSize(IRenderedComponent<KildeSearch> cut, string heading) =>
+        Facet(cut, heading)
+            .QuerySelector("summary > .munin-explorer-filters__groupcount")!
+            .TextContent;
+
+    [Fact]
+    public void Facets_WhenTheyAreDrawn_ThenEverySummaryCarriesItsSizeBesideTheHeading()
+    {
+        // A folded facet otherwise gives no idea whether opening it shows four values or forty.
+        // A direct child of the summary, beside __chosen: Stiler's scoped __groupcount rule places
+        // it on the branch grid under __branch, which this is not. (Fhi.Metadata-35w0p.53)
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank",
+                  accessRights: "eu-access:NON_PUBLIC", category: "[\"ehds-cat:biobanks\"]"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister",
+                  accessRights: "eu-access:PUBLIC", dataProcessor: "Helsedirektoratet")));
+
+        Assert.Equal(4, Facets(cut).Count);
+
+        foreach (var facet in Facets(cut))
+        {
+            var summary = facet.QuerySelector("summary")!;
+            var sizes = facet.QuerySelectorAll("span.munin-explorer-filters__groupcount");
+
+            Assert.Single(sizes);
+            Assert.Same(summary, sizes[0].ParentElement);
+        }
+
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__chosen"));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters__branch"));
+    }
+
+    [Fact]
+    public void Facets_WhenAFacetHasOneValueOrSeveral_ThenItsSizeIsWordedForThatInEitherLanguage()
+    {
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister",
+                  accessRights: "eu-access:NON_PUBLIC")));
+
+        Assert.Equal("1 verdi", FacetSize(cut, "Tilgangsnivå"));
+        Assert.Equal("2 verdier", FacetSize(cut, "Kildetype"));
+
+        cut.Render(b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("1 value", FacetSize(cut, "Access level"));
+        Assert.Equal("2 values", FacetSize(cut, "Source type"));
+    }
+
+    [Fact]
+    public void Facets_WhenEveryValueIsTicked_ThenTheSummaryReadsHeadingSizeAndTickedCountInThatOrder()
+    {
+        // The order decided on the bead: what the facet is, how big it is, how much of it is on.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Assert.Equal("Kildetype 2 verdier", Summary(cut, "Kildetype"));
+
+        Tick(cut, "Kildetype", "Biobank");
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+
+        Assert.Equal("Kildetype 2 verdier 2 valgt", Summary(cut, "Kildetype"));
+    }
+
+    [Fact]
+    public void Facets_WhenASizeAndATickedCountAreBothDrawn_ThenTheyAreTwoFactsAndNotOneNumber()
+    {
+        // "2 verdier" and "1 valgt" with nothing between them is "2 verdier1 valgt" to a screen
+        // reader and "21" to a skimming eye. Two elements, each with its unit word, and a real
+        // space between them in the summary's own text.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        var summary = Facet(cut, "Kildetype").QuerySelector("summary")!;
+        var size = summary.QuerySelector(".munin-explorer-filters__groupcount")!;
+        var chosen = summary.QuerySelector(".munin-explorer-filters__chosen")!;
+
+        Assert.NotSame(size, chosen);
+        Assert.Equal("span", size.LocalName);
+        Assert.Equal("span", chosen.LocalName);
+        Assert.EndsWith(" verdier", size.TextContent, StringComparison.Ordinal);
+        Assert.EndsWith(" valgt", chosen.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("valgt", size.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("verdi", chosen.TextContent, StringComparison.Ordinal);
+
+        var between = size.NextSibling!;
+        Assert.Equal(NodeType.Text, between.NodeType);
+        Assert.Equal(" ", between.TextContent);
+        Assert.Same(chosen, between.NextSibling);
+
+        Assert.Equal("Kildetype", summary.QuerySelector("h4")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Facets_WhenTheReaderTicksSearchesOrShowsMore_ThenTheSizeIsTheFacetsAndDoesNotMove()
+    {
+        // The size is what the facet HAS. A count of what is drawn would shrink under the cap and
+        // the facet search — "10 verdier" over a facet of twelve — and say the opposite of why it
+        // is there.
+        var cut = RenderWith(CatalogueWithProcessors(12));
+
+        Assert.True(12 > SearchThreshold);
+        Assert.Equal("12 verdier", FacetSize(cut, "Databehandler"));
+
+        Tick(cut, "Databehandler", "Databehandler 03");
+        Assert.Equal("12 verdier", FacetSize(cut, "Databehandler"));
+
+        Untick(cut, "Databehandler", "Databehandler 03");
+        Assert.Equal("12 verdier", FacetSize(cut, "Databehandler"));
+
+        SearchFacet(cut, "Databehandler", "Databehandler 07");
+        Assert.Single(Choices(Facet(cut, "Databehandler")));
+        Assert.Equal("12 verdier", FacetSize(cut, "Databehandler"));
+
+        SearchFacet(cut, "Databehandler", string.Empty);
+        ShowRest(cut, "Databehandler");
+        Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
+        Assert.Equal("12 verdier", FacetSize(cut, "Databehandler"));
+    }
+
+    [Fact]
+    public void Facets_WhenNoKildeHasACategory_ThenThatFacetIsStillDroppedAndNothingSaysNoughtValues()
+    {
+        // A size must not bring back the facet the panel drops for having nothing in it: a
+        // "Kategori 0 verdier" heading is the empty facet the drop exists to prevent.
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister")));
+
+        Assert.DoesNotContain("Kategori", FacetHeadings(cut));
+        Assert.Equal(Facets(cut).Count, cut.FindAll(".munin-explorer-filters__groupcount").Count);
+        Assert.Equal("2 verdier", FacetSize(cut, "Kildetype"));
+        Assert.DoesNotContain("0 verdier", cut.Markup, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Facets_WhenOneFacetIsTicked_ThenAnotherFacetReportsNoneOfIt()
     {
@@ -4038,8 +4178,8 @@ public class KildeSearchTest : ExplorerTestContext
 
         Tick(cut, "Kildetype", "Biobank");
 
-        Assert.Equal("Kildetype 1 valgt", Summary(cut, "Kildetype"));
-        Assert.Equal("Databehandler", Summary(cut, "Databehandler"));
+        Assert.Equal("Kildetype 2 verdier 1 valgt", Summary(cut, "Kildetype"));
+        Assert.Equal("Databehandler 2 verdier", Summary(cut, "Databehandler"));
     }
 
     [Fact]
@@ -4056,7 +4196,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         cut.Render(b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal("Source type 1 selected", Summary(cut, "Source type"));
+        Assert.Equal("Source type 2 values 1 selected", Summary(cut, "Source type"));
     }
 
     [Fact]
@@ -4107,7 +4247,7 @@ public class KildeSearchTest : ExplorerTestContext
         cut.Find(".munin-explorer-drilldown button").Click();
 
         Assert.Equal(["Als registeret"], RowNames(cut));
-        Assert.Equal("Databehandler 1 valgt", Summary(cut, "Databehandler"));
+        Assert.Equal("Databehandler 2 verdier 1 valgt", Summary(cut, "Databehandler"));
         Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
     }
 
@@ -4912,7 +5052,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         // ...and still the filter in force, heading count included.
         Assert.Equal(narrowed, RowNames(cut));
-        Assert.Equal("Databehandler 1 valgt", Summary(cut, "Databehandler"));
+        Assert.Equal("Databehandler 12 verdier 1 valgt", Summary(cut, "Databehandler"));
 
         // Cleared, the value comes back with its tick still on rather than as an empty box beside a
         // list that is somehow still narrowed.
@@ -5453,6 +5593,8 @@ public class KildeSearchTest : ExplorerTestContext
             "munin-explorer-filters__chosen",
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
+            // A facet's size, on every drawn facet (Fhi.Metadata-35w0p.53).
+            "munin-explorer-filters__groupcount",
             "munin-explorer-filters__toggle",
             // The row holding Utvid alle and Skjul alle, the variable explorer's name and its rule.
             "munin-explorer-filters__toolbar",

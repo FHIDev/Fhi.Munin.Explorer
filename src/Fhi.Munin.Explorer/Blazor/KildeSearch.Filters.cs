@@ -900,19 +900,31 @@ public sealed partial class KildeSearch
     };
 
     /// <summary>
-    /// One facet's summary line: its heading, at <see cref="FacetLevel"/>, and how many of its
-    /// values are ticked.
+    /// One facet's summary line: its heading, at <see cref="FacetLevel"/>, how many values it has,
+    /// and how many of them are ticked.
     /// </summary>
     /// <remarks>
     /// <c>headline-xxs</c> is what <see cref="KildeView"/> gives a group of facts, so both read as
-    /// one vocabulary. The count is in the summary, which a folded facet still draws, and beside
+    /// one vocabulary. The counts are in the summary, which a folded facet still draws, and beside
     /// the heading rather than inside it: this panel is navigated by heading. (Fhi.Metadata-l9l2n.53)
+    /// <para>
+    /// The size is <c>Options.Count</c>, never what the cap or the facet search leaves drawn.
+    /// (Fhi.Metadata-35w0p.53)
+    /// </para>
     /// </remarks>
     private RenderFragment FacetSummary(Facet facet) => builder =>
     {
         builder.OpenElement(0, $"h{FacetLevel}");
         builder.AddAttribute(1, "class", "headline headline-xxs margin--none");
         builder.AddContent(2, facet.Heading);
+        builder.CloseElement();
+
+        // The spaces are the word breaks in the sentence the summary is announced as; the row
+        // draws none between items, and without them the two counts read as one number.
+        builder.AddContent(3, " ");
+        builder.OpenElement(4, "span");
+        builder.AddAttribute(5, "class", "munin-explorer-filters__groupcount");
+        builder.AddContent(6, T.FacetSize(facet.Options.Count));
         builder.CloseElement();
 
         var chosen = ChosenIn(facet.Key);
@@ -922,11 +934,10 @@ public sealed partial class KildeSearch
             return;
         }
 
-        // The space in the sentence the summary is announced as; the row draws none between items.
-        builder.AddContent(3, " ");
-        builder.OpenElement(4, "span");
-        builder.AddAttribute(5, "class", "munin-explorer-filters__chosen");
-        builder.AddContent(6, T.FacetChosen(chosen));
+        builder.AddContent(7, " ");
+        builder.OpenElement(8, "span");
+        builder.AddAttribute(9, "class", "munin-explorer-filters__chosen");
+        builder.AddContent(10, T.FacetChosen(chosen));
         builder.CloseElement();
     };
 }

@@ -294,6 +294,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     `Fhi.Helsedata.Stiler`, where it is shared with the variabelutforsker's panel and redraws the
     marker on the trailing edge — a summary laid out as a row is no longer a list-item, and the
     browser stops drawing a marker for it.
+    Kelda's summaries now wear `munin-explorer-filters__groupcount` too, the group-size name
+    described below: every facet's summary carries its size ("24 verdier") between the heading and
+    `__chosen`, as a direct child of the summary like `__chosen` and never under `__branch`, so it
+    gets the shared look and none of the branch grid's placement (`Fhi.Metadata-35w0p.53`).
     The variabelutforsker's Kilde facet adds `munin-explorer-filters__search`, the box that narrows
     that facet's own values. A handle: undefined, it is a browser-default search field, which is
     visible, operable and named by a `<label>` of its own, so what a rule buys is the box — full
