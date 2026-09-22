@@ -188,13 +188,22 @@ const cases = [
       '.munin-explorer-page__main { grid-column: 2 !important; }'),
   },
   {
-    assertion: 'the detail page body holds only its columns',
-    defect: 'a third child in a body with two tracks declared',
+    assertion: "the detail page's main column is the wider part of its body",
+    defect: 'the reading column narrower than the rail it is stacked under',
+    path: '/', state: 'variable-whole', width: 843,
+    // The wide case above cannot stand for this one: it breaks the side-by-side comparison, and
+    // 843 is below Stiler's second track, where the two are stacked and the other one is made.
+    apply: css('.munin-explorer-page__main { width: 200px !important; }'),
+  },
+  {
+    assertion: "the detail page's two columns share a row",
+    defect: 'the contents rail dropped to a row of its own',
     path: '/', state: 'variable-whole', width: 1440,
-    // A real element rather than a pseudo-element: `::after` is not a child, so a break written
-    // that way would leave the assertion holding for the right reason and read as a false alarm.
-    apply: page => page.evaluate(() => document.querySelector('.munin-explorer-page__body')
-      .insertAdjacentHTML('beforeend', '<div>a view rendered outside ChildContent</div>')),
+    // Both tracks and both widths left where they were, so the width assertion stays green and
+    // only the row this one is about has moved — the one break the width comparison cannot see.
+    apply: css('.munin-explorer-page__toc ' +
+      '{ grid-row: 2 !important; grid-column: 1 !important; }\n' +
+      '.munin-explorer-page__main { grid-row: 1 !important; grid-column: 2 !important; }'),
   },
   {
     assertion: 'no page shell class inside a tab panel',

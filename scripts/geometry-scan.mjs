@@ -61,7 +61,7 @@ if (targets.length === 0 || widths.length === 0) {
 
 // GEOMETRY_ASSERTIONS names the subset to run, comma-separated; unset runs all of them. Its one
 // caller is check-accessibility.sh, whose 320px run names the three that hold on a host with no
-// chrome and no Stiler - which three, and why the other seven are left out, is written there.
+// chrome and no Stiler - which three, and why the other nine are left out, is written there.
 //
 // GEOMETRY_EXCEPT is the other way round: every assertion but the named ones, so an assertion added
 // later is measured by default. check-hostile-host.sh's 320px step uses it, one gap per bead.
