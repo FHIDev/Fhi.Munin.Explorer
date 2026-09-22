@@ -235,6 +235,14 @@ export const states = {
   // deliberately NOT pressed — the lines are on at first render since Fhi.Metadata-dfygj, so
   // pressing it would scan this state with them gone.
   'filters-level-lines': async page => {
+    // Below the sample's 1024px breakpoint the panel is folded behind this toggle, and 320px never
+    // reached the state at all (Fhi.Metadata-7484a).
+    const toggle = page.locator('.munin-explorer-filters__toggle');
+    await toggle.waitFor({ state: 'attached', timeout: findTimeout });
+    if (await toggle.isVisible()) {
+      await toggle.click();
+    }
+
     const panel = page.locator('.munin-explorer-filters');
     await panel.waitFor({ state: 'visible', timeout: findTimeout });
 

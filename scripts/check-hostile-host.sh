@@ -61,6 +61,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #
 # `variable-detail`, `variable-whole` and `explorer-search-code` are where the stub's long code is
 # drawn, and a code is one unbroken word: what decides the reflow width (Fhi.Metadata-ofg1h).
+#
+# `filters-level-lines` and `filters-node-icons-off` unfold the facets, whose values include a
+# datasamling name with no break in it; only the label rule wraps it (Fhi.Metadata-7484a).
 TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
@@ -71,6 +74,8 @@ TARGETS=(
   "/::tree-populated"
   "/::tree-empty-results"
   "/::tree-no-match"
+  "/::filters-level-lines"
+  "/::filters-node-icons-off"
   "/kilder::kilder-list"
   "/kilder::kilder-counts"
   "/kilder::kilde-hierarchy-collapsed"
@@ -268,6 +273,8 @@ reflow "" \
 # and fact row, and the result count that quotes a searched term (Fhi.Metadata-ofg1h).
 reflow "" "/::variable-detail" "/::variable-whole" "/::explorer-search-code"
 reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tree-no-match"
+# The facets unfolded, and the unbroken datasamling name in them (Fhi.Metadata-7484a).
+reflow "" "/::filters-level-lines" "/::filters-node-icons-off"
 
 # An assertion that has quietly stopped measuring anything reports success forever, so each one is
 # handed a page carrying the defect it was written for and required to say so.

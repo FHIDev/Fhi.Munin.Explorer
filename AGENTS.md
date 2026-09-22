@@ -286,8 +286,9 @@ The variable explorer's `/` is measured beside them, in `variables-list`, and it
 filter panel's toolbar: that row grows a control at a time, and the fourth took it to 291px of
 content in a 226px mount, 42px past the viewport. `check-hostile-host.sh` measures a `/` of its own
 at 320 and does not run in CI, so without this target nothing a pull request has to pass looks at
-that row at all (`Fhi.Metadata-kd9ts`). The resting page rather than a press: unfolding the facets
-puts an unbroken datasamling name 142px past the edge, which is `Fhi.Metadata-7484a`.
+that row at all (`Fhi.Metadata-kd9ts`). And `filters-level-lines`, the same page with Utvid alle
+pressed, for the facet values: a datasamling name with no break in it only stays inside 320px
+because the label rule carries `overflow-wrap: anywhere` (`Fhi.Metadata-7484a`).
 
 It runs three of the ten assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
 overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. The
