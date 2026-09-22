@@ -746,9 +746,12 @@ public partial class VariableSearch
     /// there is no visually-hidden helper to whisper the meaning of a dash into, so a missing value
     /// says so in words for everyone.
     /// </para>
+    /// <para>
+    /// Narrow, because these are two of four columns inside an opened row. <c>Day</c> and not
+    /// <see cref="CatalogueDate.DayOrNothing"/>, whose nothing is also a <c>default</c>: a sentinel
+    /// the catalogue really sent is shown, so it gets fixed at source (Fhi.Metadata-ufmop).
+    /// </para>
     /// </remarks>
     private string ValidityDate(DateTimeOffset? date) =>
-        date is { } value
-            ? value.ToString("d", CatalogueProperties.Culture(Language))
-            : T.NotSpecified;
+        date is { } value ? CatalogueDate.Day(value, Language, DateWidth.Narrow) : T.NotSpecified;
 }

@@ -1362,9 +1362,9 @@ public sealed partial class VariableSearch : ComponentBase
 
         builder.OpenElement(3, "p");
         builder.AddAttribute(4, "class", "munin-explorer-period__range");
-        builder.AddContent(5, from is { } f ? MonthYear(f) : "?");
+        builder.AddContent(5, from is { } f ? PeriodDate(f) : "?");
         builder.AddContent(6, " – ");
-        builder.AddContent(7, to is { } t ? MonthYear(t) : T.Ongoing);
+        builder.AddContent(7, to is { } t ? PeriodDate(t) : T.Ongoing);
         builder.CloseElement();
 
         builder.OpenElement(8, "div");
@@ -1404,9 +1404,14 @@ public sealed partial class VariableSearch : ComponentBase
         return Math.Clamp((int)Math.Round(covered / lifetime * 100), 5, 100);
     }
 
-    /// <summary>A date as month and year, in the reader's language.</summary>
-    private string MonthYear(DateTimeOffset date) =>
-        date.ToString("MMM yyyy", CatalogueProperties.Culture(Language));
+    /// <summary>One end of a data period, written as the variable's own page writes it.</summary>
+    /// <remarks>
+    /// One END, and only its format: it read as month and year here and as a day there
+    /// (Fhi.Metadata-ufmop). How the two are joined is still this surface's own and disagrees with
+    /// <see cref="CatalogueDate.Period"/> over a missing start — Fhi.Metadata-msax9 settles that.
+    /// </remarks>
+    private string PeriodDate(DateTimeOffset date) =>
+        CatalogueDate.Day(date, Language, DateWidth.Narrow);
 
     /// <summary>
     /// The variable's curated properties, in the order the catalogue puts them.
@@ -1788,7 +1793,7 @@ public sealed partial class VariableSearch : ComponentBase
     private string? PeriodText(DateTimeOffset? from, DateTimeOffset? to) =>
         from is null && to is null
             ? null
-            : $"{(from is { } f ? MonthYear(f) : "?")} – {(to is { } t ? MonthYear(t) : T.Ongoing)}";
+            : $"{(from is { } f ? PeriodDate(f) : "?")} – {(to is { } t ? PeriodDate(t) : T.Ongoing)}";
 
     /// <summary>
     /// One labelled item in the metadata line.

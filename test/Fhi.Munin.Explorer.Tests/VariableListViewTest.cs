@@ -947,16 +947,14 @@ public class VariableListViewTest : ExplorerTestContext
     public void View_WhenAPeriodIsOpenEnded_ThenItReadsTheWayTheExplorerWritesIt()
     {
         // "2021-" was this view's own shorthand. The explorer, one region up the same page, writes
-        // the month and the catalogue's word for a period that has not ended.
-        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with
-        {
-            DataFrom = new DateTimeOffset(2021, 8, 1, 0, 0, 0, TimeSpan.Zero),
-            DataTo = null
-        };
+        // the DAY since Fhi.Metadata-ufmop, and the catalogue's word for a period that has not
+        // ended. Parity of format is pinned by DataPeriodAcrossSurfacesTest; this is the open end.
+        var from = new DateTimeOffset(2021, 8, 1, 0, 0, 0, TimeSpan.Zero);
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { DataFrom = from, DataTo = null };
 
         var cut = RenderView(new ListClient(item));
 
-        Assert.Contains("2021", cut.Markup);
+        Assert.Contains(CatalogueDate.Day(from, "no", DateWidth.Narrow), cut.Markup, StringComparison.Ordinal);
         Assert.Contains("Pågående", cut.Markup);
         Assert.DoesNotContain("2021–<", cut.Markup);
     }

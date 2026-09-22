@@ -321,8 +321,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return null;
         }
 
-        var from = item.DataFrom is { } f ? MonthYear(f) : "?";
-        var to = item.DataTo is { } t ? MonthYear(t) : T.Ongoing;
+        var from = item.DataFrom is { } f ? PeriodDate(f) : "?";
+        var to = item.DataTo is { } t ? PeriodDate(t) : T.Ongoing;
 
         return $"{from} – {to}";
     }
@@ -473,10 +473,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private static string? CatalogueLang(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : "no";
 
-    /// <summary>A date as month and year, in the reader's language.</summary>
-    /// <remarks>The same format string as the explorer's own, so the two read alike.</remarks>
-    private string MonthYear(DateTimeOffset date) =>
-        date.ToString("MMM yyyy", CatalogueProperties.Culture(Language));
+    /// <summary>One end of a data period, in the reader's language.</summary>
+    /// <remarks>
+    /// The same helper and the same width the explorer's own period column uses, so a saved
+    /// variable's dates are FORMATTED as they were in the results it was saved from. Joining them
+    /// is still four decisions in three copies — Fhi.Metadata-msax9.
+    /// </remarks>
+    private string PeriodDate(DateTimeOffset date) =>
+        CatalogueDate.Day(date, Language, DateWidth.Narrow);
 
     /// <summary>
     /// The API's own answer, not ours. The client already derives it when the envelope omits it

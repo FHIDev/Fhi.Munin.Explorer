@@ -1329,8 +1329,9 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 }
 
 /* Dataperiode. The one width here that is not measured off Runa — its own column is a bar rather
-   than two dates, so there was nothing to measure. 150 is what "jan. 2001 – des. 2025" needs
-   without wrapping, and the column is the last one, so it is also the one with room to give. */
+   than two dates, so there was nothing to measure. 150 was what "jan. 2001 – des. 2025" needed;
+   the cell now holds "1. jan. 2001 – 31. des. 2025" and wraps instead (Fhi.Metadata-ufmop). Still
+   150 because that is Stiler's own declaration verbatim — widening it is Fhi.Metadata-byvcr. */
 .munin-explorer-dataitem-main__period,
 .munin-explorer-dataitem-header__period {
   flex: 150 1 0;

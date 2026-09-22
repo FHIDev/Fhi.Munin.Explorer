@@ -38,6 +38,15 @@ internal static class CatalogueDate
         return value.ToString(pattern, CatalogueProperties.Culture(language));
     }
 
+    /// <summary>A day a reader chose rather than one the catalogue recorded.</summary>
+    /// <remarks>
+    /// A <see cref="DateOnly"/> is a calendar day with no instant to reinterpret, so it is lifted at
+    /// UTC and reaches the same pattern as every other day on the page — which is the whole point:
+    /// the filter's chosen bound sits beside values that came through here (Fhi.Metadata-ufmop).
+    /// </remarks>
+    internal static string Day(DateOnly value, string? language, DateWidth width = DateWidth.Full) =>
+        Day(new DateTimeOffset(value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero), language, width);
+
     /// <summary>A day the payload may not have carried at all, and null where it did not.</summary>
     /// <remarks>
     /// Null is what a fact list means by nothing to say, so the row reads "Ingen" as it does for a
