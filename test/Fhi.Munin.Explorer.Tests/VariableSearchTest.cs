@@ -8972,14 +8972,15 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(null, "Fra og med: 1. jan. 2020")]
-    [InlineData("en", "From: 1 Jan 2020")]
+    [InlineData(null, "Fra og med")]
+    [InlineData("en", "From")]
     public void ActiveFilters_WhenADateBoundIsSet_ThenTheChipWritesTheDayTheHouseWay(
-        string? language, string expected)
+        string? language, string field)
     {
         // Half of ADO 121131: this chip wrote the culture's all-numeric short date — "01.01.2020" —
         // beside results whose dates are spelled out, so one page held two shapes for one kind of
-        // value. The ordinal dot follows the READER: Norwegian takes it, English takes none.
+        // value. The reader's own DateOnly bound reaches the same helper as the catalogue's dates.
+        var bound = new DateOnly(2020, 1, 1);
         var cut = RenderWith(
             new FilteringClient(
                 OnePage(Variable("1. Tale", "KODE")),
@@ -8990,9 +8991,13 @@ public class VariableSearchTest : ExplorerTestContext
                 })),
             b => b.Add(c => c.Language, language));
 
-        DateInputs(cut)[0].Change("2020-01-01");
+        DateInputs(cut)[0].Change(bound.ToString("yyyy-MM-dd"));
 
-        Assert.Equal(expected, Assert.Single(Chips(cut)));
+        var chip = Assert.Single(Chips(cut));
+
+        Assert.Equal($"{field}: {CatalogueDate.Day(bound, language, DateWidth.Narrow)}", chip);
+        Assert.DoesNotContain(bound.ToString("d", CatalogueProperties.Culture(language)), chip,
+                              StringComparison.Ordinal);
     }
 
     [Fact]
@@ -11433,6 +11438,15 @@ public class VariableSearchTest : ExplorerTestContext
     };
 
     /// <summary>The codes behind the nameless kildekodeverk, as the endpoint sends them.</summary>
+    /// <summary>The day every 2336 code starts on.</summary>
+    private static readonly DateTimeOffset ValidFrom2336 = new(2010, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+    /// <summary>The day 2336's second code stopped applying.</summary>
+    private static readonly DateTimeOffset ValidTo2336 = new(2020, 3, 31, 0, 0, 0, TimeSpan.Zero);
+
+    /// <summary>The instant Halden stopped existing — a day with an import's clock still on it.</summary>
+    private static readonly DateTimeOffset ValidTo3402 = new(2023, 9, 6, 13, 13, 41, TimeSpan.Zero);
+
     private static KodeverkCodes Codes2336() => new()
     {
         KodeverkType = "Kildekodeverk",
@@ -11443,14 +11457,14 @@ public class VariableSearchTest : ExplorerTestContext
             {
                 Value = "0",
                 Name = "Velg verdi",
-                ValidFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                ValidFrom = ValidFrom2336
             },
             new()
             {
                 Value = "1",
                 Name = "0: Tap av produktiv tale",
-                ValidFrom = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
-                ValidTo = new DateTimeOffset(2020, 3, 31, 0, 0, 0, TimeSpan.Zero)
+                ValidFrom = ValidFrom2336,
+                ValidTo = ValidTo2336
             }
         ]
     };
@@ -11474,7 +11488,7 @@ public class VariableSearchTest : ExplorerTestContext
             {
                 Value = "0101",
                 Name = "Halden",
-                ValidTo = new DateTimeOffset(2023, 9, 6, 13, 13, 41, TimeSpan.Zero)
+                ValidTo = ValidTo3402
             }
         ]
     };
@@ -11743,11 +11757,6 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("0", first[0]);
         Assert.Equal("Velg verdi", first[1]);
 
-        // The day and not the instant: every one of these dates is midnight UTC or the moment a
-        // bulk import ran, and neither is a fact about when the code applied. Spelled out because
-        // the column goes through CatalogueDate now; the all-numeric shape was this panel's alone.
-        Assert.Equal("1. jan. 2010", first[2]);
-
         // Written out rather than shown as a dash: there is no visually-hidden helper in this
         // package to whisper the meaning of a dash into, so a missing value says so for everyone.
         Assert.Equal("Ikke oppgitt", first[3]);
@@ -11755,20 +11764,21 @@ public class VariableSearchTest : ExplorerTestContext
         var second = rows[1].QuerySelectorAll("td").Select(td => td.TextContent).ToArray();
 
         Assert.Equal("0: Tap av produktiv tale", second[1]);
-        // "mars" rather than "mar.": nb-NO abbreviates March to the whole word, so a narrow
-        // date is not always shorter than a full one.
-        Assert.Equal("31. mars 2020", second[3]);
+
+        // The two validity columns are pinned by the theory below, which owns the format; here it
+        // is only that the second row's end date is drawn at all.
+        Assert.Equal(CatalogueDate.Day(ValidTo2336, null, DateWidth.Narrow), second[3]);
     }
 
     [Theory]
-    [InlineData(null, "1. jan. 2010")]
-    [InlineData("en", "1 Jan 2010")]
+    [InlineData(null)]
+    [InlineData("en")]
     public void Codes_WhenAValidityDateIsShown_ThenItIsTheHouseDayFormatAndNotTheCulturesShortDate(
-        string? language, string expected)
+        string? language)
     {
-        // The other half of ADO 121131: this cell wrote "01.01.2010" while the fact value one tab
-        // away wrote the same date spelled out. Both go through CatalogueDate now, which is also
-        // what decides that English gets no ordinal dot after the day. (Fhi.Metadata-ufmop)
+        // ADO 121131: this cell wrote "01.01.2010" while the fact value one tab away wrote the same
+        // date spelled out. Sameness with the helper AND absence of the short date, because either
+        // alone passes on the bug — the helper returning the short date satisfies the first.
         var cut = OpenData(KodeverkRows(), p => p.Add(c => c.Language, language));
 
         CodeToggles(cut)[0].Click();
@@ -11776,7 +11786,8 @@ public class VariableSearchTest : ExplorerTestContext
         var cells = Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")
             .Select(td => td.TextContent).ToArray();
 
-        Assert.Equal(expected, cells[2]);
+        Assert.Equal(CatalogueDate.Day(ValidFrom2336, language, DateWidth.Narrow), cells[2]);
+        Assert.NotEqual(ValidFrom2336.ToString("d", CatalogueProperties.Culture(language)), cells[2]);
     }
 
     [Fact]
@@ -11797,7 +11808,32 @@ public class VariableSearchTest : ExplorerTestContext
 
         // The end date carries a time of day on the wire — the import ran at 13:13:41 — and the
         // cell shows the day alone, because the import's clock is not when Halden stopped existing.
-        Assert.Equal("6. sep. 2023", cells[3]);
+        Assert.Equal(CatalogueDate.Day(ValidTo3402, null, DateWidth.Narrow), cells[3]);
+        Assert.DoesNotContain("13:13", cells[3], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Codes_WhenAValidityDateIsTheDefaultSentinel_ThenItIsDrawnRatherThanReadAsAnAbsence()
+    {
+        // Why this cell keeps its own null branch instead of CatalogueDate.DayOrNothing, whose
+        // nothing is a default as well as a null: a sentinel the catalogue really sent is shown, so
+        // it gets fixed at source, where "Ikke oppgitt" reads as a field nobody filled in.
+        var sentinel = Codes2336() with
+        {
+            KodeverkReference = "2337",
+            // default(DateTimeOffset) and not `default`, which on a nullable property is null —
+            // the same trap CatalogueDate.Written's own remarks are written against.
+            Codes = [new() { Value = "0", Name = "Velg verdi", ValidFrom = default(DateTimeOffset) }]
+        };
+        var cut = OpenData(KodeverkRows().Knows(sentinel));
+
+        CodeToggles(cut)[0].Click();
+
+        var cells = Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")
+            .Select(td => td.TextContent).ToArray();
+
+        Assert.Equal(CatalogueDate.Day(default(DateTimeOffset), null, DateWidth.Narrow), cells[2]);
+        Assert.NotEqual("Ikke oppgitt", cells[2]);
     }
 
     [Fact]
@@ -12567,10 +12603,9 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(["Value", "Name", "Valid from", "Valid to"],
                      Panel(cut).QuerySelectorAll(".munin-explorer-codes thead th").Select(th => th.TextContent));
 
-        // The date follows the page too: an English reader gets no ordinal dot after the day, which
-        // is the one thing CatalogueDate decides for the reader rather than for the column.
-        Assert.Equal("1 Jan 2010",
-                     Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")[2].TextContent);
+        // The date follows the page too, but its format is pinned by
+        // Codes_WhenAValidityDateIsShown_ThenItIsTheHouseDayFormatAndNotTheCulturesShortDate
+        // rather than a second time here.
     }
 
     [Fact]

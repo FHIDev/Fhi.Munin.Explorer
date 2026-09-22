@@ -1375,9 +1375,9 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>One end of a data period, written as the variable's own page writes it.</summary>
     /// <remarks>
-    /// Through <see cref="CatalogueDate.Day(DateTimeOffset, string, DateWidth)"/> at the width the
-    /// detail views use, so one variable's dataperiode reads the same on the row, in the open panel
-    /// and on its own page. It read as month and year here and as a day there (Fhi.Metadata-ufmop).
+    /// One END, and only its format: it read as month and year here and as a day there
+    /// (Fhi.Metadata-ufmop). How the two are joined is still this surface's own and disagrees with
+    /// <see cref="CatalogueDate.Period"/> over a missing start — Fhi.Metadata-msax9 settles that.
     /// </remarks>
     private string PeriodDate(DateTimeOffset date) =>
         CatalogueDate.Day(date, Language, DateWidth.Narrow);

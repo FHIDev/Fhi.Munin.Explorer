@@ -473,8 +473,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>One end of a data period, in the reader's language.</summary>
     /// <remarks>
-    /// The same helper and the same width the explorer's own period column uses, so a variable
-    /// saved to a list reads exactly as it did in the results it was saved from.
+    /// The same helper and the same width the explorer's own period column uses, so a saved
+    /// variable's dates are FORMATTED as they were in the results it was saved from. Joining them
+    /// is still four decisions in three copies — Fhi.Metadata-msax9.
     /// </remarks>
     private string PeriodDate(DateTimeOffset date) =>
         CatalogueDate.Day(date, Language, DateWidth.Narrow);
