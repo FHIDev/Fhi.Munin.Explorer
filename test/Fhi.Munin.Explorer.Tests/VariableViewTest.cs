@@ -1660,15 +1660,19 @@ public class VariableViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Placement_WhenTheVariableIsReplacedAfterTheFirstRender_ThenBothAreTheNewVariablesOwn()
+    public void Placement_WhenTheVariableIsReplacedAfterTheFirstRender_ThenEveryCachedListIsTheNewVariablesOwn()
     {
-        // Placement and Datasamlinger are cached and rebuilt only in OnParametersSet, as Toc is. Going
-        // stale is invisible to the nav test beside it — entries and sections still agree, the page
-        // just draws the last variable — and a host swapping SelectedVariableId is the way in.
-        var cut = Render(Placed());
+        // Placement, Datasamlinger and Variabelgrupper are cached and rebuilt only in OnParametersSet,
+        // as Toc is. Going stale is invisible to the nav test beside it — entries and sections agree,
+        // the page just draws the last variable — and a host swapping SelectedVariableId is the way in.
+        var cut = Render(Placed() with
+        {
+            AllVariabelgrupper = [new() { Id = Guid.NewGuid(), Name = "Svangerskapsavbrudd" }],
+        });
 
         Assert.Equal("Abortregisteret Utlevering", Placement(cut)[^1]);
         Assert.Equal(["Abortregisteret Utlevering"], DatasamlingList(cut));
+        Assert.Equal(["Svangerskapsavbrudd"], VariabelgruppeList(cut));
 
         cut.Render(p => p.Add(c => c.Variable, Placed() with
         {
@@ -1680,11 +1684,13 @@ public class VariableViewTest : ExplorerTestContext
                 new() { Id = Guid.NewGuid(), Name = "DÅR Statistikk" },
                 new() { Id = Guid.NewGuid(), Name = "DÅR Utlevering" },
             ],
+            AllVariabelgrupper = [new() { Id = Guid.NewGuid(), Name = "Dødsårsak" }],
         }));
 
         Assert.Equal(["Sentralt helseregister", "Dødsårsaksregisteret (DÅR)", "2 datasamlinger"],
                      Placement(cut));
         Assert.Equal(["DÅR Statistikk", "DÅR Utlevering"], DatasamlingList(cut));
+        Assert.Equal(["Dødsårsak"], VariabelgruppeList(cut));
     }
 
     // ---------------------------------------------------------------------------------

@@ -880,7 +880,7 @@ else
 
                                                     <div>
                                                         <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
-                                                        <dd>@NameList(KildeTrailBlock.NamedVariabelgrupper(detail))</dd>
+                                                        <dd>@NameList([.. KildeTrailBlock.NamedVariabelgrupper(detail).Select(gruppe => gruppe.Name)])</dd>
                                                     </div>
 
                                                     <div>

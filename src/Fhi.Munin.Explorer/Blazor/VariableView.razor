@@ -125,9 +125,9 @@
                         @* KildeTrailBlock.NamedVariabelgrupper, which is also what the contents
                            entry above this section is switched on: the payload's own list draws an
                            empty bullet for a group the catalogue left unnamed. *@
-                        @foreach (var name in Variabelgrupper)
+                        @foreach (var gruppe in Variabelgrupper)
                         {
-                            <li lang="@CatalogueProperties.Foreign("no", Reader)">@name</li>
+                            <li lang="@CatalogueProperties.Foreign("no", Reader)">@gruppe.Name</li>
                         }
                     </ul>
                 </DetailSection>

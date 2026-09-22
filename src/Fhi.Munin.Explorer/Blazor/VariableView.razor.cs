@@ -169,7 +169,7 @@ public sealed partial class VariableView : ComponentBase
     /// same bargain <see cref="Datasamlinger"/> makes: an unnamed group drew an empty bullet, and a
     /// payload naming none of them drew a heading and a contents entry over nothing.
     /// </remarks>
-    private IReadOnlyList<string> Variabelgrupper { get; set; } = [];
+    private IReadOnlyList<VariabelgruppeReference> Variabelgrupper { get; set; } = [];
 
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>
