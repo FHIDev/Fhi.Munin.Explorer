@@ -930,18 +930,18 @@ public class SaveToListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SaveButton_WhenDrawnInEitherState_ThenItIsFilledSoItReadsAsAButtonBeforeItIsHovered()
+    public void SaveButton_WhenDrawnInEitherState_ThenItIsGhostBlueSoAPageDoesNotReadAsManyPrimaryActions()
     {
-        // A ghost button has no border and no fill until hovered, so on every row it read as bold
-        // text. The width rule hangs on the cell's class, so the cell keeps it in both states.
+        // The filled variant is a primary-weight treatment, and this button is drawn once per row.
+        // The width rule hangs on the cell's class, so the cell keeps it in both states.
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
-        Assert.Equal("hd-button-square button-square--secondary", SaveButton(cut).ClassName);
+        Assert.Equal("hd-button-square button-square--ghost-blue", SaveButton(cut).ClassName);
 
         SaveButton(cut).Click();
 
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
-        Assert.Equal("hd-button-square button-square--secondary", SaveButton(cut).ClassName);
+        Assert.Equal("hd-button-square button-square--ghost-blue", SaveButton(cut).ClassName);
         Assert.Equal("munin-explorer-dataitem-main__save", SaveButton(cut).ParentElement!.ClassName);
     }
 
