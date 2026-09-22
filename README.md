@@ -537,12 +537,18 @@ These are not style preferences — each one is a host that breaks otherwise.
     the right order, and what is lost is the row — it stacks instead. `VariableListView` names no
     facts, because a list of saved variables is not an entity with facts about it. Both sample
     stylesheets stand in at exactly what the pinned 0.1.75 declares, the `small` included.
+    `DetailFact.LabelLang` marks a label that falls back to another language, independently of
+    the value’s `Lang`, in both the hero and sticky bar.
 
     The same row is what the sticky bar watches, and the bar adds four names of its own —
     `munin-explorer-page__stuckbar`, its `--on` state, `munin-explorer-page__stuckbar-inner` and
     `munin-explorer-page__stuckbar-name`. It is a condensed repeat of the page's own opening: the
-    name and the first three hero facts, pinned to the top of the viewport once the hero row has
-    left it upwards. Text only — `DetailPage.Actions` is deliberately *not* drawn a second time
+    name and up to three hero facts, pinned to the top of the viewport once the hero row has
+    left it upwards. By default these are the first three populated facts; `DetailPage.StickyFacts`
+    can select a different subset. The datasamling hero uses source, source type, variable count,
+    validity, personal identification and the catalogue's data category, in that order. Its compact
+    bar repeats source, variable count and validity, omitting absent values without substituting
+    other fields. Controller and legal basis remain in the body. Text only — `DetailPage.Actions` is deliberately *not* drawn a second time
     there, because the fragment is the caller's and a second copy would be a second tab stop for
     every control in it and a duplicate of every `id` the caller wrote. **Nothing on the server
     ever shows it.** The markup
