@@ -13,7 +13,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// and written twice the next fix to what a toggle press does reaches one sweep and leaves the other
 /// asserting against a gesture the component no longer has.
 ///
-/// Kelda's rules, not the variable explorer's: ten optional columns, three on to begin with, and no
+/// Kelda's rules, not the variable explorer's: eleven optional columns, three on to begin with, and no
 /// last-column lock — Navn, Status and Opprettet are drawn whatever the picker says. (Fhi.Metadata-ay3zz)
 /// </remarks>
 internal static class KildeColumns
