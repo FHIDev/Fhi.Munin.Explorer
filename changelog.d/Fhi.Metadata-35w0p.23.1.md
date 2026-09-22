@@ -1,0 +1,1 @@
+Datasamling detail now links from its Variables section to the collection-filtered variable explorer, using the host's existing VariableExplorerPath or the current variable search; standalone hosts can supply VariablesHref or an interactive ShowVariables callback. No variable table or extra detail fetch is required.

@@ -1222,17 +1222,30 @@ Four things are worth knowing before mounting one.
   `?sortDir=` for the kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
-- **`KildeExplorer` needs `VariableExplorerPath`** to offer either way over to the variable
-  explorer, because only the host knows where it mounted one. Two gestures reach it and both are off
-  this one path, so they cannot end up pointing at different pages: the selection handover, which
-  carries the kilder the reader ticked, and the link an expanded row ends in, which carries the one
-  kilde whose drawer is open. Leave it out and neither the selection column nor that link is drawn at
+- **`KildeExplorer` needs `VariableExplorerPath`** to offer navigation to the variable
+  explorer, because only the host knows where it mounted one. The selection handover, expanded
+  kilde row and datasamling's Variables section use this path. The collection link starts a fresh
+  search with exactly that `DatasamlingIds` selection, at page one with no variable detail open.
+  Leave the path out and neither the selection column nor those links are drawn at
   all — which is deliberate, and the right answer for a CMS host that cannot set it
   at all: a control that lands on a page that host may not have would be worse than no
   control. It is relative to your application rather than to the domain — `"variabler"` and
   `"/variabler"` mean the same page, and a path base is kept either way — and a full URL is taken
   as given. A path rather than a callback on purpose: an `EventCallback` handed to an interactive
   component by a statically rendered parent serialises to an empty delegate.
+- **A datasamling's Variables section contains facts and navigation.** It uses the detail payload's
+  count and statistics without fetching or drawing a variable table. A positive count also keeps
+  the declared `variabler` section visible when all three statistics fields are missing. Existing
+  absence rules remain: an entirely empty legacy block stays hidden and zero variables offers no
+  "view all" link. `DatasamlingView.VariablesHref` supplies the target for standalone mounts;
+  `KildeSearch.DatasamlingVariablesHref` resolves it by collection id. Null or blank means no link.
+  Inside `VariableExplorer`, `VariableSearch.DatasamlingVariablesHref` uses the current search URL,
+  replaces the collection facet, preserves unrelated facets/search and host parameters, and resets
+  pagination and detail selection. Its wording says "only variables from this collection" because
+  those other filters can narrow the result further. Standalone `VariableSearch` uses the existing
+  filter callback instead; a standalone detail can supply `ShowVariables` from a fully interactive
+  parent. An address takes precedence over that callback. These delegate/callback parameters must
+  be supplied inside the interactive boundary, not from a static SSR parent.
 - **The two static blocks over an open kilde are off unless you ask for them.**
   `ShowAccessAndPrices` — declared on `KildeSearch` and on `KildeExplorer` — draws
   "Kriterier for tilgang til data" and "Priser", both of which send the reader to helsedata.no.

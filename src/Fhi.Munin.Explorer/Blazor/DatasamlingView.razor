@@ -57,3 +57,23 @@
         </ChildContent>
     </DetailPage>
 }
+
+@code {
+    private bool HasVariablesNavigation => !string.IsNullOrWhiteSpace(VariablesHref) || ShowVariables.HasDelegate;
+
+    private RenderFragment VariablesNavigation => @<text>
+        @if (Datasamling is { VariableCount: > 0 } datasamling)
+        {
+            @if (!string.IsNullOrWhiteSpace(VariablesHref))
+            {
+                <p><a href="@VariablesHref">@(ShowVariables.HasDelegate
+                    ? T.ShowDatasamlingVariables : T.AllVariablesInDatasamling(datasamling.VariableCount))</a></p>
+            }
+            else if (ShowVariables.HasDelegate)
+            {
+                <p><button type="button" class="hd-button-square button-square--secondary"
+                           @onclick="ShowVariables">@T.ShowDatasamlingVariables</button></p>
+            }
+        }
+    </text>;
+}

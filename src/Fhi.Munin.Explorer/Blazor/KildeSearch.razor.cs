@@ -228,6 +228,10 @@ public sealed partial class KildeSearch : ComponentBase
     /// </remarks>
     [Parameter] public Func<Guid, string>? KildeVariablesHref { get; set; }
 
+    /// <summary>The variable explorer filtered to one collection. Null omits the detail link.</summary>
+    /// <remarks>Supply from an interactive parent, as for KildeVariablesHref.</remarks>
+    [Parameter] public Func<Guid, string>? DatasamlingVariablesHref { get; set; }
+
     /// <summary>
     /// Raised when the reader asks to explore variables for the kilder they have chosen, carrying
     /// the ids that go with them. Wire it, or no selection column is drawn.
