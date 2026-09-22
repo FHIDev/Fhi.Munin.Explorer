@@ -2,6 +2,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -249,6 +250,98 @@ public class VariableListFiltersTest : ExplorerTestContext
         Assert.Equal(
             ["Kreftregisteret (1)", "Reseptregisteret (1)", "Årsaksregisteret (1)"],
             Facets(cut.Filters));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The cap on a long facet. One rule for all three panels — Fhi.Metadata-35w0p.31.
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>A list drawing on <paramref name="kilder"/> kilder, one variable from each.</summary>
+    private static VariableListItem[] ManyKilder(int kilder) =>
+    [
+        .. Enumerable.Range(0, kilder).Select(index => new VariableListItem
+        {
+            VariableId = Guid.NewGuid(),
+            AddedAt = DateTimeOffset.UtcNow,
+            VariableName = $"Variabel {index:00}",
+            VariableCode = $"V{index:00}",
+            KildeId = new Guid($"bbbbbbbb-0000-0000-0000-{index:000000000000}"),
+            KildeName = $"Kilde {index:00}",
+        })
+    ];
+
+    /// <summary>The panel's "Vis N til", or null where it is hiding nothing.</summary>
+    /// <remarks>
+    /// Found by the attribute rather than by a class: the control wears Stiler's own ghost square
+    /// and invents no name of ours, and it is the only disclosure this panel draws.
+    /// </remarks>
+    private static AngleSharp.Dom.IElement? RestControl(IRenderedComponent<VariableListFilters> cut) =>
+        cut.FindAll(".munin-explorer-filters button[aria-expanded]").SingleOrDefault();
+
+    /// <summary>
+    /// The activation a native <c>&lt;button&gt;</c> reports for Enter and for Space: a click
+    /// carrying no count, which is the browser saying no pointer produced it.
+    /// </summary>
+    private static void KeyboardPress(AngleSharp.Dom.IElement control) =>
+        control.Click(new MouseEventArgs { Detail = 0 });
+
+    [Fact]
+    public void FacetCap_WhenTheListDrawsOnManyKilder_ThenTheThresholdManyAreDrawnAndTheRestAreOffered()
+    {
+        // The same cap the two explorers apply, so a reader meets one facet behaviour and not a
+        // third here. No pointer gesture: the press below is the click Enter and Space produce.
+        var cut = RenderBoth(new ListClient(ManyKilder(24))).Filters;
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, Facets(cut).Count);
+
+        var control = RestControl(cut)!;
+
+        Assert.Equal("BUTTON", control.TagName);
+        Assert.Equal("button", control.GetAttribute("type"));
+        Assert.Null(control.GetAttribute("tabindex"));
+        Assert.Equal("false", control.GetAttribute("aria-expanded"));
+        Assert.Equal("Vis 14 til Kilde", AccessibleName.Of(control));
+
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal(24, Facets(cut).Count);
+        Assert.Equal("true", RestControl(cut)!.GetAttribute("aria-expanded"));
+        Assert.Equal("Vis færre Kilde", AccessibleName.Of(RestControl(cut)!));
+
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, Facets(cut).Count);
+    }
+
+    [Fact]
+    public void FacetCap_WhenTheListSitsOnTheThreshold_ThenNothingIsHiddenAndNoControlIsDrawn()
+    {
+        var cut = RenderBoth(new ListClient(ManyKilder(FacetLimits.FacetSearchThreshold))).Filters;
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, Facets(cut).Count);
+        Assert.Null(RestControl(cut));
+    }
+
+    [Fact]
+    public void FacetCap_WhenAKildePastTheCapIsTicked_ThenItIsDrawnWithoutPressingTheControl()
+    {
+        // A reader who ticks the twentieth kilde and puts the rest away again must still see their
+        // own choice: the rows beside this panel stay narrowed either way, so a swallowed tick
+        // reads as a filter nobody can find the control for.
+        var cut = RenderBoth(new ListClient(ManyKilder(24))).Filters;
+
+        KeyboardPress(RestControl(cut)!);
+        Boxes(cut)[19].Change(true);
+        KeyboardPress(RestControl(cut)!);
+
+        var drawn = Facets(cut);
+
+        Assert.Contains("Kilde 19 (1)", drawn);
+        Assert.DoesNotContain("Kilde 20 (1)", drawn);
+        Assert.Equal(FacetLimits.FacetSearchThreshold + 1, drawn.Count);
+
+        // And the remainder is one smaller, because the ticked kilde is now above the cap.
+        Assert.Equal("Vis 13 til Kilde", AccessibleName.Of(RestControl(cut)!));
     }
 
     [Fact]

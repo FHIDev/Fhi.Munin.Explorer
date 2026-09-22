@@ -30,8 +30,8 @@
                an empty list for one we never managed to look at. *@
             @if (Kilder.Count > 0)
             {
-                <ul>
-                    @foreach (var kilde in Kilder)
+                <ul id="@KildeOptionsId">
+                    @foreach (var kilde in VisibleKilder)
                     {
                         @* Keyed on the kilde: the tally is built off the unfiltered walk so the
                            options never move under a tick, and the key is what keeps a checkbox
@@ -49,6 +49,21 @@
                         </li>
                     }
                 </ul>
+
+                @* The rest of a long list, behind a real button so it is in the tab order and Enter
+                   and Space work without a handler of our own. The cap is both explorers' own
+                   threshold, so a reader meets one facet behaviour and not a third here.
+
+                   No class of ours: the ghost square is the press this panel already uses above,
+                   so the control is dressed by a name Stiler defines and invents no inventory. *@
+                @if (ShowsRestControl)
+                {
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            aria-expanded="@(_kilderExpanded ? "true" : "false")"
+                            aria-controls="@KildeOptionsId"
+                            @onclick="ToggleKilderExpandedFromControl">@RestControlText@(" ")<span class="screenreader-only">@T.FieldSource</span></button>
+                }
             }
             else if (Known)
             {

@@ -3469,6 +3469,194 @@ public class VariableSearchTest : ExplorerTestContext
     private static string KildeHeading(IRenderedComponent<VariableSearch> cut) =>
         KildeFacet(cut).FirstElementChild!.TextContent.Trim();
 
+    // ---------------------------------------------------------------------------------
+    // The cap on a long facet, and the control that lifts it. (Fhi.Metadata-35w0p.31)
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>A payload whose kilde facet is longer than the panel draws: one kildetype, many kilder.</summary>
+    /// <remarks>
+    /// One kildetype on purpose. The panel lifts the kilder out of a group heading that would be
+    /// the only one, so this is the shape that puts them at the facet's top level — which is where
+    /// the cap applies and where Runa's own mockup draws its "Vis 40 til".
+    /// </remarks>
+    private static FilterOptions FacetsWithManyKilder(int kilder = 24) => new()
+    {
+        KildeTyper =
+        [
+            new() { Value = "sentraltHelseregister", DisplayName = "Sentralt helseregister", Count = kilder }
+        ],
+        Kilder =
+        [
+            // Qualified because a helper in this class answers to the same name.
+            .. Enumerable.Range(0, kilder).Select(index => new Contracts.KildeFacet
+            {
+                Id = new Guid($"cccccccc-0000-0000-0000-{index:000000000000}"),
+                Name = $"Kilde {index:00}",
+                KildeType = "sentraltHelseregister",
+                Count = 1,
+            })
+        ],
+        TotalCount = kilder,
+    };
+
+    /// <summary>The kilde facet's own value list — its top level, never a branch nested in it.</summary>
+    private static IElement KildeList(IRenderedComponent<VariableSearch> cut) =>
+        KildeFacet(cut).Children.First(child => child.TagName == "UL");
+
+    /// <summary>The names the kilde facet is drawing at its top level, in order.</summary>
+    private static IReadOnlyList<string> KildeRows(IRenderedComponent<VariableSearch> cut) =>
+        [.. KildeList(cut).Children
+            .Where(item => item.TagName == "LI")
+            .Select(item => FacetName(item.QuerySelector("label")!).TextContent)];
+
+    /// <summary>
+    /// The kilde facet's "Vis N til", or null where it is hiding nothing.
+    /// </summary>
+    /// <remarks>
+    /// A direct child of the facet, which is what tells it from the branch disclosures: those sit
+    /// inside a row of the list. Found by the attribute rather than by a class, because the control
+    /// wears Stiler's own ghost square and invents no name of ours.
+    /// </remarks>
+    private static IElement? RestControl(IRenderedComponent<VariableSearch> cut) =>
+        KildeFacet(cut).Children
+            .FirstOrDefault(child => child.TagName == "BUTTON" && child.HasAttribute("aria-expanded"));
+
+    /// <summary>
+    /// The activation a native <c>&lt;button&gt;</c> reports for Enter and for Space: a click
+    /// carrying no count.
+    /// </summary>
+    /// <remarks>
+    /// <c>detail</c> is how many clicks a pointer gesture was, so nought is the browser saying no
+    /// pointer produced this one — which is how the keyboard and assistive tooling activate a
+    /// button. <c>RowPress</c> reads the same field to tell the two apart.
+    /// </remarks>
+    private static void KeyboardPress(IElement control) =>
+        control.Click(new MouseEventArgs { Detail = 0 });
+
+    private static void SearchKilder(IRenderedComponent<VariableSearch> cut, string text) =>
+        KildeFacet(cut).QuerySelector("input.munin-explorer-filters__search")!.Change(text);
+
+    private static void TickKilde(IRenderedComponent<VariableSearch> cut, string name) =>
+        KildeList(cut).Children
+            .Where(item => item.TagName == "LI")
+            .Select(item => item.QuerySelector("label")!)
+            .Single(label => FacetName(label).TextContent == name)
+            .QuerySelector("input[type=checkbox]")!
+            .Change(true);
+
+    [Fact]
+    public void FacetCap_WhenTheKildeFacetIsLong_ThenItDrawsTheThresholdManyAndOffersTheRest()
+    {
+        // The defect: nothing capped the list, so a catalogue of 24 kilder drew 24 rows and the
+        // filter panel grew longer than the results it filters.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithManyKilder()));
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, KildeRows(cut).Count);
+        Assert.Equal("Vis 14 til Kilde", AccessibleName.Of(RestControl(cut)!));
+
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal(24, KildeRows(cut).Count);
+        Assert.Equal("Vis færre Kilde", AccessibleName.Of(RestControl(cut)!));
+
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, KildeRows(cut).Count);
+    }
+
+    [Fact]
+    public void FacetCap_WhenTheFacetSitsOnTheThreshold_ThenNothingIsHiddenAndNoControlIsDrawn()
+    {
+        var cut = RenderWith(
+            new FilteringClient(OnePage(), FacetsWithManyKilder(FacetLimits.FacetSearchThreshold)));
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, KildeRows(cut).Count);
+        Assert.Null(RestControl(cut));
+    }
+
+    [Fact]
+    public void FacetCap_WhenAKildePastTheCapIsTicked_ThenItIsDrawnWithoutPressingTheControl()
+    {
+        // The reader ticks the twentieth kilde through the facet's own search, clears the box and
+        // must still see their choice. A cap that swallowed it would leave a filter in force with
+        // no ticked control on screen to explain the narrowed list.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithManyKilder()));
+
+        SearchKilder(cut, "Kilde 19");
+        TickKilde(cut, "Kilde 19");
+        SearchKilder(cut, string.Empty);
+
+        var drawn = KildeRows(cut);
+
+        Assert.Contains("Kilde 19", drawn);
+        Assert.DoesNotContain("Kilde 20", drawn);
+        Assert.Equal(FacetLimits.FacetSearchThreshold + 1, drawn.Count);
+
+        // The remainder is one smaller than it was, because the ticked kilde is now above the cap.
+        Assert.Equal("Vis 13 til Kilde", AccessibleName.Of(RestControl(cut)!));
+    }
+
+    [Fact]
+    public void FacetCap_WhenTheFacetIsSearched_ThenEveryMatchIsDrawnAndTheControlIsGone()
+    {
+        // The facet's two narrowing controls must not fight: a term matching the twentieth kilde has
+        // to show it, and a button offering to reveal more while every match is on screen offers
+        // nothing.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithManyKilder()));
+
+        SearchKilder(cut, "Kilde 19");
+
+        Assert.Equal(["Kilde 19"], KildeRows(cut));
+        Assert.Null(RestControl(cut));
+
+        // A term every kilde answers draws all 24, well past what the facet draws at rest.
+        SearchKilder(cut, "Kilde ");
+
+        Assert.Equal(24, KildeRows(cut).Count);
+        Assert.Null(RestControl(cut));
+
+        SearchKilder(cut, string.Empty);
+
+        Assert.Equal(FacetLimits.FacetSearchThreshold, KildeRows(cut).Count);
+        Assert.NotNull(RestControl(cut));
+    }
+
+    [Fact]
+    public void FacetCap_Always_ThenTheControlIsAButtonTheKeyboardCanReachAndOperate()
+    {
+        // No pointer gesture anywhere in this test. A native <button> is in the tab order without
+        // being given a tabindex, and the platform activates it on Enter and on Space — which it
+        // delivers as a click carrying no count. That is what KeyboardPress sends.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithManyKilder()));
+        var control = RestControl(cut)!;
+
+        Assert.Equal("BUTTON", control.TagName);
+        Assert.Equal("button", control.GetAttribute("type"));
+        Assert.False(control.HasAttribute("disabled"));
+        Assert.Null(control.GetAttribute("tabindex"));
+        Assert.Equal("false", control.GetAttribute("aria-expanded"));
+        Assert.Equal(KildeList(cut).GetAttribute("id"), control.GetAttribute("aria-controls"));
+
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal("true", RestControl(cut)!.GetAttribute("aria-expanded"));
+
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal("false", RestControl(cut)!.GetAttribute("aria-expanded"));
+
+        // And nothing of ours listens for the keys themselves: a keydown handler beside the
+        // platform's own activation would fire twice on Enter, which reads as a control that does
+        // nothing at all.
+        // bUnit refuses an event the markup handles nowhere, so the refusal IS the assertion.
+        Assert.Throws<MissingEventHandlerException>(
+            () => RestControl(cut)!.KeyDown(new KeyboardEventArgs { Key = "Enter" }));
+        Assert.Throws<MissingEventHandlerException>(
+            () => RestControl(cut)!.KeyUp(new KeyboardEventArgs { Key = " " }));
+
+        Assert.Equal("false", RestControl(cut)!.GetAttribute("aria-expanded"));
+    }
+
     /// <summary>The kildetype groups inside the kilde facet, in the order they are drawn.</summary>
     /// <remarks>
     /// The rows of the facet's own list, read as its direct children rather than by a descendant

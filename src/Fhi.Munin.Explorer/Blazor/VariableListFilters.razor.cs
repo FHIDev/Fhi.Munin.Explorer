@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Display;
 using Fhi.Munin.Explorer.Logging;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -85,6 +86,72 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     private IReadOnlyCollection<Guid> Chosen => State?.KildeFilter ?? [];
 
     private bool IsChosen(Guid kildeId) => State?.IsKildeChosen(kildeId) == true;
+
+    /// <summary>Whether the reader has asked to see past the cap on this one facet.</summary>
+    /// <remarks>
+    /// A field rather than a set of keys, unlike the two explorers' panels: there is one facet
+    /// here and there is not going to be a second — see the class remarks for why the list tab has
+    /// a panel of its own at all.
+    /// </remarks>
+    private bool _kilderExpanded;
+
+    /// <summary>The kilder the panel draws: the first ten, and any ticked one past them.</summary>
+    /// <remarks>
+    /// <see cref="FacetLimits.FacetSearchThreshold"/>, the number both explorers cap their facets
+    /// at, so a reader who has met one of those panels meets no second rule here. A ticked kilde
+    /// survives the cap wherever it sorts: a panel that hid the reader's own choice would read as
+    /// a filter dropped, while the rows beside it stayed narrowed.
+    /// </remarks>
+    private IReadOnlyList<KildeInList> VisibleKilder
+    {
+        get
+        {
+            var kilder = Kilder;
+
+            if (_kilderExpanded || kilder.Count <= FacetLimits.FacetSearchThreshold)
+            {
+                return kilder;
+            }
+
+            return
+            [
+                .. kilder.Take(FacetLimits.FacetSearchThreshold),
+                .. kilder.Skip(FacetLimits.FacetSearchThreshold).Where(kilde => IsChosen(kilde.Id))
+            ];
+        }
+    }
+
+    /// <summary>How many kilder the cap is holding back right now.</summary>
+    /// <remarks>
+    /// Subtracted from what is drawn rather than counted off the threshold, so the ticked kilder
+    /// the cap let through are discounted and the number on the control is what pressing it adds.
+    /// </remarks>
+    private int HiddenKildeCount => Kilder.Count - VisibleKilder.Count;
+
+    /// <summary>Whether the panel draws the control that reveals what the cap is holding back.</summary>
+    private bool ShowsRestControl =>
+        Kilder.Count > FacetLimits.FacetSearchThreshold && (_kilderExpanded || HiddenKildeCount > 0);
+
+    /// <summary>What the control says: the remainder it would reveal, or the offer to put it back.</summary>
+    private string RestControlText =>
+        _kilderExpanded ? T.ShowFewerFacetValues : T.ShowMoreFacetValues(HiddenKildeCount);
+
+    /// <summary>The id joining the kilde list to the control that reveals the rest of it.</summary>
+    private string KildeOptionsId => $"munin-explorer-list-kilde-options-{_instance}";
+
+    /// <summary>Show the rest of the kilder, or take them back behind the cap.</summary>
+    /// <remarks>
+    /// The standing-gesture clause every other disclosure in this package carries: the second click
+    /// of a double-click and a shift-click both stand still, and neither is a press.
+    /// (Fhi.Metadata-zel47)
+    /// </remarks>
+    private void ToggleKilderExpandedFromControl(MouseEventArgs released)
+    {
+        if (!RowPress.WasSelectionStandingStill(released))
+        {
+            _kilderExpanded = !_kilderExpanded;
+        }
+    }
 
     /// <summary>Whether the whole list has been read, which is what makes the empty sentence true.</summary>
     private bool Known => State?.KilderInListKnown == true;

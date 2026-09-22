@@ -344,7 +344,24 @@ else
                     }
                     else if (group.Values.Count > 0)
                     {
-                        @FacetList(group.Values)
+                        @FacetList(VisibleValues(group), FacetOptionsId(group.Key))
+
+                        @* The rest of a long facet, behind a real button so it is in the tab order
+                           and Enter and Space work without a handler of our own. The count is
+                           recomputed per render, because a stale "Vis 40 til" is worse than none.
+
+                           No class of ours: the ghost square is what the toolbar above already
+                           wears, so the control is dressed by a name Stiler defines and invents no
+                           inventory. The facet's own label is said after the words, because several
+                           of these can be on screen and "Vis 40 til" names none of them. *@
+                        @if (ShowsRestControl(group))
+                        {
+                            <button class="hd-button-square button-square--ghost"
+                                    type="button"
+                                    aria-expanded="@(IsFacetExpanded(group.Key) ? "true" : "false")"
+                                    aria-controls="@FacetOptionsId(group.Key)"
+                                    @onclick="e => ToggleFacetExpandedFromControl(group.Key, e)">@RestControlText(group)@(" ")<span class="screenreader-only">@group.Label</span></button>
+                        }
                     }
                     else
                     {

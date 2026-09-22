@@ -362,7 +362,7 @@ else
                         }
                         else
                         {
-                            <ul>
+                            <ul id="@FacetOptionsId(facet.Key)">
                                 @foreach (var option in options)
                                 {
                                     @* The whole value in title, and only where the text on screen was
@@ -387,6 +387,23 @@ else
                                     </li>
                                 }
                             </ul>
+                        }
+
+                        @* The rest of a long facet, behind a real button so it is in the tab order
+                           and Enter and Space work without a handler of our own. The count is
+                           recomputed per render, because a stale "Vis 14 til" is worse than none.
+
+                           No class of ours: the ghost square is what the fold row above already
+                           wears, so the control is dressed by a name Stiler defines and invents no
+                           inventory. The facet's heading is said after the words, because several
+                           of these can be on screen and "Vis 2 til" names none of them. *@
+                        @if (ShowsRestControl(facet))
+                        {
+                            <button class="hd-button-square button-square--ghost"
+                                    type="button"
+                                    aria-expanded="@(IsFacetExpanded(facet.Key) ? "true" : "false")"
+                                    aria-controls="@FacetOptionsId(facet.Key)"
+                                    @onclick="e => ToggleFacetExpandedFromControl(facet.Key, e)">@RestControlText(facet)@(" ")<span class="screenreader-only">@facet.Heading</span></button>
                         }
                     </details>
                 }
