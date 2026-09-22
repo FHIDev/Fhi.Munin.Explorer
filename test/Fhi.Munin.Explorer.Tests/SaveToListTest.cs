@@ -318,7 +318,7 @@ public class SaveToListTest : ExplorerTestContext
     public void Row_WhenEveryRowOffersToSave_ThenEachButtonNamesItsOwnVariable()
     {
         // Two rows, because the weak version of this assertion — "the button has an accessible
-        // name" — is satisfied by a constant label on all 25 of them, which is the same "Lagre i
+        // name" — is satisfied by a constant label on every row, which is the same "Lagre i
         // liste, Lagre i liste, Lagre i liste" a screen reader hears from the visible words alone.
         // Distinctness is what makes the assertion mean anything.
         var client = new ListClient(OnePage(
@@ -416,8 +416,8 @@ public class SaveToListTest : ExplorerTestContext
         // The other side of the fallback: it must not survive into the ordinary row, where the
         // visible name is the accessible one. An aria-label that stayed on would win over the
         // button's own content, so every disclosure on the page would announce as "Vis hele
-        // variabelen" — 25 identical names, and a speech-input user saying the words they can see
-        // would reach none of them (WCAG 2.5.3).
+        // variabelen" — one name repeated down the page, and a speech-input user saying the words
+        // they can see would reach none of them (WCAG 2.5.3).
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
         var toggle = cut.Find("button.munin-explorer-dataitem-main__name");
