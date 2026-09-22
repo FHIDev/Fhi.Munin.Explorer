@@ -70,25 +70,26 @@ public sealed class DetailFacts : ComponentBase
             // No headline class on the dt, unlike the fact lists below: Stiler sizes this one
             // itself, and a second type rule on the same element is a fight the host loses.
             builder.OpenElement(seq + 1, "dt");
-            builder.AddContent(seq + 2, fact.Label);
+            builder.AddAttribute(seq + 2, "lang", fact.LabelLang);
+            builder.AddContent(seq + 3, fact.Label);
             builder.CloseElement();
 
-            builder.OpenElement(seq + 3, "dd");
-            Words(builder, seq + 4, fact.Value, fact.Lang);
+            builder.OpenElement(seq + 4, "dd");
+            Words(builder, seq + 5, fact.Value, fact.Lang);
 
             if (!string.IsNullOrWhiteSpace(fact.Note))
             {
-                builder.OpenElement(seq + 8, "small");
+                builder.OpenElement(seq + 9, "small");
 
                 // The label outside whatever marks the value, as the dt outside is: it is this
                 // package's word, translated, and Norwegian phonetics for "Counting unit" is
                 // WCAG 3.1.2 — the same reason CatalogueProperties.Foreign answers null for ours.
                 if (!string.IsNullOrWhiteSpace(fact.NoteLabel))
                 {
-                    builder.AddContent(seq + 9, $"{fact.NoteLabel}: ");
+                    builder.AddContent(seq + 10, $"{fact.NoteLabel}: ");
                 }
 
-                Words(builder, seq + 10, fact.Note, fact.NoteLang);
+                Words(builder, seq + 11, fact.Note, fact.NoteLang);
                 builder.CloseElement();
             }
 

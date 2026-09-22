@@ -478,6 +478,9 @@ public sealed partial class DatasamlingView : ComponentBase
             return CatalogueProperties.Row(datasamling.PropertyMetadata, Placement.Values, Reader, "healthCategory")
                 is { Values: [var first, ..] } row
                 ? new DetailFact(row.Label, first.Text, CatalogueProperties.Foreign(first.Language, Reader))
+                {
+                    LabelLang = CatalogueProperties.Foreign(row.LabelLanguage, Reader),
+                }
                 : null;
         }
     }

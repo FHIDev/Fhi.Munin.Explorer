@@ -28,7 +28,7 @@
                     @foreach (var fact in ShownStickyFacts)
                     {
                         <div>
-                            <dt>@fact.Label</dt>
+                            <dt lang="@fact.LabelLang">@fact.Label</dt>
                             <dd><span lang="@fact.Lang">@fact.Value</span></dd>
                         </div>
                     }

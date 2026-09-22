@@ -474,6 +474,31 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void HeroFacts_WhenTheCategoryLabelFallsBack_ThenOnlyTheLabelUsesTheFallbackLanguage()
+    {
+        var data = Datasamling();
+        var untranslated = data with
+        {
+            PropertyMetadata = [.. data.PropertyMetadata.Select(entry => entry.Key == "healthCategory"
+                ? entry with { DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Datakategori" } }
+                : entry)],
+        };
+        var cut = Render(untranslated, language: "en");
+        var category = Cell(Hero(cut), "Datakategori");
+
+        Assert.Equal("no", category.QuerySelector("dt")!.GetAttribute("lang"));
+        Assert.False(category.HasAttribute("lang"));
+        Assert.Equal("Quality-of-healthcare registries", category.QuerySelector("dd")!.TextContent);
+        Assert.Empty(category.QuerySelectorAll("dd [lang], dd[lang]"));
+
+        cut.Render(parameters => parameters.Add(p => p.Language, "nb"));
+        Assert.Null(Cell(Hero(cut), "Datakategori").QuerySelector("dt")!.GetAttribute("lang"));
+
+        cut.Render(parameters => parameters.Add(p => p.Language, "en").Add(p => p.Datasamling, data));
+        Assert.Null(Cell(Hero(cut), "Data category").QuerySelector("dt")!.GetAttribute("lang"));
+    }
+
+    [Fact]
     public void HeroFacts_WhenTheCatalogueRenamesACategory_ThenBothTheLabelAndValueFollowIt()
     {
         var data = Datasamling();

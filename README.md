@@ -537,6 +537,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     the right order, and what is lost is the row — it stacks instead. `VariableListView` names no
     facts, because a list of saved variables is not an entity with facts about it. Both sample
     stylesheets stand in at exactly what the pinned 0.1.75 declares, the `small` included.
+    `DetailFact.LabelLang` marks a label that falls back to another language, independently of
+    the value’s `Lang`, in both the hero and sticky bar.
 
     The same row is what the sticky bar watches, and the bar adds four names of its own —
     `munin-explorer-page__stuckbar`, its `--on` state, `munin-explorer-page__stuckbar-inner` and
