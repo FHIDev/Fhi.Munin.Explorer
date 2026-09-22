@@ -1221,29 +1221,14 @@ public class VariableSearchTest : ExplorerTestContext
         AssertCatalogueCellsMarkedNorwegian(cut);
     }
 
-    [Fact]
-    public void Cells_WhenStatusIsTurnedOn_ThenTheStatusCellIsNotMarkedNorwegian()
-    {
-        // The status is translated into the reader's language, so it is this component's own word
-        // rather than the catalogue's and stays unmarked. English is the case where the label and
-        // the API's token happen to be the same string; the theory below is what proves the map.
-        var cut = RenderWith(new FakeClient(OnePage(FilledRow())), b => b.Add(c => c.Language, "en"));
-        TurnEveryColumnOn(cut);
-
-        var cell = Cell(cut, "status");
-
-        Assert.Equal("Active", cell.TextContent.Trim());
-        Assert.Empty(cell.QuerySelectorAll("[lang='no']"));
-        AssertCatalogueCellsMarkedNorwegian(cut);
-    }
-
     [Theory]
     [InlineData(null, "Active", "Aktiv")]
     [InlineData(null, "Historical", "Historisk")]
-    // The lower-case pair is what proves the row goes through Texts.VersionStatusLabel at all:
-    // the API's own tokens already spell the English labels, so an English reader sees the right
-    // words whether the row translates or not (Fhi.Metadata-hq0b6).
+    // The lower-case rows prove the cell goes through Texts.VersionStatusLabel at all: the API's
+    // own tokens already spell the English labels, so only a token differing in case — or, as
+    // Norwegian-spelled "aktiv" and "historisk" do, in language — tells a translating row apart.
     [InlineData("en", "active", "Active")]
+    [InlineData("en", "aktiv", "Active")]
     [InlineData("en", "historisk", "Historical")]
     [InlineData("en", "Active", "Active")]
     [InlineData("en", "Historical", "Historical")]
@@ -1252,7 +1237,7 @@ public class VariableSearchTest : ExplorerTestContext
     [InlineData(null, "Draft", "Draft")]
     [InlineData(null, null, "Ikke oppgitt")]
     [InlineData("en", null, "Not specified")]
-    public void Cells_WhenStatusIsTurnedOn_ThenTheStatusCellReadsTheTranslatedLabel(
+    public void Cells_WhenStatusIsTurnedOn_ThenItReadsTheTranslatedLabelAndIsNotMarkedNorwegian(
         string? language, string? token, string expected)
     {
         // A null language is the parameter left unset, which is the Norwegian default a host gets

@@ -693,10 +693,12 @@ internal sealed record Texts(
     /// Only <c>Active</c> has come back from the test API - every version on every variable
     /// sampled, including ones long superseded. Historical is in the vocabulary and is handled, but
     /// has never been observed, so anything else is shown raw rather than guessed at or hidden.
+    /// Both words are taken in either spelling, so a Norwegian-spelled token cannot reach an
+    /// English reader raw while its sibling translates (Fhi.Metadata-hq0b6).
     /// </remarks>
     public string VersionStatusLabel(string status) => status.ToLowerInvariant() switch
     {
-        "active" => VersionActive,
+        "active" or "aktiv" => VersionActive,
         "historical" or "historisk" => VersionHistorical,
         _ => status
     };
