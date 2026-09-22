@@ -150,6 +150,7 @@ internal sealed record Texts(
     string FieldDataController,
     string FieldDataProcessor,
     string FieldPersonIdentification,
+    string HeroPersonIdentification,
     string FieldValidity,
     string FieldInclusionCriteria,
     // The kind of statistics a datasamling keeps, as a row rather than only in the heading over
@@ -991,6 +992,7 @@ internal sealed record Texts(
         FieldDataController: "Dataansvarlig",
         FieldDataProcessor: "Databehandler",
         FieldPersonIdentification: "Grad av personidentifikasjon",
+        HeroPersonIdentification: "Personidentifikasjon",
         FieldValidity: "Gyldighet",
         FieldInclusionCriteria: "Inklusjons- og eksklusjonskriterier",
         FieldStatisticsType: "Statistikktype",
@@ -1383,6 +1385,7 @@ internal sealed record Texts(
         FieldDataController: "Data controller",
         FieldDataProcessor: "Data processor",
         FieldPersonIdentification: "Level of personal identification",
+        HeroPersonIdentification: "Personal identification",
         FieldValidity: "Validity",
         FieldInclusionCriteria: "Inclusion and exclusion criteria",
         FieldStatisticsType: "Statistics type",

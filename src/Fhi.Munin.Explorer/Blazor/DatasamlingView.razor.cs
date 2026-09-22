@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
@@ -401,43 +402,66 @@ public sealed partial class DatasamlingView : ComponentBase
                 (T.FieldVariableCount, VariableCount, false),
             ];
 
-    /// <summary>
-    /// The six facts a datasamling leads with — the source's own six, with Gyldighet where a source
-    /// has Dataperiode and the collection's own variable count where a source has its total.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The same six on purpose: a reader moving between a source and one of its collections is
-    /// comparing them, and a row that reorders itself between the two pages is a row they have to
-    /// read twice. Every value is the member the section below reads, so the two cannot come out in
-    /// different words, and no key goes into <see cref="DrawnElsewhere"/> on account of being here —
-    /// that set names Beskrivelse, which the ingress draws, and nothing else.
-    /// </para>
-    /// <para>
-    /// Kilde is deliberately not among them although the fact box below shows it: the breadcrumb
-    /// directly above already names the source, and a fact strip that repeats the chrome spends a
-    /// slot on something the reader has just read. Telleenhet qualifies the count rather than
-    /// taking a slot of its own, and Frekvens qualifies nothing today — no datasamling in the
-    /// catalogue carries one — so it stays in Statistikk, where an empty row reads "Ingen".
-    /// </para>
-    /// </remarks>
+    // The datasamling mockup specifies its own six facts; body fields remain where placed.
     private IReadOnlyList<DetailFact> HeroFacts =>
-        Datasamling is not { } datasamling
+        Datasamling is null
             ? []
-            : [
-                new DetailFact(T.FacetKildeType, KildetypeLabel),
-                new DetailFact(T.FieldDataController, datasamling.EffectiveDataController,
-                               CatalogueProperties.Foreign("no", Reader)),
-                new DetailFact(T.FieldPersonIdentification, PersonIdentification),
-                new DetailFact(T.FieldValidity, Validity),
-                new DetailFact(T.FieldVariableCount, VariableCount,
-                               NoteLabel: T.FieldCountingUnit, Note: datasamling.CountingUnit,
-                               NoteLang: CatalogueProperties.Foreign("no", Reader)),
-                new DetailFact(T.FieldLegalBasis, CatalogueMarkdown.Words(datasamling.EffectiveLegalBasis),
-                               CatalogueMarkdown.Prose(datasamling.EffectiveLegalBasis)
-                                   ? CatalogueProperties.Foreign("no", Reader)
-                                   : null),
-            ];
+            : [.. new DetailFact?[]
+                {
+                    SourceFact,
+                    new DetailFact(T.FacetKildeType, KildetypeLabel),
+                    VariablesFact,
+                    ValidityFact,
+                    new DetailFact(T.HeroPersonIdentification, PersonIdentification),
+                    CategoryFact,
+                }.OfType<DetailFact>()];
+
+    private DetailFact SourceFact =>
+        new(T.FieldSource, Datasamling?.ParentKildeName, CatalogueProperties.Foreign("no", Reader));
+
+    private DetailFact VariablesFact =>
+        new(T.HeadingVariables, VariableCount,
+            NoteLabel: T.FieldCountingUnit, Note: Datasamling?.CountingUnit,
+            NoteLang: CatalogueProperties.Foreign("no", Reader));
+
+    private DetailFact ValidityFact => new(T.FieldValidity, Validity);
+
+    private IReadOnlyList<DetailFact> CompactFacts => [SourceFact, VariablesFact, ValidityFact];
+
+    private DetailFact? CategoryFact
+    {
+        get
+        {
+            if (Datasamling is not { } datasamling
+                || !datasamling.AdditionalProperties.TryGetValue("healthCategory", out var raw)
+                || string.IsNullOrWhiteSpace(raw))
+            {
+                return null;
+            }
+
+            // An empty selection is absence, even though the generic property renderer keeps raw JSON.
+            try
+            {
+                using var document = JsonDocument.Parse(raw);
+                if (document.RootElement.ValueKind == JsonValueKind.Null
+                    || (document.RootElement.ValueKind == JsonValueKind.Array
+                        && !document.RootElement.EnumerateArray().Any(value =>
+                            value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString()))))
+                {
+                    return null;
+                }
+            }
+            catch (JsonException)
+            {
+                // Legacy plain values still resolve through the catalogue vocabulary below.
+            }
+
+            return CatalogueProperties.Row(datasamling.PropertyMetadata, Placement.Values, Reader, "healthCategory")
+                is { Values: [var first, ..] } row
+                ? new DetailFact(row.Label, first.Text, CatalogueProperties.Foreign(first.Language, Reader))
+                : null;
+        }
+    }
 
     /// <summary>Whether the statistics block has a row to draw, heading and section included.</summary>
     /// <remarks>

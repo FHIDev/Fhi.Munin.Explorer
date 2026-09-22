@@ -96,13 +96,21 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     public IReadOnlyList<DetailFact>? Facts { get; set; }
 
     /// <summary>
+    /// The hero facts to repeat in the compact bar, in order. Null uses the first three visible
+    /// <see cref="Facts"/>; an empty list suppresses the bar. Blank values are omitted and at most
+    /// three facts are shown. Callers should reuse their hero values so the summaries agree.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<DetailFact>? StickyFacts { get; set; }
+
+    /// <summary>
     /// The name the sticky bar condenses the page to, as the heading above it says it. Unset, or
     /// with no <see cref="Facts"/> left to show, draws no bar at all.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The bar is <c>munin-explorer-page__stuckbar</c>: the name and the first
-    /// <see cref="StickyFactCount"/> facts of the hero row, pinned to the top of the viewport once
+    /// The bar is <c>munin-explorer-page__stuckbar</c>: the name and the selected
+    /// <see cref="StickyFacts"/> (the first three hero facts by default), pinned to the top of the viewport once
     /// the hero row has scrolled off it. It is a summary of a summary — every word in it is still
     /// on the page — which is why it is rendered <c>hidden</c> and only the package's browser
     /// module ever shows it. A host that does not serve that module never sees it, and loses
@@ -271,9 +279,10 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     /// </remarks>
     private IReadOnlyList<DetailFact> ShownFacts { get; set; } = [];
 
-    private IEnumerable<DetailFact> StickyFacts => ShownFacts.Take(StickyFactCount);
+    private IEnumerable<DetailFact> ShownStickyFacts =>
+        (StickyFacts ?? ShownFacts).Where(fact => !string.IsNullOrWhiteSpace(fact.Value)).Take(StickyFactCount);
 
-    private bool Sticky => ShownFacts.Count > 0 && !string.IsNullOrWhiteSpace(StickyName);
+    private bool Sticky => ShownFacts.Count > 0 && ShownStickyFacts.Any() && !string.IsNullOrWhiteSpace(StickyName);
 
     /// <inheritdoc />
     protected override void OnParametersSet() =>

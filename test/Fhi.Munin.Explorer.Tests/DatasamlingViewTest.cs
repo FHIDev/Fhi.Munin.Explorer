@@ -264,42 +264,15 @@ public class DatasamlingViewTest : ExplorerTestContext
         ?? throw new InvalidOperationException(
             $"No '{label}' cell in the hero row, only: {string.Join(", ", Labels(hero))}.");
 
-    [Fact]
-    public void HeroFacts_WhenTheLegalBasisIsOneMarkdownLink_ThenTheCellShowsItsWords()
+    [Theory]
+    [InlineData("nb", "Kilde|Type datakilde|Variabler|Gyldighet|Personidentifikasjon|Datakategori")]
+    [InlineData("en", "Source|Type of data source|Variables|Validity|Personal identification|Data category")]
+    public void HeroFacts_WhenPopulated_ThenTheyFollowTheDatasamlingMockup(string language, string labels)
     {
-        // Three of K_MSIS's datasamlinger inherit its Lovverk in this shape.
-        var cut = Render(Datasamling() with
-        {
-            EffectiveLegalBasis = "[Helseregisterloven § 11](https://lovdata.no/lov/2014-06-20-43)",
-        });
+        var cut = Render(Datasamling(), language: language);
 
-        Assert.Equal("Helseregisterloven § 11", Cell(Hero(cut), "Lovverk").QuerySelector("dd")!.TextContent.Trim());
-    }
-
-    [Fact]
-    public void HeroFacts_WhenTheLegalBasisIsABareAddress_ThenTheCellMarksNoLanguage()
-    {
-        var cut = Render(Datasamling() with { EffectiveLegalBasis = "https://lovdata.no/lov/2014-06-20-43" },
-                         language: "en");
-
-        Assert.Empty(Cell(Hero(cut), "Legal basis").QuerySelectorAll("dd [lang]"));
-    }
-
-    [Fact]
-    public void HeroFacts_Always_ThenTheyAreTheSourcePagesSixOverThisCollectionsOwnValues()
-    {
-        // The same six as a source, deliberately: a reader moving between a source and one of its
-        // collections is comparing them, and a row that reorders itself between the two pages is a
-        // row they have to read twice. Gyldighet stands where a source has Dataperiode, which is
-        // the period a datasamling actually carries.
-        //
-        // Kilde is not among them although the fact box below shows it: the breadcrumb directly
-        // above already names the source, and a strip that repeats the chrome spends a slot on
-        // something the reader has just read.
-        Assert.Equal(
-            ["Type datakilde", "Dataansvarlig", "Grad av personidentifikasjon", "Gyldighet",
-             "Antall variabler", "Lovverk"],
-            Labels(Hero(Render(Datasamling()))));
+        Assert.Equal(labels.Split('|'), Labels(Hero(cut)));
+        Assert.Equal(Datasamling().ParentKildeName, Hero(cut).QuerySelector("dd")!.TextContent);
     }
 
     [Fact]
@@ -312,13 +285,11 @@ public class DatasamlingViewTest : ExplorerTestContext
         var source = SourceInformation(cut);
 
         Assert.Equal(Value(source, "Type datakilde"), Value(hero, "Type datakilde"));
-        Assert.Equal(Value(source, "Dataansvarlig"), Value(hero, "Dataansvarlig"));
         Assert.Equal(Value(source, "Grad av personidentifikasjon"),
-                     Value(hero, "Grad av personidentifikasjon"));
+                     Value(hero, "Personidentifikasjon"));
         Assert.Equal(Value(source, "Gyldighet"), Value(hero, "Gyldighet"));
-        Assert.Equal(Value(source, "Lovverk"), Value(hero, "Lovverk"));
         Assert.Equal(Value(Box(cut, "Statistikk (årsbasert)"), "Antall variabler"),
-                     Value(hero, "Antall variabler"));
+                     Value(hero, "Variabler"));
     }
 
     [Fact]
@@ -332,7 +303,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             EffectivePersonIdentificationLevel = null,
         }));
 
-        Assert.Equal(["Dataansvarlig", "Gyldighet", "Antall variabler", "Lovverk"], Labels(hero));
+        Assert.Equal(["Kilde", "Variabler", "Gyldighet", "Datakategori"], Labels(hero));
         Assert.DoesNotContain("Ikke oppgitt", hero.TextContent, StringComparison.Ordinal);
     }
 
@@ -370,22 +341,20 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling() with { CountingUnit = "Pasient" });
 
         Assert.Equal("Telleenhet: Pasient",
-                     Cell(Hero(cut), "Antall variabler").QuerySelector("small")!.TextContent);
+                     Cell(Hero(cut), "Variabler").QuerySelector("small")!.TextContent);
         Assert.Equal("Pasient", Value(Box(cut, "Statistikk (årsbasert)"), "Telleenhet"));
     }
 
     [Fact]
     public void HeroFacts_WhenTheReaderIsEnglish_ThenTheCataloguesOwnWordsAreMarkedAndOursAreNot()
     {
-        // The same mix as the source page, on the same two fields: the kildetype and the
-        // identification level are vocabularies this package translates, the controller and the
-        // legal basis are inherited free text stored once, in Norwegian, however the reader reads.
         var hero = Hero(Render(Datasamling(), language: "en"));
 
-        Assert.Equal("no", Cell(hero, "Data controller").QuerySelector("span")!.GetAttribute("lang"));
-        Assert.Equal("no", Cell(hero, "Legal basis").QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Equal("no", Cell(hero, "Source").QuerySelector("span")!.GetAttribute("lang"));
         Assert.Empty(Cell(hero, "Type of data source").QuerySelectorAll("span"));
-        Assert.Empty(Cell(hero, "Level of personal identification").QuerySelectorAll("span"));
+        Assert.Empty(Cell(hero, "Personal identification").QuerySelectorAll("span"));
+        Assert.Equal("Quality-of-healthcare registries", Value(hero, "Data category"));
+        Assert.Empty(Cell(hero, "Data category").QuerySelectorAll("span"));
     }
 
     [Fact]
@@ -395,7 +364,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // this page writes it outside the Statistikk row that marks it — unmarked here, the same
         // word would be read to an English reader with English phonetics four cells above.
         var english = Render(Datasamling() with { CountingUnit = "Pasient" }, language: "en");
-        var note = Cell(Hero(english), "Number of variables").QuerySelector("small")!;
+        var note = Cell(Hero(english), "Variables").QuerySelector("small")!;
 
         // The unit alone, not the line: "Counting unit" is this package's word and is translated,
         // so a mark on the <small> would announce an English label in a Norwegian voice — which is
@@ -406,8 +375,133 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal("Pasient", note.QuerySelector("span")!.TextContent);
 
         // And a Norwegian reader is told nothing, because Norwegian is the page they are reading.
-        Assert.Empty(Cell(Hero(Render(Datasamling() with { CountingUnit = "Pasient" })), "Antall variabler")
+        Assert.Empty(Cell(Hero(Render(Datasamling() with { CountingUnit = "Pasient" })), "Variabler")
                          .QuerySelector("small")!.QuerySelectorAll("span"));
+    }
+
+    [Theory]
+    [InlineData("nb", "Kilde|Variabler|Gyldighet")]
+    [InlineData("en", "Source|Variables|Validity")]
+    public void Stuckbar_WhenPopulated_ThenItRepeatsSourceCountAndValidity(string language, string labels)
+    {
+        var cut = Render(Datasamling(), language: language);
+        var compact = cut.Find(".munin-explorer-page__stuckbar dl");
+
+        Assert.Equal(labels.Split('|'), Labels(compact));
+        foreach (var label in labels.Split('|'))
+        {
+            Assert.Equal(Value(Hero(cut), label), Value(compact, label));
+        }
+    }
+
+    [Theory]
+    [InlineData(null, null, null)]
+    [InlineData("2020-01-01", null, "1 January 2020 – Ongoing")]
+    [InlineData(null, "2024-12-31", "31 December 2024")]
+    [InlineData("2020-01-01", "2024-12-31", "1 January 2020 – 31 December 2024")]
+    public void HeroFacts_WhenValidityIsOpenEnded_ThenTheHeroAndCompactBarAgree(
+        string? start, string? end, string? expected)
+    {
+        var cut = Render(Datasamling() with
+        {
+            EffectiveValidFrom = start is null ? null : DateTimeOffset.Parse(start),
+            EffectiveValidTo = end is null ? null : DateTimeOffset.Parse(end),
+        }, language: "en");
+        var compact = cut.Find(".munin-explorer-page__stuckbar dl");
+
+        if (expected is null)
+        {
+            Assert.DoesNotContain("Validity", Labels(Hero(cut)));
+            Assert.Equal(["Source", "Variables"], Labels(compact));
+        }
+        else
+        {
+            Assert.Equal(expected, Value(Hero(cut), "Validity"));
+            Assert.Equal(expected, Value(compact, "Validity"));
+        }
+    }
+
+    [Fact]
+    public void Stuckbar_WhenSourceAndCountAreMissing_ThenUnrelatedHeroFactsDoNotReplaceThem()
+    {
+        var cut = Render(Datasamling() with { ParentKildeName = " ", VariableCount = 0 });
+
+        Assert.Equal(["Gyldighet"], Labels(cut.Find(".munin-explorer-page__stuckbar dl")));
+        Assert.DoesNotContain("Kilde", Labels(Hero(cut)));
+        Assert.DoesNotContain("Variabler", Labels(Hero(cut)));
+    }
+
+    [Theory]
+    [InlineData("nb", "Kvalitetsregistre; Biobanker")]
+    [InlineData("en", "Quality-of-healthcare registries; Biobanks")]
+    public void HeroFacts_WhenSeveralCategoriesAreSelected_ThenEveryCatalogueLabelIsShown(
+        string language, string expected)
+    {
+        var data = Datasamling();
+        var cut = Render(data with
+        {
+            AdditionalProperties = new Dictionary<string, string?>(data.AdditionalProperties)
+            {
+                ["healthCategory"] = "[\"ehds-cat:registries-quality-of-healthcare\",\"ehds-cat:biobanks\"]",
+            },
+        }, language: language);
+
+        var label = language == "en" ? "Data category" : "Datakategori";
+        Assert.Equal(expected, Value(Hero(cut), label));
+        Assert.Contains(expected, cut.Find(".munin-explorer-page__body").TextContent);
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheCatalogueRenamesACategory_ThenBothTheLabelAndValueFollowIt()
+    {
+        var data = Datasamling();
+        var cut = Render(data with
+        {
+            PropertyMetadata = [.. data.PropertyMetadata.Select(entry => entry.Key == "healthCategory"
+                ? entry with
+                {
+                    DisplayNameTranslations = new Dictionary<string, string> { ["en"] = "Curated category" },
+                    OptionsJson = "[{\"value\":\"ehds-cat:registries-quality-of-healthcare\",\"label\":\"Registerkategori\",\"labelEn\":\"Registry category\"}]",
+                }
+                : entry)],
+        }, language: "en");
+
+        Assert.Equal("Registry category", Value(Hero(cut), "Curated category"));
+        Assert.Contains("Registry category", cut.Find(".munin-explorer-page__body").TextContent);
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheTrailAlreadyNamesTheSource_ThenTheHeroStillIncludesIt()
+    {
+        var data = Datasamling();
+        var cut = Render<DatasamlingView>(parameters => parameters
+            .Add(p => p.Datasamling, data)
+            .Add(p => p.KildeHref, _ => "/source")
+            .Add(p => p.Trail, new DetailTrailStep[] { new(data.ParentKildeName, "/source") }));
+
+        Assert.Contains(data.ParentKildeName, cut.Find("nav.breadcrumbs").TextContent);
+        Assert.Equal(data.ParentKildeName, Value(Hero(cut), "Kilde"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("[]")]
+    [InlineData("[ \" \", null ]")]
+    [InlineData("null")]
+    public void HeroFacts_WhenCategoryIsAbsent_ThenNoCategoryIsInvented(string? category)
+    {
+        var data = Datasamling();
+        var cut = Render(data with
+        {
+            AdditionalProperties = new Dictionary<string, string?>(data.AdditionalProperties)
+            {
+                ["healthCategory"] = category,
+            },
+        });
+
+        Assert.DoesNotContain("Datakategori", Labels(Hero(cut)));
     }
 
     /// <summary>The headings of the blocks under the name, in the order they are drawn.</summary>
