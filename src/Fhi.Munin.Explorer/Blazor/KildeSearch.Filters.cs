@@ -709,7 +709,12 @@ public sealed partial class KildeSearch
 
         foreach (var facet in Facets)
         {
-            _expandedFacets[facet.Key] = facet.Options.Count;
+            // Only the facets the cap can apply to, asked through the same predicate every other
+            // call site here asks, so the stored set holds no key a lifted cap could never honour.
+            if (FacetLimits.IsLong(facet.Options.Count))
+            {
+                _expandedFacets[facet.Key] = facet.Options.Count;
+            }
         }
     }
 

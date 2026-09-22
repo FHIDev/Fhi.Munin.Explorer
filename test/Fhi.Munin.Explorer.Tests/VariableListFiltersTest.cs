@@ -362,6 +362,14 @@ public class VariableListFiltersTest : ExplorerTestContext
 
         Assert.Equal(FacetLimits.FacetSearchThreshold, Facets(cut.Filters).Count);
         Assert.Equal("Vis 20 til Kilde", AccessibleName.Of(RestControl(cut.Filters)!));
+
+        // And the way back out: the panel is still carrying the length the reader lifted the cap
+        // over, so one press has to reach the whole of the longer list — a control that needs a
+        // second press to do anything reads as a dead button.
+        KeyboardPress(RestControl(cut.Filters)!);
+
+        Assert.Equal(30, Facets(cut.Filters).Count);
+        Assert.Equal("true", RestControl(cut.Filters)!.GetAttribute("aria-expanded"));
     }
 
     [Fact]

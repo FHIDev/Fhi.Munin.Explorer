@@ -43,8 +43,17 @@ public partial class VariableSearch
         RenderFragment? Body = null,
         IReadOnlyList<FacetValue>? Chosen = null,
         bool Searchable = false,
-        bool NameInChips = false)
+        bool NameInChips = false,
+        int? ValuesBeforeSearch = null)
     {
+        /// <summary>How many top-level values the facet holds before its own search narrows it.</summary>
+        /// <remarks>
+        /// The length a lifted cap is judged against — see <see cref="FacetLimits.StillExpanded"/>.
+        /// Only a searchable facet passes one: for every other, <c>Values</c> is the whole of it
+        /// already, and a term's survivors are not what the reader asked to see the whole of.
+        /// </remarks>
+        public int TotalValues => ValuesBeforeSearch ?? Values.Count;
+
         /// <summary>What is chosen in this facet: the summary's count, and the row of chips.</summary>
         /// <remarks>
         /// One projection for both, so the number on a folded facet and the chips over the results
@@ -467,9 +476,14 @@ public partial class VariableSearch
         // crowded. So the kilder are lifted out of it.
         var values = grouped.Count == 1 ? grouped[0].Children : grouped;
 
+        // The top level as it stands with no term, because that is the length a lifted cap is
+        // recorded against: recording the survivors of a search would put the cap back over the
+        // whole facet the moment the reader cleared the box.
+        var unsearched = KildeSearchTerm is null ? values.Count : TopLevelKilder(ListedKilder(facets));
+
         return new FacetGroup(FacetName(HierarchyLevel.Kilde), T.FieldSource, OpenByDefault: true, values,
                               EmptyText: empty, Chosen: ChosenKilder(facets, levels),
-                              Searchable: true);
+                              Searchable: true, ValuesBeforeSearch: unsearched);
     }
 
     /// <summary>Which of the three source levels are ticked, whatever the facet's own search is showing.</summary>
@@ -596,6 +610,19 @@ public partial class VariableSearch
 
     private static bool LabelMatches(string label, string term) =>
         label.Contains(term, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>How many rows <paramref name="kilder"/> would put on the facet's top level.</summary>
+    /// <remarks>
+    /// <see cref="KildeGroup"/>'s grouping counted rather than built, for the length the cap is
+    /// judged against while a term narrows the facet: one kildetype lifts its kilder out of the
+    /// heading, so the top level is then the kilder themselves.
+    /// </remarks>
+    private static int TopLevelKilder(IReadOnlyList<KildeFacet> kilder)
+    {
+        var types = kilder.Select(KildeTypeKey).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+
+        return types == 1 ? kilder.Count : types;
+    }
 
     /// <summary>A kilde's kildetype, or the empty string when it has none — never null, so it can be a key.</summary>
     private static string KildeTypeKey(KildeFacet kilde) =>
@@ -1290,7 +1317,12 @@ public partial class VariableSearch
 
         foreach (var group in FacetGroups)
         {
-            _expandedFacets[group.Key] = group.Values.Count;
+            // Only the facets the cap can apply to, asked through the same predicate every other
+            // call site here asks, so the stored set holds no key a lifted cap could never honour.
+            if (FacetLimits.IsLong(group.TotalValues))
+            {
+                _expandedFacets[group.Key] = group.TotalValues;
+            }
         }
     }
 
@@ -1298,7 +1330,7 @@ public partial class VariableSearch
     private bool IsFacetExpanded(FacetGroup group) =>
         FacetLimits.StillExpanded(
             _expandedFacets.TryGetValue(group.Key, out var asked) ? asked : null,
-            group.Values.Count);
+            group.TotalValues);
 
     /// <summary>Show the rest of a facet's values, or take them back behind the cap.</summary>
     /// <remarks>
@@ -1318,7 +1350,7 @@ public partial class VariableSearch
         }
         else
         {
-            _expandedFacets[group.Key] = group.Values.Count;
+            _expandedFacets[group.Key] = group.TotalValues;
         }
     }
 

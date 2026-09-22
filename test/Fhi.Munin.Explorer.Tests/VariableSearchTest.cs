@@ -3635,6 +3635,22 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void FacetCap_WhenUtvidAlleIsPressedWhileTheFacetIsSearched_ThenClearingTheTermKeepsItLifted()
+    {
+        // Utvid alle records how long each facet was, and a searched facet's values are the term's
+        // own survivors: recording those would put the cap back over the whole list the moment the
+        // reader cleared the box they had just asked to see everything through.
+        var cut = RenderWith(new FilteringClient(OnePage(), FacetsWithManyKilder()));
+
+        SearchKilder(cut, "Kilde 1");
+        ClickToolbar(cut, "Utvid alle");
+        SearchKilder(cut, string.Empty);
+
+        Assert.Equal(24, KildeRows(cut).Count);
+        Assert.Equal("true", RestControl(cut)!.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
     public void FacetCap_WhenALaterAnswerLengthensTheFacet_ThenTheLiftedCapGoesBackOn()
     {
         // A lifted cap is keyed on the facet, and the key outlives the values: "show me all 14 of
@@ -3651,6 +3667,14 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(FacetLimits.FacetSearchThreshold, KildeRows(cut).Count);
         Assert.Equal("Vis 30 til Kilde", AccessibleName.Of(RestControl(cut)!));
+
+        // And the way back out: the re-capped facet is still carrying the length the reader agreed
+        // to, so one press has to reach the whole of the longer answer rather than drop that length
+        // and leave the cap on — a control the reader has to press twice does nothing the first time.
+        KeyboardPress(RestControl(cut)!);
+
+        Assert.Equal(40, KildeRows(cut).Count);
+        Assert.Equal("true", RestControl(cut)!.GetAttribute("aria-expanded"));
     }
 
     [Fact]

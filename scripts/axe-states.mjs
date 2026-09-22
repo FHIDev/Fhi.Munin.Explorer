@@ -143,12 +143,26 @@ export const states = {
     }
 
     // The capped facet is found by the control, not by a heading: the fixture decides which facet
-    // runs past ten and a name written here would rot the moment it re-captures.
+    // runs past ten and a name here would rot on re-capture. Matched collapsed, because an expanded
+    // facet keeps the same control — the only way back — and would otherwise read as a capped one.
+    const collapsed = page.locator('.munin-explorer-filters__facets > details')
+      .filter({ has: page.locator(':scope > button[aria-expanded="false"]') })
+      .first()
+      .locator(':scope > button[aria-expanded="false"]');
+    await collapsed.waitFor({ state: 'attached', timeout: findTimeout }).catch(() => {
+      throw new Error('No facet on the page draws a capped value list');
+    });
+
+    // Re-anchored on the list the control names, because the presses below flip the attribute
+    // matched on above: a locator holding it would stop resolving to this facet once the cap lifts.
+    const controls = await collapsed.getAttribute('aria-controls');
+    if (!controls) {
+      throw new Error('The control names no value list at all');
+    }
+
     const facet = page.locator('.munin-explorer-filters__facets > details')
-      .filter({ has: page.locator(':scope > button[aria-expanded]') })
-      .first();
+      .filter({ has: page.locator(`:scope > button[aria-controls="${controls}"]`) });
     const control = facet.locator(':scope > button[aria-expanded]');
-    await control.waitFor({ state: 'attached', timeout: findTimeout });
 
     const summary = facet.locator(':scope > summary');
     await summary.focus();
@@ -160,7 +174,6 @@ export const states = {
     // The control names the list it reveals, and names the one that is actually there: an
     // aria-controls pointing at an id nothing carries is a reference a screen reader drops in
     // silence.
-    const controls = await control.getAttribute('aria-controls');
     if (await values.getAttribute('id') !== controls) {
       throw new Error('The control names an id its facet\'s value list does not carry');
     }
@@ -180,9 +193,6 @@ export const states = {
     const offer = (await control.innerText()).replace(/\s+/g, ' ').trim();
     const promised = Number(offer.match(/\d+/)?.[0]);
 
-    if (await control.getAttribute('aria-expanded') !== 'false') {
-      throw new Error('A capped facet drew its control already expanded');
-    }
     if (!Number.isInteger(promised) || promised < 1) {
       throw new Error(`The control offers no number to reveal: ${offer}`);
     }
