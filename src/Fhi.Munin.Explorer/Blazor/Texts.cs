@@ -1265,7 +1265,7 @@ internal sealed record Texts(
             ["other"] = "Annet"
         },
         HeadingVariables: "Variabler",
-        AllVariablesInDatasamling: count => $"Vis alle {count} variabler",
+        AllVariablesInDatasamling: count => count == 1 ? "Vis 1 variabel" : $"Vis alle {count} variabler",
         HeadingAccessCriteria: "Kriterier for tilgang til data",
         HeadingPrices: "Priser",
         BodyAccessCriteria: "Kriteriene for tilgang til data fra denne kilden, og hvordan du søker, "
@@ -1650,7 +1650,7 @@ internal sealed record Texts(
             ["other"] = "Other"
         },
         HeadingVariables: "Variables",
-        AllVariablesInDatasamling: count => $"View all {count} variables",
+        AllVariablesInDatasamling: count => count == 1 ? "View 1 variable" : $"View all {count} variables",
         HeadingAccessCriteria: "Criteria for access to data",
         HeadingPrices: "Prices",
         BodyAccessCriteria: "The criteria for access to data from this source, and how to apply for it, "

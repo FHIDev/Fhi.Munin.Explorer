@@ -984,14 +984,17 @@ public class UrlStateComponentTest : ExplorerTestContext
         Assert.StartsWith("Variabler", SortedColumn(cut)!, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void Kilder_WhenNoVariableExplorerPathIsGiven_ThenNoHandoverIsOffered()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t")]
+    public void Kilder_WhenNoVariableExplorerPathIsGiven_ThenNoHandoverIsOffered(string? path)
     {
         // The package cannot know where a host mounted the other explorer, and a selection column
         // leading nowhere is worse than none.
         var id = Guid.NewGuid();
 
-        var cut = RenderKilder(id, "http://localhost/kilder");
+        var cut = RenderKilder(id, "http://localhost/kilder", b => b.Add(c => c.VariableExplorerPath, path));
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder__select"));
     }

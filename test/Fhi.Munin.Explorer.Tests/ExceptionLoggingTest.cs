@@ -22,6 +22,22 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 public class ExceptionLoggingTest : ExplorerTestContext
 {
+    [Fact]
+    public async Task DatasamlingView_WhenTheHostCallbackThrows_ThenThePageSurvivesAndTheExceptionIsLogged()
+    {
+        var recorder = Recording();
+        var cut = Render<DatasamlingView>(p => p
+            .Add(c => c.Datasamling, new DatasamlingDetail { VariableCount = 1 })
+            .Add(c => c.ShowVariables, () => Task.FromException(Sentinel)));
+
+        await cut.Find(".munin-explorer-page__body button").ClickAsync(new());
+
+        var entry = Assert.Single(recorder.Entries, e => e.Level == LogLevel.Error);
+        Assert.Same(Sentinel, entry.Exception);
+        Assert.Equal(typeof(DatasamlingView).FullName, entry.Category);
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling"));
+    }
+
     /// <summary>The exception a fake throws, recognisable by reference when it is read back.</summary>
     private static readonly HttpRequestException Sentinel = new("SENTINEL-7f3a: the API is down");
 

@@ -184,7 +184,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private string? _variablesPath;
 
     private EventCallback<IReadOnlyList<Guid>> Handover =>
-        VariableExplorerPath is null
+        string.IsNullOrWhiteSpace(VariableExplorerPath)
             ? default
             : EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, ExploreVariables);
 

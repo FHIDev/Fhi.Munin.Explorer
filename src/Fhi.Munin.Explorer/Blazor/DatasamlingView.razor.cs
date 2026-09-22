@@ -1,5 +1,7 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -28,6 +30,27 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </remarks>
 public sealed partial class DatasamlingView : ComponentBase
 {
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+
+    private ILogger? _log;
+    private ILogger? Log => _log ??= ExplorerLog.For<DatasamlingView>(Services);
+
+    private async Task ShowVariablesAsync()
+    {
+        try
+        {
+            await ShowVariables.InvokeAsync();
+        }
+        catch (NavigationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Log?.LogError(ex, "a host callback threw");
+        }
+    }
+
     /// <summary>The datasamling to show. Nothing renders until this is set.</summary>
     [Parameter, EditorRequired]
     public DatasamlingDetail? Datasamling { get; set; }

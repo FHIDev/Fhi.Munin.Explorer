@@ -28,6 +28,32 @@ namespace Fhi.Munin.Explorer.Tests;
 public class DatasamlingViewTest : ExplorerTestContext
 {
     [Theory]
+    [InlineData("nb", "Vis 1 variabel")]
+    [InlineData("en", "View 1 variable")]
+    public void Variables_WhenThereIsOneVariable_ThenTheLinkUsesSingularWording(string language, string text)
+    {
+        var cut = Render<DatasamlingView>(b => b
+            .Add(c => c.Datasamling, Placed() with { VariableCount = 1 })
+            .Add(c => c.Language, language)
+            .Add(c => c.VariablesHref, "/variables"));
+
+        Assert.Equal(text, cut.Find("#section-variabler a").TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task Variables_WhenTheHostSignalsNavigation_ThenTheFrameworkReceivesTheSignal()
+    {
+        var signal = new NavigationException("/variables");
+        var cut = Render<DatasamlingView>(b => b.Add(c => c.Datasamling, Placed())
+            .Add(c => c.ShowVariables, () => Task.FromException(signal)));
+
+        var thrown = await Assert.ThrowsAsync<NavigationException>(() =>
+            cut.Find("#section-variabler button").ClickAsync(new()));
+
+        Assert.Same(signal, thrown);
+    }
+
+    [Theory]
     [InlineData("nb", "Vis alle 99 variabler")]
     [InlineData("en", "View all 99 variables")]
     public void Variables_WhenTheHostSuppliesATarget_ThenThePlacedSectionLinksWithoutATable(
