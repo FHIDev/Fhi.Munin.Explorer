@@ -464,6 +464,17 @@ export const assertions = [
     states: ['variable-datasamling'],
     async stage(page) {
       await page.locator('#criteria').waitFor({ state: 'visible', timeout: findTimeout });
+      // Freeze the rendered markup and real stylesheet for a native browser jump. The sample's
+      // interactive router replaces the document on this mirrored URL; its routing is a separate test.
+      const markup = await page.evaluate(() => {
+        const snapshot = document.documentElement.cloneNode(true);
+        snapshot.querySelectorAll('script').forEach(script => script.remove());
+        snapshot.querySelector('base').href = document.baseURI;
+        return '<!doctype html>' + snapshot.outerHTML;
+      });
+      const fixtureUrl = new URL('/__criteria-fragment-fixture', page.url()).href;
+      await page.route(fixtureUrl, route => route.fulfill({ contentType: 'text/html', body: markup }));
+      await page.goto(fixtureUrl, { waitUntil: 'networkidle' });
       // ModernHost has no fixed chrome. Give the jump an obstruction and enough document tail
       // that reaching the end cannot accidentally keep an unstyled anchor below the header.
       await page.evaluate(() => {
@@ -481,7 +492,7 @@ export const assertions = [
       for (const width of [1440, 320]) {
         await page.setViewportSize({ width, height: 900 });
         await page.evaluate(() => {
-          history.replaceState(null, '', location.pathname + location.search);
+          history.replaceState(history.state, '', location.pathname + location.search);
           window.scrollTo({ top: 0, behavior: 'instant' });
           location.hash = 'criteria';
         });
