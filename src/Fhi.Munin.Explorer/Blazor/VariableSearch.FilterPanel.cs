@@ -286,7 +286,7 @@ public partial class VariableSearch
     /// <summary>The bounds the reader has set, one value apiece.</summary>
     /// <remarks>
     /// Each names its own field rather than standing as a bare date: the two ends are drawn as one
-    /// facet, so "01.01.2020" alone does not say which of them it is.
+    /// facet, so "1. jan. 2020" alone does not say which of them it is.
     /// </remarks>
     private IReadOnlyList<FacetValue> ChosenDates()
     {
@@ -310,11 +310,12 @@ public partial class VariableSearch
     /// <summary>One bound, written the way the reader's own language writes a day.</summary>
     /// <remarks>
     /// Unmarked: the field's name is this package's word and the date is formatted for the reader,
-    /// so both are already in the reader's own language.
+    /// so both are already in the reader's own language. Through <see cref="CatalogueDate.Day"/>
+    /// and narrow, so a chip in the sidebar reads like the dates in the results beside it.
     /// </remarks>
     private FacetValue DateValue(string key, string field, DateOnly date, Func<Task> clear) =>
         new(key,
-            T.FilterInFacet(field, date.ToString("d", CatalogueProperties.Culture(Language))),
+            T.FilterInFacet(field, CatalogueDate.Day(date, Language, DateWidth.Narrow)),
             Language: null,
             null,
             Selected: true,

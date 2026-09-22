@@ -5219,6 +5219,46 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Filter_WhenABoundIsSetAndTheLinkIsFollowedBack_ThenTheUrlCarriesIsoAndTheFieldIsRestored()
+    {
+        // The guard on the two sites the house date format must NOT reach. An <input type="date">
+        // round-trips yyyy-MM-dd whatever the reader's locale is, and VariableFilter serialises the
+        // same shape for the API — a day written for a reader in either place empties the field and
+        // drops the filter, with nothing thrown. (Fhi.Metadata-ufmop)
+        var range = new DateInterval
+        {
+            Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+        };
+        VariableFilter? reported = null;
+
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range)),
+            b => b.Add(c => c.FilterChanged, filter => reported = filter));
+
+        DateInputs(cut)[0].Change("2015-03-04");
+
+        var query = new ExplorerUrlState { Filter = reported! }.ToQueryString();
+
+        Assert.Contains("dataFrom=2015-03-04", query, StringComparison.Ordinal);
+
+        // And back: the link is parsed and the field opens on the day it was left on. A second
+        // context, because this one has already resolved a client.
+        using var reopened = new ExplorerTestContext();
+        IMuninExplorerClient client =
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range));
+
+        reopened.Services.AddSingleton(client);
+
+        var restored = reopened.Render<VariableSearch>(
+            b => b.Add(c => c.Filter, ExplorerUrlState.Parse(query).Filter));
+
+        Assert.Equal(
+            "2015-03-04",
+            restored.FindAll(".munin-explorer-filters input[type=date]")[0].GetAttribute("value"));
+    }
+
+    [Fact]
     public void Filter_WhenNoDatesAreSet_ThenTheDataperiodeSummaryCarriesNoCount()
     {
         // The other direction: a count of zero must not draw "(0)", which would report a filter
@@ -8931,6 +8971,30 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Contains("2020", chip, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(null, "Fra og med: 1. jan. 2020")]
+    [InlineData("en", "From: 1 Jan 2020")]
+    public void ActiveFilters_WhenADateBoundIsSet_ThenTheChipWritesTheDayTheHouseWay(
+        string? language, string expected)
+    {
+        // Half of ADO 121131: this chip wrote the culture's all-numeric short date — "01.01.2020" —
+        // beside results whose dates are spelled out, so one page held two shapes for one kind of
+        // value. The ordinal dot follows the READER: Norwegian takes it, English takes none.
+        var cut = RenderWith(
+            new FilteringClient(
+                OnePage(Variable("1. Tale", "KODE")),
+                FacetsWith(range: new DateInterval
+                {
+                    Min = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero),
+                    Max = new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                })),
+            b => b.Add(c => c.Language, language));
+
+        DateInputs(cut)[0].Change("2020-01-01");
+
+        Assert.Equal(expected, Assert.Single(Chips(cut)));
+    }
+
     [Fact]
     public void ActiveFilters_WhenAChipIsDrawn_ThenItsCloseControlIsNamedAfterTheValueItRemoves()
     {
@@ -11680,9 +11744,9 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("Velg verdi", first[1]);
 
         // The day and not the instant: every one of these dates is midnight UTC or the moment a
-        // bulk import ran, and neither is a fact about when the code applied. The separator is
-        // Norwegian; the zero padding is ICU's business, not this test's.
-        Assert.Matches(@"^\d{1,2}\.\d{1,2}\.2010$", first[2]);
+        // bulk import ran, and neither is a fact about when the code applied. Spelled out because
+        // the column goes through CatalogueDate now; the all-numeric shape was this panel's alone.
+        Assert.Equal("1. jan. 2010", first[2]);
 
         // Written out rather than shown as a dash: there is no visually-hidden helper in this
         // package to whisper the meaning of a dash into, so a missing value says so for everyone.
@@ -11691,7 +11755,26 @@ public class VariableSearchTest : ExplorerTestContext
         var second = rows[1].QuerySelectorAll("td").Select(td => td.TextContent).ToArray();
 
         Assert.Equal("0: Tap av produktiv tale", second[1]);
-        Assert.Matches(@"^\d{1,2}\.\d{1,2}\.2020$", second[3]);
+        Assert.Equal("31. mar. 2020", second[3]);
+    }
+
+    [Theory]
+    [InlineData(null, "1. jan. 2010")]
+    [InlineData("en", "1 Jan 2010")]
+    public void Codes_WhenAValidityDateIsShown_ThenItIsTheHouseDayFormatAndNotTheCulturesShortDate(
+        string? language, string expected)
+    {
+        // The other half of ADO 121131: this cell wrote "01.01.2010" while the fact value one tab
+        // away wrote the same date spelled out. Both go through CatalogueDate now, which is also
+        // what decides that English gets no ordinal dot after the day. (Fhi.Metadata-ufmop)
+        var cut = OpenData(KodeverkRows(), p => p.Add(c => c.Language, language));
+
+        CodeToggles(cut)[0].Click();
+
+        var cells = Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")
+            .Select(td => td.TextContent).ToArray();
+
+        Assert.Equal(expected, cells[2]);
     }
 
     [Fact]
@@ -11712,7 +11795,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         // The end date carries a time of day on the wire — the import ran at 13:13:41 — and the
         // cell shows the day alone, because the import's clock is not when Halden stopped existing.
-        Assert.Matches(@"^\d{1,2}\.\d{1,2}\.2023$", cells[3]);
+        Assert.Equal("6. sep. 2023", cells[3]);
     }
 
     [Fact]
@@ -12482,10 +12565,10 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(["Value", "Name", "Valid from", "Valid to"],
                      Panel(cut).QuerySelectorAll(".munin-explorer-codes thead th").Select(th => th.TextContent));
 
-        // The date follows the page too: an English reader gets slashes, not the dots a Norwegian
-        // reader gets. Pinned by separator rather than by exact string, which is ICU's to change.
-        Assert.Matches(@"^\d{1,2}/\d{1,2}/2010$",
-                       Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")[2].TextContent);
+        // The date follows the page too: an English reader gets no ordinal dot after the day, which
+        // is the one thing CatalogueDate decides for the reader rather than for the column.
+        Assert.Equal("1 Jan 2010",
+                     Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")[2].TextContent);
     }
 
     [Fact]

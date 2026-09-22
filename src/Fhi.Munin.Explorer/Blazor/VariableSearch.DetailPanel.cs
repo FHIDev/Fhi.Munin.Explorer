@@ -755,9 +755,10 @@ public partial class VariableSearch
     /// there is no visually-hidden helper to whisper the meaning of a dash into, so a missing value
     /// says so in words for everyone.
     /// </para>
+    /// <para>
+    /// Narrow, because these are two of four columns inside an opened row.
+    /// </para>
     /// </remarks>
     private string ValidityDate(DateTimeOffset? date) =>
-        date is { } value
-            ? value.ToString("d", CatalogueProperties.Culture(Language))
-            : T.NotSpecified;
+        CatalogueDate.DayOrNothing(date, Language, DateWidth.Narrow) ?? T.NotSpecified;
 }
