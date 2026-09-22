@@ -322,12 +322,17 @@ public class RunaRowGesturesTest : ExplorerTestContext
             Assert.Equal("cell", cell.GetAttribute("role"));
             Assert.Equal("munin-explorer-dataitem__expand-cell", cell.ClassName);
             Assert.Equal(chevron.OuterHtml, Assert.Single(cell.Children).OuterHtml);
-            Assert.True(chevron.HasAttribute("aria-expanded"));
             Assert.Equal("", chevron.TextContent.Trim());
+
+            // The glyph class names the picture Stiler draws — collapsed points down — and the
+            // attribute beside it is how Stiler tells the two states apart while both the old and
+            // the new name are in circulation. (Fhi.Metadata-l9l2n.84)
+            Assert.Equal("false", chevron.GetAttribute("aria-expanded"));
 
             var glyph = Assert.Single(chevron.Children);
             Assert.Equal("SPAN", glyph.TagName);
-            Assert.Equal("icon icon-keyboard-arrow-right munin-explorer-dataitem-main__expand-icon", glyph.ClassName);
+            Assert.Equal("icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon", glyph.ClassName);
+            Assert.DoesNotContain("icon-keyboard-arrow-right", glyph.ClassName!);
             Assert.DoesNotContain("icon--nomargin", glyph.ClassName!);
             Assert.Equal("true", glyph.GetAttribute("aria-hidden"));
         }
@@ -338,8 +343,9 @@ public class RunaRowGesturesTest : ExplorerTestContext
         Press(Chevrons(cut)[0]);
 
         Assert.Equal(
-            "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon",
+            "icon icon-keyboard-arrow-up munin-explorer-dataitem-main__expand-icon",
             Chevrons(cut)[0].FirstElementChild!.ClassName);
+        Assert.Equal("true", Chevrons(cut)[0].GetAttribute("aria-expanded"));
         Assert.True(Chevrons(cut)[0].HasAttribute("aria-controls"));
         Assert.Equal("Skjul detaljer for 1. Tale", AccessibleName.Of(Chevrons(cut)[0]));
     }
