@@ -26,7 +26,7 @@
        states it measures need those breaks, which is what this branch's negative control shows
        (Fhi.Metadata-ofg1h). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.91" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.98" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use

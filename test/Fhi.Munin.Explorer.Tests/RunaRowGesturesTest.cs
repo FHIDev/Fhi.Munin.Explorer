@@ -357,26 +357,30 @@ public class RunaRowGesturesTest : ExplorerTestContext
     [MemberData(nameof(SampleStylesheets))]
     public void SampleStylesheet_Always_ThenTheChevronHasStilersRuleAndNoFocusOrCompensatingRule(string path)
     {
-        // A focus rule here would pass every check and draw nothing on helsedata, where
-        // body:not(.is-tabbing) button:focus removes any outline; the indicator is Stiler's surface.
+        // Exactly Stiler 0.1.98's rules. An outline here would pass every check and draw nothing on
+        // helsedata, where body:not(.is-tabbing) button:focus removes it; the indicator is a fill.
         var css = Regex.Replace(File.ReadAllText(path), @"/\*.*?\*/", " ", RegexOptions.Singleline);
         var rules = Regex.Matches(css, @"([^{}]+)\{([^{}]*)\}")
             .Where(m => m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-", StringComparison.Ordinal))
-            .Where(m => !m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-cell", StringComparison.Ordinal))
-            .ToList();
+            .Select(m => Regex.Replace(m.Groups[1].Value.Trim(), @"\s+", " ") + " { "
+                + string.Join("; ", m.Groups[2].Value
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Order(StringComparer.Ordinal)) + " }")
+            .Order(StringComparer.Ordinal);
 
-        var rule = Assert.Single(rules);
-        Assert.Equal(".munin-explorer-dataitem__expand-toggle", rule.Groups[1].Value.Trim());
         Assert.Equal(
-            ["align-items: center", "cursor: pointer", "display: inline-flex", "padding: 8px 12px"],
-            rule.Groups[2].Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Order(StringComparer.Ordinal));
-
-        // The cell only holds its width in the flex row: no padding or margin to line anything up.
-        var cell = Assert.Single(
-            Regex.Matches(css, @"([^{}]+)\{([^{}]*)\}"),
-            m => m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-cell", StringComparison.Ordinal));
-        Assert.Equal(".munin-explorer-dataitem__expand-cell", cell.Groups[1].Value.Trim());
-        Assert.Equal("flex: 0 0 auto;", cell.Groups[2].Value.Trim());
+        [
+            ".munin-explorer-data-list__item__row .munin-explorer-dataitem__expand-toggle:focus-visible[aria-expanded=\"false\"] .icon { background-image: url(../img/icons/keyboard-arrow/icon_down--white.svg) }",
+            ".munin-explorer-data-list__item__row .munin-explorer-dataitem__expand-toggle:focus-visible[aria-expanded=\"true\"] .icon { background-image: url(../img/icons/keyboard-arrow/icon_up--white.svg) }",
+            ".munin-explorer-data-list__result:has(.munin-explorer-dataitem__expand-cell) .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button { padding-left: 52px }",
+            ".munin-explorer-dataitem-main .munin-explorer-dataitem__expand-toggle .icon { display: inline-block; margin: 0 }",
+            ".munin-explorer-dataitem-main > .munin-explorer-dataitem__expand-cell { position: absolute; right: 12px; top: 16px }",
+            ".munin-explorer-dataitem-main:has(> .munin-explorer-dataitem__expand-cell) { padding-right: 64px; position: relative }",
+            ".munin-explorer-dataitem__expand-cell { display: flex }",
+            ".munin-explorer-dataitem__expand-toggle { align-items: center; cursor: pointer; display: inline-flex; padding: 8px 12px }",
+            ".munin-explorer-dataitem__expand-toggle:focus-visible { background-color: rgb(81, 84, 123); color: rgb(255, 255, 255) }",
+        ],
+            rules);
+        Assert.DoesNotContain(rules, rule => rule.Contains("outline", StringComparison.Ordinal));
     }
 }
