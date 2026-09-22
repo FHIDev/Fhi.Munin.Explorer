@@ -113,6 +113,13 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// </remarks>
     [Parameter] public bool ShowAccessAndPrices { get; set; }
 
+    /// <inheritdoc cref="KildeSearch.Lede"/>
+    /// <remarks>
+    /// Declared here as well as on <see cref="KildeSearch"/>, and forwarded, for the reason
+    /// <see cref="ShowAccessAndPrices"/> is.
+    /// </remarks>
+    [Parameter] public string? Lede { get; set; }
+
     /// <summary>
     /// Where the host mounted <see cref="VariableSearch"/>, so the chosen kilder can be handed
     /// over to it. Leave it null and neither way over is offered: no selection column, and no link

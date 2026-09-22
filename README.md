@@ -942,6 +942,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-whole__list` | handle |
   | `munin-explorer-whole__main` | handle |
   | `munin-explorer__dropdown` | handle |
+  | `munin-explorer__lede` | handle |
   <!-- class-names:end -->
 
   `Render_Always_ThenNoClassNamesAreInventedApartFromTheDomHandles` pins that prefix for a closed
@@ -1242,6 +1243,12 @@ Four things are worth knowing before mounting one.
   to `true` on a host of your own. Nothing else on the kilde page moves with it — the variable
   count, the metadata, the datasamlinger and the source information are drawn either way — beyond
   the contents nav, which lists the two blocks exactly when they are drawn.
+- **A sentence under the title saying what the page is for is yours to write.** `Lede` — declared
+  on `KildeSearch`, `VariableSearch`, `KildeExplorer` and `VariableExplorer` — is drawn as plain
+  text in a `<p class="munin-explorer__lede">` directly after the explorer's title. The package
+  ships no default and translates nothing: pass the text in the page's own language, and change it
+  without waiting for a release. Leave it null or blank and no element is drawn at all, because
+  Stiler gives the lede a grid row of its own only when the element is there.
 
 Owning the address bar — or the page furniture — yourself is still supported: `VariableSearch`,
 `VariableListView`, `VariableListFilters` and `KildeSearch` stay public underneath, so a host that
