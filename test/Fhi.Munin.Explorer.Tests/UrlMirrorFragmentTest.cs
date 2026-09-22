@@ -12,14 +12,17 @@ namespace Fhi.Munin.Explorer.Tests;
 /// (Fhi.Metadata-7np6k).
 /// </summary>
 /// <remarks>
-/// Every assertion here is on what reached <c>history.replaceState</c>, because that is the whole of
-/// the defect: the scroll and the focus both happen before the rewrite and survive it, so the page
-/// looks right in a browser while the address in it names no section at all — and a reader who
-/// copies the link sends another reader to the top of the page.
 /// <para>
-/// The other half is the one that has no symptom until much later: a fragment naming a section of
-/// the view being left must never reach a link out of it, so <c>UrlMirror.Address</c> stays
-/// fragment-free and the mirror spends what it was given at the first different state.
+/// One half asserts on what reached <c>history.replaceState</c>, because that is where the defect
+/// is: the scroll and the focus both happen before the rewrite and survive it, so the page looks
+/// right in a browser while the address in it names no section at all — and a reader who copies the
+/// link sends another reader to the top of the page.
+/// </para>
+/// <para>
+/// The other half asserts on the hrefs the explorer renders, and has no symptom until much later: a
+/// fragment naming a section of the view being left must never reach a link out of it, so
+/// <c>UrlMirror.Address</c> stays fragment-free and the mirror spends what it was given at the first
+/// different state.
 /// </para>
 /// </remarks>
 public class UrlMirrorFragmentTest : ExplorerTestContext
@@ -183,6 +186,50 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Mirror_WhenBackReturnsToTheSectionAfterTheDrop_ThenTheArrivingFragmentIsKeptAgain()
+    {
+        var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
+
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+
+        CloseTheDrillIn(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal("/kilder", Mirrored()));
+
+        // Back onto the entry the first rewrite wrote. KildeExplorer.Moved builds a fresh mirror
+        // from the arriving address, so the latch starts over — and it has to: "for good" is about
+        // the state the mirror was handed, not about a section the reader may never return to.
+        Navigation.NavigateTo($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
+
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+    }
+
+    [Fact]
+    public void Mirror_WhenANavigationNamesASectionTheArrivingViewHasNot_ThenItIsLeftInTheAddress()
+    {
+        var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
+
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+
+        // The same reset seen from the other side: a host re-navigating with an address it captured
+        // earlier puts "#metadata" over the list view, which has no such section. Kept anyway — the
+        // mirror drops a fragment when its own state moves, and never edits one a navigation set.
+        Navigation.NavigateTo($"/kilder#{DetailSectionIds.Metadata}");
+
+        cut.WaitForAssertion(() => Assert.Equal("/kilder#metadata", Mirrored()));
+    }
+
+    [Fact]
+    public void Mirror_WhenTheAddressEndsInABareHash_ThenNothingIsWrittenBackForIt()
+    {
+        // "#" alone names no section, and the guard that drops it is a length check one tidy-up
+        // away from being relaxed into appending a meaningless hash to every rewrite.
+        var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#");
+
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}", Mirrored()));
+    }
+
+    [Fact]
     public void Address_WhenTheAddressNamesASection_ThenNoLinkTheExplorerBuildsInheritsIt()
     {
         var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
@@ -215,5 +262,24 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
 
         cut.WaitForAssertion(
             () => Assert.Equal($"/variabler?variabelId={Speech}#statistics", Mirrored()));
+    }
+
+    [Fact]
+    public void Mirror_WhenTheVariableSearchMovesOn_ThenTheFragmentIsGoneForGood()
+    {
+        var cut = RenderVariables(
+            $"http://localhost/variabler?variabelId={Speech}#{DetailSectionIds.Statistics}");
+
+        cut.WaitForAssertion(
+            () => Assert.Equal($"/variabler?variabelId={Speech}#statistics", Mirrored()));
+
+        // Pinned on this side too, because the query reaching the latch comes from a different
+        // producer than KildeExplorer's: the drop turns on ExplorerUrlState stringifying one
+        // logical state identically twice, which no other test here would notice moving.
+        cut.Find(".searchbox__freetext").Change("tale");
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(
+            () => Assert.Equal($"/variabler?search=tale&variabelId={Speech}", Mirrored()));
     }
 }

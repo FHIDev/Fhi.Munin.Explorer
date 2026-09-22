@@ -135,7 +135,10 @@ internal sealed class UrlMirror
     /// <param name="query">The owned keys as a query string with no leading <c>?</c>.</param>
     public async ValueTask MirrorAsync(string query)
     {
-        var url = Address(query) + Fragment(query);
+        // Its own statement, and a verb: taking the fragment arms the owner and can spend it, and a
+        // mutation has no business hiding inside the expression that builds the url.
+        var fragment = TakeFragment(query);
+        var url = Address(query) + fragment;
 
         // Without this, every render would call into JS to write the URL it is already showing.
         if (url == _mirrored)
@@ -159,8 +162,12 @@ internal sealed class UrlMirror
     /// A reader who jumped to a section has it in the address bar already, and this is what keeps a
     /// rewrite from taking it back. The owner is the first query mirrored rather than the incoming
     /// one because those are the same state, said by the component rather than by the URL.
+    /// <para>
+    /// <b>Take, not read</b>: the first call latches the owner and a later one with a different
+    /// query spends the fragment, so this is not a second time a caller may ask the same question.
+    /// </para>
     /// </remarks>
-    private string Fragment(string query)
+    private string TakeFragment(string query)
     {
         if (_fragment is null || _fragmentSpent)
         {
