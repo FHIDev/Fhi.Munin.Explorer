@@ -657,8 +657,8 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         // Read as the whole list rather than searched for, so the view's own three headings going
         // is asserted with it: Metadata wrapped the groups, Kildeinformasjon is what the placement
-        // calls Datakilde, and Statistikk is inside Variabler. The criteria block carries no key
-        // the placement can address, so it falls to the view's own order, after the placed ones.
+        // calls Datakilde, and Statistikk is inside Variabler. This payload places no criteria row,
+        // so the block falls to the view's own order, after the placed ones.
         Assert.Equal(
             ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt",
              "Inklusjons- og eksklusjonskriterier"],
@@ -704,6 +704,206 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(["Kvalitetsnote"], SectionLabels(cut, "Kvalitetsnote"));
         Assert.DoesNotContain("Kvalitetsnote", SectionLabels(cut, "Om datasamlingen"));
+    }
+
+    // ---------------------------------------------------------------------------------
+    // The criteria block as a built-in section the catalogue places (Fhi.Metadata-l9l2n.120).
+    // ---------------------------------------------------------------------------------
+
+    /// <summary>
+    /// DatasamlingDetalj as Munin's seed revision 0017 leaves an untouched page (Fhi.Metadata-87tng):
+    /// Om 1001-1006, the criteria built-in at 2000, Kvalitetsnote 3001, Variabler 4xxx, Datakilde
+    /// 5xxx, Alle metadatafelt 9001+.
+    /// </summary>
+    private static readonly (string Key, int Order, string No, string En)[] CriteriaSeededSections =
+    [
+        ("om-datasamlingen", 1001, "Om datasamlingen", "About the data collection"),
+        ("kvalitetsnote", 3001, "Kvalitetsnote", "Quality note"),
+        ("variabler", 4001, "Variabler", "Variables"),
+        ("datakilde", 5001, "Datakilde", "Data source"),
+        (CatalogueProperties.CatchAllGroupKey, 9001, "Alle metadatafelt", "All metadata fields"),
+    ];
+
+    /// <summary>The seed's property rows plus the criteria's built-in row at <paramref name="criteriaOrder"/>.</summary>
+    private static IReadOnlyList<SectionPlacement> CriteriaPlacements(int? criteriaOrder) =>
+        [.. Placements(CriteriaSeededSections)
+                .Concat(criteriaOrder is { } order
+                    ? [new SectionPlacement
+                       {
+                           Key = SectionKeys.InclusionAndExclusionCriteria,
+                           SortOrder = order,
+                           IsBuiltIn = true,
+                           Translations = new Dictionary<string, string>
+                           {
+                               ["no"] = "Inklusjons- og eksklusjonskriterier",
+                               ["en"] = "Inclusion and exclusion criteria",
+                           },
+                       }]
+                    : [])
+                .OrderBy(placement => placement.SortOrder)];
+
+    /// <summary>The captured payload with the 87tng seed's placement rows and bands written onto it.</summary>
+    private static DatasamlingDetail CriteriaSeeded(int? criteriaOrder = 2000)
+    {
+        var placed = Placed();
+
+        return placed with
+        {
+            Sections = CriteriaPlacements(criteriaOrder),
+            PropertyMetadata =
+            [
+                Definition(CatalogueColumns.Description, "Beskrivelse", "Text", 1001, "om-datasamlingen",
+                           sections: CriteriaSeededSections),
+                Definition(CatalogueColumns.ValidFrom, "Gyldig fra", "Date", 1003, "om-datasamlingen",
+                           sections: CriteriaSeededSections),
+                Definition(CatalogueColumns.ValidTo, "Gyldig til", "Date", 1004, "om-datasamlingen",
+                           sections: CriteriaSeededSections),
+                Definition("Kvalitetsnote", "Kvalitetsnote", "Text", 3001, "kvalitetsnote",
+                           sections: CriteriaSeededSections),
+                Definition(CatalogueColumns.StatisticsType, "Statistikktype", "SingleSelect", 4001,
+                           "variabler", """[{"value":"yearly","label":"Årsbasert","labelEn":"Yearly"}]""",
+                           sections: CriteriaSeededSections),
+                Definition(CatalogueColumns.CountingUnit, "Telleenhet", "String", 4002, "variabler",
+                           sections: CriteriaSeededSections),
+                Definition(CatalogueColumns.Frequency, "Frekvens", "SingleSelect", 4003, "variabler",
+                           sections: CriteriaSeededSections),
+                Definition(CatalogueColumns.DataController, "Dataansvarlig", "String", 5001, "datakilde",
+                           sections: CriteriaSeededSections),
+                Definition(CatalogueColumns.DataProcessor, "Databehandler", "String", 5002, "datakilde",
+                           sections: CriteriaSeededSections),
+                Definition(CatalogueColumns.PersonIdentification, "Grad av personidentifikasjon",
+                           "SingleSelect", 5003, "datakilde", IdentificationOptions,
+                           sections: CriteriaSeededSections),
+                Definition(CatalogueColumns.LegalBasis, "Lovverk", "Url", 5004, "datakilde",
+                           sections: CriteriaSeededSections),
+                Definition("AnbefalteBruksomraader", "Anbefalte bruksområder", "Text", 9007,
+                           CatalogueProperties.CatchAllGroupKey, sections: CriteriaSeededSections),
+            ],
+        };
+    }
+
+    [Fact]
+    public void Criteria_WhenTheSeedPlacesThemAt2000_ThenThePageIsTheSixSectionsInTheSeedsOrder()
+    {
+        var cut = Render(CriteriaSeeded());
+
+        Assert.Equal(
+            ["Om datasamlingen", "Inklusjons- og eksklusjonskriterier", "Kvalitetsnote", "Variabler",
+             "Datakilde", "Alle metadatafelt"],
+            BlockHeadings(cut));
+        Assert.Equal(
+            ["section-om-datasamlingen", DetailSectionIds.Criteria, "section-kvalitetsnote",
+             "section-variabler", "section-datakilde", "section-alle-metadatafelt"],
+            Wrappers(cut).Select(section => section.Id!));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+    }
+
+    [Fact]
+    public void Criteria_WhenACuratorMovesThePlacementOnTheMountedPage_ThenSectionAndNavFollowAndTheIdHolds()
+    {
+        // Same component instance, new payload: the reorder is data reaching a mounted view, not a
+        // second fixture rendered fresh. 6000 is the band after Datakilde's.
+        var cut = Render(CriteriaSeeded());
+
+        cut.Render(p => p.Add(c => c.Datasamling, CriteriaSeeded(criteriaOrder: 6000)));
+
+        Assert.Equal(
+            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde",
+             "Inklusjons- og eksklusjonskriterier", "Alle metadatafelt"],
+            BlockHeadings(cut));
+        Assert.Equal(
+            ["section-om-datasamlingen", "section-kvalitetsnote", "section-variabler",
+             "section-datakilde", DetailSectionIds.Criteria, "section-alle-metadatafelt"],
+            Wrappers(cut).Select(section => section.Id!));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
+        Assert.Single(cut.FindAll("#" + DetailSectionIds.Criteria));
+    }
+
+    [Fact]
+    public void Criteria_WhenThePayloadPlacesThemNowhere_ThenTheyFallToTheTailAsBefore()
+    {
+        var cut = Render(CriteriaSeeded(criteriaOrder: null));
+
+        Assert.Equal(
+            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt",
+             "Inklusjons- og eksklusjonskriterier"],
+            BlockHeadings(cut));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+    }
+
+    [Fact]
+    public void Criteria_WhenThePayloadPredatesSections_ThenTheOldFallbackOrderIsKept()
+    {
+        var cut = Render(Datasamling() with { Sections = [] });
+
+        Assert.Equal(
+            [DetailSectionIds.Metadata, DetailSectionIds.Criteria, DetailSectionIds.Source,
+             DetailSectionIds.Statistics],
+            Wrappers(cut).Select(section => section.Id!));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public void Criteria_WhenPlacedButEmpty_ThenNoSectionAndNoNavLinkAreLeft(string? criteria)
+    {
+        var cut = Render(CriteriaSeeded() with { InclusionAndExclusionCriteria = criteria });
+
+        Assert.Empty(cut.FindAll("#" + DetailSectionIds.Criteria));
+        Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
+        Assert.Equal(
+            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt"],
+            BlockHeadings(cut));
+        Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+    }
+
+    [Fact]
+    public void Kvalitetsnote_WhenTheSeedGivesItASectionButNoValue_ThenNoSectionIsDrawn()
+    {
+        var seeded = CriteriaSeeded();
+        var cut = Render(seeded with
+        {
+            AdditionalProperties = seeded.AdditionalProperties
+                .Where(pair => pair.Key != "Kvalitetsnote")
+                .ToDictionary(pair => pair.Key, pair => pair.Value),
+        });
+
+        Assert.DoesNotContain("Kvalitetsnote", BlockHeadings(cut));
+        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
+    }
+
+    [Fact]
+    public void Kvalitetsnote_WhenAnEnglishReaderOpensTheSeededPage_ThenTheNorwegianNoteIsMarkedNorwegian()
+    {
+        var cut = Render(CriteriaSeeded(), language: "en");
+
+        Assert.Contains("Quality note", BlockHeadings(cut));
+
+        var note = cut.Find("#section-kvalitetsnote dd");
+        var marked = note.GetAttribute("lang") ?? note.QuerySelector("[lang]")?.GetAttribute("lang");
+
+        Assert.Equal("Dekningsgraden er målt mot Norsk pasientregister.", note.TextContent.Trim());
+        Assert.Equal("no", marked);
+        Assert.Equal("no", cut.Find("#" + DetailSectionIds.Criteria + " .munin-explorer-datasamling__criteria")
+                              .GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Criteria_WhenTheSeedPlacesThem_ThenNoFactTheOldLayoutDrewIsLost()
+    {
+        // Same record before and after the seed; dt/dd pairs counted alike and never fewer after.
+        var before = Render(Datasamling());
+        var after = Render(CriteriaSeeded());
+
+        var terms = (IRenderedComponent<DatasamlingView> c) => c.FindAll(".munin-explorer-page__body dt").Count;
+        var values = (IRenderedComponent<DatasamlingView> c) => c.FindAll(".munin-explorer-page__body dd").Count;
+
+        Assert.Equal(terms(before), values(before));
+        Assert.Equal(terms(after), values(after));
+        Assert.True(values(after) >= values(before),
+                    $"The seeded placement lost rows: {values(before)} pairs before, {values(after)} after.");
     }
 
     [Fact]

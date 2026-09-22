@@ -520,8 +520,7 @@ public sealed partial class DatasamlingView : ComponentBase
     /// </summary>
     /// <remarks>
     /// Asked of what was drawn and not of what was placed: a placed section whose every row came
-    /// out empty is no section, and a box that had yielded to it would be on no surface at all. The
-    /// criteria block carries no key because no built-in row is seeded for this surface yet.
+    /// out empty is no section, and a box that had yielded to it would be on no surface at all.
     /// </remarks>
     private IReadOnlyList<DetailLayoutSection> Blocks(
         DatasamlingDetail datasamling,
@@ -540,7 +539,8 @@ public sealed partial class DatasamlingView : ComponentBase
 
         if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
         {
-            blocks.Add(new(null, DetailSectionIds.Criteria, T.FieldInclusionCriteria, null,
+            blocks.Add(new(SectionKeys.InclusionAndExclusionCriteria, DetailSectionIds.Criteria,
+                           T.FieldInclusionCriteria, null,
                            DetailBlocks.Prose(datasamling.InclusionAndExclusionCriteria,
                                               "munin-explorer-datasamling__criteria",
                                               CatalogueProperties.Foreign("no", Reader))));
