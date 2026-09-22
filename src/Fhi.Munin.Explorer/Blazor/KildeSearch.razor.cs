@@ -126,6 +126,9 @@ public sealed partial class KildeSearch : ComponentBase
     /// <inheritdoc cref="VariableSearch.HeadingLevel"/>
     [Parameter] public int HeadingLevel { get; set; } = 2;
 
+    /// <inheritdoc cref="VariableSearch.Lede"/>
+    [Parameter] public string? Lede { get; set; }
+
     /// <summary>
     /// The kilde whose view is open, or null when the list is showing. Set by the host, typically
     /// from its own URL.

@@ -55,6 +55,14 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     /// <inheritdoc cref="VariableSearch.HeadingLevel"/>
     [Parameter] public int HeadingLevel { get; set; } = 2;
 
+    /// <inheritdoc cref="VariableSearch.Lede"/>
+    /// <remarks>
+    /// Declared here as well as on <see cref="VariableSearch"/>, and forwarded, because this is the
+    /// mount a host names: a parameter the mounted type does not declare is dropped before it is
+    /// set, silently and with everything still compiling. Not passed to the lists tab.
+    /// </remarks>
+    [Parameter] public string? Lede { get; set; }
+
     /// <summary>
     /// Query keys this component must leave alone: not read when the page opens, not written when
     /// the reader changes something, and carried through the address bar exactly as they arrived.

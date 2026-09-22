@@ -354,6 +354,26 @@ public sealed partial class VariableSearch : ComponentBase
     [Parameter] public int HeadingLevel { get; set; } = 2;
 
     /// <summary>
+    /// One paragraph under the title saying what the page is for, in the host's own words and
+    /// language. Leave it null or blank and nothing is drawn.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The host's text rather than the package's, because the sentence is editorial: the site that
+    /// links to this page owns its voice, and should be able to change it without a new release of
+    /// this package. So there is no default, in either language, and nothing is translated — pass
+    /// the text already in the language <see cref="Language"/> names.
+    /// </para>
+    /// <para>
+    /// Drawn as plain text in a <c>&lt;p class="munin-explorer__lede"&gt;</c> directly after the
+    /// title, as a direct child of <c>.munin-explorer</c>. With no text there is no element at all,
+    /// not an empty one: Fhi.Helsedata.Stiler gives the lede its own grid row only when the element
+    /// is there, so an empty paragraph would still move the filters and results down.
+    /// </para>
+    /// </remarks>
+    [Parameter] public string? Lede { get; set; }
+
+    /// <summary>
     /// The facet selection to start from. Set by the host, typically from its own URL, the same way
     /// <see cref="Search"/> is.
     /// </summary>

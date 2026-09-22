@@ -1952,6 +1952,14 @@ table.munin-explorer-data-list tbody th {
   margin: 0 0 8px;
 }
 
+/* ---- the host's lede under the explorer title ----
+   Stiler's declarations for it; the samples have no explorer grid, so its grid row is not copied.
+   Stiler's rule for this name is Fhi.Metadata-35w0p.66. */
+.munin-explorer__lede {
+  margin: 12px 0 0;
+  max-width: 65ch;
+}
+
 /* ---- the contents nav inside that column ----
 
    `form-menu__list` and `form-menu__list__item` are borrowed: global, unscoped classes in Stiler's

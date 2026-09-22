@@ -453,6 +453,10 @@ unstyled-name||.munin-explorer-meta__language|
 # when the pin moves to the Stiler version that carries it.
 unstyled-name||.munin-explorer-lead|
 
+# New in Fhi.Metadata-35w0p.32's explorer lede. The Stiler rule is Fhi.Metadata-35w0p.66; this line goes
+# when the pin moves to the Stiler version that carries it.
+unstyled-name||.munin-explorer__lede|
+
 # The sample's heading reset under the chassis root. Fhi.Metadata-nvqny measured that Stiler's
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|

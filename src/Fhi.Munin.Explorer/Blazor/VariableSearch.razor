@@ -63,6 +63,12 @@
     @* Rendered from HeadingLevel rather than hard-coded to h2: the level that keeps the
        document outline unbroken is only knowable at the mount site. *@
     @Heading
+    @* Nothing at all without text: Stiler opens the lede's grid row on :has(> .munin-explorer__lede),
+       so an empty element would still push the filters and results down. (Fhi.Metadata-35w0p.32) *@
+    @if (!string.IsNullOrWhiteSpace(Lede))
+    {
+        <p class="munin-explorer__lede">@Lede</p>
+    }
 
 @* A kilde or datasamling opens as its own view, not as a third panel inside an open row.
    Runa navigates to a page for this; this component has no router, so instead of nesting a
