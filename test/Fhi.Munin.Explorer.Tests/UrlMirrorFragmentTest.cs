@@ -161,6 +161,18 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Mirror_WhenTheDeepLinkIsNotInTheFormTheExplorerWrites_ThenTheFirstRewriteKeepsIt()
+    {
+        // A host-built or hand-edited link, where the owned query that arrived and the one the
+        // component writes are different strings for one state. Every other deep link here is
+        // already canonical, so this is the only test that can tell the two latch candidates apart:
+        // the owner has to be the first query mirrored, not the incoming Owned.
+        var cut = RenderKilder($"http://localhost/kilder?KILDE={Als}#{DetailSectionIds.Metadata}");
+
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+    }
+
+    [Fact]
     public void Mirror_WhenTheReaderLeavesTheViewTheSectionWasIn_ThenTheFragmentIsGoneForGood()
     {
         var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
