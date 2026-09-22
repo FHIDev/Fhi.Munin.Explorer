@@ -17,8 +17,11 @@ internal sealed class UrlMirror
     private readonly IJSRuntime _js;
     private readonly string _path;
     private readonly string _carried;
+    private readonly string? _fragment;
     private readonly List<(string Name, string Value)> _owned = [];
     private string? _mirrored;
+    private string? _fragmentOwner;
+    private bool _fragmentSpent;
 
     // The circuit's own address is where both halves are readable at once, and it is already
     // absolute: PathBase is in it, where NavigationManager.Uri's path alone is relative to the
@@ -35,6 +38,10 @@ internal sealed class UrlMirror
     {
         _js = js;
         _path = address.AbsolutePath;
+
+        // Kept with its '#', and null for "#" alone: an empty fragment names no section, and writing
+        // one back would put a bare hash in the address bar for nothing.
+        _fragment = address.Fragment is { Length: > 1 } fragment ? fragment : null;
 
         var carried = new StringBuilder();
 
@@ -108,6 +115,11 @@ internal sealed class UrlMirror
     /// write rather than the one before it. <see cref="DetailToc"/>'s cascade depends on that
     /// ordering: it renders before <c>OnAfterRenderAsync</c> runs.
     /// </para>
+    /// <para>
+    /// <b>Never a fragment</b>, whatever the incoming address carried — <see cref="MirrorAsync"/> is
+    /// the only thing that writes one. A drill-in link is a way out of the view on screen, so an id
+    /// naming one of its sections would name nothing in the view the link opens.
+    /// </para>
     /// </remarks>
     public string Address(string query)
     {
@@ -117,12 +129,14 @@ internal sealed class UrlMirror
     }
 
     /// <summary>
-    /// Puts <paramref name="query"/> in the address bar beside what the component does not own.
+    /// Puts <paramref name="query"/> in the address bar beside what the component does not own, and
+    /// behind the section the incoming address named while that is still the view on screen.
     /// </summary>
     /// <param name="query">The owned keys as a query string with no leading <c>?</c>.</param>
     public async ValueTask MirrorAsync(string query)
     {
-        var url = Address(query);
+        var fragment = TakeFragment(query);
+        var url = Address(query) + fragment;
 
         // Without this, every render would call into JS to write the URL it is already showing.
         if (url == _mirrored)
@@ -136,6 +150,35 @@ internal sealed class UrlMirror
 
         // After the call, not before: a write the browser refused must not read as one it has.
         _mirrored = url;
+    }
+
+    /// <summary>
+    /// The incoming address's fragment while <paramref name="query"/> is still the state it arrived
+    /// with, and nothing once it is not — spent for good at the first different one.
+    /// </summary>
+    /// <remarks>
+    /// A reader who jumped to a section has it in the address bar already, and this is what keeps a
+    /// rewrite from taking it back. The owner is the first query mirrored rather than the incoming
+    /// one because those are the same state, said by the component rather than by the URL.
+    /// </remarks>
+    private string TakeFragment(string query)
+    {
+        if (_fragment is null || _fragmentSpent)
+        {
+            return "";
+        }
+
+        _fragmentOwner ??= query;
+
+        if (string.Equals(_fragmentOwner, query, StringComparison.Ordinal))
+        {
+            return _fragment;
+        }
+
+        // The section belongs to the view being left, so its id names nothing in the one arriving.
+        _fragmentSpent = true;
+
+        return "";
     }
 
     private static string Join(string left, string right) =>

@@ -38,6 +38,16 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// offered the orders still opens the end of the list it named.
 /// </para>
 /// <para>
+/// <b>A fragment is kept, never written.</b> The section a reader jumped to — <c>#metadata</c>, say
+/// — survives every rewrite while the view it names is the one on screen, so the address bar stays
+/// a link worth copying, and a press moving to a different kilde, datasamling, order or list state
+/// drops it. A navigation is the other case, because <see cref="Moved"/> builds a fresh mirror from
+/// the arriving address: the fragment on that one is honoured in its turn, which is what lets Back
+/// return to the section it came from. No link this component builds carries a fragment taken from
+/// the address, because an id naming a section of the view being left names nothing in the view a
+/// link opens.
+/// </para>
+/// <para>
 /// <b>Opening a datasamling is a link.</b> That is what buys middle-click, Ctrl+click and working
 /// Back and Forward buttons in a package with no router of its own. A host with no router follows
 /// it as an ordinary page load; a host with a <c>Router</c> intercepts the press, and this
