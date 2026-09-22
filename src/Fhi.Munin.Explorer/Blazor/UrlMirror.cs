@@ -78,8 +78,17 @@ internal sealed class UrlMirror
     /// Every value the incoming query gave <paramref name="name"/>, decoded and in order, empty ones
     /// included — so a repeated key reads whole, and <c>?columns=</c> is told apart from no key.
     /// </summary>
+    /// <remarks>
+    /// At most <see cref="MaxValuesPerKey"/> of them: the query is untrusted input, and what is read
+    /// here is held for the circuit's life and written back into every link.
+    /// </remarks>
     public IReadOnlyList<string> Values(string name) =>
-        [.. _owned.Where(pair => string.Equals(pair.Name, name, StringComparison.OrdinalIgnoreCase)).Select(pair => pair.Value)];
+        [.. _owned.Where(pair => string.Equals(pair.Name, name, StringComparison.OrdinalIgnoreCase))
+                  .Select(pair => pair.Value)
+                  .Take(MaxValuesPerKey)];
+
+    /// <summary>The most values <see cref="Values"/> reads for one key; above any kilde catalogue.</summary>
+    public const int MaxValuesPerKey = 500;
 
     /// <summary>
     /// This page's address carrying <paramref name="query"/> as the owned keys, for an

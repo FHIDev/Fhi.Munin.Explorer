@@ -1648,6 +1648,23 @@ public class UrlStateComponentTest : ExplorerTestContext
         Assert.Equal("/kilder", Mirrored());
     }
 
+    [Fact]
+    public void Kilder_WhenALinkRepeatsAKeyWithoutBound_ThenOnlyABoundedNumberIsKeptAndWrittenBack()
+    {
+        var ids = Enumerable.Range(0, UrlMirror.MaxValuesPerKey + 50).Select(_ => Guid.NewGuid()).ToList();
+        var tooLong = new string('x', 201);
+
+        var cut = RenderFaceted(
+            "http://localhost/kilder?" + string.Join("&", ids.Select(id => $"selected={id}"))
+            + $"&databehandler={tooLong}",
+            selectable: true);
+
+        var pairs = MirroredPairs();
+
+        Assert.Equal(UrlMirror.MaxValuesPerKey, pairs.Count(pair => pair.Key == "selected"));
+        Assert.DoesNotContain(pairs, pair => pair.Key == "databehandler");
+    }
+
     /// <summary>Search, one facet and one tick, set by hand on the list, with a host key beside them.</summary>
     private IRenderedComponent<KildeExplorer> RenderWithListState()
     {

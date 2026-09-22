@@ -119,7 +119,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// <remarks>An id that does not parse is dropped on read.</remarks>
     public const string TickedQueryKey = "selected";
 
-    /// <summary>The longest search a link may carry: the search field's own <c>maxlength</c>.</summary>
+    /// <summary>The longest search or facet value a link may carry: the search field's own <c>maxlength</c>.</summary>
     private const int MaxSearchLength = 200;
 
     [Inject] private NavigationManager Navigation { get; set; } = default!;
@@ -286,7 +286,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             : null;
 
         var facets = KildeSearch.FacetKeys
-            .Select(key => (Key: key, Values: mirror.Values(key).Where(value => value.Length > 0).Distinct(StringComparer.Ordinal).ToList()))
+            .Select(key => (Key: key, Values: mirror.Values(key).Where(value => value.Length is > 0 and <= MaxSearchLength).Distinct(StringComparer.Ordinal).ToList()))
             .Where(facet => facet.Values.Count > 0)
             .ToDictionary(facet => facet.Key, facet => (IReadOnlyList<string>)facet.Values, StringComparer.Ordinal);
 
