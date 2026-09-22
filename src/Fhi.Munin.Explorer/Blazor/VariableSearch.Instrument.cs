@@ -79,6 +79,14 @@ public partial class VariableSearch
 
     private string InstrumentBusy => _instrumentLoading ? "true" : "false";
 
+    /// <summary>What the way out of the instrument says, read off what lies under it.</summary>
+    /// <remarks>
+    /// Closing clears the instrument and nothing else, so the words follow the view underneath
+    /// rather than assume the list. Today that is always the list, because a variable's instruments
+    /// are links and the whole variable does not survive the navigation one costs.
+    /// </remarks>
+    private string InstrumentExit => _wholeVariable ? T.BackToVariable : T.BackToVariables;
+
     /// <summary>What the instrument view's status line says: that it is loading, or why it is empty.</summary>
     private string? InstrumentStatus => _instrumentLoading ? T.InstrumentLoading : _instrumentError;
 

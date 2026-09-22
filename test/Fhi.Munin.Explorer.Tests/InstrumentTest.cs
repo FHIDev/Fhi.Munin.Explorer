@@ -393,10 +393,39 @@ public class InstrumentTest : ExplorerTestContext
             .Add(c => c.SelectedInstrumentIdChanged, EventCallback.Factory.Create<Guid?>(
                 this, value => reported = value)));
 
-        cut.Find(".munin-explorer-drilldown button").Click();
+        var exit = cut.Find(".munin-explorer-drilldown button");
+
+        // The words name the list because the list is what the press uncovers. InstrumentExit is
+        // what keeps the two together, so a view opened over the whole variable would say so
+        // instead of promising a page it does not go to.
+        Assert.Equal(Texts.For("no").BackToVariables, exit.TextContent.Trim());
+
+        exit.Click();
 
         Assert.Null(reported);
         Assert.Empty(cut.FindAll("[id^=munin-instrument-]"));
+        Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list"));
+    }
+
+    [Fact]
+    public void InstrumentPage_WhenTheAddressAlsoNamesAVariable_ThenTheWayOutStillLandsWhereItSaysItDoes()
+    {
+        // The ordinary way in: a variable's Instrument link keeps variabelId beside instrumentId.
+        // What that reopens underneath is the row's own disclosure in the list rather than the
+        // whole variable, so the button naming the list is the button telling the truth.
+        Services.AddSingleton<IMuninExplorerClient>(new InstrumentClient(Variable(), Instrument()));
+
+        var cut = Render<VariableSearch>(b => b
+            .Add(c => c.SelectedVariableId, VariableId)
+            .Add(c => c.SelectedInstrumentId, Sf36));
+
+        var exit = cut.Find(".munin-explorer-drilldown button");
+
+        Assert.Equal(Texts.For("no").BackToVariables, exit.TextContent.Trim());
+
+        exit.Click();
+
+        Assert.Empty(cut.FindComponents<VariableView>());
         Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list"));
     }
 

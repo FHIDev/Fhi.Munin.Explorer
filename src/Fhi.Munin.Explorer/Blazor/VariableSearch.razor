@@ -79,18 +79,18 @@
 @if (_instrumentId is not null)
 {
     @* An instrument, in place, and tested first of the three: a link carrying both an instrument
-       and a variable was made on the instrument page, so that is the page it has to reopen — and
-       the variable underneath is what leaving it returns to. *@
+       and a variable was made on the instrument page, so that is the page it has to reopen — with
+       the variable it names left as the open row underneath. *@
     <div class="munin-explorer-drilldown"
          id="@InstrumentRegionId"
          role="region"
          aria-labelledby="@InstrumentHeadingId"
          aria-busy="@InstrumentBusy">
-        @* The same way out the whole variable offers, in the same words and the same variant: this
-           view covers the list exactly as that one does. *@
+        @* Named for what leaving really uncovers rather than for the list, because this view is
+           free to cover either: a way out must not promise a page it does not go to. *@
         <button class="hd-button-square button-square--ghost-blue margin-bottom"
                 type="button"
-                @onclick="CloseInstrumentAsync">@T.BackToVariables</button>
+                @onclick="CloseInstrumentAsync">@InstrumentExit</button>
 
         @if (_instrument is { } instrument)
         {
