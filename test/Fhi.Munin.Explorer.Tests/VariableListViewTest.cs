@@ -103,6 +103,11 @@ public class VariableListViewTest : ExplorerTestContext
                 throw new InvalidOperationException("too many requests");
             }
 
+            if (ListsHang)
+            {
+                return _hangingLists.Task;
+            }
+
             if (!HasList)
             {
                 return Task.FromResult<IReadOnlyList<VariableList>>([]);
@@ -364,6 +369,11 @@ public class VariableListViewTest : ExplorerTestContext
 
         /// <summary>Set when the reader's lists cannot be read - a throttled call, for instance.</summary>
         public bool ListsThrow { get; init; }
+
+        /// <summary>Leave the lists read in flight: the state the view first renders in.</summary>
+        public bool ListsHang { get; init; }
+
+        private readonly TaskCompletionSource<IReadOnlyList<VariableList>> _hangingLists = new();
 
         /// <summary>Set when the test wants the export to fail the way a blocked browser would.</summary>
         public bool ExportThrows { get; init; }
@@ -1319,7 +1329,8 @@ public class VariableListViewTest : ExplorerTestContext
         var box = cut.Find(".munin-explorer-list-scroll");
 
         Assert.Equal("region", box.GetAttribute("role"));
-        Assert.Equal("Mine hjertevariabler", box.GetAttribute("aria-label"));
+        Assert.Null(box.GetAttribute("aria-label"));
+        Assert.Equal("Mine hjertevariabler", AccessibleName.Of(box));
 
         // Unconditional: knowing whether a box actually scrolls needs script, and this package
         // ships none. A box a mouse can scroll and a keyboard cannot trades 1.4.10 for 2.1.1.
@@ -1644,7 +1655,10 @@ public class VariableListViewTest : ExplorerTestContext
         // could not tell which one is on screen.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
-        Assert.Equal("Mine hjertevariabler", cut.Find("table.munin-explorer-data-list").GetAttribute("aria-label"));
+        var table = cut.Find("table.munin-explorer-data-list");
+
+        Assert.Null(table.GetAttribute("aria-label"));
+        Assert.Equal("Mine hjertevariabler", AccessibleName.Of(table));
     }
 
     [Fact]
@@ -3259,9 +3273,110 @@ public class VariableListViewTest : ExplorerTestContext
 
         var heading = cut.Find(".munin-explorer-page__header > h3");
 
-        Assert.Equal("Mine variabellister", heading.TextContent);
+        Assert.Equal("Mine hjertevariabler", heading.TextContent);
         Assert.Equal("headline headline-s margin--bottom", heading.ClassName);
         Assert.StartsWith("munin-explorer-list-heading-", heading.Id, StringComparison.Ordinal);
+    }
+
+    // -----------------------------------------------------------------------
+    // The list's own name is its title (Fhi.Metadata-9llsv)
+
+    private static AngleSharp.Dom.IElement ListHeading(IRenderedComponent<VariableListView> cut, int level = 2) =>
+        cut.Find($".munin-explorer-page__header > h{level}");
+
+    /// <summary>The table and its scroll region are named through the heading's id and nothing else.</summary>
+    private static void AssertNamedByTheHeading(IRenderedComponent<VariableListView> cut)
+    {
+        var heading = ListHeading(cut);
+
+        foreach (var named in new[] { cut.Find(".munin-explorer-list-scroll"), cut.Find("table.munin-explorer-data-list") })
+        {
+            Assert.Null(named.GetAttribute("aria-label"));
+            Assert.Equal(heading.Id, named.GetAttribute("aria-labelledby"));
+            Assert.Equal(heading.TextContent, AccessibleName.Of(named));
+        }
+    }
+
+    [Fact]
+    public void ListHeading_WhenOneListIsSaved_ThenItReadsTheListsOwnName()
+    {
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Equal("Mine hjertevariabler", ListHeading(cut).TextContent);
+        AssertNamedByTheHeading(cut);
+    }
+
+    [Fact]
+    public async Task ListHeading_WhenTheReaderSwitchesToTheSecondList_ThenItReadsThatListsName()
+    {
+        // Two lists is the case that matters: the heading has to tell them apart.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
+
+        Assert.Equal("Mine hjertevariabler", ListHeading(cut).TextContent);
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        Assert.Equal("Hjerte og kar", ListHeading(cut).TextContent);
+        Assert.DoesNotContain("Mine hjertevariabler", ListHeading(cut).TextContent);
+        AssertNamedByTheHeading(cut);
+    }
+
+    [Fact]
+    public async Task ListHeading_WhenTheListIsRenamed_ThenItReadsTheNewNameInPlace()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
+
+        Assert.Equal(1, client.RenameCalls);
+        Assert.Equal("Hjertet mitt", ListHeading(cut).TextContent);
+        AssertNamedByTheHeading(cut);
+    }
+
+    [Theory]
+    [InlineData("no", "Mine variabellister")]
+    [InlineData("en", "My variable lists")]
+    public void Eyebrow_WhenAListIsShown_ThenItNamesTheKindAndTheHeadingDoesNot(string language, string kind)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListView>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.Language, language));
+
+        var eyebrow = Assert.Single(cut.FindAll(".munin-explorer-page__eyebrow"));
+
+        Assert.Equal(kind, eyebrow.TextContent.Trim());
+        Assert.Null(eyebrow.Closest(".munin-explorer-page__header"));
+        Assert.DoesNotContain(kind, ListHeading(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ListHeading_BeforeTheListsHaveArrived_ThenItReadsTheKindAndNoEyebrowRepeatsIt()
+    {
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsHang = true });
+
+        var heading = ListHeading(cut);
+
+        Assert.Equal("Mine variabellister", heading.TextContent);
+        Assert.StartsWith("munin-explorer-list-heading-", heading.Id, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".munin-explorer-page__eyebrow"));
+    }
+
+    [Fact]
+    public void ListHeading_WhenNoListIsSaved_ThenItReadsTheKindAndNoEyebrowRepeatsIt()
+    {
+        var cut = RenderView(new ListClient { HasList = false });
+
+        var heading = ListHeading(cut);
+
+        Assert.Contains("Du har ingen variabellister ennå.", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("Mine variabellister", heading.TextContent);
+        Assert.StartsWith("munin-explorer-list-heading-", heading.Id, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".munin-explorer-page__eyebrow"));
     }
 
     [Fact]
