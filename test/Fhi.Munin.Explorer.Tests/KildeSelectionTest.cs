@@ -104,13 +104,9 @@ public class KildeSelectionTest : ExplorerTestContext
         cut.Find($".munin-explorer-kilder thead .{HostClassNames.KilderSelect} input");
 
     /// <summary>Tick the row whose name button reads <paramref name="name"/>.</summary>
-    /// <remarks>
-    /// Found by name on every call rather than held, for the reason the facet helper next door
-    /// gives: ticking re-renders, and an element found before that belongs to the markup as it was.
-    /// </remarks>
+    /// <remarks>Found through <see cref="NamedRow"/>, which says why it is found and not held.</remarks>
     private static void TickRow(IRenderedComponent<KildeSearch> cut, string name, bool ticked = true) =>
-        cut.FindAll(".munin-explorer-kilder tbody tr")
-           .Single(row => row.QuerySelector("th button")!.TextContent.Trim() == name)
+        NamedRow(cut, name)
            .QuerySelector($".{HostClassNames.KilderSelect} input")!
            .Change(ticked);
 
@@ -1303,8 +1299,9 @@ public class KildeSelectionTest : ExplorerTestContext
 
     /// <summary>The row whose name button reads <paramref name="name"/>.</summary>
     /// <remarks>
-    /// Found on every call rather than held, for <see cref="TickRow"/>'s reason: an expanded row
-    /// puts a second tr in the tbody and every press re-renders both.
+    /// Found on every call rather than held: every press re-renders, so an element found before it
+    /// belongs to the markup as it was. Matched with a null-conditional because an expanded row
+    /// puts a second tr in the tbody, and that one carries no name button of its own.
     /// </remarks>
     private static IElement NamedRow(IRenderedComponent<KildeSearch> cut, string name) =>
         cut.FindAll(".munin-explorer-kilder tbody tr")
@@ -1487,7 +1484,7 @@ public class KildeSelectionTest : ExplorerTestContext
 
         Assert.Equal("true", ExploreButton(cut).GetAttribute("aria-busy"));
 
-        ExploreButton(cut).Click();
+        await ExploreButton(cut).ClickAsync(new());
 
         Assert.Empty(datasamlinger);
 
@@ -1495,7 +1492,10 @@ public class KildeSelectionTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Null(ExploreButton(cut).GetAttribute("aria-busy")));
 
-        ExploreButton(cut).Click();
+        // Awaited rather than pressed the way its siblings are: past the await above, the
+        // synchronous press returns before the handler has run, and the assertion below it read an
+        // empty list in most runs.
+        await ExploreButton(cut).ClickAsync(new());
 
         Assert.Equal(
             [CollectionOneA, CollectionOneB, CollectionOneC, CollectionTwoA],
