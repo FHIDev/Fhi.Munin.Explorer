@@ -296,14 +296,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// name from one source. The reader's own word, since "Mine variabellister" would title every
     /// list the same; that is the fallback only before the lists arrive or when there are none.</summary>
     private string ShownListName =>
-        Lists.FirstOrDefault(l => l.Id == _shownList)?.Name is { Length: > 0 } name
+        ShownList?.Name is { Length: > 0 } name
             ? name
             : T.MyListsHeading;
 
-    /// <summary>The kind above the name, as the other detail pages carry it; none while the heading
-    /// itself still reads the kind, so the same words are never drawn twice.</summary>
-    private string? ShownListEyebrow =>
-        ShownListName == T.MyListsHeading ? null : T.MyListsHeading;
+    private VariableList? ShownList => Lists.FirstOrDefault(l => l.Id == _shownList);
+
+    /// <summary>The kind above the name, as the other detail pages carry it. Keyed on a named list
+    /// being shown rather than on the heading's words, since a reader may name a list exactly that.</summary>
+    private string? ShownListEyebrow => ShownList?.Name is { Length: > 0 } ? T.MyListsHeading : null;
 
     /// <summary>
     /// The years a variable has data for, written the way the result rows and the detail panel

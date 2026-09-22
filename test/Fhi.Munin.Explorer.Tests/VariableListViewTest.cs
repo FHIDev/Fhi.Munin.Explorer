@@ -3355,6 +3355,19 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Eyebrow_WhenAListIsNamedLikeTheKind_ThenItIsStillDrawn()
+    {
+        // The eyebrow follows whether a list is shown, not what the heading happens to say.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        RenameField(cut).Change("Mine variabellister");
+        await PressAsync(cut, "Lagre navnet");
+
+        Assert.Equal("Mine variabellister", ListHeading(cut).TextContent);
+        Assert.Equal("Mine variabellister", Assert.Single(cut.FindAll(".munin-explorer-page__eyebrow")).TextContent.Trim());
+    }
+
+    [Fact]
     public void ListHeading_BeforeTheListsHaveArrived_ThenItReadsTheKindAndNoEyebrowRepeatsIt()
     {
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsHang = true });
