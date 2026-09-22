@@ -255,6 +255,10 @@ missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main__column
 missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main__name|
 missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main|
 missing-selector|@media (max-width:1280px)|.munin-explorer-meta table|
+# Part of that row collapse: Stiler pins the chevron cell to a stacked row's corner. The sample's
+# rows never stack, so there it would leave the row and misalign the header (Fhi.Metadata-4xqhq).
+missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main:has( > .munin-explorer-dataitem__expand-cell)|
+missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main > .munin-explorer-dataitem__expand-cell|
 missing-selector|@media (max-width:1280px)|.munin-explorer-meta|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions-button|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions|

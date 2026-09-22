@@ -1227,8 +1227,8 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
    is an inline-flex box that takes its width from its own modifier. That is why extra columns are
    possible at all: flex distributes what is left rather than needing a track declared up front.
 
-   The header clears the chevron on its name button (`padding-left: 3rem`) rather than on the row,
-   and its code, datatype and status cells carry 16px each, as Stiler draws them. */
+   The header clears the chevron cell on its name button (52px) rather than on the row, and its
+   code, datatype and status cells carry 16px each, as Stiler draws them. */
 .munin-explorer-dataitem-header,
 .munin-explorer-dataitem-main {
   display: flex;
@@ -4397,8 +4397,8 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* ---- the same mirroring, for the rules Stiler scopes to a width or a motion preference.
-   The version row's phone layout is Fhi.Metadata-ofg1h's own; the rest came with the four
-   releases between the pins. */
+   The version row's phone layout is Fhi.Metadata-ofg1h's own; the rest is Stiler's, copied at
+   each pin bump. */
 
 @media (max-width:1024px) {
   .munin-explorer-page__stuckbar .munin-explorer-page__actions {
@@ -4407,19 +4407,6 @@ table.munin-explorer-data-list tbody th {
 
   .munin-explorer-page__stuckbar dl div:nth-child(n + 3) {
     display: none;
-  }
-}
-
-@media (max-width:1280px) {
-  .munin-explorer-dataitem-main:has(> .munin-explorer-dataitem__expand-cell) {
-    padding-right: 64px;
-    position: relative;
-  }
-
-  .munin-explorer-dataitem-main > .munin-explorer-dataitem__expand-cell {
-    position: absolute;
-    right: 12px;
-    top: 16px;
   }
 }
 

@@ -19,12 +19,14 @@ const scrollLikeAReader = (page, y) => page.evaluate(async to => {
   // Smaller than the viewport, so nothing can pass through unseen in a single step.
   const step = Math.max(40, Math.floor(window.innerHeight / 4));
 
+  // Instant, because Stiler's `html { scroll-behavior: smooth }` would animate each step and land
+  // late, a few pixels off, while the page is still growing.
   for (let at = window.scrollY; Math.abs(to - at) > step; at += to > at ? step : -step) {
-    window.scrollTo(0, at);
+    window.scrollTo({ top: at, left: 0, behavior: 'instant' });
     await new Promise(next => requestAnimationFrame(next));
   }
 
-  window.scrollTo(0, to);
+  window.scrollTo({ top: to, left: 0, behavior: 'instant' });
 }, y);
 
 /** The scroll position that puts `#id` clear of the top of the viewport, with room to spare. */

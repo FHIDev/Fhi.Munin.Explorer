@@ -355,7 +355,7 @@ public class RunaRowGesturesTest : ExplorerTestContext
 
     [Theory]
     [MemberData(nameof(SampleStylesheets))]
-    public void SampleStylesheet_Always_ThenTheChevronHasStilersRuleAndNoFocusOrCompensatingRule(string path)
+    public void SampleStylesheet_Always_ThenTheChevronHasStilersRulesAndNoOutline(string path)
     {
         // Exactly Stiler 0.1.98's rules. An outline here would pass every check and draw nothing on
         // helsedata, where body:not(.is-tabbing) button:focus removes it; the indicator is a fill.
@@ -374,13 +374,15 @@ public class RunaRowGesturesTest : ExplorerTestContext
             ".munin-explorer-data-list__item__row .munin-explorer-dataitem__expand-toggle:focus-visible[aria-expanded=\"true\"] .icon { background-image: url(../img/icons/keyboard-arrow/icon_up--white.svg) }",
             ".munin-explorer-data-list__result:has(.munin-explorer-dataitem__expand-cell) .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button { padding-left: 52px }",
             ".munin-explorer-dataitem-main .munin-explorer-dataitem__expand-toggle .icon { display: inline-block; margin: 0 }",
-            ".munin-explorer-dataitem-main > .munin-explorer-dataitem__expand-cell { position: absolute; right: 12px; top: 16px }",
-            ".munin-explorer-dataitem-main:has(> .munin-explorer-dataitem__expand-cell) { padding-right: 64px; position: relative }",
             ".munin-explorer-dataitem__expand-cell { display: flex }",
             ".munin-explorer-dataitem__expand-toggle { align-items: center; cursor: pointer; display: inline-flex; padding: 8px 12px }",
             ".munin-explorer-dataitem__expand-toggle:focus-visible { background-color: rgb(81, 84, 123); color: rgb(255, 255, 255) }",
         ],
             rules);
         Assert.DoesNotContain(rules, rule => rule.Contains("outline", StringComparison.Ordinal));
+
+        // The set above is read without its @media context, so none of it may sit in one: Stiler's
+        // 1280px placement assumes stacked rows, which the sample does not have.
+        Assert.DoesNotMatch(@"@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*munin-explorer-dataitem__expand-", css);
     }
 }
