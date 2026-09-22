@@ -506,11 +506,21 @@ else
            two assertive regions race to be announced and the reader cannot tell which spoke. The
            button is inside it for the same reason the variable explorer's retries are — the failure
            and the way out of it are one utterance. (Fhi.Metadata-75yov) *@
-        @if (UnionFailed)
+        @if (UnionAlertShown)
         {
-            <p class="infobox infobox--bg-yellow">@T.SelectionDatasamlingerError</p>
+            @* The sentence stays while the retry runs and says so with aria-busy, rather than
+               leaving at the first yield to report a problem solved by a fetch still in flight. *@
+            <p class="infobox infobox--bg-yellow"
+               aria-busy="@(UnionPending || _retryingUnion ? "true" : null)">@T.SelectionDatasamlingerError</p>
+        }
+        @* Inert rather than absent once it has nothing left to retry, exactly as the variable
+           explorer's two are: a button leaving with the sentence it answers would drop the focus of
+           the reader who just pressed it to <body> — the pager's rule. (Fhi.Metadata-75yov) *@
+        @if (_unionRetryShown)
+        {
             <button class="hd-button-square button-square--secondary margin-right margin-bottom munin-explorer-retry"
                     type="button"
+                    aria-disabled="@(CanRetryUnion ? null : "true")"
                     @onclick="RetryUnionAsync">@T.RetrySelectionDatasamlinger</button>
         }
     </div>
@@ -536,7 +546,7 @@ else
             {
                 <button class="hd-button-square button-square--secondary"
                         type="button"
-                        @onclick="ClearTicksAsync">@T.ClearSelection</button>
+                        @onclick="ClearSelectionAsync">@T.ClearSelection</button>
             }
 
             <p class="caption margin--none" role="status" aria-live="polite" aria-atomic="true">

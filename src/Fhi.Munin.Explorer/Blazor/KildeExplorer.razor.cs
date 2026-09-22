@@ -29,12 +29,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>?sortDir=</c>, and the list's own state — <c>?search=</c>, one repeated key per facet
 /// (<c>?kildetype=</c>, <c>?kategori=</c>, <c>?tilgangsniva=</c>, <c>?databehandler=</c>),
 /// <c>?columns=</c>, <c>?selected=</c> and <c>?selectedDatasamling=</c> — and nothing else.</b> A
-/// host's own parameters are carried through untouched, and the list state rides on every link this component builds, so a
-/// round trip away from the list and back finds it as it was left (Fhi.Metadata-nvf2w). <c>?sort=</c> is
-/// omitted while the list is in the order the catalogue sent it, so a link made before this
-/// component could sort still opens the same page, and <c>?sortDir=</c> is omitted with it and
-/// wherever the column runs the way <see cref="KildeSearch.InitialDirection"/> says it runs — so a
-/// link made while the select offered the orders still opens the end of the list it named.
+/// host's own parameters are carried through untouched, and the list state rides on every link
+/// this component builds, so a round trip away from the list and back finds it as it was left
+/// (Fhi.Metadata-nvf2w). <c>?sort=</c> is omitted while the list is in the order the catalogue
+/// sent it, so a link made before this component could sort still opens the same page, and
+/// <c>?sortDir=</c> is omitted with it and wherever the column runs the way
+/// <see cref="KildeSearch.InitialDirection"/> says it runs — so a link made while the select
+/// offered the orders still opens the end of the list it named.
 /// </para>
 /// <para>
 /// <b>Opening a datasamling is a link.</b> That is what buys middle-click, Ctrl+click and working

@@ -227,10 +227,14 @@ public sealed partial class KildeSearch
     /// One control for both, because the reader made one selection: a reset that left the marks
     /// behind would leave a handover still promising them with the bar saying nothing is chosen.
     /// </remarks>
-    private async Task ClearTicksAsync()
+    private async Task ClearSelectionAsync()
     {
         _ticked.Clear();
         _marked.Clear();
+
+        // The only place the offer may leave without stealing a focus: the press that empties the
+        // selection is the reset's, and there is nothing left for a retry to fetch.
+        _unionRetryShown = false;
 
         await RaiseTicksAsync();
         await RaiseMarksAsync();
@@ -240,12 +244,17 @@ public sealed partial class KildeSearch
 
     /// <summary>The marks the host opened the list with, dropping what is not a pair of ids.</summary>
     /// <remarks>
-    /// The address is whatever a stranger typed, and a value naming no datasamling this catalogue
-    /// has is kept rather than validated — a mark hidden by the search is kept too, and the
-    /// handover leaves both out for the same reason.
+    /// None at all where the second handover is unwired: a mark that cannot be made here has
+    /// nowhere to go, and one seeded from the address would count in the bar, open rows and fetch
+    /// for a button that would refuse the press. An id this catalogue has not is kept, not dropped.
     /// </remarks>
     private void SeedMarks()
     {
+        if (!Markable)
+        {
+            return;
+        }
+
         foreach (var value in MarkedDatasamlinger ?? [])
         {
             if (ParseMark(value) is { } mark && !_marked.Contains(mark))
@@ -253,6 +262,33 @@ public sealed partial class KildeSearch
                 _marked.Add(mark);
             }
         }
+    }
+
+    /// <summary>How many marked rows the address may open — and so fetch — by itself.</summary>
+    /// <remarks>
+    /// Each one is a request charged to the window helsedata's whole cluster shares, and the query
+    /// is whatever a stranger typed — <see cref="UrlMirror.MaxValuesPerKey"/> of them at once. Past
+    /// this the marks are still held, still counted and still travel. (Fhi.Metadata-75yov)
+    /// </remarks>
+    private const int MaxMarkedRowsOpened = 20;
+
+    /// <summary>The rows a seeded mark opens: in this list, holding something, and bounded.</summary>
+    /// <remarks>
+    /// Filtered through <see cref="_kilder"/> for <see cref="TickedNeedingDatasamlinger"/>'s reason
+    /// — an id this catalogue does not have, or one the row already says holds no datasamling,
+    /// costs a round trip against the rate limit to learn what is known without asking.
+    /// </remarks>
+    private IReadOnlyList<Guid> MarkedRowsToOpen()
+    {
+        HashSet<Guid> holding = [.. _kilder.Where(kilde => kilde.DatasamlingCount > 0).Select(kilde => kilde.Id)];
+
+        return
+        [
+            .. _marked.Select(mark => mark.Kilde)
+                      .Distinct()
+                      .Where(holding.Contains)
+                      .Take(MaxMarkedRowsOpened)
+        ];
     }
 
     /// <summary>One mark as the address spells it, or null when it is not a pair of ids.</summary>
@@ -351,6 +387,28 @@ public sealed partial class KildeSearch
         _marked.Count > 0
         && TickedNeedingDatasamlinger.Any(kilde => _datasamlingerError.ContainsKey(kilde.Id));
 
+    /// <summary>Whether the union's retry is on screen, which outlives the failure it answers.</summary>
+    /// <remarks>
+    /// A button leaving with the sentence it answers would drop the focus of the reader who just
+    /// pressed it to &lt;body&gt; — the pager's rule, and the variable explorer's two retries'. It
+    /// goes inert instead, and leaves only where the reset empties the selection under it.
+    /// </remarks>
+    private bool _unionRetryShown;
+
+    /// <summary>Whether the press being answered is the union retry's own.</summary>
+    /// <remarks>
+    /// Nothing derived from the fetch can tell that press from any other: the retry drops the
+    /// errors before it awaits, so <see cref="UnionFailed"/> is already false at the first yield
+    /// and the sentence would leave mid-fetch saying the problem is solved. (Fhi.Metadata-75yov)
+    /// </remarks>
+    private bool _retryingUnion;
+
+    /// <summary>Whether pressing the union's retry would do anything.</summary>
+    private bool CanRetryUnion => UnionFailed && !UnionPending && !_retryingUnion;
+
+    /// <summary>Whether the union's failure is still being reported, the retry's own run included.</summary>
+    private bool UnionAlertShown => UnionFailed || _retryingUnion;
+
     /// <summary>What a mixed selection cannot reach, or nothing when the selection is not mixed.</summary>
     /// <remarks>
     /// Only with both halves present: with marks alone there is no kilde whose other variables the
@@ -396,17 +454,41 @@ public sealed partial class KildeSearch
                 await LoadDatasamlingerAsync(kilde.Id);
             }
         }
+
+        _unionRetryShown |= UnionFailed;
     }
 
     /// <summary>Ask again for the ticked kilder whose datasamlinger did not arrive.</summary>
-    private Task RetryUnionAsync()
+    /// <remarks>
+    /// The cached detail goes with the error, because a kilde the catalogue does not publish is
+    /// recorded as both a null detail and a failure: clearing the error alone would retire the
+    /// warning having fetched nothing at all. (Fhi.Metadata-75yov)
+    /// </remarks>
+    private async Task RetryUnionAsync()
     {
-        foreach (var kilde in TickedNeedingDatasamlinger.ToList())
+        if (!CanRetryUnion)
         {
-            _datasamlingerError.Remove(kilde.Id);
+            return;
         }
 
-        return EnsureUnionAsync();
+        foreach (var kilde in TickedNeedingDatasamlinger.ToList())
+        {
+            if (_datasamlingerError.Remove(kilde.Id))
+            {
+                _datasamlinger.Remove(kilde.Id);
+            }
+        }
+
+        _retryingUnion = true;
+
+        try
+        {
+            await EnsureUnionAsync();
+        }
+        finally
+        {
+            _retryingUnion = false;
+        }
     }
 
     /// <summary>Every datasamling of one kilde, direct and under a delkilde at any depth.</summary>

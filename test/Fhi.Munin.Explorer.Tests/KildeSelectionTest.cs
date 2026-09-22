@@ -1339,6 +1339,10 @@ public class KildeSelectionTest : ExplorerTestContext
     private static string BarLine(IRenderedComponent<KildeSearch> cut) =>
         cut.Find(".munin-explorer-selection p[role=status]").TextContent.Trim();
 
+    /// <summary>The union's retry, which is inside the alert region rather than beside it.</summary>
+    private static IElement RetryButton(IRenderedComponent<KildeSearch> cut) =>
+        cut.Find("[role=alert] button.munin-explorer-retry");
+
     [Fact]
     public void Marks_WhenNothingIsMarked_ThenEveryBoxIsClearAndNoRowCounts()
     {
@@ -1529,7 +1533,7 @@ public class KildeSelectionTest : ExplorerTestContext
         // The way out of it, and the reason the offer is beside the sentence rather than under it:
         // a retry that answers is the only thing that lets the press through.
         client.Failing.Clear();
-        cut.Find("[role=alert] button.munin-explorer-retry").Click();
+        RetryButton(cut).Click();
 
         Assert.DoesNotContain("Kunne ikke hente datasamlingene",
                               cut.Find("[role=alert]").TextContent,
@@ -1540,6 +1544,164 @@ public class KildeSelectionTest : ExplorerTestContext
         Assert.Equal(
             [CollectionOneA, CollectionOneB, CollectionOneC, CollectionTwoA],
             Assert.Single(datasamlinger));
+    }
+
+    [Fact]
+    public void RetrySelection_WhenItAnswers_ThenTheOfferGoesInertRatherThanLeavingTheDom()
+    {
+        // Every other retry in this package outlives the sentence it answers by exactly one fetch,
+        // and this one said in prose that it did: a button leaving with its message drops the focus
+        // of the reader who just pressed it to <body>, which is the pager's rule.
+        var client = ThreeKilder();
+
+        client.Failing.Add(KildeOne);
+
+        var (cut, _, _) = RenderMarkable(client);
+
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeTwo, "Dødsfall");
+        TickRow(cut, "Als registeret");
+
+        Assert.Null(RetryButton(cut).GetAttribute("aria-disabled"));
+
+        client.Failing.Clear();
+        RetryButton(cut).Click();
+
+        Assert.Equal("true", RetryButton(cut).GetAttribute("aria-disabled"));
+
+        // And inert means inert, since aria-disabled stops no press: a second one asks for nothing.
+        var asked = client.Fetched.Count;
+
+        RetryButton(cut).Click();
+
+        Assert.Equal(asked, client.Fetched.Count);
+    }
+
+    [Fact]
+    public void RetrySelection_WhenATickedKildeIsNotPublished_ThenItAsksAgainRatherThanRetiringTheWarning()
+    {
+        // The unpublished kilde is recorded as a null detail AND an error, so a retry that cleared
+        // only the error left the union exactly as incomplete with nothing on screen saying so —
+        // the reader told the problem is solved by a button that made no attempt to solve it.
+        var client = new DrawerClient(
+            Row(KildeOne, "Als registeret", datasamlinger: 3),
+            Row(KildeTwo, "Dødsårsaksregisteret", datasamlinger: 2))
+            .Describing(DetailOne());
+
+        var (cut, _, datasamlinger) = RenderMarkable(client);
+
+        Expand(cut, "Als registeret");
+        Mark(cut, KildeOne, "Inklusjon");
+        TickRow(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal([KildeOne, KildeTwo], client.Fetched);
+
+        RetryButton(cut).Click();
+
+        Assert.Equal([KildeOne, KildeTwo, KildeTwo], client.Fetched);
+
+        Assert.Contains("Kunne ikke hente datasamlingene",
+                        cut.Find("[role=alert]").TextContent,
+                        StringComparison.Ordinal);
+
+        ExploreButton(cut).Click();
+
+        Assert.Empty(datasamlinger);
+    }
+
+    [Fact]
+    public void Handover_WhenTheAddressCarriesATickAndAMark_ThenTheUnionIsBuiltBeforeTheFirstPress()
+    {
+        // The ordinary round trip the feature is built on: KildeExplorer writes ?selected= and
+        // ?selectedDatasamling= together, so any shared link or back-navigation out of a mixed
+        // selection reopens the list holding both halves and never through a tick or a mark press.
+        var client = ThreeKilder();
+
+        var (cut, _, datasamlinger) = RenderMarkable(client, b =>
+        {
+            b.Add(c => c.TickedKildeIds, (IReadOnlyList<Guid>)[KildeOne]);
+            b.Add(c => c.MarkedDatasamlinger,
+                (IReadOnlyList<string>)[KildeSearch.MarkValue(KildeTwo, CollectionTwoA)]);
+        });
+
+        // The only assertion of the bar's two-sentence arm: dropping the joining space, returning
+        // one half or swapping the order all render as a line somebody would read past.
+        Assert.Equal("1 kilde valgt 1 datasamling valgt", BarLine(cut));
+
+        ExploreButton(cut).Click();
+
+        Assert.Equal(
+            [CollectionOneA, CollectionOneB, CollectionOneC, CollectionTwoA],
+            Assert.Single(datasamlinger));
+    }
+
+    [Fact]
+    public void Marks_WhenOnlyTheKildeHandoverIsWired_ThenTheAddressSeedsNoMarkAtAll()
+    {
+        // Markable gates the checkbox column, and a mark seeded past that gate would count in the
+        // bar, force rows open and fetch for them — all of it ending on a primary button that takes
+        // the marked branch and raises a callback the host never wired.
+        var client = ThreeKilder();
+
+        var (cut, handovers) = RenderSelectable(client, b => b.Add(
+            c => c.MarkedDatasamlinger,
+            (IReadOnlyList<string>)[KildeSearch.MarkValue(KildeTwo, CollectionTwoA)]));
+
+        Assert.Empty(client.Fetched);
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.Equal("", BarLine(cut));
+
+        ExploreButton(cut).Click();
+
+        Assert.Empty(Assert.Single(handovers));
+    }
+
+    [Fact]
+    public void Marks_WhenTheAddressNamesRowsTheListHasNot_ThenNoneOfThemIsFetched()
+    {
+        // ?selectedDatasamling= is the first query key where an untrusted value becomes an outbound
+        // request, and the API counts its rate limit per address with helsedata's cluster reaching
+        // it as one. An id no row holds, or one the row says holds nothing, is answered unasked.
+        var client = ThreeKilder();
+
+        var (cut, _, _) = RenderMarkable(client, b => b.Add(
+            c => c.MarkedDatasamlinger,
+            (IReadOnlyList<string>)
+            [
+                KildeSearch.MarkValue(Guid.NewGuid(), Guid.NewGuid()),
+                KildeSearch.MarkValue(KildeThree, CollectionTwoA),
+            ]));
+
+        Assert.Empty(client.Fetched);
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__expanded"));
+
+        // Kept all the same, for the reason a tick the search has hidden is: the bar has to count
+        // what the address holds, or the reader has a selection they cannot undo.
+        Assert.Equal("2 datasamlinger valgt", BarLine(cut));
+    }
+
+    [Fact]
+    public void Marks_WhenTheAddressNamesMoreRowsThanTheCap_ThenOnlyTheFirstTwentyOpen()
+    {
+        // UrlMirror admits 500 values per key, and each distinct kilde among them used to be one
+        // sequential catalogue fetch on the visitor's circuit before the page settled. The marks
+        // past the cap are still held and still travel; only their drawers stay shut.
+        var rows = Enumerable
+            .Range(1, 25)
+            .Select(n => Row(new Guid($"000000{n:D2}-0000-0000-0000-000000000000"),
+                             $"Kilde {n}",
+                             datasamlinger: 2))
+            .ToArray();
+
+        var client = new DrawerClient(rows);
+
+        var (cut, _, _) = RenderMarkable(client, b => b.Add(
+            c => c.MarkedDatasamlinger,
+            (IReadOnlyList<string>)[.. rows.Select(row => KildeSearch.MarkValue(row.Id, CollectionOneA))]));
+
+        Assert.Equal(20, client.Fetched.Count);
+        Assert.Equal(20, cut.FindAll(".munin-explorer-kilder__expanded").Count);
+        Assert.Equal("25 datasamlinger valgt", BarLine(cut));
     }
 
     [Fact]
