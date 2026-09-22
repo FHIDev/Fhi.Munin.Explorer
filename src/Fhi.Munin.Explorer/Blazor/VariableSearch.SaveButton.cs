@@ -76,10 +76,11 @@ public partial class VariableSearch
         // the header lines up over the buttons. (Fhi.Metadata-q7i5e)
         builder.AddAttribute(2, "class", "munin-explorer-dataitem-main__save");
 
-        // Stiler's own square-button classes and nothing else. Filled rather than ghost: a ghost has
-        // no border or fill until hovered, so on every row it read as bold text. (Fhi.Metadata-q7i5e)
+        // Stiler's own square-button classes and nothing else. Ghost-blue rather than the filled
+        // variant, which drew a page of primary-weight controls; and rather than plain --ghost,
+        // whose --dark text is the row's own colour and so read as bold prose. (Fhi.Metadata-35w0p.64)
         builder.OpenElement(3, "button");
-        builder.AddAttribute(4, "class", "hd-button-square button-square--secondary");
+        builder.AddAttribute(4, "class", "hd-button-square button-square--ghost-blue");
         builder.AddAttribute(5, "type", "button");
         builder.AddAttribute(6, "id", SaveButtonId(v));
 
@@ -88,8 +89,8 @@ public partial class VariableSearch
         builder.AddAttribute(7, "aria-pressed", saved ? "true" : "false");
 
         // The accessible name says which variable, where the visible words cannot: a page of
-        // results is 25 buttons all reading "Lagre i liste", and a screen reader moving down them
-        // announces the same three words 25 times over. WCAG 4.1.2.
+        // results is a column of buttons all reading "Lagre i liste", and a screen reader moving
+        // down them announces the same three words once per row. WCAG 4.1.2.
         //
         // Two elements rather than an aria-label, which is the rule this package already wrote
         // down for the toggle in this same row: the words are ours and follow Language, the

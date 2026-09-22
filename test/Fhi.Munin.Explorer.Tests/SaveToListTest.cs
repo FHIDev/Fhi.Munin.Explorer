@@ -318,7 +318,7 @@ public class SaveToListTest : ExplorerTestContext
     public void Row_WhenEveryRowOffersToSave_ThenEachButtonNamesItsOwnVariable()
     {
         // Two rows, because the weak version of this assertion — "the button has an accessible
-        // name" — is satisfied by a constant label on all 25 of them, which is the same "Lagre i
+        // name" — is satisfied by a constant label on every row, which is the same "Lagre i
         // liste, Lagre i liste, Lagre i liste" a screen reader hears from the visible words alone.
         // Distinctness is what makes the assertion mean anything.
         var client = new ListClient(OnePage(
@@ -416,8 +416,8 @@ public class SaveToListTest : ExplorerTestContext
         // The other side of the fallback: it must not survive into the ordinary row, where the
         // visible name is the accessible one. An aria-label that stayed on would win over the
         // button's own content, so every disclosure on the page would announce as "Vis hele
-        // variabelen" — 25 identical names, and a speech-input user saying the words they can see
-        // would reach none of them (WCAG 2.5.3).
+        // variabelen" — one name repeated down the page, and a speech-input user saying the words
+        // they can see would reach none of them (WCAG 2.5.3).
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
         var toggle = cut.Find("button.munin-explorer-dataitem-main__name");
@@ -930,18 +930,21 @@ public class SaveToListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SaveButton_WhenDrawnInEitherState_ThenItIsFilledSoItReadsAsAButtonBeforeItIsHovered()
+    public void SaveButton_WhenDrawnInEitherState_ThenItIsGhostBlueSoAPageDoesNotReadAsManyPrimaryActions()
     {
-        // A ghost button has no border and no fill until hovered, so on every row it read as bold
-        // text. The width rule hangs on the cell's class, so the cell keeps it in both states.
+        // The filled variant is a primary-weight treatment, and this button is drawn once per row.
+        // A class string is all bUnit can see: that ghost-blue's --primary text is affordance
+        // enough without a border is a judgement, recorded in the fragment. (Fhi.Metadata-35w0p.64)
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
-        Assert.Equal("hd-button-square button-square--secondary", SaveButton(cut).ClassName);
+        Assert.Equal("hd-button-square button-square--ghost-blue", SaveButton(cut).ClassName);
 
         SaveButton(cut).Click();
 
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
-        Assert.Equal("hd-button-square button-square--secondary", SaveButton(cut).ClassName);
+        Assert.Equal("hd-button-square button-square--ghost-blue", SaveButton(cut).ClassName);
+
+        // The width rule hangs on the cell's class, so the cell keeps it in both states.
         Assert.Equal("munin-explorer-dataitem-main__save", SaveButton(cut).ParentElement!.ClassName);
     }
 
