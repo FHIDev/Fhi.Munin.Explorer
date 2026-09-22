@@ -1,7 +1,10 @@
 category: Added
 - **Every column of the variable table's header now sorts.** Kode, Datatype, Status and
   Dataperiode join Navn, Kilde, Datasamling and Variabelgruppe, so `SortField` gains `Code`,
-  `DataType`, `Status` and `DataPeriod` and the API accepts all four. Half a table of headers
+  `DataType`, `Status` and `DataPeriod`. **Their four wire tokens need a Munin API carrying
+  Fhi.Metadata-0ayti**; an API older than that does not recognise them and falls back to its own
+  default order silently, leaving the header announcing an ordering the list is not in. Half a
+  table of headers
   responding to a press with nothing to tell the two halves apart is worse than none of them
   responding, which is why the four were never an optional half of this.
   Dataperiode orders by the START of the period the data covers — not by the range as it is

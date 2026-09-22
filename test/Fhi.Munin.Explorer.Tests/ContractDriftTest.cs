@@ -40,6 +40,40 @@ public class ContractDriftTest
     }
 
     [LiveApiFact]
+    public async Task VariableSort_WhenEveryFieldIsAskedForFromTheLiveApi_ThenItsTokenIsHonouredRatherThanFallenBackFrom()
+    {
+        using var api = LiveApiConnection.Open();
+
+        // Silent by construction: the API takes `sort` as free text and answers 200 in its DEFAULT
+        // order for a token it does not know, so a member whose token is misspelled — or whose API
+        // half is merged but undeployed — reorders nothing while the header says it did.
+        var fallback = await OrderAsync(SortField.Default);
+
+        // Both directions together is what tells a fallback from a real order: an unrecognised token
+        // gives the default order in each, and a key the API really sorts on cannot match the
+        // default one ascending AND descending at once.
+        foreach (var field in Enum.GetValues<SortField>().Where(field => field != SortField.Default))
+        {
+            Assert.True(
+                await OrderAsync(field) != fallback,
+                $"Sorting by {field} came back in the API's default order in both directions, which "
+                + "is exactly what an unrecognised sort token does. Either the token "
+                + "MuninExplorerClient sends for it is not one this API accepts, or the API half "
+                + "that accepts it is not deployed here yet.");
+        }
+
+        async Task<string> OrderAsync(SortField field)
+        {
+            var ascending = await api.Client.SearchVariablesAsync(
+                null, pageSize: 25, sort: field, direction: SortDirection.Ascending);
+            var descending = await api.Client.SearchVariablesAsync(
+                null, pageSize: 25, sort: field, direction: SortDirection.Descending);
+
+            return string.Join(",", ascending.Items.Concat(descending.Items).Select(v => v.Code));
+        }
+    }
+
+    [LiveApiFact]
     public async Task Filters_WhenReadFromTheLiveApi_ThenTheContractStillFitsIt()
     {
         using var api = LiveApiConnection.Open();

@@ -338,8 +338,8 @@ public class VariableSearchTest : ExplorerTestContext
 
     // ---------------------------------------------------------------------------------
     // Sorting. Runa sorts by clicking a column header, and so does this: one press per
-    // column that says something about the variable, all eight of them since the API
-    // learned the last four tokens. The rules are Runa's — the API's own default ascending
+    // column that says something about the variable, all eight of them, the last four
+    // from Fhi.Metadata-0ayti on. The rules are Runa's — the API's own default ascending
     // to start with, the active field reverses, and any change goes back to page one.
     // Which column sorts by WHAT is the API's business and is asserted against the tokens
     // sent, in MuninExplorerClientTest; the cases here are about the row of headers.
@@ -391,13 +391,11 @@ public class VariableSearchTest : ExplorerTestContext
         // CAN fall behind the enum — this count is what catches it. A member added to SortField
         // with no cell to press it fails here, and the fix is a cell rather than a longer list.
         //
-        // Every column on first, because two of the eight start off: Kode is seeded hidden and
-        // Status follows the historical filter until pressed. Counting the default state would
-        // pin six against eight and say nothing about either.
+        // Every column on first: some start off, and counting the default state would pin a
+        // smaller number against the enum's and say nothing about either.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        ToggleColumn(cut, "Kode");
-        ToggleColumn(cut, "Status");
+        TurnEveryColumnOn(cut);
 
         Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
     }
@@ -452,8 +450,7 @@ public class VariableSearchTest : ExplorerTestContext
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
-        ToggleColumn(cut, "Kode");
-        ToggleColumn(cut, "Status");
+        TurnEveryColumnOn(cut);
 
         var pressed = new List<SortField>();
 
@@ -484,8 +481,7 @@ public class VariableSearchTest : ExplorerTestContext
         // cell's role is the part of it that IS asserted, right here.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        ToggleColumn(cut, "Kode");
-        ToggleColumn(cut, "Status");
+        TurnEveryColumnOn(cut);
 
         // Navn is the column the list arrives sorted on, so a first press there REVERSES rather
         // than starting a new ordering. One press elsewhere first puts every label in the loop on
@@ -517,7 +513,45 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Sort_Always_ThenEveryColumnHeaderIsABareButtonInTheTabOrder()
+    public void Sort_WhenEachColumnIsPressedInTurn_ThenTheAnnouncementNamesThatColumnsOwnWord()
+    {
+        // Texts.FieldLabel is a second switch over the members the header row writes out by hand.
+        // A MISSING arm throws during the render and is caught above; a WRONG one — the one-token
+        // Status => FieldDataType — renders, and announces another column's word to a screen reader.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        TurnEveryColumnOn(cut);
+
+        // Navn is left out on purpose: it orders by SortField.Default, which is announced as
+        // "Standard" rather than as the word over the column. FieldLabel's remarks say why.
+        foreach (var label in new[]
+                 {
+                     "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"
+                 })
+        {
+            ClickSort(cut, label);
+
+            Assert.Equal(label, AnnouncedSortField(cut));
+        }
+    }
+
+    /// <summary>The field the live region says the list is ordered by, out of "…, sortert på X, Y".</summary>
+    private static string AnnouncedSortField(IRenderedComponent<VariableSearch> cut)
+    {
+        const string Names = "sortert på ";
+
+        var line = StatusLine(cut);
+        var at = line.IndexOf(Names, StringComparison.Ordinal);
+
+        Assert.True(at >= 0, $"The status line named no sort field at all: '{line}'");
+
+        var field = line[(at + Names.Length)..];
+
+        return field[..field.IndexOf(',')];
+    }
+
+    [Fact]
+    public void Render_WhenEveryColumnIsOnScreen_ThenEveryColumnHeaderIsABareButtonInTheTabOrder()
     {
         // WCAG 2.1.1, and the half of it a render tree can actually answer. Enter and Space on a
         // <button> are the browser's own activation, so what has to hold here is that nothing
@@ -527,8 +561,7 @@ public class VariableSearchTest : ExplorerTestContext
         // pass every other case in this file and be unreachable without a mouse.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        ToggleColumn(cut, "Kode");
-        ToggleColumn(cut, "Status");
+        TurnEveryColumnOn(cut);
 
         Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
 
@@ -893,6 +926,20 @@ public class VariableSearchTest : ExplorerTestContext
         var box = ColumnToggle(cut, label);
 
         box.Change(!Ticked(box));
+    }
+
+    /// <summary>Every column the picker has not already got on screen.</summary>
+    /// <remarks>
+    /// Named rather than held, since each tick re-renders the picker and a node carried across
+    /// that render is stale. Swept rather than by name because <see cref="ToggleColumn"/> toggles
+    /// rather than ensures-on, so naming today's two would hide one the day a default moves.
+    /// </remarks>
+    private static void TurnEveryColumnOn(IRenderedComponent<VariableSearch> cut)
+    {
+        foreach (var label in ColumnToggles(cut).Where(box => !Ticked(box)).Select(ColumnName).ToList())
+        {
+            ToggleColumn(cut, label);
+        }
     }
 
     [Fact]
@@ -1339,6 +1386,39 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal("descending",
                      cut.Find(".munin-explorer-dataitem-header__source").GetAttribute("aria-sort"));
+    }
+
+    [Fact]
+    public void Columns_WhenTheFilterTakesTheSortedStatusColumnAway_ThenTheOrderingStaysAndIsStillAnnounced()
+    {
+        // The same decision as the picker's route above, by the one route that is not the picker's:
+        // until the reader ticks Status themselves it follows «Vis historiske», so it is the only
+        // sorted header a control that says nothing about columns can take away.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Vis historiske");
+        ClickSort(cut, "Status");
+
+        var calls = client.SearchCalls;
+
+        ClickFacet(cut, "Vis historiske");
+
+        // The header goes with the filter, aria-sort and the arrow with it.
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__status"));
+        Assert.Empty(cut.FindAll("[aria-sort]"));
+
+        // The ordering does not: sorting is the API's, so dropping it here would reorder the list
+        // underneath a reader who only asked to hide historical variables.
+        Assert.Equal(SortField.Status, client.LastSort);
+        Assert.Contains("sortert på Status", StatusLine(cut));
+
+        // And the way back is the facet that took it away, not the picker.
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.Equal("ascending",
+                     cut.Find(".munin-explorer-dataitem-header__status").GetAttribute("aria-sort"));
+        Assert.True(client.SearchCalls > calls);
     }
 
     [Fact]
@@ -3076,8 +3156,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         // Ahead of the results, otherwise it skips nothing.
         var markup = cut.Markup;
-        // Ahead of the ROWS, not ahead of the header: the header holds four sort buttons and is
-        // worth tabbing through. It is the twenty-five variables the link exists to skip.
+        // Ahead of the ROWS, not ahead of the header: the header holds a sort button per column on
+        // screen and is worth tabbing through. It is the twenty-five variables the link skips.
         Assert.True(markup.IndexOf("munin-explorer-skiplink-pagination", StringComparison.Ordinal)
                     < markup.IndexOf("<ul class=\"munin-explorer-data-list\"", StringComparison.Ordinal));
     }
