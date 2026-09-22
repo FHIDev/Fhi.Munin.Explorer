@@ -308,24 +308,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>
     /// The years a variable has data for, written the way the result rows and the detail panel
-    /// write it — the same words as the explorer's own period column, so a variable does not
-    /// read differently here than where it was saved from. Only the words: the explorer draws a
-    /// block with a coverage bar beside it, and this is one cell in a row.
+    /// write it — the same helper, so a variable does not read differently here than where it was
+    /// saved from. Only the words: the explorer draws a coverage bar beside them, this is a cell.
     /// </summary>
-    private string? Period(VariableListItem item)
-    {
-        // Null rather than "Ikke oppgitt": the cell writes that itself, the way it does for every
-        // other column the catalogue has no value for.
-        if (item.DataFrom is null && item.DataTo is null)
-        {
-            return null;
-        }
-
-        var from = item.DataFrom is { } f ? PeriodDate(f) : "?";
-        var to = item.DataTo is { } t ? PeriodDate(t) : T.Ongoing;
-
-        return $"{from} – {to}";
-    }
+    /// <remarks>
+    /// Null for neither date rather than "Ikke oppgitt": the cell writes that itself, the way it
+    /// does for every other column the catalogue has no value for.
+    /// </remarks>
+    private string? Period(VariableListItem item) =>
+        CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T, DateWidth.Narrow);
 
     /// <summary>
     /// What the row calls its variable — its name, or the sentence shown in place of one that is
@@ -473,15 +464,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// </remarks>
     private static string? CatalogueLang(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : "no";
-
-    /// <summary>One end of a data period, in the reader's language.</summary>
-    /// <remarks>
-    /// The same helper and the same width the explorer's own period column uses, so a saved
-    /// variable's dates are FORMATTED as they were in the results it was saved from. Joining them
-    /// is still four decisions in three copies — Fhi.Metadata-msax9.
-    /// </remarks>
-    private string PeriodDate(DateTimeOffset date) =>
-        CatalogueDate.Day(date, Language, DateWidth.Narrow);
 
     /// <summary>
     /// The API's own answer, not ours. The client already derives it when the envelope omits it

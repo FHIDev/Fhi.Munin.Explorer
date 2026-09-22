@@ -853,26 +853,4 @@ public partial class VariableSearch
 
         await NotifyPageChangedAsync();
     }
-
-    private static string? Period(VariableSummary v) => Period(v.DataFrom, v.DataTo);
-
-    /// <summary>
-    /// The years a variable has data for, as the cards and the detail panel both write it.
-    /// </summary>
-    /// <remarks>
-    /// Shared so a row and the panel opened from it cannot word the same period differently — the
-    /// two dates come from different payloads, but the sentence they are written into is one.
-    /// </remarks>
-    private static string? Period(DateTimeOffset? dataFrom, DateTimeOffset? dataTo)
-    {
-        var from = dataFrom?.Year.ToString();
-        var to = dataTo?.Year.ToString();
-        return (from, to) switch
-        {
-            (null, null) => null,
-            (not null, null) => $"{from}–",
-            (null, not null) => $"–{to}",
-            _ => from == to ? from! : $"{from}–{to}"
-        };
-    }
 }

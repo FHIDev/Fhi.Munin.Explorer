@@ -1349,22 +1349,20 @@ public sealed partial class VariableSearch : ComponentBase
     /// </remarks>
     private RenderFragment PeriodBar(DateTimeOffset? from, DateTimeOffset? to) => builder =>
     {
-        if (from is null && to is null)
+        if (PeriodText(from, to) is not { } range)
         {
             builder.AddContent(0, T.NotSpecified);
             return;
         }
 
-        var ongoing = to is null;
+        var ongoing = CatalogueDate.Written(to) is null;
 
         builder.OpenElement(1, "div");
         builder.AddAttribute(2, "class", "munin-explorer-period");
 
         builder.OpenElement(3, "p");
         builder.AddAttribute(4, "class", "munin-explorer-period__range");
-        builder.AddContent(5, from is { } f ? PeriodDate(f) : "?");
-        builder.AddContent(6, " – ");
-        builder.AddContent(7, to is { } t ? PeriodDate(t) : T.Ongoing);
+        builder.AddContent(5, range);
         builder.CloseElement();
 
         builder.OpenElement(8, "div");
@@ -1388,7 +1386,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// <summary>The share of the variable's lifetime its data covers, as a whole percent.</summary>
     private static int PeriodShare(DateTimeOffset? from, DateTimeOffset? to)
     {
-        if (from is not { } start || to is not { } end)
+        if (CatalogueDate.Written(from) is not { } start || CatalogueDate.Written(to) is not { } end)
         {
             return 100;
         }
@@ -1403,15 +1401,6 @@ public sealed partial class VariableSearch : ComponentBase
 
         return Math.Clamp((int)Math.Round(covered / lifetime * 100), 5, 100);
     }
-
-    /// <summary>One end of a data period, written as the variable's own page writes it.</summary>
-    /// <remarks>
-    /// One END, and only its format: it read as month and year here and as a day there
-    /// (Fhi.Metadata-ufmop). How the two are joined is still this surface's own and disagrees with
-    /// <see cref="CatalogueDate.Period"/> over a missing start — Fhi.Metadata-msax9 settles that.
-    /// </remarks>
-    private string PeriodDate(DateTimeOffset date) =>
-        CatalogueDate.Day(date, Language, DateWidth.Narrow);
 
     /// <summary>
     /// The variable's curated properties, in the order the catalogue puts them.
@@ -1786,16 +1775,12 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>The dataperiode in one line, or null where the catalogue has neither date.</summary>
     /// <remarks>
-    /// Word for word what <see cref="PeriodBar"/> writes above its bar, including "?" for a missing
-    /// start and the word for a period still running, so the column and the open panel never
-    /// describe one variable's period two ways. Null rather than a dash when both dates are
-    /// missing: the cell then says "Ikke oppgitt" in plain sight, which is what every other column
-    /// does with a value the catalogue does not have.
+    /// The one helper every surface joins a period with, so the column, the bar above it and the
+    /// variable's own page cannot word one period three ways (Fhi.Metadata-msax9). Null rather
+    /// than a dash for neither date: the cell writes "Ikke oppgitt" itself, as every column does.
     /// </remarks>
     private string? PeriodText(DateTimeOffset? from, DateTimeOffset? to) =>
-        from is null && to is null
-            ? null
-            : $"{(from is { } f ? PeriodDate(f) : "?")} – {(to is { } t ? PeriodDate(t) : T.Ongoing)}";
+        CatalogueDate.Period(from, to, Language, T, DateWidth.Narrow);
 
     /// <summary>
     /// One labelled item in the metadata line.
