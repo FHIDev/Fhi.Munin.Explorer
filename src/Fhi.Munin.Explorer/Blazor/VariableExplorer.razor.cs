@@ -168,9 +168,16 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     /// <remarks>
     /// The search, the facets and the open variable travel with it on purpose: leaving the
     /// instrument puts the reader back where they came from, and none of it was torn down.
+    /// <para>
+    /// None at all where the host declined <c>instrumentId</c>: this address is that one key, so
+    /// <see cref="Linkable"/> would strip it and leave every name an <c>&lt;a&gt;</c> back to the
+    /// page the reader is already on. Null is what makes them words instead.
+    /// </para>
     /// </remarks>
-    private Func<Guid, string> InstrumentHref => _instrumentAddress ??= id =>
-        _mirror.Address(Linkable(_state.ToState() with { SelectedInstrumentId = id }).ToQueryString());
+    private Func<Guid, string>? InstrumentHref => Declined("instrumentId")
+        ? null
+        : _instrumentAddress ??= id =>
+            _mirror.Address(Linkable(_state.ToState() with { SelectedInstrumentId = id }).ToQueryString());
 
     private Func<Guid, string>? _instrumentVariablesAddress;
 

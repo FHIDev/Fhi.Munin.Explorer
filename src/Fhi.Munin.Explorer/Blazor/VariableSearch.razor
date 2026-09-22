@@ -86,11 +86,12 @@
          role="region"
          aria-labelledby="@InstrumentHeadingId"
          aria-busy="@InstrumentBusy">
-        @* Named for what leaving really uncovers rather than for the list, because this view is
-           free to cover either: a way out must not promise a page it does not go to. *@
+        @* The list, which is the only thing this view ever covers: it opens from the address bar
+           alone, and the press that would put the whole variable underneath is not on the page
+           while it is open. A way out must not promise a page it does not go to. *@
         <button class="hd-button-square button-square--ghost-blue margin-bottom"
                 type="button"
-                @onclick="CloseInstrumentAsync">@InstrumentExit</button>
+                @onclick="CloseInstrumentAsync">@T.BackToVariables</button>
 
         @if (_instrument is { } instrument)
         {
@@ -929,7 +930,7 @@ else
                                                     @if (detail.Instruments is { Count: > 0 } instruments)
                                                     {
                                                         <div>
-                                                            <dt class="headline headline-xxs margin--none">@T.FieldInstrument</dt>
+                                                            <dt class="headline headline-xxs margin--none">@T.FieldInstruments</dt>
                                                             <dd>@InstrumentList(instruments)</dd>
                                                         </div>
                                                     }

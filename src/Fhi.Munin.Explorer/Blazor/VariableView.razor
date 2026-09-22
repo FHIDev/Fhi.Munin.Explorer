@@ -139,7 +139,7 @@
             @if (Drawn(DetailSectionIds.Instruments))
             {
                 <DetailSection Id="@DetailSectionIds.Instruments">
-                    @DetailBlocks.Heading(BlockLevel, T.FieldInstrument, "headline headline-s")
+                    @DetailBlocks.Heading(BlockLevel, T.FieldInstruments, "headline headline-s")
                     @InstrumentBlock.Write(Instruments, Reader, InstrumentHref, "munin-explorer-whole__list")
                 </DetailSection>
             }

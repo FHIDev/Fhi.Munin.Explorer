@@ -177,9 +177,8 @@ public sealed partial class VariableView : ComponentBase
 
     /// <summary>The instruments this view lists, which is what its contents entry answers to.</summary>
     /// <remarks>
-    /// The payload's own list, unlike <see cref="Datasamlinger"/> and <see cref="Variabelgrupper"/>
-    /// beside it: an instrument carries a code as well as a name, so one the catalogue left unnamed
-    /// still has something to draw rather than an empty bullet.
+    /// Read straight off the payload, unlike <see cref="Datasamlinger"/> and
+    /// <see cref="Variabelgrupper"/> beside it, which are derived.
     /// </remarks>
     private IReadOnlyList<InstrumentReference> Instruments => Variable?.Instruments ?? [];
 
@@ -351,7 +350,7 @@ public sealed partial class VariableView : ComponentBase
         toc.Add(DataPeriod is not null, DetailSectionIds.DataPeriod, T.FieldDataPeriod);
         toc.Add(DataTypeLabel is not null, DetailSectionIds.DataType, T.FieldDataType);
         toc.Add(Variabelgrupper.Count > 0, DetailSectionIds.VariableGroups, T.FieldVariableGroups);
-        toc.Add(Instruments.Count > 0, DetailSectionIds.Instruments, T.FieldInstrument);
+        toc.Add(Instruments.Count > 0, DetailSectionIds.Instruments, T.FieldInstruments);
         toc.Add(Datasamlinger.Count > 0, DetailSectionIds.DataCollections, T.HeadingDataCollections);
 
         return toc;

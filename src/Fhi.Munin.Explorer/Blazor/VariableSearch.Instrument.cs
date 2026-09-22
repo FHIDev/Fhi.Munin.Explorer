@@ -65,11 +65,6 @@ public partial class VariableSearch
     // behind it nor the variable that linked here are stale because of it.
     private string? _instrumentError;
 
-    // Its own generation, for the reason the detail and the owner panel have one: leaving an
-    // instrument and opening another is two calls, and the abandoned first must not report itself
-    // into the second one's view.
-    private int _instrumentGeneration;
-
     // Not under the munin-explorer prefix, exactly as the whole variable's ids are not: these are
     // element ids rather than class names, and the prefix carries an inventory the package owes a
     // stylesheet rule for.
@@ -78,14 +73,6 @@ public partial class VariableSearch
     private string InstrumentHeadingId => $"munin-instrument-heading-{_instance}";
 
     private string InstrumentBusy => _instrumentLoading ? "true" : "false";
-
-    /// <summary>What the way out of the instrument says, read off what lies under it.</summary>
-    /// <remarks>
-    /// Closing clears the instrument and nothing else, so the words follow the view underneath
-    /// rather than assume the list. Today that is always the list, because a variable's instruments
-    /// are links and the whole variable does not survive the navigation one costs.
-    /// </remarks>
-    private string InstrumentExit => _wholeVariable ? T.BackToVariable : T.BackToVariables;
 
     /// <summary>What the instrument view's status line says: that it is loading, or why it is empty.</summary>
     private string? InstrumentStatus => _instrumentLoading ? T.InstrumentLoading : _instrumentError;
@@ -135,13 +122,11 @@ public partial class VariableSearch
     /// </remarks>
     private async Task CloseInstrumentAsync()
     {
+        // The id is what the view is drawn on, so clearing it is also what disowns a fetch still in
+        // flight: its answer lands in fields nothing reads once the id is gone.
         _instrumentId = null;
         _instrument = null;
         _instrumentError = null;
-
-        // Closing is what disowns a fetch still in flight: the id it was made for can come back,
-        // the generation it claimed cannot.
-        _instrumentGeneration++;
         _instrumentLoading = false;
 
         await RaiseAsync<Guid?>(SelectedInstrumentIdChanged, null, Log);
@@ -149,15 +134,12 @@ public partial class VariableSearch
 
     /// <summary>Fetch one instrument into the open view.</summary>
     /// <remarks>
-    /// Guarded per call rather than per id, for the reason <see cref="LoadDetailAsync"/> is. Null is
-    /// "the catalogue does not publish this instrument" — unknown, disabled, or holding no variable
-    /// the explorer shows — rather than a failure, so it is reported as not found rather than as
-    /// advice to try again.
+    /// No generation guard, unlike <see cref="LoadDetailAsync"/>: <see cref="SelectedInstrumentId"/>
+    /// is read once, so this runs at most once and there is no second call for an abandoned first to
+    /// report itself into. Null is "the catalogue does not publish this instrument", not a failure.
     /// </remarks>
     private async Task LoadInstrumentAsync(Guid id)
     {
-        var generation = ++_instrumentGeneration;
-
         _instrument = null;
         _instrumentError = null;
         _instrumentLoading = true;
@@ -167,11 +149,6 @@ public partial class VariableSearch
         {
             var instrument = await Client.GetInstrumentAsync(id);
 
-            if (_instrumentGeneration != generation)
-            {
-                return;
-            }
-
             _instrument = instrument;
             _instrumentError = instrument is null ? T.InstrumentMissing : null;
         }
@@ -179,26 +156,17 @@ public partial class VariableSearch
         {
             Log?.LogWarning(ex, "the rate limiter refused instrument {InstrumentId}", id);
 
-            if (_instrumentGeneration == generation)
-            {
-                _instrumentError = T.RateLimitError;
-            }
+            _instrumentError = T.RateLimitError;
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not load instrument {InstrumentId}", id);
 
-            if (_instrumentGeneration == generation)
-            {
-                _instrumentError = T.InstrumentError;
-            }
+            _instrumentError = T.InstrumentError;
         }
         finally
         {
-            if (_instrumentGeneration == generation)
-            {
-                _instrumentLoading = false;
-            }
+            _instrumentLoading = false;
         }
     }
 }

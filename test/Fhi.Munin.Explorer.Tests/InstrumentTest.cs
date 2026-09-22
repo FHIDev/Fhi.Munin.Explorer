@@ -7,6 +7,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -194,8 +195,9 @@ public class InstrumentTest : ExplorerTestContext
         // one key added, and nothing of theirs erased.
         Assert.Equal($"/variabler?utm_source=nyhetsbrev&instrumentId={Sf36}", link.GetAttribute("href"));
 
-        Assert.Equal("Instrument", cut.Find($"#{DetailSectionIds.Instruments} .headline").TextContent.Trim());
-        Assert.Contains("Instrument", ContentsEntries(cut));
+        // Plural, as the sections for the other two lists of references beside it are.
+        Assert.Equal("Instrumenter", cut.Find($"#{DetailSectionIds.Instruments} .headline").TextContent.Trim());
+        Assert.Contains("Instrumenter", ContentsEntries(cut));
     }
 
     [Fact]
@@ -220,7 +222,7 @@ public class InstrumentTest : ExplorerTestContext
         var cut = RenderVariableView(Variable());
 
         Assert.Empty(cut.FindAll($"#{DetailSectionIds.Instruments}"));
-        Assert.DoesNotContain("Instrument", ContentsEntries(cut));
+        Assert.DoesNotContain("Instrumenter", ContentsEntries(cut));
     }
 
     [Fact]
@@ -252,36 +254,86 @@ public class InstrumentTest : ExplorerTestContext
         VariableDetail? detail = null, InstrumentDetail? instrument = null)
         : EmptyMuninExplorerClient, IMuninExplorerClient
     {
+        private readonly List<TaskCompletionSource<InstrumentDetail?>> _stalls = [];
+
+        private readonly TaskCompletionSource<Page<VariableSummary>> _stalledSearch = new();
+
+        /// <summary>Refuse every instrument fetch with this instead of answering it.</summary>
+        public Exception? Refusal { get; set; }
+
+        /// <summary>
+        /// Never answer an instrument fetch, so a test can decide when — and whether — it lands.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Task.FromResult{TResult}"/> below never yields, so without this no test here
+        /// renders while the fetch is in flight: the loading sentence and the <c>aria-busy</c> the
+        /// region advertises were both deletable with the whole suite green.
+        /// </remarks>
+        public bool Stall { get; set; }
+
+        /// <summary>Never answer the result list, which the instrument fetch queues behind.</summary>
+        /// <remarks>
+        /// <c>OpenInitialInstrumentAsync</c> is the last thing <c>OnInitializedAsync</c> does, so
+        /// this is the render a reader opening <c>?instrumentId=</c> sees first — and the one the
+        /// region used to spend claiming nothing was loading.
+        /// </remarks>
+        public bool StallSearch { get; set; }
+
+        /// <summary>Answer the oldest instrument fetch still hanging.</summary>
+        public void AnswerStalled(InstrumentDetail? answer) => Oldest().TrySetResult(answer);
+
+        private TaskCompletionSource<InstrumentDetail?> Oldest() =>
+            _stalls.First(stall => !stall.Task.IsCompleted);
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(new Page<VariableSummary>
-            {
-                Items =
-                [
-                    new VariableSummary
-                    {
-                        Id = VariableId,
-                        Code = "V_ALS.F1.ALSFRSR1TALE",
-                        PreferredTerm = "1. Tale",
-                        KildeName = "Als registeret",
-                    },
-                ],
-                TotalCount = 1,
-                PageNumber = 1,
-                Size = pageSize,
-                TotalPages = 1,
-            });
+            StallSearch
+                ? _stalledSearch.Task
+                : Task.FromResult(new Page<VariableSummary>
+                {
+                    Items =
+                    [
+                        new VariableSummary
+                        {
+                            Id = VariableId,
+                            Code = "V_ALS.F1.ALSFRSR1TALE",
+                            PreferredTerm = "1. Tale",
+                            KildeName = "Als registeret",
+                        },
+                    ],
+                    TotalCount = 1,
+                    PageNumber = 1,
+                    Size = pageSize,
+                    TotalPages = 1,
+                });
 
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
             Task.FromResult(detail);
 
         public Task<InstrumentDetail?> GetInstrumentAsync(
-            Guid id, CancellationToken cancellationToken = default) =>
-            Task.FromResult(instrument);
+            Guid id, CancellationToken cancellationToken = default)
+        {
+            if (Refusal is { } refusal)
+            {
+                // A faulted task rather than a throw from the call itself: that is the shape an
+                // HttpClient failure arrives in, and it is the await that has to catch it.
+                return Task.FromException<InstrumentDetail?>(refusal);
+            }
+
+            if (Stall)
+            {
+                // Continuations inline deliberately - see AnswerStalledCodes in VariableExplorerTest.
+                var stall = new TaskCompletionSource<InstrumentDetail?>();
+                _stalls.Add(stall);
+
+                return stall.Task;
+            }
+
+            return Task.FromResult(instrument);
+        }
     }
 
     private IRenderedComponent<VariableSearch> RenderSearch(
@@ -323,7 +375,7 @@ public class InstrumentTest : ExplorerTestContext
 
         cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle").Click();
 
-        Assert.DoesNotContain("Instrument", cut.Find(".munin-explorer-detail").TextContent);
+        Assert.DoesNotContain("Instrumenter", cut.Find(".munin-explorer-detail").TextContent);
     }
 
     // -----------------------------------------------------------------------
@@ -460,6 +512,126 @@ public class InstrumentTest : ExplorerTestContext
     }
 
     // -----------------------------------------------------------------------
+    // The instrument page while it is still on its way, and when it never arrives
+
+    [Fact]
+    public void InstrumentPage_WhileTheFetchIsInFlight_ThenTheRegionSaysSoRatherThanStandingBlank()
+    {
+        var cut = RenderSearch(
+            new InstrumentClient(instrument: Instrument()) { Stall = true }, instrumentId: Sf36);
+
+        var region = cut.Find(".munin-explorer-drilldown");
+        var status = region.QuerySelector("p[role=status]")!;
+
+        Assert.Equal("true", region.GetAttribute("aria-busy"));
+        Assert.Equal(Texts.For("no").InstrumentLoading, status.TextContent.Trim());
+
+        // Muted rather than the warning box: nothing has gone wrong yet.
+        Assert.Equal("caption", status.GetAttribute("class"));
+        Assert.Empty(cut.FindComponents<InstrumentView>());
+    }
+
+    [Fact]
+    public void InstrumentPage_WhileTheListBeneathItIsStillFetching_ThenItIsAlreadyBusy()
+    {
+        // The first paint a reader opening ?instrumentId= really sees. OpenInitialInstrumentAsync is
+        // the last thing OnInitializedAsync does, so without the flag raised beside the id the
+        // region stood blank and aria-busy="false" for the whole of the search round trip.
+        var cut = RenderSearch(
+            new InstrumentClient(instrument: Instrument()) { StallSearch = true }, instrumentId: Sf36);
+
+        var region = cut.Find(".munin-explorer-drilldown");
+
+        Assert.Equal("true", region.GetAttribute("aria-busy"));
+        Assert.Equal(
+            Texts.For("no").InstrumentLoading,
+            region.QuerySelector("p[role=status]")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task InstrumentPage_WhenTheReaderLeavesWhileItIsFetching_ThenTheAnswerStaysOffTheList()
+    {
+        // Leaving before the answer lands is the ordinary impatient press, and a drill-in that
+        // paints itself back over the rows the reader just returned to is what KildeSearchTest
+        // guards against for the sibling view.
+        var client = new InstrumentClient(instrument: Instrument()) { Stall = true };
+
+        var cut = RenderSearch(client, instrumentId: Sf36);
+
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+
+        await cut.InvokeAsync(() => client.AnswerStalled(Instrument()));
+
+        Assert.Empty(cut.FindAll("[id^=munin-instrument-]"));
+        Assert.Empty(cut.FindComponents<InstrumentView>());
+        Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list"));
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void InstrumentPage_WhenTheFetchIsThrottled_ThenItIsAWarningAndAdvisesTryingAgain(string language)
+    {
+        // A reader pressing through a run of instrument links is exactly the rhythm the per-address
+        // limiter counts, so a refusal by it is an expected outcome rather than a fault: Warning,
+        // and the same sentence every other throttled fetch here uses.
+        var (cut, entry) = Refusing(
+            new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30)), language);
+
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Equal(Texts.For(language).RateLimitError, status.TextContent.Trim());
+        Assert.Equal("infobox infobox--bg-yellow", status.GetAttribute("class"));
+
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.IsType<MuninExplorerRateLimitedException>(entry.Exception);
+        Assert.Contains(Sf36.ToString(), entry.Message, StringComparison.Ordinal);
+
+        // The list stays covered: what failed is this view, and the rows behind it are not stale.
+        Assert.Empty(cut.FindAll("ul.munin-explorer-data-list"));
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void InstrumentPage_WhenTheFetchThrows_ThenItIsAFaultAndSaysSoInTheSamePlace(string language)
+    {
+        var (cut, entry) = Refusing(new HttpRequestException("the API is down"), language);
+
+        var status = cut.Find(".munin-explorer-drilldown p[role=status]");
+
+        Assert.Equal(Texts.For(language).InstrumentError, status.TextContent.Trim());
+        Assert.Equal("infobox infobox--bg-yellow", status.GetAttribute("class"));
+
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.IsType<HttpRequestException>(entry.Exception);
+        Assert.Contains(Sf36.ToString(), entry.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The page opened on an instrument the API refuses, and the one entry that wrote.</summary>
+    private (IRenderedComponent<VariableSearch> Cut, LogEntry Entry) Refusing(
+        Exception refusal, string language)
+    {
+        var recorder = new RecordingLoggerProvider();
+
+        // Filtered to this package's categories, for the reason ExceptionLoggingTest filters:
+        // bUnit's own renderer logs through the same factory at Debug.
+        Services.AddLogging(b => b
+            .AddProvider(recorder)
+            .SetMinimumLevel(LogLevel.Trace)
+            .AddFilter((category, _) =>
+                category?.StartsWith("Fhi.Munin.Explorer", StringComparison.Ordinal) == true));
+
+        var cut = RenderSearch(
+            new InstrumentClient(instrument: Instrument()) { Refusal = refusal }, language,
+            instrumentId: Sf36);
+
+        return (cut, Assert.Single(recorder.Entries));
+    }
+
+    // -----------------------------------------------------------------------
     // The reader's language
 
     [Theory]
@@ -500,6 +672,54 @@ public class InstrumentTest : ExplorerTestContext
 
         Assert.Equal(expected, heading.TextContent.Trim());
         Assert.Equal(expectedLang, heading.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void InstrumentName_WhenTheCatalogueNamedItInNeitherLanguage_ThenTheCodeStandsInOnce()
+    {
+        // Four surfaces agree on one rule, and the one that broke printed the code as the heading
+        // and as the caption under it both. (Fhi.Metadata-w13lk)
+        var unnamed = Instrument() with
+        {
+            PreferredTerm = "",
+            AdditionalProperties = new Dictionary<string, string?> { ["Opphav"] = "RAND" },
+        };
+
+        var view = RenderSearch(new InstrumentClient(instrument: unnamed), instrumentId: Sf36)
+            .FindComponent<InstrumentView>();
+
+        var heading = view.Find(".munin-explorer-page__header .headline");
+
+        Assert.Equal("INS_SF36", heading.TextContent.Trim());
+
+        // A code is nobody's language, so it is left unmarked rather than read as Norwegian.
+        Assert.Null(heading.GetAttribute("lang"));
+        Assert.Empty(view.FindAll(".munin-explorer-page__header .caption"));
+
+        // The sticky bar repeats the page's name, and this page has none to repeat — where the
+        // named instrument carries the name and the code beside it.
+        Assert.Empty(view.FindAll(".munin-explorer-page__stuckbar"));
+
+        var bar = Render<InstrumentView>(b => b.Add(c => c.Instrument, Instrument()))
+            .Find(".munin-explorer-page__stuckbar-name");
+
+        Assert.Equal("Kortversjon 36", bar.QuerySelector("span")!.TextContent.Trim());
+        Assert.Equal("INS_SF36", bar.QuerySelector("small")!.TextContent.Trim());
+
+        // The list on the variable that links here falls back the same way, unmarked too.
+        var link = Assert.Single(InstrumentLinks(RenderVariableView(Variable(Reference(Sf36, "INS_SF36", "")))));
+
+        Assert.Equal("INS_SF36", link.TextContent.Trim());
+        Assert.Null(link.GetAttribute("lang"));
+
+        // And so does the trail step, which is the page's own name as the breadcrumb says it.
+        var trailed = Render<InstrumentView>(b => b
+            .Add(c => c.Instrument, unnamed)
+            .Add(c => c.Trail, [new DetailTrailStep("Variabler", "/variabler")]));
+
+        Assert.Equal(
+            ["Variabler", "INS_SF36"],
+            trailed.FindAll(".breadcrumbs__list-item").Select(step => step.TextContent.Trim()));
     }
 
     [Theory]
@@ -597,6 +817,32 @@ public class InstrumentTest : ExplorerTestContext
 
         Assert.Single(cut.FindComponents<InstrumentView>());
         Assert.Empty(cut.FindComponents<VariableView>());
+    }
+
+    [Fact]
+    public void Address_WhenTheHostDeclinesTheInstrumentKey_ThenTheNamesAreWordsRatherThanDeadLinks()
+    {
+        // The whole of an instrument's address is the one declinable key, so Linkable strips it and
+        // an href built anyway would be the page the reader is already on, carrying the host's own
+        // instrumentId back out. No address at all instead, which is what makes the names words.
+        Services.AddSingleton<IMuninExplorerClient>(
+            new InstrumentClient(Variable(Reference(Sf36, "INS_SF36", "Kortversjon 36"))));
+        Services.AddScoped<VariableListState>();
+        SetRendererInfo(new RendererInfo("Server", true));
+
+        Services.GetRequiredService<NavigationManager>()
+                .NavigateTo("http://localhost/variabler?instrumentId=vertens-egen");
+
+        var cut = Render<VariableExplorer>(b => b.Add(c => c.DeclinedKeys, ["instrumentId"]));
+
+        Assert.Null(cut.FindComponent<VariableSearch>().Instance.InstrumentHref);
+
+        cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle").Click();
+
+        var panel = cut.Find(".munin-explorer-detail");
+
+        Assert.Empty(panel.QuerySelectorAll("a[href*='instrumentId=']"));
+        Assert.Contains("Kortversjon 36", panel.TextContent);
     }
 
     [Fact]

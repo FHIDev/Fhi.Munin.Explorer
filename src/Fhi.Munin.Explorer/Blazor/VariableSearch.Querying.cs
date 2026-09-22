@@ -23,6 +23,11 @@ public partial class VariableSearch
         _page = Math.Max(Page, 1);
         _pageSize = PageSize;
 
+        // Raised here rather than by OpenInitialInstrumentAsync at the end of this method: the
+        // first paint of a page opened on ?instrumentId= would otherwise draw the region blank and
+        // aria-busy="false" for the whole of the round trip below.
+        _instrumentLoading = _instrumentId is not null;
+
         // Not SearchAsync: that is what a person pressing the search button does, and it starts by
         // throwing away the page number because a new search renumbers everything. Restoring a
         // shared link is the opposite — the page is the part worth keeping.

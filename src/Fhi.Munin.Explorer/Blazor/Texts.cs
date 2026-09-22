@@ -53,11 +53,6 @@ internal sealed record Texts(
     // The way out of the kilde view, back to the list of variables.
     string BackToVariables,
 
-    // And the way out of a view the reader opened from one variable rather than from the list:
-    // the instrument page, which covers whichever of the two lies under it, so the button has to
-    // name the one it will really land on.
-    string BackToVariable,
-
     // The other way out of the same view: back to the list, narrowed to what the reader was
     // just looking at. Worded as what happens to the list rather than as where the button
     // goes, because "Tilbake til variabler" beside it already claims the plain destination
@@ -182,12 +177,10 @@ internal sealed record Texts(
     string EyebrowVariable,
     string EyebrowInstrument,
 
-    // The instrument surfaces. The sentences below the label are what the drill-in says for itself;
-    // a refusal by the rate limiter says RateLimitError instead, as every other fetch here does.
-    // AllVariablesInInstrument is its own member rather than AllVariablesInDatasamling reused, for
-    // the reason HeadingVariables gives — two surfaces that happen to share a sentence must be
-    // free to be reworded apart.
-    string FieldInstrument,
+    // The instrument surfaces. A refusal by the rate limiter says RateLimitError instead, as every
+    // other fetch here does; AllVariablesInInstrument is its own member rather than
+    // AllVariablesInDatasamling reused, for the reason HeadingVariables gives.
+    string FieldInstruments,
     string InstrumentLoading,
     string InstrumentMissing,
     string InstrumentError,
@@ -973,7 +966,6 @@ internal sealed record Texts(
         NoValue: "Ingen",
         SortDefault: "Standard",
         BackToVariables: "← Tilbake til variabler",
-        BackToVariable: "← Tilbake til variabelen",
         ShowKildeVariables: "Vis bare variabler fra denne datakilden",
         ShowDatasamlingVariables: "Vis bare variabler fra denne datasamlingen",
         ViewDatasamlingKilde: "Vis datakilden",
@@ -1049,7 +1041,7 @@ internal sealed record Texts(
         EyebrowDatasamling: "Datasamling",
         EyebrowVariable: "Variabel",
         EyebrowInstrument: "Instrument",
-        FieldInstrument: "Instrument",
+        FieldInstruments: "Instrumenter",
         InstrumentLoading: "Henter instrumentet …",
         InstrumentMissing: "Fant ingen detaljer for dette instrumentet.",
         InstrumentError: "Kunne ikke hente instrumentet nå. Prøv igjen om litt.",
@@ -1391,7 +1383,6 @@ internal sealed record Texts(
         NoValue: "None",
         SortDefault: "Default",
         BackToVariables: "← Back to variables",
-        BackToVariable: "← Back to the variable",
         ShowKildeVariables: "Show only variables from this data source",
         ShowDatasamlingVariables: "Show only variables from this data collection",
         ViewDatasamlingKilde: "View the data source",
@@ -1467,7 +1458,7 @@ internal sealed record Texts(
         EyebrowDatasamling: "Data collection",
         EyebrowVariable: "Variable",
         EyebrowInstrument: "Instrument",
-        FieldInstrument: "Instrument",
+        FieldInstruments: "Instruments",
         InstrumentLoading: "Loading the instrument …",
         InstrumentMissing: "No details were found for this instrument.",
         InstrumentError: "Could not load the instrument right now. Please try again shortly.",
