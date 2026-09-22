@@ -91,6 +91,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>munin-explorer-kilder__count</c> for the three columns that hold a number, joined by
 /// <c>munin-explorer-kilder__count--zero</c> on a cell whose count is nought — the digit is still
 /// drawn, so a host's rule for it dims rather than hides,
+/// <c>munin-explorer-kilder__bar</c> and <c>munin-explorer-kilder__bar-fill</c> for the
+/// proportion bar under a non-zero variable count, its width inline,
 /// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
 /// <see cref="ExploreVariablesRequested"/> gets in front of them,
 /// <c>munin-explorer-kilder__sort</c> for the button inside each of the four sortable column
@@ -1360,16 +1362,26 @@ public sealed partial class KildeSearch : ComponentBase
     /// <summary>A cell's value, with the package's own words for one the catalogue left empty.</summary>
     private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;
 
-    /// <summary>The classes for a cell holding a count, marked when the count is nought.</summary>
+    /// <summary>The classes for a cell holding a count, marked when the count is nought, and its bar.</summary>
     /// <remarks>
     /// A modifier and not a replacement value: nought is a measurement here — a register with no
     /// datasamlinger — and the reader has to be able to tell it from the "Ikke oppgitt" that means
     /// nobody filled the field in, so the digit stays and only its weight changes.
     /// </remarks>
-    private static string CountClass(int count) =>
+    /// <param name="count">A zero gets no bar, which also keeps a zero <paramref name="largest"/> from dividing.</param>
+    /// <param name="largest">The largest count among the drawn rows, or 0 for a column with no bar.</param>
+    private static CountCell CountClass(int count, int largest = 0) =>
         count == 0
-            ? "munin-explorer-kilder__count munin-explorer-kilder__count--zero"
-            : "munin-explorer-kilder__count";
+            ? new("munin-explorer-kilder__count munin-explorer-kilder__count--zero", null)
+            : new("munin-explorer-kilder__count", largest > 0 ? BarWidth(count, largest) : null);
+
+    /// <summary>A whole percent, 1 to 100, so a non-zero count never draws an empty fill.</summary>
+    private static string BarWidth(int count, int largest) =>
+        FormattableString.Invariant(
+            $"width:{Math.Clamp((int)Math.Round(count * 100m / largest, MidpointRounding.AwayFromZero), 1, 100)}%");
+
+    /// <summary>A count cell's classes, and the inline width of its bar's fill when it has one.</summary>
+    private readonly record struct CountCell(string Class, string? BarWidth);
 
     /// <summary>The year the kilde was founded, as the import file states it.</summary>
     /// <remarks>

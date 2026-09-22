@@ -147,6 +147,8 @@ else
        and what the variable explorer's `@if (HierarchyCrumbs is { Count: > 0 } crumbs)` does. *@
     var visible = Visible;
     var summary = Summary(visible);
+    @* Over every row the filter lets through, not the whole load (Fhi.Metadata-35w0p.30). *@
+    var largestVariables = visible.Select(kilde => kilde.TotalVariables).DefaultIfEmpty().Max();
     var searchText = SearchText;
 
     @* role="search" makes this a search landmark, and aria-labelledby names it after this
@@ -745,15 +747,18 @@ else
                                is what "Ikke oppgitt" says in the columns beside these. *@
                             @if (ColumnVisible(KildeColumn.Delkilder))
                             {
-                                <td class="@CountClass(kilde.DelkildeCount)">@kilde.DelkildeCount</td>
+                                <td class="@CountClass(kilde.DelkildeCount).Class">@kilde.DelkildeCount</td>
                             }
                             @if (ColumnVisible(KildeColumn.Datasamlinger))
                             {
-                                <td class="@CountClass(kilde.DatasamlingCount)">@kilde.DatasamlingCount</td>
+                                <td class="@CountClass(kilde.DatasamlingCount).Class">@kilde.DatasamlingCount</td>
                             }
                             @if (ColumnVisible(KildeColumn.Variables))
                             {
-                                <td class="@CountClass(kilde.TotalVariables)">@kilde.TotalVariables</td>
+                                @* The bar is decoration under the digits, which stay the cell's text.
+                                   Variabler only: the mockup draws it on no other count. *@
+                                var variables = CountClass(kilde.TotalVariables, largestVariables);
+                                <td class="@variables.Class">@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}</td>
                             }
                             @* No lang here, unlike the name above: the catalogue writes this field as
                                a four-digit year, which has no language to mark (WCAG 3.1.2), and where
