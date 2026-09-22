@@ -1221,17 +1221,42 @@ public class VariableSearchTest : ExplorerTestContext
         AssertCatalogueCellsMarkedNorwegian(cut);
     }
 
-    [Fact]
-    public void Cells_WhenStatusIsTurnedOn_ThenTheStatusCellIsNotMarkedNorwegian()
+    [Theory]
+    [InlineData(null, "Active", "Aktiv")]
+    [InlineData(null, "Historical", "Historisk")]
+    // The lower-case rows prove the cell goes through Texts.VersionStatusLabel at all: the API's
+    // own tokens already spell the English labels, so only a token differing in case — or, as
+    // Norwegian-spelled "aktiv" and "historisk" do, in language — tells a translating row apart.
+    [InlineData("en", "active", "Active")]
+    [InlineData("en", "aktiv", "Active")]
+    [InlineData("en", "historisk", "Historical")]
+    [InlineData("en", "Active", "Active")]
+    [InlineData("en", "Historical", "Historical")]
+    // A token the map has not seen is shown as it arrived, and an absent one is the cell's usual
+    // fallback — both the same as on the whole-variable page, which shares the map.
+    [InlineData(null, "Draft", "Draft")]
+    [InlineData(null, null, "Ikke oppgitt")]
+    [InlineData("en", null, "Not specified")]
+    public void Cells_WhenStatusIsTurnedOn_ThenItReadsTheTranslatedLabelAndIsNotMarkedNorwegian(
+        string? language, string? token, string expected)
     {
-        // The status is the API's token, prose in no language, so it inherits the page's language.
-        // The text is pinned too: whether the row should translate it is a separate decision.
-        var cut = RenderWith(new FakeClient(OnePage(FilledRow())), b => b.Add(c => c.Language, "en"));
+        // A null language is the parameter left unset, which is the Norwegian default a host gets
+        // without asking — not a language named "null".
+        Action<ComponentParameterCollectionBuilder<VariableSearch>>? parameters = null;
+        if (language is { } chosen)
+        {
+            parameters = b => b.Add(c => c.Language, chosen);
+        }
+
+        var cut = RenderWith(new FakeClient(OnePage(FilledRow() with { VersionStatus = token })), parameters);
         TurnEveryColumnOn(cut);
 
         var cell = Cell(cut, "status");
 
-        Assert.Equal("Active", cell.TextContent.Trim());
+        Assert.Equal(expected, cell.TextContent.Trim());
+
+        // Our own word in the reader's language, so the marking that keeps a Norwegian voice on
+        // the catalogue's own text would be the wrong claim here (Fhi.Metadata-13xf8).
         Assert.Empty(cell.QuerySelectorAll("[lang='no']"));
         AssertCatalogueCellsMarkedNorwegian(cut);
     }

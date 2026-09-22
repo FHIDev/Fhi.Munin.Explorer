@@ -683,7 +683,7 @@ internal sealed record Texts(
     /// </remarks>
     public string StatisticsTypeLabel(string type) => type.ToLowerInvariant() switch
     {
-        "yearly" => StatisticsYearly,
+        "yearly" or "årsbasert" => StatisticsYearly,
         "accumulated" or "akkumulert" => StatisticsAccumulated,
         _ => type
     };
@@ -696,7 +696,7 @@ internal sealed record Texts(
     /// </remarks>
     public string VersionStatusLabel(string status) => status.ToLowerInvariant() switch
     {
-        "active" => VersionActive,
+        "active" or "aktiv" => VersionActive,
         "historical" or "historisk" => VersionHistorical,
         _ => status
     };

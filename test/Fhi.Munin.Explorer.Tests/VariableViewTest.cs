@@ -1219,6 +1219,7 @@ public class VariableViewTest : ExplorerTestContext
 
     [Theory]
     [InlineData("yearly", "Statistikk (årsbasert)")]
+    [InlineData("årsbasert", "Statistikk (årsbasert)")]
     [InlineData("accumulated", "Statistikk (akkumulert)")]
     [InlineData("akkumulert", "Statistikk (akkumulert)")]
     [InlineData("kvartalsvis", "Statistikk (kvartalsvis)")]

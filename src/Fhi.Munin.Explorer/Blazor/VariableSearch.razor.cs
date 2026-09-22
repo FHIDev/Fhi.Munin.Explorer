@@ -1768,8 +1768,11 @@ public sealed partial class VariableSearch : ComponentBase
         // who wants the column anyway can press it in the picker, and their choice sticks.
         if (ColumnVisible(ResultColumn.Status))
         {
-            // Unmarked: the status is an API token, not the catalogue's Norwegian (Fhi.Metadata-13xf8).
-            RowCell.Write(builder, 600, T.FieldStatus, v.VersionStatus, "status", T.NotSpecified, catalogue: false);
+            // Translated through the same map the variable page uses, and unmarked for that
+            // reason: the label is our own word in the reader's language rather than the
+            // catalogue's Norwegian (Fhi.Metadata-hq0b6).
+            var status = v.VersionStatus is { } token ? T.VersionStatusLabel(token) : null;
+            RowCell.Write(builder, 600, T.FieldStatus, status, "status", T.NotSpecified, catalogue: false);
         }
 
         // The dataperiode as text — the same two dates the panel draws under its bar, from the
