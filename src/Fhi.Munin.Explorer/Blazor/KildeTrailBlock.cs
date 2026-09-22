@@ -193,14 +193,9 @@ internal static class KildeTrailBlock
     /// back to the primary one when that leaves none.
     /// </summary>
     /// <remarks>
-    /// Beside <see cref="NamedDatasamlinger"/> and for its reason: the panel lists these and the
-    /// whole-variable page both lists them and offers a contents entry for the section, so two
-    /// readings put an empty bullet under a heading over nothing.
-    /// <para>
-    /// The references rather than their names, as the twin answers: a caller wanting to key or
-    /// link a group would otherwise go back to the payload and re-derive the filter, which is the
-    /// second reading this predicate exists to prevent.
-    /// </para>
+    /// Beside <see cref="NamedDatasamlinger"/>, answering references as it does and for its
+    /// reason: the panel lists these and the whole-variable page both lists them and offers a
+    /// contents entry for the section, so two readings put an empty bullet under a heading.
     /// </remarks>
     internal static IReadOnlyList<VariabelgruppeReference> NamedVariabelgrupper(VariableDetail detail)
     {
