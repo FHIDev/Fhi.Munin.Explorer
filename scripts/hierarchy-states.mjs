@@ -144,8 +144,9 @@ export const hierarchyStates = {
     // The error reads the same before and after, so the press is proven by the busy flag it raised.
     await tree(page).evaluate(el => {
       window.__hierarchyBusy = false;
-      new MutationObserver(() => { window.__hierarchyBusy ||= el.getAttribute('aria-busy') === 'true'; })
-        .observe(el, { attributes: true, attributeFilter: ['aria-busy'] });
+      new MutationObserver(records => {
+        window.__hierarchyBusy ||= records.some(r => r.oldValue === 'true' || el.getAttribute('aria-busy') === 'true');
+      }).observe(el, { attributes: true, attributeFilter: ['aria-busy'], attributeOldValue: true });
     });
     await retry.focus();
     await retry.press('Enter');

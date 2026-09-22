@@ -85,7 +85,7 @@ export function hierarchy(kildeId, empty = false) {
 }
 
 // The detail payload KildeView opens with, taken from a captured kilde so every field it reads is
-// real, and renamed so no reader of the page mistakes it for the one it came from.
+// real. Its name and codes are replaced; its prose is still the capture's.
 export function detail(captured, kildeId) {
-  return { ...captured, id: kildeId, preferredTerm: names.kilde, kortNavn: 'HP' };
+  return { ...captured, id: kildeId, code: 'K_HP', preferredTerm: names.kilde, kortNavn: 'HP' };
 }
