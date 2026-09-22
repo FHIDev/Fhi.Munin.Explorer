@@ -29,6 +29,302 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 0.1.0-alpha.13 — 2026-09-22
+
+### Added
+
+- **The contents nav on a detail page now marks the section the reader is in.** As the reader
+  scrolls, the package's browser module sets `aria-current="location"` on the one entry whose
+  section has reached the line a jump to it lands on: its `scroll-margin-top`, plus the scroller's
+  `scroll-padding-top`. It removes the attribute from every other entry. At the bottom of the page
+  the last entry is marked, unless the reader just pressed one of the sections that cannot scroll up
+  to that line. Nothing is sent to the server while the reader scrolls. A host that does not serve
+  the module still gets the nav, with no entry marked. (Fhi.Metadata-35w0p.15)
+- **Datasamling detail links to the collection's filtered variables.** The Variables section uses the host's existing `VariableExplorerPath` or the current variable search; standalone hosts can supply `VariablesHref` or an interactive `ShowVariables` callback. No variable table or extra detail fetch is required.
+- **Kelda draws a proportion bar under each non-zero variable count.** In the result table's
+  Variabler column only, a small bar under the digits shows the kilde's count as a share of the
+  largest variable count among the rows currently drawn, so a reader can compare sources at a
+  glance. A count of 0 gets no bar and still reads a dimmed "0"; the bar is `aria-hidden`, and the
+  digits stay the cell's text. Delkilder and Datasamlinger are unchanged. (Fhi.Metadata-35w0p.30)
+- **Both explorers take a `Lede`, a sentence the host writes to say what the page is for.** A
+  string parameter on `KildeSearch` and `VariableSearch`, forwarded by `KildeExplorer` and
+  `VariableExplorer`, drawn as plain text directly under the explorer's title. The package ships no
+  default text in either language, so the host owns the wording and can change it without a new
+  release. Left null or blank, nothing is drawn: no empty paragraph, no placeholder. The variable
+  lists tab gets no lede of its own. (Fhi.Metadata-35w0p.32)
+- **An expanded kilde row in the kildeutforsker now ends in a link to that source's variables.** A
+  reader who has just opened a source's drawer, seen its datasamlinger and decided it is the one had
+  no control that took them onward — they had to go to the variable explorer and filter by kilde
+  themselves. The drawer now ends in "Vis alle variabler i" and the source's name, and it is drawn
+  only where the host has said where a variable explorer is: `KildeExplorer` offers it wherever
+  `VariableExplorerPath` is set, off the same path as the selection handover it already drove, and a
+  host mounting `KildeSearch` itself wires the new `KildeVariablesHref` parameter —
+  `Func<Guid, string>?`, the shape `DatasamlingHref` has over an id that is always there, answering
+  an address for one kilde. Unset, no link is rendered: not a dead href, not an inert button. It is
+  the single-source shortcut and does not replace "Utforsk variabler for utvalget", which acts on
+  the rows the reader has ticked. (Fhi.Metadata-35w0p.33)
+- **Every column of the variable table's header now sorts.** Kode, Datatype, Status and
+  Dataperiode join Navn, Kilde, Datasamling and Variabelgruppe, so `SortField` gains `Code`,
+  `DataType`, `Status` and `DataPeriod`. **Their four wire tokens need a Munin API carrying
+  Fhi.Metadata-0ayti**; an API older than that does not recognise them and falls back to its own
+  default order silently, leaving the header announcing an ordering the list is not in. Half a
+  table of headers responding to a press with nothing to tell the two halves apart is worse than
+  none of them responding, which is why the four were never an optional half of this.
+  Dataperiode orders by the START of the period the data covers — not by the range as it is
+  written, where "1999" would file after "2021 – Pågående", and not by the version's validity
+  window, which is a different fact about the variable. A variable with no datatype or no period
+  start comes last whichever direction is asked for. Datatype and Status order by the catalogue's
+  own code and the API's own status rule rather than by the words on screen, so neither moves when
+  the reader switches language. Ordering stays the API's throughout: nothing in this package
+  compares two rows, so a Norwegian name sorts in the catalogue's collation rather than in
+  whatever culture the host's thread carries. (Fhi.Metadata-35w0p.37)
+- **Every kildeutforsker facet now says how many values it has.** A facet's summary reads
+  "Databehandler 24 verdier" — heading, then the facet's size, then the ticked count when there is
+  one ("Kildetype 2 verdier 2 valgt"), so a folded facet tells the reader whether opening it shows
+  four values or forty. The size is the whole facet's, and ticking, the facet's own search and
+  "Vis N til" do not change it. It is a separate `<span>` from the ticked count, each with its own
+  unit word ("1 verdi"/"N verdier", "1 value"/"N values") and a space between them, so the two read
+  as two facts to a screen reader and to the eye. It wears the existing
+  `munin-explorer-filters__groupcount`, a direct child of the `<summary>` beside `__chosen`, whose
+  `Fhi.Helsedata.Stiler` rule it shares — no new class name and no Stiler release needed. The
+  text is a new `Texts.FacetSize` entry. The variabelutforsker's summaries are unchanged.
+  (Fhi.Metadata-35w0p.53)
+
+### Changed
+
+- **`KildeView` draws its sections in the order the API places them, property sections and built-in
+  ones in one pass.** The page used to emit every curated property group under one "Metadata"
+  heading and then a fixed run of Datasamlinger, Kildeinformasjon and Statistikk, which could not
+  put a built-in section between two property ones — the order the kilde mockup asks for. It now
+  reads the new `sections` collection on `GET /api/explorer/kilder/{id}` and renders what it names,
+  so reordering the page, renaming a property section or moving a property between sections is an
+  edit a Munin curator makes rather than a release of this package. A built-in section keeps the
+  word this package has for it — `groupTranslations` on a placement row is read by no view here, so
+  renaming Datasamlinger is still a release. Each placed property group becomes a section of its
+  own, anchored at its catalogue group key under a `section-` prefix and listed in the contents
+  nav.
+  Kildeinformasjon and Statistikk are named by no mockup and reserved by no seed yet: they keep
+  their sections and every field in them, drawn after the placed sections, and each carries a key
+  so the first placement that names it moves it with no release here. Against an API that sends no
+  `sections` — every environment Munin has not migrated — the page draws exactly as it did before.
+  (Fhi.Metadata-35w0p.22)
+- **Datasamling pages offer working actions below their title and source trail.** The header and
+  compact bar reuse the Variables section's collection-filtered destination. The source action
+  opens the collection's parent in either explorer. Standalone mounts can supply `KildeHref` or
+  the interactive `ShowKilde` callback; absent targets and zero-variable actions stay omitted.
+- **The Kodeverk section opens with a sentence saying what kind of kodeverk the reader is looking at, and
+  the statistics heading writes its kind in lower case.** The kodeverk block, on the whole-variable page and
+  in the result row's Data tab, starts with one sentence per kind the variable carries, in the order the
+  payload names them: "Kildekodeverket er verdiene slik de er registrert i kildesystemet.", "Administrative
+  kodeverk er nasjonale kodeverk." and "Helsefaglige kodeverk er nasjonale kliniske kodeverk og
+  terminologier." The statistics heading reads "Statistikk (årsbasert)" / "Statistikk (akkumulert)" where it
+  read "Statistikk (Årsbasert)", on the variable and datasamling pages, in the Data tab and in the contents
+  nav. (Fhi.Metadata-35w0p.24)
+- **Runa's variable name now opens the whole variable, and a separate chevron opens the row panel.**
+  This changes learned behaviour on a shipped surface: a reader who presses a variable's name used
+  to get the inline panel under the row, and now gets the whole-variable view in place of the list,
+  with "Tilbake til variabler" putting the list back with the same row open or shut as before. The
+  panel moves to a chevron button, in a cell of its own first in each row, which carries `aria-expanded` and
+  `aria-controls`; the name carries neither. Pressing the row strip still opens and closes the
+  panel, as Kelda's row does. It reverses Fhi.Metadata-zqe14, which had put the chevron inside the
+  name button, so that the two explorers split their gestures the same way. (Fhi.Metadata-35w0p.34)
+- **`SortField`'s existing members are renumbered — rebuild against this version.** The four new
+  members are inserted at their own columns rather than appended, because the enum is declared in
+  the order a UI should offer the orders in and a host is free to build its control from
+  `Enum.GetValues`. Source compatible, so a rebuild is the whole of it: `SortField.Kilde` still
+  names the kilde order, and a link carrying `?sort=Kilde` still reads back as one, since the URL
+  and the wire both carry a name rather than a number. A host that has stored the underlying
+  `int` has to remap it. (Fhi.Metadata-35w0p.37)
+- **The variable explorer's kilde filter says its search box also finds a datasamling.** The box
+  has always matched any node below a kilde — delkilder, datasamlinger and variabelgrupper — and
+  opened the branches down to the match, but its placeholder was the generic "Søk i verdiene",
+  which left that the one route a reader who knows the datasamling and not its kilde could not
+  guess at. It now reads "Søk etter kilde eller datasamling" / "Search for a source or data
+  collection". The kildeutforsker's facet boxes are unchanged: they search their own facet's
+  values, and keep the shared wording. (Fhi.Metadata-35w0p.38)
+- **The result row's "Lagre i liste" button is quieter.** It wears
+  `button-square--ghost-blue`, the variant the saved-list view's own buttons already use, rather
+  than the filled `button-square--secondary`. It is drawn once per result row, so a default page
+  of 20 results drew 20 primary-weight controls competing with the variable names being scanned.
+  Ghost-blue draws no border either, which is what took the button off `button-square--ghost` in
+  the first place (Fhi.Metadata-q7i5e) — but that variant's text is `--dark`, the row's own
+  colour, so it read as bold prose, while ghost-blue's is `--primary`, the colour this package
+  already relies on to mark a control the reader can press. Saved and unsaved stay told apart by
+  their words and by `aria-pressed`, not by the colour. No new class name and no new rule: both
+  variants are Stiler's. (Fhi.Metadata-35w0p.64)
+- **A datasamling page places its inclusion and exclusion criteria where Munin's placement rows put
+  them, instead of always after every other section.** The criteria block now answers to the
+  built-in key `inklusjons-og-eksklusjonskriterier`, which Munin seeds on DatasamlingDetalj at band
+  2000 (Fhi.Metadata-87tng), so an untouched page reads Om datasamlingen, the criteria,
+  Kvalitetsnote, Variabler, Datakilde, Alle metadatafelt, and a curator's reorder in Sideoppsett
+  reaches the page without a release here. The section's id stays `criteria`, so existing deep links
+  still land. A payload with no placement row for the criteria, or no `sections` at all, draws them
+  where it did before; empty criteria still draw no section and no contents link.
+  (Fhi.Metadata-l9l2n.120)
+- **A datasamling page now draws the sections Munin's placement rows declare, under their names and
+  in their order, instead of one fixed "Metadata" block and three of the view's own.** Where the
+  catalogue has placed a datasamling's properties, each of its sections is a section of the page —
+  "Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt" and whatever else the placement
+  rows carry — so "Kildeinformasjon" is renamed to "Datakilde" and Kvalitetsnote gets a section of
+  its own the day a row gives it one, without this package being changed again. The fact rows the
+  placement did not take follow the fields it did into the same section rather than heading a second
+  one about the same subject, so the source block's parent, kildetype and Munin timestamps sit under
+  "Datakilde" and the variable count under "Variabler"; nothing is dropped. Ordering, ids and the
+  fallback are the kilde page's, shared rather than written again: sections the rows name come
+  first, in the order the API sent them, then the groups they name nowhere under the view's own
+  "Metadata" heading, then the criteria, source and statistics blocks. A payload carrying no
+  `sections` collection — an API predating the placement rows — renders exactly as before.
+  (Fhi.Metadata-lr6yh)
+- **Variabelgrupper are available in the collapsed kilde tree independently of the standalone facet.**
+  Expand a kilde, delkilde or datasamling to reach its groups. Groups with `Filter="2"` remain
+  selectable in the tree while being excluded as standalone facet options; an opted-out ancestor
+  remains a container when an offered child needs it. Selection is shared across placements and
+  produces one removable chip. Collapsing a branch preserves the selection.
+
+### Fixed
+
+- **The datatype and status cells in the result rows are no longer marked as Norwegian.** The
+  datatype name arrives in the reader's language and the status is the API's token, so
+  `lang="no"` had an English reader's screen reader pronounce them with a Norwegian voice. In the
+  variable search both cells now inherit the host page's language; in the saved lists, which have
+  no status column, the datatype cell does. The code, kilde, datasamling and variabelgruppe cells
+  keep `lang="no"`, and the text shown is unchanged.
+- **The datasamling summary now follows its mockup.** The hero shows source, source type, variables, validity, personal identification and the catalogue’s localized data category. Its compact bar repeats source, variables and validity. Controller and legal basis remain available in the body.
+- **Category labels retain their fallback language.** Hero and sticky labels can carry a language marker independently of the value, so a Norwegian label on an English page is pronounced correctly.
+- **A long filter facet no longer draws every value.** Both explorers' filter panels, and the
+  saved-list panel beside them, now draw the first ten values of a facet and put the rest behind a
+  "Vis N til" button — which is a real button with `aria-expanded`, reachable by Tab and operable
+  by Enter and Space. Before this, a facet like Databehandler drew all 24 of its values and the
+  filter panel grew longer than the results it filters. A value the reader has ticked stays on
+  screen whatever its place in the list — including one ticked further down a kilde's own tree —
+  and typing in a facet's own search box shows every match with the button withdrawn, so the two
+  controls cannot hide a value between them. Utvid alle reaches past the cap and Skjul alle puts it
+  back, so the control that offers to open everything still means it. A cap the reader lifted is
+  lifted over the values they were looking at: a later search, or a switch to another saved list,
+  that leaves the facet longer than it was puts the cap back rather than drawing the new, longer
+  list in full. Ten is the threshold that already decided which facets get a search box, and all
+  three panels now ask one predicate for it, so the package has one notion of a long facet rather
+  than three. (Fhi.Metadata-35w0p.31)
+- **A variable list is titled with its own name.** `VariableListView`'s heading now reads the name
+  of the list on screen, and follows a switch or a rename, where it used to read "Mine
+  variabellister" for every list; those words move to the eyebrow above it, as on the variable,
+  kilde and datasamling pages. The heading keeps its level, id and class, and before the lists
+  load or when there are none it still reads "Mine variabellister" with no eyebrow. The table and
+  its scroll region are now named by the heading through `aria-labelledby` rather than an
+  `aria-label` of their own. No new class name: the eyebrow is `munin-explorer-page__eyebrow`.
+- **Every date the explorer shows a reader is now written the same way.** A kodeverk code's
+  validity dates and the dataperiode chip in the filter panel wrote the culture's all-numeric
+  short date — `01.01.2010` — while the same values elsewhere read `1. jan. 2010`, and the
+  results list wrote a data period as month and year (`jan 1979 – des 2024`) over a variable page
+  writing it as days (`1. jan. 1979 – 31. des. 2024`). All four now go through the shared date
+  helper, so the day is spelled out with the ordinal dot in Norwegian and without it in English.
+  The claim is about the day format and not about the whole range: a period with a missing start
+  is still joined three different ways, which `Fhi.Metadata-msax9` settles rather than this. The
+  ISO round-trip of the date-picker and of the API query string is unchanged. (Fhi.Metadata-ufmop)
+- **A data period now shows the day the catalogue holds instead of rounding it to a month.**
+  `dataFrom` and `dataTo` are day-precise at source — a `date` column computed from the ingest's
+  `yyyyMMdd` `DataFra` string — and 212 of 1000 variables sampled off the live catalogue carry a
+  start that is not the first of a month (`2016-06-17`, `2022-12-09`). `MMM yyyy` was discarding
+  that day, and made `31. des. 2024` and `1. des. 2024` read alike. (Fhi.Metadata-ufmop)
+- **Metadata values show their links and line breaks instead of printing `<br>` and `[label](url)` as
+  text.** Twelve free-text keys the catalogue authors with markup (`Beskrivelse`, `BeskrivelseFlerspraklig`,
+  `BeskrivelseEngelsk`, `Formaal`, `FormaalFlerspraklig`, `Kvalitetsnote`, `Innsamlingsmetode`,
+  `InklusjonsOgEksklusjonskriterier`, `Forskrift`, `GeografiskAvgrensning`, `JuridiskNote`, `Kommentar`)
+  now go through the same renderer as the page descriptions: links and line breaks only, everything else
+  literal. It applies wherever a metadata section is drawn — kilde, datasamling and whole-variable pages,
+  "Alle metadatafelt", and the variabelutforsker's row panel — so a variable's `Kommentar` also keeps the
+  line breaks it was written with. The datasamling page's own Inklusjons- og eksklusjonskriterier section
+  renders the same way. The renderer, descriptions included, now also draws a link inside a `- ` or `1. `
+  list item (the marker stays literal; no list element is built) and a reference-style link (`[label]`
+  with a `[label]: url` line; the definition line is drawn as text unless a link took its URL). A
+  Lovverk written as one markdown link shows its words in the page's key facts and becomes a link in
+  the source-information box. No new class names.
+  (Fhi.Metadata-x0etk)
+
+### Removed
+
+- **A result row's variable name no longer carries a `title` tooltip.** It repeated the name
+  word for word, because Stiler wraps the name onto as many lines as it needs. The data cells
+  and column headers keep theirs, since those are still truncated. (Fhi.Metadata-vdnm4)
+
+### Notes for hosts
+
+- **The contents nav's mark needs Fhi.Helsedata.Stiler 0.1.89 or later.** Stiler draws the current
+  entry from `.munin-explorer-page__toc li a[aria-current]`, first published in 0.1.89. On an older
+  release the attribute is set and nothing looks different. The contents column also gains a per-instance
+  id, `munin-explorer-contents-*`, which the module uses to find it. (Fhi.Metadata-35w0p.15)
+- **Datasamling action placement changes while other detail pages keep their existing order.**
+  The existing `munin-explorer-page__actions` row now sits between the datasamling identity block
+  and hero facts. Its compact counterpart uses Stiler's existing desktop-only rule; no new class
+  names are required. `DetailPage` offers `ActionsAfterHeader` and dedicated `StickyActionText`,
+  `StickyActionHref` and `StickyAction` parameters, and never copies arbitrary `Actions` markup.
+- **New class name `munin-explorer-lead` on the sentence that opens the kodeverk block, and
+  Fhi.Helsedata.Stiler has no rule for it yet.** It is a `<p>`: directly after the Kodeverk heading on the
+  whole-variable page, and the first element of the result row's Data tab. Both sample stylesheets give it
+  `margin: 0 0 8px`, the declaration Stiler gives `munin-explorer-complete-record__lead` from 0.1.80; without
+  a rule it takes the host's default paragraph margins. The Stiler rule is Fhi.Metadata-3z2s3.
+  (Fhi.Metadata-35w0p.24)
+- **New class names `munin-explorer-kilder__bar` and `munin-explorer-kilder__bar-fill` on Kelda's
+  proportion bar, styled by Fhi.Helsedata.Stiler from the release that carries Fhi.Metadata-35w0p.68
+  (commit 54a900f8).** The track `munin-explorer-kilder__bar` is an empty, `aria-hidden` span, the
+  last child of a non-zero Variabler cell, directly after the digits; the fill
+  `munin-explorer-kilder__bar-fill` is the one span inside it, with its width inline as
+  `style="width:N%"`, a whole percent from 1 to 100. Stiler draws the track as a block under the
+  digits so the column does not widen; set no width on the fill. On an older Stiler both spans are
+  empty inline elements and draw nothing. (Fhi.Metadata-35w0p.30)
+- **New class name `munin-explorer__lede` on the explorer's lede, styled by Fhi.Helsedata.Stiler from
+  the release that carries Fhi.Metadata-35w0p.66.** It is a `<p>` and a direct child of
+  `.munin-explorer`, immediately after the title `h2`, on Kelda and Runa alike, and only there when
+  `Lede` holds text. Stiler gives it a top margin, a 65ch measure and, above 1024px, a full-width grid
+  row of its own under the heading, opened by `:has(> .munin-explorer__lede)`. On an older Stiler the
+  lede falls into the explorer grid's catch-all and lands in the results column beside the filters,
+  so leave `Lede` unset until your Stiler carries the rule. A CMS host that picks parameters from a
+  fixed list must add `Lede` to it, or the text is dropped before it is set. (Fhi.Metadata-35w0p.32)
+- **New class names `munin-explorer-dataitem__expand-cell` and `munin-explorer-dataitem__expand-toggle`
+  on Runa's row chevron, styled by Fhi.Helsedata.Stiler from the release that carries
+  Fhi.Metadata-35w0p.72.** The chevron is a
+  `<button class="hd-button-reset munin-explorer-dataitem__expand-toggle">` holding only the existing
+  `munin-explorer-dataitem-main__expand-icon` glyph, inside a
+  `<div role="cell" class="munin-explorer-dataitem__expand-cell">` that is the first direct child of
+  `.munin-explorer-dataitem-main`. The cell is there because a table row may own only cells. Stiler
+  sizes the button to 40x32, keeps it visible below 1280px where the row's other icons are hidden,
+  draws its focus surface, and moves the header indent to 52px while it is present. On a Stiler
+  without that release the glyph is hidden below 1280px and the button is an empty focusable box, so
+  upgrade Stiler with this version. (Fhi.Metadata-35w0p.34)
+- **Set `ApiBaseUrl` to the explorer host: `https://explorer.munin.skytest.fhi.no` in test,
+  `https://explorer.munin.sky.fhi.no` in production.** It serves only `/api/explorer/*`, which is
+  everything the package calls. `runa` and `kelda` still answer the same API today, but they are
+  the two UIs' hostnames and may stop being reachable from outside FHI, so a host that points at
+  them should move before that. The README, `docs/running-locally.md`, the samples' development
+  fallback and the startup error for a missing `ApiBaseUrl` now name the explorer host.
+  (Fhi.Metadata-chiyk)
+- **Deep links into a datasamling page's metadata section change where the catalogue has placed its
+  properties: `#metadata` becomes one `#section-<section key>` per placed section.** The keys are
+  Munin's, not this package's — `#section-om-datasamlingen`, `#section-datakilde`,
+  `#section-alle-metadatafelt` and whichever others the placement rows declare — so the set is open
+  and a host that writes ids of its own should not start one `section-`. This is the same family a
+  kilde page has written since `Fhi.Metadata-35w0p.22`, not a second one. Bare `#metadata` has not
+  gone: it anchors whatever the catalogue titled but placed nowhere, so a payload that places some
+  of its groups and not others writes that id and the new ones on the same page, and a payload
+  predating the placement rows writes it alone. The three other ids a datasamling page writes are
+  unchanged: `criteria`, and `source` and `statistics` for as long as the catalogue has placed
+  nothing those blocks draw. No class name is added or renamed, so no `Fhi.Helsedata.Stiler` rule is
+  needed for this. (Fhi.Metadata-lr6yh)
+- **The Dataperiode column now holds a longer string, and the width it is given was measured for
+  the shorter one.** A two-ended period reads `1. jan. 1979 – 31. des. 2024` where it read
+  `jan 1979 – des 2024`, roughly a third wider. `Fhi.Helsedata.Stiler` gives
+  `.munin-explorer-dataitem-main__period` `flex: 150 1 0`, taken from what `jan. 2001 – des. 2025`
+  needed without wrapping, and the cell's text is `white-space: normal` — so the string wraps
+  rather than overflowing and every result row and saved-list row with two ends grows a line
+  taller. Nothing is unreadable and nothing is cut off. The Stiler width is filed as its own work
+  item (`Fhi.Metadata-byvcr`); a host outside helsedata's estate that copied that number wants
+  roughly 1.3× it, or 1.45× to keep the widest case (`31. mars … – 31. mars …`) on one line.
+  (Fhi.Metadata-ufmop)
+- **Run Fhi.Helsedata.Stiler 0.1.88 or later, or long variable names cannot be read in full.**
+  0.1.88 is the first release that wraps the name in a result row. Before it the name is cut to
+  one line with an ellipsis, and without the tooltip the rest of it is not shown anywhere in the
+  row. (Fhi.Metadata-vdnm4)
+
 ## 0.1.0-alpha.12 — 2026-09-17
 
 ### Added
