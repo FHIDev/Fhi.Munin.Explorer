@@ -16,8 +16,7 @@
 //     as a missing SetUpdatesAttributeName("checked") would. An assertion whose measure holds
 //     against that is not passing, it is absent, and this reports it as a TOOLING failure.
 //
-// No widths: nothing here is about layout, so a second viewport would be a second copy of the same
-// answer at twice the wall clock.
+// Assertions select extra widths only where the browser behavior depends on responsive layout.
 import { chromium } from 'playwright';
 import { states } from './axe-states.mjs';
 import { assertions } from './state-assertions.mjs';

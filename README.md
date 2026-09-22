@@ -482,6 +482,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     of its own, but 0.1.75 carries the file: both sample stylesheets stand in at its declarations
     for the name and `assert-sample-css-matches-stiler.sh` finds no divergence against that pin.
     Which PR bumped a version says nothing about what a later release shipped — read the pin.
+    Nested fragment targets use `munin-explorer-page__anchor` for the same responsive scroll
+    clearance without `data-nav-section` or a contents entry. Stiler support is tracked by
+    `Fhi.Metadata-17k34`; hosts need its published rule when adopting nested criteria.
     The same three add the chassis those sections sit in — `munin-explorer-page` on the root,
     `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc` —
     written once, by `DetailPage`, rather than three times under three prefixes. The root and the
@@ -919,6 +922,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-page__language` | handle |
   | `munin-explorer-page__main` | handle |
   | `munin-explorer-page__section` | handle |
+  | `munin-explorer-page__anchor` | handle |
   | `munin-explorer-page__stuckbar` | handle |
   | `munin-explorer-page__stuckbar--on` | handle |
   | `munin-explorer-page__stuckbar-inner` | handle |

@@ -693,9 +693,10 @@ public sealed partial class DatasamlingView : ComponentBase
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "id", criteria.Id);
         builder.AddAttribute(2, "tabindex", "-1");
-        builder.AddContent(3, DetailBlocks.Heading(GroupLevel, criteria.Heading, "headline headline-xxs",
+        builder.AddAttribute(3, "class", "munin-explorer-page__anchor");
+        builder.AddContent(4, DetailBlocks.Heading(GroupLevel, criteria.Heading, "headline headline-xxs",
                                                   language: criteria.HeadingLanguage));
-        builder.AddContent(4, criteria.Body);
+        builder.AddContent(5, criteria.Body);
         builder.CloseElement();
     };
 

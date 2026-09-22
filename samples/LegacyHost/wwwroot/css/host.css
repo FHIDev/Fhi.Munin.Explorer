@@ -3528,7 +3528,8 @@ table.munin-explorer-data-list tbody th {
   background: rgb(230, 230, 237);
 }
 
-.munin-explorer-page__section[data-nav-section] {
+.munin-explorer-page__section[data-nav-section],
+.munin-explorer-page__anchor {
   scroll-margin-top: 140px;
 }
 
@@ -3541,7 +3542,8 @@ table.munin-explorer-data-list tbody th {
 }
 
 @media (max-width:767px) {
-.munin-explorer-page__section[data-nav-section] {
+.munin-explorer-page__section[data-nav-section],
+.munin-explorer-page__anchor {
   scroll-margin-top: 80px;
 }
 }

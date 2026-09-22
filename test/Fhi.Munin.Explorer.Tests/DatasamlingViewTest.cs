@@ -669,6 +669,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             "munin-explorer-group",                   // shared with the kilde and variable views
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
+            "munin-explorer-page__anchor",
             "munin-explorer-page__body",
             // The word above the name block saying what kind of thing this page is about. A <p>,
             // so the outline a screen reader navigates by is the one the view already had.
@@ -1114,6 +1115,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var subsection = cut.Find("#section-om-datasamlingen #criteria");
         Assert.Equal("-1", subsection.GetAttribute("tabindex"));
         Assert.False(subsection.HasAttribute("data-nav-section"));
+        Assert.Contains("munin-explorer-page__anchor", subsection.ClassList);
         Assert.Equal(tagName, subsection.FirstElementChild!.TagName);
         Assert.Contains("headline-xxs", subsection.FirstElementChild.ClassList);
         Assert.DoesNotContain("#criteria", Targets(cut));

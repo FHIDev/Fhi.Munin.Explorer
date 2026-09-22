@@ -6,6 +6,8 @@
 #
 # It asks the contents nav a neighbouring question on the same terms: what a browser RESOLVES an
 # href to against the page's <base> element — neither of which a render tree has.
+# A criteria fragment jump is also measured at desktop/mobile widths under a fixed test header;
+# removing its anchor class must reproduce the obscured heading (Fhi.Metadata-17k34).
 #
 # It asks the facet tree's branch disclosures a neighbouring question, and for the same reason: a
 # shut branch's values have to be absent from the page rather than hidden on it, and a tab order is
