@@ -311,11 +311,13 @@ to measure on these pages at all:
   rule going missing, which the sample stylesheet can only stand in for. `check-hostile-host.sh`
   measures them against the real one at six widths.
 - `the detail page's main column is the wider part of its body` and `the detail page's two columns
-  share a row` measure a `.munin-explorer-page__body`, which is the detail views' chassis and which
-  neither the kildeutforsker nor the explorer's front page draws. They run and find nothing rather
-  than failing, so they were never measured here in the sense the seven above were.
+  share a row` measure a `.munin-explorer-page__body`, the detail views' chassis, which none of the
+  four states driven here opens. That is a statement about the states and not about the pages: both
+  draw one in a detail state — `/` in `variable-whole`, `/kilder` in `kilde-drilldown`, which axe
+  scans above — so adding either state to this run would measure them. They run and find nothing
+  rather than failing, so they were never measured here in the sense the seven above were.
 
-Read the run for exactly what it is: three assertions, two pages, three states, against the sample
+Read the run for exactly what it is: three assertions, two pages, four states, against the sample
 stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
 its own after the six widths. It runs every assertion in every state, except that a state failing
 today leaves out only its failing assertions, through `GEOMETRY_EXCEPT`, with the reason beside

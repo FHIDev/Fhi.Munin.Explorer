@@ -514,11 +514,22 @@ export const assertions = [
         // Side by side, read off the boxes rather than off a copy of Stiler's breakpoint that
         // nothing in this repository can check: the body is two tracks when they do not overlap.
         const beside = rail.right <= column.left + 1 || column.right <= rail.left + 1;
-        if (beside && column.width <= rail.width) {
+        if (beside) {
+          if (column.width > rail.width) continue;
           return `at ${width}px the main column is ${column.width.toFixed(1)}px wide beside a ` +
             `${rail.width.toFixed(1)}px contents rail — the reading column is in the rail's track`;
         }
-        if (!beside && column.width < rail.width) {
+
+        // One track: the narrow layout, and also a body whose `grid-template-columns` has gone —
+        // identical boxes, so only the viewport separates them. 1200 is a floor no page stacks a
+        // detail view at, clear of Stiler's 1025 so that a breakpoint that moved is not a red.
+        if (width >= 1200) {
+          const held = body.getBoundingClientRect().width.toFixed(1);
+          return `at ${width}px the ${held}px body is one track: a ` +
+            `${column.width.toFixed(1)}px main column stacked over a ` +
+            `${rail.width.toFixed(1)}px contents rail — the second track is not declared`;
+        }
+        if (column.width < rail.width) {
           return `at ${width}px the stacked main column is ${column.width.toFixed(1)}px wide ` +
             `under a ${rail.width.toFixed(1)}px contents rail`;
         }
@@ -544,7 +555,8 @@ export const assertions = [
 
         const rail = toc.getBoundingClientRect();
         const column = main.getBoundingClientRect();
-        // Stacked is what every width below Stiler's second track renders, and it is not a row.
+        // Stacked is one track: the narrow layout, or above 1200px the collapsed grid the width
+        // assertion reports. Either way there is no row of two tracks here to measure.
         const beside = rail.right <= column.left + 1 || column.right <= rail.left + 1;
         if (!beside) continue;
 

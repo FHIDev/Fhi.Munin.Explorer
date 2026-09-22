@@ -219,7 +219,8 @@ fi
 #
 # Three of the twelve assertions. Four of the nine left out were measured here first; three are
 # scoped to the explorer-* states, which are /utforsker and none of these; and the last two measure
-# the detail chassis, which neither of these pages draws. Which and why: AGENTS.md, "And
+# the detail chassis, which none of the four states here opens - both pages draw one in a detail
+# state, and neither of those is driven at 320. Which and why: AGENTS.md, "And
 # check-accessibility.sh measures one width axe never looks at".
 echo
 echo "==> measuring the reflow width WCAG 1.4.10 names"

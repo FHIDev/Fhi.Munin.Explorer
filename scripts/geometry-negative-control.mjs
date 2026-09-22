@@ -196,6 +196,15 @@ const cases = [
     apply: css('.munin-explorer-page__main { width: 200px !important; }'),
   },
   {
+    assertion: "the detail page's main column is the wider part of its body",
+    defect: "the second track never declared, which is Stiler's rule going missing",
+    path: '/', state: 'variable-whole', width: 1440,
+    // `display: grid` with no template is one full-width track, the layout 843 renders correctly,
+    // so this is the case the boxes alone cannot tell from the narrow page. Neither of the two
+    // above removes a track: they move a child between tracks that are still declared.
+    apply: css('.munin-explorer-page__body { grid-template-columns: none !important; }'),
+  },
+  {
     assertion: "the detail page's two columns share a row",
     defect: 'the contents rail dropped to a row of its own',
     path: '/', state: 'variable-whole', width: 1440,
