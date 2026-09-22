@@ -166,8 +166,8 @@ public class SaveToListTest : ExplorerTestContext
         cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main")[0];
 
     /// <summary>That row's OWN disclosure, which is where its open-or-shut state is written.</summary>
-    private static IElement RowName(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll("button.munin-explorer-dataitem-main__name")[0];
+    private static IElement RowToggle(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("button.munin-explorer-dataitem__expand-toggle")[0];
 
     private static IElement SaveButton(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")[0];
@@ -214,7 +214,7 @@ public class SaveToListTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.All(
-            cut.FindAll("button.munin-explorer-dataitem-main__name"),
+            cut.FindAll("button.munin-explorer-dataitem__expand-toggle"),
             toggle => Assert.Equal("false", toggle.GetAttribute("aria-expanded")));
 
         SaveButton(cut).Click();
@@ -265,7 +265,7 @@ public class SaveToListTest : ExplorerTestContext
         // its own, so a count of them says nothing about the row this press landed in.
         Assert.Equal(
             "false",
-            cut.FindAll("button.munin-explorer-dataitem-main__name")[0].GetAttribute("aria-expanded"));
+            cut.FindAll("button.munin-explorer-dataitem__expand-toggle")[0].GetAttribute("aria-expanded"));
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
     }
 
@@ -286,7 +286,7 @@ public class SaveToListTest : ExplorerTestContext
         Assert.Equal(0, client.AddCalls);
         Assert.Equal(
             "false",
-            cut.FindAll("button.munin-explorer-dataitem-main__name")[0].GetAttribute("aria-expanded"));
+            cut.FindAll("button.munin-explorer-dataitem__expand-toggle")[0].GetAttribute("aria-expanded"));
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
     }
 
@@ -305,13 +305,13 @@ public class SaveToListTest : ExplorerTestContext
         SaveButton(cut).Click(new MouseEventArgs { ClientX = 200, ClientY = 240, Detail = 1 });
 
         Assert.Equal(1, client.AddCalls);
-        Assert.Equal("false", RowName(cut).GetAttribute("aria-expanded"));
+        Assert.Equal("false", RowToggle(cut).GetAttribute("aria-expanded"));
 
         // The tooling click on the row, which the verdict left behind would otherwise swallow.
         RowStrip(cut).QuerySelector(".munin-explorer-dataitem-main__column")!
             .Click(new MouseEventArgs());
 
-        Assert.Equal("true", RowName(cut).GetAttribute("aria-expanded"));
+        Assert.Equal("true", RowToggle(cut).GetAttribute("aria-expanded"));
     }
 
     [Fact]
@@ -454,7 +454,7 @@ public class SaveToListTest : ExplorerTestContext
 
         AssertEachNameIdIsWrittenExactlyOnce();
 
-        cut.FindAll("button.munin-explorer-dataitem-main__name")[0].Click();
+        cut.FindAll("button.munin-explorer-dataitem__expand-toggle")[0].Click();
 
         // The open panel points its own aria-labelledby at the toggle rather than at this span,
         // so opening a row must not mint a second copy of the name anywhere in it.
@@ -848,8 +848,9 @@ public class SaveToListTest : ExplorerTestContext
         var headers = HeaderNames(cut);
         var cells = cut.Find(".munin-explorer-dataitem-main").Children;
 
-        Assert.Equal("Variabelliste", headers[1]);
-        Assert.Equal("munin-explorer-dataitem-main__save", cells[1].ClassName);
+        // Third on both sides: the chevron's cell and its screen-reader-only header come first.
+        Assert.Equal("Variabelliste", headers[2]);
+        Assert.Equal("munin-explorer-dataitem-main__save", cells[2].ClassName);
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-header [role=columnheader].munin-explorer-dataitem-header__save"));
     }
 
@@ -860,7 +861,7 @@ public class SaveToListTest : ExplorerTestContext
         Services.AddScoped<VariableListState>();
         var cut = Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, "en"));
 
-        Assert.Equal("Variable list", HeaderNames(cut)[1]);
+        Assert.Equal("Variable list", HeaderNames(cut)[2]);
         Assert.Equal("Variable list", PickerNames(cut)[0]);
     }
 

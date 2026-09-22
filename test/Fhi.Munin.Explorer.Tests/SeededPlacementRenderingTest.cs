@@ -537,7 +537,7 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
         return
         [
             ("kilde", HeroValue(kilde, IdentificationLabel), SectionValue(kilde, IdentificationLabel)),
-            ("datasamling", HeroValue(datasamling, IdentificationLabel),
+            ("datasamling", HeroValue(datasamling, "Personidentifikasjon"),
              SectionValue(datasamling, IdentificationLabel)),
         ];
     }

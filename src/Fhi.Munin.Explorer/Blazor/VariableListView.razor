@@ -9,13 +9,14 @@
        and a version readable on two of the three mount points is a trap for whoever checks the
        third. (Fhi.Metadata-sqbei) *@
     <DetailPage ViewRoot="" ViewMain=""
+                Eyebrow="@ShownListEyebrow"
                 Actions="@(HasActions ? ActionRow : null)"
                 data-munin-explorer-version="@ExplorerVersion.Current">
         <Header>
             @* The chassis's own header name: the other three wear a prefixed one beside it and this
                view has none to wear. *@
             <div class="munin-explorer-page__header">
-                @DetailBlocks.Heading(TitleLevel, T.MyListsHeading, "headline headline-s margin--bottom",
+                @DetailBlocks.Heading(TitleLevel, ShownListName, "headline headline-s margin--bottom",
                                       ListHeadingId)
 
                 @* The count off the same field the picker's options read, beside the day the
@@ -155,8 +156,8 @@
                      style="overflow-x:auto;position:relative"
                      role="region"
                      tabindex="0"
-                     aria-label="@ShownListName">
-                    <table class="munin-explorer-data-list" aria-label="@ShownListName">
+                     aria-labelledby="@ListHeadingId">
+                    <table class="munin-explorer-data-list" aria-labelledby="@ListHeadingId">
                         <thead>
                             <tr class="munin-explorer-data-list__item__row--header">
                                 <th scope="col" class="munin-explorer-dataitem-header__name">@T.ColumnVariable</th>

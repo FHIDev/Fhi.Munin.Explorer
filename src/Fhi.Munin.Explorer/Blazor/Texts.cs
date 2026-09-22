@@ -150,6 +150,7 @@ internal sealed record Texts(
     string FieldDataController,
     string FieldDataProcessor,
     string FieldPersonIdentification,
+    string HeroPersonIdentification,
     string FieldValidity,
     string FieldInclusionCriteria,
     // The kind of statistics a datasamling keeps, as a row rather than only in the heading over
@@ -220,6 +221,10 @@ internal sealed record Texts(
     Func<double, string> ShareOfValid,
     Func<string?, string> FrequencyCaption,
     string ShowWholeVariable,
+    // The row's chevron, named for its variable for ExpandDatasamlinger's reason. (Fhi.Metadata-35w0p.34)
+    Func<string, string> ExpandVariableDetail,
+    Func<string, string> CollapseVariableDetail,
+    string ColumnVariableDetail,
     // The row's save action, in both of its states. One control, two words: the button says
     // what pressing it does, not what the variable currently is.
     string SaveToList,
@@ -991,6 +996,7 @@ internal sealed record Texts(
         FieldDataController: "Dataansvarlig",
         FieldDataProcessor: "Databehandler",
         FieldPersonIdentification: "Grad av personidentifikasjon",
+        HeroPersonIdentification: "Personidentifikasjon",
         FieldValidity: "Gyldighet",
         FieldInclusionCriteria: "Inklusjons- og eksklusjonskriterier",
         FieldStatisticsType: "Statistikktype",
@@ -1041,6 +1047,9 @@ internal sealed record Texts(
             ? "Fordeling av gyldige verdier"
             : $"Fordeling av gyldige verdier ({yearSet})",
         ShowWholeVariable: "Vis hele variabelen",
+        ExpandVariableDetail: name => $"Vis detaljer for {name}",
+        CollapseVariableDetail: name => $"Skjul detaljer for {name}",
+        ColumnVariableDetail: "Vis detaljer",
         SaveToList: "Lagre i liste",
         RemoveFromList: "Fjern fra liste",
         FirstListName: "Min variabelliste",
@@ -1383,6 +1392,7 @@ internal sealed record Texts(
         FieldDataController: "Data controller",
         FieldDataProcessor: "Data processor",
         FieldPersonIdentification: "Level of personal identification",
+        HeroPersonIdentification: "Personal identification",
         FieldValidity: "Validity",
         FieldInclusionCriteria: "Inclusion and exclusion criteria",
         FieldStatisticsType: "Statistics type",
@@ -1433,6 +1443,9 @@ internal sealed record Texts(
             ? "Distribution of valid values"
             : $"Distribution of valid values ({yearSet})",
         ShowWholeVariable: "Show the whole variable",
+        ExpandVariableDetail: name => $"Show details for {name}",
+        CollapseVariableDetail: name => $"Hide details for {name}",
+        ColumnVariableDetail: "Show details",
         SaveToList: "Save to list",
         RemoveFromList: "Remove from list",
         FirstListName: "My variable list",

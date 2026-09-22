@@ -400,6 +400,46 @@ public class DetailPageTest : ExplorerTestContext
             }
         });
 
+    [Theory]
+    [InlineData("no", "en")]
+    [InlineData("en", "no")]
+    [InlineData(null, "no")]
+    public void Stuckbar_WhenLabelAndValueHaveDifferentLanguages_ThenEachMatchesTheHero(
+        string? labelLanguage, string valueLanguage)
+    {
+        var fact = new DetailFact("Category", "Registry", valueLanguage) { LabelLang = labelLanguage };
+        var cut = RenderSticky();
+        cut.Render(parameters => parameters.Add(p => p.Facts, new DetailFact[] { fact }));
+
+        foreach (var selector in new[] { ".munin-explorer-page__facts", ".munin-explorer-page__stuckbar dl" })
+        {
+            var list = cut.Find(selector);
+            Assert.Equal(labelLanguage, list.QuerySelector("dt")!.GetAttribute("lang"));
+            Assert.Equal(valueLanguage, list.QuerySelector("dd span")!.GetAttribute("lang"));
+            Assert.False(list.QuerySelector("dt")!.ParentElement!.HasAttribute("lang"));
+        }
+    }
+
+    [Fact]
+    public void Stuckbar_WhenTheViewChoosesFacts_ThenOnlyItsPopulatedSelectionIsRepeated()
+    {
+        var cut = RenderSticky();
+        cut.Render(parameters => parameters.Add(p => p.StickyFacts,
+            new DetailFact[] { SixFacts()[3], SixFacts()[5], SixFacts()[0], SixFacts()[4], SixFacts()[1] }));
+
+        Assert.Equal(["Dataperiode", "Kildetype", "Totalt antall variabler"],
+            cut.FindAll(".munin-explorer-page__stuckbar dt").Select(element => element.TextContent));
+        Assert.Equal(5, cut.Find(".munin-explorer-page__facts").Children.Length);
+
+        cut.Render(parameters => parameters.Add(p => p.StickyFacts, []));
+        Assert.Empty(cut.FindAll(".munin-explorer-page__stuckbar"));
+        Assert.Equal(5, cut.Find(".munin-explorer-page__facts").Children.Length);
+
+        cut.Render(parameters => parameters.Add(p => p.StickyFacts, (IReadOnlyList<DetailFact>?)null));
+        Assert.Equal(["Kildetype", "Dataansvarlig", "Grad av personidentifikasjon"],
+            cut.FindAll(".munin-explorer-page__stuckbar dt").Select(element => element.TextContent));
+    }
+
     [Fact]
     public void Stuckbar_WhenTheModuleNeverRuns_ThenItIsInertAndThePageIsStillWhole()
     {

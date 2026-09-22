@@ -17,7 +17,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// is the summary of what this record actually has.
 /// </para>
 /// </remarks>
-/// <param name="Label">The field's name in the reader's language.</param>
+/// <param name="Label">The field's name; set <see cref="LabelLang"/> when it falls back to another language.</param>
 /// <param name="Value">The value as the reader should see it, or null to drop the fact.</param>
 /// <param name="Lang">
 /// A <c>lang</c> for the value when it is not in the reader's language — the catalogue stores its
@@ -43,4 +43,11 @@ public sealed record DetailFact(
     string? Lang = null,
     string? NoteLabel = null,
     string? Note = null,
-    string? NoteLang = null);
+    string? NoteLang = null)
+{
+    /// <summary>
+    /// Language of the label when it differs from the reader's. Null inherits the host's language;
+    /// independent of <see cref="Lang"/>, which marks only the value.
+    /// </summary>
+    public string? LabelLang { get; init; }
+}

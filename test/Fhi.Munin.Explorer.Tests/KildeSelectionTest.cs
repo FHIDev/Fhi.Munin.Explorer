@@ -688,6 +688,8 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer-kilder-scroll",
             // Eight, not the seven next door: the select column this bead adds counts too.
             "munin-explorer-kilder-scroll--cols-8",
+            "munin-explorer-kilder__bar",        // the proportion bar (Fhi.Metadata-35w0p.30)
+            "munin-explorer-kilder__bar-fill",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
             "munin-explorer-kilder__expand-icon",

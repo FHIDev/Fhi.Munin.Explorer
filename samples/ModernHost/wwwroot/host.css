@@ -2322,6 +2322,24 @@ table.munin-explorer-data-list tbody th {
   color: var(--grey60);
 }
 
+/* ---- the proportion bar under a non-zero variable count ----
+   Stiler's rules as merged by Fhi.Metadata-35w0p.68. A block under the digits, not beside them, so
+   the column does not widen; the fill's width is inline from the component, never set here. */
+.munin-explorer-kilder .munin-explorer-kilder__bar {
+  background-color: var(--grey40);
+  display: block;
+  height: 6px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.munin-explorer-kilder .munin-explorer-kilder__bar-fill {
+  background-color: var(--primary);
+  display: block;
+  height: 100%;
+  margin-left: auto;
+}
+
 /* The checkbox column, in front of the eight. It is only ever rendered by a host that wired
    ExploreVariablesRequested, which is the handover the ticks exist for.
 
@@ -2354,6 +2372,22 @@ table.munin-explorer-data-list tbody th {
   padding: 8px 12px;
   align-items: center;
   display: inline-flex;
+}
+
+/* ---- Runa's row chevron ----
+   Stiler's declarations for it, which mirror Kelda's toggle above. Stiler's rule for this name is
+   Fhi.Metadata-35w0p.65; its focus surface and narrow-width placement are Stiler's alone. */
+.munin-explorer-dataitem__expand-toggle {
+  cursor: pointer;
+  padding: 8px 12px;
+  align-items: center;
+  display: inline-flex;
+}
+
+/* The cell around it, which a row needs because a row owns only cells. Kept at the button's own
+   width in the flex row. Stiler's rule for this name is Fhi.Metadata-35w0p.72. */
+.munin-explorer-dataitem__expand-cell {
+  flex: 0 0 auto;
 }
 
 /* Measured in the sample before this was written: on grey10 alone the panel was invisible against
