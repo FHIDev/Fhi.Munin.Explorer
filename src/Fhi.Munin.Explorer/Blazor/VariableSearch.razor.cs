@@ -1750,7 +1750,8 @@ public sealed partial class VariableSearch : ComponentBase
 
         if (ColumnVisible(ResultColumn.DataType))
         {
-            RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(v.DataType), "dataType", T.NotSpecified);
+            // Unmarked: the API resolves the name in the reader's language (Fhi.Metadata-13xf8).
+            RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(v.DataType), "dataType", T.NotSpecified, catalogue: false);
         }
 
         // Status starts hidden unless historical variables can be in the list at all. The API
@@ -1762,7 +1763,8 @@ public sealed partial class VariableSearch : ComponentBase
         // who wants the column anyway can press it in the picker, and their choice sticks.
         if (ColumnVisible(ResultColumn.Status))
         {
-            RowCell.Write(builder, 600, T.FieldStatus, v.VersionStatus, "status", T.NotSpecified);
+            // Unmarked: the status is an API token, not the catalogue's Norwegian (Fhi.Metadata-13xf8).
+            RowCell.Write(builder, 600, T.FieldStatus, v.VersionStatus, "status", T.NotSpecified, catalogue: false);
         }
 
         // The dataperiode as text — the same two dates the panel draws under its bar, from the
@@ -1771,7 +1773,7 @@ public sealed partial class VariableSearch : ComponentBase
         // has not styled `munin-explorer-dataitem-period` the cell would be empty rather than plain, and
         // an empty column is indistinguishable from a variable with no period recorded. The panel
         // is where the bar is worth its dependency, because the row beside it says the dates.
-        // The only column whose value is not the catalogue's own words: the dates are formatted for
+        // Not the catalogue's own words, like the datatype and status: the dates are formatted for
         // the reader and the word between them is this component's, so it follows Language like a
         // label rather than staying Norwegian like a variable name. Hence `catalogue: false` — an
         // English reader hearing "Jan 2010 – Ongoing" announced by a Norwegian voice is the very

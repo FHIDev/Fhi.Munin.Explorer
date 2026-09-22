@@ -960,6 +960,28 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void View_WhenADatatypeIsShown_ThenItsCellIsNotMarkedNorwegian()
+    {
+        // The datatype name is resolved in the reader's language, not the catalogue's Norwegian;
+        // the catalogue columns beside it keep their marking (Fhi.Metadata-13xf8).
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            DataTypeFacets = [new DataTypeFacet { Value = "2", DisplayName = "Heltall" }]
+        });
+
+        AngleSharp.Dom.IElement Cell(string key) =>
+            cut.Find($"td.munin-explorer-dataitem-main__{key} .munin-explorer-dataitem-main__column__text");
+
+        Assert.Equal("Heltall", Cell("dataType").TextContent.Trim());
+        Assert.Empty(Cell("dataType").QuerySelectorAll("[lang='no']"));
+
+        foreach (var key in new[] { "code", "source", "dataCollection", "theme" })
+        {
+            Assert.NotNull(Cell(key).QuerySelector("span[lang='no']"));
+        }
+    }
+
+    [Fact]
     public void View_WhenAFieldWasNeverSet_ThenItSaysSoRatherThanLeavingTheCellBlank()
     {
         // An empty cell beside a filled one reads as data that went missing, not data nobody entered.

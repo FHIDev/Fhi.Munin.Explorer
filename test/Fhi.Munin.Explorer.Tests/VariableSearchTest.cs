@@ -1185,6 +1185,57 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
     }
 
+    /// <summary>A row with every column filled, so no cell falls back to "Ikke oppgitt".</summary>
+    private static VariableSummary FilledRow() => Variable("1. Tale", "KODE") with
+    {
+        KildeShortName = "ALS",
+        VariabelgruppeName = "Diagnose",
+        DataType = "1",
+        VersionStatus = "Active"
+    };
+
+    private static IElement Cell(IRenderedComponent<VariableSearch> cut, string key) =>
+        cut.Find($".munin-explorer-dataitem-main__{key} .munin-explorer-dataitem-main__column__text");
+
+    /// <summary>The columns whose values are the catalogue's Norwegian keep their marking.</summary>
+    private static void AssertCatalogueCellsMarkedNorwegian(IRenderedComponent<VariableSearch> cut)
+    {
+        foreach (var key in new[] { "code", "source", "dataCollection", "theme" })
+        {
+            Assert.NotNull(Cell(cut, key).QuerySelector("span[lang='no']"));
+        }
+    }
+
+    [Fact]
+    public void Cells_WhenTheLanguageIsEn_ThenTheDataTypeCellIsNotMarkedNorwegian()
+    {
+        // The datatype name is resolved in the reader's language, so lang="no" would have an
+        // English reader hear "String" in a Norwegian voice (Fhi.Metadata-13xf8).
+        var cut = RenderWith(new FakeClient(OnePage(FilledRow())), b => b.Add(c => c.Language, "en"));
+        TurnEveryColumnOn(cut);
+
+        var cell = Cell(cut, "dataType");
+
+        Assert.False(string.IsNullOrWhiteSpace(cell.TextContent));
+        Assert.Empty(cell.QuerySelectorAll("[lang='no']"));
+        AssertCatalogueCellsMarkedNorwegian(cut);
+    }
+
+    [Fact]
+    public void Cells_WhenStatusIsTurnedOn_ThenTheStatusCellIsNotMarkedNorwegian()
+    {
+        // The status is the API's token, prose in no language, so it inherits the page's language.
+        // The text is pinned too: whether the row should translate it is a separate decision.
+        var cut = RenderWith(new FakeClient(OnePage(FilledRow())), b => b.Add(c => c.Language, "en"));
+        TurnEveryColumnOn(cut);
+
+        var cell = Cell(cut, "status");
+
+        Assert.Equal("Active", cell.TextContent.Trim());
+        Assert.Empty(cell.QuerySelectorAll("[lang='no']"));
+        AssertCatalogueCellsMarkedNorwegian(cut);
+    }
+
     [Fact]
     public void Columns_WhenTheListIsSearchedAgain_ThenTheChoiceSurvives()
     {

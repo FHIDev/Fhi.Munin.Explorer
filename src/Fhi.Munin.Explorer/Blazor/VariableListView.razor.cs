@@ -359,10 +359,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(item.KildeShortName) ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
         RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified, tableCell: true);
         RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified, tableCell: true);
-        RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified, tableCell: true);
+        // Unmarked: the API resolves the name in the reader's language (Fhi.Metadata-13xf8).
+        RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified, catalogue: false, tableCell: true);
 
-        // The only column whose words are this component's rather than the catalogue's — the dates
-        // are formatted for the reader — so it is left unmarked, exactly as the explorer leaves it.
+        // The component's words rather than the catalogue's — the dates are formatted for the
+        // reader — so it is left unmarked, exactly as the explorer leaves it.
         RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false, tableCell: true);
     };
 
