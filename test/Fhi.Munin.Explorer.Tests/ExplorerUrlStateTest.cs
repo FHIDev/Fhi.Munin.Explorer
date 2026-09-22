@@ -59,6 +59,21 @@ public class ExplorerUrlStateTest
         Assert.Equal(state.PageSize, back.PageSize);
     }
 
+    [Fact]
+    public void RoundTrip_WhenAnySortFieldIsChosen_ThenItComesBackTheSame()
+    {
+        // The sort goes into the link by NAME, so a member added to SortField needs nothing here
+        // to survive a round trip — which is exactly why it is worth asserting rather than assumed:
+        // a link is the shape of this state a stranger sends, and a sort that parsed back to the
+        // default would open a list ordered differently from the one the sender was looking at.
+        foreach (var sort in Enum.GetValues<SortField>())
+        {
+            var state = new ExplorerUrlState { Sort = sort, Direction = SortDirection.Descending };
+
+            Assert.Equal(sort, ExplorerUrlState.Parse(state.ToQueryString()).Sort);
+        }
+    }
+
     /// <summary>The open variable is what a reader most wants to send someone.</summary>
     [Fact]
     public void RoundTrip_WhenAVariableIsOpen_ThenItComesBackTheSame()

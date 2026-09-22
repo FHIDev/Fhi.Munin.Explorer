@@ -110,7 +110,7 @@ public partial class VariableSearch
 
     /// <summary>
     /// Sort by <paramref name="sort"/>: the active field again reverses the direction, another
-    /// field starts ascending. Runa's rule, moved off the column header it used to live on.
+    /// field starts ascending. Runa's rule.
     /// </summary>
     private async Task SortAsync(SortField sort)
     {

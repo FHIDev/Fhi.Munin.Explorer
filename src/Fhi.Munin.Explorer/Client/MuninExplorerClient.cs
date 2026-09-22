@@ -667,9 +667,13 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     private static string SortToken(SortField sort) => sort switch
     {
         SortField.Default => "name",
+        SortField.Code => "kode",
         SortField.Kilde => "kilde",
         SortField.Datasamling => "datasamling",
         SortField.Variabelgruppe => "variabelgruppe",
+        SortField.DataType => "datatype",
+        SortField.Status => "status",
+        SortField.DataPeriod => "dataperiode",
         _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No API sort token for this field.")
     };
 

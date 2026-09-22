@@ -40,6 +40,70 @@ public class ContractDriftTest
     }
 
     [LiveApiFact]
+    public async Task VariableSort_WhenEveryFieldIsAskedForFromTheLiveApi_ThenItsTokenIsHonouredRatherThanFallenBackFrom()
+    {
+        using var api = LiveApiConnection.Open();
+
+        // Silent by construction: the API takes `sort` as free text and answers 200 in its DEFAULT
+        // order for a token it does not know, so a member whose token is misspelled — or whose API
+        // half is merged but undeployed — reorders nothing while the header says it did.
+        var fallback = Order(await RowsAsync(SortField.Default));
+
+        foreach (var field in Enum.GetValues<SortField>().Where(field => field != SortField.Default))
+        {
+            var rows = await RowsAsync(field);
+
+            // One key value over both pages is nothing to reorder, and a page with nothing to
+            // reorder comes back in the default order whether the token was read or ignored.
+            // Status and DataType are low-cardinality enough to be uniform over 25 rows.
+            if (rows.Select(row => KeyOf(field, row)).Distinct().Count() < 2)
+            {
+                continue;
+            }
+
+            // Both directions together is what tells a fallback from a real order: an unrecognised
+            // token gives the default order in each, and a key the API really sorts on — one the
+            // rows above disagree about — cannot match the default one ascending AND descending.
+            Assert.True(
+                Order(rows) != fallback,
+                $"Sorting by {field} came back in the API's default order in both directions, which "
+                + "is exactly what an unrecognised sort token does, and the rows differ on the key "
+                + "so there was something to reorder. Either the token MuninExplorerClient sends "
+                + "for it is not one this API accepts, or the API half that accepts it is not "
+                + "deployed here yet.");
+        }
+
+        async Task<IReadOnlyList<VariableSummary>> RowsAsync(SortField field)
+        {
+            var ascending = await api.Client.SearchVariablesAsync(
+                null, pageSize: 25, sort: field, direction: SortDirection.Ascending);
+            var descending = await api.Client.SearchVariablesAsync(
+                null, pageSize: 25, sort: field, direction: SortDirection.Descending);
+
+            return [.. ascending.Items, .. descending.Items];
+        }
+
+        static string Order(IReadOnlyList<VariableSummary> rows) => string.Join(",", rows.Select(row => row.Code));
+
+        // The row's own value for the key asked for, only ever counted and never compared: nulls
+        // sort last in both directions and two of these are ranked by a rule rather than by the
+        // value, so the rows being monotone in it is not something the API promises.
+        static string? KeyOf(SortField field, VariableSummary row) => field switch
+        {
+            SortField.Code => row.Code,
+            SortField.Kilde => row.KildeName,
+            SortField.Datasamling => row.DatasamlingName,
+            SortField.Variabelgruppe => row.VariabelgruppeName,
+            SortField.DataType => row.DataType,
+            SortField.Status => row.VersionStatus,
+            SortField.DataPeriod => row.DataFrom?.ToString("O"),
+
+            // A new member with no key here would probe nothing at all rather than probe it badly.
+            _ => throw new ArgumentOutOfRangeException(nameof(field), field, "No key on the row for this member.")
+        };
+    }
+
+    [LiveApiFact]
     public async Task Filters_WhenReadFromTheLiveApi_ThenTheContractStillFitsIt()
     {
         using var api = LiveApiConnection.Open();

@@ -28,6 +28,19 @@ public class VariableSearchTest : ExplorerTestContext
             DataTo = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
         };
 
+    /// <summary>The same variable with a data period of its own, in whole years.</summary>
+    /// <remarks>
+    /// Years rather than dates because the fixture is about ORDER, and a year is the shortest thing
+    /// that reads as out of order on the page. A null <paramref name="to"/> is an open-ended period,
+    /// which is the normal case rather than the exception; a null <paramref name="from"/> is a
+    /// variable whose period was never recorded.
+    /// </remarks>
+    private static VariableSummary Period(VariableSummary variable, int? from, int? to) => variable with
+    {
+        DataFrom = from is { } start ? new DateTimeOffset(start, 1, 1, 0, 0, 0, TimeSpan.Zero) : null,
+        DataTo = to is { } end ? new DateTimeOffset(end, 12, 31, 0, 0, 0, TimeSpan.Zero) : null,
+    };
+
     private sealed class FakeClient(Page<VariableSummary> answer) : EmptyMuninExplorerClient
     {
         public string? LastSearch { get; private set; }
@@ -324,11 +337,12 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     // ---------------------------------------------------------------------------------
-    // Sorting. Runa sorts by clicking a column header; there are no headers here, so the
-    // ordering gets a control of its own above the list. The rules it keeps from Runa are
-    // the ones about the ORDER, not about the headers: four sortable orders, the API's own
-    // default ascending to start with, the active field reverses, and any change goes back
-    // to page one.
+    // Sorting. Runa sorts by clicking a column header, and so does this: one press per
+    // column that says something about the variable, all eight of them, the last four
+    // from Fhi.Metadata-0ayti on. The rules are Runa's — the API's own default ascending
+    // to start with, the active field reverses, and any change goes back to page one.
+    // Which column sorts by WHAT is the API's business and is asserted against the tokens
+    // sent, in MuninExplorerClientTest; the cases here are about the row of headers.
     // ---------------------------------------------------------------------------------
 
     // SortControl, SortButtons and ClickSort come from SortHeader, which ShareableStateTest
@@ -365,20 +379,23 @@ public class VariableSearchTest : ExplorerTestContext
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Navn ↑", "Kilde", "Datasamling", "Variabelgruppe"], labels);
+        Assert.Equal(["Navn ↑", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode"],
+                     labels);
         Assert.Contains("sortert på Standard", cut.Find("p.caption[role=status]").TextContent);
     }
 
     [Fact]
-    public void Render_Always_ThenEverySortFieldTheContractOffersHasAButton()
+    public void Render_WhenEveryColumnIsOnScreen_ThenEverySortFieldTheContractOffersHasAButton()
     {
         // ResultHeader writes each header cell out by hand with a literal SortField, so the row
         // CAN fall behind the enum — this count is what catches it. A member added to SortField
         // with no cell to press it fails here, and the fix is a cell rather than a longer list.
-        // Kode, datatype, status and dataperiode have no button because they are not in the enum
-        // at all — the API does not sort on them, and a button would reorder nothing while
-        // claiming to have.
+        //
+        // Every column on first: some start off, and counting the default state would pin a
+        // smaller number against the enum's and say nothing about either.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        TurnEveryColumnOn(cut);
 
         Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
     }
@@ -387,6 +404,8 @@ public class VariableSearchTest : ExplorerTestContext
     [InlineData("Kilde", SortField.Kilde)]
     [InlineData("Datasamling", SortField.Datasamling)]
     [InlineData("Variabelgruppe", SortField.Variabelgruppe)]
+    [InlineData("Datatype", SortField.DataType)]
+    [InlineData("Dataperiode", SortField.DataPeriod)]
     public void Sort_WhenAnotherFieldIsChosen_ThenThatFieldIsFetchedAscending(string label, SortField expected)
     {
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
@@ -397,6 +416,199 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(expected, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
         Assert.Equal(2, client.Calls); // initial load + this one
+    }
+
+    [Theory]
+    [InlineData("Kode", SortField.Code)]
+    [InlineData("Status", SortField.Status)]
+    public void Sort_WhenAColumnThatStartsOffIsShownAndPressed_ThenThatFieldIsFetchedAscending(
+        string label, SortField expected)
+    {
+        // The two columns a reader has to ask for before they can order by them: Kode is seeded
+        // hidden and Status follows the historical filter until pressed. Their headers are worth
+        // a case of their own because showing the column is the only way to reach the press, and
+        // an ordering offered nowhere the reader can get to is the defect over again.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ToggleColumn(cut, label);
+        ClickSort(cut, label);
+
+        Assert.Equal(expected, client.LastSort);
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
+    }
+
+    [Fact]
+    public void Sort_WhenEveryColumnIsOnScreen_ThenTheEnumIsDeclaredInTheOrderTheHeadersAreDrawn()
+    {
+        // SortField's remarks promise that a control built from Enum.GetValues needs no second
+        // list to stay in step, and helsedata is free to build one. A member appended at the end
+        // rather than inserted at its own column keeps every other test green and offers the
+        // orders in an order no table on screen is in — which is why this presses the headers in
+        // DOM order and reads back what each one asked the API for, rather than restating the
+        // order as a literal that could be corrected to match a mistake.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        TurnEveryColumnOn(cut);
+
+        var pressed = new List<SortField>();
+
+        for (var at = 0; at < Enum.GetValues<SortField>().Length; at++)
+        {
+            // Re-found on every pass: each press re-renders the row, so a node held across one is
+            // stale. Pressing the already-active header only reverses the direction, which leaves
+            // the field it reports unchanged.
+            SortButtons(cut)[at].Click();
+            pressed.Add(client.LastSort);
+        }
+
+        Assert.Equal(Enum.GetValues<SortField>(), pressed);
+    }
+
+    [Fact]
+    public void Sort_WhenEachColumnIsPressedInTurn_ThenOnlyThatOneCarriesAriaSort()
+    {
+        // The rule for all eight at once rather than for one of them: aria-sort says which column
+        // the rows are ordered by, so two of them carrying it says nothing, and the attribute
+        // landing on a cell other than the one pressed says something false. A newly sortable
+        // header wired up by hand could do either.
+        //
+        // What this cannot see is a browser RESOLVING the attribute: bUnit builds no accessibility
+        // tree and applies no stylesheet. Nothing headless in this repository does either —
+        // Chrome's own tree, over CDP, exposes no sort property at all — so the comment above the
+        // Table_* cases below is where the hand measurement of that half is recorded, and the
+        // cell's role is the part of it that IS asserted, right here.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        TurnEveryColumnOn(cut);
+
+        // Navn is the column the list arrives sorted on, so a first press there REVERSES rather
+        // than starting a new ordering. One press elsewhere first puts every label in the loop on
+        // the same footing: a column that was not already active starts ascending.
+        ClickSort(cut, "Kilde");
+
+        foreach (var label in new[]
+                 {
+                     "Navn", "Kode", "Kilde", "Datasamling", "Variabelgruppe",
+                     "Datatype", "Status", "Dataperiode"
+                 })
+        {
+            ClickSort(cut, label);
+
+            var sorted = Assert.Single(cut.FindAll("[aria-sort]"));
+
+            Assert.Equal("columnheader", sorted.GetAttribute("role"));
+            Assert.Equal("ascending", sorted.GetAttribute("aria-sort"));
+            Assert.StartsWith(label, sorted.TextContent);
+
+            // And reversing it moves the direction without multiplying the attribute.
+            ClickSort(cut, label);
+
+            sorted = Assert.Single(cut.FindAll("[aria-sort]"));
+
+            Assert.Equal("descending", sorted.GetAttribute("aria-sort"));
+            Assert.StartsWith(label, sorted.TextContent);
+        }
+    }
+
+    [Fact]
+    public void Sort_WhenEachColumnIsPressedInTurn_ThenTheAnnouncementNamesThatColumnsOwnWord()
+    {
+        // Texts.FieldLabel is a second switch over the members the header row writes out by hand.
+        // A MISSING arm throws during the render and is caught above; a WRONG one — the one-token
+        // Status => FieldDataType — renders, and announces another column's word to a screen reader.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        TurnEveryColumnOn(cut);
+
+        // Navn is left out on purpose: it orders by SortField.Default, which is announced as
+        // "Standard" rather than as the word over the column. SortField.Default's remarks say why.
+        foreach (var label in new[]
+                 {
+                     "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"
+                 })
+        {
+            ClickSort(cut, label);
+
+            Assert.Equal(label, AnnouncedSortField(cut));
+        }
+    }
+
+    /// <summary>The field the live region says the list is ordered by, out of "…, sortert på X, Y".</summary>
+    private static string AnnouncedSortField(IRenderedComponent<VariableSearch> cut)
+    {
+        const string Names = "sortert på ";
+
+        var line = StatusLine(cut);
+        var at = line.IndexOf(Names, StringComparison.Ordinal);
+
+        Assert.True(at >= 0, $"The status line named no sort field at all: '{line}'");
+
+        var field = line[(at + Names.Length)..];
+        var ends = field.IndexOf(',');
+
+        Assert.True(ends >= 0, $"The status line's sort field ran to the end of the line: '{line}'");
+
+        return field[..ends];
+    }
+
+    [Fact]
+    public void Render_WhenEveryColumnIsOnScreen_ThenEveryColumnHeaderIsABareButtonInTheTabOrder()
+    {
+        // WCAG 2.1.1, and the half of it a render tree can actually answer. Enter and Space on a
+        // <button> are the browser's own activation, so what has to hold here is that nothing
+        // takes them away: a real <button type="button">, no tabindex moving it out of the tab
+        // order, no aria-disabled, and no keydown handler of ours to swallow the Space — which is
+        // what MissingEventHandlerException is asserting. A header built as a <div onclick> would
+        // pass every other case in this file and be unreachable without a mouse.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        TurnEveryColumnOn(cut);
+
+        Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
+
+        foreach (var button in SortButtons(cut))
+        {
+            Assert.Equal("button", button.LocalName);
+            Assert.Equal("button", button.GetAttribute("type"));
+            Assert.False(button.HasAttribute("tabindex"));
+            Assert.False(button.HasAttribute("disabled"));
+            Assert.False(button.HasAttribute("aria-disabled"));
+            Assert.Throws<MissingEventHandlerException>(() => button.KeyDown("Enter"));
+            Assert.Throws<MissingEventHandlerException>(() => button.KeyDown(" "));
+        }
+    }
+
+    [Fact]
+    public void Sort_WhenTheApiAnswers_ThenTheRowsKeepTheOrderItSentThem()
+    {
+        // The reason nothing in this package compares two rows, and the reason the Dataperiode and
+        // Datatype columns could be made sortable without a comparison being written here at all.
+        //
+        // Both halves of that are in this one payload. The periods are deliberately out of order as
+        // TEXT — the 2021 row comes first and the 1999 row second — so a client-side re-sort of the
+        // displayed range would be visible as the two swapping. And the names run Z, Æ, Ø, Å, which
+        // is their Norwegian order and not their code-point order: Å is U+00C5 and sorts before Æ
+        // and Ø ordinally, so an ordinal comparison anywhere on this path would move Årstall up to
+        // second and this case would catch it.
+        var rows = new[]
+        {
+            Period(Variable("Zink", "K1"), 2021, null),
+            Period(Variable("Ærlighet", "K2"), 1999, 2004),
+            Period(Variable("Økonomi", "K3"), 2010, null),
+            Period(Variable("Årstall", "K4"), null, null),
+        };
+
+        var cut = RenderWith(new FakeClient(OnePage(rows)));
+
+        ClickSort(cut, "Dataperiode");
+
+        const string names = "button.munin-explorer-dataitem-main__name"
+                             + " .munin-explorer-dataitem-main__column__text";
+
+        Assert.Equal(["Zink", "Ærlighet", "Økonomi", "Årstall"],
+                     cut.FindAll(names).Select(c => c.TextContent.Trim()));
     }
 
     [Fact]
@@ -530,7 +742,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Name ↑", "Source", "Data collection", "Variable group"], labels);
+        Assert.Equal(["Name ↑", "Source", "Data collection", "Variable group", "Data type", "Data period"],
+                     labels);
         Assert.NotNull(cut.Find($"{SortControl} .munin-explorer-data-list__item__row--header"));
     }
 
@@ -653,7 +866,9 @@ public class VariableSearchTest : ExplorerTestContext
         // button is never disabled to avoid.
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
+        // That the row survives at all, not how long it is: how many headers are drawn is the
+        // picker's business and is pinned where the picker is.
+        Assert.NotEmpty(SortButtons(cut));
     }
 
     [Fact]
@@ -714,6 +929,20 @@ public class VariableSearchTest : ExplorerTestContext
         var box = ColumnToggle(cut, label);
 
         box.Change(!Ticked(box));
+    }
+
+    /// <summary>Every column the picker has not already got on screen.</summary>
+    /// <remarks>
+    /// Named rather than held, since each tick re-renders the picker and a node carried across
+    /// that render is stale. Swept rather than by name because <see cref="ToggleColumn"/> toggles
+    /// rather than ensures-on, so naming today's two would hide one the day a default moves.
+    /// </remarks>
+    private static void TurnEveryColumnOn(IRenderedComponent<VariableSearch> cut)
+    {
+        foreach (var label in ColumnToggles(cut).Where(box => !Ticked(box)).Select(ColumnName).ToList())
+        {
+            ToggleColumn(cut, label);
+        }
     }
 
     [Fact]
@@ -1160,6 +1389,39 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal("descending",
                      cut.Find(".munin-explorer-dataitem-header__source").GetAttribute("aria-sort"));
+    }
+
+    [Fact]
+    public void Columns_WhenTheFilterTakesTheSortedStatusColumnAway_ThenTheOrderingStaysAndIsStillAnnounced()
+    {
+        // The same decision as the picker's route above, by the one route that is not the picker's:
+        // until the reader ticks Status themselves it follows «Vis historiske», so it is the only
+        // sorted header a control that says nothing about columns can take away.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickFacet(cut, "Vis historiske");
+        ClickSort(cut, "Status");
+
+        var calls = client.SearchCalls;
+
+        ClickFacet(cut, "Vis historiske");
+
+        // The header goes with the filter, aria-sort and the arrow with it.
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__status"));
+        Assert.Empty(cut.FindAll("[aria-sort]"));
+
+        // The ordering does not: sorting is the API's, so dropping it here would reorder the list
+        // underneath a reader who only asked to hide historical variables.
+        Assert.Equal(SortField.Status, client.LastSort);
+        Assert.Contains("sortert på Status", StatusLine(cut));
+
+        // And the way back is the facet that took it away, not the picker.
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.Equal("ascending",
+                     cut.Find(".munin-explorer-dataitem-header__status").GetAttribute("aria-sort"));
+        Assert.True(client.SearchCalls > calls);
     }
 
     [Fact]
@@ -2897,8 +3159,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         // Ahead of the results, otherwise it skips nothing.
         var markup = cut.Markup;
-        // Ahead of the ROWS, not ahead of the header: the header holds four sort buttons and is
-        // worth tabbing through. It is the twenty-five variables the link exists to skip.
+        // Ahead of the ROWS, not ahead of the header: the header holds a sort button per column on
+        // screen and is worth tabbing through. It is the twenty-five variables the link skips.
         Assert.True(markup.IndexOf("munin-explorer-skiplink-pagination", StringComparison.Ordinal)
                     < markup.IndexOf("<ul class=\"munin-explorer-data-list\"", StringComparison.Ordinal));
     }
@@ -8440,7 +8702,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new PagedClient(312));
 
         Assert.NotNull(cut.Find("a.munin-explorer-skiplink-pagination"));
-        Assert.Equal(["Navn ↑", "Kilde", "Datasamling", "Variabelgruppe"],
+        Assert.Equal(["Navn ↑", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode"],
                      SortButtons(cut).Select(b => b.TextContent));
         Assert.NotEmpty(cut.FindAll(".munin-explorer-pagination-pages button"));
     }

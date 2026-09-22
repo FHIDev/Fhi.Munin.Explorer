@@ -1119,11 +1119,14 @@ public sealed partial class VariableSearch : ComponentBase
     /// to put the ordering in; now there is, and leaving both would give the same choice two
     /// controls.
     /// <para>
-    /// Four columns map to a real <see cref="SortField"/>: Navn, Kilde, Datasamling and Variabelgruppe. Kode,
-    /// Datatype, Status, Dataperiode and the save column have none, so their headers are plain text rather than buttons that would
-    /// promise an ordering the API does not offer. The variable column maps to
+    /// Every column that says something about the variable maps to a real <see cref="SortField"/>,
+    /// the save column alone staying plain text: it holds a control rather than a value, so there
+    /// is nothing for the API to order by. The variable column maps to
     /// <see cref="SortField.Default"/>, which is honest rather than convenient: that member is
-    /// documented as the API's own order and its wire token is literally <c>name</c>.
+    /// documented as the API's own order and its wire token is literally <c>name</c>. What each
+    /// column actually orders BY is the API's, and is on the <see cref="SortField"/> members —
+    /// Dataperiode in particular, which orders by the period's start and not by the range this
+    /// cell draws (Fhi.Metadata-35w0p.37).
     /// </para>
     /// <para>
     /// aria-current, not aria-pressed, for the same reason the old buttons used it: a pressed
@@ -1168,7 +1171,7 @@ public sealed partial class VariableSearch : ComponentBase
 
         if (ColumnVisible(ResultColumn.Code))
         {
-            HeaderCell(builder, 200, "code", T.FieldCode, sort: null);
+            HeaderCell(builder, 200, "code", T.FieldCode, SortField.Code);
         }
 
         if (ColumnVisible(ResultColumn.Kilde))
@@ -1188,17 +1191,17 @@ public sealed partial class VariableSearch : ComponentBase
 
         if (ColumnVisible(ResultColumn.DataType))
         {
-            HeaderCell(builder, 600, "dataType", T.FieldDataType, sort: null);
+            HeaderCell(builder, 600, "dataType", T.FieldDataType, SortField.DataType);
         }
 
         if (ColumnVisible(ResultColumn.Status))
         {
-            HeaderCell(builder, 700, "status", T.FieldStatus, sort: null);
+            HeaderCell(builder, 700, "status", T.FieldStatus, SortField.Status);
         }
 
         if (ColumnVisible(ResultColumn.DataPeriod))
         {
-            HeaderCell(builder, 800, "period", T.FieldDataPeriod, sort: null);
+            HeaderCell(builder, 800, "period", T.FieldDataPeriod, SortField.DataPeriod);
         }
 
         builder.CloseElement();
