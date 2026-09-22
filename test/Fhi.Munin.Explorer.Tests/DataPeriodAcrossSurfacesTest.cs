@@ -32,6 +32,10 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     // carry a day `MMM yyyy` would have discarded, which is why this surface shows days at all.
     private const string End = "2024-12-31";
 
+    // Close enough to now, against a 1979 start, that the coverage fill rounds to a full track
+    // while the period is plainly closed.
+    private const string RecentEnd = "2026-06-30";
+
     /// <summary>The other way a payload carries no date: <c>default(DateTimeOffset)</c>.</summary>
     /// <remarks>
     /// A theory row cannot hold one, so the two absences are spelled null and <c>Unset</c> here and
@@ -78,13 +82,13 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     /// <remarks>
     /// Every component here stamps its ids with eight random hex digits, which spell "0001" about
     /// once in thirteen thousand renders — a flake in the one assertion below that reads the whole
-    /// page rather than one cell of it. Only the attributes that carry one of those ids: an
-    /// <c>aria-label</c> is a place a date can legitimately go, so it stays in what is swept.
+    /// page rather than one cell of it. The list is every idref attribute the markup writes today
+    /// and grows with it; an <c>aria-label</c> can legitimately hold a date, so it stays swept.
     /// </remarks>
     private static string Shown(string markup) =>
         Regex.Replace(
             markup,
-            "\\s(id|for|name|href|aria-(labelledby|describedby|controls|owns|details))=\"[^\"]*\"",
+            "\\s(id|for|name|href|aria-(labelledby|describedby|controls))=\"[^\"]*\"",
             " ");
 
     private static VariableSummary Row(string? from, string? to) => new()
@@ -160,6 +164,10 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     [Theory]
     [InlineData(Start, End, null)]
     [InlineData(Start, End, "en")]
+    // A closed end recent enough that the fill rounds up to the whole track: the row that says a
+    // full bar is not the open end's alone.
+    [InlineData(Start, RecentEnd, null)]
+    [InlineData(Start, RecentEnd, "en")]
     // An unknown start, carried both ways. Null is what the catalogue sends; the default date is
     // what a substituted client hands over, and three surfaces drew it as 1. jan. 0001.
     [InlineData(null, End, null)]
@@ -251,13 +259,17 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
         }
         else
         {
-            // A full fill means an open end and nothing else — the same fact as the modifier
-            // class, said by the one attribute a reader actually sees.
+            // The modifier carries the open end both ways. The fill carries it one way only: an
+            // open end fills the track, but so does a closed one that rounds up to the whole
+            // lifetime, which is Runa's rule and not a defect to assert against.
             Assert.Equal(Known(to) is null,
                          tracks[0].ClassList.Contains("munin-explorer-period__track--ongoing"));
-            Assert.Equal(Known(to) is null,
-                         search.Find(".munin-explorer-period__fill")
-                               .GetAttribute("style") == "width:100%");
+
+            if (Known(to) is null)
+            {
+                Assert.Equal("width:100%",
+                             search.Find(".munin-explorer-period__fill").GetAttribute("style"));
+            }
         }
 
         // The year 1 is not a date the catalogue gave, so no surface may print one — in a cell, in

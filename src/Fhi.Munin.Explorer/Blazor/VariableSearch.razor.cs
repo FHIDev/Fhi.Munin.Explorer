@@ -1397,7 +1397,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// <summary>The share of the variable's lifetime its data covers, as a whole percent.</summary>
     /// <remarks>
     /// The start is a date rather than a maybe because <see cref="PeriodBar"/> draws no track
-    /// without one: 100 here means an open end, which is Runa's rule, and never an unknown start.
+    /// without one, so 100 here is never an unknown start. It is not always an open end either:
+    /// a closed period ending near the end of a long lifetime rounds up into the same full track.
     /// </remarks>
     private static int PeriodShare(DateTimeOffset start, DateTimeOffset? to)
     {
