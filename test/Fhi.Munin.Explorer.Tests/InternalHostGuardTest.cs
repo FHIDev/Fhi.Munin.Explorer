@@ -8,11 +8,11 @@ namespace Fhi.Munin.Explorer.Tests;
 public class InternalHostGuardTest
 {
     // The preceding label is part of the match on purpose: searching for the bare name alone also
-    // matches the corrected runa./kelda. forms, and would call an uncorrected file clean.
+    // matches the corrected explorer./runa./kelda. forms, and would call an uncorrected file clean.
     private static readonly Regex AnyMuninTestHost =
         new(@"(?<prefix>[A-Za-z0-9.-]*)munin\.skytest\.fhi\.no", RegexOptions.IgnoreCase);
 
-    private static readonly string[] ExternalPrefixes = ["runa.", "kelda."];
+    private static readonly string[] ExternalPrefixes = ["explorer.", "runa.", "kelda."];
 
     /// <summary>Put on a line whose point is the internal host, such as an assertion that a message
     /// does not contain it. Per line, so a file is never exempt as a whole, and the test below
@@ -54,7 +54,7 @@ public class InternalHostGuardTest
         Assert.True(
             offenders.Count == 0,
             "These name the internal Munin host, which is unreachable outside FHI's network and fails "
-            + "silently when copied. Use runa.munin.skytest.fhi.no (or kelda.) instead:"
+            + "silently when copied. Use explorer.munin.skytest.fhi.no instead:"
             + Environment.NewLine
             + string.Join(Environment.NewLine, offenders));
     }
@@ -103,11 +103,13 @@ public class InternalHostGuardTest
     // A guard CI only ever runs against clean input asserts nothing: an empty result is what a
     // broken matcher gives too. So the offending forms are fed in here directly.
     [InlineData(Internal, 1)]
+    [InlineData("https://explorer.munin.skytest.fhi.no", 0)]
     [InlineData("https://runa.munin.skytest.fhi.no", 0)]
     [InlineData("https://kelda.munin.skytest.fhi.no", 0)]
     [InlineData("https://api.runa.munin.skytest.fhi.no", 0)]
     [InlineData("https://notruna.munin.skytest.fhi.no", 1)] // internal-host-on-purpose
     [InlineData("https://xkelda.munin.skytest.fhi.no", 1)] // internal-host-on-purpose
+    [InlineData("https://notexplorer.munin.skytest.fhi.no", 1)] // internal-host-on-purpose
     [InlineData("MuninExplorer__ApiBaseUrl: https://runa.munin.skytest.fhi.no", 0)]
     [InlineData(Internal + " and https://runa.munin.skytest.fhi.no on one line", 1)]
     [InlineData(Internal + " twice " + Internal, 2)]

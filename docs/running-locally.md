@@ -52,13 +52,14 @@ Then open **<http://localhost:5113>**. That's it — no API key, no database, no
 dotnet run --project samples/LegacyHost --launch-profile https
 ```
 
-It talks to `https://runa.munin.skytest.fhi.no`, which is read-only, so you get the real ~20 000 variables
+It talks to `https://explorer.munin.skytest.fhi.no`, which is read-only, so you get the real ~20 000 variables
 rather than fixtures.
 
-> **Use the `runa` host, never the same name without a prefix.** The unprefixed host resolves to a private
-> address and is reachable only from inside FHI's network. `runa` — and `kelda` — are published externally
-> by the GitOps ingress, and both route `/api/explorer/*` to the same API. So either hostname serves
-> *both* components: the two names brand the two UIs, not two backends.
+> **Use the `explorer` host, never the same name without a prefix.** The unprefixed host resolves to a private
+> address and is reachable only from inside FHI's network. `explorer.munin.skytest.fhi.no` (prod:
+> `explorer.munin.sky.fhi.no`) is published externally by the GitOps ingress and serves only
+> `/api/explorer/*`, so one value serves *both* components. `runa` and `kelda` route the same API today,
+> but they are the two UIs' names, not the API's, and may stop being reachable from outside FHI.
 > A host that copies the internal address works on the FHI network and fails silently once deployed
 > anywhere else, which is exactly what happened to helsedata's test environment on 2026-08-28.
 
@@ -262,7 +263,7 @@ Add a project reference from their `Fhi.Helsedata.Optimizely.csproj` to `src/Fhi
 
 
 ```csharp
-services.AddMuninExplorer(o => o.ApiBaseUrl = "https://runa.munin.skytest.fhi.no");
+services.AddMuninExplorer(o => o.ApiBaseUrl = "https://explorer.munin.skytest.fhi.no");
 ```
 
 and mount it in a view with the tag helper — `render-mode="Server"`, **not** `ServerPrerendered`, since prerendering runs `OnInitializedAsync` twice and doubles the API calls.
