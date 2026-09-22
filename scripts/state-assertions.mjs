@@ -490,7 +490,9 @@ export const assertions = [
             const target = document.getElementById('criteria');
             const heading = target.firstElementChild.getBoundingClientRect();
             const header = document.getElementById('fragment-test-header').getBoundingClientRect();
-            return heading.top >= header.bottom && heading.bottom <= innerHeight && scrollY > 0;
+            const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+            return Math.abs(target.getBoundingClientRect().top - margin) <= 2 &&
+              heading.top >= header.bottom && heading.bottom <= innerHeight && scrollY > 0;
           }, null, { timeout: 3000 });
         } catch {
           return `criteria heading did not clear the fixed header after a fragment jump at ${width}px`;
