@@ -546,8 +546,11 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.True(at >= 0, $"The status line named no sort field at all: '{line}'");
 
         var field = line[(at + Names.Length)..];
+        var ends = field.IndexOf(',');
 
-        return field[..field.IndexOf(',')];
+        Assert.True(ends >= 0, $"The status line's sort field ran to the end of the line: '{line}'");
+
+        return field[..ends];
     }
 
     [Fact]
