@@ -444,12 +444,15 @@ export const assertions = [
     },
     async control(page, { barId, rowId }) {
       await page.evaluate(({ barId, rowId }) => {
-        const bar = document.getElementById(barId);
+        // Detach the real observer's bar so callback ordering cannot undo this broken behavior.
+        const original = document.getElementById(barId);
+        const bar = original.cloneNode(true);
+        original.replaceWith(bar);
         new IntersectionObserver(([entry]) => {
-          if (entry.isIntersecting && bar.contains(document.activeElement)) {
-            bar.hidden = true;
-            bar.classList.remove('munin-explorer-page__stuckbar--on');
-          }
+          const on = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+          bar.hidden = !on;
+          bar.classList.toggle('munin-explorer-page__stuckbar--on', on);
+          bar.setAttribute('aria-hidden', String(!on));
         }).observe(document.getElementById(rowId));
       }, { barId, rowId });
     },
