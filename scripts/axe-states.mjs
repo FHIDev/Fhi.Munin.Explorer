@@ -324,8 +324,9 @@ export const states = {
   // A variable row opened. The panel under the row is the largest block of markup in the package
   // that only exists after a click — every property, the statistics block and the owner buttons.
   // It fetches, so the wait is on the region reporting itself done rather than on it appearing.
+  // The row's chevron opens it; the name opens the whole variable instead (Fhi.Metadata-35w0p.34).
   'variable-detail': async page => {
-    const row = page.locator('button.munin-explorer-dataitem-main__name').first();
+    const row = page.locator('button.munin-explorer-dataitem__expand-toggle').first();
     await row.waitFor({ state: 'visible', timeout: findTimeout });
     await row.click();
 
