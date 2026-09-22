@@ -15,6 +15,7 @@ public partial class VariableSearch
         _search = Search;
         _filter = Filter ?? VariableFilter.None;
         _selectedId = SelectedVariableId;
+        _instrumentId = SelectedInstrumentId;
         _sort = Sort;
         _direction = Direction;
         _levelLines = LevelLines;
@@ -41,6 +42,10 @@ public partial class VariableSearch
         await NotifyPageChangedAsync();
 
         await OpenInitialSelectionAsync();
+
+        // Last, and unconditional: the instrument view covers the list rather than sitting in a
+        // row, so what the search came back with says nothing about whether to fetch it.
+        await OpenInitialInstrumentAsync();
     }
 
     /// <summary>Whether a press on the clear control would clear anything.</summary>

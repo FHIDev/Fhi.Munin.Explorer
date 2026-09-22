@@ -1,0 +1,72 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+@if (Instrument is { } instrument)
+{
+    @* ViewRoot and ViewMain empty, as VariableListView passes them: this view is new enough to
+       have no older prefix of its own, so the chassis names stand alone and it invents none. *@
+    <DetailPage ViewRoot="" ViewMain=""
+                Eyebrow="@T.EyebrowInstrument"
+                Trail="@PageTrail"
+                TrailLabel="@T.TrailLabel"
+                Actions="@Actions"
+                Facts="@HeroFacts"
+                StickyName="@Named.Text"
+                StickyNameLang="@NameLang"
+                StickyCode="@StickyCode"
+                Contents="@DetailToc.Column(Toc, T.HeadingContents)">
+        <Header>
+            <div class="munin-explorer-page__header">
+
+                @* The catalogue holds the Norwegian name in a column and the English as a curated
+                   property, so the heading is marked with whichever of the two it resolved to. *@
+                @DetailBlocks.Heading(HeadingLevel, Named.Text ?? instrument.Code,
+                                      "headline headline-s margin--bottom", HeadingId, NameLang)
+
+                @* Not when the heading above has already fallen back to it. (Fhi.Metadata-w13lk) *@
+                @if (Named.Text is not null && !string.IsNullOrWhiteSpace(instrument.Code))
+                {
+                    <p class="caption margin--none">@instrument.Code</p>
+                }
+
+                @DetailBlocks.Prose(Described.Text, "ingress", DescriptionLang)
+            </div>
+        </Header>
+        <ChildContent>
+
+            @* Every block below draws exactly when its predicate in BuildToc holds — the one its
+               nav entry is added under, so the nav can never link to a block left out. *@
+
+            @if (Drawn(DetailSectionIds.Metadata))
+            {
+                <DetailSection Id="@DetailSectionIds.Metadata">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingMetadata, "headline headline-s")
+                    @DetailBlocks.Groups(Groups, GroupLevel, Language)
+                </DetailSection>
+            }
+
+            @if (Drawn(DetailSectionIds.Validity))
+            {
+                <DetailSection Id="@DetailSectionIds.Validity">
+                    @DetailBlocks.Heading(BlockLevel, T.FieldValidity, "headline headline-s")
+                    <p class="margin--none">@Validity</p>
+                </DetailSection>
+            }
+
+            @* Navigation, never a table: an instrument can hold thousands of variables, so this
+               links to the search that lists them — the datasamling view's own bargain. Drawn only
+               where there is an address to offer, because this package knows none of its own. *@
+            @if (Drawn(DetailSectionIds.Variables))
+            {
+                <DetailSection Id="@DetailSectionIds.Variables">
+                    @DetailBlocks.Heading(BlockLevel, T.HeadingVariables, "headline headline-s")
+                    <p class="margin--none">
+                        <a href="@VariablesHref">@T.AllVariablesInInstrument(instrument.VisibleVariableCount)</a>
+                    </p>
+                </DetailSection>
+            }
+
+            @DetailBlocks.NamedSections(NamedSections, BlockLevel)
+            @Sections
+        </ChildContent>
+    </DetailPage>
+}

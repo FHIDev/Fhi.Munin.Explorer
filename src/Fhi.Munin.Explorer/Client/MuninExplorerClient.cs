@@ -109,6 +109,11 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     public Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default) =>
         GetOrNullAsync<DatasamlingDetail>($"api/explorer/datasamling/{id}", cancellationToken);
 
+    // Singular, like api/explorer/datasamling/{id} beside it and unlike api/explorer/kilder/{id}:
+    // the route is the API's own spelling either way.
+    public Task<InstrumentDetail?> GetInstrumentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        GetOrNullAsync<InstrumentDetail>($"api/explorer/instrument/{id}", cancellationToken);
+
     public Task<VariableDetail?> GetVariableAsync(
         Guid id,
         bool includeHistorical = false,

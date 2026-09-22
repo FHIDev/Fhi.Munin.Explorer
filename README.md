@@ -480,9 +480,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     it, deliberately: the results container is
     drawn only with rows on screen, and the count inside this row is the component's one polite
     live region, which has to be in the DOM before its text arrives.
-    The three detail views add `munin-explorer-page__section`, worn by the `<section>` each of
-    their blocks sits in — the kilde, datasamling and variable views alike. A handle, and the
-    plainest kind: the wrapper carries an `id` and helsedata's own `data-nav-section` and no
+    The detail views add `munin-explorer-page__section`, worn by the `<section>` each of their
+    blocks sits in — the kilde, datasamling, variable and instrument views alike. A handle, and
+    the plainest kind: the wrapper carries an `id` and helsedata's own `data-nav-section` and no
     padding, border or margin of its own, so an undefined one costs nothing at all today. What a
     rule buys is the `scroll-margin` that keeps a heading the contents nav has just linked to clear
     of a sticky header, rather than under it. Stiler's rules for
@@ -491,11 +491,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     of its own, but 0.1.75 carries the file: both sample stylesheets stand in at its declarations
     for the name and `assert-sample-css-matches-stiler.sh` finds no divergence against that pin.
     Which PR bumped a version says nothing about what a later release shipped — read the pin.
-    The same three add the chassis those sections sit in — `munin-explorer-page` on the root,
+    The same views add the chassis those sections sit in — `munin-explorer-page` on the root,
     `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc` —
-    written once, by `DetailPage`, rather than three times under three prefixes. The root and the
-    main column wear theirs *beside* the view's own name rather than instead of it, because one of
-    those older names is the drill-in panel's as well: `munin-explorer-kilde__datasamlinger` is
+    written once, by `DetailPage`, rather than once under each prefix. The three that have a prefix
+    of their own wear theirs on the root and the main column *beside* the chassis name rather
+    than instead of it, because one of those older names is the drill-in panel's as well:
+    `munin-explorer-kilde__datasamlinger` is
     styled under `munin-explorer-kilder__expanded` in an expanded result row, so a clean rename
     would have taken a surface nobody would think to retest with it. The body is the exception and
     wears `munin-explorer-page__body` alone: every published Stiler still lays
@@ -510,14 +511,17 @@ These are not style preferences — each one is a host that breaks otherwise.
     for it to link to, so a view with none still has no rail. Both sample stylesheets scope the
     two-track rule to a body that has one, as Stiler has since `Fhi.Metadata-ex5wb`. Ungated, a
     fixed 250px first track would lay a lone main column out in it.
-    `VariableListView` is a fourth surface on that chassis since `Fhi.Metadata-35w0p.13`, and the
-    one with no prefix of its own: it wears `munin-explorer-page` and `munin-explorer-page__body`
-    and `munin-explorer-page__main` with nothing beside them, and it is the view that never has a
+    `VariableListView` is a fourth surface on that chassis since `Fhi.Metadata-35w0p.13`, and
+    `InstrumentView` a fifth since `Fhi.Metadata-hkf58`. Neither has a prefix of its own: both wear
+    `munin-explorer-page` and `munin-explorer-page__body` and `munin-explorer-page__main` with
+    nothing beside them, which is what lets the instrument page ship with no rule written in Stiler
+    for it at all. `VariableListView` is the view that never has a
     contents column — the Kilde filter beside the list does the grouping a nav would, so the gate
-    above is what decides whether it draws a rail it has nothing to put in. It adds
-    `munin-explorer-page__header` for its name block, the chassis's own name for what the other
-    three wear a prefixed one for, and **no Stiler carries a rule for it**: `Fhi.Metadata-urbj0` is
-    the bead that writes one. It is a handle in the table below, and undefined it degrades quietly:
+    above is what decides whether it draws a rail it has nothing to put in. It and the instrument
+    view both use `munin-explorer-page__header` for their name block, the chassis's own name for
+    what the other three wear a prefixed one for, and **no Stiler carries a rule for it**:
+    `Fhi.Metadata-urbj0` is the bead that writes one. It is a handle in the table below, and
+    undefined it degrades quietly:
     the heading is still a heading and still wears Stiler's own `headline headline-s`, so what is
     lost is the rule and the space under the name block that separate it from the list.
     The chassis adds two chrome names above the name block, `munin-explorer-page__eyebrow` and
@@ -532,10 +536,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     is a paragraph above the title and the row is its children in ordinary flow, and no word is
     lost either way. Stiler 0.1.75 — the pin `samples/HostileHost` restores — carries a rule for
     each, in the same `components/munin-explorer/_page.scss`, and both sample stylesheets already
-    stand in at its declarations. Three of the four surfaces set the eyebrow — the kilde,
-    datasamling and variable views, each naming its own kind. `VariableListView` sets no chrome at
-    all: the saved-list view's own is a bead of its own.
-    Under the name block the same three add `munin-explorer-page__facts`, the hero row: one `<dl>`
+    stand in at its declarations. Four of the five surfaces set the eyebrow — the kilde,
+    datasamling, variable and instrument views, each naming its own kind. `VariableListView` sets no
+    chrome at all: the saved-list view's own is a bead of its own.
+    Under the name block those four add `munin-explorer-page__facts`, the hero row: one `<dl>`
     holding a `<div>` per fact, each a `<dt>` label over a `<dd>` value with an optional `<small>`
     under it carrying the qualifier that makes the value honest — `630 variabler`, then
     `i 6 datasamlinger`. Six facts per page, because Stiler 0.1.75 lays the list out as
@@ -544,7 +548,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     fewer, since a fact with no value is dropped rather than drawn empty. A handle: undefined, the
     `<dl>` is a definition list at browser defaults, every label and value still on the page and in
     the right order, and what is lost is the row — it stacks instead. `VariableListView` names no
-    facts, because a list of saved variables is not an entity with facts about it. Both sample
+    facts, because a list of saved variables is not an entity with facts about it. The instrument
+    page names two — how many variables it holds and how long it has been in use — and the row
+    draws whichever of them the catalogue filled in. Both sample
     stylesheets stand in at exactly what the pinned 0.1.75 declares, the `small` included.
     `DetailFact.LabelLang` marks a label that falls back to another language, independently of
     the value’s `Lang`, in both the hero and sticky bar.
@@ -580,7 +586,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     declares. `VariableListView` draws no bar: it names no hero facts, and the bar exists only where
     that row does.
 
-    The same three add `munin-explorer-page__fields` on every fact list they draw, and
+    The same four add `munin-explorer-page__fields` on every fact list they draw, and
     `munin-explorer-page__language` on the language name above a value the catalogue holds in more
     than one. Both used to be the drill-in panel's own `munin-explorer-meta__grid` and
     `munin-explorer-meta__language`, borrowed by the detail pages since they were built, which is
@@ -677,9 +683,9 @@ These are not style preferences — each one is a host that breaks otherwise.
 
   The detail views' section ids are the one exception to the paragraph below, and a deliberate
   one: `metadata`, `criteria`, `source`, `statistics`, `datacollections`, `versions`, `dataperiod`,
-  `datatype` and `variablegroups`, and the explorers' own `variables`, `accesscriteria`, `prices`
-  and `codelists`, are written bare, because a link to a section is a link one
-  reader sends another and a discriminator minted at run time is a link that resolves once. They
+  `datatype`, `variablegroups`, `instruments` and `validity`, and the explorers' own `variables`,
+  `accesscriteria`, `prices` and `codelists`, are written bare, because a link to a section is a
+  link one reader sends another and a discriminator minted at run time is a link that resolves once. They
   are fixed English words rather than a slug of the heading for the same reason — the headings are
   bilingual, so a derived id would differ between `nb` and `en`. Within one mount they cannot
   repeat: an explorer renders at most one detail view, and each view emits each id at most once —
@@ -1173,10 +1179,20 @@ all it takes.
            param-Language="@("no")" param-IsAuthenticated="@(User.Identity?.IsAuthenticated == true)" />
 ```
 
-Opening a link restores the search, the facets, the sort, the page and the open variable, and every
-change the reader makes updates the address bar. There is no glue to write — no wrapper component,
-no query parsing, no `history.replaceState`. Which tab is open is deliberately *not* in the link: a
-shared URL that opened on the sender's Variabelliste would be an empty page for everybody else.
+Opening a link restores the search, the facets, the sort, the page, the open variable and the open
+instrument, and every change the reader makes updates the address bar. There is no glue to write —
+no wrapper component, no query parsing, no `history.replaceState`. Which tab is open is
+deliberately *not* in the link: a shared URL that opened on the sender's Variabelliste would be an
+empty page for everybody else.
+
+`?instrumentId=` is the newest of the keys it owns, and the only one that opens a page rather than
+restoring part of a search. It names the instrument — the questionnaire or scale a variable was
+collected with — whose own page `InstrumentView` draws in place of the result list, reached from
+the Instrument entry on a variable. A link can carry it beside `?variabelId=`, because the variable
+underneath is never torn down; the instrument is the one that opens, since that is the page the
+link was made on. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
+`page`, `pageSize`, `variabelId` and `instrumentId` — plus `VariableFilter.QueryKeys`, and any of
+the scalars can be declined.
 
 `KildeExplorer` is the kildeutforsker's equivalent, and `Language` is all it takes:
 

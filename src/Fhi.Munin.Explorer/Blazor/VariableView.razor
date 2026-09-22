@@ -133,6 +133,17 @@
                 </DetailSection>
             }
 
+            @* Names and navigation, never the instrument's own facts: the page for those is one
+               press away, and repeating them here would be two places to keep in step. Absent
+               entirely where the variable belongs to no instrument, which most do not. *@
+            @if (Drawn(DetailSectionIds.Instruments))
+            {
+                <DetailSection Id="@DetailSectionIds.Instruments">
+                    @DetailBlocks.Heading(BlockLevel, T.FieldInstrument, "headline headline-s")
+                    @InstrumentBlock.Write(Instruments, Reader, InstrumentHref, "munin-explorer-whole__list")
+                </DetailSection>
+            }
+
             @if (Drawn(DetailSectionIds.DataCollections))
             {
                 <DetailSection Id="@DetailSectionIds.DataCollections">

@@ -162,6 +162,35 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedVariableId = null,
         }).ToQueryString());
 
+    private Func<Guid, string>? _instrumentAddress;
+
+    /// <summary>This page showing one instrument, with everything else about the view kept.</summary>
+    /// <remarks>
+    /// The search, the facets and the open variable travel with it on purpose: leaving the
+    /// instrument puts the reader back where they came from, and none of it was torn down.
+    /// </remarks>
+    private Func<Guid, string> InstrumentHref => _instrumentAddress ??= id =>
+        _mirror.Address(Linkable(_state.ToState() with { SelectedInstrumentId = id }).ToQueryString());
+
+    private Func<Guid, string>? _instrumentVariablesAddress;
+
+    /// <summary>This search narrowed to one instrument's variables, and to nothing else.</summary>
+    /// <remarks>
+    /// The whole filter is replaced rather than amended, unlike
+    /// <see cref="DatasamlingVariablesHref"/>, and the search term goes with it: the link names the
+    /// instrument's own count, so a target carrying the reader's other narrowing would open a page
+    /// with fewer rows than the number they pressed.
+    /// </remarks>
+    private Func<Guid, string> InstrumentVariablesHref => _instrumentVariablesAddress ??= id =>
+        _mirror.Address(Linkable(_state.ToState() with
+        {
+            Filter = VariableFilter.None with { InstrumentIds = [id] },
+            Search = null,
+            Page = 1,
+            SelectedVariableId = null,
+            SelectedInstrumentId = null,
+        }).ToQueryString());
+
     private bool Owns(string key) =>
         ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key);
 
@@ -180,6 +209,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         {
             Search = Declined("search") ? null : state.Search,
             SelectedVariableId = Declined("variabelId") ? null : state.SelectedVariableId,
+            SelectedInstrumentId = Declined("instrumentId") ? null : state.SelectedInstrumentId,
             Sort = Declined("sort") ? SortField.Default : state.Sort,
             Direction = Declined("sortDir") ? SortDirection.Ascending : state.Direction,
             Page = Declined("page") ? 1 : state.Page,
@@ -204,6 +234,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         public Guid? SelectedVariableId { get; set; }
 
+        public Guid? SelectedInstrumentId { get; set; }
+
         public static Binding From(ExplorerUrlState state) => new()
         {
             Search = state.Search,
@@ -213,6 +245,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Page = state.Page,
             PageSize = state.PageSize,
             SelectedVariableId = state.SelectedVariableId,
+            SelectedInstrumentId = state.SelectedInstrumentId,
         };
 
         public ExplorerUrlState ToState() => new()
@@ -224,6 +257,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Page = Page,
             PageSize = PageSize,
             SelectedVariableId = SelectedVariableId,
+            SelectedInstrumentId = SelectedInstrumentId,
         };
     }
 }

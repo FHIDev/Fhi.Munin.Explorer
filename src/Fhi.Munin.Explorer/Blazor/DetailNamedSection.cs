@@ -14,7 +14,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// Give <see cref="Id"/> one no other element on the page has, and none the views write:
 /// <c>metadata</c>, <c>criteria</c>, <c>source</c>, <c>statistics</c>, <c>datacollections</c>,
-/// <c>versions</c>, <c>dataperiod</c>, <c>datatype</c>, <c>variablegroups</c> — and nothing starting
+/// <c>versions</c>, <c>dataperiod</c>, <c>datatype</c>, <c>variablegroups</c>, <c>instruments</c>,
+/// <c>validity</c> — and nothing starting
 /// <c>section-</c>, which the detail views finish with the catalogue's own section keys, so that set
 /// is Munin's to extend rather than a list this package can close. A repeated id puts two elements
 /// on the page under it, and the nav's second link lands on the first. Keep it the same in every
