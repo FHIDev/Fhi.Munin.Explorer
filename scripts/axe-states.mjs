@@ -275,6 +275,14 @@ export const states = {
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
 
+    // And the unbroken name the 320px reflow run exists for: a re-capture without it would leave
+    // that run green over a tree with nothing to wrap. (Fhi.Metadata-7484a)
+    await page
+      .locator('.munin-explorer-filters li > label',
+        { hasText: 'Analysesett_avansert_behandling_Parkinson' })
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+
     // The Ikonforklaring legend, which Utvid alle opens with the facets: axe skips what a shut
     // <details> hides, so without the press its eighteen rows would be scanned in no state at all.
     // (Fhi.Metadata-zllxt)

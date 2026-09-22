@@ -286,7 +286,7 @@ The variable explorer's `/` is measured beside them twice. `variables-list` is t
 where below 1024px the filter panel is folded behind Vis filtre and draws nothing.
 `filters-level-lines` presses Vis filtre and Utvid alle, and it is the one that measures the panel:
 its toolbar, which grows a control at a time and whose fourth took it to 291px of content in a 226px
-mount (`Fhi.Metadata-kd9ts`), and its facet values, where a datasamling name with no break in it
+mount (`Fhi.Metadata-kd9ts`), and its facet values, where a variabelgruppe name with no break in it
 only stays inside 320px because the label rule carries `overflow-wrap: anywhere`
 (`Fhi.Metadata-7484a`). `check-hostile-host.sh` measures the unfolded panel at 320 as well, and does
 not run in CI.

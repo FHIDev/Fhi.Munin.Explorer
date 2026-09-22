@@ -61,7 +61,7 @@ REFLOW_EXPLORER_TARGET="/::variables-list"
 
 # And the panel unfolded, the only 320px state here that draws its toolbar (the fourth control put
 # 291px of it in a 226px mount, Fhi.Metadata-kd9ts) and its facet values, whose unbroken
-# datasamling name only the label rule wraps (Fhi.Metadata-7484a).
+# variabelgruppe name only the label rule wraps (Fhi.Metadata-7484a).
 REFLOW_FACETS_TARGET="/::filters-level-lines"
 TARGETS=(
   "$REFLOW_EXPLORER_TARGET"
