@@ -677,6 +677,7 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer-filters",            // shared
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
+            "munin-explorer-filters__groupcount", // a facet's size (Fhi.Metadata-35w0p.53)
             "munin-explorer-filters__toggle",
             "munin-explorer-filters__toolbar", // the fold row, the variable explorer's name
             // The column picker, shared with the variable explorer down to the markup (ColumnPicker).

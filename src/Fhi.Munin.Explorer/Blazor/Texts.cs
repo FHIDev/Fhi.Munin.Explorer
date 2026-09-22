@@ -522,6 +522,9 @@ internal sealed record Texts(
     // only above zero, so no wording for none is needed — and none is wanted: "0 valgt" over a
     // facet nobody has touched is a filter reported where there is no filter.
     Func<int, string> FacetChosen,
+    // How many values a Kelda facet has in all, beside that ticked count. The unit word is what
+    // keeps "24 verdier" and "2 valgt" from reading as one number (Fhi.Metadata-35w0p.53).
+    Func<int, string> FacetSize,
     // The panel's own disclosure, which is one control saying two things: the panel is folded away
     // on a narrow screen and this is what unfolds it. Both wordings are needed because a button
     // still reading "Vis filtre" over an open panel tells the reader the opposite of what pressing
@@ -1230,6 +1233,7 @@ internal sealed record Texts(
         ShowMoreFacetValues: hidden => $"Vis {hidden} til",
         ShowFewerFacetValues: "Vis færre",
         FacetChosen: chosen => $"{chosen} valgt",
+        FacetSize: size => size == 1 ? "1 verdi" : $"{size} verdier",
         ShowFilters: "Vis filtre",
         HideFilters: "Skjul filtre",
         HeadingDelkilderAndDataCollections: "Delkilder og datasamlinger",
@@ -1614,6 +1618,7 @@ internal sealed record Texts(
         ShowMoreFacetValues: hidden => $"Show {hidden} more",
         ShowFewerFacetValues: "Show fewer",
         FacetChosen: chosen => $"{chosen} selected",
+        FacetSize: size => size == 1 ? "1 value" : $"{size} values",
         ShowFilters: "Show filters",
         HideFilters: "Hide filters",
         HeadingDelkilderAndDataCollections: "Sub-sources and data collections",
