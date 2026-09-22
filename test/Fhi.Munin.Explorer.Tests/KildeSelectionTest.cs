@@ -707,18 +707,18 @@ public class KildeSelectionTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ScrollBox_WhenTheHandoverIsWiredAndEveryColumnIsOn_ThenTheModifierCountsFifteen()
+    public void ScrollBox_WhenTheHandoverIsWiredAndEveryColumnIsOn_ThenTheModifierCountsSixteen()
     {
-        // The widest the table gets, and the configuration the spill was measured in: fifteen is not
-        // the picker's ten — five of them are columns it cannot reach. (Fhi.Metadata-l9l2n.50)
+        // The widest the table gets: sixteen is not the picker's eleven — five of them are columns
+        // it cannot reach. Fifteen until Kode became a column (Fhi.Metadata-ffudq).
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         TurnEveryColumnOn(cut);
 
-        Assert.Equal(15, Headers(cut).Count);
+        Assert.Equal(16, Headers(cut).Count);
 
         Assert.Contains(
-            "munin-explorer-kilder-scroll--cols-15",
+            "munin-explorer-kilder-scroll--cols-16",
             cut.Find('.' + HostClassNames.KilderScroll).ClassList);
     }
 

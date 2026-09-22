@@ -10,13 +10,14 @@ public sealed partial class KildeSearch
     /// A column the reader can turn off.
     /// </summary>
     /// <remarks>
-    /// Kelda's ten, in the order its own picker lists them (<c>kelda.tsx</c>,
+    /// Kelda's eleven, in the order its own picker lists them (<c>kelda.tsx</c>,
     /// <c>OPTIONAL_COLUMNS</c>). Navn, Status and Opprettet are not among them, in Kelda either.
     /// Which field each of the two dates reads is on <see cref="Imported"/> and
     /// <see cref="SourceUpdated"/> below, where a reader meets it.
     /// </remarks>
     private enum KildeColumn
     {
+        Code,
         Kildetype,
         Datasamlinger,
         Variables,
@@ -40,7 +41,7 @@ public sealed partial class KildeSearch
     /// The columns that start turned off, which is Kelda's own default set.
     /// </summary>
     /// <remarks>
-    /// Kildetype, Datasamlinger and Variables are on; the other seven are off. Held as what is
+    /// Kildetype, Datasamlinger and Variables are on; the other eight are off. Held as what is
     /// hidden rather than as what is shown, so the table's default view is the one this component
     /// already shipped and a column added to the enum appears rather than disappears.
     /// <para>
@@ -51,6 +52,7 @@ public sealed partial class KildeSearch
     /// </remarks>
     private readonly HashSet<KildeColumn> _hiddenColumns =
     [
+        KildeColumn.Code,
         KildeColumn.Delkilder,
         KildeColumn.DataController,
         KildeColumn.DataProcessor,
@@ -86,6 +88,7 @@ public sealed partial class KildeSearch
     /// </remarks>
     private string ColumnLabel(KildeColumn column) => column switch
     {
+        KildeColumn.Code => T.FieldCode,
         KildeColumn.Kildetype => T.ColumnKildetype,
         KildeColumn.Datasamlinger => T.HeadingDataCollections,
         KildeColumn.Variables => T.ColumnVariableCount,

@@ -92,9 +92,20 @@ public class KildeSortingTest : ExplorerTestContext
     private static IReadOnlyList<string> RowNames(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder tbody th button").Select(b => b.TextContent.Trim())];
 
-    /// <summary>The codes under the names, which is where a tie between two equal names is visible.</summary>
-    private static IReadOnlyList<string> RowCodes(IRenderedComponent<KildeSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-kilder tbody th p.caption").Select(p => p.TextContent.Trim())];
+    /// <summary>The Kode column, which is where a tie between two equal names is visible.</summary>
+    /// <remarks>Turned on first when it is off; the toggle is a press, so it changes no order.</remarks>
+    private static IReadOnlyList<string> RowCodes(IRenderedComponent<KildeSearch> cut)
+    {
+        if (!KildeColumns.Headers(cut).Contains("Kode"))
+        {
+            KildeColumns.ToggleColumn(cut, "Kode");
+        }
+
+        var column = KildeColumns.Headers(cut).ToList().IndexOf("Kode");
+
+        return [.. cut.FindAll(".munin-explorer-kilder tbody tr")
+            .Select(tr => tr.QuerySelectorAll("th, td")[column].TextContent.Trim())];
+    }
 
     /// <summary>Sort on an order's column, which is the only way a reader can.</summary>
     private static void Choose(IRenderedComponent<KildeSearch> cut, KildeSortOrder order) =>

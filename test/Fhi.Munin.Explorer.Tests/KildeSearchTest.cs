@@ -830,10 +830,10 @@ public class KildeSearchTest : ExplorerTestContext
 
         TurnEveryColumnOn(cut);
 
-        Assert.Equal(14, Headers(cut).Count);
+        Assert.Equal(15, Headers(cut).Count);
 
         Assert.Contains(
-            "munin-explorer-kilder-scroll--cols-14",
+            "munin-explorer-kilder-scroll--cols-15",
             cut.Find(".munin-explorer-kilder-scroll").ClassList);
     }
 
@@ -971,10 +971,8 @@ public class KildeSearchTest : ExplorerTestContext
             .Select(c => c.TextContent.Trim())
             .ToList();
 
-        // The name cell carries the code under the name, the way Kelda does: it is how a reader who
-        // knows K_DAR finds the row whose name they do not know.
-        Assert.StartsWith("Dødsårsaksregisteret", cells[0]);
-        Assert.Contains("K_DAR", cells[0]);
+        // The name alone: the code is an optional column, off by default (sak #6076).
+        Assert.Equal("Dødsårsaksregisteret", cells[0]);
 
         Assert.Equal("Sentralt helseregister", cells[1]);
         Assert.Equal("Aktiv", cells[2]);
@@ -1025,16 +1023,25 @@ public class KildeSearchTest : ExplorerTestContext
             datasamlinger: 23, variables: 23),
         Kilde("Dødsårsaksregisteret", "K_DAR", datasamlinger: 2506, variables: 2506));
 
-    /// <summary>The cell under the Variabler heading in the row whose name cell carries the code.</summary>
+    private static readonly Dictionary<string, string> BarNames = new(StringComparer.Ordinal)
+    {
+        ["K_HKR"] = "Hjerte- og karregisteret",
+        ["K_ALS"] = "Als registeret",
+        ["K_DAR"] = "Dødsårsaksregisteret",
+    };
+
+    /// <summary>The cell under the Variabler heading in the row of the kilde with this code.</summary>
+    /// <remarks>By name, because the code is a column the default table does not draw.</remarks>
     private static IElement VariablesCell(IRenderedComponent<KildeSearch> cut, string code)
     {
+        var name = BarNames[code];
         var column = cut.FindAll(".munin-explorer-kilder thead th")
             .ToList()
             .FindIndex(th => th.TextContent.Contains("Variabler", StringComparison.Ordinal));
         Assert.True(column >= 0, "No Variabler heading in the table.");
 
         var row = cut.FindAll(".munin-explorer-kilder tbody tr")
-            .Single(tr => tr.QuerySelector("th")?.TextContent.Contains(code, StringComparison.Ordinal) == true);
+            .Single(tr => tr.QuerySelector("th button")?.TextContent.Trim() == name);
 
         return row.Children[column];
     }
@@ -2222,10 +2229,12 @@ public class KildeSearchTest : ExplorerTestContext
             ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
 
         var cut = RenderWith(new FakeClient([.. kilder]));
+        ToggleColumn(cut, "Kode");
         var column = Headers(cut).ToList().IndexOf("Kildetype");
+        var codeColumn = Headers(cut).ToList().IndexOf("Kode");
 
         string Kildetype(string code) => cut.FindAll(".munin-explorer-kilder tbody tr")
-            .Single(row => row.QuerySelector("th")!.TextContent.Contains(code, StringComparison.Ordinal))
+            .Single(row => row.QuerySelectorAll("th, td")[codeColumn].TextContent.Trim() == code)
             .QuerySelectorAll("th, td")[column].TextContent.Trim();
 
         Assert.Equal("Ikke oppgitt", Kildetype("K_NKR-NAKKE"));
@@ -5931,7 +5940,7 @@ public class KildeSearchTest : ExplorerTestContext
         [.. cut.FindAll(".munin-explorer-kilder tbody tr:first-child > *").Select(c => c.TextContent.Trim())];
 
     /// <summary>
-    /// One kilde carrying every field the ten optional columns read, each value distinct.
+    /// One kilde carrying every field the eleven optional columns read, each value distinct.
     /// </summary>
     /// <remarks>
     /// The four date-shaped fields are the point. Two are Munin's own — Created and LastUpdated —
@@ -5978,7 +5987,7 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Picker_WhenTheListLoads_ThenItOffersKeldasTenColumnsInKeldasOrder()
+    public void Picker_WhenTheListLoads_ThenItOffersKeldasElevenColumnsInKeldasOrder()
     {
         // Kelda's OPTIONAL_COLUMNS, in its order (kelda.tsx:74). Navn, Status and Opprettet are
         // absent for the reason they are absent from Kelda's own list: the name is the row's
@@ -5987,6 +5996,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.Equal(
         [
+            "Kode",
             "Kildetype",
             "Datasamlinger",
             "Variabler",
@@ -6002,8 +6012,72 @@ public class KildeSearchTest : ExplorerTestContext
         // The rendered `checked` attribute is the whole truth about a checkbox, so the defaults
         // have to be readable off it rather than only off the table.
         Assert.Equal(
-            [true, true, true, false, false, false, false, false, false, false],
+            [false, true, true, true, false, false, false, false, false, false, false],
             ColumnToggles(cut).Select(Ticked));
+    }
+
+    // Sak #6076: the code under every name was noise, so it is a picker column, off by default.
+    // K_UNIQUE is in no other field, so text anywhere in a row can only have come from the code.
+    // (Fhi.Metadata-ffudq)
+    private static FakeClient CodeKilder() => new(
+        Kilde("Als registeret", "K_UNIQUE", shortName: "ALS"),
+        Kilde("Dødsårsaksregisteret", "K_DAR", shortName: "DÅR"));
+
+    private static readonly string CodeHeading = Texts.For("no").FieldCode;
+
+    [Fact]
+    public void Code_WhenTheListLoads_ThenNoRowAndNoHeaderCarriesIt()
+    {
+        var cut = RenderWith(CodeKilder());
+
+        Assert.All(cut.FindAll(".munin-explorer-kilder tbody tr"),
+            row => Assert.DoesNotContain("K_UNIQUE", row.TextContent, StringComparison.Ordinal));
+        Assert.DoesNotContain(CodeHeading, Headers(cut));
+    }
+
+    [Fact]
+    public void Code_WhenTurnedOnInThePicker_ThenItIsTheFirstOptionalColumnAndItsOwnCellAfterTheName()
+    {
+        var cut = RenderWith(CodeKilder());
+
+        ToggleColumn(cut, CodeHeading);
+
+        var headers = Headers(cut);
+        Assert.Equal(["Vis datasamlinger", "Navn", CodeHeading, "Kildetype"], headers.Take(4));
+
+        var rows = cut.FindAll(".munin-explorer-kilder tbody tr");
+        Assert.Equal(2, rows.Count);
+        foreach (var (row, code) in rows.Zip(["K_UNIQUE", "K_DAR"]))
+        {
+            var name = row.QuerySelector("th[scope=row]")!;
+            Assert.DoesNotContain(code, name.TextContent, StringComparison.Ordinal);
+
+            var next = name.NextElementSibling!;
+            Assert.Equal("TD", next.TagName);
+            Assert.Equal(code, next.TextContent.Trim());
+            Assert.Equal(headers.ToList().IndexOf(CodeHeading), row.Children.ToList().IndexOf(next));
+        }
+    }
+
+    [Fact]
+    public void Picker_WhenTheListLoads_ThenCodeIsListedFirstAndUnticked()
+    {
+        var cut = RenderWith(CodeKilder());
+
+        var first = ColumnToggles(cut)[0];
+        Assert.Equal(CodeHeading, ColumnName(first));
+        Assert.False(Ticked(first));
+    }
+
+    [Fact]
+    public void Search_WhenTheTermIsACodeAndTheCodeColumnIsOff_ThenTheKildeIsStillFound()
+    {
+        var cut = RenderWith(CodeKilder());
+
+        cut.Find(".searchbox__freetext").Change("K_UNIQUE");
+
+        Assert.Equal(["Als registeret"], RowNames(cut));
+        Assert.DoesNotContain(CodeHeading, Headers(cut));
     }
 
     [Theory]
@@ -6075,6 +6149,7 @@ public class KildeSearchTest : ExplorerTestContext
         [
             "Vis datasamlinger",
             "Navn",
+            "Kode",
             "Kildetype",
             "Status",
             "Dataansvarlig",
@@ -6096,7 +6171,8 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Equal(
         [
             "",                                  // the expand cell: a chevron, no text of its own
-            NameCellText(cut),
+            "Als registeret",
+            "K_ALS",
             "Sentralt helseregister",
             "Aktiv",
             "St. Olavs hospital HF",
@@ -6111,15 +6187,6 @@ public class KildeSearchTest : ExplorerTestContext
             SourceUpdatedText(cut),
         ], FirstRowCells(cut));
     }
-
-    /// <summary>The name cell as the row draws it, name and code together.</summary>
-    /// <remarks>
-    /// Read back rather than written down: the two are separate elements with the markup's own
-    /// indentation between them, so a literal here pins the razor file's whitespace and breaks on a
-    /// reindent with a diff nobody can read. What the caller asserts is its POSITION in the row.
-    /// </remarks>
-    private static string NameCellText(IRenderedComponent<KildeSearch> cut) =>
-        FirstRowCells(cut).Single(c => c.Contains("K_ALS", StringComparison.Ordinal));
 
     /// <summary>The three date cells as this runtime spells them.</summary>
     /// <remarks>
@@ -6368,17 +6435,15 @@ public class KildeSearchTest : ExplorerTestContext
     [Fact]
     public void Row_WhenANamedKildeIsBesideAnUnnamedOne_ThenOnlyTheUnnamedRowFallsBack()
     {
-        // The fallback is per row. Both rows draw a name either way, so the caption is the only
-        // thing that tells a rule applied to the whole table from one applied to the row that
-        // needs it.
+        // The fallback is per row: only the unnamed row's button reads its code.
         var cut = RenderWith(new FakeClient(
             Kilde("", "K_ALS"),
             Kilde("Dødsårsaksregisteret", "K_DAR")));
 
         var headers = cut.FindAll(".munin-explorer-kilder tbody th");
 
-        Assert.Empty(headers[0].QuerySelectorAll("p.caption"));
-        Assert.Equal("K_DAR", headers[1].QuerySelector("p.caption")!.TextContent.Trim());
+        Assert.Equal("K_ALS", headers[0].TextContent.Trim());
+        Assert.Equal("Dødsårsaksregisteret", headers[1].TextContent.Trim());
     }
 
     [Fact]

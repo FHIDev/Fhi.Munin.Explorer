@@ -584,6 +584,10 @@ else
                            come from T.KildeOrderLabel rather than from the record directly, so the
                            heading and the sentence over the table always name the order alike. *@
                         @SortableHeader(KildeSortOrder.Name)
+                        @if (ColumnVisible(KildeColumn.Code))
+                        {
+                            <th scope="col">@T.FieldCode</th>
+                        }
                         @if (ColumnVisible(KildeColumn.Kildetype))
                         {
                             <th scope="col">@T.ColumnKildetype</th>
@@ -709,15 +713,11 @@ else
                                         lang="@CatalogueProperties.Foreign(RowName(kilde).Norwegian, Reader)"
                                         @onclick="e => SelectFromNameAsync(kilde, e)"
                                         @onclick:stopPropagation="true">@RowName(kilde).Text</button>
-
-                                @* The code under the name, the way Kelda puts it there — it is how a reader
-                                   who knows K_ALS finds the row whose name they do not know. Not drawn
-                                   when the button above has already fallen back to it. *@
-                                @if (RowName(kilde).Norwegian)
-                                {
-                                    <p class="caption margin--none">@kilde.Code</p>
-                                }
                             </th>
+                            @if (ColumnVisible(KildeColumn.Code))
+                            {
+                                <td>@kilde.Code</td>
+                            }
                             @if (ColumnVisible(KildeColumn.Kildetype))
                             {
                                 <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
