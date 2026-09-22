@@ -14,5 +14,7 @@ category: Added
   one outcome none of this is worth having. Opening a different collection resets it to the first
   page and cancels the call in flight, a load that fails says so and offers a retry rather than
   reading as a collection with nothing in it, and a collection that really has none says that
-  instead.
+  instead. A collection that loses rows while the reader is deeper in it steps them back to a page
+  that still has some, rather than stranding them on an empty one under a pager the smaller count
+  no longer draws.
   (Fhi.Metadata-mg08i)

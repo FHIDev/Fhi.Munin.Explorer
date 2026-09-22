@@ -506,8 +506,15 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     private bool AnyVariables => !_variablesLoading && !_variablesFailed && _variables.Count > 0;
 
     /// <summary>The paragraph's case: a load that came back with nothing at all to show.</summary>
+    /// <remarks>
+    /// On the total and not only on the rows: a page past the end of a collection that shrank under
+    /// the reader also arrives empty, and this sentence claims the collection is, which would be a
+    /// fact about the catalogue nobody checked. <see cref="RetreatFromEmptyVariablePageAsync"/>
+    /// moves off such a page; until it has, the total is what tells the two apart.
+    /// </remarks>
     private bool NoVariables =>
-        !_variablesLoading && !_variablesFailed && !_variablesRateLimited && _variables.Count == 0;
+        !_variablesLoading && !_variablesFailed && !_variablesRateLimited
+        && _variables.Count == 0 && _variablesTotal == 0;
 
     /// <summary>The reader's word for a stored datatype, never the stored value itself.</summary>
     /// <remarks>
@@ -555,7 +562,47 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     }
 
     private Task RetryVariablesAsync() =>
-        CanRetryVariables ? LoadVariablesAsync(_variablesPage) : Task.CompletedTask;
+        CanRetryVariables ? ShowVariablePageAsync(_variablesPage) : Task.CompletedTask;
+
+    /// <summary>Fetch <paramref name="page"/>, then step off it if it turned out not to exist.</summary>
+    /// <remarks>
+    /// Every route but the first load goes through here, because every one of them names a page
+    /// measured against a count that may since have changed.
+    /// </remarks>
+    private async Task ShowVariablePageAsync(int page)
+    {
+        await LoadVariablesAsync(page);
+        await RetreatFromEmptyVariablePageAsync();
+    }
+
+    /// <summary>Step back to a page that has rows, when the page just fetched turned out not to.</summary>
+    /// <remarks>
+    /// <para>
+    /// The clamp in <see cref="GoToVariablePageAsync"/> measures its target against the count the
+    /// <em>previous</em> answer carried, so a collection losing rows between two requests leaves the
+    /// reader past the end: a total saying rows exist, none to show, and — once the new count is
+    /// under two pages — not even a pager to press back with.
+    /// </para>
+    /// <para>
+    /// One step only, as <c>VariableSearch.RetreatFromEmptyPageAsync</c> takes it, and no rollback
+    /// on failure: the state it would restore is the stranded page this exists to leave. Page 1 is
+    /// the one page that can never be out of range, which is why the first load skips this.
+    /// </para>
+    /// </remarks>
+    private Task RetreatFromEmptyVariablePageAsync()
+    {
+        // _variablesLoading says a newer load has already taken the state over, and this answer is
+        // no longer the one on screen to retreat from.
+        if (_disposed || _variablesLoading || _variablesFailed || _variablesRateLimited
+            || _variablesPage == 1 || _variables.Count > 0 || _variablesTotal <= 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        // A server still claiming the page exists after sending nothing has told us nothing usable,
+        // so page 1 is the only safe answer left.
+        return LoadVariablesAsync(_variablesPages < _variablesPage ? _variablesPages : 1);
+    }
 
     /// <summary>
     /// Moves the table to <paramref name="page"/>, or does nothing where that page cannot exist.
@@ -568,7 +615,7 @@ public sealed partial class DatasamlingView : ComponentBase, IDisposable
     private Task GoToVariablePageAsync(int page) =>
         page < 1 || page > VariablePageCount || page == _variablesPage || _variablesLoading
             ? Task.CompletedTask
-            : LoadVariablesAsync(page);
+            : ShowVariablePageAsync(page);
 
     /// <summary>
     /// One page of the collection's variables, from the search endpoint narrowed to this

@@ -1894,6 +1894,77 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Variables_WhenTheCollectionShrinksUnderTheReader_ThenTheTableStepsBackToAPageThatHasRows()
+    {
+        // The race: the pager clamps against the count the last answer carried, so a page turn can
+        // land past the end of a collection that lost rows in between. The API answers that with a
+        // real total and no rows, which drawn as it stands is "no variables" over a collection that
+        // has ten of them, under a pager the new count no longer draws.
+        Variables.Answer = page => Task.FromResult(PageOf(page, Variables.Calls.Count < 2 ? 45 : 10));
+
+        var cut = Render(Datasamling());
+
+        cut.Find(".munin-explorer-pagination-content button[aria-label='Neste side']").Click();
+
+        Assert.Equal([2, 1], Variables.Calls.Skip(1).Select(c => c.Page));
+        Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__variabler-tom"));
+
+        var rows = Table(cut).QuerySelectorAll("tbody tr");
+
+        Assert.Equal(10, rows.Length);
+        Assert.Equal("V_ALS.F1.NR1", Cells(rows[0])[0]);
+    }
+
+    [Fact]
+    public void Variables_WhenTheCollectionOnlyShrinks_ThenTheTableStepsBackToTheNewLastPage()
+    {
+        // Not all the way to page one when the shrunken collection still has the pages to hold the
+        // reader nearer where they were.
+        Variables.Answer = page => Task.FromResult(PageOf(page, Variables.Calls.Count < 4 ? 85 : 45));
+
+        var cut = Render(Datasamling());
+
+        var next = cut.Find(".munin-explorer-pagination-content button[aria-label='Neste side']");
+
+        next.Click();
+        next.Click();
+        next.Click();
+
+        Assert.Equal([2, 3, 4, 3], Variables.Calls.Skip(1).Select(c => c.Page));
+        Assert.Equal("V_ALS.F1.NR41", Cells(Table(cut).QuerySelector("tbody tr")!)[0]);
+    }
+
+    [Fact]
+    public void Variables_WhenTheRetreatIsAlsoEmpty_ThenItIsNotRetreatedFromAgain()
+    {
+        // One step only. A server answering every page with nothing would otherwise walk the reader
+        // backwards through the collection, and the paragraph must still not call it empty.
+        Variables.Answer = page => Task.FromResult(
+            Variables.Calls.Count < 2 ? PageOf(page, 45) : PageOf(99, 45));
+
+        var cut = Render(Datasamling());
+
+        cut.Find(".munin-explorer-pagination-content button[aria-label='Neste side']").Click();
+
+        Assert.Equal([2, 1], Variables.Calls.Skip(1).Select(c => c.Page));
+        Assert.Empty(cut.FindAll("table.munin-explorer-datasamling__variabler"));
+        Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__variabler-tom"));
+    }
+
+    [Fact]
+    public void Variables_WhenTheFirstPageComesBackEmptyWithATotal_ThenNothingIsRefetchedOrCalledEmpty()
+    {
+        // Page 1 is the one page that can never be out of range, so there is nowhere to retreat to
+        // — but a total saying rows exist still forbids the paragraph that says none do.
+        Variables.Answer = _ => Task.FromResult(PageOf(99, 45));
+
+        var cut = Render(Datasamling());
+
+        Assert.Single(Variables.Calls);
+        Assert.Empty(cut.FindAll("p.munin-explorer-datasamling__variabler-tom"));
+    }
+
+    [Fact]
     public void Variables_WhenTheParametersAreSetAgainWithTheSameCollection_ThenNothingIsRefetched()
     {
         // A re-render is not a new question. Refetching on every parameter set would also throw
