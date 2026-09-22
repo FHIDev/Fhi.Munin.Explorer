@@ -1277,7 +1277,6 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
      Navn 210   Kode 246   Kilde 96   Datasamling 212   Variabelgruppe 160
      Datatype 114   Status 98
 
-   Stiler has since doubled Navn to 420, below; the rest keep Runa's numbers.
    In Runa Kode is the WIDEST, which is the opposite of what it looks like it should be. A variable code
    is one unbreakable token — V_ALS.F1.MRCAPUTJERNAVSWI has nowhere to wrap — so a narrow code
    column either breaks mid-identifier or pushes everything else out of line. A name has spaces
@@ -1287,7 +1286,16 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
    container width rather than only at Runa's. */
 .munin-explorer-dataitem-main__name,
 .munin-explorer-dataitem-header__name {
-  flex: 420 1 0;
+  flex: 210 1 0;
+}
+
+/* Stiler's 420, but only where Stiler's rows are side by side: at 1280px and below its rows stack
+   and the sample's do not, so 420 there broke other cells mid-word. */
+@media not all and (max-width: 1280px) {
+  .munin-explorer-dataitem-main__name,
+  .munin-explorer-dataitem-header__name {
+    flex: 420 1 0;
+  }
 }
 
 .munin-explorer-dataitem-main__code,
