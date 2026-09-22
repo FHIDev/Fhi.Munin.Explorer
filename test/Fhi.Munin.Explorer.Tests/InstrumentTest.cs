@@ -261,6 +261,13 @@ public class InstrumentTest : ExplorerTestContext
         /// <summary>Refuse every instrument fetch with this instead of answering it.</summary>
         public Exception? Refusal { get; set; }
 
+        /// <summary>Every instrument asked for, in order, so a test can count the asking.</summary>
+        /// <remarks>
+        /// <c>LoadInstrumentAsync</c> carries no generation guard, which is only sound while it runs
+        /// once per circuit — so the invariant is pinned here rather than left to a comment.
+        /// </remarks>
+        public List<Guid> Fetched { get; } = [];
+
         /// <summary>
         /// Never answer an instrument fetch, so a test can decide when — and whether — it lands.
         /// </summary>
@@ -316,6 +323,8 @@ public class InstrumentTest : ExplorerTestContext
         public Task<InstrumentDetail?> GetInstrumentAsync(
             Guid id, CancellationToken cancellationToken = default)
         {
+            Fetched.Add(id);
+
             if (Refusal is { } refusal)
             {
                 // A faulted task rather than a throw from the call itself: that is the shape an
@@ -567,6 +576,41 @@ public class InstrumentTest : ExplorerTestContext
         Assert.Empty(cut.FindAll("[id^=munin-instrument-]"));
         Assert.Empty(cut.FindComponents<InstrumentView>());
         Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list"));
+    }
+
+    [Fact]
+    public void InstrumentPage_WhenTheFetchHasLanded_ThenTheRegionStopsAdvertisingItselfAsBusy()
+    {
+        // The flag is raised beside the id at the top of OnInitializedAsync and lowered in the same
+        // method's finally, so that a path raising it and never reaching the fetch cannot leave a
+        // screen reader told this region is busy for the rest of the circuit with nothing in flight.
+        var cut = RenderSearch(new InstrumentClient(instrument: Instrument()), instrumentId: Sf36);
+
+        var region = cut.Find(".munin-explorer-drilldown");
+
+        Assert.Equal("false", region.GetAttribute("aria-busy"));
+        Assert.Null(region.QuerySelector("p[role=status]"));
+    }
+
+    [Fact]
+    public async Task InstrumentPage_WhenTheHostSuppliesASecondIdWhileTheFirstIsFetching_ThenNothingFetchesTwice()
+    {
+        // LoadInstrumentAsync has no generation guard, which is sound only while it runs once per
+        // circuit. The day an open is wired to a press or to OnParametersSetAsync this fails here
+        // rather than in a browser, where an abandoned answer would cover the newer instrument.
+        var client = new InstrumentClient(instrument: Instrument()) { Stall = true };
+
+        var cut = RenderSearch(client, instrumentId: Sf36);
+
+        cut.Render(b => b.Add(c => c.SelectedInstrumentId, Hads));
+
+        Assert.Equal(Sf36, Assert.Single(client.Fetched));
+
+        // The first fetch still owns the view, so its answer is the one the reader is shown.
+        await cut.InvokeAsync(() => client.AnswerStalled(Instrument()));
+
+        Assert.Equal(Sf36, Assert.Single(client.Fetched));
+        Assert.Single(cut.FindComponents<InstrumentView>());
     }
 
     [Theory]

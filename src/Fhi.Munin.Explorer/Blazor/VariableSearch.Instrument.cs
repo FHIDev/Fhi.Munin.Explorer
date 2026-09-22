@@ -135,8 +135,8 @@ public partial class VariableSearch
     /// <summary>Fetch one instrument into the open view.</summary>
     /// <remarks>
     /// No generation guard, unlike <see cref="LoadDetailAsync"/>: <see cref="SelectedInstrumentId"/>
-    /// is read once, so this runs at most once and there is no second call for an abandoned first to
-    /// report itself into. Null is "the catalogue does not publish this instrument", not a failure.
+    /// is read once, so this runs at most once — InstrumentTest counts the fetches and fails if a
+    /// second ever starts. Null is "the catalogue does not publish this instrument", not a failure.
     /// </remarks>
     private async Task LoadInstrumentAsync(Guid id)
     {

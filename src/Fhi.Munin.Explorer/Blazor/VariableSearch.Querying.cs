@@ -28,29 +28,39 @@ public partial class VariableSearch
         // aria-busy="false" for the whole of the round trip below.
         _instrumentLoading = _instrumentId is not null;
 
-        // Not SearchAsync: that is what a person pressing the search button does, and it starts by
-        // throwing away the page number because a new search renumbers everything. Restoring a
-        // shared link is the opposite — the page is the part worth keeping.
-        if (await FetchAsync(_search))
+        try
         {
-            await FetchFacetsAsync();
+            // Not SearchAsync: that is what a person pressing the search button does, and it starts
+            // by throwing away the page number because a new search renumbers everything. Restoring
+            // a shared link is the opposite — the page is the part worth keeping.
+            if (await FetchAsync(_search))
+            {
+                await FetchFacetsAsync();
+            }
+
+            await LandOnRealPageAsync();
+
+            // Both echoed back on mount, as SearchAsync did when it ran this path. The search echo
+            // is a no-op for a host that just supplied it, but it is existing behaviour and not
+            // this change's to remove. The page echo is not a no-op: LandOnRealPageAsync above may
+            // have moved the reader off a page the link asked for and the result set no longer has,
+            // and the host is holding the number from the link until it is told otherwise.
+            await NotifySearchChangedAsync();
+            await NotifyPageChangedAsync();
+
+            await OpenInitialSelectionAsync();
+
+            // Last, and unconditional: the instrument view covers the list rather than sitting in a
+            // row, so what the search came back with says nothing about whether to fetch it.
+            await OpenInitialInstrumentAsync();
         }
-
-        await LandOnRealPageAsync();
-
-        // Both echoed back on mount, as SearchAsync did when it ran this path. The search echo is a
-        // no-op for a host that just supplied it, but it is existing behaviour and not this
-        // change's to remove. The page echo is not a no-op: LandOnRealPageAsync above may have moved
-        // the reader off a page the link asked for and the result set no longer has, and the host
-        // is holding the number from the link until it is told otherwise.
-        await NotifySearchChangedAsync();
-        await NotifyPageChangedAsync();
-
-        await OpenInitialSelectionAsync();
-
-        // Last, and unconditional: the instrument view covers the list rather than sitting in a
-        // row, so what the search came back with says nothing about whether to fetch it.
-        await OpenInitialInstrumentAsync();
+        finally
+        {
+            // Lowered by whoever raised it: every fetch above is awaited, so a flag still up here
+            // belongs to no request in flight, and leaving it latched would tell a screen reader the
+            // region is busy for the rest of the circuit.
+            _instrumentLoading = false;
+        }
     }
 
     /// <summary>Whether a press on the clear control would clear anything.</summary>
