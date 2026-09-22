@@ -7,7 +7,11 @@
                 Eyebrow="@T.EyebrowDatasamling"
                 Trail="@PageTrail"
                 TrailLabel="@T.TrailLabel"
-                Actions="@Actions"
+                Actions="@(HasHeaderActions ? HeaderActions : null)"
+                ActionsAfterHeader="true"
+                StickyActionText="@(HasVariablesAction ? T.ViewVariables : null)"
+                StickyActionHref="@VariablesHref"
+                StickyAction="@ShowVariables"
                 Facts="@HeroFacts"
                 StickyFacts="@CompactFacts"
                 StickyName="@StickyNamed.Text"
@@ -30,6 +34,11 @@
                 @if (named.Norwegian && !string.IsNullOrWhiteSpace(datasamling.Code))
                 {
                     <p class="caption margin--none munin-explorer-datasamling__identifiers">@datasamling.Code</p>
+                }
+
+                @if (SourceTrail is { Count: > 0 } sourceTrail)
+                {
+                    <DetailTrail Steps="sourceTrail" Label="@T.FieldKildePath" />
                 }
 
                 @DetailBlocks.Prose(Description, "ingress munin-explorer-datasamling__description",
@@ -61,6 +70,41 @@
 
 @code {
     private bool HasVariablesNavigation => !string.IsNullOrWhiteSpace(VariablesHref) || ShowVariables.HasDelegate;
+
+    private bool HasVariablesAction => Datasamling is { VariableCount: > 0 } && HasVariablesNavigation;
+
+    private bool HasKildeAction => Datasamling is { ParentKildeId: var id } && id != Guid.Empty &&
+        (!string.IsNullOrWhiteSpace(ParentKildeAddress) || ShowKilde.HasDelegate);
+
+    private bool HasHeaderActions => HasVariablesAction || HasKildeAction || Actions is not null;
+
+    private RenderFragment HeaderActions => @<text>
+        @if (HasVariablesAction)
+        {
+            @if (!string.IsNullOrWhiteSpace(VariablesHref))
+            {
+                <a href="@VariablesHref">@T.ShowDatasamlingVariables</a>
+            }
+            else
+            {
+                <button type="button" class="hd-button-square button-square--secondary"
+                        @onclick="ShowVariablesAsync">@T.ShowDatasamlingVariables</button>
+            }
+        }
+        @if (HasKildeAction)
+        {
+            @if (!string.IsNullOrWhiteSpace(ParentKildeAddress))
+            {
+                <a href="@ParentKildeAddress">@T.ViewDatasamlingKilde</a>
+            }
+            else
+            {
+                <button type="button" class="hd-button-square button-square--ghost-blue"
+                        @onclick="ShowKildeAsync">@T.ViewDatasamlingKilde</button>
+            }
+        }
+        @Actions
+    </text>;
 
     private RenderFragment VariablesNavigation => @<text>
         @if (Datasamling is { VariableCount: > 0 } datasamling)

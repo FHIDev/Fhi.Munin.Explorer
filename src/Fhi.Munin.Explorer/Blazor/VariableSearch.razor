@@ -120,6 +120,8 @@ else if (_sourceKind is not null)
        a view would have quietly removed it from the landmark list. *@
     <div class="munin-explorer-drilldown"
          id="@SourceId"
+         @ref="_sourceRegion"
+         tabindex="-1"
          role="region"
          aria-labelledby="@SourceHeadingId"
          aria-busy="@SourceBusy">
@@ -130,7 +132,7 @@ else if (_sourceKind is not null)
                 type="button"
                 @onclick="CloseSourceAsync">@T.BackToVariables</button>
 
-        @if (SourceVariablesText is { } narrowText)
+        @if (_sourceKind != SourceKind.Datasamling && SourceVariablesText is { } narrowText)
         {
             <button class="hd-button-square button-square--secondary margin-bottom"
                     type="button"
@@ -168,6 +170,7 @@ else if (_sourceKind is not null)
                              Language="@Language"
                              HeadingLevel="@RowLevel"
                              ShowVariables="ShowSourceVariablesAsync"
+                             ShowKilde="ShowDatasamlingKildeAsync"
                              VariablesHref="@DatasamlingVariablesHref?.Invoke(datasamling.Id)"
                              HeadingId="@SourceHeadingId" />
         }

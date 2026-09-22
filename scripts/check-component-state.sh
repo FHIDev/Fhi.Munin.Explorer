@@ -29,6 +29,8 @@
 # can still pin — that the bar is away on a viewport short enough for the hero row to start BELOW the
 # fold, which is where a page load starts and where dropping the `boundingClientRect.top < 0` half of
 # the predicate would flash it. (Fhi.Metadata-35w0p.28)
+# The collection's compact primary action is also focused while the hero returns, then blurred:
+# hiding its ancestor during focus would strand a keyboard reader (Fhi.Metadata-35w0p.23.4).
 #
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
 #   - the assertions in state-assertions.mjs and tree-assertions.mjs are the whole of it;
@@ -81,6 +83,7 @@ TARGETS=(
   "/::variables-list"
   "/kilder::kilde-hierarchy-collapsed"
   "/utforsker::variable-whole"
+  "/utforsker::variable-datasamling"
 )
 
 host_pid=""
@@ -239,7 +242,8 @@ panel's Ikoner switch. The two contents navs are read rather than pressed, and w
 is the address the browser resolved each href to. The two detail pages are SCROLLED rather than
 pressed, on a viewport short enough for the hero row to start below the fold, and what is asked is
 whether the sticky bar stayed away before the scroll and arrived after it. All of it against the
-sample stylesheet. The header of this script and of scripts/state-assertions.mjs list what that
+sample stylesheet. The collection action also retains focus when its hero returns and releases the
+bar after focus leaves. The header of this script and of scripts/state-assertions.mjs list what that
 leaves out - the contents nav's focus step in particular, which this host's router takes over, and
 the bar painting for a single frame, which nothing headless sees.
 

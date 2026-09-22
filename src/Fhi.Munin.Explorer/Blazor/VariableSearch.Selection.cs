@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
@@ -323,6 +324,7 @@ public partial class VariableSearch
     /// <summary>Close the kilde or datasamling panel and forget what was fetched for it.</summary>
     private void ClearSource()
     {
+        _sourceTargetId = null;
         _sourceKind = null;
         _kilde = null;
         _datasamling = null;
@@ -372,6 +374,23 @@ public partial class VariableSearch
         await LoadSourceAsync(kind, id);
     }
 
+    private async Task ShowDatasamlingKildeAsync(Guid id)
+    {
+        if (_datasamling?.ParentKildeId != id || id == Guid.Empty)
+        {
+            return;
+        }
+
+        await _sourceRegion.FocusAsync();
+        if (_datasamling?.ParentKildeId != id)
+        {
+            return;
+        }
+
+        _sourceKind = SourceKind.Kilde;
+        await LoadSourceAsync(SourceKind.Kilde, id);
+    }
+
     /// <summary>
     /// Leave the open owner and narrow the list to that owner's variables.
     /// </summary>
@@ -385,9 +404,8 @@ public partial class VariableSearch
     /// set would look right and leave the facet panel showing nothing to remove.
     /// </para>
     /// <para>
-    /// The id is re-read from <see cref="_detail"/> for the reason
-    /// <see cref="ToggleSourceAsync"/> re-reads it: that payload is what the open view was drawn
-    /// from, so a press can only ever narrow to an owner the view actually names.
+    /// The id is the current source request's: following a collection's parent can open a kilde
+    /// other than the original variable's. Filtering must follow the page now on screen.
     /// </para>
     /// <para>
     /// Replaces that facet rather than adding to it — the button says "bare variabler fra denne
@@ -405,7 +423,7 @@ public partial class VariableSearch
     /// </remarks>
     private async Task ShowSourceVariablesAsync()
     {
-        if (_sourceKind is not { } kind || _detail is not { } detail || SourceIdOf(detail, kind) is not { } id)
+        if (_sourceKind is not { } kind || _sourceTargetId is not { } id)
         {
             return;
         }
@@ -414,6 +432,7 @@ public partial class VariableSearch
             ? _filter with { KildeIds = [id] }
             : _filter with { DatasamlingIds = [id] };
 
+        _focusSearchAfterSource = true;
         ClearSelection();
         await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
 
@@ -424,6 +443,19 @@ public partial class VariableSearch
         else
         {
             await ApplyFilterAsync(narrowed);
+        }
+    }
+
+    private Guid? _sourceTargetId;
+    private ElementReference _sourceRegion;
+    private bool _focusSearchAfterSource;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusSearchAfterSource && _sourceKind is null && _selectedId is null)
+        {
+            _focusSearchAfterSource = false;
+            await _searchField.FocusAsync();
         }
     }
 
@@ -439,6 +471,7 @@ public partial class VariableSearch
     /// </remarks>
     private async Task LoadSourceAsync(SourceKind kind, Guid id)
     {
+        _sourceTargetId = id;
         var generation = ++_sourceGeneration;
 
         _kilde = null;

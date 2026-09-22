@@ -366,11 +366,11 @@ public partial class VariableSearch
 
     /// <summary>What is open in the kilde or datasamling panel inside it, and what was fetched.</summary>
     private readonly record struct SourceState(
-        SourceKind? Kind, KildeDetail? Kilde, DatasamlingDetail? Datasamling, string? Error);
+        SourceKind? Kind, Guid? TargetId, KildeDetail? Kilde, DatasamlingDetail? Datasamling, string? Error);
 
     private PanelState CapturePanel() => new(_selectedId, _detail, _detailError, CaptureSource());
 
-    private SourceState CaptureSource() => new(_sourceKind, _kilde, _datasamling, _sourceError);
+    private SourceState CaptureSource() => new(_sourceKind, _sourceTargetId, _kilde, _datasamling, _sourceError);
 
     /// <summary>
     /// Reopen a panel that a fetch closed on its way through, when that fetch then failed.
@@ -439,6 +439,7 @@ public partial class VariableSearch
         }
 
         _sourceKind = kind;
+        _sourceTargetId = source.TargetId;
         _kilde = source.Kilde;
         _datasamling = source.Datasamling;
         _sourceError = source.Error;
@@ -452,10 +453,9 @@ public partial class VariableSearch
             return;
         }
 
-        // Nothing had arrived when it closed, so it has to be asked for again — and only the
-        // restored detail can say which id to ask for. A detail that came back without one is a
-        // panel with nothing to open, so the owner closes rather than hanging empty.
-        if (_detail is { } detail && SourceIdOf(detail, kind) is { } sourceId)
+        // The collection's parent can differ from the variable's kilde, so a pending fetch
+        // must resume with the requested target rather than derive it from the variable again.
+        if (source.TargetId is { } sourceId)
         {
             await LoadSourceAsync(kind, sourceId);
         }
