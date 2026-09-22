@@ -230,7 +230,7 @@ public class KildeSectionsTest : ExplorerTestContext
 
         var cut = Render<VariableSearch>();
 
-        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")[0].Click();
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle")[0].Click();
         cut.FindAll(".munin-explorer-detail > button[id]")[0].Click();
 
         return cut;

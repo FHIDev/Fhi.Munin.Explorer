@@ -368,7 +368,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableSearch_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Five: Vis filtre, the row's own name, and three that exist only once a row is open —
+        // Five: Vis filtre, the row's chevron, and three that exist only once a row is open —
         // "Vis datakilde", "Vis datasamling" and, on the Data tab, "Vis koder".
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
@@ -406,7 +406,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableSearchLongFacet_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Three: Vis filtre, the row's own name, and the cap's "Vis N til" on the kilde facet. The
+        // Three: Vis filtre, the row's chevron, and the cap's "Vis N til" on the kilde facet. The
         // kilder have nothing under them, so no branch disclosure joins the count.
         Services.AddSingleton<IMuninExplorerClient>(new LongKildeFacetClient());
         Services.AddScoped<VariableListState>();
@@ -553,7 +553,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     {
         var cut = Render<VariableSearch>();
 
-        cut.Find("button.munin-explorer-dataitem-main__name").Click(new MouseEventArgs { Detail = 1 });
+        cut.Find("button.munin-explorer-dataitem__expand-toggle").Click(new MouseEventArgs { Detail = 1 });
         cut.FindAll(".munin-explorer-meta__tabs [role=tab]")[1].Click();
 
         return cut;

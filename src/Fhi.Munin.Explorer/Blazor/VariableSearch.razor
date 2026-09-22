@@ -76,7 +76,7 @@
    reader gets a full width to read in, which three levels of nesting cannot give, and the
    search, filters, page and open row are all still there on return because none of it was
    torn down. *@
-@if (_wholeVariable && _detail is { } whole)
+@if (_wholeVariable)
 {
     @* The whole variable, in place. Same shape as the kilde drill-in beneath it, and for the same
        reason: with no router, a detail page is a view this component swaps to rather than a route
@@ -84,7 +84,8 @@
     <div class="munin-explorer-drilldown"
          id="@WholeVariableId"
          role="region"
-         aria-labelledby="@WholeVariableHeadingId">
+         aria-labelledby="@WholeVariableHeadingId"
+         aria-busy="@DetailBusy">
         @* --ghost-blue, not --ghost: the plain ghost has no border and no background until :hover,
            so the way out of a view reads as bold text to anyone not using a mouse. Blue is Stiler's
            own link colour, and this control is navigation. (Fhi.Metadata-l9l2n.34) *@
@@ -92,11 +93,24 @@
                 type="button"
                 @onclick="ToggleWholeVariableFromControlAsync">@T.BackToVariables</button>
 
-        <VariableView Variable="whole"
-                      Language="@Language"
-                      HeadingLevel="@RowLevel"
-                      HeadingId="@WholeVariableHeadingId"
-                      NamedSections="@KodeverkSections(whole)" />
+        @if (_detail is { } whole)
+        {
+            <VariableView Variable="whole"
+                          Language="@Language"
+                          HeadingLevel="@RowLevel"
+                          HeadingId="@WholeVariableHeadingId"
+                          NamedSections="@KodeverkSections(whole)" />
+        }
+        else
+        {
+            @* Opened from a row's name, the detail is still on its way or failed to come. The
+               heading stands in for VariableView's so the region keeps its name meanwhile. *@
+            @WholeVariableHeading
+            <p class="@DetailStatusClass"
+               role="status"
+               aria-live="polite"
+               aria-atomic="true">@DetailStatus</p>
+        }
     </div>
 }
 else if (_sourceKind is not null)
@@ -669,13 +683,11 @@ else
                    in one. The two wrappers below then wear role="none" and the panel becomes the
                    row's last cell. *@
                 <li class="@RowItemClass(v)" role="row" @key="v.Id">
-                    @* The row is the disclosure. helsedata makes the variable's own name the
-                       button — button.munin-explorer-dataitem-main__name carrying aria-expanded — which
-                       is the APG accordion pattern, and it is what removes the dead affordance the
-                       old card had: a pointer cursor inherited from .datasourcecard, which is a
-                       link on their datakilde page and was never a link here.
+                    @* The row has two gestures on two controls, as Kelda's does: the chevron is the
+                       disclosure carrying aria-expanded, and the name opens the whole variable in
+                       place. (Fhi.Metadata-35w0p.34, reversing Fhi.Metadata-zqe14)
 
-                       There is no heading around it. One was tried, so results could be walked
+                       There is no heading around the name. One was tried, so results could be walked
                        with a screen reader's heading rotor — their selectors all match by descent,
                        so an element in between styles fine. But their row is a flex container and
                        the name cell is sized by `munin-explorer-dataitem-main__name`, so a heading
@@ -685,9 +697,9 @@ else
                        other the flex container that lays the columns out — so both step out of the
                        accessibility tree and let the cells inside become the row's own. *@
                     <div class="munin-explorer-data-list__item__row" role="none">
-                        @* The column strip is a pointer shortcut onto the name button inside it:
-                           no tabindex, no role, no key handler. Stiler computes `cursor: pointer`
-                           on this element, so it read as a control before it was one. *@
+                        @* The column strip is a pointer shortcut onto the chevron inside it: no
+                           tabindex, no role, no key handler. Stiler computes `cursor: pointer` on
+                           this element, so it read as a control before it was one. *@
                         @* mousedown records where the press began and mouseup settles what it was —
                            a drag-select across the row's code ends in a click here too, and the
                            panel must not open behind a reader copying it. (Fhi.Metadata-l9l2n.81) *@
@@ -698,6 +710,8 @@ else
                              @onmousedown="e => RowPressed(v, e)"
                              @onmouseup="e => RowReleased(v, e)"
                              @onclick="e => ToggleDetailFromRowAsync(v, e)">
+                        @* First and a direct child: Stiler's rules for it are keyed on that. *@
+                        @RowExpandToggle(v)
                         @RowHeading(v)
                         @RowSaveButton(v)
                         @InfoLine(v)
@@ -734,8 +748,9 @@ else
                                is how a reader finds which one they opened, and a cell cannot be
                                both. The element carries no class on purpose; it lays nothing out. *@
                             <div role="cell">
-                            @* aria-labelledby points at the button that opens this panel, which is
-                               the element carrying the variable's name now that no heading wraps it.
+                            @* aria-labelledby points at the name button, the element carrying the
+                               variable's name now that no heading wraps it. The chevron is named by
+                               a sentence of ours, so it would label the panel "Skjul detaljer for …".
 
                                Note where this comment sits. A Razor comment between an element's
                                ATTRIBUTES is emitted as an attribute name, and the browser throws
@@ -745,7 +760,7 @@ else
                             <div class="munin-explorer-meta munin-explorer-detail"
                                  id="@DetailId(v)"
                                  role="region"
-                                 aria-labelledby="@DetailToggleId(v)"
+                                 aria-labelledby="@RowNameId(v)"
                                  aria-busy="@DetailBusy">
                                 @* One line, holding one message at a time: loading, or why the panel
                                    is empty. Its own region rather than the component's — the status

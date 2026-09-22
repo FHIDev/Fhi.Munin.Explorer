@@ -342,9 +342,9 @@ public class UrlStateComponentTest : ExplorerTestContext
         return Render<VariableExplorer>(b => parameters?.Invoke(b));
     }
 
-    /// <summary>The rows, whose names are the disclosures that open a variable.</summary>
+    /// <summary>The rows' chevrons, the disclosures that open a variable's panel.</summary>
     private static IReadOnlyList<IElement> Rows(IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle");
 
     [Theory]
     [InlineData(true, 2)]

@@ -457,6 +457,10 @@ unstyled-name||.munin-explorer-lead|
 # when the pin moves to the Stiler version that carries it.
 unstyled-name||.munin-explorer__lede|
 
+# New in Fhi.Metadata-35w0p.34's row chevron. The Stiler rule is Fhi.Metadata-35w0p.65 (Stiler db15ad8b);
+# this line goes when the pin moves to the Stiler version that carries it.
+unstyled-name||.munin-explorer-dataitem__expand-toggle|
+
 # The sample's heading reset under the chassis root. Fhi.Metadata-nvqny measured that Stiler's
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|

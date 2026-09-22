@@ -10768,9 +10768,9 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Toggles(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
-    // The variable's own name is the disclosure — helsedata's pattern. There is no longer a
-    // separate "Vis detaljer" button under the metadata line.
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle");
+    // The row's chevron is the disclosure, and the name opens the whole variable, as Kelda's rows
+    // split them. (Fhi.Metadata-35w0p.34)
 
     private static AngleSharp.Dom.IElement Panel(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-detail");
@@ -12580,21 +12580,21 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Detail_WhenTheChevronMovesInsideTheButton_ThenThereIsExactlyOneControl()
+    public void Detail_WhenTheChevronIsDrawn_ThenItsGlyphIsInsideItsOwnButtonAndNowhereElse()
     {
-        // The trap: a click handler on the aria-hidden span would give assistive tech one control
-        // and a mouse two. The chevron has to be a child of the button, still aria-hidden, and the
-        // button keeps its own accessible state — never a second, competing control.
+        // The trap zqe14 closed still applies: a click handler on the aria-hidden glyph would give
+        // assistive tech one control and a mouse two. The glyph is the chevron button's only child,
+        // and the name button beside it draws none. (Fhi.Metadata-35w0p.34)
         var cut = RenderWith(TwoRows());
         var toggle = Toggles(cut)[0];
         var chevron = toggle.QuerySelector(".munin-explorer-dataitem-main__expand-icon");
 
         Assert.NotNull(chevron);
-        // A child of the button, not a sibling — the fix, restated as a structural assertion.
         Assert.Same(toggle, chevron!.ParentElement);
         Assert.Equal("true", chevron.GetAttribute("aria-hidden"));
         Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
-        Assert.Equal("1. Tale", toggle.TextContent);
+        Assert.Equal("", toggle.TextContent.Trim());
+        Assert.Empty(cut.FindAll("button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__expand-icon"));
     }
 
     [Fact]
@@ -12708,7 +12708,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll(".munin-explorer-detail"));
         Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
-        Assert.Equal("1. Tale", Toggles(cut)[0].TextContent);
+        Assert.Equal("Vis detaljer for 1. Tale", AccessibleName.Of(Toggles(cut)[0]));
     }
 
     [Fact]
@@ -13909,25 +13909,16 @@ public class VariableSearchTest : ExplorerTestContext
     public void Detail_Always_ThenTheToggleIsWiredToThePanelAndNamedAfterItsRow()
     {
         // Twenty-five buttons all called "Vis detaljer" say nothing about which row they open when
-        // a screen reader lists them out of context. Pointing at the button's own words and then
-        // at the heading names it "Vis detaljer 1. Tale" and keeps each half in its own language,
-        // which an aria-label could not: the words follow Language, the variable's name is
-        // Norwegian whatever the surrounding UI is.
+        // a screen reader lists them out of context, so the chevron's label carries the row's
+        // name, as Kelda's does. The panel is labelled by the name button, not by that sentence.
         var cut = RenderWith(TwoRows());
-        // The heading wraps the button; the panel points at the heading, which is what holds
-        // the row's name in the document outline.
-        // The name button is the row's name — there is no heading wrapping it any more.
         var heading = cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")[0];
 
         // Closed: nothing to control yet, and aria-controls pointing at an element that is not in
         // the document is a dangling reference.
         Assert.False(Toggles(cut)[0].HasAttribute("aria-controls"));
-        // The disclosure IS the heading's text now, so it names itself. The old wiring pointed
-        // aria-labelledby at a separate heading because the button said only "Vis detaljer" and
-        // would otherwise have read as forty identical buttons. That reason is gone, and an
-        // aria-labelledby repeating the element's own content is noise.
         Assert.False(Toggles(cut)[0].HasAttribute("aria-labelledby"));
-        Assert.Equal(heading.TextContent.Trim(), Toggles(cut)[0].TextContent.Trim());
+        Assert.Equal($"Vis detaljer for {heading.TextContent.Trim()}", AccessibleName.Of(Toggles(cut)[0]));
 
         Toggles(cut)[0].Click();
 
@@ -13950,7 +13941,7 @@ public class VariableSearchTest : ExplorerTestContext
         Toggles(b)[0].Click();
 
         Assert.NotEqual(Panel(a).Id, Panel(b).Id);
-        Assert.NotEqual(Toggles(a)[0].Id, Toggles(b)[0].Id);
+        Assert.NotEqual(Panel(a).GetAttribute("aria-labelledby"), Panel(b).GetAttribute("aria-labelledby"));
     }
 
     [Fact]
@@ -13961,9 +13952,9 @@ public class VariableSearchTest : ExplorerTestContext
         // that follows Language — and the one that must not be announced as Norwegian.
         var cut = RenderWith(TwoRows(), b => b.Add(c => c.Language, "en"));
 
-        // The disclosure is the variable's own name now, so it reads the same in either
-        // language — the catalogue is Norwegian whatever the UI is.
-        Assert.Equal("1. Tale", Toggles(cut)[0].TextContent);
+        // The chevron's words follow Language; the name inside them is the catalogue's, and stays
+        // Norwegian whatever the UI is.
+        Assert.Equal("Show details for 1. Tale", AccessibleName.Of(Toggles(cut)[0]));
 
         Toggles(cut)[0].Click();
 
@@ -13975,7 +13966,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("National medical quality registry", trail[0].TextContent);
         Assert.False(trail[0].HasAttribute("lang"));
         Assert.Equal("no", trail[1].GetAttribute("lang"));
-        Assert.Equal("1. Tale", Toggles(cut)[0].TextContent);
+        Assert.Equal("Hide details for 1. Tale", AccessibleName.Of(Toggles(cut)[0]));
     }
 
     [Fact]
@@ -14080,7 +14071,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.All(panel.QuerySelectorAll("ol, ul"), e => Assert.False(e.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("dl dt"),
                    e => Assert.Equal("headline headline-xxs margin--none", e.ClassName));
-        Assert.Equal("munin-explorer-dataitem-main__name", Toggles(cut)[0].ClassName);
+        Assert.Equal("hd-button-reset munin-explorer-dataitem__expand-toggle", Toggles(cut)[0].ClassName);
     }
 
     // ---------------------------------------------------------------------------------

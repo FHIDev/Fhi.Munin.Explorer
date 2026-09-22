@@ -2355,6 +2355,16 @@ table.munin-explorer-data-list tbody th {
   display: inline-flex;
 }
 
+/* ---- Runa's row chevron ----
+   Stiler's declarations for it, which mirror Kelda's toggle above. Stiler's rule for this name is
+   Fhi.Metadata-35w0p.65; its focus surface and narrow-width placement are Stiler's alone. */
+.munin-explorer-dataitem__expand-toggle {
+  cursor: pointer;
+  padding: 8px 12px;
+  align-items: center;
+  display: inline-flex;
+}
+
 /* Measured in the sample before this was written: on grey10 alone the panel was invisible against
    the white table, so six datasamlinger read as six more kilder, under a second header row nobody
    had said was nested. The inset and the rule down the left are what say "inside this row". */
