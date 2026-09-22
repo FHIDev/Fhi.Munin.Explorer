@@ -603,7 +603,7 @@ internal sealed record Texts(
     string SignInForVariableLists)
 {
     /// <summary>
-    /// The label for a sort order. The three that name one field use the same words the result
+    /// The label for a sort order. Every one that names a field uses the same words the result
     /// cards label that value with, so the button and the line it orders say the same thing.
     /// </summary>
     /// <remarks>
@@ -617,9 +617,13 @@ internal sealed record Texts(
         // on SortField.Default — so a button labelled Navn would describe an order the list is
         // not in, which is the one thing the live-region announcement exists to get right.
         SortField.Default => SortDefault,
+        SortField.Code => FieldCode,
         SortField.Kilde => FieldSource,
         SortField.Datasamling => FieldDataCollection,
         SortField.Variabelgruppe => FieldVariableGroup,
+        SortField.DataType => FieldDataType,
+        SortField.Status => FieldStatus,
+        SortField.DataPeriod => FieldDataPeriod,
         _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No label for this sort field.")
     };
 

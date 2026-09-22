@@ -596,9 +596,13 @@ public class MuninExplorerClientTest
 
     [Theory]
     [InlineData(SortField.Default, SortDirection.Descending, "name", "desc")]
+    [InlineData(SortField.Code, SortDirection.Ascending, "kode", "asc")]
     [InlineData(SortField.Kilde, SortDirection.Ascending, "kilde", "asc")]
     [InlineData(SortField.Datasamling, SortDirection.Ascending, "datasamling", "asc")]
     [InlineData(SortField.Variabelgruppe, SortDirection.Descending, "variabelgruppe", "desc")]
+    [InlineData(SortField.DataType, SortDirection.Ascending, "datatype", "asc")]
+    [InlineData(SortField.Status, SortDirection.Ascending, "status", "asc")]
+    [InlineData(SortField.DataPeriod, SortDirection.Descending, "dataperiode", "desc")]
     public async Task SearchVariablesAsync_WhenASortIsChosen_ThenTheApisOwnTokensAreSent(
         SortField field, SortDirection direction, string sort, string sortDir)
     {
@@ -610,6 +614,36 @@ public class MuninExplorerClientTest
         await Client(handler).SearchVariablesAsync(null, sort: field, direction: direction);
 
         Assert.Equal($"?page=1&size=25&sort={sort}&sortDir={sortDir}", handler.LastUri?.Query);
+    }
+
+    [Fact]
+    public async Task SearchVariablesAsync_WhenEveryMemberIsAskedFor_ThenEachReachesTheWireWithATokenOfItsOwn()
+    {
+        // The theory above pins the SPELLING of each token; this pins that the list is the whole
+        // enum and that no two members share an arm. A copy-pasted arm — `Status => "datatype"` —
+        // sends a token the API does accept, so nothing fails and the column orders by the wrong
+        // fact, which is the failure mode this whole switch is spelled out by hand to prevent.
+        var tokens = new List<string>();
+
+        foreach (var field in Enum.GetValues<SortField>())
+        {
+            var handler = StubHttpHandler.Ok("{}");
+
+            // Descending, because the default order ascending sends no sort parameter at all.
+            await Client(handler).SearchVariablesAsync(null, sort: field, direction: SortDirection.Descending);
+
+            var sent = handler.LastUri?.Query;
+
+            Assert.NotNull(sent);
+
+            var token = sent!.Split('&')
+                .Single(part => part.StartsWith("sort=", StringComparison.Ordinal))["sort=".Length..];
+
+            Assert.True(token.Length > 0, $"{field} sent an empty sort token");
+            tokens.Add(token);
+        }
+
+        Assert.Equal(Enum.GetValues<SortField>().Length, tokens.Distinct().Count());
     }
 
     [Fact]
