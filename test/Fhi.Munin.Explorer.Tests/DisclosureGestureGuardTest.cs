@@ -82,9 +82,9 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
 
     /// <summary>The same rule one step out, for a <c>&lt;summary&gt;</c> the rule above cannot name.</summary>
     /// <remarks>
-    /// Which is every one of them: none of the twenty-six this suite collects has an id, and the six
-    /// that have a class wear the column picker's borrowed Stiler string, which is no locator at all.
-    /// Its own text last, because that is the label the reader presses.
+    /// Which is every one of them: none of the twenty-six the scenes collect has an id, and the six
+    /// that have a class wear the column picker's borrowed Stiler string, which is no locator at all
+    /// and which the fixture below wears too. Its own text last, because that is the label pressed.
     /// </remarks>
     private static string NativeNamed(IElement summary) =>
         summary.ParentElement is { } details && details.Id is { Length: > 0 } id
@@ -806,13 +806,18 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
 
             builder.OpenElement(2, "summary");
 
+            // The column picker's own borrowed string, which is what all four real ones wear: the
+            // weaker of the two names here, and the one Named must not answer with.
+            builder.AddAttribute(3, "class",
+                "hd-button-square button-square--ghost munin-explorer-header__actions-button");
+
             if (OnTheSummary)
             {
                 builder.AddAttribute(
-                    3, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => { }));
+                    4, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => { }));
             }
 
-            builder.AddContent(4, "Kolonner");
+            builder.AddContent(5, "Kolonner");
             builder.CloseElement();
             builder.CloseElement();
         }
@@ -826,7 +831,8 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         var cut = Render<TakenBackDisclosure>(b => b.Add(c => c.OnTheSummary, onTheSummary));
 
         // The name rather than the count, because naming it is the whole of what this half offers
-        // a reader — and the label it reports is the one on screen.
+        // a reader — and the label it reports is the one on screen rather than the borrowed class
+        // the summary also carries, which four picker folds would otherwise share.
         Assert.Equal(["summary \"Kolonner\""], TakenBack(cut));
     }
 }
