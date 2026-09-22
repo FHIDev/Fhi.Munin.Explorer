@@ -112,7 +112,10 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
 
         var search = Render<VariableSearch>(b => b.Add(c => c.Language, language));
 
-        search.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").Click();
+        // The chevron, not the name: the name opens the whole variable in place of the list
+        // (Fhi.Metadata-35w0p.34), and the row this reads its period cell off goes with it.
+        search.Find(
+            "ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle").Click();
 
         var page = Render<VariableView>(b => b
             .Add(c => c.Variable, Whole())
