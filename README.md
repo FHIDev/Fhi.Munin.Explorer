@@ -1236,8 +1236,10 @@ Four things are worth knowing before mounting one.
   otherwise, because the failure they replace is invisible: prerendered, the page renders and the
   URL simply never follows the view.
 - **Your own parameters are safe.** Each component reads and rewrites only the keys it owns —
-  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=`, `?datasamling=`, `?sort=` and
-  `?sortDir=` for the kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
+  `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=`, `?datasamling=`, `?sort=`,
+  `?sortDir=`, `?search=`, the four facet keys (`?kildetype=`, `?kategori=`, `?tilgangsniva=`,
+  `?databehandler=`), `?columns=` and `?selected=` for the kildeutforsker — and carries everything
+  else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
 - **`KildeExplorer` needs `VariableExplorerPath`** to offer navigation to the variable

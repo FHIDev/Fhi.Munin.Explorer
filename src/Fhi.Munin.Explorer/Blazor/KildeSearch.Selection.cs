@@ -1,12 +1,13 @@
 using Fhi.Munin.Explorer.Contracts;
+using Microsoft.AspNetCore.Components;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The row ticks, and the handover to the variable explorer they exist for.</summary>
 /// <remarks>
 /// The component has no NavigationManager and cannot reach the variable explorer, so the state
-/// leaves through <see cref="ExploreVariablesRequested"/> and the host writes the URL. Kept out
-/// of the URL itself, like the search text and the facets. (Fhi.Metadata-5ghur)
+/// leaves through <see cref="ExploreVariablesRequested"/> and the host writes the URL. The ticks
+/// themselves leave through <see cref="TickedKildeIdsChanged"/>. (Fhi.Metadata-5ghur, -nvf2w)
 /// </remarks>
 public sealed partial class KildeSearch
 {
@@ -17,6 +18,23 @@ public sealed partial class KildeSearch
     /// which is why the bar counts them in words. (Fhi.Metadata-5ghur)
     /// </remarks>
     private readonly HashSet<Guid> _ticked = [];
+
+    /// <summary>
+    /// The kilder ticked when the list opens. Set by the host, typically from its own URL; the
+    /// component owns the selection afterwards.
+    /// </summary>
+    /// <remarks>
+    /// Read once, on initialisation, as <see cref="Search"/> is, and only drawn where the handover
+    /// is wired — see <see cref="ExploreVariablesRequested"/>. An id no kilde has is kept, as a tick
+    /// hidden by the search is: the bar counts it and the handover leaves it out.
+    /// </remarks>
+    [Parameter] public IReadOnlyList<Guid>? TickedKildeIds { get; set; }
+
+    /// <summary>
+    /// Raised on every tick, untick and clear, with every id ticked. Gives a host
+    /// <c>@bind-TickedKildeIds</c>.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<Guid>> TickedKildeIdsChanged { get; set; }
 
     /// <summary>Whether the column and its bar are drawn, which is whether the host wired the
     /// handover.</summary>
@@ -34,7 +52,7 @@ public sealed partial class KildeSearch
     private int TickedCount => _ticked.Count;
 
     /// <summary>Tick or untick one row.</summary>
-    private void Tick(Guid id, bool ticked)
+    private async Task TickAsync(Guid id, bool ticked)
     {
         if (ticked)
         {
@@ -44,6 +62,8 @@ public sealed partial class KildeSearch
         {
             _ticked.Remove(id);
         }
+
+        await RaiseTicksAsync();
     }
 
     /// <summary>Whether every row the reader can see is ticked — and there is at least one.</summary>
@@ -60,7 +80,7 @@ public sealed partial class KildeSearch
     /// it is pressed. No indeterminate state: it is a DOM property with no attribute behind it, and
     /// the count above the table says the same thing in words. (Fhi.Metadata-5ghur)
     /// </remarks>
-    private void TickAllVisible(IReadOnlyList<KildeSummary> visible)
+    private Task TickAllVisibleAsync(IReadOnlyList<KildeSummary> visible)
     {
         if (AllVisibleTicked(visible))
         {
@@ -68,18 +88,29 @@ public sealed partial class KildeSearch
             {
                 _ticked.Remove(kilde.Id);
             }
-
-            return;
         }
-
-        foreach (var kilde in visible)
+        else
         {
-            _ticked.Add(kilde.Id);
+            foreach (var kilde in visible)
+            {
+                _ticked.Add(kilde.Id);
+            }
         }
+
+        return RaiseTicksAsync();
     }
 
     /// <summary>Empty the selection, the ticks the current search has hidden included.</summary>
-    private void ClearTicks() => _ticked.Clear();
+    private Task ClearTicksAsync()
+    {
+        _ticked.Clear();
+
+        return RaiseTicksAsync();
+    }
+
+    private void SeedTicks() => _ticked.UnionWith(TickedKildeIds ?? []);
+
+    private Task RaiseTicksAsync() => RaiseAsync(TickedKildeIdsChanged, (IReadOnlyList<Guid>)[.. _ticked], Log);
 
     /// <summary>The ids the handover carries, which is not always the ids that are ticked.</summary>
     /// <remarks>

@@ -3,14 +3,9 @@
 @* The kildeutforsker whole: the kilde list, the drill-in, and the open kilde in the host's address
    bar. (Fhi.Metadata-zrcf4, Fhi.Metadata-8uwtd)
 
-   Deliberately far smaller than VariableExplorer, and that is Kelda's contract rather than a
-   shortcut: KildeSearch has no SearchChanged and no pager, so search, filters and column choices
-   are component state that goes away on refresh. What is worth putting in a URL is which kilde is
-   open, which order the list is in and which way that order runs.
-
-   ?search= is not read, for that same reason — a link carrying it would work exactly once and
-   could not be shared onward. It is left in the address bar rather than erased, along with
-   everything else this component does not own.
+   The list's search, facets, columns and ticks are bound here beside the order, so every link
+   this component builds carries them and a round trip away from the list comes back to it as it
+   was left (Fhi.Metadata-nvf2w). Everything this component does not own is left in the address.
 
    ?datasamling= is read beside ?kilde= rather than instead of it, so the drill-in from a kilde to
    one of its datasamlinger is an address that names the whole path: a link opens the datasamling,
@@ -39,6 +34,10 @@
                  DatasamlingVariablesHref="@DatasamlingVariablesHref"
                  @bind-Order="_order"
                  @bind-Direction="_direction"
+                 @bind-Search="_search"
+                 @bind-FacetChoices="_facets"
+                 @bind-TickedKildeIds="_ticked"
+                 @bind-VisibleColumns="_columns"
                  ExploreVariablesRequested="@Handover"
                  Language="@Language"
                  Lede="@Lede"
