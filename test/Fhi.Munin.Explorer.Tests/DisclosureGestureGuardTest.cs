@@ -390,6 +390,126 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 4, native: 6);
     }
 
+    [Fact]
+    public void KildeSearchLongFacet_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
+    {
+        // Two: the facet panel's fold control and the cap's own "Vis N til", which is drawn only
+        // past the threshold and so is in neither scene above. No row chevron in this one — these
+        // kilder have no datasamlinger, which is what keeps the count exact.
+        Services.AddSingleton<IMuninExplorerClient>(new LongFacetClient());
+
+        AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 2);
+    }
+
+    [Fact]
+    public void VariableSearchLongFacet_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
+    {
+        // Three: Vis filtre, the row's own name, and the cap's "Vis N til" on the kilde facet. The
+        // kilder have nothing under them, so no branch disclosure joins the count.
+        Services.AddSingleton<IMuninExplorerClient>(new LongKildeFacetClient());
+        Services.AddScoped<VariableListState>();
+
+        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 3);
+    }
+
+    [Fact]
+    public void VariableListFilters_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
+    {
+        // One: the cap's "Vis N til". It is the only disclosure this panel has ever drawn, which is
+        // why the panel joins the sweep with the cap rather than before it.
+        Services.AddSingleton<IMuninExplorerClient>(new LongListClient());
+        Services.AddScoped<VariableListState>();
+
+        AssertStandingGesturesAreRefused(
+            () => Render<VariableListFilters>(b => b.Add(c => c.IsAuthenticated, true)), expected: 1);
+    }
+
+    /// <summary>Kelda's list, with a databehandler facet longer than the panel draws.</summary>
+    /// <remarks>
+    /// No datasamlinger, so no row draws a chevron: the scene above is about the panel, and a
+    /// dozen row disclosures would make its count a statement about the table instead.
+    /// </remarks>
+    private sealed class LongFacetClient : DisclosureClient
+    {
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+            [
+                .. Enumerable.Range(0, 12).Select(index => new KildeSummary
+                {
+                    Id = new Guid($"dddddddd-0000-0000-0000-{index:000000000000}"),
+                    Code = $"K_{index:00}",
+                    Name = $"Kilde {index:00}",
+                    Kildetype = "sentraltHelseregister",
+                    IsActive = true,
+                    DataProcessor = $"Databehandler {index:00}",
+                    DatasamlingCount = 0,
+                    TotalVariables = 1,
+                })
+            ]);
+    }
+
+    /// <summary>The variabelutforsker's filters, with a kilde facet longer than the panel draws.</summary>
+    /// <remarks>
+    /// One kildetype, so the kilder are lifted out of a group heading that would be the only one
+    /// and stand at the facet's top level, which is where the cap applies.
+    /// </remarks>
+    private sealed class LongKildeFacetClient : DisclosureClient
+    {
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new FilterOptions
+            {
+                KildeTyper =
+                [
+                    new() { Value = "sentraltHelseregister", DisplayName = "Sentralt helseregister", Count = 12 }
+                ],
+                Kilder =
+                [
+                    .. Enumerable.Range(0, 12).Select(index => new Contracts.KildeFacet
+                    {
+                        Id = new Guid($"dddddddd-0000-0000-0000-{index:000000000000}"),
+                        Name = $"Kilde {index:00}",
+                        KildeType = "sentraltHelseregister",
+                        Count = 1,
+                    })
+                ],
+                TotalCount = 12,
+            });
+    }
+
+    /// <summary>A saved list drawing on more kilder than its own panel draws.</summary>
+    private sealed class LongListClient : DisclosureClient
+    {
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
+        {
+            List<VariableListItem> items =
+            [
+                .. Enumerable.Range(0, 12).Select(index => new VariableListItem
+                {
+                    VariableId = Guid.NewGuid(),
+                    AddedAt = DateTimeOffset.UtcNow,
+                    VariableName = $"Variabel {index:00}",
+                    VariableCode = $"V{index:00}",
+                    KildeId = new Guid($"dddddddd-0000-0000-0000-{index:000000000000}"),
+                    KildeName = $"Kilde {index:00}",
+                })
+            ];
+
+            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            {
+                Items = items,
+                TotalCount = items.Count,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1,
+            });
+        }
+    }
+
     /// <summary>The same client, answering the filters endpoint with a tree two levels deep.</summary>
     /// <remarks>
     /// Two kildetyper, because one is lifted away: the panel drops a group heading that would be
@@ -470,6 +590,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     private static readonly Type[] Swept =
     [
         typeof(KildeSearch),
+        typeof(VariableListFilters),
         typeof(VariableListView),
         typeof(VariableSearch),
         typeof(VariableView),

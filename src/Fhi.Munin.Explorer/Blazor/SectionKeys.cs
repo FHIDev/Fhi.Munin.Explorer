@@ -25,4 +25,7 @@ internal static class SectionKeys
     /// <summary>The statistics box those two pages draw, which no mockup names either.</summary>
     /// <inheritdoc cref="SourceInformation" path="/remarks"/>
     internal const string Statistics = "statistikk";
+
+    /// <summary>The datasamling page's inclusion and exclusion criteria. Seeded into DatasamlingDetalj at 2000.</summary>
+    internal const string InclusionAndExclusionCriteria = "inklusjons-og-eksklusjonskriterier";
 }

@@ -73,7 +73,9 @@ let violationCount = 0;
 try {
   for (const { url, state, label } of plan) {
     console.log(`\n==> axe ${label}`);
-    const context = await browser.newContext(viewport ? { viewport } : {});
+    // Stiler fades the sticky fact bar in over 0.15s; scanned mid-fade its text measures as low
+    // contrast. Reduced motion drops the fade, so the bar is either there or not (Fhi.Metadata-hiz1k).
+    const context = await browser.newContext({ ...(viewport ? { viewport } : {}), reducedMotion: 'reduce' });
     const page = await context.newPage();
 
     try {

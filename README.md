@@ -353,7 +353,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
     The rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**;
-    `samples/HostileHost` pins 0.1.79 today (`Fhi.Metadata-1t36m`).
+    `samples/HostileHost` pins 0.1.91 today (`Fhi.Metadata-hiz1k`).
     The words for those glyphs are under the facets, in an `Ikonforklaring` legend that adds two
     names of its own — `munin-explorer-filters__legend` on the list and
     `munin-explorer-filters__legend-item` on each row. It lists the whole vocabulary rather than
@@ -369,7 +369,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the row each pairing sits on and the columns the eighteen of them are laid out in. Both sample
     stylesheets already carried the rules before any markup wore the names, copied off the published
     0.1.75 that `samples/HostileHost` pinned when they were written and compared since against the
-    0.1.79 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
+    0.1.91 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
     evidence on this side that Stiler really has them — nothing in this repository reads Stiler,
     and that guard runs only in the job holding the feed secret. A legend that rests shut is a
     `<details>` and nothing invented: its `<summary>` is the control's accessible name and its
@@ -495,9 +495,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     The contents column is drawn only when something fills it, which since
     `Fhi.Metadata-35w0p.12` is the contents nav — and only when the view drew a section
     for it to link to, so a view with none still has no rail. Both sample stylesheets scope the
-    two-track rule to a body that has one; 0.1.75 publishes it ungated and `Fhi.Metadata-ex5wb` is
-    the bead that gates it there. Ungated, a fixed 250px first track would lay a lone main column
-    out in it.
+    two-track rule to a body that has one, as Stiler has since `Fhi.Metadata-ex5wb`. Ungated, a
+    fixed 250px first track would lay a lone main column out in it.
     `VariableListView` is a fourth surface on that chassis since `Fhi.Metadata-35w0p.13`, and the
     one with no prefix of its own: it wears `munin-explorer-page` and `munin-explorer-page__body`
     and `munin-explorer-page__main` with nothing beside them, and it is the view that never has a
@@ -554,7 +553,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     jumps past the hero row rather than scrolling — an in-page anchor, which is what the contents
     nav's own links are — reaches the foot of the page with no bar until they scroll a little.
     `Fhi.Metadata-14j7i` is that, measured rather than reasoned about.
-    `Fhi.Helsedata.Stiler` 0.1.79 — the pin `samples/HostileHost` restores — carries all four in
+    `Fhi.Helsedata.Stiler` 0.1.91 — the pin `samples/HostileHost` restores — carries all four in
     `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at exactly what it
     declares. `VariableListView` draws no bar: it names no hero facts, and the bar exists only where
     that row does.

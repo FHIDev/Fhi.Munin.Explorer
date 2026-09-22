@@ -514,6 +514,10 @@ internal sealed record Texts(
     Func<string, string> FacetSearchLabel,
     string FacetSearchPlaceholder,
     string FacetSearchNoMatch,
+    // The control that reveals the values a long facet's cap is holding back, and what it says once
+    // it has. The number is the remainder the panel computes per render, never one written here.
+    Func<int, string> ShowMoreFacetValues,
+    string ShowFewerFacetValues,
     // What a facet says in its own summary about how many of its values are ticked. It is drawn
     // only above zero, so no wording for none is needed — and none is wanted: "0 valgt" over a
     // facet nobody has touched is a filter reported where there is no filter.
@@ -1223,6 +1227,8 @@ internal sealed record Texts(
         FacetSearchLabel: heading => $"Søk i {heading}",
         FacetSearchPlaceholder: "Søk i verdiene",
         FacetSearchNoMatch: "Ingen verdier passer søket",
+        ShowMoreFacetValues: hidden => $"Vis {hidden} til",
+        ShowFewerFacetValues: "Vis færre",
         FacetChosen: chosen => $"{chosen} valgt",
         ShowFilters: "Vis filtre",
         HideFilters: "Skjul filtre",
@@ -1605,6 +1611,8 @@ internal sealed record Texts(
         FacetSearchLabel: heading => $"Search in {heading}",
         FacetSearchPlaceholder: "Search the values",
         FacetSearchNoMatch: "No values match the search",
+        ShowMoreFacetValues: hidden => $"Show {hidden} more",
+        ShowFewerFacetValues: "Show fewer",
         FacetChosen: chosen => $"{chosen} selected",
         ShowFilters: "Show filters",
         HideFilters: "Hide filters",

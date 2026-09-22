@@ -62,6 +62,7 @@ REFLOW_EXPLORER_TARGET="/::variables-list"
 TARGETS=(
   "$REFLOW_EXPLORER_TARGET"
   "$REFLOW_TARGET"
+  "/::facet-cap"
   "/::filters-level-lines"
   "/::filters-node-icons-off"
   "/::tree-collapsed"
