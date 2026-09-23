@@ -25,6 +25,7 @@
   "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
   "variableCount": 99,
   "inklusjonsOgEksklusjonskriterier": "Alle pasienter som er 18 år eller eldre og som etter utredning får ICD10-diagnosekode «G12.2 Sykdom i motoriske nevroner», ved genetisk analyse får påvist Kennedys sykdom eller uspesifisert motonevronsykdom (ICD10-kode G12.9).",
+  "effectiveInklusjonsOgEksklusjonskriterier": "Alle pasienter som er 18 år eller eldre og som etter utredning får ICD10-diagnosekode «G12.2 Sykdom i motoriske nevroner», ved genetisk analyse får påvist Kennedys sykdom eller uspesifisert motonevronsykdom (ICD10-kode G12.9).",
   "additionalProperties": {
     "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
     "Dataansvarlig": "St. Olavs hospital HF",

@@ -25,6 +25,7 @@
   "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
   "variableCount": 104,
   "inklusjonsOgEksklusjonskriterier": "Pasienter over eller er lik 18 år, diagnostisert med ICD-10 G12.2. ",
+  "effectiveInklusjonsOgEksklusjonskriterier": "Pasienter over eller er lik 18 år, diagnostisert med ICD-10 G12.2. ",
   "additionalProperties": {
     "Opprettet": "2010",
     "SistOppdatert": "20260316",
