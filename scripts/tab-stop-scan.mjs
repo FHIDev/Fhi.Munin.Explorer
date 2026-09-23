@@ -6,10 +6,9 @@
 // the same Playwright. What differs is that it reads document.activeElement after a key press and
 // never calls .focus() on a stop: a Tab order is the browser's answer, not the markup's.
 //
-// WHY ONLY ON HOSTILEHOST. The browser's own `[hidden] { display: none }` takes a hidden panel out
-// of the Tab order by itself; Stiler's bare `div { display: block }` beats it and puts it back,
-// 0px tall. So the defect this exists for cannot occur on a host without Stiler, and neither can
-// the planted control fire there (Fhi.Metadata-w8sms).
+// Only on HostileHost: without Stiler's bare `div { display: block }` the browser's own [hidden]
+// rule keeps a hidden panel out of the Tab order, so neither the defect nor the planted control
+// can occur (Fhi.Metadata-w8sms).
 import { states } from './axe-states.mjs';
 import { scrollToTop } from './reader-scroll.mjs';
 import { installUnhiddenOnPurpose } from './hidden-on-purpose.mjs';

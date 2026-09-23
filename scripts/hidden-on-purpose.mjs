@@ -1,18 +1,12 @@
-// Whether an element carrying [hidden] is shown ON PURPOSE, in one place because two gates ask it:
-// geometry-assertions.mjs's 'hidden means hidden' and tab-stop-scan.mjs. If they answered apart, a
-// panel could be a deliberate un-hide to one and a defect to the other (Fhi.Metadata-w8sms).
-//
-// It has to run inside the page, and a page.evaluate body is serialised on its own, so it cannot
-// import anything. Each runner installs it on its context instead, before the first page loads, and
-// the callers read it off window. A caller that finds nothing there throws, which every runner
-// reports as a TOOLING failure rather than as a finding.
+// Whether a [hidden] element is shown on purpose: one answer for 'hidden means hidden' and the Tab
+// walk (Fhi.Metadata-w8sms). A page.evaluate body cannot import, so each runner installs this on its
+// context and callers read it off window, throwing (TOOLING) when it is missing.
 
 // Serialised whole by addInitScript, so everything it uses is inside it.
 function install() {
-  // A host may un-hide on purpose, and the tell is the rule rather than the element: one whose
-  // own selector names [hidden] was written about the attribute, where `div { display: block }`
-  // was not. The fold must be inert too, so a control still pointing here that has a box of its
-  // own fails anyway. No class is named. (Fhi.Metadata-fih3y)
+  // The tell is the rule, not the element: a selector naming [hidden] was written about the
+  // attribute, where `div { display: block }` was not. The fold must be inert too, so a control
+  // pointing here that has a box of its own fails anyway. No class is named. (Fhi.Metadata-fih3y)
   window.__muninUnhiddenOnPurpose = function unhiddenOnPurpose(el) {
     for (const control of document.querySelectorAll('[aria-controls]')) {
       const names = (control.getAttribute('aria-controls') ?? '').split(/\s+/);
