@@ -15389,7 +15389,6 @@ public class VariableSearchTest : ExplorerTestContext
                 "munin-explorer-page__eyebrow",
                 "munin-explorer-kilde__header",
                 "munin-explorer-kilde__identifiers",
-                "munin-explorer-kilde__kildetype",
                 "munin-explorer-kilde__description",
                 // The hero row, between the name block and the body. Always drawn on a source:
                 // two of its six facts fall back to Texts.NotSpecified rather than to nothing.

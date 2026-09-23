@@ -896,7 +896,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilde__description` | handle |
   | `munin-explorer-kilde__header` | handle |
   | `munin-explorer-kilde__identifiers` | handle |
-  | `munin-explorer-kilde__kildetype` | handle |
   | `munin-explorer-kilde__main` | handle |
   | `munin-explorer-kilder` | handle |
   | `munin-explorer-kilder-scroll` | meaning |

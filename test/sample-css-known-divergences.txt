@@ -278,6 +278,11 @@ missing-selector||.munin-explorer-dataitem-main__name::after|
 missing-selector||.munin-explorer-dataitem-main__name:focus|
 missing-selector||.munin-explorer-frequency td:last-child|
 missing-selector||.munin-explorer-header__actions .dropdown|
+
+# Fhi.Metadata-pnn4w removed the sample's rule along with the badge markup; Stiler's copy is dead
+# but left standing on purpose, for Fhi.Metadata-ua7rf to remove. This line goes with it.
+missing-selector||.munin-explorer-kilde__kildetype|
+
 missing-selector||.munin-explorer-meta .munin-explorer-codes__table tbody tr|
 missing-selector||.munin-explorer-meta .munin-explorer-codes__table td|
 missing-selector||.munin-explorer-meta .munin-explorer-codes__table th|
