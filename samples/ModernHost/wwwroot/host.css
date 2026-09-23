@@ -2677,11 +2677,8 @@ table.munin-explorer-data-list tbody th {
 .dropdown-choicepicker__item:last-of-type { padding-bottom: 24px; border-radius: 0 0 8px 8px; }
 .dropdown-choicepicker__item:hover { background-color: #32378d; }
 
-/* A chosen column is a ticked checkbox, as helsedata's own is — the ::before glyph that used to
-   draw the mark for `aria-pressed` went with the buttons, and the browser draws the box now.
-   (Fhi.Metadata-f6az7) No padding, as Stiler's `.form-control` has none: the item's own padding
-   is the row's height, and 8px here on top of it drew every row 16px taller than a host sees
-   (Fhi.Metadata-4gjgp). */
+/* A chosen column is a ticked checkbox the browser draws, as helsedata's is (Fhi.Metadata-f6az7).
+   No padding: Stiler's `.form-control` has none, so the item's padding alone sets the row height. */
 .dropdown-choicepicker__item .form-control {
   display: inline-flex;
   align-items: center;
