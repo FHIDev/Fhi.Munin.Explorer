@@ -47,10 +47,10 @@
 //   - the sticky bar under TWO mounted explorers, and under a circuit dropped mid-scroll. Both are
 //     asserted in bUnit instead — the ids the module is handed, and the disconnect on disposal —
 //     because neither sample host mounts two detail pages on one page;
-//   - the sticky bar after a JUMP rather than a scroll — a contents-nav press, which is an in-page
-//     anchor. An IntersectionObserver notifies on a crossing, so a jump straight past the hero row
-//     delivers nothing and leaves the bar as it was (Fhi.Metadata-14j7i). The scrolls below are
-//     stepped for exactly that reason: they measure the predicate, not the notification rule;
+//   - the sticky bar's hashchange path AS A HOST MAKES IT. The jumps below are measured now, and so
+//     is the listener (Fhi.Metadata-14j7i) — but ModernHost's router takes the anchor press over and
+//     moves the page with history.pushState, so the press assertion is carried by `scrollend` and
+//     the hashchange one dispatches the event itself. No sample here leaves that press to the browser;
 //   - the contents-nav mark after a PRESS. Under Stiler the bar's reveal lands a jump 76px short
 //     (Fhi.Metadata-79t6z), so the mark is asserted at scroll positions and at each jump line.
 //
@@ -66,7 +66,7 @@
 
 // Deterministic tree coverage and its controls live together, independently of capture contents.
 import { treeAssertions } from './tree-assertions.mjs';
-import { scrollPast, scrollToTop } from './reader-scroll.mjs';
+import { jumpPast, jumpToTop, scrollPast, scrollToTop } from './reader-scroll.mjs';
 
 /** The contents nav of a detail view, in the column beside it. */
 const TOC = '.munin-explorer-page__toc';
@@ -387,6 +387,10 @@ const STUCKBAR_ON = 'munin-explorer-page__stuckbar--on';
 /** Short enough that a detail page's hero row starts well below the fold on either sample page. */
 const SHORT_VIEWPORT = { width: 1280, height: 300 };
 
+// A contents-nav press and then the module's answer to it. Longer than reader-scroll.mjs's settle,
+// which starts from a scroll that has already happened: here the router's own has to land first.
+const PRESS_SETTLE_MS = 600;
+
 /** The bar as the DOM has it, and as a screen reader would reach it. */
 async function barState(page, barId) {
   const dom = await page.locator(`#${barId}`).evaluate((bar, on) => ({
@@ -413,6 +417,110 @@ const heroAgainstFold = (page, rowId) => page.evaluate(id => {
 
   return { top: box.top, bottom: box.bottom, fold: window.innerHeight, scrollY: window.scrollY };
 }, rowId);
+
+/**
+ * The short viewport, the ids, the bar's name, and the geometry every bar assertion below assumes:
+ * a hero row starting BELOW the fold, and a page that scrolls clear of it at all. Checked here
+ * rather than in a `measure`, which would report a fixture too short to scroll as a defect.
+ */
+async function stageStickyBar(page) {
+  const bar = page.locator(STUCKBAR).first();
+  const row = page.locator(HERO).first();
+
+  await bar.waitFor({ state: 'attached', timeout: findTimeout });
+  await row.waitFor({ state: 'attached', timeout: findTimeout });
+
+  const barId = await bar.getAttribute('id');
+  const rowId = await row.getAttribute('id');
+
+  if (!barId || !rowId) {
+    throw new Error(`the bar (${barId}) and its hero row (${rowId}) must both carry an id: ` +
+      'the module watches one and drives the other by id, and two mounts share neither');
+  }
+
+  // The name alone, without the code beside it, so the accessibility-tree read below is looking
+  // for the words the page's own heading carries.
+  const name = (await bar.locator('.munin-explorer-page__stuckbar-name > span').first().textContent())
+    ?.replace(/\s+/g, ' ').trim();
+
+  if (!name) {
+    throw new Error('the bar names nothing, so a second copy of the heading could not be told from none');
+  }
+
+  await page.setViewportSize(SHORT_VIEWPORT);
+  await scrollToTop(page);
+
+  const start = await heroAgainstFold(page, rowId);
+
+  if (start.top <= start.fold) {
+    throw new Error(`the hero row starts ${start.top}px down a ${start.fold}px viewport, so it is ` +
+      'already on screen: this assertion would be measuring the wrong half of the predicate');
+  }
+
+  await scrollPast(page, rowId);
+
+  const past = await heroAgainstFold(page, rowId);
+
+  if (past.bottom >= 0) {
+    throw new Error('the page will not scroll past its own hero row, so the bar can never be shown');
+  }
+
+  await scrollToTop(page);
+
+  return { barId, rowId, name };
+}
+
+/**
+ * Drives the bar from an IntersectionObserver alone: `whole` is the module before
+ * Fhi.Metadata-14j7i, `upwards-half-dropped` the predicate without its `top < 0` half. BOTH nodes
+ * are replaced by copies, which takes the real module out — its references leave the page with them.
+ */
+async function standInModule(page, { barId, rowId }, predicate) {
+  await page.evaluate(({ barName, rowName, on, rule }) => {
+    const row = document.getElementById(rowName);
+    const freshRow = row.cloneNode(true);
+
+    row.replaceWith(freshRow);
+
+    const bar = document.getElementById(barName);
+    const freshBar = bar.cloneNode(true);
+
+    bar.replaceWith(freshBar);
+
+    new IntersectionObserver(([entry]) => {
+      const shown = rule === 'whole'
+        ? !entry.isIntersecting && entry.boundingClientRect.top < 0
+        : !entry.isIntersecting;
+
+      freshBar.classList.toggle(on, shown);
+      freshBar.hidden = !shown;
+      freshBar.setAttribute('aria-hidden', String(!shown));
+    }).observe(freshRow);
+  }, { barName: barId, rowName: rowId, on: STUCKBAR_ON, rule: predicate });
+}
+
+/** What a bar that should be showing has to say, or null. */
+function notShowing(state, where) {
+  return state.on && !state.hidden && state.ariaHidden === 'false'
+    ? null
+    : `${where} and the bar did not follow: on=${state.on}, hidden=${state.hidden}, ` +
+      `aria-hidden=${state.ariaHidden}`;
+}
+
+/** What a bar that should be away has to say, the accessibility tree included, or null. */
+function stillShowing(state, name, where) {
+  if (state.on || !state.hidden || state.ariaHidden !== 'true') {
+    return `${where} and the bar stayed: on=${state.on}, hidden=${state.hidden}, ` +
+      `aria-hidden=${state.ariaHidden}`;
+  }
+
+  // The bar repeats the page's own title, so one left in the tree is a second copy of a heading
+  // the reader already has on screen — the WCAG half of Fhi.Metadata-14j7i.
+  return state.tree.includes(name)
+    ? `${where}, the bar is hidden and a screen reader still reaches it as ${state.tree}: ` +
+      `"${name}" is announced twice over a page already showing its own title`
+    : null;
+}
 
 /**
  * The row disclosures whose GLYPH is their state, one per surface.
@@ -1265,56 +1373,7 @@ export const assertions = [
     // The one thing no test in test/ can ask. bUnit renders a render tree and never runs the
     // module, so the bar's hidden state is all bUnit can see; whether the OBSERVER agrees with it
     // needs a viewport, a scroll position and an IntersectionObserver, which only a browser has.
-    async stage(page) {
-      const bar = page.locator(STUCKBAR).first();
-      const row = page.locator(HERO).first();
-
-      await bar.waitFor({ state: 'attached', timeout: findTimeout });
-      await row.waitFor({ state: 'attached', timeout: findTimeout });
-
-      const barId = await bar.getAttribute('id');
-      const rowId = await row.getAttribute('id');
-
-      if (!barId || !rowId) {
-        throw new Error(`the bar (${barId}) and its hero row (${rowId}) must both carry an id: ` +
-          'the module watches one and drives the other by id, and two mounts share neither');
-      }
-
-      // The name alone, without the code beside it, so the accessibility-tree read below is
-      // looking for the words the page's own heading carries.
-      const name = (await bar.locator('.munin-explorer-page__stuckbar-name > span').first().textContent())
-        ?.replace(/\s+/g, ' ').trim();
-
-      if (!name) {
-        throw new Error('the bar names nothing, so a second copy of the heading could not be told from none');
-      }
-
-      // Short enough that the hero row has not been reached yet, which is the geometry a page load
-      // starts in and the one the `top < 0` half of the predicate exists for.
-      await page.setViewportSize(SHORT_VIEWPORT);
-      await scrollToTop(page);
-
-      const start = await heroAgainstFold(page, rowId);
-
-      if (start.top <= start.fold) {
-        throw new Error(`the hero row starts ${start.top}px down a ${start.fold}px viewport, so it is ` +
-          'already on screen: this assertion would be measuring the wrong half of the predicate');
-      }
-
-      // And that the page can be scrolled past it at all, checked here rather than in `measure`,
-      // where a document too short to scroll would be reported as a defect in the component.
-      await scrollPast(page, rowId);
-
-      const past = await heroAgainstFold(page, rowId);
-
-      if (past.bottom >= 0) {
-        throw new Error('the page will not scroll past its own hero row, so the bar can never be shown');
-      }
-
-      await scrollToTop(page);
-
-      return { barId, rowId, name };
-    },
+    stage: stageStickyBar,
 
     // Both halves, in the order a reader meets them: the load, then the scroll. Re-established here
     // rather than in `stage` so the control below has something to break — and so the second half
@@ -1359,27 +1418,214 @@ export const assertions = [
         : null;
     },
 
-    // The bead's own defect, put back by hand: the `top < 0` half dropped. The real observer is
-    // silenced by swapping the node it watches for a copy — a detached target reports itself off
-    // screen once and then never fires again — so what drives the bar from here is the broken
-    // predicate alone, and `measure`'s first read is the load it flashes on.
-    async control(page, { rowId }) {
+    // The bead's own defect, put back by hand: the `top < 0` half dropped, so `measure`'s first
+    // read is the load it flashes on. The bar is swapped as well as the row, which is what takes
+    // the real module off it — since Fhi.Metadata-14j7i a live one would correct this on scrollend.
+    async control(page, staged) {
+      await standInModule(page, staged, 'upwards-half-dropped');
+    },
+  },
+  {
+    name: 'one jump straight past the hero row still shows the sticky fact bar',
+    // The scroll an IntersectionObserver cannot report: from above the row to below it in a single
+    // frame, which is what the contents nav's own press and any window.scrollTo are. Deliberately
+    // NOT reader-scroll's stepped scroll, which is the one shape the observer alone does see.
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+
+    stage: stageStickyBar,
+
+    async measure(page, { barId, rowId, name }) {
+      await scrollToTop(page);
+
+      const before = await barState(page, barId);
+
+      if (before.on) {
+        return 'the bar was already showing at the top, so a jump could not be what turned it on';
+      }
+
+      await jumpPast(page, rowId);
+
+      const where = await heroAgainstFold(page, rowId);
+
+      if (where.bottom >= 0) {
+        throw new Error(`one jump left the hero row ${where.bottom}px into a ${where.fold}px ` +
+          'viewport, so the bar is not owed: the jump did not clear the row');
+      }
+
+      const after = await barState(page, barId);
+      const missed = notShowing(after, 'the hero row was jumped clear of in one step');
+
+      if (missed !== null) {
+        return missed;
+      }
+
+      return after.tree.includes(name)
+        ? null
+        : 'the bar is on screen after a jump and the accessibility tree has none of it ' +
+          `(${after.tree || 'empty'}): it is shown to sighted readers and hidden from everyone else`;
+    },
+
+    // The module as it was: the whole predicate, but reported only on a crossing. A jump gives the
+    // observer nothing to deliver, so the bar keeps the state it had at the top.
+    async control(page, staged) {
+      await standInModule(page, staged, 'whole');
+    },
+  },
+  {
+    name: 'one jump back to the top puts the sticky fact bar away again',
+    // The direction that matters for WCAG: a stale bar here is a pinned duplicate of the page
+    // title over a page already showing its own, and a screen reader meets the name twice.
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+
+    stage: stageStickyBar,
+
+    async measure(page, { barId, rowId, name }) {
+      // Stepped, so the bar is SHOWING by the one route the observer alone can manage: what is
+      // being measured here is the jump back, and staging it with a jump would measure both.
+      await scrollToTop(page);
+      await scrollPast(page, rowId);
+
+      const shown = await barState(page, barId);
+      const missed = notShowing(shown, 'the hero row was scrolled past');
+
+      if (missed !== null) {
+        return missed;
+      }
+
+      await jumpToTop(page);
+
+      const where = await heroAgainstFold(page, rowId);
+
+      if (where.bottom <= 0) {
+        throw new Error(`one jump to 0 left the hero row ${where.bottom}px above the fold, ` +
+          `scrollY ${where.scrollY}: the page never came back to where a load leaves it`);
+      }
+
+      return stillShowing(await barState(page, barId), name,
+        'the reader jumped back to the top in one step');
+    },
+
+    async control(page, staged) {
+      await standInModule(page, staged, 'whole');
+    },
+  },
+  {
+    name: 'a contents-nav press carries the sticky fact bar with it, both ways',
+    // The reader's own version of the jump above, through the control that makes it: an in-page
+    // anchor. Its two entries are chosen by measuring where each one lands rather than by name,
+    // because which section clears the hero row is a fact about this page's lengths.
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+
+    async stage(page) {
+      const staged = await stageStickyBar(page);
+      const links = page.locator(`${TOC} a[href*="#"]`);
+      const count = await links.count();
+      let past = -1;
+      let short = -1;
+
+      for (let at = 0; at < count && (past < 0 || short < 0); at += 1) {
+        await scrollToTop(page);
+        await links.nth(at).click();
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+
+        const where = await heroAgainstFold(page, staged.rowId);
+
+        if (where.bottom < 0 && past < 0) past = at;
+        if (where.bottom > 0 && short < 0) short = at;
+      }
+
+      if (past < 0 || short < 0) {
+        throw new Error(`of ${count} contents entries none lands ${past < 0 ? 'clear of' : 'short of'} ` +
+          'the hero row, so one of the two presses this assertion needs cannot be made');
+      }
+
+      await scrollToTop(page);
+
+      return { ...staged, past, short };
+    },
+
+    async measure(page, { barId, rowId, name, past, short }) {
+      const links = page.locator(`${TOC} a[href*="#"]`);
+
+      await scrollToTop(page);
+      await links.nth(past).click();
+      await page.waitForTimeout(PRESS_SETTLE_MS);
+
+      const below = await barState(page, barId);
+      const missed = notShowing(below, 'a contents-nav press jumped past the hero row');
+
+      if (missed !== null) {
+        return missed;
+      }
+
+      await links.nth(short).click();
+      await page.waitForTimeout(PRESS_SETTLE_MS);
+
+      const where = await heroAgainstFold(page, rowId);
+
+      if (where.bottom <= 0) {
+        throw new Error(`the entry staged as landing short of the hero row left it ${where.bottom}px ` +
+          'above the fold: the page has moved under the assertion');
+      }
+
+      return stillShowing(await barState(page, barId), name,
+        'a second press landed short of the hero row');
+    },
+
+    async control(page, staged) {
+      await standInModule(page, staged, 'whole');
+    },
+  },
+  {
+    name: 'a hashchange alone brings the sticky fact bar back to what the hero row says',
+    // The other half of the fix, and the half no sample host can reach: ModernHost's router takes
+    // the anchor press over and moves the page with history.pushState, which fires no hashchange.
+    // So the event is dispatched, over a bar put out of step by hand — a host's staleness, staged.
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+
+    stage: stageStickyBar,
+
+    async measure(page, { barId, rowId, name }) {
+      await scrollToTop(page);
+      await scrollPast(page, rowId);
+
+      const missed = notShowing(await barState(page, barId), 'the hero row was scrolled past');
+
+      if (missed !== null) {
+        return missed;
+      }
+
+      // Put out of step without scrolling, so nothing but the hashchange can put it back: the
+      // observer has no crossing to report and `scrollend` cannot fire over a page that is still.
       await page.evaluate(({ id, on }) => {
-        const row = document.getElementById(id);
-        const fresh = row.cloneNode(true);
+        const bar = document.getElementById(id);
 
-        row.replaceWith(fresh);
+        bar.classList.remove(on);
+        bar.hidden = true;
+        bar.setAttribute('aria-hidden', 'true');
+      }, { id: barId, on: STUCKBAR_ON });
 
-        const bar = fresh.closest('.munin-explorer-page').querySelector('.munin-explorer-page__stuckbar');
+      await page.evaluate(() => window.dispatchEvent(
+        new HashChangeEvent('hashchange', { oldURL: location.href, newURL: location.href })));
+      await page.waitForTimeout(PRESS_SETTLE_MS);
 
-        new IntersectionObserver(([entry]) => {
-          const shown = !entry.isIntersecting;
+      const after = await barState(page, barId);
+      const ignored = notShowing(after, 'a hashchange arrived over a bar out of step with the row');
 
-          bar.classList.toggle(on, shown);
-          bar.hidden = !shown;
-          bar.setAttribute('aria-hidden', String(!shown));
-        }).observe(fresh);
-      }, { id: rowId, on: STUCKBAR_ON });
+      return ignored ?? (after.tree.includes(name)
+        ? null
+        : 'the hashchange showed the bar and the accessibility tree has none of it ' +
+          `(${after.tree || 'empty'}): it is shown to sighted readers and hidden from everyone else`);
+    },
+
+    // The module as it was, which listens for nothing: the hand-made staleness above is what a
+    // host's jump leaves behind, and an observer with no crossing to report never clears it.
+    async control(page, staged) {
+      await standInModule(page, staged, 'whole');
     },
   },
   {

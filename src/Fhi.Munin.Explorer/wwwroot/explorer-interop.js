@@ -41,6 +41,28 @@ export function observeHeroFacts(barId, factsId) {
   const focusout = () => queueMicrotask(update);
   bar.addEventListener('focusout', focusout);
 
+  // An IntersectionObserver notifies on a CROSSING, and a jump straight past the row — an in-page
+  // anchor press, or one window.scrollTo — leaves both frames non-intersecting, so nothing is
+  // delivered and the bar reads stale (Fhi.Metadata-14j7i). The box itself always answers.
+  const reread = () => {
+    const box = facts.getBoundingClientRect();
+    const intersecting = box.bottom > 0 && box.top < window.innerHeight
+      && box.right > 0 && box.left < window.innerWidth;
+
+    // The observer's predicate, both halves, computed rather than waited for.
+    above = !intersecting && box.top < 0;
+    update();
+  };
+
+  window.addEventListener('hashchange', reread);
+
+  // On the document and captured, so an inner scroller's `scrollend` — which does not bubble — is
+  // caught on the way down, and the window's own in its target phase. Below the floor (Safari < 18)
+  // only `hashchange` re-reads, so a pushState host keeps the stale bar: this bead's known limit.
+  if ('onscrollend' in window) {
+    document.addEventListener('scrollend', reread, { capture: true, passive: true });
+  }
+
   const observer = new IntersectionObserver(([entry]) => {
     // BOTH halves. `!isIntersecting` is also true of a hero row still BELOW the fold, which is how
     // a short viewport starts before the reader has scrolled at all — so dropping `top < 0` shows
@@ -53,6 +75,8 @@ export function observeHeroFacts(barId, factsId) {
   observers.set(barId, () => {
     observer.disconnect();
     bar.removeEventListener('focusout', focusout);
+    window.removeEventListener('hashchange', reread);
+    document.removeEventListener('scrollend', reread, { capture: true });
   });
 }
 

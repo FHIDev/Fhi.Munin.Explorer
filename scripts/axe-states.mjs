@@ -395,8 +395,9 @@ export const states = {
     const row = page.locator('.munin-explorer-page__facts').first();
     await row.waitFor({ state: 'visible', timeout: findTimeout });
 
-    // Stepped rather than jumped, and shared with state-assertions.mjs so the step and the
-    // overshoot cannot drift apart between the two gates that depend on them (Fhi.Metadata-14j7i).
+    // Stepped rather than jumped: axe wants the bar on screen by the plainest route there is, and
+    // whether a jump gets it there too is state-assertions.mjs's question (Fhi.Metadata-14j7i).
+    // Shared with that file so the step and the overshoot cannot drift apart between the two gates.
     await scrollPast(page, await row.getAttribute('id'));
 
     // Waited for rather than assumed: a bar that never arrives is a state nobody entered, and axe
