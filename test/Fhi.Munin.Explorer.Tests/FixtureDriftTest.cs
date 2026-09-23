@@ -190,15 +190,21 @@ internal static class Fixture
     /// </summary>
     /// <remarks>
     /// Its catalogue values are frozen because the fallback-layout tests are measured against them;
-    /// its shape is not. <c>FixtureFreshnessTest</c> holds it to the live-checked capture on every
-    /// commit, differing only by <see cref="PlacementPaths"/>.
+    /// its shape is not — see <see cref="Frozen"/>.
     /// </remarks>
     public const string DatasamlingUnplaced = "datasamling-unplaced.json";
 
-    /// <summary>The keys a payload from before sections lacks, and the only ones <see cref="DatasamlingUnplaced"/> may.</summary>
-    public static readonly IReadOnlyList<string> PlacementPaths =
-        ["$.propertyMetadata[].groupKey", "$.propertyMetadata[].groupSortOrder", "$.sections"];
-
-    /// <summary>Fixtures kept at an old API shape on purpose, each pinned to the capture it derives from.</summary>
-    public static readonly IReadOnlyList<string> Frozen = [DatasamlingUnplaced];
+    /// <summary>
+    /// Fixtures kept at an old API shape on purpose, each with the live-checked capture it derives
+    /// from and the only keys it may lack against it. <c>FixtureFreshnessTest</c> holds every entry
+    /// to its source on every commit, so an entry cannot join without saying what pins it.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, FrozenFixture> Frozen = new Dictionary<string, FrozenFixture>
+    {
+        [DatasamlingUnplaced] = new(Datasamling,
+            ["$.propertyMetadata[].groupKey", "$.propertyMetadata[].groupSortOrder", "$.sections"]),
+    };
 }
+
+/// <summary>What a <see cref="Fixture.Frozen"/> entry derives from, and the keys it may lack against it.</summary>
+internal sealed record FrozenFixture(string Source, IReadOnlyList<string> MayLack);

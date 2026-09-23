@@ -189,14 +189,13 @@ public class ContractCoverageTest
     public void DatasamlingDetail_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<DatasamlingDetail>("datasamling.json");
 
-    [Theory]
-    [InlineData("sistOppdatertKildesystem")]
-    [InlineData("effectiveInklusjonsOgEksklusjonskriterier")]
-    public void DatasamlingDetail_WhenTheCaptureIsRoundTripped_ThenTheFieldComesBackAsItWasSent(string field)
+    [Fact]
+    public void DatasamlingDetail_WhenTheCaptureIsRoundTripped_ThenSistOppdatertKildesystemComesBackAsItWasSent()
     {
         // The strict read above passes for a field sent as null too, and would pass after a rename
-        // that left both sides nullable. Round-tripping the captured value is what pins the wire name
-        // offline — and, for the bare date, that DateOnly writes back no time the API never sent.
+        // that left both sides nullable. Round-tripping the captured value pins the wire name offline,
+        // and that DateOnly writes back no time the API never sent.
+        const string field = "sistOppdatertKildesystem";
         var captured = JsonDocument.Parse(TestData.Read("datasamling.json")).RootElement.GetProperty(field);
 
         Assert.Equal(JsonValueKind.String, captured.ValueKind);

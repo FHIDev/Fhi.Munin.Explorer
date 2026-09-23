@@ -106,12 +106,6 @@ public sealed record DatasamlingDetail
     /// </summary>
     [JsonPropertyName("inklusjonsOgEksklusjonskriterier")] public string? InclusionAndExclusionCriteria { get; init; }
 
-    /// <summary>
-    /// <see cref="InclusionAndExclusionCriteria"/> if set, otherwise inherited — so a datasamling
-    /// whose criteria are written on its kilde reads null above and the resolved text here.
-    /// </summary>
-    [JsonPropertyName("effectiveInklusjonsOgEksklusjonskriterier")] public string? EffectiveInclusionAndExclusionCriteria { get; init; }
-
     /// <summary>Curated free-form metadata; see <see cref="KildeSummary.AdditionalProperties"/>.</summary>
     /// <remarks>
     /// Non-nullable, and kept so by the deserialiser rather than by the initialiser below it —
