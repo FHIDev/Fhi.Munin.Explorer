@@ -120,6 +120,15 @@ const cases = [
   },
   {
     assertion: 'hidden means hidden',
+    defect: 'a rule naming [hidden] only inside :not(), the false exemption',
+    path: '/kilder', state: 'kilder-list', width: 843,
+    // The selector names the attribute and matches the panel, but through its parent's not being
+    // hidden: nothing here was written about un-hiding the panel (Fhi.Metadata-vy6ah).
+    apply: css('.munin-explorer-filters__toggle { display: none !important; }\n' +
+      ':not([hidden]) > .munin-explorer-filters__facets { display: block !important; }'),
+  },
+  {
+    assertion: 'hidden means hidden',
     defect: 'a deliberate un-hide whose fold is still on screen',
     path: '/kilder', state: 'kilder-list', width: 1440,
     // Stiler's own `[hidden]`-naming rule is in force here and the panel is meant to be open.

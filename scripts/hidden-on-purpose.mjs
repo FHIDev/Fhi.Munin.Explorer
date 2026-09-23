@@ -18,7 +18,7 @@ function install() {
       const display = rule.style.getPropertyValue('display');
       if (display === '' || display === 'none') continue;
       for (const branch of topLevelBranches(rule.selectorText)) {
-        if (!branch.includes('[hidden]')) continue;
+        if (!namesHiddenOnSubject(branch)) continue;
         try {
           if (el.matches(branch)) return true;
         } catch {
@@ -28,6 +28,82 @@ function install() {
     }
     return false;
   };
+
+  // [hidden] has to be on the element the rule styles, and positively: `:not([hidden]) > div`
+  // matches a hidden div and was written about its parent's attribute, not about un-hiding it.
+  // Inside :is()/:where() still counts; inside :not()/:has() never does. (Fhi.Metadata-vy6ah)
+  function namesHiddenOnSubject(branch) {
+    const compound = subjectCompound(branch.trim());
+    for (let i = 0; i < compound.length; i += 1) {
+      const ch = compound[i];
+      if (ch === '\\') {
+        i += 1;
+      } else if (ch === '[') {
+        const end = closing(compound, i);
+        if (/^\[\s*hidden\s*(?:[~|^$*]?=|\])/i.test(compound.slice(i, end + 1))) return true;
+        i = end;
+      } else if (ch === ':') {
+        const name = /^:+([\w-]+)\(/.exec(compound.slice(i));
+        if (name === null) continue;
+        const open = i + name[0].length - 1;
+        const end = closing(compound, open);
+        if (/^(is|where|matches|-webkit-any)$/i.test(name[1]) &&
+            topLevelBranches(compound.slice(open + 1, end)).some(namesHiddenOnSubject)) {
+          return true;
+        }
+        i = end;
+      }
+    }
+    return false;
+  }
+
+  // The compound after the last top-level combinator: the part that matches the element itself.
+  function subjectCompound(selector) {
+    let depth = 0;
+    let quote = null;
+    let start = 0;
+    for (let i = 0; i < selector.length; i += 1) {
+      const ch = selector[i];
+      if (quote !== null) {
+        if (ch === '\\') i += 1;
+        else if (ch === quote) quote = null;
+      } else if (ch === '\\') {
+        i += 1;
+      } else if (ch === '"' || ch === "'") {
+        quote = ch;
+      } else if (ch === '(' || ch === '[') {
+        depth += 1;
+      } else if (ch === ')' || ch === ']') {
+        depth -= 1;
+      } else if (depth === 0 && /[\s>+~]/.test(ch)) {
+        start = i + 1;
+      }
+    }
+    return selector.slice(start);
+  }
+
+  // Index of the bracket that closes the one at `open`, or the end when it is never closed.
+  function closing(text, open) {
+    let depth = 0;
+    let quote = null;
+    for (let i = open; i < text.length; i += 1) {
+      const ch = text[i];
+      if (quote !== null) {
+        if (ch === '\\') i += 1;
+        else if (ch === quote) quote = null;
+      } else if (ch === '\\') {
+        i += 1;
+      } else if (ch === '"' || ch === "'") {
+        quote = ch;
+      } else if (ch === '(' || ch === '[') {
+        depth += 1;
+      } else if (ch === ')' || ch === ']') {
+        depth -= 1;
+        if (depth === 0) return i;
+      }
+    }
+    return text.length - 1;
+  }
 
   // Per branch, not per rule: `.other, .panel[hidden]` names the attribute in one half and can
   // match through the other, which would smuggle an accidental override past the check. Split
