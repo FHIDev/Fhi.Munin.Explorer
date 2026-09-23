@@ -639,7 +639,7 @@ public sealed partial class DatasamlingView : ComponentBase
         }
 
         var blocks = Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn);
-        if (blocks.Any(block => block.Id == DetailSectionIds.Criteria)
+        if ((blocks.Any(IsAboutSubsection) || groups.Any(IsAboutSubsection))
             && groups.All(group => group.Key != AboutSectionKey)
             && datasamling.Sections.FirstOrDefault(section => section.Key == AboutSectionKey) is { } about)
         {
@@ -649,27 +649,37 @@ public sealed partial class DatasamlingView : ComponentBase
                            CatalogueProperties.Foreign(language, Reader), _ => { }));
         }
 
-        return NestCriteria(DetailLayout.Order(datasamling.Sections, groups, blocks));
+        return NestAboutSubsections(DetailLayout.Order(datasamling.Sections, groups, blocks));
     }
 
     private const string AboutSectionKey = "om-datasamlingen";
 
-    private IReadOnlyList<DetailLayoutSection> NestCriteria(IReadOnlyList<DetailLayoutSection> layout)
+    // The flat API still names these as sections; the datasamling design nests both under About.
+    private static bool IsAboutSubsection(DetailLayoutSection section) =>
+        section.Id == DetailSectionIds.Criteria || section.Key == "kvalitetsnote";
+
+    private IReadOnlyList<DetailLayoutSection> NestAboutSubsections(IReadOnlyList<DetailLayoutSection> layout)
     {
-        var criteria = layout.FirstOrDefault(section => section.Id == DetailSectionIds.Criteria);
-        if (criteria is null)
+        var subsections = layout.Where(IsAboutSubsection).ToArray();
+        if (subsections.Length == 0)
         {
             return layout;
         }
 
         var about = layout.FirstOrDefault(section => section.Key == AboutSectionKey);
-        var nested = CriteriaSubsection(criteria);
+        RenderFragment nested = builder =>
+        {
+            foreach (var subsection in subsections)
+            {
+                builder.AddContent(0, AboutSubsection(subsection));
+            }
+        };
         List<DetailLayoutSection> sections = [];
         foreach (var section in layout)
         {
-            if (section == criteria)
+            if (IsAboutSubsection(section))
             {
-                if (about is null)
+                if (about is null && section == subsections[0])
                 {
                     var ids = new HashSet<string>(layout.Select(item => item.Id), StringComparer.Ordinal);
                     sections.Add(new(AboutSectionKey, DetailSectionIds.ReserveGroupId(AboutSectionKey, ids),
@@ -687,16 +697,16 @@ public sealed partial class DatasamlingView : ComponentBase
         return sections;
     }
 
-    private RenderFragment CriteriaSubsection(DetailLayoutSection criteria) => builder =>
+    private RenderFragment AboutSubsection(DetailLayoutSection subsection) => builder =>
     {
         // Keep existing deep links focusable without making this subsection a scrollspy target.
         builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "id", criteria.Id);
+        builder.AddAttribute(1, "id", subsection.Id);
         builder.AddAttribute(2, "tabindex", "-1");
         builder.AddAttribute(3, "class", "munin-explorer-page__anchor");
-        builder.AddContent(4, DetailBlocks.Heading(GroupLevel, criteria.Heading, "headline headline-xxs",
-                                                  language: criteria.HeadingLanguage));
-        builder.AddContent(5, criteria.Body);
+        builder.AddContent(4, DetailBlocks.Heading(GroupLevel, subsection.Heading, "headline headline-xxs",
+                                                  language: subsection.HeadingLanguage));
+        builder.AddContent(5, subsection.Body);
         builder.CloseElement();
     };
 

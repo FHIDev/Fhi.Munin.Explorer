@@ -950,12 +950,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             BlockHeadings(cut));
     }
 
-    /// <summary>The same payload with Kvalitetsnote given a section of its own.</summary>
-    /// <remarks>
-    /// The live seed files it inside om-datasamlingen, so the sixth section of the mockup arrives
-    /// as a row in Munin rather than a release here — which is what this fixture proves
-    /// (Fhi.Metadata-wfhu8).
-    /// </remarks>
+    // The older seed puts the note in About; newer payloads give it a separate placement.
     private static DatasamlingDetail QualityNoteSectioned()
     {
         (string Key, int Order, string No, string En)[] sections =
@@ -976,16 +971,17 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Placement_WhenARowGivesKvalitetsnoteASectionOfItsOwn_ThenItsFieldsArePreserved()
+    public void Placement_WhenQualityNoteHasItsOwnSection_ThenItsFieldsAreNestedUnderAbout()
     {
         var cut = Render(QualityNoteSectioned());
 
         Assert.Equal(
-            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
 
-        Assert.Equal(["Kvalitetsnote"], SectionLabels(cut, "Kvalitetsnote"));
-        Assert.DoesNotContain("Kvalitetsnote", SectionLabels(cut, "Om datasamlingen"));
+        Assert.NotNull(cut.Find("#section-om-datasamlingen #section-kvalitetsnote"));
+        Assert.Contains("Kvalitetsnote", SectionLabels(cut, "Om datasamlingen"));
+        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1070,11 +1066,11 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(CriteriaSeeded());
 
         Assert.Equal(
-            ["Om datasamlingen", "Kvalitetsnote", "Variabler",
+            ["Om datasamlingen", "Variabler",
              "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(
-            ["section-om-datasamlingen", "section-kvalitetsnote",
+            ["section-om-datasamlingen",
              "section-variabler", "section-datakilde", "section-alle-metadatafelt"],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
@@ -1092,10 +1088,10 @@ public class DatasamlingViewTest : ExplorerTestContext
         cut.Render(p => p.Add(c => c.Datasamling, CriteriaSeeded(criteriaOrder: 6000)));
 
         Assert.Equal(
-            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(
-            ["section-om-datasamlingen", "section-kvalitetsnote", "section-variabler",
+            ["section-om-datasamlingen", "section-variabler",
              "section-datakilde", "section-alle-metadatafelt"],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
@@ -1144,10 +1140,11 @@ public class DatasamlingViewTest : ExplorerTestContext
                 : property)],
         });
 
-        Assert.Equal(["Kvalitetsnote", "Variabler", "Datakilde", "Om utvalget", "Alle metadatafelt"],
+        Assert.Equal(["Variabler", "Datakilde", "Om utvalget", "Alle metadatafelt"],
                      BlockHeadings(cut));
         Assert.Equal(BlockHeadings(cut), Entries(cut));
         Assert.NotNull(cut.Find("#section-om-datasamlingen #criteria"));
+        Assert.NotNull(cut.Find("#section-om-datasamlingen #section-kvalitetsnote"));
     }
 
     [Fact]
@@ -1172,7 +1169,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(CriteriaSeeded(criteriaOrder: null));
 
         Assert.Equal(
-            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
     }
@@ -1204,7 +1201,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Empty(cut.FindAll("#" + DetailSectionIds.Criteria));
         Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
         Assert.Equal(
-            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
     }
@@ -1251,7 +1248,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Kvalitetsnote_WhenTheSeedGivesItASectionButNoValue_ThenNoSectionIsDrawn()
+    public void QualityNote_WhenTheSeedGivesItASectionButNoValue_ThenNoSectionIsDrawn()
     {
         var seeded = CriteriaSeeded();
         var cut = Render(seeded with
@@ -1263,14 +1260,61 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.DoesNotContain("Kvalitetsnote", BlockHeadings(cut));
         Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
+        Assert.Empty(cut.FindAll("#section-kvalitetsnote"));
+    }
+
+    [Theory]
+    [InlineData(1, "H3")]
+    [InlineData(2, "H4")]
+    [InlineData(5, "H6")]
+    [InlineData(6, "H6")]
+    public void QualityNote_WhenTheHostSetsHeadingDepth_ThenTheAnchorIsSubordinateAndNotInContents(
+        int headingLevel, string tagName)
+    {
+        var cut = Render(CriteriaSeeded(), headingLevel: headingLevel);
+
+        var note = Assert.Single(cut.FindAll("#section-om-datasamlingen #section-kvalitetsnote"));
+        Assert.Equal(tagName, note.FirstElementChild!.TagName);
+        Assert.Contains("headline-xxs", note.FirstElementChild.ClassList);
+        Assert.Contains("munin-explorer-page__anchor", note.ClassList);
+        Assert.Equal("-1", note.GetAttribute("tabindex"));
+        Assert.False(note.HasAttribute("data-nav-section"));
+        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
+        Assert.Single(note.QuerySelectorAll("dd"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void QualityNote_WhenItIsTheOnlyAboutContent_ThenAboutAppearsAndDisappearsWithIt(bool aboutPlaced)
+    {
+        var seeded = CriteriaSeeded();
+        var onlyNote = Sparse() with
+        {
+            Sections = [.. seeded.Sections.Where(section => section.Key == "kvalitetsnote"
+                || (aboutPlaced && section.Key == "om-datasamlingen"))],
+            PropertyMetadata = [.. seeded.PropertyMetadata.Where(property => property.Key == "Kvalitetsnote")],
+            AdditionalProperties = new Dictionary<string, string?> { ["Kvalitetsnote"] = "En kvalitetsnote." },
+        };
+        var cut = Render(onlyNote);
+
+        Assert.Equal(["Om datasamlingen"], BlockHeadings(cut));
+        Assert.Equal(["#section-om-datasamlingen"], Targets(cut));
+        Assert.Equal("En kvalitetsnote.", cut.Find("#section-om-datasamlingen #section-kvalitetsnote dd").TextContent);
+
+        cut.Render(p => p.Add(c => c.Datasamling, onlyNote with { AdditionalProperties = new Dictionary<string, string?>() }));
+
+        Assert.Empty(cut.FindAll("#section-om-datasamlingen"));
+        Assert.Empty(cut.FindAll("#section-kvalitetsnote"));
     }
 
     [Fact]
-    public void Kvalitetsnote_WhenAnEnglishReaderOpensTheSeededPage_ThenTheNorwegianNoteIsMarkedNorwegian()
+    public void QualityNote_WhenAnEnglishReaderOpensTheSeededPage_ThenTheNorwegianNoteIsMarkedNorwegian()
     {
         var cut = Render(CriteriaSeeded(), language: "en");
 
-        Assert.Contains("Quality note", BlockHeadings(cut));
+        Assert.DoesNotContain("Quality note", BlockHeadings(cut));
+        Assert.Equal("Quality note", cut.Find("#section-om-datasamlingen #section-kvalitetsnote > h4").TextContent);
 
         var note = cut.Find("#section-kvalitetsnote dd");
         var marked = note.GetAttribute("lang") ?? note.QuerySelector("[lang]")?.GetAttribute("lang");

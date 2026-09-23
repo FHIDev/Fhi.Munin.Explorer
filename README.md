@@ -494,6 +494,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     Nested fragment targets use `munin-explorer-page__anchor` for the same responsive scroll
     clearance without `data-nav-section` or a contents entry. Stiler 0.1.103 supplies this rule
     (`Fhi.Metadata-17k34`); hosts need that version or later when adopting nested criteria.
+    On datasamling pages, criteria and the quality-note group are composed inside About even
+    when the flat API places them separately. Their fragment targets remain, while the contents
+    lists only the enclosing section. Catalogue labels and the remaining section order are preserved.
     The same views add the chassis those sections sit in — `munin-explorer-page` on the root,
     `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc` —
     written once, by `DetailPage`, rather than once under each prefix. The three that have a prefix
