@@ -366,7 +366,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
     The rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**;
-    `samples/HostileHost` pins 0.1.91 today (`Fhi.Metadata-hiz1k`).
+    `samples/HostileHost` pins 0.1.98 today (`Fhi.Metadata-4xqhq`).
     The words for those glyphs are under the facets, in an `Ikonforklaring` legend that adds two
     names of its own — `munin-explorer-filters__legend` on the list and
     `munin-explorer-filters__legend-item` on each row. It lists the whole vocabulary rather than
@@ -382,7 +382,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the row each pairing sits on and the columns the eighteen of them are laid out in. Both sample
     stylesheets already carried the rules before any markup wore the names, copied off the published
     0.1.75 that `samples/HostileHost` pinned when they were written and compared since against the
-    0.1.91 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
+    0.1.98 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
     evidence on this side that Stiler really has them — nothing in this repository reads Stiler,
     and that guard runs only in the job holding the feed secret. A legend that rests shut is a
     `<details>` and nothing invented: its `<summary>` is the control's accessible name and its
@@ -581,7 +581,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     jumps past the hero row rather than scrolling — an in-page anchor, which is what the contents
     nav's own links are — reaches the foot of the page with no bar until they scroll a little.
     `Fhi.Metadata-14j7i` is that, measured rather than reasoned about.
-    `Fhi.Helsedata.Stiler` 0.1.91 — the pin `samples/HostileHost` restores — carries all four in
+    `Fhi.Helsedata.Stiler` 0.1.98 — the pin `samples/HostileHost` restores — carries all four in
     `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at exactly what it
     declares. `VariableListView` draws no bar: it names no hero facts, and the bar exists only where
     that row does.

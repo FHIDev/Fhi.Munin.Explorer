@@ -394,8 +394,9 @@ export const states = {
     await scrollPast(page, await row.getAttribute('id'));
 
     // Waited for rather than assumed: a bar that never arrives is a state nobody entered, and axe
-    // reports no violations in markup that is still display:none.
-    await page.locator('.munin-explorer-page__stuckbar--on')
+    // reports no violations in markup that is still display:none. The inner row, because the bar
+    // itself is 0px tall and lies over the page (Stiler 79t6z).
+    await page.locator('.munin-explorer-page__stuckbar--on .munin-explorer-page__stuckbar-inner')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },

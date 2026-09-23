@@ -583,14 +583,18 @@ export const assertions = [
       await scrollPast(page, rowId);
       await action.waitFor({ state: 'visible', timeout: findTimeout });
       if (await action.getAttribute('href') !== href) return 'compact action and header disagree on destination';
+      // The module's own switch, not isVisible: since Stiler 79t6z the bar is 0px tall either way.
+      // All three, because it writes all three: a bar left aria-hidden reaches no screen reader.
+      const shown = () => bar.evaluate((b, on) => b.classList.contains(on) && !b.hidden &&
+        b.getAttribute('aria-hidden') === 'false', STUCKBAR_ON);
       await action.focus();
       await scrollToTop(page);
-      if (!await bar.isVisible() || !await action.evaluate(e => e === document.activeElement)) {
+      if (!await shown() || !await action.evaluate(e => e === document.activeElement)) {
         return 'returning hero hid the focused compact action';
       }
       await page.locator('.munin-explorer-datasamling > .munin-explorer-page__actions a').first().focus();
       await page.waitForTimeout(100);
-      return await bar.isVisible() ? 'bar stayed visible after focus left it and the hero returned' : null;
+      return await shown() ? 'bar stayed visible after focus left it and the hero returned' : null;
     },
     async control(page, { barId, rowId }) {
       await page.evaluate(({ barId, rowId }) => {
