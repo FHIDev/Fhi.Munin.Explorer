@@ -4001,7 +4001,7 @@ public class VariableSearchTest : ExplorerTestContext
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> DateInputs(
         IRenderedComponent<VariableSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-filters input[type=date]")];
+        [.. cut.FindAll(".munin-explorer-filters input[id^=munin-explorer-date-]")];
 
     /// <summary>The filter panel. <c>Panel</c> further down is the opened row's detail panel.</summary>
     private static AngleSharp.Dom.IElement FilterPanel(IRenderedComponent<VariableSearch> cut) =>
@@ -5516,14 +5516,20 @@ public class VariableSearchTest : ExplorerTestContext
         var inputs = DateInputs(cut);
 
         Assert.Equal(2, inputs.Count);
-        Assert.Equal(["2010-01-01", "2010-01-01"], inputs.Select(i => i.GetAttribute("min")));
-        Assert.Equal(["2025-06-01", "2025-06-01"], inputs.Select(i => i.GetAttribute("max")));
 
         // Labelled, and the label points at the field rather than merely sitting above it.
         var labels = cut.FindAll(".munin-explorer-filters label").Select(l => l.GetAttribute("for"));
 
         Assert.Contains(inputs[0].Id, labels);
         Assert.Contains(inputs[1].Id, labels);
+
+        // A text field carries no min or max, so the bounds are read off the sentence a refused
+        // entry is pointed at — the one place the reader is told them.
+        inputs[0].Change("01.01.2009");
+
+        Assert.Equal(
+            "Skriv datoen som dd.mm.åååå, fra og med 01.01.2010 til og med 01.06.2025.",
+            cut.Find($"#{DateInputs(cut)[0].Id}-error").TextContent);
     }
 
     [Fact]
@@ -5553,10 +5559,9 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Filter_WhenABoundIsSetAndTheLinkIsFollowedBack_ThenTheUrlCarriesIsoAndTheFieldIsRestored()
     {
-        // The guard on the two sites the house date format must NOT reach. An <input type="date">
-        // round-trips yyyy-MM-dd whatever the reader's locale is, and VariableFilter serialises the
-        // same shape for the API — a day written for a reader in either place empties the field and
-        // drops the filter, with nothing thrown. (Fhi.Metadata-ufmop)
+        // The guard on the site the reader's date format must NOT reach. The field writes the day
+        // for the reader, but the URL and the API take yyyy-MM-dd — a day written for a reader
+        // there drops the filter, with nothing thrown. (Fhi.Metadata-ufmop, Fhi.Metadata-f8x7g)
         var range = new DateInterval
         {
             Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
@@ -5586,8 +5591,8 @@ public class VariableSearchTest : ExplorerTestContext
             b => b.Add(c => c.Filter, ExplorerUrlState.Parse(query).Filter));
 
         Assert.Equal(
-            "2015-03-04",
-            restored.FindAll(".munin-explorer-filters input[type=date]")[0].GetAttribute("value"));
+            "04.03.2015",
+            restored.FindAll(".munin-explorer-filters input[id^=munin-explorer-date-]")[0].GetAttribute("value"));
     }
 
     [Fact]
@@ -5635,8 +5640,13 @@ public class VariableSearchTest : ExplorerTestContext
         var inputs = DateInputs(cut);
 
         Assert.Equal(2, inputs.Count);
-        Assert.Equal("2020-01-01", inputs[0].GetAttribute("min"));
-        Assert.True(string.IsNullOrEmpty(inputs[1].GetAttribute("max")));
+
+        // The bounds as the refusal states them: from 1 January, and no upper end at all.
+        inputs[0].Change("31.12.2019");
+
+        Assert.Equal(
+            "Skriv datoen som dd.mm.åååå, fra og med 01.01.2020.",
+            cut.Find($"#{DateInputs(cut)[0].Id}-error").TextContent);
     }
 
     [Fact]
@@ -5662,8 +5672,7 @@ public class VariableSearchTest : ExplorerTestContext
     [InlineData("2010-06-01")]
     public void Filter_WhenATypedDateFallsOutsideTheFieldsOwnBounds_ThenItIsNotApplied(string typed)
     {
-        // A native date input reports a complete value as soon as all three segments hold digits,
-        // so typing 01.01.2017 arrives as 0002-01-01 on the way. Applied, it empties the list and
+        // Any four digits make a year, so 0002-01-01 parses. Applied, it empties the list and
         // reaches the host's URL. The to-field's lower bound is the from-date. (Fhi.Metadata-uidue)
         var range = new DateInterval
         {
@@ -5696,7 +5705,7 @@ public class VariableSearchTest : ExplorerTestContext
         var inputs = DateInputs(cut);
 
         Assert.Equal(2, inputs.Count);
-        Assert.Equal("2017-01-01", inputs[1].GetAttribute("value"));
+        Assert.Equal("01.01.2017", inputs[1].GetAttribute("value"));
         Assert.Contains("Dataperiode (1)", FacetHeadings(cut));
     }
 
@@ -5709,6 +5718,135 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Empty(DateInputs(cut));
         Assert.DoesNotContain("Dataperiode", FacetHeadings(cut));
     }
+
+    private static DateInterval DateRange2010To2025 => new()
+    {
+        Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
+    };
+
+    [Theory]
+    [InlineData("05.03.2020")]
+    [InlineData("5.3.2020")]
+    [InlineData("2020-03-05")]
+    public void DateField_WhenNorwegianReaderTypesADay_ThenItIsAppliedAndWrittenBackDayFirst(string typed)
+    {
+        // THE DEFECT. A native date input writes the day in the browser's locale, so a Norwegian
+        // page in an English browser asked for mm/dd/yyyy. (Fhi.Metadata-f8x7g)
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var cut = RenderWith(client);
+
+        Assert.All(DateInputs(cut), input => Assert.Equal("text", input.GetAttribute("type")));
+
+        DateInputs(cut)[0].Change(typed);
+
+        Assert.Equal(new DateOnly(2020, 3, 5), client.SearchFilter!.DataFrom);
+        Assert.Equal("05.03.2020", DateInputs(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public void DateField_WhenEnglishReaderTypesAnIsoDay_ThenItIsAppliedAndWrittenBackAsIso()
+    {
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        Assert.Equal("yyyy-mm-dd", DateHint(cut, 0).TextContent);
+
+        DateInputs(cut)[0].Change("2020-03-05");
+
+        Assert.Equal(new DateOnly(2020, 3, 5), client.SearchFilter!.DataFrom);
+        Assert.Equal("2020-03-05", DateInputs(cut)[0].GetAttribute("value"));
+    }
+
+    [Theory]
+    [InlineData("no", "05.03.2020")]
+    [InlineData("en", "2020-03-05")]
+    public void DateField_WhenADateIsRestored_ThenTheFieldWritesItInTheReadersFormat(string language, string shown)
+    {
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)),
+            b => b
+                .Add(c => c.Language, language)
+                .Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(2020, 3, 5) }));
+
+        Assert.Equal(shown, DateInputs(cut)[0].GetAttribute("value"));
+    }
+
+    [Theory]
+    [InlineData("31.02.2020")]
+    [InlineData("2020")]
+    [InlineData("abc")]
+    [InlineData("01.01.2009")]
+    public void DateField_WhenWhatIsTypedIsNotADayInRange_ThenNothingIsSearchedAndTheFieldSaysWhy(string typed)
+    {
+        // A refusal that only kept the search from running would leave the reader looking at their
+        // entry with no sign it did nothing, which is WCAG 3.3.1's failure.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var cut = RenderWith(client);
+        var searches = client.SearchCalls;
+
+        DateInputs(cut)[0].Change(typed);
+
+        var field = DateInputs(cut)[0];
+
+        Assert.Equal(searches, client.SearchCalls);
+        Assert.Equal("true", field.GetAttribute("aria-invalid"));
+        Assert.Equal(typed, field.GetAttribute("value"));
+
+        var describedBy = field.GetAttribute("aria-describedby")!.Split(' ');
+        var sentence = describedBy.Select(id => cut.Find($"#{id}").TextContent).Last();
+
+        Assert.Contains("dd.mm.åååå", sentence, StringComparison.Ordinal);
+        Assert.Contains("01.01.2010", sentence, StringComparison.Ordinal);
+
+        // And corrected, it is applied and stops claiming to be wrong.
+        DateInputs(cut)[0].Change("05.03.2020");
+
+        Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Equal(new DateOnly(2020, 3, 5), client.SearchFilter!.DataFrom);
+        Assert.Empty(cut.FindAll($"#{DateInputs(cut)[0].Id}-error"));
+    }
+
+    [Fact]
+    public void DateField_WhenARefusedEntryIsCorrectedToTheDateAlreadyApplied_ThenTheRefusalClears()
+    {
+        // The filter does not change, so ApplyFilterAsync returns early; the refusal has to be
+        // cleared before it is asked, or the field keeps saying the valid day is wrong.
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)),
+            b => b.Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(2015, 1, 1) }));
+
+        DateInputs(cut)[0].Change("abc");
+        DateInputs(cut)[0].Change("1.1.2015");
+
+        Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Equal("01.01.2015", DateInputs(cut)[0].GetAttribute("value"));
+    }
+
+    [Theory]
+    [InlineData("no", "dd.mm.åååå")]
+    [InlineData("en", "yyyy-mm-dd")]
+    public void DateField_Always_ThenEachFieldHasAVisibleFormatHintItIsDescribedBy(string language, string hint)
+    {
+        // WCAG 3.3.2: a placeholder is gone as soon as the reader types and is not a description,
+        // so the format is written out beside the label and tied to the field.
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)),
+            b => b.Add(c => c.Language, language));
+
+        for (var i = 0; i < 2; i++)
+        {
+            var field = DateInputs(cut)[i];
+
+            Assert.Equal(hint, DateHint(cut, i).TextContent);
+            Assert.Contains(DateHint(cut, i).Id, field.GetAttribute("aria-describedby")!.Split(' '));
+            Assert.Equal(hint, field.GetAttribute("placeholder"));
+            Assert.Contains("form-element__label", cut.Find($"label[for='{field.Id}']").ClassList);
+        }
+    }
+
+    private static AngleSharp.Dom.IElement DateHint(IRenderedComponent<VariableSearch> cut, int field) =>
+        cut.Find($"#{DateInputs(cut)[field].Id}-hint");
 
     [Fact]
     public void Filter_WhenATypedDateIsInsideTheBounds_ThenItIsApplied()
@@ -5760,8 +5898,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         var inputs = DateInputs(cut);
 
-        Assert.Equal("2015-03-04", inputs[0].GetAttribute("value"));
-        Assert.Equal("2020-12-31", inputs[1].GetAttribute("value"));
+        Assert.Equal("04.03.2015", inputs[0].GetAttribute("value"));
+        Assert.Equal("31.12.2020", inputs[1].GetAttribute("value"));
         Assert.True(FacetChosen(cut, "Befolkningsundersøkelser"));
     }
 

@@ -325,10 +325,10 @@ public partial class VariableSearch
     /// <summary>The from and to fields, each bounded by the range and by the other.</summary>
     /// <remarks>
     /// Labelled and bound one at a time rather than as a range control: Stiler has no date-range
-    /// widget, and the two native inputs are elements every stylesheet already draws — the same
-    /// argument the panel's <c>&lt;details&gt;</c> and bare <c>&lt;ul&gt;</c> are built on. No class
-    /// name is invented here; the labels wear <c>form-element__label</c>, which this panel already
-    /// uses and which is verified against the host.
+    /// widget, and two text inputs are elements every stylesheet already draws — the same argument
+    /// the panel's <c>&lt;details&gt;</c> and bare <c>&lt;ul&gt;</c> are built on. No class name is
+    /// invented here; the labels wear <c>form-element__label</c> and the hints <c>caption</c>, both
+    /// borrowed names this component already uses.
     /// </remarks>
     private RenderFragment DateFields(DateInterval range) => builder =>
     {
@@ -342,48 +342,93 @@ public partial class VariableSearch
     };
 
     /// <summary>
-    /// One date field: a label, and an input bounded at both ends.
+    /// One date field: a label, the format it takes, a text input, and a sentence when what was
+    /// typed is not a day inside the bounds.
     /// </summary>
+    /// <remarks>
+    /// Text rather than <c>type="date"</c>, because a native date input writes the day in the
+    /// browser's own locale whatever the page's language is (Fhi.Metadata-f8x7g). What the reader
+    /// typed is kept while it is refused, so they are looking at their own entry beside the reason.
+    /// </remarks>
     private void DateField(
         RenderTreeBuilder builder, int seq, string id, string label, DateOnly? value,
         DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
     {
+        var hintId = $"{id}-hint";
+        var errorId = $"{id}-error";
+        var refused = _refusedDates.TryGetValue(id, out var typedText);
+        var shown = refused ? typedText! : DateInput.Format(value, Language);
+
         builder.OpenElement(seq, "label");
         builder.AddAttribute(seq + 1, "class", "form-element__label");
         builder.AddAttribute(seq + 2, "for", id);
         builder.AddContent(seq + 3, label);
         builder.CloseElement();
 
+        builder.OpenElement(seq + 5, "span");
+        builder.AddAttribute(seq + 6, "id", hintId);
+        builder.AddAttribute(seq + 7, "class", "caption");
+        builder.AddContent(seq + 8, T.FacetDateFormat);
+        builder.CloseElement();
+
         builder.OpenElement(seq + 10, "input");
         builder.AddAttribute(seq + 11, "id", id);
-        builder.AddAttribute(seq + 12, "type", "date");
-        builder.AddAttribute(seq + 13, "value", Iso(value));
-        builder.AddAttribute(seq + 14, "min", Iso(min));
-        builder.AddAttribute(seq + 15, "max", Iso(max));
+        builder.AddAttribute(seq + 12, "type", "text");
+        builder.AddAttribute(seq + 13, "autocomplete", "off");
+        builder.AddAttribute(seq + 14, "placeholder", T.FacetDateFormat);
+        builder.AddAttribute(seq + 15, "value", shown);
+        builder.AddAttribute(seq + 16, "aria-invalid", refused ? "true" : null);
+        builder.AddAttribute(seq + 17, "aria-describedby", refused ? $"{hintId} {errorId}" : hintId);
 
-        // onchange, not oninput: a partly typed date is a date the browser reports as it is being
-        // typed, and every keystroke would be a search. The same reason the search box binds on
-        // change.
+        // onchange, not oninput: a partly typed date is not a date, and every keystroke would be a
+        // search. The same reason the search box binds on change.
         //
         // The awaiting binder overload rather than a void one discarding the task. A dropped task
         // is a fetch whose failure nothing observes — the rollback ApplyFilterAsync does on a failed
         // search would run with no one waiting on it, and the exception would surface as an
         // unobserved task rather than in the panel's own alert region.
-        builder.AddAttribute(seq + 16, "onchange",
+        builder.AddAttribute(seq + 18, "onchange",
             EventCallback.Factory.CreateBinder<string?>(this, raw =>
             {
-                var typed = Parse(raw);
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    _refusedDates.Remove(id);
 
-                return Within(typed, min, max) ? set(typed) : Task.CompletedTask;
-            }, Iso(value)));
+                    return set(null);
+                }
 
+                if (DateInput.TryParse(raw, Language, out var typed) && Within(typed, min, max))
+                {
+                    _refusedDates.Remove(id);
+
+                    return set(typed);
+                }
+
+                _refusedDates[id] = raw;
+
+                return Task.CompletedTask;
+            }, shown));
+
+        // The field rewrites what was typed — 5.3.2020 becomes 05.03.2020 — and when that is the
+        // value already rendered, the diff alone would leave the reader's spelling in the box.
+        builder.SetUpdatesAttributeName("value");
         builder.CloseElement();
+
+        if (refused)
+        {
+            builder.OpenElement(seq + 20, "p");
+            builder.AddAttribute(seq + 21, "id", errorId);
+            builder.AddContent(seq + 22, T.FacetDateInvalid(
+                min is { } lo ? DateInput.Format(lo, Language) : null,
+                max is { } hi ? DateInput.Format(hi, Language) : null));
+            builder.CloseElement();
+        }
     }
 
     /// <summary>Whether a typed date is inside the bounds the field itself advertises.</summary>
     /// <remarks>
-    /// A date input reports a complete value once all three segments hold digits, so a half-typed
-    /// year arrives as 0002 and would otherwise be applied. (Fhi.Metadata-yxhv1)
+    /// Any four digits make a year, so 0002 is a date the API would search and would empty the list
+    /// with. (Fhi.Metadata-yxhv1)
     /// </remarks>
     private static bool Within(DateOnly? value, DateOnly? min, DateOnly? max) =>
         value is not { } date || ((min is not { } lo || date >= lo) && (max is not { } hi || date <= hi));
@@ -391,6 +436,9 @@ public partial class VariableSearch
     private string DateFromId => $"munin-explorer-date-from-{_instance}";
 
     private string DateToId => $"munin-explorer-date-to-{_instance}";
+
+    /// <summary>What the reader typed into a date field that was refused, by the field's id.</summary>
+    private readonly Dictionary<string, string> _refusedDates = [];
 
     /// <summary>
     /// A reported bound as the date it names, without asking what time zone anyone is in.
@@ -405,14 +453,6 @@ public partial class VariableSearch
     /// </remarks>
     private static DateOnly? Bound(DateTimeOffset? instant) =>
         instant is { } value ? DateOnly.FromDateTime(value.Date) : null;
-
-    private static string? Iso(DateOnly? date) => date?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-
-    private static DateOnly? Parse(string? raw) =>
-        DateOnly.TryParseExact(raw, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                               DateTimeStyles.None, out var date)
-            ? date
-            : null;
 
     /// <summary>The kildetype facet — one value each, and only one of them can be chosen.</summary>
     /// <remarks>
@@ -1984,6 +2024,10 @@ public partial class VariableSearch
         var previousKeepPager = _keepPager;
 
         _filter = next;
+
+        // A refused date entry stops standing in for its field once any filter is applied, so
+        // both fields show what the results are actually narrowed by.
+        _refusedDates.Clear();
 
         // Narrowing renumbers every page, so the page the reader is on is no longer the same rows.
         _page = 1;
