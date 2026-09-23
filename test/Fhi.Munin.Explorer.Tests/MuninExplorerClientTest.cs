@@ -1019,7 +1019,7 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
-    public async Task GetFiltersAsync_WhenTheAnswerCarriesFiltere_ThenEveryWireNameIsRead()
+    public async Task GetFiltersAsync_WhenTheAnswerCarriesFilters_ThenEveryWireNameIsRead()
     {
         // The capture answers "filtere" empty, so nothing else reads FilterFacet: a name Munin
         // renames would land nowhere with nothing going red. Inline rather than in filters.json,
