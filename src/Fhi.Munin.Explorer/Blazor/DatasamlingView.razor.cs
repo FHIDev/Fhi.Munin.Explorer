@@ -630,7 +630,9 @@ public sealed partial class DatasamlingView : ComponentBase
                 statisticsDrawn = true;
             }
 
-            var body = DetailBlocks.GroupBody(group, Language, CompleteRecordFacts);
+            // LinkedFacts draws every row, including absent values, once any fact has a value.
+            var sectionFieldCount = group.Rows.Count + (DetailBlocks.AnyLinkedFacts(facts) ? facts.Count : 0);
+            var body = DetailBlocks.GroupBody(group, Language, CompleteRecordFacts, sectionFieldCount);
 
             var content = facts.Count == 0
                 ? body

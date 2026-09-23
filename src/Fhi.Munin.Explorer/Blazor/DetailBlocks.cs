@@ -303,9 +303,12 @@ internal static class DetailBlocks
     /// <remarks>
     /// A group the catalogue placed is a section of the page rather than a block inside one, so its
     /// name heads that section and wears the size the other section headings wear.
+    /// Callers appending facts supply the full section field count so a multi-field section keeps
+    /// every label, even when the catalogue group itself contains only one row.
     /// </remarks>
     internal static RenderFragment GroupBody(PropertyGroup group, string? language,
-                                             CompleteRecordExtras? completeRecord = null) => builder =>
+                                             CompleteRecordExtras? completeRecord = null,
+                                             int? sectionFieldCount = null) => builder =>
     {
         var reader = ReaderLanguage.Of(language);
         var text = Texts.For(language);
@@ -320,7 +323,8 @@ internal static class DetailBlocks
         builder.OpenElement(0, "dl");
         builder.AddAttribute(1, "class", PageFields);
 
-        Rows(builder, 10, group.Rows, reader, text);
+        Rows(builder, 10, group.Rows, reader, text,
+             (sectionFieldCount ?? group.Rows.Count) == 1 ? group.Name : null);
 
         builder.CloseElement();
     };
@@ -414,14 +418,20 @@ internal static class DetailBlocks
     /// row; the list around them is each caller's, since they wear different class names.
     /// </remarks>
     private static int Rows(RenderTreeBuilder builder, int seq, IReadOnlyList<PropertyRow> rows,
-                            string reader, Texts text)
+                            string reader, Texts text, string? heading = null)
     {
         foreach (var row in rows)
         {
             builder.OpenElement(seq, "div");
 
             builder.OpenElement(seq + 1, "dt");
-            builder.AddAttribute(seq + 2, "class", "headline headline-xxs margin--none");
+            // A lone prose field can already be named by its section. Keep the definition
+            // list's term for assistive technology without repeating the visible heading.
+            var repeatsHeading = row.Authored && heading is not null &&
+                string.Equals(row.Label.Trim(), heading.Trim(), StringComparison.OrdinalIgnoreCase);
+            builder.AddAttribute(seq + 2, "class", repeatsHeading
+                ? "screenreader-only"
+                : "headline headline-xxs margin--none");
             builder.AddAttribute(seq + 3, "lang", CatalogueProperties.Foreign(row.LabelLanguage, reader));
             builder.AddContent(seq + 4, row.Label);
             builder.CloseElement();
