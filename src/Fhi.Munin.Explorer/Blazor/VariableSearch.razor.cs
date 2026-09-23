@@ -209,6 +209,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// component has no NavigationManager and no URL logic of its own, because the CMS
     /// host owns routing.
     /// </summary>
+    /// <remarks>
+    /// Read only at first render, and owned by the component afterwards: changing it on a mounted
+    /// component has no effect. <see cref="SearchChanged"/> is how the host hears what it became.
+    /// </remarks>
     [Parameter] public string? Search { get; set; }
 
     /// <summary>
@@ -254,6 +258,9 @@ public sealed partial class VariableSearch : ComponentBase
     /// until the control arrived: a default outside the offered values would have left a host that
     /// never set this showing three buttons with none of them pressed, which is truthful and reads
     /// as broken. A host that had relied on 25 has to say so now.
+    /// </para>
+    /// <para>
+    /// Read only at first render: changing it on a mounted component has no effect.
     /// </para>
     /// </remarks>
     [Parameter] public int PageSize { get; set; } = 20;
@@ -463,7 +470,11 @@ public sealed partial class VariableSearch : ComponentBase
     /// <inheritdoc cref="Sort"/>
     [Parameter] public EventCallback<SortField> SortChanged { get; set; }
 
-    /// <inheritdoc cref="Sort"/>
+    /// <summary>The direction the list is ordered in. Two-way, alongside <see cref="Sort"/>.</summary>
+    /// <remarks>
+    /// Applied only together with a change to <see cref="Sort"/>: a <see cref="Direction"/> changed
+    /// on its own after first render is ignored, deliberately. <see cref="Sort"/> says why.
+    /// </remarks>
     [Parameter] public SortDirection Direction { get; set; } = SortDirection.Ascending;
 
     /// <inheritdoc cref="Sort"/>
@@ -492,8 +503,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// The package does not remember the choice, by decision rather than by omission. Reaching
     /// <c>localStorage</c> from a Blazor circuit is a JS interop call, and this package makes none —
     /// it has to run inside a static-SSR host as well as an interactive one, and what is remembered
-    /// about a reader is the host's own policy to set. Like every other parameter here it is read
-    /// once at mount and owned by the component afterwards, so a host that wants it remembered
+    /// about a reader is the host's own policy to set. Like <see cref="Search"/> and <see cref="Filter"/>
+    /// it is read once at mount and owned by the component afterwards, so a host that wants it remembered
     /// stores what this raises and supplies it at the next mount; a later change to the parameter on
     /// a mounted component does nothing. A host that stores nothing gets the lines on at every
     /// visit, so a reader who never finds the switch still sees the tree as a hierarchy.
@@ -563,6 +574,9 @@ public sealed partial class VariableSearch : ComponentBase
     /// everything, and a host that only heard about page turns would keep <c>page=7</c> in a URL
     /// whose result set no longer has seven pages.
     /// </para>
+    /// <para>
+    /// Read only at first render: changing it on a mounted component has no effect.
+    /// </para>
     /// </remarks>
     [Parameter] public int Page { get; set; } = 1;
 
@@ -575,9 +589,9 @@ public sealed partial class VariableSearch : ComponentBase
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Read once, when the component initialises, and owned by the component afterwards. There is
-    /// no navigation behind it: the detail is drawn inside the row it belongs to, so opening one
-    /// costs a fetch and a render rather than a page.
+    /// Read once, when the component initialises, and owned by the component afterwards, so changing
+    /// it after first render has no effect. There is no navigation behind it: the detail is drawn
+    /// inside the row it belongs to, so opening one costs a fetch and a render rather than a page.
     /// </para>
     /// <para>
     /// The selection is always a row that is on screen. An id the first page does not contain is

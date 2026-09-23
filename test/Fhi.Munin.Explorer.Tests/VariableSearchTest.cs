@@ -809,6 +809,20 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
     }
 
+    [Fact]
+    public void Search_WhenTheHostChangesSearchOrPageAfterTheFirstRender_ThenNothingIsFetched()
+    {
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
+        var calls = client.Calls;
+
+        cut.Render(b => b.Add(c => c.Search, "røyk").Add(c => c.Page, 3));
+
+        Assert.Equal(calls, client.Calls);
+        Assert.Equal("tale", client.LastSearch);
+        Assert.Equal(1, client.LastPage);
+    }
+
     // ---------------------------------------------------------------------------------
     // Accessibility. helsedata.no is a public-sector site, so WCAG 2.1 AA is a legal
     // requirement there — and this is our markup on their page. Each test below pins one
@@ -1600,6 +1614,23 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
         Assert.Empty(cut.FindAll("[aria-sort]"));
         Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostChangesOnlyDirectionAfterTheFirstRender_ThenNothingIsFetchedOrRaised()
+    {
+        // The XML docs promise Direction follows only with Sort; following it alone would look
+        // like a fix and turn them false with every other test green.
+        var directions = new List<SortDirection>();
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.DirectionChanged, d => directions.Add(d)));
+        var calls = client.Calls;
+
+        cut.Render(b => b.Add(c => c.Direction, SortDirection.Descending));
+
+        Assert.Equal(calls, client.Calls);
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
+        Assert.Empty(directions);
     }
 
     [Fact]
