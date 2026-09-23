@@ -60,10 +60,11 @@ public class CompleteRecordTest : ExplorerTestContext
         };
     }
 
+    /// <summary>The datasamling from before placements, which <see cref="DatasamlingBefore"/> was counted on.</summary>
     private static DatasamlingDetail Datasamling() =>
         JsonSerializer.Deserialize<DatasamlingDetail>(
-            TestData.Read("datasamling.json"), MuninExplorerClient.Json)
-        ?? throw new InvalidOperationException("datasamling.json no longer reads as a DatasamlingDetail.");
+            TestData.Read(Fixture.DatasamlingUnplaced), MuninExplorerClient.Json)
+        ?? throw new InvalidOperationException($"{Fixture.DatasamlingUnplaced} no longer reads as a DatasamlingDetail.");
 
     private static VariableDetail Variable() =>
         JsonSerializer.Deserialize<VariableDetail>(
@@ -169,8 +170,8 @@ public class CompleteRecordTest : ExplorerTestContext
     public void CatchAll_WhenADatasamlingCarriesIt_ThenThatPageDrawsItToo()
     {
         // Munin seeds a catch-all on all three surfaces, and the three views loop their groups
-        // identically, so recognition lives in the shared code or in none of them. The captured
-        // datasamling predates groupKey, so the payload is built here rather than read.
+        // identically, so recognition lives in the shared code or in none of them. The unplaced
+        // datasamling carries no groupKey, so the payload is built here rather than read.
         var datasamling = Datasamling() with
         {
             PropertyMetadata = [Entry("A", "Alle metadatafelt", CatalogueProperties.CatchAllGroupKey)],

@@ -172,13 +172,18 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     /// <summary>
-    /// The live payload, captured: six curated keys, two of the four groups filled in, every
-    /// inherited field null on the datasamling itself and set on its <c>Effective…</c> twin.
+    /// A payload from before Munin placed its sections: six curated keys, two of the four groups
+    /// filled in, every inherited field null on the datasamling itself and set on its
+    /// <c>Effective…</c> twin.
     /// </summary>
+    /// <remarks>
+    /// Frozen rather than live, because the fallback layout is what <see cref="Placed"/> and the
+    /// seeded variants are measured against and no endpoint serves that shape any more.
+    /// </remarks>
     private static DatasamlingDetail Datasamling() =>
         JsonSerializer.Deserialize<DatasamlingDetail>(
-            TestData.Read("datasamling.json"), MuninExplorerClient.Json)
-        ?? throw new InvalidOperationException("datasamling.json no longer reads as a DatasamlingDetail.");
+            TestData.Read(Fixture.DatasamlingUnplaced), MuninExplorerClient.Json)
+        ?? throw new InvalidOperationException($"{Fixture.DatasamlingUnplaced} no longer reads as a DatasamlingDetail.");
 
     private IRenderedComponent<DatasamlingView> Render(
         DatasamlingDetail? datasamling,

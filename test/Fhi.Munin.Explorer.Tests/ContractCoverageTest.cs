@@ -1,4 +1,6 @@
+using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
@@ -32,6 +34,26 @@ public class ContractCoverageTest
 
     private static void Covers<T>(string fixture) =>
         Assert.NotNull(JsonSerializer.Deserialize<T>(TestData.Read(fixture), Strict));
+
+    /// <summary>
+    /// <see cref="Covers{T}(string)"/> for a capture that keeps top-level keys a bead has yet to
+    /// map. Each must still be sent and still unmapped, so the entry fails once its property lands.
+    /// </summary>
+    private static void Covers<T>(string fixture, params string[] awaiting)
+    {
+        var capture = JsonNode.Parse(TestData.Read(fixture))!.AsObject();
+        var mapped = typeof(T).GetProperties()
+            .Select(property => property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var key in awaiting)
+        {
+            Assert.True(capture.Remove(key), $"{fixture} no longer carries {key}; drop it from the awaited keys.");
+            Assert.False(mapped.Contains(key), $"{typeof(T).Name} now maps {key}; drop it from the awaited keys.");
+        }
+
+        Assert.NotNull(capture.Deserialize<T>(Strict));
+    }
 
     [Fact]
     public void VariableSearch_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
@@ -187,7 +209,26 @@ public class ContractCoverageTest
 
     [Fact]
     public void DatasamlingDetail_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
-        Covers<DatasamlingDetail>("datasamling.json");
+        // The live API sends the effective criteria; Fhi.Metadata-6gccd (#391) maps them and drops this.
+        Covers<DatasamlingDetail>("datasamling.json", "effectiveInklusjonsOgEksklusjonskriterier");
+
+    [Fact]
+    public void DatasamlingDetail_WhenTheCaptureIsRoundTripped_ThenSistOppdatertKildesystemComesBackAsItWasSent()
+    {
+        // The strict read above passes for a field sent as null too, and would pass after a rename
+        // that left both sides nullable. Round-tripping the captured value pins the wire name offline,
+        // and that DateOnly writes back no time the API never sent.
+        const string field = "sistOppdatertKildesystem";
+        var captured = JsonDocument.Parse(TestData.Read("datasamling.json")).RootElement.GetProperty(field);
+
+        Assert.Equal(JsonValueKind.String, captured.ValueKind);
+
+        var datasamling = JsonSerializer.Deserialize<DatasamlingDetail>(TestData.Read("datasamling.json"), MuninExplorerClient.Json);
+        var written = JsonDocument.Parse(JsonSerializer.Serialize(datasamling, MuninExplorerClient.Json))
+            .RootElement.GetProperty(field);
+
+        Assert.Equal(captured.GetString(), written.GetString());
+    }
 
     [Fact]
     public void VariableDetail_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
