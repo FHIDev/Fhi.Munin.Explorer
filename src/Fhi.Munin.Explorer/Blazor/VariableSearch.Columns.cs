@@ -1,3 +1,4 @@
+using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -75,12 +76,55 @@ public partial class VariableSearch
     /// </remarks>
     private bool _statusColumnChosen;
 
+    /// <summary>The columns the reader turned off through the picker, which a host's Sort does not undo.</summary>
+    private readonly HashSet<ResultColumn> _hiddenByReader = [];
+
+    // Status shown because a host's Sort named it; kept apart from _statusColumnChosen so the
+    // filter can still take the column back once «Vis historiske» is in force.
+    private bool _statusShownForSort;
+
     /// <summary>Whether a column is on screen.</summary>
     private bool ColumnVisible(ResultColumn column) => column switch
     {
         ResultColumn.SaveToList => ShowSaveButton && !_hiddenColumns.Contains(column),
-        ResultColumn.Status when !_statusColumnChosen => ShowStatusColumn || StatusIsAllThatIsLeft,
+        ResultColumn.Status when !_statusColumnChosen =>
+            ShowStatusColumn || StatusIsAllThatIsLeft || _statusShownForSort,
         _ => !_hiddenColumns.Contains(column),
+    };
+
+    // A Sort the host hands in — a restored link, or a later change — shows its column as if ticked,
+    // so the order has a header carrying aria-sort; one the reader hid through the picker stays
+    // hidden, and Status is held only until «Vis historiske» takes it over. (Fhi.Metadata-jqarq)
+    private void ShowRestoredSortColumn()
+    {
+        if (ColumnSortedBy(_sort) is not { } column
+            || ColumnVisible(column)
+            || _hiddenByReader.Contains(column))
+        {
+            return;
+        }
+
+        if (column == ResultColumn.Status)
+        {
+            _statusShownForSort = true;
+        }
+
+        _hiddenColumns.Remove(column);
+    }
+
+    // The column whose header orders by this sort. An unknown member throws, as Texts.FieldLabel
+    // does, so a new sort field cannot open a link on an order no header announces.
+    private static ResultColumn? ColumnSortedBy(SortField sort) => sort switch
+    {
+        SortField.Code => ResultColumn.Code,
+        SortField.Kilde => ResultColumn.Kilde,
+        SortField.Datasamling => ResultColumn.Datasamling,
+        SortField.Variabelgruppe => ResultColumn.Variabelgruppe,
+        SortField.DataType => ResultColumn.DataType,
+        SortField.Status => ResultColumn.Status,
+        SortField.DataPeriod => ResultColumn.DataPeriod,
+        SortField.Default => null,
+        _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No column for this sort field."),
     };
 
     /// <summary>
@@ -158,10 +202,12 @@ public partial class VariableSearch
         if (visible)
         {
             _hiddenColumns.Add(column);
+            _hiddenByReader.Add(column);
         }
         else
         {
             _hiddenColumns.Remove(column);
+            _hiddenByReader.Remove(column);
         }
     }
 

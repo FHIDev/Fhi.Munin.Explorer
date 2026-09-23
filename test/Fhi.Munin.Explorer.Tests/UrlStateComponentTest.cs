@@ -350,6 +350,24 @@ public class UrlStateComponentTest : ExplorerTestContext
         cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle");
 
     [Theory]
+    [InlineData(SortField.Code, "code")]
+    [InlineData(SortField.Status, "status")]
+    public void Restore_WhenALinkSortsOnAColumnThatStartsOff_ThenThatColumnIsShownCarryingAriaSort(
+        SortField sort, string key)
+    {
+        // The link as ExplorerUrlState itself writes it, so a change to the token breaks this
+        // rather than leaving it testing a spelling nothing produces. (Fhi.Metadata-jqarq)
+        var query = new ExplorerUrlState { Sort = sort }.ToQueryString();
+
+        var cut = RenderVariables($"http://localhost/?{query}");
+
+        var sorted = Assert.Single(cut.FindAll("[aria-sort]"));
+
+        Assert.Contains($"munin-explorer-dataitem-header__{key}", sorted.ClassList);
+        Assert.Equal("ascending", sorted.GetAttribute("aria-sort"));
+    }
+
+    [Theory]
     [InlineData(true, 2)]
     [InlineData(false, 0)]
     public void Save_WhenTheHostSaysWhoTheReaderIs_ThenItReachesTheExplorerRatherThanBeingDropped(

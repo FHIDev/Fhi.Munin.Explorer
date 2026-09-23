@@ -16,12 +16,13 @@ public partial class VariableSearch
         _filter = Filter ?? VariableFilter.None;
         _selectedId = SelectedVariableId;
         _instrumentId = SelectedInstrumentId;
-        _sort = Sort;
+        _sort = _sortParameter = Sort;
         _direction = Direction;
         _levelLines = LevelLines;
         _showNodeIcons = ShowNodeIcons;
         _page = Math.Max(Page, 1);
         _pageSize = PageSize;
+        ShowRestoredSortColumn();
 
         // Raised here rather than by OpenInitialInstrumentAsync at the end of this method: the
         // first paint of a page opened on ?instrumentId= would otherwise draw the region blank and
@@ -191,6 +192,54 @@ public partial class VariableSearch
 
         // Reordering renumbered the pages and sent the reader back to the first one.
         await NotifyPageChangedAsync();
+    }
+
+    // Keyed on Sort alone: SortAsync raises field then direction, so a host re-rendering between
+    // them hands back a stale direction. Mid-fetch, _sortParameter stays put and OnAfterRenderAsync
+    // follows it once the fetch lands, so a host that does not bind still sees its Sort applied.
+    private async Task FollowSortParameterAsync()
+    {
+        if (Sort == _sortParameter || _loading)
+        {
+            return;
+        }
+
+        _sortParameter = Sort;
+
+        if (Sort == _sort)
+        {
+            return;
+        }
+
+        var previousSort = _sort;
+        var previousDirection = _direction;
+        var previousPage = _page;
+        var previousKeepPager = _keepPager;
+
+        _sort = Sort;
+        _direction = Direction;
+        _page = 1;
+        _keepPager = false;
+
+        if (!await FetchAsync(_executedSearch))
+        {
+            _sort = previousSort;
+            _direction = previousDirection;
+            _page = previousPage;
+            _keepPager = previousKeepPager;
+
+            await RaiseAsync(SortChanged, _sort, Log);
+            await RaiseAsync(DirectionChanged, _direction, Log);
+
+            return;
+        }
+
+        ShowRestoredSortColumn();
+
+        if (_page != previousPage)
+        {
+            await NotifyPageChangedAsync();
+        }
     }
 
     /// <summary>
@@ -650,6 +699,12 @@ public partial class VariableSearch
             // else started came back, it is a dead control that the atomic alert region reads out
             // again beside every later failure — RetryRowsAsync puts its own back, and says why.
             _failedRows = null;
+
+            // Rows arrived with «Vis historiske» in force, so from here the filter owns Status.
+            if (ShowStatusColumn)
+            {
+                _statusShownForSort = false;
+            }
 
             return true;
         }

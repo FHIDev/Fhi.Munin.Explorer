@@ -125,6 +125,7 @@ public class VariableSearchTest : ExplorerTestContext
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int Calls { get; private set; }
+        public SortField LastSort { get; private set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
@@ -133,6 +134,7 @@ public class VariableSearchTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             Calls++;
+            LastSort = sort;
             return Calls == 1 && firstAnswer is not null ? Task.FromResult(firstAnswer) : _answer.Task;
         }
 
@@ -1502,6 +1504,232 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.True(client.SearchCalls > calls);
     }
 
+    [Theory]
+    [InlineData(SortField.Code, "Kode", "code")]
+    [InlineData(SortField.Status, "Status", "status")]
+    public void Columns_WhenARestoredSortIsOnAColumnThatStartsOff_ThenThatColumnIsShownCarryingAriaSort(
+        SortField sort, string label, string key)
+    {
+        // Both columns start off — Kode seeded, Status following the historical filter — so a link
+        // ordered by either would otherwise open on a list with no header saying how it is ordered,
+        // and no press of the reader's to explain it. (Fhi.Metadata-jqarq)
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))), b => b
+            .Add(c => c.Sort, sort)
+            .Add(c => c.Direction, SortDirection.Descending));
+
+        var sorted = Assert.Single(cut.FindAll("[aria-sort]"));
+
+        Assert.Contains($"munin-explorer-dataitem-header__{key}", sorted.ClassList);
+        Assert.Equal("descending", sorted.GetAttribute("aria-sort"));
+        Assert.NotEmpty(cut.FindAll($".munin-explorer-dataitem-main__{key}"));
+
+        // The picker reads it as shown, so the reader's first press on it hides it rather than
+        // appearing to do nothing.
+        Assert.True(Ticked(ColumnToggle(cut, label)));
+    }
+
+    [Fact]
+    public void Columns_WhenNoSortIsRestored_ThenKodeStaysOff()
+    {
+        // The seed still means what it says: only a sort on Kode brings it on.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+    }
+
+    [Theory]
+    [InlineData(SortField.Code, "Kode", "code")]
+    [InlineData(SortField.Status, "Status", "status")]
+    public void Columns_WhenARestoredSortColumnIsHiddenThroughThePicker_ThenTheOrderingStaysAndAriaSortGoes(
+        SortField sort, string label, string key)
+    {
+        // Showing it is a restore's doing, not a rule that outvotes the picker: the reader's press
+        // still wins, on ToggleColumn's terms — no refetch, the order kept and still announced.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.Sort, sort));
+        var calls = client.Calls;
+
+        ToggleColumn(cut, label);
+
+        Assert.Empty(cut.FindAll($".munin-explorer-dataitem-header__{key}"));
+        Assert.Empty(cut.FindAll("[aria-sort]"));
+        Assert.False(Ticked(ColumnToggle(cut, label)));
+        Assert.Equal(calls, client.Calls);
+        Assert.Equal(sort, client.LastSort);
+        Assert.Contains($"sortert på {label}", StatusLine(cut));
+    }
+
+    [Theory]
+    [InlineData(SortField.Code, "code")]
+    [InlineData(SortField.Status, "status")]
+    public void Columns_WhenTheHostChangesSortToAColumnThatIsOffAfterTheFirstRender_ThenTheListIsReorderedAndThatColumnShown(
+        SortField sort, string key)
+    {
+        // A host that moves the Sort parameter after mount — its own back button, say — reached no
+        // fetch and no column before, so the list stayed in the old order under the new link.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        var calls = client.Calls;
+
+        cut.Render(b => b.Add(c => c.Sort, sort).Add(c => c.Direction, SortDirection.Descending));
+
+        var sorted = Assert.Single(cut.FindAll("[aria-sort]"));
+
+        Assert.Contains($"munin-explorer-dataitem-header__{key}", sorted.ClassList);
+        Assert.Equal("descending", sorted.GetAttribute("aria-sort"));
+        Assert.Equal(calls + 1, client.Calls);
+        Assert.Equal(sort, client.LastSort);
+        Assert.Equal(SortDirection.Descending, client.LastDirection);
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostSortsOnAColumnTheReaderHidThroughThePicker_ThenItStaysHidden()
+    {
+        // The reader's press outranks the host's parameter: a column they turned off coming back
+        // on its own would be the picker undoing itself.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ToggleColumn(cut, "Kode");
+        ToggleColumn(cut, "Kode");
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        Assert.Equal(SortField.Code, client.LastSort);
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
+        Assert.Empty(cut.FindAll("[aria-sort]"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostChangesSortAndTheFetchFails_ThenTheOldOrderStaysAndTheHostIsToldSo()
+    {
+        // The host is holding an order the API never delivered; without the callback its URL would
+        // describe rows nobody can see, and Kode would be on screen over a list not ordered by it.
+        var raised = new List<SortField>();
+        var directions = new List<SortDirection>();
+        var client = new FailingClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SortChanged, f => raised.Add(f))
+            .Add(c => c.DirectionChanged, d => directions.Add(d)));
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code).Add(c => c.Direction, SortDirection.Descending));
+
+        Assert.Equal([SortField.Default], raised);
+        Assert.Equal([SortDirection.Ascending], directions);
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostChangesSortOffPageOne_ThenTheListGoesBackToPageOneAndTheHostIsTold()
+    {
+        // Reordering renumbers every page, and a host mirroring the page into its URL is holding 3.
+        var pages = new List<int>();
+        var client = new PagedClient(312);
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Page, 3)
+            .Add(c => c.PageChanged, p => pages.Add(p)));
+
+        pages.Clear(); // the mount echoes the page it was given
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        Assert.Equal(1, client.LastPage);
+        Assert.Equal([1], pages);
+        Assert.Equal("1/13", Position(cut));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostChangesSortOffPageOneAndTheFetchFails_ThenTheOrderAndThePageStay()
+    {
+        // The whole rollback, not just the field: the request was page 3 in the old order, so no
+        // PageChanged moves the host off 3 and both callbacks name the order still in force.
+        var sorts = new List<SortField>();
+        var directions = new List<SortDirection>();
+        var pages = new List<int>();
+        var client = new PagedClient(312);
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Page, 3)
+            .Add(c => c.SortChanged, f => sorts.Add(f))
+            .Add(c => c.DirectionChanged, d => directions.Add(d))
+            .Add(c => c.PageChanged, p => pages.Add(p)));
+
+        pages.Clear();
+        client.Fail = true;
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code).Add(c => c.Direction, SortDirection.Descending));
+
+        Assert.Equal([SortField.Default], sorts);
+        Assert.Equal([SortDirection.Ascending], directions);
+        Assert.Empty(pages);
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostChangesSortWhileAFetchIsInFlight_ThenItIsFollowedOnceThatFetchLands()
+    {
+        // A host that does not bind must still see its Sort applied once the stalled fetch lands.
+        // (Fhi.Metadata-jqarq)
+        var sorts = new List<SortField>();
+        var client = new SlowClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.SortChanged, f => sorts.Add(f)));
+
+        ClickSort(cut, "Kilde"); // stalls
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        Assert.Equal(2, client.Calls);
+        Assert.Empty(sorts);
+
+        client.Answer(OnePage(Variable("1. Tale", "KODE")));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(3, client.Calls);
+            Assert.Equal(SortField.Code, client.LastSort);
+            Assert.Equal("ascending",
+                         cut.Find(".munin-explorer-dataitem-header__code").GetAttribute("aria-sort"));
+        });
+
+        // The reader's press is reported when it lands; the host's own Sort needs no echo.
+        Assert.Equal([SortField.Kilde], sorts);
+    }
+
+    [Fact]
+    public void Columns_WhenARestoredStatusSortIsFollowedByTheHistoricalFilter_ThenTheFilterTakesStatusOver()
+    {
+        // Shown for the sort, not chosen by the reader: the same link with «Vis historiske» on would
+        // let the filter take Status away, so this one does too once that filter has been in force.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.Sort, SortField.Status));
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-dataitem-header__status"));
+
+        ClickFacet(cut, "Vis historiske");
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__status"));
+        Assert.Equal(SortField.Status, client.LastSort);
+        Assert.Contains("sortert på Status", StatusLine(cut));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostHandsBackTheSortTheReaderPressed_ThenNothingIsFetchedAgain()
+    {
+        // @bind-Sort echoes every press straight back as a parameter; treating the echo as a change
+        // would send each sort twice.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickSort(cut, "Kilde");
+        var calls = client.Calls;
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Kilde));
+
+        Assert.Equal(calls, client.Calls);
+    }
+
     [Fact]
     public void Columns_WhenTheFilterWouldTakeTheLastColumnAway_ThenStatusStaysOnScreen()
     {
@@ -2365,6 +2593,9 @@ public class VariableSearchTest : ExplorerTestContext
         public SortDirection LastDirection { get; private set; }
         public int Calls { get; private set; }
 
+        /// <summary>Fail every search from the next one on.</summary>
+        public bool Fail { get; set; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
@@ -2377,6 +2608,11 @@ public class VariableSearchTest : ExplorerTestContext
             LastSort = sort;
             LastDirection = direction;
             Calls++;
+
+            if (Fail)
+            {
+                throw new HttpRequestException("nede");
+            }
 
             return Task.FromResult(ResultPage(totalCount, page, rowsPerPage));
         }

@@ -437,6 +437,19 @@ public sealed partial class VariableSearch : ComponentBase
     /// back — see <see cref="SortAsync"/> — and telling the host about an order the API never
     /// delivered would leave a URL describing a list nobody can see.
     /// </para>
+    /// <para>
+    /// A <see cref="Sort"/> the host changes after the first render — its own back button, say — is
+    /// followed: the list is fetched again in that order, from page one, with that <see cref="Direction"/>.
+    /// If a fetch is already in flight it is followed once that one has landed. A <see cref="Direction"/>
+    /// changed on its own is <b>not</b> followed, because a host re-rendering between the two
+    /// callbacks of one press hands back a direction still one step behind; change it together with
+    /// <see cref="Sort"/>, or leave ordering to the reader's presses.
+    /// </para>
+    /// <para>
+    /// So the callbacks carry the order in force, which is not always the one the host just asked
+    /// for: if the fetch for a host's new <see cref="Sort"/> fails, the old order stays and both
+    /// <see cref="SortChanged"/> and <see cref="DirectionChanged"/> are raised with it.
+    /// </para>
     /// </remarks>
     [Parameter] public SortField Sort { get; set; } = SortField.Default;
 
@@ -706,6 +719,9 @@ public sealed partial class VariableSearch : ComponentBase
     // API returns when it is asked for none, so the first render costs no extra query parameters.
     private SortField _sort = SortField.Default;
     private SortDirection _direction = SortDirection.Ascending;
+
+    /// <summary>The <see cref="Sort"/> this component last followed, so a change can be told from an echo.</summary>
+    private SortField _sortParameter;
 
     // The page and the size being asked for: the host's parameters, read once at mount and owned
     // here afterwards. Both send the reader back to page one when they change, because a renumbered
