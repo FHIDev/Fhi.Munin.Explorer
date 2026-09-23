@@ -872,7 +872,9 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal("https://example.org/report", section.QuerySelector("dd a")?.GetAttribute("href"));
         Assert.Equal("Se rapporten.", section.QuerySelector("dd")?.TextContent.Trim());
         Assert.Equal(language == "en" ? "no" : null, section.QuerySelector("dd")?.GetAttribute("lang"));
-        Assert.Contains("#section-kvalitetsnote", Targets(cut));
+        Assert.Contains("#section-om-datasamlingen", Targets(cut));
+        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
+        Assert.NotNull(cut.Find("#section-om-datasamlingen #section-kvalitetsnote"));
     }
 
     [Fact]
