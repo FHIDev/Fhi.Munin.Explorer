@@ -10488,10 +10488,9 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Render_WhenTheTrailIsDrawn_ThenItIsBuiltFromShapesRatherThanFromNewClassNames()
     {
-        // Stiler has no breadcrumb rule that can be read back off its compiled stylesheet, so the
-        // trail is an <ol> of buttons and the chevrons are a host's to draw. The two names it does
-        // wear are handles, and the steps reuse the panel's own crumb name rather than minting a
-        // second one for the same affordance.
+        // The steps are filter buttons, not navigating links, so Stiler's .breadcrumbs (worn by
+        // DetailTrail) does not apply: the trail is an <ol> of buttons whose two names are handles,
+        // the steps reusing the panel's crumb name rather than minting a second one.
         var cut = RenderFiltered(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
                                  new VariableFilter { KildeIds = [Tromso] });
 
@@ -14560,8 +14559,8 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-filters__active",
             "munin-explorer-filters__chip",
             "munin-explorer-filters__chip-remove",
-            "munin-explorer-breadcrumb", // ours — the trail over the results, which Stiler has
-                                            // no breadcrumb rule of any kind to borrow
+            "munin-explorer-breadcrumb", // ours — the trail over the results; its steps filter
+                                            // rather than navigate, so .breadcrumbs does not apply
             "munin-explorer-crumb",      // ours — one step of a trail, and the same name in
                                             // both of them: the panel's kilde step, which Runa
                                             // makes a link and we make the control that discloses
