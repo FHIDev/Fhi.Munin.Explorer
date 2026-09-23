@@ -75,6 +75,7 @@ BASE="http://localhost:${PORT}"
 STUB_PORT="${STATE_STUB_PORT:-5094}"
 STUB_BASE="http://127.0.0.1:${STUB_PORT}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 
 # `/` is VariableSearch on its own, which is where the four refused presses live: the column picker
 # above the results and the facet panel beside them. `variables-list` is the state that waits for a
@@ -110,21 +111,6 @@ cleanup() {
       wait "$pid" 2>/dev/null || true
     fi
   done
-  # `dotnet run` is a launcher: killing it leaves the app it started holding the port, and the next
-  # run then refuses to start against an orphan it cannot see. Both forms, because neither is enough
-  # on its own - Git Bash's pkill does not match Windows process command lines. Only when this run
-  # started a host: the patterns match a command line rather than anything of ours, and ModernHost
-  # on this port is as likely to be somebody's development session as our orphan.
-  [ -n "$host_pid" ] || return 0
-  pkill -f "ModernHost.*${PORT}" 2>/dev/null || true
-  if command -v powershell >/dev/null 2>&1; then
-    # `-ne $PID` excludes the powershell running this: its own command line carries the literal
-    # pattern text, which the wildcard matches, and a self-kill ends the pipeline before the
-    # orphan this exists to clear is necessarily reached.
-    powershell -NoProfile -Command "Get-CimInstance Win32_Process |
-      Where-Object { \$_.ProcessId -ne \$PID -and \$_.CommandLine -like '*ModernHost*:${PORT}*' } |
-      ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }" >/dev/null 2>&1 || true
-  fi
 }
 
 # Anything already answering on these ports is driven in place of what this run starts — an orphan
@@ -164,11 +150,29 @@ if ! curl -fsS -o /dev/null --max-time 5 "${STUB_BASE}/api/explorer/kilder" 2>/d
   exit 2
 fi
 
+# Built here and started below, rather than `dotnet run`: that is a launcher which starts the app
+# as a SEPARATE child, so nothing $! can name is the server, and the trap killed a shell while
+# ModernHost kept the port. Started this way the host is one process, as the stub already was.
+echo "==> building ModernHost"
+if ! dotnet build "$HOST_PROJECT" --nologo -v quiet >/tmp/state-build.log 2>&1; then
+  echo "ModernHost would not build - TOOLING failure." >&2
+  tail -20 /tmp/state-build.log >&2
+  exit 2
+fi
+
+HOST_DLL="$(dotnet msbuild "$HOST_PROJECT" -getProperty:TargetPath -nologo 2>/dev/null | tr -d '\r')"
+if [ -z "$HOST_DLL" ] || [ ! -f "$HOST_DLL" ]; then
+  echo "could not find what the ModernHost build produced - TOOLING failure." >&2
+  exit 2
+fi
+
 echo "==> starting ModernHost on ${BASE}"
-(
-  cd "$ROOT"
-  MuninExplorer__ApiBaseUrl="$STUB_BASE" dotnet run --project samples/ModernHost --urls "$BASE" >/tmp/state-host.log 2>&1
-) &
+# The environment and the content root `dotnet run` would have supplied, from launchSettings.json
+# and the project directory. Nothing reads either when the build output is started directly, and
+# the sample's stylesheet and the RCL's interop are Development-only assets.
+MuninExplorer__ApiBaseUrl="$STUB_BASE" ASPNETCORE_ENVIRONMENT=Development \
+  dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/ModernHost" \
+  >/tmp/state-host.log 2>&1 &
 host_pid=$!
 
 echo "==> waiting for the host"
