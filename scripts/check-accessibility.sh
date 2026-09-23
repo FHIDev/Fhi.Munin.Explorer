@@ -81,6 +81,7 @@ TARGETS=(
   "/::tree-no-match"
   "/::variables-facets"
   "/::variable-detail"
+  "/::variable-detail-about"
   "/kilder::kilde-drilldown"
   "/kilder::kilde-stuckbar"
   "/kilder::kilde-hierarchy-collapsed"

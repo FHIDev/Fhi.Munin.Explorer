@@ -553,8 +553,8 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     {
         var cut = Render<VariableSearch>();
 
+        // Data is the tab a panel opens on (Fhi.Metadata-l9l2n.101), so no tab press is needed.
         cut.Find("button.munin-explorer-dataitem__expand-toggle").Click(new MouseEventArgs { Detail = 1 });
-        cut.FindAll(".munin-explorer-meta__tabs [role=tab]")[1].Click();
 
         return cut;
     }

@@ -388,6 +388,35 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // The drawer's second tab, reached the way a keyboard reader reaches it: Tab from the row's
+  // chevron into the tablist, then ArrowRight. A tablist nested in a disclosure is where roles and
+  // the tab stop usually get dropped, and axe never sees this panel otherwise (Fhi.Metadata-l9l2n.101).
+  'variable-detail-about': async page => {
+    await states['variable-detail'](page);
+
+    for (let presses = 0; presses < 12; presses++) {
+      if (await page.evaluate(() => document.activeElement?.getAttribute('role') === 'tab')) break;
+      await page.keyboard.press('Tab');
+    }
+
+    const data = page.getByRole('tab', { name: 'Data', exact: true }).first();
+    if (!(await data.evaluate(el => el === document.activeElement && el.getAttribute('aria-selected') === 'true'))) {
+      throw new Error('Tab from the row chevron did not land on the selected Data tab');
+    }
+
+    await page.keyboard.press('ArrowRight');
+
+    const about = page.getByRole('tab', { name: 'Om variabelen', exact: true }).first();
+    await page.locator('[role=tab][aria-selected="true"]', { hasText: 'Om variabelen' })
+      .first().waitFor({ state: 'visible', timeout: findTimeout });
+    const panel = page.getByRole('tabpanel', { name: 'Om variabelen', exact: true }).first();
+    await panel.waitFor({ state: 'visible', timeout: findTimeout });
+
+    if (await about.getAttribute('tabindex') !== '0' || await data.getAttribute('tabindex') !== '-1') {
+      throw new Error('ArrowRight moved the selection but not the roving tabindex');
+    }
+  },
+
   'variable-datasamling': async page => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await states['variable-detail'](page);

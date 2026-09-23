@@ -69,6 +69,41 @@ internal static class StatisticsBlock
         variable is { Statistics.Count: > 0 };
 
     /// <summary>
+    /// The newest SisteOppdaterteAarssett across every statistics row, or null when none has one.
+    /// </summary>
+    /// <remarks>
+    /// Compared as numbers where both parse, so "2022" beats "2019" and "999" does not beat "2022";
+    /// a value that does not parse falls back to ordinal order rather than being dropped.
+    /// </remarks>
+    internal static string? LatestYearSet(VariableDetail variable)
+    {
+        string? latest = null;
+
+        foreach (var statistic in variable.Statistics)
+        {
+            if (Raw(statistic.AdditionalProperties, "SisteOppdaterteAarssett") is not { } candidate)
+            {
+                continue;
+            }
+
+            candidate = candidate.Trim();
+
+            if (latest is null || CompareYearSets(candidate, latest) > 0)
+            {
+                latest = candidate;
+            }
+        }
+
+        return latest;
+    }
+
+    private static int CompareYearSets(string a, string b) =>
+        long.TryParse(a, NumberStyles.Integer, CultureInfo.InvariantCulture, out var x)
+        && long.TryParse(b, NumberStyles.Integer, CultureInfo.InvariantCulture, out var y)
+            ? x.CompareTo(y)
+            : string.CompareOrdinal(a, b);
+
+    /// <summary>
     /// The heading <see cref="For"/> will emit for this variable, for a caller that has to name
     /// the block without drawing it.
     /// </summary>

@@ -74,17 +74,19 @@ internal sealed record Texts(
     // than DatasamlingerLoaded, whose identical words are a live region's and free to drift.
     Func<int, string> DatasamlingCountCrumb,
 
-    string TabDetails,
     string TabData,
+    // The drawer's second tab. Not the curated property group the catalogue also calls
+    // "Om variabelen": this is our label for a tab, and that is Munin's master data.
+    string TabAbout,
+    // The newest SisteOppdaterteAarssett across the variable's statistics rows.
+    string FieldLatestYearSet,
 
     // The page's own two tabs, worded as Runa words them (explorer.tabs.search_results,
     // explorer.tabs.variable_list). Spelled out rather than reusing Title, because the panel's
-    // TabDetails/TabData above are on screen at the same time and the two pairs must read apart.
+    // TabData/TabAbout above are on screen at the same time and the two pairs must read apart.
     string TabSearchResults,
     string TabVariableList,
-    string GroupIdentification,
     string GroupPlacement,
-    string GroupProperties,
     string ColumnVariable,
     // The column picker: Runa's own name for the control ("Kolonner", where helsedata's button
     // says "Vis kolonner"), and the sentence the last column left points at to say why it refuses
@@ -1036,13 +1038,12 @@ internal sealed record Texts(
         FieldKildePath: "Kildesti",
         FieldDataPeriod: "Dataperiode",
         DatasamlingCountCrumb: count => count == 1 ? "1 datasamling" : $"{count} datasamlinger",
-        TabDetails: "Detaljer",
         TabData: "Data",
+        TabAbout: "Om variabelen",
+        FieldLatestYearSet: "Siste \u00e5rssett",
         TabSearchResults: "Søkeresultat",
         TabVariableList: "Variabelliste",
-        GroupIdentification: "Identifikasjon",
         GroupPlacement: "Plassering",
-        GroupProperties: "Egenskaper",
         ColumnVariable: "Navn",
         Columns: "Kolonner",
         LastColumnHint: "Minst én kolonne må vises.",
@@ -1501,13 +1502,12 @@ internal sealed record Texts(
         FieldKildePath: "Source path",
         FieldDataPeriod: "Data period",
         DatasamlingCountCrumb: count => count == 1 ? "1 data collection" : $"{count} data collections",
-        TabDetails: "Details",
         TabData: "Data",
+        TabAbout: "About the variable",
+        FieldLatestYearSet: "Latest year set",
         TabSearchResults: "Search results",
         TabVariableList: "Variable list",
-        GroupIdentification: "Identification",
         GroupPlacement: "Placement",
-        GroupProperties: "Properties",
         ColumnVariable: "Name",
         Columns: "Columns",
         LastColumnHint: "At least one column has to stay visible.",

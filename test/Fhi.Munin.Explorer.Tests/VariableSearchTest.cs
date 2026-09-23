@@ -6204,25 +6204,6 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Detail_WhenTheApiHasRewordedAKildetype_ThenTheOpenRowsTrailSaysItTheWayTheFacetDoes()
-    {
-        // The two consumers of one vocabulary: the facet button in the panel and the kilde trail in
-        // the row opened beside it. They read the same payload, so they cannot be allowed to fall
-        // back to different things. (Fhi.Metadata-3n6e1)
-        var reworded = "Sentralt helseregister (nytt)";
-        var id = Guid.NewGuid();
-        var client = new FacetedDetailClient(OnePage(Row(id, "1. Tale")), RewordedKildetyper(reworded))
-            .Knows(Detail(id) with { KildeType = "sentraltHelseregister" });
-
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(reworded, Panel(cut).QuerySelector("ol > li")!.TextContent.Trim());
-        Assert.Equal($"{reworded} (30)", Facet(cut, reworded).TextContent);
-    }
-
-    [Fact]
     public void Render_WhenAKildetypeArrivesWithNoDisplayNameAtAll_ThenBothSitesFallBackToTheShippedTable()
     {
         // An API predating displayName sends nothing at all, which is the shape the test above
@@ -6266,23 +6247,6 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Detail_WhenNoFacetNamesTheKildetype_ThenTheTrailKeepsTheTokenRatherThanEmptyingTheStep()
-    {
-        // The trail reads the facets the panel beside it was built from, so a filters call that
-        // answered nothing must not cost the step its word: the token is what the variable has, and
-        // a trail step reading "Ikke oppgitt" is the level the trail leaves out. (Fhi.Metadata-3n6e1)
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with { KildeType = "nyKildetype" })
-            .Knows(Kilde())
-            .Knows(Datasamling()));
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["nyKildetype", "Als registeret (ALS)", "Inklusjon"],
-                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
-    }
-
-    [Fact]
     public void Render_WhenTheApiEchoesTheEnumNameAsItsDisplayName_ThenBothSitesReadTheShippedTable()
     {
         // An API predating Fhi.Metadata-0mjhi answers displayName with the value again, bar its
@@ -6320,82 +6284,6 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal("Ikke oppgitt", heading);
     }
-
-    [Fact]
-    public void Detail_WhenTheFiltersCallAnsweredNothingAndTheTableKnowsTheKildetype_ThenTheTrailSaysTheTablesWord()
-    {
-        // A filters call that answered an empty payload: the facet list is there and holds no
-        // kildetype, so the lookup misses and the shipped table is the whole answer. A trail step
-        // downgraded to the raw token or to "Ikke oppgitt" here is silent. (Fhi.Metadata-3n6e1)
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with { KildeType = "sentraltHelseregister" })
-            .Knows(Kilde())
-            .Knows(Datasamling()));
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["Sentralt helseregister", "Als registeret (ALS)", "Inklusjon"],
-                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
-    }
-
-    [Fact]
-    public void Detail_WhenTheFiltersCallFailedAndTheTableKnowsTheKildetype_ThenTheTrailSaysTheTablesWord()
-    {
-        // The one shape where the helper's null read is load-bearing: the filters call failed, so
-        // no payload was ever stored and the trail resolves against a null. The panel beside it is
-        // showing its own error, which leaves this step the only word there is. (Fhi.Metadata-3n6e1)
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale"))) { FailFilters = true };
-
-        var cut = RenderWith(client
-            .Knows(Detail(TaleId) with { KildeType = "sentraltHelseregister" })
-            .Knows(Kilde())
-            .Knows(Datasamling()));
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["Sentralt helseregister", "Als registeret (ALS)", "Inklusjon"],
-                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
-    }
-
-    [Fact]
-    public void Trail_WhenTheRowPanelDrawsIt_ThenTheMarkupIsWhatItWasBeforeTheTrailWasLiftedOut()
-    {
-        // The regression half of having one trail and two callers: lifting it out of this panel is
-        // only safe if the caller that already had it renders exactly what it rendered before. The
-        // string below was read off the panel before the extraction, and "it still looks right" is
-        // what let four defects reach helsedata.no on 2026-09-03. (Fhi.Metadata-35w0p.47)
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId))
-            .Knows(Kilde())
-            .Knows(Datasamling()));
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(
-            """<ol><li>Nasjonalt medisinsk kvalitetsregister</li>"""
-            + """<li lang="no"><button class="hd-button-reset munin-explorer-crumb" type="button">"""
-            + """Als registeret (ALS)</button></li><li lang="no">Inklusjon</li></ol>""",
-            Pinned(TrailValue(cut).InnerHtml));
-
-        // The one thing the comparison above cannot see, because the handler id is normalised out
-        // of it: the step is still wired to the press that discloses the kilde.
-        Assert.True(TrailValue(cut).QuerySelector("button")!.HasAttribute("blazor:onclick"));
-    }
-
-    /// <summary>The trail's own <c>dd</c>, found by the label beside it rather than by position.</summary>
-    private static IElement TrailValue(IRenderedComponent<VariableSearch> cut) =>
-        Panel(cut).QuerySelectorAll("dl.munin-explorer-meta__grid > div")
-            .Single(field => field.QuerySelector("dt")!.TextContent.Trim() == Texts.For("no").FieldKildePath)
-            .QuerySelector("dd")!;
-
-    /// <summary>Rendered markup with bUnit's own event-handler bookkeeping taken out.</summary>
-    /// <remarks>
-    /// <c>blazor:onclick</c> carries a render-counter id rather than anything this component writes
-    /// down, so a pinned string holding one would go red on any unrelated change to the render
-    /// order — which is a pin nobody would trust for long.
-    /// </remarks>
-    private static string Pinned(string markup) =>
-        System.Text.RegularExpressions.Regex.Replace(markup, " blazor:[^=]+=\"[^\"]*\"", "");
 
     [Theory]
     [InlineData("no", "nb", "Sentralt helseregister, som master data sier det")]
@@ -6448,41 +6336,6 @@ public class VariableSearchTest : ExplorerTestContext
                 TotalCount = 30
             });
         }
-    }
-
-    /// <summary>Answers the search, the detail endpoint and the facets — the three the trail needs.</summary>
-    /// <remarks>
-    /// <c>DetailClient</c> answers no facets, which is exactly what the trail used not to need. Its
-    /// own fake rather than a facet-carrying <c>DetailClient</c>, so the tests built on that one
-    /// keep asserting against the panel the shipped table alone draws.
-    /// </remarks>
-    private sealed class FacetedDetailClient(Page<VariableSummary> answer, FilterOptions facets)
-        : EmptyMuninExplorerClient
-    {
-        private readonly Dictionary<Guid, VariableDetail> _details = [];
-
-        public FacetedDetailClient Knows(VariableDetail detail)
-        {
-            _details[detail.Id] = detail;
-
-            return this;
-        }
-
-        public override Task<Page<VariableSummary>> SearchVariablesAsync(
-            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
-            SortField sort = SortField.Default,
-            SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(answer);
-
-        public override Task<FilterOptions> GetFiltersAsync(
-            string? search = null, VariableFilter? filter = null, string? language = null,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(facets);
-
-        public override Task<VariableDetail?> GetVariableAsync(
-            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
-            Task.FromResult<VariableDetail?>(_details.GetValueOrDefault(id));
     }
 
     [Fact]
@@ -10852,272 +10705,6 @@ public class VariableSearchTest : ExplorerTestContext
         Description = description
     };
 
-    // ---------------------------------------------------------------------------------
-    // The catalogue's own properties. Nothing about them is known to this component: the
-    // keys, their labels, their order and the vocabularies their coded values come from
-    // all arrive with the payload. What has to hold is that a code is never shown where a
-    // word exists, and that a key the catalogue no longer curates is not drawn under its
-    // raw name.
-
-    /// <summary>A detail carrying curated properties, as the API sends them.</summary>
-    private static VariableDetail WithProperties(Guid id) => Detail(id) with
-    {
-        AdditionalProperties = new Dictionary<string, string?>
-        {
-            ["Opprinnelse"] = "5",
-            ["Kommentar"] = "Variabelen er gyldig fra 2019 og fremover.",
-            ["DatabaseReferanse"] = "ALSFRSR1Tale",
-            ["FlerkodetFelt"] = "1",
-        },
-        PropertyMetadata =
-        [
-            new()
-            {
-                Key = "Kommentar",
-                SortOrder = 50,
-                Type = "Text",
-                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Kommentar", ["en"] = "Comment" },
-            },
-            new()
-            {
-                Key = "Opprinnelse",
-                SortOrder = 30,
-                Type = "SingleSelect",
-                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Opprinnelse", ["en"] = "Origin" },
-                OptionsJson = """
-                    [{"value":"1","label":"Beregnet","labelEn":"Calculated"},
-                     {"value":"5","label":"Direkte fra skjema","labelEn":"Directly from the form"}]
-                    """,
-            },
-            new()
-            {
-                Key = "DatabaseReferanse",
-                SortOrder = 200,
-                Type = "Text",
-                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Databasereferanse" },
-            },
-        ],
-    };
-
-    [Fact]
-    public void Properties_WhenTheDetailCarriesThem_ThenTheyAreShownInTheCataloguesOrder()
-    {
-        var id = Guid.NewGuid();
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)));
-
-        Toggles(cut)[0].Click();
-
-        var group = cut.Find(".munin-explorer-group ~ dl:last-of-type");
-
-        // SortOrder, not the order the bag happens to enumerate in.
-        Assert.Equal(["Opprinnelse", "Kommentar", "Databasereferanse"],
-                     group.QuerySelectorAll("dt").Select(d => d.TextContent));
-    }
-
-    [Fact]
-    public void Properties_WhenTheCatalogueCuratesTheName_ThenThePanelDoesNotDrawItAgain()
-    {
-        // The name is merged into the bag the panel lists (Fhi.Metadata-zg89n); only
-        // PanelDrawnElsewhere keeps the panel's title from coming back as a 'Navn' row.
-        var id = Guid.NewGuid();
-        var detail = WithProperties(id);
-        detail = detail with
-        {
-            PropertyMetadata =
-            [
-                .. detail.PropertyMetadata,
-                new()
-                {
-                    Key = CatalogueColumns.PreferredTerm,
-                    SortOrder = 10,
-                    Type = "Text",
-                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Navn" },
-                },
-            ],
-        };
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["Opprinnelse", "Kommentar", "Databasereferanse"],
-                     PropertyPairs(cut).Select(p => p.Label.TextContent));
-    }
-
-    [Fact]
-    public void Properties_WhenAValueIsCoded_ThenTheVocabularyIsUsedRatherThanTheCode()
-    {
-        // "Opprinnelse: 5" is the API's honest answer and a useless thing to read. The vocabulary
-        // arrives in the same payload precisely so a consumer never has to keep its own copy.
-        var id = Guid.NewGuid();
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)));
-
-        Toggles(cut)[0].Click();
-
-        Assert.Contains("Direkte fra skjema", Panel(cut).TextContent);
-        Assert.DoesNotContain("Opprinnelse: 5", Panel(cut).TextContent);
-    }
-
-    [Fact]
-    public void Properties_WhenTheLanguageIsEn_ThenBothTheLabelAndTheCodedValueFollowIt()
-    {
-        var id = Guid.NewGuid();
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)),
-                             b => b.Add(c => c.Language, "en"));
-
-        Toggles(cut)[0].Click();
-
-        Assert.Contains("Origin", Panel(cut).TextContent);
-        Assert.Contains("Directly from the form", Panel(cut).TextContent);
-    }
-
-    [Fact]
-    public void Properties_WhenALabelHasNoEnglish_ThenTheNorwegianStandsIn()
-    {
-        // Curation is uneven. A field with no English label is better shown in Norwegian than
-        // dropped from an English page, which would silently show a reader less than a colleague.
-        var id = Guid.NewGuid();
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)),
-                             b => b.Add(c => c.Language, "en"));
-
-        Toggles(cut)[0].Click();
-
-        Assert.Contains("Databasereferanse", Panel(cut).TextContent);
-    }
-
-    [Fact]
-    public void Properties_WhenTheCatalogueDoesNotCurateAKey_ThenItIsNotDrawn()
-    {
-        // The bag can carry keys the catalogue has stopped describing. "FlerkodetFelt: 1" under its
-        // raw name tells a reader nothing and looks like a bug.
-        var id = Guid.NewGuid();
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)));
-
-        Toggles(cut)[0].Click();
-
-        Assert.DoesNotContain("FlerkodetFelt", Panel(cut).TextContent);
-    }
-
-    /// <summary>The properties group's rows, as label/value element pairs.</summary>
-    private static (IElement Label, IElement Value)[] PropertyPairs(IRenderedComponent<VariableSearch> cut)
-    {
-        var list = cut.Find(".munin-explorer-group ~ dl:last-of-type");
-
-        return [.. list.QuerySelectorAll("div").Select(d => (d.QuerySelector("dt")!, d.QuerySelector("dd")!))];
-    }
-
-    [Fact]
-    public void Properties_WhenAnEnglishPageFallsBackToNorwegian_ThenThatTextIsMarkedAsNorwegian()
-    {
-        // An English reader gets some Norwegian either way: labels nobody translated, and free text,
-        // which the catalogue only ever stores once. Marking it is what lets a screen reader switch
-        // voice instead of reading a Norwegian sentence with English phonetics.
-        var id = Guid.NewGuid();
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)),
-                             b => b.Add(c => c.Language, "en"));
-
-        Toggles(cut)[0].Click();
-
-        var rows = PropertyPairs(cut);
-
-        // Opprinnelse: label and coded value both exist in English, so both inherit the page.
-        Assert.Equal("Origin", rows[0].Label.TextContent);
-        Assert.Null(rows[0].Label.GetAttribute("lang"));
-        Assert.Null(rows[0].Value.GetAttribute("lang"));
-
-        // Kommentar: the label is translated, the free text underneath it never is.
-        Assert.Equal("Comment", rows[1].Label.TextContent);
-        Assert.Null(rows[1].Label.GetAttribute("lang"));
-        Assert.Equal("no", rows[1].Value.GetAttribute("lang"));
-
-        // Databasereferanse: no English label at all.
-        Assert.Equal("no", rows[2].Label.GetAttribute("lang"));
-    }
-
-    [Fact]
-    public void Properties_WhenThePageIsNorwegian_ThenNothingIsMarkedAtAll()
-    {
-        // Everything is already in the reader's language, so the attribute would say nothing. It
-        // appears only where it carries information, which is what keeps it meaning something.
-        var id = Guid.NewGuid();
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(WithProperties(id)));
-
-        Toggles(cut)[0].Click();
-
-        Assert.All(PropertyPairs(cut), row =>
-        {
-            Assert.Null(row.Label.GetAttribute("lang"));
-            Assert.Null(row.Value.GetAttribute("lang"));
-        });
-    }
-
-    [Fact]
-    public void Properties_WhenAVocabularyIsMalformed_ThenTheCodeIsShownAndThePanelSurvives()
-    {
-        // Curated data arriving over the wire. One bad definition should cost that field its label,
-        // not take the panel down with it.
-        var id = Guid.NewGuid();
-        var detail = Detail(id) with
-        {
-            AdditionalProperties = new Dictionary<string, string?> { ["Opprinnelse"] = "5" },
-            PropertyMetadata =
-            [
-                new()
-                {
-                    Key = "Opprinnelse",
-                    SortOrder = 30,
-                    Type = "SingleSelect",
-                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Opprinnelse" },
-                    OptionsJson = "{ not json at all",
-                },
-            ],
-        };
-
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
-
-        Toggles(cut)[0].Click();
-
-        Assert.Contains("Opprinnelse", Panel(cut).TextContent);
-        Assert.Contains("5", Panel(cut).TextContent);
-    }
-
-    [Fact]
-    public void Properties_WhenAValueIsHeldInTwoLanguages_ThenThePanelKeepsItsOwnLanguageClass()
-    {
-        // The language marker is the one piece DetailBlocks draws for both surfaces, and this panel
-        // is the surface no detail-page test renders. The detail pages moved to the chassis under
-        // Fhi.Metadata-35w0p.11; a rename taking this with it would leave the marker unstyled here.
-        var id = Guid.NewGuid();
-        var detail = Detail(id) with
-        {
-            AdditionalProperties = new Dictionary<string, string?>
-            {
-                ["TittelFlerspraklig"] = """{"nb":"Als registeret","en":"The ALS registry"}""",
-            },
-            PropertyMetadata =
-            [
-                new()
-                {
-                    Key = "TittelFlerspraklig",
-                    SortOrder = 540,
-                    Type = "MultilingualText",
-                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Tittel" },
-                },
-            ],
-        };
-
-        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
-
-        Toggles(cut)[0].Click();
-
-        var markers = Panel(cut).QuerySelectorAll("p.munin-explorer-meta__language");
-
-        Assert.Equal(["Norsk", "Engelsk"], markers.Select(m => m.TextContent.Trim()));
-
-        // And nothing of the chassis reaches in: the panel is a different surface under a different
-        // prefix, which is the whole of what the two names buy.
-        Assert.Empty(Panel(cut).QuerySelectorAll("[class*='munin-explorer-page']"));
-    }
-
     /// <summary>A detail payload shaped like the captured one, with every field the panel draws.</summary>
     private static VariableDetail Detail(Guid id, string name = "1. Tale") => new()
     {
@@ -11465,23 +11052,44 @@ public class VariableSearchTest : ExplorerTestContext
 
     /// <summary>The panel's values, in the order the definition list draws them.</summary>
     // ---------------------------------------------------------------------------------
-    // The panel's tabs. Runa splits an open row into what the variable IS and what its
-    // data holds; helsedata supplies the dress. What has to hold is that the split is
-    // announced correctly and reachable from a keyboard, because a tablist that costs
-    // one tab stop is unusable without arrow keys.
+    // The panel's tabs. Data first, then Om variabelen trimmed to what a reader choosing a
+    // variable needs (Fhi.Metadata-l9l2n.101). What has to hold is that the split is announced
+    // correctly and reachable from a keyboard, because a tablist that costs one tab stop is
+    // unusable without arrow keys.
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> TabButtons(
         IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-meta__tabs [role=tab]");
 
-    [Fact]
-    public void Panel_WhenOpened_ThenItHasRunasTwoTabsWithDetailsSelected()
+    private static AngleSharp.Dom.IElement TabButton(IRenderedComponent<VariableSearch> cut, string label) =>
+        TabButtons(cut).Single(b => b.TextContent == label);
+
+    // What Om variabelen says, for a test that only needs to know the detail arrived.
+    private static string AboutText(IRenderedComponent<VariableSearch> cut) => ShowAbout(cut).TextContent;
+
+    // The Data tab opens first, so a test about Om variabelen has to ask for it.
+    private static AngleSharp.Dom.IElement ShowAbout(IRenderedComponent<VariableSearch> cut)
     {
-        var cut = RenderWith(TwoRows());
+        TabButton(cut, "Om variabelen").Click();
+
+        return cut.Find(".munin-explorer-detail [role=tabpanel]");
+    }
+
+    [Theory]
+    [InlineData("no", "Om variabelen")]
+    [InlineData("en", "About the variable")]
+    public void Panel_WhenOpened_ThenDataIsTheFirstTabAndSelected(string language, string about)
+    {
+        var cut = RenderWith(TwoRows(), b => b.Add(c => c.Language, language));
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Detaljer", "Data"], TabButtons(cut).Select(b => b.TextContent));
+        // Label and order asked apart: a relabelled old pair passes the one and fails the other.
+        Assert.Equal(new[] { "Data", about }.Order(StringComparer.Ordinal),
+                     TabButtons(cut).Select(b => b.TextContent).Order(StringComparer.Ordinal));
+        Assert.Equal("Data", TabButtons(cut)[0].TextContent);
+        Assert.Equal(about, TabButtons(cut)[1].TextContent);
+
         Assert.Equal(["true", "false"], TabButtons(cut).Select(b => b.GetAttribute("aria-selected")));
 
         // Only the selected tab is in the tab order, which is what keeps the tablist at one stop
@@ -11495,12 +11103,100 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Panel_WhenBeskrivelseGainsAPlacement_ThenTheIdentificationListStillDrawsItOnlyOnce()
+    public void Panel_WhenOpened_ThenTheDataTabShowsTheKodeverkAndOmVariabelenTheDescription()
     {
-        // The call site the bead warns about. This list is built without the detail views' own
-        // drawnElsewhere set, so whatever makes a column-backed value renderable reaches it too —
-        // and the Identifikasjon group above already spells the description out, under a label of
-        // this package's own, which is the same fact twice (Fhi.Metadata-bct95).
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        // The kind of kodeverk is the heading, so it is the heading that says the tab arrived.
+        var data = cut.Find(".munin-explorer-detail [role=tabpanel]");
+
+        Assert.Contains("Kildekodeverk", data.TextContent);
+        Assert.DoesNotContain(Detail(TaleId).Description, data.TextContent);
+
+        var about = ShowAbout(cut);
+
+        Assert.Equal(["false", "true"], TabButtons(cut).Select(b => b.GetAttribute("aria-selected")));
+        Assert.Contains(Detail(TaleId).Description, about.TextContent);
+        Assert.DoesNotContain("Kildekodeverk", about.TextContent);
+    }
+
+    [Fact]
+    public void About_WhenTheDetailIsRich_ThenItShowsTheDescriptionCodeAndDatatypeAndNothingElse()
+    {
+        // THE TRAP: relabelling the old Details tab leaves the kilde trail, the datasamlinger, the
+        // instruments, the period and the properties in, and passes every other test here. The
+        // payload carries all five so each has the chance to leak.
+        var id = Guid.NewGuid();
+        var detail = Detail(id) with
+        {
+            DataType = "2",
+            AllDatasamlinger =
+            [
+                new() { Id = InklusjonId, Name = "Inklusjon" },
+                new() { Id = Guid.NewGuid(), Name = "Oppfølging" },
+            ],
+            Instruments = [new() { Id = Guid.NewGuid(), Code = "RAND-36", PreferredTerm = "RAND-36 spørreskjema" }],
+            AdditionalProperties = new Dictionary<string, string?> { ["Opprinnelse"] = "Registrert i skjema" },
+            PropertyMetadata =
+            [
+                new()
+                {
+                    Key = "Opprinnelse",
+                    SortOrder = 10,
+                    Type = "Text",
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Opprinnelse" },
+                    GroupTranslations = new Dictionary<string, string> { ["no"] = "Om variabelen" },
+                },
+            ],
+        };
+
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+
+        var about = ShowAbout(cut);
+
+        // The description first, then the list.
+        Assert.Equal(detail.Description, about.Children[0].TextContent);
+        Assert.Equal("DL", about.Children[1].TagName);
+        Assert.Equal(2, about.Children.Length);
+
+        Assert.Equal(["Kode", "Datatype"], about.QuerySelectorAll("dt").Select(t => t.TextContent));
+        Assert.Equal(detail.Code, about.QuerySelectorAll("dd")[0].TextContent);
+        Assert.NotEqual("Ikke oppgitt", about.QuerySelectorAll("dd")[1].TextContent);
+
+        foreach (var absent in new[]
+                 {
+                     "Als registeret", "Nasjonalt medisinsk kvalitetsregister", "Inklusjon", "Oppfølging",
+                     "Funksjonsscore", "RAND-36", "Registrert i skjema", "Opprinnelse", "2010", "2025",
+                     "Kildesti", "Datasamling", "Variabelgruppe", "Instrumenter", "Dataperiode",
+                     "Identifikasjon", "Plassering", "Egenskaper",
+                 })
+        {
+            Assert.DoesNotContain(absent, about.TextContent, StringComparison.Ordinal);
+        }
+
+        Assert.Empty(about.QuerySelectorAll("ol, ul, .munin-explorer-crumb, [class*='munin-explorer-period']"));
+    }
+
+    [Fact]
+    public void About_WhenThereIsNoDescription_ThenItSaysSoWhereTheDescriptionGoes()
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(Detail(id) with { Description = "" }));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal("Ikke oppgitt", ShowAbout(cut).Children[0].TextContent);
+    }
+
+    [Fact]
+    public void About_WhenBeskrivelseGainsAPlacement_ThenTheDescriptionIsStillDrawnOnlyOnce()
+    {
+        // A catalogue placement for Beskrivelse must not bring a second copy in through the
+        // property list the tab used to carry (Fhi.Metadata-bct95).
         var placed = Detail(TaleId) with
         {
             PropertyMetadata =
@@ -11520,45 +11216,81 @@ public class VariableSearchTest : ExplorerTestContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal([Detail(TaleId).Description], PanelValues(cut, "Beskrivelse"));
+        var text = ShowAbout(cut).TextContent;
+        var description = Detail(TaleId).Description;
+
+        Assert.Equal(text.IndexOf(description, StringComparison.Ordinal),
+                     text.LastIndexOf(description, StringComparison.Ordinal));
+        Assert.NotEqual(-1, text.IndexOf(description, StringComparison.Ordinal));
+    }
+
+    private static Statistic YearSet(string? year) => new()
+    {
+        AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = year, ["MIN"] = "1" },
+    };
+
+    [Theory]
+    [InlineData("no", "Siste årssett")]
+    [InlineData("en", "Latest year set")]
+    public void About_WhenSeveralStatisticsRowsHaveAYearSet_ThenTheLatestIsShown(string language, string label)
+    {
+        // Across every row, not the first: the payload does not promise an order.
+        var id = Guid.NewGuid();
+        var detail = Detail(id) with { Statistics = [YearSet("2019"), YearSet("2022"), YearSet(null)] };
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail),
+                             b => b.Add(c => c.Language, language));
+
+        Toggles(cut)[0].Click();
+        TabButtons(cut)[^1].Click();
+
+        var about = cut.Find(".munin-explorer-detail [role=tabpanel]");
+        var row = about.QuerySelectorAll("dl > div").Single(d => d.QuerySelector("dt")!.TextContent == label);
+
+        Assert.Equal("2022", row.QuerySelector("dd")!.TextContent);
+        Assert.Equal(3, about.QuerySelectorAll("dt").Length);
     }
 
     [Fact]
-    public void Panel_WhenNoPlacementHasArrived_ThenTheIdentificationListStillSpellsTheDescriptionOut()
+    public void About_WhenNoStatisticsRowHasAYearSet_ThenTheRowIsAbsentRatherThanNotSpecified()
     {
-        // Suppressing Beskrivelse now removes a row that would otherwise render, and the only thing
-        // keeping the description on the panel is that the Identifikasjon list draws it
-        // unconditionally — coupled by nothing but that, so it is asserted (Fhi.Metadata-bct95).
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(Detail(TaleId)));
+        // Robin's rule: hidden, not "Ikke oppgitt" - most variables carry no statistics at all.
+        var id = Guid.NewGuid();
+        var detail = Detail(id) with { Statistics = [YearSet(null), YearSet(" ")] };
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal([Detail(TaleId).Description], PanelValues(cut, "Beskrivelse"));
+        var about = ShowAbout(cut);
+
+        Assert.Equal(["Kode", "Datatype"], about.QuerySelectorAll("dt").Select(t => t.TextContent));
+        Assert.DoesNotContain("Siste årssett", about.TextContent, StringComparison.Ordinal);
     }
 
-    // Every value the open panel draws under one label, hero strip excluded for the reason Values
-    // gives. Asked by label rather than by text so "drawn twice" and "drawn nowhere" both fail.
-    private static IReadOnlyList<string> PanelValues(IRenderedComponent<VariableSearch> cut, string label) =>
-        [.. Panel(cut).QuerySelectorAll("dl:not(.munin-explorer-page__facts) div")
-                      .Where(row => row.QuerySelector("dt")?.TextContent == label)
-                      .Select(row => row.QuerySelector("dd")?.TextContent ?? "")];
-
     [Fact]
-    public void Panel_WhenTheDataTabIsChosen_ThenTheKodeverkShowsAndTheMetadataDoesNot()
+    public void About_WhenTheVariableHasNoStatisticsAtAll_ThenThereIsNoYearSetRow()
     {
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
 
-        Assert.Contains("Beskrivelse", Panel(cut).TextContent);
+        Assert.Equal(["Kode", "Datatype"], ShowAbout(cut).QuerySelectorAll("dt").Select(t => t.TextContent));
+    }
 
-        TabButtons(cut)[1].Click();
+    [Fact]
+    public void Panel_WhenATabIsChosen_ThenTheLinksBelowTheTabsStay()
+    {
+        // The trimmed context is still one press away, from either tab.
+        var cut = RenderWith(TwoRows());
 
-        Assert.Equal(["false", "true"], TabButtons(cut).Select(b => b.GetAttribute("aria-selected")));
+        Toggles(cut)[0].Click();
 
-        // The kind of kodeverk is the heading now, so it is the heading that says the tab arrived.
-        Assert.Contains("Kildekodeverk", Panel(cut).TextContent);
-        Assert.DoesNotContain("Beskrivelse", Panel(cut).TextContent);
+        string[] links = ["Vis datakilde", "Vis datasamling", "Vis hele variabelen"];
+
+        Assert.All(links, link => Assert.Contains(link, Panel(cut).QuerySelectorAll("button").Select(b => b.TextContent)));
+
+        ShowAbout(cut);
+
+        Assert.All(links, link => Assert.Contains(link, Panel(cut).QuerySelectorAll("button").Select(b => b.TextContent)));
     }
 
     /// <summary>The captured detail, plus the statistics Runa shows in the same tab.</summary>
@@ -11591,7 +11323,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client);
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var panel = Panel(cut);
 
@@ -11622,7 +11354,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var panel = Panel(cut);
 
@@ -11644,7 +11376,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client, b => b.Add(c => c.HeadingLevel, 3));
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var panel = Panel(cut);
         var statistics = panel.QuerySelectorAll("h4")
@@ -11706,7 +11438,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client);
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var table = Frequencies(Panel(cut));
 
@@ -11751,7 +11483,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var rows = Frequencies(Panel(cut)).QuerySelectorAll("tbody tr");
 
@@ -11780,7 +11512,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var cell = Frequencies(Panel(cut)).QuerySelectorAll("tbody tr")[0].Children[2];
 
@@ -11809,7 +11541,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var cell = Frequencies(Panel(cut)).QuerySelectorAll("tbody tr")[0].Children[2];
 
@@ -11835,7 +11567,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var table = Panel(cut).QuerySelector("table.munin-explorer-statistics")!;
 
@@ -11866,7 +11598,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var table = Panel(cut).QuerySelector("table.munin-explorer-statistics")!;
 
@@ -11885,7 +11617,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client);
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var panel = Panel(cut);
 
@@ -11928,7 +11660,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var captions = Panel(cut)
             .QuerySelectorAll("table.munin-explorer-frequency caption")
@@ -11961,7 +11693,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         var caption = Panel(cut).QuerySelector("table.munin-explorer-frequency caption")!;
 
@@ -11970,41 +11702,58 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Panel_WhenAnArrowKeyIsPressed_ThenTheTabMoves()
+    public void Panel_WhenAnArrowKeyIsPressed_ThenTheTabMovesInTheDrawnOrder()
     {
         // The APG tabs pattern. Without it a keyboard user reaches the tablist and cannot leave the
-        // first tab: the others carry tabindex="-1", so Tab does not reach them.
+        // first tab: the others carry tabindex="-1", so Tab does not reach them. From Data, since
+        // Tabs is read off the enum and reordering only the markup would send Home to Om variabelen.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
+
+        Assert.Equal("true", TabButton(cut, "Data").GetAttribute("aria-selected"));
+
         cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
 
-        Assert.Equal("true", TabButtons(cut)[1].GetAttribute("aria-selected"));
+        Assert.Equal("true", TabButton(cut, "Om variabelen").GetAttribute("aria-selected"));
+        Assert.Equal("0", TabButton(cut, "Om variabelen").GetAttribute("tabindex"));
+        Assert.Equal("-1", TabButton(cut, "Data").GetAttribute("tabindex"));
 
         cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
 
         // Wraps rather than stopping, so the movement has no dead end.
-        Assert.Equal("true", TabButtons(cut)[0].GetAttribute("aria-selected"));
+        Assert.Equal("true", TabButton(cut, "Data").GetAttribute("aria-selected"));
 
         cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "End" });
 
-        Assert.Equal("true", TabButtons(cut)[1].GetAttribute("aria-selected"));
+        Assert.Equal("true", TabButton(cut, "Om variabelen").GetAttribute("aria-selected"));
+        Assert.Equal("true", TabButtons(cut)[^1].GetAttribute("aria-selected"));
+
+        cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "Home" });
+
+        Assert.Equal("true", TabButton(cut, "Data").GetAttribute("aria-selected"));
+        Assert.Equal("0", TabButton(cut, "Data").GetAttribute("tabindex"));
+        Assert.Equal("-1", TabButton(cut, "Om variabelen").GetAttribute("tabindex"));
+
+        cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
+
+        Assert.Equal("true", TabButton(cut, "Om variabelen").GetAttribute("aria-selected"));
     }
 
     [Fact]
-    public void Panel_WhenAnotherRowIsOpened_ThenItStartsOnDetailsAgain()
+    public void Panel_WhenAnotherRowIsOpened_ThenItStartsOnDataAgain()
     {
-        // A reader who was on Data for one variable has not asked to be on Data for the next.
+        // A reader who was on Om variabelen for one variable has not asked to be there for the next.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        ShowAbout(cut);
 
-        Assert.Equal("true", TabButtons(cut)[1].GetAttribute("aria-selected"));
+        Assert.Equal("true", TabButton(cut, "Om variabelen").GetAttribute("aria-selected"));
 
         Toggles(cut)[1].Click();
 
-        Assert.Equal("true", TabButtons(cut)[0].GetAttribute("aria-selected"));
+        Assert.Equal("true", TabButton(cut, "Data").GetAttribute("aria-selected"));
     }
 
 
@@ -12190,7 +11939,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client, p);
 
         Toggles(cut)[0].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         return cut;
     }
@@ -12760,7 +12509,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(TaleId, Assert.Single(client.RequestsFor("2337")).VariableId);
 
         Toggles(cut)[1].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         // Every list starts collapsed again, and opening one asks for the new variable's codes.
         Assert.All(CodeToggles(cut), b => Assert.Equal("false", b.GetAttribute("aria-expanded")));
@@ -12834,7 +12583,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         // The reader gave up on the hanging list and opened the other variable instead.
         Toggles(cut)[1].Click();
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         client.StallCodes = false;
 
@@ -13088,7 +12837,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableId, (Guid?)id));
 
-        TabButtons(cut)[1].Click();
+        TabButton(cut, "Data").Click();
 
         Assert.Equal("Ukjent navn",
                      KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
@@ -13350,7 +13099,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(before, navigation.Uri);
         Assert.Empty(cut.FindAll("ul.munin-explorer-data-list a"));
         Assert.Equal(TaleId, client.LastDetailId);
-        Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        Assert.Contains("Angir pasientens grad av utfall", AboutText(cut));
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
     }
 
@@ -13399,6 +13148,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
+        ShowAbout(cut);
 
         Assert.Equal("Kode", Panel(cut).QuerySelector("dl dt")!.TextContent);
         Assert.Equal("V_ALS.F1.1. Tale", Values(cut)[0].TextContent);
@@ -13413,39 +13163,15 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Detail_WhenTheDetailArrives_ThenItSaysWhatTheVariableIsAndWhereItSits()
+    public void Detail_WhenTheDetailArrives_ThenItSaysWhatItsDataHoldsAndWhatTheVariableIs()
     {
-        // The six things the panel exists to show. The labels are the card's own words for the
-        // same fields, so opening a row renames nothing that was already on screen.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Kode", "Beskrivelse", "Kildesti", "Variabelgruppe", "Dataperiode"],
-                     Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
-
-        var values = Values(cut);
-
-        Assert.Equal("V_ALS.F1.1. Tale", values[0].TextContent);
-        Assert.Equal("Angir pasientens grad av utfall på «1. Tale».", values[1].TextContent);
-        // The period reads as month and year now, and carries a bar beneath it. Runa's format.
-        Assert.Contains("2010", values[4].TextContent);
-        Assert.Contains("2025", values[4].TextContent);
-        Assert.NotNull(values[4].QuerySelector(".munin-explorer-period__fill"));
-
-        // Widest first, and the kilde's short name alongside its full one — the card has room for
-        // neither the kildetype above it nor the abbreviation the register is known by.
-        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret (ALS)", "Inklusjon"],
-                     values[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
-
-        Assert.Equal(["Funksjonsscore"], values[3].QuerySelectorAll("li").Select(l => l.TextContent));
-
-        // Kodeverk moved to the Data tab — Runa splits the panel into what the variable IS and
-        // what its data holds, and the kodeverk is the latter. Which kind a link is says what
-        // "2336" alone cannot: a kildekodeverk the register defined is not a national
-        // classification. It is a heading over the links of that kind rather than a prefix on each.
-        cut.Find("[role=tab][aria-selected=false]").Click();
-
+        // Data first. Which kind a link is says what "2336" alone cannot: a kildekodeverk the
+        // register defined is not a national classification. It is a heading over the links of
+        // that kind rather than a prefix on each.
         Assert.Equal(["Kildekodeverk", "Administrativt kodeverk"], KodeverkGroupHeadings(cut));
 
         // This fake serves no codes for 2336, so the nameless link says the endpoint published none
@@ -13454,23 +13180,12 @@ public class VariableSearchTest : ExplorerTestContext
                      KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent));
         Assert.Equal(["Referanse: 2336", "Referanse: 2.16.578.1.12.4.1.1.7110"],
                      KodeverkLines(cut).Select(l => l.QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent));
-    }
 
-    [Fact]
-    public void Detail_WhenTheOwningKildeHasNoKildetype_ThenTheTrailStartsAtTheKildeRatherThanAtANamelessStep()
-    {
-        // A trail is read as a path, so the level with nothing in it is left out rather than
-        // written "Ikke oppgitt" — the rule the empty string already had, asserted against the
-        // null the API actually sends now the contract stopped coercing it. (Fhi.Metadata-l9l2n.61)
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with { KildeType = null })
-            .Knows(Kilde())
-            .Knows(Datasamling()));
+        var about = ShowAbout(cut);
 
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["Als registeret (ALS)", "Inklusjon"],
-                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
+        Assert.Equal("Angir pasientens grad av utfall på «1. Tale».", about.Children[0].TextContent);
+        Assert.Equal(["Kode", "Datatype"], about.QuerySelectorAll("dl dt").Select(t => t.TextContent));
+        Assert.Equal("V_ALS.F1.1. Tale", Values(cut)[0].TextContent);
     }
 
     [Fact]
@@ -13515,7 +13230,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Single(cut.FindAll(".munin-explorer-detail"));
         Assert.Equal("false", Toggles(cut)[0].GetAttribute("aria-expanded"));
         Assert.Equal("true", Toggles(cut)[1].GetAttribute("aria-expanded"));
-        Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
+        Assert.Contains("2. Spyttsekresjon", AboutText(cut));
     }
 
     /// <summary>
@@ -13682,7 +13397,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal("true", Discloses(cut));
         Assert.Single(cut.FindAll(".munin-explorer-detail"));
-        Assert.Contains("1. Tale", Panel(cut).TextContent);
+        Assert.Contains("1. Tale", AboutText(cut));
     }
 
     [Fact]
@@ -14061,7 +13776,7 @@ public class VariableSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
         {
             Assert.Equal("false", Panel(cut).GetAttribute("aria-busy"));
-            Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+            Assert.Contains("Angir pasientens grad av utfall", AboutText(cut));
         });
     }
 
@@ -14116,7 +13831,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(SpyttId, client.LastDetailId);
         Assert.Equal("true", Toggles(cut)[1].GetAttribute("aria-expanded"));
-        Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
+        Assert.Contains("2. Spyttsekresjon", AboutText(cut));
     }
 
     [Fact]
@@ -14174,8 +13889,9 @@ public class VariableSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
         {
             Assert.Single(cut.FindAll(".munin-explorer-detail"));
-            Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
-            Assert.DoesNotContain("«1. Tale»", Panel(cut).TextContent);
+            var about = AboutText(cut);
+            Assert.Contains("2. Spyttsekresjon", about);
+            Assert.DoesNotContain("«1. Tale»", about);
         });
     }
 
@@ -14208,7 +13924,7 @@ public class VariableSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
         {
             Assert.Equal("false", Panel(cut).GetAttribute("aria-busy"));
-            Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+            Assert.Contains("Angir pasientens grad av utfall", AboutText(cut));
         });
     }
 
@@ -14282,7 +13998,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("1/2", Position(cut));
         Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
         Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
-        Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        Assert.Contains("Angir pasientens grad av utfall", AboutText(cut));
 
         // Told null on the way through and told the id again on the way back, so the URL it ends up
         // with is the row that is on screen.
@@ -14347,7 +14063,7 @@ public class VariableSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
         {
             Assert.Equal("false", Panel(cut).GetAttribute("aria-busy"));
-            Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+            Assert.Contains("Angir pasientens grad av utfall", AboutText(cut));
             Assert.Equal(TaleId, reported[^1]);
         });
 
@@ -14394,49 +14110,6 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.All(reported, Assert.Null);
     }
 
-    [Fact]
-    public void Detail_WhenTheVariableIsInSeveralVariabelgrupper_ThenEveryOneIsListed()
-    {
-        // The reason the panel reads the whole list rather than the primary name: a variable in
-        // three groups written up under one is a half-truth the payload already has the answer to.
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with
-            {
-                VariabelgruppeName = "Funksjonsscore",
-                AllVariabelgrupper =
-                [
-                    new() { Id = Bakgrunn, Name = "Funksjonsscore" },
-                    new() { Id = Levekaar, Name = "ALSFRS-R" },
-                    new() { Id = Guid.NewGuid(), Name = "Pustefunksjon" }
-                ]
-            });
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["Funksjonsscore", "ALSFRS-R", "Pustefunksjon"],
-                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
-    }
-
-    [Fact]
-    public void Detail_WhenThePayloadCarriesNoVariabelgruppeList_ThenThePrimaryNameStandsIn()
-    {
-        // The documented fallback: a payload with the primary name and no list still says which
-        // group the variable is in, rather than dropping to "Ikke oppgitt".
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with
-            {
-                VariabelgruppeName = "Funksjonsscore",
-                AllVariabelgrupper = []
-            });
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["Funksjonsscore"],
-                     Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent));
-    }
-
     /// <summary>
     /// Nineteen datasamlinger over two period bands that do not meet — the worst case measured in
     /// the catalogue on 2026-09-11, on V_MS.IDENT "PasientFnr".
@@ -14453,180 +14126,6 @@ public class VariableSearchTest : ExplorerTestContext
             ValidTo = n <= 12 ? new DateTimeOffset(2024, 5, 1, 0, 0, 0, TimeSpan.Zero) : null
         })
     ];
-
-    [Fact]
-    public void Detail_WhenTheVariableIsInSeveralDatasamlinger_ThenTheTrailCountsThemAndEveryOneIsListed()
-    {
-        // What shipped was the primary name alone, which does not read as incomplete — it reads
-        // as singular. No fixture can see that: Testdata/variable.json holds one datasamling, so the
-        // defect and the fix render the same thing against it (Fhi.Metadata-l9l2n.108).
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with
-            {
-                DatasamlingName = "Inklusjon",
-                AllDatasamlinger = Nineteen()
-            });
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["Kode", "Beskrivelse", "Kildesti", "Datasamlinger", "Variabelgruppe", "Dataperiode"],
-                     Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
-
-        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
-
-        Assert.Equal("19 datasamlinger", trail[^1].TextContent);
-        Assert.DoesNotContain("Inklusjon", Values(cut)[2].TextContent, StringComparison.Ordinal);
-
-        var listed = Values(cut)[3].QuerySelectorAll("li");
-
-        Assert.Equal(Nineteen().Select(d => d.Name),
-                     listed.Select(l => l.QuerySelector("span[lang=\"no\"]")!.TextContent));
-
-        // The two bands, which one range over all nineteen could not have reported.
-        Assert.Contains("2023", listed[0].TextContent, StringComparison.Ordinal);
-        Assert.Contains("2024", listed[0].TextContent, StringComparison.Ordinal);
-        Assert.EndsWith("Pågående)", listed[^1].TextContent, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Detail_WhenThePayloadCarriesNoDatasamlingList_ThenThePrimaryNameStandsIn()
-    {
-        // The regression an over-eager fix produces: a payload with the primary name and no list
-        // still ends the trail on that name rather than dropping the step.
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with
-            {
-                DatasamlingName = "Inklusjon",
-                AllDatasamlinger = []
-            });
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-
-        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
-
-        Assert.Equal("Inklusjon", trail[^1].TextContent);
-        Assert.Equal("no", trail[^1].GetAttribute("lang"));
-
-        // And no list beside the trail, which would be that one step said twice.
-        Assert.DoesNotContain("Datasamlinger",
-                              Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
-    }
-
-    [Fact]
-    public void Detail_WhenADatasamlingHasNoName_ThenTheCountedStepAndTheListStayInStep()
-    {
-        // The count in the trail and the list beside it must drop the same entries, which holds
-        // because both read NamedDatasamlinger. Filtered twice, they drift into "2 datasamlinger"
-        // standing over three names, or a heading over a list that no longer matches its count.
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with
-            {
-                DatasamlingName = "Inklusjon",
-                AllDatasamlinger =
-                [
-                    new() { Id = Guid.NewGuid(), Name = "  " },
-                    new() { Id = Bakgrunn, Name = "MS-oppfølging" },
-                    new() { Id = Levekaar, Name = "Inklusjon" }
-                ]
-            });
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-
-        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
-
-        Assert.Equal("2 datasamlinger", trail[^1].TextContent);
-
-        Assert.Equal(["MS-oppfølging", "Inklusjon"],
-                     Values(cut)[3].QuerySelectorAll("li")
-                                   .Select(l => l.QuerySelector("span[lang=\"no\"]")!.TextContent));
-    }
-
-    [Fact]
-    public void Detail_WhenAMembershipPeriodIsMissingOrDefault_ThenItReadsAsEveryOtherViewWritesIt()
-    {
-        // Through CatalogueDate.Period rather than the panel's dataperiode wording: a default at
-        // either end is no date rather than the year 1, and an unknown start is written "?" — an
-        // end standing alone would read as a start (Fhi.Metadata-msax9).
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with
-            {
-                AllDatasamlinger =
-                [
-                    new() { Id = Bakgrunn, Name = "Uten start",
-                            ValidFrom = null, ValidTo = new DateTimeOffset(2024, 5, 1, 0, 0, 0, TimeSpan.Zero) },
-                    new() { Id = Levekaar, Name = "Uten slutt",
-                            ValidFrom = new DateTimeOffset(2023, 1, 1, 0, 0, 0, TimeSpan.Zero),
-                            ValidTo = default(DateTimeOffset) },
-                    new() { Id = Guid.NewGuid(), Name = "Standardstart",
-                            ValidFrom = default(DateTimeOffset),
-                            ValidTo = new DateTimeOffset(2020, 5, 5, 0, 0, 0, TimeSpan.Zero) }
-                ]
-            });
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-
-        var listed = Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent).ToList();
-
-        Assert.DoesNotContain(listed, line => line.Contains("0001", StringComparison.Ordinal));
-
-        // The unknown start at both ends of the list, and the open period in between.
-        Assert.Contains("(? – ", listed[0], StringComparison.Ordinal);
-        Assert.Contains("2024", listed[0], StringComparison.Ordinal);
-        Assert.EndsWith("Pågående)", listed[1], StringComparison.Ordinal);
-        Assert.Contains("(? – ", listed[2], StringComparison.Ordinal);
-        Assert.Contains("2020", listed[2], StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Detail_WhenTheDatasamlingerAreCountedForAnEnglishReader_ThenTheStepIsInEnglish()
-    {
-        // The counted step is this component's own prose rather than a name out of the catalogue,
-        // so it is the one step of the trail that follows Language.
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with { AllDatasamlinger = Nineteen() });
-        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
-
-        Toggles(cut)[0].Click();
-
-        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
-
-        Assert.Equal("19 data collections", trail[^1].TextContent);
-        Assert.False(trail[^1].HasAttribute("lang"));
-    }
-
-    [Fact]
-    public void Detail_WhenTheKildeHasNoShortName_ThenTheTrailDrawsNoEmptyParentheses()
-    {
-        // The arm most payloads take: KildeShortName defaults to empty, and a kilde without an
-        // abbreviation must not be written up as "Als registeret ()".
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with { KildeShortName = "" });
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
-                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
-    }
-
-    [Fact]
-    public void Detail_WhenTheKildeShortNameOnlyRestatesTheFullName_ThenItIsWrittenOnce()
-    {
-        // Why the comparison ignores case: the catalogue writes the same name both ways, and
-        // "Als registeret (ALS REGISTERET)" is the register's name said twice in one breath.
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(Detail(TaleId) with { KildeShortName = "ALS REGISTERET" });
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-
-        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret", "Inklusjon"],
-                     Values(cut)[2].QuerySelectorAll("ol > li").Select(l => l.TextContent));
-    }
 
     [Fact]
     public void Detail_WhileItIsLoading_ThenThePanelSaysSoAndIsMarkedBusy()
@@ -14657,7 +14156,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Toggles(cut)[0].Click();
         // The description is not in the row any more — see the panel.
-        Assert.Equal("Hvordan er talen?", Values(cut)[1].TextContent);
+        Assert.Equal("Hvordan er talen?", ShowAbout(cut).Children[0].TextContent);
     }
 
     [Fact]
@@ -14674,7 +14173,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Toggles(cut)[0].Click();
 
-        var description = Values(cut)[1];
+        var description = ShowAbout(cut).Children[0];
         var anchor = Assert.Single(description.QuerySelectorAll("span[lang=no] a"));
         Assert.Equal("https://finnkode.helsedirektoratet.no/adm/collections", anchor.GetAttribute("href"));
         Assert.Equal(2, description.QuerySelectorAll("br").Length);
@@ -14690,6 +14189,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client);
 
         Toggles(cut)[0].Click();
+        ShowAbout(cut);
 
         Assert.Empty(Values(cut)[0].QuerySelectorAll("a"));
         Assert.Equal("V_X.[KODE](https://example.org)", Values(cut)[0].TextContent);
@@ -14737,9 +14237,8 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Detail_WhenTheLanguageIsEn_ThenThePanelIsEnglishAndTheCatalogueStaysNorwegian()
     {
-        // The UI turns English; Munin's metadata does not. The kildetype is the one step of the
-        // trail that is our prose rather than a name out of the catalogue, so it is the one step
-        // that follows Language — and the one that must not be announced as Norwegian.
+        // The UI turns English; Munin's metadata does not. The labels are ours and follow Language;
+        // the code beside them is the catalogue's and stays marked Norwegian.
         var cut = RenderWith(TwoRows(), b => b.Add(c => c.Language, "en"));
 
         // The chevron's words follow Language; the name inside them is the catalogue's, and stays
@@ -14747,15 +14246,10 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("Show details for 1. Tale", AccessibleName.Of(Toggles(cut)[0]));
 
         Toggles(cut)[0].Click();
+        TabButton(cut, "About the variable").Click();
 
-        Assert.Equal(["Code", "Description", "Source path", "Variable group", "Data period"],
-                     Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
-
-        var trail = Values(cut)[2].QuerySelectorAll("ol > li");
-
-        Assert.Equal("National medical quality registry", trail[0].TextContent);
-        Assert.False(trail[0].HasAttribute("lang"));
-        Assert.Equal("no", trail[1].GetAttribute("lang"));
+        Assert.Equal(["Code", "Data type"], Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
+        Assert.Equal("no", Values(cut)[0].QuerySelector("span")!.GetAttribute("lang"));
         Assert.Equal("Hide details for 1. Tale", AccessibleName.Of(Toggles(cut)[0]));
     }
 
@@ -14820,12 +14314,7 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-filters__chip-remove",
             "munin-explorer-breadcrumb", // ours — the trail over the results; its steps filter
                                             // rather than navigate, so .breadcrumbs does not apply
-            "munin-explorer-crumb",      // ours — one step of a trail, and the same name in
-                                            // both of them: the panel's kilde step, which Runa
-                                            // makes a link and we make the control that discloses
-                                            // the kilde, and each step of the hierarchy trail,
-                                            // which reuses it rather than minting a second name
-                                            // for the same affordance
+            "munin-explorer-crumb",      // ours — one step of the hierarchy trail
             // The row the count shares with the column picker, above the results container and
             // outside it — the name the kildeutforsker already emits. (Fhi.Metadata-l9l2n.68)
             "munin-explorer-results__toolbar",
@@ -14836,15 +14325,19 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             "munin-explorer-detail",     // ours, a handle
+            // The Data tab, which opens first (Fhi.Metadata-l9l2n.101): the lead sentence, the
+            // kodeverk group headings and the links under them.
+            "munin-explorer-lead",
             "munin-explorer-group",      // ours — helsedata's panel is flat, so it has no
                                             // group heading to borrow a name from
-            "munin-explorer-period",     // ours — neither explorer's stylesheet has a period bar
-            "munin-explorer-period__range",
-            "munin-explorer-period__track",
-            "munin-explorer-period__fill",
+            "munin-explorer-kodeverk",
+            "munin-explorer-kodeverk__item",
+            "munin-explorer-kodeverk__name",
+            "munin-explorer-kodeverk__reference",
         ], invented);
 
-        var panel = Panel(cut);
+        // The definition list lives in Om variabelen.
+        var panel = ShowAbout(cut);
 
         // The definition list stays a definition list — it is labels and the values they name, and
         // helsedata's grid is class-based (`.variable-meta__grid { display: grid }`, with only a
@@ -15224,10 +14717,6 @@ public class VariableSearchTest : ExplorerTestContext
         AngleSharp.Dom.IElement control, long clicks = 1, bool shift = false) =>
         control.Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
 
-    /// <summary>The kilde step of the open panel's trail, which opens the same view the buttons do.</summary>
-    private static AngleSharp.Dom.IElement PanelCrumb(IRenderedComponent<VariableSearch> cut) =>
-        Panel(cut).QuerySelector(".munin-explorer-crumb")!;
-
     [Fact]
     public void SourceToggle_WhenTheSecondClickOfADoubleClickReachesIt_ThenNoOwnerIsOpened()
     {
@@ -15278,56 +14767,6 @@ public class VariableSearchTest : ExplorerTestContext
 
         Back(cut);
         PressOwnerControl(SourceToggles(cut)[0], clicks: 0);
-
-        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
-        Assert.Equal(2, client.KildeCalls);
-    }
-
-    [Fact]
-    public void Crumb_WhenTheSecondClickOfADoubleClickReachesIt_ThenTheKildeIsNotOpened()
-    {
-        // The trail's kilde step is the same control as "Vis datakilde" and shared its defect: a
-        // reader double-clicking the kilde's name saw its view open and shut again.
-        var client = TwoRows();
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-        PressOwnerControl(PanelCrumb(cut), clicks: 2);
-
-        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
-        Assert.Equal(0, client.KildeCalls);
-    }
-
-    [Fact]
-    public void Crumb_WhenAClickExtendsASelectionWithShift_ThenTheKildeIsNotOpened()
-    {
-        // The step is the kilde's own name, which is the panel's most copyable text: a selection
-        // extended across it used to land on the view instead.
-        var client = TwoRows();
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-        PressOwnerControl(PanelCrumb(cut), shift: true);
-
-        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
-        Assert.Equal(0, client.KildeCalls);
-    }
-
-    [Fact]
-    public void Crumb_WhenEachPressIsItsOwnGesture_ThenTheKildeOpensEveryTime()
-    {
-        // Both counts a real activation arrives with: one for an ordinary click, none for Enter or
-        // Space on the button. A guard that swallowed either would leave the step inert.
-        var client = TwoRows();
-        var cut = RenderWith(client);
-
-        Toggles(cut)[0].Click();
-        PressOwnerControl(PanelCrumb(cut));
-
-        Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
-
-        Back(cut);
-        PressOwnerControl(PanelCrumb(cut), clicks: 0);
 
         Assert.Single(cut.FindAll(".munin-explorer-drilldown"));
         Assert.Equal(2, client.KildeCalls);
@@ -15690,7 +15129,7 @@ public class VariableSearchTest : ExplorerTestContext
         // Nothing behind the view was disturbed by the failure.
         Back(cut);
 
-        Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        Assert.Contains("Angir pasientens grad av utfall", AboutText(cut));
         Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
         Assert.Empty(cut.FindAll("div[role='alert'] p"));
     }
@@ -15712,7 +15151,7 @@ public class VariableSearchTest : ExplorerTestContext
         // Reported where it happened, like the generic failure: nothing behind the view moved.
         Back(cut);
 
-        Assert.Contains("Angir pasientens grad av utfall", Panel(cut).TextContent);
+        Assert.Contains("Angir pasientens grad av utfall", AboutText(cut));
         Assert.Equal(2, cut.FindAll("ul.munin-explorer-data-list > li").Count);
         Assert.Empty(cut.FindAll("div[role='alert'] p"));
     }
@@ -15743,7 +15182,7 @@ public class VariableSearchTest : ExplorerTestContext
         Toggles(cut)[1].Click();
 
         Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
-        Assert.Contains("2. Spyttsekresjon", Panel(cut).TextContent);
+        Assert.Contains("2. Spyttsekresjon", AboutText(cut));
         Assert.Equal("false", SourceToggles(cut)[0].GetAttribute("aria-expanded"));
     }
 

@@ -77,7 +77,7 @@ public partial class VariableSearch
         }
 
         _selectedId = v.Id;
-        _tab = PanelTab.Details;
+        _tab = PanelTab.Data;
 
         await LoadDetailAsync(v.Id);
         await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
@@ -178,10 +178,10 @@ public partial class VariableSearch
 
         _selectedId = v.Id;
 
-        // Back to the first tab for the newly opened row. A reader who was on Data for one variable
-        // has not asked to be on Data for the next, and arriving on a tab you did not choose — with
-        // different content under it — reads as the panel having lost your place.
-        _tab = PanelTab.Details;
+        // Back to the first tab for the newly opened row. A reader who was on Om variabelen for one
+        // variable has not asked to be there for the next, and arriving on a tab you did not choose —
+        // with different content under it — reads as the panel having lost your place.
+        _tab = PanelTab.Data;
 
         await LoadDetailAsync(v.Id);
 
@@ -297,7 +297,7 @@ public partial class VariableSearch
         _wholeVariable = false;
         _beforeWhole = null;
 
-        _tab = PanelTab.Details;
+        _tab = PanelTab.Data;
 
         _selectedId = null;
         _detail = null;

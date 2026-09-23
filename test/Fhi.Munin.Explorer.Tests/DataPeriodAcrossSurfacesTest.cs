@@ -9,14 +9,15 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// One variable's dataperiode, read off all four surfaces that draw it.
+/// One variable's dataperiode, read off all three surfaces that draw it.
 /// </summary>
 /// <remarks>
-/// Cross-surface on purpose. Each surface's own tests can be green while the four disagree, which
+/// Cross-surface on purpose. Each surface's own tests can be green while they disagree, which
 /// is what a helsedata tester reported against Abortregisteret Utlevering: a result row saying
 /// "jan 1979 – des 2024" over a variable page saying "1. jan. 1979 – 31. des. 2024", from the same
 /// two contract fields. The format was settled first (Fhi.Metadata-ufmop), the join after it: an
 /// unknown start reads "?", and neither way of carrying no date draws year 1 (Fhi.Metadata-msax9).
+/// There were four until the row drawer stopped drawing the period (Fhi.Metadata-l9l2n.101).
 /// </remarks>
 public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
 {
@@ -32,15 +33,14 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     // carry a day `MMM yyyy` would have discarded, which is why this surface shows days at all.
     private const string End = "2024-12-31";
 
-    // Close enough to now, against a 1979 start, that the coverage fill rounds to a full track
-    // while the period is plainly closed.
+    // Close to now against a 1979 start: a closed period ending this recently still reads as closed.
     private const string RecentEnd = "2026-06-30";
 
     /// <summary>The other way a payload carries no date: <c>default(DateTimeOffset)</c>.</summary>
     /// <remarks>
     /// A theory row cannot hold one, so the two absences are spelled null and <c>Unset</c> here and
     /// turned back into a date by <see cref="Given"/>. Both have to be rows: a surface reading only
-    /// the null one draws 1. jan. 0001 for the other, which is what three of these four did.
+    /// the null one draws 1. jan. 0001 for the other, which is what three surfaces did.
     /// </remarks>
     private const string Unset = "";
 
@@ -61,7 +61,7 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     /// The join and the "?" are written out here rather than read back off
     /// <see cref="CatalogueDate.Period"/>, because they are the decision under test. The day's
     /// format and the vocabulary are borrowed, so neither an ICU release that renames a month nor
-    /// a reworded <see cref="Texts.Ongoing"/> reddens this rather than moving all four together.
+    /// a reworded <see cref="Texts.Ongoing"/> reddens this rather than moving every surface together.
     /// </remarks>
     private static string? Expected(string? from, string? to, string? language)
     {
@@ -159,12 +159,11 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
             });
     }
 
-    // Both ends known: the shape the four first disagreed about the FORMAT of.
+    // Both ends known: the shape the surfaces first disagreed about the FORMAT of.
     [Theory]
     [InlineData(Start, End, null)]
     [InlineData(Start, End, "en")]
-    // A closed end recent enough that the fill rounds up to the whole track: the row that says a
-    // full bar is not the open end's alone.
+    // A closed end recent enough to be mistaken for an open one.
     [InlineData(Start, RecentEnd, null)]
     [InlineData(Start, RecentEnd, "en")]
     // An unknown start, carried both ways. Null is what the catalogue sends; the default date is
@@ -184,7 +183,7 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     [InlineData(null, null, "en")]
     [InlineData(Unset, Unset, null)]
     [InlineData(Unset, Unset, "en")]
-    public void DataPeriod_WhenOneVariableIsDrawnOnFourSurfaces_ThenAllFourReadTheSame(
+    public void DataPeriod_WhenOneVariableIsDrawnOnThreeSurfaces_ThenAllThreeReadTheSame(
         string? from, string? to, string? language)
     {
         var expected = Expected(from, to, language);
@@ -195,11 +194,6 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
         Services.AddScoped<VariableListState>();
 
         var search = Render<VariableSearch>(b => b.Add(c => c.Language, language));
-
-        // The chevron, not the name: the name opens the whole variable in place of the list
-        // (Fhi.Metadata-35w0p.34), and the row this reads its period cell off goes with it.
-        search.Find(
-            "ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle").Click();
 
         var page = Render<VariableView>(b => b
             .Add(c => c.Variable, Whole(from, to))
@@ -213,15 +207,10 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
             ".munin-explorer-dataitem-main__period .munin-explorer-dataitem-main__column__text");
         var saved = list.Find(
             "td.munin-explorer-dataitem-main__period .munin-explorer-dataitem-main__column__text");
-        var panel = search.FindAll("dl > div")
-                          .Single(row => row.QuerySelector("dt")?.TextContent
-                                         == (language == "en" ? "Data period" : "Dataperiode"))
-                          .QuerySelector("dd")!;
         var blocks = page.FindAll($"#{DetailSectionIds.DataPeriod} p");
 
         Assert.Equal(expected ?? Texts.For(language).NotSpecified, cell.TextContent.Trim());
         Assert.Equal(expected ?? Texts.For(language).NotSpecified, saved.TextContent.Trim());
-        Assert.Equal(expected ?? Texts.For(language).NotSpecified, panel.TextContent.Trim());
 
         if (expected is null)
         {
@@ -232,43 +221,6 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
         else
         {
             Assert.Equal(expected, blocks[0].TextContent.Trim());
-        }
-
-        // The bar is the panel's illustration of the same two dates, and it is not drawn without
-        // them.
-        var bars = search.FindAll(".munin-explorer-period__range");
-
-        if (expected is null)
-        {
-            Assert.Empty(bars);
-        }
-        else
-        {
-            Assert.Equal(expected, bars[0].TextContent.Trim());
-        }
-
-        // The track is the half of the illustration the words do not carry, and it is drawn only
-        // where the share it draws can be measured: no start, no lifetime, no bar.
-        var tracks = search.FindAll(".munin-explorer-period__track");
-
-        if (Known(from) is null)
-        {
-            Assert.Empty(tracks);
-            Assert.Empty(search.FindAll(".munin-explorer-period__fill"));
-        }
-        else
-        {
-            // The modifier carries the open end both ways. The fill carries it one way only: an
-            // open end fills the track, but so does a closed one that rounds up to the whole
-            // lifetime, which is Runa's rule and not a defect to assert against.
-            Assert.Equal(Known(to) is null,
-                         tracks[0].ClassList.Contains("munin-explorer-period__track--ongoing"));
-
-            if (Known(to) is null)
-            {
-                Assert.Equal("width:100%",
-                             search.Find(".munin-explorer-period__fill").GetAttribute("style"));
-            }
         }
 
         // The year 1 is not a date the catalogue gave, so no surface may print one — in a cell, in
