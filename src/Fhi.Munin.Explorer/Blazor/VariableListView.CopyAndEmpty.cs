@@ -194,7 +194,7 @@ public sealed partial class VariableListView
                 _incompleteCopyName = created.Name;
             }
 
-            await CountTheCopyAsync(created.Id);
+            await CountTheAddsAsync(created.Id);
             return;
         }
 
@@ -229,7 +229,7 @@ public sealed partial class VariableListView
             SayTheSwitchFailed(CopyFailure.SwitchFailed);
         }
 
-        await CountTheCopyAsync(created.Id);
+        await CountTheAddsAsync(created.Id);
         await LoadPageAsync();
     }
 
@@ -242,8 +242,9 @@ public sealed partial class VariableListView
         }
     }
 
-    // The adds were made while the copy was not active, so the holder counted none of them.
-    private async Task CountTheCopyAsync(Guid copy)
+    // The adds were made while the new list was not active, so the holder counted none of them.
+    // Shared with saving a shared list, which writes the same way (Fhi.Metadata-60skm).
+    private async Task CountTheAddsAsync(Guid list)
     {
         try
         {
@@ -251,7 +252,7 @@ public sealed partial class VariableListView
         }
         catch (Exception ex)
         {
-            Log?.LogWarning(ex, "could not read the lists again after copying into {ListId}", copy);
+            Log?.LogWarning(ex, "could not read the lists again after adding to {ListId}", list);
         }
     }
 

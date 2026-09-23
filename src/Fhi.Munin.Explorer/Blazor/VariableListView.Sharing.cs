@@ -423,6 +423,8 @@ public sealed partial class VariableListView
             return;
         }
 
+        await CountTheAddsAsync(created.Id);
+
         ForgetSharedList();
         await AnnounceShareCodeAsync(null);
 

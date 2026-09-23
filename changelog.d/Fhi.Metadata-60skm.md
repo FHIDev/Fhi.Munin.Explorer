@@ -1,0 +1,2 @@
+category: Fixed
+- **A shared list saved under a new name shows its real count** - After "Lagre som min liste", the header read "0 variabler" and Del liste, Kopier liste and Tøm liste were refused as "Listen er tom" over a table full of rows, until the lists were read again. Saving now reads the lists again once the variables are added, the way copying a list already did; if that read fails, the save still stands and the host's log gets a warning. (Fhi.Metadata-60skm)
