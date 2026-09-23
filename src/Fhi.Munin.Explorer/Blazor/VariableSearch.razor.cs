@@ -590,8 +590,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// <remarks>
     /// <para>
     /// Read once, when the component initialises, and owned by the component afterwards, so changing
-    /// it after first render has no effect. There is no navigation behind it: the detail is drawn inside the row it belongs to, so opening one
-    /// costs a fetch and a render rather than a page.
+    /// it after first render has no effect. There is no navigation behind it: the detail is drawn
+    /// inside the row it belongs to, so opening one costs a fetch and a render rather than a page.
     /// </para>
     /// <para>
     /// The selection is always a row that is on screen. An id the first page does not contain is
