@@ -1277,7 +1277,17 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.Equal("", toggle.TextContent.Trim());
         Assert.Contains("icon", chevron.ClassList);
-        Assert.Contains("icon-keyboard-arrow-right", chevron.ClassList);
+
+        // The name has to describe the glyph Stiler draws, or neither repository can be read on its
+        // own: collapsed points down, expanded points up, and `-right` names no state at all.
+        // (Fhi.Metadata-l9l2n.84)
+        Assert.Contains("icon-keyboard-arrow-down", chevron.ClassList);
+        Assert.DoesNotContain("icon-keyboard-arrow-right", chevron.ClassList);
+        Assert.DoesNotContain("icon-keyboard-arrow-up", chevron.ClassList);
+
+        // Stiler's transition rules tell the two states apart by aria-expanded, so the glyph class
+        // and the attribute have to agree.
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
 
         // Decorative: aria-expanded on the button already says which way it points, and the button
         // is named by the kilde it opens.
@@ -1285,10 +1295,13 @@ public class KildeSearchTest : ExplorerTestContext
 
         toggle.Click();
 
-        Assert.Contains(
-            "icon-keyboard-arrow-down",
-            ExpandToggle(cut, "Als registeret")
-                .QuerySelector("span.munin-explorer-kilder__expand-icon")!.ClassList);
+        var expanded = ExpandToggle(cut, "Als registeret");
+        var expandedChevron = expanded.QuerySelector("span.munin-explorer-kilder__expand-icon")!;
+
+        Assert.Contains("icon-keyboard-arrow-up", expandedChevron.ClassList);
+        Assert.DoesNotContain("icon-keyboard-arrow-right", expandedChevron.ClassList);
+        Assert.DoesNotContain("icon-keyboard-arrow-down", expandedChevron.ClassList);
+        Assert.Equal("true", expanded.GetAttribute("aria-expanded"));
     }
 
     [Fact]
@@ -5856,11 +5869,29 @@ public class KildeSearchTest : ExplorerTestContext
             Squeezed(r.Declarations).Contains("transform:", StringComparison.OrdinalIgnoreCase),
             $"'{r.Selector}' turns the chevron, and a turned `icon_up.svg` points right."));
 
-        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-right", StringComparison.Ordinal)
+        // One image per direction at rest, plus the blue pair on hover. `-down` is collapsed only
+        // under [aria-expanded=false] until Stiler drops its four inverted overrides
+        // (Fhi.Metadata-trfs0); the resting `-up` has no twin there, Stiler's icon set draws it.
+        Assert.Contains(rules, r => r.Selector.Contains("[aria-expanded=false]", StringComparison.Ordinal)
+                                    && r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
+                                    && !r.Selector.Contains(":hover", StringComparison.Ordinal)
                                     && Squeezed(r.Declarations).Contains("icon_down.svg", StringComparison.Ordinal));
 
-        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
+        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-up", StringComparison.Ordinal)
+                                    && !r.Selector.Contains(":hover", StringComparison.Ordinal)
                                     && Squeezed(r.Declarations).Contains("icon_up.svg", StringComparison.Ordinal));
+
+        Assert.Contains(rules, r => r.Selector.Contains(":hover", StringComparison.Ordinal)
+                                    && r.Selector.Contains("icon-keyboard-arrow-up", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("icon_up--blue.svg", StringComparison.Ordinal));
+
+        // The fourth state, and the one the old `-right` rules used to draw: a hovered row that is
+        // still shut. Without it the rule that serves it can go and this guard stays green, while
+        // `tr:hover ... -down` out-specifies the resting rule and draws UP. (Fhi.Metadata-l9l2n.84)
+        Assert.Contains(rules, r => r.Selector.Contains(":hover", StringComparison.Ordinal)
+                                    && r.Selector.Contains("[aria-expanded=false]", StringComparison.Ordinal)
+                                    && r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("icon_down--blue.svg", StringComparison.Ordinal));
     }
 
     [Fact]

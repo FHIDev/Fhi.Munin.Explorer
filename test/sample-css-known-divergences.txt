@@ -564,6 +564,12 @@ invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow
 invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before|content
 invented-selector||.munin-explorer-header__actions-button > .icon-layout::before|content
 
+# Same absent icon font, one row lower: Stiler draws the resting expanded chevron from its own
+# `.icon-keyboard-arrow-up`, so its munin-explorer partials only need the deviations. A sample host
+# has neither, and without these two the chevron is blank between hovers (Fhi.Metadata-l9l2n.84).
+invented-selector||.munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-up|background-image
+invented-selector||.munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-up|background-image
+
 # Stiler gates the two tracks on :has() and leaves a one-child body alone; the sample also takes
 # them back explicitly.
 invented-selector|@media (min-width:1025px)|.munin-explorer-page__body:not(:has( > .munin-explorer-page__toc))|grid-template-columns

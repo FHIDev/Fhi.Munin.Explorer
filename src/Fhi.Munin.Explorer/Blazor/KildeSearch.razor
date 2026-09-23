@@ -703,6 +703,9 @@ else
                                     @* The click stops here, or the row behind toggles as well and one press
                                        would open and close the drawer. The mousedown does not: the row
                                        measures a click against the press it saw go down. *@
+                                    @* aria-expanded is load-bearing beyond assistive tech: Stiler 0.1.91 tells
+                                       the chevron's two states apart by it (_kilder.scss). Drop it and every
+                                       shut row draws up. (Fhi.Metadata-l9l2n.84) *@
                                     <button type="button"
                                             class="hd-button-reset munin-explorer-kilder__expand-toggle"
                                             aria-expanded="@(IsExpanded(kilde.Id) ? "true" : "false")"

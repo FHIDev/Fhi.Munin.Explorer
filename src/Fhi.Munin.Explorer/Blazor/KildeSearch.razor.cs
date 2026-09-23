@@ -453,7 +453,7 @@ public sealed partial class KildeSearch : ComponentBase
     // was a 7px glyph and the control measured 20 x 24. (Fhi.Metadata-mpx2p)
     private string ExpandChevronClass(Guid id) =>
         "icon icon--nomargin munin-explorer-kilder__expand-icon "
-        + (IsExpanded(id) ? "icon-keyboard-arrow-down" : "icon-keyboard-arrow-right");
+        + (IsExpanded(id) ? "icon-keyboard-arrow-up" : "icon-keyboard-arrow-down");
 
     private string PanelId(Guid id) => $"munin-explorer-datasamlinger-{_instance}-{id}";
 

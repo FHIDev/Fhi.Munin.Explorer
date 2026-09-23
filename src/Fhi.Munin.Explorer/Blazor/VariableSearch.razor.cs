@@ -1027,6 +1027,8 @@ public sealed partial class VariableSearch : ComponentBase
         builder.OpenElement(3, "button");
         builder.AddAttribute(4, "type", "button");
         builder.AddAttribute(12, "class", "hd-button-reset munin-explorer-dataitem__expand-toggle");
+        // Load-bearing beyond assistive tech: Stiler 0.1.91 tells the chevron's two states apart by
+        // aria-expanded (_results.scss). Drop it and every shut row draws up. (Fhi.Metadata-l9l2n.84)
         builder.AddAttribute(13, "aria-expanded", DetailExpanded(v));
         builder.AddAttribute(14, "aria-controls", DetailControls(v));
         builder.AddAttribute(15, "aria-label", ExpandLabel(v));
@@ -1044,8 +1046,8 @@ public sealed partial class VariableSearch : ComponentBase
         builder.OpenElement(18, "span");
         builder.AddAttribute(19, "class",
             IsSelected(v)
-                ? "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon"
-                : "icon icon-keyboard-arrow-right munin-explorer-dataitem-main__expand-icon");
+                ? "icon icon-keyboard-arrow-up munin-explorer-dataitem-main__expand-icon"
+                : "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon");
         builder.AddAttribute(20, "aria-hidden", "true");
         builder.CloseElement();
 
