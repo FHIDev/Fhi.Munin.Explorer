@@ -12,6 +12,7 @@
 import { states } from './axe-states.mjs';
 import { assertions, selectors } from './geometry-assertions.mjs';
 import { scrollToTop } from './reader-scroll.mjs';
+import { installUnhiddenOnPurpose } from './hidden-on-purpose.mjs';
 
 // PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an installed browser instead of the bundled chromium.
 // Opt-in and unset in CI: a channel renders a different engine build, so a geometry number from
@@ -199,6 +200,7 @@ try {
     for (const width of widths) {
       console.log(`\n==> geometry ${label} at ${width}px`);
       const context = await browser.newContext({ viewport: { width, height: 900 } });
+      await installUnhiddenOnPurpose(context);
       const page = await context.newPage();
 
       try {

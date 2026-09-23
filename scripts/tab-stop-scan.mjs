@@ -12,6 +12,7 @@
 // the planted control fire there (Fhi.Metadata-w8sms).
 import { states } from './axe-states.mjs';
 import { scrollToTop } from './reader-scroll.mjs';
+import { installUnhiddenOnPurpose } from './hidden-on-purpose.mjs';
 
 const launchOptions = () => {
   const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
@@ -102,6 +103,12 @@ const readStop = ({ start }) => {
   const again = el.hasAttribute('data-munin-tab-stop');
   el.setAttribute('data-munin-tab-stop', '');
 
+  // Installed by hidden-on-purpose.mjs, so this and 'hidden means hidden' cannot answer apart.
+  const unhiddenOnPurpose = window.__muninUnhiddenOnPurpose;
+  if (typeof unhiddenOnPurpose !== 'function') {
+    throw new Error('hidden-on-purpose.mjs was not installed on this page');
+  }
+
   const box = el.getBoundingClientRect();
   const hiddenAncestors = [];
   for (let node = el.closest('[hidden]'); node !== null; node = node.parentElement?.closest('[hidden]') ?? null) {
@@ -125,71 +132,6 @@ const readStop = ({ start }) => {
     hiddenBy: hiddenAncestor === null ? null : hiddenAncestor === el ? 'itself' : describe(hiddenAncestor),
     unhiddenBy: onPurpose === null ? null : describe(onPurpose),
   };
-
-  // The same test as geometry-assertions.mjs's 'hidden means hidden', and it has to stay the same:
-  // a host un-hides on purpose with a rule whose own selector names [hidden], and the control that
-  // folds it then has no box. Stiler does this to the facet panel at 1024px and up. Change both.
-  function unhiddenOnPurpose(node) {
-    for (const control of document.querySelectorAll('[aria-controls]')) {
-      if (!node.id || !(control.getAttribute('aria-controls') ?? '').split(/\s+/).includes(node.id)) continue;
-      const c = control.getBoundingClientRect();
-      if (c.width * c.height !== 0) return false;
-    }
-    for (const rule of applicableRules()) {
-      const display = rule.style.getPropertyValue('display');
-      if (display === '' || display === 'none') continue;
-      for (const branch of topLevelBranches(rule.selectorText)) {
-        if (!branch.includes('[hidden]')) continue;
-        try {
-          if (node.matches(branch)) return true;
-        } catch {
-          // A selector this browser cannot parse tells us nothing either way.
-        }
-      }
-    }
-    return false;
-  }
-
-  function topLevelBranches(selectorText) {
-    const branches = [];
-    let depth = 0;
-    let quote = null;
-    let start = 0;
-    for (let i = 0; i < selectorText.length; i += 1) {
-      const ch = selectorText[i];
-      if (quote !== null) {
-        if (ch === '\\') i += 1;
-        else if (ch === quote) quote = null;
-      } else if (ch === '"' || ch === "'") {
-        quote = ch;
-      } else if (ch === '(' || ch === '[') {
-        depth += 1;
-      } else if (ch === ')' || ch === ']') {
-        depth -= 1;
-      } else if (ch === ',' && depth === 0) {
-        branches.push(selectorText.slice(start, i));
-        start = i + 1;
-      }
-    }
-    branches.push(selectorText.slice(start));
-    return branches;
-  }
-
-  function applicableRules() {
-    const found = [];
-    const inForce = rule => rule.media ? matchMedia(rule.conditionText).matches
-      : rule.conditionText ? CSS.supports(rule.conditionText) : true;
-    const walk = rules => {
-      for (const rule of rules) {
-        if (rule.selectorText && rule.style) found.push(rule);
-        else if (rule.cssRules && inForce(rule)) walk([...rule.cssRules]);
-      }
-    };
-    walk([...document.styleSheets].flatMap(sheet => {
-      try { return [...sheet.cssRules]; } catch { return []; }
-    }));
-    return found;
-  }
 };
 
 let failures = 0;
@@ -200,6 +142,7 @@ try {
     for (const width of widths) {
       console.log(`\n==> tab stops ${label} at ${width}px`);
       const context = await browser.newContext({ viewport: { width, height: 900 } });
+      await installUnhiddenOnPurpose(context);
       const page = await context.newPage();
 
       try {
