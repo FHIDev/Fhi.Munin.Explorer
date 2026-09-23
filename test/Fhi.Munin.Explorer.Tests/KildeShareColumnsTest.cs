@@ -139,6 +139,18 @@ public class KildeShareColumnsTest : ExplorerTestContext
         Assert.DoesNotContain("0", unmeasured.TextContent, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Dash_Always_ThenItsCellIsTheContainingBlockForTheHiddenWords()
+    {
+        // Undrawn, the absolutely positioned words escape the scroll box and widen the page: the
+        // kilder-every-column state measured 1567px at 320 before this (Fhi.Metadata-l9l2n.98).
+        var cut = RenderWith();
+        TurnSharesOn(cut);
+
+        var style = Cell(cut, "Cregisteret", KodeverkHeading).GetAttribute("style")?.Replace(" ", "") ?? "";
+        Assert.Contains("position:relative", style, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("no", "ikke målt")]
     [InlineData("en", "not measured")]
@@ -159,13 +171,14 @@ public class KildeShareColumnsTest : ExplorerTestContext
         }
     }
 
+    // Kodeverk is a domain term and keeps its name in English; statistikk is an ordinary word.
     [Theory]
-    [InlineData("no")]
-    [InlineData("en")]
-    public void Headings_Always_ThenTheyAreTheSameCatalogueWordsInBothLanguages(string language)
+    [InlineData("no", KodeverkHeading, StatisticsHeading)]
+    [InlineData("en", KodeverkHeading, "Statistics %")]
+    public void Headings_Always_ThenTheyAreInTheReadersLanguage(string language, string kodeverk, string statistics)
     {
-        Assert.Equal(KodeverkHeading, Texts.For(language).ColumnKodeverkShare);
-        Assert.Equal(StatisticsHeading, Texts.For(language).ColumnStatisticsShare);
+        Assert.Equal(kodeverk, Texts.For(language).ColumnKodeverkShare);
+        Assert.Equal(statistics, Texts.For(language).ColumnStatisticsShare);
     }
 
     [Fact]

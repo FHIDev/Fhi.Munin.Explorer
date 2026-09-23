@@ -892,8 +892,10 @@ else
     private RenderFragment MeasuredShare(int percent) =>
         @<td class="@CountClass(percent).Class">@($"{percent}\u00A0%")</td>;
 
+    // Inline, as the saved list's scroll box is: the hidden words are absolutely positioned, and
+    // without a containing block inside the scroll box they escape it and widen the page at 320px.
     private RenderFragment UnmeasuredShare() =>
-        @<td class="@DimmedCountClass"><span aria-hidden="true">–</span><span class="screenreader-only">@T.ShareNotMeasured</span></td>;
+        @<td class="@DimmedCountClass" style="position:relative"><span aria-hidden="true">–</span><span class="screenreader-only">@T.ShareNotMeasured</span></td>;
 
     // munin-explorer-kilder__sort rather than the variable explorer's header class, whose two
     // Stiler rules are scoped to that one's pseudo-table prefix (Fhi.Metadata-l9l2n.106).

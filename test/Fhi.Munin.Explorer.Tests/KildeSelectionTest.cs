@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
@@ -717,6 +718,51 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer-kilder-scroll--cols-18",
             cut.Find('.' + HostClassNames.KilderScroll).ClassList);
     }
+
+    [Fact]
+    public void SampleCss_WhenEveryColumnIsOn_ThenAThresholdSticksTheWidestHeaderEitherWay()
+    {
+        // The orphan guards exempt the count modifier, so without this a fourteenth optional column
+        // ships with no threshold and every check green, as --cols-17 and --cols-18 once did.
+        // The widths are read off the rendered table, never written here (Fhi.Metadata-l9l2n.98).
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
+        var plain = Render<KildeSearch>();
+        var selectable = Render<KildeSearch>(b => b.Add(c => c.ExploreVariablesRequested,
+            EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, _ => { })));
+        TurnEveryColumnOn(plain);
+        TurnEveryColumnOn(selectable);
+
+        var select = $":has(.{HostClassNames.KilderSelect})";
+        var widest = new[]
+        {
+            $".{HostClassNames.KilderScroll}--cols-{Headers(selectable).Count}{select}",
+            $".{HostClassNames.KilderScroll}--cols-{Headers(plain).Count}:not({select})",
+        };
+        Assert.Equal(Headers(plain).Count + 1, Headers(selectable).Count);
+
+        var rules = KilderContainerRules(HostClassNames.SampleCss);
+        foreach (var box in widest)
+        {
+            Assert.Contains(rules, rule => rule.Selectors.Contains(box)
+                && rule.Declarations.Contains("overflow-x:visible"));
+            Assert.Contains(rules, rule => rule.Selectors.Contains($"{box} > .munin-explorer-kilder > thead th")
+                && rule.Declarations.Contains("position:sticky"));
+        }
+    }
+
+    /// <summary>
+    /// Each rule inside an <c>@container munin-explorer-kilder</c> block, its selector list split on
+    /// commas and its declarations with the whitespace taken out.
+    /// </summary>
+    private static List<(string[] Selectors, string Declarations)> KilderContainerRules(string stylesheet) =>
+    [
+        .. Regex.Matches(stylesheet,
+                @"@container\s+munin-explorer-kilder\s*\([^)]*\)\s*\{(?<body>(?:[^{}]*\{[^{}]*\})*[^{}]*)\}")
+            .SelectMany(block => Regex.Matches(block.Groups["body"].Value, @"(?<sel>[^{}]*)\{(?<decl>[^{}]*)\}"))
+            .Select(rule => (
+                rule.Groups["sel"].Value.Split(',').Select(s => Regex.Replace(s.Trim(), @"\s+", " ")).ToArray(),
+                Regex.Replace(rule.Groups["decl"].Value, @"\s+", ""))),
+    ];
 
     [Fact]
     public void SelectColumn_WhenAHostStylesIt_ThenTheDeclarationItNeedsIsAWidth()

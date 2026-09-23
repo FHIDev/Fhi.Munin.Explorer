@@ -276,8 +276,9 @@ and both invisible to everything else we run.
 **And `check-accessibility.sh` measures one width axe never looks at.** WCAG 1.4.10 Reflow is
 stated at 320px, and nothing in this repository measured any page there: `scripts/geometry-scan.mjs`
 drives six widths and the narrowest is 843. The script now ends by measuring ModernHost's `/kilder`
-at 320 in two states — `kilder-list`, and `kilder-ticked`, which ticks a row so the selection ribbon
-carries its longest label with the reset beside it. That is the rendered form of a gap unit tests
+at 320 in three states — `kilder-list`; `kilder-ticked`, which ticks a row so the selection ribbon
+carries its longest label with the reset beside it; and `kilder-every-column`, the widest table the
+picker can draw, which has to scroll inside its box rather than widen the page. That is the rendered form of a gap unit tests
 could only pin as text — the explore button's width floor overflowed the page by 87px before
 `Fhi.Metadata-l9l2n.65`, and `KildeSelectionTest` can say the declaration is there and not that the
 page fits.
@@ -312,12 +313,12 @@ to measure on these pages at all:
   measures them against the real one at six widths.
 - `the detail page's main column is the wider part of its body` and `the detail page's two columns
   share a row` measure a `.munin-explorer-page__body`, the detail views' chassis, which none of the
-  four states driven here opens. That is a statement about the states and not about the pages: both
+  five states driven here opens. That is a statement about the states and not about the pages: both
   draw one in a detail state — `/` in `variable-whole`, `/kilder` in `kilde-drilldown`, which axe
   scans above — so adding either state to this run would measure them. They run and find nothing
   rather than failing, so they were never measured here in the sense the seven above were.
 
-Read the run for exactly what it is: three assertions, two pages, four states, against the sample
+Read the run for exactly what it is: three assertions, two pages, five states, against the sample
 stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
 its own after the six widths. It runs every assertion in every state, except that a state failing
 today leaves out only its failing assertions, through `GEOMETRY_EXCEPT`, with the reason beside

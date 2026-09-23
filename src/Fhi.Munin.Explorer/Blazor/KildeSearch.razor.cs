@@ -1441,8 +1441,8 @@ public sealed partial class KildeSearch : ComponentBase
             ? new(DimmedCountClass, null)
             : new("munin-explorer-kilder__count", largest > 0 ? BarWidth(count, largest) : null);
 
-    // Named apart from CountClass because the unmeasured share cell wears it too, and that cell is
-    // not a zero: it must not change whenever what a nought count draws does.
+    // One dimmed look worn on purpose by a nought count and by the unmeasured share cell alike, so
+    // editing it restyles both.
     private const string DimmedCountClass = "munin-explorer-kilder__count munin-explorer-kilder__count--zero";
 
     /// <summary>A whole percent, 1 to 100, so a non-zero count never draws an empty fill.</summary>

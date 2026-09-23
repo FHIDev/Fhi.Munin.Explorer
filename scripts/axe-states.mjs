@@ -510,6 +510,42 @@ export const states = {
     }
   },
 
+  // The kilder table at its widest, every optional column on, the two share columns among them.
+  // Measured at 320px, where the table has to scroll inside its own box rather than widen the page
+  // (Fhi.Metadata-l9l2n.98).
+  'kilder-every-column': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-kilder__name');
+
+    const picker = page.locator('.munin-explorer-header details').first();
+    await picker.waitFor({ state: 'visible', timeout: findTimeout });
+    await picker.locator('summary').click();
+
+    const toggles = picker.locator('.dropdown-choicepicker__item input[type=checkbox]');
+    await toggles.first().waitFor({ state: 'visible', timeout: findTimeout });
+    // Pressed in the page: at 320px the open list hangs off the viewport's left edge
+    // (Fhi.Metadata-w6lvr), where Playwright's own click refuses to land.
+    for (let i = 0; i < await toggles.count(); i++) {
+      await toggles.nth(i).evaluate(box => box.checked || box.click());
+    }
+
+    for (const heading of ['Kodeverk %', 'Statistikk %']) {
+      await page
+        .locator('.munin-explorer-kilder thead th', { hasText: heading })
+        .first()
+        .waitFor({ state: 'visible', timeout: findTimeout });
+    }
+
+    // Folded before anything is measured, for the reason kilder-counts gives.
+    if (await picker.evaluate(el => el.open)) {
+      await picker.locator('summary').click();
+    }
+    if (await picker.evaluate(el => el.open)) {
+      throw new Error('The column picker stayed open after its summary was pressed');
+    }
+    const box = await page.locator('.munin-explorer-kilder-scroll').first().getAttribute('class');
+    console.log(`    kilder-every-column: ${box}`);
+  },
+
   // The kildeutforsker's facet panel: a second facet opened from the keyboard, a value ticked
   // inside it, and then the Utvid alle / Skjul alle pair over the top. Nothing in the component
   // mirrors the folds — `open` is written once per fold press and left alone between them — so this

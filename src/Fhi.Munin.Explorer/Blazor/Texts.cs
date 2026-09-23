@@ -516,8 +516,8 @@ internal sealed record Texts(
     string ColumnDelkildeCount,
     string ColumnImported,
     string ColumnSourceUpdated,
-    // The kilde table's two coverage columns, the same catalogue words in both languages. The last
-    // is what a screen reader says for the dash where a kilde has no variables to measure.
+    // The kilde table's two coverage columns; kodeverk stays Norwegian in English as the domain term
+    // it is. The last is what a screen reader says for the dash where a kilde has nothing to measure.
     string ColumnKodeverkShare,
     string ColumnStatisticsShare,
     string ShareNotMeasured,
@@ -1802,7 +1802,7 @@ internal sealed record Texts(
         ColumnImported: "Imported",
         ColumnSourceUpdated: "Last modified",
         ColumnKodeverkShare: "Kodeverk %",
-        ColumnStatisticsShare: "Statistikk %",
+        ColumnStatisticsShare: "Statistics %",
         ShareNotMeasured: "not measured",
         ExpandDatasamlinger: name => $"Show data collections for {name}",
         CollapseDatasamlinger: name => $"Hide data collections for {name}",
