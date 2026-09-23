@@ -6,10 +6,6 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
-/// <summary>
-/// The panel's tabs. Runa splits the open row into what the variable IS and what its data holds;
-/// this is that split, not helsedata's — their page is the one being replaced.
-/// </summary>
 /// <summary>The two tabs beside the results, in the order they are drawn.</summary>
 internal enum ExplorerTab
 {
@@ -21,8 +17,9 @@ internal enum ExplorerTab
 }
 
 
-// Declared in the order the tabs are drawn: Tabs reads this enum, and Home/End and the arrow
-// keys move by its index, so reordering only the markup would send Home to the wrong tab.
+/// <summary>The open row's tabs: what its data holds, then what the variable is. The RCL leads
+/// this split now; Runa follows later or not at all (Fhi.Metadata-l9l2n.101).</summary>
+// Declared in drawn order: Home/End and the arrow keys move by this enum's index.
 internal enum PanelTab
 {
     /// <summary>The kodeverk and the statistics the values are drawn from. Opens first.</summary>
@@ -105,12 +102,11 @@ internal enum PanelTab
 /// keeping <c>display: none</c> on it below that width if a reset gives fieldsets a display.
 /// </para>
 /// <para>
-/// The hierarchy trail over the results adds one name of ours — <c>munin-explorer-breadcrumb</c> —
-/// and reuses <c>munin-explorer-crumb</c>, which the variable panel's kilde trail already wears,
-/// for the steps themselves. It is an <c>&lt;ol&gt;</c> of <c>&lt;button&gt;</c>s for the reason
-/// that trail is one: neither trail's steps navigate — these narrow the filter, and that one's
-/// lone button discloses a kilde in place — so Stiler's <c>.breadcrumbs</c> names, worn by the
-/// detail pages' trail (<see cref="DetailTrail"/>), do not apply. The chevrons are a host's to
+/// The hierarchy trail over the results adds two names of ours — <c>munin-explorer-breadcrumb</c>
+/// for the trail and <c>munin-explorer-crumb</c> for its steps. It is an <c>&lt;ol&gt;</c> of
+/// <c>&lt;button&gt;</c>s whose steps narrow the filter rather than navigate, so Stiler's
+/// <c>.breadcrumbs</c> names, worn by the detail pages' trail (<see cref="DetailTrail"/>), do not
+/// apply. The chevrons are a host's to
 /// draw, and a host that draws nothing gets a numbered list that still reads correctly, in order,
 /// with the right names.
 /// </para>
@@ -137,14 +133,12 @@ internal enum PanelTab
 /// </para>
 /// <para>
 /// The detail panel adds no class name either, and for the same reason. It is a
-/// <c>&lt;dl&gt;</c> of labels and values, an <c>&lt;ol&gt;</c> for the kilde trail and a
-/// <c>&lt;ul&gt;</c> for the variabelgrupper and kodeverk, wearing Stiler's
-/// <c>form-element__label</c>, <c>caption</c>, <c>infobox</c> and the ghost square button for the
-/// disclosure that opens it. This trail's steps do not navigate either — the kilde step is a
-/// button disclosing it in place, the rest plain text — so Stiler's <c>.breadcrumbs</c> does not
-/// describe them. Stiler has no definition list and no key/value block that can be read back off
-/// its compiled stylesheet, so what a host supplies is base styling for those three elements — a
-/// host that supplies none still gets a panel that reads correctly, just an unindented one.
+/// <c>&lt;dl&gt;</c> of labels and values under Om variabelen and a <c>&lt;ul&gt;</c> for the
+/// kodeverk under Data, wearing Stiler's <c>form-element__label</c>, <c>caption</c>,
+/// <c>infobox</c> and the ghost square button for the disclosure that opens it. Stiler has no
+/// definition list and no key/value block that can be read back off its compiled stylesheet, so
+/// what a host supplies is base styling for those two elements — a host that supplies none still
+/// gets a panel that reads correctly, just an unindented one.
 /// <c>munin-explorer-detail</c> is a handle that Stiler also dresses, in
 /// <c>components/munin-explorer/_detail.scss</c>.
 /// </para>
@@ -1639,17 +1633,9 @@ public sealed partial class VariableSearch : ComponentBase
             RowCell.Write(builder, 600, T.FieldStatus, status, "status", T.NotSpecified, catalogue: false);
         }
 
-        // The dataperiode as text — the same two dates the panel draws under its bar, from the
-        // same fields. helsedata's own period cell is a bar and nothing else, with the dates on
-        // hover, but a bar is drawn entirely by rules this package does not ship: in a host that
-        // has not styled `munin-explorer-dataitem-period` the cell would be empty rather than plain, and
-        // an empty column is indistinguishable from a variable with no period recorded. The panel
-        // is where the bar is worth its dependency, because the row beside it says the dates.
-        // Not the catalogue's own words, like the datatype and status: the dates are formatted for
-        // the reader and the word between them is this component's, so it follows Language like a
-        // label rather than staying Norwegian like a variable name. Hence `catalogue: false` — an
-        // English reader hearing "Jan 2010 – Ongoing" announced by a Norwegian voice is the very
-        // thing lang="no" is there to prevent, applied backwards.
+        // Text, not helsedata's hover-only bar: an unstyled `munin-explorer-dataitem-period` would
+        // draw an empty cell, which reads as no period recorded.
+        // `catalogue: false`: the dates are formatted for the reader, so follow Language.
         if (ColumnVisible(ResultColumn.DataPeriod))
         {
             RowCell.Write(builder, 700, T.FieldDataPeriod, PeriodText(v.DataFrom, v.DataTo), "period", T.NotSpecified, catalogue: false);

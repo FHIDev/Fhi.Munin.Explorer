@@ -4,13 +4,9 @@ using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// The kilde trail's steps, asked of the block directly.
+/// The kilde trail's steps, asked of the block directly: the row drawer no longer draws the trail,
+/// so nothing else pins them. (Fhi.Metadata-l9l2n.101)
 /// </summary>
-/// <remarks>
-/// These rules were pinned through the row drawer until its Om variabelen tab stopped drawing the
-/// trail (Fhi.Metadata-l9l2n.101). The whole-variable page still draws it, so the rules still ship,
-/// and deleting those drawer tests alone would have left them pinned by nothing.
-/// </remarks>
 public class KildeTrailBlockTest
 {
     private static VariableDetail Variable() => new()

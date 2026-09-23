@@ -186,8 +186,7 @@ internal static class DetailBlocks
     /// name sits outside the marked span so it is not announced in the language it names, and is a
     /// <c>p</c> so a host with no rule for the class still gets one language per line.
     /// </remarks>
-    internal static int Values(RenderTreeBuilder builder, int seq, PropertyRow row, string reader, Texts text,
-                               string languageClass)
+    internal static int Values(RenderTreeBuilder builder, int seq, PropertyRow row, string reader, Texts text)
     {
         foreach (var slot in row.Values)
         {
@@ -201,7 +200,7 @@ internal static class DetailBlocks
             else
             {
                 builder.OpenElement(seq + 10, "p");
-                builder.AddAttribute(seq + 11, "class", languageClass);
+                builder.AddAttribute(seq + 11, "class", PageLanguage);
                 builder.AddContent(seq + 12, text.LanguageName(slot.Language));
                 builder.CloseElement();
 
@@ -436,7 +435,7 @@ internal static class DetailBlocks
             builder.AddContent(seq + 4, row.Label);
             builder.CloseElement();
 
-            seq = Values(builder, seq + 5, row, reader, text, PageLanguage);
+            seq = Values(builder, seq + 5, row, reader, text);
 
             builder.CloseElement();
         }

@@ -336,7 +336,7 @@ public partial class VariableSearch
         _sourceLoading = false;
     }
 
-    // Both ways in ask it: the "Vis datakilde" pair and the trail's kilde step. (Fhi.Metadata-j1j3i)
+    // The "Vis datakilde" / "Vis datasamling" pair asks it. (Fhi.Metadata-j1j3i)
     private Task ToggleSourceFromControlAsync(SourceKind kind, MouseEventArgs released) =>
         RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : ToggleSourceAsync(kind);
 

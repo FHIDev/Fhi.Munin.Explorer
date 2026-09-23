@@ -205,13 +205,12 @@ internal static class CatalogueProperties
     /// what the payload means by it, and which is the same answer <c>KildeSearch.Property</c>
     /// gives on the list side. Guarded here rather than at each call site because every one of them
     /// passes a field declared that way: <c>KildeView</c>, <c>VariableView</c>,
-    /// <c>InstrumentView</c> and the variable panel's own rows. Unguarded it throws while
+    /// <c>InstrumentView</c>. Unguarded it throws while
     /// rendering, where the try/catch around the fetch is long since finished and cannot catch it.
     /// </para>
     /// <para>
     /// <paramref name="drawnElsewhere"/> means what it means in <see cref="Groups"/>, and is here
-    /// for the one surface that draws rows without them: the variable panel, whose own Identifikasjon
-    /// list already spells out the description (Fhi.Metadata-bct95).
+    /// so <see cref="Placed"/> answers over the same keys the section is given (Fhi.Metadata-bct95).
     /// </para>
     /// </remarks>
     internal static List<PropertyRow> Rows(
