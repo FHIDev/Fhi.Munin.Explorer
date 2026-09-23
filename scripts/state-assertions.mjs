@@ -434,7 +434,9 @@ export const assertions = [
       await action.waitFor({ state: 'visible', timeout: findTimeout });
       if (await action.getAttribute('href') !== href) return 'compact action and header disagree on destination';
       // The module's own switch, not isVisible: since Stiler 79t6z the bar is 0px tall either way.
-      const shown = () => bar.evaluate((b, on) => b.classList.contains(on) && !b.hidden, STUCKBAR_ON);
+      // All three, because it writes all three: a bar left aria-hidden reaches no screen reader.
+      const shown = () => bar.evaluate((b, on) => b.classList.contains(on) && !b.hidden &&
+        b.getAttribute('aria-hidden') === 'false', STUCKBAR_ON);
       await action.focus();
       await scrollToTop(page);
       if (!await shown() || !await action.evaluate(e => e === document.activeElement)) {
