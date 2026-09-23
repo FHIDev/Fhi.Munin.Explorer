@@ -72,7 +72,8 @@ public class KildeSectionsTest : ExplorerTestContext
     }
 
     /// <summary>
-    /// Tromsøundersøkelsen, out of the captured payload — a kilde with a real delkilde tree.
+    /// Tromsøundersøkelsen, out of the captured payload with its placements stripped — a kilde with
+    /// a real delkilde tree, drawn in the explorers' own section order.
     /// </summary>
     /// <remarks>
     /// The fixture rather than a hand-written source, because the datasamling section is the one
@@ -81,9 +82,7 @@ public class KildeSectionsTest : ExplorerTestContext
     /// test.
     /// </remarks>
     private static KildeDetail Tromso() =>
-        JsonSerializer.Deserialize<KildeDetail>(
-            TestData.Read("kilde-med-delkilder.json"), MuninExplorerClient.Json)
-        ?? throw new InvalidOperationException("kilde-med-delkilder.json no longer reads as a KildeDetail.");
+        TestData.KildeWithoutPlacements("kilde-med-delkilder.json");
 
     /// <summary>
     /// Barnediabetes, out of the captured payload — six datasamlinger and not one delkilde.

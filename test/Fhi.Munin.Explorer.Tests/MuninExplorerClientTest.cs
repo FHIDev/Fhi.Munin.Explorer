@@ -104,12 +104,14 @@ public class MuninExplorerClientTest
 
         var als = kilder[0];
         Assert.Equal("K_ALS", als.Code);
-        Assert.Equal("Norsk register for ALS og andre motonevronsykdommer (ALS-registeret)", als.Name);
+        Assert.Equal("ALS Registeret", als.Name);
         Assert.Equal("nasjonaltMedisinskKvalitetsregister", als.Kildetype);
         Assert.True(als.IsActive);
         Assert.True(als.HasVariableDescription);
-        Assert.Equal(9, als.DatasamlingCount);
-        Assert.Equal(240, als.TotalVariables);
+        Assert.Equal(4, als.DatasamlingCount);
+        Assert.Equal(245, als.TotalVariables);
+        Assert.Equal(33, als.KodeverkShare);
+        Assert.Equal(0, als.StatisticsShare);
         Assert.Null(als.HealthDcatScore); // never computed yet — see the note on the property
         Assert.Equal("alsregister@stolav.no", als.AdditionalProperties["Epost"]);
 
@@ -117,17 +119,23 @@ public class MuninExplorerClientTest
         // curated rather than modelled, so nothing about it is a compile error, and this capture is
         // what says the spelling the ordinal lookup uses is the API's own.
         Assert.Equal("2023", als.AdditionalProperties["Opprettet"]);
+    }
 
-        // The row the latest re-take added: a kilde with no kildetype at all, which the API sends
-        // as null and the contract used to make an empty string of. (Fhi.Metadata-l9l2n.61)
+    [Fact]
+    public async Task GetKilderAsync_WhenAKildeHasNoKildetype_ThenItIsReadAsNull()
+    {
+        // The API sends null and the contract used to make an empty string of it. Read off the
+        // capture that still holds such a row. (Fhi.Metadata-l9l2n.61)
+        var kilder = await WithResponse(Fixture.KilderNullKildetype, out _).GetKilderAsync();
+
         Assert.Null(kilder.Single(kilde => kilde.Code == "K_NKR-NAKKE").Kildetype);
     }
 
     [Fact]
     public async Task GetKilderAsync_WhenTheApiSendsTheCoverageShares_ThenAMeasuredZeroIsNotReadAsNothing()
     {
-        // kilder.json predates both keys, so this is the only offline payload that carries them: a
-        // wrong wire name or type would otherwise pass every commit and read as null.
+        // kilder.json carries no null share, so this is the only offline payload with one: a wrong
+        // type would otherwise pass every commit.
         var kilder = await WithJson("""
             [
               { "code": "K_ALS", "andelKodeverk": 63, "andelStatistikk": 0 },
@@ -386,7 +394,7 @@ public class MuninExplorerClientTest
         Assert.True(link.HasCodeValues);
         Assert.Null(link.DisplayName); // unresolved name is normal — fall back to the reference
 
-        Assert.Equal("Funksjonsscore", Assert.Single(variable.AllVariabelgrupper).Name);
+        Assert.Equal(["Funksjonsscore", "Funksjonsskala"], variable.AllVariabelgrupper.Select(group => group.Name));
         Assert.Equal("Inklusjon", Assert.Single(variable.AllDatasamlinger).Name);
     }
 

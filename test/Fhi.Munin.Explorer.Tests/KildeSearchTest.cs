@@ -2238,7 +2238,7 @@ public class KildeSearchTest : ExplorerTestContext
         // to "", so what keeps this cell readable is Texts.KildeTypeLabel rather than the DTO. Read
         // off the capture, because a hand-written null is one this component has never been sent.
         var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
-                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+                TestData.Read(Fixture.KilderNullKildetype), MuninExplorerClient.Json)
             ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
 
         var cut = RenderWith(new FakeClient([.. kilder]));
@@ -2261,7 +2261,7 @@ public class KildeSearchTest : ExplorerTestContext
         // a sort key as well as a label, and the three wrong answers are an unnamed checkbox, an
         // "Ikke oppgitt" choice nobody can filter on elsewhere, and a throw. It drops the kilde.
         var kilder = JsonSerializer.Deserialize<IReadOnlyList<KildeSummary>>(
-                TestData.Read("kilder.json"), MuninExplorerClient.Json)
+                TestData.Read(Fixture.KilderNullKildetype), MuninExplorerClient.Json)
             ?? throw new InvalidOperationException("kilder.json no longer reads as a kilde list.");
 
         var cut = RenderWith(new FakeClient([.. kilder]));
@@ -6339,14 +6339,14 @@ public class KildeSearchTest : ExplorerTestContext
         ToggleColumn(cut, "Sist endret");
 
         // Years, not formatted dates: the month's short form is the runtime's. The payload holds
-        // 20260423, 20260813, 20230131 and 20210627. The whole cell is reported when it does not
+        // 20260423, 20251201, 20230131 and 20210627. The whole cell is reported when it does not
         // end in a year, so a fixture re-capture that drops the key fails as "expected 2026, got
         // Ikke oppgitt" rather than as four characters of it.
         var years = cut.FindAll(".munin-explorer-kilder tbody tr")
             .Select(row => row.QuerySelectorAll("td")[^1].TextContent.Trim())
             .Select(text => text.Length >= 4 && text[^4..].All(char.IsAsciiDigit) ? text[^4..] : text);
 
-        Assert.Equal(["2026", "2026", "2023", "2021"], years);
+        Assert.Equal(["2026", "2025", "2023", "2021"], years);
     }
 
     [Fact]

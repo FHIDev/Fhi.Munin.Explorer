@@ -1,9 +1,7 @@
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
-using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,17 +24,13 @@ public class KildeLayoutTest : ExplorerTestContext
             Task.FromResult<KildeHierarchy?>(new() { KildeId = id });
     }
 
-    /// <summary>Tromsø, whose capture predates the sections collection and so carries none.</summary>
+    /// <summary>Tromsø with the sections its capture carries stripped off.</summary>
     /// <remarks>
-    /// The before-state of every count here, and the API this package still has to render for: the
-    /// field reached Munin on 2026-09-16 and the capture is older. Re-taking it is a devbox job —
-    /// see <see cref="FixtureDriftTest"/> — so the seeded payload below is assembled rather than
-    /// captured, and says where each of its numbers comes from.
+    /// The before-state of every count here, and the API this package still has to render for. The
+    /// seeded payload below is assembled rather than captured, and says where each number comes from.
     /// </remarks>
     private static KildeDetail Unplaced() =>
-        JsonSerializer.Deserialize<KildeDetail>(
-            TestData.Read("kilde-med-delkilder.json"), MuninExplorerClient.Json)
-        ?? throw new InvalidOperationException("kilde-med-delkilder.json no longer reads as a KildeDetail.");
+        TestData.KildeWithoutPlacements("kilde-med-delkilder.json");
 
     private static SectionPlacement Section(string key, string no, string en, int? order, bool builtIn = false) =>
         new()

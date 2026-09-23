@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
+using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -368,5 +370,25 @@ internal static class TestData
         using var reader = new StreamReader(stream, Encoding.UTF8);
 
         return reader.ReadToEnd();
+    }
+
+    /// <summary>
+    /// A KildeDetail capture as the API sent it before Munin placed its sections: groupKey kept,
+    /// no groupSortOrder, no sections.
+    /// </summary>
+    /// <remarks>
+    /// Derived rather than kept as a second capture, so the capture stays free to refresh. For
+    /// kilde-med-delkilder.json this is byte-for-byte the pre-placement capture (Fhi.Metadata-quo1j).
+    /// </remarks>
+    public static KildeDetail KildeWithoutPlacements(string fileName)
+    {
+        var kilde = JsonSerializer.Deserialize<KildeDetail>(Read(fileName), MuninExplorerClient.Json)
+                    ?? throw new InvalidOperationException($"{fileName} no longer reads as a KildeDetail.");
+
+        return kilde with
+        {
+            PropertyMetadata = [.. kilde.PropertyMetadata.Select(entry => entry with { GroupSortOrder = null })],
+            Sections = [],
+        };
     }
 }
