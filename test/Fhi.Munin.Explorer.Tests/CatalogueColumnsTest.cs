@@ -21,6 +21,27 @@ public class CatalogueColumnsTest
     private const string Curated = "Det kuraterte svaret.";
     private const string Column = "Kolonneverdien.";
 
+    [Fact]
+    public void Values_WhenAKildeHasANumericIdentificationValue_ThenTheDatasamlingRepairDoesNotApply()
+    {
+        var kilde = new KildeDetail
+        {
+            Id = Guid.NewGuid(),
+            Code = "K_TEST",
+            PreferredTerm = "Testkilde",
+            PersonIdentificationLevel = "deIdentified",
+            AdditionalProperties = new Dictionary<string, string?> { [CatalogueColumns.PersonIdentification] = "2" },
+            PropertyMetadata = [new()
+            {
+                Key = CatalogueColumns.PersonIdentification,
+                Type = "SingleSelect",
+                OptionsJson = """[{"value":"deIdentified","label":"Avidentifiserte data"}]""",
+            }],
+        };
+
+        Assert.Equal("2", CatalogueColumns.Values(kilde, "nb")[CatalogueColumns.PersonIdentification]);
+    }
+
     // The bag is declared non-nullable and still arrives null, which is one of the three rules
     // under test — so the null goes in through the same forgiving assignment a host's client would.
     private static VariableDetail Variable(Dictionary<string, string?>? bag, string description) =>
