@@ -176,15 +176,29 @@ internal static class Fixture
     public static readonly IReadOnlyList<string> CheckedLive =
         [Variables, Filters, Kilder, Hierarchy, Datasamling, Variable, Timeline, KodeverkCodes, .. KildeDetails];
 
-    /// <summary>A datasamling from before Munin placed its sections, for the layout drawn without them.</summary>
-    public const string DatasamlingUnplaced = "datasamling-unplaced.json";
-
     /// <summary>Fixtures no anonymous caller can re-fetch, with the reason each is out of reach.</summary>
     /// <remarks>
     /// Every <c>my/lists</c> endpoint sits behind the API's authenticated explorer policy, so re-fetching
     /// these means holding an explorer session — which only <c>ContractDriftTest</c>'s desired-data arm
     /// does, and only when <see cref="LiveApi.TokenVariable"/> is set. Until then they are hand-updated.
-    /// <see cref="DatasamlingUnplaced"/> is out of reach by design: no endpoint serves that shape now.
     /// </remarks>
-    public static readonly IReadOnlyList<string> OutOfReach = ["my-lists.json", "my-list-variables.json", DatasamlingUnplaced];
+    public static readonly IReadOnlyList<string> OutOfReach = ["my-lists.json", "my-list-variables.json"];
+
+    /// <summary>
+    /// <see cref="Datasamling"/>'s entity as the API sent it before Munin placed its sections, for
+    /// the layout drawn without them.
+    /// </summary>
+    /// <remarks>
+    /// Its catalogue values are frozen because the fallback-layout tests are measured against them;
+    /// its shape is not. <c>FixtureFreshnessTest</c> holds it to the live-checked capture on every
+    /// commit, differing only by <see cref="PlacementPaths"/>.
+    /// </remarks>
+    public const string DatasamlingUnplaced = "datasamling-unplaced.json";
+
+    /// <summary>The keys a payload from before sections lacks, and the only ones <see cref="DatasamlingUnplaced"/> may.</summary>
+    public static readonly IReadOnlyList<string> PlacementPaths =
+        ["$.propertyMetadata[].groupKey", "$.propertyMetadata[].groupSortOrder", "$.sections"];
+
+    /// <summary>Fixtures kept at an old API shape on purpose, each pinned to the capture it derives from.</summary>
+    public static readonly IReadOnlyList<string> Frozen = [DatasamlingUnplaced];
 }

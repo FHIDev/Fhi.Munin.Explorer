@@ -112,11 +112,26 @@ public class FixtureFreshnessTest
     }
 
     [Fact]
+    public void Frozen_WhenComparedWithTheCaptureItDerivesFrom_ThenOnlyThePlacementsDiffer()
+    {
+        // Same entity on both sides, so unlike a live comparison both directions are evidence: a key
+        // the live-checked capture gained or lost reaches the frozen one here, not on a nightly run.
+        var live = TestData.Read(Fixture.Datasamling);
+        var frozen = TestData.Read(Fixture.DatasamlingUnplaced);
+
+        var missing = FixtureFreshness.Against(live, frozen).Select(finding => finding.Split(' ')[0]).Order(StringComparer.Ordinal);
+
+        Assert.Equal(Fixture.PlacementPaths, missing);
+        Assert.Empty(FixtureFreshness.Against(frozen, live));
+    }
+
+    [Fact]
     public void EveryFixture_IsEitherCheckedAgainstTheLiveApiOrRecordedAsOutOfReach()
     {
         // The guard that can see what is missing. Without it a new fixture joins the two gates that
         // read this directory and nothing ever asks whether it still matches the API.
-        var accounted = Fixture.CheckedLive.Concat(Fixture.OutOfReach).ToHashSet(StringComparer.Ordinal);
+        var accounted = Fixture.CheckedLive.Concat(Fixture.OutOfReach).Concat(Fixture.Frozen)
+            .ToHashSet(StringComparer.Ordinal);
 
         var unaccounted = TestData.Names().Where(name => !accounted.Contains(name)).Order(StringComparer.Ordinal);
 
@@ -124,7 +139,8 @@ public class FixtureFreshnessTest
             !unaccounted.Any(),
             $"Testdata/ holds fixtures no freshness check knows about: {string.Join(", ", unaccounted)}. " +
             $"Add each to {nameof(FixtureDriftTest)} with the live call that re-fetches it, or to " +
-            $"{nameof(Fixture)}.{nameof(Fixture.OutOfReach)} with the reason it cannot be fetched.");
+            $"{nameof(Fixture)}.{nameof(Fixture.OutOfReach)} with the reason it cannot be fetched, or to " +
+            $"{nameof(Fixture)}.{nameof(Fixture.Frozen)} with a test pinning it to the capture it derives from.");
     }
 
     [Fact]
@@ -134,7 +150,7 @@ public class FixtureFreshnessTest
         // that no longer points at anything, and the live check would fail for the wrong reason.
         var present = TestData.Names().ToHashSet(StringComparer.Ordinal);
 
-        var missing = Fixture.CheckedLive.Concat(Fixture.OutOfReach)
+        var missing = Fixture.CheckedLive.Concat(Fixture.OutOfReach).Concat(Fixture.Frozen)
             .Where(name => !present.Contains(name))
             .Order(StringComparer.Ordinal);
 
