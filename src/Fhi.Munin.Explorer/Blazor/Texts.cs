@@ -593,6 +593,12 @@ internal sealed record Texts(
     string FacetDateFrom,
     string FacetDateTo,
 
+    // The format those fields take, shown under each label and as its placeholder, and the
+    // sentence a field points at when what was typed is not a day inside its range. The ends
+    // arrive already written in that format; a null end is an open one.
+    string FacetDateFormat,
+    Func<string?, string?, string> FacetDateInvalid,
+
     // The box that narrows a long facet's own values, and the sentence for when it narrows them to
     // none. The label takes the facet's heading because several boxes can be on screen at once, and
     // controls all announcing "Søk i verdiene" are controls a screen reader cannot tell apart.
@@ -1004,6 +1010,10 @@ internal sealed record Texts(
     private const string AscendingEn = "ascending";
     private const string DescendingEn = "descending";
 
+    // The date fields' format, once per language: the hint and every arm of the refusal name it.
+    private const string DateFormatNo = "dd.mm.åååå";
+    private const string DateFormatEn = "yyyy-mm-dd";
+
     private static readonly Texts No = new(
         Title: "Variabelutforsker",
         SearchLabel: "Søk i variabler",
@@ -1382,6 +1392,14 @@ internal sealed record Texts(
         FacetDataCategory: "Datakategori (EHDS)",
         FacetDateFrom: "Fra og med",
         FacetDateTo: "Til og med",
+        FacetDateFormat: DateFormatNo,
+        FacetDateInvalid: (min, max) => (min, max) switch
+        {
+            ({ } from, { } to) => $"Skriv datoen som {DateFormatNo}, fra og med {from} til og med {to}.",
+            ({ } from, null) => $"Skriv datoen som {DateFormatNo}, fra og med {from}.",
+            (null, { } to) => $"Skriv datoen som {DateFormatNo}, til og med {to}.",
+            _ => $"Skriv datoen som {DateFormatNo}."
+        },
         FacetAccessLevel: "Tilgangsnivå",
         FacetSearchLabel: heading => $"Søk i {heading}",
         FacetSearchPlaceholder: "Søk i verdiene",
@@ -1834,6 +1852,14 @@ internal sealed record Texts(
         FacetDataCategory: "Data category (EHDS)",
         FacetDateFrom: "From",
         FacetDateTo: "To",
+        FacetDateFormat: DateFormatEn,
+        FacetDateInvalid: (min, max) => (min, max) switch
+        {
+            ({ } from, { } to) => $"Write the date as {DateFormatEn}, from {from} to {to}.",
+            ({ } from, null) => $"Write the date as {DateFormatEn}, on or after {from}.",
+            (null, { } to) => $"Write the date as {DateFormatEn}, on or before {to}.",
+            _ => $"Write the date as {DateFormatEn}."
+        },
         FacetAccessLevel: "Access level",
         FacetSearchLabel: heading => $"Search in {heading}",
         FacetSearchPlaceholder: "Search the values",
