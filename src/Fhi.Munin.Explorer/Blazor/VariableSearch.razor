@@ -1081,13 +1081,14 @@ else
 
     @if (ShowTabs)
     {
-        @* The class only while the tab is open: it carries `display: flex` with padding of its own
-           in Stiler, so an empty panel wearing it left a 64px gap under the results. *@
+        @* The class and the tab stop only while the tab is open. Worn empty, the class's Stiler padding
+           left a 64px gap under the results; and Stiler's `div { display: block }` beats [hidden], so
+           a closed panel's tabindex="0" was a 0px Tab stop (Fhi.Metadata-w8sms). *@
         <div class="@(_resultsTab == ExplorerTab.VariableList ? "munin-explorer-meta__tab-content" : null)"
              role="tabpanel"
              id="@ResultTabPanelId(ExplorerTab.VariableList)"
              aria-labelledby="@ResultTabId(ExplorerTab.VariableList)"
-             tabindex="0"
+             tabindex="@(_resultsTab == ExplorerTab.VariableList ? "0" : null)"
              hidden="@(_resultsTab != ExplorerTab.VariableList)">
             @if (_resultsTab == ExplorerTab.VariableList)
             {
