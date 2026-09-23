@@ -56,8 +56,33 @@ public partial class VariableSearch : IDisposable
         }
     }
 
+    private string? _followedShareCode;
+
+    /// <summary>A code that arrives opens its list; one that leaves a signed-out reader goes back
+    /// to the results, since the tab it was on is no longer drawn.</summary>
+    private void FollowShareCode()
+    {
+        if (string.Equals(ShareCode, _followedShareCode, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _followedShareCode = ShareCode;
+
+        if (ShareCode is not null && VariableList is not null)
+        {
+            _resultsTab = ExplorerTab.VariableList;
+        }
+        else if (ShareCode is null && !IsAuthenticated)
+        {
+            _resultsTab = ExplorerTab.Search;
+        }
+    }
+
     protected override async Task OnParametersSetAsync()
     {
+        FollowShareCode();
+
         await FollowSortParameterAsync();
 
         if (ListState is null)

@@ -534,6 +534,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             _failed = true;
         }
 
+        await FollowShareCodeAsync();
         await LoadDataTypeNamesAsync();
     }
 
@@ -556,7 +557,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // Nothing is asked for a reader who is not signed in. This view renders nothing for them, and
         // a call whose answer nobody sees is still a call the limiter counts - the same reason the
         // list itself is not read either.
-        if (!IsAuthenticated)
+        if (!IsAuthenticated && _openCode is null)
         {
             return;
         }
@@ -972,6 +973,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     {
         _confirmingDelete = false;
         _renameName = "";
+        _sharingList = false;
+        _shareMade = null;
 
         // Folded, not merely emptied: an open rename field over a list the reader did not open it
         // for reads as a rename under way. No caller here has focus inside it.
@@ -994,6 +997,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;
         _desiredDataFailure = DesiredDataFailure.None;
+        ForgetSharingFailures();
     }
 
     private async Task ChooseListAsync(ChangeEventArgs e)

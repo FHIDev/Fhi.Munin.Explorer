@@ -205,6 +205,18 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             SelectedInstrumentId = null,
         }).ToQueryString());
 
+    private Func<string, string>? _sharedListAddress;
+
+    // Absolute and carrying nothing of the sender's own view but the host's parameters: the link
+    // leaves the page by e-mail, and the recipient asked for the list, not the sender's search.
+    private Func<string, string>? SharedListHref => Declined("delekode")
+        ? null
+        : _sharedListAddress ??= code =>
+            Navigation.ToAbsoluteUri(_mirror.Address(new ExplorerUrlState { ShareCode = code }.ToQueryString()))
+                .ToString();
+
+    private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
+
     private bool Owns(string key) =>
         ExplorerUrlState.QueryKeys.Contains(key) && !Declined(key);
 
@@ -224,6 +236,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Search = Declined("search") ? null : state.Search,
             SelectedVariableId = Declined("variabelId") ? null : state.SelectedVariableId,
             SelectedInstrumentId = Declined("instrumentId") ? null : state.SelectedInstrumentId,
+            ShareCode = Declined("delekode") ? null : state.ShareCode,
             Sort = Declined("sort") ? SortField.Default : state.Sort,
             Direction = Declined("sortDir") ? SortDirection.Ascending : state.Direction,
             Page = Declined("page") ? 1 : state.Page,
@@ -250,6 +263,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         public Guid? SelectedInstrumentId { get; set; }
 
+        public string? ShareCode { get; set; }
+
         public static Binding From(ExplorerUrlState state) => new()
         {
             Search = state.Search,
@@ -260,6 +275,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             PageSize = state.PageSize,
             SelectedVariableId = state.SelectedVariableId,
             SelectedInstrumentId = state.SelectedInstrumentId,
+            ShareCode = state.ShareCode,
         };
 
         public ExplorerUrlState ToState() => new()
@@ -272,6 +288,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             PageSize = PageSize,
             SelectedVariableId = SelectedVariableId,
             SelectedInstrumentId = SelectedInstrumentId,
+            ShareCode = ShareCode,
         };
     }
 }

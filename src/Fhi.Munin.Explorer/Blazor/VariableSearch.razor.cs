@@ -325,6 +325,17 @@ public sealed partial class VariableSearch : ComponentBase
     [Parameter] public RenderFragment? VariableListFilters { get; set; }
 
     /// <summary>
+    /// The code of a shared variable list being opened, or null. While one is present the
+    /// <see cref="VariableList"/> tab is drawn, signed out too, and a new code opens on it.
+    /// </summary>
+    /// <remarks>
+    /// Only what draws the tab: <see cref="VariableListView"/> opens the list itself.
+    /// <see cref="VariableListFilters"/> is not drawn while one is present, since it narrows the
+    /// reader's own list and a shared one is not theirs.
+    /// </remarks>
+    [Parameter] public string? ShareCode { get; set; }
+
+    /// <summary>
     /// Whether the host says this reader is signed in. Defaults to <see langword="false"/>.
     /// </summary>
     /// <remarks>
@@ -1875,9 +1886,9 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>
     /// Whether there is a second tab worth drawing. A signed-out reader has no lists, so the
-    /// tablist would name a panel with nothing in it.
+    /// tablist would name a panel with nothing in it — unless a shared list is being opened.
     /// </summary>
-    private bool ShowTabs => VariableList is not null && IsAuthenticated;
+    private bool ShowTabs => VariableList is not null && (IsAuthenticated || ShareCode is not null);
 
     private string ResultTabId(ExplorerTab tab) => $"munin-explorer-tab-{_instance}-{tab}";
 
