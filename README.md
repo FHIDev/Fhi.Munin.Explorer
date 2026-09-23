@@ -1236,7 +1236,7 @@ package's (`Fhi.Metadata-wihod`, Stiler PR 39239). The tree is measured in `samp
 against the Stiler it pins, 0.1.98 today. `KildeView` has no `LevelLines`: the detail tree's rails are
 the stylesheet's, drawn for every reader, while `LevelLines` is the filter panel's own preference.
 
-Each row carries a node icon in front of its name — a folder on a delkilde, one glyph per
+Each row carries a node icon for its name — a folder on a delkilde, one glyph per
 datakategori on a datasamling, and nothing on a variabelgruppe, which is the mapping Kelda's own
 tree draws, legacy category slugs and all. `ShowNodeIcons` turns them off on `KildeHierarchyView`
 and on `KildeView`; the variable counts are untouched either way, and the package remembers no
