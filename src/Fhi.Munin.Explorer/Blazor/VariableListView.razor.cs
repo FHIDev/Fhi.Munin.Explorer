@@ -124,6 +124,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private Page<VariableListItem>? _page;
     private Guid? _shownList;
+
+    // Moved on every change of the list on screen, so a copy can tell the reader left and came back.
+    private int _shownListMoves;
     private int _pageNumber = 1;
 
     /// <summary>The holder's filter version as of the last change this view acted on.</summary>
@@ -960,6 +963,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _shownList = target;
+        _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
         await LoadPageAsync();
@@ -979,6 +983,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // Folded, not merely emptied: an open rename field over a list the reader did not open it
         // for reads as a rename under way. No caller here has focus inside it.
         _renaming = false;
+        ForgetCopyAndEmptyControls();
     }
 
     /// <summary>
@@ -998,6 +1003,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _downloadFailure = DownloadFailure.None;
         _desiredDataFailure = DesiredDataFailure.None;
         ForgetSharingFailures();
+        ForgetCopyAndEmptyFailures();
     }
 
     private async Task ChooseListAsync(ChangeEventArgs e)
@@ -1008,6 +1014,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _shownList = id;
+        _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
         ForgetFailures();
@@ -1144,6 +1151,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _shownList = created.Id;
+        _shownListMoves++;
         _pageNumber = 1;
         await LoadPageAsync();
     }
@@ -1439,6 +1447,84 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         return [.. ids];
+    }
+
+    private enum SaveNameProblem
+    {
+        None = 0,
+        Required,
+        TooLong,
+        Taken
+    }
+
+    /// <summary>The API's own ceiling on a list name.</summary>
+    private const int MaxListNameLength = 200;
+
+    /// <summary>
+    /// Why a name cannot be given to a new list, or <see cref="SaveNameProblem.None"/>: empty, over
+    /// the API's ceiling, or one the reader already uses — compared trimmed and case-insensitively.
+    /// </summary>
+    /// <remarks>The lists are read afresh, since another tab may have made one since.</remarks>
+    private async Task<SaveNameProblem> NameProblemAsync(string trimmed)
+    {
+        if (trimmed.Length == 0)
+        {
+            return SaveNameProblem.Required;
+        }
+
+        if (trimmed.Length > MaxListNameLength)
+        {
+            return SaveNameProblem.TooLong;
+        }
+
+        var existing = await Client.GetMyListsAsync();
+
+        return existing.Any(l => string.Equals(l.Name.Trim(), trimmed, StringComparison.OrdinalIgnoreCase))
+            ? SaveNameProblem.Taken
+            : SaveNameProblem.None;
+    }
+
+    /// <summary>What the field under a refused name says, for saving a shared list and for a copy.</summary>
+    private string? NameProblemMessage(SaveNameProblem problem) => problem switch
+    {
+        SaveNameProblem.Required => T.ListNameRequired,
+        SaveNameProblem.TooLong => T.ListNameTooLong,
+        SaveNameProblem.Taken => T.ListNameTaken,
+        _ => null
+    };
+
+    /// <summary>Every item in the list, unnarrowed, 1000 at a time; null when the list is gone.</summary>
+    private async Task<List<VariableListItem>?> ReadWholeListAsync(Guid list)
+    {
+        var seen = new HashSet<Guid>();
+        var items = new List<VariableListItem>();
+        var page = 1;
+
+        while (true)
+        {
+            var slice = await Client.GetMyListVariablesAsync(list, page, 1000);
+
+            if (slice is null)
+            {
+                return null;
+            }
+
+            if (slice.Items.Count == 0)
+            {
+                break;
+            }
+
+            items.AddRange(slice.Items.Where(item => seen.Add(item.VariableId)));
+
+            if (items.Count >= slice.TotalCount)
+            {
+                break;
+            }
+
+            page++;
+        }
+
+        return items;
     }
 
     public void Dispose()

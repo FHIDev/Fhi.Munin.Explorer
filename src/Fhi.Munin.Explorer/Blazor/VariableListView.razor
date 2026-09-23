@@ -50,7 +50,7 @@ else if (State?.IsAuthenticated == true)
                         aria-expanded="@Expanded(_openingShared)"
                         @onclick="ToggleOpeningSharedFromControl">@T.OpenSharedList</button>
 
-                @* Both act on the list on screen, so neither is drawn when there is none. *@
+                @* These act on the list on screen, so none is drawn when there is none. *@
                 @if (_shownList is not null)
                 {
                     <button class="hd-button-square button-square--ghost-blue"
@@ -58,6 +58,15 @@ else if (State?.IsAuthenticated == true)
                             id="@RenameToggleId"
                             aria-expanded="@Expanded(_renaming)"
                             @onclick="ToggleRenamingFromControl">@T.RenameList</button>
+
+                    @* Refused on an empty list the way sharing is, and described by the same reason. *@
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            id="@CopyToggleId"
+                            aria-expanded="@Expanded(_copying)"
+                            aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
+                            aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
+                            @onclick="ToggleCopyingFromControl">@T.CopyList</button>
 
                     @* Two steps because the API offers no undo, and in the page rather than a JS
                        confirm a host's CSP may suppress. One control, so neither step removes the
@@ -82,6 +91,26 @@ else if (State?.IsAuthenticated == true)
                                 @onclick="DeleteListAsync">@T.ConfirmDeleteYes</button>
                     }
 
+                    @* The delete control's shape, for the rows rather than the list. *@
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            id="@EmptyButtonId"
+                            aria-expanded="@Expanded(_confirmingEmpty)"
+                            aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
+                            aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
+                            @onclick="ToggleConfirmingEmptyFromControl">
+                        @(_confirmingEmpty ? T.ConfirmEmptyNo : T.EmptyListAction)
+                    </button>
+
+                    @if (_confirmingEmpty)
+                    {
+                        <span id="@ConfirmEmptyId">@T.ConfirmEmptyList</span>
+                        <button class="hd-button-square button-square--ghost"
+                                type="button"
+                                aria-describedby="@ConfirmEmptyId"
+                                @onclick="EmptyListAsync">@T.ConfirmEmptyYes</button>
+                    }
+
                     @* The reason is visible and wired by aria-describedby rather than a title
                        tooltip, which a keyboard reader never sees. aria-disabled for the reason the
                        create button gives; ToggleSharingFromControl refuses the press. *@
@@ -90,12 +119,12 @@ else if (State?.IsAuthenticated == true)
                             id="@ShareToggleId"
                             aria-expanded="@Expanded(_sharingList)"
                             aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
-                            aria-describedby="@(ShownListIsEmpty ? ShareEmptyReasonId : null)"
+                            aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
                             @onclick="ToggleSharingFromControl">@T.ShareList</button>
 
                     @if (ShownListIsEmpty)
                     {
-                        <span id="@ShareEmptyReasonId">@T.ShareListEmpty</span>
+                        <span id="@ListEmptyReasonId">@T.ListIsEmpty</span>
                     }
                 }
             </div>
@@ -177,10 +206,31 @@ else if (State?.IsAuthenticated == true)
                 </div>
             }
 
+            @* The same shape again, with the refusal the shared list's save gives a name in use. *@
+            @if (_copying && _shownList is not null)
+            {
+                <div>
+                    <label class="form-element__label" for="@CopyListNameId">@T.CopyListName</label>
+                    <input type="text"
+                           id="@CopyListNameId"
+                           aria-invalid="@(CopyNameMessage is null ? null : "true")"
+                           aria-describedby="@CopyNameDescribedBy"
+                           @bind="_copyName"
+                           @bind:event="onchange" />
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            aria-disabled="@AriaDisabled(!_copyInFlight)"
+                            @onclick="CopyListAsync">@T.CopyListSubmit</button>
+
+                    <p class="caption" id="@CopyNoteId">@T.CopyListLeavesDesiredData</p>
+                    <p id="@CopyNameProblemId" role="alert">@CopyNameMessage</p>
+                </div>
+            }
+
             @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
                same update is announced unreliably. Same shape as the explorer's own alert region. *@
             <div role="alert" aria-live="assertive" aria-atomic="true">
-                @(_failed ? T.ListLoadError : SharedListMessage ?? ShareMessage ?? DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
+                @(_failed ? T.ListLoadError : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
             </div>
 
             @* A refused annotation gets its own region, because it outlasts whatever the reader does
