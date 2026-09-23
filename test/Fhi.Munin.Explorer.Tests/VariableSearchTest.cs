@@ -1603,6 +1603,37 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Columns_WhenTheHostChangesOnlyDirectionAfterTheFirstRender_ThenNothingIsFetchedOrRaised()
+    {
+        // The XML docs promise Direction follows only with Sort; following it alone would look
+        // like a fix and turn them false with every other test green.
+        var directions = new List<SortDirection>();
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.DirectionChanged, d => directions.Add(d)));
+        var calls = client.Calls;
+
+        cut.Render(b => b.Add(c => c.Direction, SortDirection.Descending));
+
+        Assert.Equal(calls, client.Calls);
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
+        Assert.Empty(directions);
+    }
+
+    [Fact]
+    public void Search_WhenTheHostChangesSearchOrPageAfterTheFirstRender_ThenNothingIsFetched()
+    {
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
+        var calls = client.Calls;
+
+        cut.Render(b => b.Add(c => c.Search, "røyk").Add(c => c.Page, 3));
+
+        Assert.Equal(calls, client.Calls);
+        Assert.Equal("tale", client.LastSearch);
+        Assert.Equal(1, client.LastPage);
+    }
+
+    [Fact]
     public void Columns_WhenTheHostChangesSortAndTheFetchFails_ThenTheOldOrderStaysAndTheHostIsToldSo()
     {
         // The host is holding an order the API never delivered; without the callback its URL would

@@ -503,8 +503,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// The package does not remember the choice, by decision rather than by omission. Reaching
     /// <c>localStorage</c> from a Blazor circuit is a JS interop call, and this package makes none —
     /// it has to run inside a static-SSR host as well as an interactive one, and what is remembered
-    /// about a reader is the host's own policy to set. Like every other parameter here it is read
-    /// once at mount and owned by the component afterwards, so a host that wants it remembered
+    /// about a reader is the host's own policy to set. Like <see cref="Search"/> and <see cref="Filter"/>
+    /// it is read once at mount and owned by the component afterwards, so a host that wants it remembered
     /// stores what this raises and supplies it at the next mount; a later change to the parameter on
     /// a mounted component does nothing. A host that stores nothing gets the lines on at every
     /// visit, so a reader who never finds the switch still sees the tree as a hierarchy.
