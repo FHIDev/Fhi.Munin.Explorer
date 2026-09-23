@@ -839,6 +839,77 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Empty(cut.FindAll(".munin-explorer-group"));
     }
 
+    [Theory]
+    [InlineData("no", "Kvalitetsnote")]
+    [InlineData("en", "Quality Note")]
+    public void Kvalitetsnote_WhenItsLabelRepeatsTheSectionHeading_ThenOnlyTheHeadingIsVisible(
+        string language, string label)
+    {
+        var detail = QualityNoteSectioned();
+        detail = detail with
+        {
+            PropertyMetadata = [.. detail.PropertyMetadata.Select(entry => entry.Key == "Kvalitetsnote"
+                ? entry with { DisplayNameTranslations = new Dictionary<string, string> { [language] = label } }
+                : entry)],
+            AdditionalProperties = new Dictionary<string, string?>(detail.AdditionalProperties)
+            {
+                ["Kvalitetsnote"] = "Se [rapporten](https://example.org/report).",
+            },
+        };
+
+        var cut = Render(detail, language: language);
+        var section = cut.Find("#section-kvalitetsnote");
+
+        Assert.Single(section.QuerySelectorAll("h2, h3, h4, h5, h6"));
+        Assert.Equal(label, section.QuerySelector("dt.screenreader-only")?.TextContent);
+        Assert.Empty(section.QuerySelectorAll("dt:not(.screenreader-only)"));
+        Assert.Equal("https://example.org/report", section.QuerySelector("dd a")?.GetAttribute("href"));
+        Assert.Equal("Se rapporten.", section.QuerySelector("dd")?.TextContent.Trim());
+        Assert.Equal(language == "en" ? "no" : null, section.QuerySelector("dd")?.GetAttribute("lang"));
+        Assert.Contains("#section-kvalitetsnote", Targets(cut));
+    }
+
+    [Fact]
+    public void Kvalitetsnote_WhenItsLabelDiffersFromTheSectionHeading_ThenTheLabelStaysVisible()
+    {
+        var detail = QualityNoteSectioned();
+        detail = detail with
+        {
+            PropertyMetadata = [.. detail.PropertyMetadata.Select(entry => entry.Key == "Kvalitetsnote"
+                ? entry with { DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Dekningsgrad" } }
+                : entry)],
+        };
+
+        var cut = Render(detail);
+
+        Assert.Equal("Dekningsgrad", cut.Find("#section-kvalitetsnote dt:not(.screenreader-only)").TextContent);
+    }
+
+    [Fact]
+    public void Kvalitetsnote_WhenItsSectionHasSeveralFields_ThenEveryLabelStaysVisible()
+    {
+        var detail = QualityNoteSectioned();
+        var note = detail.PropertyMetadata.Single(entry => entry.Key == "Kvalitetsnote");
+        detail = detail with
+        {
+            PropertyMetadata = [.. detail.PropertyMetadata, note with
+            {
+                Key = "Merknad",
+                SortOrder = note.SortOrder + 1,
+                DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Merknad" },
+            }],
+            AdditionalProperties = new Dictionary<string, string?>(detail.AdditionalProperties)
+            {
+                ["Merknad"] = "Foreløpige tall.",
+            },
+        };
+
+        var cut = Render(detail);
+
+        Assert.Equal(["Kvalitetsnote", "Merknad"],
+            cut.FindAll("#section-kvalitetsnote dt:not(.screenreader-only)").Select(term => term.TextContent));
+    }
+
     // ---------------------------------------------------------------------------------
     // The placement: which sections this page has, what they are called and what order
     // they come in, none of it written down here. (Fhi.Metadata-lr6yh)
