@@ -48,6 +48,27 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         /// <summary>An exception every add throws, standing in for a 500 part-way through a copy.</summary>
         public Exception? AddThrows { get; init; }
 
+        /// <summary>What every add answers when it does not throw: false is a refusal without a fault.</summary>
+        public bool AddAccepted { get; init; } = true;
+
+        /// <summary>An exception the create throws, so the copy fails before any list exists.</summary>
+        public Exception? CreateThrows { get; init; }
+
+        /// <summary>An exception every remove throws.</summary>
+        public Exception? RemoveThrows { get; init; }
+
+        /// <summary>The remove call, counted from 1, from which every remove answers false.</summary>
+        public int? RemoveRefusedFrom { get; init; }
+
+        /// <summary>Left unfinished until the test completes it, so the reader can act meanwhile.</summary>
+        public TaskCompletionSource? HoldCreate { get; init; }
+
+        public TaskCompletionSource? HoldAdd { get; init; }
+
+        /// <summary>How many ids each write carried, so a test can see the batches were split.</summary>
+        public List<int> AddBatches { get; } = [];
+        public List<int> RemoveBatches { get; } = [];
+
         /// <summary>A search row, so a save button can be read beside the list view.</summary>
         public VariableSummary? SearchRow { get; init; }
 
@@ -58,30 +79,57 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         public int DesiredDataCalls { get; private set; }
         public int WriteCalls { get; private set; }
 
-        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<VariableList>>(
-                [.. _lists.Select(l => l with { VariableCount = _items[l.Id].Count })]);
+        /// <summary>Set part-way through a test, so the name check's own read fails.</summary>
+        public Exception? ListsThrows { get; set; }
 
-        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            ListsThrows is not null
+                ? throw ListsThrows
+                : Task.FromResult<IReadOnlyList<VariableList>>(
+                    [.. _lists.Select(l => l with { VariableCount = _items[l.Id].Count })]);
+
+        public override async Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
             WriteCalls++;
+
+            if (HoldCreate is not null)
+            {
+                await HoldCreate.Task;
+            }
+
+            if (CreateThrows is not null)
+            {
+                throw CreateThrows;
+            }
+
             Created.Add(name);
 
             var created = new VariableList { Id = Guid.NewGuid(), Name = name };
             _lists.Add(created);
             _items[created.Id] = [];
 
-            return Task.FromResult(created);
+            return created;
         }
 
-        public override Task<bool> AddVariablesToMyListAsync(
+        public override async Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
             WriteCalls++;
+            AddBatches.Add(variableIds.Count);
+
+            if (HoldAdd is not null)
+            {
+                await HoldAdd.Task;
+            }
 
             if (AddThrows is not null)
             {
                 throw AddThrows;
+            }
+
+            if (!AddAccepted)
+            {
+                return false;
             }
 
             Added.AddRange(variableIds);
@@ -93,13 +141,25 @@ public class CopyAndEmptyListTest : ExplorerTestContext
                 VariableName = _items[SourceId].FirstOrDefault(i => i.VariableId == v)?.VariableName,
             }));
 
-            return Task.FromResult(true);
+            return true;
         }
 
         public override Task<bool> RemoveVariablesFromMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
             WriteCalls++;
+            RemoveBatches.Add(variableIds.Count);
+
+            if (RemoveThrows is not null)
+            {
+                throw RemoveThrows;
+            }
+
+            if (RemoveBatches.Count >= RemoveRefusedFrom)
+            {
+                return Task.FromResult(false);
+            }
+
             Removed.AddRange(variableIds);
             _items[id].RemoveAll(i => variableIds.Contains(i.VariableId));
 
@@ -176,6 +236,10 @@ public class CopyAndEmptyListTest : ExplorerTestContext
     private static string Alert<T>(IRenderedComponent<T> cut) where T : IComponent =>
         cut.Find("div[role=alert][aria-live=assertive]").TextContent.Trim();
 
+    private const string RateLimited = "Du har gjort for mange forespørsler. Vent litt før du prøver igjen.";
+
+    private VariableListState State => Services.GetRequiredService<VariableListState>();
+
     private static string Heading(IRenderedComponent<VariableListView> cut) =>
         cut.Find("[id^=munin-explorer-list-heading-]").TextContent.Trim();
 
@@ -220,12 +284,12 @@ public class CopyAndEmptyListTest : ExplorerTestContext
     }
 
     // -----------------------------------------------------------------------
-    // AC2: a copy of a list two pages long carries every id, no annotation, and is shown
+    // AC2: a copy of a list three pages and two batches long carries every id, no annotation, and is shown
 
     [Fact]
     public void Copy_WhenTheNameIsUniqueAndTheListIsLongerThanAPage_ThenEveryIdIsCopiedAndTheCopyIsShown()
     {
-        var source = Items(1500);
+        var source = Items(2500);
         var client = new ListsClient(source);
         var cut = RenderView(client);
         cut.WaitForAssertion(() => Assert.Equal(25, RowCount(cut)));
@@ -237,11 +301,12 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal("Kopi til prosjektet", Heading(cut)));
         Assert.Equal(["Kopi til prosjektet"], client.Created);
         Assert.Equal(source.Select(i => i.VariableId).Order(), client.Added.Order());
+        Assert.Equal([IMuninExplorerClient.MaxVariablesPerBatch, 500], client.AddBatches);
         Assert.DoesNotContain(SourceId, client.AddedTo);
         Assert.Equal(0, client.DesiredDataCalls);
         Assert.Equal("", Alert(cut));
         // Counted against the copy, not left at the zero it was made with: the picker says so.
-        cut.WaitForAssertion(() => Assert.Contains("Kopi til prosjektet (1500 variabler)", cut.Markup));
+        cut.WaitForAssertion(() => Assert.Contains("Kopi til prosjektet (2500 variabler)", cut.Markup));
     }
 
     // -----------------------------------------------------------------------
@@ -264,13 +329,120 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.Equal([$"{SourceName} - kopi"], client.Created);
     }
 
+    [Fact]
+    public void Copy_WhenAnAddIsRefusedWithoutAFault_ThenTheCopyIsShownAndTheAlertSaysItIsIncomplete()
+    {
+        var client = new ListsClient(Items(3)) { AddAccepted = false };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal($"{SourceName} - kopi", Heading(cut)));
+        Assert.Equal(
+            "Kopien er ufullstendig: ikke alle variablene ble kopiert. Listen under viser det som kom med.",
+            Alert(cut));
+    }
+
+    [Fact]
+    public void Copy_WhenTheCreateIsThrottled_ThenTheSourceStaysShownAndActiveWithTheFormOpen()
+    {
+        var client = new ListsClient(Items(3)) { CreateThrows = new MuninExplorerRateLimitedException() };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+        var active = State.ActiveListId;
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(RateLimited, Alert(cut)));
+        Assert.Equal(SourceName, Heading(cut));
+        Assert.Equal(3, RowCount(cut));
+        Assert.Equal($"{SourceName} - kopi", Labelled(cut, "Navn på kopien").GetAttribute("value"));
+        Assert.Equal(active, State.ActiveListId);
+        Assert.Empty(client.AddBatches);
+    }
+
+    [Fact]
+    public void Copy_WhenTheNameCheckFailsAfterARefusal_ThenTheEarlierRefusalIsGone()
+    {
+        var client = new ListsClient(Items(3));
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Labelled(cut, "Navn på kopien").Change("hjerte og kar");
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Equal("true", Labelled(cut, "Navn på kopien").GetAttribute("aria-invalid")));
+
+        client.ListsThrows = new MuninExplorerRateLimitedException();
+        Labelled(cut, "Navn på kopien").Change("Et nytt navn");
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(RateLimited, Alert(cut)));
+        var field = Labelled(cut, "Navn på kopien");
+        Assert.NotEqual("true", field.GetAttribute("aria-invalid"));
+        Assert.DoesNotContain("Du har allerede en liste", Described(cut, field));
+    }
+
+    // -----------------------------------------------------------------------
+    // A reader who chooses another list while a copy runs stays on it, and it stays the active one
+
+    [Fact]
+    public async Task Copy_WhenTheReaderChoosesAnotherListWhileTheVariablesAreAdded_ThenTheyStayOnIt()
+    {
+        var hold = new TaskCompletionSource();
+        // The add fails once released, so the alert marks the moment the copy is over.
+        var client = new ListsClient(Items(3)) { HoldAdd = hold, AddThrows = new HttpRequestException("500") };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Single(client.AddBatches));
+
+        cut.Find("select").Change(OtherId.ToString());
+        cut.WaitForAssertion(() => Assert.Equal("Hjerte og kar", Heading(cut)));
+
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.StartsWith("Kopien er ufullstendig", Alert(cut)));
+        Assert.Equal("Hjerte og kar", Heading(cut));
+        Assert.Equal(OtherId, State.ActiveListId);
+        Assert.Equal("false", Button(cut, "Kopier liste").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public async Task Copy_WhenTheReaderChoosesAnotherListBeforeTheCopyExists_ThenTheCopyIsNotMadeActive()
+    {
+        var hold = new TaskCompletionSource();
+        var client = new ListsClient(Items(3)) { HoldCreate = hold };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, client.WriteCalls));
+
+        cut.Find("select").Change(OtherId.ToString());
+        cut.WaitForAssertion(() => Assert.Equal("Hjerte og kar", Heading(cut)));
+
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal(3, client.Added.Count));
+        Assert.Equal([$"{SourceName} - kopi"], client.Created);
+        Assert.Equal("Hjerte og kar", Heading(cut));
+        Assert.Equal(OtherId, State.ActiveListId);
+    }
+
     // -----------------------------------------------------------------------
     // AC4: emptying asks first, "Nei" stands it down, and confirming takes every id out
 
     [Fact]
     public void Empty_WhenConfirmed_ThenEveryIdIsRemovedTheNameStaysAndTheSearchRowOffersSave()
     {
-        var source = Items(1500);
+        var source = Items(2500);
         var client = new ListsClient(source)
         {
             SearchRow = new VariableSummary { Id = source[0].VariableId, Code = "V0000", PreferredTerm = "Variabel 0000" },
@@ -302,9 +474,43 @@ public class CopyAndEmptyListTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Contains("Denne listen er tom.", cut.Markup));
         Assert.Equal(source.Select(i => i.VariableId).Order(), client.Removed.Order());
+        Assert.Equal([IMuninExplorerClient.MaxVariablesPerBatch, 500], client.RemoveBatches);
         Assert.Equal(SourceName, Heading(cut));
         Assert.Equal(0, RowCount(cut));
         search.WaitForAssertion(() => Assert.Equal("false", SaveButton().GetAttribute("aria-pressed")));
+    }
+
+    [Fact]
+    public void Empty_WhenTheSecondBatchIsRefused_ThenTheAlertSaysSoAndWhatSurvivedIsShown()
+    {
+        var client = new ListsClient(Items(2500)) { RemoveRefusedFrom = 2 };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(25, RowCount(cut)));
+
+        Button(cut, "Tøm liste").Click();
+        Button(cut, "Ja, tøm listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke endre listen nå. Prøv igjen om litt.", Alert(cut)));
+        cut.WaitForAssertion(() => Assert.Contains("Variabel 2000", cut.Markup));
+        Assert.DoesNotContain("Variabel 0000", cut.Markup);
+        Assert.Equal(25, RowCount(cut));
+        Assert.Equal(SourceName, Heading(cut));
+        Assert.Equal([IMuninExplorerClient.MaxVariablesPerBatch, 500], client.RemoveBatches);
+    }
+
+    [Fact]
+    public void Empty_WhenTheRemoveIsThrottled_ThenTheAlertSaysSoAndTheRowsStay()
+    {
+        var client = new ListsClient(Items(3)) { RemoveThrows = new MuninExplorerRateLimitedException() };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Tøm liste").Click();
+        Button(cut, "Ja, tøm listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(RateLimited, Alert(cut)));
+        Assert.Equal(3, RowCount(cut));
+        Assert.Equal(SourceName, Heading(cut));
     }
 
     // -----------------------------------------------------------------------

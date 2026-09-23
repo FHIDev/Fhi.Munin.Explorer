@@ -115,6 +115,7 @@ public sealed partial class VariableListView
         var name = _copyName.Trim();
 
         ForgetFailures();
+        _copyNameProblem = SaveNameProblem.None;
         _copyInFlight = true;
 
         VariableList? created = null;
@@ -138,8 +139,11 @@ public sealed partial class VariableListView
             }
 
             // Active before the writes, so the holder counts them against the copy and the save
-            // buttons read its membership rather than the source's.
-            await State.SetActiveListAsync(created.Id);
+            // buttons read its membership — unless the reader has since chosen another list.
+            if (_shownList == source)
+            {
+                await State.SetActiveListAsync(created.Id);
+            }
 
             foreach (var chunk in ids.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
             {
@@ -171,7 +175,8 @@ public sealed partial class VariableListView
             _copyInFlight = false;
         }
 
-        if (created is null)
+        // A reader who chose another list while this ran stays on it; the copy is made regardless.
+        if (created is null || _shownList != source)
         {
             return;
         }

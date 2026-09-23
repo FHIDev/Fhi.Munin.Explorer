@@ -66,17 +66,6 @@ public sealed partial class VariableListView
         Throttled
     }
 
-    private enum SaveNameProblem
-    {
-        None = 0,
-        Required,
-        TooLong,
-        Taken
-    }
-
-    /// <summary>The API's own ceiling on a list name.</summary>
-    private const int MaxListNameLength = 200;
-
     private string ShareToggleId => $"munin-explorer-share-toggle-{_instance}";
 
     /// <summary>"Listen er tom", which every control an empty list refuses is described by.</summary>
@@ -367,68 +356,6 @@ public sealed partial class VariableListView
         }
     }
 
-    /// <summary>
-    /// Why a name cannot be given to a new list, or <see cref="SaveNameProblem.None"/>: empty, over
-    /// the API's ceiling, or one the reader already uses — compared trimmed and case-insensitively.
-    /// </summary>
-    /// <remarks>The lists are read afresh, since another tab may have made one since.</remarks>
-    private async Task<SaveNameProblem> NameProblemAsync(string trimmed)
-    {
-        if (trimmed.Length == 0)
-        {
-            return SaveNameProblem.Required;
-        }
-
-        if (trimmed.Length > MaxListNameLength)
-        {
-            return SaveNameProblem.TooLong;
-        }
-
-        var existing = await Client.GetMyListsAsync();
-
-        return existing.Any(l => string.Equals(l.Name.Trim(), trimmed, StringComparison.OrdinalIgnoreCase))
-            ? SaveNameProblem.Taken
-            : SaveNameProblem.None;
-    }
-
-    /// <summary>What the field under a refused name says, for saving a shared list and for a copy.</summary>
-    private string? NameProblemMessage(SaveNameProblem problem) => problem switch
-    {
-        SaveNameProblem.Required => T.SharedListNameRequired,
-        SaveNameProblem.TooLong => T.SharedListNameTooLong,
-        SaveNameProblem.Taken => T.SharedListNameTaken,
-        _ => null
-    };
-
-    /// <summary>Every item in the list, unnarrowed, a page of 1000 at a time.</summary>
-    private async Task<List<VariableListItem>> ReadWholeListAsync(Guid list)
-    {
-        var seen = new HashSet<Guid>();
-        var items = new List<VariableListItem>();
-        var page = 1;
-
-        while (true)
-        {
-            var slice = await Client.GetMyListVariablesAsync(list, page, 1000);
-
-            if (slice is null || slice.Items.Count == 0)
-            {
-                break;
-            }
-
-            items.AddRange(slice.Items.Where(item => seen.Add(item.VariableId)));
-
-            if (items.Count >= slice.TotalCount)
-            {
-                break;
-            }
-
-            page++;
-        }
-
-        return items;
-    }
-
     private void ToggleSavingSharedFromControl(MouseEventArgs released) => Toggle(released, ref _savingShared);
 
     /// <summary>
@@ -445,6 +372,7 @@ public sealed partial class VariableListView
         var name = _saveSharedName.Trim();
 
         ForgetFailures();
+        _saveNameProblem = SaveNameProblem.None;
 
         VariableList? created;
 
