@@ -168,9 +168,9 @@ public partial class VariableSearch
     /// arrangement for the pager's reason: the landmark is worth having, and it is named so that
     /// it does not sit anonymously among the host page's own. The name is on the region rather
     /// than on the <c>&lt;ol&gt;</c>, which would otherwise be announced with the same words one
-    /// breath later. No class on the list, for the reason the panel's kilde trail has none: Stiler
-    /// has no breadcrumb rule that can be read back off its compiled stylesheet, so a host draws
-    /// the chevrons and a host that draws nothing gets a numbered list that still reads correctly.
+    /// breath later. No class on the list, and none on the panel's kilde trail: neither trail's
+    /// steps navigate — these narrow the filter, and that one's lone button discloses a kilde in
+    /// place — so Stiler's <c>.breadcrumbs</c> names, worn by <see cref="DetailTrail"/>, do not fit.
     /// </para>
     /// <para>
     /// Two explorers on one page do put two landmarks named "Valgt hierarki" in the list, and

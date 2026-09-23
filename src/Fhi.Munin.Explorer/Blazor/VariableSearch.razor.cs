@@ -106,9 +106,11 @@ internal enum PanelTab
 /// The hierarchy trail over the results adds one name of ours — <c>munin-explorer-breadcrumb</c> —
 /// and reuses <c>munin-explorer-crumb</c>, which the variable panel's kilde trail already wears,
 /// for the steps themselves. It is an <c>&lt;ol&gt;</c> of <c>&lt;button&gt;</c>s for the reason
-/// that trail is one: Stiler has no breadcrumb rule that can be read back off its compiled
-/// stylesheet, so the chevrons between the steps are a host's to draw and a host that draws
-/// nothing gets a numbered list that still reads correctly, in order, with the right names.
+/// that trail is one: neither trail's steps navigate — these narrow the filter, and that one's
+/// lone button discloses a kilde in place — so Stiler's <c>.breadcrumbs</c> names, worn by the
+/// detail pages' trail (<see cref="DetailTrail"/>), do not apply. The chevrons are a host's to
+/// draw, and a host that draws nothing gets a numbered list that still reads correctly, in order,
+/// with the right names.
 /// </para>
 /// <para>
 /// The column picker adds eight names, all of them helsedata's own and none of them ours. They
@@ -136,10 +138,12 @@ internal enum PanelTab
 /// <c>&lt;dl&gt;</c> of labels and values, an <c>&lt;ol&gt;</c> for the kilde trail and a
 /// <c>&lt;ul&gt;</c> for the variabelgrupper and kodeverk, wearing Stiler's
 /// <c>form-element__label</c>, <c>caption</c>, <c>infobox</c> and the ghost square button for the
-/// disclosure that opens it. Stiler has no definition list, no breadcrumb and no key/value block
-/// that can be read back off its compiled stylesheet, so what a host supplies is base styling for
-/// those three elements — a host that supplies none still gets a panel that reads correctly, just
-/// an unindented one. <c>munin-explorer-detail</c> is a handle that Stiler also dresses, in
+/// disclosure that opens it. This trail's steps do not navigate either — the kilde step is a
+/// button disclosing it in place, the rest plain text — so Stiler's <c>.breadcrumbs</c> does not
+/// describe them. Stiler has no definition list and no key/value block that can be read back off
+/// its compiled stylesheet, so what a host supplies is base styling for those three elements — a
+/// host that supplies none still gets a panel that reads correctly, just an unindented one.
+/// <c>munin-explorer-detail</c> is a handle that Stiler also dresses, in
 /// <c>components/munin-explorer/_detail.scss</c>.
 /// </para>
 /// <para>
