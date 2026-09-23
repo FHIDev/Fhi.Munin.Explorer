@@ -92,8 +92,8 @@ public class KildeShareColumnsTest : ExplorerTestContext
 
         Assert.DoesNotContain(KodeverkHeading, Headers(cut));
         Assert.DoesNotContain(StatisticsHeading, Headers(cut));
-        Assert.Empty(cut.FindAll(".munin-explorer-kilder tbody .screenreader-only")
-            .Where(e => e.TextContent == "ikke målt"));
+        Assert.DoesNotContain(cut.FindAll(".munin-explorer-kilder tbody .screenreader-only"),
+            e => e.TextContent == "ikke målt");
     }
 
     [Fact]
