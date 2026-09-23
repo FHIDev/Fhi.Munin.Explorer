@@ -784,7 +784,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   and gives the other table the `:not(:has(…))` arm. That is what
   `Fhi.Helsedata.Stiler` PR 39282 does. It postdates 0.1.67 — that release was already the newest
   on the feed when the PR merged to `main` at 08:50 UTC on 2026-09-11 — and 0.1.68 is the first
-  release that carries these thresholds.
+  release that carries these thresholds. It stops at eleven optional columns, so `--cols-17` and
+  `--cols-18` have no threshold in Stiler yet (`Fhi.Metadata-6xppi`). Until they do, a table with
+  twelve or thirteen optional columns keeps its sideways scroll and its header does not stick. The
+  sample stylesheets carry estimated thresholds for them.
 
   **The whole list, name by name.** The paragraphs above pick out the names worth an argument.
   They used to end in hand-written counts, and every one of them had gone stale: `kilde*` had grown

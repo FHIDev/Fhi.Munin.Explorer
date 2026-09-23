@@ -4152,6 +4152,34 @@ table.munin-explorer-data-list tbody th {
   }
 }
 
+/* Twelve and thirteen optional columns are ahead of Stiler, so these widths are estimates scaled
+   from ModernHost to the pin's 1815px, not measured against Stiler — Fhi.Metadata-6xppi. */
+@container munin-explorer-kilder (min-width:1916px) {
+  .munin-explorer-kilder-scroll--cols-17:has(.munin-explorer-kilder__select),
+  .munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select)) {
+    overflow-x: visible;
+  }
+  .munin-explorer-kilder-scroll--cols-17:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th,
+  .munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+    box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+    position: sticky;
+    top: var(--munin-explorer-sticky-top, 0);
+  }
+}
+
+@container munin-explorer-kilder (min-width:2012px) {
+  .munin-explorer-kilder-scroll--cols-18:has(.munin-explorer-kilder__select),
+  .munin-explorer-kilder-scroll--cols-17:not(:has(.munin-explorer-kilder__select)) {
+    overflow-x: visible;
+  }
+  .munin-explorer-kilder-scroll--cols-18:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th,
+  .munin-explorer-kilder-scroll--cols-17:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+    box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+    position: sticky;
+    top: var(--munin-explorer-sticky-top, 0);
+  }
+}
+
 .munin-explorer .munin-explorer-selection {
   align-items: center;
   display: flex;

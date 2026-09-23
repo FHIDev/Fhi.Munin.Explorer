@@ -579,10 +579,10 @@ else
                Status and Opprettet always, and eleven behind the picker above, of which Kelda's
                DEFAULT_VISIBLE turns three on — plus our two coverage shares after Variabler.
 
-               The picker lists those ten in a DIFFERENT order (kelda.tsx:74) — counts before free
-               text, where the table puts free text first — and that is Kelda's, not a slip on either
-               side. Copying one order and not the other would make this table Kelda's in the control
-               and not in the columns.
+               The picker lists all thirteen: Kelda's eleven in Kelda's DIFFERENT order (kelda.tsx:74) —
+               counts before free text, where the table puts free text first — and not a slip on either
+               side, then our two shares last, since Kelda has no place for them. Copying one of Kelda's
+               orders and not the other would make this table Kelda's in the control and not in the columns.
 
                Two control columns come before all of them: the expand toggle, which is ours alone, and
                the checkbox, which is Kelda's and is drawn only where the host wired the handover. Both
@@ -893,7 +893,7 @@ else
         @<td class="@CountClass(percent).Class">@($"{percent}\u00A0%")</td>;
 
     private RenderFragment UnmeasuredShare() =>
-        @<td class="@CountClass(0).Class"><span aria-hidden="true">–</span><span class="screenreader-only">@T.ShareNotMeasured</span></td>;
+        @<td class="@DimmedCountClass"><span aria-hidden="true">–</span><span class="screenreader-only">@T.ShareNotMeasured</span></td>;
 
     // munin-explorer-kilder__sort rather than the variable explorer's header class, whose two
     // Stiler rules are scoped to that one's pseudo-table prefix (Fhi.Metadata-l9l2n.106).

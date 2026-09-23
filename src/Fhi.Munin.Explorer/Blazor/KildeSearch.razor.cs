@@ -1438,8 +1438,12 @@ public sealed partial class KildeSearch : ComponentBase
     /// <param name="largest">The largest count among the drawn rows, or 0 for a column with no bar.</param>
     private static CountCell CountClass(int count, int largest = 0) =>
         count == 0
-            ? new("munin-explorer-kilder__count munin-explorer-kilder__count--zero", null)
+            ? new(DimmedCountClass, null)
             : new("munin-explorer-kilder__count", largest > 0 ? BarWidth(count, largest) : null);
+
+    // Named apart from CountClass because the unmeasured share cell wears it too, and that cell is
+    // not a zero: it must not change whenever what a nought count draws does.
+    private const string DimmedCountClass = "munin-explorer-kilder__count munin-explorer-kilder__count--zero";
 
     /// <summary>A whole percent, 1 to 100, so a non-zero count never draws an empty fill.</summary>
     private static string BarWidth(int count, int largest) =>
