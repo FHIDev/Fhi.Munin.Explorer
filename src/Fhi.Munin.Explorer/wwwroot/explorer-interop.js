@@ -57,7 +57,8 @@ export function observeHeroFacts(barId, factsId) {
   window.addEventListener('hashchange', reread);
 
   // On the document and captured, so an inner scroller's `scrollend` — which does not bubble — is
-  // caught on the way down, and the window's own, fired at the document, in its target phase.
+  // caught on the way down, and the window's own in its target phase. Below the floor (Safari < 18)
+  // only `hashchange` re-reads, so a pushState host keeps the stale bar: this bead's known limit.
   if ('onscrollend' in window) {
     document.addEventListener('scrollend', reread, { capture: true, passive: true });
   }
