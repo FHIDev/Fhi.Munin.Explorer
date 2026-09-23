@@ -366,7 +366,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
     The rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**;
-    `samples/HostileHost` pins 0.1.98 today (`Fhi.Metadata-4xqhq`).
+    `samples/HostileHost` pins 0.1.103 today (`Fhi.Metadata-17k34`).
     The words for those glyphs are under the facets, in an `Ikonforklaring` legend that adds two
     names of its own — `munin-explorer-filters__legend` on the list and
     `munin-explorer-filters__legend-item` on each row. It lists the whole vocabulary rather than
@@ -382,7 +382,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the row each pairing sits on and the columns the eighteen of them are laid out in. Both sample
     stylesheets already carried the rules before any markup wore the names, copied off the published
     0.1.75 that `samples/HostileHost` pinned when they were written and compared since against the
-    0.1.98 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
+    0.1.103 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
     evidence on this side that Stiler really has them — nothing in this repository reads Stiler,
     and that guard runs only in the job holding the feed secret. A legend that rests shut is a
     `<details>` and nothing invented: its `<summary>` is the control's accessible name and its
@@ -406,10 +406,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     under a group heading already carrying the API's word for the same value. A kildetype the table
     does not name, and a kilde carrying none at all, wear no badge — an empty capsule would say they
     were one of them. Both sample stylesheets already carried the rule before any markup wore the
-    name — stood in under their "since the previous Stiler pin" heading,
+    name — stood in under their "since an earlier Stiler pin" heading,
     which is where a rule copied off the pinned published package goes — so
-    `assert-sample-css-matches-stiler.sh` against that pin is what says whether 0.1.75 really has
-    it. Nothing on this side reads Stiler, and this paragraph does not claim to —
+    `assert-sample-css-matches-stiler.sh` against that pin is what says whether the published
+    Stiler really has it — 0.1.103 today, 0.1.75 when this was written. Nothing on this side
+    reads Stiler, and this paragraph does not claim to —
     `Fhi.Metadata-gegtb` is the bead that goes and looks, and writes the rule if it is not there.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
@@ -488,9 +489,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     of a sticky header, rather than under it. Stiler's rules for
     it are written — `components/munin-explorer/_page.scss`, merged as PR 39299 — and hang the
     offset on the `data-nav-section` attribute rather than on the class. That PR bumped no version
-    of its own, but 0.1.75 carries the file: both sample stylesheets stand in at its declarations
-    for the name and `assert-sample-css-matches-stiler.sh` finds no divergence against that pin.
+    of its own, but 0.1.75 carries the file, and so does the 0.1.103 pinned today: both sample
+    stylesheets stand in at its declarations for the name and
+    `assert-sample-css-matches-stiler.sh` finds no divergence against the pin.
     Which PR bumped a version says nothing about what a later release shipped — read the pin.
+    Nested fragment targets use `munin-explorer-page__anchor` for the same responsive scroll
+    clearance without `data-nav-section` or a contents entry. Stiler 0.1.103 supplies this rule
+    (`Fhi.Metadata-17k34`); hosts need that version or later when adopting nested criteria.
+    On datasamling pages, criteria and the quality-note group are composed inside About even
+    when the flat API places them separately. Their fragment targets remain, while the contents
+    lists only the enclosing section. Catalogue labels and the remaining section order are preserved.
     The same views add the chassis those sections sit in — `munin-explorer-page` on the root,
     `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc` —
     written once, by `DetailPage`, rather than once under each prefix. The three that have a prefix
@@ -499,13 +507,13 @@ These are not style preferences — each one is a host that breaks otherwise.
     `munin-explorer-kilde__datasamlinger` is
     styled under `munin-explorer-kilder__expanded` in an expanded result row, so a clean rename
     would have taken a surface nobody would think to retest with it. The body is the exception and
-    wears `munin-explorer-page__body` alone: every published Stiler still lays
+    wears `munin-explorer-page__body` alone: older Stiler releases lay
     `munin-explorer-kilde__body` and its two siblings out as `minmax(0, 1fr) 320px`, so an element
     wearing an old name and the chassis name would carry a `grid-template-columns` from each of two
     blocks and draw whichever the host loaded last. Handles, all four — undefined, the body and its
     two columns are blocks in ordinary flow, which stacks the contents column above the main one and
     loses no words. Stiler's rules are written, in the same
-    `_page.scss` and merged as PR 39300, and 0.1.75 carries them by the same reading of the pin.
+    `_page.scss` and merged as PR 39300, and 0.1.75 carries them, as the pinned 0.1.103 does.
     The contents column is drawn only when something fills it, which since
     `Fhi.Metadata-35w0p.12` is the contents nav — and only when the view drew a section
     for it to link to, so a view with none still has no rail. Both sample stylesheets scope the
@@ -534,15 +542,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     trail, before the hero facts, using `DetailPage.ActionsAfterHeader`; other views retain the
     default placement above the header. Both are handles: undefined, the eyebrow
     is a paragraph above the title and the row is its children in ordinary flow, and no word is
-    lost either way. Stiler 0.1.75 — the pin `samples/HostileHost` restores — carries a rule for
-    each, in the same `components/munin-explorer/_page.scss`, and both sample stylesheets already
-    stand in at its declarations. Four of the five surfaces set the eyebrow — the kilde,
+    lost either way. `Fhi.Helsedata.Stiler` 0.1.103 — the pin `samples/HostileHost` restores —
+    carries a rule for each, as every release since 0.1.75 has, in the same
+    `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at its
+    declarations. Four of the five surfaces set the eyebrow — the kilde,
     datasamling, variable and instrument views, each naming its own kind. `VariableListView` sets no
     chrome at all: the saved-list view's own is a bead of its own.
     Under the name block those four add `munin-explorer-page__facts`, the hero row: one `<dl>`
     holding a `<div>` per fact, each a `<dt>` label over a `<dd>` value with an optional `<small>`
     under it carrying the qualifier that makes the value honest — `630 variabler`, then
-    `i 6 datasamlinger`. Six facts per page, because Stiler 0.1.75 lays the list out as
+    `i 6 datasamlinger`. Six facts per page, because Stiler lays the list out as
     `repeat(6, minmax(0, 1fr))` at desktop, three tracks below 1080px and two below 600px, so five
     leaves a hole and seven wraps to a row of one; a record the catalogue has not filled in draws
     fewer, since a fact with no value is dropped rather than drawn empty. A handle: undefined, the
@@ -551,7 +560,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     facts, because a list of saved variables is not an entity with facts about it. The instrument
     page names two — how many variables it holds and how long it has been in use — and the row
     draws whichever of them the catalogue filled in. Both sample
-    stylesheets stand in at exactly what the pinned 0.1.75 declares, the `small` included.
+    stylesheets stand in at exactly what the pinned 0.1.103 declares, the `small` included — and
+    at 0.1.75 they no longer would, since the label's `overflow-wrap: anywhere` came later.
     `DetailFact.LabelLang` marks a label that falls back to another language, independently of
     the value’s `Lang`, in both the hero and sticky bar.
 
@@ -581,7 +591,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     jumps past the hero row rather than scrolling — an in-page anchor, which is what the contents
     nav's own links are — reaches the foot of the page with no bar until they scroll a little.
     `Fhi.Metadata-14j7i` is that, measured rather than reasoned about.
-    `Fhi.Helsedata.Stiler` 0.1.98 — the pin `samples/HostileHost` restores — carries all four in
+    `Fhi.Helsedata.Stiler` 0.1.103 — the pin `samples/HostileHost` restores — carries all four in
     `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at exactly what it
     declares. `VariableListView` draws no bar: it names no hero facts, and the bar exists only where
     that row does.
@@ -595,14 +605,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     surfaces and the class is passed in for the one piece they share. Handles, both: a definition
     list is a definition list undrawn, and the language name is a `<p>` so it keeps its own line
     whatever a host declares. Stiler's rules are written — the same
-    `components/munin-explorer/_page.scss`, merged as PR 39301 — and the fact list's copy the
-    panel's numbers declaration for declaration, so on a host that has 0.1.75 its grid and type move
-    nothing. Not so in the sample hosts: their `munin-explorer-meta__grid` stand-in diverges from
-    Stiler's by six recorded declarations, so a sample detail page's fact lists gain a 40px row gap,
-    a 24px bottom margin and the `font` shorthand they had none of. The language marker moves on
-    both: 0.1.75 declares `margin: 0` for it and none of the panel marker's uppercase,
-    letter-spacing or grey, which `assert-sample-css-matches-stiler.sh` names three divergences at a
-    time against the pin. So the language name draws at body size on a host that has Stiler until
+    `components/munin-explorer/_page.scss`, merged as PR 39301 — and the fact list's copied the
+    panel's numbers declaration for declaration in 0.1.75, so on a host that had it the grid and
+    type moved nothing. At the pinned 0.1.103 they have parted: the fact list's `dd` carries a
+    `max-width: 50ch` the panel's has none of. Not so in the sample hosts: their
+    `munin-explorer-meta__grid` stand-in diverges from Stiler's by six recorded declarations, so a
+    sample detail page's fact lists gain a 40px row gap, a 24px bottom margin and the `font`
+    shorthand they had none of. The language marker moves on both: Stiler declares `margin: 0` for
+    it and none of the panel marker's uppercase, letter-spacing or grey, which
+    `assert-sample-css-matches-stiler.sh` names three divergences at a time against the pin. So
+    the language name draws at body size on a host that has Stiler until
     `Fhi.Metadata-4ozhj` lands, and the sample stand-ins draw it that way too rather than inventing
     the look the guard cannot see.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
@@ -935,6 +947,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-page__language` | handle |
   | `munin-explorer-page__main` | handle |
   | `munin-explorer-page__section` | handle |
+  | `munin-explorer-page__anchor` | handle |
   | `munin-explorer-page__stuckbar` | handle |
   | `munin-explorer-page__stuckbar--on` | handle |
   | `munin-explorer-page__stuckbar-inner` | handle |

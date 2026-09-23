@@ -60,6 +60,18 @@ public sealed record DatasamlingDetail
     /// <summary>How often data is collected. Not inherited.</summary>
     [JsonPropertyName("frekvens")] public string? Frequency { get; init; }
 
+    /// <summary>
+    /// The day the source system itself last changed the datasamling, as opposed to
+    /// <see cref="LastUpdated"/>, which is when Munin last wrote its copy. Not inherited.
+    /// </summary>
+    /// <remarks>
+    /// Sent as a bare ISO date with no time or offset, e.g. <c>"2026-05-11"</c>, so it is a
+    /// <see cref="DateOnly"/> rather than a <see cref="DateTimeOffset"/>: an offset type would invent
+    /// a UTC midnight the source never stated, which renders as the previous day west of UTC. Null
+    /// when the source system has reported no date, or reported one Munin could not read.
+    /// </remarks>
+    [JsonPropertyName("sistOppdatertKildesystem")] public DateOnly? SourceSystemLastUpdated { get; init; }
+
     /// <summary>Own value if set, otherwise resolved up the delkilde chain to the kilde.</summary>
     [JsonPropertyName("effectiveLovverk")] public string? EffectiveLegalBasis { get; init; }
 
@@ -78,6 +90,9 @@ public sealed record DatasamlingDetail
     /// <summary>Own value if set, otherwise inherited.</summary>
     [JsonPropertyName("effectiveGyldigTil")] public DateTimeOffset? EffectiveValidTo { get; init; }
 
+    /// <summary>Own value if set, otherwise inherited.</summary>
+    [JsonPropertyName("effectiveInklusjonsOgEksklusjonskriterier")] public string? EffectiveInclusionAndExclusionCriteria { get; init; }
+
     /// <summary>
     /// Always the owning kilde's kildetype — there is no per-datasamling column. Null exactly when
     /// that kilde has none.
@@ -88,9 +103,8 @@ public sealed record DatasamlingDetail
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
 
     /// <summary>
-    /// Who is included in and excluded from the datasamling. Curated on the kilde level in Munin
-    /// but surfaced here as its own field, because it is the answer to the first question a
-    /// researcher asks about a datasamling. Null when not filled in.
+    /// Own inclusion and exclusion criteria; null when not filled in. Use
+    /// <see cref="EffectiveInclusionAndExclusionCriteria"/> for the inherited value.
     /// </summary>
     [JsonPropertyName("inklusjonsOgEksklusjonskriterier")] public string? InclusionAndExclusionCriteria { get; init; }
 

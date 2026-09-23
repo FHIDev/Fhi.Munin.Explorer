@@ -1788,15 +1788,6 @@ table.munin-explorer-data-list tbody th {
    a main column, a tag reading as a paragraph — while `assert-sample-css-in-step.sh` said the
    samples were in step, which they were. That is why the script has a second clause: the names are
    read out of src/ and each one is asked for a rule. */
-/* The name is rendered at whatever heading level keeps the host page's outline unbroken, so it is
-   matched by level rather than by element — and its top margin comes off, because the drilldown
-   above already supplies the gap and `.headline` would add a second one. */
-.munin-explorer-kilde > * > :is(h2, h3, h4, h5, h6):first-child,
-.munin-explorer-datasamling > * > :is(h2, h3, h4, h5, h6):first-child,
-.munin-explorer-whole > * > :is(h2, h3, h4, h5, h6):first-child {
-  margin-top: 0;
-}
-
 /* The fourth selector is the chassis's own, worn by the saved-list view: that surface has no
    prefix of its own, and one name block drawn four ways would read as four components. */
 .munin-explorer-kilde__header,
@@ -1831,25 +1822,6 @@ table.munin-explorer-data-list tbody th {
   max-width: 65ch;   /* prose, and prose the full width of a wide window is unreadable */
 }
 
-/* Nothing has worn these names since the chassis took the body over in Fhi.Metadata-35w0p.9, so
-   like the aside below they match nothing and stand in for Stiler's own two tracks again — the one
-   track 35w0p.6 collapsed them to fixed a rail no element can be in now. Out with Stiler's, 39. */
-.munin-explorer-kilde__body,
-.munin-explorer-datasamling__body,
-.munin-explorer-whole__body {
-  display: grid;
-  gap: 24px;
-}
-
-@media (min-width: 1024px) {
-  .munin-explorer-kilde__body,
-  .munin-explorer-datasamling__body,
-  .munin-explorer-whole__body {
-    grid-template-columns: minmax(0, 1fr) 320px;
-    align-items: start;
-  }
-}
-
 /* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
    The datasamlinger table has four columns of Norwegian names in it and would widen the track past
    the page rather than shrink. Same trap the filter panel meets, same fix. */
@@ -1857,28 +1829,6 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-datasamling__main,
 .munin-explorer-whole__main {
   min-inline-size: 0;
-}
-
-/* Nothing has emitted an aside since Fhi.Metadata-35w0p.6, so this matches nothing. It stays
-   rather than going: a stand-in draws what the stylesheet a host restores draws, and Stiler still
-   carries it. It leaves with Stiler's, under Fhi.Metadata-35w0p.39. */
-.munin-explorer-kilde__aside {
-  padding: 16px;
-  border-radius: 4px;
-  background: var(--grey10);
-  border: 1px solid rgb(230, 230, 237);
-}
-.munin-explorer-datasamling__aside {
-  padding: 16px;
-  border-radius: 4px;
-  background: var(--grey10);
-  border: 1px solid rgb(230, 230, 237);
-}
-.munin-explorer-whole__aside {
-  padding: 16px;
-  border-radius: 4px;
-  background: var(--grey10);
-  border: 1px solid rgb(230, 230, 237);
 }
 
 /* The chassis the three detail views share, worn beside the prefix each of them already had. This
@@ -1945,8 +1895,10 @@ table.munin-explorer-data-list tbody th {
    (test/sample-css-known-divergences.txt), so a fact list here gains a 40px row gap, a 24px bottom
    margin and a font shorthand it had none of, and loses the marker's uppercase and grey.
 
-   The three below are the stand-in's own, as the same three above the panel grid are: Stiler
-   declares nothing for a grid item, and a <dd> left alone keeps the browser's 40px indent. */
+   The dt, the dd's margin and the dd + dd gap below are the stand-in's own: Stiler has no rule for
+   a dt or for dd + dd here, and zeroes a dd's browser indent in `.munin-explorer-detail`, __facts
+   and __stuckbar, none of which __fields sits inside. The dd's measure and the paragraph's are
+   Stiler's. */
 .munin-explorer-page__fields dt {
   margin-bottom: 4px;
 }
@@ -2019,16 +1971,6 @@ table.munin-explorer-data-list tbody th {
   color: var(--dark);
   text-decoration: none;
   transition: background-color 0.2s ease;
-}
-
-/* Copied from Stiler's `_trail.scss`, selector for selector: a stand-in that works differently from
-   the rule it stands in for is not standing in for it. Inert twice over — Fhi.Metadata-35w0p.6
-   stopped emitting the aside and Fhi.Metadata-35w0p.11 took the class off the detail fact lists —
-   and kept for as long as Stiler keeps it. (Fhi.Metadata-hi0po) */
-.munin-explorer-kilde__aside .munin-explorer-meta__grid,
-.munin-explorer-whole__aside .munin-explorer-meta__grid,
-.munin-explorer-datasamling__aside .munin-explorer-meta__grid {
-  grid-template-columns: minmax(0, 1fr);
 }
 
 /* Inklusjons- og eksklusjonskriterier: prose in the main column, held to a readable measure the
@@ -3310,7 +3252,8 @@ table.munin-explorer-data-list tbody th {
   padding-top: 8px;
 }
 
-/* Rules introduced since the previous Stiler pin; compared against the published 0.1.75. */
+/* Rules introduced since an earlier Stiler pin. The guard compares them against whichever
+   release the csproj pins — 0.1.98 today — not against the version they were written for. */
 .munin-explorer-filters__toolbar > .hd-button-square:not([aria-pressed]) {
   background: none;
   color: rgb(50, 55, 141);
@@ -3625,7 +3568,8 @@ table.munin-explorer-data-list tbody th {
   background: rgb(230, 230, 237);
 }
 
-.munin-explorer-page__section[data-nav-section] {
+.munin-explorer-page__section[data-nav-section],
+.munin-explorer-page__anchor {
   scroll-margin-top: 140px;
 }
 
@@ -3638,7 +3582,8 @@ table.munin-explorer-data-list tbody th {
 }
 
 @media (max-width:767px) {
-.munin-explorer-page__section[data-nav-section] {
+.munin-explorer-page__section[data-nav-section],
+.munin-explorer-page__anchor {
   scroll-margin-top: 80px;
 }
 }
@@ -4183,6 +4128,19 @@ table.munin-explorer-data-list tbody th {
   position: sticky;
   top: var(--munin-explorer-sticky-top, 0);
 }
+}
+
+@container munin-explorer-kilder (min-width:1815px) {
+  .munin-explorer-kilder-scroll--cols-16:has(.munin-explorer-kilder__select),
+  .munin-explorer-kilder-scroll--cols-15:not(:has(.munin-explorer-kilder__select)) {
+    overflow-x: visible;
+  }
+  .munin-explorer-kilder-scroll--cols-16:has(.munin-explorer-kilder__select) > .munin-explorer-kilder > thead th,
+  .munin-explorer-kilder-scroll--cols-15:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th {
+    box-shadow: inset 0 -1px 0 rgb(230, 230, 237);
+    position: sticky;
+    top: var(--munin-explorer-sticky-top, 0);
+  }
 }
 
 .munin-explorer .munin-explorer-selection {

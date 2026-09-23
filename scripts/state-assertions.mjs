@@ -419,7 +419,7 @@ const heroAgainstFold = (page, rowId) => page.evaluate(id => {
  *
  * Since Fhi.Metadata-l9l2n.84 the glyph class alone no longer names the picture:
  * `icon-keyboard-arrow-down` resolves to icon_up.svg through the legacy unscoped override Stiler
- * 0.1.91 and both samples still carry, and the shut row is rescued only by the
+ * 0.1.103 and both samples still carry, and the shut row is rescued only by the
  * `[aria-expanded=false]` rule beside it out-specifying that one. So which picture a reader sees is
  * a question about a cascade, and nothing else resolves one: bUnit has no CSS at all, and the
  * sample-stylesheet guards match selector text.
@@ -612,6 +612,69 @@ export const assertions = [
     },
   },
   ...treeAssertions,
+  {
+    name: 'nested criteria fragment clears a fixed host header without a contents entry',
+    kind: 'invariant',
+    states: ['variable-datasamling'],
+    async stage(page) {
+      await page.locator('#criteria').waitFor({ state: 'visible', timeout: findTimeout });
+      // Freeze the rendered markup and real stylesheet for a native browser jump. The sample's
+      // interactive router replaces the document on this mirrored URL; its routing is a separate test.
+      const markup = await page.evaluate(() => {
+        const snapshot = document.documentElement.cloneNode(true);
+        snapshot.querySelectorAll('script').forEach(script => script.remove());
+        snapshot.querySelector('base').href = document.baseURI;
+        return '<!doctype html>' + snapshot.outerHTML;
+      });
+      const fixtureUrl = new URL('/__criteria-fragment-fixture', page.url()).href;
+      await page.route(fixtureUrl, route => route.fulfill({ contentType: 'text/html', body: markup }));
+      await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() =>
+        getComputedStyle(document.getElementById('criteria')).scrollMarginTop === '140px');
+      // ModernHost has no fixed chrome. Give the jump an obstruction and enough document tail
+      // that reaching the end cannot accidentally keep an unstyled anchor below the header.
+      await page.evaluate(() => {
+        const header = document.createElement('div');
+        header.id = 'fragment-test-header';
+        Object.assign(header.style, { position: 'fixed', top: '0', left: '0', right: '0',
+          height: '60px', zIndex: '99999', background: 'white' });
+        document.body.append(header);
+        const tail = document.createElement('div');
+        tail.style.height = '150vh';
+        document.body.append(tail);
+      });
+    },
+    async measure(page) {
+      for (const width of [1440, 320]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.evaluate(() => {
+          history.replaceState(history.state, '', location.pathname + location.search);
+          window.scrollTo({ top: 0, behavior: 'instant' });
+          location.hash = 'criteria';
+        });
+        try {
+          await page.waitForFunction(() => {
+            const target = document.getElementById('criteria');
+            const heading = target.firstElementChild.getBoundingClientRect();
+            const header = document.getElementById('fragment-test-header').getBoundingClientRect();
+            const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+            return Math.abs(target.getBoundingClientRect().top - margin) <= 2 &&
+              heading.top >= header.bottom && heading.bottom <= innerHeight && scrollY > 0;
+          }, null, { timeout: 3000 });
+        } catch {
+          return `criteria heading did not clear the fixed header after a fragment jump at ${width}px`;
+        }
+        const independent = await page.locator('#criteria').evaluate(target =>
+          target.hasAttribute('data-nav-section') ||
+          !!document.querySelector('.munin-explorer-page__toc a[href$="#criteria"]'));
+        if (independent) return 'criteria acquired an independent navigation target';
+      }
+      return null;
+    },
+    async control(page) {
+      await page.locator('#criteria').evaluate(target => target.classList.remove('munin-explorer-page__anchor'));
+    },
+  },
   {
     name: 'every contents-nav link resolves to this page rather than to the host base',
     // Nothing about one defect is encoded here: it asks what the BROWSER makes of each href and

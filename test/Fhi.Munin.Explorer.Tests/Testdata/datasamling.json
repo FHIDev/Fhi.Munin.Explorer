@@ -1,11 +1,11 @@
 {
-  "id": "0c027ce6-2994-45bf-99ec-facad3d1703e",
+  "id": "36da9c5f-9e8d-4b28-b4f4-64dbd4e47bdd",
   "code": "K_ALS.INKLUSJON",
   "kortNavn": "ALS",
   "preferredTerm": "Inklusjon",
-  "beskrivelse": "Skjemaet inneholder opplysninger om utredning og oppstart av behandling fra symptomdebut fra symptomdebut til diagnosetidspunkt.",
-  "opprettet": "2026-05-19T13:03:18.807Z",
-  "sistOppdatert": "2026-08-12T08:08:22.690Z",
+  "beskrivelse": "Inklusjon",
+  "opprettet": "2026-04-10T10:51:53.248Z",
+  "sistOppdatert": "2026-08-14T14:02:43.546Z",
   "gyldigFra": "2010-01-01T00:00:00.000Z",
   "gyldigTil": null,
   "lovverk": null,
@@ -15,6 +15,7 @@
   "statistikkType": "yearly",
   "telleEnhet": "",
   "frekvens": null,
+  "sistOppdatertKildesystem": "2026-03-16",
   "effectiveLovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
   "effectiveDataansvarlig": "St. Olavs hospital HF",
   "effectiveDatabehandler": "St. Olavs hospital HF",
@@ -22,134 +23,208 @@
   "effectiveGyldigFra": "2010-01-01T00:00:00.000Z",
   "effectiveGyldigTil": null,
   "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
-  "variableCount": 99,
-  "inklusjonsOgEksklusjonskriterier": "Alle pasienter som er 18 år eller eldre og som etter utredning får ICD10-diagnosekode «G12.2 Sykdom i motoriske nevroner», ved genetisk analyse får påvist Kennedys sykdom eller uspesifisert motonevronsykdom (ICD10-kode G12.9).",
+  "variableCount": 104,
+  "inklusjonsOgEksklusjonskriterier": "Pasienter over eller er lik 18 år, diagnostisert med ICD-10 G12.2. ",
+  "effectiveInklusjonsOgEksklusjonskriterier": "Pasienter over eller er lik 18 år, diagnostisert med ICD-10 G12.2. ",
   "additionalProperties": {
+    "Opprettet": "2010",
+    "SistOppdatert": "20260316",
     "AnbefalteBruksomraader": "Kvalitetsforbedring;Forskning;Statistikk",
-    "Dataansvarlig": "St. Olavs hospital HF",
-    "Databehandler": "St. Olavs hospital HF",
-    "GradAvPersonidentifikasjon": "1",
+    "Dataansvarlig": "St. Olavs hospital ",
+    "Databehandler": "St. Olavs hospital ",
     "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
-    "healthCategory": "[\"ehds-cat:registries-quality-of-healthcare\"]"
+    "healthCategory": "[\"MRMR\"]"
   },
   "propertyMetadata": [
-    {
-      "key": "Code",
-      "displayNameTranslations": {
-        "no": "Kode",
-        "en": "Code"
-      },
-      "groupTranslations": {},
-      "sortOrder": 5,
-      "type": "String",
-      "optionsJson": "[]",
-      "options": []
-    },
-    {
-      "key": "NavnEngelsk",
-      "displayNameTranslations": {
-        "no": "Navn på engelsk",
-        "en": "Name in English"
-      },
-      "groupTranslations": {
-        "no": "Identifikasjon",
-        "en": "Identification"
-      },
-      "sortOrder": 10,
-      "type": "String",
-      "optionsJson": "[]",
-      "options": []
-    },
-    {
-      "key": "KortNavn",
-      "displayNameTranslations": {
-        "no": "Kortnavn",
-        "en": "Short name"
-      },
-      "groupTranslations": {},
-      "sortOrder": 10,
-      "type": "String",
-      "optionsJson": "[]",
-      "options": []
-    },
-    {
-      "key": "PreferredTerm",
-      "displayNameTranslations": {
-        "no": "Foretrukken term",
-        "en": "Preferred term"
-      },
-      "groupTranslations": {},
-      "sortOrder": 20,
-      "type": "String",
-      "optionsJson": "[]",
-      "options": []
-    },
-    {
-      "key": "BeskrivelseEngelsk",
-      "displayNameTranslations": {
-        "no": "Beskrivelse på engelsk",
-        "en": "Description in English"
-      },
-      "groupTranslations": {
-        "no": "Beskrivelse",
-        "en": "Description"
-      },
-      "sortOrder": 20,
-      "type": "Text",
-      "optionsJson": "[]",
-      "options": []
-    },
-    {
-      "key": "AnbefalteBruksomraader",
-      "displayNameTranslations": {
-        "no": "Anbefalte bruksområder",
-        "en": "Recommended Use Cases"
-      },
-      "groupTranslations": {
-        "no": "Beskrivelse",
-        "en": "Description"
-      },
-      "sortOrder": 30,
-      "type": "Text",
-      "optionsJson": "[]",
-      "options": []
-    },
     {
       "key": "Beskrivelse",
       "displayNameTranslations": {
         "no": "Beskrivelse",
         "en": "Description"
       },
-      "groupTranslations": {},
-      "sortOrder": 30,
+      "groupTranslations": {
+        "no": "Om datasamlingen",
+        "en": "About the data collection"
+      },
+      "groupKey": "om-datasamlingen",
+      "groupSortOrder": 1001,
+      "sortOrder": 1001,
       "type": "Text",
       "optionsJson": "[]",
       "options": []
     },
     {
-      "key": "TelleEnhet",
+      "key": "Opprettet",
       "displayNameTranslations": {
-        "no": "Telleenhet",
-        "en": "Counting unit"
+        "no": "Opprettet",
+        "en": "Established"
       },
-      "groupTranslations": {},
-      "sortOrder": 40,
+      "groupTranslations": {
+        "no": "Om datasamlingen",
+        "en": "About the data collection"
+      },
+      "groupKey": "om-datasamlingen",
+      "groupSortOrder": 1001,
+      "sortOrder": 1002,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GyldigFra",
+      "displayNameTranslations": {
+        "no": "Gyldig fra",
+        "en": "Valid from"
+      },
+      "groupTranslations": {
+        "no": "Om datasamlingen",
+        "en": "About the data collection"
+      },
+      "groupKey": "om-datasamlingen",
+      "groupSortOrder": 1001,
+      "sortOrder": 1003,
+      "type": "Date",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "GyldigTil",
+      "displayNameTranslations": {
+        "no": "Gyldig til",
+        "en": "Valid to"
+      },
+      "groupTranslations": {
+        "no": "Om datasamlingen",
+        "en": "About the data collection"
+      },
+      "groupKey": "om-datasamlingen",
+      "groupSortOrder": 1001,
+      "sortOrder": 1004,
+      "type": "Date",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "SistOppdatert",
+      "displayNameTranslations": {
+        "no": "Sist oppdatert (kildesystem)",
+        "en": "Last updated (source system)"
+      },
+      "groupTranslations": {
+        "no": "Om datasamlingen",
+        "en": "About the data collection"
+      },
+      "groupKey": "om-datasamlingen",
+      "groupSortOrder": 1001,
+      "sortOrder": 1005,
       "type": "String",
       "optionsJson": "[]",
       "options": []
     },
     {
-      "key": "Emneord",
+      "key": "healthCategory",
       "displayNameTranslations": {
-        "no": "Emneord",
-        "en": "Keywords"
+        "no": "Datakategori",
+        "en": "Data category"
       },
       "groupTranslations": {
-        "no": "Beskrivelse",
-        "en": "Description"
+        "no": "Om datasamlingen",
+        "en": "About the data collection"
       },
-      "sortOrder": 40,
-      "type": "String",
+      "groupKey": "om-datasamlingen",
+      "groupSortOrder": 1001,
+      "sortOrder": 1006,
+      "type": "MultiSelect",
+      "optionsJson": "[{\"value\":\"PHDR\",\"label\":\"Befolkningsbaserte helseregistre\",\"labelEn\":\"Population health data registries\",\"description\":\"Nasjonale og regionale registre som dekker hele befolkningen, for eksempel fødselsregister og vaksinasjonsregister.\",\"descriptionEn\":\"National and regional registries covering the whole population, such as birth and immunisation registries.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"MRMR\",\"label\":\"Medisinske registre og dødsårsaksregistre\",\"labelEn\":\"Medical and mortality registries\",\"description\":\"Sykdoms- og diagnoseregistre og registre over dødsårsak.\",\"descriptionEn\":\"Disease and diagnosis registries and cause-of-death registries.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"RMMD\",\"label\":\"Legemiddel- og utstyrsregistre\",\"labelEn\":\"Registries of medicinal products and medical devices\",\"description\":\"Registre over legemidler og medisinsk utstyr, inkludert resept- og forskrivningsdata.\",\"descriptionEn\":\"Registries of medicinal products and medical devices, including prescription and dispensing data.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"HPML\",\"label\":\"Helsepersonell og autorisasjon\",\"labelEn\":\"Health professionals and licensing\",\"description\":\"Data om helsepersonell, autorisasjon og godkjenning.\",\"descriptionEn\":\"Data on health professionals, licensing and accreditation.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"RPDG\",\"label\":\"Forskningskohorter og helseundersøkelser\",\"labelEn\":\"Research population data and cohorts\",\"description\":\"Kohorter, spørreundersøkelser og befolkningsbaserte helseundersøkelser. For kliniske utprøvinger, velg Forskningsstudier og kliniske utprøvinger.\",\"descriptionEn\":\"Cohorts, questionnaires and population-based health surveys. For clinical trials, choose Research studies and clinical trials.\",\"group\":\"Forskning\",\"groupEn\":\"Research\"},{\"value\":\"RQSH\",\"label\":\"Forskningsstudier og kliniske utprøvinger\",\"labelEn\":\"Research studies and clinical trials\",\"description\":\"Data samlet inn i forskningsstudier og kliniske utprøvinger. For kohorter og helseundersøkelser, velg Forskningskohorter og helseundersøkelser.\",\"descriptionEn\":\"Data collected in research studies and clinical trials. For cohorts and health surveys, choose Research population data and cohorts.\",\"group\":\"Forskning\",\"groupEn\":\"Research\"},{\"value\":\"NRPE\",\"label\":\"Publisert forskningsdokumentasjon\",\"labelEn\":\"Non-routine published evidence\",\"description\":\"Publisert forskningsdokumentasjon og evidens som ikke stammer fra rutinemessig datainnsamling.\",\"descriptionEn\":\"Published research documentation and evidence that does not come from routine data collection.\",\"group\":\"Forskning\",\"groupEn\":\"Research\"},{\"value\":\"EHRS\",\"label\":\"Pasientjournaler\",\"labelEn\":\"Electronic health records\",\"description\":\"Data fra elektroniske pasientjournaler i helsetjenesten.\",\"descriptionEn\":\"Data from electronic health records held by health services.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"HRAD\",\"label\":\"Administrative helsedata\",\"labelEn\":\"Healthcare-related administrative data\",\"description\":\"Administrative data knyttet til helsetjenesten, for eksempel henvisninger, oppgjør og refusjoner.\",\"descriptionEn\":\"Administrative data related to healthcare, such as referrals, claims and reimbursements.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"EHCT\",\"label\":\"Helsetjenestebehov og -utgifter\",\"labelEn\":\"Healthcare needs and expenditure\",\"description\":\"Data om behov for helsetjenester, ressursbruk og utgifter.\",\"descriptionEn\":\"Data on healthcare needs, resource use and expenditure.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"EINS\",\"label\":\"Biobanker og prøvesamlinger\",\"labelEn\":\"Health data from biobanks\",\"description\":\"Biobanker og prøvesamlinger, inkludert data om de biologiske prøvene som er lagret.\",\"descriptionEn\":\"Biobanks and sample collections, including data about the biological samples held.\",\"group\":\"Biologiske data\",\"groupEn\":\"Biological data\"},{\"value\":\"HGPD\",\"label\":\"Genetiske og genomiske data\",\"labelEn\":\"Human genetic and genomic data\",\"description\":\"Genetiske og genomiske data om mennesker, inkludert genomsekvenser.\",\"descriptionEn\":\"Human genetic and genomic data, including genome sequences.\",\"group\":\"Biologiske data\",\"groupEn\":\"Biological data\"},{\"value\":\"PGEH\",\"label\":\"Omikkdata (proteom, metabolom m.m.)\",\"labelEn\":\"Proteomic and other omics data\",\"description\":\"Andre omikkdata enn genom. For genomdata, velg Genetiske og genomiske data\",\"descriptionEn\":\"Omics data other than genomics. For genomic data, choose Human genetic and genomic data\",\"group\":\"Biologiske data\",\"groupEn\":\"Biological data\"},{\"value\":\"IDHP\",\"label\":\"Smittsomme sykdommer og patogener\",\"labelEn\":\"Infectious diseases and human pathogens\",\"description\":\"Data om smittsomme sykdommer og humane patogener, inkludert smitteovervåking.\",\"descriptionEn\":\"Data on infectious diseases and human pathogens, including surveillance.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"DIOH\",\"label\":\"Helsedeterminanter\",\"labelEn\":\"Determinants impacting on health\",\"description\":\"Forhold som påvirker helse, for eksempel levevaner, miljø, yrke og sosioøkonomiske forhold.\",\"descriptionEn\":\"Factors that influence health, such as lifestyle, environment, occupation and socioeconomic conditions.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"EMRD\",\"label\":\"Data fra medisinsk utstyr\",\"labelEn\":\"Electronic medical device data\",\"description\":\"Måledata fra medisinsk utstyr og digitale helseløsninger.\",\"descriptionEn\":\"Measurement data from medical devices and digital health solutions.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"WELA\",\"label\":\"Data fra helseapper\",\"labelEn\":\"Wellness application data\",\"description\":\"Data fra helse- og treningsapper og annen forbrukerteknologi for helse.\",\"descriptionEn\":\"Data from wellness and fitness applications and other consumer health technology.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\",\"description\":\"Datasamlinger som ikke hører hjemme i noen av kategoriene over. Beholdt fordi EHDS v7 ikke har en samlekategori.\",\"descriptionEn\":\"Data collections that do not belong in any of the categories above. Retained because EHDS v7 has no catch-all category.\",\"group\":\"Annet\",\"groupEn\":\"Other\"}]",
+      "options": [
+        {
+          "value": "PHDR",
+          "displayName": "Befolkningsbaserte helseregistre"
+        },
+        {
+          "value": "MRMR",
+          "displayName": "Medisinske registre og dødsårsaksregistre"
+        },
+        {
+          "value": "RMMD",
+          "displayName": "Legemiddel- og utstyrsregistre"
+        },
+        {
+          "value": "HPML",
+          "displayName": "Helsepersonell og autorisasjon"
+        },
+        {
+          "value": "RPDG",
+          "displayName": "Forskningskohorter og helseundersøkelser"
+        },
+        {
+          "value": "RQSH",
+          "displayName": "Forskningsstudier og kliniske utprøvinger"
+        },
+        {
+          "value": "NRPE",
+          "displayName": "Publisert forskningsdokumentasjon"
+        },
+        {
+          "value": "EHRS",
+          "displayName": "Pasientjournaler"
+        },
+        {
+          "value": "HRAD",
+          "displayName": "Administrative helsedata"
+        },
+        {
+          "value": "EHCT",
+          "displayName": "Helsetjenestebehov og -utgifter"
+        },
+        {
+          "value": "EINS",
+          "displayName": "Biobanker og prøvesamlinger"
+        },
+        {
+          "value": "HGPD",
+          "displayName": "Genetiske og genomiske data"
+        },
+        {
+          "value": "PGEH",
+          "displayName": "Omikkdata (proteom, metabolom m.m.)"
+        },
+        {
+          "value": "IDHP",
+          "displayName": "Smittsomme sykdommer og patogener"
+        },
+        {
+          "value": "DIOH",
+          "displayName": "Helsedeterminanter"
+        },
+        {
+          "value": "EMRD",
+          "displayName": "Data fra medisinsk utstyr"
+        },
+        {
+          "value": "WELA",
+          "displayName": "Data fra helseapper"
+        },
+        {
+          "value": "ehds-cat:other",
+          "displayName": "Annet"
+        }
+      ]
+    },
+    {
+      "key": "Kvalitetsnote",
+      "displayNameTranslations": {
+        "no": "Kvalitetsnote",
+        "en": "Quality Note"
+      },
+      "groupTranslations": {
+        "no": "Kvalitetsnote",
+        "en": "Quality note"
+      },
+      "groupKey": "kvalitetsnote",
+      "groupSortOrder": 3001,
+      "sortOrder": 3001,
+      "type": "Text",
       "optionsJson": "[]",
       "options": []
     },
@@ -159,8 +234,13 @@
         "no": "Statistikktype",
         "en": "Statistics type"
       },
-      "groupTranslations": {},
-      "sortOrder": 50,
+      "groupTranslations": {
+        "no": "Variabler",
+        "en": "Variables"
+      },
+      "groupKey": "variabler",
+      "groupSortOrder": 4001,
+      "sortOrder": 4001,
       "type": "SingleSelect",
       "optionsJson": "[{\"value\":\"yearly\",\"label\":\"Årsbasert\",\"labelEn\":\"Yearly\"},{\"value\":\"accumulated\",\"label\":\"Akkumulert\",\"labelEn\":\"Accumulated\"}]",
       "options": [
@@ -175,13 +255,35 @@
       ]
     },
     {
+      "key": "TelleEnhet",
+      "displayNameTranslations": {
+        "no": "Telleenhet",
+        "en": "Counting unit"
+      },
+      "groupTranslations": {
+        "no": "Variabler",
+        "en": "Variables"
+      },
+      "groupKey": "variabler",
+      "groupSortOrder": 4001,
+      "sortOrder": 4002,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
       "key": "Frekvens",
       "displayNameTranslations": {
         "no": "Frekvens",
         "en": "Frequency"
       },
-      "groupTranslations": {},
-      "sortOrder": 60,
+      "groupTranslations": {
+        "no": "Variabler",
+        "en": "Variables"
+      },
+      "groupKey": "variabler",
+      "groupSortOrder": 4001,
+      "sortOrder": 4003,
       "type": "SingleSelect",
       "optionsJson": "[{\"value\":\"daily\",\"label\":\"Daglig\",\"labelEn\":\"Daily\"},{\"value\":\"weekly\",\"label\":\"Ukentlig\",\"labelEn\":\"Weekly\"},{\"value\":\"monthly\",\"label\":\"Månedlig\",\"labelEn\":\"Monthly\"},{\"value\":\"quarterly\",\"label\":\"Kvartalsvis\",\"labelEn\":\"Quarterly\"},{\"value\":\"yearly\",\"label\":\"Årlig\",\"labelEn\":\"Yearly\"},{\"value\":\"onDemand\",\"label\":\"På forespørsel\",\"labelEn\":\"On demand\"},{\"value\":\"continuous\",\"label\":\"Kontinuerlig\",\"labelEn\":\"Continuous\"},{\"value\":\"other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]",
       "options": [
@@ -220,13 +322,52 @@
       ]
     },
     {
+      "key": "Dataansvarlig",
+      "displayNameTranslations": {
+        "no": "Dataansvarlig",
+        "en": "Data controller"
+      },
+      "groupTranslations": {
+        "no": "Datakilde",
+        "en": "Data source"
+      },
+      "groupKey": "datakilde",
+      "groupSortOrder": 5001,
+      "sortOrder": 5001,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Databehandler",
+      "displayNameTranslations": {
+        "no": "Databehandler",
+        "en": "Data processor"
+      },
+      "groupTranslations": {
+        "no": "Datakilde",
+        "en": "Data source"
+      },
+      "groupKey": "datakilde",
+      "groupSortOrder": 5001,
+      "sortOrder": 5002,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
       "key": "GradAvPersonidentifikasjon",
       "displayNameTranslations": {
         "no": "Grad av personidentifikasjon",
         "en": "Degree of personal identification"
       },
-      "groupTranslations": {},
-      "sortOrder": 70,
+      "groupTranslations": {
+        "no": "Datakilde",
+        "en": "Data source"
+      },
+      "groupKey": "datakilde",
+      "groupSortOrder": 5001,
+      "sortOrder": 5003,
       "type": "SingleSelect",
       "optionsJson": "[{\"value\":\"directlyIdentifiable\",\"label\":\"Direkte personidentifiserbare data\",\"labelEn\":\"Directly identifiable data\"},{\"value\":\"indirectlyIdentifiable\",\"label\":\"Indirekte personidentifiserbare data\",\"labelEn\":\"Indirectly identifiable data\"},{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"},{\"value\":\"anonymous\",\"label\":\"Anonyme data\",\"labelEn\":\"Anonymous data\"}]",
       "options": [
@@ -254,106 +395,194 @@
         "no": "Lovverk",
         "en": "Legislation"
       },
-      "groupTranslations": {},
-      "sortOrder": 80,
+      "groupTranslations": {
+        "no": "Datakilde",
+        "en": "Data source"
+      },
+      "groupKey": "datakilde",
+      "groupSortOrder": 5001,
+      "sortOrder": 5004,
       "type": "Url",
       "optionsJson": "[]",
       "options": []
     },
     {
-      "key": "Dataansvarlig",
+      "key": "Code",
       "displayNameTranslations": {
-        "no": "Dataansvarlig",
-        "en": "Data controller"
-      },
-      "groupTranslations": {},
-      "sortOrder": 90,
-      "type": "String",
-      "optionsJson": "[]",
-      "options": []
-    },
-    {
-      "key": "Databehandler",
-      "displayNameTranslations": {
-        "no": "Databehandler",
-        "en": "Data processor"
-      },
-      "groupTranslations": {},
-      "sortOrder": 100,
-      "type": "String",
-      "optionsJson": "[]",
-      "options": []
-    },
-    {
-      "key": "GyldigFra",
-      "displayNameTranslations": {
-        "no": "Gyldig fra",
-        "en": "Valid from"
-      },
-      "groupTranslations": {},
-      "sortOrder": 110,
-      "type": "Date",
-      "optionsJson": "[]",
-      "options": []
-    },
-    {
-      "key": "GyldigTil",
-      "displayNameTranslations": {
-        "no": "Gyldig til",
-        "en": "Valid to"
-      },
-      "groupTranslations": {},
-      "sortOrder": 120,
-      "type": "Date",
-      "optionsJson": "[]",
-      "options": []
-    },
-    {
-      "key": "healthCategory",
-      "displayNameTranslations": {
-        "no": "Datakategori",
-        "en": "Data category"
+        "no": "Kode",
+        "en": "Code"
       },
       "groupTranslations": {
-        "no": "EHDS / HealthDCAT-AP",
-        "en": "EHDS / HealthDCAT-AP"
+        "no": "Alle metadatafelt",
+        "en": "All metadata fields"
       },
-      "sortOrder": 330,
-      "type": "MultiSelect",
-      "optionsJson": "[{\"value\":\"ehds-cat:health-registries\",\"label\":\"Helseregistre\",\"labelEn\":\"Health registries\"},{\"value\":\"ehds-cat:registries-quality-of-healthcare\",\"label\":\"Kvalitetsregistre\",\"labelEn\":\"Quality-of-healthcare registries\"},{\"value\":\"ehds-cat:population-health-surveys\",\"label\":\"Befolkningsbaserte helseundersøkelser\",\"labelEn\":\"Population health surveys\"},{\"value\":\"ehds-cat:provesamling\",\"label\":\"Prøvesamling\",\"labelEn\":\"Sample collection\"},{\"value\":\"ehds-cat:biodata\",\"label\":\"Biodata (DNA/omikk)\",\"labelEn\":\"Biodata (DNA/omics)\"},{\"value\":\"ehds-cat:biobanks\",\"label\":\"Biobanker\",\"labelEn\":\"Biobanks\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]",
-      "options": [
-        {
-          "value": "ehds-cat:health-registries",
-          "displayName": "Helseregistre"
-        },
-        {
-          "value": "ehds-cat:registries-quality-of-healthcare",
-          "displayName": "Kvalitetsregistre"
-        },
-        {
-          "value": "ehds-cat:population-health-surveys",
-          "displayName": "Befolkningsbaserte helseundersøkelser"
-        },
-        {
-          "value": "ehds-cat:provesamling",
-          "displayName": "Prøvesamling"
-        },
-        {
-          "value": "ehds-cat:biodata",
-          "displayName": "Biodata (DNA/omikk)"
-        },
-        {
-          "value": "ehds-cat:biobanks",
-          "displayName": "Biobanker"
-        },
-        {
-          "value": "ehds-cat:other",
-          "displayName": "Annet"
-        }
-      ]
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9001,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "KortNavn",
+      "displayNameTranslations": {
+        "no": "Kortnavn",
+        "en": "Short name"
+      },
+      "groupTranslations": {
+        "no": "Alle metadatafelt",
+        "en": "All metadata fields"
+      },
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9002,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "NavnEngelsk",
+      "displayNameTranslations": {
+        "no": "Navn på engelsk",
+        "en": "Name in English"
+      },
+      "groupTranslations": {
+        "no": "Alle metadatafelt",
+        "en": "All metadata fields"
+      },
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9003,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "BeskrivelseEngelsk",
+      "displayNameTranslations": {
+        "no": "Beskrivelse på engelsk",
+        "en": "Description in English"
+      },
+      "groupTranslations": {
+        "no": "Alle metadatafelt",
+        "en": "All metadata fields"
+      },
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9004,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "PreferredTerm",
+      "displayNameTranslations": {
+        "no": "Foretrukken term",
+        "en": "Preferred term"
+      },
+      "groupTranslations": {
+        "no": "Alle metadatafelt",
+        "en": "All metadata fields"
+      },
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9006,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "AnbefalteBruksomraader",
+      "displayNameTranslations": {
+        "no": "Anbefalte bruksområder",
+        "en": "Recommended Use Cases"
+      },
+      "groupTranslations": {
+        "no": "Alle metadatafelt",
+        "en": "All metadata fields"
+      },
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9007,
+      "type": "Text",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Emneord",
+      "displayNameTranslations": {
+        "no": "Emneord",
+        "en": "Keywords"
+      },
+      "groupTranslations": {
+        "no": "Alle metadatafelt",
+        "en": "All metadata fields"
+      },
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9009,
+      "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    }
+  ],
+  "sections": [
+    {
+      "groupKey": "om-datasamlingen",
+      "groupTranslations": {
+        "no": "Om datasamlingen",
+        "en": "About the data collection"
+      },
+      "groupSortOrder": 1001,
+      "isBuiltIn": false
+    },
+    {
+      "groupKey": "inklusjons-og-eksklusjonskriterier",
+      "groupTranslations": {
+        "no": "Inklusjons- og eksklusjonskriterier",
+        "en": "Inclusion and exclusion criteria"
+      },
+      "groupSortOrder": 2000,
+      "isBuiltIn": true
+    },
+    {
+      "groupKey": "kvalitetsnote",
+      "groupTranslations": {
+        "no": "Kvalitetsnote",
+        "en": "Quality note"
+      },
+      "groupSortOrder": 3001,
+      "isBuiltIn": false
+    },
+    {
+      "groupKey": "variabler",
+      "groupTranslations": {
+        "no": "Variabler",
+        "en": "Variables"
+      },
+      "groupSortOrder": 4001,
+      "isBuiltIn": false
+    },
+    {
+      "groupKey": "datakilde",
+      "groupTranslations": {
+        "no": "Datakilde",
+        "en": "Data source"
+      },
+      "groupSortOrder": 5001,
+      "isBuiltIn": false
+    },
+    {
+      "groupKey": "alle-metadatafelt",
+      "groupTranslations": {
+        "no": "Alle metadatafelt",
+        "en": "All metadata fields"
+      },
+      "groupSortOrder": 9001,
+      "isBuiltIn": false
     }
   ],
   "parentDelkildeId": null,
-  "parentKildeId": "8ec4c2c4-662d-47a5-a946-f1086a014070",
-  "parentKildeNavn": "Als registeret"
+  "parentKildeId": "f7e53f99-a6e4-438e-bb8b-d0b20e0bb53f",
+  "parentKildeNavn": "ALS Registeret"
 }

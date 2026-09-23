@@ -183,4 +183,28 @@ internal static class Fixture
     /// does, and only when <see cref="LiveApi.TokenVariable"/> is set. Until then they are hand-updated.
     /// </remarks>
     public static readonly IReadOnlyList<string> OutOfReach = ["my-lists.json", "my-list-variables.json"];
+
+    /// <summary>
+    /// <see cref="Datasamling"/>'s entity as the API sent it before Munin placed its sections, for
+    /// the layout drawn without them.
+    /// </summary>
+    /// <remarks>
+    /// Its catalogue values are frozen because the fallback-layout tests are measured against them;
+    /// its shape is not — see <see cref="Frozen"/>.
+    /// </remarks>
+    public const string DatasamlingUnplaced = "datasamling-unplaced.json";
+
+    /// <summary>
+    /// Fixtures kept at an old API shape on purpose, each with the live-checked capture it derives
+    /// from and the only keys it may lack against it. <c>FixtureFreshnessTest</c> holds every entry
+    /// to its source on every commit, so an entry cannot join without saying what pins it.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, FrozenFixture> Frozen = new Dictionary<string, FrozenFixture>
+    {
+        [DatasamlingUnplaced] = new(Datasamling,
+            ["$.propertyMetadata[].groupKey", "$.propertyMetadata[].groupSortOrder", "$.sections"]),
+    };
 }
+
+/// <summary>What a <see cref="Fixture.Frozen"/> entry derives from, and the keys it may lack against it.</summary>
+internal sealed record FrozenFixture(string Source, IReadOnlyList<string> MayLack);
