@@ -1233,7 +1233,7 @@ through either explorer or mounted directly. Register the client with `AddMuninE
 mounting `KildeView`. `KildeHierarchyView` can also be mounted with `KildeId` and `Language`.
 The hierarchy's class names are in the inventory above, and their rules are Stiler's, not this
 package's (`Fhi.Metadata-wihod`, Stiler PR 39239). The tree is measured in `samples/HostileHost`
-against the Stiler it pins, 0.1.91 today. `KildeView` has no `LevelLines`: the detail tree's rails are
+against the Stiler it pins, 0.1.98 today. `KildeView` has no `LevelLines`: the detail tree's rails are
 the stylesheet's, drawn for every reader, while `LevelLines` is the filter panel's own preference.
 
 Each row carries a node icon in front of its name — a folder on a delkilde, one glyph per
