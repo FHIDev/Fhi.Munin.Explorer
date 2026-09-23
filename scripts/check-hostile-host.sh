@@ -70,6 +70,10 @@ HOST_PROJECT="$ROOT/samples/HostileHost/HostileHost.csproj"
 #
 # `filters-level-lines` and `filters-node-icons-off` unfold the facets, whose values include a
 # variabelgruppe name with no break in it; only the label rule wraps it (Fhi.Metadata-7484a).
+#
+# `kilde-drilldown`, `kilde-datasamling` and `variable-page` are the three detail pages whose fact
+# lists count their tracks against the container; `variable-page` presses a row's name, because a
+# `?variabelId=` load draws the drill-in's grid instead and measures nothing (Fhi.Metadata-2w7fx).
 TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
@@ -96,6 +100,9 @@ TARGETS=(
   "/::variable-kilde-hierarchy"
   "/::variable-kilde-hierarchy-icons-off"
   "/kilder::kilde-facets"
+  "/kilder::kilde-drilldown"
+  "/kilder::kilde-datasamling"
+  "/::variable-page"
 )
 
 host_pid=""
@@ -268,6 +275,16 @@ fi
 urls=()
 for t in "${TARGETS[@]}"; do urls+=("${BASE}${t}"); done
 
+# Measured for geometry but not scanned by axe, each with the open bead that keeps it out. The
+# datasamling page's stuck bar is `hidden` and `aria-hidden`, but Stiler's `div { display: block }`
+# draws it with a focusable link inside: aria-hidden-focus (Fhi.Metadata-5fuvd).
+AXE_EXCEPT_TARGETS=("/kilder::kilde-datasamling")
+axe_urls=()
+for t in "${TARGETS[@]}"; do
+  [[ " ${AXE_EXCEPT_TARGETS[*]} " == *" ${t} "* ]] && continue
+  axe_urls+=("${BASE}${t}")
+done
+
 set +e
 GEOMETRY_EXCEPT= ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" node "$ROOT/scripts/geometry-scan.mjs" "${urls[@]}"
 geometry_status=$?
@@ -314,6 +331,8 @@ reflow "" "/::variable-detail" "/::variable-detail-about" "/::variable-whole" "/
 reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tree-no-match"
 # The facets unfolded, and the unbroken variabelgruppe name in them (Fhi.Metadata-7484a).
 reflow "" "/::filters-level-lines" "/::filters-node-icons-off"
+# The three detail pages' fact lists, one track at 320 (Fhi.Metadata-2w7fx).
+reflow "" "/kilder::kilde-drilldown" "/kilder::kilde-datasamling" "/::variable-page"
 
 # An assertion that has quietly stopped measuring anything reports success forever, so each one is
 # handed a page carrying the defect it was written for and required to say so.
@@ -331,7 +350,7 @@ set -e
 # row to zero height (Fhi.Metadata-l9l2n.41), so at the default viewport the states cannot be
 # entered at all and the scan stops before it judges anything. Drop this line the day that lands.
 set +e
-ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900   node "$ROOT/scripts/axe-scan.mjs" "${urls[@]}"
+ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900   node "$ROOT/scripts/axe-scan.mjs" "${axe_urls[@]}"
 axe_status=$?
 set -e
 

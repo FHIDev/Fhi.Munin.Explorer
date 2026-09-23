@@ -26,12 +26,14 @@
        states it measures need those breaks, which is what this branch's negative control shows
        (Fhi.Metadata-ofg1h).
 
-       0.1.105 lets the drill-in's action buttons wrap, so a 320px page stops scrolling sideways
+       0.1.107 lets the detail page's fact list fill its container instead of a column count keyed
+       to the viewport (Fhi.Metadata-5cu56), which the layout gate counts per container
+       (Fhi.Metadata-2w7fx); 0.1.105 lets the drill-in's action buttons wrap, so a 320px page stops scrolling sideways
        (Fhi.Metadata-sq5l2), and widens the Dataperiode column to flex 280 (Fhi.Metadata-byvcr);
        0.1.103 brought the drawer's checkbox column and nested detail anchor clearance
        (Fhi.Metadata-h6dx7, Fhi.Metadata-17k34). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.105" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.107" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
