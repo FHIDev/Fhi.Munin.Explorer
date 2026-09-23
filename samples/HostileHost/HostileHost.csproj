@@ -26,10 +26,8 @@
        states it measures need those breaks, which is what this branch's negative control shows
        (Fhi.Metadata-ofg1h).
 
-       0.1.99 carries the drawer's checkbox column (Fhi.Metadata-h6dx7, ADO PR 39522), so the two
-       names Fhi.Metadata-75yov emits are unstyled at this pin - both recorded in
-       test/sample-css-known-divergences.txt. Moving the pin to it is Fhi.Metadata-4xqhq's, which
-       owns reconciling the eight releases of rules that come with it. -->
+       0.1.103 includes the drawer's checkbox column and nested detail anchor clearance
+       (Fhi.Metadata-h6dx7, Fhi.Metadata-17k34). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
     <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.103" />
   </ItemGroup>

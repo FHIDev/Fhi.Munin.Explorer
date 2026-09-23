@@ -152,7 +152,7 @@ public class MuninExplorerClientTest
         Assert.NotNull(kilde);
         Assert.Equal("K_ALS", kilde.Code);
 
-        // datasamling.json, variable.json and variables.json are older captures and still spell
+        // variable.json and variables.json are older captures and still spell
         // K_ALS's old name: the corpus is coherent per file, not as one.
         Assert.Equal("ALS Registeret", kilde.PreferredTerm);
         Assert.Equal(245, kilde.TotalVariables);
@@ -335,12 +335,14 @@ public class MuninExplorerClientTest
         Assert.Equal("K_ALS.INKLUSJON", datasamling.Code);
         Assert.Equal("Inklusjon", datasamling.PreferredTerm);
         Assert.Equal("yearly", datasamling.StatisticsType);
-        Assert.Equal(99, datasamling.VariableCount);
-        Assert.Equal(18, datasamling.PropertyMetadata.Count);
-        Assert.Equal("Als registeret", datasamling.ParentKildeName);
+        Assert.Equal(104, datasamling.VariableCount);
+        Assert.Equal(21, datasamling.PropertyMetadata.Count);
+        Assert.Equal("ALS Registeret", datasamling.ParentKildeName);
         Assert.Null(datasamling.ParentDelkildeId); // hangs directly off the kilde
         Assert.NotNull(datasamling.InclusionAndExclusionCriteria);
-        Assert.Null(datasamling.EffectiveInclusionAndExclusionCriteria);
+        Assert.Equal("Pasienter over eller er lik 18 år, diagnostisert med ICD-10 G12.2. ",
+                     datasamling.EffectiveInclusionAndExclusionCriteria);
+        Assert.Equal(new DateOnly(2026, 3, 16), datasamling.SourceSystemLastUpdated);
 
         // Own value absent, effective value inherited from the kilde.
         Assert.Null(datasamling.LegalBasis);

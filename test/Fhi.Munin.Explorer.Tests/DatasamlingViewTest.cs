@@ -172,13 +172,18 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     /// <summary>
-    /// The live payload, captured: six curated keys, two of the four groups filled in, every
-    /// inherited field null on the datasamling itself and set on its <c>Effective…</c> twin.
+    /// A payload from before Munin placed its sections: six curated keys, two of the four groups
+    /// filled in, every inherited field null on the datasamling itself and set on its
+    /// <c>Effective…</c> twin.
     /// </summary>
+    /// <remarks>
+    /// Frozen rather than live, because the fallback layout is what <see cref="Placed"/> and the
+    /// seeded variants are measured against and no endpoint serves that shape any more.
+    /// </remarks>
     private static DatasamlingDetail Datasamling() =>
         JsonSerializer.Deserialize<DatasamlingDetail>(
-            TestData.Read("datasamling.json"), MuninExplorerClient.Json)
-        ?? throw new InvalidOperationException("datasamling.json no longer reads as a DatasamlingDetail.");
+            TestData.Read(Fixture.DatasamlingUnplaced), MuninExplorerClient.Json)
+        ?? throw new InvalidOperationException($"{Fixture.DatasamlingUnplaced} no longer reads as a DatasamlingDetail.");
 
     private IRenderedComponent<DatasamlingView> Render(
         DatasamlingDetail? datasamling,
@@ -1230,7 +1235,11 @@ public class DatasamlingViewTest : ExplorerTestContext
     [Fact]
     public void Criteria_WhenInheritedTextChangesOnTheMountedPage_ThenContentAndNavigationFollow()
     {
-        var empty = CriteriaSeeded() with { InclusionAndExclusionCriteria = null };
+        var empty = CriteriaSeeded() with
+        {
+            InclusionAndExclusionCriteria = null,
+            EffectiveInclusionAndExclusionCriteria = null,
+        };
         var cut = Render(empty);
         Assert.Empty(cut.FindAll("#" + DetailSectionIds.Criteria));
 
@@ -1595,6 +1604,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
+            EffectiveInclusionAndExclusionCriteria = null,
             StatisticsType = null,
             Frequency = null,
             CountingUnit = null,
@@ -1737,6 +1747,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
+            EffectiveInclusionAndExclusionCriteria = null,
             StatisticsType = null,
             Frequency = null,
             CountingUnit = null,
@@ -1860,7 +1871,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // key list cannot reach (Fhi.Metadata-x0etk).
         var cut = Render(Datasamling() with
         {
-            InclusionAndExclusionCriteria = "Alle over 18 år.<br>Se [veilederen](https://example.org/veileder).",
+            EffectiveInclusionAndExclusionCriteria = "Alle over 18 år.<br>Se [veilederen](https://example.org/veileder).",
         });
 
         var criteria = cut.Find(".munin-explorer-datasamling__criteria");
@@ -1875,7 +1886,11 @@ public class DatasamlingViewTest : ExplorerTestContext
     {
         // A third of the datasamlinger measured have none, so this is the ordinary case rather than
         // the edge one.
-        var cut = Render(Datasamling() with { InclusionAndExclusionCriteria = null });
+        var cut = Render(Datasamling() with
+        {
+            InclusionAndExclusionCriteria = null,
+            EffectiveInclusionAndExclusionCriteria = null,
+        });
 
         Assert.DoesNotContain("Inklusjons- og eksklusjonskriterier", BlockHeadings(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-datasamling__criteria"));
