@@ -76,8 +76,20 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
                 : new Dictionary<string, string> { ["no"] = section },
         };
 
-    /// <summary>The seven column-backed definitions a source carries, typed as Munin types them.</summary>
+    /// <summary>The column-backed definitions a source carries, typed as Munin types them.</summary>
     private static IReadOnlyList<PropertyMetadataEntry> KildeDefinitions(string? section) =>
+    [
+        .. SharedDefinitions(section),
+        // A collection has these too, but its page spells the parent's name and type as well, so
+        // the source is where each can be counted to one (Fhi.Metadata-zg89n).
+        Definition(CatalogueColumns.PreferredTerm, "Navn", "String", 10, section),
+        Definition(CatalogueColumns.Code, "Kode", "String", 15, section),
+        Definition(CatalogueColumns.ShortName, "Kortnavn", "String", 20, section),
+        Definition(CatalogueColumns.Kildetype, "Kildetype", "SingleSelect", 25, section),
+    ];
+
+    /// <summary>The seven a source and a collection share and each page can count.</summary>
+    private static IReadOnlyList<PropertyMetadataEntry> SharedDefinitions(string? section) =>
     [
         Definition(CatalogueColumns.Description, "Beskrivelse", "Text", 30, section),
         Definition(CatalogueColumns.PersonIdentification, "Grad av personidentifikasjon",
@@ -92,7 +104,7 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
     /// <summary>Those seven again, with the three a collection has and a source does not.</summary>
     private static IReadOnlyList<PropertyMetadataEntry> DatasamlingDefinitions(string? section) =>
     [
-        .. KildeDefinitions(section),
+        .. SharedDefinitions(section),
         Definition(CatalogueColumns.StatisticsType, "Statistikktype", "SingleSelect", 130, section,
                    StatisticsOptions),
         Definition(CatalogueColumns.CountingUnit, "Telleenhet", "String", 140, section),
@@ -107,7 +119,8 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
     {
         Id = Guid.NewGuid(),
         Code = "K_ALS",
-        ShortName = "ALS",
+        // Not "ALS", which the code already contains: a count of it would find two.
+        ShortName = "ALSR",
         PreferredTerm = "Als registeret",
         Description = "Norsk register for motonevronsykdommer.",
         Kildetype = "nasjonaltMedisinskKvalitetsregister",
@@ -163,7 +176,16 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
     };
 
     /// <summary>What each key has to be readable as, exactly once, when the section draws it.</summary>
-    private static IReadOnlyDictionary<string, string> KildeFacts => new Dictionary<string, string>
+    private static IReadOnlyDictionary<string, string> KildeFacts => new Dictionary<string, string>(SharedFacts)
+    {
+        [CatalogueColumns.PreferredTerm] = "Als registeret",
+        [CatalogueColumns.Code] = "K_ALS",
+        [CatalogueColumns.ShortName] = "ALSR",
+        [CatalogueColumns.Kildetype] = "Nasjonalt medisinsk kvalitetsregister",
+    };
+
+    /// <inheritdoc cref="KildeFacts"/>
+    private static IReadOnlyDictionary<string, string> SharedFacts => new Dictionary<string, string>
     {
         [CatalogueColumns.Description] = "Norsk register for motonevronsykdommer.",
         [CatalogueColumns.PersonIdentification] = "Indirekte personidentifiserbare data",
@@ -176,7 +198,7 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
 
     /// <inheritdoc cref="KildeFacts"/>
     private static IReadOnlyDictionary<string, string> DatasamlingFacts =>
-        new Dictionary<string, string>(KildeFacts)
+        new Dictionary<string, string>(SharedFacts)
         {
             [CatalogueColumns.Description] = "Skjemaet som melder en pasient inn i registeret.",
             [CatalogueColumns.StatisticsType] = "Telling av hendelser",

@@ -1766,8 +1766,8 @@ public class VariableViewTest : ExplorerTestContext
             ],
         });
 
-        IReadOnlyList<string> labels = [.. cut.FindAll("#section-beskrivelse dt").Select(e => e.TextContent)];
-
-        Assert.Equal(["Kommentar"], labels);
+        Assert.Equal(["Kommentar"],
+                     cut.Find($"#{DetailSectionIds.Metadata}")
+                        .QuerySelectorAll("dl dt").Select(dt => dt.TextContent));
     }
 }
