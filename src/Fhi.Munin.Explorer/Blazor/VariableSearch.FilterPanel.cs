@@ -327,8 +327,8 @@ public partial class VariableSearch
     /// Labelled and bound one at a time rather than as a range control: Stiler has no date-range
     /// widget, and two text inputs are elements every stylesheet already draws — the same argument
     /// the panel's <c>&lt;details&gt;</c> and bare <c>&lt;ul&gt;</c> are built on. No class name is
-    /// invented here; the labels wear <c>form-element__label</c> and the hints <c>caption</c>, both
-    /// borrowed names this component already uses.
+    /// invented here; the labels wear <c>form-element__label</c>, the hints <c>caption</c> and a
+    /// refusal <c>infobox infobox--bg-yellow</c>, all borrowed names this component already uses.
     /// </remarks>
     private RenderFragment DateFields(DateInterval range) => builder =>
     {
@@ -414,15 +414,26 @@ public partial class VariableSearch
         builder.SetUpdatesAttributeName("value");
         builder.CloseElement();
 
+        // Always rendered and empty until needed: change fires as focus leaves, so the reader is
+        // elsewhere by then, and a role="alert" inserted and filled in one update is announced
+        // unreliably. The infobox is inside, so an unrefused field draws no empty box.
+        builder.OpenElement(seq + 20, "div");
+        builder.AddAttribute(seq + 21, "id", errorId);
+        builder.AddAttribute(seq + 22, "role", "alert");
+        builder.AddAttribute(seq + 23, "aria-live", "assertive");
+        builder.AddAttribute(seq + 24, "aria-atomic", "true");
+
         if (refused)
         {
-            builder.OpenElement(seq + 20, "p");
-            builder.AddAttribute(seq + 21, "id", errorId);
-            builder.AddContent(seq + 22, T.FacetDateInvalid(
+            builder.OpenElement(seq + 25, "p");
+            builder.AddAttribute(seq + 26, "class", "infobox infobox--bg-yellow");
+            builder.AddContent(seq + 27, T.FacetDateInvalid(
                 min is { } lo ? DateInput.Format(lo, Language) : null,
                 max is { } hi ? DateInput.Format(hi, Language) : null));
             builder.CloseElement();
         }
+
+        builder.CloseElement();
     }
 
     /// <summary>Whether a typed date is inside the bounds the field itself advertises.</summary>

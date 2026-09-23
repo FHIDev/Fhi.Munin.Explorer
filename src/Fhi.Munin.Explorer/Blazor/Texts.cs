@@ -1010,6 +1010,10 @@ internal sealed record Texts(
     private const string AscendingEn = "ascending";
     private const string DescendingEn = "descending";
 
+    // The date fields' format, once per language: the hint and every arm of the refusal name it.
+    private const string DateFormatNo = "dd.mm.åååå";
+    private const string DateFormatEn = "yyyy-mm-dd";
+
     private static readonly Texts No = new(
         Title: "Variabelutforsker",
         SearchLabel: "Søk i variabler",
@@ -1388,13 +1392,13 @@ internal sealed record Texts(
         FacetDataCategory: "Datakategori (EHDS)",
         FacetDateFrom: "Fra og med",
         FacetDateTo: "Til og med",
-        FacetDateFormat: "dd.mm.åååå",
+        FacetDateFormat: DateFormatNo,
         FacetDateInvalid: (min, max) => (min, max) switch
         {
-            ({ } from, { } to) => $"Skriv datoen som dd.mm.åååå, fra og med {from} til og med {to}.",
-            ({ } from, null) => $"Skriv datoen som dd.mm.åååå, fra og med {from}.",
-            (null, { } to) => $"Skriv datoen som dd.mm.åååå, til og med {to}.",
-            _ => "Skriv datoen som dd.mm.åååå."
+            ({ } from, { } to) => $"Skriv datoen som {DateFormatNo}, fra og med {from} til og med {to}.",
+            ({ } from, null) => $"Skriv datoen som {DateFormatNo}, fra og med {from}.",
+            (null, { } to) => $"Skriv datoen som {DateFormatNo}, til og med {to}.",
+            _ => $"Skriv datoen som {DateFormatNo}."
         },
         FacetAccessLevel: "Tilgangsnivå",
         FacetSearchLabel: heading => $"Søk i {heading}",
@@ -1848,13 +1852,13 @@ internal sealed record Texts(
         FacetDataCategory: "Data category (EHDS)",
         FacetDateFrom: "From",
         FacetDateTo: "To",
-        FacetDateFormat: "yyyy-mm-dd",
+        FacetDateFormat: DateFormatEn,
         FacetDateInvalid: (min, max) => (min, max) switch
         {
-            ({ } from, { } to) => $"Write the date as yyyy-mm-dd, from {from} to {to}.",
-            ({ } from, null) => $"Write the date as yyyy-mm-dd, on or after {from}.",
-            (null, { } to) => $"Write the date as yyyy-mm-dd, on or before {to}.",
-            _ => "Write the date as yyyy-mm-dd."
+            ({ } from, { } to) => $"Write the date as {DateFormatEn}, from {from} to {to}.",
+            ({ } from, null) => $"Write the date as {DateFormatEn}, on or after {from}.",
+            (null, { } to) => $"Write the date as {DateFormatEn}, on or before {to}.",
+            _ => $"Write the date as {DateFormatEn}."
         },
         FacetAccessLevel: "Access level",
         FacetSearchLabel: heading => $"Search in {heading}",

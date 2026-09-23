@@ -20,13 +20,14 @@
 //     asserted below is therefore the half the component owns — that every target is focusable —
 //     and a host that does not intercept is not measured anywhere;
 //   - every OTHER control the component draws. tree-assertions.mjs adds the deterministic tree
-//     cases; the five presses defined in this file are all in the variable
+//     cases; the six presses defined in this file are all in the variable
 //     explorer. TWO the component refuses: the picker's refusal to hide the last column, and a
-//     facet press dropped because a fetch was already in flight. THREE it accepts, and each is
+//     facet press dropped because a fetch was already in flight. FOUR it accepts, and each is
 //     here because the browser holds state the render tree has not got — the facet tree's two
 //     branch disclosures, that a shut branch leaves nothing behind for a Tab to land on and that
-//     folding one over a ticked value leaves the value ticked, and the toolbar's Ikoner switch,
-//     where what is asked is what the redraw left alone;
+//     folding one over a ticked value leaves the value ticked, the toolbar's Ikoner switch,
+//     where what is asked is what the redraw left alone, and a dataperiode field retyped as the
+//     day it holds, where the browser holds the reader's spelling;
 //   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
 //     visited at all;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this
@@ -244,6 +245,11 @@ const REFUSAL_MS = Number(process.env.STATE_REFUSAL_MS ?? 3000);
 // from REFUSAL_MS above: there is an arrival to wait for here — the named section on screen, or the
 // reader taken off the page — so this is a ceiling on a press that does neither, not a flat spend.
 const JUMP_MS = Number(process.env.STATE_JUMP_MS ?? 5000);
+
+/** The dataperiode from-field, one day inside the captured range as it writes it, and respelled. */
+const DATE_FROM = 'Fra og med';
+const DATE_WRITTEN = '01.01.2000';
+const DATE_RESPELLED = '1.1.2000';
 
 /** Playwright's default is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
@@ -1361,6 +1367,79 @@ export const assertions = [
       await rowOf(branchNamed(page, names))
         .locator('ul input[type=checkbox]:checked').first()
         .evaluate(box => { box.checked = false; });
+    },
+  },
+  {
+    name: 'a dataperiode field retyped as the day it already holds shows that day as the field writes it',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    // The same equal-render trap over a text value. 1.1.2000 over an applied 01.01.2000 changes no
+    // filter, so the render equals the one before it, and only SetUpdatesAttributeName("value")
+    // gives the diff an edit to write. bUnit's value never held the reader's spelling at all.
+    async stage(page) {
+      const panel = page.locator(PANEL);
+      await panel.waitFor({ state: 'visible', timeout: findTimeout });
+
+      const expand = panel.getByRole('button', { name: 'Utvid alle', exact: true }).first();
+      await expand.waitFor({ state: 'visible', timeout: findTimeout });
+      await expand.click();
+
+      const field = panel.getByLabel(DATE_FROM, { exact: true });
+      await field.waitFor({ state: 'visible', timeout: findTimeout });
+
+      // Applied first, both edges of the refetch waited out, so the second entry meets a filter
+      // that already holds the day.
+      await field.fill(DATE_WRITTEN);
+      await field.press('Enter');
+      await panel.and(page.locator('[aria-busy="true"]'))
+        .waitFor({ state: 'visible', timeout: BUSY_MS }).catch(() => {});
+      await panel.and(page.locator('[aria-busy="false"]'))
+        .waitFor({ state: 'visible', timeout: findTimeout });
+
+      if (await field.inputValue() !== DATE_WRITTEN) {
+        throw new Error(`typing ${DATE_WRITTEN} into "${DATE_FROM}" did not leave ${DATE_WRITTEN} in it`);
+      }
+
+      await field.fill(DATE_RESPELLED);
+      await field.press('Enter');
+
+      // A ceiling on the write that proves the call is there, swallowed so the missing write is
+      // measure's finding rather than the harness's.
+      await field.evaluate((input, wanted) => new Promise(resolve => {
+        const deadline = Date.now() + wanted.ms;
+        const poll = () => (input.value === wanted.value || Date.now() > deadline
+          ? resolve()
+          : setTimeout(poll, 50));
+        poll();
+      }), { value: DATE_WRITTEN, ms: REFUSAL_MS });
+
+      return {};
+    },
+
+    async measure(page) {
+      const field = page.locator(PANEL).getByLabel(DATE_FROM, { exact: true });
+
+      if (await field.count() !== 1) {
+        return `the panel no longer draws one field labelled "${DATE_FROM}" — nothing was measured`;
+      }
+
+      if (await field.getAttribute('aria-invalid') === 'true') {
+        return `the field refused ${DATE_RESPELLED}, a spelling of the day it holds`;
+      }
+
+      const shown = await field.inputValue();
+
+      return shown === DATE_WRITTEN
+        ? null
+        : `the field shows "${shown}" over an applied ${DATE_WRITTEN}: the equal render left the ` +
+          "reader's spelling standing";
+    },
+
+    // What the missing call leaves behind: the reader's spelling, which nothing re-renders over.
+    async control(page) {
+      await page.locator(PANEL).getByLabel(DATE_FROM, { exact: true })
+        .evaluate((input, typed) => { input.value = typed; }, DATE_RESPELLED);
     },
   },
   {

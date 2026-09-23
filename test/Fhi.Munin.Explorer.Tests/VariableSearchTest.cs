@@ -5804,7 +5804,123 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
         Assert.Equal(new DateOnly(2020, 3, 5), client.SearchFilter!.DataFrom);
-        Assert.Empty(cut.FindAll($"#{DateInputs(cut)[0].Id}-error"));
+        Assert.Equal("", DateError(cut, 0).TextContent);
+    }
+
+    [Fact]
+    public void DateField_WhenARefusalIsDrawn_ThenItIsAnAlertThatWasAlreadyThere()
+    {
+        // Change fires as focus leaves, so the reader is on the next control when the sentence
+        // arrives; an alert inserted and filled in one update is announced unreliably (WCAG 4.1.3).
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)));
+        var region = DateError(cut, 0);
+
+        Assert.Equal("alert", region.GetAttribute("role"));
+        Assert.Equal("assertive", region.GetAttribute("aria-live"));
+        Assert.Equal("", region.TextContent);
+        Assert.DoesNotContain(region.Id, DateInputs(cut)[0].GetAttribute("aria-describedby")!.Split(' '));
+
+        DateInputs(cut)[0].Change("abc");
+
+        var refusal = DateError(cut, 0).QuerySelector("p")!;
+
+        Assert.Equal(["infobox", "infobox--bg-yellow"], refusal.ClassList);
+        Assert.Contains(region.Id, DateInputs(cut)[0].GetAttribute("aria-describedby")!.Split(' '));
+    }
+
+    [Fact]
+    public void DateField_WhenAnAppliedDateIsEmptied_ThenTheBoundIsRemoved()
+    {
+        // Emptying the field is how a reader drops a bound without going to its chip.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var cut = RenderWith(client);
+
+        DateInputs(cut)[0].Change("05.03.2020");
+        DateInputs(cut)[0].Change("");
+
+        Assert.Null(client.SearchFilter!.DataFrom);
+        Assert.Equal("", DateInputs(cut)[0].GetAttribute("value"));
+    }
+
+    [Fact]
+    public void DateField_WhenARefusedEntryIsEmptied_ThenTheRefusalClears()
+    {
+        // No bound was ever applied, so set(null) changes no filter and ApplyFilterAsync returns
+        // early; the refusal has to go before it is asked.
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)));
+
+        DateInputs(cut)[0].Change("abc");
+        DateInputs(cut)[0].Change("  ");
+
+        Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Equal("", DateInputs(cut)[0].GetAttribute("value"));
+        Assert.Equal("", DateError(cut, 0).TextContent);
+    }
+
+    [Fact]
+    public void DateField_WhenAnotherFilterIsAppliedOverARefusal_ThenTheRefusedFieldShowsWhatIsApplied()
+    {
+        // The refused text would otherwise stand in the field beside results it does not narrow.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var cut = RenderWith(client);
+
+        DateInputs(cut)[0].Change("abc");
+        DateInputs(cut)[1].Change("31.12.2020");
+
+        Assert.Equal(new DateOnly(2020, 12, 31), client.SearchFilter!.DataTo);
+        Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Equal("", DateInputs(cut)[0].GetAttribute("value"));
+        Assert.Equal("", DateError(cut, 0).TextContent);
+    }
+
+    [Theory]
+    [InlineData("no", "Skriv datoen som dd.mm.åååå, fra og med 01.01.2010 til og med 01.06.2025.")]
+    [InlineData("en", "Write the date as yyyy-mm-dd, from 2010-01-01 to 2025-06-01.")]
+    public void DateField_WhenAnEntryIsRefused_ThenTheSentenceWritesTheBoundsInTheReadersFormat(
+        string language, string sentence)
+    {
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)),
+            b => b.Add(c => c.Language, language));
+
+        DateInputs(cut)[0].Change("abc");
+
+        Assert.Equal(sentence, DateError(cut, 0).TextContent);
+    }
+
+    [Theory]
+    [InlineData("no", "Skriv datoen som dd.mm.åååå, til og med 01.06.2025.")]
+    [InlineData("en", "Write the date as yyyy-mm-dd, on or before 2025-06-01.")]
+    public void DateField_WhenTheRangeHasNoLowerEnd_ThenTheSentenceNamesOnlyTheUpper(
+        string language, string sentence)
+    {
+        var range = new DateInterval { Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero) };
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range)),
+            b => b.Add(c => c.Language, language));
+
+        DateInputs(cut)[0].Change("abc");
+
+        Assert.Equal(sentence, DateError(cut, 0).TextContent);
+    }
+
+    [Theory]
+    [InlineData("no", "Skriv datoen som dd.mm.åååå.")]
+    [InlineData("en", "Write the date as yyyy-mm-dd.")]
+    public void DateField_WhenTheRangeHasNoEndsAtAll_ThenTheSentenceNamesOnlyTheFormat(
+        string language, string sentence)
+    {
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: new DateInterval())),
+            b => b
+                .Add(c => c.Language, language)
+                .Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(2020, 3, 5) }));
+
+        DateInputs(cut)[0].Change("abc");
+
+        Assert.Equal(sentence, DateError(cut, 0).TextContent);
     }
 
     [Fact]
@@ -5847,6 +5963,9 @@ public class VariableSearchTest : ExplorerTestContext
 
     private static AngleSharp.Dom.IElement DateHint(IRenderedComponent<VariableSearch> cut, int field) =>
         cut.Find($"#{DateInputs(cut)[field].Id}-hint");
+
+    private static AngleSharp.Dom.IElement DateError(IRenderedComponent<VariableSearch> cut, int field) =>
+        cut.Find($"#{DateInputs(cut)[field].Id}-error");
 
     [Fact]
     public void Filter_WhenATypedDateIsInsideTheBounds_ThenItIsApplied()
