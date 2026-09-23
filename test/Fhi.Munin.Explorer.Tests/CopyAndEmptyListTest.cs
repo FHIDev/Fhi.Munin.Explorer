@@ -60,6 +60,9 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         /// <summary>An exception the create throws, so the copy fails before any list exists.</summary>
         public Exception? CreateThrows { get; init; }
 
+        /// <summary>An exception the holder's whole-list read of the copy throws, failing the switch to it.</summary>
+        public Exception? CopyMembershipThrows { get; init; }
+
         /// <summary>An exception every remove throws.</summary>
         public Exception? RemoveThrows { get; init; }
 
@@ -188,6 +191,11 @@ public class CopyAndEmptyListTest : ExplorerTestContext
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
             CancellationToken cancellationToken = default)
         {
+            if (CopyMembershipThrows is not null && id != SourceId && id != OtherId && pageSize == 1000)
+            {
+                throw CopyMembershipThrows;
+            }
+
             if ((SourceGone && id == SourceId) || !_items.TryGetValue(id, out var items))
             {
                 return Task.FromResult<Page<VariableListItem>?>(null);
@@ -397,6 +405,62 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.Equal($"{SourceName} - kopi", Labelled(cut, "Navn på kopien").GetAttribute("value"));
         Assert.Equal(active, State.ActiveListId);
         Assert.Empty(client.AddBatches);
+    }
+
+    // -----------------------------------------------------------------------
+    // A switch to the copy that fails still leaves view and holder on the same list, and says so:
+    // the holder names the copy active before the read that throws
+
+    [Fact]
+    public void Copy_WhenTheSwitchToTheCopyIsThrottled_ThenTheCopyIsShownAndActiveAndTheAlertSaysSo()
+    {
+        var client = new ListsClient(Items(3)) { CopyMembershipThrows = new MuninExplorerRateLimitedException() };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(RateLimited, Alert(cut)));
+        Assert.Equal($"{SourceName} - kopi", Heading(cut));
+        Assert.Equal(client.AddedTo.Single(), State.ActiveListId);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+    }
+
+    [Fact]
+    public void Copy_WhenTheSwitchToTheCopyFails_ThenTheCopyIsShownAndActiveAndTheAlertSaysSo()
+    {
+        var client = new ListsClient(Items(3)) { CopyMembershipThrows = new HttpRequestException("500") };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke hente listen nå. Prøv igjen om litt.", Alert(cut)));
+        Assert.Equal($"{SourceName} - kopi", Heading(cut));
+        Assert.Equal(client.AddedTo.Single(), State.ActiveListId);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+    }
+
+    [Fact]
+    public void Copy_WhenAnAddAndThenTheSwitchFail_ThenTheAlertSaysTheCopyIsIncomplete()
+    {
+        var client = new ListsClient(Items(3))
+        {
+            AddAccepted = false,
+            CopyMembershipThrows = new HttpRequestException("500"),
+        };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "Kopien er ufullstendig: ikke alle variablene ble kopiert. Listen under viser det som kom med.",
+            Alert(cut)));
+        Assert.Equal($"{SourceName} - kopi", Heading(cut));
     }
 
     [Fact]

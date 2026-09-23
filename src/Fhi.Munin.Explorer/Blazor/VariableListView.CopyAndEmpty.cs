@@ -26,7 +26,8 @@ public sealed partial class VariableListView
         Failed,
         Throttled,
         Incomplete,
-        IncompleteElsewhere
+        IncompleteElsewhere,
+        SwitchFailed
     }
 
     private string CopyToggleId => $"munin-explorer-copy-toggle-{_instance}";
@@ -53,6 +54,7 @@ public sealed partial class VariableListView
         CopyFailure.Failed => T.SaveError,
         CopyFailure.Incomplete => T.CopyIncomplete,
         CopyFailure.IncompleteElsewhere => T.CopyIncompleteElsewhere(_incompleteCopyName),
+        CopyFailure.SwitchFailed => T.ListLoadError,
         _ => null
     };
 
@@ -197,26 +199,48 @@ public sealed partial class VariableListView
         }
 
         // Nothing is rolled back: the copy is shown with whatever landed, and the alert says so.
+        // Moved before the switch, as ChooseListAsync does: the holder names the copy active even
+        // when the switch throws, so staying on the source would put the save buttons off screen.
         _shownList = created.Id;
         _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
 
-        // Left open, now offering to copy the copy: the reader's focus is on the submit button.
-        _copying = true;
-        _copyName = T.DefaultCopyName(created.Name);
-
         try
         {
             await State.SetActiveListAsync(created.Id);
+
+            // Left open, now offering to copy the copy: the reader's focus is on the submit button.
+            _copying = true;
+            _copyName = T.DefaultCopyName(created.Name);
+        }
+        catch (MuninExplorerRateLimitedException ex)
+        {
+            Log?.LogWarning(ex, "the rate limiter refused the switch to the copy {ListId}", created.Id);
+            SayTheSwitchFailed(CopyFailure.Throttled);
+        }
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            Log?.LogWarning(ex, "the API refused the switch to the copy {ListId} as unauthorised", created.Id);
+            SayTheSwitchFailed(CopyFailure.SwitchFailed);
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not switch to the copy {ListId}", created.Id);
+            SayTheSwitchFailed(CopyFailure.SwitchFailed);
         }
 
         await CountTheCopyAsync(created.Id);
         await LoadPageAsync();
+    }
+
+    // Not _failed: the rows are read again once the lists are, which clears it. Incomplete says more.
+    private void SayTheSwitchFailed(CopyFailure failure)
+    {
+        if (_copyFailure != CopyFailure.Incomplete)
+        {
+            _copyFailure = failure;
+        }
     }
 
     // The adds were made while the copy was not active, so the holder counted none of them.
