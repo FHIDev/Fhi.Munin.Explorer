@@ -482,18 +482,18 @@ public sealed partial class DatasamlingView : ComponentBase
     {
         get
         {
-            var value = Datasamling?.EffectivePersonIdentificationLevel ?? Datasamling?.PersonIdentificationLevel;
-            var definition = Datasamling?.PropertyMetadata.FirstOrDefault(entry =>
-                entry.Key == CatalogueColumns.PersonIdentification);
-            var word = !string.IsNullOrWhiteSpace(value) && definition is not null
-                && Placement.Placed(CatalogueColumns.PersonIdentification)
-                ? CatalogueProperties.Word(definition, value, Reader)
-                : null;
+            var placement = Placement;
+            if (placement.Placed(CatalogueColumns.PersonIdentification)
+                && CatalogueProperties.Row(placement.Metadata, placement.Values, Reader,
+                    CatalogueColumns.PersonIdentification) is { Values: [var resolved, ..] })
+            {
+                return new DetailFact(T.HeroPersonIdentification, resolved.Text,
+                    CatalogueProperties.Foreign(resolved.Language, Reader));
+            }
 
-            // The effective column can be newer than a legacy numeric value left in the property bag.
+            var value = Datasamling?.EffectivePersonIdentificationLevel ?? Datasamling?.PersonIdentificationLevel;
             return new DetailFact(T.HeroPersonIdentification,
-                word?.Label ?? (string.IsNullOrWhiteSpace(value) ? null : T.PersonIdentificationLabel(value)),
-                word is { } named ? CatalogueProperties.Foreign(named.Language, Reader) : null);
+                string.IsNullOrWhiteSpace(value) ? null : T.PersonIdentificationLabel(value));
         }
     }
 

@@ -102,8 +102,9 @@ internal static class CatalogueColumns
     /// controller that is perfectly well known one level up. The language argument is the reader's
     /// own tag, for the reason the source overload gives.
     /// </remarks>
-    internal static IReadOnlyDictionary<string, string?> Values(DatasamlingDetail datasamling, string? language) =>
-        Merge(datasamling.AdditionalProperties,
+    internal static IReadOnlyDictionary<string, string?> Values(DatasamlingDetail datasamling, string? language)
+    {
+        var values = Merge(datasamling.AdditionalProperties,
               (Description, datasamling.Description),
               (LegalBasis, datasamling.EffectiveLegalBasis),
               (DataController, datasamling.EffectiveDataController),
@@ -117,6 +118,25 @@ internal static class CatalogueColumns
               (Code, datasamling.Code),
               (ShortName, datasamling.ShortName),
               (PreferredTerm, datasamling.PreferredTerm));
+
+        var definition = datasamling.PropertyMetadata.FirstOrDefault(entry => entry.Key == PersonIdentification);
+        var effective = datasamling.EffectivePersonIdentificationLevel;
+        var reader = ReaderLanguage.Of(language);
+
+        // Munin's legacy enum ordinals are 0–3. A defined numeric option is still curated data;
+        // only an unrecognised ordinal yields to an effective value with a curated catalogue label.
+        if (values.TryGetValue(PersonIdentification, out var raw)
+            && raw is "0" or "1" or "2" or "3"
+            && definition is not null
+            && !string.IsNullOrWhiteSpace(effective)
+            && CatalogueProperties.Word(definition, raw, reader) is null
+            && CatalogueProperties.Option(definition, effective, reader) is { Curated: true })
+        {
+            values[PersonIdentification] = effective;
+        }
+
+        return values;
+    }
 
     /// <summary>
     /// A variable's columns, which are its description and its name.
@@ -140,7 +160,7 @@ internal static class CatalogueColumns
     /// what lets <see cref="CatalogueProperties.Rows"/> keep skipping it and its group keep
     /// collapsing.
     /// </remarks>
-    private static IReadOnlyDictionary<string, string?> Merge(
+    private static Dictionary<string, string?> Merge(
         IReadOnlyDictionary<string, string?>? bag,
         params (string Key, string? Value)[] columns)
     {

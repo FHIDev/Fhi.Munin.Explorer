@@ -528,25 +528,142 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("nb", "Avidentifiserte data")]
-    [InlineData("en", "De-identified data")]
-    public void HeroFacts_WhenThePropertyBagHasAStaleIdentificationCode_ThenTheEffectiveValueIsTranslated(
-        string language, string expected)
+    [InlineData("nb", "0", "directlyIdentifiable", "Direkte personidentifiserbare data")]
+    [InlineData("en", "0", "directlyIdentifiable", "Directly identifiable data")]
+    [InlineData("nb", "1", "indirectlyIdentifiable", "Indirekte personidentifiserbare data")]
+    [InlineData("en", "1", "indirectlyIdentifiable", "Indirectly identifiable data")]
+    [InlineData("nb", "2", "deIdentified", "Avidentifiserte data")]
+    [InlineData("en", "2", "deIdentified", "De-identified data")]
+    [InlineData("nb", "3", "anonymous", "Anonyme data")]
+    [InlineData("en", "3", "anonymous", "Anonymous data")]
+    public void Identification_WhenTheBagHasALegacyOrdinal_ThenSummaryBodyAndCompleteRecordAgree(
+        string language, string raw, string effective, string expected)
+    {
+        var data = IdentificationPayload(raw, effective);
+        var cut = Render(data, language: language);
+
+        AssertIdentification(cut, language, expected);
+        Assert.Equal(raw, data.AdditionalProperties[CatalogueColumns.PersonIdentification]);
+    }
+
+    private const string CurrentIdentificationOptions =
+        """
+        [{"value":"directlyIdentifiable","label":"Direkte personidentifiserbare data","labelEn":"Directly identifiable data"},
+         {"value":"indirectlyIdentifiable","label":"Indirekte personidentifiserbare data","labelEn":"Indirectly identifiable data"},
+         {"value":"deIdentified","label":"Avidentifiserte data","labelEn":"De-identified data"},
+         {"value":"anonymous","label":"Anonyme data","labelEn":"Anonymous data"}]
+        """;
+
+    private static DatasamlingDetail IdentificationPayload(string raw, string? effective,
+        string? options = CurrentIdentificationOptions)
     {
         var data = Placed();
-        var cut = Render(data with
+        return data with
         {
-            EffectivePersonIdentificationLevel = "deIdentified",
+            EffectivePersonIdentificationLevel = effective,
             AdditionalProperties = new Dictionary<string, string?>(data.AdditionalProperties)
             {
-                [CatalogueColumns.PersonIdentification] = "2",
+                [CatalogueColumns.PersonIdentification] = raw,
             },
             PropertyMetadata = [.. data.PropertyMetadata.Select(entry => entry.Key == CatalogueColumns.PersonIdentification
-                ? entry with { OptionsJson = "[{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"}]" }
+                ? entry with { OptionsJson = options }
                 : entry)],
-        }, language: language);
+        };
+    }
 
+    private static void AssertIdentification(IRenderedComponent<DatasamlingView> cut, string language, string expected)
+    {
         Assert.Equal(expected, Value(Hero(cut), language == "en" ? "Personal identification" : "Personidentifikasjon"));
+        Assert.Equal(expected, Value(cut.Find("#section-datakilde"), "Grad av personidentifikasjon"));
+        Assert.Equal(expected, Value(cut.Find(".munin-explorer-complete-record__fields"), "Grad av personidentifikasjon"));
+    }
+
+    [Theory]
+    [InlineData("nb", "directlyIdentifiable", "Direkte personidentifiserbare data")]
+    [InlineData("en", "directlyIdentifiable", "Directly identifiable data")]
+    [InlineData("nb", "Kuraterte data", "Kuraterte data")]
+    [InlineData("en", "Kuraterte data", "Kuraterte data")]
+    [InlineData("nb", "99", "99")]
+    [InlineData("en", "99", "99")]
+    public void Identification_WhenTheBagIsNotALegacyOrdinal_ThenItsCuratedValueIsPreserved(
+        string language, string raw, string expected)
+    {
+        var cut = Render(IdentificationPayload(raw, "deIdentified"), language: language);
+
+        AssertIdentification(cut, language, expected);
+    }
+
+    [Theory]
+    [InlineData("nb", "Kuraterte data")]
+    [InlineData("en", "Curated data")]
+    public void Identification_WhenTheCatalogueDefinesTheNumericCode_ThenThatDefinitionWins(
+        string language, string expected)
+    {
+        const string options =
+            """
+            [{"value":"2","label":"Kuraterte data","labelEn":"Curated data"},
+             {"value":"deIdentified","label":"Avidentifiserte data","labelEn":"De-identified data"}]
+            """;
+        var cut = Render(IdentificationPayload("2", "deIdentified", options), language: language);
+
+        AssertIdentification(cut, language, expected);
+    }
+
+    [Theory]
+    [InlineData("nb", null, CurrentIdentificationOptions)]
+    [InlineData("en", "unrecognised", CurrentIdentificationOptions)]
+    [InlineData("nb", "deIdentified", null)]
+    [InlineData("en", "deIdentified", "not JSON")]
+    [InlineData("nb", "deIdentified", """[{"value":"deIdentified"}]""")]
+    [InlineData("en", "deIdentified", """[{"value":"deIdentified"}]""")]
+    [InlineData("nb", "deIdentified", """[{"value":"deIdentified","label":"","labelEn":""}]""")]
+    [InlineData("en", "deIdentified", """[{"value":"deIdentified","label":" ","labelEn":null}]""")]
+    [InlineData("nb", "deIdentified", """[{"value":"deIdentified","labelEn":"De-identified data"}]""")]
+    public void Identification_WhenTheEffectiveValueCannotBeResolved_ThenNoMeaningIsInvented(
+        string language, string? effective, string? options)
+    {
+        var cut = Render(IdentificationPayload("2", effective, options), language: language);
+
+        AssertIdentification(cut, language, "2");
+    }
+
+    [Theory]
+    [InlineData("nb")]
+    [InlineData("en")]
+    public void Identification_WhenTheCatalogueListsTheNumericCodeWithoutALabel_ThenTheStoredCodeIsPreserved(
+        string language)
+    {
+        const string options =
+            """
+            [{"value":"2"},
+             {"value":"deIdentified","label":"Avidentifiserte data","labelEn":"De-identified data"}]
+            """;
+        var cut = Render(IdentificationPayload("2", "deIdentified", options), language: language);
+
+        AssertIdentification(cut, language, "2");
+    }
+
+    [Fact]
+    public void Identification_WhenTheApiHasNoEnglishLabel_ThenTheSummaryAndRowMarkTheSameLanguage()
+    {
+        const string options = """[{"value":"deIdentified","label":"Avidentifiserte data"}]""";
+        var cut = Render(IdentificationPayload("2", "deIdentified", options), language: "en");
+
+        AssertIdentification(cut, "en", "Avidentifiserte data");
+        Assert.Equal("no", Cell(Hero(cut), "Personal identification").QuerySelector("dd [lang]")!.GetAttribute("lang"));
+        Assert.Equal("no", Row(cut.Find("#section-datakilde"), "Grad av personidentifikasjon")
+            .QuerySelector("dd")!.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Identification_WhenCuratedDataReplacesALegacyCode_ThenTheMountedPageUpdatesEverySurface()
+    {
+        var cut = Render(IdentificationPayload("2", "deIdentified"));
+        AssertIdentification(cut, "nb", "Avidentifiserte data");
+
+        cut.Render(p => p.Add(c => c.Datasamling, IdentificationPayload("anonymous", "deIdentified")));
+
+        AssertIdentification(cut, "nb", "Anonyme data");
     }
 
     [Fact]
