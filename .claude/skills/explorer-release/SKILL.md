@@ -38,13 +38,22 @@ create the GitHub release (prerelease auto-detected from the version string).
 4. **Ask the peer sessions whether anything should be in it.** Someone usually has a PR
    an hour from landing, and a release that misses it costs another whole cycle.
 
-## Rehearse first — `--dry-run` spends nothing
+## Rehearse first — `--dry-run` spends no VERSION, but it is not safe for a dirty tree
 
 ```bash
+git status --porcelain      # must be empty first — see the warning below
 scripts/release-changelog.sh 0.1.0-alpha.N --dry-run
 ```
 
 Note the version takes **no leading `v`** here, though the tag does.
+
+> **RUN THIS FROM A CLEAN WORKTREE, OR STASH FIRST.** "Dry run" means it spends no
+> version and pushes nothing. It does **not** mean it leaves your working tree alone.
+> The script does `git checkout -q -B "$BRANCH" "$BASE_SHA"` to assemble, and its `EXIT`
+> trap restores with `git checkout -q -f "$ORIGINAL_HEAD"` — and **`-f` discards local
+> modifications**. The script does not check for a dirty tree and does not warn. So
+> uncommitted work in this checkout can be destroyed by the *rehearsal*, which is the
+> step everyone reaches for precisely because it sounds harmless.
 
 ### Two local traps, both of which will cost you a step
 
@@ -57,14 +66,15 @@ POSIX form inside bash:
 export PATH="/c/Program Files/PowerShell/7:$PATH"
 ```
 
-**The dry run really does assemble into the working tree.** It prints
-`[OK] Wrote '## 0.1.0-alpha.N' to CHANGELOG.md` and
-`[OK] Deleted 33 consumed fragment(s) from changelog.d/` — and then restores. It does
-restore correctly, but **verify rather than trust it**: `git status` clean, and the
-`changelog.d/*.md` count on disk equal to the count on `origin/main`. The sibling repo's
-`Fhi.Metadata/scripts/assemble-changelog.ps1` deletes fragments for real and has eaten
-all 70 of them once (bead `Fhi.Metadata-zqy4d`), so the instinct is right even though
-this script is well-behaved.
+**The dry run really does assemble into the working tree.** It announces writing the new
+`## <version>` heading into `CHANGELOG.md` and deleting the consumed fragments from
+`changelog.d/` — then restores. Both the count and the heading's date come from the run,
+so expect different numbers every time; it is the *shape* of the output that matters, not
+the figures in this file. It does restore correctly, but **verify rather than trust it**:
+`git status` clean, and the `changelog.d/*.md` count on disk equal to the count on
+`origin/main`. The sibling repo's `Fhi.Metadata/scripts/assemble-changelog.ps1` deletes
+fragments for real and has eaten all 70 of them once (bead `Fhi.Metadata-zqy4d`), so the
+alarm is well-earned even though this script is well-behaved.
 
 ### Read the dry run, do not skim it
 
