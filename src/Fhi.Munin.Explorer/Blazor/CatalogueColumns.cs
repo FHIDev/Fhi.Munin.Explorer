@@ -124,8 +124,8 @@ internal static class CatalogueColumns
     /// <remarks>
     /// The catalogue places GyldigFra and GyldigTil on this surface too, and they belong to a
     /// version rather than to the variable — <see cref="VariableDetail"/> carries no such field to
-    /// merge, and the version history draws every version's pair already. So is VersjonReferanseKode,
-    /// which no contract carries until Munin's API does (Fhi.Metadata-zg89n).
+    /// merge, and the version history draws every version's pair already. The catalogue places
+    /// VersjonReferanseKode here too, and no contract carries it until Munin's API does (Fhi.Metadata-zg89n).
     /// </remarks>
     internal static IReadOnlyDictionary<string, string?> Values(VariableDetail variable) =>
         Merge(variable.AdditionalProperties,

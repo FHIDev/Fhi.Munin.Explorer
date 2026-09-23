@@ -121,9 +121,15 @@ public sealed partial class KildeView : ComponentBase
 
     private string? StickyNameLang => CatalogueProperties.Foreign(StickyNamed.Norwegian, Reader);
 
+    /// <summary>The identifier line under the name, or nothing where it is not drawn.</summary>
+    /// <remarks>
+    /// Nothing where the heading has already fallen back to the code (Fhi.Metadata-w13lk). The name
+    /// block, the sticky bar and <see cref="DrawnElsewhere"/> all read this one answer.
+    /// </remarks>
+    private string? IdentifierLine => StickyNamed.Norwegian ? Identifiers : null;
+
     /// <summary>The identifiers beside the bar's name, on the name block's own terms.</summary>
-    /// <remarks>Nothing where the heading has already fallen back to the code. (Fhi.Metadata-w13lk)</remarks>
-    private string? StickyCode => StickyNamed.Norwegian ? Identifiers : null;
+    private string? StickyCode => IdentifierLine;
 
     /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
     private IReadOnlyList<DetailTrailStep>? PageTrail =>
@@ -252,7 +258,7 @@ public sealed partial class KildeView : ComponentBase
     /// when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis are not, since their
     /// EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
     /// </remarks>
-    private static IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
+    private IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
     {
         var keys = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -262,7 +268,7 @@ public sealed partial class KildeView : ComponentBase
         };
 
         // KortNavn is only drawn where the identifier line under the name is.
-        if (!string.IsNullOrWhiteSpace(kilde.PreferredTerm) && !string.IsNullOrWhiteSpace(kilde.Code))
+        if (IdentifierLine is not null)
         {
             keys.Add(CatalogueColumns.ShortName);
         }
