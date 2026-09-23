@@ -1,0 +1,2 @@
+category: Changed
+- **A link sorted on Kode or Status opens with that column shown** - Both columns start off, so `?sort=Code` or `?sort=Status` used to open a list ordered by a column that was not on screen, with no header carrying `aria-sort`. `VariableSearch` now shows the column a restored `Sort` names, and the column picker reads it as shown. Only the restore does this: hiding the column through the picker still keeps the order and takes the header away, as before. A `Sort` parameter changed after the first render is still not applied. (Fhi.Metadata-jqarq)

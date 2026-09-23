@@ -22,6 +22,7 @@ public partial class VariableSearch
         _showNodeIcons = ShowNodeIcons;
         _page = Math.Max(Page, 1);
         _pageSize = PageSize;
+        ShowRestoredSortColumn();
 
         // Raised here rather than by OpenInitialInstrumentAsync at the end of this method: the
         // first paint of a page opened on ?instrumentId= would otherwise draw the region blank and

@@ -1,3 +1,4 @@
+using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -81,6 +82,37 @@ public partial class VariableSearch
         ResultColumn.SaveToList => ShowSaveButton && !_hiddenColumns.Contains(column),
         ResultColumn.Status when !_statusColumnChosen => ShowStatusColumn || StatusIsAllThatIsLeft,
         _ => !_hiddenColumns.Contains(column),
+    };
+
+    // A restored sort on a column that starts off shows it, as if ticked, so a link's order has a
+    // header carrying aria-sort; only the restore does this, so the picker and the filter can still
+    // take a sorted column away afterwards. (Fhi.Metadata-jqarq)
+    private void ShowRestoredSortColumn()
+    {
+        if (ColumnSortedBy(_sort) is not { } column || ColumnVisible(column))
+        {
+            return;
+        }
+
+        if (column == ResultColumn.Status)
+        {
+            _statusColumnChosen = true;
+        }
+
+        _hiddenColumns.Remove(column);
+    }
+
+    /// <summary>The column whose header orders by <paramref name="sort"/>; none for the default order.</summary>
+    private static ResultColumn? ColumnSortedBy(SortField sort) => sort switch
+    {
+        SortField.Code => ResultColumn.Code,
+        SortField.Kilde => ResultColumn.Kilde,
+        SortField.Datasamling => ResultColumn.Datasamling,
+        SortField.Variabelgruppe => ResultColumn.Variabelgruppe,
+        SortField.DataType => ResultColumn.DataType,
+        SortField.Status => ResultColumn.Status,
+        SortField.DataPeriod => ResultColumn.DataPeriod,
+        _ => null,
     };
 
     /// <summary>

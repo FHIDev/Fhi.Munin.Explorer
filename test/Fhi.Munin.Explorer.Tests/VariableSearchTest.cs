@@ -1502,6 +1502,62 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.True(client.SearchCalls > calls);
     }
 
+    [Theory]
+    [InlineData(SortField.Code, "Kode", "code")]
+    [InlineData(SortField.Status, "Status", "status")]
+    public void Columns_WhenARestoredSortIsOnAColumnThatStartsOff_ThenThatColumnIsShownCarryingAriaSort(
+        SortField sort, string label, string key)
+    {
+        // Both columns start off — Kode seeded, Status following the historical filter — so a link
+        // ordered by either would otherwise open on a list with no header saying how it is ordered,
+        // and no press of the reader's to explain it. (Fhi.Metadata-jqarq)
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))), b => b
+            .Add(c => c.Sort, sort)
+            .Add(c => c.Direction, SortDirection.Descending));
+
+        var sorted = Assert.Single(cut.FindAll("[aria-sort]"));
+
+        Assert.Contains($"munin-explorer-dataitem-header__{key}", sorted.ClassList);
+        Assert.Equal("descending", sorted.GetAttribute("aria-sort"));
+        Assert.NotEmpty(cut.FindAll($".munin-explorer-dataitem-main__{key}"));
+
+        // The picker reads it as shown, so the reader's first press on it hides it rather than
+        // appearing to do nothing.
+        Assert.True(Ticked(ColumnToggle(cut, label)));
+    }
+
+    [Fact]
+    public void Columns_WhenNoSortIsRestored_ThenKodeStaysOff()
+    {
+        // The seed still means what it says: only a sort on Kode brings it on.
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+    }
+
+    [Theory]
+    [InlineData(SortField.Code, "Kode", "code")]
+    [InlineData(SortField.Status, "Status", "status")]
+    public void Columns_WhenARestoredSortColumnIsHiddenThroughThePicker_ThenTheOrderingStaysAndAriaSortGoes(
+        SortField sort, string label, string key)
+    {
+        // Showing it is a restore's doing, not a rule that outvotes the picker: the reader's press
+        // still wins, on ToggleColumn's terms — no refetch, the order kept and still announced.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.Sort, sort));
+        var calls = client.Calls;
+
+        ToggleColumn(cut, label);
+
+        Assert.Empty(cut.FindAll($".munin-explorer-dataitem-header__{key}"));
+        Assert.Empty(cut.FindAll("[aria-sort]"));
+        Assert.False(Ticked(ColumnToggle(cut, label)));
+        Assert.Equal(calls, client.Calls);
+        Assert.Equal(sort, client.LastSort);
+        Assert.Contains($"sortert på {label}", StatusLine(cut));
+    }
+
     [Fact]
     public void Columns_WhenTheFilterWouldTakeTheLastColumnAway_ThenStatusStaysOnScreen()
     {
