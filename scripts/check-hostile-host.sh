@@ -182,17 +182,21 @@ for _ in $(seq 1 90); do
     break
   fi
   if ! kill -0 "$host_pid" 2>/dev/null; then
-    echo "the host exited before it answered:" >&2
+    # 2, not 1: the host never came up, so nothing was measured. Reporting this as 1 tells an
+    # unattended caller a layout defect was found, which is the confusion this exit code exists
+    # to remove.
+    echo "the host exited before it answered - TOOLING failure." >&2
     tail -30 /tmp/hostile-host.log >&2
-    exit 1
+    exit 2
   fi
   sleep 2
 done
 
 if ! curl -fsS -o /dev/null --max-time 5 "$BASE/" 2>/dev/null; then
-  echo "the host never answered on ${BASE}" >&2
+  # Same reason as the loop above: unreachable is not wrong, it is unmeasured.
+  echo "the host never answered on ${BASE} - TOOLING failure." >&2
   tail -30 /tmp/hostile-host.log >&2
-  exit 1
+  exit 2
 fi
 
 # The whole point of this host is that the stylesheet is helsedata's own, served out of the

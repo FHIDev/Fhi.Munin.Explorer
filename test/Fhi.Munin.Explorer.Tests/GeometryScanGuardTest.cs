@@ -260,7 +260,13 @@ public class GeometryScanGuardTest
             RegexOptions.Multiline | RegexOptions.Singleline);
 
         Assert.True(control.Success, "check-hostile-host.sh no longer branches on control_status.");
-        Assert.Matches(@"(?m)^  exit 3$", control.Groups["body"].Value);
+
+        // Both halves of the name. Asserting only that a 3 is present would let a later edit leave
+        // an `exit 1` earlier in the branch: the shell returns on the first one it reaches, so the
+        // guard would pass while the script still called a control failure a measured defect.
+        var body = control.Groups["body"].Value;
+        Assert.Matches(@"(?m)^  exit 3$", body);
+        Assert.DoesNotMatch(@"(?m)^\s*exit 1$", body);
     }
 
     /// <summary>
