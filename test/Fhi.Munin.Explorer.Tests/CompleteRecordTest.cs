@@ -31,13 +31,11 @@ public class CompleteRecordTest : ExplorerTestContext
     }
 
     /// <summary>
-    /// Tromsøundersøkelsen, captured from runa after groupKey shipped — the one fixture whose
-    /// payload carries the field at all.
+    /// Tromsøundersøkelsen as captured, with groupKey, but with its placements stripped, so these
+    /// tests keep measuring the layout drawn without them.
     /// </summary>
     private static KildeDetail Tromso() =>
-        JsonSerializer.Deserialize<KildeDetail>(
-            TestData.Read("kilde-med-delkilder.json"), MuninExplorerClient.Json)
-        ?? throw new InvalidOperationException("kilde-med-delkilder.json no longer reads as a KildeDetail.");
+        TestData.KildeWithoutPlacements("kilde-med-delkilder.json");
 
     /// <summary>
     /// Barnediabetes as an API from before placements sends it: no groupKey, no groupSortOrder, no

@@ -195,6 +195,12 @@ internal static class Fixture
     public const string DatasamlingUnplaced = "datasamling-unplaced.json";
 
     /// <summary>
+    /// <see cref="Kilder"/> as captured when K_NKR-NAKKE had no kildetype, the one null this list
+    /// has been sent. The live catalogue no longer carries one (Fhi.Metadata-quo1j).
+    /// </summary>
+    public const string KilderNullKildetype = "kilder-null-kildetype.json";
+
+    /// <summary>
     /// Fixtures kept at an old API shape on purpose, each with the live-checked capture it derives
     /// from and the only keys it may lack against it. <c>FixtureFreshnessTest</c> holds every entry
     /// to its source on every commit, so an entry cannot join without saying what pins it.
@@ -203,6 +209,7 @@ internal static class Fixture
     {
         [DatasamlingUnplaced] = new(Datasamling,
             ["$.propertyMetadata[].groupKey", "$.propertyMetadata[].groupSortOrder", "$.sections"]),
+        [KilderNullKildetype] = new(Kilder, ["$[].andelKodeverk", "$[].andelStatistikk"]),
     };
 }
 

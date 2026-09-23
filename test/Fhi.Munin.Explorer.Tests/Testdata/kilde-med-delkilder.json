@@ -48,6 +48,7 @@
         "en": "About the registry"
       },
       "groupKey": "om-registeret",
+      "groupSortOrder": 1001,
       "sortOrder": 1001,
       "type": "Text",
       "optionsJson": "[]",
@@ -64,6 +65,7 @@
         "en": "About the registry"
       },
       "groupKey": "om-registeret",
+      "groupSortOrder": 1001,
       "sortOrder": 1002,
       "type": "Text",
       "optionsJson": "[]",
@@ -80,6 +82,7 @@
         "en": "About the registry"
       },
       "groupKey": "om-registeret",
+      "groupSortOrder": 1001,
       "sortOrder": 1003,
       "type": "LangTaggedList",
       "optionsJson": "[]",
@@ -96,6 +99,7 @@
         "en": "About the registry"
       },
       "groupKey": "om-registeret",
+      "groupSortOrder": 1001,
       "sortOrder": 1004,
       "type": "Text",
       "optionsJson": "[]",
@@ -112,6 +116,7 @@
         "en": "Content"
       },
       "groupKey": "innhold",
+      "groupSortOrder": 2001,
       "sortOrder": 2001,
       "type": "Text",
       "optionsJson": "[]",
@@ -128,6 +133,7 @@
         "en": "Content"
       },
       "groupKey": "innhold",
+      "groupSortOrder": 2001,
       "sortOrder": 2002,
       "type": "Number",
       "optionsJson": "[]",
@@ -144,6 +150,7 @@
         "en": "Content"
       },
       "groupKey": "innhold",
+      "groupSortOrder": 2001,
       "sortOrder": 2003,
       "type": "Date",
       "optionsJson": "[]",
@@ -160,6 +167,7 @@
         "en": "Content"
       },
       "groupKey": "innhold",
+      "groupSortOrder": 2001,
       "sortOrder": 2004,
       "type": "Date",
       "optionsJson": "[]",
@@ -176,6 +184,7 @@
         "en": "Access and responsibility"
       },
       "groupKey": "tilgang-og-ansvar",
+      "groupSortOrder": 4001,
       "sortOrder": 4001,
       "type": "SingleSelect",
       "optionsJson": "[{\"value\":\"eu-access:NON_PUBLIC\",\"label\":\"Ikke-offentlig\",\"labelEn\":\"Non-public\"},{\"value\":\"eu-access:RESTRICTED\",\"label\":\"Begrenset\",\"labelEn\":\"Restricted\"},{\"value\":\"eu-access:PUBLIC\",\"label\":\"Offentlig\",\"labelEn\":\"Public\"}]",
@@ -205,6 +214,7 @@
         "en": "Access and responsibility"
       },
       "groupKey": "tilgang-og-ansvar",
+      "groupSortOrder": 4001,
       "sortOrder": 4002,
       "type": "SingleSelect",
       "optionsJson": "[{\"value\":\"directlyIdentifiable\",\"label\":\"Direkte personidentifiserbare data\",\"labelEn\":\"Directly identifiable data\"},{\"value\":\"indirectlyIdentifiable\",\"label\":\"Indirekte personidentifiserbare data\",\"labelEn\":\"Indirectly identifiable data\"},{\"value\":\"deIdentified\",\"label\":\"Avidentifiserte data\",\"labelEn\":\"De-identified data\"},{\"value\":\"anonymous\",\"label\":\"Anonyme data\",\"labelEn\":\"Anonymous data\"}]",
@@ -238,6 +248,7 @@
         "en": "Access and responsibility"
       },
       "groupKey": "tilgang-og-ansvar",
+      "groupSortOrder": 4001,
       "sortOrder": 4003,
       "type": "String",
       "optionsJson": "[]",
@@ -254,6 +265,7 @@
         "en": "Access and responsibility"
       },
       "groupKey": "tilgang-og-ansvar",
+      "groupSortOrder": 4001,
       "sortOrder": 4004,
       "type": "String",
       "optionsJson": "[]",
@@ -270,6 +282,7 @@
         "en": "Legal basis"
       },
       "groupKey": "rettslig-grunnlag",
+      "groupSortOrder": 5001,
       "sortOrder": 5001,
       "type": "Url",
       "optionsJson": "[]",
@@ -286,6 +299,7 @@
         "en": "Legal basis"
       },
       "groupKey": "rettslig-grunnlag",
+      "groupSortOrder": 5001,
       "sortOrder": 5002,
       "type": "LangTaggedList",
       "optionsJson": "[]",
@@ -302,6 +316,7 @@
         "en": "Legal basis"
       },
       "groupKey": "rettslig-grunnlag",
+      "groupSortOrder": 5001,
       "sortOrder": 5003,
       "type": "String",
       "optionsJson": "[]",
@@ -318,6 +333,7 @@
         "en": "Legal basis"
       },
       "groupKey": "rettslig-grunnlag",
+      "groupSortOrder": 5001,
       "sortOrder": 5004,
       "type": "MultilingualText",
       "optionsJson": "[]",
@@ -334,6 +350,7 @@
         "en": "Legal basis"
       },
       "groupKey": "rettslig-grunnlag",
+      "groupSortOrder": 5001,
       "sortOrder": 5005,
       "type": "MultiSelect",
       "optionsJson": "[{\"value\":\"healthdcatap:communicable-diseases\",\"label\":\"Smittsomme sykdommer\",\"labelEn\":\"Communicable diseases\"},{\"value\":\"healthdcatap:non-communicable-diseases\",\"label\":\"Ikke-smittsomme sykdommer\",\"labelEn\":\"Non-communicable diseases\"},{\"value\":\"healthdcatap:rare-diseases\",\"label\":\"Sjeldne sykdommer\",\"labelEn\":\"Rare diseases\"},{\"value\":\"healthdcatap:mental-health\",\"label\":\"Psykisk helse\",\"labelEn\":\"Mental health\"},{\"value\":\"healthdcatap:reproductive-health\",\"label\":\"Reproduktiv helse\",\"labelEn\":\"Reproductive health\"},{\"value\":\"healthdcatap:environmental-health\",\"label\":\"Milj\\u00f8helse\",\"labelEn\":\"Environmental health\"},{\"value\":\"healthdcatap:public-health-surveillance\",\"label\":\"Folkehelseoverv\\u00e5king\",\"labelEn\":\"Public health surveillance\"},{\"value\":\"healthdcatap:health-services\",\"label\":\"Helsetjenester\",\"labelEn\":\"Health services\"},{\"value\":\"healthdcatap:pharmaceuticals\",\"label\":\"Legemidler\",\"labelEn\":\"Pharmaceuticals\"},{\"value\":\"healthdcatap:genomics\",\"label\":\"Genomikk\",\"labelEn\":\"Genomics\"}]",
@@ -391,6 +408,7 @@
         "en": "Contact"
       },
       "groupKey": "kontakt",
+      "groupSortOrder": 6001,
       "sortOrder": 6001,
       "type": "Url",
       "optionsJson": "[]",
@@ -407,6 +425,7 @@
         "en": "Contact"
       },
       "groupKey": "kontakt",
+      "groupSortOrder": 6001,
       "sortOrder": 6002,
       "type": "Email",
       "optionsJson": "[]",
@@ -423,6 +442,7 @@
         "en": "Contact"
       },
       "groupKey": "kontakt",
+      "groupSortOrder": 6001,
       "sortOrder": 6003,
       "type": "String",
       "optionsJson": "[]",
@@ -439,6 +459,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9001,
       "type": "String",
       "optionsJson": "[]",
@@ -455,6 +476,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9002,
       "type": "String",
       "optionsJson": "[]",
@@ -471,6 +493,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9003,
       "type": "String",
       "optionsJson": "[]",
@@ -487,6 +510,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9004,
       "type": "Text",
       "optionsJson": "[]",
@@ -503,6 +527,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9006,
       "type": "String",
       "optionsJson": "[]",
@@ -519,6 +544,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9009,
       "type": "String",
       "optionsJson": "[]",
@@ -535,6 +561,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9010,
       "type": "SingleSelect",
       "optionsJson": "[{\"value\":\"sentraltHelseregister\",\"label\":\"Sentralt helseregister\",\"labelEn\":\"Central health registry\"},{\"value\":\"nasjonaltMedisinskKvalitetsregister\",\"label\":\"Nasjonalt medisinsk kvalitetsregister\",\"labelEn\":\"National medical quality registry\"},{\"value\":\"annetMedisinskKvalitetsregister\",\"label\":\"Annet medisinsk kvalitetsregister\",\"labelEn\":\"Other medical quality registry\"},{\"value\":\"befolkningsbasertHelseundersokelse\",\"label\":\"Befolkningsbasert helseundersøkelse\",\"labelEn\":\"Population-based health survey\"},{\"value\":\"biobank\",\"label\":\"Biobank\",\"labelEn\":\"Biobank\"},{\"value\":\"annenDatakilde\",\"label\":\"Annen datakilde\",\"labelEn\":\"Other data source\"},{\"value\":\"forskningsprosjekt\",\"label\":\"Forskningsprosjekt\",\"labelEn\":\"Research project\"},{\"value\":\"manueltOpprettet\",\"label\":\"Manuelt opprettet\",\"labelEn\":\"Manually created\"}]",
@@ -584,6 +611,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9011,
       "type": "LangTaggedList",
       "optionsJson": "[]",
@@ -600,6 +628,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9012,
       "type": "Text",
       "optionsJson": "[]",
@@ -616,6 +645,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9014,
       "type": "String",
       "optionsJson": "[]",
@@ -632,6 +662,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9017,
       "type": "String",
       "optionsJson": "[]",
@@ -648,6 +679,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9018,
       "type": "Text",
       "optionsJson": "[]",
@@ -664,6 +696,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9021,
       "type": "String",
       "optionsJson": "[]",
@@ -680,6 +713,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9022,
       "type": "Text",
       "optionsJson": "[]",
@@ -696,6 +730,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9025,
       "type": "Text",
       "optionsJson": "[]",
@@ -712,6 +747,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9028,
       "type": "Text",
       "optionsJson": "[]",
@@ -728,6 +764,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9029,
       "type": "Text",
       "optionsJson": "[]",
@@ -744,6 +781,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9030,
       "type": "Text",
       "optionsJson": "[]",
@@ -760,6 +798,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9034,
       "type": "String",
       "optionsJson": "[]",
@@ -776,6 +815,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9035,
       "type": "String",
       "optionsJson": "[]",
@@ -792,6 +832,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9036,
       "type": "String",
       "optionsJson": "[]",
@@ -808,6 +849,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9037,
       "type": "Text",
       "optionsJson": "[]",
@@ -824,6 +866,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9038,
       "type": "String",
       "optionsJson": "[]",
@@ -840,6 +883,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9040,
       "type": "String",
       "optionsJson": "[]",
@@ -856,6 +900,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9041,
       "type": "String",
       "optionsJson": "[]",
@@ -872,6 +917,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9042,
       "type": "Email",
       "optionsJson": "[]",
@@ -888,6 +934,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9043,
       "type": "Url",
       "optionsJson": "[]",
@@ -904,6 +951,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9047,
       "type": "Number",
       "optionsJson": "[]",
@@ -920,6 +968,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9048,
       "type": "Number",
       "optionsJson": "[]",
@@ -936,6 +985,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9049,
       "type": "String",
       "optionsJson": "[]",
@@ -952,6 +1002,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9050,
       "type": "String",
       "optionsJson": "[]",
@@ -968,6 +1019,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9051,
       "type": "MultilingualText",
       "optionsJson": "[]",
@@ -984,6 +1036,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9052,
       "type": "Number",
       "optionsJson": "[]",
@@ -1000,6 +1053,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9053,
       "type": "String",
       "optionsJson": "[]",
@@ -1016,6 +1070,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9054,
       "type": "Object",
       "optionsJson": "[]",
@@ -1032,6 +1087,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9055,
       "type": "MultilingualText",
       "optionsJson": "[]",
@@ -1048,6 +1104,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9056,
       "type": "Object",
       "optionsJson": "[]",
@@ -1064,6 +1121,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9057,
       "type": "Url",
       "optionsJson": "[]",
@@ -1080,6 +1138,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9058,
       "type": "Url",
       "optionsJson": "[]",
@@ -1096,6 +1155,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9059,
       "type": "Url",
       "optionsJson": "[]",
@@ -1112,6 +1172,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9060,
       "type": "Url",
       "optionsJson": "[]",
@@ -1128,6 +1189,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9061,
       "type": "Url",
       "optionsJson": "[]",
@@ -1144,6 +1206,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9062,
       "type": "Url",
       "optionsJson": "[]",
@@ -1160,6 +1223,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9063,
       "type": "Object",
       "optionsJson": "[]",
@@ -1176,6 +1240,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9064,
       "type": "String",
       "optionsJson": "[]",
@@ -1192,6 +1257,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9065,
       "type": "Number",
       "optionsJson": "[]",
@@ -1208,6 +1274,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9066,
       "type": "Number",
       "optionsJson": "[]",
@@ -1224,6 +1291,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9068,
       "type": "MultilingualText",
       "optionsJson": "[]",
@@ -1240,6 +1308,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9069,
       "type": "MultilingualText",
       "optionsJson": "[]",
@@ -1256,6 +1325,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9070,
       "type": "LangTaggedList",
       "optionsJson": "[]",
@@ -1272,6 +1342,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9071,
       "type": "MultilingualText",
       "optionsJson": "[]",
@@ -1288,6 +1359,7 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9072,
       "type": "MultilingualText",
       "optionsJson": "[]",
@@ -1304,10 +1376,94 @@
         "en": "All metadata fields"
       },
       "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
       "sortOrder": 9073,
       "type": "MultilingualText",
       "optionsJson": "[]",
       "options": []
+    }
+  ],
+  "sections": [
+    {
+      "groupKey": "om-registeret",
+      "groupTranslations": {
+        "no": "Om registeret",
+        "en": "About the registry"
+      },
+      "groupSortOrder": 1001,
+      "isBuiltIn": false
+    },
+    {
+      "groupKey": "innhold",
+      "groupTranslations": {
+        "no": "Innhold",
+        "en": "Content"
+      },
+      "groupSortOrder": 2001,
+      "isBuiltIn": false
+    },
+    {
+      "groupKey": "datasamlinger",
+      "groupTranslations": {
+        "no": "Datasamlinger",
+        "en": "Data collections"
+      },
+      "groupSortOrder": 3000,
+      "isBuiltIn": true
+    },
+    {
+      "groupKey": "tilgang-og-ansvar",
+      "groupTranslations": {
+        "no": "Tilgang og ansvar",
+        "en": "Access and responsibility"
+      },
+      "groupSortOrder": 4001,
+      "isBuiltIn": false
+    },
+    {
+      "groupKey": "rettslig-grunnlag",
+      "groupTranslations": {
+        "no": "Rettslig grunnlag",
+        "en": "Legal basis"
+      },
+      "groupSortOrder": 5001,
+      "isBuiltIn": false
+    },
+    {
+      "groupKey": "kontakt",
+      "groupTranslations": {
+        "no": "Kontakt",
+        "en": "Contact"
+      },
+      "groupSortOrder": 6001,
+      "isBuiltIn": false
+    },
+    {
+      "groupKey": "kildeinformasjon",
+      "groupTranslations": {
+        "no": "Kildeinformasjon",
+        "en": "Source information"
+      },
+      "groupSortOrder": 7000,
+      "isBuiltIn": true
+    },
+    {
+      "groupKey": "statistikk",
+      "groupTranslations": {
+        "no": "Statistikk",
+        "en": "Statistics"
+      },
+      "groupSortOrder": 8000,
+      "isBuiltIn": true
+    },
+    {
+      "groupKey": "alle-metadatafelt",
+      "groupTranslations": {
+        "no": "Alle metadatafelt",
+        "en": "All metadata fields"
+      },
+      "groupSortOrder": 9001,
+      "isBuiltIn": false
     }
   ],
   "datasamlinger": [
