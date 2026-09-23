@@ -143,6 +143,8 @@ public class InstrumentTest : ExplorerTestContext
             UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow,
         };
 
+        // gyldigFra keeps its Z: drop it and the date binds the runner's zone, so this test is
+        // green on CI and red on every Norwegian box (Fhi.Metadata-syj93).
         var instrument = JsonSerializer.Deserialize<InstrumentDetail>(
             """
             {
@@ -150,7 +152,7 @@ public class InstrumentTest : ExplorerTestContext
               "code": "INS_SF36",
               "preferredTerm": "Kortversjon 36",
               "beskrivelse": "Et generisk spørreskjema.",
-              "gyldigFra": "2004-03-01T00:00:00",
+              "gyldigFra": "2004-03-01T00:00:00.000Z",
               "gyldigTil": null,
               "visibleVariableCount": 12,
               "additionalProperties": { "NavnEngelsk": "Short Form 36" },
