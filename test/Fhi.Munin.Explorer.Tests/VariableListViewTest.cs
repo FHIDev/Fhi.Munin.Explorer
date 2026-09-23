@@ -2276,7 +2276,7 @@ public class VariableListViewTest : ExplorerTestContext
     {
         // The picker is a <select> inside its own <label>, so its name comes from the words around
         // it — not from the options, which would make it announce "Velg liste Mine hjertevariabler
-        // Hjerte og kar". The wrap is the whole association: no `for`, no id, and no class of ours.
+        // Hjerte og kar". The wrap is the whole association: no `for` and no id to hang one on.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
 
         Assert.Equal("Velg liste", AccessibleName.Of(cut.Find("select")));
@@ -3502,10 +3502,14 @@ public class VariableListViewTest : ExplorerTestContext
         // away. A borrowed Stiler name here would be fine; one of ours is the defect.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
 
+        // `> label` and `> label > select` are the whole of its styling now the class is gone, so a
+        // grouping div inside the row would unstyle it on every host with the rest of this green.
+        Assert.Single(cut.FindAll($"{ActionRow} > label > select"));
+
         var label = cut.Find($"{ActionRow} select").ParentElement!;
 
         Assert.Equal("label", label.LocalName);
-        Assert.DoesNotContain(label.ClassList, cls => cls.StartsWith("munin-explorer", StringComparison.Ordinal));
+        Assert.DoesNotContain(label.ClassList, HostClassNames.IsOwnStructureName);
     }
 
     [Fact]
