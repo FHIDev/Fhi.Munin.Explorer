@@ -52,8 +52,8 @@ export async function scrollPast(page, id) {
 export async function scrollToTop(page) {
   await scrollLikeAReader(page, 0);
   await page.waitForTimeout(OBSERVER_SETTLE_MS);
-  // Once more, then settle again so a caller's scroll-0 check still sees a page that will not stay
-  // there: after a deep hierarchy state it lands 2-14px down, cause not yet found.
+  // Once more, then settle again, so a caller waiting for `scrollY === 0` still catches a page that
+  // drifts back down: after a keyboard-expanded hierarchy it lands 1-14px low, cause not yet found.
   await page.evaluate(() => window.scrollTo({ top: 0, left: 0, behavior: 'instant' }));
   await page.waitForTimeout(OBSERVER_SETTLE_MS);
 }
