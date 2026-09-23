@@ -419,7 +419,7 @@ const heroAgainstFold = (page, rowId) => page.evaluate(id => {
  *
  * Since Fhi.Metadata-l9l2n.84 the glyph class alone no longer names the picture:
  * `icon-keyboard-arrow-down` resolves to icon_up.svg through the legacy unscoped override Stiler
- * 0.1.91 and both samples still carry, and the shut row is rescued only by the
+ * 0.1.98 and both samples still carry, and the shut row is rescued only by the
  * `[aria-expanded=false]` rule beside it out-specifying that one. So which picture a reader sees is
  * a question about a cascade, and nothing else resolves one: bUnit has no CSS at all, and the
  * sample-stylesheet guards match selector text.

@@ -534,8 +534,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     trail, before the hero facts, using `DetailPage.ActionsAfterHeader`; other views retain the
     default placement above the header. Both are handles: undefined, the eyebrow
     is a paragraph above the title and the row is its children in ordinary flow, and no word is
-    lost either way. Stiler 0.1.75 — the pin `samples/HostileHost` restores — carries a rule for
-    each, in the same `components/munin-explorer/_page.scss`, and both sample stylesheets already
+    lost either way. Stiler has carried a rule for each since 0.1.75, the 0.1.98
+    `samples/HostileHost` restores today included, in the same
+    `components/munin-explorer/_page.scss`, and both sample stylesheets already
     stand in at its declarations. Four of the five surfaces set the eyebrow — the kilde,
     datasamling, variable and instrument views, each naming its own kind. `VariableListView` sets no
     chrome at all: the saved-list view's own is a bead of its own.

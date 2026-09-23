@@ -48,7 +48,7 @@
 #     way by construction, but by construction is not measured;
 #   - the sample stylesheet, not helsedata's. This runs ModernHost, as check-accessibility.sh does,
 #     because a control's own state is mostly not a question about CSS. The chevron assertions are,
-#     and what they measure is the sample's MIRROR of Stiler 0.1.91 rather than any Stiler a host
+#     and what they measure is the sample's MIRROR of Stiler 0.1.98 rather than any Stiler a host
 #     has restored; what a rule of Stiler's does to the same markup is check-hostile-host.sh's;
 #   - whether the refusal is the RIGHT rule. It asks the picker and the header to say the same
 #     thing, not whether the last column should be the one that cannot be turned off.
