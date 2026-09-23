@@ -199,20 +199,19 @@ public sealed partial class VariableListView
         }
 
         // Nothing is rolled back: the copy is shown with whatever landed, and the alert says so.
-        // Moved before the switch, as ChooseListAsync does: the holder names the copy active even
-        // when the switch throws, so staying on the source would put the save buttons off screen.
         _shownList = created.Id;
         _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
 
+        // Left open even if the switch throws, now offering to copy the copy: focus is on its submit.
+        _copying = true;
+        _copyName = T.DefaultCopyName(created.Name);
+
+        // Before the switch, as in ChooseListAsync: the holder names the copy active even when it throws.
         try
         {
             await State.SetActiveListAsync(created.Id);
-
-            // Left open, now offering to copy the copy: the reader's focus is on the submit button.
-            _copying = true;
-            _copyName = T.DefaultCopyName(created.Name);
         }
         catch (MuninExplorerRateLimitedException ex)
         {

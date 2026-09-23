@@ -324,6 +324,8 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.DoesNotContain(SourceId, client.AddedTo);
         Assert.Equal(0, client.DesiredDataCalls);
         Assert.Equal("", Alert(cut));
+        // Left open, offering to copy the copy: the reader's focus is on its submit button.
+        Assert.Equal("Kopi til prosjektet - kopi", Labelled(cut, "Navn på kopien").GetAttribute("value"));
         // Counted against the copy, not left at the zero it was made with: the picker says so.
         cut.WaitForAssertion(() => Assert.Contains("Kopi til prosjektet (2500 variabler)", cut.Markup));
     }
@@ -441,6 +443,24 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.Equal($"{SourceName} - kopi", Heading(cut));
         Assert.Equal(client.AddedTo.Single(), State.ActiveListId);
         cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+        // Still open, so the focus on its submit button is not dropped to the document body.
+        Assert.Equal($"{SourceName} - kopi - kopi", Labelled(cut, "Navn på kopien").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Copy_WhenTheSwitchToTheCopyIsRefusedAsUnauthorised_ThenTheCopyIsShownAndActiveAndTheAlertSaysSo()
+    {
+        var client = new ListsClient(Items(3)) { CopyMembershipThrows = new MuninExplorerUnauthorizedException() };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke hente listen nå. Prøv igjen om litt.", Alert(cut)));
+        Assert.Equal($"{SourceName} - kopi", Heading(cut));
+        Assert.Equal(client.AddedTo.Single(), State.ActiveListId);
+        Assert.Equal($"{SourceName} - kopi - kopi", Labelled(cut, "Navn på kopien").GetAttribute("value"));
     }
 
     [Fact]
