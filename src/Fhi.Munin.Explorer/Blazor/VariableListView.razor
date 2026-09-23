@@ -278,7 +278,7 @@
            would be a control whose every option is already selected. *@
         @if (Lists.Count > 1)
         {
-            <label class="munin-explorer-filters__facets">
+            <label>
                 @T.ChooseList
                 <select value="@_shownList" @onchange="ChooseListAsync">
                     @* Every option says what its list holds, which is what makes
