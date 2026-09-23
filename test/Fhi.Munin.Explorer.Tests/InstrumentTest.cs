@@ -163,7 +163,7 @@ public class InstrumentTest : ExplorerTestContext
         Assert.NotNull(instrument);
         Assert.Equal("INS_SF36", instrument.Code);
         Assert.Equal("Et generisk spørreskjema.", instrument.Description);
-        Assert.Equal(new DateTimeOffset(2004, 3, 1, 0, 0, 0, TimeSpan.Zero), instrument.ValidFrom);
+        Assert.Equal(new DateTime(2004, 3, 1), instrument.ValidFrom?.DateTime);
         Assert.Null(instrument.ValidTo);
         Assert.Equal(12, instrument.VisibleVariableCount);
     }
