@@ -1781,25 +1781,9 @@ table.munin-explorer-data-list tbody th {
   overflow-wrap: anywhere;
 }
 
-/* The kildetype is a category, not part of the name. This said "Stiler's tag class says so on
-   helsedata, and this stands in for it" until the day someone read helsedata's stylesheets
-   instead of assuming: no such class exists there, in any of their seven bundles or in Stiler.
-   So there is no `tag` rule anywhere for this to stand in for. The badge wears a munin-explorer
-   name of its own instead, which puts it in Stiler 0.1.13 with the rest of the prefix; what
-   follows is this sample's rule for it, and it was the badge's only rule until then.
-
-   Written without a leading dot on purpose. The checks that read this file ask whether it
-   mentions a selector, and prose naming one reads exactly like a rule declaring one. They strip
-   comments before looking now, so this is belt as well as braces. */
-.munin-explorer-kilde__kildetype {
-  display: inline-block;
-  margin: 8px 0 0;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--grey20);
-  color: var(--grey60);
-  font-size: 0.8125rem;
-}
+/* The kildetype badge that stood here is gone: the name block no longer draws one, because the
+   hero fact row right below it leads with Type and said the same words twice (Fhi.Metadata-pnn4w).
+   Stiler still carries a rule for the name; removing it is Fhi.Metadata-ua7rf's, not this file's. */
 
 /* No colour of ours. The host styles `ingress` only inside particular page types and none of those
    rules set one, so the ingress inherits the body colour the rest of the page reads in. */

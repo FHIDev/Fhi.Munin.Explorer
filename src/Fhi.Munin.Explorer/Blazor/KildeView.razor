@@ -15,9 +15,9 @@
                 Contents="@DetailToc.Column(Toc, T.HeadingContents)">
         <Header>
 
-            @* The name block. Runa puts the identifiers under the name rather than beside it, and the
-               kildetype as a tag away from both — it is a category, not part of what this source is
-               called. *@
+            @* The name block. Runa puts the identifiers under the name rather than beside it. The
+               kildetype is not here: the hero row below leads with it, and a badge ten pixels above
+               that fact said the same words twice. (Fhi.Metadata-pnn4w) *@
             <div class="munin-explorer-kilde__header">
                 @{ var named = T.Named(kilde.PreferredTerm, kilde.Code); }
 
@@ -31,15 +31,6 @@
                 @if (named.Norwegian && Identifiers is { } identifiers)
                 {
                     <p class="caption margin--none munin-explorer-kilde__identifiers">@identifiers</p>
-                }
-
-                @if (!string.IsNullOrWhiteSpace(kilde.Kildetype))
-                {
-                    @* `tag` was here, on the theory that it was Stiler's badge class. helsedata defines
-                       no `.tag` at all — their badges are `taglist`/`taglistitem`, and even those are
-                       only styled inside `.listcontainer .listitemholder .taglist`, which never matches
-                       this markup. The kildetype class below is ours and carries the whole badge. *@
-                    <p class="munin-explorer-kilde__kildetype">@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</p>
                 }
 
                 @* Norwegian whatever the reader's language: the catalogue stores one description. *@
