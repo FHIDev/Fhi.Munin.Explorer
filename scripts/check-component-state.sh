@@ -264,7 +264,8 @@ and every assertion detected its deliberately introduced defect.
 Read that for what it is. Two REFUSED presses were staged in the variable explorer - the picker's
 last visible column, and a facet value pressed a second time while its own refetch was in flight -
 and four the component ACCEPTS beside them: the facet tree's two branch disclosures, the
-panel's Ikoner switch, and a dataperiode field retyped as a spelling of the day it holds. Both row chevrons were pressed as well, and what was asked there is which
+panel's Ikoner switch, and a dataperiode field retyped as a spelling of the day it holds. Both
+row chevrons were pressed as well, and what was asked there is which
 image the sample stylesheet resolved for each of their four states. The two contents navs are read rather than pressed, and what is asked there
 is the address the browser resolved each href to. The two detail pages are SCROLLED rather than
 pressed, on a viewport short enough for the hero row to start below the fold, and what is asked is
