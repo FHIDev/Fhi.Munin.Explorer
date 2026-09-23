@@ -160,9 +160,16 @@ if ! dotnet build "$HOST_PROJECT" --nologo -v quiet >/tmp/state-build.log 2>&1; 
   exit 2
 fi
 
-HOST_DLL="$(dotnet msbuild "$HOST_PROJECT" -getProperty:TargetPath -nologo 2>/dev/null | tr -d '\r')"
-if [ -z "$HOST_DLL" ] || [ ! -f "$HOST_DLL" ]; then
+# set +e, because a plain assignment carries the substitution's status: `set -e` would abort here
+# on an msbuild that failed, before the message below - and with its stderr on the build log rather
+# than the screen, that abort says nothing at all.
+set +e
+HOST_DLL="$(dotnet msbuild "$HOST_PROJECT" -getProperty:TargetPath -nologo 2>>/tmp/state-build.log | tr -d '\r')"
+located=$?
+set -e
+if [ "$located" -ne 0 ] || [ -z "$HOST_DLL" ] || [ ! -f "$HOST_DLL" ]; then
   echo "could not find what the ModernHost build produced - TOOLING failure." >&2
+  tail -20 /tmp/state-build.log >&2
   exit 2
 fi
 
