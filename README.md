@@ -545,7 +545,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     Under the name block those four add `munin-explorer-page__facts`, the hero row: one `<dl>`
     holding a `<div>` per fact, each a `<dt>` label over a `<dd>` value with an optional `<small>`
     under it carrying the qualifier that makes the value honest — `630 variabler`, then
-    `i 6 datasamlinger`. Six facts per page, because Stiler 0.1.75 lays the list out as
+    `i 6 datasamlinger`. Six facts per page, because Stiler lays the list out as
     `repeat(6, minmax(0, 1fr))` at desktop, three tracks below 1080px and two below 600px, so five
     leaves a hole and seven wraps to a row of one; a record the catalogue has not filled in draws
     fewer, since a fact with no value is dropped rather than drawn empty. A handle: undefined, the
@@ -599,14 +599,16 @@ These are not style preferences — each one is a host that breaks otherwise.
     surfaces and the class is passed in for the one piece they share. Handles, both: a definition
     list is a definition list undrawn, and the language name is a `<p>` so it keeps its own line
     whatever a host declares. Stiler's rules are written — the same
-    `components/munin-explorer/_page.scss`, merged as PR 39301 — and the fact list's copy the
-    panel's numbers declaration for declaration, so on a host that has 0.1.75 its grid and type move
-    nothing. Not so in the sample hosts: their `munin-explorer-meta__grid` stand-in diverges from
-    Stiler's by six recorded declarations, so a sample detail page's fact lists gain a 40px row gap,
-    a 24px bottom margin and the `font` shorthand they had none of. The language marker moves on
-    both: 0.1.75 declares `margin: 0` for it and none of the panel marker's uppercase,
-    letter-spacing or grey, which `assert-sample-css-matches-stiler.sh` names three divergences at a
-    time against the pin. So the language name draws at body size on a host that has Stiler until
+    `components/munin-explorer/_page.scss`, merged as PR 39301 — and the fact list's copied the
+    panel's numbers declaration for declaration in 0.1.75, so on a host that had it the grid and
+    type moved nothing. At the pinned 0.1.98 they have parted: the fact list's `dd` carries a
+    `max-width: 50ch` the panel's has none of. Not so in the sample hosts: their
+    `munin-explorer-meta__grid` stand-in diverges from Stiler's by six recorded declarations, so a
+    sample detail page's fact lists gain a 40px row gap, a 24px bottom margin and the `font`
+    shorthand they had none of. The language marker moves on both: Stiler declares `margin: 0` for
+    it and none of the panel marker's uppercase, letter-spacing or grey, which
+    `assert-sample-css-matches-stiler.sh` names three divergences at a time against the pin. So
+    the language name draws at body size on a host that has Stiler until
     `Fhi.Metadata-4ozhj` lands, and the sample stand-ins draw it that way too rather than inventing
     the look the guard cannot see.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw

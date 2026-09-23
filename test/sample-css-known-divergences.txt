@@ -472,7 +472,8 @@ unstyled-name||.munin-explorer-lead|
 unstyled-name||.munin-explorer-page|
 
 # New in Fhi.Metadata-75yov's drawer checkbox column. The Stiler rule is Fhi.Metadata-h6dx7 (ADO PR
-# 39522), published in 0.1.99; these lines go when Fhi.Metadata-4xqhq moves the pin to it.
+# 39522), published in 0.1.99; these lines go when the pin moves to it. Fhi.Metadata-4xqhq closed at
+# 0.1.98, so that bump is a bead of its own.
 unstyled-name||.munin-explorer-kilde__datasamling-select|
 unstyled-name||.munin-explorer-kilde__datasamlinger--selectable|
 

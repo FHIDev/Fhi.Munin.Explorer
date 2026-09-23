@@ -3310,7 +3310,8 @@ table.munin-explorer-data-list tbody th {
   padding-top: 8px;
 }
 
-/* Rules introduced since the previous Stiler pin; compared against the published 0.1.75. */
+/* Rules introduced since an earlier Stiler pin. The guard compares them against whichever
+   release the csproj pins, 0.1.98 today - not against the version they were written for. */
 .munin-explorer-filters__toolbar > .hd-button-square:not([aria-pressed]) {
   background: none;
   color: rgb(50, 55, 141);
