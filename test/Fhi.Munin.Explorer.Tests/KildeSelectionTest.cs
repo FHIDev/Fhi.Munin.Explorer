@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
@@ -740,29 +739,14 @@ public class KildeSelectionTest : ExplorerTestContext
         };
         Assert.Equal(Headers(plain).Count + 1, Headers(selectable).Count);
 
-        var rules = KilderContainerRules(HostClassNames.SampleCss);
         foreach (var box in widest)
         {
-            Assert.Contains(rules, rule => rule.Selectors.Contains(box)
-                && rule.Declarations.Contains("overflow-x:visible"));
-            Assert.Contains(rules, rule => rule.Selectors.Contains($"{box} > .munin-explorer-kilder > thead th")
-                && rule.Declarations.Contains("position:sticky"));
+            Assert.Contains("overflow-x:visible",
+                string.Concat(HostClassNames.SampleContainerDeclarationsFor("munin-explorer-kilder", box)));
+            Assert.Contains("position:sticky", string.Concat(HostClassNames.SampleContainerDeclarationsFor(
+                "munin-explorer-kilder", $"{box} > .munin-explorer-kilder > thead th")));
         }
     }
-
-    /// <summary>
-    /// Each rule inside an <c>@container munin-explorer-kilder</c> block, its selector list split on
-    /// commas and its declarations with the whitespace taken out.
-    /// </summary>
-    private static List<(string[] Selectors, string Declarations)> KilderContainerRules(string stylesheet) =>
-    [
-        .. Regex.Matches(stylesheet,
-                @"@container\s+munin-explorer-kilder\s*\([^)]*\)\s*\{(?<body>(?:[^{}]*\{[^{}]*\})*[^{}]*)\}")
-            .SelectMany(block => Regex.Matches(block.Groups["body"].Value, @"(?<sel>[^{}]*)\{(?<decl>[^{}]*)\}"))
-            .Select(rule => (
-                rule.Groups["sel"].Value.Split(',').Select(s => Regex.Replace(s.Trim(), @"\s+", " ")).ToArray(),
-                Regex.Replace(rule.Groups["decl"].Value, @"\s+", ""))),
-    ];
 
     [Fact]
     public void SelectColumn_WhenAHostStylesIt_ThenTheDeclarationItNeedsIsAWidth()

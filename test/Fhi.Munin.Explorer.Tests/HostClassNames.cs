@@ -204,6 +204,21 @@ internal static class HostClassNames
         [.. RulesIn(SampleStylesheet.Value).Where(rule => Mentions(rule.Selector, name))];
 
     /// <summary>
+    /// The declaration blocks, whitespace taken out, of every rule inside an
+    /// <c>@container <paramref name="container"/></c> block of the sample stylesheet whose
+    /// selector list carries <paramref name="selector"/> as one whole entry. Exact rather than
+    /// <see cref="Mentions"/>, because the kilder thresholds differ only in the compound around
+    /// the name. The block is cut out here and its rules through <see cref="RulesIn"/>.
+    /// </summary>
+    internal static IReadOnlyList<string> SampleContainerDeclarationsFor(string container, string selector) =>
+        [.. Regex.Matches(SampleStylesheet.Value,
+                $@"@container\s+{Regex.Escape(container)}(?=[\s(])[^{{]*\{{(?<body>(?:[^{{}}]*\{{[^{{}}]*\}})*[^{{}}]*)\}}")
+            .SelectMany(block => RulesIn(block.Groups["body"].Value))
+            .Where(rule => rule.Selector.Split(',')
+                .Any(s => Regex.Replace(s.Trim(), @"\s+", " ") == selector))
+            .Select(rule => Regex.Replace(rule.Declarations, @"\s+", ""))];
+
+    /// <summary>
     /// Null when <paramref name="rules"/> really draw <paramref name="name"/>; otherwise the line
     /// <see cref="Orphans"/> reports for it.
     /// </summary>

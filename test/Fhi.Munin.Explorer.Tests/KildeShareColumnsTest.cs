@@ -142,8 +142,8 @@ public class KildeShareColumnsTest : ExplorerTestContext
     [Fact]
     public void Dash_Always_ThenItsCellIsTheContainingBlockForTheHiddenWords()
     {
-        // Undrawn, the absolutely positioned words escape the scroll box and widen the page: the
-        // kilder-every-column state measured 1567px at 320 before this (Fhi.Metadata-l9l2n.98).
+        // Undrawn, the absolutely positioned words escape the scroll box and widen the page
+        // (Fhi.Metadata-l9l2n.98).
         var cut = RenderWith();
         TurnSharesOn(cut);
 
