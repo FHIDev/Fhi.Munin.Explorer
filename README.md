@@ -406,7 +406,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     under a group heading already carrying the API's word for the same value. A kildetype the table
     does not name, and a kilde carrying none at all, wear no badge — an empty capsule would say they
     were one of them. Both sample stylesheets already carried the rule before any markup wore the
-    name — stood in under their "since the previous Stiler pin" heading,
+    name — stood in under their "since an earlier Stiler pin" heading,
     which is where a rule copied off the pinned published package goes — so
     `assert-sample-css-matches-stiler.sh` against that pin is what says whether the published
     Stiler really has it — 0.1.98 today, 0.1.75 when this was written. Nothing on this side
