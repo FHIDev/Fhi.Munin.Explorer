@@ -8,13 +8,9 @@ using static Fhi.Munin.Explorer.Tests.KildeColumns;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// The kilder table's header handles, <c>munin-explorer-kilder-header__&lt;key&gt;</c> (Fhi.Metadata-35w0p.74).
+/// The kilder header handles (Fhi.Metadata-35w0p.74): Stiler keys the sticky head on which wide
+/// columns are shown, which the scroll box's <c>--cols-N</c> count cannot tell it.
 /// </summary>
-/// <remarks>
-/// Stiler keys the sticky head on which wide columns are shown. The scroll box's count cannot say
-/// that: Kode+Dataansvarlig+Databehandler and the default three are both <c>--cols-8</c> and 226px
-/// apart. A missing or misspelt handle draws nothing wrong here and picks the wrong threshold there.
-/// </remarks>
 public class KildeHeaderHandlesTest : ExplorerTestContext
 {
     private sealed class FakeClient(params KildeSummary[] kilder) : EmptyMuninExplorerClient
@@ -87,7 +83,7 @@ public class KildeHeaderHandlesTest : ExplorerTestContext
 
         Assert.All(KildeSearch.ColumnKeys, key => Assert.Contains(key, drawn));
 
-        // And the orphan guard's exemption covers every one drawn, so it never reports a handle.
+        // And the orphan guard's exemption covers every one drawn. xUnit takes the superset first.
         Assert.Subset(HeaderHandles.ToHashSet(),
                       drawn.Select(KildeSearch.HeaderClass).ToHashSet());
     }
