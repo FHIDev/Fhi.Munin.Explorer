@@ -408,8 +408,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     were one of them. Both sample stylesheets already carried the rule before any markup wore the
     name — stood in under their "since the previous Stiler pin" heading,
     which is where a rule copied off the pinned published package goes — so
-    `assert-sample-css-matches-stiler.sh` against that pin is what says whether 0.1.75 really has
-    it. Nothing on this side reads Stiler, and this paragraph does not claim to —
+    `assert-sample-css-matches-stiler.sh` against that pin is what says whether the published
+    Stiler really has it — 0.1.98 today, 0.1.75 when this was written. Nothing on this side
+    reads Stiler, and this paragraph does not claim to —
     `Fhi.Metadata-gegtb` is the bead that goes and looks, and writes the rule if it is not there.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
     terms and worth one sentence, because the cell holds a control rather than a value: undefined,
@@ -488,8 +489,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     of a sticky header, rather than under it. Stiler's rules for
     it are written — `components/munin-explorer/_page.scss`, merged as PR 39299 — and hang the
     offset on the `data-nav-section` attribute rather than on the class. That PR bumped no version
-    of its own, but 0.1.75 carries the file: both sample stylesheets stand in at its declarations
-    for the name and `assert-sample-css-matches-stiler.sh` finds no divergence against that pin.
+    of its own, but 0.1.75 carries the file, and so does the 0.1.98 pinned today: both sample
+    stylesheets stand in at its declarations for the name and
+    `assert-sample-css-matches-stiler.sh` finds no divergence against the pin.
     Which PR bumped a version says nothing about what a later release shipped — read the pin.
     The same views add the chassis those sections sit in — `munin-explorer-page` on the root,
     `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc` —
@@ -505,7 +507,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     blocks and draw whichever the host loaded last. Handles, all four — undefined, the body and its
     two columns are blocks in ordinary flow, which stacks the contents column above the main one and
     loses no words. Stiler's rules are written, in the same
-    `_page.scss` and merged as PR 39300, and 0.1.75 carries them by the same reading of the pin.
+    `_page.scss` and merged as PR 39300, and 0.1.75 carries them, as the pinned 0.1.98 does.
     The contents column is drawn only when something fills it, which since
     `Fhi.Metadata-35w0p.12` is the contents nav — and only when the view drew a section
     for it to link to, so a view with none still has no rail. Both sample stylesheets scope the
@@ -534,10 +536,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     trail, before the hero facts, using `DetailPage.ActionsAfterHeader`; other views retain the
     default placement above the header. Both are handles: undefined, the eyebrow
     is a paragraph above the title and the row is its children in ordinary flow, and no word is
-    lost either way. Stiler has carried a rule for each since 0.1.75, the 0.1.98
-    `samples/HostileHost` restores today included, in the same
-    `components/munin-explorer/_page.scss`, and both sample stylesheets already
-    stand in at its declarations. Four of the five surfaces set the eyebrow — the kilde,
+    lost either way. `Fhi.Helsedata.Stiler` 0.1.98 — the pin `samples/HostileHost` restores —
+    carries a rule for each, as every release since 0.1.75 has, in the same
+    `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at its
+    declarations. Four of the five surfaces set the eyebrow — the kilde,
     datasamling, variable and instrument views, each naming its own kind. `VariableListView` sets no
     chrome at all: the saved-list view's own is a bead of its own.
     Under the name block those four add `munin-explorer-page__facts`, the hero row: one `<dl>`
@@ -552,7 +554,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     facts, because a list of saved variables is not an entity with facts about it. The instrument
     page names two — how many variables it holds and how long it has been in use — and the row
     draws whichever of them the catalogue filled in. Both sample
-    stylesheets stand in at exactly what the pinned 0.1.75 declares, the `small` included.
+    stylesheets stand in at exactly what the pinned 0.1.98 declares, the `small` included — and
+    at 0.1.75 they no longer would, since the label's `overflow-wrap: anywhere` came later.
     `DetailFact.LabelLang` marks a label that falls back to another language, independently of
     the value’s `Lang`, in both the hero and sticky bar.
 
