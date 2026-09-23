@@ -1945,8 +1945,9 @@ table.munin-explorer-data-list tbody th {
    (test/sample-css-known-divergences.txt), so a fact list here gains a 40px row gap, a 24px bottom
    margin and a font shorthand it had none of, and loses the marker's uppercase and grey.
 
-   The three below are the stand-in's own, as the same three above the panel grid are: Stiler
-   declares nothing for a grid item, and a <dd> left alone keeps the browser's 40px indent. */
+   Only the dt and the dd's margin below are the stand-in's own: Stiler has no rule for a dt here,
+   and zeroes a dd's browser indent only inside __detail, __facts and __stuckbar. The dd's measure
+   and the section paragraph's are Stiler's own, copied at the pin. */
 .munin-explorer-page__fields dt {
   margin-bottom: 4px;
 }
