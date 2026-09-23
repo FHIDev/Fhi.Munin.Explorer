@@ -1613,6 +1613,36 @@ table.munin-explorer-data-list tbody th {
 }
 }
 
+/* The period. The dates are the information; the bar is the illustration, so a host that styles
+   neither still shows the period as words. */
+.munin-explorer-period {
+  margin-bottom: 8px;
+}
+
+.munin-explorer-period__range {
+  margin: 0 0 6px;
+}
+
+.munin-explorer-period__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--grey30);
+  overflow: hidden;
+  max-width: 420px;
+}
+
+.munin-explorer-period__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+/* A period with no end is still running, which is a different fact from a short one — Runa marks
+   it with colour rather than leaving it to look like a full bar that happens to be full. */
+.munin-explorer-period__track--ongoing .munin-explorer-period__fill {
+  background: #1f8a4c;
+}
+
 /* The kilde step of the trail is a control, not a link — this component has no routes, so it
    discloses the kilde in place instead of navigating to it. Drawn as a link anyway, because that
    is what it behaves like from the reader's side. */
