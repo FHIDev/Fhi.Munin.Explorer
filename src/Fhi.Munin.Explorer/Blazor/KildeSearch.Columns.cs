@@ -11,7 +11,8 @@ public sealed partial class KildeSearch
     /// </summary>
     /// <remarks>
     /// Kelda's eleven, in the order its own picker lists them (<c>kelda.tsx</c>,
-    /// <c>OPTIONAL_COLUMNS</c>). Navn, Status and Opprettet are not among them, in Kelda either.
+    /// <c>OPTIONAL_COLUMNS</c>), then the two coverage shares Kelda does not have
+    /// (Fhi.Metadata-l9l2n.98). Navn, Status and Opprettet are not among them, in Kelda either.
     /// Which field each of the two dates reads is on <see cref="Imported"/> and
     /// <see cref="SourceUpdated"/> below, where a reader meets it.
     /// </remarks>
@@ -28,6 +29,8 @@ public sealed partial class KildeSearch
         Validity,
         Imported,
         SourceUpdated,
+        KodeverkShare,
+        StatisticsShare,
     }
 
     /// <summary>The columns the picker offers, in the order it lists them.</summary>
@@ -41,7 +44,7 @@ public sealed partial class KildeSearch
     /// The columns that start turned off, which is Kelda's own default set.
     /// </summary>
     /// <remarks>
-    /// Kildetype, Datasamlinger and Variables are on; the other eight are off. Held as what is
+    /// Kildetype, Datasamlinger and Variables are on; the other ten are off. Held as what is
     /// hidden rather than as what is shown, so the table's default view is the one this component
     /// already shipped and a column added to the enum appears rather than disappears.
     /// <para>
@@ -61,6 +64,8 @@ public sealed partial class KildeSearch
         KildeColumn.Validity,
         KildeColumn.Imported,
         KildeColumn.SourceUpdated,
+        KildeColumn.KodeverkShare,
+        KildeColumn.StatisticsShare,
     ];
 
     /// <summary>Whether a column is on screen.</summary>
@@ -104,7 +109,8 @@ public sealed partial class KildeSearch
 
     /// <summary>
     /// Every optional column's key, in the order the picker lists them. The names are Munin's own
-    /// Kelda's where it has the same column, and <c>kode</c> for the one it does not.
+    /// Kelda's where it has the same column, <c>kode</c> for the code, and the API's own field
+    /// names, <c>andelKodeverk</c> and <c>andelStatistikk</c>, for the two coverage shares.
     /// </summary>
     public static IReadOnlyList<string> ColumnKeys { get; } = [.. OptionalColumns.Select(ColumnKey)];
 
@@ -125,6 +131,8 @@ public sealed partial class KildeSearch
         KildeColumn.Validity => "gyldighetsperiode",
         KildeColumn.Imported => "importert",
         KildeColumn.SourceUpdated => "sistEndret",
+        KildeColumn.KodeverkShare => "andelKodeverk",
+        KildeColumn.StatisticsShare => "andelStatistikk",
         _ => throw new ArgumentOutOfRangeException(nameof(column), column, "No key for this column.")
     };
 
@@ -164,6 +172,8 @@ public sealed partial class KildeSearch
         KildeColumn.Validity => T.FieldValidity,
         KildeColumn.Imported => T.ColumnImported,
         KildeColumn.SourceUpdated => T.ColumnSourceUpdated,
+        KildeColumn.KodeverkShare => T.ColumnKodeverkShare,
+        KildeColumn.StatisticsShare => T.ColumnStatisticsShare,
         _ => throw new ArgumentOutOfRangeException(nameof(column), column, "No label for this column.")
     };
 

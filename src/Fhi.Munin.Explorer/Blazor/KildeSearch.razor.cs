@@ -492,8 +492,8 @@ public sealed partial class KildeSearch : ComponentBase
 
 
     // The columns the header actually renders — the picker's choice as well as the host's. Four are
-    // always drawn: the expand control, Navn, Status and Opprettet. The nested row's colspan and the
-    // scroll box's modifier both read it, so the number they mean can never be two numbers.
+    // always drawn: the expand control, Navn, Status and Opprettet; with selection and all thirteen
+    // optional columns on it is 18. The colspan and the scroll box's modifier both read it.
     private int ColumnCount => (Selectable ? 5 : 4) + OptionalColumns.Count(ColumnVisible);
 
     // Stiler has to vary the box by how wide the table is and cannot count the columns itself, so
@@ -1438,8 +1438,12 @@ public sealed partial class KildeSearch : ComponentBase
     /// <param name="largest">The largest count among the drawn rows, or 0 for a column with no bar.</param>
     private static CountCell CountClass(int count, int largest = 0) =>
         count == 0
-            ? new("munin-explorer-kilder__count munin-explorer-kilder__count--zero", null)
+            ? new(DimmedCountClass, null)
             : new("munin-explorer-kilder__count", largest > 0 ? BarWidth(count, largest) : null);
+
+    // One dimmed look worn on purpose by a nought count and by the unmeasured share cell alike, so
+    // editing it restyles both.
+    private const string DimmedCountClass = "munin-explorer-kilder__count munin-explorer-kilder__count--zero";
 
     /// <summary>A whole percent, 1 to 100, so a non-zero count never draws an empty fill.</summary>
     private static string BarWidth(int count, int largest) =>

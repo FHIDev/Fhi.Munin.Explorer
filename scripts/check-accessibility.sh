@@ -64,6 +64,10 @@ REFLOW_EXPLORER_TARGET="/::variables-list"
 # 291px of it in a 226px mount, Fhi.Metadata-kd9ts) and its facet values, whose unbroken
 # variabelgruppe name only the label rule wraps (Fhi.Metadata-7484a).
 REFLOW_FACETS_TARGET="/::filters-level-lines"
+
+# And the kilder table with every optional column on, the widest it can be drawn: the table has to
+# scroll inside its own box at 320px rather than widen the page (Fhi.Metadata-l9l2n.98).
+REFLOW_WIDEST_TARGET="/kilder::kilder-every-column"
 TARGETS=(
   "$REFLOW_EXPLORER_TARGET"
   "$REFLOW_TARGET"
@@ -215,10 +219,10 @@ if [ "$scan_status" -eq 2 ]; then
 fi
 
 # WCAG 1.4.10 Reflow is stated at 320px and nothing here measured any page there: geometry-scan.mjs
-# drives six widths and the narrowest is 843. Two pages. The kildeutforsker in two states, both
+# drives six widths and the narrowest is 843. Two pages. The kildeutforsker in three states, all
 # waiting for a row so an empty page fails as TOOLING rather than fitting 320 with nothing in it;
 # the second ticks one, since the ribbon is widest there and the untouched page fits 320 whether or
-# not the handover can wrap.
+# not the handover can wrap, and the third turns every column on, the widest the table draws.
 #
 # And the variable explorer twice: at rest, and with Vis filtre and Utvid alle pressed. The panel
 # folds below 1024px, so only the second draws its toolbar and facets, and check-hostile-host.sh's
@@ -226,7 +230,7 @@ fi
 #
 # Three of the twelve assertions. Four of the nine left out were measured here first; three are
 # scoped to the explorer-* states, which are /utforsker and none of these; and the last two measure
-# the detail chassis, which none of the four states here opens - both pages draw one in a detail
+# the detail chassis, which none of the five states here opens - both pages draw one in a detail
 # state, and neither of those is driven at 320. Which and why: AGENTS.md, "And
 # check-accessibility.sh measures one width axe never looks at".
 echo
@@ -237,7 +241,7 @@ GEOMETRY_EXCEPT= \
 GEOMETRY_ASSERTIONS='no horizontal overflow,hidden means hidden,text a reader is meant to see has a box to see it in' \
   node "$ROOT/scripts/geometry-scan.mjs" \
     "${BASE}${REFLOW_TARGET}" "${BASE}${REFLOW_TICKED_TARGET}" "${BASE}${REFLOW_EXPLORER_TARGET}" \
-    "${BASE}${REFLOW_FACETS_TARGET}"
+    "${BASE}${REFLOW_FACETS_TARGET}" "${BASE}${REFLOW_WIDEST_TARGET}"
 reflow_status=$?
 set -e
 
@@ -280,16 +284,17 @@ fi
 
 cat <<'EOF'
 No violations detected, and the kildeutforsker and the variable explorer's front page fit 320px,
-the explorer's with its facets unfolded as well as at rest.
+the kildeutforsker's with every column on, the explorer's with its facets unfolded as well as at rest.
 
 Read that literally. This gate sees the sample stylesheet, not the one the component
 ships into, and automated checking cannot see missing structure at all. A green run is
 evidence of no detected regression, and nothing more.
 
 The 320px measurement is narrower still: three of the twelve assertions, on two pages, in
-four states - the variable explorer at rest and with Vis filtre and Utvid alle pressed,
-and nothing else behind a press in the filter panel. Every other width and every other
-assertion belongs to check-hostile-host.sh.
+five states - the kilder table at rest, with a row ticked and with every column on, the
+variable explorer at rest and with Vis filtre and Utvid alle pressed, and nothing else behind a
+press in the filter panel. Every other width and every other assertion belongs to
+check-hostile-host.sh.
 
 Why, at length: AGENTS.md, "Accessibility is a requirement, not a preference".
 EOF

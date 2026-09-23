@@ -516,6 +516,11 @@ internal sealed record Texts(
     string ColumnDelkildeCount,
     string ColumnImported,
     string ColumnSourceUpdated,
+    // The kilde table's two coverage columns; kodeverk stays Norwegian in English as the domain term
+    // it is. The last is what a screen reader says for the dash where a kilde has nothing to measure.
+    string ColumnKodeverkShare,
+    string ColumnStatisticsShare,
+    string ShareNotMeasured,
     // The kilde table's expand control. The label carries the kilde's name because "Vis
     // datasamlinger" repeated down a column says nothing about which row (Fhi.Metadata-mq24y).
     Func<string, string> ExpandDatasamlinger,
@@ -1344,6 +1349,9 @@ internal sealed record Texts(
         ColumnDelkildeCount: "Delkilder",
         ColumnImported: "Importert",
         ColumnSourceUpdated: "Sist endret",
+        ColumnKodeverkShare: "Kodeverk %",
+        ColumnStatisticsShare: "Statistikk %",
+        ShareNotMeasured: "ikke målt",
         ExpandDatasamlinger: name => $"Vis datasamlinger for {name}",
         CollapseDatasamlinger: name => $"Skjul datasamlinger for {name}",
         ColumnExpand: "Vis datasamlinger",
@@ -1793,6 +1801,9 @@ internal sealed record Texts(
         ColumnDelkildeCount: "Sub-sources",
         ColumnImported: "Imported",
         ColumnSourceUpdated: "Last modified",
+        ColumnKodeverkShare: "Kodeverk %",
+        ColumnStatisticsShare: "Statistics %",
+        ShareNotMeasured: "not measured",
         ExpandDatasamlinger: name => $"Show data collections for {name}",
         CollapseDatasamlinger: name => $"Hide data collections for {name}",
         ColumnExpand: "Show data collections",

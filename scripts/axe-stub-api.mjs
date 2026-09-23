@@ -60,8 +60,11 @@ const study = JSON.parse(readFileSync(join(fixtures, 'kilde-med-delkilder.json')
 const listRoute = routes.find(([, source]) => source === 'kilder.json')[0];
 const countCollections = node => node.datasamlinger.length +
   (node.delkilder ?? node.children ?? []).reduce((count, child) => count + countCollections(child), 0);
+// The capture predates the share columns, so every row would draw the dash. The widest a share can
+// be and a measured nought go on the first two; the rest keep the dash (Fhi.Metadata-l9l2n.98).
+const shares = [{ andelKodeverk: 100, andelStatistikk: 100 }, { andelKodeverk: 0, andelStatistikk: 0 }];
 bodies.set(listRoute, JSON.stringify([
-  ...JSON.parse(bodies.get(listRoute)),
+  ...JSON.parse(bodies.get(listRoute)).map((kilde, i) => ({ ...shares[i], ...kilde })),
   { ...study, navn: study.preferredTerm, aktiv: true, harVariabelbeskrivelse: study.totalVariables > 0,
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));

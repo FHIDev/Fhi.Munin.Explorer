@@ -471,6 +471,16 @@ unstyled-name||.munin-explorer-lead|
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
 
+# Fhi.Metadata-l9l2n.98's two share columns take the scroll box to twelve and thirteen optional
+# columns, past Stiler's ladder; the sample's thresholds are estimates. The Stiler rule is
+# Fhi.Metadata-6xppi, and all six lines go when the pin moves to the version that carries it.
+unstyled-name||.munin-explorer-kilder-scroll--cols-17|
+unstyled-name||.munin-explorer-kilder-scroll--cols-18|
+invented-selector|@container munin-explorer-kilder (min-width:1916px)|.munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th|box-shadow
+invented-selector|@container munin-explorer-kilder (min-width:1916px)|.munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th|position
+invented-selector|@container munin-explorer-kilder (min-width:1916px)|.munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th|top
+invented-selector|@container munin-explorer-kilder (min-width:1916px)|.munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select))|overflow-x
+
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
 # only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.98.
 

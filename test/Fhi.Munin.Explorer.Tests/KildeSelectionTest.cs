@@ -703,19 +703,49 @@ public class KildeSelectionTest : ExplorerTestContext
     }
 
     [Fact]
-    public void ScrollBox_WhenTheHandoverIsWiredAndEveryColumnIsOn_ThenTheModifierCountsSixteen()
+    public void ScrollBox_WhenTheHandoverIsWiredAndEveryColumnIsOn_ThenTheModifierCountsEighteen()
     {
-        // The widest the table gets: sixteen is not the picker's eleven — five of them are columns
-        // it cannot reach. Fifteen until Kode became a column (Fhi.Metadata-ffudq).
+        // The widest the table gets: eighteen is not the picker's thirteen — five of them are columns
+        // it cannot reach. Sixteen until the two coverage shares (Fhi.Metadata-l9l2n.98).
         var (cut, _) = RenderSelectable(new FakeClient(Kilde("Als registeret", "K_ALS")));
 
         TurnEveryColumnOn(cut);
 
-        Assert.Equal(16, Headers(cut).Count);
+        Assert.Equal(18, Headers(cut).Count);
 
         Assert.Contains(
-            "munin-explorer-kilder-scroll--cols-16",
+            "munin-explorer-kilder-scroll--cols-18",
             cut.Find('.' + HostClassNames.KilderScroll).ClassList);
+    }
+
+    [Fact]
+    public void SampleCss_WhenEveryColumnIsOn_ThenAThresholdSticksTheWidestHeaderEitherWay()
+    {
+        // The orphan guards exempt the count modifier, so without this a fourteenth optional column
+        // ships with no threshold and every check green, as --cols-17 and --cols-18 once did.
+        // The widths are read off the rendered table, never written here (Fhi.Metadata-l9l2n.98).
+        Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
+        var plain = Render<KildeSearch>();
+        var selectable = Render<KildeSearch>(b => b.Add(c => c.ExploreVariablesRequested,
+            EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, _ => { })));
+        TurnEveryColumnOn(plain);
+        TurnEveryColumnOn(selectable);
+
+        var select = $":has(.{HostClassNames.KilderSelect})";
+        var widest = new[]
+        {
+            $".{HostClassNames.KilderScroll}--cols-{Headers(selectable).Count}{select}",
+            $".{HostClassNames.KilderScroll}--cols-{Headers(plain).Count}:not({select})",
+        };
+        Assert.Equal(Headers(plain).Count + 1, Headers(selectable).Count);
+
+        foreach (var box in widest)
+        {
+            Assert.Contains("overflow-x:visible",
+                string.Concat(HostClassNames.SampleContainerDeclarationsFor("munin-explorer-kilder", box)));
+            Assert.Contains("position:sticky", string.Concat(HostClassNames.SampleContainerDeclarationsFor(
+                "munin-explorer-kilder", $"{box} > .munin-explorer-kilder > thead th")));
+        }
     }
 
     [Fact]

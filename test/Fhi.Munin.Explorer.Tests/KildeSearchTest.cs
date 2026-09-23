@@ -830,10 +830,10 @@ public class KildeSearchTest : ExplorerTestContext
 
         TurnEveryColumnOn(cut);
 
-        Assert.Equal(15, Headers(cut).Count);
+        Assert.Equal(17, Headers(cut).Count);
 
         Assert.Contains(
-            "munin-explorer-kilder-scroll--cols-15",
+            "munin-explorer-kilder-scroll--cols-17",
             cut.Find(".munin-explorer-kilder-scroll").ClassList);
     }
 
@@ -5971,7 +5971,7 @@ public class KildeSearchTest : ExplorerTestContext
         [.. cut.FindAll(".munin-explorer-kilder tbody tr:first-child > *").Select(c => c.TextContent.Trim())];
 
     /// <summary>
-    /// One kilde carrying every field the eleven optional columns read, each value distinct.
+    /// One kilde carrying every field the thirteen optional columns read, each value distinct.
     /// </summary>
     /// <remarks>
     /// The four date-shaped fields are the point. Two are Munin's own — Created and LastUpdated —
@@ -5983,6 +5983,8 @@ public class KildeSearchTest : ExplorerTestContext
         Kilde("Als registeret", "K_ALS", established: "2011") with
         {
             DelkildeCount = 7,
+            KodeverkShare = 37,
+            StatisticsShare = 0,
             DataController = "St. Olavs hospital HF",
             DataProcessor = "Folkehelseinstituttet",
             PersonIdentificationLevel = "indirectlyIdentifiable",
@@ -6018,7 +6020,7 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Picker_WhenTheListLoads_ThenItOffersKeldasElevenColumnsInKeldasOrder()
+    public void Picker_WhenTheListLoads_ThenItOffersKeldasElevenColumnsInKeldasOrderThenTheTwoShares()
     {
         // Kelda's OPTIONAL_COLUMNS, in its order (kelda.tsx:74). Navn, Status and Opprettet are
         // absent for the reason they are absent from Kelda's own list: the name is the row's
@@ -6038,12 +6040,14 @@ public class KildeSearchTest : ExplorerTestContext
             "Gyldighet",
             "Importert",
             "Sist endret",
+            "Kodeverk %",
+            "Statistikk %",
         ], ColumnToggles(cut).Select(ColumnName));
 
         // The rendered `checked` attribute is the whole truth about a checkbox, so the defaults
         // have to be readable off it rather than only off the table.
         Assert.Equal(
-            [false, true, true, true, false, false, false, false, false, false, false],
+            [false, true, true, true, false, false, false, false, false, false, false, false, false],
             ColumnToggles(cut).Select(Ticked));
     }
 
@@ -6190,6 +6194,8 @@ public class KildeSearchTest : ExplorerTestContext
             "Delkilder",
             "Datasamlinger",
             "Variabler",
+            "Kodeverk %",
+            "Statistikk %",
             "Opprettet",
             "Importert",
             "Sist endret",
@@ -6213,6 +6219,8 @@ public class KildeSearchTest : ExplorerTestContext
             "7",
             "3",
             "42",
+            "37\u00A0%",
+            "0\u00A0%",
             "2011",
             ImportedText(cut),
             SourceUpdatedText(cut),

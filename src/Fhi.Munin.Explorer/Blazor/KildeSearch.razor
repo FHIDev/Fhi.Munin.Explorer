@@ -575,14 +575,14 @@ else
                above shows, and pointing at that element would make the table's name change under a
                screen reader every time the status line does.
 
-               Thirteen columns in the order Kelda's own header draws them (kelda.tsx:479-535): Navn,
-               Status and Opprettet always, and ten behind the picker above, of which Kelda's
-               DEFAULT_VISIBLE turns three on.
+               Kelda's columns in the order its own header draws them (kelda.tsx:479-535): Navn,
+               Status and Opprettet always, and eleven behind the picker above, of which Kelda's
+               DEFAULT_VISIBLE turns three on — plus our two coverage shares after Variabler.
 
-               The picker lists those ten in a DIFFERENT order (kelda.tsx:74) — counts before free
-               text, where the table puts free text first — and that is Kelda's, not a slip on either
-               side. Copying one order and not the other would make this table Kelda's in the control
-               and not in the columns.
+               The picker lists all thirteen: Kelda's eleven in Kelda's DIFFERENT order (kelda.tsx:74) —
+               counts before free text, where the table puts free text first — and not a slip on either
+               side, then our two shares last, since Kelda has no place for them. Copying one of Kelda's
+               orders and not the other would make this table Kelda's in the control and not in the columns.
 
                Two control columns come before all of them: the expand toggle, which is ours alone, and
                the checkbox, which is Kelda's and is drawn only where the host wired the handover. Both
@@ -653,6 +653,14 @@ else
                         @if (ColumnVisible(KildeColumn.Variables))
                         {
                             @SortableHeader(KildeSortOrder.Variables, "munin-explorer-kilder__count")
+                        }
+                        @if (ColumnVisible(KildeColumn.KodeverkShare))
+                        {
+                            <th scope="col" class="munin-explorer-kilder__count">@T.ColumnKodeverkShare</th>
+                        }
+                        @if (ColumnVisible(KildeColumn.StatisticsShare))
+                        {
+                            <th scope="col" class="munin-explorer-kilder__count">@T.ColumnStatisticsShare</th>
                         }
                         @* No __count on this one: it holds a year the catalogue wrote down as text,
                            not a number this component counted, and the class right-aligns figures. *@
@@ -804,6 +812,14 @@ else
                                 var variables = CountClass(kilde.TotalVariables, largestVariables);
                                 <td class="@variables.Class">@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}</td>
                             }
+                            @if (ColumnVisible(KildeColumn.KodeverkShare))
+                            {
+                                @ShareCell(kilde.KodeverkShare)
+                            }
+                            @if (ColumnVisible(KildeColumn.StatisticsShare))
+                            {
+                                @ShareCell(kilde.StatisticsShare)
+                            }
                             @* No lang here, unlike the name above: the catalogue writes this field as
                                a four-digit year, which has no language to mark (WCAG 3.1.2), and where
                                it is missing the cell holds our "Ikke oppgitt" in the reader's own. *@
@@ -867,6 +883,20 @@ else
 </section>
 
 @code {
+    // Null is a kilde with no variables to measure and 0 is a measured none, so they must not read
+    // alike: the dash is hidden and spoken as words, and both are dimmed as a nought count is. The
+    // number is the API's own, already rounded, so nothing here rounds it again.
+    private RenderFragment ShareCell(int? share) =>
+        share is { } percent ? MeasuredShare(percent) : UnmeasuredShare();
+
+    private RenderFragment MeasuredShare(int percent) =>
+        @<td class="@CountClass(percent).Class">@($"{percent}\u00A0%")</td>;
+
+    // Inline, as the saved list's scroll box is: the hidden words are absolutely positioned, and
+    // without a containing block inside the scroll box they escape it and widen the page at 320px.
+    private RenderFragment UnmeasuredShare() =>
+        @<td class="@DimmedCountClass" style="position:relative"><span aria-hidden="true">–</span><span class="screenreader-only">@T.ShareNotMeasured</span></td>;
+
     // munin-explorer-kilder__sort rather than the variable explorer's header class, whose two
     // Stiler rules are scoped to that one's pseudo-table prefix (Fhi.Metadata-l9l2n.106).
     private RenderFragment SortableHeader(KildeSortOrder order, string? columnClass = null) =>
