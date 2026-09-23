@@ -1018,6 +1018,46 @@ public class MuninExplorerClientTest
         Assert.Empty(Assert.Single(filters.Datasamlinger).Categories);
     }
 
+    [Fact]
+    public async Task GetFiltersAsync_WhenTheAnswerCarriesFilters_ThenEveryWireNameIsRead()
+    {
+        // The capture answers "filtere" empty, so nothing else reads FilterFacet: a name Munin
+        // renames would land nowhere with nothing going red. Inline rather than in filters.json,
+        // which is a capture and must not carry a row the API does not send. (Fhi.Metadata-0ecep)
+        var filters = await WithJson("""
+            {
+              "filtere": [
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000301",
+                  "name": "Rot",
+                  "parentId": null,
+                  "count": 7
+                },
+                {
+                  "id": "6f1d4a5c-0000-4000-8000-000000000302",
+                  "name": "Barn",
+                  "parentId": "6f1d4a5c-0000-4000-8000-000000000301",
+                  "count": 3
+                }
+              ]
+            }
+            """).GetFiltersAsync();
+
+        Assert.Equal(2, filters.Filters.Count);
+
+        var root = filters.Filters[0];
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000301"), root.Id);
+        Assert.Equal("Rot", root.Name);
+        Assert.Null(root.ParentId);
+        Assert.Equal(7, root.Count);
+
+        var nested = filters.Filters[1];
+        Assert.Equal(new Guid("6f1d4a5c-0000-4000-8000-000000000302"), nested.Id);
+        Assert.Equal("Barn", nested.Name);
+        Assert.Equal(root.Id, nested.ParentId);
+        Assert.Equal(3, nested.Count);
+    }
+
     // Inline because the capture answers both collections empty, and a hand-written row in it would
     // pin a payload the API does not send. One payload for every test below, so they cannot
     // disagree about the shape. (Fhi.Metadata-0ecep)
