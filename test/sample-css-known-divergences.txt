@@ -60,6 +60,10 @@
 # Stiler 0.1.75 retires three entries: the expand icon's width and the choicepicker's two
 # declarations now exist in the package. 214 entries remained then; no new exceptions were added.
 #
+# IT WAS 336 BEFORE Fhi.Metadata-4gjgp and 323 after it. The choicepicker's thirteen went, the
+# ten the bead tabulated and the list's invented colour, margin and z-index, measured open at
+# 320-412 against ModernHost and HostileHost on Stiler 0.1.107 before and after.
+#
 # IT WAS 219 BEFORE Fhi.Metadata-796cw and 333 after it: the 114 invented-selector lines at the
 # bottom are a new family, not drift. Each was there before and compared by no kind at all.
 #
@@ -318,7 +322,7 @@ missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 
 # ---------------------------------------------------------------------------------------------
 # BORROWED SELECTORS. Everything above this line is a name under the `munin-explorer` prefix; the
-# 41 below are names the component wears from Stiler, which the comparison did not look at until
+# ones below are names the component wears from Stiler, which the comparison did not look at until
 # Fhi.Metadata-l9l2n.105. `.dropdown-choicepicker__item { white-space: nowrap }` is why it does
 # now: the sample invented that declaration, the guard was blind to it, and a measurement taken
 # against the sample was written up as a P2 functional defect in the component.
@@ -355,25 +359,6 @@ missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 # read off the bundle only. It is not a value comparison - it says Stiler declares no font-weight
 # longhand under that selector, which minification does not change - so the bundle is decent
 # evidence. Not proof, though, and the next credentialed run is.
-
-# The choicepicker, and the reason this section exists. Every line is a real difference between
-# what the sample draws and what a host on Stiler sees, and the first four are layout-deciding
-# rather than cosmetic: item padding and `inline-flex` set item height and the list's shrink-to-fit
-# width, which is the geometry Fhi.Metadata-abmom measured. Not fixed here - changing them moves
-# every box in the open picker and needs its own measurement. Filed as Fhi.Metadata-4gjgp.
-different-value||.dropdown-choicepicker__item|display
-different-value||.dropdown-choicepicker__item|padding
-different-value||.dropdown-choicepicker__item:first-of-type|padding-top
-different-value||.dropdown-choicepicker__item:last-of-type|padding-bottom
-different-value||.dropdown-choicepicker|top
-missing-declaration||.dropdown-choicepicker__item|color
-missing-declaration||.dropdown-choicepicker__item:first-of-type|border-radius
-missing-declaration||.dropdown-choicepicker__item:last-of-type|border-radius
-missing-declaration||.dropdown-choicepicker|display
-missing-declaration||.dropdown-choicepicker|flex-direction
-invented-declaration||.dropdown-choicepicker|color
-invented-declaration||.dropdown-choicepicker|margin
-invented-declaration||.dropdown-choicepicker|z-index
 
 # The checkbox row inside an item. Stiler dresses it from `.form-control` itself and declares only
 # `word-break: normal` under this selector; the sample lays the row out here instead, because it

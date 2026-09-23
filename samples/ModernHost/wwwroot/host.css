@@ -2651,15 +2651,14 @@ table.munin-explorer-data-list tbody th {
 /* The open list, over the header rather than pushing it down: a picker that moved the columns
    while you chose them would be aiming at a moving target. */
 .dropdown-choicepicker {
-  position: absolute;
-  top: 36px;
-  z-index: 10;
-  margin: 0;
   padding: 0;
-  list-style: none;
   border-radius: 0.5rem;
   background-color: var(--dark);
-  color: #fff;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 28px;
 }
 
 .dropdown-choicepicker--right {
@@ -2667,24 +2666,23 @@ table.munin-explorer-data-list tbody th {
 }
 
 .dropdown-choicepicker__item {
-  display: flex;
-  font-size: 1rem;
+  color: #fff;
+  padding: 12px 20px;
+  display: inline-flex;
   align-items: center;
-  padding: 4px 20px;
+  font-size: 1rem;
 }
 
-.dropdown-choicepicker__item:first-of-type { padding-top: 16px; }
-.dropdown-choicepicker__item:last-of-type { padding-bottom: 16px; }
+.dropdown-choicepicker__item:first-of-type { padding-top: 24px; border-radius: 8px 8px 0 0; }
+.dropdown-choicepicker__item:last-of-type { padding-bottom: 24px; border-radius: 0 0 8px 8px; }
 .dropdown-choicepicker__item:hover { background-color: #32378d; }
 
-/* A chosen column is a ticked checkbox, as helsedata's own is — the ::before glyph that used to
-   draw the mark for `aria-pressed` went with the buttons, and the browser draws the box now.
-   (Fhi.Metadata-f6az7) */
+/* A chosen column is a ticked checkbox the browser draws, as helsedata's is (Fhi.Metadata-f6az7).
+   No padding: Stiler's `.form-control` has none, so the item's padding alone sets the row height. */
 .dropdown-choicepicker__item .form-control {
   display: inline-flex;
   align-items: center;
   width: 100%;
-  padding: 8px 0;
   color: inherit;
   cursor: pointer;
 }
