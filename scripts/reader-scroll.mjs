@@ -2,10 +2,10 @@
 // same thing: scripts/state-assertions.mjs asserts the sticky fact bar's predicate, and
 // scripts/axe-states.mjs stages the one page state where the bar is on screen for axe to read.
 //
-// WHY A FRAME AT A TIME. An IntersectionObserver notifies on a CROSSING. A jump from below the hero
-// row to above it leaves every frame non-intersecting, so nothing is delivered and the bar reads
-// stale — the gate would then be measuring the browser's notification rule rather than the module's
-// predicate (Fhi.Metadata-14j7i). The step and the overshoot below are chosen for that reason and
+// WHY A FRAME AT A TIME, AND WHY A JUMP AS WELL. An IntersectionObserver notifies on a CROSSING, so
+// a stepped scroll measures the module's predicate and nothing else, while a jump from below the
+// hero row to above it delivers nothing at all and measures the direct re-read the module answers
+// that case with instead (Fhi.Metadata-14j7i). Both gates need both, and the step and the overshoot
 // are the numbers a change to one gate would otherwise leave the other one disagreeing about.
 
 /** How far past an element's bottom to land, so the crossing is unambiguous rather than borderline. */
@@ -45,6 +45,21 @@ const pastElement = (page, id) => page.evaluate(({ at, over }) => {
 /** Scrolls until `#id` has left the viewport upwards, and waits for the observer to answer. */
 export async function scrollPast(page, id) {
   await scrollLikeAReader(page, await pastElement(page, id));
+  await page.waitForTimeout(OBSERVER_SETTLE_MS);
+}
+
+/** Moves to `y` in ONE step, which is what an in-page anchor press and a bare window.scrollTo are. */
+const jump = (page, y) => page.evaluate(to => window.scrollTo({ top: to, left: 0, behavior: 'instant' }), y);
+
+/** Jumps clear of `#id` in one step, so no frame ever holds it and no crossing is reported. */
+export async function jumpPast(page, id) {
+  await jump(page, await pastElement(page, id));
+  await page.waitForTimeout(OBSERVER_SETTLE_MS);
+}
+
+/** Jumps back to where a page load leaves the reader, in one step, from wherever the page is. */
+export async function jumpToTop(page) {
+  await jump(page, 0);
   await page.waitForTimeout(OBSERVER_SETTLE_MS);
 }
 

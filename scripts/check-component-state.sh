@@ -36,6 +36,9 @@
 # can still pin — that the bar is away on a viewport short enough for the hero row to start BELOW the
 # fold, which is where a page load starts and where dropping the `boundingClientRect.top < 0` half of
 # the predicate would flash it. (Fhi.Metadata-35w0p.28)
+# The kilde drill-in is JUMPED past that row and back in single steps as well, and its contents nav
+# is pressed both ways: an observer is told nothing by a jump, so the module reads the row's own box
+# instead, and nothing but a browser can tell the two mechanisms apart (Fhi.Metadata-14j7i).
 # The collection's compact primary action is also focused while the hero returns, then blurred:
 # hiding its ancestor during focus would strand a keyboard reader (Fhi.Metadata-35w0p.23.4).
 #
@@ -254,7 +257,9 @@ panel's Ikoner switch. Both row chevrons were pressed as well, and what was aske
 image the sample stylesheet resolved for each of their four states. The two contents navs are read rather than pressed, and what is asked there
 is the address the browser resolved each href to. The two detail pages are SCROLLED rather than
 pressed, on a viewport short enough for the hero row to start below the fold, and what is asked is
-whether the sticky bar stayed away before the scroll and arrived after it. All of it against the
+whether the sticky bar stayed away before the scroll and arrived after it. The kilde one is also
+JUMPED past the row and back in one step each way, and its contents nav pressed both ways, which is
+the scroll no observer crossing reports. All of it against the
 sample stylesheet. The collection action also retains focus when its hero returns and releases the
 bar after focus leaves. The header of this script and of scripts/state-assertions.mjs list what that
 leaves out - the contents nav's focus step in particular, which this host's router takes over, and
