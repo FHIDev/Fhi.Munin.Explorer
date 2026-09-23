@@ -147,6 +147,9 @@ internal static class HostClassNames
         return [.. rendered.Distinct(StringComparer.Ordinal)
                            .Where(name => !TheirNames.Value.Contains(name))
                            .Where(name => !CountModifier.IsMatch(name))
+                           // Handles for Stiler's sticky-head thresholds, no sample rule's (Fhi.Metadata-35w0p.74).
+                           // The exact set, so a stray name under the stem is still reported.
+                           .Where(name => !KildeColumns.HeaderHandles.Contains(name))
                            .Where(name => !DetailRootMarkers.Contains(name))
                            .Select(name => Verdict(rules, name))
                            .OfType<string>()

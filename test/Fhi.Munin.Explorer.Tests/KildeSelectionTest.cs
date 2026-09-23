@@ -681,6 +681,16 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer-header__actions",
             "munin-explorer-header__actions-button",
             "munin-explorer-kilder",
+            // Handles on the header cells, for Stiler's sticky-head thresholds; no sample rule, and
+            // HostClassNames exempts exactly these (Fhi.Metadata-35w0p.74).
+            "munin-explorer-kilder-header__datasamlinger",
+            "munin-explorer-kilder-header__expand",
+            "munin-explorer-kilder-header__kildetype",
+            "munin-explorer-kilder-header__navn",
+            "munin-explorer-kilder-header__opprettet",
+            "munin-explorer-kilder-header__select",
+            "munin-explorer-kilder-header__status",
+            "munin-explorer-kilder-header__variabler",
             "munin-explorer-kilder-scroll",
             // Eight, not the seven next door: the select column this bead adds counts too.
             "munin-explorer-kilder-scroll--cols-8",

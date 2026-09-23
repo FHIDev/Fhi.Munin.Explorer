@@ -136,6 +136,18 @@ public sealed partial class KildeSearch
         _ => throw new ArgumentOutOfRangeException(nameof(column), column, "No key for this column.")
     };
 
+    /// <summary>
+    /// A header cell's handle: the stem finished with the column's key, or with <c>expand</c>,
+    /// <c>select</c>, <c>navn</c>, <c>status</c> or <c>opprettet</c> for the cells the picker cannot reach.
+    /// </summary>
+    /// <remarks>
+    /// Stiler keys the sticky head on which wide columns are shown, which the scroll box's count
+    /// cannot tell it (Fhi.Metadata-35w0p.74). The optional keys are <see cref="ColumnKey"/>'s own.
+    /// </remarks>
+    internal static string HeaderClass(string key) => $"munin-explorer-kilder-header__{key}";
+
+    private static string HeaderClass(KildeColumn column) => HeaderClass(ColumnKey(column));
+
     private void SeedColumns()
     {
         if (VisibleColumns is not { } shown)

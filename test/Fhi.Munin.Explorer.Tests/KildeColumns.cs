@@ -57,6 +57,24 @@ internal static class KildeColumns
     internal static IReadOnlyList<string> Headers(IRenderedComponent<KildeSearch> cut) =>
         [.. cut.FindAll(".munin-explorer-kilder thead th").Select(th => th.TextContent.Trim())];
 
+    /// <summary>The stem every kilder header cell's handle is finished from.</summary>
+    internal const string KilderHeaderStem = "munin-explorer-kilder-header__";
+
+    /// <summary>The header keys for the cells the picker cannot reach, in the order the table draws them.</summary>
+    internal static readonly string[] FixedHeaderKeys = ["expand", "select", "navn", "status", "opprettet"];
+
+    /// <summary>Every header handle the table can draw: the fixed cells' and every optional column's.</summary>
+    internal static IReadOnlySet<string> HeaderHandles { get; } =
+        new HashSet<string>(FixedHeaderKeys.Concat(KildeSearch.ColumnKeys).Select(KildeSearch.HeaderClass),
+                            StringComparer.Ordinal);
+
+    /// <summary>Per header cell, in the order drawn, the keys its handles carry — the stem taken off.</summary>
+    internal static IReadOnlyList<string[]> HeaderKeys(IRenderedComponent<KildeSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-kilder thead th")
+               .Select(th => th.ClassList.Where(c => c.StartsWith(KilderHeaderStem, StringComparison.Ordinal))
+                                         .Select(c => c[KilderHeaderStem.Length..])
+                                         .ToArray())];
+
     /// <summary>The buttons the four sortable headings hold, in the order the table draws them.</summary>
     internal static IReadOnlyList<IElement> SortButtons(IRenderedComponent<KildeSearch> cut) =>
         cut.FindAll(".munin-explorer-kilder thead .munin-explorer-kilder__sort");
