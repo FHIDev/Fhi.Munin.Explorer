@@ -979,6 +979,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // Folded, not merely emptied: an open rename field over a list the reader did not open it
         // for reads as a rename under way. No caller here has focus inside it.
         _renaming = false;
+        ForgetCopyAndEmptyControls();
     }
 
     /// <summary>
@@ -998,6 +999,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _downloadFailure = DownloadFailure.None;
         _desiredDataFailure = DesiredDataFailure.None;
         ForgetSharingFailures();
+        ForgetCopyAndEmptyFailures();
     }
 
     private async Task ChooseListAsync(ChangeEventArgs e)

@@ -79,7 +79,8 @@ public sealed partial class VariableListView
 
     private string ShareToggleId => $"munin-explorer-share-toggle-{_instance}";
 
-    private string ShareEmptyReasonId => $"munin-explorer-share-empty-{_instance}";
+    /// <summary>"Listen er tom", which every control an empty list refuses is described by.</summary>
+    private string ListEmptyReasonId => $"munin-explorer-list-empty-{_instance}";
 
     private string ShareCodeFieldId => $"munin-explorer-share-code-{_instance}";
 
@@ -128,13 +129,7 @@ public sealed partial class VariableListView
         _ => null
     };
 
-    private string? SaveNameMessage => _saveNameProblem switch
-    {
-        SaveNameProblem.Required => T.SharedListNameRequired,
-        SaveNameProblem.TooLong => T.SharedListNameTooLong,
-        SaveNameProblem.Taken => T.SharedListNameTaken,
-        _ => null
-    };
+    private string? SaveNameMessage => NameProblemMessage(_saveNameProblem);
 
     private IReadOnlyList<VariableListItem> SharedPageItems =>
         _sharedList is null
@@ -336,7 +331,7 @@ public sealed partial class VariableListView
 
         try
         {
-            var items = await ReadListForSharingAsync(list);
+            var items = await ReadWholeListAsync(list);
 
             if (items.Count == 0 || _shownList != list)
             {
@@ -372,8 +367,41 @@ public sealed partial class VariableListView
         }
     }
 
+    /// <summary>
+    /// Why a name cannot be given to a new list, or <see cref="SaveNameProblem.None"/>: empty, over
+    /// the API's ceiling, or one the reader already uses — compared trimmed and case-insensitively.
+    /// </summary>
+    /// <remarks>The lists are read afresh, since another tab may have made one since.</remarks>
+    private async Task<SaveNameProblem> NameProblemAsync(string trimmed)
+    {
+        if (trimmed.Length == 0)
+        {
+            return SaveNameProblem.Required;
+        }
+
+        if (trimmed.Length > MaxListNameLength)
+        {
+            return SaveNameProblem.TooLong;
+        }
+
+        var existing = await Client.GetMyListsAsync();
+
+        return existing.Any(l => string.Equals(l.Name.Trim(), trimmed, StringComparison.OrdinalIgnoreCase))
+            ? SaveNameProblem.Taken
+            : SaveNameProblem.None;
+    }
+
+    /// <summary>What the field under a refused name says, for saving a shared list and for a copy.</summary>
+    private string? NameProblemMessage(SaveNameProblem problem) => problem switch
+    {
+        SaveNameProblem.Required => T.SharedListNameRequired,
+        SaveNameProblem.TooLong => T.SharedListNameTooLong,
+        SaveNameProblem.Taken => T.SharedListNameTaken,
+        _ => null
+    };
+
     /// <summary>Every item in the list, unnarrowed, a page of 1000 at a time.</summary>
-    private async Task<List<VariableListItem>> ReadListForSharingAsync(Guid list)
+    private async Task<List<VariableListItem>> ReadWholeListAsync(Guid list)
     {
         var seen = new HashSet<Guid>();
         var items = new List<VariableListItem>();
@@ -417,27 +445,15 @@ public sealed partial class VariableListView
         var name = _saveSharedName.Trim();
 
         ForgetFailures();
-        _saveNameProblem = name.Length switch
-        {
-            0 => SaveNameProblem.Required,
-            > MaxListNameLength => SaveNameProblem.TooLong,
-            _ => SaveNameProblem.None
-        };
-
-        if (_saveNameProblem != SaveNameProblem.None)
-        {
-            return;
-        }
 
         VariableList? created;
 
         try
         {
-            var existing = await Client.GetMyListsAsync();
+            _saveNameProblem = await NameProblemAsync(name);
 
-            if (existing.Any(l => string.Equals(l.Name.Trim(), name, StringComparison.OrdinalIgnoreCase)))
+            if (_saveNameProblem != SaveNameProblem.None)
             {
-                _saveNameProblem = SaveNameProblem.Taken;
                 return;
             }
 
