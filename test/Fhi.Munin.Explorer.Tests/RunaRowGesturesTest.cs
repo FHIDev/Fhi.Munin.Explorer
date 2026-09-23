@@ -372,7 +372,6 @@ public class RunaRowGesturesTest : ExplorerTestContext
         [
             ".munin-explorer-data-list__item__row .munin-explorer-dataitem__expand-toggle:focus-visible[aria-expanded=\"false\"] .icon { background-image: url(../img/icons/keyboard-arrow/icon_down--white.svg) }",
             ".munin-explorer-data-list__item__row .munin-explorer-dataitem__expand-toggle:focus-visible[aria-expanded=\"true\"] .icon { background-image: url(../img/icons/keyboard-arrow/icon_up--white.svg) }",
-            ".munin-explorer-data-list__result:has(.munin-explorer-dataitem__expand-cell) .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button { padding-left: 52px }",
             ".munin-explorer-dataitem-main .munin-explorer-dataitem__expand-toggle .icon { display: inline-block; margin: 0 }",
             ".munin-explorer-dataitem__expand-cell { display: flex }",
             ".munin-explorer-dataitem__expand-toggle { align-items: center; cursor: pointer; display: inline-flex; padding: 8px 12px }",

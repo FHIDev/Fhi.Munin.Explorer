@@ -259,6 +259,11 @@ missing-selector|@media (max-width:1280px)|.munin-explorer-meta table|
 # rows never stack, so there it would leave the row and misalign the header (Fhi.Metadata-4xqhq).
 missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main:has( > .munin-explorer-dataitem__expand-cell)|
 missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main > .munin-explorer-dataitem__expand-cell|
+# Same cause, this time above the fold: Stiler HIDES the results header where its rows stack, so
+# it can afford uppercase labels and a 52px name indent. The sample keeps the header at every
+# width (Fhi.Metadata-e0qbl), where both widen it past a 320px viewport on the runner's fonts.
+missing-declaration||.munin-explorer-dataitem-header|text-transform
+missing-selector||.munin-explorer-data-list__result:has(.munin-explorer-dataitem__expand-cell) .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button|
 missing-selector|@media (max-width:1280px)|.munin-explorer-meta|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions-button|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions|

@@ -1241,12 +1241,13 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   min-height: 3.5rem;
 }
 
+/* No `text-transform: uppercase` from Stiler, and no 52px name padding below: Stiler hides this
+   header where its rows stack, the sample keeps it, and both widen it past 320px (e0qbl). */
 .munin-explorer-dataitem-header {
   padding-left: 0;
   color: rgb(81, 84, 123);
   font-size: 0.6875rem;
   font-weight: 600;
-  text-transform: uppercase;
 }
 
 .munin-explorer-dataitem-header .munin-explorer-dataitem-header__button {
@@ -1264,11 +1265,6 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 
 .munin-explorer-dataitem-header__button > span[aria-hidden="true"] {
   flex: none;
-}
-
-/* With a chevron cell in each row, the header's name clears that cell instead of a bare glyph. */
-.munin-explorer-data-list__result:has(.munin-explorer-dataitem__expand-cell) .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button {
-  padding-left: 52px;
 }
 
 .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button {
