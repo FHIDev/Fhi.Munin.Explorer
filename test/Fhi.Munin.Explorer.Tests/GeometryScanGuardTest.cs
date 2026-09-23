@@ -246,6 +246,29 @@ public class GeometryScanGuardTest
         Assert.Contains(@"[ ""$reflow_status"" -ne 0 ]", verdict.Groups["condition"].Value, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void HostileHost_WhenTheNegativeControlFails_ThenItExitsThreeAndNotOne()
+    {
+        // The exit code is this script's only channel to an unattended caller, and 1 there means
+        // "renders wrong" while this means "nobody measured". Sharing 1 put a control failure and a
+        // real defect under one title for a month (Fhi.Metadata-pvwzl, Fhi.Munin.Explorer#345).
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+
+        var control = Regex.Match(
+            source,
+            @"^if \[ ""\$control_status"" -ne 0 \]; then\r?\n(?<body>.*?)^fi$",
+            RegexOptions.Multiline | RegexOptions.Singleline);
+
+        Assert.True(control.Success, "check-hostile-host.sh no longer branches on control_status.");
+
+        // Both halves of the name. Asserting only that a 3 is present would let a later edit leave
+        // an `exit 1` earlier in the branch: the shell returns on the first one it reaches, so the
+        // guard would pass while the script still called a control failure a measured defect.
+        var body = control.Groups["body"].Value;
+        Assert.Matches(@"(?m)^  exit 3$", body);
+        Assert.DoesNotMatch(@"(?m)^\s*exit 1$", body);
+    }
+
     /// <summary>
     /// One run of the real script, from a directory that is not the checkout — which holds it to
     /// resolving its sibling modules by its own path rather than by where the caller stood.

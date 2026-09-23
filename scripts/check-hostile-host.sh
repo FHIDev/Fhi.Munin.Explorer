@@ -20,6 +20,10 @@
 #     asks about vertical layout. At 320 some assertions are left out in some states, by name;
 #   - whether it LOOKS right. Boxes in the right places can still be the wrong design.
 #
+# Exits: 0 measured and correct; 1 measured and wrong; 3 not measured, because a geometry assertion
+#        stopped firing against the defect it exists for; 2 could not measure at all (TOOLING).
+#        Callers that report unattended runs need 1 and 3 apart — see devbox drift.yaml.
+#
 # Usage:  ./scripts/check-hostile-host.sh
 # Needs:  dotnet, node (for npx), a Chrome/Chromium on PATH — and credentials for helsedata's
 #         Azure Artifacts feed, because HostileHost has a PackageReference to
@@ -178,17 +182,21 @@ for _ in $(seq 1 90); do
     break
   fi
   if ! kill -0 "$host_pid" 2>/dev/null; then
-    echo "the host exited before it answered:" >&2
+    # 2, not 1: the host never came up, so nothing was measured. Reporting this as 1 tells an
+    # unattended caller a layout defect was found, which is the confusion this exit code exists
+    # to remove.
+    echo "the host exited before it answered - TOOLING failure." >&2
     tail -30 /tmp/hostile-host.log >&2
-    exit 1
+    exit 2
   fi
   sleep 2
 done
 
 if ! curl -fsS -o /dev/null --max-time 5 "$BASE/" 2>/dev/null; then
-  echo "the host never answered on ${BASE}" >&2
+  # Same reason as the loop above: unreachable is not wrong, it is unmeasured.
+  echo "the host never answered on ${BASE} - TOOLING failure." >&2
   tail -30 /tmp/hostile-host.log >&2
-  exit 1
+  exit 2
 fi
 
 # The whole point of this host is that the stylesheet is helsedata's own, served out of the
@@ -318,7 +326,11 @@ A geometry assertion did not fire against the defect it exists for.
 Read the geometry result above as unmeasured, whichever way it went: an assertion that holds
 against a page carrying its own defect is not passing, it is absent.
 EOF
-  exit 1
+  # 3, NOT 1, AND IT IS A CONTRACT, not a tidier number. 1 says the component renders wrong; this
+  # says nobody knows how it renders, which is a different thing to be told at 04:00. The nightly
+  # sidecar files the two under different titles off this code (Fhi.Metadata-pvwzl); 2 is taken by
+  # the TOOLING failures above.
+  exit 3
 fi
 
 if [ "$geometry_status" -ne 0 ] || [ "$reflow_status" -ne 0 ] || [ "$axe_status" -ne 0 ]; then
