@@ -20,9 +20,10 @@ public partial class VariableSearch
     /// typically from its own URL, the same way <see cref="SelectedVariableId"/> is.
     /// </summary>
     /// <remarks>
-    /// Read once, when the component initialises, and owned by the component afterwards. It wins
-    /// over <see cref="SelectedVariableId"/> while it is set: a link carrying both was made on the
-    /// instrument page, and the variable underneath is what leaving it goes back to.
+    /// Read once, when the component initialises, and owned by the component afterwards, so changing
+    /// it after first render has no effect. It wins over <see cref="SelectedVariableId"/> while it
+    /// is set: a link carrying both was made on the instrument page, and the variable underneath is
+    /// what leaving it goes back to.
     /// </remarks>
     [Parameter] public Guid? SelectedInstrumentId { get; set; }
 

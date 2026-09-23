@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **`VariableSearch` reads `Search`, `Filter`, `Page`, `PageSize`, `SelectedVariableId`, `SelectedInstrumentId`, `LevelLines` and `ShowNodeIcons` only at first render, and applies `Direction` only together with a `Sort` change** - changing any of them on a mounted component has no effect; only `Sort` is followed, and the docs now say so. No behaviour change. (Fhi.Metadata-b49jl)

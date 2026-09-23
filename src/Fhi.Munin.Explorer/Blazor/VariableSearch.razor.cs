@@ -209,6 +209,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// component has no NavigationManager and no URL logic of its own, because the CMS
     /// host owns routing.
     /// </summary>
+    /// <remarks>
+    /// Read only at first render, and owned by the component afterwards: changing it on a mounted
+    /// component has no effect. <see cref="SearchChanged"/> is how the host hears what it became.
+    /// </remarks>
     [Parameter] public string? Search { get; set; }
 
     /// <summary>
@@ -254,6 +258,9 @@ public sealed partial class VariableSearch : ComponentBase
     /// until the control arrived: a default outside the offered values would have left a host that
     /// never set this showing three buttons with none of them pressed, which is truthful and reads
     /// as broken. A host that had relied on 25 has to say so now.
+    /// </para>
+    /// <para>
+    /// Read only at first render: changing it on a mounted component has no effect.
     /// </para>
     /// </remarks>
     [Parameter] public int PageSize { get; set; } = 20;
@@ -463,7 +470,11 @@ public sealed partial class VariableSearch : ComponentBase
     /// <inheritdoc cref="Sort"/>
     [Parameter] public EventCallback<SortField> SortChanged { get; set; }
 
-    /// <inheritdoc cref="Sort"/>
+    /// <summary>The direction the list is ordered in. Two-way, alongside <see cref="Sort"/>.</summary>
+    /// <remarks>
+    /// Applied only together with a change to <see cref="Sort"/>: a <see cref="Direction"/> changed
+    /// on its own after first render is ignored, deliberately. <see cref="Sort"/> says why.
+    /// </remarks>
     [Parameter] public SortDirection Direction { get; set; } = SortDirection.Ascending;
 
     /// <inheritdoc cref="Sort"/>
@@ -563,6 +574,9 @@ public sealed partial class VariableSearch : ComponentBase
     /// everything, and a host that only heard about page turns would keep <c>page=7</c> in a URL
     /// whose result set no longer has seven pages.
     /// </para>
+    /// <para>
+    /// Read only at first render: changing it on a mounted component has no effect.
+    /// </para>
     /// </remarks>
     [Parameter] public int Page { get; set; } = 1;
 
@@ -575,8 +589,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Read once, when the component initialises, and owned by the component afterwards. There is
-    /// no navigation behind it: the detail is drawn inside the row it belongs to, so opening one
+    /// Read once, when the component initialises, and owned by the component afterwards, so changing
+    /// it after first render has no effect. There is no navigation behind it: the detail is drawn inside the row it belongs to, so opening one
     /// costs a fetch and a render rather than a page.
     /// </para>
     /// <para>
