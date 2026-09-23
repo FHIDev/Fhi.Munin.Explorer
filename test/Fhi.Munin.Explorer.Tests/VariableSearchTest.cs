@@ -1558,6 +1558,80 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Contains($"sortert på {label}", StatusLine(cut));
     }
 
+    [Theory]
+    [InlineData(SortField.Code, "code")]
+    [InlineData(SortField.Status, "status")]
+    public void Columns_WhenTheHostChangesSortToAColumnThatIsOffAfterTheFirstRender_ThenTheListIsReorderedAndThatColumnShown(
+        SortField sort, string key)
+    {
+        // A host that moves the Sort parameter after mount — its own back button, say — reached no
+        // fetch and no column before, so the list stayed in the old order under the new link.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        var calls = client.Calls;
+
+        cut.Render(b => b.Add(c => c.Sort, sort).Add(c => c.Direction, SortDirection.Descending));
+
+        var sorted = Assert.Single(cut.FindAll("[aria-sort]"));
+
+        Assert.Contains($"munin-explorer-dataitem-header__{key}", sorted.ClassList);
+        Assert.Equal("descending", sorted.GetAttribute("aria-sort"));
+        Assert.Equal(calls + 1, client.Calls);
+        Assert.Equal(sort, client.LastSort);
+        Assert.Equal(SortDirection.Descending, client.LastDirection);
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostSortsOnAColumnTheReaderHidThroughThePicker_ThenItStaysHidden()
+    {
+        // The reader's press outranks the host's parameter: a column they turned off coming back
+        // on its own would be the picker undoing itself.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ToggleColumn(cut, "Kode");
+        ToggleColumn(cut, "Kode");
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        Assert.Equal(SortField.Code, client.LastSort);
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
+        Assert.Empty(cut.FindAll("[aria-sort]"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostChangesSortAndTheFetchFails_ThenTheOldOrderStaysAndTheHostIsToldSo()
+    {
+        // The host is holding an order the API never delivered; without the callback its URL would
+        // describe rows nobody can see, and Kode would be on screen over a list not ordered by it.
+        var raised = new List<SortField>();
+        var client = new FailingClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.SortChanged, f => raised.Add(f)));
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        Assert.Equal([SortField.Default], raised);
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostHandsBackTheSortTheReaderPressed_ThenNothingIsFetchedAgain()
+    {
+        // @bind-Sort echoes every press straight back as a parameter; treating the echo as a change
+        // would send each sort twice.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickSort(cut, "Kilde");
+        var calls = client.Calls;
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Kilde));
+
+        Assert.Equal(calls, client.Calls);
+    }
+
     [Fact]
     public void Columns_WhenTheFilterWouldTakeTheLastColumnAway_ThenStatusStaysOnScreen()
     {

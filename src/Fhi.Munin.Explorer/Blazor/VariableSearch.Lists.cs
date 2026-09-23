@@ -58,6 +58,8 @@ public partial class VariableSearch : IDisposable
 
     protected override async Task OnParametersSetAsync()
     {
+        await FollowSortParameterAsync();
+
         if (ListState is null)
         {
             return;

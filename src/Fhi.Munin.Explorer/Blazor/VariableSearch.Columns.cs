@@ -76,6 +76,9 @@ public partial class VariableSearch
     /// </remarks>
     private bool _statusColumnChosen;
 
+    /// <summary>The columns the reader turned off through the picker, which a host's Sort does not undo.</summary>
+    private readonly HashSet<ResultColumn> _hiddenByReader = [];
+
     /// <summary>Whether a column is on screen.</summary>
     private bool ColumnVisible(ResultColumn column) => column switch
     {
@@ -84,12 +87,14 @@ public partial class VariableSearch
         _ => !_hiddenColumns.Contains(column),
     };
 
-    // A restored sort on a column that starts off shows it, as if ticked, so a link's order has a
-    // header carrying aria-sort; only the restore does this, so the picker and the filter can still
-    // take a sorted column away afterwards. (Fhi.Metadata-jqarq)
+    // A Sort the host hands in — a restored link, or a later change — shows its column as if ticked,
+    // so the order has a header carrying aria-sort; one the reader hid through the picker stays
+    // hidden, and the filter can still take Status away afterwards. (Fhi.Metadata-jqarq)
     private void ShowRestoredSortColumn()
     {
-        if (ColumnSortedBy(_sort) is not { } column || ColumnVisible(column))
+        if (ColumnSortedBy(_sort) is not { } column
+            || ColumnVisible(column)
+            || _hiddenByReader.Contains(column))
         {
             return;
         }
@@ -103,6 +108,10 @@ public partial class VariableSearch
     }
 
     /// <summary>The column whose header orders by <paramref name="sort"/>; none for the default order.</summary>
+    /// <remarks>
+    /// An unknown member throws for the reason <see cref="Texts.FieldLabel"/> does: a sort field added
+    /// without a column here would open a link on an order no header could announce.
+    /// </remarks>
     private static ResultColumn? ColumnSortedBy(SortField sort) => sort switch
     {
         SortField.Code => ResultColumn.Code,
@@ -112,7 +121,8 @@ public partial class VariableSearch
         SortField.DataType => ResultColumn.DataType,
         SortField.Status => ResultColumn.Status,
         SortField.DataPeriod => ResultColumn.DataPeriod,
-        _ => null,
+        SortField.Default => null,
+        _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No column for this sort field."),
     };
 
     /// <summary>
@@ -190,10 +200,12 @@ public partial class VariableSearch
         if (visible)
         {
             _hiddenColumns.Add(column);
+            _hiddenByReader.Add(column);
         }
         else
         {
             _hiddenColumns.Remove(column);
+            _hiddenByReader.Remove(column);
         }
     }
 
