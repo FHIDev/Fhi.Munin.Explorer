@@ -1906,6 +1906,7 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-page__fields dd {
   overflow-wrap: anywhere;
   margin: 0;
+  margin-inline-start: 0;
   max-width: 50ch;
 }
 
@@ -1976,8 +1977,10 @@ table.munin-explorer-data-list tbody th {
 /* Inklusjons- og eksklusjonskriterier: prose in the main column, held to a readable measure the
    way the description above it is, and given the gap a heading-plus-paragraph needs. */
 .munin-explorer-datasamling__criteria {
-  margin: 0 0 24px;
+  margin: 0 0 0.9375rem;
   max-width: 65ch;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 /* The datasamlinger table. Same shape as the Data tab's code table — the two are the same kind of
@@ -3654,7 +3657,7 @@ table.munin-explorer-data-list tbody th {
   grid-row-gap: 40px;
   grid-column-gap: 24px;
   font: normal 1rem/160% graphik, Arial, Helvetica, sans-serif;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr));
   margin-bottom: 24px;
 }
 
@@ -3669,7 +3672,6 @@ table.munin-explorer-data-list tbody th {
 @media (max-width:1280px) {
 .munin-explorer-page__fields {
   gap: 16px;
-  grid-template-columns: auto;
   margin-bottom: 16px;
   width: 100%;
 }
@@ -4529,4 +4531,52 @@ table.munin-explorer-data-list tbody th {
   margin: 12px 0 0;
   color: rgb(81, 84, 123);
   font-size: 0.875rem;
+}
+
+/* ---- mirrored from Fhi.Helsedata.Stiler 0.1.107 when samples/HostileHost's pin moved there
+   from 0.1.105 (Fhi.Metadata-2w7fx): DatasamlingView's section prose, anchored fact lists and
+   stuck bar. Declarations are Stiler's, verbatim. */
+
+.munin-explorer-datasamling__main > .munin-explorer-page__section > p {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.munin-explorer-datasamling__main .munin-explorer-page__anchor > .headline-xxs {
+  margin: 1.5rem 0 0.4375rem;
+}
+
+.munin-explorer-datasamling__main .munin-explorer-page__anchor > .munin-explorer-page__fields {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 65ch;
+  margin: 0 0 0.9375rem;
+}
+
+.munin-explorer-datasamling__main .munin-explorer-page__anchor > .munin-explorer-page__fields dd {
+  margin: 0;
+}
+
+.munin-explorer-datasamling .munin-explorer-page__actions > :is(a, button):focus-visible,
+.munin-explorer-datasamling__main > .munin-explorer-page__section > p > :is(a, button):focus-visible {
+  background-color: rgb(81, 84, 123);
+  color: rgb(255, 255, 255);
+}
+
+.munin-explorer-datasamling .munin-explorer-page__stuckbar-name {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.munin-explorer-datasamling .munin-explorer-page__stuckbar-name small {
+  display: block;
+  color: rgb(81, 84, 123);
+  font-weight: 400;
+}
+
+@media all and (max-width: 400px) {
+  .munin-explorer-datasamling .munin-explorer-page__facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

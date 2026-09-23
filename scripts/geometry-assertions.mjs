@@ -25,7 +25,7 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Seven of the thirteen below are invariants. If that ratio ever inverts, this file has become a
+// Eight of the fourteen below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
@@ -607,6 +607,37 @@ export const assertions = [
           return `at ${width}px the main column starts at ${column.top.toFixed(1)} and the ` +
             `contents rail at ${rail.top.toFixed(1)} — the two tracks are not one row`;
         }
+      }
+      return null;
+    },
+  },
+
+  {
+    name: "the detail page's fact list has as many tracks as its container fits",
+    kind: 'invariant',
+    // Stiler 0.1.107 asks the container, not the viewport: `repeat(auto-fill, minmax(min(440px,
+    // 100%), 1fr))`, so a count per viewport width is wrong the moment the column around it moves.
+    // The expected count is auto-fill's own arithmetic on the measured box. (Fhi.Metadata-2w7fx)
+    body: () => {
+      const minTrack = 440;
+      const width = Math.round(window.innerWidth);
+      for (const grid of document.querySelectorAll('.munin-explorer-page__fields')) {
+        const style = getComputedStyle(grid);
+        const box = grid.getBoundingClientRect();
+        if (box.width === 0 || style.display !== 'grid') continue;
+
+        const inner = box.width - ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth']
+          .reduce((sum, side) => sum + (parseFloat(style[side]) || 0), 0);
+        const gap = parseFloat(style.columnGap) || 0;
+        const expected = Math.max(1, Math.floor((inner + gap + 0.5) / (Math.min(minTrack, inner) + gap)));
+        const tracks = style.gridTemplateColumns === 'none'
+          ? [inner]
+          : style.gridTemplateColumns.split(' ').map(parseFloat);
+        if (tracks.length === expected) continue;
+
+        return `at ${width}px a ${inner.toFixed(1)}px .munin-explorer-page__fields draws ` +
+          `${tracks.length} track(s) of ${tracks.map(t => `${t.toFixed(1)}px`).join(' + ')} with a ` +
+          `${gap}px gap; ${expected} of at least ${minTrack}px fit its container`;
       }
       return null;
     },

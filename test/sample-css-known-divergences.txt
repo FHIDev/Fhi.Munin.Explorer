@@ -155,7 +155,6 @@ invented-declaration||.munin-explorer-dataitem-main__desiredData input|border
 invented-declaration||.munin-explorer-dataitem-main__desiredData input|border-radius
 invented-declaration||.munin-explorer-dataitem-main__desiredData input|padding
 invented-declaration||.munin-explorer-dataitem-main__expand-icon|display
-invented-declaration||.munin-explorer-datasamling__criteria|margin
 invented-declaration||.munin-explorer-detail|border-top
 invented-declaration||.munin-explorer-filters__count|overflow-wrap
 invented-declaration||.munin-explorer-frequency thead th|border-bottom

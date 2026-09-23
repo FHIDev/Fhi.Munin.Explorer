@@ -2428,7 +2428,7 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void FactLists_WhenAHostStylesThem_ThenTheDefaultIsTwoLanes()
+    public void FactLists_WhenAHostStylesThem_ThenTheLanesAreAsManyAsTheContainerFits()
     {
         // The chassis's name now, not the panel's (Fhi.Metadata-35w0p.11). Anchored both ends:
         // SampleDeclarationsFor keeps any rule MENTIONING the name, so an ancestor-scoped branch
@@ -2439,9 +2439,10 @@ public class KildeViewTest : ExplorerTestContext
 
         // Per branch, so grouping the base rule with a scoped one stays equivalent CSS here.
         Assert.True(
-            grids.Any(rule => Regex.IsMatch(rule.Declarations, @"grid-template-columns:\s*1fr\s+1fr\s*(;|$)")
+            grids.Any(rule => Regex.IsMatch(rule.Declarations,
+                                  @"grid-template-columns:\s*repeat\(\s*auto-fill,\s*minmax\(\s*min\(\s*440px,\s*100%\s*\),\s*1fr\s*\)\s*\)\s*(;|$)")
                               && rule.Selector.Split(',').Any(branch => Regex.IsMatch(branch.Trim(), Base))),
-            "No unscoped rule leaves munin-explorer-page__fields two lanes for the main column.");
+            "No unscoped rule gives munin-explorer-page__fields Stiler 0.1.107's container-sized lanes (Fhi.Metadata-5cu56).");
     }
 
     [Fact]

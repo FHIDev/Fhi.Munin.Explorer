@@ -292,11 +292,12 @@ only stays inside 320px because the label rule carries `overflow-wrap: anywhere`
 (`Fhi.Metadata-7484a`). `check-hostile-host.sh` measures the unfolded panel at 320 as well, and does
 not run in CI.
 
-It runs three of the twelve assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
+It runs three of the fourteen assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
 overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. Seven
-of the nine left out were **measured there and then excluded**, which is a different claim from
-"they are written for HostileHost" and the only one the numbers support; the last two have nothing
-to measure on these pages at all:
+of the eleven left out were **measured there and then excluded**, which is a different claim from
+"they are written for HostileHost" and the only one the numbers support; `Runa's row chevron is big
+enough to hit` is scoped to states this run does not drive, and the last three have nothing to
+measure on these pages at all:
 
 - `the tablist clears the header`, `exactly one tab panel has content` and `no page shell class
   inside a tab panel` are scoped to the two `explorer-*` states, which are the composed
@@ -312,8 +313,9 @@ to measure on these pages at all:
   rule going missing, which the sample stylesheet can only stand in for. `check-hostile-host.sh`
   measures them against the real one at six widths.
 - `the detail page's main column is the wider part of its body` and `the detail page's two columns
-  share a row` measure a `.munin-explorer-page__body`, the detail views' chassis, which none of the
-  five states driven here opens. That is a statement about the states and not about the pages: both
+  share a row` measure a `.munin-explorer-page__body`, the detail views' chassis, and `the detail
+  page's fact list has as many tracks as its container fits` its `.munin-explorer-page__fields`;
+  none of the five states driven here opens one. That is a statement about the states and not about the pages: both
   draw one in a detail state — `/` in `variable-whole`, `/kilder` in `kilde-drilldown`, which axe
   scans above — so adding either state to this run would measure them. They run and find nothing
   rather than failing, so they were never measured here in the sense the seven above were.

@@ -226,6 +226,14 @@ const cases = [
       '.munin-explorer-page__main { grid-row: 1 !important; grid-column: 2 !important; }'),
   },
   {
+    assertion: "the detail page's fact list has as many tracks as its container fits",
+    defect: 'one column at 1280, where two fit: the fact list keyed to the viewport again',
+    path: '/', state: 'variable-page', width: 1280,
+    // 0.1.105's `auto` below its 1280 breakpoint, which drew one 927px track where two of 455.5px
+    // fit. Measured on the whole-variable page reached by its click path (Fhi.Metadata-2w7fx).
+    apply: css('.munin-explorer-page__fields { grid-template-columns: minmax(0, 1fr) !important; }'),
+  },
+  {
     assertion: 'no page shell class inside a tab panel',
     defect: 'a nested view wearing the page shell class',
     path: '/', state: 'explorer-tabs', width: 1440,

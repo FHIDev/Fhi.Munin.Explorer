@@ -403,6 +403,22 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // The whole-variable page as a reader reaches it, by pressing a row's name. Only this path draws
+  // it: loading `?variabelId=` draws the row drill-in's `__meta__grid` instead, where a fact-list
+  // measurement finds nothing and passes vacuously (Fhi.Metadata-2w7fx).
+  'variable-page': async page => {
+    const name = page.locator('.munin-explorer-dataitem-main__name').first();
+    await name.waitFor({ state: 'visible', timeout: findTimeout });
+    await name.click();
+    const fields = page.locator('.munin-explorer-whole .munin-explorer-page__fields').first();
+    await fields.waitFor({ state: 'visible', timeout: findTimeout });
+    const tracks = await fields.evaluate(el => getComputedStyle(el).gridTemplateColumns
+      .split(' ').filter(track => track !== 'none').length);
+    if (tracks < 1) {
+      throw new Error('The whole-variable page drew .munin-explorer-page__fields with no grid track');
+    }
+  },
+
   // A kilde opened in the kildeutforsker. The drill-in replaces the table with `KildeView`, a
   // component the default-state scan never sees at all. It fetches too, so the same wait applies.
   'kilde-drilldown': async page => {
