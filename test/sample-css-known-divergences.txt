@@ -35,8 +35,8 @@
 # The context field is the normalised at-rule the rule sits inside, empty at the top level.
 #
 # WHERE THIS LIST CAME FROM. 178 divergences, measured 2026-09-07 against Fhi.Helsedata.Stiler
-# 0.1.38 — the version samples/HostileHost/HostileHost.csproj pins, which is the version a host
-# restores. The manual diff filed under Fhi.Metadata-3dwar counted "around forty", and the two
+# 0.1.38 — the version samples/HostileHost/HostileHost.csproj pinned then, a pin being what a
+# host restores. The manual diff filed under Fhi.Metadata-3dwar counted "around forty", and the two
 # numbers agree: that one counted RULES and named divergences a sentence at a time
 # ("`.munin-explorer-dataitem-main__column` is missing seven declarations"), where this counts each
 # declaration on its own line so it has something a script can reconcile. The 62 missing selectors
@@ -472,7 +472,8 @@ unstyled-name||.munin-explorer-lead|
 unstyled-name||.munin-explorer-page|
 
 # New in Fhi.Metadata-75yov's drawer checkbox column. The Stiler rule is Fhi.Metadata-h6dx7 (ADO PR
-# 39522), published in 0.1.99; these lines go when Fhi.Metadata-4xqhq moves the pin to it.
+# 39522), published in 0.1.99; these lines go when the pin moves to it. Fhi.Metadata-4xqhq closed at
+# 0.1.98, so that bump is a bead of its own.
 unstyled-name||.munin-explorer-kilde__datasamling-select|
 unstyled-name||.munin-explorer-kilde__datasamlinger--selectable|
 
