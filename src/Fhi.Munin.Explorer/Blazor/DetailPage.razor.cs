@@ -7,15 +7,17 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// The chassis the detail views share: the root, the page chrome, the name block above the fold,
-/// the hero fact row under it, the body grid, the contents column and the main column. Four
+/// the hero fact row under it, the body grid, the contents column and the main column. Five
 /// surfaces wear it.
 /// </summary>
 /// <remarks>
 /// <para>
 /// Emits the <c>munin-explorer-page</c> names once, for <see cref="KildeView"/>,
-/// <see cref="DatasamlingView"/>, <see cref="VariableView"/> and <see cref="VariableListView"/>
-/// alike. Three views drawing one page shape under three prefixes is what made every layout rule in
-/// Stiler a three-selector compound, and the fourth surface would have made it four.
+/// <see cref="DatasamlingView"/>, <see cref="VariableView"/>, <see cref="VariableListView"/> and
+/// <see cref="InstrumentView"/> alike. Three views drawing one page shape under three prefixes is
+/// what made every layout rule in Stiler a three-selector compound, and each surface added since
+/// would have made it one longer. The two newest have no prefix of their own and wear these names
+/// alone, which is what lets a surface ship without a Stiler rule being written for it.
 /// </para>
 /// <para>
 /// The chrome — <see cref="Trail"/>, <see cref="Eyebrow"/>, <see cref="Actions"/> — is what makes
@@ -31,9 +33,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </para>
 /// <para>
 /// The body is the one element that sheds its older name instead of wearing both, and so takes no
-/// parameter at all: every published Stiler lays the three views' own body names out as a grid of
-/// their own, and an element wearing both names would carry two <c>grid-template-columns</c>
-/// declarations from two blocks, with source order rather than either stylesheet deciding it.
+/// parameter at all: every published Stiler lays the three prefixed views' own body names out as
+/// a grid of their own, and an element wearing both names would carry two
+/// <c>grid-template-columns</c> declarations from two blocks, with source order rather than either
+/// stylesheet deciding it.
 /// </para>
 /// <para>
 /// Public only because a Razor component must be, in the way <see cref="DetailSection"/> and
@@ -239,7 +242,7 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     /// view that passes nothing draws one column in one track rather than an empty rail beside it.
     /// </summary>
     /// <remarks>
-    /// <see cref="DetailToc"/> is what the three drill-in views put here, and they pass null rather
+    /// <see cref="DetailToc"/> is what the drill-in views put here, and they pass null rather
     /// than an empty fragment when they drew no section to link to — an empty one would still draw
     /// the rail. <see cref="VariableListView"/> passes null always: its Kilde filter does the
     /// grouping a contents nav would, so it has no rail at any width.

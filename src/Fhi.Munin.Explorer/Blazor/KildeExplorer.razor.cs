@@ -25,13 +25,27 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// the path they arrived on, <c>PathBase</c> included, rather than on the site root.
 /// </para>
 /// <para>
-/// <b>It reads and writes <c>?kilde=</c>, <c>?datasamling=</c>, <c>?sort=</c> and
-/// <c>?sortDir=</c>, and nothing else.</b> A host's own parameters — and <c>?search=</c>, which
-/// Kelda cannot maintain and so must not adopt — are carried through untouched. <c>?sort=</c> is
-/// omitted while the list is in the order the catalogue sent it, so a link made before this
-/// component could sort still opens the same page, and <c>?sortDir=</c> is omitted with it and
-/// wherever the column runs the way <see cref="KildeSearch.InitialDirection"/> says it runs — so a
-/// link made while the select offered the orders still opens the end of the list it named.
+/// <b>It reads and writes <c>?kilde=</c>, <c>?datasamling=</c>, <c>?sort=</c>,
+/// <c>?sortDir=</c>, and the list's own state — <c>?search=</c>, one repeated key per facet
+/// (<c>?kildetype=</c>, <c>?kategori=</c>, <c>?tilgangsniva=</c>, <c>?databehandler=</c>),
+/// <c>?columns=</c>, <c>?selected=</c> and <c>?selectedDatasamling=</c> — and nothing else.</b> A
+/// host's own parameters are carried through untouched, and the list state rides on every link
+/// this component builds, so a round trip away from the list and back finds it as it was left
+/// (Fhi.Metadata-nvf2w). <c>?sort=</c> is omitted while the list is in the order the catalogue
+/// sent it, so a link made before this component could sort still opens the same page, and
+/// <c>?sortDir=</c> is omitted with it and wherever the column runs the way
+/// <see cref="KildeSearch.InitialDirection"/> says it runs — so a link made while the select
+/// offered the orders still opens the end of the list it named.
+/// </para>
+/// <para>
+/// <b>A fragment is kept, never written.</b> The section a reader jumped to — <c>#metadata</c>, say
+/// — survives every rewrite while the view it names is the one on screen, so the address bar stays
+/// a link worth copying, and a press moving to a different kilde, datasamling, order or list state
+/// drops it. A navigation is the other case, because <see cref="Moved"/> builds a fresh mirror from
+/// the arriving address: the fragment on that one is honoured in its turn, which is what lets Back
+/// return to the section it came from. No link this component builds carries a fragment taken from
+/// the address, because an id naming a section of the view being left names nothing in the view a
+/// link opens.
 /// </para>
 /// <para>
 /// <b>Opening a datasamling is a link.</b> That is what buys middle-click, Ctrl+click and working
@@ -97,6 +111,43 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// </para>
     /// </remarks>
     public const string DirectionQueryKey = "sortDir";
+
+    /// <summary>The search key: the term the list is narrowed by, trimmed.</summary>
+    /// <remarks>
+    /// Munin's Kelda's spelling. A value longer than the search field accepts is dropped on read.
+    /// </remarks>
+    public const string SearchQueryKey = "search";
+
+    /// <summary>The columns key: which optional columns are on screen, repeated once per column.</summary>
+    /// <remarks>
+    /// Munin's Kelda's rule: absent is the default set, present and empty is every optional column
+    /// hidden, and the key is dropped when the choice is the default set again. Values are
+    /// <see cref="KildeSearch.ColumnKeys"/>; an unknown one is dropped on read.
+    /// </remarks>
+    public const string ColumnsQueryKey = "columns";
+
+    /// <summary>The ticks key: one kilde id per ticked row, repeated.</summary>
+    /// <remarks>An id that does not parse is dropped on read.</remarks>
+    public const string TickedQueryKey = "selected";
+
+    /// <summary>The marks key: one <c>&lt;kildeId&gt;:&lt;datasamlingId&gt;</c> per marked
+    /// datasamling, repeated.</summary>
+    /// <remarks>
+    /// Beside <see cref="TickedQueryKey"/> rather than folded into it: the two selections are
+    /// independent, and a reader can hold both at once. The kilde half is the top-level row that
+    /// owns the panel the mark was made in — also for a datasamling under a delkilde — so the list
+    /// can open that row and count its marks without fetching anything first. A value that is not
+    /// a pair of ids is dropped on read.
+    /// <para>
+    /// The address is the whole of the session: nothing is kept in <c>sessionStorage</c> or
+    /// <c>localStorage</c>, so a bare address opens an unmarked list and the marks last exactly as
+    /// long as the link that carries them. (Fhi.Metadata-75yov)
+    /// </para>
+    /// </remarks>
+    public const string MarkedQueryKey = "selectedDatasamling";
+
+    /// <summary>The longest search or facet value a link may carry: the search field's own <c>maxlength</c>.</summary>
+    private const int MaxSearchLength = 200;
 
     [Inject] private NavigationManager Navigation { get; set; } = default!;
 
@@ -164,6 +215,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     private SortDirection _direction;
 
+    private string? _search;
+
+    private IReadOnlyDictionary<string, IReadOnlyList<string>>? _facets;
+
+    private IReadOnlyList<Guid>? _ticked;
+
+    private IReadOnlyList<string>? _marked;
+
+    private IReadOnlyList<string>? _columns;
+
     private UrlMirror _mirror = default!;
 
     /// <summary>
@@ -200,17 +261,29 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             ? default
             : EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, ExploreVariables);
 
+    /// <summary>The marks' own way over, wired on the same one path <see cref="Handover"/> is.</summary>
+    /// <remarks>
+    /// A second callback rather than a widened first one: <c>ExploreVariablesRequested</c> is a
+    /// published parameter carrying kilde ids, and changing its payload would break every host
+    /// composing <see cref="KildeSearch"/> itself.
+    /// </remarks>
+    private EventCallback<IReadOnlyList<Guid>> DatasamlingHandover =>
+        string.IsNullOrWhiteSpace(VariableExplorerPath)
+            ? default
+            : EventCallback.Factory.Create<IReadOnlyList<Guid>>(this, ExploreDatasamlinger);
+
     protected override void OnInitialized()
     {
         InteractiveMount.Require(RendererInfo.IsInteractive, nameof(KildeExplorer));
 
         _mirror = new UrlMirror(Navigation, JS, Owns);
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = Read(_mirror);
+        (_search, _facets, _ticked, _marked, _columns) = ReadList(_mirror);
 
         Navigation.LocationChanged += Moved;
     }
 
-    /// <summary>What the four owned keys say, or their defaults where the URL says nothing usable.</summary>
+    /// <summary>What the kilde and order keys say, or their defaults where the URL says nothing usable.</summary>
     /// <remarks>
     /// An id in a URL is whatever a stranger typed. One that does not parse opens the list, and one
     /// that parses but names nothing the API publishes opens a view that says so — the component's
@@ -244,6 +317,84 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         return (kilde, datasamling, order, direction);
     }
+
+    /// <summary>What the list's own keys say, dropping what does not parse.</summary>
+    private static ListState ReadList(UrlMirror mirror)
+    {
+        var search = mirror.Value(SearchQueryKey)?.Trim() is { Length: > 0 and <= MaxSearchLength } term
+            ? term
+            : null;
+
+        var facets = KildeSearch.FacetKeys
+            .Select(key => (Key: key, Values: mirror.Values(key).Where(value => value.Length is > 0 and <= MaxSearchLength).Distinct(StringComparer.Ordinal).ToList()))
+            .Where(facet => facet.Values.Count > 0)
+            .ToDictionary(facet => facet.Key, facet => (IReadOnlyList<string>)facet.Values, StringComparer.Ordinal);
+
+        IReadOnlyList<Guid> ticked =
+            [.. mirror.Values(TickedQueryKey).Select(value => Guid.TryParse(value, out var id) ? id : (Guid?)null).OfType<Guid>().Distinct()];
+
+        IReadOnlyList<string> marked =
+            [.. mirror.Values(MarkedQueryKey)
+                      .Select(KildeSearch.ParseMark)
+                      .OfType<(Guid Kilde, Guid Datasamling)>()
+                      .Distinct()
+                      .Select(mark => KildeSearch.MarkValue(mark.Kilde, mark.Datasamling))];
+
+        var named = mirror.Values(ColumnsQueryKey);
+        IReadOnlyList<string>? columns = named.Count == 0
+            ? null
+            : [.. KildeSearch.ColumnKeys.Where(key => named.Contains(key, StringComparer.OrdinalIgnoreCase))];
+
+        return new(search, facets, ticked, marked, Defaulted(columns));
+    }
+
+    /// <summary>Null for the default column set, however it was spelled, so it is never written.</summary>
+    private static IReadOnlyList<string>? Defaulted(IReadOnlyList<string>? columns) =>
+        columns is null || columns.SequenceEqual(KildeSearch.DefaultColumnKeys, StringComparer.Ordinal)
+            ? null
+            : columns;
+
+    /// <summary>The list's state as the address carries it: search, facets, columns and ticks.</summary>
+    private readonly record struct ListState(
+        string? Search,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? Facets,
+        IReadOnlyList<Guid>? Ticked,
+        IReadOnlyList<string>? Marked,
+        IReadOnlyList<string>? Columns)
+    {
+        /// <summary>These keys as a query string, omitting what is at its default.</summary>
+        public string Query()
+        {
+            List<string> pairs = [];
+
+            if (!string.IsNullOrWhiteSpace(Search))
+            {
+                pairs.Add(Pair(SearchQueryKey, Search.Trim()));
+            }
+
+            foreach (var key in KildeSearch.FacetKeys)
+            {
+                if (Facets is not null && Facets.TryGetValue(key, out var values))
+                {
+                    pairs.AddRange(values.Where(value => value.Length > 0).Select(value => Pair(key, value)));
+                }
+            }
+
+            if (Defaulted(Columns) is { } columns)
+            {
+                pairs.AddRange(columns.Count == 0 ? [ColumnsQueryKey + "="] : columns.Select(column => Pair(ColumnsQueryKey, column)));
+            }
+
+            pairs.AddRange((Ticked ?? []).Select(id => Pair(TickedQueryKey, id.ToString())));
+            pairs.AddRange((Marked ?? []).Select(mark => Pair(MarkedQueryKey, mark)));
+
+            return string.Join("&", pairs);
+        }
+
+        private static string Pair(string key, string value) => key + "=" + Uri.EscapeDataString(value);
+    }
+
+    private ListState List => new(_search, _facets, _ticked, _marked, _columns);
 
     /// <summary>
     /// Read the address again when something moved the page under a standing circuit, and draw
@@ -283,13 +434,15 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         var mirror = new UrlMirror(address, JS, Owns);
         var arrived = Read(mirror);
+        var list = ReadList(mirror);
 
         // Above the guard, because a navigation changing only the host's own keys leaves the owned
         // ones equal: refreshed below it, the mirror would keep carrying parameters the navigation
         // dropped and put them back into every later link and rewrite.
         _mirror = mirror;
 
-        if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction))
+        if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction)
+            && list.Query() == List.Query())
         {
             // Redrawn anyway, and not left to the host: every link is built from the mirror just
             // replaced, and a host with no Router — helsedata's CMS — raises this without
@@ -300,6 +453,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         }
 
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = arrived;
+        (_search, _facets, _ticked, _marked, _columns) = list;
         _arrival++;
 
         StateHasChanged();
@@ -311,12 +465,17 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         string.Equals(key, QueryKey, StringComparison.OrdinalIgnoreCase)
         || string.Equals(key, DatasamlingQueryKey, StringComparison.OrdinalIgnoreCase)
         || string.Equals(key, OrderQueryKey, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(key, DirectionQueryKey, StringComparison.OrdinalIgnoreCase);
+        || string.Equals(key, DirectionQueryKey, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(key, SearchQueryKey, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(key, ColumnsQueryKey, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(key, TickedQueryKey, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(key, MarkedQueryKey, StringComparison.OrdinalIgnoreCase)
+        || KildeSearch.FacetKeys.Contains(key, StringComparer.OrdinalIgnoreCase);
 
     protected override Task OnAfterRenderAsync(bool firstRender) =>
         _mirror.MirrorAsync(Query(_selectedKildeId, _selectedDatasamlingId)).AsTask();
 
-    /// <summary>The four keys this component owns, as a query string, omitting what is at its default.</summary>
+    /// <summary>The keys this component owns, as a query string, omitting what is at its default.</summary>
     /// <remarks>
     /// The catalogue's own order writes nothing, so an untouched explorer leaves the address bar as
     /// it found it — <see cref="ExplorerUrlState.ToQueryString"/>'s rule, for its reason: a link
@@ -346,6 +505,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             _order == KildeSortOrder.Standard || _direction == KildeSearch.InitialDirection(_order)
                 ? ""
                 : DirectionQueryKey + "=" + Uri.EscapeDataString(_direction.ToString()),
+            List.Query(),
         ];
 
         return string.Join("&", owned.Where(pair => pair.Length != 0));
@@ -374,9 +534,9 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     /// <summary>This same page with no kilde open — the trail's step back to the list.</summary>
     /// <remarks>
-    /// The order the reader chose is kept: holding the closure for the component's life — the
-    /// reason <see cref="DatasamlingHref"/> is held — does not freeze it, because the body reads
-    /// the order fields at call time. A crumb that re-sorted the list would undo unmentioned work.
+    /// The order and the list state the reader chose are kept: holding the closure for the
+    /// component's life — the reason <see cref="DatasamlingHref"/> is held — does not freeze them,
+    /// because the body reads the fields at call time. A crumb that reset the list would undo work.
     /// </remarks>
     private Func<string> KilderHref =>
         _listAddress ??= () => _mirror.Address(Query(null, null));
@@ -436,6 +596,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private void ExploreVariables(IReadOnlyList<Guid> kildeIds) =>
         Navigation.NavigateTo(VariableExplorerAddress(VariableExplorerPath ?? "",
                               new VariableFilter { KildeIds = kildeIds }), forceLoad: true);
+
+    /// <summary>The same journey for a selection holding marks, which travels as collections.</summary>
+    /// <remarks>
+    /// <c>DatasamlingIds</c> alone and never beside <c>KildeIds</c>: the API ANDs the two, so a
+    /// query carrying both would drop every variable pinned into another kilde's datasamling —
+    /// which is exactly what a reader marking across kilder is asking for.
+    /// </remarks>
+    private void ExploreDatasamlinger(IReadOnlyList<Guid> datasamlingIds) =>
+        Navigation.NavigateTo(VariableExplorerAddress(VariableExplorerPath ?? "",
+                              new VariableFilter { DatasamlingIds = datasamlingIds }), forceLoad: true);
 
     /// <summary>The variable explorer's address, narrowed to <paramref name="filter"/>.</summary>
     /// <remarks>

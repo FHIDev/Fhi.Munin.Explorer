@@ -25,7 +25,7 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Five of the ten below are invariants. If that ratio ever inverts, this file has become a
+// Seven of the twelve below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
@@ -53,7 +53,20 @@ export const assertions = [
     body: () => {
       const d = document.documentElement;
       if (d.scrollWidth <= d.clientWidth) return null;
-      return `document scrollWidth ${d.scrollWidth} > clientWidth ${d.clientWidth}`;
+
+      // Named, because the numbers alone leave the reader of a failed run to find the element
+      // themselves - and on a runner with other fonts that is a page they cannot open.
+      const past = [...document.querySelectorAll('*')]
+        .map(el => [el, el.getBoundingClientRect()])
+        .filter(([, box]) => box.width > 0 && box.right > d.clientWidth + 0.5)
+        .sort((one, other) => other[1].right - one[1].right)
+        .slice(0, 3)
+        .map(([el, box]) => `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}` +
+          `${typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).join('.') : ''}` +
+          ` ${Math.round(box.left)}..${Math.round(box.right)}`);
+
+      return `document scrollWidth ${d.scrollWidth} > clientWidth ${d.clientWidth}` +
+        (past.length > 0 ? `; widest past the edge: ${past.join(' | ')}` : '');
     },
   },
 
@@ -482,6 +495,90 @@ export const assertions = [
         const th = table.tHead?.rows[0]?.cells[cell.cellIndex];
         return (th?.textContent ?? '').trim() || `column ${cell.cellIndex}`;
       }
+    },
+  },
+
+  {
+    name: "the detail page's main column is the wider part of its body",
+    kind: 'invariant',
+    // Which of the chassis's two tracks the reading column landed in is Stiler's to decide, and
+    // nothing here can see it: bUnit pins the body's children, never their boxes. A comparison
+    // rather than the 250px the rule names, so a retuned track is not a failure and a swap is.
+    body: () => {
+      const width = Math.round(window.innerWidth);
+      for (const body of document.querySelectorAll('.munin-explorer-page__body')) {
+        const children = [...body.children];
+        const toc = children.find(el => el.classList.contains('munin-explorer-page__toc'));
+        // A body with no contents column is one track by design — the saved-list view never draws
+        // one — so there is nothing to compare and nothing to report.
+        if (toc === undefined) continue;
+        const main = children.find(el => el.classList.contains('munin-explorer-page__main'));
+        if (main === undefined) {
+          return `at ${width}px a body with a contents column has no ` +
+            '.munin-explorer-page__main beside it — nothing was measured';
+        }
+
+        const rail = toc.getBoundingClientRect();
+        const column = main.getBoundingClientRect();
+        // Neither has a layout box, so there are no columns to compare: `0 <= 0` below would
+        // report the rail winning a comparison nobody made.
+        if (rail.width === 0 && column.width === 0) continue;
+
+        // Side by side, read off the boxes rather than off a copy of Stiler's breakpoint that
+        // nothing in this repository can check: the body is two tracks when they do not overlap.
+        const beside = rail.right <= column.left + 1 || column.right <= rail.left + 1;
+        if (beside) {
+          if (column.width > rail.width) continue;
+          return `at ${width}px the main column is ${column.width.toFixed(1)}px wide beside a ` +
+            `${rail.width.toFixed(1)}px contents rail — the reading column is in the rail's track`;
+        }
+
+        // One track: the narrow layout, and also a body whose `grid-template-columns` has gone —
+        // identical boxes, so only the viewport separates them. 1200 is a floor no page stacks a
+        // detail view at, clear of Stiler's 1025 so that a breakpoint that moved is not a red.
+        if (width >= 1200) {
+          const held = body.getBoundingClientRect().width.toFixed(1);
+          return `at ${width}px the ${held}px body is one track: a ` +
+            `${column.width.toFixed(1)}px main column stacked over a ` +
+            `${rail.width.toFixed(1)}px contents rail — the second track is not declared`;
+        }
+        if (column.width < rail.width) {
+          return `at ${width}px the stacked main column is ${column.width.toFixed(1)}px wide ` +
+            `under a ${rail.width.toFixed(1)}px contents rail`;
+        }
+      }
+      return null;
+    },
+  },
+
+  {
+    name: "the detail page's two columns share a row",
+    kind: 'invariant',
+    // Two tracks side by side are one row, and a rail dropped to a row of its own passes the
+    // comparison above with both widths still right. At scroll offset 0, where this file measures:
+    // the rail is sticky, so anywhere else it has left its row on purpose.
+    body: () => {
+      const width = Math.round(window.innerWidth);
+      for (const body of document.querySelectorAll('.munin-explorer-page__body')) {
+        const children = [...body.children];
+        const toc = children.find(el => el.classList.contains('munin-explorer-page__toc'));
+        const main = children.find(el => el.classList.contains('munin-explorer-page__main'));
+        // One track by design, or the missing main column the assertion above reports.
+        if (toc === undefined || main === undefined) continue;
+
+        const rail = toc.getBoundingClientRect();
+        const column = main.getBoundingClientRect();
+        // Stacked is one track: the narrow layout, or above 1200px the collapsed grid the width
+        // assertion reports. Either way there is no row of two tracks here to measure.
+        const beside = rail.right <= column.left + 1 || column.right <= rail.left + 1;
+        if (!beside) continue;
+
+        if (Math.abs(column.top - rail.top) > 1) {
+          return `at ${width}px the main column starts at ${column.top.toFixed(1)} and the ` +
+            `contents rail at ${rail.top.toFixed(1)} — the two tracks are not one row`;
+        }
+      }
+      return null;
     },
   },
 ];

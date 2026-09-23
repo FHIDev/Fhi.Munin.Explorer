@@ -4,9 +4,9 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Collects a detail view's contents-nav entries, one call per section the view can draw.
 /// </summary>
 /// <remarks>
-/// Here rather than as a local function in each of the three views, for the reason
-/// <see cref="DetailSection"/> and <see cref="DetailBlocks"/> are: written three times, a change to
-/// the shape reaches two of them and misses the third.
+/// Here rather than as a local function in each view, for the reason <see cref="DetailSection"/>
+/// and <see cref="DetailBlocks"/> are: written once per view, a change to the shape reaches some of
+/// them and misses the rest.
 /// </remarks>
 internal sealed class DetailTocBuilder
 {

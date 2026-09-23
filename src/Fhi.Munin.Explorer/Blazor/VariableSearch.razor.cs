@@ -106,9 +106,11 @@ internal enum PanelTab
 /// The hierarchy trail over the results adds one name of ours — <c>munin-explorer-breadcrumb</c> —
 /// and reuses <c>munin-explorer-crumb</c>, which the variable panel's kilde trail already wears,
 /// for the steps themselves. It is an <c>&lt;ol&gt;</c> of <c>&lt;button&gt;</c>s for the reason
-/// that trail is one: Stiler has no breadcrumb rule that can be read back off its compiled
-/// stylesheet, so the chevrons between the steps are a host's to draw and a host that draws
-/// nothing gets a numbered list that still reads correctly, in order, with the right names.
+/// that trail is one: neither trail's steps navigate — these narrow the filter, and that one's
+/// lone button discloses a kilde in place — so Stiler's <c>.breadcrumbs</c> names, worn by the
+/// detail pages' trail (<see cref="DetailTrail"/>), do not apply. The chevrons are a host's to
+/// draw, and a host that draws nothing gets a numbered list that still reads correctly, in order,
+/// with the right names.
 /// </para>
 /// <para>
 /// The column picker adds eight names, all of them helsedata's own and none of them ours. They
@@ -136,10 +138,12 @@ internal enum PanelTab
 /// <c>&lt;dl&gt;</c> of labels and values, an <c>&lt;ol&gt;</c> for the kilde trail and a
 /// <c>&lt;ul&gt;</c> for the variabelgrupper and kodeverk, wearing Stiler's
 /// <c>form-element__label</c>, <c>caption</c>, <c>infobox</c> and the ghost square button for the
-/// disclosure that opens it. Stiler has no definition list, no breadcrumb and no key/value block
-/// that can be read back off its compiled stylesheet, so what a host supplies is base styling for
-/// those three elements — a host that supplies none still gets a panel that reads correctly, just
-/// an unindented one. <c>munin-explorer-detail</c> is a handle that Stiler also dresses, in
+/// disclosure that opens it. This trail's steps do not navigate either — the kilde step is a
+/// button disclosing it in place, the rest plain text — so Stiler's <c>.breadcrumbs</c> does not
+/// describe them. Stiler has no definition list and no key/value block that can be read back off
+/// its compiled stylesheet, so what a host supplies is base styling for those three elements — a
+/// host that supplies none still gets a panel that reads correctly, just an unindented one.
+/// <c>munin-explorer-detail</c> is a handle that Stiler also dresses, in
 /// <c>components/munin-explorer/_detail.scss</c>.
 /// </para>
 /// <para>
@@ -1027,6 +1031,8 @@ public sealed partial class VariableSearch : ComponentBase
         builder.OpenElement(3, "button");
         builder.AddAttribute(4, "type", "button");
         builder.AddAttribute(12, "class", "hd-button-reset munin-explorer-dataitem__expand-toggle");
+        // Load-bearing beyond assistive tech: Stiler 0.1.91 tells the chevron's two states apart by
+        // aria-expanded (_results.scss). Drop it and every shut row draws up. (Fhi.Metadata-l9l2n.84)
         builder.AddAttribute(13, "aria-expanded", DetailExpanded(v));
         builder.AddAttribute(14, "aria-controls", DetailControls(v));
         builder.AddAttribute(15, "aria-label", ExpandLabel(v));
@@ -1044,8 +1050,8 @@ public sealed partial class VariableSearch : ComponentBase
         builder.OpenElement(18, "span");
         builder.AddAttribute(19, "class",
             IsSelected(v)
-                ? "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon"
-                : "icon icon-keyboard-arrow-right munin-explorer-dataitem-main__expand-icon");
+                ? "icon icon-keyboard-arrow-up munin-explorer-dataitem-main__expand-icon"
+                : "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon");
         builder.AddAttribute(20, "aria-hidden", "true");
         builder.CloseElement();
 
@@ -1332,11 +1338,16 @@ public sealed partial class VariableSearch : ComponentBase
     /// The data period, drawn as Runa draws it: the two dates, and a bar beneath them.
     /// </summary>
     /// <remarks>
+    /// Drawn at all only where <see cref="PeriodText"/> has words for the two dates, so what counts
+    /// as no period is <see cref="CatalogueDate.Period"/>'s answer here as on every other surface.
+    /// <para>
     /// The bar's width is the share of the variable's own lifetime that its data covers —
     /// <c>(to - from) / (now - from)</c> — so a register that stopped collecting years ago reads as
     /// visibly short, and one still collecting fills the bar. That is Runa's rule, not an
     /// invention: a period with no end is drawn full and in a different colour rather than as an
-    /// unknown, because "no end date" means still running.
+    /// unknown, because "no end date" means still running. An unknown START is not the same thing:
+    /// there is no lifetime to take a share of, so the words stand alone and no track is drawn.
+    /// </para>
     /// <para>
     /// Floored at 5% so a period of days is still a mark rather than nothing at all, and capped at
     /// 100% because a <c>to</c> in the future would otherwise overflow the track.
@@ -1349,46 +1360,55 @@ public sealed partial class VariableSearch : ComponentBase
     /// </remarks>
     private RenderFragment PeriodBar(DateTimeOffset? from, DateTimeOffset? to) => builder =>
     {
-        if (from is null && to is null)
+        if (PeriodText(from, to) is not { } range)
         {
             builder.AddContent(0, T.NotSpecified);
             return;
         }
-
-        var ongoing = to is null;
 
         builder.OpenElement(1, "div");
         builder.AddAttribute(2, "class", "munin-explorer-period");
 
         builder.OpenElement(3, "p");
         builder.AddAttribute(4, "class", "munin-explorer-period__range");
-        builder.AddContent(5, from is { } f ? PeriodDate(f) : "?");
-        builder.AddContent(6, " – ");
-        builder.AddContent(7, to is { } t ? PeriodDate(t) : T.Ongoing);
+        builder.AddContent(5, range);
         builder.CloseElement();
 
-        builder.OpenElement(8, "div");
-        builder.AddAttribute(9, "class",
-            ongoing
-                ? "munin-explorer-period__track munin-explorer-period__track--ongoing"
-                : "munin-explorer-period__track");
-        // Decorative: the dates above say the same thing, and a bar a screen reader announces as
-        // "94 percent" would describe a proportion nobody asked about.
-        builder.AddAttribute(10, "aria-hidden", "true");
+        // A full track beside "?" would illustrate coverage nobody measured, and it would be the
+        // track a fully covered period gets: without a start there is no share, so there is no bar.
+        if (CatalogueDate.Written(from) is { } start)
+        {
+            var ongoing = CatalogueDate.Written(to) is null;
 
-        builder.OpenElement(11, "div");
-        builder.AddAttribute(12, "class", "munin-explorer-period__fill");
-        builder.AddAttribute(13, "style", $"width:{PeriodShare(from, to)}%");
-        builder.CloseElement();
+            builder.OpenElement(8, "div");
+            builder.AddAttribute(9, "class",
+                ongoing
+                    ? "munin-explorer-period__track munin-explorer-period__track--ongoing"
+                    : "munin-explorer-period__track");
+            // Decorative: the dates above say the same thing, and a bar a screen reader announces
+            // as "94 percent" would describe a proportion nobody asked about.
+            builder.AddAttribute(10, "aria-hidden", "true");
 
-        builder.CloseElement();
+            builder.OpenElement(11, "div");
+            builder.AddAttribute(12, "class", "munin-explorer-period__fill");
+            builder.AddAttribute(13, "style", $"width:{PeriodShare(start, to)}%");
+            builder.CloseElement();
+
+            builder.CloseElement();
+        }
+
         builder.CloseElement();
     };
 
     /// <summary>The share of the variable's lifetime its data covers, as a whole percent.</summary>
-    private static int PeriodShare(DateTimeOffset? from, DateTimeOffset? to)
+    /// <remarks>
+    /// The start is a date rather than a maybe because <see cref="PeriodBar"/> draws no track
+    /// without one, so 100 here is never an unknown start. It is not always an open end either:
+    /// a closed period ending near the end of a long lifetime rounds up into the same full track.
+    /// </remarks>
+    private static int PeriodShare(DateTimeOffset start, DateTimeOffset? to)
     {
-        if (from is not { } start || to is not { } end)
+        if (CatalogueDate.Written(to) is not { } end)
         {
             return 100;
         }
@@ -1403,15 +1423,6 @@ public sealed partial class VariableSearch : ComponentBase
 
         return Math.Clamp((int)Math.Round(covered / lifetime * 100), 5, 100);
     }
-
-    /// <summary>One end of a data period, written as the variable's own page writes it.</summary>
-    /// <remarks>
-    /// One END, and only its format: it read as month and year here and as a day there
-    /// (Fhi.Metadata-ufmop). How the two are joined is still this surface's own and disagrees with
-    /// <see cref="CatalogueDate.Period"/> over a missing start — Fhi.Metadata-msax9 settles that.
-    /// </remarks>
-    private string PeriodDate(DateTimeOffset date) =>
-        CatalogueDate.Day(date, Language, DateWidth.Narrow);
 
     /// <summary>
     /// The variable's curated properties, in the order the catalogue puts them.
@@ -1763,8 +1774,11 @@ public sealed partial class VariableSearch : ComponentBase
         // who wants the column anyway can press it in the picker, and their choice sticks.
         if (ColumnVisible(ResultColumn.Status))
         {
-            // Unmarked: the status is an API token, not the catalogue's Norwegian (Fhi.Metadata-13xf8).
-            RowCell.Write(builder, 600, T.FieldStatus, v.VersionStatus, "status", T.NotSpecified, catalogue: false);
+            // Translated through the same map the variable page uses, and unmarked for that
+            // reason: the label is our own word in the reader's language rather than the
+            // catalogue's Norwegian (Fhi.Metadata-hq0b6).
+            var status = v.VersionStatus is { } token ? T.VersionStatusLabel(token) : null;
+            RowCell.Write(builder, 600, T.FieldStatus, status, "status", T.NotSpecified, catalogue: false);
         }
 
         // The dataperiode as text — the same two dates the panel draws under its bar, from the
@@ -1786,16 +1800,12 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>The dataperiode in one line, or null where the catalogue has neither date.</summary>
     /// <remarks>
-    /// Word for word what <see cref="PeriodBar"/> writes above its bar, including "?" for a missing
-    /// start and the word for a period still running, so the column and the open panel never
-    /// describe one variable's period two ways. Null rather than a dash when both dates are
-    /// missing: the cell then says "Ikke oppgitt" in plain sight, which is what every other column
-    /// does with a value the catalogue does not have.
+    /// The one helper every surface joins a period with, so the column, the bar above it and the
+    /// variable's own page cannot word one period three ways (Fhi.Metadata-msax9). Null rather
+    /// than a dash for neither date: the cell writes "Ikke oppgitt" itself, as every column does.
     /// </remarks>
     private string? PeriodText(DateTimeOffset? from, DateTimeOffset? to) =>
-        from is null && to is null
-            ? null
-            : $"{(from is { } f ? PeriodDate(f) : "?")} – {(to is { } t ? PeriodDate(t) : T.Ongoing)}";
+        CatalogueDate.Period(from, to, Language, T, DateWidth.Narrow);
 
     /// <summary>
     /// One labelled item in the metadata line.

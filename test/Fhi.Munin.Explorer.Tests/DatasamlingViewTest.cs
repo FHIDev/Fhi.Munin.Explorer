@@ -466,7 +466,9 @@ public class DatasamlingViewTest : ExplorerTestContext
     [Theory]
     [InlineData(null, null, null)]
     [InlineData("2020-01-01", null, "1 January 2020 – Ongoing")]
-    [InlineData(null, "2024-12-31", "31 December 2024")]
+    // An unknown start is written "?" rather than left blank or let stand as the end alone, which
+    // would read as a start date the catalogue never gave (Fhi.Metadata-msax9).
+    [InlineData(null, "2024-12-31", "? – 31 December 2024")]
     [InlineData("2020-01-01", "2024-12-31", "1 January 2020 – 31 December 2024")]
     public void HeroFacts_WhenValidityIsOpenEnded_ThenTheHeroAndCompactBarAgree(
         string? start, string? end, string? expected)

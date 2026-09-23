@@ -8,9 +8,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// list of facts, and one group of the catalogue's own properties.
 /// </summary>
 /// <remarks>
-/// Shared by <see cref="KildeView"/>, <see cref="VariableView"/> and <see cref="DatasamlingView"/>,
-/// which drew it from three private copies. Level and class stay the caller's, as they are for
-/// <see cref="StatisticsBlock"/>: the same block sits at three different depths.
+/// Shared by <see cref="KildeView"/>, <see cref="VariableView"/>, <see cref="DatasamlingView"/> and
+/// <see cref="InstrumentView"/>, the first three of which drew it from three private copies. Level
+/// and class stay the caller's, as they are for <see cref="StatisticsBlock"/>: the same block sits
+/// at three different depths.
 /// <para>
 /// <see cref="Values"/> alone is shared with the result row's drill-in panel, which is a
 /// different surface wearing a different prefix — hence the class it takes.

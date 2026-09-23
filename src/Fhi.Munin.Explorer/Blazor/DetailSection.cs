@@ -11,9 +11,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Emits <c>&lt;section id="…" data-nav-section class="munin-explorer-page__section" tabindex="-1"&gt;</c>
 /// around whatever it is given. The class, helsedata's <c>data-nav-section</c> attribute and the
 /// negative <c>tabindex</c> that lets a fragment jump land focus here are written once rather than
-/// at each of the fifteen blocks <see cref="KildeView"/>, <see cref="DatasamlingView"/> and
-/// <see cref="VariableView"/> draw between them, so a rename cannot reach two views and miss the
-/// third.
+/// at every block <see cref="KildeView"/>, <see cref="DatasamlingView"/>,
+/// <see cref="VariableView"/> and <see cref="InstrumentView"/> draw between them, so a rename
+/// cannot reach some of the views and miss the rest. No count: the views are added to, and a
+/// number here is a claim about other files that nothing would fail on.
 /// </para>
 /// <para>
 /// Public only because a Razor component must be, in the way <see cref="KildeHierarchyView"/> and

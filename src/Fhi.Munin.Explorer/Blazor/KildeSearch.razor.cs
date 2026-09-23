@@ -94,7 +94,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>munin-explorer-kilder__bar</c> and <c>munin-explorer-kilder__bar-fill</c> for the
 /// proportion bar under a non-zero variable count, its width inline,
 /// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
-/// <see cref="ExploreVariablesRequested"/> gets in front of them,
+/// <see cref="ExploreVariablesRequested"/> gets in front of them, with
+/// <c>munin-explorer-kilde__datasamlinger--selectable</c> and
+/// <c>munin-explorer-kilde__datasamling-select</c> for the matching column an expanded row's
+/// datasamling table gets once <see cref="ExploreDatasamlingerRequested"/> is wired too (a
+/// modifier and not a cell class alone, because Stiler sizes that table's columns by position),
 /// <c>munin-explorer-kilder__sort</c> for the button inside each of the four sortable column
 /// headings, and <c>munin-explorer-filters__toggle</c> and <c>munin-explorer-filters__facets</c>
 /// for the facet panel's disclosure, and <c>munin-explorer-filters__count</c> for the number
@@ -114,13 +118,23 @@ public sealed partial class KildeSearch : ComponentBase
     /// Initial search text. Set by the host; the component owns it afterwards.
     /// </summary>
     /// <remarks>
-    /// Read once, on initialisation, exactly as <see cref="VariableSearch.Search"/> is. There is
-    /// no <c>SearchChanged</c> beside it, and that is the Kelda parity decision rather than an
-    /// omission: search, filters and column choices are component state that goes away on refresh.
-    /// What is worth putting in a host's URL is which kilde is open and which order the list is in
-    /// — <see cref="SelectedKildeIdChanged"/> and <see cref="OrderChanged"/>.
+    /// Read once, on initialisation, exactly as <see cref="Order"/> is: a starting point rather than
+    /// a live parameter. To follow the reader, take <see cref="SearchChanged"/> — or write the pair
+    /// as <c>@bind-Search</c>. <see cref="FacetChoices"/>, <see cref="TickedKildeIds"/> and
+    /// <see cref="VisibleColumns"/> are the same bargain, so a host can put the whole list in its
+    /// address and hand a reader back the list they left (Fhi.Metadata-nvf2w).
     /// </remarks>
     [Parameter] public string? Search { get; set; }
+
+    /// <summary>
+    /// Raised when the reader commits a search or clears it, with the trimmed term — null for none.
+    /// </summary>
+    /// <remarks>
+    /// On commit, never per keystroke: the field binds on <c>onchange</c>, so this carries a finished
+    /// word. The <see cref="SelectedKildeIdChanged"/> warning applies: created in a statically
+    /// rendered parent it arrives empty and never fires.
+    /// </remarks>
+    [Parameter] public EventCallback<string?> SearchChanged { get; set; }
 
     /// <inheritdoc cref="VariableSearch.Language"/>
     [Parameter] public string Language { get; set; } = "no";
@@ -439,7 +453,7 @@ public sealed partial class KildeSearch : ComponentBase
     // was a 7px glyph and the control measured 20 x 24. (Fhi.Metadata-mpx2p)
     private string ExpandChevronClass(Guid id) =>
         "icon icon--nomargin munin-explorer-kilder__expand-icon "
-        + (IsExpanded(id) ? "icon-keyboard-arrow-down" : "icon-keyboard-arrow-right");
+        + (IsExpanded(id) ? "icon-keyboard-arrow-up" : "icon-keyboard-arrow-down");
 
     private string PanelId(Guid id) => $"munin-explorer-datasamlinger-{_instance}-{id}";
 
@@ -535,6 +549,30 @@ public sealed partial class KildeSearch : ComponentBase
         !CanExpand(kilde) || _rowPress.WasSelection(kilde.Id, released)
             ? Task.CompletedTask
             : ToggleDatasamlingerAsync(kilde);
+
+    /// <summary>Open every row holding a mark, and fetch what those rows draw.</summary>
+    /// <remarks>
+    /// One call per row rather than one per mark, and none at all for a row already in hand — the
+    /// address can name several marks under one kilde. Which rows those are, and how few of them
+    /// an untrusted query may open, is <see cref="MarkedRowsToOpen"/>'s to say.
+    /// </remarks>
+    private async Task OpenMarkedRowsAsync()
+    {
+        foreach (var kilde in MarkedRowsToOpen())
+        {
+            _expanded.Add(kilde);
+
+            if (!_datasamlinger.ContainsKey(kilde) && !_datasamlingerLoading.Contains(kilde))
+            {
+                await LoadDatasamlingerAsync(kilde);
+            }
+        }
+
+        if (_marked.Count > 0)
+        {
+            StateHasChanged();
+        }
+    }
 
     private async Task LoadDatasamlingerAsync(Guid id)
     {
@@ -799,6 +837,10 @@ public sealed partial class KildeSearch : ComponentBase
     protected override async Task OnInitializedAsync()
     {
         _search = Search;
+        SeedFacetChoices();
+        SeedTicks();
+        SeedMarks();
+        SeedColumns();
         _selectedId = SelectedKildeId;
 
         // Only with a kilde. A datasamling opens in place of the kilde it belongs to and the way
@@ -834,6 +876,15 @@ public sealed partial class KildeSearch : ComponentBase
         // The render that puts the list on screen — or, on a deep link, the named drilldown that
         // has replaced it.
         StateHasChanged();
+
+        // A row the address marked opens itself, because a mark the reader cannot see is a
+        // selection they cannot undo. Nothing at all without marks. (Fhi.Metadata-75yov)
+        await OpenMarkedRowsAsync();
+
+        // Ticks and marks arrive together from the address whenever a reader shares a link or
+        // navigates back, and every later mark and tick tops the union up but none of these did —
+        // so the first press handed over the marks alone, and said so nowhere. (Fhi.Metadata-75yov)
+        await EnsureUnionAsync();
 
         // The datasamling instead of the kilde, not beside it: the drill-in draws one view, and the
         // kilde's own payload would be fetched for nothing.
@@ -1002,6 +1053,9 @@ public sealed partial class KildeSearch : ComponentBase
         _search = null;
     }
 
+    /// <summary>Tell the host the search the list is now narrowed by.</summary>
+    private Task SearchCommittedAsync() => RaiseAsync(SearchChanged, SearchText, Log);
+
     /// <summary>Take focus off the control about to vanish, then clear the search.</summary>
     /// <remarks>
     /// Focus moves first, the same order the variable explorer's follows and for the same reason:
@@ -1015,7 +1069,14 @@ public sealed partial class KildeSearch : ComponentBase
             await _searchField.FocusAsync();
         }
 
+        var had = SearchText is not null;
+
         ClearSearch();
+
+        if (had)
+        {
+            await SearchCommittedAsync();
+        }
     }
 
     // The same question the row asks: the name is the row's most copyable text and this button

@@ -304,6 +304,29 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
+    public async Task GetInstrumentAsync_WhenTheApiAnswers_ThenItAsksTheRouteTheApiPublishes()
+    {
+        // Singular, as api/explorer/datasamling/{id} is and unlike api/explorer/kilder/{id}: the
+        // route is the API's own spelling, and a plural here would answer 404 for every instrument.
+        var instrument = await WithJson(
+            """{ "id": "11111111-1111-1111-1111-111111111111", "code": "INS_SF36" }""")
+            .GetInstrumentAsync(new Guid("11111111-1111-1111-1111-111111111111"));
+
+        Assert.Equal("INS_SF36", instrument!.Code);
+    }
+
+    [Fact]
+    public async Task GetInstrumentAsync_WhenTheApiAnswers_ThenTheRequestNamesTheInstrumentEndpoint()
+    {
+        var handler = StubHttpHandler.Ok("""{ "code": "INS_SF36" }""");
+        var id = new Guid("11111111-1111-1111-1111-111111111111");
+
+        await Client(handler).GetInstrumentAsync(id);
+
+        Assert.Equal($"/api/explorer/instrument/{id}", handler.LastUri!.AbsolutePath);
+    }
+
+    [Fact]
     public async Task GetDatasamlingAsync_WhenTheApiAnswersWithARealResponse_ThenTheDetailAndItsParentAreRead()
     {
         var datasamling = await WithResponse("datasamling.json", out _).GetDatasamlingAsync(Guid.NewGuid());
@@ -438,6 +461,12 @@ public class MuninExplorerClientTest
     {
         Assert.Null(await WithStatus(HttpStatusCode.NotFound).GetDatasamlingAsync(Guid.NewGuid()));
     }
+
+    [Fact]
+    public async Task GetInstrumentAsync_WhenTheInstrumentIsNotPublished_ThenNullRatherThanAThrow() =>
+        // Unknown, disabled, or linked to no variable the explorer shows: the API answers 404 to
+        // all three, and this client cannot tell them apart any more than a reader could.
+        Assert.Null(await WithStatus(HttpStatusCode.NotFound).GetInstrumentAsync(Guid.NewGuid()));
 
     [Fact]
     public async Task GetVariableAsync_WhenTheVariableDoesNotExist_ThenNullRatherThanAThrow()

@@ -11,7 +11,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <para>
 /// Emits one <c>&lt;dl class="munin-explorer-page__facts"&gt;</c> holding a <c>&lt;div&gt;</c> per
 /// fact, so the grid rule has one child per cell to lay out. Stiler gives that list six tracks at
-/// desktop, three below 1080px and two below 600px, which is why the views name six facts each.
+/// desktop, three below 1080px and two below 600px, which is the shape a view naming a full row
+/// aims at: five would leave a hole and seven wrap to a row of one. A view with less to lead with
+/// names fewer — the instrument page names two — and a row that short simply does not fill its
+/// tracks.
 /// </para>
 /// <para>
 /// A summary, not a relocation: every fact here is still drawn in the section it belongs to

@@ -18,9 +18,9 @@ internal enum DateWidth
 /// A catalogue date as a reader reads it: one day, or a period with an open end shown as ongoing.
 /// </summary>
 /// <remarks>
-/// Shared by the three detail views, whose private copies had already drifted apart. Two decisions
-/// live here and only one is the caller's: the ordinal dot follows the reader, the month's width
-/// follows the column (Fhi.Metadata-n39ea).
+/// Shared by the detail views, three of which had private copies that had already drifted apart.
+/// Two decisions live here and only one is the caller's: the ordinal dot follows the reader, the
+/// month's width follows the column (Fhi.Metadata-n39ea).
 /// </remarks>
 internal static class CatalogueDate
 {
@@ -62,7 +62,7 @@ internal static class CatalogueDate
     /// Unwrapped before the comparison on purpose: <c>value == default</c> on a nullable compares
     /// against null rather than against MinValue, so it reads as a guard and is a no-op.
     /// </remarks>
-    private static DateTimeOffset? Written(DateTimeOffset? value) =>
+    internal static DateTimeOffset? Written(DateTimeOffset? value) =>
         value is { } day && day != default ? day : null;
 
     /// <summary>
@@ -92,14 +92,13 @@ internal static class CatalogueDate
     }
 
     /// <summary>
-    /// A period, with an open end shown as ongoing rather than as a blank or a guessed date.
+    /// A period, with an unknown start shown as "?" and an open end as ongoing — neither as a
+    /// blank nor as a guessed date.
     /// </summary>
     /// <remarks>
-    /// An end with no start stands alone: an en-dash with nothing before it reads as a value that
-    /// failed to draw, and a start the catalogue never gave would be an invention. A <c>default</c>
-    /// at either end is read as no date there, for the reason <see cref="DayOrNothing"/> gives — the
-    /// two are one row apart in the same fact list. So a default START renders as the end standing
-    /// alone, which is what a null start already did (Fhi.Metadata-n39ea) rather than a new rule.
+    /// An unknown start is written "?": an end standing alone reads as a start, and a bare en-dash
+    /// as a value that failed to draw. A <c>default</c> at either end is no date there, as in
+    /// <see cref="DayOrNothing"/> (Fhi.Metadata-msax9).
     /// </remarks>
     internal static string? Period(DateTimeOffset? from, DateTimeOffset? to, string? language,
                                    Texts texts, DateWidth width = DateWidth.Full)
@@ -112,9 +111,9 @@ internal static class CatalogueDate
             return null;
         }
 
-        var start = from is { } f ? Day(f, language, width) : "";
+        var start = from is { } f ? Day(f, language, width) : "?";
         var end = to is { } t ? Day(t, language, width) : texts.Ongoing;
 
-        return string.IsNullOrEmpty(start) ? end : $"{start} – {end}";
+        return $"{start} – {end}";
     }
 }

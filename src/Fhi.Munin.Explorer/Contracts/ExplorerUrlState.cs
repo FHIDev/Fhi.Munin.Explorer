@@ -48,6 +48,19 @@ public sealed record ExplorerUrlState
     /// </remarks>
     public Guid? SelectedVariableId { get; init; }
 
+    /// <summary>The instrument whose page is open, or null when the reader is not on one.</summary>
+    /// <remarks>
+    /// An instrument opens as a view in place of the search, the same drill-in move a whole
+    /// variable makes, so it belongs in a link for the same reason: without it a shared address
+    /// reopens the search the sender came through rather than the page they were reading.
+    /// <para>
+    /// It wins over <see cref="SelectedVariableId"/> when a link carries both, because that is the
+    /// order they are reached in: the instrument is opened from the variable, and the variable is
+    /// what the page underneath goes back to.
+    /// </para>
+    /// </remarks>
+    public Guid? SelectedInstrumentId { get; init; }
+
     /// <summary>
     /// The page size a reader who has chosen nothing gets, and so the one value omitted from a URL.
     /// </summary>
@@ -92,7 +105,7 @@ public sealed record ExplorerUrlState
     /// <summary>How many parameters <see cref="Parse"/> reads before ignoring the rest.</summary>
     /// <remarks>
     /// Bounds the parse itself and not only what it keeps, the same reasoning as
-    /// <see cref="VariableFilter"/>'s own cap. Well above the six keys here plus a host's own.
+    /// <see cref="VariableFilter"/>'s own cap. Well above the seven keys here plus a host's own.
     /// </remarks>
     private const int MaxParameters = 200;
 
@@ -133,6 +146,11 @@ public sealed record ExplorerUrlState
         if (SelectedVariableId is { } selected)
         {
             Append(query, "variabelId", selected.ToString());
+        }
+
+        if (SelectedInstrumentId is { } instrument)
+        {
+            Append(query, "instrumentId", instrument.ToString());
         }
 
         return query.ToString();
@@ -232,6 +250,15 @@ public sealed record ExplorerUrlState
             return Guid.TryParse(value, out var variable) ? state with { SelectedVariableId = variable } : state;
         }
 
+        // Read on the same terms, and dropped the same way: an instrument the API does not publish
+        // is reported back as null by the component once it has asked.
+        if (Is(name, "instrumentId"))
+        {
+            return Guid.TryParse(value, out var instrument)
+                ? state with { SelectedInstrumentId = instrument }
+                : state;
+        }
+
         return state;
     }
 
@@ -246,12 +273,14 @@ public sealed record ExplorerUrlState
     /// Separate from <see cref="QueryKeys"/> because these are the ones a host can plausibly
     /// collide with — <c>page</c> and <c>search</c> are anyone's parameter names, where
     /// <c>variabelgruppeIds</c> is nobody's. It is therefore the set a host may ask an explorer
-    /// component to leave alone. <c>variabelId</c> is in here for that reason too: a host with a
-    /// variable page of its own plausibly already means something by it.
+    /// component to leave alone. <c>variabelId</c> and <c>instrumentId</c> are in here for that
+    /// reason too: a host with a variable or instrument page of its own plausibly already means
+    /// something by either.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
-        new HashSet<string>(["search", "sort", "sortDir", "page", "pageSize", "variabelId"],
-                            StringComparer.OrdinalIgnoreCase);
+        new HashSet<string>(
+            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "instrumentId"],
+            StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>
     /// <remarks>

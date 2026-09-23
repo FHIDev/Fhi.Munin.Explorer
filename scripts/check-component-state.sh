@@ -25,6 +25,11 @@
 # the glyph slot sits inside the label the checkbox is in, so what a redraw does to the browser's
 # own tick beside it is a question a render tree cannot answer. (Fhi.Metadata-kd9ts)
 #
+# And it asks both row chevrons which PICTURE they draw in each of their four states. That is a
+# question about a cascade rather than about a class name: `icon-keyboard-arrow-down` means shut
+# only where `[aria-expanded=false]` reaches it, and no test in test/ resolves a rule at all.
+# (Fhi.Metadata-l9l2n.84)
+#
 # And it asks a detail page's sticky fact bar when it appears, which is neither a press nor a render
 # tree question at all: the bar is drawn hidden and an IntersectionObserver shows it, so the answer
 # depends on a viewport and a scroll position. The half that matters is the one a headless assertion
@@ -44,8 +49,9 @@
 #   - one press per call site. The picker's other columns and the panel's other facets go the same
 #     way by construction, but by construction is not measured;
 #   - the sample stylesheet, not helsedata's. This runs ModernHost, as check-accessibility.sh does,
-#     because a control's own state is not a question about CSS. What a rule of Stiler's could do to
-#     the same markup is scripts/check-hostile-host.sh's business;
+#     because a control's own state is mostly not a question about CSS. The chevron assertions are,
+#     and what they measure is the sample's MIRROR of Stiler 0.1.91 rather than any Stiler a host
+#     has restored; what a rule of Stiler's does to the same markup is check-hostile-host.sh's;
 #   - whether the refusal is the RIGHT rule. It asks the picker and the header to say the same
 #     thing, not whether the last column should be the one that cannot be turned off.
 #
@@ -78,12 +84,16 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # reached two ways — `/kilder` mounts the sample's own wrapper, which navigates, so the nav reads
 # NavigationManager; `/utforsker` mounts VariableExplorer, which moves the address bar with
 # history.replaceState and so has to hand the nav an address Blazor was never told about.
+#
+# `/kilder` is entered twice: the hierarchy of one kilde for the nav, and the list of them all for
+# Kelda's row chevron, which is a control on the list page and gone by the time a kilde is open.
 TARGETS=(
   "/::tree-collapsed"
   "/::tree-populated"
   "/::tree-empty-results"
   "/::variables-list"
   "/kilder::kilde-hierarchy-collapsed"
+  "/kilder::kilder-list"
   "/utforsker::variable-whole"
   "/utforsker::variable-datasamling"
 )
@@ -240,7 +250,8 @@ and every assertion detected its deliberately introduced defect.
 Read that for what it is. Two REFUSED presses were staged in the variable explorer - the picker's
 last visible column, and a facet value pressed a second time while its own refetch was in flight -
 and three the component ACCEPTS beside them: the facet tree's two branch disclosures, and the
-panel's Ikoner switch. The two contents navs are read rather than pressed, and what is asked there
+panel's Ikoner switch. Both row chevrons were pressed as well, and what was asked there is which
+image the sample stylesheet resolved for each of their four states. The two contents navs are read rather than pressed, and what is asked there
 is the address the browser resolved each href to. The two detail pages are SCROLLED rather than
 pressed, on a viewport short enough for the hero row to start below the fold, and what is asked is
 whether the sticky bar stayed away before the scroll and arrived after it. All of it against the

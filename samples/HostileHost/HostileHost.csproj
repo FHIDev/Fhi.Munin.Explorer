@@ -24,9 +24,14 @@
        PR 39284, checked 2026-09-14), which lacks both the branch disclosure rules
        (Fhi.Metadata-adog5) and the long-value breaks 0.1.79 carries. The 320px step no longer passes on 0.1.68: the
        states it measures need those breaks, which is what this branch's negative control shows
-       (Fhi.Metadata-ofg1h). -->
+       (Fhi.Metadata-ofg1h).
+
+       0.1.99 carries the drawer's checkbox column (Fhi.Metadata-h6dx7, ADO PR 39522), so the two
+       names Fhi.Metadata-75yov emits are unstyled at this pin - both recorded in
+       test/sample-css-known-divergences.txt. Moving the pin to it is Fhi.Metadata-4xqhq's, which
+       owns reconciling the eight releases of rules that come with it. -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.91" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.98" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use

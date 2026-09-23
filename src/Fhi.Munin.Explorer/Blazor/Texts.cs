@@ -175,6 +175,16 @@ internal sealed record Texts(
     string EyebrowKilde,
     string EyebrowDatasamling,
     string EyebrowVariable,
+    string EyebrowInstrument,
+
+    // The instrument surfaces. A refusal by the rate limiter says RateLimitError instead, as every
+    // other fetch here does; AllVariablesInInstrument is its own member rather than
+    // AllVariablesInDatasamling reused, for the reason HeadingVariables gives.
+    string FieldInstruments,
+    string InstrumentLoading,
+    string InstrumentMissing,
+    string InstrumentError,
+    Func<int, string> AllVariablesInInstrument,
 
     // The breadcrumb landmark's name. Not HierarchyTrail, which names the filter trail over the
     // results: that one narrows a list and this one leaves the page, and a reader hearing the same
@@ -483,6 +493,24 @@ internal sealed record Texts(
     string ExploreVariables,
     string ExploreAllVariables,
     string ExploreFilteredVariables,
+    // The drawer's datasamling marks. The column heading is screenreader-only, so it is the one
+    // word a sighted reader never sees and the only thing naming the column to everyone else.
+    string SelectDatasamlingColumn,
+    // (name) — one mark's accessible name, for SelectKilde's reason one table further in.
+    Func<string, string> SelectDatasamling,
+    // (count) — under one kilde's name, and over the whole selection. Two sentences rather than
+    // one reused: the row says how many of ITS datasamlinger are marked, the bar how many are
+    // marked anywhere, and the row's number is a part of the bar's. (Fhi.Metadata-75yov)
+    Func<int, string> MarkedDatasamlingCount,
+    Func<int, string> SelectedDatasamlingCount,
+    // What a mixed selection cannot reach. The API ANDs kildeIds with datasamlingIds, so a
+    // selection holding marks travels as datasamlinger alone — and a variable in none of them is
+    // then out of reach however its kilde was chosen. (Fhi.Metadata-75yov)
+    string MixedSelectionNote,
+    // (names) — the ticked kilder that hold no datasamling and so add nothing to that selection.
+    Func<string, string> KilderWithoutDatasamlinger,
+    string SelectionDatasamlingerError,
+    string RetrySelectionDatasamlinger,
     // Kelda's filter panel. Its heading is FiltersTitle, and two of its four facet headings are
     // strings this record already holds: the kildetype facet is headed with ColumnKildetype and
     // the databehandler facet with FieldDataProcessor, because each facet is a filter over the
@@ -684,7 +712,7 @@ internal sealed record Texts(
     /// </remarks>
     public string StatisticsTypeLabel(string type) => type.ToLowerInvariant() switch
     {
-        "yearly" => StatisticsYearly,
+        "yearly" or "årsbasert" => StatisticsYearly,
         "accumulated" or "akkumulert" => StatisticsAccumulated,
         _ => type
     };
@@ -697,7 +725,7 @@ internal sealed record Texts(
     /// </remarks>
     public string VersionStatusLabel(string status) => status.ToLowerInvariant() switch
     {
-        "active" => VersionActive,
+        "active" or "aktiv" => VersionActive,
         "historical" or "historisk" => VersionHistorical,
         _ => status
     };
@@ -1013,6 +1041,12 @@ internal sealed record Texts(
         EyebrowKilde: "Datakilde",
         EyebrowDatasamling: "Datasamling",
         EyebrowVariable: "Variabel",
+        EyebrowInstrument: "Instrument",
+        FieldInstruments: "Instrumenter",
+        InstrumentLoading: "Henter instrumentet …",
+        InstrumentMissing: "Fant ingen detaljer for dette instrumentet.",
+        InstrumentError: "Kunne ikke hente instrumentet nå. Prøv igjen om litt.",
+        AllVariablesInInstrument: count => count == 1 ? "Vis 1 variabel" : $"Vis alle {count} variabler",
         TrailLabel: "Brødsmulesti",
         HeadingMetadata: "Metadata",
         HeadingAboutDatasamling: "Om datasamlingen",
@@ -1241,6 +1275,19 @@ internal sealed record Texts(
         ExploreVariables: "Utforsk variabler for utvalget",
         ExploreAllVariables: "Utforsk alle variabler",
         ExploreFilteredVariables: "Utforsk variabler for treffene",
+        SelectDatasamlingColumn: "Velg",
+        SelectDatasamling: name => $"Velg {name}",
+        MarkedDatasamlingCount: count =>
+            count == 1 ? "1 datasamling merket" : $"{count} datasamlinger merket",
+        SelectedDatasamlingCount: count =>
+            count == 1 ? "1 datasamling valgt" : $"{count} datasamlinger valgt",
+        MixedSelectionNote:
+            "Variabler som ikke ligger i en datasamling, blir ikke med i utvalget.",
+        KilderWithoutDatasamlinger: names =>
+            $"Disse kildene har ingen datasamlinger og bidrar ikke til utvalget: {names}.",
+        SelectionDatasamlingerError:
+            "Kunne ikke hente datasamlingene for alle kildene som er valgt.",
+        RetrySelectionDatasamlinger: "Prøv å hente datasamlingene på nytt",
         FacetCategory: "Kategori",
         FacetDataCategory: "Datakategori (EHDS)",
         FacetDateFrom: "Fra og med",
@@ -1412,6 +1459,12 @@ internal sealed record Texts(
         EyebrowKilde: "Data source",
         EyebrowDatasamling: "Data collection",
         EyebrowVariable: "Variable",
+        EyebrowInstrument: "Instrument",
+        FieldInstruments: "Instruments",
+        InstrumentLoading: "Loading the instrument …",
+        InstrumentMissing: "No details were found for this instrument.",
+        InstrumentError: "Could not load the instrument right now. Please try again shortly.",
+        AllVariablesInInstrument: count => count == 1 ? "View 1 variable" : $"View all {count} variables",
         TrailLabel: "Breadcrumb",
         HeadingMetadata: "Metadata",
         HeadingAboutDatasamling: "About the data collection",
@@ -1635,6 +1688,19 @@ internal sealed record Texts(
         ExploreVariables: "Explore variables for this selection",
         ExploreAllVariables: "Explore all variables",
         ExploreFilteredVariables: "Explore variables for these results",
+        SelectDatasamlingColumn: "Select",
+        SelectDatasamling: name => $"Select {name}",
+        MarkedDatasamlingCount: count =>
+            count == 1 ? "1 data collection marked" : $"{count} data collections marked",
+        SelectedDatasamlingCount: count =>
+            count == 1 ? "1 data collection selected" : $"{count} data collections selected",
+        MixedSelectionNote:
+            "Variables that belong to no data collection are left out of this selection.",
+        KilderWithoutDatasamlinger: names =>
+            $"These sources hold no data collections and add nothing to the selection: {names}.",
+        SelectionDatasamlingerError:
+            "Could not load the data collections for every source you have selected.",
+        RetrySelectionDatasamlinger: "Try loading the data collections again",
         FacetCategory: "Category",
         FacetDataCategory: "Data category (EHDS)",
         FacetDateFrom: "From",

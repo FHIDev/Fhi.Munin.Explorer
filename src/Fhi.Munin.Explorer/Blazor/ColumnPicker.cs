@@ -63,7 +63,7 @@ internal static class ColumnPicker
     /// turns off are never two names for one thing, and the toggle is the caller's own rule —
     /// visibility and locking are decided there, and drawn here.
     /// </remarks>
-    internal readonly record struct Choice(string Label, bool Visible, bool Locked, Action Toggle);
+    internal readonly record struct Choice(string Label, bool Visible, bool Locked, Func<Task> Toggle);
 
     /// <summary>The picker.</summary>
     /// <param name="receiver">The component whose state a press changes. <c>IHandleEvent</c> and not

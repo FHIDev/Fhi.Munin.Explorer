@@ -1,0 +1,13 @@
+category: Notes for hosts
+- **A host styling the row chevrons needs `Fhi.Helsedata.Stiler` 0.1.91 or later.** 0.1.91 is
+  where the rules keyed on `[aria-expanded=false]` landed, and they are what tell a collapsed
+  `icon-keyboard-arrow-down` from an expanded one while the older, inverted overrides for the
+  previous names are still in the stylesheet. On an earlier Stiler the collapsed chevron is drawn
+  by one of those overrides and points up. A host supplying its own rules for
+  `munin-explorer-kilder__expand-icon` or `munin-explorer-dataitem-main__expand-icon` should key
+  them on the class names above rather than on `icon-keyboard-arrow-right`, which the component no
+  longer emits — and, if it draws them from images rather than from Stiler's icon set, owes the
+  expanded chevron a resting rule for `icon-keyboard-arrow-up` as well. Stiler needs none, because
+  its own `.icon-keyboard-arrow-up` draws that glyph and only the deviations from it are scoped to
+  these names; both sample stylesheets, which carry no icon font, now show the extra rule.
+  (Fhi.Metadata-l9l2n.84)

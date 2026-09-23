@@ -426,7 +426,6 @@ public class KildeViewTest : ExplorerTestContext
             "munin-explorer-kilde__description",
             "munin-explorer-kilde__header",
             "munin-explorer-kilde__identifiers",
-            "munin-explorer-kilde__kildetype",
             "munin-explorer-kilde__main",
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
@@ -517,38 +516,18 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Kildetype_WhenTheCatalogueSendsItsEnumName_ThenTheBadgeSaysItInProse()
+    public void Kildetype_WhenTheKildeHasOne_ThenTheNameBlockDrawsNoBadgeRepeatingTheHeroRow()
     {
-        Assert.Equal("Nasjonalt medisinsk kvalitetsregister",
-                     Render(Kilde()).Find(".munin-explorer-kilde__kildetype").TextContent);
-    }
-
-    [Fact]
-    public void Kildetype_WhenItIsOneWeHaveNeverSeen_ThenItIsShownRatherThanHidden()
-    {
-        // Munin's kildetype enum is master data, so a new member is a catalogue change rather than a
-        // bug here. "Pasientregister" on a badge is poor prose and true, where dropping it would
-        // take the source's category off the screen entirely.
-        var cut = Render(Kilde() with { Kildetype = "pasientregister" });
-
-        Assert.Equal("pasientregister", cut.Find(".munin-explorer-kilde__kildetype").TextContent);
-    }
-
-    // Null is what the API actually sends for a kilde with none (Fhi.Metadata-l9l2n.61); the empty
-    // string is what the contract used to coerce it to, and what a host substituting its own client
-    // can still produce.
-    [Theory]
-    [InlineData("")]
-    [InlineData(null)]
-    public void Kildetype_WhenTheKildeHasNone_ThenNoEmptyBadgeIsDrawnButTheRecordStillSaysSo(string? kildetype)
-    {
-        // A badge is a shape as much as a word, so an empty one is a stray coloured box. The
-        // source information is a record and answers the question either way — a muted "Ingen" is
-        // the answer there, and a missing row would leave a reader wondering whether it was asked.
-        var cut = Render(Kilde() with { Kildetype = kildetype });
+        // The hero row's first fact is Type, ten pixels below where the badge stood, resolved
+        // through the same member — so the badge was the same words twice inside the chrome rather
+        // than a summary of the page. (Fhi.Metadata-pnn4w)
+        var cut = Render(Kilde());
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilde__kildetype"));
-        AssertAbsent(SourceInformation(cut), "Type datakilde");
+        Assert.DoesNotContain("Nasjonalt medisinsk kvalitetsregister",
+                              cut.Find(".munin-explorer-kilde__header").TextContent,
+                              StringComparison.Ordinal);
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister", HeroValue(Hero(cut), "Type datakilde"));
     }
 
     [Fact]
@@ -1420,6 +1399,22 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void DataCollections_WhenTheKildeExplorerCanMarkThem_ThenThisViewStillCannot()
+    {
+        // The two views share DatasamlingTable so they cannot report the same kilde differently,
+        // and the marks are the one thing that must not come along: this view has no selection, no
+        // handover and no reader asking for either. What would carry them is the modifier — Stiler
+        // sizes this table's columns by position, so the modifier arriving here would re-anchor
+        // every one of them against a column that is not there. (Fhi.Metadata-75yov)
+        var table = Render(Kilde()).Find("table.munin-explorer-kilde__datasamlinger");
+
+        Assert.Equal("munin-explorer-kilde__datasamlinger", table.GetAttribute("class"));
+        Assert.Empty(table.QuerySelectorAll(".munin-explorer-kilde__datasamling-select"));
+        Assert.Empty(table.QuerySelectorAll("input"));
+        Assert.Equal(4, table.QuerySelectorAll("thead th").Length);
+    }
+
+    [Fact]
     public void DataCollections_WhenTheKildeHasNone_ThenTheHierarchyReportsItsEmptyState()
     {
         var cut = Render(Kilde() with { Datasamlinger = [], Delkilder = [] });
@@ -1825,6 +1820,41 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void HeroFacts_WhenTheCatalogueSendsItsEnumName_ThenTheTypeFactSaysItInProse()
+    {
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister",
+                     HeroValue(Hero(Render(Kilde())), "Type datakilde"));
+    }
+
+    [Fact]
+    public void HeroFacts_WhenTheKildetypeIsOneWeHaveNeverSeen_ThenItIsShownRatherThanHidden()
+    {
+        // Munin's kildetype enum is master data, so a new member is a catalogue change rather than a
+        // bug here. "pasientregister" leading the row is poor prose and true, where dropping it
+        // would take the source's category off the screen entirely.
+        var cut = Render(Kilde() with { Kildetype = "pasientregister" });
+
+        Assert.Equal("pasientregister", HeroValue(Hero(cut), "Type datakilde"));
+    }
+
+    // Null is what the API actually sends for a kilde with none (Fhi.Metadata-l9l2n.61); the empty
+    // string is what the contract used to coerce it to, and what a host substituting its own client
+    // can still produce.
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    public void HeroFacts_WhenTheKildeHasNoKildetype_ThenNoEmptyTypeFactIsDrawnButTheRecordStillSaysSo(string? kildetype)
+    {
+        // A hero cell is a shape as much as a word, so an empty one is a labelled hole in a ruled
+        // row. The source information is a record and answers the question either way — a muted
+        // "Ingen" is the answer there, and a missing row would leave a reader wondering.
+        var cut = Render(Kilde() with { Kildetype = kildetype });
+
+        Assert.DoesNotContain("Type datakilde", Labels(Hero(cut)));
+        AssertAbsent(SourceInformation(cut), "Type datakilde");
+    }
+
+    [Fact]
     public void HeroFacts_Always_ThenEachReadsTheSameWordsAsTheSectionThatDrawsItBelow()
     {
         // The repetition is deliberate and the disagreement is the bug. A variable's DataType was
@@ -2000,18 +2030,18 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SourceInformation_WhenAValidityStartIsTheDefaultDate_ThenTheEndStandsAlone()
+    public void SourceInformation_WhenAValidityStartIsTheDefaultDate_ThenItReadsAsAQuestionMark()
     {
-        // The other end, and the one worth writing down: the row reads "5. mai 2020" with no start,
-        // which is what a null start has always rendered — an end standing alone. It is NOT the year
-        // 1 and it is NOT a start date, and only a test says which. (Fhi.Metadata-se0by)
+        // The other end, and the one worth writing down: the default start is read as no date and
+        // written "?", the same as a null start. It is NOT the year 1, and an end left standing
+        // alone would read as a start. (Fhi.Metadata-se0by, Fhi.Metadata-msax9)
         var kilde = Kilde() with
         {
             ValidFrom = DateTimeOffset.MinValue,
             ValidTo = new DateTimeOffset(2020, 5, 5, 0, 0, 0, TimeSpan.Zero),
         };
 
-        Assert.Equal("5. mai 2020", Value(SourceInformation(Render(kilde)), "Gyldighet"));
+        Assert.Equal("? – 5. mai 2020", Value(SourceInformation(Render(kilde)), "Gyldighet"));
     }
 
     [Fact]
@@ -2110,20 +2140,18 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Period_WhenOnlyTheEndIsKnown_ThenTheDateStandsAloneRatherThanBesideABlankHalf()
+    public void Period_WhenOnlyTheEndIsKnown_ThenTheStartIsAQuestionMarkRatherThanTheEndAlone()
     {
-        // The third shape, and the one with no good answer: an en-dash with nothing before it reads
-        // as a value that failed to draw, and a start date the catalogue never gave would be an
-        // invention. So the end stands alone — which does read as a start, and is pinned here
-        // because it is a decision rather than an accident. VariableView's own copy of Period does
-        // the same, so changing it is a change to both.
+        // The third shape: an en-dash with nothing before it reads as a value that failed to draw,
+        // and an end standing alone reads as a start. "?" says the catalogue never gave one, which
+        // is the reading every surface now shares (Fhi.Metadata-msax9).
         var kilde = Kilde() with
         {
             ValidFrom = null,
             ValidTo = new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero),
         };
 
-        Assert.Equal("31. desember 2024", Value(SourceInformation(Render(kilde)), "Gyldighet"));
+        Assert.Equal("? – 31. desember 2024", Value(SourceInformation(Render(kilde)), "Gyldighet"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -2142,7 +2170,7 @@ public class KildeViewTest : ExplorerTestContext
         // The kildetype and the identification level are vocabularies this package translates, so
         // they follow the reader too — unlike everything the catalogue wrote, which does not.
         Assert.Equal("National medical quality registry",
-                     cut.Find(".munin-explorer-kilde__kildetype").TextContent);
+                     HeroValue(Hero(cut), "Type of data source"));
         Assert.Equal("Indirectly identifiable",
                      Value(SourceInformation(cut), "Level of personal identification"));
         Assert.Equal(["Total number of variables", "Data period"], Labels(Statistics(cut)));
@@ -2166,9 +2194,13 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal("no", cut.Find(".munin-explorer-kilde__description").GetAttribute("lang"));
         Assert.Equal("no", cut.Find("table.munin-explorer-kilde__datasamlinger tbody th").GetAttribute("lang"));
 
-        // Ours: the kildetype badge is this package's translation of an enum, not the catalogue's
-        // prose, and so is the identification level in the source information below it.
-        Assert.False(cut.Find(".munin-explorer-kilde__kildetype").HasAttribute("lang"));
+        // Ours: the hero row's kildetype is this package's translation of an enum, not the
+        // catalogue's prose, and so is the identification level in the source information below it.
+        // The hero marks a value with a span rather than an attribute, so neither may be there.
+        var heroType = Fact(Hero(cut), "Type of data source");
+
+        Assert.False(heroType.HasAttribute("lang"));
+        Assert.Empty(heroType.QuerySelectorAll("[lang]"));
 
         var facts = SourceInformation(cut);
 

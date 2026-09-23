@@ -1221,17 +1221,42 @@ public class VariableSearchTest : ExplorerTestContext
         AssertCatalogueCellsMarkedNorwegian(cut);
     }
 
-    [Fact]
-    public void Cells_WhenStatusIsTurnedOn_ThenTheStatusCellIsNotMarkedNorwegian()
+    [Theory]
+    [InlineData(null, "Active", "Aktiv")]
+    [InlineData(null, "Historical", "Historisk")]
+    // The lower-case rows prove the cell goes through Texts.VersionStatusLabel at all: the API's
+    // own tokens already spell the English labels, so only a token differing in case — or, as
+    // Norwegian-spelled "aktiv" and "historisk" do, in language — tells a translating row apart.
+    [InlineData("en", "active", "Active")]
+    [InlineData("en", "aktiv", "Active")]
+    [InlineData("en", "historisk", "Historical")]
+    [InlineData("en", "Active", "Active")]
+    [InlineData("en", "Historical", "Historical")]
+    // A token the map has not seen is shown as it arrived, and an absent one is the cell's usual
+    // fallback — both the same as on the whole-variable page, which shares the map.
+    [InlineData(null, "Draft", "Draft")]
+    [InlineData(null, null, "Ikke oppgitt")]
+    [InlineData("en", null, "Not specified")]
+    public void Cells_WhenStatusIsTurnedOn_ThenItReadsTheTranslatedLabelAndIsNotMarkedNorwegian(
+        string? language, string? token, string expected)
     {
-        // The status is the API's token, prose in no language, so it inherits the page's language.
-        // The text is pinned too: whether the row should translate it is a separate decision.
-        var cut = RenderWith(new FakeClient(OnePage(FilledRow())), b => b.Add(c => c.Language, "en"));
+        // A null language is the parameter left unset, which is the Norwegian default a host gets
+        // without asking — not a language named "null".
+        Action<ComponentParameterCollectionBuilder<VariableSearch>>? parameters = null;
+        if (language is { } chosen)
+        {
+            parameters = b => b.Add(c => c.Language, chosen);
+        }
+
+        var cut = RenderWith(new FakeClient(OnePage(FilledRow() with { VersionStatus = token })), parameters);
         TurnEveryColumnOn(cut);
 
         var cell = Cell(cut, "status");
 
-        Assert.Equal("Active", cell.TextContent.Trim());
+        Assert.Equal(expected, cell.TextContent.Trim());
+
+        // Our own word in the reader's language, so the marking that keeps a Norwegian voice on
+        // the catalogue's own text would be the wrong claim here (Fhi.Metadata-13xf8).
         Assert.Empty(cell.QuerySelectorAll("[lang='no']"));
         AssertCatalogueCellsMarkedNorwegian(cut);
     }
@@ -4411,12 +4436,29 @@ public class VariableSearchTest : ExplorerTestContext
             Squeezed(r.Declarations).Contains("transform:", StringComparison.OrdinalIgnoreCase),
             $"'{r.Selector}' turns the chevron, and a turned `icon_up.svg` points right."));
 
-        // One image per direction, the pair Stiler swaps between.
-        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-right", StringComparison.Ordinal)
+        // One image per direction at rest, plus the blue pair on hover. `-down` is collapsed only
+        // under [aria-expanded=false] until Stiler drops its four inverted overrides
+        // (Fhi.Metadata-trfs0); the resting `-up` has no twin there, Stiler's icon set draws it.
+        Assert.Contains(rules, r => r.Selector.Contains("[aria-expanded=false]", StringComparison.Ordinal)
+                                    && r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
+                                    && !r.Selector.Contains(":hover", StringComparison.Ordinal)
                                     && Squeezed(r.Declarations).Contains("icon_down.svg", StringComparison.Ordinal));
 
-        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
+        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-up", StringComparison.Ordinal)
+                                    && !r.Selector.Contains(":hover", StringComparison.Ordinal)
                                     && Squeezed(r.Declarations).Contains("icon_up.svg", StringComparison.Ordinal));
+
+        Assert.Contains(rules, r => r.Selector.Contains(":hover", StringComparison.Ordinal)
+                                    && r.Selector.Contains("icon-keyboard-arrow-up", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("icon_up--blue.svg", StringComparison.Ordinal));
+
+        // The fourth state, and the one the old `-right` rules used to draw: a hovered row that is
+        // still shut. Without it the rule that serves it can go and this guard stays green, while a
+        // hovered collapsed row quietly loses its blue tint. (Fhi.Metadata-l9l2n.84)
+        Assert.Contains(rules, r => r.Selector.Contains(":hover", StringComparison.Ordinal)
+                                    && r.Selector.Contains("[aria-expanded=false]", StringComparison.Ordinal)
+                                    && r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
+                                    && Squeezed(r.Declarations).Contains("icon_down--blue.svg", StringComparison.Ordinal));
     }
 
 
@@ -13932,8 +13974,8 @@ public class VariableSearchTest : ExplorerTestContext
     public void Detail_WhenAMembershipPeriodIsMissingOrDefault_ThenItReadsAsEveryOtherViewWritesIt()
     {
         // Through CatalogueDate.Period rather than the panel's dataperiode wording: a default at
-        // either end is no date rather than the year 1, and an end with no start stands alone —
-        // an en-dash with nothing before it reads as a value that failed to draw.
+        // either end is no date rather than the year 1, and an unknown start is written "?" — an
+        // end standing alone would read as a start (Fhi.Metadata-msax9).
         var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
             .Knows(Detail(TaleId) with
             {
@@ -13956,13 +13998,12 @@ public class VariableSearchTest : ExplorerTestContext
         var listed = Values(cut)[3].QuerySelectorAll("li").Select(l => l.TextContent).ToList();
 
         Assert.DoesNotContain(listed, line => line.Contains("0001", StringComparison.Ordinal));
-        Assert.DoesNotContain(listed, line => line.Contains('?', StringComparison.Ordinal));
 
-        // The end standing alone at both ends of the list, and the open period in between.
-        Assert.DoesNotContain("–", listed[0], StringComparison.Ordinal);
+        // The unknown start at both ends of the list, and the open period in between.
+        Assert.Contains("(? – ", listed[0], StringComparison.Ordinal);
         Assert.Contains("2024", listed[0], StringComparison.Ordinal);
         Assert.EndsWith("Pågående)", listed[1], StringComparison.Ordinal);
-        Assert.DoesNotContain("–", listed[2], StringComparison.Ordinal);
+        Assert.Contains("(? – ", listed[2], StringComparison.Ordinal);
         Assert.Contains("2020", listed[2], StringComparison.Ordinal);
     }
 
@@ -15348,7 +15389,6 @@ public class VariableSearchTest : ExplorerTestContext
                 "munin-explorer-page__eyebrow",
                 "munin-explorer-kilde__header",
                 "munin-explorer-kilde__identifiers",
-                "munin-explorer-kilde__kildetype",
                 "munin-explorer-kilde__description",
                 // The hero row, between the name block and the body. Always drawn on a source:
                 // two of its six facts fall back to Texts.NotSpecified rather than to nothing.

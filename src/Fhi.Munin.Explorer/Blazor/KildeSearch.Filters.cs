@@ -177,6 +177,37 @@ public sealed partial class KildeSearch
     private readonly Dictionary<string, HashSet<string>> _chosen = new(StringComparer.Ordinal);
 
     /// <summary>
+    /// The values ticked in each facet when the list opens, keyed by one of <see cref="FacetKeys"/>.
+    /// Set by the host, typically from its own URL; the component owns the choice afterwards.
+    /// </summary>
+    /// <remarks>
+    /// Read once, on initialisation, as <see cref="Search"/> is. A key outside
+    /// <see cref="FacetKeys"/> and an empty value are dropped. A value no kilde carries is kept, and
+    /// narrows the list to nothing, as a ticked value that stopped matching does.
+    /// </remarks>
+    [Parameter] public IReadOnlyDictionary<string, IReadOnlyList<string>>? FacetChoices { get; set; }
+
+    /// <summary>
+    /// Raised on every tick, untick and clear in the facet panel or the chip row, with every facet
+    /// that has a value ticked — keyed by <see cref="FacetKeys"/>, in that order, and empty when
+    /// nothing is. Gives a host <c>@bind-FacetChoices</c>.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyDictionary<string, IReadOnlyList<string>>> FacetChoicesChanged { get; set; }
+
+    /// <summary>
+    /// The four facets' keys, in the order the panel draws them: <c>kildetype</c>, <c>kategori</c>,
+    /// <c>tilgangsniva</c> and <c>databehandler</c> — the names Munin's own Kelda gives the same
+    /// four in its address.
+    /// </summary>
+    public static IReadOnlyList<string> FacetKeys { get; } =
+        [KildetypeFacet, CategoryFacet, AccessLevelFacet, DataProcessorFacet];
+
+    private const string KildetypeFacet = "kildetype";
+    private const string CategoryFacet = "kategori";
+    private const string AccessLevelFacet = "tilgangsniva";
+    private const string DataProcessorFacet = "databehandler";
+
+    /// <summary>
     /// What has been typed into each facet's own value search, exactly as the reader typed it.
     /// </summary>
     /// <remarks>
@@ -268,17 +299,17 @@ public sealed partial class KildeSearch
 
             return _definitions =
             [
-                new("kildetype", T.ColumnKildetype,
+                new(KildetypeFacet, T.ColumnKildetype,
                     kilde => One(kilde.Kildetype), value => Translated(T.KildeTypeLabel(value, value), value)),
-                new("kategori", T.FacetCategory, Categories, value => Vocabulary(CategoryKey, value)),
-                new("tilgangsniva", T.FacetAccessLevel,
+                new(CategoryFacet, T.FacetCategory, Categories, value => Vocabulary(CategoryKey, value)),
+                new(AccessLevelFacet, T.FacetAccessLevel,
                     kilde => One(Property(kilde, AccessRightsKey)), value => Vocabulary(AccessRightsKey, value)),
 
                 // No lookup of its own: databehandler is free text the catalogue stores as somebody
                 // typed it, so there is nothing to look it up in and the value is the word — the
                 // catalogue's own word, always, which is why it says so rather than asking whether
                 // some lookup missed.
-                new("databehandler", T.FieldDataProcessor,
+                new(DataProcessorFacet, T.FieldDataProcessor,
                     kilde => One(kilde.DataProcessor), value => new FacetLabel(value, "no"))
             ];
         }
@@ -443,6 +474,13 @@ public sealed partial class KildeSearch
     /// No request behind it and nothing to await: the list is already in hand, so the render that
     /// follows the handler is the whole of what changes.
     /// </remarks>
+    private async Task ChooseAsync(string key, string value, bool chosen)
+    {
+        Choose(key, value, chosen);
+
+        await RaiseFacetChoicesAsync();
+    }
+
     private void Choose(string key, string value, bool chosen)
     {
         if (!_chosen.TryGetValue(key, out var values))
@@ -471,7 +509,7 @@ public sealed partial class KildeSearch
     {
         await RescueFocusAsync();
 
-        Choose(key, value, false);
+        await ChooseAsync(key, value, false);
     }
 
     /// <summary>Untick every value in every facet, in one write of that same state.</summary>
@@ -485,6 +523,36 @@ public sealed partial class KildeSearch
         await RescueFocusAsync();
 
         _chosen.Clear();
+
+        await RaiseFacetChoicesAsync();
+    }
+
+    /// <summary>Take <see cref="FacetChoices"/> into <see cref="_chosen"/>, keeping what names a facet.</summary>
+    private void SeedFacetChoices()
+    {
+        foreach (var (key, values) in FacetChoices ?? new Dictionary<string, IReadOnlyList<string>>())
+        {
+            if (FacetKeys.FirstOrDefault(facet => string.Equals(facet, key, StringComparison.OrdinalIgnoreCase))
+                is not { } facetKey)
+            {
+                continue;
+            }
+
+            foreach (var value in values.Where(value => !string.IsNullOrEmpty(value)))
+            {
+                Choose(facetKey, value, true);
+            }
+        }
+    }
+
+    /// <summary>What <see cref="FacetChoicesChanged"/> carries: the ticked values, facet by facet.</summary>
+    private Task RaiseFacetChoicesAsync()
+    {
+        IReadOnlyDictionary<string, IReadOnlyList<string>> choices = FacetKeys
+            .Where(key => ChosenIn(key) > 0)
+            .ToDictionary(key => key, key => (IReadOnlyList<string>)[.. _chosen[key]], StringComparer.Ordinal);
+
+        return RaiseAsync(FacetChoicesChanged, choices, Log);
     }
 
     /// <summary>Hand focus to the search field before the pressed control leaves the page.</summary>

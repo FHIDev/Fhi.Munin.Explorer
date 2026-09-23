@@ -52,7 +52,7 @@ public sealed class DetailTrail : ComponentBase
     /// the caller supplied no steps.
     /// </summary>
     /// <remarks>
-    /// The three detail views' shared rule in one place, so a change to it cannot half-apply. Null
+    /// The detail views' shared rule in one place, so a change to it cannot half-apply. Null
     /// rather than a one-step list, because a trail whose only step is the page names nowhere the
     /// reader could go; and the last step is built with no target, which this class drops anyway.
     /// </remarks>

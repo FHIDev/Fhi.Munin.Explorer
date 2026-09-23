@@ -591,7 +591,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   font-size: 0.875rem;
 }
 
-.munin-explorer-filters li > label input[type="checkbox"] { margin-top: 4px; flex: none; }
+.munin-explorer-filters li > label input[type=checkbox] { margin-top: 4px; flex: none; }
 
 /* Disclosure and selection stay beside each other; children take their own line.
    A filled focus state survives the host reset that removes button outlines. (Fhi.Metadata-cs3pt) */
@@ -1017,8 +1017,22 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
     min-inline-size: 0;
   }
 
-  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown) {
+  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede) {
     grid-column: 2;
+    min-inline-size: 0;
+  }
+
+  /* A host's lede takes a row of its own between the title and the search (Stiler 35w0p.66). */
+  .munin-explorer:has(> .munin-explorer__lede) {
+    grid-template-areas: "head head" "lede lede" "search search" "filters results";
+  }
+
+  .munin-explorer:has(> .munin-explorer__lede) > .munin-explorer-filters {
+    grid-row: filters-start / span 99;
+  }
+
+  .munin-explorer > .munin-explorer__lede {
+    grid-area: lede;
     min-inline-size: 0;
   }
 
@@ -1213,8 +1227,8 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
    is an inline-flex box that takes its width from its own modifier. That is why extra columns are
    possible at all: flex distributes what is left rather than needing a track declared up front.
 
-   The header clears the chevron on its name button (`padding-left: 3rem`) rather than on the row,
-   and its code, datatype and status cells carry 16px each, as Stiler draws them. */
+   The header clears the chevron cell on its name button (52px) rather than on the row, and its
+   code, datatype and status cells carry 16px each, as Stiler draws them. */
 .munin-explorer-dataitem-header,
 .munin-explorer-dataitem-main {
   display: flex;
@@ -1227,8 +1241,30 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   min-height: 3.5rem;
 }
 
+/* No `text-transform: uppercase` from Stiler, and no 52px name padding below: Stiler hides this
+   header where its rows stack, the sample keeps it, and both widen it past 320px (e0qbl). */
 .munin-explorer-dataitem-header {
   padding-left: 0;
+  color: rgb(81, 84, 123);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.munin-explorer-dataitem-header .munin-explorer-dataitem-header__button {
+  font-weight: 600;
+  letter-spacing: inherit;
+  min-height: 24px;
+  text-transform: inherit;
+}
+
+.munin-explorer-dataitem-header__button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.munin-explorer-dataitem-header__button > span[aria-hidden="true"] {
+  flex: none;
 }
 
 .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button {
@@ -1563,6 +1599,7 @@ table.munin-explorer-data-list tbody th {
    every field the sections above showed, so it reads as a reference table, not top to bottom. */
 .munin-explorer-complete-record__lead {
   margin: 0 0 8px;
+  max-width: 50ch;
 }
 
 .munin-explorer-complete-record > summary {
@@ -1781,25 +1818,9 @@ table.munin-explorer-data-list tbody th {
   overflow-wrap: anywhere;
 }
 
-/* The kildetype is a category, not part of the name. This said "Stiler's tag class says so on
-   helsedata, and this stands in for it" until the day someone read helsedata's stylesheets
-   instead of assuming: no such class exists there, in any of their seven bundles or in Stiler.
-   So there is no `tag` rule anywhere for this to stand in for. The badge wears a munin-explorer
-   name of its own instead, which puts it in Stiler 0.1.13 with the rest of the prefix; what
-   follows is this sample's rule for it, and it was the badge's only rule until then.
-
-   Written without a leading dot on purpose. The checks that read this file ask whether it
-   mentions a selector, and prose naming one reads exactly like a rule declaring one. They strip
-   comments before looking now, so this is belt as well as braces. */
-.munin-explorer-kilde__kildetype {
-  display: inline-block;
-  margin: 8px 0 0;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--grey20);
-  color: var(--grey60);
-  font-size: 0.8125rem;
-}
+/* The kildetype badge that stood here is gone: the name block no longer draws one, because the
+   hero fact row right below it leads with Type and said the same words twice (Fhi.Metadata-pnn4w).
+   Stiler still carries a rule for the name; removing it is Fhi.Metadata-ua7rf's, not this file's. */
 
 /* No colour of ours. The host styles `ingress` only inside particular page types and none of those
    rules set one, so the ingress inherits the body colour the rest of the page reads in. */
@@ -1933,6 +1954,11 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-page__fields dd {
   overflow-wrap: anywhere;
   margin: 0;
+  max-width: 50ch;
+}
+
+.munin-explorer-page__section > p {
+  max-width: 50ch;
 }
 
 .munin-explorer-page__fields dd + dd {
@@ -1954,7 +1980,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* ---- the host's lede under the explorer title ----
-   Stiler's declarations for it; the samples have no explorer grid, so its grid row is not copied.
+   Stiler's declarations for it; its grid row is with the explorer grid's, at 1024px and up.
    Stiler's rule for this name is Fhi.Metadata-35w0p.66. */
 .munin-explorer__lede {
   margin: 12px 0 0;
@@ -2139,6 +2165,60 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-kilde__datasamlinger td,
 .munin-explorer-kilde__datasamlinger th {
   overflow-wrap: anywhere;
+}
+
+/* ---- the drawer's leading checkbox column ----
+
+   Read off Fhi.Helsedata.Stiler's `components/munin-explorer/_trail.scss` rather than invented
+   here, the same bargain as the column grid above: a stand-in that disagrees with Stiler is a
+   stand-in that lies about what a host gets. Every rule is scoped under the modifier, so the plain
+   table — KildeView's, and the drill-in's — keeps the rules above byte for byte.
+
+   The modifier exists because the block above addresses this table's columns by POSITION. A column
+   in front of Navn moves every one of them along one, so `--selectable` re-anchors the three
+   Stiler pins (Navn, Gyldighet, Variabler) and puts Beskrivelse back to auto, which is what makes
+   the two tables measure the same. (Fhi.Metadata-h6dx7) */
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(1) {
+  width: 32px;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(2) {
+  width: 30%;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(3) {
+  width: auto;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(4) {
+  width: 24%;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(4) {
+  white-space: normal;
+}
+
+.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(5) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* 32px of column and a 24x24 box, matching the kilde table's own `munin-explorer-kilder__select`.
+   A distinct name rather than that one reused: `_kilder.scss` carries a
+   `:has(.munin-explorer-kilder__select)` rule that would move the KILDE table's own column
+   breakpoints if this cell answered to it. The left edges still differ by a fixed 13px, because the
+   expanded panel indents its contents — that indent is what says "inside this row". */
+.munin-explorer-kilde__datasamlinger--selectable .munin-explorer-kilde__datasamling-select {
+  padding-left: 4px;
+  padding-right: 4px;
+  text-align: center;
+  vertical-align: top;
+}
+
+.munin-explorer-kilde__datasamlinger--selectable .munin-explorer-kilde__datasamling-select input[type=checkbox] {
+  height: 24px;
+  margin: 0;
+  width: 24px;
 }
 
 /* ---- the delkilde tree ----
@@ -2375,8 +2455,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* ---- Runa's row chevron ----
-   Stiler's declarations for it, which mirror Kelda's toggle above. Stiler's rule for this name is
-   Fhi.Metadata-35w0p.65; its focus surface and narrow-width placement are Stiler's alone. */
+   Stiler's declarations for it, which mirror Kelda's toggle above (Fhi.Metadata-35w0p.65). */
 .munin-explorer-dataitem__expand-toggle {
   cursor: pointer;
   padding: 8px 12px;
@@ -2384,10 +2463,28 @@ table.munin-explorer-data-list tbody th {
   display: inline-flex;
 }
 
-/* The cell around it, which a row needs because a row owns only cells. Kept at the button's own
-   width in the flex row. Stiler's rule for this name is Fhi.Metadata-35w0p.72. */
+/* The cell around it, which a row needs because a row owns only cells. Flex, so it measures the
+   button and not the button plus a line box (Fhi.Metadata-35w0p.72). */
 .munin-explorer-dataitem__expand-cell {
-  flex: 0 0 auto;
+  display: flex;
+}
+
+.munin-explorer-dataitem-main .munin-explorer-dataitem__expand-toggle .icon {
+  display: inline-block;
+  margin: 0;
+}
+
+.munin-explorer-dataitem__expand-toggle:focus-visible {
+  background-color: rgb(81, 84, 123);
+  color: rgb(255, 255, 255);
+}
+
+.munin-explorer-data-list__item__row .munin-explorer-dataitem__expand-toggle:focus-visible[aria-expanded="false"] .icon {
+  background-image: url(../img/icons/keyboard-arrow/icon_down--white.svg);
+}
+
+.munin-explorer-data-list__item__row .munin-explorer-dataitem__expand-toggle:focus-visible[aria-expanded="true"] .icon {
+  background-image: url(../img/icons/keyboard-arrow/icon_up--white.svg);
 }
 
 /* Measured in the sample before this was written: on grey10 alone the panel was invisible against
@@ -4108,6 +4205,9 @@ table.munin-explorer-data-list tbody th {
   width: 1rem;
 }
 
+/* Transition debris mirrored from Stiler 0.1.91: the package emits no `-right` now, and the
+   unscoped `-down` below it still means "expanded". Deleting either before Stiler does would be a
+   fresh missing-selector divergence, so both wait on Fhi.Metadata-trfs0. */
 .munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-right {
   background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
 }
@@ -4126,6 +4226,13 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-kilder [aria-expanded=false] .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-down {
   background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
+}
+
+/* Stiler needs no rule for the resting expanded chevron — its own icon set draws
+   `.icon-keyboard-arrow-up`. A sample host has no icon font, so without this one the expanded
+   chevron is blank until the row is hovered. (Fhi.Metadata-l9l2n.84) */
+.munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-up {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
 }
 
 .munin-explorer-kilder > tbody > tr:hover .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-up {
@@ -4175,6 +4282,9 @@ table.munin-explorer-data-list tbody th {
   opacity: 0.6;
 }
 
+/* The same debris on the Runa row, on the same terms and waiting on the same bead: a `-right` the
+   package never writes again, and an unscoped `-down` still mapped to the expanded glyph.
+   (Fhi.Metadata-trfs0) */
 .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-right {
   background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
 }
@@ -4185,6 +4295,12 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-data-list__item__row [aria-expanded=false] .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-down {
   background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
+}
+
+/* Same hole on the Runa row, and the same reason: Stiler's icon set draws the resting
+   `.icon-keyboard-arrow-up` and a sample host has no icon font. (Fhi.Metadata-l9l2n.84) */
+.munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-up {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
 }
 
 .munin-explorer-data-list__item__row:hover .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-up {
@@ -4307,11 +4423,15 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-page__stuckbar.munin-explorer-page__stuckbar--on {
-  height: auto;
   overflow: visible;
   opacity: 1;
   pointer-events: auto;
   transform: none;
+}
+
+/* Height stays 0, so the bar lies over the page instead of pushing it (Stiler 79t6z). */
+.munin-explorer-page__stuckbar--on .munin-explorer-page__stuckbar-inner {
+  background: rgb(246, 247, 252);
   border-bottom: 1px solid rgb(230, 230, 237);
 }
 
@@ -4324,7 +4444,6 @@ table.munin-explorer-data-list tbody th {
   opacity: 0;
   pointer-events: none;
   transform: translateY(-100%);
-  background: rgb(246, 247, 252);
   transition: opacity 0.15s;
 }
 
@@ -4333,8 +4452,8 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* ---- the same mirroring, for the rules Stiler scopes to a width or a motion preference.
-   The version row's phone layout is Fhi.Metadata-ofg1h's own; the rest came with the four
-   releases between the pins. */
+   The version row's phone layout is Fhi.Metadata-ofg1h's own; the rest is Stiler's, copied at
+   each pin bump. */
 
 @media (max-width:1024px) {
   .munin-explorer-page__stuckbar .munin-explorer-page__actions {
@@ -4347,6 +4466,10 @@ table.munin-explorer-data-list tbody th {
 }
 
 @media (max-width:767px) {
+  .munin-explorer-page__stuckbar dl {
+    display: none;
+  }
+
   .munin-explorer-versions__from {
     inline-size: auto;
   }
@@ -4368,4 +4491,49 @@ table.munin-explorer-data-list tbody th {
   .munin-explorer-page__stuckbar {
     transition: none;
   }
+}
+
+/* ---- a datasamling's variable table ----
+   Stiler's declarations for it. */
+.munin-explorer-datasamling__variabler {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.munin-explorer-datasamling__variabler th,
+.munin-explorer-datasamling__variabler td {
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgb(230, 230, 237);
+  overflow-wrap: anywhere;
+}
+
+.munin-explorer-datasamling__variabler thead th {
+  background: rgb(246, 247, 252);
+  color: rgb(81, 84, 123);
+  font-weight: 600;
+}
+
+.munin-explorer-datasamling__variabler tbody th {
+  font-weight: 600;
+}
+
+.munin-explorer-datasamling__variabler tr > :nth-child(1) {
+  width: 24%;
+}
+
+.munin-explorer-datasamling__variabler tr > :nth-child(2) {
+  width: 26%;
+}
+
+.munin-explorer-datasamling__variabler tr > :nth-child(4) {
+  width: 16%;
+}
+
+.munin-explorer-datasamling__variabler-tom {
+  margin: 12px 0 0;
+  color: rgb(81, 84, 123);
+  font-size: 0.875rem;
 }

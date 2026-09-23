@@ -217,9 +217,11 @@ fi
 # folds below 1024px, so only the second draws its toolbar and facets, and check-hostile-host.sh's
 # 320px step does not run in CI. (Fhi.Metadata-kd9ts, Fhi.Metadata-7484a)
 #
-# Three of the ten assertions. Four of the seven left out were measured here first; the other three
-# are scoped to the explorer-* states, which are /utforsker and none of these. Which and why:
-# AGENTS.md, "And check-accessibility.sh measures one width axe never looks at".
+# Three of the twelve assertions. Four of the nine left out were measured here first; three are
+# scoped to the explorer-* states, which are /utforsker and none of these; and the last two measure
+# the detail chassis, which none of the four states here opens - both pages draw one in a detail
+# state, and neither of those is driven at 320. Which and why: AGENTS.md, "And
+# check-accessibility.sh measures one width axe never looks at".
 echo
 echo "==> measuring the reflow width WCAG 1.4.10 names"
 set +e
@@ -277,7 +279,7 @@ Read that literally. This gate sees the sample stylesheet, not the one the compo
 ships into, and automated checking cannot see missing structure at all. A green run is
 evidence of no detected regression, and nothing more.
 
-The 320px measurement is narrower still: three of the ten assertions, on two pages, in
+The 320px measurement is narrower still: three of the twelve assertions, on two pages, in
 four states - the variable explorer at rest and with Vis filtre and Utvid alle pressed,
 and nothing else behind a press in the filter panel. Every other width and every other
 assertion belongs to check-hostile-host.sh.

@@ -165,6 +165,33 @@ public class KildeMountTest : ExplorerTestContext
     }
 
     [Fact]
+    public void KildeExplorer_WhenTheHostCanOnlySetLanguage_ThenAnOpenDrawerOffersNoDatasamlingMarks()
+    {
+        // The marks' half of the CMS mount. They hand over to a variable explorer this host has not
+        // named, so a column of checkboxes here would be a control with nowhere to go — the same
+        // answer the kilde column one table out gives. (Fhi.Metadata-75yov)
+        var cut = MountByName("KildeExplorer", "http://localhost/kilder");
+        var drawer = OpenTheDrawer(cut);
+
+        Assert.Empty(drawer.QuerySelectorAll(".munin-explorer-kilde__datasamling-select"));
+        Assert.Empty(drawer.QuerySelectorAll(".munin-explorer-kilde__datasamlinger--selectable"));
+
+        // The per-row count too: it is drawn under the kilde's name, outside the drawer, so it
+        // would outlive a column that was only conditional inside one.
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder tbody th p"));
+    }
+
+    [Fact]
+    public void KildeExplorer_WhenTheHostGivesAVariableExplorerPath_ThenAnOpenDrawerCanBeMarked()
+    {
+        var cut = MountByName("KildeExplorer", "http://localhost/kilder", "/variabler");
+        var drawer = OpenTheDrawer(cut);
+
+        Assert.NotEmpty(drawer.QuerySelectorAll("table.munin-explorer-kilde__datasamlinger--selectable"));
+        Assert.NotEmpty(drawer.QuerySelectorAll("td.munin-explorer-kilde__datasamling-select input"));
+    }
+
+    [Fact]
     public void KildeExplorer_WhenTheHostGivesAVariableExplorerPath_ThenAnOpenDrawerLinksToThatKildesVariables()
     {
         var cut = MountByName("KildeExplorer", "http://localhost/kilder", "/variabler");

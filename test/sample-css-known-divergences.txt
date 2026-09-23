@@ -255,6 +255,15 @@ missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main__column
 missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main__name|
 missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main|
 missing-selector|@media (max-width:1280px)|.munin-explorer-meta table|
+# Part of that row collapse: Stiler pins the chevron cell to a stacked row's corner. The sample's
+# rows never stack, so there it would leave the row and misalign the header (Fhi.Metadata-4xqhq).
+missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main:has( > .munin-explorer-dataitem__expand-cell)|
+missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main > .munin-explorer-dataitem__expand-cell|
+# Same cause, this time above the fold: Stiler HIDES the results header where its rows stack, so
+# it can afford uppercase labels and a 52px name indent. The sample keeps the header at every
+# width (Fhi.Metadata-e0qbl), where both widen it past a 320px viewport on the runner's fonts.
+missing-declaration||.munin-explorer-dataitem-header|text-transform
+missing-selector||.munin-explorer-data-list__result:has(.munin-explorer-dataitem__expand-cell) .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button|
 missing-selector|@media (max-width:1280px)|.munin-explorer-meta|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions-button|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions|
@@ -278,6 +287,11 @@ missing-selector||.munin-explorer-dataitem-main__name::after|
 missing-selector||.munin-explorer-dataitem-main__name:focus|
 missing-selector||.munin-explorer-frequency td:last-child|
 missing-selector||.munin-explorer-header__actions .dropdown|
+
+# Fhi.Metadata-pnn4w removed the sample's rule along with the badge markup; Stiler's copy is dead
+# but left standing on purpose, for Fhi.Metadata-ua7rf to remove. This line goes with it.
+missing-selector||.munin-explorer-kilde__kildetype|
+
 missing-selector||.munin-explorer-meta .munin-explorer-codes__table tbody tr|
 missing-selector||.munin-explorer-meta .munin-explorer-codes__table td|
 missing-selector||.munin-explorer-meta .munin-explorer-codes__table th|
@@ -453,29 +467,17 @@ unstyled-name||.munin-explorer-meta__language|
 # when the pin moves to the Stiler version that carries it.
 unstyled-name||.munin-explorer-lead|
 
-# New in Fhi.Metadata-35w0p.30's proportion bar. The Stiler rule is Fhi.Metadata-35w0p.68 (Stiler
-# 54a900f8); these lines go when the pin moves to the Stiler version that carries it.
-unstyled-name||.munin-explorer-kilder__bar|
-unstyled-name||.munin-explorer-kilder__bar-fill|
-
-# New in Fhi.Metadata-35w0p.32's explorer lede. The Stiler rule is Fhi.Metadata-35w0p.66; this line goes
-# when the pin moves to the Stiler version that carries it.
-unstyled-name||.munin-explorer__lede|
-
-# New in Fhi.Metadata-35w0p.34's row chevron. The Stiler rule is Fhi.Metadata-35w0p.65 (Stiler db15ad8b);
-# this line goes when the pin moves to the Stiler version that carries it.
-unstyled-name||.munin-explorer-dataitem__expand-toggle|
-
-# New in Fhi.Metadata-35w0p.34: the cell around that chevron. The Stiler rule is Fhi.Metadata-35w0p.72;
-# this line goes when the pin moves to the Stiler version that carries it.
-unstyled-name||.munin-explorer-dataitem__expand-cell|
-
 # The sample's heading reset under the chassis root. Fhi.Metadata-nvqny measured that Stiler's
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
 
+# New in Fhi.Metadata-75yov's drawer checkbox column. The Stiler rule is Fhi.Metadata-h6dx7 (ADO PR
+# 39522), published in 0.1.99; these lines go when Fhi.Metadata-4xqhq moves the pin to it.
+unstyled-name||.munin-explorer-kilde__datasamling-select|
+unstyled-name||.munin-explorer-kilde__datasamlinger--selectable|
+
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
-# only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.91.
+# only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.98.
 
 # A hand-written rule the sample keeps beside its copy of Stiler's `.munin-explorer`-scoped one.
 # The scoped copy wins on specificity and declares each of these, so none of them draws.
@@ -559,6 +561,12 @@ invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow
 invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before|content
 invented-selector||.munin-explorer-header__actions-button > .icon-layout::before|content
 
+# Same absent icon font, one row lower: Stiler draws the resting expanded chevron from its own
+# `.icon-keyboard-arrow-up`, so its munin-explorer partials only need the deviations. A sample host
+# has neither, and without these two the chevron is blank between hovers (Fhi.Metadata-l9l2n.84).
+invented-selector||.munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-up|background-image
+invented-selector||.munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-up|background-image
+
 # Stiler gates the two tracks on :has() and leaves a one-child body alone; the sample also takes
 # them back explicitly.
 invented-selector|@media (min-width:1025px)|.munin-explorer-page__body:not(:has( > .munin-explorer-page__toc))|grid-template-columns
@@ -574,7 +582,7 @@ invented-selector|@media not all and (max-width:1280px)|.munin-explorer-dataitem
 # still carries it; deleting it there retires this line.
 invented-selector||.munin-explorer-filters__facets > [role=group]|margin-bottom
 
-# Drawn by the samples alone; Stiler 0.1.91 has no rule for these selectors and no Stiler bead asks for
+# Drawn by the samples alone; Stiler 0.1.98 has no rule for these selectors and no Stiler bead asks for
 # one: tab colours, busy wave, invalid-field border, tab panel focus outline, the saved list's <table>,
 # the picker's marker reset, and spacing in the meta panel, fact lists, tree and alert.
 invented-selector|@media (prefers-reduced-motion:reduce)|.munin-explorer-alert .infobox[aria-busy=true]|animation

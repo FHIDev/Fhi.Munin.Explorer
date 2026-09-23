@@ -322,12 +322,17 @@ public class RunaRowGesturesTest : ExplorerTestContext
             Assert.Equal("cell", cell.GetAttribute("role"));
             Assert.Equal("munin-explorer-dataitem__expand-cell", cell.ClassName);
             Assert.Equal(chevron.OuterHtml, Assert.Single(cell.Children).OuterHtml);
-            Assert.True(chevron.HasAttribute("aria-expanded"));
             Assert.Equal("", chevron.TextContent.Trim());
+
+            // The glyph class names the picture Stiler draws — collapsed points down — and the
+            // attribute beside it is how Stiler tells the two states apart while both the old and
+            // the new name are in circulation. (Fhi.Metadata-l9l2n.84)
+            Assert.Equal("false", chevron.GetAttribute("aria-expanded"));
 
             var glyph = Assert.Single(chevron.Children);
             Assert.Equal("SPAN", glyph.TagName);
-            Assert.Equal("icon icon-keyboard-arrow-right munin-explorer-dataitem-main__expand-icon", glyph.ClassName);
+            Assert.Equal("icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon", glyph.ClassName);
+            Assert.DoesNotContain("icon-keyboard-arrow-right", glyph.ClassName!);
             Assert.DoesNotContain("icon--nomargin", glyph.ClassName!);
             Assert.Equal("true", glyph.GetAttribute("aria-hidden"));
         }
@@ -338,8 +343,9 @@ public class RunaRowGesturesTest : ExplorerTestContext
         Press(Chevrons(cut)[0]);
 
         Assert.Equal(
-            "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon",
+            "icon icon-keyboard-arrow-up munin-explorer-dataitem-main__expand-icon",
             Chevrons(cut)[0].FirstElementChild!.ClassName);
+        Assert.Equal("true", Chevrons(cut)[0].GetAttribute("aria-expanded"));
         Assert.True(Chevrons(cut)[0].HasAttribute("aria-controls"));
         Assert.Equal("Skjul detaljer for 1. Tale", AccessibleName.Of(Chevrons(cut)[0]));
     }
@@ -355,28 +361,33 @@ public class RunaRowGesturesTest : ExplorerTestContext
 
     [Theory]
     [MemberData(nameof(SampleStylesheets))]
-    public void SampleStylesheet_Always_ThenTheChevronHasStilersRuleAndNoFocusOrCompensatingRule(string path)
+    public void SampleStylesheet_Always_ThenTheChevronHasStilersRulesAndNoOutline(string path)
     {
-        // A focus rule here would pass every check and draw nothing on helsedata, where
-        // body:not(.is-tabbing) button:focus removes any outline; the indicator is Stiler's surface.
+        // Exactly Stiler 0.1.98's rules. An outline here would pass every check and draw nothing on
+        // helsedata, where body:not(.is-tabbing) button:focus removes it; the indicator is a fill.
         var css = Regex.Replace(File.ReadAllText(path), @"/\*.*?\*/", " ", RegexOptions.Singleline);
         var rules = Regex.Matches(css, @"([^{}]+)\{([^{}]*)\}")
             .Where(m => m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-", StringComparison.Ordinal))
-            .Where(m => !m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-cell", StringComparison.Ordinal))
-            .ToList();
+            .Select(m => Regex.Replace(m.Groups[1].Value.Trim(), @"\s+", " ") + " { "
+                + string.Join("; ", m.Groups[2].Value
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Order(StringComparer.Ordinal)) + " }")
+            .Order(StringComparer.Ordinal);
 
-        var rule = Assert.Single(rules);
-        Assert.Equal(".munin-explorer-dataitem__expand-toggle", rule.Groups[1].Value.Trim());
         Assert.Equal(
-            ["align-items: center", "cursor: pointer", "display: inline-flex", "padding: 8px 12px"],
-            rule.Groups[2].Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Order(StringComparer.Ordinal));
+        [
+            ".munin-explorer-data-list__item__row .munin-explorer-dataitem__expand-toggle:focus-visible[aria-expanded=\"false\"] .icon { background-image: url(../img/icons/keyboard-arrow/icon_down--white.svg) }",
+            ".munin-explorer-data-list__item__row .munin-explorer-dataitem__expand-toggle:focus-visible[aria-expanded=\"true\"] .icon { background-image: url(../img/icons/keyboard-arrow/icon_up--white.svg) }",
+            ".munin-explorer-dataitem-main .munin-explorer-dataitem__expand-toggle .icon { display: inline-block; margin: 0 }",
+            ".munin-explorer-dataitem__expand-cell { display: flex }",
+            ".munin-explorer-dataitem__expand-toggle { align-items: center; cursor: pointer; display: inline-flex; padding: 8px 12px }",
+            ".munin-explorer-dataitem__expand-toggle:focus-visible { background-color: rgb(81, 84, 123); color: rgb(255, 255, 255) }",
+        ],
+            rules);
+        Assert.DoesNotContain(rules, rule => rule.Contains("outline", StringComparison.Ordinal));
 
-        // The cell only holds its width in the flex row: no padding or margin to line anything up.
-        var cell = Assert.Single(
-            Regex.Matches(css, @"([^{}]+)\{([^{}]*)\}"),
-            m => m.Groups[1].Value.Contains("munin-explorer-dataitem__expand-cell", StringComparison.Ordinal));
-        Assert.Equal(".munin-explorer-dataitem__expand-cell", cell.Groups[1].Value.Trim());
-        Assert.Equal("flex: 0 0 auto;", cell.Groups[2].Value.Trim());
+        // The set above is read without its @media context, so none of it may sit in one: Stiler's
+        // 1280px placement assumes stacked rows, which the sample does not have.
+        Assert.DoesNotMatch(@"@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*munin-explorer-dataitem__expand-", css);
     }
 }

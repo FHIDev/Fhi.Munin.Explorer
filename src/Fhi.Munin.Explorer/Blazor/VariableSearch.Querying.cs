@@ -15,6 +15,7 @@ public partial class VariableSearch
         _search = Search;
         _filter = Filter ?? VariableFilter.None;
         _selectedId = SelectedVariableId;
+        _instrumentId = SelectedInstrumentId;
         _sort = Sort;
         _direction = Direction;
         _levelLines = LevelLines;
@@ -22,25 +23,44 @@ public partial class VariableSearch
         _page = Math.Max(Page, 1);
         _pageSize = PageSize;
 
-        // Not SearchAsync: that is what a person pressing the search button does, and it starts by
-        // throwing away the page number because a new search renumbers everything. Restoring a
-        // shared link is the opposite — the page is the part worth keeping.
-        if (await FetchAsync(_search))
+        // Raised here rather than by OpenInitialInstrumentAsync at the end of this method: the
+        // first paint of a page opened on ?instrumentId= would otherwise draw the region blank and
+        // aria-busy="false" for the whole of the round trip below.
+        _instrumentLoading = _instrumentId is not null;
+
+        try
         {
-            await FetchFacetsAsync();
+            // Not SearchAsync: that is what a person pressing the search button does, and it starts
+            // by throwing away the page number because a new search renumbers everything. Restoring
+            // a shared link is the opposite — the page is the part worth keeping.
+            if (await FetchAsync(_search))
+            {
+                await FetchFacetsAsync();
+            }
+
+            await LandOnRealPageAsync();
+
+            // Both echoed back on mount, as SearchAsync did when it ran this path. The search echo
+            // is a no-op for a host that just supplied it, but it is existing behaviour and not
+            // this change's to remove. The page echo is not a no-op: LandOnRealPageAsync above may
+            // have moved the reader off a page the link asked for and the result set no longer has,
+            // and the host is holding the number from the link until it is told otherwise.
+            await NotifySearchChangedAsync();
+            await NotifyPageChangedAsync();
+
+            await OpenInitialSelectionAsync();
+
+            // Last, and unconditional: the instrument view covers the list rather than sitting in a
+            // row, so what the search came back with says nothing about whether to fetch it.
+            await OpenInitialInstrumentAsync();
         }
-
-        await LandOnRealPageAsync();
-
-        // Both echoed back on mount, as SearchAsync did when it ran this path. The search echo is a
-        // no-op for a host that just supplied it, but it is existing behaviour and not this
-        // change's to remove. The page echo is not a no-op: LandOnRealPageAsync above may have moved
-        // the reader off a page the link asked for and the result set no longer has, and the host
-        // is holding the number from the link until it is told otherwise.
-        await NotifySearchChangedAsync();
-        await NotifyPageChangedAsync();
-
-        await OpenInitialSelectionAsync();
+        finally
+        {
+            // Lowered by whoever raised it: every fetch above is awaited, so a flag still up here
+            // belongs to no request in flight, and leaving it latched would tell a screen reader the
+            // region is busy for the rest of the circuit.
+            _instrumentLoading = false;
+        }
     }
 
     /// <summary>Whether a press on the clear control would clear anything.</summary>
@@ -852,27 +872,5 @@ public partial class VariableSearch
         }
 
         await NotifyPageChangedAsync();
-    }
-
-    private static string? Period(VariableSummary v) => Period(v.DataFrom, v.DataTo);
-
-    /// <summary>
-    /// The years a variable has data for, as the cards and the detail panel both write it.
-    /// </summary>
-    /// <remarks>
-    /// Shared so a row and the panel opened from it cannot word the same period differently — the
-    /// two dates come from different payloads, but the sentence they are written into is one.
-    /// </remarks>
-    private static string? Period(DateTimeOffset? dataFrom, DateTimeOffset? dataTo)
-    {
-        var from = dataFrom?.Year.ToString();
-        var to = dataTo?.Year.ToString();
-        return (from, to) switch
-        {
-            (null, null) => null,
-            (not null, null) => $"{from}–",
-            (null, not null) => $"–{to}",
-            _ => from == to ? from! : $"{from}–{to}"
-        };
     }
 }

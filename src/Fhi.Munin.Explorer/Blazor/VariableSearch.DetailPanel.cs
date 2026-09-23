@@ -85,29 +85,6 @@ public partial class VariableSearch
         _pressKilde ??= EventCallback.Factory.Create<MouseEventArgs>(
             this, e => ToggleSourceFromControlAsync(SourceKind.Kilde, e));
 
-    /// <summary>
-    /// Every variabelgruppe the variable is in, by name.
-    /// </summary>
-    /// <remarks>
-    /// <see cref="VariableDetail.AllVariabelgrupper"/> rather than the primary one alone, because a
-    /// variable in three groups listed under one is a half-truth the payload already has the answer
-    /// to. The primary name is the fallback for a payload that carries no list.
-    /// </remarks>
-    private static IReadOnlyList<string> VariabelgruppeNames(VariableDetail detail)
-    {
-        var names = detail.AllVariabelgrupper
-            .Select(gruppe => gruppe.Name)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
-            .ToList();
-
-        if (names.Count == 0 && !string.IsNullOrWhiteSpace(detail.VariabelgruppeName))
-        {
-            names.Add(detail.VariabelgruppeName);
-        }
-
-        return names;
-    }
-
     /// <summary>One value in the panel: the catalogue's own words, or "Ikke oppgitt".</summary>
     /// <remarks>
     /// The same rule the result cards follow — a missing value is written out for everyone rather
