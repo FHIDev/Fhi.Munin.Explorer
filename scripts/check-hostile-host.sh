@@ -343,6 +343,20 @@ set -e
 
 [ "$control_status" -eq 2 ] && exit 2
 
+# Real Tab presses, read off document.activeElement: a stop inside a [hidden] subtree, or with no
+# box, is one a keyboard reader lands on and cannot see. Only this host has the `div { display:
+# block }` that makes a hidden panel focusable at all (Fhi.Metadata-w8sms).
+echo
+echo "==> walking the Tab order"
+set +e
+ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" node "$ROOT/scripts/tab-stop-scan.mjs" \
+  "${BASE}/::explorer-tabs" "${BASE}/::explorer-list-tab" \
+  "${BASE}/::variable-detail" "${BASE}/::variable-detail-about"
+tab_stop_status=$?
+set -e
+
+[ "$tab_stop_status" -eq 2 ] && exit 2
+
 # axe on the same page, and it is not a duplicate of the accessibility job: that one scans
 # ModernHost, where the cascade is the sample stylesheet's. A contrast or focus rule can hold
 # there and fail here, because here the colours are helsedata's.
@@ -371,7 +385,13 @@ EOF
   exit 3
 fi
 
-if [ "$geometry_status" -ne 0 ] || [ "$reflow_status" -ne 0 ] || [ "$axe_status" -ne 0 ]; then
+# Same contract as the control above: the walk missed the stop it planted, so nothing was measured.
+if [ "$tab_stop_status" -eq 3 ]; then
+  echo "The Tab walk never landed on the hidden stop it plants; read its result above as unmeasured." >&2
+  exit 3
+fi
+
+if [ "$geometry_status" -ne 0 ] || [ "$reflow_status" -ne 0 ] || [ "$axe_status" -ne 0 ] || [ "$tab_stop_status" -ne 0 ]; then
   cat >&2 <<'EOF'
 The component does not render correctly inside helsedata's stylesheet and chrome.
 

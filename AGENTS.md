@@ -273,6 +273,13 @@ the difference between a suite and a changelog with an exit code. It found two f
 its first run (`Fhi.Metadata-l9l2n.41`, `Fhi.Metadata-l9l2n.42`), both in Stiler rather than here,
 and both invisible to everything else we run.
 
+**Nor does either of them press Tab.** A hidden panel still carrying `tabindex="0"` is a 0px stop
+under that same `div { display: block }`, and neither a box nor the accessibility tree says so,
+since `hidden` keeps it out of both. `scripts/tab-stop-scan.mjs` walks the Tab order with real key
+presses in `check-hostile-host.sh` and fails on a stop with no box or inside a `[hidden]` subtree
+nothing un-hides on purpose; it plants one such stop and reports the walk unmeasured, exit 3, if it
+never lands there (`Fhi.Metadata-w8sms`).
+
 **And `check-accessibility.sh` measures one width axe never looks at.** WCAG 1.4.10 Reflow is
 stated at 320px, and nothing in this repository measured any page there: `scripts/geometry-scan.mjs`
 drives six widths and the narrowest is 843. The script now ends by measuring ModernHost's `/kilder`

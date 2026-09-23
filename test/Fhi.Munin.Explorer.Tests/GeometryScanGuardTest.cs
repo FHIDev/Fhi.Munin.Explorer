@@ -269,6 +269,39 @@ public class GeometryScanGuardTest
         Assert.DoesNotMatch(@"(?m)^\s*exit 1$", body);
     }
 
+    [Fact]
+    public void HostileHost_WhenTheTabWalkFailsOrIsUnmeasured_ThenTheRunSaysSo()
+    {
+        // Read, not run, for the reason the two above are. Without the status in the verdict a Tab
+        // stop inside a hidden panel prints FAIL and exits 0; without its own 3, a walk that never
+        // reached its planted stop reads as a measured defect (Fhi.Metadata-w8sms).
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+
+        Assert.Matches(@"(?m)node ""\$ROOT/scripts/tab-stop-scan\.mjs""", source);
+        Assert.Matches(@"(?m)^tab_stop_status=\$\?$", source);
+        Assert.Matches(@"(?m)^\[ ""\$tab_stop_status"" -eq 2 \] && exit 2$", source);
+
+        var unmeasured = Regex.Match(
+            source,
+            @"^if \[ ""\$tab_stop_status"" -eq 3 \]; then\r?\n(?<body>.*?)^fi$",
+            RegexOptions.Multiline | RegexOptions.Singleline);
+
+        Assert.True(unmeasured.Success, "check-hostile-host.sh no longer branches on the Tab walk's 3.");
+        Assert.Matches(@"(?m)^  exit 3$", unmeasured.Groups["body"].Value);
+        Assert.DoesNotMatch(@"(?m)^\s*exit 1$", unmeasured.Groups["body"].Value);
+
+        var verdict = Regex.Match(
+            source,
+            @"^if (?<condition>[^\n]*); then\s+cat >&2 <<'EOF'\s+The component does not render correctly",
+            RegexOptions.Multiline);
+
+        Assert.True(verdict.Success, "check-hostile-host.sh no longer has the failing verdict this reads.");
+        Assert.Contains(@"[ ""$tab_stop_status"" -ne 0 ]", verdict.Groups["condition"].Value, StringComparison.Ordinal);
+        Assert.True(
+            unmeasured.Index < verdict.Index,
+            "the Tab walk's 3 has to be answered before the verdict, or an unmeasured walk exits 1.");
+    }
+
     /// <summary>
     /// One run of the real script, from a directory that is not the checkout — which holds it to
     /// resolving its sibling modules by its own path rather than by where the caller stood.

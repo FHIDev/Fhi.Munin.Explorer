@@ -258,6 +258,40 @@ public class VariableExplorerTest : ExplorerTestContext
     }
 
     [Fact]
+    public void ListPanel_WhenItsTabIsClosed_ThenThePanelIsNoTabStop()
+    {
+        // Stiler's bare `div { display: block }` beats [hidden], so a closed panel still carrying
+        // tabindex="0" is a 0px Tab stop in helsedata; `hidden` alone does not take it out of the
+        // Tab order there (Fhi.Metadata-w8sms). check-hostile-host.sh's Tab walk sees the browser.
+        var cut = RenderExplorer(new ExplorerClient());
+
+        var list = PanelFor(cut, Tab(cut, "Variabelliste"));
+
+        Assert.True(Hidden(list));
+        Assert.False(list.HasAttribute("tabindex"));
+
+        Tab(cut, "Variabelliste").Click();
+        Tab(cut, "Søkeresultat").Click();
+
+        Assert.False(PanelFor(cut, Tab(cut, "Variabelliste")).HasAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void ListPanel_WhenItsTabIsOpen_ThenThePanelIsOneTabStop()
+    {
+        // APG tabs: the open panel is focusable, so Tab from the tablist reaches it before its
+        // contents. Dropping the attribute outright would fix the closed panel and lose this.
+        var cut = RenderExplorer(new ExplorerClient());
+
+        Tab(cut, "Variabelliste").Click();
+
+        var list = PanelFor(cut, Tab(cut, "Variabelliste"));
+
+        Assert.False(Hidden(list));
+        Assert.Equal("0", list.GetAttribute("tabindex"));
+    }
+
+    [Fact]
     public void FiltersToggle_WhenTheSearchIsComposed_ThenItFoldsTheFacetsAndLeavesWithThemOnTheListTab()
     {
         // The list tab draws none of the search facets, so a Vis filtre left there would unfold

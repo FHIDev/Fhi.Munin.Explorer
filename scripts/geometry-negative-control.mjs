@@ -18,6 +18,7 @@ const launchOptions = () => {
 };
 import { states } from './axe-states.mjs';
 import { assertions, selectors } from './geometry-assertions.mjs';
+import { installUnhiddenOnPurpose } from './hidden-on-purpose.mjs';
 import { scrollToTop } from './reader-scroll.mjs';
 
 const base = process.argv[2];
@@ -290,6 +291,7 @@ try {
     console.log(`    ${url} [${state}] at ${width}px`);
 
     const context = await browser.newContext({ viewport: { width, height: 900 } });
+    await installUnhiddenOnPurpose(context);
     const page = await context.newPage();
     try {
       await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 });
