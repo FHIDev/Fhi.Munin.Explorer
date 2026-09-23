@@ -83,6 +83,10 @@ internal static class HostClassNames
     private static readonly Regex CountModifier =
         new($"^{KilderScroll}--cols-[0-9]+$");
 
+    // Stiler 0.1.100 removed their obsolete heading resets; the shared page chassis styles them.
+    private static readonly HashSet<string> DetailRootMarkers =
+        ["munin-explorer-kilde", "munin-explorer-datasamling", "munin-explorer-whole"];
+
     /// <summary>
     /// The sample stylesheet, held as text rather than parsed: <see cref="RulesIn"/> cuts the rules
     /// out of it with <see cref="CssRule"/>, and every question here is asked of those rules rather
@@ -143,6 +147,7 @@ internal static class HostClassNames
         return [.. rendered.Distinct(StringComparer.Ordinal)
                            .Where(name => !TheirNames.Value.Contains(name))
                            .Where(name => !CountModifier.IsMatch(name))
+                           .Where(name => !DetailRootMarkers.Contains(name))
                            .Select(name => Verdict(rules, name))
                            .OfType<string>()
                            .Order(StringComparer.Ordinal)];

@@ -1,6 +1,4 @@
-using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
@@ -34,26 +32,6 @@ public class ContractCoverageTest
 
     private static void Covers<T>(string fixture) =>
         Assert.NotNull(JsonSerializer.Deserialize<T>(TestData.Read(fixture), Strict));
-
-    /// <summary>
-    /// <see cref="Covers{T}(string)"/> for a capture that keeps top-level keys a bead has yet to
-    /// map. Each must still be sent and still unmapped, so the entry fails once its property lands.
-    /// </summary>
-    private static void Covers<T>(string fixture, params string[] awaiting)
-    {
-        var capture = JsonNode.Parse(TestData.Read(fixture))!.AsObject();
-        var mapped = typeof(T).GetProperties()
-            .Select(property => property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name)
-            .ToHashSet(StringComparer.Ordinal);
-
-        foreach (var key in awaiting)
-        {
-            Assert.True(capture.Remove(key), $"{fixture} no longer carries {key}; drop it from the awaited keys.");
-            Assert.False(mapped.Contains(key), $"{typeof(T).Name} now maps {key}; drop it from the awaited keys.");
-        }
-
-        Assert.NotNull(capture.Deserialize<T>(Strict));
-    }
 
     [Fact]
     public void VariableSearch_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
@@ -209,8 +187,7 @@ public class ContractCoverageTest
 
     [Fact]
     public void DatasamlingDetail_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
-        // The live API sends the effective criteria; Fhi.Metadata-6gccd (#391) maps them and drops this.
-        Covers<DatasamlingDetail>("datasamling.json", "effectiveInklusjonsOgEksklusjonskriterier");
+        Covers<DatasamlingDetail>("datasamling.json");
 
     [Fact]
     public void DatasamlingDetail_WhenTheCaptureIsRoundTripped_ThenSistOppdatertKildesystemComesBackAsItWasSent()

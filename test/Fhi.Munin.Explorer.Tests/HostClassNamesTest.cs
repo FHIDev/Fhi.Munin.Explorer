@@ -27,6 +27,17 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 public class HostClassNamesTest
 {
+    [Fact]
+    public void Orphans_WhenOnlyLegacyDetailRootsAreUnstyled_ThenTheirChassisStillRequiresRules()
+    {
+        Assert.Empty(HostClassNames.OrphansIn("",
+            ["munin-explorer-kilde", "munin-explorer-datasamling", "munin-explorer-whole"]));
+
+        string[] styled = ["munin-explorer-page", "munin-explorer-page__body",
+                           "munin-explorer-datasamling__criteria", "munin-explorer-unknown"];
+        Assert.Equal(styled.Length, HostClassNames.OrphansIn("", styled).Count);
+    }
+
     /// <summary>
     /// The same cut as <c>HostClassNames.CssRule</c>, used in the opposite direction: to write a
     /// stylesheet rather than read one. Every rule whose selector so much as contains the name is

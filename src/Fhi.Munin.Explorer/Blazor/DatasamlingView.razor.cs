@@ -638,9 +638,77 @@ public sealed partial class DatasamlingView : ComponentBase
             statisticsDrawn = true;
         }
 
-        return DetailLayout.Order(datasamling.Sections, groups,
-                                  Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn));
+        var blocks = Blocks(datasamling, ungrouped, sourceFacts, sourceDrawn, statisticsDrawn);
+        if ((blocks.Any(IsAboutSubsection) || groups.Any(IsAboutSubsection))
+            && groups.All(group => group.Key != AboutSectionKey)
+            && datasamling.Sections.FirstOrDefault(section => section.Key == AboutSectionKey) is { } about)
+        {
+            var (heading, language) = CatalogueProperties.Localised(about.Translations, Reader);
+            groups.Add(new(AboutSectionKey, DetailSectionIds.ReserveGroupId(AboutSectionKey, ids),
+                           string.IsNullOrWhiteSpace(heading) ? T.HeadingAboutDatasamling : heading,
+                           CatalogueProperties.Foreign(language, Reader), _ => { }));
+        }
+
+        return NestAboutSubsections(DetailLayout.Order(datasamling.Sections, groups, blocks));
     }
+
+    private const string AboutSectionKey = "om-datasamlingen";
+
+    // The flat API still names these as sections; the datasamling design nests both under About.
+    private static bool IsAboutSubsection(DetailLayoutSection section) =>
+        section.Id == DetailSectionIds.Criteria || section.Key == "kvalitetsnote";
+
+    private IReadOnlyList<DetailLayoutSection> NestAboutSubsections(IReadOnlyList<DetailLayoutSection> layout)
+    {
+        var subsections = layout.Where(IsAboutSubsection).ToArray();
+        if (subsections.Length == 0)
+        {
+            return layout;
+        }
+
+        var about = layout.FirstOrDefault(section => section.Key == AboutSectionKey);
+        RenderFragment nested = builder =>
+        {
+            foreach (var subsection in subsections)
+            {
+                builder.AddContent(0, AboutSubsection(subsection));
+            }
+        };
+        List<DetailLayoutSection> sections = [];
+        foreach (var section in layout)
+        {
+            if (IsAboutSubsection(section))
+            {
+                if (about is null && section == subsections[0])
+                {
+                    var ids = new HashSet<string>(layout.Select(item => item.Id), StringComparer.Ordinal);
+                    sections.Add(new(AboutSectionKey, DetailSectionIds.ReserveGroupId(AboutSectionKey, ids),
+                                     T.HeadingAboutDatasamling, null, nested));
+                }
+
+                continue;
+            }
+
+            sections.Add(section == about
+                ? section with { Body = DetailBlocks.Both(section.Body, nested) }
+                : section);
+        }
+
+        return sections;
+    }
+
+    private RenderFragment AboutSubsection(DetailLayoutSection subsection) => builder =>
+    {
+        // Keep existing deep links focusable without making this subsection a scrollspy target.
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "id", subsection.Id);
+        builder.AddAttribute(2, "tabindex", "-1");
+        builder.AddAttribute(3, "class", "munin-explorer-page__anchor");
+        builder.AddContent(4, DetailBlocks.Heading(GroupLevel, subsection.Heading, "headline headline-xxs",
+                                                  language: subsection.HeadingLanguage));
+        builder.AddContent(5, subsection.Body);
+        builder.CloseElement();
+    };
 
     /// <summary>
     /// This view's own sections, each under the key a placement row moves it by, in the order the
@@ -665,11 +733,12 @@ public sealed partial class DatasamlingView : ComponentBase
                            DetailBlocks.Groups(ungrouped, GroupLevel, Language, CompleteRecordFacts)));
         }
 
-        if (!string.IsNullOrWhiteSpace(datasamling.InclusionAndExclusionCriteria))
+        var criteria = datasamling.EffectiveInclusionAndExclusionCriteria ?? datasamling.InclusionAndExclusionCriteria;
+        if (!string.IsNullOrWhiteSpace(criteria))
         {
             blocks.Add(new(SectionKeys.InclusionAndExclusionCriteria, DetailSectionIds.Criteria,
                            T.FieldInclusionCriteria, null,
-                           DetailBlocks.Prose(datasamling.InclusionAndExclusionCriteria,
+                           DetailBlocks.Prose(criteria,
                                               "munin-explorer-datasamling__criteria",
                                               CatalogueProperties.Foreign("no", Reader))));
         }

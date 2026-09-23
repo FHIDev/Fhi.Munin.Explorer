@@ -134,6 +134,10 @@ ATTRIBUTES=(
   munin-explorer-version
 )
 
+# Stiler 0.1.100 removed these roots' obsolete heading resets. They remain DOM markers;
+# the shared munin-explorer-page chassis supplies their styling (Fhi.Metadata-35w0p.39).
+MARKERS=(munin-explorer-kilde munin-explorer-datasamling munin-explorer-whole)
+
 fail=0
 for f in "$MODERN" "$LEGACY"; do
   if [ ! -f "$f" ]; then
@@ -280,7 +284,7 @@ fi
 missing=()
 empty=()
 for name in "${names[@]}"; do
-  case " ${THEIRS[*]} ${IDS[*]} ${ATTRIBUTES[*]} " in
+  case " ${THEIRS[*]} ${IDS[*]} ${ATTRIBUTES[*]} ${MARKERS[*]} " in
     *" $name "*) continue ;;
   esac
 
@@ -398,6 +402,9 @@ HOST_NAMES_LIST=$'\n'"$(cat "$HOST_NAMES")"$'\n'
 
 orphans=()
 for name in "${emitted[@]}"; do
+  case " ${MARKERS[*]} " in
+    *" $name "*) continue ;;
+  esac
   case "$DRAWN_CLASSES" in
     *$'\n'"$name"$'\n'*) continue ;;
   esac
@@ -421,6 +428,6 @@ if [ ${#orphans[@]} -gt 0 ]; then
 fi
 
 echo "Sample host stylesheets are in step ($(wc -l < "$MODERN" | tr -d ' ') lines), declare something"
-echo "under every name the package invents, and every borrowed name in a class attribute is one a"
+echo "under every name requiring styling (legacy detail root markers excepted), and every borrowed name is one a"
 echo "host stylesheet defines. Names reaching the DOM through helper arguments are checked by"
 echo "HostClassNames in the test project, not here."

@@ -90,6 +90,9 @@ public sealed record DatasamlingDetail
     /// <summary>Own value if set, otherwise inherited.</summary>
     [JsonPropertyName("effectiveGyldigTil")] public DateTimeOffset? EffectiveValidTo { get; init; }
 
+    /// <summary>Own value if set, otherwise inherited.</summary>
+    [JsonPropertyName("effectiveInklusjonsOgEksklusjonskriterier")] public string? EffectiveInclusionAndExclusionCriteria { get; init; }
+
     /// <summary>
     /// Always the owning kilde's kildetype — there is no per-datasamling column. Null exactly when
     /// that kilde has none.
@@ -100,9 +103,8 @@ public sealed record DatasamlingDetail
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
 
     /// <summary>
-    /// Who is included in and excluded from the datasamling. Curated on the kilde level in Munin
-    /// but surfaced here as its own field, because it is the answer to the first question a
-    /// researcher asks about a datasamling. Null when not filled in.
+    /// Own inclusion and exclusion criteria; null when not filled in. Use
+    /// <see cref="EffectiveInclusionAndExclusionCriteria"/> for the inherited value.
     /// </summary>
     [JsonPropertyName("inklusjonsOgEksklusjonskriterier")] public string? InclusionAndExclusionCriteria { get; init; }
 

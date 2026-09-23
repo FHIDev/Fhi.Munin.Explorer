@@ -471,12 +471,6 @@ unstyled-name||.munin-explorer-lead|
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
 
-# New in Fhi.Metadata-75yov's drawer checkbox column. The Stiler rule is Fhi.Metadata-h6dx7 (ADO PR
-# 39522), published in 0.1.99; these lines go when the pin moves to it. Fhi.Metadata-4xqhq closed at
-# 0.1.98, so that bump is a bead of its own.
-unstyled-name||.munin-explorer-kilde__datasamling-select|
-unstyled-name||.munin-explorer-kilde__datasamlinger--selectable|
-
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
 # only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.98.
 

@@ -676,6 +676,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             "munin-explorer-group",                   // shared with the kilde and variable views
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
+            "munin-explorer-page__anchor",
             "munin-explorer-page__body",
             // The word above the name block saying what kind of thing this page is about. A <p>,
             // so the outline a screen reader navigates by is the one the view already had.
@@ -949,22 +950,12 @@ public class DatasamlingViewTest : ExplorerTestContext
         // so a renamed section reaches the page without this package being touched.
         var cut = Render(Placed());
 
-        // Read as the whole list rather than searched for, so the view's own three headings going
-        // is asserted with it: Metadata wrapped the groups, Kildeinformasjon is what the placement
-        // calls Datakilde, and Statistikk is inside Variabler. This payload places no criteria row,
-        // so the block falls to the view's own order, after the placed ones.
         Assert.Equal(
-            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt",
-             "Inklusjons- og eksklusjonskriterier"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
     }
 
-    /// <summary>The same payload with Kvalitetsnote given a section of its own.</summary>
-    /// <remarks>
-    /// The live seed files it inside om-datasamlingen, so the sixth section of the mockup arrives
-    /// as a row in Munin rather than a release here — which is what this fixture proves
-    /// (Fhi.Metadata-wfhu8).
-    /// </remarks>
+    // The older seed puts the note in About; newer payloads give it a separate placement.
     private static DatasamlingDetail QualityNoteSectioned()
     {
         (string Key, int Order, string No, string En)[] sections =
@@ -985,19 +976,17 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Placement_WhenARowGivesKvalitetsnoteASectionOfItsOwn_ThenThePageDrawsSixSections()
+    public void Placement_WhenQualityNoteHasItsOwnSection_ThenItsFieldsAreNestedUnderAbout()
     {
-        // Nothing in this package moved the field: the same view, the same fixture, one extra
-        // placement row, and the sixth section arrives in the band the row put it in.
         var cut = Render(QualityNoteSectioned());
 
         Assert.Equal(
-            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt",
-             "Inklusjons- og eksklusjonskriterier"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
 
-        Assert.Equal(["Kvalitetsnote"], SectionLabels(cut, "Kvalitetsnote"));
-        Assert.DoesNotContain("Kvalitetsnote", SectionLabels(cut, "Om datasamlingen"));
+        Assert.NotNull(cut.Find("#section-om-datasamlingen #section-kvalitetsnote"));
+        Assert.Contains("Kvalitetsnote", SectionLabels(cut, "Om datasamlingen"));
+        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1077,23 +1066,25 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Criteria_WhenTheSeedPlacesThemAt2000_ThenThePageIsTheSixSectionsInTheSeedsOrder()
+    public void Criteria_WhenTheSeedPlacesThemAsAMainSection_ThenTheyAreNestedUnderAbout()
     {
         var cut = Render(CriteriaSeeded());
 
         Assert.Equal(
-            ["Om datasamlingen", "Inklusjons- og eksklusjonskriterier", "Kvalitetsnote", "Variabler",
+            ["Om datasamlingen", "Variabler",
              "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(
-            ["section-om-datasamlingen", DetailSectionIds.Criteria, "section-kvalitetsnote",
+            ["section-om-datasamlingen",
              "section-variabler", "section-datakilde", "section-alle-metadatafelt"],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
+        Assert.NotNull(cut.Find("#section-om-datasamlingen #criteria"));
+        Assert.DoesNotContain("#criteria", Targets(cut));
     }
 
     [Fact]
-    public void Criteria_WhenACuratorMovesThePlacementOnTheMountedPage_ThenSectionAndNavFollowAndTheIdHolds()
+    public void Criteria_WhenTheLegacyPlacementMoves_ThenTheyStayInsideAboutWithTheirAnchor()
     {
         // Same component instance, new payload: the reorder is data reaching a mounted view, not a
         // second fixture rendered fresh. 6000 is the band after Datakilde's.
@@ -1102,59 +1093,171 @@ public class DatasamlingViewTest : ExplorerTestContext
         cut.Render(p => p.Add(c => c.Datasamling, CriteriaSeeded(criteriaOrder: 6000)));
 
         Assert.Equal(
-            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde",
-             "Inklusjons- og eksklusjonskriterier", "Alle metadatafelt"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(
-            ["section-om-datasamlingen", "section-kvalitetsnote", "section-variabler",
-             "section-datakilde", DetailSectionIds.Criteria, "section-alle-metadatafelt"],
+            ["section-om-datasamlingen", "section-variabler",
+             "section-datakilde", "section-alle-metadatafelt"],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
         Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
         Assert.Single(cut.FindAll("#" + DetailSectionIds.Criteria));
+        Assert.NotNull(cut.Find("#section-om-datasamlingen #criteria"));
+    }
+
+    [Theory]
+    [InlineData(1, "H3")]
+    [InlineData(2, "H4")]
+    [InlineData(5, "H6")]
+    [InlineData(6, "H6")]
+    public void Criteria_WhenTheHostSetsHeadingDepth_ThenTheSubheadingAndAnchorRemainSubordinate(
+        int headingLevel, string tagName)
+    {
+        var cut = Render(CriteriaSeeded(), headingLevel: headingLevel);
+
+        var subsection = cut.Find("#section-om-datasamlingen #criteria");
+        Assert.Equal("-1", subsection.GetAttribute("tabindex"));
+        Assert.False(subsection.HasAttribute("data-nav-section"));
+        Assert.Contains("munin-explorer-page__anchor", subsection.ClassList);
+        Assert.Equal(tagName, subsection.FirstElementChild!.TagName);
+        Assert.Contains("headline-xxs", subsection.FirstElementChild.ClassList);
+        Assert.DoesNotContain("#criteria", Targets(cut));
     }
 
     [Fact]
-    public void Criteria_WhenThePayloadPlacesThemNowhere_ThenTheyFallToTheTailAsBefore()
+    public void Criteria_WhenAboutIsRenamedAndReordered_ThenTheyFollowTheCatalogueSection()
+    {
+        var seeded = CriteriaSeeded();
+        var cut = Render(seeded with
+        {
+            Sections = [.. seeded.Sections.Select(section => section.Key == "om-datasamlingen"
+                ? section with
+                {
+                    SortOrder = 6000,
+                    Translations = new Dictionary<string, string> { ["no"] = "Om utvalget" },
+                }
+                : section).OrderBy(section => section.SortOrder)],
+            PropertyMetadata = [.. seeded.PropertyMetadata.Select(property => property.GroupKey == "om-datasamlingen"
+                ? property with
+                {
+                    GroupTranslations = new Dictionary<string, string> { ["no"] = "Om utvalget" },
+                }
+                : property)],
+        });
+
+        Assert.Equal(["Variabler", "Datakilde", "Om utvalget", "Alle metadatafelt"],
+                     BlockHeadings(cut));
+        Assert.Equal(BlockHeadings(cut), Entries(cut));
+        Assert.NotNull(cut.Find("#section-om-datasamlingen #criteria"));
+        Assert.NotNull(cut.Find("#section-om-datasamlingen #section-kvalitetsnote"));
+    }
+
+    [Fact]
+    public void Criteria_WhenAboutHasNoOtherFacts_ThenItsPlacementIsUsedAndNoEmptySectionRemains()
+    {
+        var sparse = Sparse() with { Sections = CriteriaSeeded().Sections };
+        var cut = Render(sparse with { EffectiveInclusionAndExclusionCriteria = "Arvede kriterier." });
+
+        Assert.Equal(["Om datasamlingen"], BlockHeadings(cut));
+        Assert.Equal(["#section-om-datasamlingen"], Targets(cut));
+        Assert.NotNull(cut.Find("#section-om-datasamlingen #criteria"));
+
+        cut.Render(p => p.Add(c => c.Datasamling, sparse));
+
+        Assert.Empty(cut.FindAll("#section-om-datasamlingen"));
+        Assert.Empty(cut.FindAll("#criteria"));
+    }
+
+    [Fact]
+    public void Criteria_WhenThePayloadPlacesThemNowhere_ThenTheyStillBelongToAbout()
     {
         var cut = Render(CriteriaSeeded(criteriaOrder: null));
 
         Assert.Equal(
-            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt",
-             "Inklusjons- og eksklusjonskriterier"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
     }
 
     [Fact]
-    public void Criteria_WhenThePayloadPredatesSections_ThenTheOldFallbackOrderIsKept()
+    public void Criteria_WhenThePayloadPredatesSections_ThenAboutWrapsTheCriteriaAtTheirFallbackPosition()
     {
         var cut = Render(Datasamling() with { Sections = [] });
 
         Assert.Equal(
-            [DetailSectionIds.Metadata, DetailSectionIds.Criteria, DetailSectionIds.Source,
+            [DetailSectionIds.Metadata, "section-om-datasamlingen", DetailSectionIds.Source,
              DetailSectionIds.Statistics],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("   ")]
-    public void Criteria_WhenPlacedButEmpty_ThenNoSectionAndNoNavLinkAreLeft(string? criteria)
+    [InlineData(null, null)]
+    [InlineData("", "")]
+    [InlineData("   ", "   ")]
+    public void Criteria_WhenPlacedButEmpty_ThenNoSectionAndNoNavLinkAreLeft(string? own, string? effective)
     {
-        var cut = Render(CriteriaSeeded() with { InclusionAndExclusionCriteria = criteria });
+        var cut = Render(CriteriaSeeded() with
+        {
+            InclusionAndExclusionCriteria = own,
+            EffectiveInclusionAndExclusionCriteria = effective,
+        });
 
         Assert.Empty(cut.FindAll("#" + DetailSectionIds.Criteria));
         Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
         Assert.Equal(
-            ["Om datasamlingen", "Kvalitetsnote", "Variabler", "Datakilde", "Alle metadatafelt"],
+            ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
     }
 
+    [Theory]
+    [InlineData(null, "Arvede kriterier.", "Arvede kriterier.", "no")]
+    [InlineData(null, "Arvede kriterier.", "Arvede kriterier.", "en")]
+    [InlineData("Egne kriterier.", "Gjeldende kriterier.", "Gjeldende kriterier.", "no")]
+    [InlineData("Egne kriterier.", null, "Egne kriterier.", "en")]
+    public void Criteria_WhenTheApiResolvesTheValue_ThenTheResolvedTextOrLegacyFallbackIsDrawn(
+        string? own, string? effective, string expected, string language)
+    {
+        var cut = Render(CriteriaSeeded() with
+        {
+            InclusionAndExclusionCriteria = own,
+            EffectiveInclusionAndExclusionCriteria = effective,
+        }, language: language);
+
+        var criteria = Assert.Single(cut.FindAll(".munin-explorer-datasamling__criteria"));
+        Assert.Equal(expected, criteria.TextContent.Trim());
+        Assert.Equal(language == "en" ? "no" : null, criteria.GetAttribute("lang"));
+        Assert.NotNull(criteria.Closest("#section-om-datasamlingen"));
+        Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
+    }
+
     [Fact]
-    public void Kvalitetsnote_WhenTheSeedGivesItASectionButNoValue_ThenNoSectionIsDrawn()
+    public void Criteria_WhenInheritedTextChangesOnTheMountedPage_ThenContentAndNavigationFollow()
+    {
+        var empty = CriteriaSeeded() with
+        {
+            InclusionAndExclusionCriteria = null,
+            EffectiveInclusionAndExclusionCriteria = null,
+        };
+        var cut = Render(empty);
+        Assert.Empty(cut.FindAll("#" + DetailSectionIds.Criteria));
+
+        cut.Render(p => p.Add(c => c.Datasamling, empty with
+        {
+            EffectiveInclusionAndExclusionCriteria = "Arvede kriterier.",
+        }));
+        Assert.Equal("Arvede kriterier.", cut.Find(".munin-explorer-datasamling__criteria").TextContent.Trim());
+        Assert.Contains("#section-om-datasamlingen", Targets(cut));
+        Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
+
+        cut.Render(p => p.Add(c => c.Datasamling, empty));
+        Assert.Empty(cut.FindAll("#" + DetailSectionIds.Criteria));
+        Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
+    }
+
+    [Fact]
+    public void QualityNote_WhenTheSeedGivesItASectionButNoValue_ThenNoSectionIsDrawn()
     {
         var seeded = CriteriaSeeded();
         var cut = Render(seeded with
@@ -1166,14 +1269,61 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.DoesNotContain("Kvalitetsnote", BlockHeadings(cut));
         Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
+        Assert.Empty(cut.FindAll("#section-kvalitetsnote"));
+    }
+
+    [Theory]
+    [InlineData(1, "H3")]
+    [InlineData(2, "H4")]
+    [InlineData(5, "H6")]
+    [InlineData(6, "H6")]
+    public void QualityNote_WhenTheHostSetsHeadingDepth_ThenTheAnchorIsSubordinateAndNotInContents(
+        int headingLevel, string tagName)
+    {
+        var cut = Render(CriteriaSeeded(), headingLevel: headingLevel);
+
+        var note = Assert.Single(cut.FindAll("#section-om-datasamlingen #section-kvalitetsnote"));
+        Assert.Equal(tagName, note.FirstElementChild!.TagName);
+        Assert.Contains("headline-xxs", note.FirstElementChild.ClassList);
+        Assert.Contains("munin-explorer-page__anchor", note.ClassList);
+        Assert.Equal("-1", note.GetAttribute("tabindex"));
+        Assert.False(note.HasAttribute("data-nav-section"));
+        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
+        Assert.Single(note.QuerySelectorAll("dd"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void QualityNote_WhenItIsTheOnlyAboutContent_ThenAboutAppearsAndDisappearsWithIt(bool aboutPlaced)
+    {
+        var seeded = CriteriaSeeded();
+        var onlyNote = Sparse() with
+        {
+            Sections = [.. seeded.Sections.Where(section => section.Key == "kvalitetsnote"
+                || (aboutPlaced && section.Key == "om-datasamlingen"))],
+            PropertyMetadata = [.. seeded.PropertyMetadata.Where(property => property.Key == "Kvalitetsnote")],
+            AdditionalProperties = new Dictionary<string, string?> { ["Kvalitetsnote"] = "En kvalitetsnote." },
+        };
+        var cut = Render(onlyNote);
+
+        Assert.Equal(["Om datasamlingen"], BlockHeadings(cut));
+        Assert.Equal(["#section-om-datasamlingen"], Targets(cut));
+        Assert.Equal("En kvalitetsnote.", cut.Find("#section-om-datasamlingen #section-kvalitetsnote dd").TextContent);
+
+        cut.Render(p => p.Add(c => c.Datasamling, onlyNote with { AdditionalProperties = new Dictionary<string, string?>() }));
+
+        Assert.Empty(cut.FindAll("#section-om-datasamlingen"));
+        Assert.Empty(cut.FindAll("#section-kvalitetsnote"));
     }
 
     [Fact]
-    public void Kvalitetsnote_WhenAnEnglishReaderOpensTheSeededPage_ThenTheNorwegianNoteIsMarkedNorwegian()
+    public void QualityNote_WhenAnEnglishReaderOpensTheSeededPage_ThenTheNorwegianNoteIsMarkedNorwegian()
     {
         var cut = Render(CriteriaSeeded(), language: "en");
 
-        Assert.Contains("Quality note", BlockHeadings(cut));
+        Assert.DoesNotContain("Quality note", BlockHeadings(cut));
+        Assert.Equal("Quality note", cut.Find("#section-om-datasamlingen #section-kvalitetsnote > h4").TextContent);
 
         var note = cut.Find("#section-kvalitetsnote dd");
         var marked = note.GetAttribute("lang") ?? note.QuerySelector("[lang]")?.GetAttribute("lang");
@@ -1211,13 +1361,12 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["section-om-datasamlingen", "section-variabler", "section-datakilde",
-             "section-alle-metadatafelt", DetailSectionIds.Criteria],
+             "section-alle-metadatafelt"],
             Wrappers(norwegian).Select(section => section.Id!));
 
         Assert.Equal(Wrappers(norwegian).Select(s => s.Id!), Wrappers(english).Select(s => s.Id!));
         Assert.Equal(Wrappers(english).Select(s => "#" + s.Id), Targets(english));
-        Assert.Equal(["About the data collection", "Variables", "Data source", "All metadata fields",
-                      "Inclusion and exclusion criteria"],
+        Assert.Equal(["About the data collection", "Variables", "Data source", "All metadata fields"],
                      BlockHeadings(english));
     }
 
@@ -1301,7 +1450,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         });
 
         Assert.Equal(
-            ["section-om-datasamlingen", "section-alle-metadatafelt", DetailSectionIds.Criteria],
+            ["section-om-datasamlingen", "section-alle-metadatafelt"],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
     }
@@ -1314,7 +1463,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // this could leave a public field drawn nowhere at all.
         var cut = Render(Placed() with { Sections = [] });
 
-        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon",
+        Assert.Equal(["Metadata", "Om datasamlingen", "Kildeinformasjon",
                       "Statistikk (årsbasert)"],
                      BlockHeadings(cut));
         Assert.Contains("Kilde", Labels(SourceInformation(cut)));
@@ -1334,7 +1483,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["section-om-datasamlingen", "section-variabler", "section-alle-metadatafelt",
-             DetailSectionIds.Metadata, DetailSectionIds.Criteria, DetailSectionIds.Source],
+             DetailSectionIds.Metadata, DetailSectionIds.Source],
             Wrappers(cut).Select(section => section.Id!));
 
         // The unplaced group's own rows are under Metadata, and the fact box that would have
@@ -1369,8 +1518,8 @@ public class DatasamlingViewTest : ExplorerTestContext
             },
             language: "en");
 
-        Assert.Equal(["no", "no", "no", "no", null], Headings(cut).Select(h => h.GetAttribute("lang")));
-        Assert.Equal(["no", "no", "no", "no", null], TocLinks(cut).Select(a => a.GetAttribute("lang")));
+        Assert.Equal(["no", "no", "no", "no"], Headings(cut).Select(h => h.GetAttribute("lang")));
+        Assert.Equal(["no", "no", "no", "no"], TocLinks(cut).Select(a => a.GetAttribute("lang")));
     }
 
     /// <summary>Each section's own heading, in document order.</summary>
@@ -1407,7 +1556,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling());
 
         Assert.Equal(
-            [DetailSectionIds.Metadata, DetailSectionIds.Criteria,
+            [DetailSectionIds.Metadata, "section-om-datasamlingen",
              DetailSectionIds.Source, DetailSectionIds.Statistics],
             Wrappers(cut).Select(section => section.Id!));
 
@@ -1439,9 +1588,9 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         // Worth nothing unless the headings really do differ. The statistics heading is left out
         // because the catalogue's own statistikktype is inside it; the three above it are enough.
-        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon"],
+        Assert.Equal(["Metadata", "Om datasamlingen", "Kildeinformasjon"],
                      BlockHeadings(norwegian).Take(3));
-        Assert.Equal(["Metadata", "Inclusion and exclusion criteria", "Source information"],
+        Assert.Equal(["Metadata", "About the data collection", "Source information"],
                      BlockHeadings(english).Take(3));
     }
 
@@ -1455,6 +1604,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
+            EffectiveInclusionAndExclusionCriteria = null,
             StatisticsType = null,
             Frequency = null,
             CountingUnit = null,
@@ -1597,6 +1747,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling() with
         {
             InclusionAndExclusionCriteria = null,
+            EffectiveInclusionAndExclusionCriteria = null,
             StatisticsType = null,
             Frequency = null,
             CountingUnit = null,
@@ -1615,9 +1766,9 @@ public class DatasamlingViewTest : ExplorerTestContext
         var english = Render(Datasamling(), language: "en");
 
         Assert.Equal(Targets(norwegian), Targets(english));
-        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon"],
+        Assert.Equal(["Metadata", "Om datasamlingen", "Kildeinformasjon"],
                      Entries(norwegian).Take(3));
-        Assert.Equal(["Metadata", "Inclusion and exclusion criteria", "Source information"],
+        Assert.Equal(["Metadata", "About the data collection", "Source information"],
                      Entries(english).Take(3));
     }
 
@@ -1708,7 +1859,8 @@ public class DatasamlingViewTest : ExplorerTestContext
                           cut.Find(".munin-explorer-datasamling__criteria").TextContent.Trim(),
                           StringComparison.Ordinal);
 
-        Assert.Contains("Inklusjons- og eksklusjonskriterier", BlockHeadings(cut));
+        Assert.Equal("Inklusjons- og eksklusjonskriterier", cut.Find("#criteria > .headline").TextContent);
+        Assert.DoesNotContain("Inklusjons- og eksklusjonskriterier", BlockHeadings(cut));
         Assert.DoesNotContain("Inklusjons- og eksklusjonskriterier", Labels(SourceInformation(cut)));
     }
 
@@ -1719,7 +1871,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // key list cannot reach (Fhi.Metadata-x0etk).
         var cut = Render(Datasamling() with
         {
-            InclusionAndExclusionCriteria = "Alle over 18 år.<br>Se [veilederen](https://example.org/veileder).",
+            EffectiveInclusionAndExclusionCriteria = "Alle over 18 år.<br>Se [veilederen](https://example.org/veileder).",
         });
 
         var criteria = cut.Find(".munin-explorer-datasamling__criteria");
@@ -1734,7 +1886,11 @@ public class DatasamlingViewTest : ExplorerTestContext
     {
         // A third of the datasamlinger measured have none, so this is the ordinary case rather than
         // the edge one.
-        var cut = Render(Datasamling() with { InclusionAndExclusionCriteria = null });
+        var cut = Render(Datasamling() with
+        {
+            InclusionAndExclusionCriteria = null,
+            EffectiveInclusionAndExclusionCriteria = null,
+        });
 
         Assert.DoesNotContain("Inklusjons- og eksklusjonskriterier", BlockHeadings(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-datasamling__criteria"));
@@ -1945,7 +2101,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // The whole list rather than the two headings this is about: it used to be scoped to the
         // aside, where "nothing else was drawn there" came free, and filtering the headings down to
         // what it compares against would give that half away.
-        Assert.Equal(["Metadata", "Inklusjons- og eksklusjonskriterier", "Kildeinformasjon"],
+        Assert.Equal(["Metadata", "Om datasamlingen", "Kildeinformasjon"],
                      BlockHeadings(cut));
     }
 
@@ -2026,6 +2182,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     [
         DetailSectionIds.Metadata,
         DetailSectionIds.Criteria,
+        "section-om-datasamlingen",
         DetailSectionIds.Source,
         DetailSectionIds.Statistics,
     ];
