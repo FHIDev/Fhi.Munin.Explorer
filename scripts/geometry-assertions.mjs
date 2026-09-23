@@ -629,7 +629,7 @@ export const assertions = [
         const inner = box.width - ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth']
           .reduce((sum, side) => sum + (parseFloat(style[side]) || 0), 0);
         const gap = parseFloat(style.columnGap) || 0;
-        const expected = Math.max(1, Math.floor((inner + gap + 0.5) / (Math.min(minTrack, inner) + gap)));
+        const expected = Math.max(1, Math.floor((inner + gap + 0.01) / (Math.min(minTrack, inner) + gap)));
         const tracks = style.gridTemplateColumns === 'none'
           ? [inner]
           : style.gridTemplateColumns.split(' ').map(parseFloat);

@@ -3265,7 +3265,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* Rules introduced since an earlier Stiler pin. The guard compares them against whichever
-   release the csproj pins — 0.1.105 today — not against the version they were written for. */
+   release the csproj pins — 0.1.107 today — not against the version they were written for. */
 .munin-explorer-filters__toolbar > .hd-button-square:not([aria-pressed]) {
   background: none;
   color: rgb(50, 55, 141);
