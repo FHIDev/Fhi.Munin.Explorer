@@ -823,10 +823,12 @@ else
                                        stop rather than one per tab. Arrow keys move between them,
                                        which is what the APG tabs pattern replaces those stops
                                        with; without it the panel would be unreachable by keyboard
-                                       rather than merely awkward. *@
+                                       rather than merely awkward. Named after the variable, like
+                                       the region: named after a tab it would announce that tab
+                                       twice. *@
                                     <div class="munin-explorer-meta__tabs"
                                          role="tablist"
-                                         aria-label="@T.TabAbout"
+                                         aria-labelledby="@RowNameId(v)"
                                          @onkeydown="TabKey">
                                         @foreach (var tab in Tabs)
                                         {

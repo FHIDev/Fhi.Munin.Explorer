@@ -11102,6 +11102,27 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(panel.Id, TabButtons(cut)[0].GetAttribute("aria-controls"));
     }
 
+    // Named after one of its own tabs, the tablist announces "Om variabelen" before a reader
+    // reaches the Data tab that is selected — the old pair got away with it because Detaljer led.
+    [Fact]
+    public void Panel_WhenOpened_ThenTheTablistIsNamedAfterTheVariableAndNotATab()
+    {
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        var tablist = cut.Find(".munin-explorer-detail [role=tablist]");
+
+        Assert.False(tablist.HasAttribute("aria-label"));
+        Assert.Equal(cut.Find(".munin-explorer-detail").GetAttribute("aria-labelledby"),
+                     tablist.GetAttribute("aria-labelledby"));
+
+        var name = cut.Find($"#{tablist.GetAttribute("aria-labelledby")}").TextContent.Trim();
+
+        Assert.NotEmpty(name);
+        Assert.DoesNotContain(name, TabButtons(cut).Select(b => b.TextContent));
+    }
+
     [Fact]
     public void Panel_WhenOpened_ThenTheDataTabShowsTheKodeverkAndOmVariabelenTheDescription()
     {
