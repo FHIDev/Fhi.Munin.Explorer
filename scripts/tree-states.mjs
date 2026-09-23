@@ -45,6 +45,8 @@ async function load(page, empty = false) {
   if (await chips(page).count()) throw new Error('Loading the tree selected a filter');
 }
 
+export { load as loadTreeFixture };
+
 async function populate(page, empty = false) {
   await load(page, empty);
   await panel(page).getByRole('button', { name: 'Utvid alle', exact: true }).click();

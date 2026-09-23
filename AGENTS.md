@@ -331,7 +331,8 @@ against WCAG 1.4.11's 3:1, invisible on a desktop, with this job green — becau
 existed once `Nivålinjer` had been pressed and axe never saw them (`Fhi.Metadata-wcbxi`).
 `scripts/axe-states.mjs` now drives the sample into named states before axe looks: the filter tree
 unfolded with the guide lines on, that same tree with its node icons turned off, a variable row
-opened, and a kilde opened in the kildeutforsker.
+opened, a kilde ticked so the chip row and the hierarchy trail are drawn, and a kilde opened in the
+kildeutforsker.
 The lines are on at first render since `Fhi.Metadata-dfygj`, which is why that state now only
 unfolds and no longer presses the button — a press there would turn them off and hand this check
 back the blind spot it was written to close.
