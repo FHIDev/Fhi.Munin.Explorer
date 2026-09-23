@@ -13,8 +13,8 @@ internal readonly record struct CompleteRecordExtras(
 
 /// <summary>
 /// The values the catch-all is assembled from: everything a named section reads, plus the columns
-/// that identify the thing itself. Kept apart from <see cref="CatalogueColumns"/> because a named
-/// section must not redraw the header's name and code, and the catch-all must.
+/// that identify the thing itself. Most of these the bag already holds, and each view's DrawnElsewhere
+/// keeps them out of named sections; the variable's code is here alone, since no section places it.
 /// </summary>
 internal static class CompleteRecord
 {

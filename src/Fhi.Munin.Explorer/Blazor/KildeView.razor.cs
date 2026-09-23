@@ -121,9 +121,15 @@ public sealed partial class KildeView : ComponentBase
 
     private string? StickyNameLang => CatalogueProperties.Foreign(StickyNamed.Norwegian, Reader);
 
+    /// <summary>The identifier line under the name, or nothing where it is not drawn.</summary>
+    /// <remarks>
+    /// Nothing where the heading has already fallen back to the code (Fhi.Metadata-w13lk). The name
+    /// block, the sticky bar and <see cref="DrawnElsewhere"/> all read this one answer.
+    /// </remarks>
+    private string? IdentifierLine => StickyNamed.Norwegian ? Identifiers : null;
+
     /// <summary>The identifiers beside the bar's name, on the name block's own terms.</summary>
-    /// <remarks>Nothing where the heading has already fallen back to the code. (Fhi.Metadata-w13lk)</remarks>
-    private string? StickyCode => StickyNamed.Norwegian ? Identifiers : null;
+    private string? StickyCode => IdentifierLine;
 
     /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
     private IReadOnlyList<DetailTrailStep>? PageTrail =>
@@ -252,12 +258,20 @@ public sealed partial class KildeView : ComponentBase
     /// when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis are not, since their
     /// EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
     /// </remarks>
-    private static IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
+    private IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
     {
         var keys = new HashSet<string>(StringComparer.Ordinal)
         {
             CatalogueColumns.Description, "BeskrivelseFlerspraklig",
+            // The name block, and Kildeinformasjon's row in this package's words (Fhi.Metadata-zg89n).
+            CatalogueColumns.PreferredTerm, CatalogueColumns.Code, CatalogueColumns.Kildetype,
         };
+
+        // KortNavn is only drawn where the identifier line under the name is.
+        if (IdentifierLine is not null)
+        {
+            keys.Add(CatalogueColumns.ShortName);
+        }
 
         if (Filled(kilde, "Formaal") && Filled(kilde, "FormaalFlerspraklig"))
         {
@@ -342,8 +356,8 @@ public sealed partial class KildeView : ComponentBase
     /// Six of them are column-backed properties the catalogue can place in a section of its own,
     /// and each yields when it does — see <see cref="UnlessPlaced"/> and <see cref="ValidityRows"/>,
     /// which yields one end at a time because the catalogue places two keys where this shows one row.
-    /// Kildetype is not among them: nothing merges that column into the renderable set, so no section
-    /// can draw it. Sist oppdatert has no property definition at all.
+    /// Kildetype is not among them: it is in <see cref="DrawnElsewhere"/>, so no section draws it and
+    /// this row always does. Sist oppdatert has no property definition at all.
     /// </para>
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> SourceInformation =>
@@ -391,8 +405,8 @@ public sealed partial class KildeView : ComponentBase
     /// Statistikk, the rest in Kildeinformasjon or, once the catalogue places the key, in the
     /// section it placed it in — and every value here is the member that section reads, so the two
     /// cannot come out in different words. None of these keys goes into
-    /// <see cref="DrawnElsewhere"/>: a hero row is a summary in a different register and is meant
-    /// to repeat.
+    /// <see cref="DrawnElsewhere"/> on the hero's account: a hero row is a summary in a different
+    /// register and is meant to repeat. Kildetype is there for Kildeinformasjon's row.
     /// </para>
     /// <para>
     /// The mockup's sixth is Tilgang, and Munin's catalogue holds no access field for a source, so

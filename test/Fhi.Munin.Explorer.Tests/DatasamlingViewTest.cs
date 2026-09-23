@@ -2315,4 +2315,28 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal("no", Render(Datasamling(), language: "en").Find("h2").GetAttribute("lang"));
     }
+
+    [Fact]
+    public void Placement_WhenItPlacesTheIdentityColumns_ThenTheNameAndCodeAreNotDrawnASecondTime()
+    {
+        // Merged since Fhi.Metadata-zg89n. The name block draws the name and the code; the short
+        // name is on no other line of this page, so it is the one the section keeps.
+        var detail = Placed();
+        var cut = Render(detail with
+        {
+            PropertyMetadata =
+            [
+                .. detail.PropertyMetadata,
+                Definition(CatalogueColumns.PreferredTerm, "Navn", "String", 1008, "om-datasamlingen"),
+                Definition(CatalogueColumns.Code, "Kode", "String", 1009, "om-datasamlingen"),
+                Definition(CatalogueColumns.ShortName, "Kortnavn", "String", 1010, "om-datasamlingen"),
+            ],
+        });
+
+        var labels = SectionLabels(cut, "Om datasamlingen");
+
+        Assert.DoesNotContain("Navn", labels);
+        Assert.DoesNotContain("Kode", labels);
+        Assert.Contains("Kortnavn", labels);
+    }
 }

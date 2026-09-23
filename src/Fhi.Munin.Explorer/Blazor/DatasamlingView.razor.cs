@@ -283,10 +283,24 @@ public sealed partial class DatasamlingView : ComponentBase
                   ]);
 
     /// <inheritdoc cref="Groups"/>
-    private IReadOnlySet<string> DrawnElsewhere =>
-        Description is null
-            ? new HashSet<string>(StringComparer.Ordinal)
-            : new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.Description };
+    /// <remarks>
+    /// The name block draws PreferredTerm and Code; KortNavn is on no other line of this page, so a
+    /// section may draw it (Fhi.Metadata-zg89n).
+    /// </remarks>
+    private IReadOnlySet<string> DrawnElsewhere
+    {
+        get
+        {
+            var keys = new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.PreferredTerm, CatalogueColumns.Code };
+
+            if (Description is not null)
+            {
+                keys.Add(CatalogueColumns.Description);
+            }
+
+            return keys;
+        }
+    }
 
     /// <inheritdoc cref="CataloguePlacement.UnlessPlaced"/>
     private IReadOnlyList<TRow> UnlessPlaced<TRow>(string key, TRow row) => Placement.UnlessPlaced(key, row);
