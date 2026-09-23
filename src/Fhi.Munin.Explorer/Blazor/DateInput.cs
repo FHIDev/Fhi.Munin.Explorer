@@ -4,9 +4,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>A day as a reader types it into a date field, and as the field writes it back.</summary>
 /// <remarks>
-/// The field is plain text so the format follows the reader's language rather than the browser's
-/// locale, which a native date input takes its format from (Fhi.Metadata-f8x7g). Invariant culture
-/// and explicit formats throughout, so the server's culture never decides what a day is.
+/// Invariant culture and explicit formats, so the server's culture never decides what a day is.
 /// </remarks>
 internal static class DateInput
 {

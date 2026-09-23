@@ -5955,6 +5955,8 @@ public class VariableSearchTest : ExplorerTestContext
             var field = DateInputs(cut)[i];
 
             Assert.Equal(hint, DateHint(cut, i).TextContent);
+            // A block element: caption and form-element__label are both inline, so a span sat beside the label.
+            Assert.Equal("P", DateHint(cut, i).TagName);
             Assert.Contains(DateHint(cut, i).Id, field.GetAttribute("aria-describedby")!.Split(' '));
             Assert.Equal(hint, field.GetAttribute("placeholder"));
             Assert.Contains("form-element__label", cut.Find($"label[for='{field.Id}']").ClassList);

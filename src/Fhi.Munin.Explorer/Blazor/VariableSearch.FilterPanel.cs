@@ -324,11 +324,8 @@ public partial class VariableSearch
 
     /// <summary>The from and to fields, each bounded by the range and by the other.</summary>
     /// <remarks>
-    /// Labelled and bound one at a time rather than as a range control: Stiler has no date-range
-    /// widget, and two text inputs are elements every stylesheet already draws — the same argument
-    /// the panel's <c>&lt;details&gt;</c> and bare <c>&lt;ul&gt;</c> are built on. No class name is
-    /// invented here; the labels wear <c>form-element__label</c>, the hints <c>caption</c> and a
-    /// refusal <c>infobox infobox--bg-yellow</c>, all borrowed names this component already uses.
+    /// Two text inputs rather than a range control, because Stiler has no date-range widget.
+    /// Every class name here is borrowed and already used elsewhere in this component.
     /// </remarks>
     private RenderFragment DateFields(DateInterval range) => builder =>
     {
@@ -346,9 +343,8 @@ public partial class VariableSearch
     /// typed is not a day inside the bounds.
     /// </summary>
     /// <remarks>
-    /// Text rather than <c>type="date"</c>, because a native date input writes the day in the
-    /// browser's own locale whatever the page's language is (Fhi.Metadata-f8x7g). What the reader
-    /// typed is kept while it is refused, so they are looking at their own entry beside the reason.
+    /// Text rather than <c>type="date"</c>, whose format follows the browser's locale, not the page's
+    /// language. A refused entry is kept so the reader sees it beside the reason.
     /// </remarks>
     private void DateField(
         RenderTreeBuilder builder, int seq, string id, string label, DateOnly? value,
@@ -365,7 +361,7 @@ public partial class VariableSearch
         builder.AddContent(seq + 3, label);
         builder.CloseElement();
 
-        builder.OpenElement(seq + 5, "span");
+        builder.OpenElement(seq + 5, "p");
         builder.AddAttribute(seq + 6, "id", hintId);
         builder.AddAttribute(seq + 7, "class", "caption");
         builder.AddContent(seq + 8, T.FacetDateFormat);
