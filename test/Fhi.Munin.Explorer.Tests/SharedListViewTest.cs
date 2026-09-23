@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -67,11 +68,19 @@ public class SharedListViewTest : ExplorerTestContext
 
         public Exception? ShareThrows { get; init; }
 
+        /// <summary>The first read of my/lists after a list is created throws, as a lost API would.</summary>
+        public bool ReadAfterCreateThrows { get; init; }
+
+        /// <summary>Every add answers false, as the API does for a list it no longer has.</summary>
+        public bool AddsRefused { get; init; }
+
         public int MyListsCalls { get; private set; }
         public int CreateCalls { get; private set; }
         public int ShareCalls { get; private set; }
         public int SharedReads { get; private set; }
         public List<Guid> Added { get; } = [];
+
+        private bool _readAfterCreateThrown;
 
         public override Task<string> ShareListAsync(
             string name, IReadOnlyCollection<VariableListItem> items, CancellationToken cancellationToken = default)
@@ -114,7 +123,15 @@ public class SharedListViewTest : ExplorerTestContext
         {
             MyListsCalls++;
 
-            return Task.FromResult<IReadOnlyList<VariableList>>([.. _lists]);
+            if (ReadAfterCreateThrows && CreateCalls > 0 && !_readAfterCreateThrown)
+            {
+                _readAfterCreateThrown = true;
+                throw new HttpRequestException("500");
+            }
+
+            // Counted on every read, as the API counts: a list answers with what it holds now.
+            return Task.FromResult<IReadOnlyList<VariableList>>(
+                [.. _lists.Select(l => l with { VariableCount = _items[l.Id].Count })]);
         }
 
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
@@ -133,6 +150,12 @@ public class SharedListViewTest : ExplorerTestContext
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
             MyListsCalls++;
+
+            if (AddsRefused)
+            {
+                return Task.FromResult(false);
+            }
+
             Added.AddRange(variableIds);
 
             var known = store.ByCode.Values.SelectMany(l => l.Items).ToList();
@@ -476,6 +499,87 @@ public class SharedListViewTest : ExplorerTestContext
             Assert.True(HasButton(cut, "Del liste"));
         });
         Assert.DoesNotContain("delekode", Mirrored(this) ?? "");
+    }
+
+    [Fact]
+    public void Save_WhenTheNameIsUnique_ThenTheHeaderCountsTheSharedItemsAndTheListActionsAreEnabled()
+    {
+        // The adds land while the new list is not active, so the holder counts none of them until
+        // the lists are read again. A button that merely exists passes with that bug present.
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Mine hjertevariabler", Three);
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] };
+
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        Button(cut, "Lagre som min liste").Click();
+        Labelled(cut, "Navn på din kopi av listen").Change("Delt hjerteliste");
+        Button(cut, "Lagre listen").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("Delt hjerteliste", cut.Find("[id^=munin-explorer-list-heading-]").TextContent.Trim());
+            Assert.StartsWith("3 variabler", cut.Find(".munin-explorer-page__header p.caption").TextContent.Trim());
+
+            foreach (var action in (string[])["Del liste", "Kopier liste", "Tøm liste"])
+            {
+                var button = Button(cut, action);
+                Assert.NotEqual("true", button.GetAttribute("aria-disabled"));
+                Assert.Null(button.GetAttribute("aria-describedby"));
+            }
+        });
+        Assert.DoesNotContain("Listen er tom", cut.Markup);
+    }
+
+    [Fact]
+    public void Save_WhenReadingTheListsAgainFails_ThenTheSaveStillSucceedsAndTheHostIsWarned()
+    {
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b
+            .AddProvider(recorder)
+            .AddFilter((category, _) => category?.StartsWith("Fhi.Munin.Explorer", StringComparison.Ordinal) == true));
+
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Mine hjertevariabler", Three);
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")], ReadAfterCreateThrows = true };
+
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        Button(cut, "Lagre som min liste").Click();
+        Labelled(cut, "Navn på din kopi av listen").Change("Delt hjerteliste");
+        Button(cut, "Lagre listen").Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal("Delt hjerteliste", cut.Find("[id^=munin-explorer-list-heading-]").TextContent.Trim());
+            Assert.Equal(3, RowNames(cut).Count);
+        });
+        Assert.Equal("", Alert(cut));
+        Assert.False(HasButton(cut, "Lagre som min liste"));
+
+        var warning = Assert.Single(recorder.Entries, e => e.Exception is HttpRequestException);
+        Assert.Equal(LogLevel.Warning, warning.Level);
+    }
+
+    [Fact]
+    public void Save_WhenTheApiRefusesTheAdds_ThenTheAlertSaysSoAndTheSharedListStays()
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Mine hjertevariabler", Three);
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")], AddsRefused = true };
+
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        Button(cut, "Lagre som min liste").Click();
+        Labelled(cut, "Navn på din kopi av listen").Change("Delt hjerteliste");
+        Button(cut, "Lagre listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke lagre nå. Prøv igjen om litt.", Alert(cut)));
+        Assert.Equal(1, client.CreateCalls);
+        Assert.True(HasButton(cut, "Lukk delt liste"));
     }
 
     // -----------------------------------------------------------------------
