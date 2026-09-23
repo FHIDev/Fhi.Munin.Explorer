@@ -1,6 +1,6 @@
 category: Notes for hosts
 - **Every kilder table header cell now carries a `munin-explorer-kilder-header__<key>` handle.**
-  This mirrors `munin-explorer-dataitem-header__<key>` in the variable explorer. The thirteen
+  It is named like `munin-explorer-dataitem-header__<key>` in the variable explorer. The thirteen
   optional columns use their `KildeSearch.ColumnKeys` key: `munin-explorer-kilder-header__kode`,
   `__kildetype`, `__datasamlinger`, `__variabler`, `__delkilder`, `__dataansvarlig`,
   `__databehandler`, `__grad`, `__gyldighetsperiode`, `__importert`, `__sistEndret`,

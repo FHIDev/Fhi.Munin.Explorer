@@ -105,7 +105,7 @@ public class KildeHeaderHandlesTest : ExplorerTestContext
                 th => th.ClassList.Where(c => !c.StartsWith(KilderHeaderStem, StringComparison.Ordinal)).ToArray());
 
         Assert.Equal(["munin-explorer-kilder__expand"], classes["expand"]);
-        Assert.Equal([HostClassNames.KilderSelect], classes["select"]);
+        Assert.Equal(["munin-explorer-kilder__select"], classes["select"]);
 
         foreach (var key in new[] { "delkilder", "datasamlinger", "variabler", "andelKodeverk", "andelStatistikk" })
         {

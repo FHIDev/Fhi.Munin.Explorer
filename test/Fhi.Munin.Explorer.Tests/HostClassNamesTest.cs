@@ -189,6 +189,33 @@ public class HostClassNamesTest
     }
 
     [Fact]
+    public void Orphans_WhenTheNameIsAKilderHeaderHandle_ThenItIsNotAskedAbout()
+    {
+        Assert.Equal([], HostClassNames.OrphansIn("", ["munin-explorer-kilder-header__kode",
+                                                       "munin-explorer-kilder-header__select"]));
+    }
+
+    [Fact]
+    public void Orphans_WhenANameMerelyLooksLikeAKilderHeaderHandle_ThenItIsStillReported()
+    {
+        // The exemption is the exact set of handles, not the stem, so a misspelt key still reaches
+        // the guard rather than riding in on a prefix.
+        Assert.Equal(
+            [
+                "munin-explorer-kilder-header__",
+                "munin-explorer-kilder-header__bogus",
+                "munin-explorer-kilder-header__kodee",
+            ],
+            HostClassNames.OrphansIn(
+                "",
+                [
+                    "munin-explorer-kilder-header__bogus",
+                    "munin-explorer-kilder-header__kodee",
+                    "munin-explorer-kilder-header__",
+                ]));
+    }
+
+    [Fact]
     public void KilderSelectScope_WhenTheSelectColumnLeavesTheScrollBox_ThenItIsCountedAsOutside()
     {
         // The acceptance experiment for the containment half of the kilder guard. A check that

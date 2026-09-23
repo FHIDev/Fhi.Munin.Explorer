@@ -83,6 +83,13 @@ internal static class HostClassNames
     private static readonly Regex CountModifier =
         new($"^{KilderScroll}--cols-[0-9]+$");
 
+    /// <summary>
+    /// Exempt from <see cref="Orphans"/>: handles only Stiler's sticky-head thresholds select on,
+    /// which the samples do not style (Fhi.Metadata-35w0p.74). The exact set, not the stem, so a
+    /// misspelt name under it is still reported.
+    /// </summary>
+    private static IReadOnlySet<string> KilderHeaderHandles => KildeColumns.HeaderHandles;
+
     // Stiler 0.1.100 removed their obsolete heading resets; the shared page chassis styles them.
     private static readonly HashSet<string> DetailRootMarkers =
         ["munin-explorer-kilde", "munin-explorer-datasamling", "munin-explorer-whole"];
@@ -147,9 +154,7 @@ internal static class HostClassNames
         return [.. rendered.Distinct(StringComparer.Ordinal)
                            .Where(name => !TheirNames.Value.Contains(name))
                            .Where(name => !CountModifier.IsMatch(name))
-                           // Handles for Stiler's sticky-head thresholds, no sample rule's (Fhi.Metadata-35w0p.74).
-                           // The exact set, so a stray name under the stem is still reported.
-                           .Where(name => !KildeColumns.HeaderHandles.Contains(name))
+                           .Where(name => !KilderHeaderHandles.Contains(name))
                            .Where(name => !DetailRootMarkers.Contains(name))
                            .Select(name => Verdict(rules, name))
                            .OfType<string>()
