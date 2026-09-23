@@ -179,7 +179,10 @@ async function gatingFindings(page, state) {
     let finding;
     try {
       finding = await page.evaluate(body, selectors);
-    } catch {
+    } catch (err) {
+      // Said, not swallowed: a pin that throws found nothing, so it cannot make the state a finding.
+      console.error(`gating assertion "${name}" threw on "${state}" - it measured nothing.`);
+      console.error(String(err?.message ?? err));
       continue;
     }
     // "nothing was measured" is the file's own phrase for a missing control, and a renamed class is
