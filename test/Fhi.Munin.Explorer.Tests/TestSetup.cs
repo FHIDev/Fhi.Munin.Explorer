@@ -372,14 +372,7 @@ internal static class TestData
         return reader.ReadToEnd();
     }
 
-    /// <summary>
-    /// A KildeDetail capture as the API sent it before Munin placed its sections: groupKey kept,
-    /// no groupSortOrder, no sections.
-    /// </summary>
-    /// <remarks>
-    /// Derived rather than kept as a second capture, so the capture stays free to refresh. For
-    /// kilde-med-delkilder.json this is byte-for-byte the pre-placement capture (Fhi.Metadata-quo1j).
-    /// </remarks>
+    /// <summary>A KildeDetail capture with GroupSortOrder and Sections cleared: the unplaced view.</summary>
     public static KildeDetail KildeWithoutPlacements(string fileName)
     {
         var kilde = JsonSerializer.Deserialize<KildeDetail>(Read(fileName), MuninExplorerClient.Json)
