@@ -2275,9 +2275,8 @@ public class VariableListViewTest : ExplorerTestContext
     public void View_WhenTheReaderHasTwoLists_ThenThePickerIsNamedByItsLabelAndNotByItsOptions()
     {
         // The picker is a <select> inside its own <label>, so its name comes from the words around
-        // it — not from the options, which are the reader's list names and would make the control
-        // announce as "Velg liste Mine hjertevariabler Hjerte og kar". The option text is the
-        // select's value, not its name.
+        // it — not from the options, which would make it announce "Velg liste Mine hjertevariabler
+        // Hjerte og kar". The wrap is the whole association: no `for`, no id, and no class of ours.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
 
         Assert.Equal("Velg liste", AccessibleName.Of(cut.Find("select")));
@@ -3499,24 +3498,14 @@ public class VariableListViewTest : ExplorerTestContext
     public void Selector_WhenTheReaderHasSeveralLists_ThenItsLabelWearsNoClassOfOurs()
     {
         // It wore munin-explorer-filters__facets, the handle the two facet panels fold behind, on a
-        // label that never folds - so a host redrawing the handle would move or hide a control three
-        // files away. No rule here needs a name at all. (Fhi.Metadata-l9l2n.119)
+        // label that never folds - a host redrawing the handle would move a control three files
+        // away. A borrowed Stiler name here would be fine; one of ours is the defect.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
 
         var label = cut.Find($"{ActionRow} select").ParentElement!;
 
         Assert.Equal("label", label.LocalName);
-        Assert.Empty(label.ClassList);
-    }
-
-    [Fact]
-    public void Selector_WhenTheReaderHasSeveralLists_ThenItsLabelStillNamesTheControl()
-    {
-        // The class went, the label must not have gone with it: the wrap is the whole association
-        // here - no `for`, and no id to point one at - so removing it leaves an unnamed control.
-        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
-
-        Assert.Equal("Velg liste", AccessibleName.Of(cut.Find($"{ActionRow} select")));
+        Assert.DoesNotContain(label.ClassList, cls => cls.StartsWith("munin-explorer", StringComparison.Ordinal));
     }
 
     [Fact]
