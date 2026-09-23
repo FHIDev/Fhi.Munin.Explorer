@@ -5809,6 +5809,15 @@ public class KildeSearchTest : ExplorerTestContext
             "munin-explorer-header__actions",
             "munin-explorer-header__actions-button",
             "munin-explorer-kilder",
+            // Handles on the header cells, for Stiler's sticky-head thresholds; no sample rule, and
+            // HostClassNames exempts exactly these (Fhi.Metadata-35w0p.74).
+            "munin-explorer-kilder-header__datasamlinger",
+            "munin-explorer-kilder-header__expand",
+            "munin-explorer-kilder-header__kildetype",
+            "munin-explorer-kilder-header__navn",
+            "munin-explorer-kilder-header__opprettet",
+            "munin-explorer-kilder-header__status",
+            "munin-explorer-kilder-header__variabler",
             // The box the table scrolls in, so its overflow stops reaching the host page.
             "munin-explorer-kilder-scroll",
             // And the count of header cells it is holding, for a stylesheet that has to vary the box

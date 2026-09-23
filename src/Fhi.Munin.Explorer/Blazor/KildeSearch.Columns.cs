@@ -136,6 +136,11 @@ public sealed partial class KildeSearch
         _ => throw new ArgumentOutOfRangeException(nameof(column), column, "No key for this column.")
     };
 
+    /// <summary>A header cell's handle: <c>munin-explorer-kilder-header__</c> finished with <paramref name="key"/>.</summary>
+    internal static string HeaderClass(string key) => $"munin-explorer-kilder-header__{key}";
+
+    private static string HeaderClass(KildeColumn column) => HeaderClass(ColumnKey(column));
+
     private void SeedColumns()
     {
         if (VisibleColumns is not { } shown)

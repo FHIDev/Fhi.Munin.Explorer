@@ -62,7 +62,9 @@ behaviour found later by someone else.
    here. Edit one, copy it over the other. Both halves have already failed quietly: the kodeverk
    block reached LegacyHost only, and the kilde view shipped with rules for none of its nine names
    in either copy. `scripts/assert-sample-css-in-step.sh` enforces both and runs in CI on every
-   PR.
+   PR. Two families are exempt, each by exact match in `HostClassNames.OrphansIn`: the
+   `munin-explorer-kilder-scroll--cols-N` count modifier and the eighteen
+   `munin-explorer-kilder-header__<key>` handles, which only Stiler's sticky-head thresholds select on.
 
 5. **A rule that declares *something* is not a rule that declares the right thing.** The check
    above stayed green while around forty divergences from `Fhi.Helsedata.Stiler` stood in the

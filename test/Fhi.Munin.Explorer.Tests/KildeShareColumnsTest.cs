@@ -210,7 +210,7 @@ public class KildeShareColumnsTest : ExplorerTestContext
         foreach (var th in cut.FindAll(".munin-explorer-kilder thead th")
                      .Where(h => h.TextContent.Trim() is KodeverkHeading or StatisticsHeading))
         {
-            Assert.Equal(count, th.ClassList.ToArray());
+            Assert.Equal(count, th.ClassList.Where(c => !c.StartsWith(KilderHeaderStem, StringComparison.Ordinal)));
         }
     }
 

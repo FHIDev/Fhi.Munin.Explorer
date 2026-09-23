@@ -597,7 +597,7 @@ else
                     <tr>
                         @* A control column with no visible heading: the name is there for a screen
                            reader, which announces it when it reaches the toggle below. *@
-                        <th scope="col" class="munin-explorer-kilder__expand">
+                        <th scope="col" class="munin-explorer-kilder__expand @HeaderClass("expand")">
                             <span class="screenreader-only">@T.ColumnExpand</span>
                         </th>
                         @if (Selectable)
@@ -605,7 +605,7 @@ else
                             @* Over the rows the reader can see, and only those. No indeterminate state:
                                it is a DOM property with no attribute behind it, and the count above says
                                the same thing in words. (Fhi.Metadata-5ghur) *@
-                            <th scope="col" class="munin-explorer-kilder__select">
+                            <th scope="col" class="munin-explorer-kilder__select @HeaderClass("select")">
                                 <input type="checkbox"
                                        aria-label="@T.SelectAllKilder"
                                        checked="@AllVisibleTicked(visible)"
@@ -616,65 +616,65 @@ else
                            in it, aria-sort on the cell, and the arrow beside the word. Their labels
                            come from T.KildeOrderLabel rather than from the record directly, so the
                            heading and the sentence over the table always name the order alike. *@
-                        @SortableHeader(KildeSortOrder.Name)
+                        @SortableHeader(KildeSortOrder.Name, HeaderClass("navn"))
                         @if (ColumnVisible(KildeColumn.Code))
                         {
-                            <th scope="col">@T.FieldCode</th>
+                            <th scope="col" class="@HeaderClass(KildeColumn.Code)">@T.FieldCode</th>
                         }
                         @if (ColumnVisible(KildeColumn.Kildetype))
                         {
-                            <th scope="col">@T.ColumnKildetype</th>
+                            <th scope="col" class="@HeaderClass(KildeColumn.Kildetype)">@T.ColumnKildetype</th>
                         }
-                        <th scope="col">@T.FieldStatus</th>
+                        <th scope="col" class="@HeaderClass("status")">@T.FieldStatus</th>
                         @if (ColumnVisible(KildeColumn.DataController))
                         {
-                            <th scope="col">@T.FieldDataController</th>
+                            <th scope="col" class="@HeaderClass(KildeColumn.DataController)">@T.FieldDataController</th>
                         }
                         @if (ColumnVisible(KildeColumn.DataProcessor))
                         {
-                            <th scope="col">@T.FieldDataProcessor</th>
+                            <th scope="col" class="@HeaderClass(KildeColumn.DataProcessor)">@T.FieldDataProcessor</th>
                         }
                         @if (ColumnVisible(KildeColumn.PersonIdentification))
                         {
-                            <th scope="col">@T.FieldPersonIdentification</th>
+                            <th scope="col" class="@HeaderClass(KildeColumn.PersonIdentification)">@T.FieldPersonIdentification</th>
                         }
                         @if (ColumnVisible(KildeColumn.Validity))
                         {
-                            <th scope="col">@T.FieldValidity</th>
+                            <th scope="col" class="@HeaderClass(KildeColumn.Validity)">@T.FieldValidity</th>
                         }
                         @if (ColumnVisible(KildeColumn.Delkilder))
                         {
-                            <th scope="col" class="munin-explorer-kilder__count">@T.ColumnDelkildeCount</th>
+                            <th scope="col" class="munin-explorer-kilder__count @HeaderClass(KildeColumn.Delkilder)">@T.ColumnDelkildeCount</th>
                         }
                         @if (ColumnVisible(KildeColumn.Datasamlinger))
                         {
-                            <th scope="col" class="munin-explorer-kilder__count">@T.HeadingDataCollections</th>
+                            <th scope="col" class="munin-explorer-kilder__count @HeaderClass(KildeColumn.Datasamlinger)">@T.HeadingDataCollections</th>
                         }
                         @if (ColumnVisible(KildeColumn.Variables))
                         {
-                            @SortableHeader(KildeSortOrder.Variables, "munin-explorer-kilder__count")
+                            @SortableHeader(KildeSortOrder.Variables, HeaderClass(KildeColumn.Variables), "munin-explorer-kilder__count")
                         }
                         @if (ColumnVisible(KildeColumn.KodeverkShare))
                         {
-                            <th scope="col" class="munin-explorer-kilder__count">@T.ColumnKodeverkShare</th>
+                            <th scope="col" class="munin-explorer-kilder__count @HeaderClass(KildeColumn.KodeverkShare)">@T.ColumnKodeverkShare</th>
                         }
                         @if (ColumnVisible(KildeColumn.StatisticsShare))
                         {
-                            <th scope="col" class="munin-explorer-kilder__count">@T.ColumnStatisticsShare</th>
+                            <th scope="col" class="munin-explorer-kilder__count @HeaderClass(KildeColumn.StatisticsShare)">@T.ColumnStatisticsShare</th>
                         }
                         @* No __count on this one: it holds a year the catalogue wrote down as text,
                            not a number this component counted, and the class right-aligns figures. *@
-                        @SortableHeader(KildeSortOrder.Established)
+                        @SortableHeader(KildeSortOrder.Established, HeaderClass("opprettet"))
                         @if (ColumnVisible(KildeColumn.Imported))
                         {
-                            <th scope="col">@T.ColumnImported</th>
+                            <th scope="col" class="@HeaderClass(KildeColumn.Imported)">@T.ColumnImported</th>
                         }
                         @if (ColumnVisible(KildeColumn.SourceUpdated))
                         {
                             @* Behind the picker, so this order is reachable only once the reader
                                has turned the column on — the price of the sort living on the
                                headings. A link that names it still sorts the list. *@
-                            @SortableHeader(KildeSortOrder.SourceUpdated)
+                            @SortableHeader(KildeSortOrder.SourceUpdated, HeaderClass(KildeColumn.SourceUpdated))
                         }
                     </tr>
                 </thead>
@@ -899,10 +899,10 @@ else
 
     // munin-explorer-kilder__sort rather than the variable explorer's header class, whose two
     // Stiler rules are scoped to that one's pseudo-table prefix (Fhi.Metadata-l9l2n.106).
-    private RenderFragment SortableHeader(KildeSortOrder order, string? columnClass = null) =>
+    private RenderFragment SortableHeader(KildeSortOrder order, string headerClass, string? columnClass = null) =>
         @*  aria-current is what Stiler's rule for the sorted heading selects on; aria-sort sits on
             the cell because it describes the column rather than the control. *@
-        @<th scope="col" class="@columnClass" aria-sort="@AriaSort(order)">
+        @<th scope="col" class="@(columnClass is null ? headerClass : $"{columnClass} {headerClass}")" aria-sort="@AriaSort(order)">
             <button class="hd-button-reset munin-explorer-kilder__sort"
                     type="button"
                     aria-current="@(IsActiveSort(order) ? "true" : null)"
