@@ -762,8 +762,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   stylesheet can ask a question the package is the only thing able to answer. Beside
   `munin-explorer-kilder-scroll` the box wears `munin-explorer-kilder-scroll--cols-` finished with
   the number of header cells the table actually drew — four the picker cannot reach, five where the
-  host wired the handover, plus whichever of the eleven optional columns are on, so the range is
-  `--cols-4` to `--cols-16` and the number is the header's rather than the picker's. **Undrawn it
+  host wired the handover, plus whichever of the thirteen optional columns are on, so the range is
+  `--cols-4` to `--cols-18` and the number is the header's rather than the picker's. **Undrawn it
   costs nothing**, which is the unusual part: it is a modifier on an element whose base class is
   already styled, so a stylesheet with no rule for it leaves the box exactly as it was. That is why
   it could ship before the rule that selects on it, and it is the opposite of the bargain every

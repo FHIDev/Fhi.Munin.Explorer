@@ -492,8 +492,8 @@ public sealed partial class KildeSearch : ComponentBase
 
 
     // The columns the header actually renders — the picker's choice as well as the host's. Four are
-    // always drawn: the expand control, Navn, Status and Opprettet. The nested row's colspan and the
-    // scroll box's modifier both read it, so the number they mean can never be two numbers.
+    // always drawn: the expand control, Navn, Status and Opprettet; with selection and all thirteen
+    // optional columns on it is 18. The colspan and the scroll box's modifier both read it.
     private int ColumnCount => (Selectable ? 5 : 4) + OptionalColumns.Count(ColumnVisible);
 
     // Stiler has to vary the box by how wide the table is and cannot count the columns itself, so
