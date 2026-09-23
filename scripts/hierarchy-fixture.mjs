@@ -34,6 +34,9 @@ export const topLevel = [[names.main, 300], [names.direct, 25]];
 // Every placement of the one group that occurs under three owners.
 export const SHARED_PLACEMENTS = 3;
 
+// The datakategorier of names.wave, in the order the row draws and says them.
+export const WAVE_CATEGORIES = ['RPDG', 'HGPD', 'ehds-cat:other'];
+
 const id = n => `dddddddd-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 const group = (n, name, count, children = [], order = null) =>
@@ -67,7 +70,7 @@ export function hierarchy(kildeId, empty = false) {
         name: names.followUp,
         variableCount: 120,
         presentationOrder: 2,
-        datasamlinger: [datasamling(21, names.wave, 80, ['RPDG', 'HGPD', 'ehds-cat:other'], [shared()])],
+        datasamlinger: [datasamling(21, names.wave, 80, WAVE_CATEGORIES, [shared()])],
         unassignedVariabelgrupper: [],
         children: [{
           id: id(12),

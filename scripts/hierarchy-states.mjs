@@ -1,4 +1,4 @@
-import { names, topLevel, SHARED_PLACEMENTS } from './hierarchy-fixture.mjs';
+import { names, topLevel, SHARED_PLACEMENTS, WAVE_CATEGORIES } from './hierarchy-fixture.mjs';
 import { until } from './tree-states.mjs';
 
 const tree = page => page.locator('.munin-explorer-hierarchy');
@@ -91,8 +91,15 @@ async function deep(page) {
   if (await icons(uncategorised) || await spoken(uncategorised)) {
     throw new Error('A datasamling with no categories drew a glyph or said a category');
   }
-  if (!await icons(rows(followUp, names.wave)) || !await spoken(rows(followUp, names.wave))) {
-    throw new Error('A categorised datasamling drew no glyphs or said nothing');
+  // One glyph and one name per category, not merely some: a row that drew the first of three
+  // would otherwise pass, and the words are the only place the pairing is said at all.
+  const wave = label(rows(followUp, names.wave));
+  const glyphs = await wave.locator('.munin-explorer-hierarchy__icons > svg').count();
+  const said = (await wave.locator(':scope > .screenreader-only').textContent() ?? '')
+    .split(':').pop().split(',').map(one => one.trim()).filter(Boolean);
+  if (glyphs !== WAVE_CATEGORIES.length || said.length !== WAVE_CATEGORIES.length) {
+    throw new Error(`${names.wave} drew ${glyphs} glyphs and said ${said.length} of ` +
+      `${WAVE_CATEGORIES.length} categories: ${said.join(' / ')}`);
   }
   if (await rows(main, names.empty).count() !== 1) throw new Error(`${names.empty} is not drawn`);
   if (await rows(main, names.empty).locator('.munin-explorer-hierarchy__count').count()) {
