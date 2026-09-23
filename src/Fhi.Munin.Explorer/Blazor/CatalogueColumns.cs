@@ -104,13 +104,13 @@ internal static class CatalogueColumns
         var reader = ReaderLanguage.Of(language);
 
         // Munin's legacy enum ordinals are 0–3. A defined numeric option is still curated data;
-        // only an unrecognised ordinal yields to an effective value the catalogue can resolve.
+        // only an unrecognised ordinal yields to an effective value with a curated catalogue label.
         if (values.TryGetValue(PersonIdentification, out var raw)
             && raw is "0" or "1" or "2" or "3"
             && definition is not null
             && !string.IsNullOrWhiteSpace(effective)
             && CatalogueProperties.Word(definition, raw, reader) is null
-            && CatalogueProperties.Word(definition, effective, reader) is not null)
+            && CatalogueProperties.Option(definition, effective, reader) is { Curated: true })
         {
             values[PersonIdentification] = effective;
         }

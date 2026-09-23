@@ -614,10 +614,31 @@ public class DatasamlingViewTest : ExplorerTestContext
     [InlineData("en", "unrecognised", CurrentIdentificationOptions)]
     [InlineData("nb", "deIdentified", null)]
     [InlineData("en", "deIdentified", "not JSON")]
+    [InlineData("nb", "deIdentified", """[{"value":"deIdentified"}]""")]
+    [InlineData("en", "deIdentified", """[{"value":"deIdentified"}]""")]
+    [InlineData("nb", "deIdentified", """[{"value":"deIdentified","label":"","labelEn":""}]""")]
+    [InlineData("en", "deIdentified", """[{"value":"deIdentified","label":" ","labelEn":null}]""")]
+    [InlineData("nb", "deIdentified", """[{"value":"deIdentified","labelEn":"De-identified data"}]""")]
     public void Identification_WhenTheEffectiveValueCannotBeResolved_ThenNoMeaningIsInvented(
         string language, string? effective, string? options)
     {
         var cut = Render(IdentificationPayload("2", effective, options), language: language);
+
+        AssertIdentification(cut, language, "2");
+    }
+
+    [Theory]
+    [InlineData("nb")]
+    [InlineData("en")]
+    public void Identification_WhenTheCatalogueListsTheNumericCodeWithoutALabel_ThenTheStoredCodeIsPreserved(
+        string language)
+    {
+        const string options =
+            """
+            [{"value":"2"},
+             {"value":"deIdentified","label":"Avidentifiserte data","labelEn":"De-identified data"}]
+            """;
+        var cut = Render(IdentificationPayload("2", "deIdentified", options), language: language);
 
         AssertIdentification(cut, language, "2");
     }
