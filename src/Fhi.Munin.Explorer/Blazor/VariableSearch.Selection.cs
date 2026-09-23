@@ -457,6 +457,13 @@ public partial class VariableSearch
             _focusSearchAfterSource = false;
             await _searchField.FocusAsync();
         }
+
+        // A host's Sort that arrived mid-fetch, followed now that the fetch has landed.
+        if (!_loading && Sort != _sortParameter)
+        {
+            await FollowSortParameterAsync();
+            StateHasChanged();
+        }
     }
 
     /// <summary>

@@ -79,17 +79,25 @@ public partial class VariableSearch
     /// <summary>The columns the reader turned off through the picker, which a host's Sort does not undo.</summary>
     private readonly HashSet<ResultColumn> _hiddenByReader = [];
 
+    /// <summary>Whether an untouched Status column is on screen because a host's Sort named it.</summary>
+    /// <remarks>
+    /// Not <see cref="_statusColumnChosen"/>, which would pin it for good: the filter takes it back
+    /// the first time «Vis historiske» is in force, as it would had the link carried that too.
+    /// </remarks>
+    private bool _statusShownForSort;
+
     /// <summary>Whether a column is on screen.</summary>
     private bool ColumnVisible(ResultColumn column) => column switch
     {
         ResultColumn.SaveToList => ShowSaveButton && !_hiddenColumns.Contains(column),
-        ResultColumn.Status when !_statusColumnChosen => ShowStatusColumn || StatusIsAllThatIsLeft,
+        ResultColumn.Status when !_statusColumnChosen =>
+            ShowStatusColumn || StatusIsAllThatIsLeft || _statusShownForSort,
         _ => !_hiddenColumns.Contains(column),
     };
 
     // A Sort the host hands in — a restored link, or a later change — shows its column as if ticked,
     // so the order has a header carrying aria-sort; one the reader hid through the picker stays
-    // hidden, and the filter can still take Status away afterwards. (Fhi.Metadata-jqarq)
+    // hidden, and Status is held only until «Vis historiske» takes it over. (Fhi.Metadata-jqarq)
     private void ShowRestoredSortColumn()
     {
         if (ColumnSortedBy(_sort) is not { } column
@@ -101,7 +109,7 @@ public partial class VariableSearch
 
         if (column == ResultColumn.Status)
         {
-            _statusColumnChosen = true;
+            _statusShownForSort = true;
         }
 
         _hiddenColumns.Remove(column);

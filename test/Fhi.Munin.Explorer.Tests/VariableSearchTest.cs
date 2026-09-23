@@ -125,6 +125,7 @@ public class VariableSearchTest : ExplorerTestContext
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public int Calls { get; private set; }
+        public SortField LastSort { get; private set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
@@ -133,6 +134,7 @@ public class VariableSearchTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             Calls++;
+            LastSort = sort;
             return Calls == 1 && firstAnswer is not null ? Task.FromResult(firstAnswer) : _answer.Task;
         }
 
@@ -1606,14 +1608,110 @@ public class VariableSearchTest : ExplorerTestContext
         // The host is holding an order the API never delivered; without the callback its URL would
         // describe rows nobody can see, and Kode would be on screen over a list not ordered by it.
         var raised = new List<SortField>();
+        var directions = new List<SortDirection>();
         var client = new FailingClient(OnePage(Variable("1. Tale", "KODE")));
-        var cut = RenderWith(client, b => b.Add(c => c.SortChanged, f => raised.Add(f)));
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SortChanged, f => raised.Add(f))
+            .Add(c => c.DirectionChanged, d => directions.Add(d)));
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code).Add(c => c.Direction, SortDirection.Descending));
+
+        Assert.Equal([SortField.Default], raised);
+        Assert.Equal([SortDirection.Ascending], directions);
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
+        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostChangesSortOffPageOne_ThenTheListGoesBackToPageOneAndTheHostIsTold()
+    {
+        // Reordering renumbers every page, and a host mirroring the page into its URL is holding 3.
+        var pages = new List<int>();
+        var client = new PagedClient(312);
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Page, 3)
+            .Add(c => c.PageChanged, p => pages.Add(p)));
+
+        pages.Clear(); // the mount echoes the page it was given
 
         cut.Render(b => b.Add(c => c.Sort, SortField.Code));
 
-        Assert.Equal([SortField.Default], raised);
+        Assert.Equal(1, client.LastPage);
+        Assert.Equal([1], pages);
+        Assert.Equal("1/13", Position(cut));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostChangesSortOffPageOneAndTheFetchFails_ThenTheOrderAndThePageStay()
+    {
+        // The whole rollback, not just the field: the request was page 3 in the old order, so no
+        // PageChanged moves the host off 3 and both callbacks name the order still in force.
+        var sorts = new List<SortField>();
+        var directions = new List<SortDirection>();
+        var pages = new List<int>();
+        var client = new PagedClient(312);
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Page, 3)
+            .Add(c => c.SortChanged, f => sorts.Add(f))
+            .Add(c => c.DirectionChanged, d => directions.Add(d))
+            .Add(c => c.PageChanged, p => pages.Add(p)));
+
+        pages.Clear();
+        client.Fail = true;
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code).Add(c => c.Direction, SortDirection.Descending));
+
+        Assert.Equal([SortField.Default], sorts);
+        Assert.Equal([SortDirection.Ascending], directions);
+        Assert.Empty(pages);
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__code"));
-        Assert.False(Ticked(ColumnToggle(cut, "Kode")));
+    }
+
+    [Fact]
+    public void Columns_WhenTheHostChangesSortWhileAFetchIsInFlight_ThenItIsFollowedOnceThatFetchLands()
+    {
+        // Refused, a host that does not bind would keep a Sort nothing ever applied, and the same
+        // value handed back later would look like an echo. Deferred, it arrives. (Fhi.Metadata-jqarq)
+        var sorts = new List<SortField>();
+        var client = new SlowClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.SortChanged, f => sorts.Add(f)));
+
+        ClickSort(cut, "Kilde"); // stalls
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        Assert.Equal(2, client.Calls);
+        Assert.Empty(sorts);
+
+        client.Answer(OnePage(Variable("1. Tale", "KODE")));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(3, client.Calls);
+            Assert.Equal(SortField.Code, client.LastSort);
+            Assert.Equal("ascending",
+                         cut.Find(".munin-explorer-dataitem-header__code").GetAttribute("aria-sort"));
+        });
+
+        // The reader's press is reported when it lands; the host's own Sort needs no echo.
+        Assert.Equal([SortField.Kilde], sorts);
+    }
+
+    [Fact]
+    public void Columns_WhenARestoredStatusSortIsFollowedByTheHistoricalFilter_ThenTheFilterTakesStatusOver()
+    {
+        // Shown for the sort, not chosen by the reader: the same link with «Vis historiske» on would
+        // let the filter take Status away, so this one does too once that filter has been in force.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client, b => b.Add(c => c.Sort, SortField.Status));
+
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-dataitem-header__status"));
+
+        ClickFacet(cut, "Vis historiske");
+        ClickFacet(cut, "Vis historiske");
+
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__status"));
+        Assert.Equal(SortField.Status, client.LastSort);
+        Assert.Contains("sortert på Status", StatusLine(cut));
     }
 
     [Fact]
@@ -2495,6 +2593,9 @@ public class VariableSearchTest : ExplorerTestContext
         public SortDirection LastDirection { get; private set; }
         public int Calls { get; private set; }
 
+        /// <summary>Fail every search from the next one on.</summary>
+        public bool Fail { get; set; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default,
@@ -2507,6 +2608,11 @@ public class VariableSearchTest : ExplorerTestContext
             LastSort = sort;
             LastDirection = direction;
             Calls++;
+
+            if (Fail)
+            {
+                throw new HttpRequestException("nede");
+            }
 
             return Task.FromResult(ResultPage(totalCount, page, rowsPerPage));
         }

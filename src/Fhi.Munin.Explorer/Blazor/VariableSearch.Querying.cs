@@ -194,17 +194,19 @@ public partial class VariableSearch
         await NotifyPageChangedAsync();
     }
 
-    /// <summary>The <see cref="Sort"/> this component last received, so a change can be told from an echo.</summary>
-    private SortField _sortParameter;
-
     /// <summary>Reorders by a <see cref="Sort"/> the host changed after the first render.</summary>
     /// <remarks>
     /// Keyed on <see cref="Sort"/> alone: <see cref="SortAsync"/> raises the field and then the
     /// direction, so a host re-rendering between the two hands back a direction still one step behind.
+    /// <para>
+    /// Deferred rather than refused while a fetch is in flight: <see cref="_sortParameter"/> stays
+    /// put, so <c>OnAfterRenderAsync</c> follows it once the fetch has landed and a host that does
+    /// not bind is not left holding a Sort it will never see applied.
+    /// </para>
     /// </remarks>
     private async Task FollowSortParameterAsync()
     {
-        if (Sort == _sortParameter)
+        if (Sort == _sortParameter || _loading)
         {
             return;
         }
@@ -220,14 +222,6 @@ public partial class VariableSearch
         var previousDirection = _direction;
         var previousPage = _page;
         var previousKeepPager = _keepPager;
-
-        // SortAsync's guard and rollback, with the host told what is still in force: it is the one
-        // holding the order that did not arrive, and a URL left on it would describe unseen rows.
-        if (_loading)
-        {
-            await RaiseAsync(SortChanged, _sort, Log);
-            return;
-        }
 
         _sort = Sort;
         _direction = Direction;
@@ -712,6 +706,12 @@ public partial class VariableSearch
             // else started came back, it is a dead control that the atomic alert region reads out
             // again beside every later failure — RetryRowsAsync puts its own back, and says why.
             _failedRows = null;
+
+            // Rows arrived with «Vis historiske» in force, so from here the filter owns Status.
+            if (ShowStatusColumn)
+            {
+                _statusShownForSort = false;
+            }
 
             return true;
         }
