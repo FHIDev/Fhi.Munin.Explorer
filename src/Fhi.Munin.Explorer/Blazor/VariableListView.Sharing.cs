@@ -199,6 +199,7 @@ public sealed partial class VariableListView
         }
 
         _openCode = normalized;
+        SharedListFailure failure;
 
         try
         {
@@ -209,29 +210,35 @@ public sealed partial class VariableListView
                 return false;
             }
 
-            if (shared is null)
-            {
-                _failedCode = normalized;
-                _sharedListFailure = SharedListFailure.NotFound;
-            }
-            else
+            if (shared is not null)
             {
                 _sharedList = shared;
                 _saveSharedName = shared.Name;
                 return true;
             }
+
+            failure = SharedListFailure.NotFound;
         }
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused the shared list {Code}", normalized);
-            _sharedListFailure = SharedListFailure.Throttled;
+            failure = SharedListFailure.Throttled;
         }
         catch (Exception ex)
         {
             // Uncaught, this takes the circuit and the host's page with it.
             Log?.LogError(ex, "could not read the shared list {Code}", normalized);
-            _sharedListFailure = SharedListFailure.Failed;
+            failure = SharedListFailure.Failed;
         }
+
+        // A code opened since this one owns the view; this answer must not clear or mark it.
+        if (_openCode != normalized)
+        {
+            return false;
+        }
+
+        _failedCode = normalized;
+        _sharedListFailure = failure;
 
         // Signed in, the reader's own lists come back under the sentence; signed out the code stays
         // so the tab it opened stays, with the sentence and a way to close it.

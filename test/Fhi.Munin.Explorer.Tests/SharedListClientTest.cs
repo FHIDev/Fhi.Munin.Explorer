@@ -190,6 +190,21 @@ public class SharedListClientTest
         Assert.Null(shared.Items[1].DataFrom);
     }
 
+    /// <summary>Runa's cloneListFromSnapshot still reads the older ids-only snapshot, so this does too.</summary>
+    [Fact]
+    public async Task GetSharedListAsync_WhenTheSnapshotCarriesOnlyVariableIds_ThenTheyAreReadInOrderOnce()
+    {
+        var handler = StubHttpHandler.Ok($$"""
+            {"name":"Eldre liste","variableIds":["{{Two}}","ikke-en-guid","{{One}}","{{Two}}",42]}
+            """);
+
+        var shared = await Client(handler).GetSharedListAsync("AB12CD");
+
+        Assert.NotNull(shared);
+        Assert.Equal([Two, One], shared.Items.Select(i => i.VariableId));
+        Assert.All(shared.Items, i => Assert.Null(i.VariableName));
+    }
+
     [Fact]
     public async Task GetSharedListAsync_WhenTheSnapshotHasNoName_ThenTheNameIsEmpty()
     {

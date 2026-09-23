@@ -89,9 +89,17 @@ public class SharedListViewTest : ExplorerTestContext
             return Task.FromResult(code);
         }
 
+        /// <summary>Reads left in flight, by code, so a test can finish them out of order.</summary>
+        public Dictionary<string, TaskCompletionSource<SharedList?>> Hanging { get; } = [];
+
         public override Task<SharedList?> GetSharedListAsync(string? code, CancellationToken cancellationToken = default)
         {
             SharedReads++;
+
+            if (code is not null && Hanging.TryGetValue(code, out var hanging))
+            {
+                return hanging.Task;
+            }
 
             if (SharedThrows is not null)
             {
@@ -349,6 +357,29 @@ public class SharedListViewTest : ExplorerTestContext
         Assert.Contains("Kollegas liste", cut.Markup);
         Assert.Contains("Delt liste", cut.Markup);
         Assert.False(HasButton(cut, "Fjern"));
+    }
+
+    [Fact]
+    public async Task Open_WhenAnEarlierCodeFailsAfterALaterOneOpened_ThenTheLaterListStays()
+    {
+        var store = new ShareStore();
+        store.ByCode["BBBBBB"] = new SharedList("Den nyere listen", Three);
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] };
+        var earlier = new TaskCompletionSource<SharedList?>();
+        client.Hanging["AAAAAA"] = earlier;
+
+        var cut = RenderView(client, shareCode: "AAAAAA");
+
+        Button(cut, "Åpne delt liste").Click();
+        Labelled(cut, "Delekode for listen du vil åpne").Change("BBBBBB");
+        Button(cut, "Åpne listen").Click();
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        await cut.InvokeAsync(() => earlier.SetException(new HttpRequestException("500")));
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Assert.Contains("Den nyere listen", cut.Markup);
+        Assert.Equal("", Alert(cut));
     }
 
     // -----------------------------------------------------------------------
