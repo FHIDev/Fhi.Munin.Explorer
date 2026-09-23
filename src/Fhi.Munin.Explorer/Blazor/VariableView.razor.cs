@@ -141,7 +141,8 @@ public sealed partial class VariableView : ComponentBase
     /// DataType earns its place twice over: it is the only filled-in key in its group on a typical
     /// variable, so dropping it drops the group and leaves the five Runa shows. Beskrivelse is the
     /// ingress under the name, which is where a variable's description has always been read — the
-    /// same call <see cref="KildeView"/> makes for the same field (Fhi.Metadata-bct95).
+    /// same call <see cref="KildeView"/> makes for the same field (Fhi.Metadata-bct95). PreferredTerm
+    /// is the page title (Fhi.Metadata-zg89n).
     /// <para>
     /// The drill-in panel keeps a set of its own — <c>VariableSearch.PanelDrawnElsewhere</c> — and
     /// the difference is real rather than drift: it spells the description out too, and has no
@@ -149,7 +150,10 @@ public sealed partial class VariableView : ComponentBase
     /// </para>
     /// </remarks>
     private static readonly IReadOnlySet<string> DrawnElsewhere =
-        new HashSet<string>(StringComparer.Ordinal) { "DataType", CatalogueColumns.Description };
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "DataType", CatalogueColumns.Description, CatalogueColumns.PreferredTerm,
+        };
 
     /// <summary>Where the variable sits in the catalogue, as the open row's panel draws it.</summary>
     /// <remarks>

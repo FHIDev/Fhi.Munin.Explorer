@@ -1,0 +1,2 @@
+category: Fixed
+- **A section the catalogue places a kilde's, datasamling's or variable's name, code, short name or kildetype in is no longer drawn empty** - These column-backed values are now merged into the values the detail pages draw placed sections from, the same way the description and legal basis already were. Where the page already shows one - the title, the identifier line under it, or the kilde's Kildetype row - it is not repeated as a section row. (Fhi.Metadata-zg89n)

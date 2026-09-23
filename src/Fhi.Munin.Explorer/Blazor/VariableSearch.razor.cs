@@ -1526,13 +1526,12 @@ public sealed partial class VariableSearch : ComponentBase
     /// Keys this panel draws itself, so its Egenskaper list does not repeat them.
     /// </summary>
     /// <remarks>
-    /// Beskrivelse alone, and that is where this differs from
-    /// <c>VariableView.DrawnElsewhere</c>: the Identifikasjon list above spells the
-    /// description out, while DataType has no block of its own here the way it has on the detail
-    /// page — suppressing it would take the row off the one surface that draws it.
+    /// Beskrivelse, which the Identifikasjon list above spells out, and PreferredTerm, which names the
+    /// row the panel opens from. DataType is where this differs from <c>VariableView.DrawnElsewhere</c>:
+    /// it has no block of its own here, so suppressing it would take the row off the one surface that draws it.
     /// </remarks>
     private static readonly IReadOnlySet<string> PanelDrawnElsewhere =
-        new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.Description };
+        new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.Description, CatalogueColumns.PreferredTerm };
 
     /// <summary>Which tab of the open panel is showing.</summary>
     /// <remarks>

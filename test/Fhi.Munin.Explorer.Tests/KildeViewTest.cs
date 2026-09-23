@@ -2614,4 +2614,40 @@ public class KildeViewTest : ExplorerTestContext
 
         return string.Concat(blocks);
     }
+
+    [Fact]
+    public void Metadata_WhenTheCataloguePlacesTheIdentityColumns_ThenNoneIsDrawnASecondTimeAsASectionRow()
+    {
+        // Merged since Fhi.Metadata-zg89n, so a placement now draws them: the name block has the
+        // name, the code and the short name, and Kildeinformasjon the kildetype in this package's words.
+        var cut = Render(Kilde() with
+        {
+            PropertyMetadata =
+            [
+                Placed("Formaal", 10, "om-registeret", "Om registeret", "Formål"),
+                Placed(CatalogueColumns.PreferredTerm, 20, "om-registeret", "Om registeret", "Navn"),
+                Placed(CatalogueColumns.Code, 30, "om-registeret", "Om registeret", "Kode"),
+                Placed(CatalogueColumns.ShortName, 40, "om-registeret", "Om registeret", "Kortnavn"),
+                Placed(CatalogueColumns.Kildetype, 50, "om-registeret", "Om registeret", "Type kilde"),
+            ],
+            Sections = [Section("om-registeret", "Om registeret", 1000)],
+        });
+
+        Assert.Equal(["Formål"], Labels(cut.Find("section#section-om-registeret dl.munin-explorer-page__fields")));
+    }
+
+    [Fact]
+    public void Metadata_WhenTheNameIsEmpty_ThenAPlacedKortNavnIsTheSectionsToDraw()
+    {
+        // The identifier line only shows under a name, so without one the short name is on no other
+        // line of the page and suppressing it would drop it.
+        var cut = Render(Kilde() with
+        {
+            PreferredTerm = "",
+            PropertyMetadata = [Placed(CatalogueColumns.ShortName, 10, "om-registeret", "Om registeret", "Kortnavn")],
+            Sections = [Section("om-registeret", "Om registeret", 1000)],
+        });
+
+        Assert.Equal(["Kortnavn"], Labels(cut.Find("section#section-om-registeret dl.munin-explorer-page__fields")));
+    }
 }
