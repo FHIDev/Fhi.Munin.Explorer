@@ -23,6 +23,7 @@ BASE="http://localhost:${PORT}"
 STUB_PORT="${ACCESSIBILITY_STUB_PORT:-5098}"
 STUB_BASE="http://127.0.0.1:${STUB_PORT}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 
 # What the scan visits, each as `path::state` naming a state in scripts/axe-states.mjs. Every
 # state waits for content first, the list pages included: axe reports no violations in a page whose
@@ -150,11 +151,36 @@ if ! curl -fsS -o /dev/null --max-time 5 "${STUB_BASE}/api/explorer/kilder" 2>/d
   exit 2
 fi
 
+# Built here and started below, rather than `dotnet run`: that is a launcher which starts the app
+# as a SEPARATE child, so nothing $! can name is the server, and the trap killed a shell while
+# ModernHost kept 5099. Started this way the host is one process, as the stub already was.
+echo "==> building ModernHost"
+if ! dotnet build "$HOST_PROJECT" --nologo -v quiet >/tmp/accessibility-build.log 2>&1; then
+  echo "ModernHost would not build - TOOLING failure." >&2
+  tail -20 /tmp/accessibility-build.log >&2
+  exit 2
+fi
+
+# set +e, because a plain assignment carries the substitution's status: `set -e` would abort here
+# on an msbuild that failed, before the message below - and with its stderr on the build log rather
+# than the screen, that abort says nothing at all.
+set +e
+HOST_DLL="$(dotnet msbuild "$HOST_PROJECT" -getProperty:TargetPath -nologo 2>>/tmp/accessibility-build.log | tr -d '\r')"
+located=$?
+set -e
+if [ "$located" -ne 0 ] || [ -z "$HOST_DLL" ] || [ ! -f "$HOST_DLL" ]; then
+  echo "could not find what the ModernHost build produced - TOOLING failure." >&2
+  tail -20 /tmp/accessibility-build.log >&2
+  exit 2
+fi
+
 echo "==> starting ModernHost on ${BASE}"
-(
-  cd "$ROOT"
-  MuninExplorer__ApiBaseUrl="$STUB_BASE" dotnet run --project samples/ModernHost --urls "$BASE" >/tmp/accessibility-host.log 2>&1
-) &
+# The environment and the content root `dotnet run` would have supplied, from launchSettings.json
+# and the project directory. Nothing reads either when the build output is started directly, and
+# the sample's stylesheet and the RCL's interop are Development-only assets.
+MuninExplorer__ApiBaseUrl="$STUB_BASE" ASPNETCORE_ENVIRONMENT=Development \
+  dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/ModernHost" \
+  >/tmp/accessibility-host.log 2>&1 &
 host_pid=$!
 
 echo "==> waiting for the host"

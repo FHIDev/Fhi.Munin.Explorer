@@ -42,6 +42,7 @@ BASE="http://localhost:${PORT}"
 STUB_PORT="${HOSTILE_STUB_PORT:-5096}"
 STUB_BASE="http://127.0.0.1:${STUB_PORT}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+HOST_PROJECT="$ROOT/samples/HostileHost/HostileHost.csproj"
 
 # `explorer-tabs` is the search results as they load; `explorer-list-tab` is the second tab open,
 # which is the state defect 2 was found in and the only one where a panel is asked to be hidden at
@@ -104,15 +105,6 @@ cleanup() {
       wait "$pid" 2>/dev/null || true
     fi
   done
-  # `dotnet run` is a launcher: killing it leaves the app it started holding the port, and the
-  # next run then refuses to start against an orphan it cannot see. On a CI runner the job ends
-  # and the point is moot; locally this is the difference between a script you can run twice and
-  # one you cannot. Both forms, because neither is enough on its own — Git Bash's pkill does not
-  # match Windows process command lines, and taskkill does not exist on the runner.
-  pkill -f 'HostileHost' 2>/dev/null || true
-  if command -v taskkill >/dev/null 2>&1; then
-    taskkill //F //IM HostileHost.exe >/dev/null 2>&1 || true
-  fi
 }
 trap cleanup EXIT
 
@@ -169,11 +161,36 @@ else
   echo "==> STILER: the pinned Fhi.Helsedata.Stiler package, as helsedata restore it"
 fi
 
+# Built here and started below, rather than `dotnet run`: that is a launcher which starts the app
+# as a SEPARATE child, so nothing $! can name is the server, and the trap killed a shell while
+# HostileHost kept the port. Started this way the host is one process, as the stub already was.
+echo "==> building HostileHost"
+if ! dotnet build "$HOST_PROJECT" "${STILER_ARGS[@]}" --nologo -v quiet >/tmp/hostile-build.log 2>&1; then
+  echo "HostileHost would not build - TOOLING failure." >&2
+  tail -20 /tmp/hostile-build.log >&2
+  exit 2
+fi
+
+# set +e, because a plain assignment carries the substitution's status: `set -e` would abort here
+# on an msbuild that failed, before the message below - and with its stderr on the build log rather
+# than the screen, that abort says nothing at all.
+set +e
+HOST_DLL="$(dotnet msbuild "$HOST_PROJECT" "${STILER_ARGS[@]}" -getProperty:TargetPath -nologo 2>>/tmp/hostile-build.log | tr -d '\r')"
+located=$?
+set -e
+if [ "$located" -ne 0 ] || [ -z "$HOST_DLL" ] || [ ! -f "$HOST_DLL" ]; then
+  echo "could not find what the HostileHost build produced - TOOLING failure." >&2
+  tail -20 /tmp/hostile-build.log >&2
+  exit 2
+fi
+
 echo "==> starting HostileHost on ${BASE}"
-(
-  cd "$ROOT"
-  MuninExplorer__ApiBaseUrl="$STUB_BASE" dotnet run --project samples/HostileHost "${STILER_ARGS[@]}" --urls "$BASE" >/tmp/hostile-host.log 2>&1
-) &
+# The environment and the content root `dotnet run` would have supplied, from launchSettings.json
+# and the project directory. Nothing reads either when the build output is started directly, and
+# Stiler's stylesheet is served as a Development static web asset.
+MuninExplorer__ApiBaseUrl="$STUB_BASE" ASPNETCORE_ENVIRONMENT=Development \
+  dotnet "$HOST_DLL" --urls "$BASE" --contentRoot "$ROOT/samples/HostileHost" \
+  >/tmp/hostile-host.log 2>&1 &
 host_pid=$!
 
 echo "==> waiting for the host"
