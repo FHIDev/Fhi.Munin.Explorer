@@ -3150,7 +3150,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 
-/* Provisional helsedata-based stand-in; published rules are tracked by Fhi.Metadata-wihod. */
+/* Stand-in for Stiler's published hierarchy rules; assert-sample-css-matches-stiler.sh compares them. */
 .munin-explorer-hierarchy {
   color: var(--dark);
   font-size: 0.875rem;
@@ -3210,7 +3210,7 @@ table.munin-explorer-data-list tbody th {
   width: 1em;
   flex: none;
 }
-/* The grouping folder recedes behind the coloured category glyphs, as it does in Kelda. --grey60
+/* The grouping folder recedes; category glyphs keep the text colour, as in Stiler. --grey60
    rather than the --dark the clear button's glyph takes: this one is aria-hidden decoration beside
    a name that already says what the row is, so 1.4.11 has nothing to measure. It reaches 7.23:1. */
 .munin-explorer-hierarchy__icon[data-node-icon="kilde"] {

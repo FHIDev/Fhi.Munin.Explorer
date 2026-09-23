@@ -36,8 +36,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's is not — so
 #     neither its chip row nor the hierarchy trail over its results is ever on screen for axe,
 #     and a green run says nothing about either (Fhi.Metadata-oj286);
-#   - error states; empty results and a facet search matching nothing are covered by tree-*;
-#   - hierarchy branches beyond the two opened levels in kilde-hierarchy-expanded;
+#   - error states other than kilde-hierarchy-error; empty results and a facet search matching
+#     nothing are covered by tree-*, and an empty hierarchy by kilde-hierarchy-empty;
+#   - hierarchy shapes neither the captured kilde nor kilde-hierarchy-deep's synthetic one holds;
 #   - the English texts, and samples/LegacyHost, the same component in the other host;
 #   - the list tab's own create, rename and delete forms, and the annotation field in a row.
 # Each is another page load and settle, about ten seconds, and none carries the risk the
@@ -81,6 +82,11 @@ TARGETS=(
   "/kilder::kilde-hierarchy-open"
   "/kilder::kilde-datasamling"
   "/kilder::kilde-hierarchy-metadata"
+  "/kilder?kilde=dddddddd-0000-4000-8000-000000000001::kilde-hierarchy-deep"
+  "/kilder?kilde=dddddddd-0000-4000-8000-000000000002::kilde-hierarchy-empty"
+  "/kilder?kilde=dddddddd-0000-4000-8000-000000000003::kilde-hierarchy-error"
+  "/::variable-kilde-hierarchy"
+  "/::variable-kilde-hierarchy-icons-off"
   "/kilder::kilder-expanded"
   "/kilder::kilder-columns"
   "/kilder::kilde-facets"

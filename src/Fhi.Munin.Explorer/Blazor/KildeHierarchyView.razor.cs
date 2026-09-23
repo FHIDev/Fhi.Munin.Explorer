@@ -28,7 +28,7 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     [Parameter] public string? Language { get; set; }
 
     /// <summary>
-    /// Whether the tree draws a node icon in front of each name — a folder on a delkilde and one
+    /// Whether the tree draws a node icon for each name — a folder on a delkilde and one
     /// glyph per datakategori on a datasamling. On by default; a variabelgruppe has no icon either
     /// way. <b>The variable counts are not affected</b>: turning this off removes the glyphs and
     /// the words that stand in for them, and nothing else.
@@ -36,9 +36,11 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
     /// <remarks>
     /// The package draws the shapes but decides nothing about their size or colour. Each glyph is
     /// an inline <c>&lt;svg&gt;</c> at <c>1em</c> in <c>currentColor</c>, wearing
-    /// <c>munin-explorer-hierarchy__icon</c> and a <c>data-node-icon</c> naming its datakategori,
-    /// so a host stylesheet is what makes a category recognisable at a glance rather than only
-    /// distinguishable by shape.
+    /// <c>munin-explorer-hierarchy__icon</c> and a <c>data-node-icon</c> naming its datakategori.
+    /// The slot is written before the name; where it <i>draws</i> is the stylesheet's, and
+    /// helsedata's puts the hierarchy's after the name and count and the facet panel's before.
+    /// helsedata's stylesheet colours no datakategori, deliberately: shape and the spoken words tell
+    /// them apart, and only the delkilde folder is muted.
     /// <para>
     /// A way of drawing the tree rather than something the reader is looking at, so like
     /// <see cref="VariableSearch.LevelLines"/> it is read once at mount and the package remembers

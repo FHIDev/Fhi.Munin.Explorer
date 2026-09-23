@@ -16,8 +16,8 @@ internal sealed record NodeIconClasses(string Group, string Glyph)
         new("munin-explorer-filters__icons", "munin-explorer-filters__icon");
 }
 
-/// <summary>The decorative icon slot a row draws in front of its label, in the kilde hierarchy and
-/// in the facet panels alike.</summary>
+/// <summary>The decorative icon slot a row writes before its label, in the kilde hierarchy and in
+/// the facet panels alike; a host stylesheet decides which side of the label it draws on.</summary>
 internal static class NodeIcons
 {
     /// <summary>No glyphs at all — what a row draws when the host has turned the icons off.</summary>

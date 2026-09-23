@@ -18,6 +18,7 @@
 // test, so the bUnit test that cannot stage the press names the state it defers to.
 
 import { treeStates } from './tree-states.mjs';
+import { hierarchyStates } from './hierarchy-states.mjs';
 import { scrollPast } from './reader-scroll.mjs';
 
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
@@ -40,6 +41,11 @@ export const states = {
   'tree-populated': treeStates['tree-populated'],
   'tree-empty-results': treeStates['tree-empty-results'],
   'tree-no-match': treeStates['tree-no-match'],
+  'kilde-hierarchy-deep': hierarchyStates['kilde-hierarchy-deep'],
+  'kilde-hierarchy-empty': hierarchyStates['kilde-hierarchy-empty'],
+  'kilde-hierarchy-error': hierarchyStates['kilde-hierarchy-error'],
+  'variable-kilde-hierarchy': hierarchyStates['variable-kilde-hierarchy'],
+  'variable-kilde-hierarchy-icons-off': hierarchyStates['variable-kilde-hierarchy-icons-off'],
   'kilde-hierarchy-collapsed': async page => {
     const name = page.getByRole('button', { name: 'Tromsøundersøkelsen', exact: true });
     await name.waitFor({ state: 'visible', timeout: findTimeout });
