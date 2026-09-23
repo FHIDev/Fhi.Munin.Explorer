@@ -13,6 +13,7 @@ public sealed partial class VariableListView
     private string _copyName = "";
     private SaveNameProblem _copyNameProblem;
     private CopyFailure _copyFailure;
+    private string _incompleteCopyName = "";
 
     private bool _confirmingEmpty;
     private bool _emptyInFlight;
@@ -24,7 +25,8 @@ public sealed partial class VariableListView
         None = 0,
         Failed,
         Throttled,
-        Incomplete
+        Incomplete,
+        IncompleteElsewhere
     }
 
     private string CopyToggleId => $"munin-explorer-copy-toggle-{_instance}";
@@ -50,6 +52,7 @@ public sealed partial class VariableListView
         CopyFailure.Throttled => T.RateLimitError,
         CopyFailure.Failed => T.SaveError,
         CopyFailure.Incomplete => T.CopyIncomplete,
+        CopyFailure.IncompleteElsewhere => T.CopyIncompleteElsewhere(_incompleteCopyName),
         _ => null
     };
 
@@ -102,8 +105,7 @@ public sealed partial class VariableListView
     }
 
     /// <summary>
-    /// Makes a new list under the name in the field holding every variable of the one on screen,
-    /// then shows it. The annotations stay behind: there is no bulk write for them.
+    /// Copies every variable on screen into a new list, then shows it. No annotations: no bulk write.
     /// </summary>
     private async Task CopyListAsync()
     {
@@ -113,6 +115,7 @@ public sealed partial class VariableListView
         }
 
         var name = _copyName.Trim();
+        var movesAtStart = _shownListMoves;
 
         ForgetFailures();
         _copyNameProblem = SaveNameProblem.None;
@@ -129,7 +132,12 @@ public sealed partial class VariableListView
                 return;
             }
 
-            var ids = (await ReadWholeListAsync(source)).Select(i => i.VariableId).ToList();
+            // Gone in another tab: no copy at all beats one that silently holds nothing.
+            if (await ReadWholeListAsync(source) is not { } items)
+            {
+                _copyFailure = CopyFailure.Failed;
+                return;
+            }
 
             created = await State.CreateAsync(name);
 
@@ -138,14 +146,9 @@ public sealed partial class VariableListView
                 return;
             }
 
-            // Active before the writes, so the holder counts them against the copy and the save
-            // buttons read its membership — unless the reader has since chosen another list.
-            if (_shownList == source)
-            {
-                await State.SetActiveListAsync(created.Id);
-            }
-
-            foreach (var chunk in ids.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+            // The source stays active through the writes, so the save buttons never write to a copy
+            // that is not on screen; the sibling save of a shared list does the same.
+            foreach (var chunk in items.Select(i => i.VariableId).Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
             {
                 if (!await State.AddVariablesAsync(created.Id, chunk))
                 {
@@ -175,14 +178,27 @@ public sealed partial class VariableListView
             _copyInFlight = false;
         }
 
-        // A reader who chose another list while this ran stays on it; the copy is made regardless.
-        if (created is null || _shownList != source)
+        if (created is null)
         {
+            return;
+        }
+
+        // A reader who chose another list meanwhile stays on it, even one who came back to the source.
+        if (_shownListMoves != movesAtStart)
+        {
+            if (_copyFailure == CopyFailure.Incomplete)
+            {
+                _copyFailure = CopyFailure.IncompleteElsewhere;
+                _incompleteCopyName = created.Name;
+            }
+
+            await CountTheCopyAsync(created.Id);
             return;
         }
 
         // Nothing is rolled back: the copy is shown with whatever landed, and the alert says so.
         _shownList = created.Id;
+        _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
 
@@ -190,12 +206,34 @@ public sealed partial class VariableListView
         _copying = true;
         _copyName = T.DefaultCopyName(created.Name);
 
+        try
+        {
+            await State.SetActiveListAsync(created.Id);
+        }
+        catch (Exception ex)
+        {
+            Log?.LogError(ex, "could not switch to the copy {ListId}", created.Id);
+        }
+
+        await CountTheCopyAsync(created.Id);
         await LoadPageAsync();
     }
 
+    // The adds were made while the copy was not active, so the holder counted none of them.
+    private async Task CountTheCopyAsync(Guid copy)
+    {
+        try
+        {
+            await State!.RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "could not read the lists again after copying into {ListId}", copy);
+        }
+    }
+
     /// <summary>
-    /// Takes every variable out of the list on screen, once confirmed. The list and its name stay.
-    /// Unnarrowed by the ticked kilder: the question says every variable.
+    /// Empties the list on screen once confirmed, unnarrowed by the ticked kilder. Its name stays.
     /// </summary>
     private async Task EmptyListAsync()
     {
@@ -210,11 +248,15 @@ public sealed partial class VariableListView
 
         try
         {
-            var ids = (await ReadWholeListAsync(list)).Select(i => i.VariableId).ToList();
+            if (await ReadWholeListAsync(list) is not { } items)
+            {
+                _emptyFailure = ListActionFailure.Failed;
+                return;
+            }
 
             // Through the holder, which drops the removed ids from its membership, so the search
             // rows' save buttons redraw as unsaved.
-            foreach (var chunk in ids.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+            foreach (var chunk in items.Select(i => i.VariableId).Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
             {
                 if (!await State.RemoveVariablesAsync(list, chunk))
                 {

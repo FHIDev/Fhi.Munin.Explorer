@@ -48,6 +48,12 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         /// <summary>An exception every add throws, standing in for a 500 part-way through a copy.</summary>
         public Exception? AddThrows { get; init; }
 
+        /// <summary>The add call, counted from 1, from which every add throws; the earlier ones land.</summary>
+        public int? AddThrowsFrom { get; init; }
+
+        /// <summary>Set part-way through a test, so the source reads as deleted in another tab.</summary>
+        public bool SourceGone { get; set; }
+
         /// <summary>What every add answers when it does not throw: false is a refusal without a fault.</summary>
         public bool AddAccepted { get; init; } = true;
 
@@ -127,6 +133,11 @@ public class CopyAndEmptyListTest : ExplorerTestContext
                 throw AddThrows;
             }
 
+            if (AddBatches.Count >= AddThrowsFrom)
+            {
+                throw new HttpRequestException("500");
+            }
+
             if (!AddAccepted)
             {
                 return false;
@@ -177,7 +188,7 @@ public class CopyAndEmptyListTest : ExplorerTestContext
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
             CancellationToken cancellationToken = default)
         {
-            if (!_items.TryGetValue(id, out var items))
+            if ((SourceGone && id == SourceId) || !_items.TryGetValue(id, out var items))
             {
                 return Task.FromResult<Page<VariableListItem>?>(null);
             }
@@ -310,14 +321,15 @@ public class CopyAndEmptyListTest : ExplorerTestContext
     }
 
     // -----------------------------------------------------------------------
-    // AC3: an add that fails leaves the copy shown with what landed and says it is incomplete
+    // AC3: a later batch that fails leaves the copy shown with the earlier batches and says it is incomplete
 
     [Fact]
-    public void Copy_WhenAnAddFailsAfterTheListIsMade_ThenTheCopyIsShownAndTheAlertSaysItIsIncomplete()
+    public void Copy_WhenTheSecondBatchFails_ThenTheCopyIsShownWithTheFirstAndTheAlertSaysItIsIncomplete()
     {
-        var client = new ListsClient(Items(3)) { AddThrows = new HttpRequestException("500") };
+        var source = Items(2500);
+        var client = new ListsClient(source) { AddThrowsFrom = 2 };
         var cut = RenderView(client);
-        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+        cut.WaitForAssertion(() => Assert.Equal(25, RowCount(cut)));
 
         Button(cut, "Kopier liste").Click();
         Button(cut, "Kopier listen").Click();
@@ -326,7 +338,30 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.Equal(
             "Kopien er ufullstendig: ikke alle variablene ble kopiert. Listen under viser det som kom med.",
             Alert(cut));
+        Assert.Equal([IMuninExplorerClient.MaxVariablesPerBatch, 500], client.AddBatches);
+        Assert.Equal(IMuninExplorerClient.MaxVariablesPerBatch, client.Added.Count);
+        cut.WaitForAssertion(() => Assert.Equal(25, RowCount(cut)));
+        Assert.Contains("Variabel 0000", cut.Markup);
         Assert.Equal([$"{SourceName} - kopi"], client.Created);
+        Assert.NotEqual(SourceId, State.ActiveListId);
+        cut.WaitForAssertion(() => Assert.Contains($"{SourceName} - kopi (2000 variabler)", cut.Markup));
+    }
+
+    [Fact]
+    public void Copy_WhenTheSourceIsDeletedElsewhereBeforeItIsRead_ThenNoCopyIsMade()
+    {
+        var client = new ListsClient(Items(3));
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        client.SourceGone = true;
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke lagre nå. Prøv igjen om litt.", Alert(cut)));
+        Assert.Empty(client.Created);
+        Assert.Equal(0, client.WriteCalls);
+        Assert.Equal(SourceName, Heading(cut));
     }
 
     [Fact]
@@ -387,7 +422,55 @@ public class CopyAndEmptyListTest : ExplorerTestContext
     }
 
     // -----------------------------------------------------------------------
-    // A reader who chooses another list while a copy runs stays on it, and it stays the active one
+    // The source stays the active list until the copy's writes are done, and a reader who chooses
+    // another list meanwhile stays on it — even one who came back to the source
+
+    [Fact]
+    public async Task Copy_WhileTheVariablesAreAdded_ThenTheSourceStaysTheActiveList()
+    {
+        var hold = new TaskCompletionSource();
+        var client = new ListsClient(Items(3)) { HoldAdd = hold };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Single(client.AddBatches));
+
+        Assert.Equal(SourceId, State.ActiveListId);
+        Assert.Equal(SourceName, Heading(cut));
+
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal($"{SourceName} - kopi", Heading(cut)));
+        Assert.NotEqual(SourceId, State.ActiveListId);
+        Assert.NotEqual(OtherId, State.ActiveListId);
+    }
+
+    [Fact]
+    public async Task Copy_WhenTheReaderLeavesAndComesBackToTheSourceDuringTheAdds_ThenTheSourceStaysShownAndActive()
+    {
+        var hold = new TaskCompletionSource();
+        var client = new ListsClient(Items(3)) { HoldAdd = hold };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Single(client.AddBatches));
+
+        cut.Find("select").Change(OtherId.ToString());
+        cut.WaitForAssertion(() => Assert.Equal("Hjerte og kar", Heading(cut)));
+        cut.Find("select").Change(SourceId.ToString());
+        cut.WaitForAssertion(() => Assert.Equal(SourceName, Heading(cut)));
+
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Contains($"{SourceName} - kopi (3 variabler)", cut.Markup));
+        Assert.Equal(SourceName, Heading(cut));
+        Assert.Equal(SourceId, State.ActiveListId);
+        Assert.Equal("", Alert(cut));
+    }
 
     [Fact]
     public async Task Copy_WhenTheReaderChoosesAnotherListWhileTheVariablesAreAdded_ThenTheyStayOnIt()
@@ -407,7 +490,10 @@ public class CopyAndEmptyListTest : ExplorerTestContext
 
         await cut.InvokeAsync(hold.SetResult);
 
-        cut.WaitForAssertion(() => Assert.StartsWith("Kopien er ufullstendig", Alert(cut)));
+        // Names the copy rather than pointing at the list below, which is not it.
+        cut.WaitForAssertion(() => Assert.Equal(
+            $"Kopien «{SourceName} - kopi» er ufullstendig: ikke alle variablene ble kopiert.",
+            Alert(cut)));
         Assert.Equal("Hjerte og kar", Heading(cut));
         Assert.Equal(OtherId, State.ActiveListId);
         Assert.Equal("false", Button(cut, "Kopier liste").GetAttribute("aria-expanded"));
@@ -496,6 +582,21 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.Equal(25, RowCount(cut));
         Assert.Equal(SourceName, Heading(cut));
         Assert.Equal([IMuninExplorerClient.MaxVariablesPerBatch, 500], client.RemoveBatches);
+    }
+
+    [Fact]
+    public void Empty_WhenTheListIsDeletedElsewhere_ThenTheAlertSaysItFailedAndNothingIsRemoved()
+    {
+        var client = new ListsClient(Items(3));
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        client.SourceGone = true;
+        Button(cut, "Tøm liste").Click();
+        Button(cut, "Ja, tøm listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke endre listen nå. Prøv igjen om litt.", Alert(cut)));
+        Assert.Empty(client.RemoveBatches);
     }
 
     [Fact]

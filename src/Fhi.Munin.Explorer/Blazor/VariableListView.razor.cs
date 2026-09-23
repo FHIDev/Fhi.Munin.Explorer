@@ -124,6 +124,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private Page<VariableListItem>? _page;
     private Guid? _shownList;
+
+    // Moved on every change of the list on screen, so a copy can tell the reader left and came back.
+    private int _shownListMoves;
     private int _pageNumber = 1;
 
     /// <summary>The holder's filter version as of the last change this view acted on.</summary>
@@ -960,6 +963,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _shownList = target;
+        _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
         await LoadPageAsync();
@@ -1010,6 +1014,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _shownList = id;
+        _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
         ForgetFailures();
@@ -1146,6 +1151,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _shownList = created.Id;
+        _shownListMoves++;
         _pageNumber = 1;
         await LoadPageAsync();
     }
@@ -1487,8 +1493,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _ => null
     };
 
-    /// <summary>Every item in the list, unnarrowed, a page of 1000 at a time.</summary>
-    private async Task<List<VariableListItem>> ReadWholeListAsync(Guid list)
+    /// <summary>Every item in the list, unnarrowed, 1000 at a time; null when the list is gone.</summary>
+    private async Task<List<VariableListItem>?> ReadWholeListAsync(Guid list)
     {
         var seen = new HashSet<Guid>();
         var items = new List<VariableListItem>();
@@ -1498,7 +1504,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             var slice = await Client.GetMyListVariablesAsync(list, page, 1000);
 
-            if (slice is null || slice.Items.Count == 0)
+            if (slice is null)
+            {
+                return null;
+            }
+
+            if (slice.Items.Count == 0)
             {
                 break;
             }

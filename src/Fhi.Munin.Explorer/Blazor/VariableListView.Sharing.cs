@@ -322,7 +322,7 @@ public sealed partial class VariableListView
         {
             var items = await ReadWholeListAsync(list);
 
-            if (items.Count == 0 || _shownList != list)
+            if (items is not { Count: > 0 } || _shownList != list)
             {
                 return;
             }
@@ -427,6 +427,7 @@ public sealed partial class VariableListView
         await AnnounceShareCodeAsync(null);
 
         _shownList = created.Id;
+        _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
         await LoadPageAsync();
