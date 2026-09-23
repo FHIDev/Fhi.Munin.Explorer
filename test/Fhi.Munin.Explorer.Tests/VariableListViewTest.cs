@@ -3496,6 +3496,30 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Selector_WhenTheReaderHasSeveralLists_ThenItsLabelWearsNoClassOfOurs()
+    {
+        // It wore munin-explorer-filters__facets, the handle the two facet panels fold behind, on a
+        // label that never folds - so a host redrawing the handle would move or hide a control three
+        // files away. No rule here needs a name at all. (Fhi.Metadata-l9l2n.119)
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
+
+        var label = cut.Find($"{ActionRow} select").ParentElement!;
+
+        Assert.Equal("label", label.LocalName);
+        Assert.Empty(label.ClassList);
+    }
+
+    [Fact]
+    public void Selector_WhenTheReaderHasSeveralLists_ThenItsLabelStillNamesTheControl()
+    {
+        // The class went, the label must not have gone with it: the wrap is the whole association
+        // here - no `for`, and no id to point one at - so removing it leaves an unnamed control.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 });
+
+        Assert.Equal("Velg liste", AccessibleName.Of(cut.Find($"{ActionRow} select")));
+    }
+
+    [Fact]
     public void Actions_WhenTheOneListIsEmpty_ThenTheRowIsNotDrawnAtAll()
     {
         // Both controls in the row are conditional and both are off here, but a fragment that
