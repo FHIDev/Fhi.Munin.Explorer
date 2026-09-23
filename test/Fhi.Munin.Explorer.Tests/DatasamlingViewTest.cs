@@ -848,7 +848,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     [Theory]
     [InlineData("no", "Kvalitetsnote")]
     [InlineData("en", "Quality Note")]
-    public void Kvalitetsnote_WhenItsLabelRepeatsTheSectionHeading_ThenOnlyTheHeadingIsVisible(
+    public void QualityNote_WhenItsLabelRepeatsTheSectionHeading_ThenOnlyTheHeadingIsVisible(
         string language, string label)
     {
         var detail = QualityNoteSectioned();
@@ -878,7 +878,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Kvalitetsnote_WhenItsLabelDiffersFromTheSectionHeading_ThenTheLabelStaysVisible()
+    public void QualityNote_WhenItsLabelDiffersFromTheSectionHeading_ThenTheLabelStaysVisible()
     {
         var detail = QualityNoteSectioned();
         detail = detail with
@@ -894,7 +894,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Kvalitetsnote_WhenItsSectionHasSeveralFields_ThenEveryLabelStaysVisible()
+    public void QualityNote_WhenItsSectionHasSeveralFields_ThenEveryLabelStaysVisible()
     {
         var detail = QualityNoteSectioned();
         var note = detail.PropertyMetadata.Single(entry => entry.Key == "Kvalitetsnote");
@@ -916,6 +916,56 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(["Kvalitetsnote", "Merknad"],
             cut.FindAll("#section-kvalitetsnote dt:not(.screenreader-only)").Select(term => term.TextContent));
+    }
+
+    [Theory]
+    [InlineData("variabler", "Variabler", "Antall variabler")]
+    [InlineData("datakilde", "Datakilde", "Kilde")]
+    public void QualityNote_WhenItsSectionIncludesAdditionalFacts_ThenEveryLabelStaysVisible(
+        string sectionKey, string heading, string appendedLabel)
+    {
+        var detail = Sparse() with
+        {
+            Sections = Placements(SeededSections),
+            PropertyMetadata = [Definition("Kvalitetsnote", heading, "Text", 1, sectionKey)],
+            AdditionalProperties = new Dictionary<string, string?> { ["Kvalitetsnote"] = "Foreløpige tall." },
+            VariableCount = 5,
+            ParentKildeName = "Registeret",
+        };
+        if (sectionKey == "datakilde")
+        {
+            detail = detail with
+            {
+                EffectiveLegalBasis = "Registerforskriften",
+                PropertyMetadata = [.. detail.PropertyMetadata,
+                    Definition(CatalogueColumns.LegalBasis, "Lovverk", "Text", 2, sectionKey)],
+            };
+        }
+
+        var section = Render(detail).Find($"#section-{sectionKey}");
+
+        Assert.Equal(2, section.QuerySelectorAll("dl").Length);
+        Assert.Contains(appendedLabel, section.QuerySelectorAll("dl")[1].QuerySelectorAll("dt")
+            .Select(term => term.TextContent));
+        Assert.Equal(heading, section.QuerySelector("dt")?.TextContent);
+        Assert.Empty(section.QuerySelectorAll("dt.screenreader-only"));
+        Assert.Equal("Foreløpige tall.", section.QuerySelector("dd")?.TextContent.Trim());
+    }
+
+    [Fact]
+    public void QualityNote_WhenNoAdditionalStatisticsAreRendered_ThenTheRepeatedLabelIsHidden()
+    {
+        var detail = Sparse() with
+        {
+            Sections = Placements(SeededSections),
+            PropertyMetadata = [Definition("Kvalitetsnote", "Variabler", "Text", 1, "variabler")],
+            AdditionalProperties = new Dictionary<string, string?> { ["Kvalitetsnote"] = "Foreløpige tall." },
+        };
+
+        var section = Render(detail).Find("#section-variabler");
+
+        Assert.Single(section.QuerySelectorAll("dl"));
+        Assert.Equal("Variabler", section.QuerySelector("dt.screenreader-only")?.TextContent);
     }
 
     // ---------------------------------------------------------------------------------
