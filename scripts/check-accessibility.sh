@@ -33,9 +33,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 #     first has a state of its own now — `variable-whole`, which check-component-state.sh stages to
 #     ask its contents nav a question axe does not ask — and is still not scanned here;
 #   - the pager past page one, and anything reached by searching; the kildeutforsker's own list
-#     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's is not — so
-#     neither its chip row nor the hierarchy trail over its results is ever on screen for axe,
-#     and a green run says nothing about either (Fhi.Metadata-oj286);
+#     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's chip row and
+#     hierarchy trail are too, in variables-facets, since oj286 made the trail a landmark and the
+#     chip the only removal control (Fhi.Metadata-oj286, Fhi.Metadata-ifzlo);
 #   - error states other than kilde-hierarchy-error; empty results and a facet search matching
 #     nothing are covered by tree-*, and an empty hierarchy by kilde-hierarchy-empty;
 #   - hierarchy shapes neither the captured kilde nor kilde-hierarchy-deep's synthetic one holds;
@@ -74,6 +74,7 @@ TARGETS=(
   "/::tree-populated"
   "/::tree-empty-results"
   "/::tree-no-match"
+  "/::variables-facets"
   "/::variable-detail"
   "/kilder::kilde-drilldown"
   "/kilder::kilde-stuckbar"

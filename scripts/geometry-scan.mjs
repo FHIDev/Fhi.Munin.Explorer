@@ -121,8 +121,8 @@ for (const target of targets) {
 
 // A pin scoped to a state name that no longer exists would go quietly inapplicable everywhere and
 // never be run again — the same false green as measuring nothing and reporting success.
-for (const { name, states: appliesTo } of assertions) {
-  for (const scoped of appliesTo ?? []) {
+for (const { name, states: appliesTo, gates } of assertions) {
+  for (const scoped of [...(appliesTo ?? []), ...(gates ?? [])]) {
     if (Object.hasOwn(states, scoped)) continue;
     console.error(`assertion "${name}" is scoped to unknown state "${scoped}" - TOOLING failure.`);
     console.error(`known states: ${Object.keys(states).join(', ')}`);
@@ -168,6 +168,31 @@ try {
 
 let failures = 0;
 let inapplicable = 0;
+let blocked = 0;
+
+// The pins whose `gates` name this state, measured on the page its entry stopped on. Empty when
+// none fails, which leaves an unreachable state the TOOLING failure it always was.
+async function gatingFindings(page, state) {
+  const findings = [];
+  for (const { name, kind, gates, body } of applicable) {
+    if (!(gates ?? []).includes(state)) continue;
+    let finding;
+    try {
+      finding = await page.evaluate(body, selectors);
+    } catch (err) {
+      // Said, not swallowed: a pin that throws found nothing, so it cannot make the state a finding.
+      console.error(`gating assertion "${name}" threw on "${state}" - it measured nothing.`);
+      console.error(String(err?.message ?? err));
+      continue;
+    }
+    // "nothing was measured" is the file's own phrase for a missing control, and a renamed class is
+    // the tooling failure an unreachable state already is - not a defect the pin found.
+    if (finding !== null && !finding.includes('nothing was measured')) {
+      findings.push({ name, kind, finding });
+    }
+  }
+  return findings;
+}
 
 try {
   for (const { url, state, label } of plan) {
@@ -193,14 +218,33 @@ try {
       if (state !== null) {
         // A state that cannot be entered is the scanner failing, not the page: measuring the
         // default state under this state's name is exactly the false green the form exists to end.
+        let entered = true;
         try {
           await states[state](page);
         } catch (err) {
-          console.error(`could not reach state "${state}" on ${url} - TOOLING failure.`);
-          console.error(String(err?.message ?? err));
+          entered = false;
+          const findings = await gatingFindings(page, state);
+          if (findings.length === 0) {
+            console.error(`could not reach state "${state}" on ${url} - TOOLING failure.`);
+            console.error(String(err?.message ?? err));
+            await context.close();
+            await browser.close();
+            process.exit(2);
+          }
+          for (const { name, kind, finding } of findings) {
+            failures += 1;
+            console.log(`    FAIL [${kind}] ${name}`);
+            console.log(`         ${finding}`);
+          }
+          blocked += 1;
+          console.log(`    not entered: "${state}" is reached through what the failure above ` +
+            'measures, so nothing else was measured at this width');
+          console.log(`         ${String(err?.message ?? err).split('\n')[0]}`);
+        }
+        if (!entered) {
+          await page.close();
           await context.close();
-          await browser.close();
-          process.exit(2);
+          continue;
         }
         // Entering a state can click something that scrolls. The header is `position: absolute`
         // at top 0, so "is this control under the header" is a question about scroll offset 0 and
@@ -261,7 +305,8 @@ try {
 }
 
 console.log('');
-const notRun = inapplicable === 0 ? '' : `, and ${inapplicable} did not apply`;
+const notRun = (inapplicable === 0 ? '' : `, and ${inapplicable} did not apply`) +
+  (blocked === 0 ? '' : `; ${blocked} state(s) could not be entered past a failure above`);
 const subset = applicable.length === assertions.length
   ? ''
   : ` Only ${applicable.length} of ${assertions.length} assertions were asked for, so this says` +

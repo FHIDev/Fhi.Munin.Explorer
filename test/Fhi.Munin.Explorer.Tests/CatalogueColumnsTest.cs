@@ -139,4 +139,103 @@ public class CatalogueColumnsTest
 
         Assert.False(CatalogueColumns.Values(kilde, "no").ContainsKey(CatalogueColumns.ValidFrom));
     }
+
+    // The four identity columns a kilde carries with no group and no bag entry: a section the
+    // catalogue places them in came out empty until they were merged (Fhi.Metadata-zg89n).
+    private static KildeDetail Kilde(Dictionary<string, string?>? bag = null, string? shortName = "ALS") =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Code = "K_ALS",
+            ShortName = shortName,
+            PreferredTerm = "Als registeret",
+            Kildetype = "helseregister",
+            AdditionalProperties = bag!,
+        };
+
+    private static DatasamlingDetail Datasamling(Dictionary<string, string?>? bag = null, string? shortName = "INKL") =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            Code = "K_ALS.INKLUSJON",
+            ShortName = shortName,
+            PreferredTerm = "Inklusjon",
+            AdditionalProperties = bag!,
+        };
+
+    [Fact]
+    public void Values_WhenAKildeCarriesItsIdentityColumns_ThenTheRawKildetypeCodeShortNameAndNameAreMerged()
+    {
+        // The raw token and not this package's label for it: the catalogue curates its own words.
+        var values = CatalogueColumns.Values(Kilde(), "no");
+
+        Assert.Equal(("helseregister", "K_ALS", "ALS", "Als registeret"),
+                     (values[CatalogueColumns.Kildetype], values[CatalogueColumns.Code],
+                      values[CatalogueColumns.ShortName], values[CatalogueColumns.PreferredTerm]));
+    }
+
+    [Fact]
+    public void Values_WhenAKildeBagHoldsKortNavn_ThenTheCuratedValueStands()
+    {
+        var values = CatalogueColumns.Values(
+            Kilde(new Dictionary<string, string?> { [CatalogueColumns.ShortName] = Curated }), "no");
+
+        Assert.Equal(Curated, values[CatalogueColumns.ShortName]);
+    }
+
+    [Fact]
+    public void Values_WhenAKildeHasNoShortName_ThenNoKortNavnKeyIsAdded()
+    {
+        Assert.False(CatalogueColumns.Values(Kilde(shortName: null), "no").ContainsKey(CatalogueColumns.ShortName));
+        Assert.False(CatalogueColumns.Values(Kilde(shortName: "  "), "no").ContainsKey(CatalogueColumns.ShortName));
+    }
+
+    [Fact]
+    public void Values_WhenADatasamlingCarriesItsIdentityColumns_ThenCodeShortNameAndNameAreMerged()
+    {
+        var values = CatalogueColumns.Values(Datasamling(), "no");
+
+        Assert.Equal(("K_ALS.INKLUSJON", "INKL", "Inklusjon"),
+                     (values[CatalogueColumns.Code], values[CatalogueColumns.ShortName],
+                      values[CatalogueColumns.PreferredTerm]));
+    }
+
+    [Fact]
+    public void Values_WhenADatasamlingBagHoldsPreferredTerm_ThenTheCuratedValueStands()
+    {
+        var values = CatalogueColumns.Values(
+            Datasamling(new Dictionary<string, string?> { [CatalogueColumns.PreferredTerm] = Curated }), "no");
+
+        Assert.Equal(Curated, values[CatalogueColumns.PreferredTerm]);
+    }
+
+    [Fact]
+    public void Values_WhenADatasamlingHasNoShortName_ThenNoKortNavnKeyIsAdded()
+    {
+        Assert.False(CatalogueColumns.Values(Datasamling(shortName: null), "no").ContainsKey(CatalogueColumns.ShortName));
+        Assert.False(CatalogueColumns.Values(Datasamling(shortName: " "), "no").ContainsKey(CatalogueColumns.ShortName));
+    }
+
+    [Fact]
+    public void Values_WhenAVariableHasAName_ThenPreferredTermIsMerged()
+    {
+        Assert.Equal("1. Tale", CatalogueColumns.Values(Variable([], Column))[CatalogueColumns.PreferredTerm]);
+    }
+
+    [Fact]
+    public void Values_WhenAVariableBagHoldsPreferredTerm_ThenTheCuratedValueStands()
+    {
+        var values = CatalogueColumns.Values(
+            Variable(new Dictionary<string, string?> { [CatalogueColumns.PreferredTerm] = Curated }, Column));
+
+        Assert.Equal(Curated, values[CatalogueColumns.PreferredTerm]);
+    }
+
+    [Fact]
+    public void Values_WhenAVariableNameIsBlank_ThenNoPreferredTermKeyIsAdded()
+    {
+        var variable = Variable([], Column) with { PreferredTerm = "  " };
+
+        Assert.False(CatalogueColumns.Values(variable).ContainsKey(CatalogueColumns.PreferredTerm));
+    }
 }

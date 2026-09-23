@@ -20,6 +20,11 @@
 import { treeStates } from './tree-states.mjs';
 import { hierarchyStates } from './hierarchy-states.mjs';
 import { scrollPast } from './reader-scroll.mjs';
+import {
+  loadTreeFixture, panel as filterPanel, tree as kildeTree, boxes as treeBoxes, chips as filterChips,
+  until as untilTrue,
+} from './tree-states.mjs';
+import { names as treeNames } from './tree-fixture.mjs';
 
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
@@ -133,6 +138,31 @@ export const states = {
     await page
       .locator('.munin-explorer-selection button.button-square--secondary')
       .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // The variable explorer with one kilde ticked: its chip row and hierarchy trail render only once
+  // something is chosen, and since oj286 the trail is a landmark and the chip the only way to
+  // remove a value. The name is the one axe-stub-api.mjs serves for the tree fixture's search.
+  'variables-facets': async page => {
+    await loadTreeFixture(page);
+    await treeBoxes(kildeTree(page), treeNames.kilde).click();
+    const trail = page.locator('.munin-explorer-breadcrumb');
+    await filterChips(page).first().waitFor({ state: 'visible', timeout: findTimeout });
+    await trail.waitFor({ state: 'visible', timeout: findTimeout });
+    await untilTrue(async () => await filterPanel(page).getAttribute('aria-busy') === 'false',
+      'filtered response rendered');
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    const chipCount = await filterChips(page).count();
+    const chipText = (await filterChips(page).first().innerText()).replace('×', '').trim();
+    const crumbs = await trail.locator('.munin-explorer-crumb').allInnerTexts();
+    if (chipCount !== 1 || chipText !== treeNames.kilde) {
+      throw new Error(`Ticking ${treeNames.kilde} drew ${chipCount} chip(s) reading "${chipText}"`);
+    }
+    if (crumbs.length !== 1 || crumbs[0].trim() !== treeNames.kilde) {
+      throw new Error(`Ticking ${treeNames.kilde} drew the trail ${JSON.stringify(crumbs)}`);
+    }
+    console.log(`    variables-facets: ${chipCount} .munin-explorer-filters__chip "${chipText}", `
+      + `.munin-explorer-breadcrumb [role=${await trail.getAttribute('role')}] crumbs ${JSON.stringify(crumbs)}`);
   },
 
   // A long facet at rest, capped, and the control that lifts the cap pressed twice. The only state
@@ -395,8 +425,9 @@ export const states = {
     const row = page.locator('.munin-explorer-page__facts').first();
     await row.waitFor({ state: 'visible', timeout: findTimeout });
 
-    // Stepped rather than jumped, and shared with state-assertions.mjs so the step and the
-    // overshoot cannot drift apart between the two gates that depend on them (Fhi.Metadata-14j7i).
+    // Stepped rather than jumped: axe wants the bar on screen by the plainest route there is, and
+    // whether a jump gets it there too is state-assertions.mjs's question (Fhi.Metadata-14j7i).
+    // Shared with that file so the step and the overshoot cannot drift apart between the two gates.
     await scrollPast(page, await row.getAttribute('id'));
 
     // Waited for rather than assumed: a bar that never arrives is a state nobody entered, and axe

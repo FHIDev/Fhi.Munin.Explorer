@@ -10657,6 +10657,35 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Properties_WhenTheCatalogueCuratesTheName_ThenThePanelDoesNotDrawItAgain()
+    {
+        // The name is merged into the bag the panel lists (Fhi.Metadata-zg89n); only
+        // PanelDrawnElsewhere keeps the panel's title from coming back as a 'Navn' row.
+        var id = Guid.NewGuid();
+        var detail = WithProperties(id);
+        detail = detail with
+        {
+            PropertyMetadata =
+            [
+                .. detail.PropertyMetadata,
+                new()
+                {
+                    Key = CatalogueColumns.PreferredTerm,
+                    SortOrder = 10,
+                    Type = "Text",
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Navn" },
+                },
+            ],
+        };
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Opprinnelse", "Kommentar", "Databasereferanse"],
+                     PropertyPairs(cut).Select(p => p.Label.TextContent));
+    }
+
+    [Fact]
     public void Properties_WhenAValueIsCoded_ThenTheVocabularyIsUsedRatherThanTheCode()
     {
         // "Opprinnelse: 5" is the API's honest answer and a useless thing to read. The vocabulary

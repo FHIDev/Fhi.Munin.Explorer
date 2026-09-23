@@ -1751,4 +1751,23 @@ public class VariableViewTest : ExplorerTestContext
         Assert.Equal(["Funksjonsmål"], VariabelgruppeList(cut));
         Assert.Contains("#" + DetailSectionIds.VariableGroups, Targets(cut));
     }
+
+    [Fact]
+    public void Metadata_WhenTheCataloguePlacesPreferredTerm_ThenTheTitleIsNotDrawnASecondTimeAsASectionRow()
+    {
+        // Merged since Fhi.Metadata-zg89n, and the page title already is the name.
+        var detail = Keyed();
+        var cut = Render(detail with
+        {
+            PropertyMetadata =
+            [
+                .. detail.PropertyMetadata,
+                Entry(CatalogueColumns.PreferredTerm, 10, "Beskrivelse", groupKey: "beskrivelse", groupSortOrder: 1000),
+            ],
+        });
+
+        Assert.Equal(["Kommentar"],
+                     cut.Find($"#{DetailSectionIds.Metadata}")
+                        .QuerySelectorAll("dl dt").Select(dt => dt.TextContent));
+    }
 }

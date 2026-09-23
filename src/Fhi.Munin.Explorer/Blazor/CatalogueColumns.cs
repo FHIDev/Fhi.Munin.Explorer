@@ -60,6 +60,19 @@ internal static class CatalogueColumns
     /// <inheritdoc cref="Description"/>
     internal const string Frequency = "Frekvens";
 
+    /// <inheritdoc cref="Description"/>
+    /// <remarks>The raw code, not this package's label for it: the catalogue curates its own words.</remarks>
+    internal const string Kildetype = "Kildetype";
+
+    /// <inheritdoc cref="Description"/>
+    internal const string Code = "Code";
+
+    /// <inheritdoc cref="Description"/>
+    internal const string ShortName = "KortNavn";
+
+    /// <inheritdoc cref="Description"/>
+    internal const string PreferredTerm = "PreferredTerm";
+
     /// <summary>A source's columns, keyed as the catalogue's property definitions key them.</summary>
     /// <remarks>
     /// The reader's language rather than the normalised reader tag, because the only thing this
@@ -74,7 +87,11 @@ internal static class CatalogueColumns
               (DataProcessor, kilde.DataProcessor),
               (PersonIdentification, kilde.PersonIdentificationLevel),
               (ValidFrom, Day(kilde.ValidFrom, language)),
-              (ValidTo, Day(kilde.ValidTo, language)));
+              (ValidTo, Day(kilde.ValidTo, language)),
+              (Kildetype, kilde.Kildetype),
+              (Code, kilde.Code),
+              (ShortName, kilde.ShortName),
+              (PreferredTerm, kilde.PreferredTerm));
 
     /// <summary>
     /// A collection's columns, every inherited one taken from its <c>Effective…</c> value.
@@ -97,7 +114,10 @@ internal static class CatalogueColumns
               (ValidTo, Day(datasamling.EffectiveValidTo, language)),
               (StatisticsType, datasamling.StatisticsType),
               (CountingUnit, datasamling.CountingUnit),
-              (Frequency, datasamling.Frequency));
+              (Frequency, datasamling.Frequency),
+              (Code, datasamling.Code),
+              (ShortName, datasamling.ShortName),
+              (PreferredTerm, datasamling.PreferredTerm));
 
         var definition = datasamling.PropertyMetadata.FirstOrDefault(entry => entry.Key == PersonIdentification);
         var effective = datasamling.EffectivePersonIdentificationLevel;
@@ -119,15 +139,18 @@ internal static class CatalogueColumns
     }
 
     /// <summary>
-    /// A variable's columns, which is its description and nothing else.
+    /// A variable's columns, which are its description and its name.
     /// </summary>
     /// <remarks>
     /// The catalogue places GyldigFra and GyldigTil on this surface too, and they belong to a
     /// version rather than to the variable — <see cref="VariableDetail"/> carries no such field to
-    /// merge, and the version history draws every version's pair already.
+    /// merge, and the version history draws every version's pair already. The catalogue places
+    /// VersjonReferanseKode here too, and no contract carries it until Munin's API does (Fhi.Metadata-zg89n).
     /// </remarks>
     internal static IReadOnlyDictionary<string, string?> Values(VariableDetail variable) =>
-        Merge(variable.AdditionalProperties, (Description, variable.Description));
+        Merge(variable.AdditionalProperties,
+              (Description, variable.Description),
+              (PreferredTerm, variable.PreferredTerm));
 
     /// <summary>The bag, with every column that has a value added to it.</summary>
     /// <remarks>
