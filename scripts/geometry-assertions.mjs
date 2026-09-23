@@ -25,12 +25,15 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Seven of the twelve below are invariants. If that ratio ever inverts, this file has become a
+// Seven of the thirteen below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
 // its defect at all; elsewhere geometry-scan.mjs prints it as inapplicable rather than failing on
 // "nothing was measured". Invariants never declare one. (Fhi.Metadata-fih3y)
+//
+// And `gates: [...]`: states entered by pressing what the pin measures. When one cannot be entered,
+// the pin is measured on the page it stopped on, and only a failure there makes it a finding.
 
 /** The component's own root. Everything measured is inside it or is the host chrome around it. */
 const MOUNT = '.munin-explorer';
@@ -409,6 +412,33 @@ export const assertions = [
       return null;
     },
   },
+
+  {
+    name: "Runa's row chevron is big enough to hit",
+    kind: 'pin',
+    states: ['explorer-tabs', 'variable-detail'],
+    // A pin, for the kilder pin's reason: the 24 x 24 invariant fails on the native checkbox. Under
+    // Stiler 0.1.91 this chevron was 0 x 0 below 1280px (Fhi.Metadata-m586y), and `gates` makes
+    // that a finding when variable-detail and variable-whole cannot press it (Fhi.Metadata-kqano).
+    gates: ['variable-detail', 'variable-whole'],
+    body: () => {
+      const toggles = [...document.querySelectorAll('button.munin-explorer-dataitem__expand-toggle')]
+        .filter(toggle => !toggle.closest('[hidden]'));
+      if (toggles.length === 0) return 'no row chevron on the page — nothing was measured';
+      const width = Math.round(window.innerWidth);
+      const minimum = 24;
+      for (const [index, toggle] of toggles.entries()) {
+        const r = toggle.getBoundingClientRect();
+        if (r.width < minimum || r.height < minimum) {
+          return `at ${width}px row chevron ${index + 1} of ${toggles.length} measures ` +
+            `${r.width.toFixed(1)} x ${r.height.toFixed(1)}, under the ${minimum} x ${minimum} ` +
+            'minimum target size';
+        }
+      }
+      return null;
+    },
+  },
+
   {
     name: "the kilder table's counts are right-aligned in their column",
     kind: 'pin',
