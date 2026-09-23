@@ -1670,8 +1670,8 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Columns_WhenTheHostChangesSortWhileAFetchIsInFlight_ThenItIsFollowedOnceThatFetchLands()
     {
-        // Refused, a host that does not bind would keep a Sort nothing ever applied, and the same
-        // value handed back later would look like an echo. Deferred, it arrives. (Fhi.Metadata-jqarq)
+        // A host that does not bind must still see its Sort applied once the stalled fetch lands.
+        // (Fhi.Metadata-jqarq)
         var sorts = new List<SortField>();
         var client = new SlowClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client, b => b.Add(c => c.SortChanged, f => sorts.Add(f)));

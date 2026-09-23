@@ -194,16 +194,9 @@ public partial class VariableSearch
         await NotifyPageChangedAsync();
     }
 
-    /// <summary>Reorders by a <see cref="Sort"/> the host changed after the first render.</summary>
-    /// <remarks>
-    /// Keyed on <see cref="Sort"/> alone: <see cref="SortAsync"/> raises the field and then the
-    /// direction, so a host re-rendering between the two hands back a direction still one step behind.
-    /// <para>
-    /// Deferred rather than refused while a fetch is in flight: <see cref="_sortParameter"/> stays
-    /// put, so <c>OnAfterRenderAsync</c> follows it once the fetch has landed and a host that does
-    /// not bind is not left holding a Sort it will never see applied.
-    /// </para>
-    /// </remarks>
+    // Keyed on Sort alone: SortAsync raises field then direction, so a host re-rendering between
+    // them hands back a stale direction. Mid-fetch, _sortParameter stays put and OnAfterRenderAsync
+    // follows it once the fetch lands, so a host that does not bind still sees its Sort applied.
     private async Task FollowSortParameterAsync()
     {
         if (Sort == _sortParameter || _loading)

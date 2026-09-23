@@ -79,11 +79,8 @@ public partial class VariableSearch
     /// <summary>The columns the reader turned off through the picker, which a host's Sort does not undo.</summary>
     private readonly HashSet<ResultColumn> _hiddenByReader = [];
 
-    /// <summary>Whether an untouched Status column is on screen because a host's Sort named it.</summary>
-    /// <remarks>
-    /// Not <see cref="_statusColumnChosen"/>, which would pin it for good: the filter takes it back
-    /// the first time «Vis historiske» is in force, as it would had the link carried that too.
-    /// </remarks>
+    // Status shown because a host's Sort named it; kept apart from _statusColumnChosen so the
+    // filter can still take the column back once «Vis historiske» is in force.
     private bool _statusShownForSort;
 
     /// <summary>Whether a column is on screen.</summary>
@@ -115,11 +112,8 @@ public partial class VariableSearch
         _hiddenColumns.Remove(column);
     }
 
-    /// <summary>The column whose header orders by <paramref name="sort"/>; none for the default order.</summary>
-    /// <remarks>
-    /// An unknown member throws for the reason <see cref="Texts.FieldLabel"/> does: a sort field added
-    /// without a column here would open a link on an order no header could announce.
-    /// </remarks>
+    // The column whose header orders by this sort. An unknown member throws, as Texts.FieldLabel
+    // does, so a new sort field cannot open a link on an order no header announces.
     private static ResultColumn? ColumnSortedBy(SortField sort) => sort switch
     {
         SortField.Code => ResultColumn.Code,
