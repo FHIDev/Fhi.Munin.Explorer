@@ -31,7 +31,7 @@
        test/sample-css-known-divergences.txt. Moving the pin to it is Fhi.Metadata-4xqhq's, which
        owns reconciling the eight releases of rules that come with it. -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.98" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.103" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use

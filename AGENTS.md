@@ -486,6 +486,12 @@ sample alone, and a name with no rule anywhere shows it broken in both — so
 `scripts/assert-sample-css-in-step.sh` checks each and runs in CI. Edit one copy, copy it over
 the other, and run the script.
 
+Three compatibility root markers need no rule: `munin-explorer-kilde`,
+`munin-explorer-datasamling` and `munin-explorer-whole`. Stiler 0.1.100 removed their obsolete
+heading resets; their elements also wear the shared `munin-explorer-page` chassis, which still
+requires styling. Both class-name guards exempt exactly these markers, not their children or
+other names under the prefix (`Fhi.Metadata-35w0p.39`).
+
 **That check asks whether a name declares SOMETHING, not whether it declares the right thing**, and
 the gap between those two is wide enough to have held around forty divergences while it stayed
 green. A rule carrying half of Stiler's declarations passes it; so does the right property carrying

@@ -366,7 +366,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
     The rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**;
-    `samples/HostileHost` pins 0.1.98 today (`Fhi.Metadata-4xqhq`).
+    `samples/HostileHost` pins 0.1.103 today (`Fhi.Metadata-17k34`).
     The words for those glyphs are under the facets, in an `Ikonforklaring` legend that adds two
     names of its own — `munin-explorer-filters__legend` on the list and
     `munin-explorer-filters__legend-item` on each row. It lists the whole vocabulary rather than
@@ -382,7 +382,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the row each pairing sits on and the columns the eighteen of them are laid out in. Both sample
     stylesheets already carried the rules before any markup wore the names, copied off the published
     0.1.75 that `samples/HostileHost` pinned when they were written and compared since against the
-    0.1.98 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
+    0.1.103 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
     evidence on this side that Stiler really has them — nothing in this repository reads Stiler,
     and that guard runs only in the job holding the feed secret. A legend that rests shut is a
     `<details>` and nothing invented: its `<summary>` is the control's accessible name and its
@@ -492,8 +492,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     for the name and `assert-sample-css-matches-stiler.sh` finds no divergence against that pin.
     Which PR bumped a version says nothing about what a later release shipped — read the pin.
     Nested fragment targets use `munin-explorer-page__anchor` for the same responsive scroll
-    clearance without `data-nav-section` or a contents entry. Stiler support is tracked by
-    `Fhi.Metadata-17k34`; hosts need its published rule when adopting nested criteria.
+    clearance without `data-nav-section` or a contents entry. Stiler 0.1.103 supplies this rule
+    (`Fhi.Metadata-17k34`); hosts need that version or later when adopting nested criteria.
     The same views add the chassis those sections sit in — `munin-explorer-page` on the root,
     `munin-explorer-page__body`, `munin-explorer-page__main` and `munin-explorer-page__toc` —
     written once, by `DetailPage`, rather than once under each prefix. The three that have a prefix
@@ -502,7 +502,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     `munin-explorer-kilde__datasamlinger` is
     styled under `munin-explorer-kilder__expanded` in an expanded result row, so a clean rename
     would have taken a surface nobody would think to retest with it. The body is the exception and
-    wears `munin-explorer-page__body` alone: every published Stiler still lays
+    wears `munin-explorer-page__body` alone: older Stiler releases lay
     `munin-explorer-kilde__body` and its two siblings out as `minmax(0, 1fr) 320px`, so an element
     wearing an old name and the chassis name would carry a `grid-template-columns` from each of two
     blocks and draw whichever the host loaded last. Handles, all four — undefined, the body and its
@@ -584,7 +584,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     jumps past the hero row rather than scrolling — an in-page anchor, which is what the contents
     nav's own links are — reaches the foot of the page with no bar until they scroll a little.
     `Fhi.Metadata-14j7i` is that, measured rather than reasoned about.
-    `Fhi.Helsedata.Stiler` 0.1.98 — the pin `samples/HostileHost` restores — carries all four in
+    `Fhi.Helsedata.Stiler` 0.1.103 — the pin `samples/HostileHost` restores — carries all four in
     `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at exactly what it
     declares. `VariableListView` draws no bar: it names no hero facts, and the bar exists only where
     that row does.

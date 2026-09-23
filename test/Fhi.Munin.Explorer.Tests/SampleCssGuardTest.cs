@@ -68,6 +68,15 @@ public class SampleCssGuardTest
     }
 
     [ShellFact]
+    public void Guard_WhenTheSharedDetailBodyLosesItsRules_ThenLegacyRootMarkersDoNotCoverIt()
+    {
+        var run = Guard.RunAgainst(WithRulesDeleted(SampleCss.Value, "munin-explorer-page__body"));
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("munin-explorer-page__body", Guard.NamesUnder(run.Output, "has no rule for"));
+    }
+
+    [ShellFact]
     public void Guard_WhenOneNameIsEmptiedAndAnotherLosesItsRules_ThenBothAreReportedAndReportedApart()
     {
         // The experiment `Orphans_WhenTheSampleRulesForARenderedNameAreEmptied_…` runs in memory for
