@@ -849,4 +849,90 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// would be asserting a shape the API never promised.
     /// </remarks>
     private sealed record LinkErrorBody([property: JsonPropertyName("error")] string? Error);
+
+    private const string ShareLists = "api/explorer/lists/share";
+
+    public async Task<string> ShareListAsync(
+        string name,
+        IReadOnlyCollection<VariableListItem> items,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(items);
+
+        var body = new ShareBody(name, [.. items.Select(SharedItemBody.From)]);
+
+        using var response = await SendAsync(HttpMethod.Post, ShareLists, body, cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        var answer = await response.Content
+            .ReadFromJsonAsync<CodeBody>(Json, cancellationToken)
+            .ConfigureAwait(false);
+
+        return answer?.Code is { Length: > 0 } code
+            ? code
+            : throw new InvalidOperationException(
+                $"{ShareLists} answered {(int)response.StatusCode} without a code in the body. "
+                + "The endpoint answers 201 with {\"code\": \"...\"}.");
+    }
+
+    public async Task<SharedList?> GetSharedListAsync(
+        string? code,
+        CancellationToken cancellationToken = default)
+    {
+        if (SharedList.NormalizeCode(code) is not { } normalized)
+        {
+            return null;
+        }
+
+        using var response = await SendAsync(
+            HttpMethod.Get, $"{ShareLists}/{normalized}", body: null, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content
+            .ReadAsStreamAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        using var snapshot = await JsonDocument
+            .ParseAsync(stream, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        return SharedSnapshot.Read(snapshot.RootElement);
+    }
+
+    /// <summary>The share body. The API stores <c>items</c> verbatim, so their names are the contract.</summary>
+    private sealed record ShareBody(
+        [property: JsonPropertyName("name")] string Name,
+        [property: JsonPropertyName("items")] IReadOnlyList<SharedItemBody> Items);
+
+    /// <summary>
+    /// One shared item under Runa's field names, and nothing private: a code is readable by anyone
+    /// holding it, so the desired-data annotation stays behind, as Runa's stripPrivateAnnotations does.
+    /// </summary>
+    private sealed record SharedItemBody(
+        [property: JsonPropertyName("variabelId")] Guid VariableId,
+        [property: JsonPropertyName("variabelCode")] string? VariableCode,
+        [property: JsonPropertyName("variabelName")] string? VariableName,
+        [property: JsonPropertyName("kildeId")] Guid? KildeId,
+        [property: JsonPropertyName("kildeName")] string? KildeName,
+        [property: JsonPropertyName("kildeKortNavn")] string? KildeShortName,
+        [property: JsonPropertyName("datasamlingName")] string? DatasamlingName,
+        [property: JsonPropertyName("variabelgruppeName")] string? VariabelgruppeName,
+        [property: JsonPropertyName("dataType")] string? DataType,
+        [property: JsonPropertyName("dataFrom")] DateTimeOffset? DataFrom,
+        [property: JsonPropertyName("dataTo")] DateTimeOffset? DataTo,
+        [property: JsonPropertyName("versjonStatus")] string? VersionStatus)
+    {
+        public static SharedItemBody From(VariableListItem item) => new(
+            item.VariableId, item.VariableCode, item.VariableName, item.KildeId, item.KildeName,
+            item.KildeShortName, item.DatasamlingName, item.VariabelgruppeName, item.DataType,
+            item.DataFrom, item.DataTo, item.VersionStatus);
+    }
 }

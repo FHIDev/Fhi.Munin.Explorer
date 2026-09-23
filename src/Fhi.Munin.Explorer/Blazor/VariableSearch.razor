@@ -313,7 +313,7 @@ else
     @* The saved list's own panel takes this slot, and has to be HERE rather than beside the rows:
        Stiler places the filter column with `.munin-explorer > .munin-explorer-filters`, a child
        combinator, and the rows render two levels down in the tab panel. (Fhi.Metadata-mm4hu) *@
-    @if (ShowTabs && _resultsTab == ExplorerTab.VariableList && VariableListFilters is not null)
+    @if (ShowTabs && _resultsTab == ExplorerTab.VariableList && VariableListFilters is not null && ShareCode is null)
     {
         @VariableListFilters
     }

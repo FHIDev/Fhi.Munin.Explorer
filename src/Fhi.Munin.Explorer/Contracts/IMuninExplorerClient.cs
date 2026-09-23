@@ -481,4 +481,51 @@ public interface IMuninExplorerClient
         throw new NotSupportedException(
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(RedeemIdentityLinkAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// Store a snapshot of a list behind a six-character code, and return the code.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Anonymous, like <see cref="ExportListAsync"/>: the snapshot travels in the body, and anyone
+    /// holding the code can read it for 90 days. So the items are posted with the display fields
+    /// only — never <see cref="VariableListItem.DesiredDataFreeText"/> or
+    /// <see cref="VariableListItem.DesiredDataType"/>, which are the reader's private notes. The
+    /// field names are the ones Runa posts, so a code made here opens in Runa and the other way round.
+    /// </para>
+    /// <para>
+    /// The API refuses an empty list, a blank name, a name over 200 characters, more than 10 000
+    /// items or a payload over 1 MB with a 400, which throws. Carries a default body for the reader
+    /// <see cref="ExportListAsync"/> gives.
+    /// </para>
+    /// </remarks>
+    /// <param name="name">The list's name, shown to whoever opens the code.</param>
+    /// <param name="items">The variables in the order they should be shown.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    /// <returns>The code, as the API minted it: six upper-case letters or digits.</returns>
+    Task<string> ShareListAsync(
+        string name,
+        IReadOnlyCollection<VariableListItem> items,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ShareListAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// Read a shared list back by its code. Null when the code is unknown, expired or malformed.
+    /// </summary>
+    /// <remarks>
+    /// Case-insensitive. A code that is not six ASCII letters or digits answers null without a
+    /// request, since the API cannot have minted it. The snapshot is read tolerantly — see
+    /// <see cref="SharedList"/>. Carries a default body for the reader
+    /// <see cref="ExportListAsync"/> gives.
+    /// </remarks>
+    /// <param name="code">The code as the reader typed it or the link carried it.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<SharedList?> GetSharedListAsync(
+        string? code,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(GetSharedListAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
 }

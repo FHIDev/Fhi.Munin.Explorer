@@ -270,4 +270,48 @@ public class ExplorerUrlStateTest
 
         Assert.Equal("alder", state.Search);
     }
+
+    // -----------------------------------------------------------------------
+    // delekode: a shared variable list's code (Fhi.Metadata-ntpbd.1)
+
+    [Fact]
+    public void ShareCode_WhenRoundTripped_ThenItComesBackUnderDelekode()
+    {
+        var state = new ExplorerUrlState { Search = "alder", ShareCode = "AB12CD" };
+
+        var query = state.ToQueryString();
+        var back = ExplorerUrlState.Parse(query);
+
+        Assert.Contains("delekode=AB12CD", query);
+        Assert.Equal("AB12CD", back.ShareCode);
+        Assert.Equal("alder", back.Search);
+    }
+
+    [Fact]
+    public void ShareCode_WhenParsedInLowerCase_ThenItIsUpperCased()
+    {
+        Assert.Equal("AB12CD", ExplorerUrlState.Parse("?delekode=ab12cd").ShareCode);
+        Assert.Equal("AB12CD", ExplorerUrlState.Parse("?Delekode=aB12cD").ShareCode);
+    }
+
+    [Theory]
+    [InlineData("?delekode=ABC12")]
+    [InlineData("?delekode=ABC1234")]
+    [InlineData("?delekode=AB-12C")]
+    [InlineData("?delekode=%C3%86%C3%98%C3%85123")]
+    [InlineData("?delekode=")]
+    public void ShareCode_WhenMalformed_ThenItIsDropped(string query)
+    {
+        var state = ExplorerUrlState.Parse(query);
+
+        Assert.Null(state.ShareCode);
+        Assert.Equal("", state.ToQueryString());
+    }
+
+    [Fact]
+    public void ShareCode_Always_ThenDelekodeIsAKeyTheTypeOwnsAndAHostMayDecline()
+    {
+        Assert.Contains("delekode", ExplorerUrlState.QueryKeys);
+        Assert.Contains("delekode", ExplorerUrlState.ScalarQueryKeys);
+    }
 }

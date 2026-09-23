@@ -62,6 +62,15 @@ public sealed record ExplorerUrlState
     public Guid? SelectedInstrumentId { get; init; }
 
     /// <summary>
+    /// The code of a shared variable list to open, upper-cased, or null. Written as <c>delekode</c>.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Parse"/> drops a value that is not six ASCII letters or digits, since the API
+    /// cannot have minted it. See <see cref="SharedList"/> for what the code opens.
+    /// </remarks>
+    public string? ShareCode { get; init; }
+
+    /// <summary>
     /// The page size a reader who has chosen nothing gets, and so the one value omitted from a URL.
     /// </summary>
     /// <remarks>
@@ -105,7 +114,7 @@ public sealed record ExplorerUrlState
     /// <summary>How many parameters <see cref="Parse"/> reads before ignoring the rest.</summary>
     /// <remarks>
     /// Bounds the parse itself and not only what it keeps, the same reasoning as
-    /// <see cref="VariableFilter"/>'s own cap. Well above the seven keys here plus a host's own.
+    /// <see cref="VariableFilter"/>'s own cap. Well above the eight keys here plus a host's own.
     /// </remarks>
     private const int MaxParameters = 200;
 
@@ -152,6 +161,8 @@ public sealed record ExplorerUrlState
         {
             Append(query, "instrumentId", instrument.ToString());
         }
+
+        Append(query, "delekode", SharedList.NormalizeCode(ShareCode));
 
         return query.ToString();
     }
@@ -259,6 +270,11 @@ public sealed record ExplorerUrlState
                 : state;
         }
 
+        if (Is(name, "delekode"))
+        {
+            return SharedList.NormalizeCode(value) is { } code ? state with { ShareCode = code } : state;
+        }
+
         return state;
     }
 
@@ -275,11 +291,12 @@ public sealed record ExplorerUrlState
     /// <c>variabelgruppeIds</c> is nobody's. It is therefore the set a host may ask an explorer
     /// component to leave alone. <c>variabelId</c> and <c>instrumentId</c> are in here for that
     /// reason too: a host with a variable or instrument page of its own plausibly already means
-    /// something by either.
+    /// something by either, and so is <c>delekode</c>, which a host may already use for sharing
+    /// of its own.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
         new HashSet<string>(
-            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "instrumentId"],
+            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "instrumentId", "delekode"],
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>

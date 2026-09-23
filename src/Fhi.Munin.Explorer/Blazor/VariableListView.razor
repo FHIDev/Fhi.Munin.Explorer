@@ -1,9 +1,14 @@
 @namespace Fhi.Munin.Explorer.Blazor
 @using Fhi.Munin.Explorer.Contracts
 
-@* Signed out there is nothing here at all — not an empty frame, not a sign-in prompt this package
-   has no business wording. The host knows how its readers sign in; the package does not. *@
-@if (State?.IsAuthenticated == true)
+@* A shared list takes the view, signed in or out, and is read-only — see SharedListView. *@
+@if (ShowsSharedList)
+{
+    @SharedListView
+}
+@* Signed out there is nothing else here at all — not an empty frame, not a sign-in prompt this
+   package has no business wording. The host knows how its readers sign in; the package does not. *@
+else if (State?.IsAuthenticated == true)
 {
     @* Still the version, and still on the root: a host may mount this view on a page of its own,
        and a version readable on two of the three mount points is a trap for whoever checks the
@@ -38,6 +43,13 @@
                         aria-expanded="@Expanded(_creating)"
                         @onclick="ToggleCreatingFromControl">@T.AddNewList</button>
 
+                @* Never disabled: it acts on no list, so an empty one does not stand in its way. *@
+                <button class="hd-button-square button-square--ghost-blue"
+                        type="button"
+                        id="@OpenSharedToggleId"
+                        aria-expanded="@Expanded(_openingShared)"
+                        @onclick="ToggleOpeningSharedFromControl">@T.OpenSharedList</button>
+
                 @* Both act on the list on screen, so neither is drawn when there is none. *@
                 @if (_shownList is not null)
                 {
@@ -69,8 +81,58 @@
                                 aria-describedby="@ConfirmDeleteId"
                                 @onclick="DeleteListAsync">@T.ConfirmDeleteYes</button>
                     }
+
+                    @* The reason is visible and wired by aria-describedby rather than a title
+                       tooltip, which a keyboard reader never sees. aria-disabled for the reason the
+                       create button gives; ToggleSharingFromControl refuses the press. *@
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            id="@ShareToggleId"
+                            aria-expanded="@Expanded(_sharingList)"
+                            aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
+                            aria-describedby="@(ShownListIsEmpty ? ShareEmptyReasonId : null)"
+                            @onclick="ToggleSharingFromControl">@T.ShareList</button>
+
+                    @if (ShownListIsEmpty)
+                    {
+                        <span id="@ShareEmptyReasonId">@T.ShareListEmpty</span>
+                    }
                 }
             </div>
+
+            @if (_openingShared)
+            {
+                <div>
+                    <label class="form-element__label" for="@SharedCodeFieldId">@T.SharedListCodeLabel</label>
+                    <input type="text"
+                           id="@SharedCodeFieldId"
+                           autocomplete="off"
+                           @bind="_sharedCodeInput"
+                           @bind:event="onchange" />
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            aria-disabled="@AriaDisabled(_sharedCodeInput.Trim().Length > 0)"
+                            @onclick="OpenSharedFromFieldAsync">@T.OpenSharedListSubmit</button>
+                </div>
+            }
+
+            @* Read-only inputs rather than text, so the code and the link can be selected whole. *@
+            @if (_sharingList && _shareMade is { } made && made.ListId == _shownList)
+            {
+                <div>
+                    <label class="form-element__label" for="@ShareCodeFieldId">@T.ShareCodeLabel</label>
+                    <input type="text" id="@ShareCodeFieldId" readonly value="@made.Code" />
+
+                    @if (made.Link is { } link)
+                    {
+                        <label class="form-element__label" for="@ShareLinkFieldId">@T.ShareLinkLabel</label>
+                        <input type="text" id="@ShareLinkFieldId" readonly value="@link" />
+                    }
+
+                    <p class="caption">@T.ShareValidity</p>
+                    <a href="@ShareMailTo(made)">@T.ShareByEmail</a>
+                </div>
+            }
 
             @* Revealed by the button above, and NOT closed again by a create that succeeds: the reader
                is standing on the button inside this block, and removing it would drop their focus to
@@ -118,7 +180,7 @@
             @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
                same update is announced unreliably. Same shape as the explorer's own alert region. *@
             <div role="alert" aria-live="assertive" aria-atomic="true">
-                @(_failed ? T.ListLoadError : DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
+                @(_failed ? T.ListLoadError : SharedListMessage ?? ShareMessage ?? DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
             </div>
 
             @* A refused annotation gets its own region, because it outlasts whatever the reader does
@@ -270,6 +332,134 @@
 }
 
 @code {
+    // A snapshot somebody shared: its own name, the same table and pager as an own list, and
+    // nothing that writes — no remove, no desired data, no rename, delete or share.
+    private RenderFragment SharedListView => @<text>
+        <DetailPage ViewRoot="" ViewMain=""
+                    Eyebrow="@(_sharedList is null ? null : T.SharedListEyebrow)"
+                    data-munin-explorer-version="@ExplorerVersion.Current">
+            <Header>
+                <div class="munin-explorer-page__header">
+                    @DetailBlocks.Heading(TitleLevel, SharedListName, "headline headline-s margin--bottom",
+                                          ListHeadingId)
+
+                    @if (_sharedList is not null)
+                    {
+                        <p class="caption">@T.ListVariableCount(_sharedList.Items.Count)</p>
+                    }
+                </div>
+            </Header>
+            <ChildContent>
+                <div>
+                    @if (_sharedList is not null && IsAuthenticated)
+                    {
+                        <button class="hd-button-square button-square--primary"
+                                type="button"
+                                id="@SaveSharedToggleId"
+                                aria-expanded="@Expanded(_savingShared)"
+                                @onclick="ToggleSavingSharedFromControl">@T.SaveSharedList</button>
+                    }
+
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            @onclick="CloseSharedListAsync">@T.CloseSharedList</button>
+                </div>
+
+                @* Text, not a login control, for the reason VariableSearch gives beside its tabs. *@
+                @if (_sharedList is not null && !IsAuthenticated)
+                {
+                    <p class="caption">@T.SignInToSaveSharedList</p>
+                }
+
+                @if (_savingShared && IsAuthenticated && _sharedList is not null)
+                {
+                    <div>
+                        <label class="form-element__label" for="@SaveSharedNameId">@T.SaveSharedListName</label>
+                        <input type="text"
+                               id="@SaveSharedNameId"
+                               aria-invalid="@(SaveNameMessage is null ? null : "true")"
+                               aria-describedby="@(SaveNameMessage is null ? null : SaveSharedNameProblemId)"
+                               @bind="_saveSharedName"
+                               @bind:event="onchange" />
+                        <button class="hd-button-square button-square--ghost-blue"
+                                type="button"
+                                @onclick="SaveSharedListAsync">@T.SaveSharedListSubmit</button>
+
+                        @* In the DOM while the field is, for the reason the alert region below gives. *@
+                        <p id="@SaveSharedNameProblemId" role="alert">@SaveNameMessage</p>
+                    </div>
+                }
+
+                <div role="alert" aria-live="assertive" aria-atomic="true">
+                    @(SharedListMessage ?? SaveSharedMessage)
+                </div>
+
+                @if (_sharedList is { Items.Count: 0 })
+                {
+                    <p>@T.EmptyList</p>
+                }
+                else if (_sharedList is not null)
+                {
+                    <div class="munin-explorer-list-scroll"
+                         style="overflow-x:auto;position:relative"
+                         role="region"
+                         tabindex="0"
+                         aria-labelledby="@ListHeadingId">
+                        <table class="munin-explorer-data-list" aria-labelledby="@ListHeadingId">
+                            <thead>
+                                <tr class="munin-explorer-data-list__item__row--header">
+                                    <th scope="col" class="munin-explorer-dataitem-header__name">@T.ColumnVariable</th>
+                                    <th scope="col" class="munin-explorer-dataitem-header__code">@T.FieldCode</th>
+                                    <th scope="col" class="munin-explorer-dataitem-header__source">@T.FieldSource</th>
+                                    <th scope="col" class="munin-explorer-dataitem-header__dataCollection">@T.FieldDataCollection</th>
+                                    <th scope="col" class="munin-explorer-dataitem-header__theme">@T.FieldVariableGroup</th>
+                                    <th scope="col" class="munin-explorer-dataitem-header__dataType">@T.FieldDataType</th>
+                                    <th scope="col" class="munin-explorer-dataitem-header__period">@T.FieldDataPeriod</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in SharedPageItems)
+                                {
+                                    <tr class="munin-explorer-data-list__item" @key="item.VariableId">
+                                        <th scope="row">
+                                            <span class="munin-explorer-dataitem-main__column__text"
+                                                  id="@RowNameId(item)"
+                                                  lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                        </th>
+                                        @Cells(item)
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (SharedTotalPages > 1)
+                    {
+                        <div class="munin-explorer-pagination"
+                             role="navigation"
+                             aria-label="@T.Pagination">
+                            <div class="munin-explorer-pagination-content">
+                                <button class="hd-button-square button-square--ghost"
+                                        type="button"
+                                        aria-label="@T.PreviousLabel"
+                                        aria-disabled="@AriaDisabled(_sharedPageNumber > 1)"
+                                        @onclick="() => GoToSharedPageAsync(_sharedPageNumber - 1)">@T.Previous</button>
+
+                                @PageNumbers.Write(this, _sharedPageNumber, SharedTotalPages, GoToSharedPageAsync, T.GoToPageLabel, T.CurrentPageLabel)
+
+                                <button class="hd-button-square button-square--ghost"
+                                        type="button"
+                                        aria-label="@T.NextLabel"
+                                        aria-disabled="@AriaDisabled(_sharedPageNumber < SharedTotalPages)"
+                                        @onclick="() => GoToSharedPageAsync(_sharedPageNumber + 1)">@T.Next</button>
+                            </div>
+                        </div>
+                    }
+                }
+            </ChildContent>
+        </DetailPage>
+    </text>;
+
     // The chassis's action row, which this surface alone did not fill: the picker and the download
     // sat loose in the flow while the other three put their actions here. A fragment rather than
     // child content so it can be withheld — see HasActions, and DetailPage.razor:22.

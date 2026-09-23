@@ -18,6 +18,7 @@
                     @bind-PageSize="_state.PageSize"
                     @bind-SelectedVariableId="_state.SelectedVariableId"
                     @bind-SelectedInstrumentId="_state.SelectedInstrumentId"
+                    ShareCode="@_state.ShareCode"
                     IsAuthenticated="@IsAuthenticated"
                     HeadingLevel="@HeadingLevel"
                     Lede="@Lede"
@@ -34,7 +35,10 @@
     // panel and still shares the circuit's VariableListState with the save button.
     private RenderFragment ReaderLists => @<VariableListView Language="@Language"
                                                             IsAuthenticated="@IsAuthenticated"
-                                                            HeadingLevel="@HeadingLevel" />;
+                                                            HeadingLevel="@HeadingLevel"
+                                                            ShareCode="@_state.ShareCode"
+                                                            ShareCodeChanged="@OnShareCodeChanged"
+                                                            SharedListHref="@SharedListHref" />;
 
     // The list's own filter panel, which cannot travel inside the fragment above: it belongs in the
     // filter column, and the fragment above is drawn in the result one.

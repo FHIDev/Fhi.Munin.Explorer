@@ -576,13 +576,14 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableListView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Three: create, rename and the delete confirmation. One native: the download fold.
+        // Five: create, open a shared list, rename, the delete confirmation and share. One native:
+        // the download fold.
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
 
         AssertStandingGesturesAreRefused(
             () => Render<VariableListView>(b => b.Add(c => c.IsAuthenticated, true)),
-            expected: 3,
+            expected: 5,
             native: 1);
     }
 

@@ -36,6 +36,19 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This fake does not redeem identity links.");
 
+    /// <summary>Refuses, like the interface's own default: a made-up code would open nothing.</summary>
+    public virtual Task<string> ShareListAsync(
+        string name,
+        IReadOnlyCollection<VariableListItem> items,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This fake does not share lists.");
+
+    /// <summary>The API's 404: no shared list behind any code.</summary>
+    public virtual Task<SharedList?> GetSharedListAsync(
+        string? code,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<SharedList?>(null);
+
     public virtual Task<Page<VariableSummary>> SearchVariablesAsync(
         string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
         SortField sort = SortField.Default,
