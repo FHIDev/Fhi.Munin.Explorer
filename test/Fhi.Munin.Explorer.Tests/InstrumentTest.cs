@@ -361,34 +361,6 @@ public class InstrumentTest : ExplorerTestContext
             .Add(c => c.InstrumentVariablesHref, id => $"/variabler?instrumentIds={id}"));
     }
 
-    [Fact]
-    public void DetailPanel_WhenTheOpenVariableHasInstruments_ThenTheyAreListedAndLinkedThere()
-    {
-        var cut = RenderSearch(new InstrumentClient(Variable(
-            Reference(Sf36, "INS_SF36", "Kortversjon 36"),
-            Reference(Hads, "INS_HADS", "Angst og depresjon"))));
-
-        cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle").Click();
-
-        var panel = cut.Find(".munin-explorer-detail");
-
-        Assert.Equal(
-            [$"/variabler?utm_source=nyhetsbrev&instrumentId={Sf36}",
-             $"/variabler?utm_source=nyhetsbrev&instrumentId={Hads}"],
-            panel.QuerySelectorAll("a[href*='instrumentId=']").Select(link => link.GetAttribute("href")));
-    }
-
-    [Fact]
-    public void DetailPanel_WhenTheOpenVariableHasNoInstrument_ThenThereIsNoRowForOne()
-    {
-        // "Ikke oppgitt" under an Instrument label would be on nearly every panel in the catalogue.
-        var cut = RenderSearch(new InstrumentClient(Variable()));
-
-        cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle").Click();
-
-        Assert.DoesNotContain("Instrumenter", cut.Find(".munin-explorer-detail").TextContent);
-    }
-
     // -----------------------------------------------------------------------
     // The instrument page
 
@@ -883,9 +855,11 @@ public class InstrumentTest : ExplorerTestContext
 
         Assert.Null(cut.FindComponent<VariableSearch>().Instance.InstrumentHref);
 
+        // The whole variable, since the row drawer stopped listing instruments (Fhi.Metadata-l9l2n.101).
         cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle").Click();
+        cut.FindAll(".munin-explorer-detail button").Single(b => b.TextContent == "Vis hele variabelen").Click();
 
-        var panel = cut.Find(".munin-explorer-detail");
+        var panel = cut.WaitForElement($"#{DetailSectionIds.Instruments}");
 
         Assert.Empty(panel.QuerySelectorAll("a[href*='instrumentId=']"));
         Assert.Contains("Kortversjon 36", panel.TextContent);

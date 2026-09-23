@@ -1192,19 +1192,6 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   margin: 2px 0 0;
 }
 
-/* ---- the language marker ----
-
-   Drawn only where a field holds more than one language. It is a <p>, so the line break is the
-   browser's and not ours to lose; what this rule adds is the quieter voice of a label, which is
-   look rather than information. */
-.munin-explorer-meta__language {
-  font: normal 600 0.6875rem/150% var(--font);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--grey60);
-}
-
-
 /* ---- the column header ----
 
    Header and rows are flex rows with the same per-column flex shares (below), or the columns line

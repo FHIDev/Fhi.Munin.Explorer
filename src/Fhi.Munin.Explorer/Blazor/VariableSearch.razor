@@ -32,10 +32,9 @@
    `-drilldown`, `-kodeverk*`, `-codes*`, `-group`, the `-kilde*` names in KildeView, the
    `-datasamling*` ones in DatasamlingView and the `-whole*` ones in VariableView — on elements
    something else already dresses, a Stiler class they also wear or their own browser default, so
-   an undefined one costs look and not information. Two are not handles and a host outside
-   helsedata has to draw them itself: `munin-explorer-crumb`, which is the only sign the kilde step
-   of the trail can be pressed, and `munin-explorer-period__track` / `__fill` /
-   `__track--ongoing`, which are the period bar itself. README lists every one of them, name by
+   an undefined one costs look and not information. One is not a handle and a host outside
+   helsedata has to draw it itself: `munin-explorer-crumb`, which is the only sign a step of the
+   hierarchy trail can be pressed. README lists every one of them, name by
    name, with the kind that says what an undefined one costs — no count, because a count is what
    went stale; `scripts/assert-class-names-listed.sh` fails CI when that list and src/ disagree.
    See also the comment above the `<section>`.
@@ -774,12 +773,11 @@ else
                            page's own.
 
                            `munin-explorer-detail` is a handle, like `munin-explorer` and
-                           `munin-explorer-filters`, with rules in Stiler's _detail.scss. Beyond those, the panel leans on base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">, <ol> and
-                           <ul>, for the reason the filter panel is built from <details> and <ul> —
+                           `munin-explorer-filters`, with rules in Stiler's _detail.scss. Beyond those, the panel leans on base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-1">
+                           and the Data tab's kodeverk <ul>, for the reason the filter panel is built from <details> and <ul> —
                            Stiler has no definition list and no key/value block whose names can be
                            read back off its compiled stylesheet, and a name it has never heard of
-                           renders as a raw browser default. Its `.breadcrumbs` names do not fit the
-                           kilde trail either: that step discloses in place rather than navigating. *@
+                           renders as a raw browser default. *@
                         @if (IsSelected(v))
                         {
                             @* A cell around the panel, wearing nothing else. The row above owns
@@ -816,23 +814,12 @@ else
 
                                 @if (_detail is { } detail)
                                 {
-                                    @* Runa's two tabs, in helsedata's vocabulary. The split is
-                                       Runa's — what the variable IS, and what its data holds —
-                                       because Runa is what replaces helsedata's variable page, so
-                                       it decides the content. helsedata decides the dress:
-                                       munin-explorer-meta__tabs, __tab, __tab--active, __body and
-                                       Stiler's hd-button-reset are Stiler's, and munin-explorer-meta
-                                       carries 204 rules.
-
-                                       Only the selected tab's button is in the tab order — the
-                                       others carry tabindex="-1" — so the tablist costs one tab
-                                       stop rather than one per tab. Arrow keys move between them,
-                                       which is what the APG tabs pattern replaces those stops
-                                       with; without it the panel would be unreachable by keyboard
-                                       rather than merely awkward. *@
+                                    @* APG tabs: only the selected tab is in the tab order and arrow keys move
+                                       between them, so the tablist costs one tab stop. Named after the
+                                       variable, like the region. (Fhi.Metadata-l9l2n.101) *@
                                     <div class="munin-explorer-meta__tabs"
                                          role="tablist"
-                                         aria-label="@T.TabDetails"
+                                         aria-labelledby="@RowNameId(v)"
                                          @onkeydown="TabKey">
                                         @foreach (var tab in Tabs)
                                         {
@@ -864,98 +851,7 @@ else
                                              id="@TabPanelId()"
                                              aria-labelledby="@TabId(_tab)"
                                              tabindex="0">
-                                            @if (_tab is PanelTab.Details)
-                                            {
-                                                @* Runa's three groups: Identifikasjon, Plassering
-                                                   and Egenskaper, in that order. *@
-                                                <h3 class="headline headline-xxs margin--none munin-explorer-group">@T.GroupIdentification</h3>
-
-                                                <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-1">
-                                                    @* Out of the hit list and in here: a code does
-                                                       not help a reader CHOOSE a variable, it is
-                                                       what they ask for once they have. *@
-                                                    <div>
-                                                        <dt class="headline headline-xxs margin--none">@T.FieldCode</dt>
-                                                        <dd>@DetailValue(detail.Code)</dd>
-                                                    </div>
-
-                                                    <div>
-                                                        <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
-                                                        <dd>@DetailValue(detail.Description, authored: true)</dd>
-                                                    </div>
-                                                </dl>
-
-                                                <h3 class="headline headline-xxs margin--none munin-explorer-group">@T.GroupPlacement</h3>
-
-                                                @* Side by side rather than stacked, which is how
-                                                   Runa lays these three out — she uses three lanes,
-                                                   helsedata's grid is two (`1fr 1fr`, collapsing to
-                                                   one below 1280px). Two of theirs beats three of
-                                                   ours: the arrangement is Runa's idea, the
-                                                   proportions and the breakpoint are helsedata's,
-                                                   and no new class name is needed for it.
-
-                                                   Each field is wrapped in a <div>, which a grid
-                                                   needs and the HTML spec allows inside <dl>.
-                                                   Without the wrapper the grid would take dt and dd
-                                                   as separate cells and lay out label | value
-                                                   across, instead of label-over-value in a lane. *@
-                                                <dl class="munin-explorer-meta__grid">
-                                                    <div>
-                                                        <dt class="headline headline-xxs margin--none">@T.FieldKildePath</dt>
-                                                        <dd>@KildeTrailBlock.Write(KildeSteps(detail), T, PressKilde)</dd>
-                                                    </div>
-
-                                                    @* The plural the trail above cannot carry.
-                                                       Drawn only when there are several: a list of
-                                                       one name is the step above said twice. *@
-                                                    @{
-                                                        var datasamlinger = KildeTrailBlock.NamedDatasamlinger(detail);
-                                                    }
-                                                    @if (datasamlinger.Count > 1)
-                                                    {
-                                                        <div>
-                                                            <dt class="headline headline-xxs margin--none">@T.HeadingDataCollections</dt>
-                                                            <dd>@DatasamlingList(datasamlinger)</dd>
-                                                        </div>
-                                                    }
-
-                                                    <div>
-                                                        <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
-                                                        <dd>@NameList([.. KildeTrailBlock.NamedVariabelgrupper(detail).Select(gruppe => gruppe.Name)])</dd>
-                                                    </div>
-
-                                                    @* Absent rather than "Ikke oppgitt": most
-                                                       variables belong to no instrument, so the
-                                                       row would be empty on nearly every panel. *@
-                                                    @if (detail.Instruments is { Count: > 0 } instruments)
-                                                    {
-                                                        <div>
-                                                            <dt class="headline headline-xxs margin--none">@T.FieldInstruments</dt>
-                                                            <dd>@InstrumentList(instruments)</dd>
-                                                        </div>
-                                                    }
-
-                                                    <div>
-                                                        <dt class="headline headline-xxs margin--none">@T.FieldDataPeriod</dt>
-                                                        <dd>@PeriodBar(detail.DataFrom, detail.DataTo)</dd>
-                                                    </div>
-                                                </dl>
-
-                                                @* Runa's third group. Its contents are entirely
-                                                   the catalogue's: which properties exist, what
-                                                   they are called, what order they come in and
-                                                   what their coded values mean all arrive with the
-                                                   payload, so a property added in Munin shows up
-                                                   here without this package being touched.
-
-                                                   The values arrive as codes — "Opprinnelse": "5" —
-                                                   and are resolved against the vocabulary that
-                                                   travels beside them. Nothing is resolved here
-                                                   against a table of our own; see PropertyValue. *@
-                                                @PropertiesGroup(detail)
-                                            }
-                                            else
+                                            @if (_tab is PanelTab.Data)
                                             {
                                                 @* Runa's arrangement: the links grouped under a
                                                    heading per kind of kodeverk, each line carrying
@@ -988,6 +884,40 @@ else
                                                 @StatisticsBlock.For(
                                                     detail, RowLevel,
                                                     "headline headline-xxs margin--none munin-explorer-group", T)
+                                            }
+                                            else
+                                            {
+                                                @* The description, then three facts and nothing
+                                                   else. Kilde, datasamling, variabelgruppe and
+                                                   period are the row's own columns, and the buttons
+                                                   below reach the rest. (Fhi.Metadata-l9l2n.101) *@
+                                                @* A <div>, not a <p>: authored text can hold a list. *@
+                                                <div>@DetailValue(detail.Description, authored: true)</div>
+
+                                                <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-1">
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldCode</dt>
+                                                        <dd>@DetailValue(detail.Code)</dd>
+                                                    </div>
+
+                                                    <div>
+                                                        <dt class="headline headline-xxs margin--none">@T.FieldDataType</dt>
+                                                        @* Our words for the code, not the catalogue's,
+                                                           so no lang="no" as DetailValue would add. *@
+                                                        <dd>@(DataTypeName(detail.DataType) is { Length: > 0 } dataType ? dataType : T.NotSpecified)</dd>
+                                                    </div>
+
+                                                    @* Absent rather than "Ikke oppgitt" when no
+                                                       statistics row has one: most variables carry
+                                                       no statistics at all. *@
+                                                    @if (StatisticsBlock.LatestYearSet(detail) is { } latestYearSet)
+                                                    {
+                                                        <div>
+                                                            <dt class="headline headline-xxs margin--none">@T.FieldLatestYearSet</dt>
+                                                            <dd>@latestYearSet</dd>
+                                                        </div>
+                                                    }
+                                                </dl>
                                             }
                                         </div>
                                     </div>
@@ -1045,8 +975,7 @@ else
                                        `munin-explorer-drilldown` — a handle like the others,
                                        and like them nothing in this package, in Stiler or in
                                        helsedata's variables.css defines a rule for it.
-                                       What dresses the panel is base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">, exactly as
-                                       for the variable's own panel above. *@
+                                       What dresses the panel is base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">. *@
                                 }
                             </div>@* munin-explorer-meta munin-explorer-detail *@
                             </div>@* the row's last cell *@

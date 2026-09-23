@@ -97,14 +97,6 @@ public partial class VariableSearch
         builder.CloseElement();
     };
 
-    /// <summary>A variable's instruments, each linking to its own page where there is one to link to.</summary>
-    /// <remarks>
-    /// Bare, as <see cref="DatasamlingList"/> beside it is: the panel's own rule styles an unclassed
-    /// list, and a name Stiler has never heard of renders as a browser default.
-    /// </remarks>
-    private RenderFragment InstrumentList(IReadOnlyList<InstrumentReference> instruments) =>
-        InstrumentBlock.Write(instruments, Reader, InstrumentHref);
-
     /// <summary>Open the instrument the host asked for, once the component has its parameters.</summary>
     /// <remarks>
     /// Independent of the result list, unlike <c>OpenInitialSelectionAsync</c>: this view renders

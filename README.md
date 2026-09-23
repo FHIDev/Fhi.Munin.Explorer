@@ -184,8 +184,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   page, which defeats the point of shipping this as a component at all. That is why owning the
   prefix does not mean inventing freely: where there is no rule for a shape, change the shape
   rather than adding a stylesheet. A facet in the filter panel is a `<details>` over a nested
-  `<ul>` rather than an accordion and a tree, and the detail panel is a `<dl>` with an `<ol>` for
-  the kilde trail, because no host stylesheet names any of those. A branch *inside* one of those
+  `<ul>` rather than an accordion and a tree, and the detail panel is a `<dl>`, because no host
+  stylesheet names any of those. A branch *inside* one of those
   trees is the exception, and it is an argued one: its row carries the value's own checkbox, and a
   `<summary>` around a filter is two presses a reader cannot make apart, so the branch opens on a
   `<button aria-expanded>` of its own drawn with an arrow as text. What a host supplies for them is
@@ -602,8 +602,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     than one. Both used to be the drill-in panel's own `munin-explorer-meta__grid` and
     `munin-explorer-meta__language`, borrowed by the detail pages since they were built, which is
     why `_trail.scss` already carried an override forcing the panel's two lanes back to one on a
-    detail page. The panel keeps its two names and is untouched — `DetailBlocks` draws both
-    surfaces and the class is passed in for the one piece they share. Handles, both: a definition
+    detail page. The panel keeps `munin-explorer-meta__grid`; it has emitted no language marker
+    since its Om variabelen tab stopped listing properties (`Fhi.Metadata-l9l2n.101`). Handles, both: a definition
     list is a definition list undrawn, and the language name is a `<p>` so it keeps its own line
     whatever a host declares. Stiler's rules are written — the same
     `components/munin-explorer/_page.scss`, merged as PR 39301 — and the fact list's copied the
@@ -620,16 +620,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     the look the guard cannot see.
   - Names that carry meaning nothing else carries, so a host without Stiler's rules has to draw
     them itself: `munin-explorer-crumb` carries the link affordance for a trail step, which is a
-    `<button>` — the kilde step of the panel's kilde trail, and every step of the hierarchy trail
-    over the results — and without it a trail reads as plain text with no sign it can be pressed;
+    `<button>` — every step of the hierarchy trail over the results — and without it a trail reads as plain text with no sign it can be pressed;
     `munin-explorer-breadcrumb` is the wrapper a trail's steps sit in and where the chevrons
     between them come from, and an undrawn one is a plain numbered list — it dresses two of them,
     the hierarchy trail over the results and `VariableView`'s Plassering trail, and the
-    `role="navigation"` on the first of those is that trail's own rather than the name's;
-    and inside the `munin-explorer-period*` wrapper, `__track`, `__fill` and `__track--ongoing`
-    are the period bar itself — only its width comes from an inline style, so an undrawn bar
-    renders as nothing at all. The period is still legible without it, because the dates are next
-    to it in words, in `__range`.
+    `role="navigation"` on the first of those is that trail's own rather than the name's.
     `munin-explorer-kilder-scroll` is the box the kilder table scrolls in, and it is the one name
     here whose cost is paid by the HOST's page rather than by the component's own. The table's
     eight columns want 779px at their narrowest — measured over 66 kilder — and helsedata's content
@@ -676,8 +671,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     gets nothing.
     The filter panel's `Nivålinjer` and `Ikoner` switches close the list with two,
     `munin-explorer-switch__track` and `munin-explorer-switch__thumb`, and they are here rather
-    than among the handles for the reason
-    the period bar's are: both spans are empty, so an undrawn one is nothing at all and the on/off
+    than among the handles because both spans are empty, so an undrawn one is nothing at all and the on/off
     state a sighted reader can see goes with it. The state itself is not lost — the control is a
     `role="switch"` carrying `aria-checked`, so a screen reader announces it either way — and the
     wrapper `munin-explorer-switch` is a handle, because undrawn it is still a browser-default
@@ -936,7 +930,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__grid` | handle |
   | `munin-explorer-meta__grid-1` | handle |
   | `munin-explorer-meta__grid-2` | handle |
-  | `munin-explorer-meta__language` | handle |
   | `munin-explorer-meta__tab` | handle |
   | `munin-explorer-meta__tab--active` | handle |
   | `munin-explorer-meta__tab-content` | handle |
@@ -961,11 +954,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-pagination-content` | handle |
   | `munin-explorer-pagination-pages` | meaning |
   | `munin-explorer-pagination-size` | handle |
-  | `munin-explorer-period` | handle |
-  | `munin-explorer-period__fill` | meaning |
-  | `munin-explorer-period__range` | handle |
-  | `munin-explorer-period__track` | meaning |
-  | `munin-explorer-period__track--ongoing` | meaning |
   | `munin-explorer-results` | handle |
   | `munin-explorer-results__toolbar` | handle |
   | `munin-explorer-retry` | meaning |

@@ -66,25 +66,6 @@ public partial class VariableSearch
     /// </remarks>
     private string DetailStatusClass => _detailError is null ? "caption" : "infobox infobox--bg-yellow";
 
-    /// <summary>The kilde trail's steps, with the kildetype resolved out of the loaded facets.</summary>
-    /// <remarks>
-    /// The facet payload rather than the shipped table alone, because the facet button beside this
-    /// panel reads the same vocabulary and the two must not fall back apart. (Fhi.Metadata-3n6e1)
-    /// </remarks>
-    private IReadOnlyList<KildeTrailBlock.Crumb> KildeSteps(VariableDetail detail) =>
-        KildeTrailBlock.Steps(detail, T, FacetKildeTypeName(_facets, detail.KildeType));
-
-    private EventCallback<MouseEventArgs>? _pressKilde;
-
-    /// <summary>What the trail's kilde step does here: disclose the kilde in place of the list.</summary>
-    /// <remarks>
-    /// Held rather than rebuilt per read to save the allocation, not to spare the diff: the two
-    /// compare equal either way, so the <c>onclick</c> was never re-registered.
-    /// </remarks>
-    private EventCallback<MouseEventArgs> PressKilde =>
-        _pressKilde ??= EventCallback.Factory.Create<MouseEventArgs>(
-            this, e => ToggleSourceFromControlAsync(SourceKind.Kilde, e));
-
     /// <summary>One value in the panel: the catalogue's own words, or "Ikke oppgitt".</summary>
     /// <remarks>
     /// The same rule the result cards follow — a missing value is written out for everyone rather
@@ -110,68 +91,6 @@ public partial class VariableSearch
         else
         {
             builder.AddContent(4, value);
-        }
-
-        builder.CloseElement();
-    };
-
-    /// <summary>A list of names out of the catalogue, or "Ikke oppgitt" when there are none.</summary>
-    private RenderFragment NameList(IReadOnlyList<string> names) => builder =>
-    {
-        if (names.Count == 0)
-        {
-            builder.AddContent(0, T.NotSpecified);
-
-            return;
-        }
-
-        builder.OpenElement(1, "ul");
-
-        foreach (var name in names)
-        {
-            builder.OpenElement(2, "li");
-            builder.AddAttribute(3, "lang", "no");
-            builder.AddContent(4, name);
-            builder.CloseElement();
-        }
-
-        builder.CloseElement();
-    };
-
-    /// <summary>
-    /// Every datasamling the variable sits in, each with the period of its membership.
-    /// </summary>
-    /// <remarks>
-    /// The validity per entry, since one range over all of them would be nobody's period, and
-    /// through <see cref="CatalogueDate.Period"/> — how every other rendering of this field words
-    /// it. Bare, as <see cref="NameList"/> beside it is: the panel's own rule styles an unclassed
-    /// list, and a name Stiler has never heard of renders as a browser default.
-    /// </remarks>
-    private RenderFragment DatasamlingList(IReadOnlyList<DatasamlingReference> datasamlinger) => builder =>
-    {
-        builder.OpenElement(0, "ul");
-
-        foreach (var datasamling in datasamlinger)
-        {
-            builder.OpenElement(1, "li");
-
-            builder.OpenElement(2, "span");
-            builder.AddAttribute(3, "lang", "no");
-            builder.AddContent(4, datasamling.Name);
-            builder.CloseElement();
-
-            if (CatalogueDate.Period(datasamling.ValidFrom, datasamling.ValidTo, Language, T,
-                                     DateWidth.Narrow) is { } validity)
-            {
-                // Outside the lang="no" above: the months and "Pågående" are this component's
-                // words and follow Language, where the name beside them is Munin's Norwegian.
-                builder.OpenElement(5, "span");
-                builder.AddAttribute(6, "class", "caption");
-                builder.AddContent(7, $" ({validity})");
-                builder.CloseElement();
-            }
-
-            builder.CloseElement();
         }
 
         builder.CloseElement();

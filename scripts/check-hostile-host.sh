@@ -64,8 +64,9 @@ HOST_PROJECT="$ROOT/samples/HostileHost/HostileHost.csproj"
 # reproduce that. The state asserts a folded facet's values are off screen before it opens one, so
 # this is the run where that assertion means anything (Fhi.Metadata-co3sf).
 #
-# `variable-detail`, `variable-whole` and `explorer-search-code` are where the stub's long code is
-# drawn, and a code is one unbroken word: what decides the reflow width (Fhi.Metadata-ofg1h).
+# `variable-detail-about`, `variable-whole` and `explorer-search-code` are where the stub's long code
+# is drawn, and a code is one unbroken word: what decides the reflow width (Fhi.Metadata-ofg1h).
+# `variable-detail` stays for the Data tab, which opens first (Fhi.Metadata-l9l2n.101).
 #
 # `filters-level-lines` and `filters-node-icons-off` unfold the facets, whose values include a
 # variabelgruppe name with no break in it; only the label rule wraps it (Fhi.Metadata-7484a).
@@ -73,6 +74,7 @@ TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
   "/::variable-detail"
+  "/::variable-detail-about"
   "/::variable-whole"
   "/::explorer-search-code"
   "/::tree-collapsed"
@@ -308,7 +310,7 @@ reflow "" \
 reflow "" "/::variable-kilde-hierarchy" "/::variable-kilde-hierarchy-icons-off"
 # The states the stub's long code reaches: the row panel's Kode, the whole-variable page's heading
 # and fact row, and the result count that quotes a searched term (Fhi.Metadata-ofg1h).
-reflow "" "/::variable-detail" "/::variable-whole" "/::explorer-search-code"
+reflow "" "/::variable-detail" "/::variable-detail-about" "/::variable-whole" "/::explorer-search-code"
 reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tree-no-match"
 # The facets unfolded, and the unbroken variabelgruppe name in them (Fhi.Metadata-7484a).
 reflow "" "/::filters-level-lines" "/::filters-node-icons-off"

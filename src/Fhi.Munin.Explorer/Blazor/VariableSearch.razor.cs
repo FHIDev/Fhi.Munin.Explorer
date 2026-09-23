@@ -6,10 +6,6 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
-/// <summary>
-/// The panel's tabs. Runa splits the open row into what the variable IS and what its data holds;
-/// this is that split, not helsedata's — their page is the one being replaced.
-/// </summary>
 /// <summary>The two tabs beside the results, in the order they are drawn.</summary>
 internal enum ExplorerTab
 {
@@ -21,13 +17,16 @@ internal enum ExplorerTab
 }
 
 
+/// <summary>The open row's tabs: what its data holds, then what the variable is. The RCL leads
+/// this split now; Runa follows later or not at all (Fhi.Metadata-l9l2n.101).</summary>
+// Declared in drawn order: Home/End and the arrow keys move by this enum's index.
 internal enum PanelTab
 {
-    /// <summary>Description, placement and properties.</summary>
-    Details,
-
-    /// <summary>The kodeverk the values are drawn from.</summary>
+    /// <summary>The kodeverk and the statistics the values are drawn from. Opens first.</summary>
     Data,
+
+    /// <summary>Description, code, datatype and the latest year set.</summary>
+    About,
 }
 
 
@@ -103,12 +102,11 @@ internal enum PanelTab
 /// keeping <c>display: none</c> on it below that width if a reset gives fieldsets a display.
 /// </para>
 /// <para>
-/// The hierarchy trail over the results adds one name of ours — <c>munin-explorer-breadcrumb</c> —
-/// and reuses <c>munin-explorer-crumb</c>, which the variable panel's kilde trail already wears,
-/// for the steps themselves. It is an <c>&lt;ol&gt;</c> of <c>&lt;button&gt;</c>s for the reason
-/// that trail is one: neither trail's steps navigate — these narrow the filter, and that one's
-/// lone button discloses a kilde in place — so Stiler's <c>.breadcrumbs</c> names, worn by the
-/// detail pages' trail (<see cref="DetailTrail"/>), do not apply. The chevrons are a host's to
+/// The hierarchy trail over the results adds two names of ours — <c>munin-explorer-breadcrumb</c>
+/// for the trail and <c>munin-explorer-crumb</c> for its steps. It is an <c>&lt;ol&gt;</c> of
+/// <c>&lt;button&gt;</c>s whose steps narrow the filter rather than navigate, so Stiler's
+/// <c>.breadcrumbs</c> names, worn by the detail pages' trail (<see cref="DetailTrail"/>), do not
+/// apply. The chevrons are a host's to
 /// draw, and a host that draws nothing gets a numbered list that still reads correctly, in order,
 /// with the right names.
 /// </para>
@@ -135,14 +133,12 @@ internal enum PanelTab
 /// </para>
 /// <para>
 /// The detail panel adds no class name either, and for the same reason. It is a
-/// <c>&lt;dl&gt;</c> of labels and values, an <c>&lt;ol&gt;</c> for the kilde trail and a
-/// <c>&lt;ul&gt;</c> for the variabelgrupper and kodeverk, wearing Stiler's
-/// <c>form-element__label</c>, <c>caption</c>, <c>infobox</c> and the ghost square button for the
-/// disclosure that opens it. This trail's steps do not navigate either — the kilde step is a
-/// button disclosing it in place, the rest plain text — so Stiler's <c>.breadcrumbs</c> does not
-/// describe them. Stiler has no definition list and no key/value block that can be read back off
-/// its compiled stylesheet, so what a host supplies is base styling for those three elements — a
-/// host that supplies none still gets a panel that reads correctly, just an unindented one.
+/// <c>&lt;dl&gt;</c> of labels and values under Om variabelen and a <c>&lt;ul&gt;</c> for the
+/// kodeverk under Data, wearing Stiler's <c>form-element__label</c>, <c>caption</c>,
+/// <c>infobox</c> and the ghost square button for the disclosure that opens it. Stiler has no
+/// definition list and no key/value block that can be read back off its compiled stylesheet, so
+/// what a host supplies is base styling for those two elements — a host that supplies none still
+/// gets a panel that reads correctly, just an unindented one.
 /// <c>munin-explorer-detail</c> is a handle that Stiler also dresses, in
 /// <c>components/munin-explorer/_detail.scss</c>.
 /// </para>
@@ -1361,149 +1357,6 @@ public sealed partial class VariableSearch : ComponentBase
         builder.CloseElement();
     }
 
-    /// <summary>
-    /// The data period, drawn as Runa draws it: the two dates, and a bar beneath them.
-    /// </summary>
-    /// <remarks>
-    /// Drawn at all only where <see cref="PeriodText"/> has words for the two dates, so what counts
-    /// as no period is <see cref="CatalogueDate.Period"/>'s answer here as on every other surface.
-    /// <para>
-    /// The bar's width is the share of the variable's own lifetime that its data covers —
-    /// <c>(to - from) / (now - from)</c> — so a register that stopped collecting years ago reads as
-    /// visibly short, and one still collecting fills the bar. That is Runa's rule, not an
-    /// invention: a period with no end is drawn full and in a different colour rather than as an
-    /// unknown, because "no end date" means still running. An unknown START is not the same thing:
-    /// there is no lifetime to take a share of, so the words stand alone and no track is drawn.
-    /// </para>
-    /// <para>
-    /// Floored at 5% so a period of days is still a mark rather than nothing at all, and capped at
-    /// 100% because a <c>to</c> in the future would otherwise overflow the track.
-    /// </para>
-    /// <para>
-    /// <c>munin-explorer-period</c> is a handle of ours, like the other four: helsedata has no
-    /// period bar to borrow a name from. The host draws it; without a rule it degrades to the two
-    /// dates, which is the information, with the bar as the illustration.
-    /// </para>
-    /// </remarks>
-    private RenderFragment PeriodBar(DateTimeOffset? from, DateTimeOffset? to) => builder =>
-    {
-        if (PeriodText(from, to) is not { } range)
-        {
-            builder.AddContent(0, T.NotSpecified);
-            return;
-        }
-
-        builder.OpenElement(1, "div");
-        builder.AddAttribute(2, "class", "munin-explorer-period");
-
-        builder.OpenElement(3, "p");
-        builder.AddAttribute(4, "class", "munin-explorer-period__range");
-        builder.AddContent(5, range);
-        builder.CloseElement();
-
-        // A full track beside "?" would illustrate coverage nobody measured, and it would be the
-        // track a fully covered period gets: without a start there is no share, so there is no bar.
-        if (CatalogueDate.Written(from) is { } start)
-        {
-            var ongoing = CatalogueDate.Written(to) is null;
-
-            builder.OpenElement(8, "div");
-            builder.AddAttribute(9, "class",
-                ongoing
-                    ? "munin-explorer-period__track munin-explorer-period__track--ongoing"
-                    : "munin-explorer-period__track");
-            // Decorative: the dates above say the same thing, and a bar a screen reader announces
-            // as "94 percent" would describe a proportion nobody asked about.
-            builder.AddAttribute(10, "aria-hidden", "true");
-
-            builder.OpenElement(11, "div");
-            builder.AddAttribute(12, "class", "munin-explorer-period__fill");
-            builder.AddAttribute(13, "style", $"width:{PeriodShare(start, to)}%");
-            builder.CloseElement();
-
-            builder.CloseElement();
-        }
-
-        builder.CloseElement();
-    };
-
-    /// <summary>The share of the variable's lifetime its data covers, as a whole percent.</summary>
-    /// <remarks>
-    /// The start is a date rather than a maybe because <see cref="PeriodBar"/> draws no track
-    /// without one, so 100 here is never an unknown start. It is not always an open end either:
-    /// a closed period ending near the end of a long lifetime rounds up into the same full track.
-    /// </remarks>
-    private static int PeriodShare(DateTimeOffset start, DateTimeOffset? to)
-    {
-        if (CatalogueDate.Written(to) is not { } end)
-        {
-            return 100;
-        }
-
-        var lifetime = DateTimeOffset.UtcNow - start;
-        var covered = end - start;
-
-        if (lifetime <= TimeSpan.Zero)
-        {
-            return 100;
-        }
-
-        return Math.Clamp((int)Math.Round(covered / lifetime * 100), 5, 100);
-    }
-
-    /// <summary>
-    /// The variable's curated properties, in the order the catalogue puts them.
-    /// </summary>
-    /// <remarks>
-    /// Nothing here is known to this component. The keys, their labels, their order and the
-    /// vocabularies their coded values are drawn from all arrive with the payload, because they are
-    /// editable master data — a property added or renamed in Munin appears here without this
-    /// package being touched, and a copy of any of it would be stale the first time someone edited
-    /// a definition.
-    /// <para>
-    /// Runa gathers these under one heading in the inline panel and only splits them by their own
-    /// groups on the full detail page. This follows that: one group, catalogue order.
-    /// </para>
-    /// </remarks>
-    private RenderFragment PropertiesGroup(VariableDetail detail) => builder =>
-    {
-        var rows = PropertyRows(detail);
-
-        if (rows.Count == 0)
-        {
-            return;
-        }
-
-        builder.OpenElement(0, $"h{RowLevel}");
-        builder.AddAttribute(1, "class", "headline headline-xxs margin--none munin-explorer-group");
-        builder.AddContent(2, T.GroupProperties);
-        builder.CloseElement();
-
-        builder.OpenElement(3, "dl");
-        builder.AddAttribute(4, "class", "munin-explorer-meta__grid");
-
-        var seq = 10;
-
-        foreach (var row in rows)
-        {
-            builder.OpenElement(seq, "div");
-
-            builder.OpenElement(seq + 1, "dt");
-            builder.AddAttribute(seq + 2, "class", "headline headline-xxs margin--none");
-            builder.AddAttribute(seq + 3, "lang", Foreign(row.LabelLanguage));
-            builder.AddContent(seq + 4, row.Label);
-            builder.CloseElement();
-
-            // The panel's own prefix, passed rather than defaulted: DetailBlocks draws the detail
-            // pages' fact lists too, and those moved to the chassis. (Fhi.Metadata-35w0p.11)
-            seq = DetailBlocks.Values(builder, seq + 5, row, Reader, T, "munin-explorer-meta__language");
-
-            builder.CloseElement();
-        }
-
-        builder.CloseElement();
-    };
-
     /// <summary>The reader's language as a tag, and the marker for text that is not in it.</summary>
     /// <remarks>
     /// <c>Reader</c> rather than <c>ReaderLanguage</c>: the type that resolves it is
@@ -1523,34 +1376,13 @@ public sealed partial class VariableSearch : ComponentBase
 
     private string? Foreign(string language) => CatalogueProperties.Foreign(language, Reader);
 
-    /// <summary>The variable's curated properties, resolved for this reader.</summary>
-    /// <remarks>
-    /// Through <see cref="CatalogueColumns"/> rather than off the bag, because merging the
-    /// column-backed values in reaches this list too and not only the detail views
-    /// (Fhi.Metadata-bct95).
-    /// </remarks>
-    private List<PropertyRow> PropertyRows(VariableDetail detail) =>
-        CatalogueProperties.Rows(detail.PropertyMetadata, CatalogueColumns.Values(detail), Reader,
-                                 PanelDrawnElsewhere);
-
-    /// <summary>
-    /// Keys this panel draws itself, so its Egenskaper list does not repeat them.
-    /// </summary>
-    /// <remarks>
-    /// Beskrivelse, which the Identifikasjon list above spells out, and PreferredTerm, which names the
-    /// row the panel opens from. DataType is where this differs from <c>VariableView.DrawnElsewhere</c>:
-    /// it has no block of its own here, so suppressing it would take the row off the one surface that draws it.
-    /// </remarks>
-    private static readonly IReadOnlySet<string> PanelDrawnElsewhere =
-        new HashSet<string>(StringComparer.Ordinal) { CatalogueColumns.Description, CatalogueColumns.PreferredTerm };
-
     /// <summary>Which tab of the open panel is showing.</summary>
     /// <remarks>
-    /// Runa's panel has two: the metadata, and the data behind the variable. Reset whenever a
-    /// different row is opened — a reader who was on Data for one variable has not asked to be on
-    /// Data for the next, and arriving on a tab you did not choose is disorienting.
+    /// Two: the data behind the variable, first, and what the variable is. Reset to Data whenever a
+    /// different row is opened — arriving on a tab you did not choose is disorienting.
+    /// (Fhi.Metadata-l9l2n.101)
     /// </remarks>
-    private PanelTab _tab = PanelTab.Details;
+    private PanelTab _tab = PanelTab.Data;
 
     /// <summary>The panel's tabs, in the order they are drawn.</summary>
     private static readonly PanelTab[] Tabs = Enum.GetValues<PanelTab>();
@@ -1566,8 +1398,8 @@ public sealed partial class VariableSearch : ComponentBase
 
     private string TabLabel(PanelTab tab) => tab switch
     {
-        PanelTab.Details => T.TabDetails,
         PanelTab.Data => T.TabData,
+        PanelTab.About => T.TabAbout,
         _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "No label for this tab."),
     };
 
@@ -1634,18 +1466,12 @@ public sealed partial class VariableSearch : ComponentBase
     /// <remarks>
     /// One reading for every site, because falling back apart is what drew prose on the facet
     /// button and the bare token on the heading directly beneath it. The payload is a parameter
-    /// rather than the field, so a heading resolves out of the very object its button did. The
-    /// open row's kilde trail is the third site and reaches the same call through
-    /// <see cref="KildeTrailBlock.Steps"/>, which takes the facet's word below as its fallback.
+    /// rather than the field, so a heading resolves out of the very object its button did.
     /// </remarks>
     private string KildeTypeNameFromApi(FilterOptions? facets, string? value) =>
         T.KildeTypeNameFromApi(value, FacetKildeTypeName(facets, value));
 
     /// <summary>The API's own word for a kildetype, out of the facets the filter panel loaded.</summary>
-    /// <remarks>
-    /// The lookup alone, because the trail resolves it through <see cref="KildeTrailBlock.Steps"/> and
-    /// the two sites would otherwise each hold a copy of the matching rule.
-    /// </remarks>
     private static string? FacetKildeTypeName(FilterOptions? facets, string? value) =>
         facets?.KildeTyper
             .FirstOrDefault(type => string.Equals(type.Value, value, StringComparison.OrdinalIgnoreCase))
@@ -1807,17 +1633,9 @@ public sealed partial class VariableSearch : ComponentBase
             RowCell.Write(builder, 600, T.FieldStatus, status, "status", T.NotSpecified, catalogue: false);
         }
 
-        // The dataperiode as text — the same two dates the panel draws under its bar, from the
-        // same fields. helsedata's own period cell is a bar and nothing else, with the dates on
-        // hover, but a bar is drawn entirely by rules this package does not ship: in a host that
-        // has not styled `munin-explorer-dataitem-period` the cell would be empty rather than plain, and
-        // an empty column is indistinguishable from a variable with no period recorded. The panel
-        // is where the bar is worth its dependency, because the row beside it says the dates.
-        // Not the catalogue's own words, like the datatype and status: the dates are formatted for
-        // the reader and the word between them is this component's, so it follows Language like a
-        // label rather than staying Norwegian like a variable name. Hence `catalogue: false` — an
-        // English reader hearing "Jan 2010 – Ongoing" announced by a Norwegian voice is the very
-        // thing lang="no" is there to prevent, applied backwards.
+        // Text, not helsedata's hover-only bar: an unstyled `munin-explorer-dataitem-period` would
+        // draw an empty cell, which reads as no period recorded.
+        // `catalogue: false`: the dates are formatted for the reader, so follow Language.
         if (ColumnVisible(ResultColumn.DataPeriod))
         {
             RowCell.Write(builder, 700, T.FieldDataPeriod, PeriodText(v.DataFrom, v.DataTo), "period", T.NotSpecified, catalogue: false);
@@ -1826,8 +1644,8 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>The dataperiode in one line, or null where the catalogue has neither date.</summary>
     /// <remarks>
-    /// The one helper every surface joins a period with, so the column, the bar above it and the
-    /// variable's own page cannot word one period three ways (Fhi.Metadata-msax9). Null rather
+    /// The one helper every surface joins a period with, so the column and the variable's own
+    /// page cannot word one period two ways (Fhi.Metadata-msax9). Null rather
     /// than a dash for neither date: the cell writes "Ikke oppgitt" itself, as every column does.
     /// </remarks>
     private string? PeriodText(DateTimeOffset? from, DateTimeOffset? to) =>

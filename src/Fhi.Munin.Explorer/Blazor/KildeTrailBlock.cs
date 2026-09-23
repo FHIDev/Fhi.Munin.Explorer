@@ -9,8 +9,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Where a variable sits in the catalogue, drawn as an ordered list: kildetype, kilde, datasamling.
 /// </summary>
 /// <remarks>
-/// One implementation and two callers — the panel an open row shows, and <see cref="VariableView"/>
-/// — because the piece a second copy re-derives wrongly is <see cref="Steps"/>'s empty-level rule.
+/// Drawn by <see cref="VariableView"/> alone since the row drawer dropped its trail
+/// (Fhi.Metadata-l9l2n.101); kept apart so <see cref="Steps"/>'s empty-level rule has one home.
 /// (Fhi.Metadata-35w0p.47)
 /// <para>
 /// <see cref="NamedVariabelgrupper"/> is here for that reason rather than because it is a trail
