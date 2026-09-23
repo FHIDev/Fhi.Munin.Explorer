@@ -11961,7 +11961,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         var groups = Panel(cut).QuerySelectorAll("ul.munin-explorer-kodeverk");
 
-        Assert.Equal([2, 1, 1], groups.Select(g => g.QuerySelectorAll("li").Length));
+        // The links' own items only: a nameless link's code preview is a list nested inside one.
+        Assert.Equal([2, 1, 1], groups.Select(g => g.QuerySelectorAll("li.munin-explorer-kodeverk__item").Length));
     }
 
     [Fact]
@@ -12436,8 +12437,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         // And the retry that landed puts the codes where they belonged all along — on the line, in
         // place of the name — so the control that offered the retry has nothing left to reveal.
-        Assert.Equal("0 Velg verdi · 1 0: Tap av produktiv tale",
-                     KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal(["0 Velg verdi", "1 0: Tap av produktiv tale"],
+                     PreviewItems(KodeverkLines(cut)[0]).Select(li => li.TextContent));
         Assert.Empty(KodeverkLines(cut)[0].QuerySelectorAll("button"));
     }
 
@@ -12663,6 +12664,56 @@ public class VariableSearchTest : ExplorerTestContext
             ]
         });
 
+    /// <summary>The list items a nameless line draws in its name's place.</summary>
+    private static IReadOnlyList<AngleSharp.Dom.IElement> PreviewItems(AngleSharp.Dom.IElement line) =>
+        [.. line.QuerySelectorAll(".munin-explorer-kodeverk__name > ul > li")];
+
+    private static KodeverkCodes ThreeCodes2336() => Codes2336() with
+    {
+        Codes = [.. Enumerable.Range(1, 3).Select(i => new KodeverkCode { Value = $"{i}", Name = $"Verdi {i}" })]
+    };
+
+    [Fact]
+    public void Codes_WhenAnUnnamedKildekodeverkHasThreeCodes_ThenThePreviewIsAListOfThreeItems()
+    {
+        // Sak #6132: the preview was one bold run-on line joined by " · ". Queried by element, so
+        // a change that only swaps the separator still fails here (Fhi.Metadata-0ajsy).
+        var cut = OpenData(OneNamelessLink(Guid.NewGuid()).Knows(ThreeCodes2336()));
+        var nameless = KodeverkLines(cut)[0];
+
+        Assert.Equal(["1 Verdi 1", "2 Verdi 2", "3 Verdi 3"], PreviewItems(nameless).Select(li => li.TextContent));
+        Assert.All(PreviewItems(nameless), li => Assert.Equal("no", li.Closest("[lang]")!.GetAttribute("lang")));
+    }
+
+    [Fact]
+    public void Codes_WhenANamelessLinkIsPreviewed_ThenTheKodeverkSectionHasNoBlockInsideAParagraph()
+    {
+        // A <ul> inside a <p> is not markup a browser keeps: the parser closes the <p> before it,
+        // leaving the class on an empty paragraph and the list unstyled beside it.
+        var cut = OpenData(KodeverkRows().Knows(ManyCodes2336()));
+        var list = Panel(cut).QuerySelector(".munin-explorer-kodeverk")!;
+
+        Assert.Empty(list.QuerySelectorAll("p ul, p ol, p li, p div"));
+        Assert.Equal("DIV", KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TagName);
+        Assert.DoesNotContain(" · ", KodeverkLines(cut)[0].TextContent);
+    }
+
+    [Fact]
+    public void Codes_WhenAKildekodeverkHasAName_ThenItsLineIsMarkedUpExactlyAsBefore()
+    {
+        // The markup of a named line before Fhi.Metadata-0ajsy, captured from main less bUnit's
+        // handler ids. The restructure is for the unnamed case only; this catches it leaking.
+        var cut = OpenData(KodeverkRows());
+        var named = KodeverkLines(cut)[1];
+        var nameId = named.QuerySelector(".munin-explorer-kodeverk__name")!.Id;
+
+        Assert.Equal(
+            $"<li class=\"munin-explorer-kodeverk__item\"><p class=\"munin-explorer-kodeverk__name\" id=\"{nameId}\" lang=\"no\">Skjemastatus</p>"
+            + "<p class=\"caption munin-explorer-kodeverk__reference\">Referanse: 2337</p>"
+            + "<button class=\"hd-button-square button-square--ghost margin-bottom\" type=\"button\" aria-expanded=\"false\">Vis koder</button></li>",
+            System.Text.RegularExpressions.Regex.Replace(named.OuterHtml, @" blazor:\w+=""\d+""", ""));
+    }
+
     [Fact]
     public void Codes_WhenAKildekodeverkHasNoName_ThenItsCodesStandWhereTheNameWould()
     {
@@ -12671,10 +12722,10 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = OpenData(KodeverkRows());
         var nameless = KodeverkLines(cut)[0];
 
-        // Built from the stub rather than typed out here: a render that happened to print something
-        // plausible would otherwise pass this without ever having drawn the codes it was given.
-        Assert.Equal(string.Join(" · ", Codes2336().Codes.Select(code => $"{code.Value} {code.Name}")),
-                     nameless.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        // Built from the stub rather than typed out here, and read item by item: TextContent
+        // concatenates whatever the markup, so a one-span run-on line would pass a text compare.
+        Assert.Equal(Codes2336().Codes.Select(code => $"{code.Value} {code.Name}"),
+                     PreviewItems(nameless).Select(li => li.TextContent));
 
         // None of the three things that stood here before.
         Assert.DoesNotContain("Ukjent navn", Panel(cut).TextContent);
@@ -12683,7 +12734,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         // The catalogue's own words, so an English page still has them said in Norwegian — the rule
         // the table's own name column follows.
-        Assert.Equal("no", nameless.QuerySelector(".munin-explorer-kodeverk__name span")!.GetAttribute("lang"));
+        Assert.Equal("no", nameless.QuerySelector(".munin-explorer-kodeverk__name > ul")!.GetAttribute("lang"));
     }
 
     [Fact]
@@ -12695,8 +12746,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         // Eight, which is Runa's INLINE_CODE_PREVIEW — matched so the two clients do not draw the
         // same list to different lengths.
-        Assert.Equal(string.Join(" · ", all.Take(8).Select(code => $"{code.Value} {code.Name}")),
-                     KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal(all.Take(8).Select(code => $"{code.Value} {code.Name}"),
+                     PreviewItems(KodeverkLines(cut)[0]).Select(li => li.TextContent));
 
         // The total is on the control itself, so it is announced and not merely drawn beside it.
         Assert.Equal("Vis alle (9)", AccessibleName.Of(CodeToggles(cut)[0]));
@@ -12918,8 +12969,8 @@ public class VariableSearchTest : ExplorerTestContext
         await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
 
         cut.WaitForAssertion(() => Assert.All(KodeverkLines(cut), line => Assert.Equal(
-            "0 Velg verdi · 1 0: Tap av produktiv tale",
-            line.QuerySelector(".munin-explorer-kodeverk__name")!.TextContent)));
+            ["0 Velg verdi", "1 0: Tap av produktiv tale"],
+            PreviewItems(line).Select(li => li.TextContent))));
 
         // Both lines are the same kodeverk, so they share one cache entry and one answer.
         Assert.Equal(2, KodeverkLines(cut).Count);
@@ -12952,8 +13003,8 @@ public class VariableSearchTest : ExplorerTestContext
                      KodeverkGroupHeadings(cut));
         // The nameless link's codes are the catalogue's own words, so they stay Norwegian on an
         // English page — and it says nothing about being unnamed, in either language.
-        Assert.Equal("0 Velg verdi · 1 0: Tap av produktiv tale",
-                     KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+        Assert.Equal(["0 Velg verdi", "1 0: Tap av produktiv tale"],
+                     PreviewItems(KodeverkLines(cut)[0]).Select(li => li.TextContent));
         Assert.DoesNotContain("Unnamed", Panel(cut).TextContent);
         Assert.Equal("Reference: 2337",
                      KodeverkLines(cut)[1].QuerySelector(".munin-explorer-kodeverk__reference")!.TextContent);

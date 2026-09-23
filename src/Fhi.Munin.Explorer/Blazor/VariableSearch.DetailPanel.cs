@@ -434,31 +434,21 @@ public partial class VariableSearch
         : codes.Count == 0 ? InlineCodes.None
         : InlineCodes.Codes;
 
-    /// <summary>The codes themselves, up to the preview length, as one line of value and name.</summary>
+    /// <summary>The codes themselves, up to the preview length, one value and name per line.</summary>
     /// <remarks>
     /// Marked Norwegian for the reason the table's name column is: the words are the catalogue's,
     /// whatever language the page is in.
     /// </remarks>
     private RenderFragment InlineCodesPreview(IReadOnlyList<KodeverkCode> codes) => builder =>
     {
-        builder.OpenElement(0, "span");
+        builder.OpenElement(0, "ul");
         builder.AddAttribute(1, "lang", "no");
-
-        var seq = 2;
-        var first = true;
 
         foreach (var code in codes.Take(InlineCodePreview))
         {
-            if (!first)
-            {
-                builder.AddContent(seq, " · ");
-            }
-
-            first = false;
-
-            builder.AddContent(seq + 1, DisplayText.Trimmed(code.Name) is { } name ? $"{code.Value} {name}" : code.Value);
-
-            seq += 2;
+            builder.OpenElement(2, "li");
+            builder.AddContent(3, DisplayText.Trimmed(code.Name) is { } name ? $"{code.Value} {name}" : code.Value);
+            builder.CloseElement();
         }
 
         builder.CloseElement();
@@ -494,7 +484,9 @@ public partial class VariableSearch
             builder.SetKey((key, occurrence));
             builder.AddAttribute(seq + 1, "class", "munin-explorer-kodeverk__item");
 
-            builder.OpenElement(seq + 2, "p");
+            // A list cannot sit inside a <p>, so the preview's slot is a div wearing the same class;
+            // every other line keeps the <p> it has always had (Fhi.Metadata-0ajsy).
+            builder.OpenElement(seq + 2, inline is InlineCodes.Codes ? "div" : "p");
             builder.AddAttribute(seq + 3, "class", "munin-explorer-kodeverk__name");
             builder.AddAttribute(seq + 4, "id", KodeverkNameId(index));
 
