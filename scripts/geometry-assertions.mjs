@@ -53,7 +53,20 @@ export const assertions = [
     body: () => {
       const d = document.documentElement;
       if (d.scrollWidth <= d.clientWidth) return null;
-      return `document scrollWidth ${d.scrollWidth} > clientWidth ${d.clientWidth}`;
+
+      // Named, because the numbers alone leave the reader of a failed run to find the element
+      // themselves - and on a runner with other fonts that is a page they cannot open.
+      const past = [...document.querySelectorAll('*')]
+        .map(el => [el, el.getBoundingClientRect()])
+        .filter(([, box]) => box.width > 0 && box.right > d.clientWidth + 0.5)
+        .sort((one, other) => other[1].right - one[1].right)
+        .slice(0, 3)
+        .map(([el, box]) => `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}` +
+          `${typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).join('.') : ''}` +
+          ` ${Math.round(box.left)}..${Math.round(box.right)}`);
+
+      return `document scrollWidth ${d.scrollWidth} > clientWidth ${d.clientWidth}` +
+        (past.length > 0 ? `; widest past the edge: ${past.join(' | ')}` : '');
     },
   },
 
