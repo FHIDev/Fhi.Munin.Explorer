@@ -30,6 +30,10 @@ if (!base) {
 
 const css = content => page => page.addStyleTag({ content });
 
+const noBreak = css(`.munin-explorer-page__fields dd, .munin-explorer-meta__grid dd,
+                     .munin-explorer-page__facts dt, .munin-explorer-whole__code
+                     { overflow-wrap: normal !important; }`);
+
 // `setup` runs before the unbroken measurement and stays for the broken one, so a case can build
 // the arrangement it needs — a table too wide for its box — and then break only the one thing
 // under test.
@@ -44,10 +48,16 @@ const cases = [
   {
     assertion: 'no horizontal overflow',
     defect: 'a value with no break point at 320px, the 2026-09-15 defect',
-    path: '/', state: 'variable-detail', width: 320,
-    apply: css(`.munin-explorer-page__fields dd, .munin-explorer-meta__grid dd,
-                .munin-explorer-page__facts dt, .munin-explorer-whole__code
-                { overflow-wrap: normal !important; }`),
+    path: '/', state: 'variable-detail-about', width: 320,
+    // The drawer opens on Data since #433, which draws none of these selectors; the stub's long
+    // Kode is on Om variabelen (Fhi.Metadata-r0w7c).
+    apply: noBreak,
+  },
+  {
+    assertion: 'no horizontal overflow',
+    defect: 'the same value with no break point on the whole-variable page at 320px',
+    path: '/', state: 'variable-page', width: 320,
+    apply: noBreak,
   },
   {
     assertion: 'the component stays inside the box the host gave it',
