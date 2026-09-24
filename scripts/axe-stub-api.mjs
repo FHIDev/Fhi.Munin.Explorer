@@ -16,7 +16,7 @@ import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { TREE_SEARCH, EMPTY_SEARCH, treeFilters } from './tree-fixture.mjs';
+import { TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, treeFilters } from './tree-fixture.mjs';
 import * as detailTree from './hierarchy-fixture.mjs';
 
 const port = Number(process.argv[2]);
@@ -245,6 +245,12 @@ function serve(url, request, response) {
         .end(JSON.stringify({ items: [], totalCount: 0, page: 1, size: 25, totalPages: 0 }));
       return;
     }
+  }
+  if (search === LONG_NAME_SEARCH && path === '/api/explorer/variables') {
+    const page = JSON.parse(bodies.get(variablesRoute));
+    page.items[0].preferredTerm = LONG_NAME;
+    response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(page));
+    return;
   }
   const route = routes.find(([pattern]) => pattern.test(path));
 

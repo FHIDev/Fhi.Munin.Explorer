@@ -79,6 +79,7 @@ TARGETS=(
   "/::explorer-list-tab"
   "/::variable-detail"
   "/::variable-detail-about"
+  "/::variable-detail-long-name"
   "/::variable-whole"
   "/::explorer-search-code"
   "/::tree-collapsed"
@@ -328,6 +329,8 @@ reflow "" "/::variable-kilde-hierarchy" "/::variable-kilde-hierarchy-icons-off"
 # The states the stub's long code reaches: the row panel's Kode, the whole-variable page's heading
 # and fact row, and the result count that quotes a searched term (Fhi.Metadata-ofg1h).
 reflow "" "/::variable-detail" "/::variable-detail-about" "/::variable-whole" "/::explorer-search-code"
+# The drawer heading's unbroken name (Fhi.Metadata-yaco2).
+reflow "" "/::variable-detail-long-name"
 reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tree-no-match"
 # The facets unfolded, and the unbroken variabelgruppe name in them (Fhi.Metadata-7484a).
 reflow "" "/::filters-level-lines" "/::filters-node-icons-off"

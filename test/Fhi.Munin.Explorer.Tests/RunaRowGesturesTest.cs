@@ -256,12 +256,13 @@ public class RunaRowGesturesTest : ExplorerTestContext
     }
 
     // -----------------------------------------------------------------------
-    // Criterion 4: the panel is still labelled by the name button.
+    // Criterion 4: the panel is labelled by its own heading since Fhi.Metadata-yaco2, and the
+    // name it gets still matches the name button's.
 
     [Theory]
     [InlineData(0, "1. Tale")]
     [InlineData(2, "V_ALS.BLANK")]
-    public void Panel_WhenOpen_ThenItsLabelIsTheNameButtonAndItSaysSomething(int row, string name)
+    public void Panel_WhenOpen_ThenItsLabelIsItsHeadingAndItSaysWhatTheNameButtonSays(int row, string name)
     {
         var cut = Render();
 
@@ -270,9 +271,10 @@ public class RunaRowGesturesTest : ExplorerTestContext
         var panel = cut.Find(".munin-explorer-detail");
         var label = cut.Find($"#{panel.GetAttribute("aria-labelledby")}");
 
-        Assert.Equal(Names(cut)[row].Id, label.Id);
-        Assert.Equal("BUTTON", label.TagName);
-        Assert.Equal(name, AccessibleName.Of(label));
+        Assert.Equal("H3", label.TagName);
+        Assert.Equal(panel.Id, label.ParentElement!.Id);
+        Assert.Equal(name, AccessibleName.Of(panel));
+        Assert.Equal(AccessibleName.Of(Names(cut)[row]), AccessibleName.Of(panel));
     }
 
     // -----------------------------------------------------------------------

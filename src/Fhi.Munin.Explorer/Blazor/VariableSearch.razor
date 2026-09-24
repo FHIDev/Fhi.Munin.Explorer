@@ -788,9 +788,9 @@ else
                                is how a reader finds which one they opened, and a cell cannot be
                                both. The element carries no class on purpose; it lays nothing out. *@
                             <div role="cell">
-                            @* aria-labelledby points at the name button, the element carrying the
-                               variable's name now that no heading wraps it. The chevron is named by
-                               a sentence of ours, so it would label the panel "Skjul detaljer for …".
+                            @* aria-labelledby points at the panel's own heading, so the name is
+                               announced once on entry rather than once from the row button and again
+                               from the heading. (Fhi.Metadata-yaco2)
 
                                Note where this comment sits. A Razor comment between an element's
                                ATTRIBUTES is emitted as an attribute name, and the browser throws
@@ -800,8 +800,9 @@ else
                             <div class="munin-explorer-meta munin-explorer-detail"
                                  id="@DetailId(v)"
                                  role="region"
-                                 aria-labelledby="@RowNameId(v)"
+                                 aria-labelledby="@DrawerHeadingId(v)"
                                  aria-busy="@DetailBusy">
+                                @DrawerHeading(v)
                                 @* One line, holding one message at a time: loading, or why the panel
                                    is empty. Its own region rather than the component's — the status
                                    line above describes the list, and a panel that failed to load has
@@ -819,7 +820,7 @@ else
                                        variable, like the region. (Fhi.Metadata-l9l2n.101) *@
                                     <div class="munin-explorer-meta__tabs"
                                          role="tablist"
-                                         aria-labelledby="@RowNameId(v)"
+                                         aria-labelledby="@DrawerHeadingId(v)"
                                          @onkeydown="TabKey">
                                         @foreach (var tab in Tabs)
                                         {

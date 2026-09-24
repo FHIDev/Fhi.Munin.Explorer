@@ -3,6 +3,9 @@
 export const TREE_SEARCH = 'browser-tree-fixture';
 export const EMPTY_SEARCH = 'browser-tree-empty';
 export const LARGE_COUNT = 120;
+// The first row's name unbroken, for the drawer heading at 320px (Fhi.Metadata-yaco2).
+export const LONG_NAME_SEARCH = 'browser-long-name';
+export const LONG_NAME = 'Antall_tidligere_fødsler_og_dødfødsler_etter_22_fullgåtte_uker';
 export const names = {
   kilde: 'Prøvekilde', delkilde: 'Delkilde', first: 'Samling A', second: 'Samling B',
   direct: 'Direkte samling', offered: 'Felles gruppe', excluded: 'Kun i treet',

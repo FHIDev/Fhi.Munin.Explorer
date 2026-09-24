@@ -45,6 +45,23 @@ public partial class VariableSearch
     /// </remarks>
     private string? DetailControls(VariableSummary v) => IsSelected(v) ? DetailId(v) : null;
 
+    private string DrawerHeadingId(VariableSummary v) => $"munin-explorer-meta-heading-{_instance}-{v.Id:N}";
+
+    // Drawn from the row rather than the detail payload, so the region has its name while the fetch
+    // is still in flight. Stiler scopes the rule under .munin-explorer-meta, so it must stay inside
+    // the panel. (Fhi.Metadata-yaco2)
+    private RenderFragment DrawerHeading(VariableSummary v) => builder =>
+    {
+        var named = T.Named(v.PreferredTerm, v.Code);
+
+        builder.OpenElement(0, $"h{RowLevel}");
+        builder.AddAttribute(1, "class", "munin-explorer-meta__heading");
+        builder.AddAttribute(2, "id", DrawerHeadingId(v));
+        builder.AddAttribute(3, "lang", named.Norwegian ? Foreign("no") : null);
+        builder.AddContent(4, named.Text);
+        builder.CloseElement();
+    };
+
     // No aria-labelledby on the chevron: it is named by ExpandLabel, one aria-label in the reader's
     // language around Munin's name, which is the trade Kelda's chevron makes too. The two-language
     // aria-labelledby rule lives on RowSaveButton, the one control here that still needs it.
