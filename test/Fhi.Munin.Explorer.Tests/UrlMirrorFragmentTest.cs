@@ -224,7 +224,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}", Mirrored()));
 
         // The same reset seen from the other side: a host re-navigating with an address it captured
-        // earlier puts "#metadata" over the list view, which has no such section. Kept anyway — the
+        // earlier puts "#munin-explorer-metadata" over the list view, which has no such section. Kept anyway — the
         // mirror drops a fragment when its own state moves, and never edits one a navigation set.
         Navigation.NavigateTo($"/kilder#{DetailSectionIds.Metadata}");
 

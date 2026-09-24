@@ -1319,8 +1319,8 @@ public class DatasamlingViewTest : ExplorerTestContext
              "munin-explorer-section-variabler", "munin-explorer-section-datakilde", "munin-explorer-section-alle-metadatafelt"],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
-        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #criteria"));
-        Assert.DoesNotContain("#criteria", Targets(cut));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria"));
+        Assert.DoesNotContain("#munin-explorer-criteria", Targets(cut));
     }
 
     [Fact]
@@ -1342,7 +1342,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
         Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
         Assert.Single(cut.FindAll("#" + DetailSectionIds.Criteria));
-        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #criteria"));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria"));
     }
 
     [Theory]
@@ -1355,13 +1355,13 @@ public class DatasamlingViewTest : ExplorerTestContext
     {
         var cut = Render(CriteriaSeeded(), headingLevel: headingLevel);
 
-        var subsection = cut.Find("#munin-explorer-section-om-datasamlingen #criteria");
+        var subsection = cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria");
         Assert.Equal("-1", subsection.GetAttribute("tabindex"));
         Assert.False(subsection.HasAttribute("data-nav-section"));
         Assert.Contains("munin-explorer-page__anchor", subsection.ClassList);
         Assert.Equal(tagName, subsection.FirstElementChild!.TagName);
         Assert.Contains("headline-xxs", subsection.FirstElementChild.ClassList);
-        Assert.DoesNotContain("#criteria", Targets(cut));
+        Assert.DoesNotContain("#munin-explorer-criteria", Targets(cut));
     }
 
     [Fact]
@@ -1388,7 +1388,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal(["Variabler", "Datakilde", "Om utvalget", "Alle metadatafelt"],
                      BlockHeadings(cut));
         Assert.Equal(BlockHeadings(cut), Entries(cut));
-        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #criteria"));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria"));
         Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-section-kvalitetsnote"));
     }
 
@@ -1400,12 +1400,12 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(["Om datasamlingen"], BlockHeadings(cut));
         Assert.Equal(["#munin-explorer-section-om-datasamlingen"], Targets(cut));
-        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #criteria"));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria"));
 
         cut.Render(p => p.Add(c => c.Datasamling, sparse));
 
         Assert.Empty(cut.FindAll("#munin-explorer-section-om-datasamlingen"));
-        Assert.Empty(cut.FindAll("#criteria"));
+        Assert.Empty(cut.FindAll("#munin-explorer-criteria"));
     }
 
     [Fact]
@@ -1714,7 +1714,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     public void Placement_WhenOnlySomeGroupsArePlaced_ThenBareMetadataIsDrawnBesideTheNewIds()
     {
         // The shape a rollout actually produces, and the one the host note promises: a page can
-        // carry #metadata and the placed ids at once, and a group no row names is drawn under the
+        // carry #munin-explorer-metadata and the placed ids at once, and a group no row names is drawn under the
         // view's own heading rather than dropped. (Fhi.Metadata-lr6yh)
         var cut = Render(Placed() with
         {
@@ -2041,7 +2041,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
 
-        // Resolved through the DOM rather than compared as strings: `#metadata` is also the CSS
+        // Resolved through the DOM rather than compared as strings: `#munin-explorer-metadata` is also the CSS
         // selector for the element it has to land on, so this is the browser's own question.
         Assert.All(Targets(cut), href => Assert.NotNull(cut.Find(href)));
     }
@@ -2107,7 +2107,7 @@ public class DatasamlingViewTest : ExplorerTestContext
                           cut.Find(".munin-explorer-datasamling__criteria").TextContent.Trim(),
                           StringComparison.Ordinal);
 
-        Assert.Equal("Inklusjons- og eksklusjonskriterier", cut.Find("#criteria > .headline").TextContent);
+        Assert.Equal("Inklusjons- og eksklusjonskriterier", cut.Find("#munin-explorer-criteria > .headline").TextContent);
         Assert.DoesNotContain("Inklusjons- og eksklusjonskriterier", BlockHeadings(cut));
         Assert.DoesNotContain("Inklusjons- og eksklusjonskriterier", Labels(SourceInformation(cut)));
     }
