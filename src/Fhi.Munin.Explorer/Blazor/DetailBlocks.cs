@@ -218,8 +218,9 @@ internal static class DetailBlocks
     }
 
     /// <summary>
-    /// A value, as a link where the catalogue types the property as a URL and as markdown where the
-    /// row is authored. Consumes six sequence numbers from <paramref name="seq"/>.
+    /// A value, as a link where the catalogue types the property as a URL, as a list of links where
+    /// it is several addresses, and as markdown where the row is authored. Consumes twelve sequence
+    /// numbers from <paramref name="seq"/>.
     /// </summary>
     /// <remarks>
     /// A field that exists to be followed should be followable (FHIDev/Munin#5385). <c>rel</c>
@@ -228,6 +229,21 @@ internal static class DetailBlocks
     /// </remarks>
     private static void Text(RenderTreeBuilder builder, int seq, string value, PropertyRow row)
     {
+        if (row.Hrefs is { } hrefs)
+        {
+            builder.OpenElement(seq + 6, "ul");
+
+            foreach (var each in hrefs)
+            {
+                builder.OpenElement(seq + 7, "li");
+                Anchor(builder, seq + 8, each, each);
+                builder.CloseElement();
+            }
+
+            builder.CloseElement();
+            return;
+        }
+
         if (row.Href is not { } href)
         {
             if (row.Authored)
@@ -242,10 +258,16 @@ internal static class DetailBlocks
             return;
         }
 
-        builder.OpenElement(seq + 1, "a");
-        builder.AddAttribute(seq + 2, "href", href);
-        builder.AddAttribute(seq + 3, "rel", "noopener noreferrer");
-        builder.AddContent(seq + 4, value);
+        Anchor(builder, seq + 1, href, value);
+    }
+
+    /// <summary>One catalogue link, the same whether it stands alone or in a list. Consumes four.</summary>
+    private static void Anchor(RenderTreeBuilder builder, int seq, string href, string label)
+    {
+        builder.OpenElement(seq, "a");
+        builder.AddAttribute(seq + 1, "href", href);
+        builder.AddAttribute(seq + 2, "rel", "noopener noreferrer");
+        builder.AddContent(seq + 3, label);
         builder.CloseElement();
     }
 

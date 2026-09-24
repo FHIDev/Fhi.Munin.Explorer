@@ -1803,6 +1803,22 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void LegalBasis_WhenTheColumnIsASemicolonJoinedList_ThenNoCellLinksItWhole()
+    {
+        // One absolute URI to Uri.TryCreate, and an address that exists nowhere (Fhi.Metadata-61s28).
+        const string laws = "https://lovdata.no/lov/2014-06-20-43;https://lovdata.no/lov/2001-05-18-24";
+        var cut = Render(Kilde() with { LegalBasis = laws }, language: "en");
+
+        foreach (var fact in new[] { Fact(Hero(cut), "Legal basis"), Fact(SourceInformation(cut), "Legal basis") })
+        {
+            Assert.Empty(fact.QuerySelectorAll("a"));
+            Assert.Empty(fact.QuerySelectorAll("[lang]"));
+            Assert.Null(fact.GetAttribute("lang"));
+            Assert.Contains(laws, fact.TextContent, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void HeroFacts_Always_ThenTheyAreTheSixTheMockupLeadsWith()
     {
         // The mockup's sixth is Tilgang, and the catalogue has no access field for a source — so
@@ -2404,6 +2420,56 @@ public class KildeViewTest : ExplorerTestContext
 
         // A URL is prose in no language, so the cell must not claim Norwegian (WCAG 3.1.2).
         Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
+    }
+
+    [Theory]
+    [InlineData("String")]
+    [InlineData("Url")]
+    public void Properties_WhenAValueIsSeveralAddressesJoinedBySemicolons_ThenEachIsItsOwnLinkInAList(string type)
+    {
+        // K_40ARINGSUNDERSOKELSENE's applicableLegislation as the test API serves it: one string,
+        // three laws, which the reader was given as one link to an address that does not exist.
+        const string value = "http://data.europa.eu/eli/reg/2025/327/oj;https://lovdata.no/eli/lov/2001-05-18-24;"
+                             + "https://lovdata.no/eli/forskrift/2018-04-27-645";
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("applicableLegislation", 10, "Rettslig grunnlag") with { Type = type }],
+            AdditionalProperties = new Dictionary<string, string?> { ["applicableLegislation"] = value },
+        };
+
+        var cell = Render(kilde).Find(".munin-explorer-page__fields dd");
+        var anchors = cell.QuerySelectorAll("ul > li > a");
+
+        Assert.Equal(
+            ["http://data.europa.eu/eli/reg/2025/327/oj", "https://lovdata.no/eli/lov/2001-05-18-24",
+             "https://lovdata.no/eli/forskrift/2018-04-27-645"],
+            anchors.Select(a => a.GetAttribute("href")));
+        Assert.All(anchors, a =>
+        {
+            Assert.Equal(a.GetAttribute("href"), a.TextContent);
+            Assert.Equal("noopener noreferrer", a.GetAttribute("rel"));
+            Assert.Null(a.GetAttribute("target"));
+        });
+        Assert.Equal(3, cell.QuerySelectorAll("a").Length);
+        Assert.Null(cell.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Properties_WhenOnePartOfASemicolonListIsNotAnAddress_ThenNothingIsLinked()
+    {
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("applicableLegislation", 10, "Rettslig grunnlag") with { Type = "String" }],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["applicableLegislation"] = "https://lovdata.no/eli/lov/2001-05-18-24;helseregisterloven",
+            },
+        };
+
+        var cell = Render(kilde).Find(".munin-explorer-page__fields dd");
+
+        Assert.Empty(cell.QuerySelectorAll("a"));
+        Assert.Equal("https://lovdata.no/eli/lov/2001-05-18-24;helseregisterloven", cell.TextContent);
     }
 
     [Fact]
