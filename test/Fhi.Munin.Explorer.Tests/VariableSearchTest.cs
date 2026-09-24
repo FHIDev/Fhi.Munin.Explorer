@@ -11680,7 +11680,7 @@ public class VariableSearchTest : ExplorerTestContext
         // The other side of the same decision: a recorded reason is something to say, so a marked
         // statistic with no numbers goes past the early return rather than reading as absent.
         var tab = DataTab(
-            [DataTabStatistic(new Dictionary<string, string?>(), disclosureControl: Statistic.DescriptiveStatisticsNotGiven)],
+            [DataTabStatistic([], disclosureControl: Statistic.DescriptiveStatisticsNotGiven)],
             kodeverk: false);
 
         Assert.Empty(tab.QuerySelectorAll($".{DetailBlocks.Absent}"));
