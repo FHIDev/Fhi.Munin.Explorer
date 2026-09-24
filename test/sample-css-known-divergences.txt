@@ -194,7 +194,6 @@ missing-declaration||.munin-explorer-data-list__item__row|align-items
 missing-declaration||.munin-explorer-data-list__item__row|border-bottom
 missing-declaration||.munin-explorer-data-list__item__row|display
 missing-declaration||.munin-explorer-data-list__item__row|font-size
-missing-declaration||.munin-explorer-data-list__item__row|position
 missing-declaration||.munin-explorer-data-list__item|background-color
 missing-declaration||.munin-explorer-data-list|border-top
 missing-declaration||.munin-explorer-dataitem-header__dataCollection|padding-left
@@ -216,8 +215,6 @@ missing-declaration||.munin-explorer-dataitem-main__column|padding
 missing-declaration||.munin-explorer-dataitem-main__column|padding-left
 missing-declaration||.munin-explorer-dataitem-main__column|text-overflow
 missing-declaration||.munin-explorer-dataitem-main__column|white-space
-missing-declaration||.munin-explorer-dataitem-main__expand-icon|margin
-missing-declaration||.munin-explorer-dataitem-main__name|display
 # Left out on purpose: without Stiler's stacked rows at 1280px and below, it shrinks the name to 0px
 # wide at 320 (Fhi.Metadata-hiz1k). It can come in with the @media (max-width:1280px) row collapse.
 missing-declaration||.munin-explorer-dataitem-main__name|min-width
@@ -287,8 +284,6 @@ missing-selector||.munin-explorer-data-list__item:last-of-type|
 missing-selector||.munin-explorer-dataitem-header > *|
 missing-selector||.munin-explorer-dataitem-header__button:focus|
 missing-selector||.munin-explorer-dataitem-header__button|
-missing-selector||.munin-explorer-dataitem-main__name::after|
-missing-selector||.munin-explorer-dataitem-main__name:focus|
 missing-selector||.munin-explorer-frequency td:last-child|
 missing-selector||.munin-explorer-header__actions .dropdown|
 
@@ -572,20 +567,6 @@ invented-selector||.munin-explorer-meta__tab-content:focus-visible|outline-offse
 invented-selector||table.munin-explorer-data-list tbody th|color
 invented-selector||table.munin-explorer-data-list tbody th|font-weight
 invented-selector||table.munin-explorer-data-list tbody th|min-width
-invented-selector||table.munin-explorer-data-list td|border-bottom
-invented-selector||table.munin-explorer-data-list td|padding
-invented-selector||table.munin-explorer-data-list td|text-align
-invented-selector||table.munin-explorer-data-list td|vertical-align
-invented-selector||table.munin-explorer-data-list th|border-bottom
-invented-selector||table.munin-explorer-data-list th|padding
-invented-selector||table.munin-explorer-data-list th|text-align
-invented-selector||table.munin-explorer-data-list th|vertical-align
-invented-selector||table.munin-explorer-data-list thead th|background
-invented-selector||table.munin-explorer-data-list thead th|color
-invented-selector||table.munin-explorer-data-list thead th|font-weight
-invented-selector||table.munin-explorer-data-list|border-collapse
-invented-selector||table.munin-explorer-data-list|font-size
-invented-selector||table.munin-explorer-data-list|width
 invented-selector||.munin-explorer__dropdown > summary::-webkit-details-marker|display
 invented-selector||.munin-explorer__dropdown > summary|list-style
 invented-selector||.munin-explorer-hierarchy__branch|margin

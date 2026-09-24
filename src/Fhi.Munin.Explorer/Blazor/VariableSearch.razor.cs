@@ -1053,52 +1053,8 @@ public sealed partial class VariableSearch : ComponentBase
         builder.CloseElement();
     };
 
-    /// <summary>The row's disclosure: the chevron that opens and closes its panel, in a cell of its own.</summary>
-    /// <remarks>
-    /// The cell is the first direct child of munin-explorer-dataitem-main because a row owns only cells;
-    /// Stiler keys its rules through it (Fhi.Metadata-35w0p.72). hd-button-reset is part of that contract.
-    /// Reverses Fhi.Metadata-zqe14 (Fhi.Metadata-35w0p.34).
-    /// </remarks>
-    private RenderFragment RowExpandToggle(VariableSummary v) => builder =>
-    {
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "role", "cell");
-        builder.AddAttribute(2, "class", "munin-explorer-dataitem__expand-cell");
-
-        builder.OpenElement(3, "button");
-        builder.AddAttribute(4, "type", "button");
-        builder.AddAttribute(12, "class", "hd-button-reset munin-explorer-dataitem__expand-toggle");
-        // Load-bearing beyond assistive tech: Stiler 0.1.91 tells the chevron's two states apart by
-        // aria-expanded (_results.scss). Drop it and every shut row draws up. (Fhi.Metadata-l9l2n.84)
-        builder.AddAttribute(13, "aria-expanded", DetailExpanded(v));
-        builder.AddAttribute(14, "aria-controls", DetailControls(v));
-        builder.AddAttribute(15, "aria-label", ExpandLabel(v));
-
-        // Never disabled, including while its own fetch runs: pressing it again is how the panel
-        // is closed, and disabling the element that has focus drops focus to <body>.
-        builder.AddAttribute(16, "onclick",
-            EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleDetailFromChevronAsync(v, e)));
-
-        // The click stops here, or the row behind toggles as well and one press would open the
-        // panel and close it again. The mousedown does not: the row measures a click against the
-        // press it saw, and a drag begun here lands its click there. (Fhi.Metadata-l9l2n.81)
-        builder.AddEventStopPropagationAttribute(17, "onclick", true);
-
-        builder.OpenElement(18, "span");
-        builder.AddAttribute(19, "class",
-            IsSelected(v)
-                ? "icon icon-keyboard-arrow-up munin-explorer-dataitem-main__expand-icon"
-                : "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon");
-        builder.AddAttribute(20, "aria-hidden", "true");
-        builder.CloseElement();
-
-        builder.CloseElement();
-
-        builder.CloseElement();
-    };
-
-    // Named for the variable, as Kelda's chevron is for its kilde: "Vis detaljer" repeated down a
-    // column says nothing about which row it opens.
+    // Named for the variable: "Vis detaljer" repeated down a column says nothing about which row it
+    // opens. The w13lk rule applies, so a blank PreferredTerm is named by its code.
     private string ExpandLabel(VariableSummary v)
     {
         var name = T.Named(v.PreferredTerm, v.Code).Text;
@@ -1107,40 +1063,21 @@ public sealed partial class VariableSearch : ComponentBase
     }
 
     /// <summary>
-    /// The first column: the variable's name, which opens the whole variable in place of the list.
+    /// The first column: the variable's name, which is the row's disclosure and its one Tab stop.
     /// </summary>
     /// <remarks>
-    /// No heading element. An earlier version wrapped this in one so results could be walked with
-    /// a screen reader's heading rotor, but helsedata's row is <c>display: flex</c> and
-    /// <c>munin-explorer-dataitem-main__name</c> sizes the flex ITEM — a heading in between becomes the
-    /// item and the name column falls out of line with its header.
+    /// Helsedata's own row model: Enter, Space and a click open the panel in place, and the panel
+    /// is where the whole variable and the save action are reached (Fhi.Metadata-35w0p.78).
     /// <para>
-    /// There is a wrapper, though, and it is not a heading: a <c>div</c> carrying
-    /// <c>role="rowheader"</c> and the same class the button wears. A row owns nothing but cells,
-    /// and this column's content is a <c>button</c> that cannot be one without ceasing to be a
-    /// button — see the comment on the wrapper for why the class is on both elements.
-    /// </para>
-    /// <para>
-    /// The name is no disclosure: it carries neither <c>aria-expanded</c> nor <c>aria-controls</c>,
-    /// which are the chevron's (<see cref="RowExpandToggle"/>). It is still what the open panel is
-    /// labelled by, since it is the element holding the variable's name. (Fhi.Metadata-35w0p.34)
+    /// No heading element: <c>munin-explorer-dataitem-main__name</c> sizes the flex item, and a
+    /// heading in between would become the item and pull the column out of line with its header.
     /// </para>
     /// </remarks>
     private RenderFragment RowHeading(VariableSummary v) => builder =>
     {
-        // A cell around the button, and rowheader rather than cell: the variable's name is what
-        // the rest of the row is about, which is the same call Kelda's table makes with
-        // <th scope="row">. It exists at all because a row owns nothing but cells and this column
-        // is a <button> — the one element in the row that cannot carry a cell role itself without
-        // giving up being a button.
-        //
-        // It wears `munin-explorer-dataitem-main__name`, the class the button already had, and the
-        // button keeps it too. That is deliberate rather than sloppy: the class is what sizes this
-        // column (its `flex` weight, in Stiler and in both sample stylesheets), so the wrapper has to
-        // carry it or the name column stops lining up with its header — and the button has to keep
-        // it or it draws as a browser default button. Every rule on the name is either inherited
-        // or harmless twice; the only one that repeats is an empty `::after` overlay with
-        // `pointer-events: none`, which draws nothing.
+        // A row owns only cells and a <button> cannot be one, so the wrapper is the rowheader. It
+        // wears the button's class as well, because that class carries the column's flex weight;
+        // the one rule that repeats is Stiler's empty ::after overlay, which draws nothing here.
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "munin-explorer-dataitem-main__name");
         builder.AddAttribute(2, "role", "rowheader");
@@ -1150,47 +1087,41 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(5, "type", "button");
         builder.AddAttribute(6, "id", RowNameId(v));
 
-        // A name for the shape where the button's own content cannot give it one. PreferredTerm
-        // defaults to "" (Contracts/VariableSummary.cs) and the row draws it blank, so the span
-        // below is empty and this button — whose only content IS that span — announces as
-        // "button" with nothing in front of it. WCAG 4.1.2.
-        //
-        // The code rather than a written sentence: one sentence names every unnamed row alike, so
-        // nothing says which one the reader is standing in (Fhi.Metadata-w13lk).
-        //
-        // An aria-label, and not the two-element aria-labelledby the rest of this row uses,
-        // because there is no Munin half interpolated into our prose here. And not written into
-        // the span, because the save button borrows it: putting it there would name that button
-        // "Lagre i liste K_ALS.ALDER" for a variable neither control can actually name.
-        //
-        // Null while the term is there, so the visible words stay the name and a speech-input user
-        // saying what they can see still reaches the control (WCAG 2.5.3).
-        builder.AddAttribute(7, "aria-label",
-            string.IsNullOrWhiteSpace(v.PreferredTerm) ? T.Named(v.PreferredTerm, v.Code).Text : null);
+        // Load-bearing beyond assistive tech: Stiler keys both the chevron's picture and the row
+        // ring on this button's aria-expanded (Fhi.Metadata-35w0p.80).
+        builder.AddAttribute(7, "aria-expanded", DetailExpanded(v));
+        builder.AddAttribute(8, "aria-controls", DetailControls(v));
+        builder.AddAttribute(9, "aria-label", ExpandLabel(v));
 
-        builder.AddAttribute(8, "onclick",
-            EventCallback.Factory.Create<MouseEventArgs>(this, e => OpenWholeVariableFromNameAsync(v, e)));
+        // Never disabled, including while its own fetch runs: pressing it again is how the panel
+        // is closed, and disabling the element that has focus drops focus to <body>.
+        builder.AddAttribute(10, "onclick",
+            EventCallback.Factory.Create<MouseEventArgs>(this, e => ToggleDetailFromNameAsync(v, e)));
 
-        // The click stops here: the name leaves the list and the row opens the panel, so a press on
-        // the name must not also toggle the row behind it. The mousedown does not — a drag from the
-        // name onto the row is a selection. (Fhi.Metadata-l9l2n.81)
-        builder.AddEventStopPropagationAttribute(9, "onclick", true);
+        // The click stops here, or the strip behind toggles too and one press opens and shuts the
+        // panel. The mousedown does not: a drag begun on the name is measured by the strip, which
+        // has to have seen where it went down. (Fhi.Metadata-l9l2n.81)
+        builder.AddEventStopPropagationAttribute(11, "onclick", true);
 
-        builder.OpenElement(10, "span");
-        builder.AddAttribute(11, "class", "munin-explorer-dataitem-main__column__text");
-        // Named, because the save button beside it borrows these words for its own accessible
-        // name — see RowSaveButton. The id is on the span holding the name rather than on the
-        // button around it, so what gets borrowed is the variable and not the whole cell.
-        //
-        // Written here and nowhere else: this is the only element that carries RowHeadingId, and
-        // it is drawn for every row whether that row's panel is open or shut. Both matter to the
-        // save button, which points at it in either state — a second emitter would make every row
-        // a duplicate-id failure (WCAG 4.1.1) and aim the button at whichever came first.
-        builder.AddAttribute(12, "id", RowHeadingId(v));
+        // First child and a descendant of the button: Stiler draws the chevron through the
+        // button's aria-expanded, so the span carries no state of its own beyond the glyph class.
+        builder.OpenElement(12, "span");
+        builder.AddAttribute(13, "class",
+            IsSelected(v)
+                ? "icon icon-keyboard-arrow-up munin-explorer-dataitem-main__expand-icon"
+                : "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon");
+        builder.AddAttribute(14, "aria-hidden", "true");
+        builder.CloseElement();
+
+        builder.OpenElement(15, "span");
+        builder.AddAttribute(16, "class", "munin-explorer-dataitem-main__column__text");
+        // The save button in the open panel borrows these words for its name, so this id is on
+        // the span holding the name alone and is written nowhere else (WCAG 4.1.1).
+        builder.AddAttribute(17, "id", RowHeadingId(v));
         // Munin's variable names are Norwegian whatever language the surrounding UI is in.
-        builder.AddAttribute(13, "lang", "no");
+        builder.AddAttribute(18, "lang", "no");
         // No title: Stiler wraps the name since 0.1.88, so a tooltip would repeat what is on screen.
-        builder.AddContent(14, v.PreferredTerm);
+        builder.AddContent(19, v.PreferredTerm);
         builder.CloseElement();
 
         builder.CloseElement();
@@ -1208,9 +1139,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// to put the ordering in; now there is, and leaving both would give the same choice two
     /// controls.
     /// <para>
-    /// Every column that says something about the variable maps to a real <see cref="SortField"/>,
-    /// the save column alone staying plain text: it holds a control rather than a value, so there
-    /// is nothing for the API to order by. The variable column maps to
+    /// Every column maps to a real <see cref="SortField"/>. The variable column maps to
     /// <see cref="SortField.Default"/>, which is honest rather than convenient: that member is
     /// documented as the API's own order and its wire token is literally <c>name</c>. What each
     /// column actually orders BY is the API's, and is on the <see cref="SortField"/> members —
@@ -1249,22 +1178,9 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(7, "class", "munin-explorer-dataitem-header");
         builder.AddAttribute(8, "role", "row");
 
-        // The chevron cell's column, heard and not seen, as Kelda's control column is: without it
-        // every header would name the cell one column to its left. Out of flow, so the header's
-        // indent stays Stiler's (Fhi.Metadata-35w0p.67).
-        builder.OpenElement(90, "div");
-        builder.AddAttribute(91, "role", "columnheader");
-        builder.AddAttribute(92, "class", "screenreader-only");
-        builder.AddContent(93, T.ColumnVariableDetail);
-        builder.CloseElement();
-
-        // Navn is not in the picker and has no condition here.
+        // Navn is not in the picker and has no condition here. It is the first column: the chevron
+        // lives inside the name button, so there is no control column to name (Fhi.Metadata-35w0p.78).
         HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
-
-        if (ColumnVisible(ResultColumn.SaveToList))
-        {
-            HeaderCell(builder, 150, "save", T.TabVariableList, sort: null);
-        }
 
         if (ColumnVisible(ResultColumn.Code))
         {

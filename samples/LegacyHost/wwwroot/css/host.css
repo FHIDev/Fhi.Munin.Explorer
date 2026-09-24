@@ -1110,6 +1110,7 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 
 .munin-explorer-data-list__item__row {
   padding: 14px 8px;
+  position: relative;
 }
 
 .munin-explorer-data-list__item__row:hover {
@@ -1125,6 +1126,7 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   flex: 0 0 1rem;
   background-size: 1rem;
   height: 1rem;
+  margin: 0 16px;
 }
 
 /* The name is the disclosure, so it has to look like the control it is without wearing a button
@@ -1148,6 +1150,59 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 .munin-explorer-dataitem-main__name > button.munin-explorer-dataitem-main__name {
   width: 100%;
   text-align: left;
+}
+
+/* The name button is the row's one Tab stop, with the chevron inside it (Fhi.Metadata-35w0p.78).
+   Stiler 0.1.114's rules, copied as compiled: the ring is an inset shadow on an overlay spanning
+   the row, because helsedata's button:focus reset removes any outline on the button itself. */
+.munin-explorer-dataitem-main__name {
+  display: inline-flex;
+}
+
+.munin-explorer-dataitem-main__name::after {
+  bottom: 0;
+  content: "";
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.munin-explorer-dataitem-main__name:focus {
+  box-shadow: none;
+}
+
+button.munin-explorer-dataitem-main__name:focus-visible::after {
+  box-shadow: inset 0 0 0 3px rgb(66, 139, 255);
+}
+
+button.munin-explorer-dataitem-main__name[aria-expanded="false"] .munin-explorer-dataitem-main__expand-icon {
+  background-image: url(../img/icons/keyboard-arrow/icon_down.svg);
+}
+
+button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-dataitem-main__expand-icon {
+  background-image: url(../img/icons/keyboard-arrow/icon_up.svg);
+}
+
+.munin-explorer-data-list__item__row:hover button.munin-explorer-dataitem-main__name[aria-expanded="false"] .munin-explorer-dataitem-main__expand-icon {
+  background-image: url(../img/icons/keyboard-arrow/icon_down--blue.svg);
+}
+
+.munin-explorer-data-list__item__row:hover button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-dataitem-main__expand-icon {
+  background-image: url(../img/icons/keyboard-arrow/icon_up--blue.svg);
+}
+
+.munin-explorer-dataitem-main button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__expand-icon {
+  align-self: center;
+}
+
+/* Robin kept the 16px chevron visible below 1280, where prod hides it (Fhi.Metadata-35w0p.78). */
+@media all and (max-width: 1280px) {
+  .munin-explorer-dataitem-main button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__expand-icon {
+    display: inline-block;
+    margin: 0 12px 0 0;
+  }
 }
 
 .munin-explorer-dataitem-main__name:hover {
@@ -1290,6 +1345,11 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 .munin-explorer-dataitem-header > .munin-explorer-dataitem-header__dataType,
 .munin-explorer-dataitem-header > .munin-explorer-dataitem-header__status {
   padding-left: 16px;
+}
+
+/* The sort button's ring, drawn on its cell, which clips anything outside it (Fhi.Metadata-4dlli). */
+.munin-explorer-dataitem-header > :has(> .munin-explorer-dataitem-header__button:focus-visible) {
+  box-shadow: inset 0 0 0 3px rgb(66, 139, 255);
 }
 
 /* Stiler also gives the name itself `min-width: 0`, safe there because its rows stack at 1280px and
@@ -1452,23 +1512,32 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
    Every selector here is scoped on the ELEMENT, which is what keeps the two shapes off each
    other's rules — the flex row above and the table row below wear the same class names. */
 table.munin-explorer-data-list {
-  width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
 }
 
+/* Stiler 0.1.116's cells for the saved-list table (Fhi.Metadata-fs6lp), copied as compiled. */
 table.munin-explorer-data-list th,
 table.munin-explorer-data-list td {
-  padding: 8px 12px;
-  text-align: left;
-  vertical-align: top;
   border-bottom: 1px solid var(--grey30);
+  padding: 8px 12px;
+  text-align: start;
+  vertical-align: top;
 }
 
-table.munin-explorer-data-list thead th {
+table.munin-explorer-data-list > thead th {
   background: var(--grey10);
   color: var(--grey60);
+  font-size: 0.6875rem;
   font-weight: 600;
+  text-transform: uppercase;
+}
+
+table.munin-explorer-data-list :is(th, td):not(.munin-explorer-dataitem-main__code) > .munin-explorer-dataitem-main__column__text {
+  white-space: inherit;
+}
+
+table.munin-explorer-data-list > thead .munin-explorer-dataitem-header__desiredData {
+  white-space: nowrap;
 }
 
 /* The name cell is a <th scope="row">, which browsers centre by default. It is a label for the
@@ -1633,6 +1702,7 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-complete-record__fields dd {
   overflow-wrap: anywhere;
   margin: 0;
+  max-width: 45ch;
 }
 
 @media (max-width:1280px) {
@@ -1856,6 +1926,40 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-page__body {
   display: grid;
   gap: 40px;
+  padding-top: 40px;
+}
+
+/* Stiler 0.1.117's page-name and section-heading sizes (Fhi.Metadata-hphfz). The 500 stands in for
+   graphik-medium, as elsewhere. */
+:is(.munin-explorer-kilde__header, .munin-explorer-whole__header, .munin-explorer-datasamling__header, .munin-explorer-page__header) > :is(h1, h2, h3, h4, h5, h6):first-child {
+  font: normal 500 3.5rem/160% var(--font);
+  overflow-wrap: anywhere;
+}
+
+@media all and (max-width: 2881px) {
+  :is(.munin-explorer-kilde__header, .munin-explorer-whole__header, .munin-explorer-datasamling__header, .munin-explorer-page__header) > :is(h1, h2, h3, h4, h5, h6):first-child {
+    font: normal 500 2.625rem/160% var(--font);
+  }
+}
+
+@media all and (max-width: 767px) {
+  :is(.munin-explorer-kilde__header, .munin-explorer-whole__header, .munin-explorer-datasamling__header, .munin-explorer-page__header) > :is(h1, h2, h3, h4, h5, h6):first-child {
+    font: normal 500 2rem/160% var(--font);
+  }
+}
+
+.munin-explorer-page__main > .munin-explorer-page__section > :is(h2, h3, h4, h5, h6):first-child {
+  font: normal 500 1.5rem/160% var(--font);
+  margin: 40px 0 16px;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--grey30);
+  overflow-wrap: anywhere;
+}
+
+@media all and (max-width: 767px) {
+  .munin-explorer-page__main > .munin-explorer-page__section > :is(h2, h3, h4, h5, h6):first-child {
+    font: normal 500 1.3125rem/160% var(--font);
+  }
 }
 
 /* 1025px, where the three bodies above say 1024: Stiler writes this breakpoint with its
@@ -1996,6 +2100,7 @@ table.munin-explorer-data-list tbody th {
   max-width: 45ch;
   font-size: 1rem;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 /* The datasamlinger table. Same shape as the Data tab's code table — the two are the same kind of
@@ -2423,8 +2528,8 @@ table.munin-explorer-data-list tbody th {
   white-space: normal;
 }
 
-/* ---- Runa's row chevron ----
-   Stiler's declarations for it, which mirror Kelda's toggle above (Fhi.Metadata-35w0p.65). */
+/* ---- Runa's former row chevron ----
+   Stiler still ships these; the markup has matched none of them since Fhi.Metadata-35w0p.78. */
 .munin-explorer-dataitem__expand-toggle {
   cursor: pointer;
   padding: 8px 12px;
@@ -4787,7 +4892,7 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-figures__note {
   margin: 12px 0 0;
-  max-width: 62ch;
+  max-width: 45ch;
 }
 
 .munin-explorer-figures__note.munin-explorer-figures__note--suppressed {

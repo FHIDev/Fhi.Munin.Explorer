@@ -856,7 +856,7 @@ public class InstrumentTest : ExplorerTestContext
         Assert.Null(cut.FindComponent<VariableSearch>().Instance.InstrumentHref);
 
         // The whole variable, since the row drawer stopped listing instruments (Fhi.Metadata-l9l2n.101).
-        cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle").Click();
+        cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").Click();
         cut.FindAll(".munin-explorer-detail button").Single(b => b.TextContent == "Vis hele variabelen").Click();
 
         var panel = cut.WaitForElement($"#{DetailSectionIds.Instruments}");

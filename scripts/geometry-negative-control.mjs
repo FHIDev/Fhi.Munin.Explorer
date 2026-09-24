@@ -162,15 +162,16 @@ const cases = [
       '.munin-explorer-kilder__expand-toggle { padding: 0 !important; }'),
   },
   {
-    assertion: "Runa's row chevron is big enough to hit",
-    defect: 'a chevron whose glyph is hidden and nothing else sizes it, as under Stiler 0.1.91',
+    assertion: "Runa's row disclosure is big enough to hit",
+    defect: 'a row strip and name button squeezed below the minimum target, as under Stiler 0.1.91',
     path: '/', state: 'explorer-tabs', width: 1440,
-    // 0.1.91 hid the glyph below 1280px and had no rule for the button; the second rule takes
-    // away the size a later Stiler gives it, so the button is left with nothing but the glyph.
-    apply: css('.munin-explorer-dataitem__expand-toggle .icon { display: none !important; }\n' +
-      '.munin-explorer-dataitem__expand-toggle { padding: 0 !important; border: 0 !important; ' +
-      'width: auto !important; height: auto !important; min-width: 0 !important; ' +
-      'min-height: 0 !important; }'),
+    // Both the strip and the button inside it, since either one tall enough is a target.
+    apply: css('.munin-explorer-dataitem-main { height: 10px !important; min-height: 0 !important; ' +
+      'padding: 0 !important; }\n' +
+      'button.munin-explorer-dataitem-main__name .icon { display: none !important; }\n' +
+      'button.munin-explorer-dataitem-main__name, button.munin-explorer-dataitem-main__name * { ' +
+      'line-height: 8px !important; font-size: 8px !important; padding: 0 !important; ' +
+      'height: auto !important; min-height: 0 !important; }'),
   },
   {
     assertion: 'the tablist clears the header',

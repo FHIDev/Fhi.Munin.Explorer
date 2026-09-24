@@ -1,13 +1,12 @@
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The row's save action: puts the variable in the reader's list, and takes it out again.
+/// The open panel's save action: puts the variable in the reader's list, and takes it out again.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -57,77 +56,42 @@ public partial class VariableSearch
     /// </remarks>
     private readonly Dictionary<Guid, SaveFailure> _saveError = [];
 
-    private RenderFragment RowSaveButton(VariableSummary v) => builder =>
+    // In the open panel beside Vis hele variabelen, as on helsedata's own list: a collapsed row
+    // keeps one Tab stop, and saving costs none until the reader has opened it. (Fhi.Metadata-35w0p.78)
+    private RenderFragment PanelSaveButton(VariableSummary v) => builder =>
     {
-        if (!ColumnVisible(ResultColumn.SaveToList))
+        if (!ShowSaveButton)
         {
             return;
         }
 
         var saved = ListState!.IsSaved(v.Id);
 
-        // A cell around the button. The result row is a role="row" now, and a row owns nothing but
-        // cells — a bare <button> in one is a structure error axe reports and a reader hears as a
-        // control adrift between the columns.
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "role", "cell");
-
-        // The key the header cell above carries too, so a stylesheet can give both one width and
-        // the header lines up over the buttons. (Fhi.Metadata-q7i5e)
-        builder.AddAttribute(2, "class", "munin-explorer-dataitem-main__save");
-
-        // Stiler's own square-button classes and nothing else. Ghost-blue rather than the filled
-        // variant, which drew a page of primary-weight controls; and rather than plain --ghost,
-        // whose --dark text is the row's own colour and so read as bold prose. (Fhi.Metadata-35w0p.64)
-        builder.OpenElement(3, "button");
-        builder.AddAttribute(4, "class", "hd-button-square button-square--ghost-blue");
-        builder.AddAttribute(5, "type", "button");
-        builder.AddAttribute(6, "id", SaveButtonId(v));
+        // The panel's own button shape, so it reads as one of the actions beside it.
+        builder.OpenElement(0, "button");
+        builder.AddAttribute(1, "class", "hd-button-square button-square--ghost margin-right margin-bottom");
+        builder.AddAttribute(2, "type", "button");
+        builder.AddAttribute(3, "id", SaveButtonId(v));
 
         // The pressed state is what a screen reader announces, and it is the same fact the word
         // shows sighted readers — one control in two states, not two controls.
-        builder.AddAttribute(7, "aria-pressed", saved ? "true" : "false");
+        builder.AddAttribute(4, "aria-pressed", saved ? "true" : "false");
 
-        // The accessible name says which variable, where the visible words cannot: a page of
-        // results is a column of buttons all reading "Lagre i liste", and a screen reader moving
-        // down them announces the same three words once per row. WCAG 4.1.2.
-        //
-        // Two elements rather than an aria-label, which is the rule this package already wrote
-        // down for the toggle in this same row: the words are ours and follow Language, the
-        // variable's name is Munin's and is Norwegian whatever the surrounding UI is. Pointing at
-        // the button and then at the name span keeps each half in the language it is written in —
-        // the span carries lang="no" (razor.cs, RowHeading) — where a single aria-label string
-        // would hand "Save to list: Alder ved diagnose" to an English voice and have it pronounce
-        // the Norwegian with English phonetics. WCAG 3.1.2.
-        //
-        // Self-reference first, so the name starts with the visible text and a speech-input user
-        // saying what they can see still reaches the control (WCAG 2.5.3). It also tracks the
-        // pressed state for free, because the button's own content is what changes with it — and
-        // it is what makes a variable with no PreferredTerm safe: an empty span contributes
-        // nothing, so the button falls back to "Lagre i liste" rather than announcing that phrase
-        // with a hole on the end, which is what interpolating the term into a sentence would give.
-        builder.AddAttribute(8, "aria-labelledby", $"{SaveButtonId(v)} {RowHeadingId(v)}");
+        // Our words, then Munin's name span (lang="no"), so each half is voiced in its own language
+        // (WCAG 3.1.2). Visible text first for speech input (2.5.3); a blank term adds nothing.
+        builder.AddAttribute(5, "aria-labelledby", $"{SaveButtonId(v)} {RowHeadingId(v)}");
 
-        builder.AddAttribute(9, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
+        builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
 
-        // The click stops here: the row around this button opens the panel on a press, and saving
-        // a variable is not a request to read it. The mousedown does NOT — a drag begun on Lagre
-        // lands its click on the row, which measures what it saw. (Fhi.Metadata-l9l2n.81)
-        builder.AddEventStopPropagationAttribute(10, "onclick", true);
-
-        builder.AddContent(11, saved ? T.RemoveFromList : T.SaveToList);
-        builder.CloseElement();
-
-        // The cell.
+        builder.AddContent(7, saved ? T.RemoveFromList : T.SaveToList);
         builder.CloseElement();
     };
 
-    // In the row, beside the control that failed, but not in its fixed-size cell, where the sentence
-    // was cut off (Fhi.Metadata-q7i5e). Always present and empty until needed: a role="alert"
-    // inserted and filled in one update is announced unreliably.
-    private RenderFragment RowSaveStatus(VariableSummary v) => builder =>
+    // Beside the button that failed. Always present while the button is, and empty until needed:
+    // a role="alert" inserted and filled in one update is announced unreliably.
+    private RenderFragment PanelSaveStatus(VariableSummary v) => builder =>
     {
-        if (!ColumnVisible(ResultColumn.SaveToList))
+        if (!ShowSaveButton)
         {
             return;
         }
@@ -135,13 +99,12 @@ public partial class VariableSearch
         _saveError.TryGetValue(v.Id, out var failure);
 
         builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "role", "cell");
-        builder.AddAttribute(2, "class", "munin-explorer-data-list__save-status");
-        builder.OpenElement(3, "span");
-        builder.AddAttribute(4, "role", "alert");
-        builder.AddAttribute(5, "aria-live", "assertive");
-        builder.AddAttribute(6, "aria-atomic", "true");
-        builder.AddContent(7, failure switch
+        builder.AddAttribute(1, "class", "munin-explorer-data-list__save-status");
+        builder.OpenElement(2, "span");
+        builder.AddAttribute(3, "role", "alert");
+        builder.AddAttribute(4, "aria-live", "assertive");
+        builder.AddAttribute(5, "aria-atomic", "true");
+        builder.AddContent(6, failure switch
         {
             SaveFailure.Throttled => T.RateLimitError,
             SaveFailure.SignInRequired => T.SignInRequiredError,

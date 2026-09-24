@@ -345,9 +345,9 @@ public class UrlStateComponentTest : ExplorerTestContext
         return Render<VariableExplorer>(b => parameters?.Invoke(b));
     }
 
-    /// <summary>The rows' chevrons, the disclosures that open a variable's panel.</summary>
+    /// <summary>The rows' name buttons, the disclosures that open a variable's panel.</summary>
     private static IReadOnlyList<IElement> Rows(IRenderedComponent<VariableExplorer> cut) =>
-        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle");
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
 
     [Theory]
     [InlineData(SortField.Code, "code")]
@@ -368,7 +368,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(true, 2)]
+    [InlineData(true, 1)]
     [InlineData(false, 0)]
     public void Save_WhenTheHostSaysWhoTheReaderIs_ThenItReachesTheExplorerRatherThanBeingDropped(
         bool signedIn, int buttons)
@@ -378,7 +378,10 @@ public class UrlStateComponentTest : ExplorerTestContext
         // the host could not put it back. (Fhi.Metadata-l1f2s)
         var cut = RenderVariables("http://localhost/variabler", b => b.Add(c => c.IsAuthenticated, signedIn));
 
-        Assert.Equal(buttons, cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]").Count);
+        // The save button is in the open panel since Fhi.Metadata-35w0p.78.
+        Rows(cut)[0].Click();
+
+        Assert.Equal(buttons, cut.FindAll(".munin-explorer-detail button[aria-pressed]").Count);
     }
 
     [Fact]

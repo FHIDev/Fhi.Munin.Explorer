@@ -302,7 +302,7 @@ not run in CI.
 It runs three of the fourteen assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
 overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. Seven
 of the eleven left out were **measured there and then excluded**, which is a different claim from
-"they are written for HostileHost" and the only one the numbers support; `Runa's row chevron is big
+"they are written for HostileHost" and the only one the numbers support; `Runa's row disclosure is big
 enough to hit` is scoped to states this run does not drive, and the last three have nothing to
 measure on these pages at all:
 
