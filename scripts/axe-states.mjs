@@ -44,7 +44,7 @@ async function openStatistics(page, search, name, ready) {
   // On the renamed row, not the first one: the captured page is drawn before the search answers.
   const row = page.locator('ul.munin-explorer-data-list > li', { hasText: name }).first();
   await row.waitFor({ state: 'visible', timeout: findTimeout });
-  await row.locator('button.munin-explorer-dataitem__expand-toggle').click();
+  await row.locator('button.munin-explorer-dataitem-main__name').click();
 
   const tab = page.locator('.munin-explorer-meta[aria-busy="false"] [role=tabpanel]').first();
   await tab.locator('.munin-explorer-coverage').waitFor({ state: 'visible', timeout: findTimeout });
