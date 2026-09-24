@@ -16,9 +16,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>munin-explorer-</c>: every section id the views write is under that prefix, from
 /// <c>munin-explorer-metadata</c> to the <c>munin-explorer-section-</c> ids the detail views finish
 /// with the catalogue's own section keys, so that set is Munin's to extend rather than a list this
-/// package can close. A repeated id puts two elements
-/// on the page under it, and the nav's second link lands on the first. Keep it the same in every
-/// language, since a reader shares the link.
+/// package can close. A repeated id puts two elements on the page under it, and the nav's second
+/// link lands on the first. Keep it the same in every language, since a reader shares the link.
 /// </para>
 /// </remarks>
 /// <param name="Id">The section's <c>id</c>, which the nav links to, written without the <c>#</c>.</param>

@@ -787,8 +787,8 @@ export const assertions = [
     kind: 'invariant',
     states: ['kilde-hierarchy-collapsed', 'variable-whole'],
 
-    // The one thing no test in test/ can ask. The attribute reads "#munin-explorer-metadata" in the broken build
-    // and "/kilder?kilde=…#munin-explorer-metadata" in the fixed one, and bUnit can see both — but what broke on
+    // The one thing no test in test/ can ask. The attribute reads "#metadata" in the broken build
+    // and "/kilder?kilde=…#metadata" in the fixed one, and bUnit can see both — but what broke on
     // helsedata is that a bare fragment resolves against the document's <base href="/">, which
     // their Optimizely layout sets, so every entry navigated to the site root and dropped the open
     // kilde. bUnit has no base element and no URL resolver; ModernHost's App.razor sets one.
