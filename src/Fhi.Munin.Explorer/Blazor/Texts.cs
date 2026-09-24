@@ -249,6 +249,7 @@ internal sealed record Texts(
     string FigureMean,
     string SuppressedCategories,
     string SuppressedDescriptiveStatistics,
+    Func<string, string> FiguresFromOlderYearSet,
     string ShowWholeVariable,
     // The row's chevron, named for its variable for ExpandDatasamlinger's reason. (Fhi.Metadata-35w0p.34)
     Func<string, string> ExpandVariableDetail,
@@ -1179,6 +1180,7 @@ internal sealed record Texts(
         FigureMean: "Snitt",
         SuppressedCategories: "Statistisk avsløringskontroll: kategorier ikke oppsummert",
         SuppressedDescriptiveStatistics: "Statistisk avsløringskontroll: deskriptiv statistikk ikke gitt",
+        FiguresFromOlderYearSet: yearSet => $"Tallene er fra årssett {yearSet}, det siste som har tall.",
         ShowWholeVariable: "Vis hele variabelen",
         ExpandVariableDetail: name => $"Vis detaljer for {name}",
         CollapseVariableDetail: name => $"Skjul detaljer for {name}",
@@ -1658,6 +1660,7 @@ internal sealed record Texts(
         FigureMean: "Mean",
         SuppressedCategories: "Statistical disclosure control: categories not summarised",
         SuppressedDescriptiveStatistics: "Statistical disclosure control: descriptive statistics not given",
+        FiguresFromOlderYearSet: yearSet => $"The figures are from year set {yearSet}, the latest that has any.",
         ShowWholeVariable: "Show the whole variable",
         ExpandVariableDetail: name => $"Show details for {name}",
         CollapseVariableDetail: name => $"Hide details for {name}",

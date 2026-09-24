@@ -11706,6 +11706,128 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("5", figures.QuerySelector("dd")!.TextContent);
     }
 
+    [Theory]
+    [InlineData("no", "Tallene er fra årssett 2023, det siste som har tall.")]
+    [InlineData("en", "The figures are from year set 2023, the latest that has any.")]
+    public void DataTab_WhenTheNewestYearSetHasNoNumbers_ThenTheDrawerSaysWhichYearItsNumbersAreFrom(
+        string language, string wording)
+    {
+        // Om variabelen names 2024, which holds nothing; unlabelled, 2023's numbers read as 2024's.
+        var tab = DataTab(
+            [
+                DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2023", ["MIN"] = "5" }),
+                DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2024" }),
+            ],
+            language,
+            statisticsType: "yearly");
+
+        Assert.Contains(wording, tab.TextContent, StringComparison.Ordinal);
+        Assert.Equal("5", tab.QuerySelector("dl.munin-explorer-figures dd")!.TextContent);
+    }
+
+    [Fact]
+    public void DataTab_WhenTheNewestYearSetHasNumbers_ThenNoYearNoteIsDrawn()
+    {
+        var tab = DataTab(
+            [
+                DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2023", ["MIN"] = "5" }),
+                DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2024", ["MIN"] = "7" }),
+            ],
+            statisticsType: "yearly");
+
+        Assert.DoesNotContain("årssett", tab.TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null, "9", "2021", "1", "1")]
+    [InlineData("2023", "5", null, "9", "5")]
+    public void DataTab_WhenSomeStatisticsHaveNoYearSet_ThenOneWithAYearSetIsDrawn(
+        string? firstYear, string firstMinimum, string? secondYear, string secondMinimum, string drawn)
+    {
+        // A row with no year set gives way to a later one that has one, and never displaces it.
+        static Statistic YearRow(string? year, string minimum)
+        {
+            var properties = new Dictionary<string, string?> { ["MIN"] = minimum };
+
+            if (year is not null)
+            {
+                properties["SisteOppdaterteAarssett"] = year;
+            }
+
+            return DataTabStatistic(properties);
+        }
+
+        var tab = DataTab([YearRow(firstYear, firstMinimum), YearRow(secondYear, secondMinimum)], statisticsType: "yearly");
+
+        Assert.Equal(drawn, tab.QuerySelector("dl.munin-explorer-figures dd")!.TextContent);
+    }
+
+    [Fact]
+    public void DataTab_WhenAStatisticHasOnlyAStandardDeviation_ThenTheWholeVariableStillDrawsItsTable()
+    {
+        // The drawer has no standard deviation to show, so it reads as absent there; the table has
+        // the column, and dropping the row would report real data as missing.
+        var id = Guid.NewGuid();
+        var variable = Detail(id) with
+        {
+            KodeverkLinks = [],
+            DatasamlingStatisticsType = "yearly",
+            Statistics = [DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022", ["STD"] = "2.5" })],
+        };
+        var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(variable));
+        var tab = Panel(cut).QuerySelector("[role=tabpanel]")!;
+
+        Assert.Equal("Ingen kodeverk eller statistikk registrert",
+                     Assert.Single(tab.QuerySelectorAll($"p.caption.{DetailBlocks.Absent}")).TextContent);
+
+        WholeVariableToggle(cut).Click();
+
+        Assert.Single(cut.FindAll($"#{DetailSectionIds.Statistics}"));
+        Assert.Contains("2.5", cut.Find("table.munin-explorer-statistics").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DataTab_WhenACodesCountCannotBeRead_ThenItIsADashWithAnEmptyBarAndTheLargestIsTheReadableOnes()
+    {
+        // A dash, not a blank: "cannot be read" and "never occurs" are different facts. 2^63 is
+        // one past long.MaxValue, and a double comparison would let it through to wrap negative.
+        var tab = DataTab([DataTabStatistic(
+            Counts("5470", "18461"),
+            [
+                CodeCount("0", "Ja", "1769"),
+                CodeCount("1", "Nei", null),
+                CodeCount("2", "Vet ikke", "-3"),
+                CodeCount("3", "Delvis", "1.5"),
+                CodeCount("4", "Annet", "9223372036854775808"),
+            ])]);
+
+        var items = tab.QuerySelectorAll("li.munin-explorer-distribution__item");
+
+        Assert.Equal([Formatted(1769, "no"), "—", "—", "—", "—"],
+                     items.Select(item => item.QuerySelector(".munin-explorer-distribution__count")!.TextContent));
+        Assert.Equal(["width:100%", "width:0%", "width:0%", "width:0%", "width:0%"],
+                     items.Select(item => item.QuerySelector(".munin-explorer-distribution__bar-fill")!.GetAttribute("style")));
+    }
+
+    [Fact]
+    public void DataTab_WhenNoCodesCountCanBeRead_ThenEveryBarIsEmptyRatherThanNotANumber()
+    {
+        var tab = DataTab([DataTabStatistic(
+            Counts("5470", "18461"), [CodeCount("0", "Ja", null), CodeCount("1", "Nei", "x")])]);
+
+        Assert.All(tab.QuerySelectorAll(".munin-explorer-distribution__bar-fill"),
+                   fill => Assert.Equal("width:0%", fill.GetAttribute("style")));
+    }
+
+    [Fact]
+    public void DataTab_WhenBothCountsAreHuge_ThenCoverageIsWorkedOutWithoutOverflowing()
+    {
+        // Each fits a long and their sum does not.
+        var tab = DataTab([DataTabStatistic(Counts("9000000000000000000", "9000000000000000000"))]);
+
+        Assert.Equal("50 % dekning", tab.QuerySelector(".munin-explorer-coverage__share")!.TextContent);
+    }
+
     [Fact]
     public void Panel_WhenAnArrowKeyIsPressed_ThenTheTabMovesInTheDrawnOrder()
     {

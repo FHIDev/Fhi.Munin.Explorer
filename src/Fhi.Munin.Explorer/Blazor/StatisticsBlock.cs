@@ -39,7 +39,7 @@ internal static class StatisticsBlock
         VariableDetail? variable, int headingLevel, string headingClass, Texts texts,
         StatisticsLayout layout = StatisticsLayout.Table) => builder =>
     {
-        if (!AnyStatistics(variable))
+        if (!AnyStatistics(variable, layout))
         {
             return;
         }
@@ -53,7 +53,7 @@ internal static class StatisticsBlock
 
         if (layout is StatisticsLayout.Drawer)
         {
-            Summary(builder, Newest(rows.Where(Says)), texts);
+            Summary(builder, Newest(rows.Where(Says)), LatestYearSet(variable), texts);
             return;
         }
 
@@ -81,9 +81,16 @@ internal static class StatisticsBlock
     /// nothing. A bare year set is neither, and must read as absent rather than as withheld: a
     /// suppression note over it would claim FHI holds data it may not hold (Fhi.Metadata-35w0p.36).
     /// </para>
+    /// <para>
+    /// Asked per layout because the table has a standard deviation column and the drawer does not:
+    /// a statistic holding only STD is something to draw in one and nothing in the other.
+    /// </para>
     /// </remarks>
-    internal static bool AnyStatistics([NotNullWhen(true)] VariableDetail? variable) =>
-        variable is { Statistics.Count: > 0 } && Rows(variable).Any(Says);
+    internal static bool AnyStatistics(
+        [NotNullWhen(true)] VariableDetail? variable, StatisticsLayout layout = StatisticsLayout.Table) =>
+        variable is { Statistics.Count: > 0 }
+        && Rows(variable).Any(layout is StatisticsLayout.Drawer ? Says : statistic =>
+            Says(statistic) || Raw(statistic.AdditionalProperties, "STD") is not null);
 
     private static bool Says(Statistic statistic)
     {
@@ -358,8 +365,9 @@ internal static class StatisticsBlock
     private static string Value(IReadOnlyDictionary<string, string?> properties, string key) =>
         properties.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : "—";
 
-    // The newest year set, as LatestYearSet reads it, so the drawer's numbers are the year its
-    // Om variabelen tab names; with no year set anywhere, the last row, as an accumulated set's is.
+    // The newest year set among the rows given, compared as LatestYearSet compares; a row with no
+    // year set gives way to any later row and never displaces one that has. With no year set
+    // anywhere, the last row, as an accumulated set's is.
     private static Statistic Newest(IEnumerable<Statistic> rows)
     {
         Statistic? newest = null;
@@ -379,9 +387,21 @@ internal static class StatisticsBlock
         return newest!;
     }
 
-    private static void Summary(RenderTreeBuilder builder, Statistic statistic, Texts texts)
+    private static void Summary(RenderTreeBuilder builder, Statistic statistic, string? latestYearSet, Texts texts)
     {
         var properties = statistic.AdditionalProperties ?? ReadOnlyDictionary<string, string?>.Empty;
+
+        // Om variabelen names the newest year set even when it holds no numbers, so numbers drawn
+        // from an older one say which, or a reader takes them for the year named there.
+        if (Raw(properties, "SisteOppdaterteAarssett")?.Trim() is { } year
+            && latestYearSet is not null
+            && CompareYearSets(year, latestYearSet) < 0)
+        {
+            builder.OpenElement(0, "p");
+            builder.AddAttribute(1, "class", "caption");
+            builder.AddContent(2, texts.FiguresFromOlderYearSet(year));
+            builder.CloseElement();
+        }
 
         builder.OpenRegion(100);
         CoverageLine(builder, properties, texts);
@@ -416,12 +436,12 @@ internal static class StatisticsBlock
     {
         if (Count(properties, "GyldigeTilfeller") is not { } valid
             || Count(properties, "ManglendeTilfeller") is not { } missing
-            || valid + missing == 0)
+            || (double)valid + missing == 0)
         {
             return null;
         }
 
-        var share = (int)Math.Round(valid * 100.0 / (valid + missing), MidpointRounding.AwayFromZero);
+        var share = (int)Math.Round(valid * 100.0 / ((double)valid + missing), MidpointRounding.AwayFromZero);
 
         return (valid, missing, share);
     }
@@ -588,7 +608,7 @@ internal static class StatisticsBlock
 
     /// <summary>A count of cases, or null where the catalogue holds no whole, non-negative number.</summary>
     private static long? Count(IReadOnlyDictionary<string, string?>? properties, string key) =>
-        Number(properties, key) is { } value && value >= 0 && value <= long.MaxValue && value == Math.Floor(value)
+        Number(properties, key) is { } value && value >= 0 && value < long.MaxValue && value == Math.Floor(value)
             ? (long)value
             : null;
 

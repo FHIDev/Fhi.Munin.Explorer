@@ -869,7 +869,7 @@ else
                                                    The codes themselves are not in this payload and
                                                    are not asked for until a reader presses for
                                                    them. Kommunenummer alone is 885 codes. *@
-                                                @if (detail.KodeverkLinks.Count == 0 && !StatisticsBlock.AnyStatistics(detail))
+                                                @if (detail.KodeverkLinks.Count == 0 && !StatisticsBlock.AnyStatistics(detail, StatisticsLayout.Drawer))
                                                 {
                                                     <p class="caption @DetailBlocks.Absent">@T.NoKodeverkOrStatistics</p>
                                                 }
