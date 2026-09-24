@@ -8745,7 +8745,7 @@ public class VariableSearchTest : ExplorerTestContext
         "Fjerde runde",                           // datasamling, hanging under a delkilde
         "ehds-cat:population-health-surveys",     // datakategori
         "Bakgrunn",                               // variabelgruppe
-        "Tekst",                                 // datatype
+        "Tekst",                                  // datatype
         "ICD-10",                                 // helsefaglig kodeverk
         "Kommunenummer",                          // administrativt kodeverk
         "RAND-36 spørreskjema",                   // instrument
