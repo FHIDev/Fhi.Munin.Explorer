@@ -14563,7 +14563,7 @@ public class VariableSearchTest : ExplorerTestContext
         Toggles(cut)[0].Click();
         TabButton(cut, "About the variable").Click();
 
-        Assert.Equal(["Code", "Data type"], Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
+        Assert.Equal(["Code", "Data type", "Data collections"], Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
         Assert.Equal("no", Values(cut)[0].QuerySelector("span")!.GetAttribute("lang"));
         Assert.Equal("Hide details for 1. Tale", AccessibleName.Of(Toggles(cut)[0]));
     }
