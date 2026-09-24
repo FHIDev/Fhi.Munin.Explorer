@@ -11707,8 +11707,8 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("no", "Tallene er fra årssett 2023, det siste som har tall.")]
-    [InlineData("en", "The figures are from year set 2023, the latest that has any.")]
+    [InlineData("no", "Statistikken er fra årssett 2023, det siste som har statistikk registrert.")]
+    [InlineData("en", "The statistics are from year set 2023, the latest with any recorded.")]
     public void DataTab_WhenTheNewestYearSetHasNoNumbers_ThenTheDrawerSaysWhichYearItsNumbersAreFrom(
         string language, string wording)
     {
@@ -11723,6 +11723,24 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Contains(wording, tab.TextContent, StringComparison.Ordinal);
         Assert.Equal("5", tab.QuerySelector("dl.munin-explorer-figures dd")!.TextContent);
+    }
+
+    [Fact]
+    public void DataTab_WhenTheYearDrawnHasItsFiguresWithheld_ThenTheYearNoteDoesNotClaimFigures()
+    {
+        var tab = DataTab(
+            [
+                DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022", ["MIN"] = "5" }),
+                DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2023" },
+                                 disclosureControl: Statistic.DescriptiveStatisticsNotGiven),
+                DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2024" }),
+            ],
+            statisticsType: "yearly");
+
+        Assert.Contains("Statistikken er fra årssett 2023, det siste som har statistikk registrert.",
+                        tab.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("tall", tab.QuerySelector("p.caption")!.TextContent, StringComparison.Ordinal);
+        Assert.Empty(tab.QuerySelectorAll("dl.munin-explorer-figures"));
     }
 
     [Fact]

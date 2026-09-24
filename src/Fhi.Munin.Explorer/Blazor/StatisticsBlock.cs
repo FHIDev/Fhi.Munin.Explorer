@@ -399,7 +399,7 @@ internal static class StatisticsBlock
         {
             builder.OpenElement(0, "p");
             builder.AddAttribute(1, "class", "caption");
-            builder.AddContent(2, texts.FiguresFromOlderYearSet(year));
+            builder.AddContent(2, texts.StatisticsFromOlderYearSet(year));
             builder.CloseElement();
         }
 

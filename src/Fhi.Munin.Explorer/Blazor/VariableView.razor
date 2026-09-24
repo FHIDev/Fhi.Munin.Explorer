@@ -64,9 +64,8 @@
                 </DetailSection>
             }
 
-            @* Heading and table both, or neither — the block answers the emptiness question
-               itself, and StatisticsBlock.AnyStatistics is that same answer, so this view and
-               the row's Data tab cannot disagree about it. *@
+            @* Heading and table both, or neither — each view asks StatisticsBlock.AnyStatistics
+               for its own layout, so its heading matches what it draws; the Data tab may differ. *@
             @if (Drawn(DetailSectionIds.Statistics))
             {
                 <DetailSection Id="@DetailSectionIds.Statistics">
