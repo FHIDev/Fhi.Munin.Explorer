@@ -869,7 +869,7 @@ else
                                                    The codes themselves are not in this payload and
                                                    are not asked for until a reader presses for
                                                    them. Kommunenummer alone is 885 codes. *@
-                                                @if (detail.KodeverkLinks.Count == 0 && !StatisticsBlock.AnyStatistics(detail))
+                                                @if (detail.KodeverkLinks.Count == 0 && !StatisticsBlock.AnyStatistics(detail, StatisticsLayout.Drawer))
                                                 {
                                                     <p class="caption @DetailBlocks.Absent">@T.NoKodeverkOrStatistics</p>
                                                 }
@@ -879,12 +879,14 @@ else
                                                 @* Runa shows the two together in this tab; this
                                                    panel showed kodeverk alone and left the numbers
                                                    a click further in, inside the whole-variable
-                                                   view. Same block as that view draws, at this
-                                                   tab's own level and in the shape of the kodeverk
-                                                   group headings beside it. (Fhi.Metadata-isvb7) *@
+                                                   view. Same block and the same emptiness answer
+                                                   as that view, at this tab's own level and drawn
+                                                   as round 5's bars rather than the table.
+                                                   (Fhi.Metadata-isvb7, Fhi.Metadata-9mxmw) *@
                                                 @StatisticsBlock.For(
                                                     detail, DrawerSectionLevel,
-                                                    "headline headline-xxs margin--none munin-explorer-group", T)
+                                                    "headline headline-xxs margin--none munin-explorer-group", T,
+                                                    StatisticsLayout.Drawer)
                                             }
                                             else
                                             {

@@ -25,9 +25,44 @@ import {
   until as untilTrue,
 } from './tree-states.mjs';
 import { names as treeNames, LONG_NAME_SEARCH, LONG_NAME } from './tree-fixture.mjs';
+import {
+  STATISTICS_SEARCH, SUPPRESSED_SEARCH, STATISTICS_NAME, SUPPRESSED_NAME, LONG_LABEL,
+} from './statistics-fixture.mjs';
 
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
+
+// Searches for a reserved term, opens the row the stub renamed for it, and waits for the Data tab
+// to have drawn `ready`. Then asserts the one thing a box scan cannot name: the sixty-character
+// label wraps inside its row and leaves the count beside it, whole and on screen (Fhi.Metadata-9mxmw).
+async function openStatistics(page, search, name, ready) {
+  const box = page.locator('input.searchbox__freetext').first();
+  await box.waitFor({ state: 'visible', timeout: findTimeout });
+  await box.fill(search);
+  await press(page, 'Søk');
+
+  // On the renamed row, not the first one: the captured page is drawn before the search answers.
+  const row = page.locator('ul.munin-explorer-data-list > li', { hasText: name }).first();
+  await row.waitFor({ state: 'visible', timeout: findTimeout });
+  await row.locator('button.munin-explorer-dataitem__expand-toggle').click();
+
+  const tab = page.locator('.munin-explorer-meta[aria-busy="false"] [role=tabpanel]').first();
+  await tab.locator('.munin-explorer-coverage').waitFor({ state: 'visible', timeout: findTimeout });
+  await tab.locator(ready).first().waitFor({ state: 'visible', timeout: findTimeout });
+
+  const item = tab.locator('.munin-explorer-distribution__item', { hasText: LONG_LABEL }).first();
+  const fit = await item.evaluate(li => {
+    const row = li.getBoundingClientRect();
+    const count = li.querySelector('.munin-explorer-distribution__count').getBoundingClientRect();
+    return {
+      inside: count.width > 0 && count.left >= row.left - 0.5 && count.right <= row.right + 0.5,
+      onScreen: count.right <= document.documentElement.clientWidth + 0.5,
+    };
+  });
+  if (!fit.inside || !fit.onScreen) {
+    throw new Error(`The long frequency label pushed its count out of the row: ${JSON.stringify(fit)}`);
+  }
+}
 
 /** The signal that data arrived, not merely that the shell rendered. */
 function rowsArePresent(page, selector) {
@@ -405,6 +440,13 @@ export const states = {
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
+
+  // The Data tab with numbers in it — coverage, a bar per code and the figures — and the same tab
+  // with the figures withheld under disclosure control, whose note replaces them (Fhi.Metadata-9mxmw).
+  'variable-statistics': async page =>
+    openStatistics(page, STATISTICS_SEARCH, STATISTICS_NAME, 'dl.munin-explorer-figures'),
+  'variable-statistics-suppressed': async page =>
+    openStatistics(page, SUPPRESSED_SEARCH, SUPPRESSED_NAME, '.munin-explorer-figures__note--suppressed'),
 
   // The drawer's second tab, reached the way a keyboard reader reaches it: Tab from the row's
   // chevron into the tablist, then ArrowRight. A tablist nested in a disclosure is where roles and

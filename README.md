@@ -843,6 +843,13 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-complete-record__fields` | handle |
   | `munin-explorer-complete-record__lead` | handle |
   | `munin-explorer-container` | handle |
+  | `munin-explorer-coverage` | handle |
+  | `munin-explorer-coverage__bar` | handle |
+  | `munin-explorer-coverage__bar-fill` | handle |
+  | `munin-explorer-coverage__line` | handle |
+  | `munin-explorer-coverage__missing` | handle |
+  | `munin-explorer-coverage__share` | handle |
+  | `munin-explorer-coverage__valid` | handle |
   | `munin-explorer-crumb` | meaning |
   | `munin-explorer-data-list` | handle |
   | `munin-explorer-data-list__header` | handle |
@@ -881,7 +888,19 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-datasamling__identifiers` | handle |
   | `munin-explorer-datasamling__main` | handle |
   | `munin-explorer-detail` | handle |
+  | `munin-explorer-distribution` | handle |
+  | `munin-explorer-distribution__bar` | handle |
+  | `munin-explorer-distribution__bar-fill` | handle |
+  | `munin-explorer-distribution__count` | handle |
+  | `munin-explorer-distribution__item` | handle |
+  | `munin-explorer-distribution__label` | handle |
   | `munin-explorer-drilldown` | handle |
+  | `munin-explorer-figures` | handle |
+  | `munin-explorer-figures__item` | handle |
+  | `munin-explorer-figures__note` | handle |
+  | `munin-explorer-figures__note--suppressed` | handle |
+  | `munin-explorer-figures__term` | handle |
+  | `munin-explorer-figures__value` | handle |
   | `munin-explorer-filters` | handle |
   | `munin-explorer-filters__active` | handle |
   | `munin-explorer-filters__badge` | handle |
