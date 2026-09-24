@@ -258,10 +258,11 @@ public class RunaRowGesturesTest : ExplorerTestContext
     [Theory]
     [InlineData(2, false)]
     [InlineData(1, true)]
-    public void Name_WhenAGestureSelectsItsText_ThenThePanelStaysAsItWas(long clicks, bool shift)
+    public void Name_WhenAClickIsPartOfASelectionGesture_ThenItDoesNotToggle(long clicks, bool shift)
     {
-        // The name is the row's most copyable text: a double-click or a shift-click is a reader
-        // taking the term, not asking for the panel.
+        // The second click of a double-click, or a shift-click, is a reader taking the term. A real
+        // double-click's first click still opens the row; the second must not shut it again, which
+        // VariableSearchTest.RowHeading_WhenItIsDoubleClicked_ThenThePanelIsLeftOpen drives in order.
         var cut = Render();
 
         Names(cut)[0].Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
