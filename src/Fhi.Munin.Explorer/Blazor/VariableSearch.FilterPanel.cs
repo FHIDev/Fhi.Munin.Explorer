@@ -965,9 +965,8 @@ public partial class VariableSearch
 
     /// <summary>One datatype, in the reader's own language whichever source names it.</summary>
     /// <remarks>
-    /// Unmarked for the reason <see cref="KildeTypeValue"/> is: the API resolves the name in the
-    /// language this package asked in, a legacy stored spelling is replaced out of this package's
-    /// own table, and the fallback under both is that table again.
+    /// Unmarked because the API resolves the name in the language this package asked in, and the
+    /// fallback for a nameless facet is the canonical code, which belongs to no language.
     /// </remarks>
     private FacetValue DataTypeValue(DataTypeFacet dataType) =>
         new($"datatype:{dataType.Value}",
