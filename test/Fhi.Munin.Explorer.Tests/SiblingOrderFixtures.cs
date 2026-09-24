@@ -8,7 +8,7 @@ internal sealed record SiblingScope(
     IReadOnlyList<Sibling> Delkilder, IReadOnlyList<Sibling> Datasamlinger, IReadOnlyList<string> Expected);
 
 /// <summary>
-/// K_KK's waves and datasamlinger as the API's shared resolver ranks them, for every surface that
+/// K_KK's waves and datasamlinger as the API's shared resolver ranks them, for any surface that
 /// merges the two kinds (Fhi.Metadata-oty1h). Payload order is per kind, as the API sends it.
 /// </summary>
 internal static class SiblingOrderFixtures

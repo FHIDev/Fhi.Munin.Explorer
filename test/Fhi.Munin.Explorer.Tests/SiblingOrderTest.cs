@@ -82,10 +82,23 @@ public class SiblingOrderTest
     public void Merge_WhenBothInputsAreEmpty_ThenTheResultIsEmpty() =>
         Assert.Empty(Merge([], []));
 
-    [Fact]
-    public void Merge_WhenAnArgumentIsNull_ThenItThrows() =>
-        Assert.Throws<ArgumentNullException>(() =>
-            SiblingOrder.Merge<Sibling>([], [], null!, s => s.Name, s => s.Id));
+    [Theory]
+    [InlineData("delkilder")]
+    [InlineData("datasamlinger")]
+    [InlineData("displayOrder")]
+    [InlineData("name")]
+    [InlineData("id")]
+    public void Merge_WhenAnArgumentIsNull_ThenItThrowsNamingThatArgument(string argument)
+    {
+        var thrown = Assert.Throws<ArgumentNullException>(() => SiblingOrder.Merge<Sibling>(
+            argument == "delkilder" ? null! : [],
+            argument == "datasamlinger" ? null! : [],
+            argument == "displayOrder" ? null! : s => s.DisplayOrder,
+            argument == "name" ? null! : s => s.Name,
+            argument == "id" ? null! : s => s.Id));
+
+        Assert.Equal(argument, thrown.ParamName);
+    }
 
     // ------------------------------------------------------------ the resolver's agreed outputs
 
@@ -195,11 +208,11 @@ public class SiblingOrderTest
           {
             "delkilder": [
               { "id": "{{SiblingOrderFixtures.Wave1}}", "name": "Wave 1", "parentDelkildeId": null,
-                "kildeId": "{{SiblingOrderFixtures.Cancer}}", "count": 3{{Rank(ranked, 2)}} }
+                "kildeId": "4bbb0000-0000-0000-0000-000000000000", "count": 3{{Rank(ranked, 2)}} }
             ],
             "datasamlinger": [
               { "id": "{{SiblingOrderFixtures.Cancer}}", "name": "Cancer", "delkildeId": null,
-                "kildeId": "{{SiblingOrderFixtures.Cancer}}", "count": 5, "categories": []{{Rank(ranked, 62)}} }
+                "kildeId": "4bbb0000-0000-0000-0000-000000000000", "count": 5, "categories": []{{Rank(ranked, 62)}} }
             ]
           }
           """;

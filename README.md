@@ -1413,9 +1413,10 @@ overrides and imported order already applied, and computed before any filtering,
 sibling never reorders the rest. It is not `presentationOrder`, which counts each kind separately
 and stays on the contracts for compatibility.
 
-A host drawing that structure itself merges the two lists with `SiblingOrder.Merge`, which is what
-the package's own trees are meant to share: ascending by `displayOrder`, and by name (ordinal) and
-then id where two ranks are equal. The field is additive, so a server predating it still
+A host drawing that structure itself merges the two lists with `SiblingOrder.Merge`: ascending by
+`displayOrder`, and by name (ordinal) and then id where two ranks are equal. The package's own kilde,
+hierarchy and filter trees do not call it yet and still order as before; adopting it there is
+follow-up work. The field is additive, so a server predating it still
 deserialises and every `DisplayOrder` reads null. `Merge` then keeps the order the payload sent —
 every delkilde as listed, then every datasamling — rather than re-sorting by name, and places any
 sibling without a rank after those that have one. It never decides between a curator's order and
