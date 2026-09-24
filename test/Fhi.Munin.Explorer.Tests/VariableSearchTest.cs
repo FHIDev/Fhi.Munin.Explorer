@@ -11152,11 +11152,11 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void About_WhenTheDetailIsRich_ThenItShowsTheDescriptionCodeAndDatatypeAndNothingElse()
+    public void About_WhenTheDetailIsRich_ThenItShowsTheDescriptionCodeDatatypeAndDatasamlingerAndNothingElse()
     {
-        // THE TRAP: relabelling the old Details tab leaves the kilde trail, the datasamlinger, the
-        // instruments, the period and the properties in, and passes every other test here. The
-        // payload carries all five so each has the chance to leak.
+        // THE TRAP: relabelling the old Details tab leaves the kilde trail, the instruments, the
+        // period and the properties in, and passes every other test here. The payload carries all
+        // of them so each has the chance to leak; the datasamlinger alone belong (Fhi.Metadata-35w0p.85).
         var id = Guid.NewGuid();
         var detail = Detail(id) with
         {
@@ -11192,22 +11192,102 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("DL", about.Children[1].TagName);
         Assert.Equal(2, about.Children.Length);
 
-        Assert.Equal(["Kode", "Datatype"], about.QuerySelectorAll("dt").Select(t => t.TextContent));
+        Assert.Equal(["Kode", "Datatype", "Datasamlinger"], about.QuerySelectorAll("dt").Select(t => t.TextContent));
         Assert.Equal(detail.Code, about.QuerySelectorAll("dd")[0].TextContent);
         Assert.NotEqual("Ikke oppgitt", about.QuerySelectorAll("dd")[1].TextContent);
 
         foreach (var absent in new[]
                  {
-                     "Als registeret", "Nasjonalt medisinsk kvalitetsregister", "Inklusjon", "Oppfølging",
+                     "Als registeret", "Nasjonalt medisinsk kvalitetsregister",
                      "Funksjonsscore", "RAND-36", "Registrert i skjema", "Opprinnelse", "2010", "2025",
-                     "Kildesti", "Datasamling", "Variabelgruppe", "Instrumenter", "Dataperiode",
+                     "Kildesti", "Variabelgruppe", "Instrumenter", "Dataperiode",
                      "Identifikasjon", "Plassering", "Egenskaper",
                  })
         {
             Assert.DoesNotContain(absent, about.TextContent, StringComparison.Ordinal);
         }
 
-        Assert.Empty(about.QuerySelectorAll("ol, ul, .munin-explorer-crumb, [class*='munin-explorer-period']"));
+        Assert.Empty(about.QuerySelectorAll("ol, .munin-explorer-crumb, [class*='munin-explorer-period']"));
+        // The datasamlinger are the one list, since the row names only the primary. (Fhi.Metadata-35w0p.85)
+        Assert.Equal(["Inklusjon", "Oppfølging"], about.QuerySelectorAll("ul li").Select(li => li.TextContent));
+    }
+
+    // The row's Datasamling cell names only the primary, so without this list a reader choosing
+    // from the results cannot see that a variable is in four. (Fhi.Metadata-35w0p.85)
+    private static IReadOnlyList<string> AboutDatasamlinger(IRenderedComponent<VariableSearch> cut)
+    {
+        var about = ShowAbout(cut);
+        var label = about.QuerySelectorAll("dl > div > dt").SingleOrDefault(t => t.TextContent == "Datasamlinger");
+
+        return label is null ? [] : [.. label.NextElementSibling!.QuerySelectorAll("ul > li").Select(li => li.TextContent)];
+    }
+
+    [Fact]
+    public void About_WhenTheVariableIsInFourDatasamlinger_ThenAllFourAreListedInPayloadOrder()
+    {
+        var id = Guid.NewGuid();
+        var detail = Detail(id) with
+        {
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "Oppfølging" },
+                new() { Id = InklusjonId, Name = "Inklusjon" },
+                new() { Id = Guid.NewGuid(), Name = "Årskontroll" },
+                new() { Id = Guid.NewGuid(), Name = "Avslutning" },
+            ],
+        };
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Oppfølging", "Inklusjon", "Årskontroll", "Avslutning"], AboutDatasamlinger(cut));
+        // The row keeps naming the primary alone; the drawer is where the whole list lives.
+        Assert.Equal("Inklusjon", CellText(cut, "dataCollection"));
+    }
+
+    [Fact]
+    public void About_WhenADatasamlingIsUnnamed_ThenItIsDroppedRatherThanDrawnAsAnEmptyItem()
+    {
+        var id = Guid.NewGuid();
+        var detail = Detail(id) with
+        {
+            AllDatasamlinger =
+            [
+                new() { Id = InklusjonId, Name = "Inklusjon" },
+                new() { Id = Guid.NewGuid(), Name = " " },
+                new() { Id = Guid.NewGuid(), Name = "Oppfølging" },
+            ],
+        };
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Inklusjon", "Oppfølging"], AboutDatasamlinger(cut));
+    }
+
+    [Fact]
+    public void About_WhenThePayloadNamesOnlyThePrimaryDatasamling_ThenItIsAOneItemList()
+    {
+        var cut = RenderWith(TwoRows());
+
+        Toggles(cut)[0].Click();
+
+        Assert.Equal(["Inklusjon"], AboutDatasamlinger(cut));
+    }
+
+    [Fact]
+    public void About_WhenTheVariableIsInNoDatasamling_ThenNothingIsDrawnForThem()
+    {
+        var id = Guid.NewGuid();
+        var detail = Detail(id) with { DatasamlingId = null, DatasamlingName = null };
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
+
+        Toggles(cut)[0].Click();
+
+        var about = ShowAbout(cut);
+
+        Assert.DoesNotContain("Datasamlinger", about.TextContent, StringComparison.Ordinal);
+        Assert.Empty(about.QuerySelectorAll("ul"));
     }
 
     /// <summary>The detail as the API sends it: a datatype code and the DataType vocabulary.</summary>
@@ -11349,7 +11429,7 @@ public class VariableSearchTest : ExplorerTestContext
         var row = about.QuerySelectorAll("dl > div").Single(d => d.QuerySelector("dt")!.TextContent == label);
 
         Assert.Equal("2022", row.QuerySelector("dd")!.TextContent);
-        Assert.Equal(3, about.QuerySelectorAll("dt").Length);
+        Assert.Equal(4, about.QuerySelectorAll("dt").Length);
     }
 
     [Fact]
@@ -11364,7 +11444,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         var about = ShowAbout(cut);
 
-        Assert.Equal(["Kode", "Datatype"], about.QuerySelectorAll("dt").Select(t => t.TextContent));
+        Assert.Equal(["Kode", "Datatype", "Datasamlinger"], about.QuerySelectorAll("dt").Select(t => t.TextContent));
         Assert.DoesNotContain("Siste årssett", about.TextContent, StringComparison.Ordinal);
     }
 
@@ -11375,7 +11455,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Toggles(cut)[0].Click();
 
-        Assert.Equal(["Kode", "Datatype"], ShowAbout(cut).QuerySelectorAll("dt").Select(t => t.TextContent));
+        Assert.Equal(["Kode", "Datatype", "Datasamlinger"], ShowAbout(cut).QuerySelectorAll("dt").Select(t => t.TextContent));
     }
 
     [Fact]
@@ -13417,7 +13497,7 @@ public class VariableSearchTest : ExplorerTestContext
         var about = ShowAbout(cut);
 
         Assert.Equal("Angir pasientens grad av utfall på «1. Tale».", about.Children[0].TextContent);
-        Assert.Equal(["Kode", "Datatype"], about.QuerySelectorAll("dl dt").Select(t => t.TextContent));
+        Assert.Equal(["Kode", "Datatype", "Datasamlinger"], about.QuerySelectorAll("dl dt").Select(t => t.TextContent));
         Assert.Equal("V_ALS.F1.1. Tale", Values(cut)[0].TextContent);
     }
 

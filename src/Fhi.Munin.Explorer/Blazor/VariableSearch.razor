@@ -876,10 +876,10 @@ else
                                             }
                                             else
                                             {
-                                                @* The description, then three facts and nothing
-                                                   else. Kilde, datasamling, variabelgruppe and
-                                                   period are the row's own columns, and the buttons
-                                                   below reach the rest. (Fhi.Metadata-l9l2n.101) *@
+                                                @* The description, then a few facts and nothing
+                                                   else. Kilde, variabelgruppe and period are the
+                                                   row's own columns, and the buttons below reach the
+                                                   rest. (Fhi.Metadata-l9l2n.101) *@
                                                 @* A <div>, not a <p>: authored text can hold a list. *@
                                                 <div>@DetailValue(detail.Description, authored: true)</div>
 
@@ -911,6 +911,24 @@ else
                                                         <div>
                                                             <dt class="headline headline-xxs margin--none">@T.FieldLatestYearSet</dt>
                                                             <dd>@latestYearSet</dd>
+                                                        </div>
+                                                    }
+
+                                                    @* Every one, where the row's cell names only the primary:
+                                                       the list is the one place a reader sees a variable is in four.
+                                                       The same predicate VariableView lists. (Fhi.Metadata-35w0p.85) *@
+                                                    @if (KildeTrailBlock.NamedDatasamlinger(detail) is { Count: > 0 } datasamlinger)
+                                                    {
+                                                        <div>
+                                                            <dt class="headline headline-xxs margin--none">@T.HeadingDataCollections</dt>
+                                                            <dd>
+                                                                <ul>
+                                                                    @foreach (var datasamling in datasamlinger)
+                                                                    {
+                                                                        <li lang="@Foreign("no")">@datasamling.Name</li>
+                                                                    }
+                                                                </ul>
+                                                            </dd>
                                                         </div>
                                                     }
                                                 </dl>
