@@ -346,9 +346,9 @@ export const assertions = [
     name: "Runa's row disclosure is big enough to hit",
     kind: 'pin',
     states: ['explorer-tabs', 'variable-detail'],
-    // A pin, for the kilder pin's reason: the 24 x 24 invariant fails on the native checkbox. The
-    // name button is the row's disclosure since Fhi.Metadata-35w0p.78; `gates` makes a miss a
-    // finding when variable-detail and variable-whole cannot press it (Fhi.Metadata-kqano).
+    // The name button is the disclosure since Fhi.Metadata-35w0p.78, and the row strip around it is
+    // a pointer target for the same press, so the strip is the target measured (WCAG 2.5.8). The
+    // button must still have a box. `gates` as before (Fhi.Metadata-m586y, Fhi.Metadata-kqano).
     gates: ['variable-detail', 'variable-whole'],
     body: () => {
       const toggles = [...document.querySelectorAll('ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name')]
@@ -357,11 +357,14 @@ export const assertions = [
       const width = Math.round(window.innerWidth);
       const minimum = 24;
       for (const [index, toggle] of toggles.entries()) {
-        const r = toggle.getBoundingClientRect();
-        if (r.width < minimum || r.height < minimum) {
+        const own = toggle.getBoundingClientRect();
+        const strip = toggle.closest('.munin-explorer-dataitem-main')?.getBoundingClientRect() ?? own;
+        const w = Math.max(own.width, strip.width);
+        const h = Math.max(own.height, strip.height);
+        if (own.width < 1 || own.height < 1 || w < minimum || h < minimum) {
           return `at ${width}px row disclosure ${index + 1} of ${toggles.length} measures ` +
-            `${r.width.toFixed(1)} x ${r.height.toFixed(1)}, under the ${minimum} x ${minimum} ` +
-            'minimum target size';
+            `${own.width.toFixed(1)} x ${own.height.toFixed(1)} in a ${strip.width.toFixed(1)} x ` +
+            `${strip.height.toFixed(1)} strip, under the ${minimum} x ${minimum} minimum target size`;
         }
       }
       return null;

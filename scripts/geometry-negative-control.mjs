@@ -163,12 +163,14 @@ const cases = [
   },
   {
     assertion: "Runa's row disclosure is big enough to hit",
-    defect: 'a name button squeezed below the minimum target, its glyph hidden as under Stiler 0.1.91',
+    defect: 'a row strip and name button squeezed below the minimum target, as under Stiler 0.1.91',
     path: '/', state: 'explorer-tabs', width: 1440,
-    // Hides the glyph and caps the text's line box, so nothing is left to give the button height.
-    apply: css('button.munin-explorer-dataitem-main__name .icon { display: none !important; }\n' +
+    // Both the strip and the button inside it, since either one tall enough is a target.
+    apply: css('.munin-explorer-dataitem-main { height: 10px !important; min-height: 0 !important; ' +
+      'padding: 0 !important; }\n' +
+      'button.munin-explorer-dataitem-main__name .icon { display: none !important; }\n' +
       'button.munin-explorer-dataitem-main__name, button.munin-explorer-dataitem-main__name * { ' +
-      'line-height: 10px !important; font-size: 8px !important; padding: 0 !important; ' +
+      'line-height: 8px !important; font-size: 8px !important; padding: 0 !important; ' +
       'height: auto !important; min-height: 0 !important; }'),
   },
   {
