@@ -282,6 +282,13 @@ public sealed record DelkildeFacet
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("count")] public int Count { get; init; }
+
+    /// <summary>
+    /// Rank among the delkilder and datasamlinger sharing its parent, both kinds on one scale, as
+    /// the API resolved it — not <c>presentationOrder</c>. Null from a server predating the field;
+    /// order siblings with <see cref="SiblingOrder.Merge{T}"/> either way.
+    /// </summary>
+    [JsonPropertyName("displayOrder")] public int? DisplayOrder { get; init; }
 }
 
 /// <summary>
@@ -298,6 +305,13 @@ public sealed record DatasamlingFacet
 
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("count")] public int Count { get; init; }
+
+    /// <summary>
+    /// Rank among the delkilder and datasamlinger sharing its parent, both kinds on one scale, as
+    /// the API resolved it — not <c>presentationOrder</c>. Null from a server predating the field;
+    /// order siblings with <see cref="SiblingOrder.Merge{T}"/> either way.
+    /// </summary>
+    [JsonPropertyName("displayOrder")] public int? DisplayOrder { get; init; }
 
     /// <summary>
     /// Datakategori tokens for the datasamling — the same field name, tokens and semantics as

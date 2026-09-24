@@ -1401,6 +1401,26 @@ yours. Do that and three details are yours to get right — the interactive rend
 built from `PathBase + Path` rather than a literal (identical locally, wrong behind a reverse
 proxy), and `replaceState` rather than `pushState`.
 
+### Ordering a kilde's delkilder and datasamlinger
+
+A delkilde and a datasamling hanging off the same parent are siblings of each other, and a reader
+expects them in one sequence — K_KK's four waves, then its derived-variables collection, then Death,
+then Cancer — not one kind and then the other. The detail, hierarchy and filters payloads say how,
+through an optional `displayOrder` on every delkilde and datasamling entry: `DisplayOrder` on
+`KildeDelkilde`, `KildeDatasamling`, `HierarchyDelkilde`, `HierarchyDatasamling`, `DelkildeFacet`
+and `DatasamlingFacet`. It is the API's resolved rank across both kinds under that parent, curated
+overrides and imported order already applied, and computed before any filtering, so hiding a
+sibling never reorders the rest. It is not `presentationOrder`, which counts each kind separately
+and stays on the contracts for compatibility.
+
+A host drawing that structure itself merges the two lists with `SiblingOrder.Merge`, which is what
+the package's own trees are meant to share: ascending by `displayOrder`, and by name (ordinal) and
+then id where two ranks are equal. The field is additive, so a server predating it still
+deserialises and every `DisplayOrder` reads null. `Merge` then keeps the order the payload sent —
+every delkilde as listed, then every datasamling — rather than re-sorting by name, and places any
+sibling without a rank after those that have one. It never decides between a curator's order and
+an imported one; that is the API's call, and the rank is its answer.
+
 ### Reading which version is deployed
 
 Every root element this package renders carries the package version as
