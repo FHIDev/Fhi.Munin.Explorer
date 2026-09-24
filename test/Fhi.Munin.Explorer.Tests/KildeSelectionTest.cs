@@ -732,8 +732,8 @@ public class KildeSelectionTest : ExplorerTestContext
     public void SampleCss_WhenEveryColumnIsOn_ThenAThresholdSticksTheWidestHeaderEitherWay()
     {
         // The orphan guards exempt the count modifier, so without this a fourteenth optional column
-        // ships with no threshold and every check green, as --cols-17 and --cols-18 once did.
-        // The widths are read off the rendered table, never written here (Fhi.Metadata-l9l2n.98).
+        // ships with no threshold and every check green, as --cols-17 and --cols-18 once did. The
+        // counts are read off the rendered table; the handle gates are Stiler 0.1.113's wide ladder.
         Services.AddSingleton<IMuninExplorerClient>(new FakeClient(Kilde("Als registeret", "K_ALS")));
         var plain = Render<KildeSearch>();
         var selectable = Render<KildeSearch>(b => b.Add(c => c.ExploreVariablesRequested,
@@ -741,11 +741,20 @@ public class KildeSelectionTest : ExplorerTestContext
         TurnEveryColumnOn(plain);
         TurnEveryColumnOn(selectable);
 
+        var stem = "." + KildeColumns.KilderHeaderStem;
+        string[] wide = ["kode", "dataansvarlig", "databehandler", "grad"];
+        foreach (var cut in new[] { plain, selectable })
+        {
+            Assert.NotEmpty(cut.FindAll(stem + "navn"));
+            Assert.NotEmpty(cut.FindAll(string.Join(", ", wide.Select(key => stem + key))));
+        }
+
         var select = $":has(.{HostClassNames.KilderSelect})";
+        var handles = $":has({stem}navn):has({string.Join(", ", wide.Select(key => stem + key))})";
         var widest = new[]
         {
-            $".{HostClassNames.KilderScroll}--cols-{Headers(selectable).Count}{select}",
-            $".{HostClassNames.KilderScroll}--cols-{Headers(plain).Count}:not({select})",
+            $".{HostClassNames.KilderScroll}--cols-{Headers(selectable).Count}{select}{handles}",
+            $".{HostClassNames.KilderScroll}--cols-{Headers(plain).Count}:not({select}){handles}",
         };
         Assert.Equal(Headers(plain).Count + 1, Headers(selectable).Count);
 

@@ -5878,27 +5878,25 @@ public class KildeSearchTest : ExplorerTestContext
             Squeezed(r.Declarations).Contains("transform:", StringComparison.OrdinalIgnoreCase),
             $"'{r.Selector}' turns the chevron, and a turned `icon_up.svg` points right."));
 
-        // One image per direction at rest, plus the blue pair on hover. `-down` is collapsed only
-        // under [aria-expanded=false] until Stiler drops its four inverted overrides
-        // (Fhi.Metadata-trfs0); the resting `-up` has no twin there, Stiler's icon set draws it.
-        Assert.Contains(rules, r => r.Selector.Contains("[aria-expanded=false]", StringComparison.Ordinal)
-                                    && r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
-                                    && !r.Selector.Contains(":hover", StringComparison.Ordinal)
-                                    && Squeezed(r.Declarations).Contains("icon_down.svg", StringComparison.Ordinal));
+        // Collapsed writes `-down` and open writes `-up`, and since Stiler 0.1.110 the base icon
+        // rules draw both at rest; the explorer's rules carry only the blue hover pair. An unscoped
+        // `-down` mapped to `icon_up.svg` is the inverted override trfs0 removed (Fhi.Metadata-trfs0).
+        Assert.DoesNotContain(rules, r => r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
+                                          && Squeezed(r.Declarations).Contains("icon_up", StringComparison.Ordinal));
 
-        Assert.Contains(rules, r => r.Selector.Contains("icon-keyboard-arrow-up", StringComparison.Ordinal)
-                                    && !r.Selector.Contains(":hover", StringComparison.Ordinal)
-                                    && Squeezed(r.Declarations).Contains("icon_up.svg", StringComparison.Ordinal));
+        Assert.Contains(HostClassNames.SampleDeclarationsFor("icon-keyboard-arrow-down"),
+            r => r.Selector.Trim() == ".icon-keyboard-arrow-down"
+                 && Squeezed(r.Declarations).Contains("icon_down.svg", StringComparison.Ordinal));
+
+        Assert.Contains(HostClassNames.SampleDeclarationsFor("icon-keyboard-arrow-up"),
+            r => r.Selector.Trim() == ".icon-keyboard-arrow-up"
+                 && Squeezed(r.Declarations).Contains("icon_up.svg", StringComparison.Ordinal));
 
         Assert.Contains(rules, r => r.Selector.Contains(":hover", StringComparison.Ordinal)
                                     && r.Selector.Contains("icon-keyboard-arrow-up", StringComparison.Ordinal)
                                     && Squeezed(r.Declarations).Contains("icon_up--blue.svg", StringComparison.Ordinal));
 
-        // The fourth state, and the one the old `-right` rules used to draw: a hovered row that is
-        // still shut. Without it the rule that serves it can go and this guard stays green, while
-        // `tr:hover ... -down` out-specifies the resting rule and draws UP. (Fhi.Metadata-l9l2n.84)
         Assert.Contains(rules, r => r.Selector.Contains(":hover", StringComparison.Ordinal)
-                                    && r.Selector.Contains("[aria-expanded=false]", StringComparison.Ordinal)
                                     && r.Selector.Contains("icon-keyboard-arrow-down", StringComparison.Ordinal)
                                     && Squeezed(r.Declarations).Contains("icon_down--blue.svg", StringComparison.Ordinal));
     }

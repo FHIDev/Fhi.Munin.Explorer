@@ -60,6 +60,9 @@
 # Stiler 0.1.75 retires three entries: the expand icon's width and the choicepicker's two
 # declarations now exist in the package. 214 entries remained then; no new exceptions were added.
 #
+# IT WAS 323 BEFORE Fhi.Metadata-9h4f8 and 313 after it, on Stiler 0.1.113: 6xppi's six --cols-16/17/18
+# lines, the two resting -up chevron lines (base icon rules draw rest now) and trfs0's two Runa hover lines.
+#
 # IT WAS 336 BEFORE Fhi.Metadata-4gjgp and 323 after it. The choicepicker's thirteen went, the
 # ten the bead tabulated and the list's invented colour, margin and z-index, measured open at
 # 320-412 against ModernHost and HostileHost on Stiler 0.1.107 before and after.
@@ -281,8 +284,6 @@ missing-selector||.munin-explorer .hd-button-square.button-square--ghost:not([ar
 missing-selector||.munin-explorer-data-list__item--expanded .munin-explorer-dataitem-main|
 missing-selector||.munin-explorer-data-list__item:hover|
 missing-selector||.munin-explorer-data-list__item:last-of-type|
-missing-selector||.munin-explorer-data-list__item__row:hover .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-down|
-missing-selector||.munin-explorer-data-list__item__row:hover .munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-right|
 missing-selector||.munin-explorer-dataitem-header > *|
 missing-selector||.munin-explorer-dataitem-header__button:focus|
 missing-selector||.munin-explorer-dataitem-header__button|
@@ -452,15 +453,6 @@ unstyled-name||.munin-explorer-lead|
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
 
-# Fhi.Metadata-l9l2n.98's two share columns take the scroll box to twelve and thirteen optional
-# columns, past Stiler's ladder; the sample's thresholds are estimates. The Stiler rule is
-# Fhi.Metadata-6xppi, and all six lines go when the pin moves to the version that carries it.
-unstyled-name||.munin-explorer-kilder-scroll--cols-17|
-unstyled-name||.munin-explorer-kilder-scroll--cols-18|
-invented-selector|@container munin-explorer-kilder (min-width:1916px)|.munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th|box-shadow
-invented-selector|@container munin-explorer-kilder (min-width:1916px)|.munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th|position
-invented-selector|@container munin-explorer-kilder (min-width:1916px)|.munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select)) > .munin-explorer-kilder > thead th|top
-invented-selector|@container munin-explorer-kilder (min-width:1916px)|.munin-explorer-kilder-scroll--cols-16:not(:has(.munin-explorer-kilder__select))|overflow-x
 
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
 # only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.98.
@@ -546,12 +538,6 @@ invented-selector||.munin-explorer-hierarchy > .munin-explorer-hierarchy__nodes|
 invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow-down::before|content
 invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before|content
 invented-selector||.munin-explorer-header__actions-button > .icon-layout::before|content
-
-# Same absent icon font, one row lower: Stiler draws the resting expanded chevron from its own
-# `.icon-keyboard-arrow-up`, so its munin-explorer partials only need the deviations. A sample host
-# has neither, and without these two the chevron is blank between hovers (Fhi.Metadata-l9l2n.84).
-invented-selector||.munin-explorer-dataitem-main__expand-icon.icon-keyboard-arrow-up|background-image
-invented-selector||.munin-explorer-kilder .munin-explorer-kilder__expand-icon.icon-keyboard-arrow-up|background-image
 
 # Stiler gates the two tracks on :has() and leaves a one-child body alone; the sample also takes
 # them back explicitly.

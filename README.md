@@ -366,7 +366,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
     The rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**;
-    `samples/HostileHost` pins 0.1.107 today (`Fhi.Metadata-2w7fx`).
+    `samples/HostileHost` pins 0.1.113 today (`Fhi.Metadata-9h4f8`).
     The words for those glyphs are under the facets, in an `Ikonforklaring` legend that adds two
     names of its own — `munin-explorer-filters__legend` on the list and
     `munin-explorer-filters__legend-item` on each row. It lists the whole vocabulary rather than
@@ -382,7 +382,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the row each pairing sits on and the columns the eighteen of them are laid out in. Both sample
     stylesheets already carried the rules before any markup wore the names, copied off the published
     0.1.75 that `samples/HostileHost` pinned when they were written and compared since against the
-    0.1.107 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
+    0.1.113 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
     evidence on this side that Stiler really has them — nothing in this repository reads Stiler,
     and that guard runs only in the job holding the feed secret. A legend that rests shut is a
     `<details>` and nothing invented: its `<summary>` is the control's accessible name and its
@@ -409,7 +409,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     name — stood in under their "since an earlier Stiler pin" heading,
     which is where a rule copied off the pinned published package goes — so
     `assert-sample-css-matches-stiler.sh` against that pin is what says whether the published
-    Stiler really has it — 0.1.107 today, 0.1.75 when this was written. Nothing on this side
+    Stiler really has it — 0.1.113 today, 0.1.75 when this was written. Nothing on this side
     reads Stiler, and this paragraph does not claim to —
     `Fhi.Metadata-gegtb` is the bead that goes and looks, and writes the rule if it is not there.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
