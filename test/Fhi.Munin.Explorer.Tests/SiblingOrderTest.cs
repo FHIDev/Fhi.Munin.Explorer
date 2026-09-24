@@ -10,7 +10,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 /// <remarks>
 /// Ordering each kind by its own rank and concatenating looks right on a kilde holding one kind
-/// only, which is how K_KK's datasamlinger came to be drawn before its waves (Fhi.Metadata-oty1h).
+/// only, and puts K_KK's datasamlinger before its waves (Fhi.Metadata-oty1h).
 /// </remarks>
 public class SiblingOrderTest
 {
@@ -38,8 +38,8 @@ public class SiblingOrderTest
     [Fact]
     public void Merge_WhenNoSiblingHasARank_ThenPayloadOrderIsKeptRatherThanSortedByName()
     {
-        // A server predating displayOrder already sent the imported order; re-sorting by name here
-        // is what put K_KK's alphabetic datasamlinger ahead of the waves.
+        // A server predating displayOrder already sends the imported order; re-sorting by name here
+        // would put K_KK's alphabetic datasamlinger ahead of the waves.
         var merged = Merge(
             [new(true, "Wave 2", A, null), new(true, "Wave 1", B, null)],
             [new(false, "Death", C, null), new(false, "Cancer", Guid.Empty, null)]);
