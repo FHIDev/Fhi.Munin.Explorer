@@ -212,6 +212,21 @@ public class ContractCoverageTest
         Covers<VariableDetail>("variable.json");
 
     [Fact]
+    public void VariableDetail_WhenTheCaptureIsRoundTripped_ThenHasUndertryktStatistikkComesBackAsItWasSent()
+    {
+        // The strict read above would pass with the field gone from the capture, and a renamed
+        // property would still deserialise to the default false; the round trip pins both.
+        const string field = "hasUndertryktStatistikk";
+        var captured = JsonDocument.Parse(TestData.Read("variable.json")).RootElement.GetProperty(field);
+
+        var variable = JsonSerializer.Deserialize<VariableDetail>(TestData.Read("variable.json"), MuninExplorerClient.Json);
+        var written = JsonDocument.Parse(JsonSerializer.Serialize(variable, MuninExplorerClient.Json))
+            .RootElement.GetProperty(field);
+
+        Assert.Equal(captured.GetBoolean(), written.GetBoolean());
+    }
+
+    [Fact]
     public void Timeline_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<IReadOnlyList<VariableVersion>>("timeline.json");
 

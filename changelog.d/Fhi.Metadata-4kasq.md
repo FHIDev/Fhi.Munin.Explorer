@@ -1,0 +1,2 @@
+category: Added
+- **`VariableDetail` gains `HasSuppressedStatistics`.** Munin's `hasUndertryktStatistikk`: true when any of the variable's statistics carries a disclosure-control marker, and false from an API older than the field. `Statistics` stays authoritative and is what the components read; the flag also counts markers `Statistic.DisclosureControl` does not recognise and reads as null. (Fhi.Metadata-4kasq)

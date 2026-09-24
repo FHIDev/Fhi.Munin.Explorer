@@ -499,6 +499,21 @@ public class MuninExplorerClientTest
         Assert.Equal(expected, Assert.Single(variable!.Statistics).DisclosureControl);
     }
 
+    [Theory]
+    [InlineData("\"hasUndertryktStatistikk\":true,", true)]
+    [InlineData("\"hasUndertryktStatistikk\":false,", false)]
+    [InlineData("", false)]
+    public async Task GetVariableAsync_WhenMuninSummarisesSuppressedStatistics_ThenTheFlagIsRead(
+        string field, bool expected)
+    {
+        // Pins the wire name: the coverage test passes for a false it never read, since false is the default.
+        var variable = await WithJson($$"""
+            { {{field}} "id":"6f1d4a5c-0000-4000-8000-000000000002","code":"ALSFRSR1Tale","preferredTerm":"1. Tale"}
+            """).GetVariableAsync(Guid.NewGuid());
+
+        Assert.Equal(expected, variable!.HasSuppressedStatistics);
+    }
+
     [Fact]
     public async Task GetVariableAsync_WhenTheVariableDoesNotExist_ThenNullRatherThanAThrow()
     {

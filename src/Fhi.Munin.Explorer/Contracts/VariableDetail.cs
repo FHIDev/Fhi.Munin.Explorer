@@ -101,6 +101,17 @@ public sealed record VariableDetail
     /// </summary>
     [JsonPropertyName("statistikker")] public IReadOnlyList<Statistic> Statistics { get; init; } = [];
 
+    /// <summary>
+    /// Munin's summary of <see cref="Statistics"/>: true when any of them carries a
+    /// disclosure-control marker. False from an API older than the field.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Statistics"/> is authoritative, and the components read it rather than this. The two
+    /// can disagree: Munin counts any marker, while <see cref="Statistic.DisclosureControl"/> reads a
+    /// value it does not know as null — so this can be true where every statistic's is null.
+    /// </remarks>
+    [JsonPropertyName("hasUndertryktStatistikk")] public bool HasSuppressedStatistics { get; init; }
+
     /// <summary>Every variabelgruppe the variable belongs to, not just the primary one.</summary>
     [JsonPropertyName("alleVariabelgrupper")] public IReadOnlyList<VariabelgruppeReference> AllVariabelgrupper { get; init; } = [];
 
