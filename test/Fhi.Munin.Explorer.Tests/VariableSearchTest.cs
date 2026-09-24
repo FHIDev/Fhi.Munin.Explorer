@@ -6445,6 +6445,18 @@ public class VariableSearchTest : ExplorerTestContext
                               c => c.TextContent.TrimStart().StartsWith('('));
     }
 
+    [Fact]
+    public void Render_WhenANamelessDatatypeFacetCarriesALegacySpelling_ThenTheButtonSaysTheCode()
+    {
+        // The same canonical-code fallback as the rows, so a legacy value cannot put "String" on a
+        // button beside a row reading "1". (Fhi.Metadata-0mohg)
+        var facets = Facets() with { DataTypes = [new() { Value = "String", DisplayName = null, Count = 9 }] };
+
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        Assert.Equal("1 (9)", Facet(cut, "1").TextContent);
+    }
+
     [Theory]
     [InlineData("1")]
     [InlineData("String")]

@@ -86,8 +86,9 @@ public sealed record PropertyMetadataEntry
     /// than deprecated: it is the only place both labels survive.
     /// <para>
     /// The component in <c>Fhi.Munin.Explorer.Blazor</c> is exactly that caller — it picks
-    /// <c>label</c> or <c>labelEn</c> per render, from the language the reader chose — so this
-    /// package's own reference implementation is on this side of the split, not the other.
+    /// <c>label</c> or <c>labelEn</c> per render, from the language the reader chose, preferring
+    /// <c>displayLabel</c> / <c>displayLabelEn</c> where an option carries one (DataType does) — so
+    /// this package's own reference implementation is on this side of the split, not the other.
     /// </para>
     /// </remarks>
     [JsonPropertyName("optionsJson")] public string? OptionsJson { get; init; }

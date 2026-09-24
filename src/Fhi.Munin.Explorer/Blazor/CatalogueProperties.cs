@@ -858,10 +858,8 @@ internal static class CatalogueProperties
         }
     }
 
-    /// <summary>
-    /// The DataType vocabulary's curated word for a canonical datatype code, or null where the
-    /// payload lists none. <c>Language</c> is null when the word is in the reader's own language.
-    /// </summary>
+    /// <summary>The DataType vocabulary's word for a canonical code, or null; <c>Language</c> is
+    /// null when the word is in the reader's own language.</summary>
     internal static (string Label, string? Language)? DataTypeWord(
         IReadOnlyList<PropertyMetadataEntry> metadata, string code, string reader) =>
         metadata.FirstOrDefault(e => e.Key == DataTypeKey) is { } entry
