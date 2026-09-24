@@ -397,6 +397,29 @@ public class CataloguePropertiesTest
         Assert.Equal("Direkte fra skjema", Only(row).Text);
     }
 
+    [Theory]
+    [InlineData("1", "no", "Tekst", "no")]
+    [InlineData("1", "en", "Text", "en")]
+    [InlineData("2", "en", "Integer", "en")]
+    [InlineData("3", "en", "Ja/nei", "no")]
+    [InlineData("4", "no", "Uri", "no")]
+    public void Option_WhenTheVocabularyCarriesADisplayLabel_ThenItIsPreferredOverTheSpecificationTerm(
+        string code, string reader, string expected, string language)
+    {
+        // displayLabel is the reader's word and label the specification's term (Fhi.Metadata-6qy6l),
+        // with Munin's PropertyOptionLabels fallback: English takes labelEn before Norwegian text.
+        var entry = Entry("DataType", 20, "Egenskaper", optionsJson: """
+            [{"value":"1","label":"String","labelEn":"String","displayLabel":"Tekst","displayLabelEn":"Text"},
+             {"value":"2","label":"Integer","labelEn":"Integer","displayLabel":"Heltall"},
+             {"value":"3","label":"Boolean","displayLabel":"Ja/nei"},
+             {"value":"4","label":"Uri","labelEn":"Uri"}]
+            """);
+
+        var option = CatalogueProperties.Option(entry, code, reader);
+
+        Assert.Equal((expected, language, true), option);
+    }
+
     [Fact]
     public void Groups_WhenTheReaderIsEnglish_ThenGroupNamesFollowToo()
     {

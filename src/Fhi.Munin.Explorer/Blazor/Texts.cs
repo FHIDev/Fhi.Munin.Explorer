@@ -449,15 +449,13 @@ internal sealed record Texts(
     // under their kilde instead of giving them a facet to head.
     string FieldDelkilde,
     string HierarchyTrail,
-    // Prose for tokens that are not names: kildetype as its enum name, and datatype for the panel,
-    // which holds the code alone, for a facet the API sent nameless, and for a legacy stored
-    // spelling echoed back as one. See AGENTS.md, "The API names a datatype, not this package".
+    // Prose for kildetype tokens that are not names, such as the enum name. Datatypes have no
+    // such table: the API names them. See AGENTS.md, "The API names a datatype, not this package".
     IReadOnlyDictionary<string, string> KildeTypeNames,
     // The badge a kilde row wears in the facet tree. Biobank alone: prøvesamling is an EHDS
     // datakategori rather than a kildetype the API can send, checked against runa on 2026-09-15.
     // Membership is the badge's whole meaning, so a kildetype this does not name wears none.
     IReadOnlyDictionary<string, string> KildeTypeBadges,
-    IReadOnlyDictionary<string, string> DataTypeNames,
     string Ascending,
     string Descending,
     string Pagination,
@@ -966,34 +964,11 @@ internal sealed record Texts(
         ["base64binary"] = "9",
     };
 
-    /// <summary>The code a stored datatype value means, so a legacy spelling finds the facet the
-    /// API named. Anything that is not a known spelling is already a code, or is one this package
-    /// has never heard of, and is returned unchanged. (Fhi.Metadata-l9l2n.49)</summary>
+    /// <summary>The code a stored datatype value means, so a legacy spelling finds the name the
+    /// API gave its code. Anything that is not a known spelling is already a code, or is one this
+    /// package has never heard of, and is returned unchanged. (Fhi.Metadata-l9l2n.49)</summary>
     public string CanonicalDataTypeCode(string value) =>
         DataTypeAliases.TryGetValue(value, out var code) ? code : value;
-
-    /// <summary>Prose for a datatype the API has not named — the panel, which holds the stored
-    /// value alone, and a facet that arrived without one. Falls back to the canonical code, never
-    /// to the word an alias arrived as. (Fhi.Metadata-l9l2n.49)</summary>
-    public string DataTypeLabel(string value)
-    {
-        var code = CanonicalDataTypeCode(value);
-        return DataTypeNames.TryGetValue(code, out var name) ? name : code;
-    }
-
-    /// <summary>What a row or a facet shows for a datatype the API has named. Only a legacy stored
-    /// spelling is replaced — English or Norwegian, both being stored values rather than names —
-    /// by this table's word for the code it means, in the reader's own language.</summary>
-    /// <remarks>AGENTS.md, "The API names a datatype, not this package". (Fhi.Metadata-l9l2n.49)</remarks>
-    public string? NormalizeDataTypeDisplayName(string? apiName)
-    {
-        if (apiName is null || !DataTypeAliases.TryGetValue(apiName, out var code))
-        {
-            return apiName;
-        }
-
-        return DataTypeNames.TryGetValue(code, out var name) ? name : apiName;
-    }
 
     /// <summary>The word for a direction, as the status line and the active button say it.</summary>
     /// <remarks>
@@ -1325,19 +1300,6 @@ internal sealed record Texts(
         KildeTypeBadges: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["biobank"] = "Biobank"
-        },
-        DataTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["1"] = "Streng",
-            ["2"] = "Heltall",
-            ["3"] = "Desimaltall",
-            ["4"] = "Boolsk",
-            ["5"] = "Klokkeslett",
-            ["6"] = "Dato",
-            ["7"] = "Dato og tid",
-            ["8"] = "URI",
-            ["9"] = "Base64Binary",
-            ["10"] = "Fødselsnummer (11 siffer)"
         },
         Ascending: AscendingNo,
         Descending: DescendingNo,
@@ -1803,19 +1765,6 @@ internal sealed record Texts(
         KildeTypeBadges: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["biobank"] = "Biobank"
-        },
-        DataTypeNames: new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["1"] = "String",
-            ["2"] = "Integer",
-            ["3"] = "Decimal",
-            ["4"] = "Boolean",
-            ["5"] = "Time",
-            ["6"] = "Date",
-            ["7"] = "Datetime",
-            ["8"] = "URI",
-            ["9"] = "Base64Binary",
-            ["10"] = "National ID (11 digits)"
         },
         Ascending: AscendingEn,
         Descending: DescendingEn,

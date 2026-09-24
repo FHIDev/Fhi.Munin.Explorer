@@ -891,9 +891,16 @@ else
 
                                                     <div>
                                                         <dt class="headline headline-xxs margin--none">@T.FieldDataType</dt>
-                                                        @* Our words for the code, not the catalogue's,
-                                                           so no lang="no" as DetailValue would add. *@
-                                                        <dd>@(DataTypeName(detail.DataType) is { Length: > 0 } dataType ? dataType : T.NotSpecified)</dd>
+                                                        @* The API's word in the reader's language, so
+                                                           lang only where it fell back to Norwegian. *@
+                                                        @if (PanelDataType(detail) is { } dataType)
+                                                        {
+                                                            <dd lang="@dataType.Lang">@dataType.Text</dd>
+                                                        }
+                                                        else
+                                                        {
+                                                            <dd>@T.NotSpecified</dd>
+                                                        }
                                                     </div>
 
                                                     @* Absent rather than "Ikke oppgitt" when no

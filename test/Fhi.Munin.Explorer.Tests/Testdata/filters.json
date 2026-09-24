@@ -33825,7 +33825,7 @@
   "datatyper": [
     {
       "value": "1",
-      "displayName": "String",
+      "displayName": "Tekst",
       "count": 5378
     },
     {
@@ -33835,27 +33835,27 @@
     },
     {
       "value": "2",
-      "displayName": "Integer",
+      "displayName": "Heltall",
       "count": 30043
     },
     {
       "value": "3",
-      "displayName": "Decimal",
+      "displayName": "Desimaltall",
       "count": 5450
     },
     {
       "value": "4",
-      "displayName": "Boolean",
+      "displayName": "Ja/nei",
       "count": 3617
     },
     {
       "value": "6",
-      "displayName": "Date",
+      "displayName": "Dato",
       "count": 435
     },
     {
       "value": "7",
-      "displayName": "Datetime",
+      "displayName": "Dato og tid",
       "count": 1101
     }
   ],

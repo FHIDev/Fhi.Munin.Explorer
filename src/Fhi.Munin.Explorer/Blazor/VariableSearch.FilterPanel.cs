@@ -965,9 +965,8 @@ public partial class VariableSearch
 
     /// <summary>One datatype, in the reader's own language whichever source names it.</summary>
     /// <remarks>
-    /// Unmarked for the reason <see cref="KildeTypeValue"/> is: the API resolves the name in the
-    /// language this package asked in, a legacy stored spelling is replaced out of this package's
-    /// own table, and the fallback under both is that table again.
+    /// Unmarked because the API resolves the name in the language this package asked in, and the
+    /// fallback for a nameless facet is the canonical code, which belongs to no language.
     /// </remarks>
     private FacetValue DataTypeValue(DataTypeFacet dataType) =>
         new($"datatype:{dataType.Value}",
@@ -980,14 +979,11 @@ public partial class VariableSearch
 
     /// <summary>The word on a datatype facet button, on the same terms as the result rows.</summary>
     /// <remarks>
-    /// AGENTS.md, "The API names a datatype, not this package". A facet carrying no name at all —
-    /// an API predating them — falls back to the shipped table keyed by the code, because a button
-    /// labelled with a blank string is an empty accessible name. (Fhi.Metadata-l9l2n.49)
+    /// AGENTS.md, "The API names a datatype, not this package". A nameless facet shows its canonical
+    /// code, because a button labelled with a blank string has an empty accessible name.
     /// </remarks>
     private string DataTypeFacetLabel(DataTypeFacet dataType) =>
-        T.NormalizeDataTypeDisplayName(dataType.DisplayName) is { } named && !string.IsNullOrWhiteSpace(named)
-            ? named
-            : T.DataTypeLabel(dataType.Value);
+        string.IsNullOrWhiteSpace(dataType.DisplayName) ? T.CanonicalDataTypeCode(dataType.Value) : dataType.DisplayName;
 
     private FacetGroup HelsefagligKodeverkGroup(FilterOptions facets) =>
         new("helsefaglig-kodeverk",

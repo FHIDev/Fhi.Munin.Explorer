@@ -17,6 +17,7 @@
       "dataFrom": "2010-01-01T00:00:00.000Z",
       "dataTo": "2025-06-01T00:00:00.000Z",
       "dataType": "2",
+      "dataTypeDisplayName": "Heltall",
       "versjonStatus": "Active",
       "versjonId": "13e96651-095d-4337-8721-ab30a15e36df"
     },
@@ -37,6 +38,7 @@
       "dataFrom": "2010-01-01T00:00:00.000Z",
       "dataTo": "2025-06-01T00:00:00.000Z",
       "dataType": "2",
+      "dataTypeDisplayName": "Heltall",
       "versjonStatus": "Active",
       "versjonId": "39a5c77c-f0af-435c-ab2c-e80daa862ade"
     }

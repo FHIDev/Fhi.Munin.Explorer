@@ -1,0 +1,2 @@
+category: Changed
+- **Datatype names now come from Munin, so the explorer reads "Tekst" where it used to read "Streng".** The facet, the result rows, the saved-list view and the variable detail show the name the API resolves from its DataType vocabulary ("Tekst", "Heltall", "Ja/nei" / "Text", "Integer", "Yes/no"), and the package no longer ships a table of its own. A code the API does not name reads as the code itself. (Fhi.Metadata-0mohg)

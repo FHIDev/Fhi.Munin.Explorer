@@ -1365,14 +1365,11 @@ public sealed partial class VariableSearch : ComponentBase
         _tab = Tabs[next];
     }
 
-    /// <summary>
-    /// A datatype code as its name, from the facets the filter panel has already loaded.
-    /// </summary>
+    /// <summary>A datatype code as its name, from the facets the filter panel has already loaded.</summary>
     /// <remarks>
-    /// The row endpoint sends the code — "2" — and nothing else, while the filters endpoint sends
-    /// the same codes WITH their names, already fetched by the panel. Falling back other than the
-    /// facet beside it does puts two words for one datatype on one screen. AGENTS.md, "The API
-    /// names a datatype, not this package". (Fhi.Metadata-l9l2n.49)
+    /// Not the row's own <c>dataTypeDisplayName</c>: the search is fetched without a language, so
+    /// that name is in the API's default one, while the facets follow the reader's. With no facet
+    /// the code itself is shown. AGENTS.md, "The API names a datatype, not this package".
     /// </remarks>
     private string? DataTypeName(string? code)
     {
@@ -1384,9 +1381,25 @@ public sealed partial class VariableSearch : ComponentBase
         var canonical = T.CanonicalDataTypeCode(code);
         var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == canonical)?.DisplayName;
 
-        return T.NormalizeDataTypeDisplayName(named) is { } name && !string.IsNullOrWhiteSpace(name)
-            ? name
-            : T.DataTypeLabel(canonical);
+        return string.IsNullOrWhiteSpace(named) ? canonical : named;
+    }
+
+    /// <summary>The open row's datatype, from the detail's own vocabulary before the facets.</summary>
+    /// <remarks>
+    /// The detail carries the DataType options in both languages, so the panel names the code even
+    /// when the facets failed or were scoped to a search that does not match it. (Fhi.Metadata-0mohg)
+    /// </remarks>
+    private (string Text, string? Lang)? PanelDataType(VariableDetail detail)
+    {
+        if (string.IsNullOrWhiteSpace(detail.DataType))
+        {
+            return null;
+        }
+
+        var code = T.CanonicalDataTypeCode(detail.DataType);
+
+        return CatalogueProperties.DataTypeWord(detail.PropertyMetadata, code, Reader)
+            ?? (DataTypeName(code)!, null);
     }
 
     /// <summary>

@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **The Munin datatype wording needs a Munin API carrying the DataType display labels (Fhi.Metadata-6qy6l).** It is deployed to the test API, which helsedata Integration reads, and not yet to prod. Against an older API nothing breaks: the detail shows the specification term ("Integer"), and the rows and the facet show whatever the filters endpoint sends. (Fhi.Metadata-0mohg)

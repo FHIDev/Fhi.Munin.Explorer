@@ -104,41 +104,35 @@ null string throw, which trades the dead page for the whole list disappearing ov
 
 ## The API names a datatype, not this package
 
-**The datatype vocabulary belongs to the API.** The codes are editable master data on Munin's
-side, so a table of names written here freezes a snapshot in one language and drifts the moment
-someone edits a definition, in a package other people ship and cannot patch. Every surface that
-shows a datatype word — the result rows in `VariableSearch` and `VariableListView`, the datatype
-facet in the filter panel — therefore renders the name the filters endpoint sent, and the shipped
-`Texts.DataTypeNames` table is asked for one thing only.
+**The datatype vocabulary belongs to the API, and this package carries no table of its own.**
+The codes are editable master data on Munin's side, so a table of names written here freezes a
+snapshot in one language and drifts the moment someone edits a definition, in a package other
+people ship and cannot patch. Since `Fhi.Metadata-6qy6l` the vocabulary carries a reader's word
+beside the specification's term — `displayLabel`/`displayLabelEn`, "Tekst" beside "String" — and
+the explorer endpoints name a datatype with it. The shipped `Texts.DataTypeNames` table, which put
+"Streng" beside the API's "Tekst", was removed under `Fhi.Metadata-0mohg`.
 
-That one thing is a **legacy stored spelling**. Variables predating the codes hold words rather
-than numbers — `"String"`, `"tekst"`, `"Integer"` — and the filters endpoint echoes such a word
-back as the facet's `displayName` whatever `Accept-Language` asked for, so code `1` arrives named
-"String" on a Norwegian call. `Texts.DataTypeAliases` maps those spellings, in either language, to
-their code; `Texts.CanonicalDataTypeCode` is how a stored value finds its facet, and
-`Texts.NormalizeDataTypeDisplayName` is how such a word becomes the shipped table's name for that
-code **in the reader's own language** — "Streng" under `no`, "String" under `en`. A name the alias
-table has never heard of reaches the page exactly as the API sent it.
+Each surface takes the name from the source that follows the **reader's** language:
 
-The rule that keeps the surfaces agreeing: **canonicalise a stored value before looking it up, and
-normalise every name after.** Skipping the first step is what made a row read "String" beside a
-facet reading "Streng"; skipping the second is what made the facet read a bare code. A datatype
-word rendered any other way is a bug.
+- **The datatype facet** renders `datatyper[].displayName`. `GetFiltersAsync` sends the language.
+- **The result rows** in `VariableSearch` and `VariableListView` render the facet's name for the
+  row's code. Not the row's own `dataTypeDisplayName`: the search and list calls send no
+  `Accept-Language`, so that name is in the API's default language whoever is reading.
+- **The detail block** in `VariableView`, and `VariableSearch`'s expanded row panel, render the
+  DataType property's options through `CatalogueProperties.Option`, which prefers `displayLabel`
+  over `label` with the same fallback as Munin's `PropertyOptionLabels`. The options carry both
+  languages, so the language the detail was fetched in does not matter.
 
-`Texts.DataTypeLabel` is the one exception, and it is **every** surface's fallback for a code no
-API name reached — `VariableView`'s panel, which holds the stored code alone; a facet from an API
-predating `displayName`; and either view's rows, whose names arrive from the filters endpoint and
-so are missing whenever that call hangs, fails, or answers without one. The fallback has to be the
-same on all of them: a row falling back to the bare code beside a facet falling back to the table
-put "1" and "Streng" on one screen for one datatype, which is the defect this whole section exists
-to prevent. Never fall back to the raw stored value — canonicalise first, so a legacy spelling and
-its code land on the same word.
+**The fallback is the canonical code, on every surface** — a facet with a blank name, a row whose
+facet has not landed or never will, a detail whose vocabulary does not list the code. The same
+fallback everywhere is what keeps one datatype from reading two ways on one screen. Never fall back
+to the raw stored value.
 
-One surface still escapes the rule: `VariableSearch`'s expanded row panel draws `DataType` out of
-`AdditionalProperties` through `CatalogueProperties`, in the catalogue's own vocabulary, so a
-Norwegian reader can see "Heltall" in the row and "Datatype: Integer" in the panel below it.
-`VariableView` excludes the key for exactly this reason (`DrawnInTheSidebar`); the search panel does
-not, and closing that is its own bead. (`Fhi.Metadata-l9l2n.49`)
+`Texts.DataTypeAliases` and `Texts.CanonicalDataTypeCode` stay, for matching rather than display.
+Values stored before the codes are words — `"String"`, `"tekst"`, `"Integer"` — and a stored value
+has to become its code before any lookup keyed by the code. Munin normalises on read, so the
+explorer endpoints send codes; a shared list's snapshot keeps whatever spelling was stored when it
+was taken, and so does a host that hands `VariableView` a detail of its own.
 
 **Kildetype is the same vocabulary problem with a smaller table, and the same answer.**
 `/api/explorer/filters` resolves `kildeTyper[].displayName` from the Kilde-scoped Kildetype
