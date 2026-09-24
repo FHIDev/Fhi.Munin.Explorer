@@ -1,0 +1,2 @@
+category: Fixed
+- **The whole-variable view's kodeverk group headings nest under Kodeverk** - Kildekodeverk, Administrativt kodeverk and Helsefaglig kodeverk were drawn at the level of the variable's own title, beside the Kodeverk section rather than under it. They now sit one level below Kodeverk, as the metadata groups already did, so a screen reader's heading outline matches the page. (Fhi.Metadata-35w0p.81)

@@ -12036,6 +12036,43 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(KodeverkLeadNorwegian, section.Children[1].TextContent);
     }
 
+    // The groups used to be drawn at the view's own title level, beside Kodeverk's parent rather
+    // than under Kodeverk; the drawer was fixed apart from this view. (Fhi.Metadata-35w0p.81)
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Kodeverk_WhenTheWholeVariableIsOpened_ThenEachGroupAndStatistikkIsOneBelowItsSection(int headingLevel)
+    {
+        var id = Guid.NewGuid();
+        var variable = Detail(id) with
+        {
+            KodeverkLinks =
+            [
+                new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", DisplayName = "Kjønn" },
+                new() { KodeverkType = "HelsefagligKodeverk", KodeverkReference = "ICD-10", DisplayName = "ICD-10" },
+            ],
+            DatasamlingStatisticsType = "yearly",
+            Statistics = [DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022", ["STD"] = "2.5" })],
+        };
+        var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(variable),
+                           p => p.Add(c => c.HeadingLevel, headingLevel));
+
+        WholeVariableToggle(cut).Click();
+
+        var region = cut.Find(".munin-explorer-drilldown[role=region]");
+        var title = cut.Find($"#{region.GetAttribute("aria-labelledby")}");
+        var kodeverk = cut.Find($"#{DetailSectionIds.CodeLists}");
+        var statistics = cut.Find($"#{DetailSectionIds.Statistics}").QuerySelector("h1, h2, h3, h4, h5, h6")!;
+        var groups = kodeverk.QuerySelectorAll(".munin-explorer-group");
+
+        Assert.Equal($"H{headingLevel + 1}", title.TagName);
+        Assert.Equal($"H{headingLevel + 2}", kodeverk.Children[0].TagName);
+        Assert.Equal(["Kildekodeverk", "Helsefaglig kodeverk"], groups.Select(g => g.TextContent));
+        Assert.All(groups, g => Assert.Equal($"H{headingLevel + 3}", g.TagName));
+        Assert.StartsWith("Statistikk", statistics.TextContent, StringComparison.Ordinal);
+        Assert.Equal($"H{headingLevel + 2}", statistics.TagName);
+    }
+
     [Fact]
     public void Kodeverk_WhenHelsefagligComesFirstInThePayload_ThenItsSentenceLeads()
     {

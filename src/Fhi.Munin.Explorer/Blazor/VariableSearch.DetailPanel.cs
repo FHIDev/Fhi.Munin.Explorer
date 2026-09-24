@@ -48,6 +48,10 @@ public partial class VariableSearch
     // One below the drawer's own heading, so the Data tab's group headings nest under it.
     private int DrawerSectionLevel => Math.Clamp(RowLevel + 1, 1, 6);
 
+    // The whole variable titles itself at RowLevel and Kodeverk one below, so its groups go two
+    // below, the level VariableView gives its own metadata groups. (Fhi.Metadata-35w0p.81)
+    private int WholeGroupLevel => Math.Clamp(RowLevel + 2, 1, 6);
+
     private string DrawerHeadingId(VariableSummary v) => $"munin-explorer-meta-heading-{_instance}-{v.Id:N}";
 
     // Drawn from the row rather than the detail payload, so the region has its name while the fetch
@@ -283,7 +287,7 @@ public partial class VariableSearch
     private IReadOnlyList<DetailNamedSection> KodeverkSections(VariableDetail detail) =>
         detail.KodeverkLinks.Count == 0
             ? []
-            : [new DetailNamedSection(DetailSectionIds.CodeLists, T.HeadingKodeverk, KodeverkGroups(detail, RowLevel))];
+            : [new DetailNamedSection(DetailSectionIds.CodeLists, T.HeadingKodeverk, KodeverkGroups(detail, WholeGroupLevel))];
 
     /// <summary>
     /// The kodeverk the variable's values are drawn from, grouped by the kind of link they are.
