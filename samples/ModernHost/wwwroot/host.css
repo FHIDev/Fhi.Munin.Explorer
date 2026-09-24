@@ -1465,20 +1465,23 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
   flex: 0 0 10rem;
 }
 
-/* A failed save's sentence, on a line of its own under the row's columns rather than cut off in
-   the fixed-width save cell. The cell is always there and empty until needed, so the spacing sits
-   on the alert and only while it has text. (Fhi.Metadata-q7i5e) */
+/* Brought in for the save status when it stood in the row (Fhi.Metadata-q7i5e); it is in the
+   open panel now. */
 .munin-explorer-data-list__item__row {
   flex-wrap: wrap;
 }
 
+/* The save status follows "Lagre i liste" in the panel's button row: beside it when the sentence
+   fits, otherwise on a line of its own flush with the buttons. Empty, it has no height; with text
+   it gets the buttons' margin-bottom under it. (Fhi.Metadata-35w0p.82) */
 .munin-explorer-data-list__save-status {
-  flex: 0 0 100%;
+  display: inline-block;
+  max-width: 100%;
 }
 
 .munin-explorer-data-list__save-status > [role="alert"]:not(:empty) {
   display: block;
-  padding: 0 0 12px 3rem;
+  margin-bottom: 16px;
 }
 
 /* --grey60 rather than the --grey30 every other border in this stylesheet uses. A field's own
@@ -1865,8 +1868,7 @@ table.munin-explorer-data-list tbody th {
    variables.css had no kilde section to read one back off, so there was nothing to copy and
    these had to be invented outright. What the layout HOLDS is named from elsewhere: the headings
    are Stiler's `headline`, the fact lists are `munin-explorer-page__fields` from the chassis
-   below, and the kildetype badge is named by nobody but us — see the rule for it
-   below.
+   below, and the kildetype badge that once stood under the name was named by nobody but us.
 
    They arrived unstyled. The view shipped in #43 with a whole prefix of its own and neither sample
    had a rule for one of them, so both rendered it at raw browser defaults — a sidebar stacked under
@@ -1896,7 +1898,7 @@ table.munin-explorer-data-list tbody th {
 
 /* The kildetype badge that stood here is gone: the name block no longer draws one, because the
    hero fact row right below it leads with Type and said the same words twice (Fhi.Metadata-pnn4w).
-   Stiler still carries a rule for the name; removing it is Fhi.Metadata-ua7rf's, not this file's. */
+   Stiler 0.1.123 retired its rule for the name as well (Fhi.Metadata-rlg1w). */
 
 /* No colour of ours. The host styles `ingress` only inside particular page types and none of those
    rules set one, so the ingress inherits the body colour the rest of the page reads in. */
@@ -2631,9 +2633,12 @@ table.munin-explorer-data-list tbody th {
   border-bottom: 0;
 }
 
+/* The code lines in the preview sit inside this, and "11002 Stavanger/Sandnes" has no break
+   opportunity: at 320 the Data tab scrolled 9px sideways. (Fhi.Metadata-pu2j7) */
 .munin-explorer-kodeverk__name {
   margin: 0;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 /* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
@@ -2939,7 +2944,7 @@ table.munin-explorer-data-list tbody th {
   font-weight: 600;
 }
 
-/* Reads as a state, not as part of the name — the same move the kildetype tag makes. */
+/* Reads as a state, not as part of the name — the same move the retired kildetype tag made. */
 .munin-explorer-versions__badge {
   flex: 0 0 auto;
   padding: 1px 9px;
@@ -4395,6 +4400,13 @@ table.munin-explorer-data-list tbody th {
     position: sticky;
     top: var(--munin-explorer-sticky-top, 0);
   }
+}
+
+/* The browser scrolls only the focused control into view, so Shift+Tab could leave the row under
+   the 52px sticky head (WCAG 2.4.11, Fhi.Metadata-crlmg). 4rem is the head plus the control's
+   8.5px offset from the row top, and applies where the head does not stick too. */
+.munin-explorer-kilder-scroll > .munin-explorer-kilder > tbody :is(a, button, input, select, summary, [tabindex]) {
+  scroll-margin-top: calc(var(--munin-explorer-sticky-top, 0px) + 4rem);
 }
 
 .munin-explorer .munin-explorer-selection {
