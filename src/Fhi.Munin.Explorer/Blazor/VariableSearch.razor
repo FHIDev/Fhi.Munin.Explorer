@@ -952,11 +952,6 @@ else
                                             type="button"
                                             @onclick="ToggleWholeVariableFromControlAsync">@T.ShowWholeVariable</button>
 
-                                    @* Signed-in readers only. Here rather than in the row, so a
-                                       collapsed row stays one Tab stop. (Fhi.Metadata-35w0p.78) *@
-                                    @PanelSaveButton(v)
-                                    @PanelSaveStatus(v)
-
                                     @* The owner's own record, drawn inside the variable's panel.
                                        One at a time — pressing Datasamling with Datakilde open
                                        swaps it — so this is at most one further region on the
@@ -970,6 +965,12 @@ else
                                        helsedata's variables.css defines a rule for it.
                                        What dresses the panel is base styling for <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">. *@
                                 }
+
+                                @* Signed-in readers only. In the panel rather than the row, so a
+                                   collapsed row stays one Tab stop (Fhi.Metadata-35w0p.78); outside
+                                   the detail block, so a failed fetch still lets the reader save it. *@
+                                @PanelSaveButton(v)
+                                @PanelSaveStatus(v)
                             </div>@* munin-explorer-meta munin-explorer-detail *@
                             </div>@* the row's last cell *@
                         }

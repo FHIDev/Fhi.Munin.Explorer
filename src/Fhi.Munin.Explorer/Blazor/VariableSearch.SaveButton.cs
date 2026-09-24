@@ -56,8 +56,8 @@ public partial class VariableSearch
     /// </remarks>
     private readonly Dictionary<Guid, SaveFailure> _saveError = [];
 
-    // In the open panel beside Vis hele variabelen, as on helsedata's own list: a collapsed row
-    // keeps one Tab stop, and saving costs none until the reader has opened it. (Fhi.Metadata-35w0p.78)
+    // In the open panel, as on helsedata's own list: a collapsed row keeps one Tab stop (35w0p.78).
+    // Drawn from the row's summary, so it is there while the detail loads and after it fails (35w0p.83).
     private RenderFragment PanelSaveButton(VariableSummary v) => builder =>
     {
         if (!ShowSaveButton)
