@@ -529,12 +529,8 @@ function stillShowing(state, name, where) {
 }
 
 /**
- * The row disclosures whose GLYPH is their state, one per surface.
- *
- * The glyph class names the picture again since Stiler 0.1.110 dropped the inverted overrides
- * (Fhi.Metadata-trfs0), but the picture is still decided by a cascade — base icon rules at rest, the
- * explorer's hover rules over them — and nothing else resolves one: bUnit has no CSS at all, and the
- * sample-stylesheet guards match selector text.
+ * The row disclosures whose GLYPH is their state, one per surface. The picture is a cascade (base
+ * icon rules at rest, hover rules over them; Fhi.Metadata-trfs0) that no test in test/ resolves.
  */
 const CHEVRONS = [
   {
