@@ -1,0 +1,2 @@
+category: Changed
+- **The variable search box says what the search now covers.** The placeholder read "Søk etter variabelnavn eller kode", which was true until the search learned to match a variable's description (Fhi.Metadata-aw0rn) and the names of its datakilde, datasamling and variabelgruppe (Fhi.Metadata-3c9q7). It now reads "Søk etter navn, kode, beskrivelse eller datakilde", and the English text likewise. A host reading the old placeholder would have expected fewer hits than it gets. (Fhi.Metadata-voep9)

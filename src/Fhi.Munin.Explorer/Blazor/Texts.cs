@@ -1019,7 +1019,7 @@ internal sealed record Texts(
     private static readonly Texts No = new(
         Title: "Variabelutforsker",
         SearchLabel: "Søk i variabler",
-        SearchPlaceholder: "Søk etter variabelnavn eller kode",
+        SearchPlaceholder: "Søk etter navn, kode, beskrivelse eller datakilde",
         SearchButton: "Søk",
         Loading: "Henter variabler …",
         Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
@@ -1483,7 +1483,7 @@ internal sealed record Texts(
     private static readonly Texts En = new(
         Title: "Variable explorer",
         SearchLabel: "Search variables",
-        SearchPlaceholder: "Search by variable name or code",
+        SearchPlaceholder: "Search by name, code, description or data source",
         SearchButton: "Search",
         Loading: "Loading variables …",
         Error: "Could not load variables right now. Please try again shortly.",
