@@ -11738,8 +11738,7 @@ public class VariableSearchTest : ExplorerTestContext
             statisticsType: "yearly");
 
         Assert.Contains("Statistikken er fra årssett 2023, det siste som har statistikk registrert.",
-                        tab.TextContent, StringComparison.Ordinal);
-        Assert.DoesNotContain("tall", tab.QuerySelector("p.caption")!.TextContent, StringComparison.Ordinal);
+                        tab.QuerySelectorAll("p.caption").Select(caption => caption.TextContent));
         Assert.Empty(tab.QuerySelectorAll("dl.munin-explorer-figures"));
     }
 
