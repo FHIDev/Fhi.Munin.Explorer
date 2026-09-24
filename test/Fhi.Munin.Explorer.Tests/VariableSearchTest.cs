@@ -10812,12 +10812,17 @@ public class VariableSearchTest : ExplorerTestContext
                 : throw new HttpRequestException("nede");
         }
 
+        /// <summary>What the filters endpoint answers with; null answers with no facets at all.</summary>
+        public FilterOptions? Facets { get; set; }
+
         public override Task<FilterOptions> GetFiltersAsync(
             string? search = null, VariableFilter? filter = null, string? language = null,
             CancellationToken cancellationToken = default) =>
             FailFilters
                 ? throw new HttpRequestException("nede")
-                : base.GetFiltersAsync(search, filter, language, cancellationToken);
+                : Facets is { } facets
+                    ? Task.FromResult(facets)
+                    : base.GetFiltersAsync(search, filter, language, cancellationToken);
 
         /// <summary>Refuse every detail fetch from the next one on with the API's 429.</summary>
         /// <remarks>
@@ -11191,6 +11196,79 @@ public class VariableSearchTest : ExplorerTestContext
         }
 
         Assert.Empty(about.QuerySelectorAll("ol, ul, .munin-explorer-crumb, [class*='munin-explorer-period']"));
+    }
+
+    /// <summary>The detail as the API sends it: a datatype code and the DataType vocabulary.</summary>
+    private static VariableDetail DetailWithDataType(Guid id, string dataType, bool withOptions) =>
+        Detail(id) with
+        {
+            DataType = dataType,
+            PropertyMetadata = withOptions
+                ?
+                [
+                    new PropertyMetadataEntry
+                    {
+                        Key = "DataType",
+                        Type = "SingleSelect",
+                        OptionsJson = """[{"value":"1","label":"String","labelEn":"String","displayLabel":"Tekst","displayLabelEn":"Text"},"""
+                            + """{"value":"4","label":"Boolean","displayLabel":"Ja/nei"}]"""
+                    }
+                ]
+                : [],
+        };
+
+    /// <summary>The value under Om variabelen's Datatype label.</summary>
+    private static AngleSharp.Dom.IElement AboutDataType(IRenderedComponent<VariableSearch> cut, string language = "no")
+    {
+        var (tab, field) = language == "en" ? ("About the variable", "Data type") : ("Om variabelen", "Datatype");
+        TabButton(cut, tab).Click();
+        var about = cut.Find(".munin-explorer-detail [role=tabpanel]");
+        var label = about.QuerySelectorAll("dt").Single(t => t.TextContent == field);
+
+        return label.NextElementSibling!;
+    }
+
+    [Theory]
+    [InlineData("no", "1", "Tekst", null)]
+    [InlineData("no", "String", "Tekst", null)]
+    [InlineData("en", "1", "Text", null)]
+    [InlineData("en", "4", "Ja/nei", "no")]
+    public void About_WhenTheFacetsDoNotNameTheCode_ThenThePanelReadsTheDetailsOwnVocabulary(
+        string language, string stored, string expected, string? lang)
+    {
+        // The facets are scoped to the search and can fail, while the detail always carries the
+        // DataType options in both languages, so the panel must not fall back to a bare code while
+        // it holds a word for it. (Fhi.Metadata-0mohg)
+        var id = Guid.NewGuid();
+        var client = new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(DetailWithDataType(id, stored, withOptions: true));
+
+        var cut = RenderWith(client, b => b.Add(c => c.Language, language));
+        Toggles(cut)[0].Click();
+
+        var value = AboutDataType(cut, language);
+
+        Assert.Equal(expected, value.TextContent);
+        Assert.Equal(lang, value.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void About_WhenTheDetailHasNoVocabulary_ThenThePanelFallsBackToTheFacetAndThenTheCode()
+    {
+        // The path the rows take, kept for a detail that carries no DataType options.
+        var id = Guid.NewGuid();
+        var detail = DetailWithDataType(id, "1", withOptions: false);
+
+        var named = new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail);
+        named.Facets = new FilterOptions { DataTypes = [new() { Value = "1", DisplayName = "Tekst", Count = 9 }] };
+        var withFacet = RenderWith(named);
+        Toggles(withFacet)[0].Click();
+
+        using var other = new ExplorerTestContext();
+        var bare = RenderApart(other, new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(detail));
+        Toggles(bare)[0].Click();
+
+        Assert.Equal("Tekst", AboutDataType(withFacet).TextContent);
+        Assert.Equal("1", AboutDataType(bare).TextContent);
     }
 
     [Fact]

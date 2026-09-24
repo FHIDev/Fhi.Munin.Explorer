@@ -858,6 +858,19 @@ internal static class CatalogueProperties
         }
     }
 
+    /// <summary>
+    /// The DataType vocabulary's curated word for a canonical datatype code, or null where the
+    /// payload lists none. <c>Language</c> is null when the word is in the reader's own language.
+    /// </summary>
+    internal static (string Label, string? Language)? DataTypeWord(
+        IReadOnlyList<PropertyMetadataEntry> metadata, string code, string reader) =>
+        metadata.FirstOrDefault(e => e.Key == DataTypeKey) is { } entry
+        && Option(entry, code, reader) is { Curated: true } option
+            ? (option.Label, Foreign(option.Language, reader))
+            : null;
+
+    internal const string DataTypeKey = "DataType";
+
     private static string? Label(JsonElement option, string preferred, string fallback)
     {
         var label = option.TryGetProperty(preferred, out var chosen) ? chosen.ToString() : null;

@@ -1384,6 +1384,24 @@ public sealed partial class VariableSearch : ComponentBase
         return string.IsNullOrWhiteSpace(named) ? canonical : named;
     }
 
+    /// <summary>The open row's datatype, from the detail's own vocabulary before the facets.</summary>
+    /// <remarks>
+    /// The detail carries the DataType options in both languages, so the panel names the code even
+    /// when the facets failed or were scoped to a search that does not match it. (Fhi.Metadata-0mohg)
+    /// </remarks>
+    private (string Text, string? Lang)? PanelDataType(VariableDetail detail)
+    {
+        if (string.IsNullOrWhiteSpace(detail.DataType))
+        {
+            return null;
+        }
+
+        var code = T.CanonicalDataTypeCode(detail.DataType);
+
+        return CatalogueProperties.DataTypeWord(detail.PropertyMetadata, code, Reader)
+            ?? (DataTypeName(code)!, null);
+    }
+
     /// <summary>
     /// <see cref="Texts.KildeTypeNameFromApi"/> for a site holding a token and no facet of its
     /// own — the kilde facet's group headings.

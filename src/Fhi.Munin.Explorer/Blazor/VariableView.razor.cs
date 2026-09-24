@@ -147,7 +147,7 @@ public sealed partial class VariableView : ComponentBase
     private static readonly IReadOnlySet<string> DrawnElsewhere =
         new HashSet<string>(StringComparer.Ordinal)
         {
-            DataTypeKey, CatalogueColumns.Description, CatalogueColumns.PreferredTerm,
+            CatalogueProperties.DataTypeKey, CatalogueColumns.Description, CatalogueColumns.PreferredTerm,
         };
 
     /// <summary>Where the variable sits in the catalogue, as the open row's panel draws it.</summary>
@@ -231,15 +231,10 @@ public sealed partial class VariableView : ComponentBase
             }
 
             var code = T.CanonicalDataTypeCode(stored);
-            var entry = variable.PropertyMetadata.FirstOrDefault(e => e.Key == DataTypeKey);
 
-            return entry is not null && CatalogueProperties.Option(entry, code, Reader) is { Curated: true } option
-                ? (option.Label, CatalogueProperties.Foreign(option.Language, Reader))
-                : (code, null);
+            return CatalogueProperties.DataTypeWord(variable.PropertyMetadata, code, Reader) ?? (code, null);
         }
     }
-
-    private const string DataTypeKey = "DataType";
 
     // The catalogue's own keys for the three curated properties the hero row leads with. Named here
     // because a hero fact has to be chosen; their labels, words and order are still the payload's.
