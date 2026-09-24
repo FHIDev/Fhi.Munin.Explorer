@@ -50,38 +50,10 @@ public partial class VariableSearch
     }
 
     // Which row was open, and on which tab, when the whole variable was asked for: Back puts the
-    // list back as it was, not as the name press left it. (Fhi.Metadata-35w0p.34)
+    // list back as it was. (Fhi.Metadata-35w0p.34)
     private readonly record struct Disclosed(Guid? Row, PanelTab Tab);
 
     private Disclosed? _beforeWhole;
-
-    // The same question the row asks, because the name is the row's most copyable text and a drag
-    // that begins and ends inside this button lands its click here: a reader taking the term must
-    // not leave the list over the selection they just made. RowPress says which gestures those are.
-    private Task OpenWholeVariableFromNameAsync(VariableSummary v, MouseEventArgs released) =>
-        _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : OpenWholeVariableAsync(v);
-
-    /// <summary>Open <paramref name="v"/>'s whole variable in place of the list, from its name.</summary>
-    /// <remarks>
-    /// The detail is the panel's own, so a row that is not already open is selected and fetched as
-    /// the chevron would; the view is set first so the fetch paints its status there, not in a panel.
-    /// </remarks>
-    private async Task OpenWholeVariableAsync(VariableSummary v)
-    {
-        _beforeWhole = new(_selectedId, _tab);
-        _wholeVariable = true;
-
-        if (IsSelected(v))
-        {
-            return;
-        }
-
-        _selectedId = v.Id;
-        _tab = PanelTab.Data;
-
-        await LoadDetailAsync(v.Id);
-        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
-    }
 
     /// <summary>Leave the whole variable and put back the row disclosure it was opened over.</summary>
     private async Task CloseWholeVariableAsync()
@@ -113,10 +85,9 @@ public partial class VariableSearch
         await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
     }
 
-    // The same question the row asks, because a gesture that begins and ends inside this button
-    // lands its click here: the second click of a double-click toggled the panel straight back
-    // shut, and a drag over the chevron is no more a press. RowPress says which gestures those are.
-    private Task ToggleDetailFromChevronAsync(VariableSummary v, MouseEventArgs released) =>
+    // The same question the row asks: the name is the row's most copyable text, and a double-click
+    // or a drag inside it lands its click here. RowPress says which gestures those are.
+    private Task ToggleDetailFromNameAsync(VariableSummary v, MouseEventArgs released) =>
         _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : ToggleDetailAsync(v);
 
     // One gesture at a time, because a pointer has one: the row it went down on is part of what
@@ -135,9 +106,9 @@ public partial class VariableSearch
     /// <summary>Open or close this row's panel from a press anywhere on the row's column strip.</summary>
     /// <remarks>
     /// <para>
-    /// The row is a pointer shortcut onto the chevron in it, and nothing more, as Kelda's row is. It
-    /// adds no tab stop, because everything it reaches is on that button already (WCAG 2.1.1). The
-    /// name and the chevron both stop their click, so neither press also toggles the row.
+    /// The row is a pointer shortcut onto the name button in it, and nothing more. It adds no tab
+    /// stop, because everything it reaches is on that button already (WCAG 2.1.1). The name stops
+    /// its click, so a press on it does not also toggle the row.
     /// </para>
     /// <para>
     /// Highlighting a code to copy it is not a request to open the panel. Which gestures those are

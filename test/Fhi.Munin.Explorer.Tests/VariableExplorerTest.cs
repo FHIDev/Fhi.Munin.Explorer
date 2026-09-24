@@ -28,6 +28,20 @@ public class VariableExplorerTest : ExplorerTestContext
 
     private static readonly Guid ListId = Guid.NewGuid();
 
+    /// <summary>The first result's save button, in its open panel (Fhi.Metadata-35w0p.78).</summary>
+    /// <remarks>Opens the row first when it is shut; found on every call, as a press re-renders it.</remarks>
+    private static IElement SearchSave(IRenderedComponent<IComponent> cut)
+    {
+        var name = cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
+
+        if (name.GetAttribute("aria-expanded") != "true")
+        {
+            name.Click();
+        }
+
+        return cut.Find(".munin-explorer-detail button[aria-pressed]");
+    }
+
     /// <summary>Answers search and the reader's one list off the same in-memory set.</summary>
     /// <remarks>
     /// One store behind both endpoints: a fake that kept them apart could not tell a surface that
@@ -56,6 +70,16 @@ public class VariableExplorerTest : ExplorerTestContext
                 Size = pageSize,
                 TotalPages = 1,
             });
+        }
+
+        // The save button lives in the open panel, which draws its actions once the detail is in.
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
+        {
+            var row = _rows.Single(v => v.Id == id);
+
+            return Task.FromResult<VariableDetail?>(
+                new VariableDetail { Id = id, Code = row.Code, PreferredTerm = row.PreferredTerm });
         }
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
@@ -376,7 +400,7 @@ public class VariableExplorerTest : ExplorerTestContext
             StringComparison.Ordinal);
 
         Tab(cut, "Søkeresultat").Click();
-        cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")[0].Click();
+        SearchSave(cut).Click();
 
         Tab(cut, "Variabelliste").Click();
 
@@ -408,7 +432,7 @@ public class VariableExplorerTest : ExplorerTestContext
             builder.CloseComponent();
         });
 
-        var save = page.Find(".munin-explorer-dataitem-main button[aria-pressed]");
+        var save = SearchSave(page);
 
         Assert.Equal("true", save.GetAttribute("aria-pressed"));
         Assert.Equal("Fjern fra liste", save.TextContent.Trim());
@@ -419,7 +443,7 @@ public class VariableExplorerTest : ExplorerTestContext
 
         // Re-found rather than reused: the row is rebuilt, and the stale handle would still be the
         // element as it read before the removal.
-        save = page.Find(".munin-explorer-dataitem-main button[aria-pressed]");
+        save = SearchSave(page);
 
         Assert.Equal("false", save.GetAttribute("aria-pressed"));
         Assert.Equal("Lagre i liste", save.TextContent.Trim());
@@ -451,12 +475,12 @@ public class VariableExplorerTest : ExplorerTestContext
 
         Assert.Empty(page.FindAll("[id^=munin-explorer-list-remove-]"));
 
-        page.Find(".munin-explorer-dataitem-main button[aria-pressed]").Click();
+        SearchSave(page).Click();
 
         Assert.Single(page.FindAll("[id^=munin-explorer-list-remove-]"));
         Assert.Equal(
             "true",
-            page.Find(".munin-explorer-dataitem-main button[aria-pressed]").GetAttribute("aria-pressed"));
+            SearchSave(page).GetAttribute("aria-pressed"));
     }
 
     [Fact]
@@ -473,13 +497,13 @@ public class VariableExplorerTest : ExplorerTestContext
 
         Assert.Equal(
             "Fjern fra liste",
-            cut.Find(".munin-explorer-dataitem-main button[aria-pressed]").TextContent.Trim());
+            SearchSave(cut).TextContent.Trim());
 
         Tab(cut, "Variabelliste").Click();
         cut.Find("[id^=munin-explorer-list-remove-]").Click();
         Tab(cut, "Søkeresultat").Click();
 
-        var save = cut.Find(".munin-explorer-dataitem-main button[aria-pressed]");
+        var save = SearchSave(cut);
 
         Assert.Equal("false", save.GetAttribute("aria-pressed"));
         Assert.Equal("Lagre i liste", save.TextContent.Trim());
@@ -555,7 +579,9 @@ public class VariableExplorerTest : ExplorerTestContext
 
         // The results are still there, and still offer nothing that needs a reader.
         Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);
-        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
+        cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").Click();
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Empty(cut.FindAll("button[aria-pressed]"));
     }
 
     [Fact]
@@ -586,8 +612,11 @@ public class VariableExplorerTest : ExplorerTestContext
 
         var cut = Render<VariableExplorer>(p => p.Add(c => c.Language, "no"));
 
-        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
+        // Before the row opens: its panel carries a tablist of its own.
         Assert.Empty(cut.FindAll("[role=tablist]"));
+        cut.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").Click();
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Empty(cut.FindAll("button[aria-pressed]"));
         Assert.Contains(
             cut.FindAll("p.caption"),
             p => p.TextContent == "Logg inn for å lage og bruke egne variabellister.");

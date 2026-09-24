@@ -65,9 +65,9 @@ public partial class VariableSearch
         builder.CloseElement();
     };
 
-    // No aria-labelledby on the chevron: it is named by ExpandLabel, one aria-label in the reader's
-    // language around Munin's name, which is the trade Kelda's chevron makes too. The two-language
-    // aria-labelledby rule lives on RowSaveButton, the one control here that still needs it.
+    // No aria-labelledby on the name button: it is named by ExpandLabel, one aria-label in the
+    // reader's language around Munin's name, as Kelda's chevron is. The two-language
+    // aria-labelledby rule lives on PanelSaveButton, the one control here that still needs it.
 
     /// <summary>What the panel's status line says: that it is loading, or why it is empty.</summary>
     private string? DetailStatus => _detailLoading ? T.DetailLoading : _detailError;

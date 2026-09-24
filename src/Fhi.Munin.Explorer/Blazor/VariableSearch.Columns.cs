@@ -10,7 +10,7 @@ public partial class VariableSearch
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Runa's seven data columns in Runa's order, after the signed-in reader's save column. Navn is deliberately not among them, in Runa either: it is
+    /// Runa's seven data columns in Runa's order. Navn is deliberately not among them, in Runa either: it is
     /// the row's own disclosure button as well as its first column, so hiding it would take the
     /// control that opens the panel off the screen along with the value.
     /// </para>
@@ -22,8 +22,8 @@ public partial class VariableSearch
     /// </remarks>
     private enum ResultColumn
     {
-        // First because its cell is: the save button sits right after the name. A signed-in
-        // reader's control rather than a fact about the variable. (Fhi.Metadata-q7i5e)
+        // Kept so the enum's values stay put; it draws nothing and the picker never offers it.
+        [Obsolete("Lagre i liste is in the open panel since Fhi.Metadata-35w0p.78; this column draws nothing.")]
         SaveToList,
         Code,
         Kilde,
@@ -40,13 +40,16 @@ public partial class VariableSearch
     /// independently, and a column added to <see cref="ResultColumn"/> without a line here would
     /// be one the reader could see but not turn off.
     /// </remarks>
-    private static readonly ResultColumn[] OptionalColumns = Enum.GetValues<ResultColumn>();
+#pragma warning disable CS0618 // SaveToList is the one member left out.
+    private static readonly ResultColumn[] OptionalColumns =
+        [.. Enum.GetValues<ResultColumn>().Where(c => c != ResultColumn.SaveToList)];
+#pragma warning restore CS0618
 
     /// <summary>The columns that say something about the variable, which is all the last-column rule counts.</summary>
-    private static readonly ResultColumn[] DataColumns = [.. OptionalColumns.Where(c => c != ResultColumn.SaveToList)];
+    private static readonly ResultColumn[] DataColumns = OptionalColumns;
 
-    /// <summary>What the picker lists: the save column only for a reader who has the button.</summary>
-    private IEnumerable<ResultColumn> OfferedColumns => ShowSaveButton ? OptionalColumns : DataColumns;
+    /// <summary>What the picker lists.</summary>
+    private IEnumerable<ResultColumn> OfferedColumns => OptionalColumns;
 
     /// <summary>
     /// The columns the reader has turned off, seeded with the one that starts off.
@@ -86,7 +89,9 @@ public partial class VariableSearch
     /// <summary>Whether a column is on screen.</summary>
     private bool ColumnVisible(ResultColumn column) => column switch
     {
-        ResultColumn.SaveToList => ShowSaveButton && !_hiddenColumns.Contains(column),
+#pragma warning disable CS0618
+        ResultColumn.SaveToList => false,
+#pragma warning restore CS0618
         ResultColumn.Status when !_statusColumnChosen =>
             ShowStatusColumn || StatusIsAllThatIsLeft || _statusShownForSort,
         _ => !_hiddenColumns.Contains(column),
@@ -167,7 +172,7 @@ public partial class VariableSearch
     /// </para>
     /// </remarks>
     private bool ColumnLocked(ResultColumn column) =>
-        column != ResultColumn.SaveToList && ColumnVisible(column) && VisibleColumnCount == 1;
+        ColumnVisible(column) && VisibleColumnCount == 1;
 
     /// <summary>Turns a column on or off, unless it is the last one left.</summary>
     /// <remarks>
@@ -214,15 +219,12 @@ public partial class VariableSearch
     /// <summary>A column's name, in the words the header above it uses.</summary>
     /// <remarks>
     /// The same strings the header cells and the rows' own screen-reader labels carry, so the
-    /// picker and the column it turns off are never two names for one thing. The save column is the
-    /// exception: its cells are buttons named by what they do, not by the column. An unknown member
+    /// picker and the column it turns off are never two names for one thing. An unknown member
     /// throws for the reason <see cref="Texts.FieldLabel"/> does: a column added to
     /// <see cref="ResultColumn"/> without a word here would sit in the list unlabelled.
     /// </remarks>
     private string ColumnLabel(ResultColumn column) => column switch
     {
-        // The tab's own word, so the column and the place its button puts a variable are one name.
-        ResultColumn.SaveToList => T.TabVariableList,
         ResultColumn.Code => T.FieldCode,
         ResultColumn.Kilde => T.FieldSource,
         ResultColumn.Datasamling => T.FieldDataCollection,

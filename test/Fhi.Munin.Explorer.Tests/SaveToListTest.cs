@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
-/// The row's save action. The state it shows belongs to the circuit, not to the row: results are
+/// The open panel's save action. The state it shows belongs to the circuit, not to the row: results are
 /// rebuilt whenever the facet counts change, so a button holding its own answer shows the wrong
 /// word for a variable that is in the list.
 /// </summary>
@@ -84,6 +84,16 @@ public class SaveToListTest : ExplorerTestContext
         {
             SearchCalls++;
             return Task.FromResult(FreshCopy());
+        }
+
+        // The save button lives in the open panel, which draws its actions once the detail is in.
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
+        {
+            var row = answer.Items.Single(v => v.Id == id);
+
+            return Task.FromResult<VariableDetail?>(
+                new VariableDetail { Id = id, Code = row.Code, PreferredTerm = row.PreferredTerm });
         }
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
@@ -162,176 +172,118 @@ public class SaveToListTest : ExplorerTestContext
 
     /// <summary>The row's column strip, which is the element a press on the row lands in.</summary>
     /// <remarks>Found on every call rather than held: a press re-renders the row.</remarks>
-    private static IElement RowStrip(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main")[0];
+    private static IElement RowStrip(IRenderedComponent<VariableSearch> cut, int row = 0) =>
+        cut.FindAll("ul.munin-explorer-data-list .munin-explorer-dataitem-main")[row];
 
-    /// <summary>That row's OWN disclosure, which is where its open-or-shut state is written.</summary>
-    private static IElement RowToggle(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll("button.munin-explorer-dataitem__expand-toggle")[0];
+    /// <summary>That row's disclosure, the name button, which is where its open-or-shut state is written.</summary>
+    private static IElement RowToggle(IRenderedComponent<VariableSearch> cut, int row = 0) =>
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")[row];
 
-    private static IElement SaveButton(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")[0];
+    /// <summary>Opens <paramref name="row"/>'s panel unless it is already the open one.</summary>
+    private static void Open(IRenderedComponent<VariableSearch> cut, int row = 0)
+    {
+        if (RowToggle(cut, row).GetAttribute("aria-expanded") != "true")
+        {
+            RowToggle(cut, row).Click(new MouseEventArgs { Detail = 1 });
+        }
+    }
+
+    /// <summary>Every save button on the page, open panel or not.</summary>
+    private static IReadOnlyList<IElement> SaveButtons(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("button[aria-pressed]");
+
+    /// <summary>The first row's save button, which lives in its open panel (Fhi.Metadata-35w0p.78).</summary>
+    private static IElement SaveButton(IRenderedComponent<VariableSearch> cut, int row = 0)
+    {
+        Open(cut, row);
+
+        return cut.Find(".munin-explorer-detail button[aria-pressed]");
+    }
 
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void Row_WhenTheReaderIsSignedOut_ThenThereIsNoSaveButtonAndNoListCall()
+    public void Panel_WhenTheReaderIsSignedOut_ThenThereIsNoSaveButtonAndNoListCall()
     {
         // Not a disabled button: a control that can never do anything is worse than no control.
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
 
         var cut = RenderSignedIn(client, signedIn: false);
+        Open(cut);
 
-        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
+        Assert.Empty(SaveButtons(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-data-list__save-status"));
         Assert.Equal(0, client.MyListsCalls);
         Assert.Equal(0, client.AddCalls);
     }
 
     [Fact]
-    public void Row_WhenTheReaderIsSignedIn_ThenEveryRowOffersToSave()
+    public void Panel_WhenTheReaderIsSignedIn_ThenOnlyTheOpenRowOffersToSave()
     {
+        // A collapsed row is one Tab stop, as on helsedata's own list: saving costs no stop until
+        // the reader has opened the row it belongs to. (Fhi.Metadata-35w0p.78)
         var client = new ListClient(OnePage(
             Variable("Alder ved diagnose", "V_BDR.ALDER"),
             Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
 
         var cut = RenderSignedIn(client);
 
-        Assert.Equal(2, cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]").Count);
-        Assert.Equal("false", SaveButton(cut).GetAttribute("aria-pressed"));
+        Assert.Empty(SaveButtons(cut));
+
+        Open(cut, 1);
+
+        var button = Assert.Single(SaveButtons(cut));
+        Assert.Equal("false", button.GetAttribute("aria-pressed"));
+        Assert.Equal(cut.Find(".munin-explorer-detail").Id, button.Closest(".munin-explorer-detail")!.Id);
+        Assert.NotNull(cut.FindAll("ul.munin-explorer-data-list > li")[1].QuerySelector("button[aria-pressed]"));
     }
 
     [Fact]
-    public void Row_WhenNoRowHasBeenOpened_ThenSavingCostsOnePressRatherThanTwo()
+    public void Panel_WhenTheReaderIsSignedIn_ThenSaveSitsBesideShowWholeVariable()
     {
-        // Saving is the common action and must not cost a disclosure press first. This one asserts
-        // the row is SHUT: every other test here merely happens not to expand, and a test that
-        // opened one would pass with the button moved into the drawer and the friction back.
-        var client = new ListClient(OnePage(
-            Variable("Alder ved diagnose", "V_BDR.ALDER"),
-            Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
+        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
-        var cut = RenderSignedIn(client);
+        var button = SaveButton(cut);
 
-        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
-        Assert.All(
-            cut.FindAll("button.munin-explorer-dataitem__expand-toggle"),
-            toggle => Assert.Equal("false", toggle.GetAttribute("aria-expanded")));
-
-        SaveButton(cut).Click();
-
-        Assert.Equal(1, client.AddCalls);
-        Assert.Single(client.Stored);
-
-        // And the press saved rather than opening: a save button nested inside the disclosure —
-        // or sharing its handler — would put the reader in the drawer they were spared.
-        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
-        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+        Assert.Equal("Vis hele variabelen", button.PreviousElementSibling!.TextContent.Trim());
+        Assert.Null(button.Closest(".munin-explorer-dataitem-main"));
+        Assert.Null(button.GetAttribute("role"));
+        Assert.Equal("region", button.ParentElement!.GetAttribute("role"));
     }
 
     [Fact]
-    public void SaveButton_WhenItIsPressed_ThenItSavesAndDoesNotOpenTheRowAroundIt()
+    public void SaveButton_WhenItIsPressed_ThenItSavesAndThePanelStaysOpen()
     {
-        // The collision the row press invites (Fhi.Metadata-l9l2n.81): the strip around this button
-        // opens the panel now, so a bare handler there handles Lagre's click too and saving would
-        // drop the reader into a drawer they never asked for.
         var client = new ListClient(OnePage(
             Variable("Alder ved diagnose", "V_BDR.ALDER"),
             Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
 
         var cut = RenderSignedIn(client);
-
-        // Read off the markup rather than proved by the click below, and that is the point. bUnit
-        // dispatches a bubbling event to the handler ids it collected before the first handler ran
-        // and skips any the re-render has since disposed — which is the row's, since saving
-        // re-renders it. A click alone would pass with the collision present.
-        Assert.True(
-            SaveButton(cut).HasAttribute("blazor:onclick:stoppropagation"),
-            "Lagre lets the click through to the row, which would open the panel behind the save.");
-
-        // The mousedown is the other way round: the row measures a click against the press it saw
-        // go down, and a drag begun on Lagre lands its click on the row — so the press has to reach
-        // the row or that selection would open the panel. (Fhi.Metadata-l9l2n.81)
-        Assert.False(
-            SaveButton(cut).HasAttribute("blazor:onmousedown:stoppropagation"),
-            "A press on Lagre never reaches the row, so a drag off it opens the panel.");
 
         SaveButton(cut).Click();
 
         Assert.Equal(1, client.AddCalls);
         Assert.Single(client.Stored);
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
-
-        // That row's OWN disclosure, not a page-wide query: an open panel carries disclosures of
-        // its own, so a count of them says nothing about the row this press landed in.
-        Assert.Equal(
-            "false",
-            cut.FindAll("button.munin-explorer-dataitem__expand-toggle")[0].GetAttribute("aria-expanded"));
-        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
-    }
-
-    [Fact]
-    public void SaveButton_WhenADragBeginsOnItAndEndsOnTheRow_ThenNothingIsSavedAndThePanelStaysShut()
-    {
-        // "Lagre i liste" is words a reader can drag across as well as press, and a gesture that
-        // begins here and ends on the row lands its click on the row. The row can only tell it from
-        // a press because the mousedown under it reaches the row. (Fhi.Metadata-l9l2n.81)
-        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
-
-        var cut = RenderSignedIn(client);
-
-        SaveButton(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
-        RowStrip(cut).MouseUp(new MouseEventArgs { ClientX = 400, ClientY = 240 });
-        RowStrip(cut).Click(new MouseEventArgs { ClientX = 400, ClientY = 240, Detail = 1 });
-
-        Assert.Equal(0, client.AddCalls);
-        Assert.Equal(
-            "false",
-            cut.FindAll("button.munin-explorer-dataitem__expand-toggle")[0].GetAttribute("aria-expanded"));
-        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
-    }
-
-    [Fact]
-    public void SaveButton_WhenADragBeginsAndEndsOnIt_ThenItSavesAndTheRowsNextBareClickStillOpens()
-    {
-        // "Lagre i liste" is our own words rather than the catalogue's, so a pointer that wanders
-        // inside the button is a press and saves. What must not outlive it is the row's verdict:
-        // this click stops here, so nothing of the row's reads it. (Fhi.Metadata-l9l2n.81)
-        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
-
-        var cut = RenderSignedIn(client);
-
-        SaveButton(cut).MouseDown(new MouseEventArgs { ClientX = 120, ClientY = 240 });
-        SaveButton(cut).MouseUp(new MouseEventArgs { ClientX = 200, ClientY = 240 });
-        SaveButton(cut).Click(new MouseEventArgs { ClientX = 200, ClientY = 240, Detail = 1 });
-
-        Assert.Equal(1, client.AddCalls);
-        Assert.Equal("false", RowToggle(cut).GetAttribute("aria-expanded"));
-
-        // The tooling click on the row, which the verdict left behind would otherwise swallow.
-        RowStrip(cut).QuerySelector(".munin-explorer-dataitem-main__column")!
-            .Click(new MouseEventArgs());
-
         Assert.Equal("true", RowToggle(cut).GetAttribute("aria-expanded"));
+        Assert.Single(cut.FindAll(".munin-explorer-detail"));
     }
 
     [Fact]
-    public void Row_WhenEveryRowOffersToSave_ThenEachButtonNamesItsOwnVariable()
+    public void Panel_WhenEachRowIsOpenedInTurn_ThenEachSaveButtonNamesItsOwnVariable()
     {
         // Two rows, because the weak version of this assertion — "the button has an accessible
-        // name" — is satisfied by a constant label on every row, which is the same "Lagre i
-        // liste, Lagre i liste, Lagre i liste" a screen reader hears from the visible words alone.
-        // Distinctness is what makes the assertion mean anything.
+        // name" — is satisfied by a constant label, the same "Lagre i liste" a screen reader hears
+        // from the visible words alone. Distinctness is what makes the assertion mean anything.
         var client = new ListClient(OnePage(
             Variable("Alder ved diagnose", "V_BDR.ALDER"),
             Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
 
         var cut = RenderSignedIn(client);
 
-        var names = cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")
-            .Select(AccessibleName.Of)
-            .ToList();
+        var names = new[] { AccessibleName.Of(SaveButton(cut, 0)), AccessibleName.Of(SaveButton(cut, 1)) };
 
-        Assert.Equal(2, names.Count);
         Assert.Contains("Alder ved diagnose", names[0], StringComparison.Ordinal);
         Assert.Contains("Skjemastatus", names[1], StringComparison.Ordinal);
         Assert.Equal(2, names.Distinct(StringComparer.Ordinal).Count());
@@ -344,11 +296,9 @@ public class SaveToListTest : ExplorerTestContext
     [Fact]
     public void Row_WhenThePageIsEnglish_ThenTheSaveButtonKeepsEachHalfOfItsNameInItsOwnLanguage()
     {
-        // The reason the name is two elements rather than one aria-label, and the rule this
-        // package already wrote down for the toggle in this same row: "Save to list" is ours and
+        // The reason the name is two elements rather than one aria-label: "Save to list" is ours and
         // follows Language, "Alder ved diagnose" is Munin's and is Norwegian whatever the
-        // surrounding UI is. One aria-label string would hand the whole sentence to an English
-        // voice, which pronounces the Norwegian half with English phonetics. WCAG 3.1.2.
+        // surrounding UI is. WCAG 3.1.2.
         Services.AddSingleton<IMuninExplorerClient>(
             new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
         Services.AddScoped<VariableListState>();
@@ -371,112 +321,55 @@ public class SaveToListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Row_WhenAVariableHasNoPreferredTerm_ThenItsButtonAnnouncesTheCode()
+    public void Row_WhenAVariableHasNoPreferredTerm_ThenItsButtonsAnnounceTheCodeOrTheirOwnWords()
     {
-        // PreferredTerm defaults to "" and the row already renders it blank, so this is a shape
-        // the page can reach. Naming the button by pointing at that empty span rather than by
-        // interpolating the term into a sentence is what keeps it safe: the empty half
-        // contributes nothing and the button falls back to its own words, where "Lagre i liste: "
-        // would announce with a hole on the end.
+        // PreferredTerm defaults to "" and the row renders it blank. The save button borrows that
+        // empty span, so it falls back to its own words rather than a sentence with a hole in it;
+        // the disclosure names the row by its code (Fhi.Metadata-w13lk).
         var client = new ListClient(OnePage(Variable("", "V_BDR.ALDER")));
         var cut = RenderSignedIn(client);
 
+        Assert.Equal("Vis detaljer for V_BDR.ALDER", AccessibleName.Of(RowToggle(cut)));
         Assert.Equal("Lagre i liste", AccessibleName.Of(SaveButton(cut)));
-
-        // And the other control in the same row, which is the row's PRIMARY one: the variable's
-        // name IS the disclosure, so an empty term leaves that button with no content and no source
-        // at all. It used to answer "Vis hele variabelen", which every unnamed row answered - a name
-        // that passes a checker and says nothing. Now the code. (Fhi.Metadata-w13lk)
-        Assert.Equal(
-            "V_BDR.ALDER",
-            AccessibleName.Of(cut.Find("button.munin-explorer-dataitem-main__name")));
+        Assert.Equal("Skjul detaljer for V_BDR.ALDER", AccessibleName.Of(RowToggle(cut)));
     }
 
     [Fact]
-    public void Row_WhenTheReaderIsSignedIn_ThenTheSaveButtonSitsInACellOfItsRow()
+    public void Row_WhenAVariableHasAPreferredTerm_ThenTheDisclosureNamesItInsideItsOwnSentence()
     {
-        // Fhi.Metadata-3b1l4. The result row is a role="row" now, and a row owns nothing but cells, so
-        // the button has one of its own. Its failure line is a separate cell after the columns
-        // (Fhi.Metadata-q7i5e). Signed out there is neither, so this render is where the shape is asserted.
+        // The visible name is a contiguous part of the label, so a speech-input user saying the words
+        // they can see still reaches the control (WCAG 2.5.3).
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
-        var button = cut.Find(".munin-explorer-dataitem-main button[aria-pressed]");
-        var cell = button.ParentElement!;
-
-        Assert.Equal("cell", cell.GetAttribute("role"));
-        Assert.Equal("munin-explorer-dataitem-main__save", cell.ClassName);
-
-        Assert.Equal("none", cell.ParentElement!.GetAttribute("role"));
-        Assert.Empty(cell.QuerySelectorAll("[role=alert]"));
-    }
-
-    [Fact]
-    public void Row_WhenAVariableHasAPreferredTerm_ThenTheDisclosureIsNamedByItAndNotByTheFallback()
-    {
-        // The other side of the fallback: it must not survive into the ordinary row, where the
-        // visible name is the accessible one. An aria-label that stayed on would win over the
-        // button's own content, so every disclosure on the page would announce as "Vis hele
-        // variabelen" — one name repeated down the page, and a speech-input user saying the words
-        // they can see would reach none of them (WCAG 2.5.3).
-        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
-
-        var toggle = cut.Find("button.munin-explorer-dataitem-main__name");
-
-        Assert.Null(toggle.GetAttribute("aria-label"));
-        Assert.Equal("Alder ved diagnose", AccessibleName.Of(toggle));
+        Assert.Equal("Vis detaljer for Alder ved diagnose", AccessibleName.Of(RowToggle(cut)));
+        Assert.Contains(RowToggle(cut).TextContent.Trim(), AccessibleName.Of(RowToggle(cut)), StringComparison.Ordinal);
     }
 
     [Fact]
     public void Row_WhenARowIsDrawn_ThenTheNameSpanCarriesItsIdOnceWhetherThePanelIsOpenOrShut()
     {
-        // The save button borrows the name span by id, in both states of the row. Two elements
-        // carrying that id would be a WCAG 4.1.1 failure and would aim the button at whichever
-        // came first; an id written only while the panel is open would leave the button pointing
-        // at nothing for every shut row, which is every row but one.
+        // The save button borrows the name span by id. Two elements carrying that id would be a
+        // WCAG 4.1.1 failure and would aim the button at whichever came first.
         var cut = RenderSignedIn(new ListClient(OnePage(
             Variable("Alder ved diagnose", "V_BDR.ALDER"),
             Variable("Skjemastatus", "V_BDR.FORMSTATUS"))));
 
-        void AssertEachNameIdIsWrittenExactlyOnce()
+        for (var row = 0; row < 2; row++)
         {
-            var buttons = cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]");
+            var referenced = SaveButton(cut, row).GetAttribute("aria-labelledby")!.Split(' ');
 
-            Assert.Equal(2, buttons.Count);
-
-            foreach (var button in buttons)
-            {
-                var referenced = button.GetAttribute("aria-labelledby")!.Split(' ');
-
-                Assert.Equal(2, referenced.Length);
-                Assert.All(referenced, id => Assert.Single(cut.FindAll($"#{id}")));
-            }
+            Assert.Equal(2, referenced.Length);
+            Assert.All(referenced, id => Assert.Single(cut.FindAll($"#{id}")));
+            Assert.Equal(RowToggle(cut, row).Id, cut.Find($"#{referenced[1]}").Closest("button")!.Id);
         }
-
-        AssertEachNameIdIsWrittenExactlyOnce();
-
-        cut.FindAll("button.munin-explorer-dataitem__expand-toggle")[0].Click();
-
-        // The open panel points its own aria-labelledby at the toggle rather than at this span,
-        // so opening a row must not mint a second copy of the name anywhere in it.
-        Assert.NotEmpty(cut.FindAll(".munin-explorer-detail"));
-        AssertEachNameIdIsWrittenExactlyOnce();
     }
 
     [Fact]
     public void Row_WhenTwoExplorersShareAPage_ThenEverySaveButtonBorrowsItsOwnRowsName()
     {
-        // helsedata's CMS can legitimately put two explorers on one page — the reason every id in
-        // this component carries a per-mount discriminator (VariableSearch.razor.cs, _instance).
-        // The row's two newest ids are the save button's own and the name span's, and without the
-        // discriminator two explorers listing the same variable mint each of them twice: a WCAG
-        // 4.1.1 failure, and — because accname takes the first element with a matching id — every
-        // save button in the second explorer would announce the FIRST explorer's variable. A
-        // confidently wrong name is worse than the unnamed button this all exists to fix.
-        //
-        // One render fragment holding both, not two Render calls. A bUnit render is a parsed
-        // fragment with its own root, so two of them are two documents: an id repeated across them
-        // is not a duplicate, and nothing resolving a reference in one would ever look at the
-        // other. The failure only exists on a page that holds both.
+        // helsedata's CMS can put two explorers on one page, which is why every id carries a
+        // per-mount discriminator. One render fragment holding both: two Render calls are two
+        // documents, where a repeated id is no duplicate.
         Services.AddSingleton<IMuninExplorerClient>(
             new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
         Services.AddScoped<VariableListState>();
@@ -491,26 +384,25 @@ public class SaveToListTest : ExplorerTestContext
             builder.CloseComponent();
         });
 
-        var buttons = page.FindAll(".munin-explorer-dataitem-main button[aria-pressed]");
+        page.FindAll("button.munin-explorer-dataitem-main__name")[0].Click(new MouseEventArgs { Detail = 1 });
+        page.FindAll("button.munin-explorer-dataitem-main__name")[1].Click(new MouseEventArgs { Detail = 1 });
+
+        var buttons = page.FindAll("button[aria-pressed]");
 
         Assert.Equal(2, buttons.Count);
 
         var first = buttons[0].GetAttribute("aria-labelledby")!.Split(' ');
         var second = buttons[1].GetAttribute("aria-labelledby")!.Split(' ');
 
-        // The save button's own id, and the name span's — both halves discriminated, since either
-        // one repeating is a duplicate id on the page.
         Assert.NotEqual(first[0], second[0]);
         Assert.NotEqual(first[1], second[1]);
         Assert.All(first.Concat(second), id => Assert.Single(page.FindAll($"#{id}")));
 
-        // And the half an id comparison does not cover: each button has to point at the name span
-        // in its OWN row. Two distinct ids with both buttons aimed at the first explorer would
-        // still announce the wrong variable, and both explorers list the same one here, so no
-        // assertion on the announced text could tell them apart.
+        // Each button has to point at the name span in its OWN row: both explorers list the same
+        // variable, so no assertion on the announced text could tell them apart.
         for (var i = 0; i < buttons.Count; i++)
         {
-            var row = buttons[i].Closest(".munin-explorer-dataitem-main")!;
+            var row = buttons[i].Closest("li[role=row]")!;
             var borrowed = i == 0 ? first[1] : second[1];
 
             Assert.NotNull(row.QuerySelector($"#{borrowed}"));
@@ -522,16 +414,13 @@ public class SaveToListTest : ExplorerTestContext
     public void Row_WhenAVariableIsSaved_ThenItsButtonStillNamesItInTheOtherState()
     {
         // One control in two states, and the accessible name has to follow the word the same way
-        // aria-pressed does. A name computed once for the unsaved state would tell a screen reader
-        // user the button saves a variable that is already in the list.
+        // aria-pressed does.
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
         var cut = RenderSignedIn(client);
 
         SaveButton(cut).Click();
 
-        var name = AccessibleName.Of(SaveButton(cut));
-
-        Assert.Equal("Fjern fra liste Alder ved diagnose", name);
+        Assert.Equal("Fjern fra liste Alder ved diagnose", AccessibleName.Of(SaveButton(cut)));
     }
 
     [Fact]
@@ -582,8 +471,7 @@ public class SaveToListTest : ExplorerTestContext
     public void Row_WhenTheVariableIsAlreadyInTheList_ThenTheFirstRenderSaysSo()
     {
         // Without preloading the membership the set is empty until the first save, so a variable
-        // saved yesterday offers «Lagre i liste» and the press takes it out — the label and the
-        // action disagreeing about the same variable, on the very first render.
+        // saved yesterday offers «Lagre i liste» and the press takes it out.
         var already = Variable("Alder ved diagnose", "V_BDR.ALDER");
         var client = new ListClient(OnePage(already));
         client.Stored.Add(already.Id);
@@ -609,13 +497,14 @@ public class SaveToListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Row_WhenNothingHasFailed_ThenTheAlertContainerIsAlreadyInTheDom()
+    public void Panel_WhenNothingHasFailed_ThenTheAlertContainerIsAlreadyInTheDom()
     {
-        // A role="alert" inserted and filled in the same update is announced unreliably. The
-        // container is here from the start, empty — the shape the component's own alert region uses.
+        // A role="alert" inserted and filled in the same update is announced unreliably, so the
+        // container arrives with the panel, empty, before any press.
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
 
         var cut = RenderSignedIn(client);
+        Open(cut);
 
         var alert = cut.FindAll(".munin-explorer-data-list__save-status [role=alert]");
         Assert.Single(alert);
@@ -623,32 +512,29 @@ public class SaveToListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Row_WhenASaveFails_ThenItsSentenceIsACellOfTheSameRowOutsideTheColumns()
+    public void Panel_WhenASaveFails_ThenItsSentenceFollowsTheButtonInsideThePanel()
     {
-        // In the save cell the sentence had a fixed width and the columns a fixed height, so it was
-        // cut off and pushed the button out of the row. Outside the column strip it takes a line of
-        // its own; still a cell of that row, so it is heard with the row it concerns.
+        // Heard with the panel it concerns, right after the control that failed, and not in the
+        // row's column strip, where it once had a fixed width and was cut off (Fhi.Metadata-q7i5e).
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))) { FailAdd = true };
         var cut = RenderSignedIn(client);
 
         SaveButton(cut).Click();
 
         var alert = cut.Find("[role=alert]:not(:empty)");
-        var cell = alert.ParentElement!;
+        var status = alert.ParentElement!;
 
         Assert.Contains("Kunne ikke lagre", alert.TextContent);
-        Assert.Equal("cell", cell.GetAttribute("role"));
+        Assert.Equal("munin-explorer-data-list__save-status", status.ClassName);
+        Assert.Equal(SaveButton(cut).Id, status.PreviousElementSibling!.Id);
         Assert.Null(alert.Closest(".munin-explorer-dataitem-main"));
-        Assert.Equal("munin-explorer-data-list__item__row", cell.ParentElement!.ClassName);
-        Assert.Same(SaveButton(cut).Closest("[role=row]"), alert.Closest("[role=row]"));
     }
 
     [Fact]
     public void Row_WhenTheSaveIsRateLimited_ThenTheRowSaysSoRatherThanThatSavingFailed()
     {
-        // The writes go through the same client and the same per-address limiter as the reads, and
-        // saving one row after another is the rhythm that meets it. "Prøv igjen om litt" beside the
-        // button would be advising the reader to do the one thing that keeps the window full.
+        // The writes go through the same per-address limiter as the reads. "Prøv igjen om litt"
+        // would advise the one thing that keeps the window full.
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
         {
             RateLimitAdd = true
@@ -666,9 +552,7 @@ public class SaveToListTest : ExplorerTestContext
     [Fact]
     public void Row_WhenTheSaveFailsForAnyOtherReason_ThenTheRowStillSaysTheSaveFailed()
     {
-        // The other half of the pair: the throttled sentence must not swallow the ordinary one, or
-        // a reader whose save really did fail is told to wait for a window that was never the
-        // problem.
+        // The other half of the pair: the throttled sentence must not swallow the ordinary one.
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
         {
             FailAdd = true
@@ -706,11 +590,8 @@ public class SaveToListTest : ExplorerTestContext
     [Fact]
     public void Mount_WhenTheListBootstrapIsRateLimited_ThenThePageStillRenders()
     {
-        // The mount fires the search, the facet refresh and this list read together, which is
-        // exactly the burst the per-address limiter counts — so a 429 here is ordinary. Left
-        // uncaught it leaves OnParametersSetAsync as an unhandled exception, and in helsedata's
-        // legacy Blazor Server host that tears down the circuit for the whole CMS page rather than
-        // showing the sentence this component has for it.
+        // The mount fires the search, the facet refresh and this list read together — the burst the
+        // limiter counts. Left uncaught, the 429 tears down helsedata's circuit for the whole page.
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
         {
             RateLimitMembership = true
@@ -720,20 +601,17 @@ public class SaveToListTest : ExplorerTestContext
 
         Assert.Equal(1, client.MembershipCalls);
         Assert.Single(cut.FindAll("ul.munin-explorer-data-list > li"));
-        Assert.Single(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
+        Assert.NotNull(SaveButton(cut));
 
-        // Nothing is claimed about the list either way: the reader has touched nothing yet, so
-        // there is nothing for a page-wide alert to tell them to do.
+        // Nothing is claimed about the list either way: the reader has touched nothing yet.
         Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
     }
 
     [Fact]
     public void Mount_WhenTheListBootstrapWasRateLimited_ThenTheNextSavePutsTheOtherRowsRight()
     {
-        // Why "wait and try again" is honest advice rather than a sentence that repairs nothing.
-        // The refused read leaves membership empty, so a variable saved yesterday renders unsaved;
-        // the next press reads it again, and every row's label agrees with the stored list once
-        // more.
+        // Why "wait and try again" is honest: the refused read leaves membership empty, so a
+        // variable saved yesterday renders unsaved; the next press reads it again.
         var alder = Variable("Alder ved diagnose", "V_BDR.ALDER");
         var status = Variable("Skjemastatus", "V_BDR.FORMSTATUS");
         var client = new ListClient(OnePage(alder, status)) { RateLimitMembership = true };
@@ -743,16 +621,14 @@ public class SaveToListTest : ExplorerTestContext
         var cut = RenderSignedIn(client);
 
         // Wrong, and knowably so: the read that would have said otherwise was refused.
-        Assert.Equal(["false", "false"],
-                     cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")
-                        .Select(b => b.GetAttribute("aria-pressed")));
+        Assert.Equal("false", SaveButton(cut, 1).GetAttribute("aria-pressed"));
+        Assert.Equal("false", SaveButton(cut, 0).GetAttribute("aria-pressed"));
 
         client.RateLimitMembership = false;
-        SaveButton(cut).Click();
+        SaveButton(cut, 0).Click();
 
-        Assert.Equal(["true", "true"],
-                     cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")
-                        .Select(b => b.GetAttribute("aria-pressed")));
+        Assert.Equal("true", SaveButton(cut, 0).GetAttribute("aria-pressed"));
+        Assert.Equal("true", SaveButton(cut, 1).GetAttribute("aria-pressed"));
         Assert.Equal(2, client.Stored.Count);
         Assert.Contains(alder.Id, client.Stored);
         Assert.Contains(status.Id, client.Stored);
@@ -761,12 +637,9 @@ public class SaveToListTest : ExplorerTestContext
     [Fact]
     public void Mount_WhenTheFirstPressAfterARefusedBootstrapIsOnASavedRow_ThenItIsNotRemoved()
     {
-        // The other half of the repair, and the one that costs the reader something if it is wrong.
-        // The refused read draws every row as unsaved, so a variable saved yesterday shows "Lagre";
-        // the press reads membership again, which fills the set in the middle of the call. A press
-        // that then asked the freshly filled set which way to go would find the variable saved and
-        // delete it — the button doing the opposite of the word on it, and saying nothing about it
-        // afterwards. The direction comes from the row as it was drawn instead.
+        // The refused read draws every row as unsaved, and the press refills the set mid-call. A
+        // press that then asked the refilled set which way to go would delete a variable whose
+        // button says "Lagre"; the direction comes from the row as it was drawn instead.
         var status = Variable("Skjemastatus", "V_BDR.FORMSTATUS");
         var client = new ListClient(OnePage(status)) { RateLimitMembership = true };
 
@@ -780,12 +653,9 @@ public class SaveToListTest : ExplorerTestContext
         client.RateLimitMembership = false;
         SaveButton(cut).Click();
 
-        // Still the reader's, and now labelled as such.
         Assert.Contains(status.Id, client.Stored);
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
         Assert.Equal(0, client.RemoveCalls);
-
-        // Nothing was said, because nothing went wrong.
         Assert.Empty(cut.Find("[role='alert']").TextContent.Trim());
     }
 
@@ -797,17 +667,13 @@ public class SaveToListTest : ExplorerTestContext
     public void Row_WhenTheResultsAreRebuilt_ThenTheSavedStateSurvives()
     {
         // The rows are redrawn whenever the facet counts change. A button that remembered "saved"
-        // itself would forget it here and show "Lagre i liste" for a variable that IS in the list.
-        // Asserted after a re-render, not after one click.
+        // itself would forget it here. Asserted after a real refetch, not after one click.
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
         var cut = RenderSignedIn(client);
 
         SaveButton(cut).Click();
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
 
-        // A real refetch, not just a re-render: the rows come back as new objects with the same
-        // ids, which is what a refiltering does. A row that had stashed "saved" on the summary it
-        // was handed would lose it exactly here.
         var before = client.SearchCalls;
         cut.Find("button[type=submit]").Click();
         Assert.True(client.SearchCalls > before, "the search did not refetch, so nothing was rebuilt");
@@ -816,8 +682,7 @@ public class SaveToListTest : ExplorerTestContext
         Assert.Equal(1, client.AddCalls);
     }
 
-    // ---- the save column: a header, a place in the picker, and a button that looks like one ----
-    // (Fhi.Metadata-q7i5e)
+    // ---- no save column: not in the header, not in the picker (Fhi.Metadata-35w0p.78) ----
 
     /// <summary>The header row's cell names, in order.</summary>
     private static IReadOnlyList<string> HeaderNames(IRenderedComponent<VariableSearch> cut) =>
@@ -838,82 +703,27 @@ public class SaveToListTest : ExplorerTestContext
         box.Change(!box.HasAttribute("checked"));
     }
 
-    [Fact]
-    public void Header_WhenTheReaderIsSignedIn_ThenTheSaveColumnIsNamedWhereItsCellsAre()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Header_WhateverTheSignIn_ThenThereIsNoSaveColumnInTheHeaderThePickerOrTheRow(bool signedIn)
     {
-        // Without a name of its own, every header after Navn sat one column to the left of its
-        // values: the save cell was a column the header row did not know about.
-        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
+        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))), signedIn);
 
-        var headers = HeaderNames(cut);
-        var cells = cut.Find(".munin-explorer-dataitem-main").Children;
-
-        // Third on both sides: the chevron's cell and its screen-reader-only header come first.
-        Assert.Equal("Variabelliste", headers[2]);
-        Assert.Equal("munin-explorer-dataitem-main__save", cells[2].ClassName);
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-header [role=columnheader].munin-explorer-dataitem-header__save"));
-    }
-
-    [Fact]
-    public void Header_WhenThePageIsEnglish_ThenTheSaveColumnIsCalledVariableList()
-    {
-        Services.AddSingleton<IMuninExplorerClient>(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
-        Services.AddScoped<VariableListState>();
-        var cut = Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, "en"));
-
-        Assert.Equal("Variable list", HeaderNames(cut)[2]);
-        Assert.Equal("Variable list", PickerNames(cut)[0]);
-    }
-
-    [Fact]
-    public void Picker_WhenTheReaderIsSignedOut_ThenItHasNoSaveColumnAndTheHeaderHasNoCellForOne()
-    {
-        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))), signedIn: false);
-
-        Assert.Contains("Kilde", PickerNames(cut));
+        Assert.StartsWith("Navn", HeaderNames(cut)[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("Variabelliste", HeaderNames(cut));
         Assert.DoesNotContain("Variabelliste", PickerNames(cut));
+        Assert.Contains("Kilde", PickerNames(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__save"));
         Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__save"));
-        Assert.Empty(cut.FindAll(".munin-explorer-data-list__save-status"));
+        Assert.Equal("munin-explorer-dataitem-main__name", cut.Find(".munin-explorer-dataitem-main").Children[0].ClassName);
     }
 
     [Fact]
-    public void Picker_WhenTheReaderIsSignedIn_ThenTheSaveColumnIsListedFirstAndStartsOn()
+    public void Picker_WhenOneDataColumnIsLeftForASignedInReader_ThenItIsLocked()
     {
-        var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
-
-        Assert.Equal("Variabelliste", PickerNames(cut)[0]);
-        Assert.True(PickerBox(cut, "Variabelliste").HasAttribute("checked"));
-    }
-
-    [Fact]
-    public void Picker_WhenTheSaveColumnIsTurnedOffAndOn_ThenItsHeaderAndEveryButtonGoAndComeBack()
-    {
-        var client = new ListClient(OnePage(
-            Variable("Alder ved diagnose", "V_BDR.ALDER"),
-            Variable("Skjemastatus", "V_BDR.FORMSTATUS")));
-        var cut = RenderSignedIn(client);
-
-        PressColumn(cut, "Variabelliste");
-
-        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__save"));
-        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]"));
-        Assert.Empty(cut.FindAll(".munin-explorer-data-list__save-status"));
-        Assert.False(PickerBox(cut, "Variabelliste").HasAttribute("checked"));
-        Assert.Equal(0, client.AddCalls);
-
-        PressColumn(cut, "Variabelliste");
-
-        Assert.Single(cut.FindAll(".munin-explorer-dataitem-header__save"));
-        Assert.Equal(2, cut.FindAll(".munin-explorer-dataitem-main button[aria-pressed]").Count);
-        Assert.Equal(2, cut.FindAll(".munin-explorer-data-list__save-status").Count);
-    }
-
-    [Fact]
-    public void Picker_WhenOneDataColumnIsLeft_ThenItIsLockedWhileTheSaveColumnCanStillBeTurnedOff()
-    {
-        // The lock exists so a row never shows nothing but a name. A save button says nothing about
-        // the variable, so it neither counts as the column that is left nor is ever locked itself.
+        // The lock exists so a row never shows nothing but a name; the save column that once sat
+        // outside it is gone, so the rule is the same signed in and out.
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
         foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
@@ -922,31 +732,23 @@ public class SaveToListTest : ExplorerTestContext
         }
 
         Assert.Equal("true", PickerBox(cut, "Dataperiode").GetAttribute("aria-disabled"));
-        Assert.Null(PickerBox(cut, "Variabelliste").GetAttribute("aria-disabled"));
-
-        PressColumn(cut, "Variabelliste");
-
-        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__save"));
-        Assert.Equal("true", PickerBox(cut, "Dataperiode").GetAttribute("aria-disabled"));
     }
 
     [Fact]
-    public void SaveButton_WhenDrawnInEitherState_ThenItIsGhostBlueSoAPageDoesNotReadAsManyPrimaryActions()
+    public void SaveButton_WhenDrawnInEitherState_ThenItWearsThePanelsOwnButtonShape()
     {
-        // The filled variant is a primary-weight treatment, and this button is drawn once per row.
-        // A class string is all bUnit can see: that ghost-blue's --primary text is affordance
-        // enough without a border is a judgement, recorded in the fragment. (Fhi.Metadata-35w0p.64)
+        // The same ghost square button as Vis hele variabelen beside it, so the two read as one
+        // row of actions rather than a primary one and a secondary one.
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
-        Assert.Equal("hd-button-square button-square--ghost-blue", SaveButton(cut).ClassName);
+        var neighbour = SaveButton(cut).PreviousElementSibling!.ClassName;
+
+        Assert.Equal(neighbour, SaveButton(cut).ClassName);
 
         SaveButton(cut).Click();
 
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
-        Assert.Equal("hd-button-square button-square--ghost-blue", SaveButton(cut).ClassName);
-
-        // The width rule hangs on the cell's class, so the cell keeps it in both states.
-        Assert.Equal("munin-explorer-dataitem-main__save", SaveButton(cut).ParentElement!.ClassName);
+        Assert.Equal(neighbour, SaveButton(cut).ClassName);
     }
 
     [Fact]
@@ -955,6 +757,7 @@ public class SaveToListTest : ExplorerTestContext
         // The package ships no CSS, so a name with no rule behind it renders unstyled in the host.
         var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")));
         var cut = RenderSignedIn(client);
+        Open(cut);
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
 

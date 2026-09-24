@@ -542,7 +542,7 @@ const CHEVRONS = [
   {
     surface: "Runa's result row",
     state: 'variables-list',
-    toggle: '.munin-explorer-dataitem__expand-toggle',
+    toggle: 'ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name',
     icon: '.munin-explorer-dataitem-main__expand-icon',
   },
 ];
@@ -647,8 +647,9 @@ const chevronAssertions = CHEVRONS.map(chevron => ({
           const selector = (rules[at].selectorText ?? '').trim();
           if (!selector.includes('expand-icon') && !base.test(selector)) continue;
 
-          const half = selector.includes('icon-keyboard-arrow-down') ? 'shut'
-            : selector.includes('icon-keyboard-arrow-up') ? 'open' : null;
+          // Runa's rules key the picture on the name button's aria-expanded (Fhi.Metadata-35w0p.78).
+          const half = /icon-keyboard-arrow-down|aria-expanded="false"/.test(selector) ? 'shut'
+            : /icon-keyboard-arrow-up|aria-expanded="true"/.test(selector) ? 'open' : null;
 
           if (half !== null) {
             sheet.deleteRule(at);

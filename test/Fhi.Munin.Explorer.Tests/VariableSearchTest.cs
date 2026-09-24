@@ -1320,9 +1320,9 @@ public class VariableSearchTest : ExplorerTestContext
 
         // One header row of column headers, and one data row per result.
         Assert.Equal("row", cut.Find(".munin-explorer-dataitem-header").GetAttribute("role"));
-        // The chevron's column, Navn, and the five optional columns that start on — Kode and Status
-        // start off.
-        Assert.Equal(7, cut.FindAll("[role='columnheader']").Count);
+        // Navn and the five optional columns that start on — Kode and Status start off. No
+        // chevron column: the chevron is inside the name button (Fhi.Metadata-35w0p.78).
+        Assert.Equal(6, cut.FindAll("[role='columnheader']").Count);
 
         var row = cut.Find("li.munin-explorer-data-list__item");
 
@@ -1331,8 +1331,8 @@ public class VariableSearchTest : ExplorerTestContext
         // The name is the row's header, the way Kelda's <th scope="row"> is.
         Assert.Equal("rowheader",
                      row.QuerySelector(".munin-explorer-dataitem-main__name")!.GetAttribute("role"));
-        // The chevron's cell and the five optional columns: one per header either side of the name.
-        Assert.Equal(6, row.QuerySelectorAll("[role='cell']").Length);
+        // The five optional columns: one cell per header after the name's.
+        Assert.Equal(5, row.QuerySelectorAll("[role='cell']").Length);
 
         // The two wrappers between the row and its cells are layout only. They have to say so, or
         // they sit in the tree as anonymous groups between a row and the columns it owns.
@@ -11072,9 +11072,8 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> Toggles(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem__expand-toggle");
-    // The row's chevron is the disclosure, and the name opens the whole variable, as Kelda's rows
-    // split them. (Fhi.Metadata-35w0p.34)
+        cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
+    // The row's name button is its disclosure, with the chevron inside it. (Fhi.Metadata-35w0p.78)
 
     private static AngleSharp.Dom.IElement Panel(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-detail");
@@ -13264,21 +13263,21 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Detail_WhenTheChevronIsDrawn_ThenItsGlyphIsInsideItsOwnButtonAndNowhereElse()
+    public void Detail_WhenTheChevronIsDrawn_ThenItsGlyphIsTheNameButtonsFirstChildAndNowhereElse()
     {
         // The trap zqe14 closed still applies: a click handler on the aria-hidden glyph would give
-        // assistive tech one control and a mouse two. The glyph is the chevron button's only child,
-        // and the name button beside it draws none. (Fhi.Metadata-35w0p.34)
+        // assistive tech one control and a mouse two. The glyph is the name button's first child,
+        // and there is no other in the row. (Fhi.Metadata-35w0p.78)
         var cut = RenderWith(TwoRows());
         var toggle = Toggles(cut)[0];
         var chevron = toggle.QuerySelector(".munin-explorer-dataitem-main__expand-icon");
 
         Assert.NotNull(chevron);
-        Assert.Same(toggle, chevron!.ParentElement);
-        Assert.Equal("true", chevron.GetAttribute("aria-hidden"));
+        Assert.Same(chevron, toggle.FirstElementChild);
+        Assert.Equal("true", chevron!.GetAttribute("aria-hidden"));
         Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
-        Assert.Equal("", toggle.TextContent.Trim());
-        Assert.Empty(cut.FindAll("button.munin-explorer-dataitem-main__name .munin-explorer-dataitem-main__expand-icon"));
+        Assert.Equal("1. Tale", toggle.TextContent.Trim());
+        Assert.Single(cut.FindAll("li.munin-explorer-data-list__item")[0].QuerySelectorAll(".munin-explorer-dataitem-main__expand-icon"));
     }
 
     [Fact]
@@ -14500,7 +14499,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.All(panel.QuerySelectorAll("ol, ul"), e => Assert.False(e.HasAttribute("class")));
         Assert.All(panel.QuerySelectorAll("dl dt"),
                    e => Assert.Equal("headline headline-xxs margin--none", e.ClassName));
-        Assert.Equal("hd-button-reset munin-explorer-dataitem__expand-toggle", Toggles(cut)[0].ClassName);
+        Assert.Equal("munin-explorer-dataitem-main__name", Toggles(cut)[0].ClassName);
     }
 
     // ---------------------------------------------------------------------------------

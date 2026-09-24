@@ -713,7 +713,7 @@ else
             @foreach (var v in _result.Items)
             {
                 @* Keyed by the variable's own id, the same reason the facet values are keyed: a row
-                   carries a control the reader can be standing on — the disclosure below — and the
+                   carries a control the reader can be standing on — the name button — and the
                    rows reorder whenever the search, the filter or the ordering moves. Without a key
                    the renderer would patch that button into a different variable's rather than
                    moving it. *@
@@ -723,40 +723,26 @@ else
                    in one. The two wrappers below then wear role="none" and the panel becomes the
                    row's last cell. *@
                 <li class="@RowItemClass(v)" role="row" @key="v.Id">
-                    @* The row has two gestures on two controls, as Kelda's does: the chevron is the
-                       disclosure carrying aria-expanded, and the name opens the whole variable in
-                       place. (Fhi.Metadata-35w0p.34, reversing Fhi.Metadata-zqe14)
-
-                       There is no heading around the name. One was tried, so results could be walked
-                       with a screen reader's heading rotor — their selectors all match by descent,
-                       so an element in between styles fine. But their row is a flex container and
-                       the name cell is sized by `munin-explorer-dataitem-main__name`, so a heading
-                       becomes the flex item and the column stops lining up with its header.
-                       Neither reference wraps it. *@
+                    @* One Tab stop per collapsed row, as on helsedata's own list: the name button
+                       is the disclosure, with the chevron inside it, and the panel holds the rest.
+                       (Fhi.Metadata-35w0p.78, reversing Fhi.Metadata-35w0p.34) *@
                     @* Both wrappers are layout and nothing else — one is helsedata's row box, the
                        other the flex container that lays the columns out — so both step out of the
                        accessibility tree and let the cells inside become the row's own. *@
                     <div class="munin-explorer-data-list__item__row" role="none">
-                        @* The column strip is a pointer shortcut onto the chevron inside it: no
+                        @* The column strip is a pointer shortcut onto the name button inside it: no
                            tabindex, no role, no key handler. Stiler computes `cursor: pointer` on
                            this element, so it read as a control before it was one. *@
-                        @* mousedown records where the press began and mouseup settles what it was —
-                           a drag-select across the row's code ends in a click here too, and the
-                           panel must not open behind a reader copying it. (Fhi.Metadata-l9l2n.81) *@
-                        @* The press the controls inside let through is theirs as much as the strip's:
-                           a drag begun on the name and released here lands its click here, so the
-                           row has to have seen where it went down. *@
+                        @* mousedown records where the press began and mouseup settles what it was:
+                           a drag-select across the row, begun on the name or not, ends in a click
+                           here and must not open the panel. (Fhi.Metadata-l9l2n.81) *@
                         <div class="munin-explorer-dataitem-main" role="none"
                              @onmousedown="e => RowPressed(v, e)"
                              @onmouseup="e => RowReleased(v, e)"
                              @onclick="e => ToggleDetailFromRowAsync(v, e)">
-                        @* The chevron's cell, first and a direct child: Stiler keys its rules on that. *@
-                        @RowExpandToggle(v)
                         @RowHeading(v)
-                        @RowSaveButton(v)
                         @InfoLine(v)
                         </div>@* munin-explorer-dataitem-main — the columns end here *@
-                        @RowSaveStatus(v)
 
                     @* No description in the row. Neither reference has one: Runa's rows are a
                        single table row, and helsedata's are one line high (3.5rem); Stiler lets
@@ -959,13 +945,17 @@ else
                                        and going to the whole variable is the wider one, so it reads
                                        last. It also keeps the owner buttons where they have always
                                        been, which the tests that count them rely on. *@
-                                    @* No aria-expanded and no aria-controls, the reason the trail's
-                                       kilde step carries none: nothing is disclosed in place, and
-                                       the id would name a view that is only there once this button
-                                       is not. *@
+                                    @* The one way to the whole variable now the name toggles the
+                                       panel. No aria-expanded or aria-controls: nothing opens in
+                                       place, and the id would name a view only there once this is not. *@
                                     <button class="hd-button-square button-square--ghost margin-right margin-bottom"
                                             type="button"
                                             @onclick="ToggleWholeVariableFromControlAsync">@T.ShowWholeVariable</button>
+
+                                    @* Signed-in readers only. Here rather than in the row, so a
+                                       collapsed row stays one Tab stop. (Fhi.Metadata-35w0p.78) *@
+                                    @PanelSaveButton(v)
+                                    @PanelSaveStatus(v)
 
                                     @* The owner's own record, drawn inside the variable's panel.
                                        One at a time — pressing Datasamling with Datakilde open

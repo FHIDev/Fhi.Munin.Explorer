@@ -211,6 +211,12 @@ public class CopyAndEmptyListTest : ExplorerTestContext
             });
         }
 
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<VariableDetail?>(SearchRow is { } row && row.Id == id
+                ? new VariableDetail { Id = id, Code = row.Code, PreferredTerm = row.PreferredTerm }
+                : null);
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
@@ -621,7 +627,18 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(25, RowCount(cut)));
 
         var search = Render<VariableSearch>(p => p.Add(c => c.IsAuthenticated, true));
-        IElement SaveButton() => search.FindAll(".munin-explorer-dataitem-main button[aria-pressed]")[0];
+        // In the open panel since Fhi.Metadata-35w0p.78, so the row is opened first when shut.
+        IElement SaveButton()
+        {
+            var name = search.Find("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name");
+
+            if (name.GetAttribute("aria-expanded") != "true")
+            {
+                name.Click();
+            }
+
+            return search.Find(".munin-explorer-detail button[aria-pressed]");
+        }
         search.WaitForAssertion(() => Assert.Equal("true", SaveButton().GetAttribute("aria-pressed")));
 
         Button(cut, "Tøm liste").Click();

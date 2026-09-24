@@ -12,7 +12,7 @@ public class DrawerHeadingTest : ExplorerTestContext
 {
     private const string Heading = "munin-explorer-meta__heading";
 
-    private const string Chevron = "button.munin-explorer-dataitem__expand-toggle";
+    private const string Disclosure = "button.munin-explorer-dataitem-main__name";
 
     private const string LongName =
         "Antall_tidligere_fødsler_og_dødfødsler_etter_22_fullgåtte_uker_uten_et_eneste_mellomrom";
@@ -99,7 +99,7 @@ public class DrawerHeadingTest : ExplorerTestContext
 
     private static IElement Open(IRenderedComponent<VariableSearch> cut, int row)
     {
-        cut.FindAll($"ul.munin-explorer-data-list {Chevron}")[row].Click();
+        cut.FindAll($"ul.munin-explorer-data-list {Disclosure}")[row].Click();
 
         return cut.Find(".munin-explorer-meta.munin-explorer-detail");
     }
@@ -190,22 +190,22 @@ public class DrawerHeadingTest : ExplorerTestContext
         Assert.Equal(lang, Open(cut, 0).QuerySelector($".{Heading}")!.GetAttribute("lang"));
     }
 
-    // Criterion 3: the chevron keeps its own name, its own sentence around the variable's name,
-    // and keeps pointing at the panel; the heading must not become its label.
+    // Criterion 3: the row's disclosure keeps its own name, its own sentence around the variable's
+    // name, and keeps pointing at the panel; the heading must not become its label.
     [Theory]
     [InlineData("no", "Skjul detaljer for 1. Tale")]
     [InlineData("en", "Hide details for 1. Tale")]
-    public void Chevron_WhenThePanelHasItsHeading_ThenItsNameAndControlsAreUnchanged(string language, string name)
+    public void Disclosure_WhenThePanelHasItsHeading_ThenItsNameAndControlsAreUnchanged(string language, string name)
     {
         var cut = Render(b => b.Add(c => c.Language, language));
 
         var panel = Open(cut, 0);
-        var chevron = cut.FindAll($"ul.munin-explorer-data-list {Chevron}")[0];
+        var disclosure = cut.FindAll($"ul.munin-explorer-data-list {Disclosure}")[0];
 
-        Assert.False(chevron.HasAttribute("aria-labelledby"));
-        Assert.Equal(name, AccessibleName.Of(chevron));
-        Assert.Equal(panel.Id, chevron.GetAttribute("aria-controls"));
-        Assert.NotEqual(panel.QuerySelector($".{Heading}")!.Id, chevron.GetAttribute("aria-controls"));
+        Assert.False(disclosure.HasAttribute("aria-labelledby"));
+        Assert.Equal(name, AccessibleName.Of(disclosure));
+        Assert.Equal(panel.Id, disclosure.GetAttribute("aria-controls"));
+        Assert.NotEqual(panel.QuerySelector($".{Heading}")!.Id, disclosure.GetAttribute("aria-controls"));
     }
 
     // AC4's markup half: the unbroken name reaches the heading whole, inside the scoped panel,

@@ -368,7 +368,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableSearch_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Five: Vis filtre, the row's chevron, and three that exist only once a row is open —
+        // Five: Vis filtre, the row's name button, and three that exist only once a row is open —
         // "Vis datakilde", "Vis datasamling" and, on the Data tab, "Vis koder".
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
@@ -554,7 +554,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         var cut = Render<VariableSearch>();
 
         // Data is the tab a panel opens on (Fhi.Metadata-l9l2n.101), so no tab press is needed.
-        cut.Find("button.munin-explorer-dataitem__expand-toggle").Click(new MouseEventArgs { Detail = 1 });
+        cut.Find("button.munin-explorer-dataitem-main__name").Click(new MouseEventArgs { Detail = 1 });
 
         return cut;
     }

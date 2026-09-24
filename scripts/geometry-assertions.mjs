@@ -343,23 +343,23 @@ export const assertions = [
   },
 
   {
-    name: "Runa's row chevron is big enough to hit",
+    name: "Runa's row disclosure is big enough to hit",
     kind: 'pin',
     states: ['explorer-tabs', 'variable-detail'],
-    // A pin, for the kilder pin's reason: the 24 x 24 invariant fails on the native checkbox. Under
-    // Stiler 0.1.91 this chevron was 0 x 0 below 1280px (Fhi.Metadata-m586y), and `gates` makes
-    // that a finding when variable-detail and variable-whole cannot press it (Fhi.Metadata-kqano).
+    // A pin, for the kilder pin's reason: the 24 x 24 invariant fails on the native checkbox. The
+    // name button is the row's disclosure since Fhi.Metadata-35w0p.78; `gates` makes a miss a
+    // finding when variable-detail and variable-whole cannot press it (Fhi.Metadata-kqano).
     gates: ['variable-detail', 'variable-whole'],
     body: () => {
-      const toggles = [...document.querySelectorAll('button.munin-explorer-dataitem__expand-toggle')]
+      const toggles = [...document.querySelectorAll('ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name')]
         .filter(toggle => !toggle.closest('[hidden]'));
-      if (toggles.length === 0) return 'no row chevron on the page — nothing was measured';
+      if (toggles.length === 0) return 'no row disclosure on the page — nothing was measured';
       const width = Math.round(window.innerWidth);
       const minimum = 24;
       for (const [index, toggle] of toggles.entries()) {
         const r = toggle.getBoundingClientRect();
         if (r.width < minimum || r.height < minimum) {
-          return `at ${width}px row chevron ${index + 1} of ${toggles.length} measures ` +
+          return `at ${width}px row disclosure ${index + 1} of ${toggles.length} measures ` +
             `${r.width.toFixed(1)} x ${r.height.toFixed(1)}, under the ${minimum} x ${minimum} ` +
             'minimum target size';
         }

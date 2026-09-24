@@ -411,9 +411,9 @@ export const states = {
   // A variable row opened. The panel under the row is the largest block of markup in the package
   // that only exists after a click — every property, the statistics block and the owner buttons.
   // It fetches, so the wait is on the region reporting itself done rather than on it appearing.
-  // The row's chevron opens it; the name opens the whole variable instead (Fhi.Metadata-35w0p.34).
+  // The row's name button is its disclosure, with the chevron inside it (Fhi.Metadata-35w0p.78).
   'variable-detail': async page => {
-    const row = page.locator('button.munin-explorer-dataitem__expand-toggle').first();
+    const row = page.locator('button.munin-explorer-dataitem-main__name').first();
     await row.waitFor({ state: 'visible', timeout: findTimeout });
     await row.click();
 
@@ -433,7 +433,7 @@ export const states = {
 
     const row = page.locator('ul.munin-explorer-data-list > li', { hasText: LONG_NAME }).first();
     await row.waitFor({ state: 'visible', timeout: findTimeout });
-    await row.locator('button.munin-explorer-dataitem__expand-toggle').click();
+    await row.locator('button.munin-explorer-dataitem-main__name').click();
 
     await page
       .locator('.munin-explorer-meta[aria-busy="false"] > .munin-explorer-meta__heading', { hasText: LONG_NAME })
@@ -449,7 +449,7 @@ export const states = {
     openStatistics(page, SUPPRESSED_SEARCH, SUPPRESSED_NAME, '.munin-explorer-figures__note--suppressed'),
 
   // The drawer's second tab, reached the way a keyboard reader reaches it: Tab from the row's
-  // chevron into the tablist, then ArrowRight. A tablist nested in a disclosure is where roles and
+  // name button into the tablist, then ArrowRight. A tablist nested in a disclosure is where roles and
   // the tab stop usually get dropped, and axe never sees this panel otherwise (Fhi.Metadata-l9l2n.101).
   'variable-detail-about': async page => {
     await states['variable-detail'](page);
@@ -461,7 +461,7 @@ export const states = {
 
     const data = page.getByRole('tab', { name: 'Data', exact: true }).first();
     if (!(await data.evaluate(el => el === document.activeElement && el.getAttribute('aria-selected') === 'true'))) {
-      throw new Error('Tab from the row chevron did not land on the selected Data tab');
+      throw new Error('Tab from the row name button did not land on the selected Data tab');
     }
 
     await page.keyboard.press('ArrowRight');
@@ -492,13 +492,12 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // The whole-variable page as a reader reaches it, by pressing a row's name. Only this path draws
-  // it: loading `?variabelId=` draws the row drill-in's `__meta__grid` instead, where a fact-list
-  // measurement finds nothing and passes vacuously (Fhi.Metadata-2w7fx).
+  // The whole-variable page as a reader reaches it, through the open row's Vis hele variabelen
+  // (Fhi.Metadata-35w0p.78). Loading `?variabelId=` draws the row drill-in's `__meta__grid` instead,
+  // where a fact-list measurement finds nothing and passes vacuously (Fhi.Metadata-2w7fx).
   'variable-page': async page => {
-    const name = page.locator('.munin-explorer-dataitem-main__name').first();
-    await name.waitFor({ state: 'visible', timeout: findTimeout });
-    await name.click();
+    await states['variable-detail'](page);
+    await press(page, 'Vis hele variabelen');
     const fields = page.locator('.munin-explorer-whole .munin-explorer-page__fields').first();
     await fields.waitFor({ state: 'visible', timeout: findTimeout });
     const tracks = await fields.evaluate(el => getComputedStyle(el).gridTemplateColumns
