@@ -2406,6 +2406,56 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
     }
 
+    [Theory]
+    [InlineData("String")]
+    [InlineData("Url")]
+    public void Properties_WhenAValueIsSeveralAddressesJoinedBySemicolons_ThenEachIsItsOwnLinkInAList(string type)
+    {
+        // K_40ARINGSUNDERSOKELSENE's applicableLegislation as the test API serves it: one string,
+        // three laws, which the reader was given as one link to an address that does not exist.
+        const string value = "http://data.europa.eu/eli/reg/2025/327/oj;https://lovdata.no/eli/lov/2001-05-18-24;"
+                             + "https://lovdata.no/eli/forskrift/2018-04-27-645";
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("applicableLegislation", 10, "Rettslig grunnlag") with { Type = type }],
+            AdditionalProperties = new Dictionary<string, string?> { ["applicableLegislation"] = value },
+        };
+
+        var cell = Render(kilde).Find(".munin-explorer-page__fields dd");
+        var anchors = cell.QuerySelectorAll("ul > li > a");
+
+        Assert.Equal(
+            ["http://data.europa.eu/eli/reg/2025/327/oj", "https://lovdata.no/eli/lov/2001-05-18-24",
+             "https://lovdata.no/eli/forskrift/2018-04-27-645"],
+            anchors.Select(a => a.GetAttribute("href")));
+        Assert.All(anchors, a =>
+        {
+            Assert.Equal(a.GetAttribute("href"), a.TextContent);
+            Assert.Equal("noopener noreferrer", a.GetAttribute("rel"));
+            Assert.Null(a.GetAttribute("target"));
+        });
+        Assert.Equal(3, cell.QuerySelectorAll("a").Length);
+        Assert.Null(cell.GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void Properties_WhenOnePartOfASemicolonListIsNotAnAddress_ThenNothingIsLinked()
+    {
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("applicableLegislation", 10, "Rettslig grunnlag") with { Type = "String" }],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["applicableLegislation"] = "https://lovdata.no/eli/lov/2001-05-18-24;helseregisterloven",
+            },
+        };
+
+        var cell = Render(kilde).Find(".munin-explorer-page__fields dd");
+
+        Assert.Empty(cell.QuerySelectorAll("a"));
+        Assert.Equal("https://lovdata.no/eli/lov/2001-05-18-24;helseregisterloven", cell.TextContent);
+    }
+
     [Fact]
     public void Properties_WhenAUrlIsStoredSchemeless_ThenHttpsIsAssumedAndTheCellStaysUnmarked()
     {

@@ -278,4 +278,56 @@ public class CatalogueMarkdownTest : ExplorerTestContext
     {
         Assert.Null(CatalogueMarkdown.Link(raw));
     }
+
+    [Fact]
+    public void LinkList_WhenEveryPartIsAnAddress_ThenEachIsReturnedInOrder()
+    {
+        Assert.Equal(
+            ["http://data.europa.eu/eli/reg/2025/327/oj", "https://lovdata.no/eli/lov/2001-05-18-24",
+             "https://lovdata.no/eli/forskrift/2018-04-27-645"],
+            CatalogueMarkdown.LinkList("http://data.europa.eu/eli/reg/2025/327/oj;https://lovdata.no/eli/lov/2001-05-18-24;"
+                                       + "https://lovdata.no/eli/forskrift/2018-04-27-645"));
+    }
+
+    [Fact]
+    public void LinkList_WhenATrailingSemicolonAndWhitespaceSurroundTheParts_ThenTheyAreTolerated()
+    {
+        Assert.Equal(["https://a.example/", "https://b.example/x"],
+                     CatalogueMarkdown.LinkList(" https://a.example/ ; https://b.example/x ; "));
+    }
+
+    [Theory]
+    [InlineData("https://lovdata.no/eli/lov/2001-05-18-24")]
+    [InlineData("https://lovdata.no/eli/lov/2001-05-18-24;")]
+    [InlineData("https://x.example/p?a=1;b=2")]
+    [InlineData("https://a.example;not a url")]
+    [InlineData("a;b")]
+    [InlineData("https://a.example;mailto:post@fhi.no")]
+    [InlineData("https://a.example;ftp://b.example")]
+    [InlineData(null)]
+    public void LinkList_WhenTheValueIsNotSeveralAddresses_ThenItIsNull(string? raw)
+    {
+        // A ';' inside one address's query splits into a part that is no address, which is what keeps it whole.
+        Assert.Null(CatalogueMarkdown.LinkList(raw));
+    }
+
+    [Theory]
+    [InlineData("https://lovdata.no/eli/lov/2001-05-18-24;", "https://lovdata.no/eli/lov/2001-05-18-24")]
+    [InlineData(" https://lovdata.no/eli/lov/2001-05-18-24 ; ", "https://lovdata.no/eli/lov/2001-05-18-24")]
+    [InlineData("https://x.example/p?a=1;b=2", "https://x.example/p?a=1;b=2")]
+    public void Link_WhenASemicolonDoesNotMakeAList_ThenTheValueIsStillOneLink(string raw, string href)
+    {
+        Assert.Equal((href, href), CatalogueMarkdown.Link(raw));
+    }
+
+    [Fact]
+    public void Link_WhenTheValueIsSeveralAddresses_ThenItIsNotOneLink()
+    {
+        // Linked whole, the list is an address that exists nowhere (Fhi.Metadata-61s28).
+        const string value = "https://a.example/;https://b.example/";
+
+        Assert.Null(CatalogueMarkdown.Link(value));
+        Assert.False(CatalogueMarkdown.Prose(value));
+        Assert.Equal(value, CatalogueMarkdown.Words(value));
+    }
 }

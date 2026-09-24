@@ -71,20 +71,29 @@ internal static partial class CatalogueMarkdown
 
         var trimmed = raw.Trim();
 
-        if (!trimmed.Any(char.IsWhiteSpace))
+        // A ';'-joined list parses as one absolute URI too, and that address exists nowhere.
+        if (LinkList(trimmed) is not null)
         {
-            if (AllowedScheme(trimmed))
+            return null;
+        }
+
+        // The list's separator left behind after its only address, which no href should carry.
+        var address = trimmed.TrimEnd(';').TrimEnd();
+
+        if (!address.Any(char.IsWhiteSpace))
+        {
+            if (AllowedScheme(address))
             {
-                return (trimmed, trimmed);
+                return (address, address);
             }
 
             // The catalogue also stores Hjemmeside scheme-less - www.barnediabetes.no - which an
             // href would treat as a relative path. https is assumed for the address; the label
             // stays the stored text.
-            if (trimmed.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
-                && AllowedScheme($"https://{trimmed}"))
+            if (address.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+                && AllowedScheme($"https://{address}"))
             {
-                return (trimmed, $"https://{trimmed}");
+                return (address, $"https://{address}");
             }
         }
 
@@ -105,6 +114,27 @@ internal static partial class CatalogueMarkdown
         return (label.Length > 0 ? label : link.Url!, link.Url!);
     }
 
+    /// <summary>
+    /// A whole value that is two or more http(s) addresses joined by <c>;</c>, in order, or nothing
+    /// where any part is not one — so a <c>;</c> inside one address's query is never split.
+    /// </summary>
+    internal static IReadOnlyList<string>? LinkList(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw) || !raw.Contains(';'))
+        {
+            return null;
+        }
+
+        var parts = raw.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+        return parts.Length >= 2 && parts.All(IsWebAddress) ? parts : null;
+    }
+
+    private static bool IsWebAddress(string part) =>
+        !part.Any(char.IsWhiteSpace)
+        && Uri.TryCreate(part, UriKind.Absolute, out var uri)
+        && uri.Scheme is "http" or "https";
+
     /// <summary>A value's words: the label where the whole value is one allowed link, else the value.</summary>
     internal static string? Words(string? raw) => Link(raw)?.Label ?? raw;
 
@@ -113,7 +143,8 @@ internal static partial class CatalogueMarkdown
         link.Href == link.Label || link.Href == $"https://{link.Label}" || link.Href == $"http://{link.Label}";
 
     /// <summary>Whether a value's words are the catalogue's prose rather than an address.</summary>
-    internal static bool Prose(string? raw) => Link(raw) is not { } link || !IsAddress(link);
+    internal static bool Prose(string? raw) =>
+        LinkList(raw) is null && (Link(raw) is not { } link || !IsAddress(link));
 
     /// <summary>The catalogue text as a fragment: anchors, breaks, and literal text for the rest.</summary>
     internal static RenderFragment Render(string? text) => builder =>

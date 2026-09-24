@@ -18,13 +18,15 @@ internal readonly record struct LocalisedText(string Text, string Language);
 /// types, whose bags the catalogue leaves open.
 /// </param>
 /// <param name="Href">Where the value should link, for the properties the catalogue types as a URL.</param>
+/// <param name="Hrefs">One target per address, where the value is a <c>;</c>-joined list of them.</param>
 /// <param name="Authored">Drawn through <see cref="CatalogueMarkdown"/>; see <see cref="CatalogueProperties.AuthoredKeys"/>.</param>
 internal readonly record struct PropertyRow(
     string Label,
     string LabelLanguage,
     IReadOnlyList<LocalisedText> Values,
     string? Href = null,
-    bool Authored = false);
+    bool Authored = false,
+    IReadOnlyList<string>? Hrefs = null);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
 /// <remarks>
@@ -255,6 +257,15 @@ internal static class CatalogueProperties
             // empty. Only the structured types answer this way — see Value.
             if (Value(entry, raw, reader) is not { } resolved)
             {
+                continue;
+            }
+
+            // Whatever the declared type, since applicableLegislation is a String: only a value no
+            // vocabulary turned into words, and only where every part is an address (Fhi.Metadata-61s28).
+            if (resolved is [{ Text: var text }] && text == raw && CatalogueMarkdown.LinkList(raw) is { } hrefs)
+            {
+                rows.Add(new PropertyRow(label, labelLanguage, [new LocalisedText(raw.Trim(), reader)],
+                                         Hrefs: hrefs));
                 continue;
             }
 
