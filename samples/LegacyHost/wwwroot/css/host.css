@@ -4403,6 +4403,13 @@ table.munin-explorer-data-list tbody th {
   }
 }
 
+/* The browser scrolls only the focused control into view, so Shift+Tab could leave the row under
+   the 52px sticky head (WCAG 2.4.11, Fhi.Metadata-crlmg). 4rem is the head plus the control's
+   8.5px offset from the row top, and applies where the head does not stick too. */
+.munin-explorer-kilder-scroll > .munin-explorer-kilder > tbody :is(a, button, input, select, summary, [tabindex]) {
+  scroll-margin-top: calc(var(--munin-explorer-sticky-top, 0px) + 4rem);
+}
+
 .munin-explorer .munin-explorer-selection {
   align-items: center;
   display: flex;
