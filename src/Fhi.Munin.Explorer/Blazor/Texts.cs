@@ -291,6 +291,12 @@ internal sealed record Texts(
     // to rather than only that something went wrong.
     string FieldDesiredData,
     string DesiredDataError,
+    // The saved list's two coverage columns, worded as Kelda's share columns are: Kodeverk stays
+    // untranslated, Statistikk does not. A cell with no answer says NotSpecified.
+    string FieldKodeverk,
+    string FieldStatistics,
+    string FlagYes,
+    string FlagNo,
     // (maxLength) — "Ønskede data kan ikke overstige 500 tegn."
     Func<int, string> DesiredDataTooLong,
     // Renaming and deleting the list on screen. The deletion is confirmed first: a list can have
@@ -1174,6 +1180,10 @@ internal sealed record Texts(
         ListKildeCount: count => count == 1 ? "fra 1 datakilde" : $"fra {count} datakilder",
         FieldDesiredData: "Ønskede data",
         DesiredDataError: "Kunne ikke lagre ønskede data nå. Prøv igjen om litt.",
+        FieldKodeverk: "Kodeverk",
+        FieldStatistics: "Statistikk",
+        FlagYes: "Ja",
+        FlagNo: "Nei",
         DesiredDataTooLong: maxLength =>
             $"Ønskede data kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
         RenameListName: "Nytt navn på listen",
@@ -1638,6 +1648,10 @@ internal sealed record Texts(
         ListKildeCount: count => count == 1 ? "from 1 source" : $"from {count} sources",
         FieldDesiredData: "Desired data",
         DesiredDataError: "Could not save the desired data just now. Try again shortly.",
+        FieldKodeverk: "Kodeverk",
+        FieldStatistics: "Statistics",
+        FlagYes: "Yes",
+        FlagNo: "No",
         DesiredDataTooLong: maxLength =>
             $"Desired data must be {maxLength} characters or fewer. Your text has not been saved.",
         RenameListName: "New name for the list",

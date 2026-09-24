@@ -15,7 +15,9 @@
       "dataTo": null,
       "versjonStatus": "Active",
       "desiredDataType": "freeText",
-      "desiredDataFreeText": "C36.2 og C36.4, og C76"
+      "desiredDataFreeText": "C36.2 og C36.4, og C76",
+      "hasKodeverk": true,
+      "hasStatistikk": false
     },
     {
       "variabelId": "3e5a8c11-7b42-49df-a6c8-1d904f2e6b73",
@@ -32,7 +34,9 @@
       "dataTo": null,
       "versjonStatus": null,
       "desiredDataType": "freeText",
-      "desiredDataFreeText": "Alle registrerte verdier"
+      "desiredDataFreeText": "Alle registrerte verdier",
+      "hasKodeverk": null,
+      "hasStatistikk": null
     }
   ],
   "totalCount": 247,

@@ -738,16 +738,19 @@ These are not style preferences — each one is a host that breaks otherwise.
   One family more is written by interpolation rather than as a literal, so the table below cannot
   carry it and this paragraph has to: `RowCell.Write` dresses each result column as
   `munin-explorer-dataitem-main__column` plus `munin-explorer-dataitem-main__` finished with the
-  column key. The keys are a closed set of seven — `code`, `dataCollection`, `dataType`, `period`,
-  `source`, `status` and `theme` — so those seven names are as real as any row below, and
+  column key. The keys are a closed set of nine — `code`, `dataCollection`, `dataType`, `kodeverk`,
+  `period`, `source`, `statistikk`, `status` and `theme` — so those nine names are as real as any
+  row below, and
   `munin-explorer-dataitem-header__` takes the same completions on the header cells above them, plus
   `save` over the signed-in reader's save button, whose own cell name is a literal in the table. The
   reconciliation reads literals out of `src/`, which is what makes it exact and is also its one
   limit; a name the package builds a piece at a time is named here instead, and adding a column key
-  means adding it to this sentence.
+  means adding it to this sentence. `kodeverk` and `statistikk` are the saved-list view's alone —
+  always drawn there, and nowhere else — so `munin-explorer-dataitem-main__kodeverk` and
+  `__statistikk` are the two a host styling only the search results will never meet.
 
   The saved-list view's `desiredData` column is the exception that shows where the boundary runs.
-  It is an eighth column in that view and it is **not** one of those keys, because it is not drawn by
+  It is the tenth column in that view and it is **not** one of those keys, because it is not drawn by
   `RowCell.Write` at all — the cell holds an editable field rather than a value, so both halves of
   it are written out as literals and both are rows in the table below. A column that goes through
   the helper belongs in the sentence above; one that does not belongs in the table, and no column
@@ -855,9 +858,11 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-header__dataCollection` | handle |
   | `munin-explorer-dataitem-header__dataType` | handle |
   | `munin-explorer-dataitem-header__desiredData` | handle |
+  | `munin-explorer-dataitem-header__kodeverk` | handle |
   | `munin-explorer-dataitem-header__name` | handle |
   | `munin-explorer-dataitem-header__period` | handle |
   | `munin-explorer-dataitem-header__source` | handle |
+  | `munin-explorer-dataitem-header__statistikk` | handle |
   | `munin-explorer-dataitem-header__theme` | handle |
   | `munin-explorer-dataitem-main` | handle |
   | `munin-explorer-dataitem-main__column` | handle |

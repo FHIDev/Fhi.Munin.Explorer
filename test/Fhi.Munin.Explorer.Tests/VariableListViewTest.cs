@@ -556,11 +556,19 @@ public class VariableListViewTest : ExplorerTestContext
         }
     }
 
-    private IRenderedComponent<VariableListView> RenderView(ListClient client, bool signedIn = true)
+    private IRenderedComponent<VariableListView> RenderView(ListClient client, bool signedIn = true, string? language = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
-        return Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, signedIn));
+        return Render<VariableListView>(p =>
+        {
+            p.Add(c => c.IsAuthenticated, signedIn);
+
+            if (language is not null)
+            {
+                p.Add(c => c.Language, language);
+            }
+        });
     }
 
     /// <summary>
@@ -1189,11 +1197,12 @@ public class VariableListViewTest : ExplorerTestContext
         // list, so this view can have the element that brings the structure with it.
         var table = cut.Find("table.munin-explorer-data-list");
 
-        // Nine headers, each a real <th scope="col">: the seven catalogue columns, the reader's
-        // own annotation, and the control column over the remove buttons.
+        // Eleven headers, each a real <th scope="col">: the seven catalogue columns, the two
+        // coverage columns, the reader's own annotation, and the control column over the remove
+        // buttons.
         var headers = table.QuerySelectorAll("thead th");
 
-        Assert.Equal(9, headers.Length);
+        Assert.Equal(11, headers.Length);
         Assert.All(headers, h => Assert.Equal("col", h.GetAttribute("scope")));
         Assert.Equal("Navn", headers[0].TextContent.Trim());
 
@@ -1207,10 +1216,11 @@ public class VariableListViewTest : ExplorerTestContext
         Assert.Equal("row", rowHeader!.GetAttribute("scope"));
         Assert.Equal("Alder ved diagnose", rowHeader.TextContent.Trim());
 
-        // Eight <td> under it: six catalogue columns, the annotation field, the remove button.
+        // Ten <td> under it: six catalogue columns, two coverage columns, the annotation field,
+        // the remove button.
         var cells = row.QuerySelectorAll("td");
 
-        Assert.Equal(8, cells.Length);
+        Assert.Equal(10, cells.Length);
         Assert.Equal("BUTTON", cells[^1].Children[0].TagName);
 
         // And nothing left claiming to be a table in ARIA. A role over a real table is at best a
@@ -1255,6 +1265,79 @@ public class VariableListViewTest : ExplorerTestContext
 
         Assert.Equal("Kode", cut.Find("thead th.munin-explorer-dataitem-header__code").TextContent.Trim());
         Assert.Equal("V_BDR.ALDER", CellText(cut, "code"));
+    }
+
+    [Theory]
+    [InlineData("no", "Statistikk")]
+    [InlineData("en", "Statistics")]
+    public void View_WhenTheTableIsDrawn_ThenKodeverkAndStatisticsFollowThePeriod(string language, string statistics)
+    {
+        // A saved list is the one surface where the reader has already said these variables belong
+        // together, so the coverage columns are always on here (Fhi.Metadata-l9l2n.95). The keys
+        // are the ones Stiler's rule names; any other spelling would ship them unstyled.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")), language: language);
+
+        var headers = cut.FindAll("thead th");
+        var period = headers.ToList().FindIndex(h => h.ClassList.Contains("munin-explorer-dataitem-header__period"));
+
+        Assert.Equal("munin-explorer-dataitem-header__kodeverk", headers[period + 1].ClassName);
+        Assert.Equal("munin-explorer-dataitem-header__statistikk", headers[period + 2].ClassName);
+        Assert.Equal("Kodeverk", headers[period + 1].TextContent.Trim());
+        Assert.Equal(statistics, headers[period + 2].TextContent.Trim());
+        Assert.Equal("col", headers[period + 1].GetAttribute("scope"));
+        Assert.Equal("col", headers[period + 2].GetAttribute("scope"));
+
+        // The cells sit under their headers: the same position in the row as in the header row.
+        var row = cut.Find("tbody tr");
+        var positions = row.Children.ToList();
+
+        Assert.Equal(period + 1, positions.FindIndex(c => c.ClassList.Contains("munin-explorer-dataitem-main__kodeverk")));
+        Assert.Equal(period + 2, positions.FindIndex(c => c.ClassList.Contains("munin-explorer-dataitem-main__statistikk")));
+    }
+
+    [Theory]
+    [InlineData("no", true, false, "Ja", "Nei")]
+    [InlineData("no", false, true, "Nei", "Ja")]
+    [InlineData("no", true, true, "Ja", "Ja")]
+    [InlineData("no", false, false, "Nei", "Nei")]
+    [InlineData("en", true, false, "Yes", "No")]
+    [InlineData("en", false, true, "No", "Yes")]
+    public void View_WhenAVariableCarriesCoverageFlags_ThenEachCellSaysItsOwnInWords(
+        string language, bool kodeverk, bool statistics, string kodeverkText, string statisticsText)
+    {
+        // Words, not a tick: a glyph alone says nothing to a screen reader and nothing to a reader
+        // who has not learned the legend. The two flags are read independently, so a cell reading
+        // the other column's flag fails here in two rows out of six.
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { HasKodeverk = kodeverk, HasStatistics = statistics };
+
+        var cut = RenderView(new ListClient(item), language: language);
+
+        Assert.Equal(kodeverkText, CellText(cut, "kodeverk"));
+        Assert.Equal(statisticsText, CellText(cut, "statistikk"));
+        Assert.Equal("TD", cut.Find(".munin-explorer-dataitem-main__kodeverk").TagName);
+    }
+
+    [Fact]
+    public void View_WhenTheCoverageIsUnknown_ThenTheCellSaysNotSpecifiedRatherThanNo()
+    {
+        // The API sends null for an entry whose variable left the read model. "Nei" there would be
+        // a claim about a variable nobody can see; an empty cell would read as a fault.
+        var cut = RenderView(new ListClient(Orphan()));
+
+        Assert.Equal("Ikke oppgitt", CellText(cut, "kodeverk"));
+        Assert.Equal("Ikke oppgitt", CellText(cut, "statistikk"));
+    }
+
+    [Fact]
+    public void View_WhenACoverageCellIsDrawn_ThenItIsNotMarkedNorwegian()
+    {
+        // Ja and Nei are the component's words in the reader's language, not the catalogue's.
+        var cut = RenderView(
+            new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { HasKodeverk = true, HasStatistics = false }),
+            language: "en");
+
+        Assert.Empty(cut.Find(".munin-explorer-dataitem-main__kodeverk").QuerySelectorAll("[lang]"));
+        Assert.Empty(cut.Find(".munin-explorer-dataitem-main__statistikk").QuerySelectorAll("[lang]"));
     }
 
     [Fact]

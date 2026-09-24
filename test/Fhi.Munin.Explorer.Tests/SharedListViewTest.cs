@@ -286,6 +286,25 @@ public class SharedListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Open_WhenASharedListIsShown_ThenItHasTheCoverageColumnsAndSaysTheyAreNotKnown()
+    {
+        // The same row cells as an own list, so the same two columns. A snapshot carries no
+        // coverage flags — the share body is Runa's field set — so "Nei" here would be invented.
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Kollegas liste", Three);
+
+        var cut = RenderView(new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] }, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        Assert.Equal("Kodeverk", cut.Find("thead th.munin-explorer-dataitem-header__kodeverk").TextContent.Trim());
+        Assert.Equal("Statistikk", cut.Find("thead th.munin-explorer-dataitem-header__statistikk").TextContent.Trim());
+        Assert.Equal(3, cut.FindAll("td.munin-explorer-dataitem-main__kodeverk").Count);
+        Assert.All(
+            cut.FindAll("td.munin-explorer-dataitem-main__kodeverk, td.munin-explorer-dataitem-main__statistikk"),
+            cell => Assert.Equal("Ikke oppgitt", cell.TextContent.Trim()));
+    }
+
+    [Fact]
     public void Open_WhenALinkFailsToLoad_ThenTheAlertSaysTheListCouldNotBeOpened()
     {
         var client = new ShareClient(new ShareStore())
