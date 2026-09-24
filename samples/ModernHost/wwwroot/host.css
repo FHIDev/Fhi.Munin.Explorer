@@ -1050,9 +1050,26 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
   height: auto;
 }
 
-/* base/_icons.scss — the resting chevrons. Since Stiler 0.1.110 (Fhi.Metadata-trfs0) the explorer's
-   partials carry only the blue hover, so these two draw the rest state on both surfaces. Kept
-   above the result vocabulary: the expand icons' `background-size: 1rem` must win on order. */
+/* base/_icons.scss: the icon box and the two chevrons, which draw the rest state since Stiler 0.1.110
+   (Fhi.Metadata-trfs0). Kept above the result vocabulary so the expand icons' size wins on order. */
+.icon {
+  content: "";
+  height: 1.5rem;
+  width: 1.5rem;
+  display: inline-block;
+  position: relative;
+  margin-right: 8px;
+}
+
+.icon--nomargin {
+  margin: 0;
+}
+
+.icon--right {
+  margin-right: 0;
+  margin-left: 8px;
+}
+
 .icon-keyboard-arrow-down {
   background: url(../img/icons/keyboard-arrow/icon_down.svg) no-repeat center/1.5rem;
 }
@@ -2613,9 +2630,8 @@ table.munin-explorer-data-list tbody th {
   z-index: 99;
 }
 
-/* No icon font here, so the trigger's icons are characters — the row chevron is images now.
-   Scoped to the trigger: an unscoped .icon-keyboard-arrow-down::before would also land on the
-   row's expand icon and draw two arrows over each other. */
+/* The picker's chevrons are Stiler's base images; its layout icon has none here, so it stays a
+   character, scoped to the trigger. */
 .munin-explorer-header__actions-button > .icon {
   margin-right: 8px;
 }
@@ -2630,14 +2646,6 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-header__actions-button > .icon-layout::before {
   content: "⊞";           /* ⊞ */
-}
-
-.munin-explorer-header__actions-button > .icon-keyboard-arrow-down::before {
-  content: "▾";           /* ▾ */
-}
-
-.munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before {
-  content: "▴";           /* ▴ */
 }
 
 /* Both chevrons are drawn and one is hidden, because the component ships no script and cannot
@@ -4635,10 +4643,9 @@ table.munin-explorer-data-list tbody th {
   }
 }
 
-/* ---- mirrored from Fhi.Helsedata.Stiler 0.1.113 when samples/HostileHost's pin moved there
-   from 0.1.107 (Fhi.Metadata-9h4f8). Declarations are Stiler's, verbatim, apart from the typeface.
-   Several names here are emitted by nothing in src/ yet (Fhi.Metadata-9mxmw, Fhi.Metadata-yaco2);
-   the rules are mirrored ahead of the markup so the stand-in matches the pin when it arrives. */
+/* ---- mirrored from Fhi.Helsedata.Stiler 0.1.113 (Fhi.Metadata-9h4f8), verbatim bar the typeface.
+   Some names are emitted by nothing in src/ yet (Fhi.Metadata-9mxmw, Fhi.Metadata-yaco2); the
+   rules are here ahead of the markup so the stand-in already matches the pin. */
 
 /* 0.1.112 (Fhi.Metadata-35w0p.56): the variable name at the top of Runa's row drawer. */
 .munin-explorer-meta .munin-explorer-meta__heading {

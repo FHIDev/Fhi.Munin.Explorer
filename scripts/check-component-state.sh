@@ -26,9 +26,9 @@
 # own tick beside it is a question a render tree cannot answer. (Fhi.Metadata-kd9ts)
 #
 # And it asks both row chevrons which PICTURE they draw in each of their four states. That is a
-# question about a cascade rather than about a class name: `icon-keyboard-arrow-down` means shut
-# only where `[aria-expanded=false]` reaches it, and no test in test/ resolves a rule at all.
-# (Fhi.Metadata-l9l2n.84)
+# question about a cascade rather than about a class name: base icon rules draw the rest state and
+# the explorer's hover rules sit over them (Fhi.Metadata-trfs0), and no test in test/ resolves a
+# rule at all. (Fhi.Metadata-l9l2n.84)
 #
 # And it asks a detail page's sticky fact bar when it appears, which is neither a press nor a render
 # tree question at all: the bar is drawn hidden and an IntersectionObserver shows it, so the answer

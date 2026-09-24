@@ -60,8 +60,8 @@
 # Stiler 0.1.75 retires three entries: the expand icon's width and the choicepicker's two
 # declarations now exist in the package. 214 entries remained then; no new exceptions were added.
 #
-# IT WAS 323 BEFORE Fhi.Metadata-9h4f8 and 313 after it, on Stiler 0.1.113: 6xppi's six --cols-16/17/18
-# lines, the two resting -up chevron lines (base icon rules draw rest now) and trfs0's two Runa hover lines.
+# IT WAS 323 BEFORE Fhi.Metadata-9h4f8 and 311 after it, on Stiler 0.1.113: 6xppi's six --cols-16/17/18
+# lines, trfs0's two Runa hover lines, and four chevron stand-ins Stiler's base icon rules now replace.
 #
 # IT WAS 336 BEFORE Fhi.Metadata-4gjgp and 323 after it. The choicepicker's thirteen went, the
 # ten the bead tabulated and the list's invented colour, margin and z-index, measured open at
@@ -534,9 +534,7 @@ invented-selector||.munin-explorer-page__section|scroll-margin-top
 # Redundant: `.munin-explorer-hierarchy__nodes` already sets `padding-left: 0`, in the sample and in Stiler.
 invented-selector||.munin-explorer-hierarchy > .munin-explorer-hierarchy__nodes|padding-left
 
-# The samples have no icon font, so the trigger's icons are characters. Stiler has nothing to match.
-invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow-down::before|content
-invented-selector||.munin-explorer-header__actions-button > .icon-keyboard-arrow-up::before|content
+# The samples carry no layout icon image, so the trigger's layout icon is a character. Stiler has nothing to match.
 invented-selector||.munin-explorer-header__actions-button > .icon-layout::before|content
 
 # Stiler gates the two tracks on :has() and leaves a one-child body alone; the sample also takes
