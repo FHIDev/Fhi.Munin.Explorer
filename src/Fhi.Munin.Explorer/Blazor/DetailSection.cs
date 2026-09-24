@@ -26,13 +26,15 @@ namespace Fhi.Munin.Explorer.Blazor;
 public sealed class DetailSection : ComponentBase
 {
     /// <summary>
-    /// The element id, which a reader's deep link ends in. A fixed English literal, or one derived
-    /// from the catalogue's own section key under a <c>section-</c> prefix — never from the
-    /// heading, which is bilingual and would resolve for a reader in one language and nobody in the
-    /// other. A key stripped of what a fragment cannot carry, and numbered where two strip alike.
+    /// The element id, which a reader's deep link ends in. A fixed English literal under the
+    /// <c>munin-explorer-</c> prefix, or one derived from the catalogue's own section key under
+    /// <c>munin-explorer-section-</c> — never from the heading, which is bilingual and would resolve
+    /// for a reader in one language and nobody in the other. A key stripped of what a fragment
+    /// cannot carry, and numbered where two strip alike.
     /// </summary>
     /// <remarks>
-    /// Nothing per-instance goes in it, so a page mounts one detail view. Two of them write these
+    /// The prefix keeps it clear of the host page's own ids. Nothing per-instance goes in it, so
+    /// the id is the same for every reader and a page mounts one detail view. Two of them write these
     /// ids twice, and the second view's contents nav then scrolls the reader into the first view's
     /// sections, because a browser resolves a fragment to the first element that matches.
     /// </remarks>

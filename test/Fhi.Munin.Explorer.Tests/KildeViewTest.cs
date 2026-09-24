@@ -836,7 +836,7 @@ public class KildeViewTest : ExplorerTestContext
         // Beskrivelse section held only the description, so it must not draw a hollow heading.
         var cut = Render(DescribedTwice(), language);
 
-        var rows = cut.Find("section#section-om-registeret dl.munin-explorer-page__fields");
+        var rows = cut.Find("section#munin-explorer-section-om-registeret dl.munin-explorer-page__fields");
 
         Assert.Equal(["Formål", "Anbefalte bruksområder"], Labels(rows));
         Assert.Contains("Om registeret", BlockHeadings(cut));
@@ -1618,6 +1618,14 @@ public class KildeViewTest : ExplorerTestContext
                      Render(Kilde(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
 
+    [Fact]
+    public void Links_Always_ThenEveryInPageHrefHasATarget()
+    {
+        // Every link with a fragment, not only the nav's: an id renamed in one place and not the
+        // other is a jump to nowhere that no markup assertion names (Fhi.Metadata-uobxg).
+        InPageLinks.AssertEachHasOneTarget(Render(Study()));
+    }
+
     [Theory]
     [InlineData("study")]
     [InlineData("kilde")]
@@ -1631,7 +1639,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
 
-        // Resolved through the DOM rather than compared as strings: `#metadata` is also the CSS
+        // Resolved through the DOM rather than compared as strings: `#munin-explorer-metadata` is also the CSS
         // selector for the element it has to land on, so this is the browser's own question.
         Assert.All(Targets(cut), href => Assert.NotNull(cut.Find(href)));
     }
@@ -2634,7 +2642,7 @@ public class KildeViewTest : ExplorerTestContext
             Sections = [Section("om-registeret", "Om registeret", 1000)],
         });
 
-        Assert.Equal(["Formål"], Labels(cut.Find("section#section-om-registeret dl.munin-explorer-page__fields")));
+        Assert.Equal(["Formål"], Labels(cut.Find("section#munin-explorer-section-om-registeret dl.munin-explorer-page__fields")));
     }
 
     [Fact]
@@ -2649,6 +2657,6 @@ public class KildeViewTest : ExplorerTestContext
             Sections = [Section("om-registeret", "Om registeret", 1000)],
         });
 
-        Assert.Equal(["Kortnavn"], Labels(cut.Find("section#section-om-registeret dl.munin-explorer-page__fields")));
+        Assert.Equal(["Kortnavn"], Labels(cut.Find("section#munin-explorer-section-om-registeret dl.munin-explorer-page__fields")));
     }
 }

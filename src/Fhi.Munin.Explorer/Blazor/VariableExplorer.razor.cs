@@ -29,7 +29,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// of ours as well.
 /// </para>
 /// <para>
-/// <b>A fragment is kept, never written.</b> The section a reader jumped to — <c>#metadata</c>, say
+/// <b>A fragment is kept, never written.</b> The section a reader jumped to — <c>#munin-explorer-metadata</c>, say
 /// — survives every rewrite while the view it names is the one on screen, so the address bar stays
 /// a link worth copying, and it is dropped at the first different search, facet, page, sort or open
 /// variable. No link this component builds carries a fragment taken from the address, because an id

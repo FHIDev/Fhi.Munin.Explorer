@@ -111,20 +111,40 @@ THEIRS=(
   # VariableSearchTest's `invented` assertions, which annotate the prefix name by name.
 )
 
-# Names in the prefix that are ours but are not classes: element ids the package writes down in
-# prose without the `-{instance}` suffix that completes them at runtime. A stylesheet cannot have
-# a rule for them, because `.munin-explorer-source` selects nothing — the attribute is `id`.
+# Names in the prefix that are ours but are not classes: element ids the package writes down
+# bare, in prose or as a constant. A stylesheet cannot have a rule for them, because
+# `.munin-explorer-source` selects nothing — the attribute is `id`. They come in two kinds.
 #
-# The `-$` filter below catches the ones written with their trailing hyphen; these are the ones
-# written bare, in a sentence explaining what they are. `munin-explorer-source` is the whole
-# list and arrived that way: it was a class while the kilde opened inside the variable's panel,
-# and became an id prefix when the panel became a drill-in, leaving prose that still names it.
+# A per-instance stem, completed at runtime by a `-{instance}` suffix. The `-$` filter below
+# catches the ones written with their trailing hyphen; `munin-explorer-source` is written bare.
+# It was a class while the kilde opened inside the variable's panel, and became an id prefix
+# when the panel became a drill-in, leaving prose that still names it.
+#
+# A whole detail-view section id, from DetailSectionIds: complete as written and no suffix ever
+# follows, the same for every reader so a deep link resolves (Fhi.Metadata-uobxg). `-statistics`
+# and `-versions` are absent because they are also classes, and styled as such.
+#
+# `munin-explorer-source` is both kinds — DetailSectionIds.Source writes it whole — so it stays
+# listed even if the stem's prose goes away.
 #
 # Kept apart from THEIRS on purpose. THEIRS means "something else styles this, so a missing rule
 # here costs nothing"; this means "no rule is possible". Filing one under the other would claim
 # the name is styled somewhere, which it is not — it is not a class at all.
 IDS=(
   munin-explorer-source
+  munin-explorer-accesscriteria
+  munin-explorer-codelists
+  munin-explorer-criteria
+  munin-explorer-datacollections
+  munin-explorer-dataperiod
+  munin-explorer-datatype
+  munin-explorer-instruments
+  munin-explorer-metadata
+  munin-explorer-placement
+  munin-explorer-prices
+  munin-explorer-validity
+  munin-explorer-variablegroups
+  munin-explorer-variables
 )
 
 # The same idea one attribute further out: names in the prefix that are neither classes nor ids,

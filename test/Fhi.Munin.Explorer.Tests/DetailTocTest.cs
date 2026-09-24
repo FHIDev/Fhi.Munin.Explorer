@@ -21,7 +21,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <b>What the href tests here cannot prove.</b> They read the <c>href</c> ATTRIBUTE, which is a
 /// string in a render tree. What broke on helsedata is what the browser RESOLVES that string to
 /// against the page's <c>&lt;base href&gt;</c>, and bUnit has no base element and no URL resolver,
-/// so it would report <c>#metadata</c> as correct in the broken build and the fixed one alike. The
+/// so it would report <c>#munin-explorer-metadata</c> as correct in the broken build and the fixed one alike. The
 /// resolved value is measured in a browser, by the contents-nav assertion in
 /// <c>scripts/state-assertions.mjs</c>. These tests pin the string that assertion depends on.
 /// </para>
@@ -60,7 +60,7 @@ public class DetailTocTest : ExplorerTestContext
         // scroll-margin-top keeps the heading clear of a sticky header, and no script runs.
         var cut = RenderToc(Three);
 
-        Assert.Equal(["/#metadata", "/#source", "/#statistics"],
+        Assert.Equal(["/#munin-explorer-metadata", "/#munin-explorer-source", "/#munin-explorer-statistics"],
                      cut.FindAll("a").Select(a => a.GetAttribute("href")));
 
         Assert.Equal(["Metadata", "Kildeinformasjon", "Statistikk"],
@@ -89,11 +89,11 @@ public class DetailTocTest : ExplorerTestContext
     {
         // A reader who arrived on a deep link, or pressed an entry in a host that told Blazor
         // about it. Two fragments in one href point at nothing at all.
-        Arrive("http://localhost/kilder?kilde=abc#source");
+        Arrive("http://localhost/kilder?kilde=abc#munin-explorer-source");
 
         var cut = RenderToc(Three);
 
-        Assert.Equal("/kilder?kilde=abc#metadata", cut.FindAll("a")[0].GetAttribute("href"));
+        Assert.Equal("/kilder?kilde=abc#munin-explorer-metadata", cut.FindAll("a")[0].GetAttribute("href"));
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class DetailTocTest : ExplorerTestContext
 
         var cut = RenderToc(Three, "/kilder?kilde=abc");
 
-        Assert.Equal("/kilder?kilde=abc#metadata", cut.FindAll("a")[0].GetAttribute("href"));
+        Assert.Equal("/kilder?kilde=abc#munin-explorer-metadata", cut.FindAll("a")[0].GetAttribute("href"));
     }
 
     [Fact]
@@ -119,12 +119,12 @@ public class DetailTocTest : ExplorerTestContext
 
         var cut = RenderToc(Three);
 
-        Assert.Equal("/kilder?kilde=one#metadata", cut.FindAll("a")[0].GetAttribute("href"));
+        Assert.Equal("/kilder?kilde=one#munin-explorer-metadata", cut.FindAll("a")[0].GetAttribute("href"));
 
         Arrive("http://localhost/kilder?kilde=two");
 
         cut.WaitForAssertion(() => Assert.Equal(
-            "/kilder?kilde=two#metadata", cut.FindAll("a")[0].GetAttribute("href")));
+            "/kilder?kilde=two#munin-explorer-metadata", cut.FindAll("a")[0].GetAttribute("href")));
     }
 
     [Fact]

@@ -406,6 +406,16 @@ public class InstrumentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Links_Always_ThenEveryInPageHrefHasATarget()
+    {
+        // Every link with a fragment, not only the nav's: an id renamed in one place and not the
+        // other is a jump to nowhere that no markup assertion names (Fhi.Metadata-uobxg).
+        var cut = RenderSearch(new InstrumentClient(instrument: Instrument()), instrumentId: Sf36);
+
+        InPageLinks.AssertEachHasOneTarget(cut.FindComponent<InstrumentView>());
+    }
+
+    [Fact]
     public void InstrumentPage_Always_ThenItsRootInventsNoClassNameOfItsOwn()
     {
         // The whole reason this view is built on the shared chassis: every name it emits already has

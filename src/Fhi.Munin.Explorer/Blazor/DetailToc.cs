@@ -25,7 +25,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// resolved against the document's <c>&lt;base href&gt;</c> rather than against the page being
 /// read, and helsedata's Optimizely host sets that to <c>/</c>, so every link left the page for the
 /// site root instead of scrolling. The query goes with the path because a browser treats a fragment
-/// jump as same-document only when the path and the query both match: <c>/MuninKelda/#metadata</c>
+/// jump as same-document only when the path and the query both match: <c>/MuninKelda/#munin-explorer-metadata</c>
 /// pressed on <c>/MuninKelda/?kilde=…</c> is a fresh load of that page with no kilde open, which
 /// loses the reader's place by a quieter route than the site root does.
 /// </para>

@@ -59,7 +59,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal($"/cms/kilder?kilde={collection.ParentKildeId}", links[1].GetAttribute("href"));
         var compact = cut.Find(".munin-explorer-page__stuckbar a");
         Assert.Equal(compactText, AccessibleName.Of(compact));
-        Assert.All(new[] { links[0], compact, cut.Find("#section-variabler a") },
+        Assert.All(new[] { links[0], compact, cut.Find("#munin-explorer-section-variabler a") },
             link => Assert.Equal(target, link.GetAttribute("href")));
         Assert.True(cut.Find(".munin-explorer-page__stuckbar").HasAttribute("hidden"));
         var ids = cut.FindAll("[id]").Select(element => element.Id).ToArray();
@@ -75,7 +75,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             .Add(c => c.ShowVariables, () => count++)
             .Add(c => c.ShowKilde, id => source = id));
         cut.Find(".munin-explorer-datasamling > .munin-explorer-page__actions button").Click();
-        cut.Find("#section-variabler button").Click();
+        cut.Find("#munin-explorer-section-variabler button").Click();
         cut.Find(".munin-explorer-page__stuckbar button").Click();
         Assert.Equal(3, count);
         var next = Placed() with { ParentKildeId = Guid.NewGuid() };
@@ -104,7 +104,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             .Add(c => c.Language, language)
             .Add(c => c.VariablesHref, "/variables"));
 
-        Assert.Equal(text, cut.Find("#section-variabler a").TextContent.Trim());
+        Assert.Equal(text, cut.Find("#munin-explorer-section-variabler a").TextContent.Trim());
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             .Add(c => c.ShowVariables, () => Task.FromException(signal)));
 
         var thrown = await Assert.ThrowsAsync<NavigationException>(() =>
-            cut.Find("#section-variabler button").ClickAsync(new()));
+            cut.Find("#munin-explorer-section-variabler button").ClickAsync(new()));
 
         Assert.Same(signal, thrown);
     }
@@ -131,7 +131,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             .Add(c => c.Language, language)
             .Add(c => c.VariablesHref, "/variables?datasamlingIds=collection"));
 
-        var section = cut.Find("#section-variabler");
+        var section = cut.Find("#munin-explorer-section-variabler");
         Assert.Equal(text, Assert.Single(section.QuerySelectorAll("a")).TextContent.Trim());
         Assert.Equal("/variables?datasamlingIds=collection", section.QuerySelector("a")!.GetAttribute("href"));
         Assert.Empty(section.QuerySelectorAll("table"));
@@ -146,7 +146,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             .Add(c => c.Datasamling, Placed() with { StatisticsType = null, Frequency = null, CountingUnit = null })
             .Add(c => c.VariablesHref, "/variables"));
 
-        Assert.Contains("Vis alle 99 variabler", cut.Find("#section-variabler").TextContent);
+        Assert.Contains("Vis alle 99 variabler", cut.Find("#munin-explorer-section-variabler").TextContent);
         Assert.Empty(cut.FindAll("#" + DetailSectionIds.Statistics));
     }
 
@@ -159,7 +159,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render<DatasamlingView>(b => b.Add(c => c.Datasamling, Placed())
             .Add(c => c.VariablesHref, href));
 
-        Assert.Empty(cut.Find("#section-variabler").QuerySelectorAll("a, button"));
+        Assert.Empty(cut.Find("#munin-explorer-section-variabler").QuerySelectorAll("a, button"));
     }
 
     [Fact]
@@ -168,7 +168,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render<DatasamlingView>(b => b.Add(c => c.Datasamling, Placed() with { VariableCount = 0 })
             .Add(c => c.VariablesHref, "/variables"));
 
-        Assert.Empty(cut.Find("#section-variabler").QuerySelectorAll("a, button"));
+        Assert.Empty(cut.Find("#munin-explorer-section-variabler").QuerySelectorAll("a, button"));
     }
 
     /// <summary>
@@ -574,7 +574,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     private static void AssertIdentification(IRenderedComponent<DatasamlingView> cut, string language, string expected)
     {
         Assert.Equal(expected, Value(Hero(cut), language == "en" ? "Personal identification" : "Personidentifikasjon"));
-        Assert.Equal(expected, Value(cut.Find("#section-datakilde"), "Grad av personidentifikasjon"));
+        Assert.Equal(expected, Value(cut.Find("#munin-explorer-section-datakilde"), "Grad av personidentifikasjon"));
         Assert.Equal(expected, Value(cut.Find(".munin-explorer-complete-record__fields"), "Grad av personidentifikasjon"));
     }
 
@@ -651,7 +651,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         AssertIdentification(cut, "en", "Avidentifiserte data");
         Assert.Equal("no", Cell(Hero(cut), "Personal identification").QuerySelector("dd [lang]")!.GetAttribute("lang"));
-        Assert.Equal("no", Row(cut.Find("#section-datakilde"), "Grad av personidentifikasjon")
+        Assert.Equal("no", Row(cut.Find("#munin-explorer-section-datakilde"), "Grad av personidentifikasjon")
             .QuerySelector("dd")!.GetAttribute("lang"));
     }
 
@@ -981,7 +981,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         };
 
         var cut = Render(detail, language: language);
-        var section = cut.Find("#section-kvalitetsnote");
+        var section = cut.Find("#munin-explorer-section-kvalitetsnote");
 
         Assert.Single(section.QuerySelectorAll("h2, h3, h4, h5, h6"));
         Assert.Equal(label, section.QuerySelector("dt.screenreader-only")?.TextContent);
@@ -989,9 +989,9 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal("https://example.org/report", section.QuerySelector("dd a")?.GetAttribute("href"));
         Assert.Equal("Se rapporten.", section.QuerySelector("dd")?.TextContent.Trim());
         Assert.Equal(language == "en" ? "no" : null, section.QuerySelector("dd")?.GetAttribute("lang"));
-        Assert.Contains("#section-om-datasamlingen", Targets(cut));
-        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
-        Assert.NotNull(cut.Find("#section-om-datasamlingen #section-kvalitetsnote"));
+        Assert.Contains("#munin-explorer-section-om-datasamlingen", Targets(cut));
+        Assert.DoesNotContain("#munin-explorer-section-kvalitetsnote", Targets(cut));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-section-kvalitetsnote"));
     }
 
     [Fact]
@@ -1007,7 +1007,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         var cut = Render(detail);
 
-        Assert.Equal("Dekningsgrad", cut.Find("#section-kvalitetsnote dt:not(.screenreader-only)").TextContent);
+        Assert.Equal("Dekningsgrad", cut.Find("#munin-explorer-section-kvalitetsnote dt:not(.screenreader-only)").TextContent);
     }
 
     [Fact]
@@ -1032,7 +1032,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(detail);
 
         Assert.Equal(["Kvalitetsnote", "Merknad"],
-            cut.FindAll("#section-kvalitetsnote dt:not(.screenreader-only)").Select(term => term.TextContent));
+            cut.FindAll("#munin-explorer-section-kvalitetsnote dt:not(.screenreader-only)").Select(term => term.TextContent));
     }
 
     [Theory]
@@ -1059,7 +1059,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             };
         }
 
-        var section = Render(detail).Find($"#section-{sectionKey}");
+        var section = Render(detail).Find($"#munin-explorer-section-{sectionKey}");
 
         Assert.Equal(2, section.QuerySelectorAll("dl").Length);
         Assert.Contains(appendedLabel, section.QuerySelectorAll("dl")[1].QuerySelectorAll("dt")
@@ -1079,7 +1079,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             AdditionalProperties = new Dictionary<string, string?> { ["Kvalitetsnote"] = "Foreløpige tall." },
         };
 
-        var section = Render(detail).Find("#section-variabler");
+        var section = Render(detail).Find("#munin-explorer-section-variabler");
 
         Assert.Single(section.QuerySelectorAll("dl"));
         Assert.Equal("Variabler", section.QuerySelector("dt.screenreader-only")?.TextContent);
@@ -1224,9 +1224,9 @@ public class DatasamlingViewTest : ExplorerTestContext
             ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
 
-        Assert.NotNull(cut.Find("#section-om-datasamlingen #section-kvalitetsnote"));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-section-kvalitetsnote"));
         Assert.Contains("Kvalitetsnote", SectionLabels(cut, "Om datasamlingen"));
-        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
+        Assert.DoesNotContain("#munin-explorer-section-kvalitetsnote", Targets(cut));
     }
 
     // ---------------------------------------------------------------------------------
@@ -1315,12 +1315,12 @@ public class DatasamlingViewTest : ExplorerTestContext
              "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(
-            ["section-om-datasamlingen",
-             "section-variabler", "section-datakilde", "section-alle-metadatafelt"],
+            ["munin-explorer-section-om-datasamlingen",
+             "munin-explorer-section-variabler", "munin-explorer-section-datakilde", "munin-explorer-section-alle-metadatafelt"],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
-        Assert.NotNull(cut.Find("#section-om-datasamlingen #criteria"));
-        Assert.DoesNotContain("#criteria", Targets(cut));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria"));
+        Assert.DoesNotContain("#munin-explorer-criteria", Targets(cut));
     }
 
     [Fact]
@@ -1336,13 +1336,13 @@ public class DatasamlingViewTest : ExplorerTestContext
             ["Om datasamlingen", "Variabler", "Datakilde", "Alle metadatafelt"],
             BlockHeadings(cut));
         Assert.Equal(
-            ["section-om-datasamlingen", "section-variabler",
-             "section-datakilde", "section-alle-metadatafelt"],
+            ["munin-explorer-section-om-datasamlingen", "munin-explorer-section-variabler",
+             "munin-explorer-section-datakilde", "munin-explorer-section-alle-metadatafelt"],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
         Assert.Equal(Wrappers(cut).Select(section => section.FirstElementChild!.TextContent), Entries(cut));
         Assert.Single(cut.FindAll("#" + DetailSectionIds.Criteria));
-        Assert.NotNull(cut.Find("#section-om-datasamlingen #criteria"));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria"));
     }
 
     [Theory]
@@ -1355,13 +1355,13 @@ public class DatasamlingViewTest : ExplorerTestContext
     {
         var cut = Render(CriteriaSeeded(), headingLevel: headingLevel);
 
-        var subsection = cut.Find("#section-om-datasamlingen #criteria");
+        var subsection = cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria");
         Assert.Equal("-1", subsection.GetAttribute("tabindex"));
         Assert.False(subsection.HasAttribute("data-nav-section"));
         Assert.Contains("munin-explorer-page__anchor", subsection.ClassList);
         Assert.Equal(tagName, subsection.FirstElementChild!.TagName);
         Assert.Contains("headline-xxs", subsection.FirstElementChild.ClassList);
-        Assert.DoesNotContain("#criteria", Targets(cut));
+        Assert.DoesNotContain("#munin-explorer-criteria", Targets(cut));
     }
 
     [Fact]
@@ -1388,8 +1388,8 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal(["Variabler", "Datakilde", "Om utvalget", "Alle metadatafelt"],
                      BlockHeadings(cut));
         Assert.Equal(BlockHeadings(cut), Entries(cut));
-        Assert.NotNull(cut.Find("#section-om-datasamlingen #criteria"));
-        Assert.NotNull(cut.Find("#section-om-datasamlingen #section-kvalitetsnote"));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria"));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-section-kvalitetsnote"));
     }
 
     [Fact]
@@ -1399,13 +1399,13 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(sparse with { EffectiveInclusionAndExclusionCriteria = "Arvede kriterier." });
 
         Assert.Equal(["Om datasamlingen"], BlockHeadings(cut));
-        Assert.Equal(["#section-om-datasamlingen"], Targets(cut));
-        Assert.NotNull(cut.Find("#section-om-datasamlingen #criteria"));
+        Assert.Equal(["#munin-explorer-section-om-datasamlingen"], Targets(cut));
+        Assert.NotNull(cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-criteria"));
 
         cut.Render(p => p.Add(c => c.Datasamling, sparse));
 
-        Assert.Empty(cut.FindAll("#section-om-datasamlingen"));
-        Assert.Empty(cut.FindAll("#criteria"));
+        Assert.Empty(cut.FindAll("#munin-explorer-section-om-datasamlingen"));
+        Assert.Empty(cut.FindAll("#munin-explorer-criteria"));
     }
 
     [Fact]
@@ -1425,7 +1425,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling() with { Sections = [] });
 
         Assert.Equal(
-            [DetailSectionIds.Metadata, "section-om-datasamlingen", DetailSectionIds.Source,
+            [DetailSectionIds.Metadata, "munin-explorer-section-om-datasamlingen", DetailSectionIds.Source,
              DetailSectionIds.Statistics],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
@@ -1468,7 +1468,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var criteria = Assert.Single(cut.FindAll(".munin-explorer-datasamling__criteria"));
         Assert.Equal(expected, criteria.TextContent.Trim());
         Assert.Equal(language == "en" ? "no" : null, criteria.GetAttribute("lang"));
-        Assert.NotNull(criteria.Closest("#section-om-datasamlingen"));
+        Assert.NotNull(criteria.Closest("#munin-explorer-section-om-datasamlingen"));
         Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
     }
 
@@ -1488,7 +1488,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             EffectiveInclusionAndExclusionCriteria = "Arvede kriterier.",
         }));
         Assert.Equal("Arvede kriterier.", cut.Find(".munin-explorer-datasamling__criteria").TextContent.Trim());
-        Assert.Contains("#section-om-datasamlingen", Targets(cut));
+        Assert.Contains("#munin-explorer-section-om-datasamlingen", Targets(cut));
         Assert.DoesNotContain("#" + DetailSectionIds.Criteria, Targets(cut));
 
         cut.Render(p => p.Add(c => c.Datasamling, empty));
@@ -1508,8 +1508,8 @@ public class DatasamlingViewTest : ExplorerTestContext
         });
 
         Assert.DoesNotContain("Kvalitetsnote", BlockHeadings(cut));
-        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
-        Assert.Empty(cut.FindAll("#section-kvalitetsnote"));
+        Assert.DoesNotContain("#munin-explorer-section-kvalitetsnote", Targets(cut));
+        Assert.Empty(cut.FindAll("#munin-explorer-section-kvalitetsnote"));
     }
 
     [Theory]
@@ -1522,13 +1522,13 @@ public class DatasamlingViewTest : ExplorerTestContext
     {
         var cut = Render(CriteriaSeeded(), headingLevel: headingLevel);
 
-        var note = Assert.Single(cut.FindAll("#section-om-datasamlingen #section-kvalitetsnote"));
+        var note = Assert.Single(cut.FindAll("#munin-explorer-section-om-datasamlingen #munin-explorer-section-kvalitetsnote"));
         Assert.Equal(tagName, note.FirstElementChild!.TagName);
         Assert.Contains("headline-xxs", note.FirstElementChild.ClassList);
         Assert.Contains("munin-explorer-page__anchor", note.ClassList);
         Assert.Equal("-1", note.GetAttribute("tabindex"));
         Assert.False(note.HasAttribute("data-nav-section"));
-        Assert.DoesNotContain("#section-kvalitetsnote", Targets(cut));
+        Assert.DoesNotContain("#munin-explorer-section-kvalitetsnote", Targets(cut));
         Assert.Single(note.QuerySelectorAll("dd"));
     }
 
@@ -1548,13 +1548,13 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(onlyNote);
 
         Assert.Equal(["Om datasamlingen"], BlockHeadings(cut));
-        Assert.Equal(["#section-om-datasamlingen"], Targets(cut));
-        Assert.Equal("En kvalitetsnote.", cut.Find("#section-om-datasamlingen #section-kvalitetsnote dd").TextContent);
+        Assert.Equal(["#munin-explorer-section-om-datasamlingen"], Targets(cut));
+        Assert.Equal("En kvalitetsnote.", cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-section-kvalitetsnote dd").TextContent);
 
         cut.Render(p => p.Add(c => c.Datasamling, onlyNote with { AdditionalProperties = new Dictionary<string, string?>() }));
 
-        Assert.Empty(cut.FindAll("#section-om-datasamlingen"));
-        Assert.Empty(cut.FindAll("#section-kvalitetsnote"));
+        Assert.Empty(cut.FindAll("#munin-explorer-section-om-datasamlingen"));
+        Assert.Empty(cut.FindAll("#munin-explorer-section-kvalitetsnote"));
     }
 
     [Fact]
@@ -1563,9 +1563,9 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(CriteriaSeeded(), language: "en");
 
         Assert.DoesNotContain("Quality note", BlockHeadings(cut));
-        Assert.Equal("Quality note", cut.Find("#section-om-datasamlingen #section-kvalitetsnote > h4").TextContent);
+        Assert.Equal("Quality note", cut.Find("#munin-explorer-section-om-datasamlingen #munin-explorer-section-kvalitetsnote > h4").TextContent);
 
-        var note = cut.Find("#section-kvalitetsnote dd");
+        var note = cut.Find("#munin-explorer-section-kvalitetsnote dd");
         var marked = note.GetAttribute("lang") ?? note.QuerySelector("[lang]")?.GetAttribute("lang");
 
         Assert.Equal("Dekningsgraden er målt mot Norsk pasientregister.", note.TextContent.Trim());
@@ -1600,8 +1600,8 @@ public class DatasamlingViewTest : ExplorerTestContext
         var english = Render(Placed(), language: "en");
 
         Assert.Equal(
-            ["section-om-datasamlingen", "section-variabler", "section-datakilde",
-             "section-alle-metadatafelt"],
+            ["munin-explorer-section-om-datasamlingen", "munin-explorer-section-variabler", "munin-explorer-section-datakilde",
+             "munin-explorer-section-alle-metadatafelt"],
             Wrappers(norwegian).Select(section => section.Id!));
 
         Assert.Equal(Wrappers(norwegian).Select(s => s.Id!), Wrappers(english).Select(s => s.Id!));
@@ -1638,7 +1638,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var ids = Wrappers(cut).Select(section => section.Id!).ToList();
 
         Assert.Equal(ids.Count, ids.Distinct(StringComparer.Ordinal).Count());
-        Assert.Contains("section-om-datasamlingen-2", ids);
+        Assert.Contains("munin-explorer-section-om-datasamlingen-2", ids);
     }
 
     [Fact]
@@ -1690,7 +1690,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         });
 
         Assert.Equal(
-            ["section-om-datasamlingen", "section-alle-metadatafelt"],
+            ["munin-explorer-section-om-datasamlingen", "munin-explorer-section-alle-metadatafelt"],
             Wrappers(cut).Select(section => section.Id!));
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
     }
@@ -1714,7 +1714,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     public void Placement_WhenOnlySomeGroupsArePlaced_ThenBareMetadataIsDrawnBesideTheNewIds()
     {
         // The shape a rollout actually produces, and the one the host note promises: a page can
-        // carry #metadata and the placed ids at once, and a group no row names is drawn under the
+        // carry #munin-explorer-metadata and the placed ids at once, and a group no row names is drawn under the
         // view's own heading rather than dropped. (Fhi.Metadata-lr6yh)
         var cut = Render(Placed() with
         {
@@ -1722,7 +1722,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         });
 
         Assert.Equal(
-            ["section-om-datasamlingen", "section-variabler", "section-alle-metadatafelt",
+            ["munin-explorer-section-om-datasamlingen", "munin-explorer-section-variabler", "munin-explorer-section-alle-metadatafelt",
              DetailSectionIds.Metadata, DetailSectionIds.Source],
             Wrappers(cut).Select(section => section.Id!));
 
@@ -1796,7 +1796,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var cut = Render(Datasamling());
 
         Assert.Equal(
-            [DetailSectionIds.Metadata, "section-om-datasamlingen",
+            [DetailSectionIds.Metadata, "munin-explorer-section-om-datasamlingen",
              DetailSectionIds.Source, DetailSectionIds.Statistics],
             Wrappers(cut).Select(section => section.Id!));
 
@@ -2022,6 +2022,14 @@ public class DatasamlingViewTest : ExplorerTestContext
                      Render(Datasamling(), language: "en").Find(".munin-explorer-page__toc nav").GetAttribute("aria-label"));
     }
 
+    [Fact]
+    public void Links_Always_ThenEveryInPageHrefHasATarget()
+    {
+        // Every link with a fragment, not only the nav's: an id renamed in one place and not the
+        // other is a jump to nowhere that no markup assertion names (Fhi.Metadata-uobxg).
+        InPageLinks.AssertEachHasOneTarget(Render(Placed()));
+    }
+
     [Theory]
     [InlineData("full")]
     [InlineData("sparse")]
@@ -2033,7 +2041,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(Wrappers(cut).Select(section => "#" + section.Id), Targets(cut));
 
-        // Resolved through the DOM rather than compared as strings: `#metadata` is also the CSS
+        // Resolved through the DOM rather than compared as strings: `#munin-explorer-metadata` is also the CSS
         // selector for the element it has to land on, so this is the browser's own question.
         Assert.All(Targets(cut), href => Assert.NotNull(cut.Find(href)));
     }
@@ -2099,7 +2107,7 @@ public class DatasamlingViewTest : ExplorerTestContext
                           cut.Find(".munin-explorer-datasamling__criteria").TextContent.Trim(),
                           StringComparison.Ordinal);
 
-        Assert.Equal("Inklusjons- og eksklusjonskriterier", cut.Find("#criteria > .headline").TextContent);
+        Assert.Equal("Inklusjons- og eksklusjonskriterier", cut.Find("#munin-explorer-criteria > .headline").TextContent);
         Assert.DoesNotContain("Inklusjons- og eksklusjonskriterier", BlockHeadings(cut));
         Assert.DoesNotContain("Inklusjons- og eksklusjonskriterier", Labels(SourceInformation(cut)));
     }
@@ -2422,7 +2430,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     [
         DetailSectionIds.Metadata,
         DetailSectionIds.Criteria,
-        "section-om-datasamlingen",
+        "munin-explorer-section-om-datasamlingen",
         DetailSectionIds.Source,
         DetailSectionIds.Statistics,
     ];

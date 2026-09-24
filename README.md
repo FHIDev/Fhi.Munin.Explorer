@@ -690,39 +690,50 @@ These are not style preferences — each one is a host that breaks otherwise.
     statistics. Undrawn, "Ingen" reads at full weight, as though it were the catalogue's own value.
 
   The detail views' section ids are the one exception to the paragraph below, and a deliberate
-  one: `metadata`, `criteria`, `source`, `statistics`, `datacollections`, `versions`, `dataperiod`,
-  `datatype`, `variablegroups`, `instruments` and `validity`, and the explorers' own `variables`,
-  `accesscriteria`, `prices` and `codelists`, are written bare, because a link to a section is a
-  link one reader sends another and a discriminator minted at run time is a link that resolves once. They
-  are fixed English words rather than a slug of the heading for the same reason — the headings are
-  bilingual, so a derived id would differ between `nb` and `en`. Within one mount they cannot
-  repeat: an explorer renders at most one detail view, and each view emits each id at most once —
-  unless a host mounting a view hands it a `DetailNamedSection` with one of these ids.
-  Two mounts on one page, or a host page that already means something by `id="source"`, are the
-  bound on that — `Fhi.Metadata-uobxg` records it, and the chassis bead that adds the contents nav
-  is where it gets settled.
+  one: `munin-explorer-metadata`, `-criteria`, `-source`, `-placement`, `-statistics`,
+  `-datacollections`, `-versions`, `-dataperiod`, `-datatype`, `-variablegroups`, `-instruments`
+  and `-validity`, and the explorers' own `-variables`, `-accesscriteria`, `-prices` and
+  `-codelists`, carry the package's prefix and **no** per-instance discriminator. They are the same
+  for every reader, so they can be deep-linked: a link to a section is a link one reader sends
+  another, and a discriminator minted at run time is a link that resolves once. They are fixed
+  English words rather than a slug of the heading for the same reason — the headings are
+  bilingual, so a derived id would differ between `nb` and `en`. The prefix is what keeps them
+  clear of the host page: a page that already means something by `id="source"` or
+  `id="metadata"` no longer shares that id with a section of ours (`Fhi.Metadata-uobxg`). Two of
+  them, `munin-explorer-statistics` and `munin-explorer-versions`, are also class names inside
+  those sections; an id and a class do not collide, but a selector has to say which it means.
+  Within one mount they cannot repeat: an explorer renders at most one detail view, and each view
+  emits each id at most once — unless a host mounting a view hands it a `DetailNamedSection` with
+  an id under the `munin-explorer-` prefix, which it should not.
+
+  **Two explorer mounts on one page are not supported.** Fixed ids are the price of links that
+  resolve for everyone: two mounts each with a detail view open write every section id twice, and
+  the browser resolves a fragment — and the second view's contents nav — to the first match. A
+  host page mounts one explorer.
 
   The detail views write one family more, and its names are the catalogue's rather than ours: where
   the payload places a property group as a section of its own, that section's id is the group's own
-  **key** under a `section-` prefix — `section-om-registeret`, `section-om-datasamlingen`,
-  `section-datakilde`, `section-alle-metadatafelt` and whatever else a curator adds. The key
-  and not the heading, for the reason the fixed words above are fixed: a heading is bilingual and a
-  curator's to reword, where the key is neither. So the set is open, and it is open on Munin's side
-  — an id here can appear or change without this package being released, which is the whole point of
-  drawing the page from the placement data (`Fhi.Metadata-35w0p.22`). The prefix is what keeps the
-  two sets apart: a curator minting `source` or `metadata` as a group key writes `section-source`,
-  not a second copy of the fixed id. Characters a fragment link cannot address are replaced with
-  `-` on the way in, since nothing constrains a key at the source — which two keys can come out of
-  alike, so a repeat is numbered (`section-om-registeret-2`) rather than anchoring both sections at
-  once. A group the payload places nowhere keeps its old home inside `metadata` and adds no id at
+  **key** under a `munin-explorer-section-` prefix — `munin-explorer-section-om-registeret`,
+  `munin-explorer-section-om-datasamlingen`, `munin-explorer-section-datakilde`,
+  `munin-explorer-section-alle-metadatafelt` and whatever else a curator adds. The key and not the
+  heading, for the reason the fixed words above are fixed: a heading is bilingual and a curator's
+  to reword, where the key is neither. So the set is open, and it is open on Munin's side — an id
+  here can appear or change without this package being released, which is the whole point of
+  drawing the page from the placement data (`Fhi.Metadata-35w0p.22`). The `section-` part is what
+  keeps the two sets apart: a curator minting `source` or `metadata` as a group key writes
+  `munin-explorer-section-source`, not a second copy of the fixed id. Characters a fragment link
+  cannot address are replaced with `-` on the way in, since nothing constrains a key at the source
+  — which two keys can come out of alike, so a repeat is numbered
+  (`munin-explorer-section-om-registeret-2`) rather than anchoring both sections at once. A group
+  the payload places nowhere keeps its old home inside `munin-explorer-metadata` and adds no id at
   all.
 
   A datasamling page writes the same family, from the same keys, since `Fhi.Metadata-lr6yh`: it too
-  draws whatever sections the placement rows declare, so `#metadata` there becomes one
-  `#section-<group key>` per placed section. Bare `#metadata` has not gone with them — it is what
-  the groups the catalogue titled but placed nowhere are drawn under, so a partly-placed payload
-  writes it beside the new ones and a payload predating the placement rows writes it alone. A host
-  that means something by an `id` of its own should not start it `section-`.
+  draws whatever sections the placement rows declare, so `#munin-explorer-metadata` there becomes
+  one `#munin-explorer-section-<group key>` per placed section. `#munin-explorer-metadata` has not
+  gone with them — it is what the groups the catalogue titled but placed nowhere are drawn under, so
+  a partly-placed payload writes it beside the new ones and a payload predating the placement rows
+  writes it alone. A host should start no `id` of its own with `munin-explorer-`.
 
   Ids are otherwise a separate family, each suffixed with a per-instance discriminator so two
   mounts on one page cannot collide: `munin-explorer-title-*`, `-search-*`, `-heading-*`,
@@ -819,8 +830,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     browser default, so an undefined one costs look and not information. The large majority.
   - `meaning` — carries meaning nothing else carries, so a host without Stiler's rules has to draw
     it. The second sub-list above says what each of these costs undrawn.
-  - `id` — not a class at all: the package writes the stem down and completes it with a
-    per-instance discriminator at runtime, so `.munin-explorer-source` selects nothing.
+  - `id` — not a class at all. Either a stem the package completes with a per-instance
+    discriminator at runtime, or one of the detail views' section ids, which are whole and fixed
+    — `munin-explorer-source` is both. Either way `.munin-explorer-source` selects nothing.
   - `prose` — the package writes the name down in a comment and no element wears it.
     `munin-explorer-dataitem-period` is the whole of this kind: the cell it describes is really
     `munin-explorer-dataitem-main__period`. It is listed rather than dropped because
@@ -835,8 +847,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   | --- | --- |
   | `munin-explorer` | handle |
   | `munin-explorer-absent` | meaning |
+  | `munin-explorer-accesscriteria` | id |
   | `munin-explorer-alert` | handle |
   | `munin-explorer-breadcrumb` | meaning |
+  | `munin-explorer-codelists` | id |
   | `munin-explorer-codes` | handle |
   | `munin-explorer-codes__table` | handle |
   | `munin-explorer-complete-record` | handle |
@@ -850,6 +864,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-coverage__missing` | handle |
   | `munin-explorer-coverage__share` | handle |
   | `munin-explorer-coverage__valid` | handle |
+  | `munin-explorer-criteria` | id |
   | `munin-explorer-crumb` | meaning |
   | `munin-explorer-data-list` | handle |
   | `munin-explorer-data-list__header` | handle |
@@ -859,6 +874,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-data-list__item__row--header` | handle |
   | `munin-explorer-data-list__result` | handle |
   | `munin-explorer-data-list__save-status` | handle |
+  | `munin-explorer-datacollections` | id |
   | `munin-explorer-dataitem-header` | handle |
   | `munin-explorer-dataitem-header__button` | handle |
   | `munin-explorer-dataitem-header__code` | handle |
@@ -878,12 +894,14 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main__expand-icon` | handle |
   | `munin-explorer-dataitem-main__name` | handle |
   | `munin-explorer-dataitem-period` | prose |
+  | `munin-explorer-dataperiod` | id |
   | `munin-explorer-datasamling` | handle |
   | `munin-explorer-datasamling__criteria` | handle |
   | `munin-explorer-datasamling__description` | handle |
   | `munin-explorer-datasamling__header` | handle |
   | `munin-explorer-datasamling__identifiers` | handle |
   | `munin-explorer-datasamling__main` | handle |
+  | `munin-explorer-datatype` | id |
   | `munin-explorer-detail` | handle |
   | `munin-explorer-distribution` | handle |
   | `munin-explorer-distribution__bar` | handle |
@@ -923,6 +941,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-header` | handle |
   | `munin-explorer-header__actions` | handle |
   | `munin-explorer-header__actions-button` | handle |
+  | `munin-explorer-instruments` | id |
   | `munin-explorer-kilde` | handle |
   | `munin-explorer-hierarchy` | handle |
   | `munin-explorer-hierarchy__branch` | handle |
@@ -972,6 +991,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-meta__tab--active` | handle |
   | `munin-explorer-meta__tab-content` | handle |
   | `munin-explorer-meta__tabs` | handle |
+  | `munin-explorer-metadata` | id |
   | `munin-explorer-page` | handle |
   | `munin-explorer-page__actions` | handle |
   | `munin-explorer-page__body` | handle |
@@ -992,6 +1012,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-pagination-content` | handle |
   | `munin-explorer-pagination-pages` | meaning |
   | `munin-explorer-pagination-size` | handle |
+  | `munin-explorer-placement` | id |
+  | `munin-explorer-prices` | id |
   | `munin-explorer-results` | handle |
   | `munin-explorer-results__toolbar` | handle |
   | `munin-explorer-retry` | meaning |
@@ -1003,6 +1025,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-switch` | handle |
   | `munin-explorer-switch__thumb` | meaning |
   | `munin-explorer-switch__track` | meaning |
+  | `munin-explorer-validity` | id |
+  | `munin-explorer-variablegroups` | id |
+  | `munin-explorer-variables` | id |
   | `munin-explorer-version` | attribute |
   | `munin-explorer-versions` | handle |
   | `munin-explorer-versions__badge` | handle |
