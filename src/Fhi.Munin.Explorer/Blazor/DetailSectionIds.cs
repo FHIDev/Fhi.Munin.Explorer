@@ -9,50 +9,51 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// into a section is a link a reader sends to another reader. A section the catalogue placed
 /// anchors at <see cref="ReserveGroupId"/> instead, which is a key and so keeps that promise.
 /// <para>
-/// Global, which is the price of that promise and why a document holds ONE detail view — see
-/// <see cref="DetailSection.Id"/>, where a host developer reads it.
+/// Namespaced under the package's own prefix so no host id can collide with one, but never
+/// per-instance, which is the price of that promise and why a document holds ONE detail view — see
+/// <see cref="DetailSection.Id"/>, where a host developer reads it (Fhi.Metadata-uobxg).
 /// </para>
 /// </remarks>
 internal static class DetailSectionIds
 {
-    internal const string Metadata = "metadata";
+    internal const string Metadata = "munin-explorer-metadata";
 
-    internal const string Criteria = "criteria";
+    internal const string Criteria = "munin-explorer-criteria";
 
-    internal const string Source = "source";
+    internal const string Source = "munin-explorer-source";
 
-    internal const string Placement = "placement";
+    internal const string Placement = "munin-explorer-placement";
 
-    internal const string Statistics = "statistics";
+    internal const string Statistics = "munin-explorer-statistics";
 
-    internal const string DataCollections = "datacollections";
+    internal const string DataCollections = "munin-explorer-datacollections";
 
-    internal const string Versions = "versions";
+    internal const string Versions = "munin-explorer-versions";
 
-    internal const string DataPeriod = "dataperiod";
+    internal const string DataPeriod = "munin-explorer-dataperiod";
 
-    internal const string DataType = "datatype";
+    internal const string DataType = "munin-explorer-datatype";
 
-    internal const string VariableGroups = "variablegroups";
+    internal const string VariableGroups = "munin-explorer-variablegroups";
 
     /// <summary>The instruments a variable was collected with, on the variable page.</summary>
-    internal const string Instruments = "instruments";
+    internal const string Instruments = "munin-explorer-instruments";
 
     /// <summary>An instrument's own validity period, which no other view has a block for.</summary>
-    internal const string Validity = "validity";
+    internal const string Validity = "munin-explorer-validity";
 
     // The four below are the explorers' own, handed to a view as DetailNamedSection. The view's ids
     // and these share one document, which is why they are listed together.
-    internal const string Variables = "variables";
+    internal const string Variables = "munin-explorer-variables";
 
-    internal const string AccessCriteria = "accesscriteria";
+    internal const string AccessCriteria = "munin-explorer-accesscriteria";
 
-    internal const string Prices = "prices";
+    internal const string Prices = "munin-explorer-prices";
 
-    internal const string CodeLists = "codelists";
+    internal const string CodeLists = "munin-explorer-codelists";
 
     /// <summary>What every id derived from a catalogue group key starts with.</summary>
-    internal const string GroupPrefix = "section-";
+    internal const string GroupPrefix = "munin-explorer-section-";
 
     /// <summary>
     /// The <c>id</c> a section the catalogue placed anchors at, built from its group key and

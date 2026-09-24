@@ -722,7 +722,7 @@ export const assertions = [
     kind: 'invariant',
     states: ['variable-datasamling'],
     async stage(page) {
-      await page.locator('#criteria').waitFor({ state: 'visible', timeout: findTimeout });
+      await page.locator('#munin-explorer-criteria').waitFor({ state: 'visible', timeout: findTimeout });
       // Freeze the rendered markup and real stylesheet for a native browser jump. The sample's
       // interactive router replaces the document on this mirrored URL; its routing is a separate test.
       const markup = await page.evaluate(() => {
@@ -735,7 +735,7 @@ export const assertions = [
       await page.route(fixtureUrl, route => route.fulfill({ contentType: 'text/html', body: markup }));
       await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() =>
-        getComputedStyle(document.getElementById('criteria')).scrollMarginTop === '140px');
+        getComputedStyle(document.getElementById('munin-explorer-criteria')).scrollMarginTop === '140px');
       // ModernHost has no fixed chrome. Give the jump an obstruction and enough document tail
       // that reaching the end cannot accidentally keep an unstyled anchor below the header.
       await page.evaluate(() => {
@@ -755,11 +755,11 @@ export const assertions = [
         await page.evaluate(() => {
           history.replaceState(history.state, '', location.pathname + location.search);
           window.scrollTo({ top: 0, behavior: 'instant' });
-          location.hash = 'criteria';
+          location.hash = 'munin-explorer-criteria';
         });
         try {
           await page.waitForFunction(() => {
-            const target = document.getElementById('criteria');
+            const target = document.getElementById('munin-explorer-criteria');
             const heading = target.firstElementChild.getBoundingClientRect();
             const header = document.getElementById('fragment-test-header').getBoundingClientRect();
             const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
@@ -769,15 +769,15 @@ export const assertions = [
         } catch {
           return `criteria heading did not clear the fixed header after a fragment jump at ${width}px`;
         }
-        const independent = await page.locator('#criteria').evaluate(target =>
+        const independent = await page.locator('#munin-explorer-criteria').evaluate(target =>
           target.hasAttribute('data-nav-section') ||
-          !!document.querySelector('.munin-explorer-page__toc a[href$="#criteria"]'));
+          !!document.querySelector('.munin-explorer-page__toc a[href$="#munin-explorer-criteria"]'));
         if (independent) return 'criteria acquired an independent navigation target';
       }
       return null;
     },
     async control(page) {
-      await page.locator('#criteria').evaluate(target => target.classList.remove('munin-explorer-page__anchor'));
+      await page.locator('#munin-explorer-criteria').evaluate(target => target.classList.remove('munin-explorer-page__anchor'));
     },
   },
   {
@@ -787,8 +787,8 @@ export const assertions = [
     kind: 'invariant',
     states: ['kilde-hierarchy-collapsed', 'variable-whole'],
 
-    // The one thing no test in test/ can ask. The attribute reads "#metadata" in the broken build
-    // and "/kilder?kilde=…#metadata" in the fixed one, and bUnit can see both — but what broke on
+    // The one thing no test in test/ can ask. The attribute reads "#munin-explorer-metadata" in the broken build
+    // and "/kilder?kilde=…#munin-explorer-metadata" in the fixed one, and bUnit can see both — but what broke on
     // helsedata is that a bare fragment resolves against the document's <base href="/">, which
     // their Optimizely layout sets, so every entry navigated to the site root and dropped the open
     // kilde. bUnit has no base element and no URL resolver; ModernHost's App.razor sets one.

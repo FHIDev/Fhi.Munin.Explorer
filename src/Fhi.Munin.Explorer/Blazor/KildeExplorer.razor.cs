@@ -38,7 +38,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// offered the orders still opens the end of the list it named.
 /// </para>
 /// <para>
-/// <b>A fragment is kept, never written.</b> The section a reader jumped to — <c>#metadata</c>, say
+/// <b>A fragment is kept, never written.</b> The section a reader jumped to — <c>#munin-explorer-metadata</c>, say
 /// — survives every rewrite while the view it names is the one on screen, so the address bar stays
 /// a link worth copying, and a press moving to a different kilde, datasamling, order or list state
 /// drops it. A navigation is the other case, because <see cref="Moved"/> builds a fresh mirror from

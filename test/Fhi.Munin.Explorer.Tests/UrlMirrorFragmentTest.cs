@@ -147,7 +147,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
         // the fragment and tells Blazor. The rewrite that follows is what used to take it back off.
         Navigation.NavigateTo($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
 
-        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}", Mirrored()));
     }
 
     [Fact]
@@ -157,7 +157,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
         // so the very first mirror is the one that would erase it.
         var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#{DetailSectionIds.Source}");
 
-        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#source", Mirrored()));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Source}", Mirrored()));
     }
 
     [Fact]
@@ -169,7 +169,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
         // the owner has to be the first query mirrored, not the incoming Owned.
         var cut = RenderKilder($"http://localhost/kilder?KILDE={Als}#{DetailSectionIds.Metadata}");
 
-        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}", Mirrored()));
     }
 
     [Fact]
@@ -177,7 +177,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
     {
         var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
 
-        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}", Mirrored()));
 
         // Back to the list is a button, not a link: this component's own state moves and no
         // navigation builds a fresh mirror, so it is the press the drop rule exists for.
@@ -202,7 +202,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
     {
         var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
 
-        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}", Mirrored()));
 
         CloseTheDrillIn(cut);
 
@@ -213,7 +213,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
         // the state the mirror was handed, not about a section the reader may never return to.
         Navigation.NavigateTo($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
 
-        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}", Mirrored()));
     }
 
     [Fact]
@@ -221,14 +221,14 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
     {
         var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
 
-        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}", Mirrored()));
 
         // The same reset seen from the other side: a host re-navigating with an address it captured
         // earlier puts "#metadata" over the list view, which has no such section. Kept anyway — the
         // mirror drops a fragment when its own state moves, and never edits one a navigation set.
         Navigation.NavigateTo($"/kilder#{DetailSectionIds.Metadata}");
 
-        cut.WaitForAssertion(() => Assert.Equal("/kilder#metadata", Mirrored()));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder#{DetailSectionIds.Metadata}", Mirrored()));
     }
 
     [Fact]
@@ -246,7 +246,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
     {
         var cut = RenderKilder($"http://localhost/kilder?kilde={Als}#{DetailSectionIds.Metadata}");
 
-        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#metadata", Mirrored()));
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}", Mirrored()));
 
         var search = cut.FindComponent<KildeSearch>().Instance;
 
@@ -273,7 +273,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
             $"http://localhost/variabler?variabelId={Speech}#{DetailSectionIds.Statistics}");
 
         cut.WaitForAssertion(
-            () => Assert.Equal($"/variabler?variabelId={Speech}#statistics", Mirrored()));
+            () => Assert.Equal($"/variabler?variabelId={Speech}#{DetailSectionIds.Statistics}", Mirrored()));
     }
 
     [Fact]
@@ -283,7 +283,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
             $"http://localhost/variabler?variabelId={Speech}#{DetailSectionIds.Statistics}");
 
         cut.WaitForAssertion(
-            () => Assert.Equal($"/variabler?variabelId={Speech}#statistics", Mirrored()));
+            () => Assert.Equal($"/variabler?variabelId={Speech}#{DetailSectionIds.Statistics}", Mirrored()));
 
         // Pinned on this side too, because the query reaching the latch comes from a different
         // producer than KildeExplorer's: the drop turns on ExplorerUrlState stringifying one

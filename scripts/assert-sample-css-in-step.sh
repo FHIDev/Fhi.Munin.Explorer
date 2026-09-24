@@ -125,6 +125,22 @@ THEIRS=(
 # the name is styled somewhere, which it is not — it is not a class at all.
 IDS=(
   munin-explorer-source
+  # The detail views' section ids, from DetailSectionIds: whole ids written bare, the same for
+  # every reader so a deep link resolves (Fhi.Metadata-uobxg). `-statistics` and `-versions` are
+  # absent because they are also classes, and styled as such.
+  munin-explorer-accesscriteria
+  munin-explorer-codelists
+  munin-explorer-criteria
+  munin-explorer-datacollections
+  munin-explorer-dataperiod
+  munin-explorer-datatype
+  munin-explorer-instruments
+  munin-explorer-metadata
+  munin-explorer-placement
+  munin-explorer-prices
+  munin-explorer-validity
+  munin-explorer-variablegroups
+  munin-explorer-variables
 )
 
 # The same idea one attribute further out: names in the prefix that are neither classes nor ids,
