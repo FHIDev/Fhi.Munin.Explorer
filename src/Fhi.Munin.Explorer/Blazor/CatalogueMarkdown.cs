@@ -60,7 +60,8 @@ internal static partial class CatalogueMarkdown
     /// <remarks>
     /// For the fields the catalogue declares to be a <c>Url</c>, where making the value followable
     /// is a type-driven parse rather than markdown rendering: the answer is one anchor, never a
-    /// fragment, so a value that is not exactly one allowed link stays the text it always was.
+    /// fragment, so a value that is not exactly one allowed link stays the text it always was —
+    /// except that a trailing <c>;</c> after a single address is dropped from both label and href.
     /// </remarks>
     internal static (string Label, string Href)? Link(string? raw)
     {
@@ -116,7 +117,8 @@ internal static partial class CatalogueMarkdown
 
     /// <summary>
     /// A whole value that is two or more http(s) addresses joined by <c>;</c>, in order, or nothing
-    /// where any part is not one — so a <c>;</c> inside one address's query is never split.
+    /// where any part is not one. It splits on every <c>;</c>, so a query whose text after a
+    /// <c>;</c> is itself an address splits there too.
     /// </summary>
     internal static IReadOnlyList<string>? LinkList(string? raw)
     {
@@ -130,10 +132,11 @@ internal static partial class CatalogueMarkdown
         return parts.Length >= 2 && parts.All(IsWebAddress) ? parts : null;
     }
 
+    // A list is web addresses only; mailto stays a single-link case.
     private static bool IsWebAddress(string part) =>
         !part.Any(char.IsWhiteSpace)
-        && Uri.TryCreate(part, UriKind.Absolute, out var uri)
-        && uri.Scheme is "http" or "https";
+        && AllowedScheme(part)
+        && !part.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>A value's words: the label where the whole value is one allowed link, else the value.</summary>
     internal static string? Words(string? raw) => Link(raw)?.Label ?? raw;

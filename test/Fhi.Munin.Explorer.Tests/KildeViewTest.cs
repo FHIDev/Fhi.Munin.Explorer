@@ -1803,6 +1803,22 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void LegalBasis_WhenTheColumnIsASemicolonJoinedList_ThenNoCellLinksItWhole()
+    {
+        // One absolute URI to Uri.TryCreate, and an address that exists nowhere (Fhi.Metadata-61s28).
+        const string laws = "https://lovdata.no/lov/2014-06-20-43;https://lovdata.no/lov/2001-05-18-24";
+        var cut = Render(Kilde() with { LegalBasis = laws }, language: "en");
+
+        foreach (var fact in new[] { Fact(Hero(cut), "Legal basis"), Fact(SourceInformation(cut), "Legal basis") })
+        {
+            Assert.Empty(fact.QuerySelectorAll("a"));
+            Assert.Empty(fact.QuerySelectorAll("[lang]"));
+            Assert.Null(fact.GetAttribute("lang"));
+            Assert.Contains(laws, fact.TextContent, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void HeroFacts_Always_ThenTheyAreTheSixTheMockupLeadsWith()
     {
         // The mockup's sixth is Tilgang, and the catalogue has no access field for a source — so

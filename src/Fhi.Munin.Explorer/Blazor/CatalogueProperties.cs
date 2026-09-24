@@ -25,8 +25,8 @@ internal readonly record struct PropertyRow(
     string LabelLanguage,
     IReadOnlyList<LocalisedText> Values,
     string? Href = null,
-    bool Authored = false,
-    IReadOnlyList<string>? Hrefs = null);
+    IReadOnlyList<string>? Hrefs = null,
+    bool Authored = false);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
 /// <remarks>
