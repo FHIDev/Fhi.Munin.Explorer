@@ -1,0 +1,2 @@
+category: Fixed
+- **"Lagre i liste" is back in an open variable panel whose detail fails to load** - Since 35w0p.78 the save button was drawn only once the variable's detail had loaded, so a signed-in reader whose detail fetch failed had no way to save the variable. The button and its alert line now sit in the open panel whatever state its detail is in: loading, loaded or failed. Signed-out readers still get no button, and a collapsed row still has one Tab stop. (Fhi.Metadata-35w0p.83)

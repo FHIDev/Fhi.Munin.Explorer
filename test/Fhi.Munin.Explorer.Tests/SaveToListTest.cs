@@ -86,10 +86,25 @@ public class SaveToListTest : ExplorerTestContext
             return Task.FromResult(FreshCopy());
         }
 
-        // The save button lives in the open panel, which draws its actions once the detail is in.
+        /// <summary>Throw from every detail fetch, so the open panel shows its error.</summary>
+        public bool FailDetail { get; init; }
+
+        /// <summary>Never answer a detail fetch, so the open panel stays loading.</summary>
+        public bool HangDetail { get; init; }
+
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
         {
+            if (FailDetail)
+            {
+                throw new HttpRequestException("nede");
+            }
+
+            if (HangDetail)
+            {
+                return new TaskCompletionSource<VariableDetail?>().Task;
+            }
+
             var row = answer.Items.Single(v => v.Id == id);
 
             return Task.FromResult<VariableDetail?>(
@@ -251,6 +266,62 @@ public class SaveToListTest : ExplorerTestContext
         Assert.Null(button.GetAttribute("role"));
         Assert.Equal("region", button.ParentElement!.GetAttribute("role"));
     }
+
+    [Fact]
+    public void Panel_WhenTheDetailFailsToLoad_ThenTheReaderCanStillSaveTheVariable()
+    {
+        // The row's own summary is enough to save by, so a failed fetch must not take the only
+        // way to save it away with the tabs. (Fhi.Metadata-35w0p.83)
+        var variable = Variable("Alder ved diagnose", "V_BDR.ALDER");
+        var client = new ListClient(OnePage(variable)) { FailDetail = true };
+
+        var cut = RenderSignedIn(client);
+        Open(cut);
+
+        Assert.Equal("Kunne ikke hente detaljene nå. Prøv igjen om litt.", DetailStatusText(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-detail [role=tablist]"));
+
+        var button = cut.Find(".munin-explorer-detail button[aria-pressed]");
+        Assert.Equal("false", button.GetAttribute("aria-pressed"));
+        Assert.All(
+            button.GetAttribute("aria-labelledby")!.Split(' '),
+            id => Assert.NotNull(cut.Find($"#{id}")));
+        Assert.Single(cut.FindAll(".munin-explorer-detail .munin-explorer-data-list__save-status [role=alert]"));
+
+        button.Click();
+
+        Assert.Equal(1, client.AddCalls);
+        Assert.Equal(variable.Id, Assert.Single(client.Stored));
+        Assert.Equal("true", cut.Find(".munin-explorer-detail button[aria-pressed]").GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Panel_WhenTheDetailIsStillLoading_ThenTheSaveButtonIsAlreadyThere()
+    {
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))) { HangDetail = true };
+
+        var cut = RenderSignedIn(client);
+        Open(cut);
+
+        Assert.Equal("true", cut.Find(".munin-explorer-detail").GetAttribute("aria-busy"));
+        Assert.Single(cut.FindAll(".munin-explorer-detail button[aria-pressed]"));
+    }
+
+    [Fact]
+    public void Panel_WhenTheDetailFailsForASignedOutReader_ThenThereIsStillNoSaveButton()
+    {
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))) { FailDetail = true };
+
+        var cut = RenderSignedIn(client, signedIn: false);
+        Open(cut);
+
+        Assert.Equal("Kunne ikke hente detaljene nå. Prøv igjen om litt.", DetailStatusText(cut));
+        Assert.Empty(SaveButtons(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-data-list__save-status"));
+    }
+
+    private static string DetailStatusText(IRenderedComponent<VariableSearch> cut) =>
+        cut.Find(".munin-explorer-detail > p[role=status]").TextContent.Trim();
 
     [Fact]
     public void SaveButton_WhenItIsPressed_ThenItSavesAndThePanelStaysOpen()
