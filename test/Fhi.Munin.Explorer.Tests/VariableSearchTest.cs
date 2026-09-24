@@ -14565,6 +14565,9 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(["Code", "Data type", "Data collections"], Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
         Assert.Equal("no", Values(cut)[0].QuerySelector("span")!.GetAttribute("lang"));
+        var datasamlinger = Panel(cut).QuerySelectorAll("dd ul li");
+        Assert.NotEmpty(datasamlinger);
+        Assert.All(datasamlinger, li => Assert.Equal("no", li.GetAttribute("lang")));
         Assert.Equal("Hide details for 1. Tale", AccessibleName.Of(Toggles(cut)[0]));
     }
 
