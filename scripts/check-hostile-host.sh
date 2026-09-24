@@ -67,6 +67,8 @@ HOST_PROJECT="$ROOT/samples/HostileHost/HostileHost.csproj"
 # `variable-detail-about`, `variable-whole` and `explorer-search-code` are where the stub's long code
 # is drawn, and a code is one unbroken word: what decides the reflow width (Fhi.Metadata-ofg1h).
 # `variable-detail` stays for the Data tab, which opens first (Fhi.Metadata-l9l2n.101).
+# `variable-statistics` and `variable-statistics-suppressed` are that tab with numbers in it, which
+# no captured variable has: the bars, and a sixty-character label beside its count (Fhi.Metadata-9mxmw).
 #
 # `filters-level-lines` and `filters-node-icons-off` unfold the facets, whose values include a
 # variabelgruppe name with no break in it; only the label rule wraps it (Fhi.Metadata-7484a).
@@ -80,6 +82,8 @@ TARGETS=(
   "/::variable-detail"
   "/::variable-detail-about"
   "/::variable-detail-long-name"
+  "/::variable-statistics"
+  "/::variable-statistics-suppressed"
   "/::variable-whole"
   "/::explorer-search-code"
   "/::tree-collapsed"
@@ -331,6 +335,8 @@ reflow "" "/::variable-kilde-hierarchy" "/::variable-kilde-hierarchy-icons-off"
 reflow "" "/::variable-detail" "/::variable-detail-about" "/::variable-whole" "/::explorer-search-code"
 # The drawer heading's unbroken name (Fhi.Metadata-yaco2).
 reflow "" "/::variable-detail-long-name"
+# The Data tab's coverage bar and frequency list, and the long label wrapping in it (Fhi.Metadata-9mxmw).
+reflow "" "/::variable-statistics" "/::variable-statistics-suppressed"
 reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tree-no-match"
 # The facets unfolded, and the unbroken variabelgruppe name in them (Fhi.Metadata-7484a).
 reflow "" "/::filters-level-lines" "/::filters-node-icons-off"

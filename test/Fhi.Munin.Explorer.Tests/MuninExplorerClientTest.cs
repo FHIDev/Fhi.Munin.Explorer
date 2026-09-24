@@ -478,6 +478,27 @@ public class MuninExplorerClientTest
         // all three, and this client cannot tell them apart any more than a reader could.
         Assert.Null(await WithStatus(HttpStatusCode.NotFound).GetInstrumentAsync(Guid.NewGuid()));
 
+    [Theory]
+    [InlineData("\"avsloringskontroll\":\"kategorierIkkeOppsummert\",", Statistic.CategoriesNotSummarised)]
+    [InlineData("\"avsloringskontroll\":\"deskriptivStatistikkIkkeGitt\",", Statistic.DescriptiveStatisticsNotGiven)]
+    [InlineData("\"avsloringskontroll\":null,", null)]
+    [InlineData("", null)]
+    [InlineData("\"avsloringskontroll\":\"cellerUnderTreIkkeVist\",", null)]
+    [InlineData("\"avsloringskontroll\":\"KategorierIkkeOppsummert\",", null)]
+    public async Task GetVariableAsync_WhenAStatisticCarriesADisclosureControlMarker_ThenOnlyTheTwoKnownValuesAreRead(
+        string field, string? expected)
+    {
+        // An unknown value is read as null rather than passed on: the drawer words each known value
+        // as a reason FHI withholds data, and a marker Munin adds later must not borrow one of those
+        // two reasons. Munin's own Classify is exact-case, so this is too. (Fhi.Metadata-9mxmw)
+        var variable = await WithJson($$"""
+            {"id":"6f1d4a5c-0000-4000-8000-000000000002","code":"ALSFRSR1Tale","preferredTerm":"1. Tale",
+             "statistikker":[{ {{field}} "id":"6f1d4a5c-0000-4000-8000-000000000003","code":"ALSFRSR1Tale"}]}
+            """).GetVariableAsync(Guid.NewGuid());
+
+        Assert.Equal(expected, Assert.Single(variable!.Statistics).DisclosureControl);
+    }
+
     [Fact]
     public async Task GetVariableAsync_WhenTheVariableDoesNotExist_ThenNullRatherThanAThrow()
     {

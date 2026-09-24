@@ -11380,17 +11380,10 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Contains("Kildekodeverk", panel.TextContent);
         Assert.Contains("Statistikk (årsbasert)", panel.TextContent);
 
-        // The table itself, not just its heading — and the dash for the column the payload holds
-        // no number for, so a reader can tell "not measured" from a cell that failed to draw.
-        var table = panel.QuerySelector("table.munin-explorer-statistics");
-
-        Assert.NotNull(table);
-        Assert.Equal(
-            ["År", "Minimum", "Maksimum", "Gjennomsnitt", "Standardavvik"],
-            table!.QuerySelectorAll("thead th").Select(cell => cell.TextContent));
-        Assert.Equal(
-            ["2022", "1", "4", "2.5", "—"],
-            table.QuerySelectorAll("tbody tr")[0].Children.Select(cell => cell.TextContent));
+        // The numbers themselves, not just their heading. The drawer no longer draws the table;
+        // the whole-variable view does (Fhi.Metadata-9mxmw).
+        Assert.NotNull(panel.QuerySelector("dl.munin-explorer-figures"));
+        Assert.Empty(panel.QuerySelectorAll("table.munin-explorer-statistics"));
     }
 
     [Fact]
@@ -11412,7 +11405,8 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Contains("Kildekodeverk", panel.TextContent);
 
         Assert.DoesNotContain("Statistikk", panel.TextContent, StringComparison.Ordinal);
-        Assert.Empty(panel.QuerySelectorAll("table.munin-explorer-statistics"));
+        Assert.Empty(panel.QuerySelectorAll(
+            ".munin-explorer-coverage, .munin-explorer-distribution, .munin-explorer-figures, .munin-explorer-figures__note"));
     }
 
     [Fact]
@@ -11439,317 +11433,277 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Contains("Kildekodeverk", panel.QuerySelectorAll("h5").Select(h => h.TextContent));
     }
 
-    // The payload Fhi.Metadata-e3e2d captured from prod. Its four code counts sum to exactly the
-    // statistic's own GyldigeTilfeller, which is what makes it a fair test of the denominator.
-    private static VariableDetail DetailWithFrequencies(Guid id) => Detail(id) with
-    {
-        DatasamlingStatisticsType = "Accumulated",
-        Statistics =
-        [
-            new()
-            {
-                PreferredTerm = "Is your food allergy/intolerance diagnosed by a medical doctor?",
-                AdditionalProperties = new Dictionary<string, string?>
-                {
-                    ["SisteOppdaterteAarssett"] = "2026",
-                    ["GyldigeTilfeller"] = "5470",
-                    ["ManglendeTilfeller"] = "18461"
-                },
-                CodeFrequencies =
-                [
-                    Frequency("…KK449.0", "Yes", "0", "1769"),
-                    Frequency("…KK449.1", "No", "1", "2651"),
-                    Frequency("…KK449.2", "Partly", "2", "920"),
-                    Frequency("…KK449.3", "Do not know", "3", "130")
-                ]
-            }
-        ]
-    };
+    // ---------------------------------------------------------------------------------
+    // The Data tab's round-5 statistics: a coverage line, a bar per code and the figures, with the
+    // catalogue's own wording where Munin marks part of a statistic as withheld (Fhi.Metadata-9mxmw,
+    // Fhi.Metadata-35w0p.36). The whole-variable view keeps the table; VariableViewTest pins that.
 
-    private static CodeFrequency Frequency(string code, string term, string localId, string count) =>
+    private static Statistic DataTabStatistic(
+        Dictionary<string, string?> properties,
+        IReadOnlyList<CodeFrequency>? frequencies = null,
+        string? disclosureControl = null) =>
         new()
         {
-            Code = code,
+            AdditionalProperties = properties,
+            CodeFrequencies = frequencies ?? [],
+            DisclosureControl = disclosureControl,
+        };
+
+    private static CodeFrequency CodeCount(string localId, string term, string? count) =>
+        new()
+        {
+            Code = $"2.16.578.1.12.4.1.1.449.{localId}",
             PreferredTerm = term,
             AdditionalProperties = new Dictionary<string, string?>
             {
                 ["KodeverkLokalID"] = localId,
-                ["GyldigeTilfeller"] = count
-            }
+                ["GyldigeTilfeller"] = count,
+            },
         };
 
-    private static IElement Frequencies(IElement panel) =>
-        panel.QuerySelector("table.munin-explorer-frequency")!;
-
-    [Fact]
-    public void Panel_WhenAStatisticCarriesCodeFrequencies_ThenTheCategoricalTableDrawsRunasColumns()
+    private static Dictionary<string, string?> Counts(string? valid, string? missing)
     {
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(DetailWithFrequencies(TaleId));
-        var cut = RenderWith(client);
+        var properties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2026" };
 
-        Toggles(cut)[0].Click();
-        TabButton(cut, "Data").Click();
-
-        var table = Frequencies(Panel(cut));
-
-        Assert.NotNull(table);
-        Assert.Equal(
-            ["Verdi", "Kategori", "% av gyldige", "Antall"],
-            table.QuerySelectorAll("thead th").Select(cell => cell.TextContent));
-
-        // THE COLUMN MAP, where this could have been built wrong: Verdi is KodeverkLokalID and not
-        // Code, which is 43 characters wide in prod against a three-wide column. Rendering Code
-        // here is the "Kildekodeverk: 2336" mistake again.
-        var first = table.QuerySelectorAll("tbody tr")[0];
-
-        Assert.Equal("0", first.Children[0].TextContent);
-        Assert.Equal("Yes", first.Children[1].TextContent);
-        Assert.Equal("1769", first.Children[3].TextContent);
-        Assert.DoesNotContain("KK449", first.TextContent, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Panel_WhenTheRowsDoNotSumToTheValidCount_ThenTheShareStillDividesByTheValidCount()
-    {
-        // THE TRAP the bead names: a percentage from the row sum agrees on the common case and is
-        // wrong on 858 variables in prod (Fhi.Metadata-e3e2d). Rows sum to 100, the statistic says
-        // 200 — dividing by the sum would draw 50%.
-        var detail = DetailWithFrequencies(TaleId) with
+        if (valid is not null)
         {
-            Statistics =
-            [
-                new()
-                {
-                    AdditionalProperties = new Dictionary<string, string?>
-                    {
-                        ["SisteOppdaterteAarssett"] = "2026",
-                        ["GyldigeTilfeller"] = "200"
-                    },
-                    CodeFrequencies = [Frequency("a", "Yes", "0", "50"), Frequency("b", "No", "1", "50")]
-                }
-            ]
-        };
+            properties["GyldigeTilfeller"] = valid;
+        }
 
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
-
-        Toggles(cut)[0].Click();
-        TabButton(cut, "Data").Click();
-
-        var rows = Frequencies(Panel(cut)).QuerySelectorAll("tbody tr");
-
-        Assert.Contains("25 %", rows[0].Children[2].TextContent);
-        Assert.Contains("width:25%", rows[0].Children[2].InnerHtml);
-    }
-
-    [Fact]
-    public void Panel_WhenARowExceedsTheValidCount_ThenTheBarIsClippedButTheNumberIsNot()
-    {
-        // One statistic in prod sums to 22.7 times its valid count. Unclipped, that row draws a bar
-        // 2269% wide, which lays itself across the page. The number is deliberately NOT clipped: a
-        // reader is better served seeing an impossible figure than a quietly capped one.
-        var detail = DetailWithFrequencies(TaleId) with
+        if (missing is not null)
         {
-            Statistics =
-            [
-                new()
-                {
-                    AdditionalProperties = new Dictionary<string, string?> { ["GyldigeTilfeller"] = "10" },
-                    CodeFrequencies = [Frequency("a", "Yes", "0", "50")]
-                }
-            ]
-        };
+            properties["ManglendeTilfeller"] = missing;
+        }
 
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
-
-        Toggles(cut)[0].Click();
-        TabButton(cut, "Data").Click();
-
-        var cell = Frequencies(Panel(cut)).QuerySelectorAll("tbody tr")[0].Children[2];
-
-        Assert.Contains("500 %", cell.TextContent);
-        Assert.Contains("width:100%", cell.InnerHtml);
-        Assert.DoesNotContain("width:500%", cell.InnerHtml);
+        return properties;
     }
 
-    [Fact]
-    public void Panel_WhenTheStatisticHasNoValidCount_ThenTheShareIsADashRatherThanAnEmptyBar()
+    private IElement DataTab(
+        IReadOnlyList<Statistic> statistics,
+        string? language = null,
+        string statisticsType = "Accumulated",
+        bool kodeverk = true)
     {
-        // "We cannot work this out" and "this value never occurs" are different facts, and a bar of
-        // no length states the second. Without the guard the division is by zero or by nothing.
-        var detail = DetailWithFrequencies(TaleId) with
-        {
-            Statistics =
-            [
-                new()
-                {
-                    AdditionalProperties = new Dictionary<string, string?>(),
-                    CodeFrequencies = [Frequency("a", "Yes", "0", "50")]
-                }
-            ]
-        };
-
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
-
-        Toggles(cut)[0].Click();
-        TabButton(cut, "Data").Click();
-
-        var cell = Frequencies(Panel(cut)).QuerySelectorAll("tbody tr")[0].Children[2];
-
-        Assert.Equal("—", cell.TextContent);
-        Assert.Empty(cell.QuerySelectorAll(".munin-explorer-frequency__track"));
-    }
-
-    [Fact]
-    public void Panel_WhenTheStatisticsAreAccumulated_ThenOnlyTheLastRowDrawsUnderSistOppdatert()
-    {
-        // Every row but the last is a partial sum of the one after it, so drawing them all invites
-        // a reader to compare numbers that are not comparable. The column is not the year either:
-        // it is the year set the total was last computed over.
-        var detail = DetailWithFrequencies(TaleId) with
-        {
-            Statistics =
-            [
-                new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2024" } },
-                new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2026" } }
-            ]
-        };
-
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
-
-        Toggles(cut)[0].Click();
-        TabButton(cut, "Data").Click();
-
-        var table = Panel(cut).QuerySelector("table.munin-explorer-statistics")!;
-
-        Assert.Equal("Sist oppdatert", table.QuerySelectorAll("thead th")[0].TextContent);
-
-        var rows = table.QuerySelectorAll("tbody tr");
-
-        Assert.Single(rows);
-        Assert.Equal("2026", rows[0].Children[0].TextContent);
-    }
-
-    [Fact]
-    public void Panel_WhenTheStatisticsAreYearly_ThenEveryRowDrawsUnderAar()
-    {
-        // The other half of the rename, and the reason it is a separate test: a change that renamed
-        // the column unconditionally, or dropped rows for every kind, would pass the accumulated
-        // test above on its own.
         var detail = Detail(TaleId) with
         {
-            DatasamlingStatisticsType = "yearly",
-            Statistics =
-            [
-                new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2021" } },
-                new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022" } }
-            ]
+            DatasamlingStatisticsType = statisticsType,
+            Statistics = statistics,
+            KodeverkLinks = kodeverk ? Detail(TaleId).KodeverkLinks : [],
         };
+        var cut = OpenData(
+            new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail),
+            language is null ? null : p => p.Add(c => c.Language, language));
 
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
+        return Panel(cut).QuerySelector("[role=tabpanel]")!;
+    }
 
-        Toggles(cut)[0].Click();
-        TabButton(cut, "Data").Click();
+    private static string Formatted(long count, string language) =>
+        count.ToString("N0", CatalogueProperties.Culture(language));
 
-        var table = Panel(cut).QuerySelector("table.munin-explorer-statistics")!;
+    [Theory]
+    [InlineData("no", "gyldige", "mangler", "82 % dekning")]
+    [InlineData("en", "valid", "missing", "82% coverage")]
+    public void DataTab_WhenBothCountsArePresent_ThenTheCoverageLineStatesThemInTheReadersFormat(
+        string language, string validWord, string missingWord, string share)
+    {
+        var tab = DataTab([DataTabStatistic(Counts("15578", "3461"))], language);
+        var valid = Formatted(15578, language);
+        var missing = Formatted(3461, language);
 
-        Assert.Equal("År", table.QuerySelectorAll("thead th")[0].TextContent);
-        Assert.Equal(2, table.QuerySelectorAll("tbody tr").Length);
+        var coverage = tab.QuerySelector("div.munin-explorer-coverage")!;
+        var line = coverage.QuerySelector(".munin-explorer-coverage__line")!;
+
+        // Only the number inside __valid: the mockup bolds the number and not the word after it.
+        Assert.Equal(valid, line.QuerySelector(".munin-explorer-coverage__valid")!.TextContent);
+        Assert.StartsWith($"{valid} {validWord}", line.TextContent, StringComparison.Ordinal);
+        Assert.Equal($"{missing} {missingWord}", line.QuerySelector(".munin-explorer-coverage__missing")!.TextContent);
+        Assert.Equal(share, line.QuerySelector(".munin-explorer-coverage__share")!.TextContent);
+
+        var bar = coverage.QuerySelector(".munin-explorer-coverage__bar")!;
+        var label = bar.GetAttribute("aria-label")!;
+
+        Assert.Equal("img", bar.GetAttribute("role"));
+        Assert.Contains(valid, label, StringComparison.Ordinal);
+        Assert.Contains(missing, label, StringComparison.Ordinal);
+        Assert.Contains("82", label, StringComparison.Ordinal);
+        Assert.Equal("width:82%", bar.QuerySelector(".munin-explorer-coverage__bar-fill")!.GetAttribute("style"));
+    }
+
+    [Theory]
+    [InlineData("1", "7", 13)]
+    [InlineData("2", "1", 67)]
+    [InlineData("5", "0", 100)]
+    [InlineData("0", "5", 0)]
+    public void DataTab_WhenCoverageIsWorkedOut_ThenItIsValidOverValidPlusMissingToAWholePercent(
+        string valid, string missing, int expected)
+    {
+        // Over valid plus missing, never over the frequencies: those sum to the valid cases alone.
+        var tab = DataTab([DataTabStatistic(Counts(valid, missing), [CodeCount("0", "Ja", "999")])]);
+
+        Assert.Equal($"{expected} % dekning", tab.QuerySelector(".munin-explorer-coverage__share")!.TextContent);
+        Assert.Equal($"width:{expected}%",
+                     tab.QuerySelector(".munin-explorer-coverage__bar-fill")!.GetAttribute("style"));
+    }
+
+    [Theory]
+    [InlineData("5470", null)]
+    [InlineData(null, "18461")]
+    [InlineData(null, null)]
+    public void DataTab_WhenEitherCountIsMissing_ThenNoCoverageLineIsDrawnEvenWithFrequencies(
+        string? valid, string? missing)
+    {
+        // Summing the frequencies would give the valid cases and never the total, so a guess from
+        // them reads 100 % on every variable; with a count missing there is nothing to draw.
+        var tab = DataTab([DataTabStatistic(
+            Counts(valid, missing), [CodeCount("0", "Ja", "1769"), CodeCount("1", "Nei", "2651")])]);
+
+        Assert.NotNull(tab.QuerySelector("ul.munin-explorer-distribution"));
+        Assert.Empty(tab.QuerySelectorAll(".munin-explorer-coverage"));
+        Assert.DoesNotContain("dekning", tab.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Panel_WhenAStatisticHasNoCodeFrequencies_ThenNoCategoricalTableIsDrawn()
+    public void DataTab_WhenFrequenciesArePresent_ThenEachCodeIsABarInTheApisOrderWithItsCountAsText()
     {
-        // The empty half, which is the one easy to get wrong: a categorical table drawn with a
-        // header row and no body passes any test written with rich data only. Every variable in the
-        // test API is this case — 20 of 20 sampled on 2026-09-03 carry no kodefrekvenser at all.
-        var client = new DetailClient(OnePage(Row(TaleId, "1. Tale")))
-            .Knows(DetailWithStatistics(TaleId));
-        var cut = RenderWith(client);
+        // Out of count order on purpose: the order is Munin's display order, and a sort by size
+        // here would be this package deciding it.
+        var tab = DataTab([DataTabStatistic(
+            Counts("5470", "18461"),
+            [CodeCount("2", "Delvis", "920"), CodeCount("0", "Ja", "1769"), CodeCount("7", "", "2651")])]);
 
-        Toggles(cut)[0].Click();
-        TabButton(cut, "Data").Click();
+        var items = tab.QuerySelectorAll("ul.munin-explorer-distribution > li.munin-explorer-distribution__item");
 
-        var panel = Panel(cut);
+        Assert.Equal(["Delvis", "Ja", "7"],
+                     items.Select(item => item.QuerySelector(".munin-explorer-distribution__label")!.TextContent));
+        Assert.Equal([Formatted(920, "no"), Formatted(1769, "no"), Formatted(2651, "no")],
+                     items.Select(item => item.QuerySelector(".munin-explorer-distribution__count")!.TextContent));
+        Assert.DoesNotContain("449", tab.QuerySelector("ul.munin-explorer-distribution")!.TextContent, StringComparison.Ordinal);
 
-        // The statistics table itself did arrive — otherwise this passes for the wrong reason.
-        Assert.NotNull(panel.QuerySelector("table.munin-explorer-statistics"));
-        Assert.Empty(panel.QuerySelectorAll("table.munin-explorer-frequency"));
+        // Decorative: the fill is 1.13:1 against the drawer, so the count text is the information.
+        Assert.All(items, item => Assert.Equal(
+            "true", item.QuerySelector(".munin-explorer-distribution__bar")!.GetAttribute("aria-hidden")));
+
+        // Relative to the largest count, not to the valid cases: 2651 is the full bar.
+        Assert.Equal(["width:34.7%", "width:66.7%", "width:100%"],
+                     items.Select(item => item.QuerySelector(".munin-explorer-distribution__bar-fill")!.GetAttribute("style")));
     }
 
-    [Fact]
-    public void Panel_WhenAYearlyVariableDrawsSeveralFrequencyTables_ThenEachIsNamedByItsYearSet()
+    [Theory]
+    [InlineData("no", false, new[] { "Min", "Maks", "Snitt" }, new[] { "1", "9", "4.2" })]
+    [InlineData("no", true, new[] { "Min", "Median", "Maks", "Snitt" }, new[] { "1", "3", "9", "4.2" })]
+    [InlineData("en", true, new[] { "Min", "Median", "Max", "Mean" }, new[] { "1", "3", "9", "4.2" })]
+    public void DataTab_WhenSomeFiguresArePresent_ThenOnlyThoseAreListedInOrder(
+        string language, bool median, string[] terms, string[] values)
     {
-        // Several tables stack on a yearly variable, and unnamed they are one word — "table" —
-        // repeated, with nothing to tell a screen reader user which year each describes.
-        var detail = Detail(TaleId) with
+        var properties = new Dictionary<string, string?> { ["MIN"] = "1", ["MAX"] = "9", ["AVG"] = "4.2", ["STD"] = "2" };
+
+        if (median)
         {
-            DatasamlingStatisticsType = "yearly",
-            Statistics =
-            [
-                new()
-                {
-                    AdditionalProperties = new Dictionary<string, string?>
-                    {
-                        ["SisteOppdaterteAarssett"] = "2021",
-                        ["GyldigeTilfeller"] = "100"
-                    },
-                    CodeFrequencies = [Frequency("a", "Yes", "0", "40")]
-                },
-                new()
-                {
-                    AdditionalProperties = new Dictionary<string, string?>
-                    {
-                        ["SisteOppdaterteAarssett"] = "2022",
-                        ["GyldigeTilfeller"] = "100"
-                    },
-                    CodeFrequencies = [Frequency("b", "Yes", "0", "60")]
-                }
-            ]
-        };
+            properties["MED"] = "3";
+        }
 
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
+        var figures = DataTab([DataTabStatistic(properties)], language).QuerySelector("dl.munin-explorer-figures")!;
+        var items = figures.QuerySelectorAll("div.munin-explorer-figures__item");
 
-        Toggles(cut)[0].Click();
-        TabButton(cut, "Data").Click();
+        Assert.Equal(terms, items.Select(item => item.QuerySelector("dt.munin-explorer-figures__term")!.TextContent));
+        Assert.Equal(values, items.Select(item => item.QuerySelector("dd.munin-explorer-figures__value")!.TextContent));
+    }
 
-        var captions = Panel(cut)
-            .QuerySelectorAll("table.munin-explorer-frequency caption")
-            .Select(caption => caption.TextContent)
-            .ToArray();
+    [Theory]
+    [InlineData(Statistic.DescriptiveStatisticsNotGiven, "no",
+                "Statistisk avsløringskontroll: deskriptiv statistikk ikke gitt")]
+    [InlineData(Statistic.DescriptiveStatisticsNotGiven, "en",
+                "Statistical disclosure control: descriptive statistics not given")]
+    [InlineData(Statistic.CategoriesNotSummarised, "no",
+                "Statistisk avsløringskontroll: kategorier ikke oppsummert")]
+    [InlineData(Statistic.CategoriesNotSummarised, "en",
+                "Statistical disclosure control: categories not summarised")]
+    public void DataTab_WhenPartOfAStatisticIsWithheld_ThenThatPartIsTheCataloguesNoteUnderTheCoverageLine(
+        string control, string language, string wording)
+    {
+        var properties = Counts("5470", "18461");
+        properties["MIN"] = "1";
+        var tab = DataTab(
+            [DataTabStatistic(properties, [CodeCount("0", "Ja", "1769")], control)], language);
 
-        Assert.Equal(2, captions.Length);
-        Assert.Equal(captions.Length, captions.Distinct().Count());
-        Assert.Contains("2021", captions[0]);
-        Assert.Contains("2022", captions[1]);
+        var note = Assert.Single(tab.QuerySelectorAll("p.munin-explorer-figures__note"));
+
+        Assert.Equal(wording, note.TextContent);
+        Assert.Contains("munin-explorer-figures__note--suppressed", note.ClassList);
+
+        // Only the part the marker names is replaced; the other is still drawn.
+        var descriptive = control == Statistic.DescriptiveStatisticsNotGiven;
+
+        Assert.Equal(descriptive, tab.QuerySelector("dl.munin-explorer-figures") is null);
+        Assert.Equal(descriptive, tab.QuerySelector("ul.munin-explorer-distribution") is not null);
+
+        // And the coverage line stays drawn, above the note.
+        var inOrder = tab.QuerySelectorAll(".munin-explorer-coverage, .munin-explorer-figures__note");
+
+        Assert.Equal(2, inOrder.Length);
+        Assert.Contains("munin-explorer-coverage", inOrder[0].ClassList);
+        Assert.Same(note, inOrder[1]);
     }
 
     [Fact]
-    public void Panel_WhenTheStatisticHasNoYearSet_ThenTheCaptionStillNamesTheTable()
+    public void DataTab_WhenAStatisticHasNoValuesAndNoMarker_ThenItReadsAsAbsentAndNeverAsWithheld()
     {
-        // A caption reading "(—)" would be worse than none: the dash is a cell convention and says
-        // nothing here. The name has to stand on its own when the year set is absent.
-        var detail = DetailWithFrequencies(TaleId) with
+        // THE FALSE CLAIM. "Withheld for disclosure control" over a statistic nobody computed says
+        // FHI holds data it may not hold, on the page researchers use to decide what to ask for. A
+        // bare year set is the shape: it used to draw a heading over dashes (Fhi.Metadata-35w0p.36).
+        var id = Guid.NewGuid();
+        var variable = Detail(id) with
         {
-            Statistics =
-            [
-                new()
-                {
-                    AdditionalProperties = new Dictionary<string, string?> { ["GyldigeTilfeller"] = "100" },
-                    CodeFrequencies = [Frequency("a", "Yes", "0", "40")]
-                }
-            ]
+            KodeverkLinks = [],
+            DatasamlingStatisticsType = "yearly",
+            Statistics = [DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022" })],
         };
+        var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(variable));
+        var tab = Panel(cut).QuerySelector("[role=tabpanel]")!;
 
-        var cut = RenderWith(new DetailClient(OnePage(Row(TaleId, "1. Tale"))).Knows(detail));
+        var absent = Assert.Single(tab.QuerySelectorAll($"p.caption.{DetailBlocks.Absent}"));
 
-        Toggles(cut)[0].Click();
-        TabButton(cut, "Data").Click();
+        Assert.Equal("Ingen kodeverk eller statistikk registrert", absent.TextContent);
+        Assert.DoesNotContain("avsløringskontroll", tab.TextContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Statistikk (", tab.TextContent, StringComparison.Ordinal);
+        Assert.Empty(tab.QuerySelectorAll(".munin-explorer-figures__note--suppressed"));
 
-        var caption = Panel(cut).QuerySelector("table.munin-explorer-frequency caption")!;
+        // One decision point, so the whole variable agrees that there is nothing to show.
+        WholeVariableToggle(cut).Click();
 
-        Assert.Equal("Fordeling av gyldige verdier", caption.TextContent);
-        Assert.Contains("screenreader-only", caption.ClassName ?? "");
+        Assert.Empty(cut.FindAll($"#{DetailSectionIds.Statistics}"));
+    }
+
+    [Fact]
+    public void DataTab_WhenAStatisticHasOnlyAMarker_ThenTheNoteIsDrawnRatherThanTheAbsentLine()
+    {
+        // The other side of the same decision: a recorded reason is something to say, so a marked
+        // statistic with no numbers goes past the early return rather than reading as absent.
+        var tab = DataTab(
+            [DataTabStatistic(new Dictionary<string, string?>(), disclosureControl: Statistic.DescriptiveStatisticsNotGiven)],
+            kodeverk: false);
+
+        Assert.Empty(tab.QuerySelectorAll($".{DetailBlocks.Absent}"));
+        Assert.Contains("Statistikk (akkumulert)", tab.TextContent, StringComparison.Ordinal);
+        Assert.Equal("Statistisk avsløringskontroll: deskriptiv statistikk ikke gitt",
+                     tab.QuerySelector(".munin-explorer-figures__note--suppressed")!.TextContent);
+    }
+
+    [Fact]
+    public void DataTab_WhenAYearlyVariableHasSeveralStatistics_ThenTheNewestWithNumbersIsDrawn()
+    {
+        // The drawer draws one statistic, the year its Om variabelen tab names; the whole variable
+        // keeps every year. A newer year with nothing in it is not drawn over an older one that has.
+        Statistic Year(string year, string? minimum) => DataTabStatistic(minimum is null
+            ? new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = year }
+            : new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = year, ["MIN"] = minimum });
+
+        var tab = DataTab([Year("2021", "1"), Year("2023", "5"), Year("2022", "3"), Year("2024", null)],
+                          statisticsType: "yearly");
+
+        var figures = Assert.Single(tab.QuerySelectorAll("dl.munin-explorer-figures"));
+
+        Assert.Equal("5", figures.QuerySelector("dd")!.TextContent);
     }
 
     [Fact]
@@ -12094,14 +12048,14 @@ public class VariableSearchTest : ExplorerTestContext
         {
             KodeverkLinks = kodeverk ? Detail(id).KodeverkLinks : [],
             Statistics = statistics
-                ? [new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022" } }]
+                ? [new() { AdditionalProperties = new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2022", ["MIN"] = "1" } }]
                 : [],
         };
         var cut = OpenData(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(variable));
 
         var tab = Panel(cut).QuerySelector("[role=tabpanel]")!;
         var tabKodeverk = tab.QuerySelector("ul.munin-explorer-kodeverk") is not null;
-        var tabStatistics = tab.QuerySelector("table.munin-explorer-statistics") is not null;
+        var tabStatistics = tab.QuerySelector("dl.munin-explorer-figures") is not null;
         var tabSaysNothingIsThere = tab.Children
             .Where(e => e.LocalName == "p" && !e.ClassList.Contains(DetailBlocks.Lead))
             .Select(p => p.TextContent)

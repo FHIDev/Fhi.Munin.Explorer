@@ -33,7 +33,8 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 #   - the whole-variable drill-in and the owner panel inside a row, two more presses each. The
 #     first has a state of its own now — `variable-whole`, which check-component-state.sh stages to
 #     ask its contents nav a question axe does not ask — and is still not scanned here;
-#   - the pager past page one, and anything reached by searching; the kildeutforsker's own list
+#   - the pager past page one, and anything reached by searching other than the reserved terms
+#     statistics-fixture.mjs answers, which open the Data tab's bars (Fhi.Metadata-9mxmw); the kildeutforsker's own list
 #     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's chip row and
 #     hierarchy trail are too, in variables-facets, since oj286 made the trail a landmark and the
 #     chip the only removal control (Fhi.Metadata-oj286, Fhi.Metadata-ifzlo);
@@ -82,6 +83,8 @@ TARGETS=(
   "/::variables-facets"
   "/::variable-detail"
   "/::variable-detail-about"
+  "/::variable-statistics"
+  "/::variable-statistics-suppressed"
   "/kilder::kilde-drilldown"
   "/kilder::kilde-stuckbar"
   "/kilder::kilde-hierarchy-collapsed"

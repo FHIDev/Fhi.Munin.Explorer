@@ -1,0 +1,2 @@
+category: Added
+- **`Statistic.DisclosureControl` says why part of a statistic is withheld** - It reads Munin's `avsloringskontroll` and is `Statistic.CategoriesNotSummarised`, `Statistic.DescriptiveStatisticsNotGiven` or null. Any other value arrives as null, so a marker Munin adds later is never shown as one of the two known reasons. Null means no reason was recorded, not that nothing is missing. (Fhi.Metadata-9mxmw)

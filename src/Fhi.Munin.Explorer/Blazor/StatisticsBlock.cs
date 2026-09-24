@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.Components.Rendering;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// A variable's statistics — the heading and the table — or nothing at all when it has none.
+/// A variable's statistics — the heading and the table, or the drawer's coverage, bars and
+/// figures — or nothing at all when it has none.
 /// </summary>
 /// <remarks>
 /// Shared by the full variable view and the result row's Data tab, which report the same numbers
@@ -30,8 +31,13 @@ namespace Fhi.Munin.Explorer.Blazor;
 internal static class StatisticsBlock
 {
     /// <summary>The block for <paramref name="variable"/>, or an empty fragment when it has none.</summary>
+    /// <remarks>
+    /// The drawer draws the round-5 summary of one statistic; the whole-variable view keeps the
+    /// table, which has the room for every year set and the standard deviation (Fhi.Metadata-9mxmw).
+    /// </remarks>
     internal static RenderFragment For(
-        VariableDetail? variable, int headingLevel, string headingClass, Texts texts) => builder =>
+        VariableDetail? variable, int headingLevel, string headingClass, Texts texts,
+        StatisticsLayout layout = StatisticsLayout.Table) => builder =>
     {
         if (!AnyStatistics(variable))
         {
@@ -44,6 +50,12 @@ internal static class StatisticsBlock
         builder.CloseElement();
 
         var rows = Rows(variable);
+
+        if (layout is StatisticsLayout.Drawer)
+        {
+            Summary(builder, Newest(rows.Where(Says)), texts);
+            return;
+        }
 
         Table(builder, rows, variable.DatasamlingStatisticsType, texts);
 
@@ -64,9 +76,24 @@ internal static class StatisticsBlock
     /// confused with <see cref="DatasamlingView"/>'s own <c>AnyStatistics</c>, which asks
     /// <see cref="DetailBlocks.AnyFacts"/> of a datasamling's fact rows: a different question about
     /// a different type, spelled the same because both gate a statistics section.
+    /// <para>
+    /// A statistic counts only when it has something to draw or a recorded reason for having
+    /// nothing. A bare year set is neither, and must read as absent rather than as withheld: a
+    /// suppression note over it would claim FHI holds data it may not hold (Fhi.Metadata-35w0p.36).
+    /// </para>
     /// </remarks>
     internal static bool AnyStatistics([NotNullWhen(true)] VariableDetail? variable) =>
-        variable is { Statistics.Count: > 0 };
+        variable is { Statistics.Count: > 0 } && Rows(variable).Any(Says);
+
+    private static bool Says(Statistic statistic)
+    {
+        var properties = statistic.AdditionalProperties ?? ReadOnlyDictionary<string, string?>.Empty;
+
+        return statistic.DisclosureControl is not null
+            || statistic.CodeFrequencies is { Count: > 0 }
+            || Coverage(properties) is not null
+            || Figures(properties).Any();
+    }
 
     /// <summary>
     /// The newest SisteOppdaterteAarssett across every statistics row, or null when none has one.
@@ -330,6 +357,240 @@ internal static class StatisticsBlock
     /// <summary>A statistic's value, or a dash where the catalogue holds none.</summary>
     private static string Value(IReadOnlyDictionary<string, string?> properties, string key) =>
         properties.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : "—";
+
+    // The newest year set, as LatestYearSet reads it, so the drawer's numbers are the year its
+    // Om variabelen tab names; with no year set anywhere, the last row, as an accumulated set's is.
+    private static Statistic Newest(IEnumerable<Statistic> rows)
+    {
+        Statistic? newest = null;
+        string? newestYear = null;
+
+        foreach (var statistic in rows)
+        {
+            var year = Raw(statistic.AdditionalProperties, "SisteOppdaterteAarssett")?.Trim();
+
+            if (newest is null || newestYear is null || (year is not null && CompareYearSets(year, newestYear) >= 0))
+            {
+                newest = statistic;
+                newestYear = year;
+            }
+        }
+
+        return newest!;
+    }
+
+    private static void Summary(RenderTreeBuilder builder, Statistic statistic, Texts texts)
+    {
+        var properties = statistic.AdditionalProperties ?? ReadOnlyDictionary<string, string?>.Empty;
+
+        builder.OpenRegion(100);
+        CoverageLine(builder, properties, texts);
+        builder.CloseRegion();
+
+        builder.OpenRegion(200);
+        if (statistic.DisclosureControl is Statistic.CategoriesNotSummarised)
+        {
+            SuppressedNote(builder, texts.SuppressedCategories);
+        }
+        else
+        {
+            Distribution(builder, statistic.CodeFrequencies, texts);
+        }
+        builder.CloseRegion();
+
+        builder.OpenRegion(300);
+        if (statistic.DisclosureControl is Statistic.DescriptiveStatisticsNotGiven)
+        {
+            SuppressedNote(builder, texts.SuppressedDescriptiveStatistics);
+        }
+        else
+        {
+            FigureList(builder, properties, texts);
+        }
+        builder.CloseRegion();
+    }
+
+    // Both counts or no line: coverage is valid over valid plus missing, and summing the
+    // frequencies instead gives the valid cases alone, so it would always read 100 %.
+    private static (long Valid, long Missing, int Share)? Coverage(IReadOnlyDictionary<string, string?> properties)
+    {
+        if (Count(properties, "GyldigeTilfeller") is not { } valid
+            || Count(properties, "ManglendeTilfeller") is not { } missing
+            || valid + missing == 0)
+        {
+            return null;
+        }
+
+        var share = (int)Math.Round(valid * 100.0 / (valid + missing), MidpointRounding.AwayFromZero);
+
+        return (valid, missing, share);
+    }
+
+    private static void CoverageLine(RenderTreeBuilder builder, IReadOnlyDictionary<string, string?> properties, Texts texts)
+    {
+        if (Coverage(properties) is not { } coverage)
+        {
+            return;
+        }
+
+        var (valid, missing, share) = coverage;
+
+        var validText = texts.CaseCount(valid);
+        var missingText = texts.CaseCount(missing);
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "munin-explorer-coverage");
+
+        builder.OpenElement(2, "p");
+        builder.AddAttribute(3, "class", "munin-explorer-coverage__line");
+        builder.OpenElement(4, "span");
+        builder.AddAttribute(5, "class", "munin-explorer-coverage__valid");
+        builder.AddContent(6, validText);
+        builder.CloseElement();
+        builder.AddContent(7, " " + texts.CoverageValid + " ");
+        builder.OpenElement(8, "span");
+        builder.AddAttribute(9, "class", "munin-explorer-coverage__missing");
+        builder.AddContent(10, texts.CoverageMissing(missingText));
+        builder.CloseElement();
+        builder.AddContent(11, " ");
+        builder.OpenElement(12, "span");
+        builder.AddAttribute(13, "class", "munin-explorer-coverage__share");
+        builder.AddContent(14, texts.CoverageShare(share));
+        builder.CloseElement();
+        builder.CloseElement();
+
+        builder.OpenElement(15, "div");
+        builder.AddAttribute(16, "class", "munin-explorer-coverage__bar");
+        builder.AddAttribute(17, "role", "img");
+        builder.AddAttribute(18, "aria-label", texts.CoverageBarLabel(validText, missingText, share));
+        builder.OpenElement(19, "div");
+        builder.AddAttribute(20, "class", "munin-explorer-coverage__bar-fill");
+        builder.AddAttribute(21, "style", $"width:{share.ToString(CultureInfo.InvariantCulture)}%");
+        builder.CloseElement();
+        builder.CloseElement();
+
+        builder.CloseElement();
+    }
+
+    // In the API's order, which is Munin's display order. The bar is relative to the largest count
+    // and is aria-hidden: its fill is 1.13:1 against the drawer, so the count text carries it.
+    private static void Distribution(RenderTreeBuilder builder, IReadOnlyList<CodeFrequency>? frequencies, Texts texts)
+    {
+        if (frequencies is not { Count: > 0 })
+        {
+            return;
+        }
+
+        var counts = frequencies
+            .Select(frequency => Count(frequency.AdditionalProperties, "GyldigeTilfeller"))
+            .ToList();
+        var largest = counts.Max() ?? 0;
+
+        builder.OpenElement(0, "ul");
+        builder.AddAttribute(1, "class", "munin-explorer-distribution");
+        builder.AddAttribute(2, "aria-label", texts.FrequencyCaption(null));
+
+        for (var i = 0; i < frequencies.Count; i++)
+        {
+            var frequency = frequencies[i];
+            var count = counts[i];
+            var width = count is { } n && largest > 0 ? n * 100.0 / largest : 0;
+
+            builder.OpenElement(3, "li");
+            builder.AddAttribute(4, "class", "munin-explorer-distribution__item");
+
+            builder.OpenElement(5, "span");
+            builder.AddAttribute(6, "class", "munin-explorer-distribution__label");
+            builder.AddContent(7, FrequencyLabel(frequency));
+            builder.CloseElement();
+
+            builder.OpenElement(8, "span");
+            builder.AddAttribute(9, "class", "munin-explorer-distribution__count");
+            builder.AddContent(10, count is { } shown ? texts.CaseCount(shown) : "—");
+            builder.CloseElement();
+
+            builder.OpenElement(11, "span");
+            builder.AddAttribute(12, "class", "munin-explorer-distribution__bar");
+            builder.AddAttribute(13, "aria-hidden", "true");
+            builder.OpenElement(14, "span");
+            builder.AddAttribute(15, "class", "munin-explorer-distribution__bar-fill");
+            builder.AddAttribute(16, "style", $"width:{width.ToString("0.#", CultureInfo.InvariantCulture)}%");
+            builder.CloseElement();
+            builder.CloseElement();
+
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    }
+
+    // The local code and not Code, which is fully qualified and 43 characters wide (Fhi.Metadata-e3e2d).
+    private static string FrequencyLabel(CodeFrequency frequency) =>
+        !string.IsNullOrWhiteSpace(frequency.PreferredTerm)
+            ? frequency.PreferredTerm
+            : Raw(frequency.AdditionalProperties, "KodeverkLokalID") ?? frequency.Code;
+
+    // MED is Munin's key for the median (PropertyCatalog.cs), not MEDIAN.
+    private static readonly string[] FigureKeys = ["MIN", "MED", "MAX", "AVG"];
+
+    private static IEnumerable<(string Key, string Value)> Figures(IReadOnlyDictionary<string, string?> properties) =>
+        FigureKeys
+            .Select(key => (Key: key, Value: Raw(properties, key)?.Trim()))
+            .Where(figure => figure.Value is not null)
+            .Select(figure => (figure.Key, figure.Value!));
+
+    private static string FigureTerm(string key, Texts texts) => key switch
+    {
+        "MIN" => texts.FigureMinimum,
+        "MED" => texts.FigureMedian,
+        "MAX" => texts.FigureMaximum,
+        _ => texts.FigureMean,
+    };
+
+    private static void FigureList(RenderTreeBuilder builder, IReadOnlyDictionary<string, string?> properties, Texts texts)
+    {
+        var figures = Figures(properties).ToList();
+
+        if (figures.Count == 0)
+        {
+            return;
+        }
+
+        builder.OpenElement(0, "dl");
+        builder.AddAttribute(1, "class", "munin-explorer-figures");
+
+        foreach (var (key, value) in figures)
+        {
+            builder.OpenElement(2, "div");
+            builder.AddAttribute(3, "class", "munin-explorer-figures__item");
+            builder.OpenElement(4, "dt");
+            builder.AddAttribute(5, "class", "munin-explorer-figures__term");
+            builder.AddContent(6, FigureTerm(key, texts));
+            builder.CloseElement();
+            builder.OpenElement(7, "dd");
+            builder.AddAttribute(8, "class", "munin-explorer-figures__value");
+            builder.AddContent(9, value);
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    }
+
+    private static void SuppressedNote(RenderTreeBuilder builder, string text)
+    {
+        builder.OpenElement(0, "p");
+        builder.AddAttribute(
+            1, "class", "caption munin-explorer-figures__note munin-explorer-figures__note--suppressed");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    }
+
+    /// <summary>A count of cases, or null where the catalogue holds no whole, non-negative number.</summary>
+    private static long? Count(IReadOnlyDictionary<string, string?>? properties, string key) =>
+        Number(properties, key) is { } value && value >= 0 && value <= long.MaxValue && value == Math.Floor(value)
+            ? (long)value
+            : null;
 
     private static void HeaderCell(RenderTreeBuilder builder, int seq, string label)
     {

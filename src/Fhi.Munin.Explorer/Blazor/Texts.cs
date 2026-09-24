@@ -235,6 +235,20 @@ internal sealed record Texts(
     string ColumnLastUpdated,
     Func<double, string> ShareOfValid,
     Func<string?, string> FrequencyCaption,
+    // The row drawer's Data tab (Fhi.Metadata-9mxmw): coverage, the per-code bars and the figures.
+    // The two suppression notes are the catalogue's own marker text, from Munin's
+    // ExplorerAvsloringskontroll.cs, rather than a sentence of ours about disclosure control.
+    Func<long, string> CaseCount,
+    string CoverageValid,
+    Func<string, string> CoverageMissing,
+    Func<int, string> CoverageShare,
+    Func<string, string, int, string> CoverageBarLabel,
+    string FigureMinimum,
+    string FigureMedian,
+    string FigureMaximum,
+    string FigureMean,
+    string SuppressedCategories,
+    string SuppressedDescriptiveStatistics,
     string ShowWholeVariable,
     // The row's chevron, named for its variable for ExpandDatasamlinger's reason. (Fhi.Metadata-35w0p.34)
     Func<string, string> ExpandVariableDetail,
@@ -1154,6 +1168,17 @@ internal sealed record Texts(
         FrequencyCaption: yearSet => string.IsNullOrWhiteSpace(yearSet)
             ? "Fordeling av gyldige verdier"
             : $"Fordeling av gyldige verdier ({yearSet})",
+        CaseCount: count => count.ToString("N0", CatalogueProperties.Culture(ReaderLanguage.Norwegian)),
+        CoverageValid: "gyldige",
+        CoverageMissing: missing => $"{missing} mangler",
+        CoverageShare: share => $"{share} % dekning",
+        CoverageBarLabel: (valid, missing, share) => $"Dekning {share} %: {valid} gyldige, {missing} mangler",
+        FigureMinimum: "Min",
+        FigureMedian: "Median",
+        FigureMaximum: "Maks",
+        FigureMean: "Snitt",
+        SuppressedCategories: "Statistisk avsløringskontroll: kategorier ikke oppsummert",
+        SuppressedDescriptiveStatistics: "Statistisk avsløringskontroll: deskriptiv statistikk ikke gitt",
         ShowWholeVariable: "Vis hele variabelen",
         ExpandVariableDetail: name => $"Vis detaljer for {name}",
         CollapseVariableDetail: name => $"Skjul detaljer for {name}",
@@ -1622,6 +1647,17 @@ internal sealed record Texts(
         FrequencyCaption: yearSet => string.IsNullOrWhiteSpace(yearSet)
             ? "Distribution of valid values"
             : $"Distribution of valid values ({yearSet})",
+        CaseCount: count => count.ToString("N0", CatalogueProperties.Culture(ReaderLanguage.English)),
+        CoverageValid: "valid",
+        CoverageMissing: missing => $"{missing} missing",
+        CoverageShare: share => $"{share}% coverage",
+        CoverageBarLabel: (valid, missing, share) => $"Coverage {share}%: {valid} valid, {missing} missing",
+        FigureMinimum: "Min",
+        FigureMedian: "Median",
+        FigureMaximum: "Max",
+        FigureMean: "Mean",
+        SuppressedCategories: "Statistical disclosure control: categories not summarised",
+        SuppressedDescriptiveStatistics: "Statistical disclosure control: descriptive statistics not given",
         ShowWholeVariable: "Show the whole variable",
         ExpandVariableDetail: name => $"Show details for {name}",
         CollapseVariableDetail: name => $"Hide details for {name}",

@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, treeFilters } from './tree-fixture.mjs';
 import * as detailTree from './hierarchy-fixture.mjs';
+import * as statisticsFixture from './statistics-fixture.mjs';
 
 const port = Number(process.argv[2]);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -245,6 +246,24 @@ function serve(url, request, response) {
         .end(JSON.stringify({ items: [], totalCount: 0, page: 1, size: 25, totalPages: 0 }));
       return;
     }
+  }
+  const withStatistics = statisticsFixture.variables.get(search);
+  if (withStatistics !== undefined && path === '/api/explorer/variables') {
+    const page = JSON.parse(bodies.get(variablesRoute));
+    page.items[0].id = withStatistics.id;
+    page.items[0].preferredTerm = withStatistics.name;
+    response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(page));
+    return;
+  }
+  const [, variableId] = path.match(/^\/api\/explorer\/variables\/([^/]+)$/) ?? [];
+  const statistikker = statisticsFixture.statistics(variableId);
+  if (statistikker !== null) {
+    const body = JSON.parse(bodies.get(detailRoute));
+    body.id = variableId;
+    body.datasamlingStatistikkType = 'accumulated';
+    body.statistikker = statistikker;
+    response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(body));
+    return;
   }
   if (search === LONG_NAME_SEARCH && path === '/api/explorer/variables') {
     const page = JSON.parse(bodies.get(variablesRoute));

@@ -195,6 +195,37 @@ public sealed record Statistic
         new Dictionary<string, string?>();
 
     [JsonPropertyName("kodefrekvenser")] public IReadOnlyList<CodeFrequency> CodeFrequencies { get; init; } = [];
+
+    /// <summary>
+    /// <see cref="DisclosureControl"/>'s value when the categories were withheld under
+    /// statistical disclosure control: the counts are given, the per-code breakdown is not.
+    /// </summary>
+    public const string CategoriesNotSummarised = "kategorierIkkeOppsummert";
+
+    /// <summary>
+    /// <see cref="DisclosureControl"/>'s value when the descriptive statistics — minimum, median,
+    /// maximum and mean — were withheld under statistical disclosure control.
+    /// </summary>
+    public const string DescriptiveStatisticsNotGiven = "deskriptivStatistikkIkkeGitt";
+
+    private readonly string? _disclosureControl;
+
+    /// <summary>
+    /// Why part of this statistic is withheld: <see cref="CategoriesNotSummarised"/>,
+    /// <see cref="DescriptiveStatisticsNotGiven"/>, or null.
+    /// </summary>
+    /// <remarks>
+    /// Null means the catalogue recorded no disclosure-control reason — not that nothing is missing.
+    /// Any other value is read as null, so a marker Munin adds later is never shown as one of these
+    /// two, which would claim FHI withholds data for a reason nobody recorded.
+    /// </remarks>
+    [JsonPropertyName("avsloringskontroll")]
+    public string? DisclosureControl
+    {
+        get => _disclosureControl;
+        init => _disclosureControl =
+            value is CategoriesNotSummarised or DescriptiveStatisticsNotGiven ? value : null;
+    }
 }
 
 /// <summary>How often one code value occurs.</summary>
