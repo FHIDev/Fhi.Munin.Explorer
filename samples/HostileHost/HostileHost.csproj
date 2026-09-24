@@ -26,8 +26,10 @@
        states it measures need those breaks, which is what this branch's negative control shows
        (Fhi.Metadata-ofg1h).
 
-       0.1.121 lets a long kodeverk name wrap (Fhi.Metadata-pu2j7) and 0.1.120 sets the
-       data-list save status inline-block in the panel (Fhi.Metadata-35w0p.82).
+       0.1.123 retires the dead kildetype badge rule (Fhi.Metadata-rlg1w); 0.1.122 keys helsedata's
+       focus-ring suppression on :focus:not(:focus-visible) (Fhi.Metadata-l9l2n.57); 0.1.121 lets a
+       long kodeverk name wrap (Fhi.Metadata-pu2j7); 0.1.120 sets the data-list save status
+       inline-block in the panel (Fhi.Metadata-35w0p.82).
        0.1.119 draws Runa's row ring on the name button and keys its chevron on that button's
        aria-expanded (Fhi.Metadata-35w0p.80), for the one-Tab-stop row (Fhi.Metadata-35w0p.78).
        0.1.113 keys the kilder sticky head on the header handles (Fhi.Metadata-35w0p.75) and
@@ -39,7 +41,7 @@
        0.1.103 brought the drawer's checkbox column and nested detail anchor clearance
        (Fhi.Metadata-h6dx7, Fhi.Metadata-17k34). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.121" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.123" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
