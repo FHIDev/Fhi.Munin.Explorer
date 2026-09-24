@@ -107,7 +107,7 @@ public sealed record VariableListItem
     /// Whether the variable has published statistics, with <see langword="null"/> on the same
     /// terms as <see cref="HasKodeverk"/>.
     /// </summary>
-    [JsonPropertyName("hasStatistikk")] public bool? HasStatistikk { get; init; }
+    [JsonPropertyName("hasStatistikk")] public bool? HasStatistics { get; init; }
 
     // The reader's own annotation — "Ønskede data", what they want out of this variable. Stored on
     // the membership rather than resolved per page, so unlike the display fields above it survives

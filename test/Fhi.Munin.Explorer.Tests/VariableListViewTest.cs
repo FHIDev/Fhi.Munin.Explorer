@@ -556,11 +556,19 @@ public class VariableListViewTest : ExplorerTestContext
         }
     }
 
-    private IRenderedComponent<VariableListView> RenderView(ListClient client, bool signedIn = true)
+    private IRenderedComponent<VariableListView> RenderView(ListClient client, bool signedIn = true, string? language = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
-        return Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, signedIn));
+        return Render<VariableListView>(p =>
+        {
+            p.Add(c => c.IsAuthenticated, signedIn);
+
+            if (language is not null)
+            {
+                p.Add(c => c.Language, language);
+            }
+        });
     }
 
     /// <summary>
@@ -1259,25 +1267,15 @@ public class VariableListViewTest : ExplorerTestContext
         Assert.Equal("V_BDR.ALDER", CellText(cut, "code"));
     }
 
-    private IRenderedComponent<VariableListView> RenderIn(string language, params VariableListItem[] items)
-    {
-        Services.AddSingleton<IMuninExplorerClient>(new ListClient(items));
-        Services.AddScoped<VariableListState>();
-
-        return Render<VariableListView>(p => p
-            .Add(c => c.IsAuthenticated, true)
-            .Add(c => c.Language, language));
-    }
-
     [Theory]
-    [InlineData("no")]
-    [InlineData("en")]
-    public void View_WhenTheTableIsDrawn_ThenKodeverkAndStatistikkFollowThePeriodUnderTheCataloguesOwnWords(string language)
+    [InlineData("no", "Statistikk")]
+    [InlineData("en", "Statistics")]
+    public void View_WhenTheTableIsDrawn_ThenKodeverkAndStatisticsFollowThePeriod(string language, string statistics)
     {
         // A saved list is the one surface where the reader has already said these variables belong
         // together, so the coverage columns are always on here (Fhi.Metadata-l9l2n.95). The keys
         // are the ones Stiler's rule names; any other spelling would ship them unstyled.
-        var cut = RenderIn(language, Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")), language: language);
 
         var headers = cut.FindAll("thead th");
         var period = headers.ToList().FindIndex(h => h.ClassList.Contains("munin-explorer-dataitem-header__period"));
@@ -1285,7 +1283,7 @@ public class VariableListViewTest : ExplorerTestContext
         Assert.Equal("munin-explorer-dataitem-header__kodeverk", headers[period + 1].ClassName);
         Assert.Equal("munin-explorer-dataitem-header__statistikk", headers[period + 2].ClassName);
         Assert.Equal("Kodeverk", headers[period + 1].TextContent.Trim());
-        Assert.Equal("Statistikk", headers[period + 2].TextContent.Trim());
+        Assert.Equal(statistics, headers[period + 2].TextContent.Trim());
         Assert.Equal("col", headers[period + 1].GetAttribute("scope"));
         Assert.Equal("col", headers[period + 2].GetAttribute("scope"));
 
@@ -1305,17 +1303,17 @@ public class VariableListViewTest : ExplorerTestContext
     [InlineData("en", true, false, "Yes", "No")]
     [InlineData("en", false, true, "No", "Yes")]
     public void View_WhenAVariableCarriesCoverageFlags_ThenEachCellSaysItsOwnInWords(
-        string language, bool kodeverk, bool statistikk, string kodeverkText, string statistikkText)
+        string language, bool kodeverk, bool statistics, string kodeverkText, string statisticsText)
     {
         // Words, not a tick: a glyph alone says nothing to a screen reader and nothing to a reader
         // who has not learned the legend. The two flags are read independently, so a cell reading
         // the other column's flag fails here in two rows out of six.
-        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { HasKodeverk = kodeverk, HasStatistikk = statistikk };
+        var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { HasKodeverk = kodeverk, HasStatistics = statistics };
 
-        var cut = RenderIn(language, item);
+        var cut = RenderView(new ListClient(item), language: language);
 
         Assert.Equal(kodeverkText, CellText(cut, "kodeverk"));
-        Assert.Equal(statistikkText, CellText(cut, "statistikk"));
+        Assert.Equal(statisticsText, CellText(cut, "statistikk"));
         Assert.Equal("TD", cut.Find(".munin-explorer-dataitem-main__kodeverk").TagName);
     }
 
@@ -1334,7 +1332,9 @@ public class VariableListViewTest : ExplorerTestContext
     public void View_WhenACoverageCellIsDrawn_ThenItIsNotMarkedNorwegian()
     {
         // Ja and Nei are the component's words in the reader's language, not the catalogue's.
-        var cut = RenderIn("en", Item("Alder ved diagnose", "V_BDR.ALDER") with { HasKodeverk = true, HasStatistikk = false });
+        var cut = RenderView(
+            new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { HasKodeverk = true, HasStatistics = false }),
+            language: "en");
 
         Assert.Empty(cut.Find(".munin-explorer-dataitem-main__kodeverk").QuerySelectorAll("[lang]"));
         Assert.Empty(cut.Find(".munin-explorer-dataitem-main__statistikk").QuerySelectorAll("[lang]"));

@@ -291,10 +291,10 @@ internal sealed record Texts(
     // to rather than only that something went wrong.
     string FieldDesiredData,
     string DesiredDataError,
-    // The saved list's two coverage columns. The headings are the catalogue's own words in both
-    // languages; the cells answer in the reader's. A cell with no answer says NotSpecified.
+    // The saved list's two coverage columns, worded as Kelda's share columns are: Kodeverk stays
+    // untranslated, Statistikk does not. A cell with no answer says NotSpecified.
     string FieldKodeverk,
-    string FieldStatistikk,
+    string FieldStatistics,
     string FlagYes,
     string FlagNo,
     // (maxLength) — "Ønskede data kan ikke overstige 500 tegn."
@@ -1181,7 +1181,7 @@ internal sealed record Texts(
         FieldDesiredData: "Ønskede data",
         DesiredDataError: "Kunne ikke lagre ønskede data nå. Prøv igjen om litt.",
         FieldKodeverk: "Kodeverk",
-        FieldStatistikk: "Statistikk",
+        FieldStatistics: "Statistikk",
         FlagYes: "Ja",
         FlagNo: "Nei",
         DesiredDataTooLong: maxLength =>
@@ -1649,7 +1649,7 @@ internal sealed record Texts(
         FieldDesiredData: "Desired data",
         DesiredDataError: "Could not save the desired data just now. Try again shortly.",
         FieldKodeverk: "Kodeverk",
-        FieldStatistikk: "Statistikk",
+        FieldStatistics: "Statistics",
         FlagYes: "Yes",
         FlagNo: "No",
         DesiredDataTooLong: maxLength =>

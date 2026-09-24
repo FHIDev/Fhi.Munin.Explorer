@@ -363,7 +363,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // A word rather than a mark, in the reader's language. Unknown is not "Nei": an entry the
         // read model lost, and every shared snapshot, carry no answer and say so.
         RowCell.Write(builder, 700, T.FieldKodeverk, Flag(item.HasKodeverk), "kodeverk", T.NotSpecified, catalogue: false, tableCell: true);
-        RowCell.Write(builder, 800, T.FieldStatistikk, Flag(item.HasStatistikk), "statistikk", T.NotSpecified, catalogue: false, tableCell: true);
+        RowCell.Write(builder, 800, T.FieldStatistics, Flag(item.HasStatistics), "statistikk", T.NotSpecified, catalogue: false, tableCell: true);
     };
 
     private string? Flag(bool? value) => value switch

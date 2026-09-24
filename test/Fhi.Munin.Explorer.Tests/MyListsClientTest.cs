@@ -276,9 +276,9 @@ public class MyListsClientTest
         var page = await Client(handler).GetMyListVariablesAsync(ListId);
 
         Assert.True(page!.Items[0].HasKodeverk);
-        Assert.False(page.Items[0].HasStatistikk);
+        Assert.False(page.Items[0].HasStatistics);
         Assert.Null(page.Items[1].HasKodeverk);
-        Assert.Null(page.Items[1].HasStatistikk);
+        Assert.Null(page.Items[1].HasStatistics);
     }
 
     [Fact]
@@ -300,7 +300,7 @@ public class MyListsClientTest
         var page = await Client(handler).GetMyListVariablesAsync(ListId);
 
         Assert.Null(page!.Items[0].HasKodeverk);
-        Assert.Null(page.Items[0].HasStatistikk);
+        Assert.Null(page.Items[0].HasStatistics);
     }
 
     [Fact]
