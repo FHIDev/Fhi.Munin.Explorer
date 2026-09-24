@@ -980,14 +980,11 @@ public partial class VariableSearch
 
     /// <summary>The word on a datatype facet button, on the same terms as the result rows.</summary>
     /// <remarks>
-    /// AGENTS.md, "The API names a datatype, not this package". A facet carrying no name at all —
-    /// an API predating them — falls back to the shipped table keyed by the code, because a button
-    /// labelled with a blank string is an empty accessible name. (Fhi.Metadata-l9l2n.49)
+    /// AGENTS.md, "The API names a datatype, not this package". A nameless facet shows its code,
+    /// because a button labelled with a blank string has an empty accessible name.
     /// </remarks>
-    private string DataTypeFacetLabel(DataTypeFacet dataType) =>
-        T.NormalizeDataTypeDisplayName(dataType.DisplayName) is { } named && !string.IsNullOrWhiteSpace(named)
-            ? named
-            : T.DataTypeLabel(dataType.Value);
+    private static string DataTypeFacetLabel(DataTypeFacet dataType) =>
+        string.IsNullOrWhiteSpace(dataType.DisplayName) ? dataType.Value : dataType.DisplayName;
 
     private FacetGroup HelsefagligKodeverkGroup(FilterOptions facets) =>
         new("helsefaglig-kodeverk",

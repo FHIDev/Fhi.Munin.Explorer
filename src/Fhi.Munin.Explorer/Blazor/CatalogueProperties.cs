@@ -831,16 +831,17 @@ internal static class CatalogueProperties
                 }
 
                 var english = string.Equals(reader, "en", StringComparison.OrdinalIgnoreCase);
-                var preferred = english ? "labelEn" : "label";
 
-                var label = element.TryGetProperty(preferred, out var chosen) ? chosen.ToString() : null;
+                // displayLabel is the vocabulary's word for a reader where label is the
+                // specification's term; only DataType carries one so far (Fhi.Metadata-6qy6l).
+                var label = english ? Label(element, "displayLabelEn", "labelEn") : Label(element, "displayLabel", "label");
                 var language = english ? "en" : "no";
 
-                if (string.IsNullOrWhiteSpace(label) && element.TryGetProperty("label", out var fallback))
+                if (string.IsNullOrWhiteSpace(label) && english)
                 {
                     // No English for this option. Norwegian beats the bare code, but it is Norwegian,
                     // and saying so is what lets it be read aloud correctly.
-                    label = fallback.ToString();
+                    label = Label(element, "displayLabel", "label");
                     language = "no";
                 }
 
@@ -855,6 +856,14 @@ internal static class CatalogueProperties
         {
             return [];
         }
+    }
+
+    private static string? Label(JsonElement option, string preferred, string fallback)
+    {
+        var label = option.TryGetProperty(preferred, out var chosen) ? chosen.ToString() : null;
+        return string.IsNullOrWhiteSpace(label) && option.TryGetProperty(fallback, out var other)
+            ? other.ToString()
+            : label;
     }
 
     /// <summary>

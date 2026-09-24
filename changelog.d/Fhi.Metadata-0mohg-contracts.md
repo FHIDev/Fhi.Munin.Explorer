@@ -1,0 +1,2 @@
+category: Added
+- **`VariableSummary` and `VariableDetail` gain `DataTypeDisplayName`.** The readable name Munin sends beside the datatype code, in the request's `Accept-Language`, or the code itself when its vocabulary has none. `SearchVariablesAsync` and `GetVariableAsync` send no language, so through them it is in the API's default one; the components name datatypes from the facets and the property options instead. (Fhi.Metadata-0mohg)

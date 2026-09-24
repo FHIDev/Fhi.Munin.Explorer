@@ -52,10 +52,23 @@ public sealed record VariableDetail
     [JsonPropertyName("dataTo")] public DateTimeOffset? DataTo { get; init; }
 
     /// <summary>
-    /// Datatype code, a small integer as a string (<c>"1"</c>, <c>"2"</c>, …). Munin's datatype
-    /// kodeverk is not exposed by this API, so the meaning of each code has to come from elsewhere.
+    /// Datatype code, a small integer as a string (<c>"1"</c>, <c>"2"</c>, …). Its readable name is
+    /// <see cref="DataTypeDisplayName"/>.
     /// </summary>
     [JsonPropertyName("dataType")] public string? DataType { get; init; }
+
+    /// <summary>
+    /// The readable name of <see cref="DataType"/> in the request's <c>Accept-Language</c> —
+    /// <c>"Heltall"</c> or <c>"Integer"</c> for code <c>"2"</c>. The API sends the code itself for
+    /// a code its vocabulary does not name; null when <see cref="DataType"/> is null, or from an
+    /// API older than the name.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="IMuninExplorerClient.GetVariableAsync"/> sends no <c>Accept-Language</c>, so through it
+    /// this is in the API's default language. The components name a datatype in the reader's
+    /// language from <see cref="DataTypeFacet.DisplayName"/> or the DataType property's options.
+    /// </remarks>
+    [JsonPropertyName("dataTypeDisplayName")] public string? DataTypeDisplayName { get; init; }
 
     /// <summary><c>Active</c> or <c>Historical</c>. Drafts are never exposed here.</summary>
     [JsonPropertyName("versjonStatus")] public string VersionStatus { get; init; } = "";

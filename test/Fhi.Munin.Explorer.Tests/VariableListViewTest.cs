@@ -1033,13 +1033,10 @@ public class VariableListViewTest : ExplorerTestContext
     [Theory]
     [InlineData("1")]
     [InlineData("String")]
-    public void View_WhenTheApiNamesADatatypeInEnglish_ThenTheRowSaysItInNorwegian(string stored)
+    public void View_WhenTheApiNamesADatatypeAsTheSpecificationTerm_ThenTheRowIsNotRewritten(string stored)
     {
-        // The filters endpoint answers a Norwegian call with displayName "String" for code "1", so
-        // this row read "String" where the explorer's detail panel read "Streng" for the same
-        // variable. The stored legacy form is the case that proves the fix reached this path:
-        // a row holding "1" was already right on the panel and proved nothing.
-        // (Fhi.Metadata-l9l2n.49)
+        // The package used to rewrite "String" into its own "Streng". The API owns the word now, so
+        // whatever it sends is what shows. (Fhi.Metadata-0mohg)
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
         {
             DataTypeFacets = [new DataTypeFacet { Value = "1", DisplayName = "String" }]
@@ -1047,7 +1044,7 @@ public class VariableListViewTest : ExplorerTestContext
 
         var cut = RenderView(client);
 
-        Assert.Equal("Streng", CellText(cut, "dataType"));
+        Assert.Equal("String", CellText(cut, "dataType"));
     }
 
     [Fact]
@@ -1069,13 +1066,11 @@ public class VariableListViewTest : ExplorerTestContext
     [InlineData("1")]
     [InlineData("String")]
     [InlineData("tekst")]
-    public void View_WhenTheApisNameForACodeIsNotTheShippedWord_ThenTheRowStillSaysIt(string stored)
+    public void View_WhenAStoredSpellingIsNotACode_ThenTheRowStillFindsTheApisName(string stored)
     {
-        // The same gap as VariableSearch had, against _dataTypeNames rather than the facets: a
-        // stored spelling never matched a name keyed by the code, so the row fell through to the
-        // shipped table and only agreed with the API while the two words happened to be equal. The
-        // name here is one the shipped table has never heard of, so that coincidence cannot carry
-        // the assertion. (Fhi.Metadata-l9l2n.49)
+        // A list item, and a shared snapshot most of all, can hold a spelling from before the
+        // codes. It has to be canonicalised before the lookup keyed by the code, or it never
+        // finds the API's name. (Fhi.Metadata-l9l2n.49)
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
         {
             DataTypeFacets = [new DataTypeFacet { Value = "1", DisplayName = "Tekststreng" }]
@@ -1087,18 +1082,16 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("String", "Streng")]
-    [InlineData("tekst", "Streng")]
-    [InlineData("2", "Heltall")]
+    [InlineData("String", "1")]
+    [InlineData("tekst", "1")]
+    [InlineData("2", "2")]
     [InlineData("11", "11")]
-    public void View_WhenTheNamesHaveNotLandedYet_ThenTheRowsAreStillReadable(
+    public void View_WhenTheNamesHaveNotLandedYet_ThenTheRowsShowTheCanonicalCode(
         string stored, string expected)
     {
         // The rows draw before the filters answer, so this is the one render where the names are
-        // null rather than empty — and it is the render the early return this method used to open
-        // with would take. Reinstating it would put "String" back on the row. The two codes are
-        // asserted beside the spellings because a code the shipped table knows reads as its word
-        // and one it does not may not be turned into anything else. (Fhi.Metadata-l9l2n.49)
+        // null rather than empty. A legacy spelling still reads as the code it means, so it matches
+        // the row once the names land. (Fhi.Metadata-l9l2n.49, Fhi.Metadata-0mohg)
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored })
         {
             FiltersHang = true
@@ -1110,17 +1103,15 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("String", "Streng")]
-    [InlineData("tekst", "Streng")]
-    [InlineData("2", "Heltall")]
+    [InlineData("String", "1")]
+    [InlineData("tekst", "1")]
+    [InlineData("2", "2")]
     [InlineData("11", "11")]
-    public void View_WhenTheNamesNeverArrive_ThenALegacySpellingStillReadsAsAWordAndACodeSurvives(
+    public void View_WhenTheNamesNeverArrive_ThenALegacySpellingReadsAsItsCodeAndACodeSurvives(
         string stored, string expected)
     {
-        // This method used to return the stored value untouched the moment the names were missing,
-        // and dropping that early return is what lets a legacy spelling resolve here at all. The
-        // fallback is the shipped table, as it is on the search rows and the panel; a code that
-        // table has never heard of is still not turned into something else. (Fhi.Metadata-l9l2n.49)
+        // The fallback is the canonical code, as it is on the search rows and the panel; a code the
+        // alias table has never heard of is not turned into something else. (Fhi.Metadata-0mohg)
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { DataType = stored });
 
         var cut = RenderView(client);
@@ -1129,7 +1120,7 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("String", "Streng")]
+    [InlineData("String", "1")]
     [InlineData("11", "11")]
     public void View_WhenTheNamesCannotBeFetched_ThenTheRowsReadTheSameAsWithNoNamesAtAll(
         string stored, string expected)
@@ -1148,13 +1139,13 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void View_WhenTheApiHasNoNameForTheCode_ThenTheShippedWordIsShownRatherThanNothing()
+    public void View_WhenTheApiHasNoNameForTheCode_ThenTheCodeIsShownRatherThanNothing()
     {
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
 
         var cut = RenderView(client);
 
-        Assert.Contains(">Heltall<", cut.Markup);
+        Assert.Equal("2", CellText(cut, "dataType"));
     }
 
     [Fact]

@@ -15,6 +15,7 @@
   "dataFrom": "2010-01-01T00:00:00.000Z",
   "dataTo": "2025-06-01T00:00:00.000Z",
   "dataType": "2",
+  "dataTypeDisplayName": "Heltall",
   "versjonStatus": "Active",
   "versjonId": "a7178fca-21f8-437e-81c6-77f656811984",
   "additionalProperties": {
@@ -221,43 +222,43 @@
       "groupSortOrder": 4001,
       "sortOrder": 4004,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"1\",\"label\":\"String\",\"labelEn\":\"String\"},{\"value\":\"2\",\"label\":\"Integer\",\"labelEn\":\"Integer\"},{\"value\":\"3\",\"label\":\"Decimal\",\"labelEn\":\"Decimal\"},{\"value\":\"4\",\"label\":\"Boolean\",\"labelEn\":\"Boolean\"},{\"value\":\"5\",\"label\":\"Time\",\"labelEn\":\"Time\"},{\"value\":\"6\",\"label\":\"Date\",\"labelEn\":\"Date\"},{\"value\":\"7\",\"label\":\"Datetime\",\"labelEn\":\"Datetime\"},{\"value\":\"8\",\"label\":\"Uri\",\"labelEn\":\"Uri\"},{\"value\":\"9\",\"label\":\"Base64binary\",\"labelEn\":\"Base64binary\"},{\"value\":\"10\",\"label\":\"F\\u00F8dselsnummer (11 siffer)\",\"labelEn\":\"National identity number (11 digits)\"}]",
+      "optionsJson": "[{\"value\":\"1\",\"label\":\"String\",\"labelEn\":\"String\",\"displayLabel\":\"Tekst\",\"displayLabelEn\":\"Text\"},{\"value\":\"2\",\"label\":\"Integer\",\"labelEn\":\"Integer\",\"displayLabel\":\"Heltall\",\"displayLabelEn\":\"Integer\"},{\"value\":\"3\",\"label\":\"Decimal\",\"labelEn\":\"Decimal\",\"displayLabel\":\"Desimaltall\",\"displayLabelEn\":\"Decimal\"},{\"value\":\"4\",\"label\":\"Boolean\",\"labelEn\":\"Boolean\",\"displayLabel\":\"Ja\\/nei\",\"displayLabelEn\":\"Yes\\/no\"},{\"value\":\"5\",\"label\":\"Time\",\"labelEn\":\"Time\",\"displayLabel\":\"Tid\",\"displayLabelEn\":\"Time\"},{\"value\":\"6\",\"label\":\"Date\",\"labelEn\":\"Date\",\"displayLabel\":\"Dato\",\"displayLabelEn\":\"Date\"},{\"value\":\"7\",\"label\":\"Datetime\",\"labelEn\":\"Datetime\",\"displayLabel\":\"Dato og tid\",\"displayLabelEn\":\"Date and time\"},{\"value\":\"8\",\"label\":\"Uri\",\"labelEn\":\"Uri\",\"displayLabel\":\"Lenke (URI)\",\"displayLabelEn\":\"Link (URI)\"},{\"value\":\"9\",\"label\":\"Base64binary\",\"labelEn\":\"Base64binary\",\"displayLabel\":\"Base64-data\",\"displayLabelEn\":\"Base64 data\"},{\"value\":\"10\",\"label\":\"F\\u00F8dselsnummer (11 siffer)\",\"labelEn\":\"National identity number (11 digits)\",\"displayLabel\":\"Fødselsnummer (11 siffer)\",\"displayLabelEn\":\"National identity number (11 digits)\"}]",
       "options": [
         {
           "value": "1",
-          "displayName": "String"
+          "displayName": "Tekst"
         },
         {
           "value": "2",
-          "displayName": "Integer"
+          "displayName": "Heltall"
         },
         {
           "value": "3",
-          "displayName": "Decimal"
+          "displayName": "Desimaltall"
         },
         {
           "value": "4",
-          "displayName": "Boolean"
+          "displayName": "Ja/nei"
         },
         {
           "value": "5",
-          "displayName": "Time"
+          "displayName": "Tid"
         },
         {
           "value": "6",
-          "displayName": "Date"
+          "displayName": "Dato"
         },
         {
           "value": "7",
-          "displayName": "Datetime"
+          "displayName": "Dato og tid"
         },
         {
           "value": "8",
-          "displayName": "Uri"
+          "displayName": "Lenke (URI)"
         },
         {
           "value": "9",
-          "displayName": "Base64binary"
+          "displayName": "Base64-data"
         },
         {
           "value": "10",

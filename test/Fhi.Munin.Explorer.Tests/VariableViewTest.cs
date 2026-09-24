@@ -41,9 +41,9 @@ public class VariableViewTest : ExplorerTestContext
         PropertyMetadata =
         [
             Entry("Kommentar", 50, "Beskrivelse"),
-            // The vocabulary's Norwegian label for this field is an English word, which is what
-            // makes the duplication below visible rather than merely redundant.
-            Entry("DataType", 20, "Datatype", """[{"value":"2","label":"Integer","labelEn":"Integer"}]"""),
+            // The live vocabulary's shape: label is the specification's English term, displayLabel
+            // the reader's word. The English label is what makes a duplication below visible.
+            Entry("DataType", 20, "Datatype", DataTypeOptions),
         ],
         AdditionalProperties = new Dictionary<string, string?>
         {
@@ -51,6 +51,11 @@ public class VariableViewTest : ExplorerTestContext
             ["DataType"] = "2",
         },
     };
+
+    private const string DataTypeOptions =
+        """[{"value":"1","label":"String","labelEn":"String","displayLabel":"Tekst","displayLabelEn":"Text"},"""
+        + """{"value":"2","label":"Integer","labelEn":"Integer","displayLabel":"Heltall","displayLabelEn":"Integer"},"""
+        + """{"value":"4","label":"Boolean","displayLabel":"Ja/nei"}]""";
 
     private IRenderedComponent<VariableView> Render(
         VariableDetail detail,
@@ -147,8 +152,7 @@ public class VariableViewTest : ExplorerTestContext
     {
         // The bug this was written for. DataType has a block of its own drawn from the typed field,
         // and it was ALSO drawn in the metadata under its own group — the same fact, twice, saying
-        // two different things: "Heltall" from our own translation, "Integer" from the catalogue's
-        // vocabulary, whose Norwegian label for this field is English.
+        // two different things: "Heltall" in the block, "Integer" from the vocabulary's label.
         var cut = Render(Detail());
 
         Assert.DoesNotContain("Integer", cut.Markup, StringComparison.Ordinal);
@@ -166,9 +170,9 @@ public class VariableViewTest : ExplorerTestContext
 
     /// <summary>The catalogue's own word for this variable's data type, and this view's own.</summary>
     /// <remarks>
-    /// Both, because the duplication being counted was two words for one fact: the block translates
-    /// the code itself and the group resolves it through the catalogue's vocabulary, whose Norwegian
-    /// label for this field is the English word. Counting only one of them would miss half the bug.
+    /// Both, because the duplication being counted was two words for one fact: the block's
+    /// displayLabel and the group's label, which for this field is the English specification term.
+    /// Counting only one of them would miss half the bug.
     /// </remarks>
     private static readonly string[] DataTypeWords = ["Heltall", "Integer"];
 
@@ -1189,21 +1193,53 @@ public class VariableViewTest : ExplorerTestContext
     [Theory]
     [InlineData("2", "Heltall")]
     [InlineData("Integer", "Heltall")]
-    [InlineData("string", "Streng")]
-    [InlineData("BOOLEAN", "Boolsk")]
-    public void DataType_OnANorwegianPage_NeverShowsTheApisEnglishName(string rawValue, string expected)
+    [InlineData("string", "Tekst")]
+    [InlineData("BOOLEAN", "Ja/nei")]
+    public void DataType_OnANorwegianPage_NeverShowsTheSpecificationsEnglishTerm(string rawValue, string expected)
     {
-        // The read model is not fully re-normalized, so a legacy raw value can
-        // still arrive alongside the canonical numeric codes. Either shape must resolve to
-        // Norwegian. (Fhi.Metadata-88fui)
+        // A legacy raw value can still arrive beside the canonical codes, so either shape must find
+        // the vocabulary's displayLabel rather than its English label. (Fhi.Metadata-88fui,
+        // Fhi.Metadata-0mohg)
         var cut = Render(Detail() with { DataType = rawValue });
 
-        Assert.Contains(expected, cut.Markup, StringComparison.Ordinal);
+        Assert.Equal(expected, PanelDataType(cut));
         foreach (var english in new[] { "String", "Integer", "Boolean", "Decimal", "Datetime" })
         {
             Assert.DoesNotContain(english, cut.Markup, StringComparison.OrdinalIgnoreCase);
         }
     }
+
+    [Theory]
+    [InlineData("2", "Integer", null)]
+    [InlineData("1", "Text", null)]
+    [InlineData("4", "Ja/nei", "no")]
+    public void DataType_OnAnEnglishPage_ThenItIsTheVocabularysEnglishWordOrMarkedNorwegian(
+        string code, string expected, string? lang)
+    {
+        // The detail is fetched without a language, so the word is picked per render from the
+        // options, which carry both. An option with no English falls back to Norwegian and says so.
+        var cut = Render(Detail() with { DataType = code }, "en");
+
+        Assert.Equal(expected, PanelDataType(cut));
+        Assert.Equal(lang, PanelDataTypeElement(cut).GetAttribute("lang"));
+    }
+
+    [Fact]
+    public void DataType_WhenTheVocabularyDoesNotListTheCode_ThenTheCodeIsShown()
+    {
+        // The package has no datatype names of its own, so a code the API does not name stays a
+        // code rather than borrowing a word. (Fhi.Metadata-0mohg)
+        var cut = Render(Detail() with { DataType = "11" });
+
+        Assert.Equal("11", PanelDataType(cut));
+        Assert.Null(PanelDataTypeElement(cut).GetAttribute("lang"));
+    }
+
+    private static AngleSharp.Dom.IElement PanelDataTypeElement(IRenderedComponent<VariableView> cut) =>
+        cut.Find($"#{DetailSectionIds.DataType} .headline-s").NextElementSibling!;
+
+    private static string PanelDataType(IRenderedComponent<VariableView> cut) =>
+        PanelDataTypeElement(cut).TextContent;
 
     // ---------------------------------------------------------------------------------
     // The section each block sits in, which is what a contents nav will anchor on.

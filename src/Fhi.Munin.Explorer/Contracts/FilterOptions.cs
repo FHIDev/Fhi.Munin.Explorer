@@ -326,19 +326,17 @@ public sealed record DataTypeFacet
     /// It does not: <c>Fhi.Metadata-xxi8k</c> made the endpoint resolve the name, in the request's
     /// language — send <c>Accept-Language</c> and the label follows it.
     /// <para>
-    /// With one exception a caller has to handle. A variable predating the codes was stored as a
-    /// word — <c>"String"</c>, <c>"tekst"</c>, <c>"Integer"</c> — and the endpoint echoes that word
-    /// back here whatever the request asked for, so code <c>1</c> arrives named "String" on a
-    /// Norwegian call. A caller showing this word maps the legacy spellings itself and leaves every
-    /// other name alone; this package does it in <c>Texts</c>. (<c>Fhi.Metadata-l9l2n.49</c>)
+    /// The name is the vocabulary's word for a reader — "Tekst", "Heltall" — rather than the
+    /// specification's term — "String", "Integer" — since <c>Fhi.Metadata-6qy6l</c>, and a code the
+    /// vocabulary does not name arrives named as itself.
     /// </para>
     /// <para>
     /// A UI should still not build its own table of names. These are editable master data, so a
     /// copy freezes a snapshot in one language and drifts the moment someone edits a definition.
     /// </para>
     /// <para>
-    /// Null against an API that predates the change, in which case a caller falls back to its own
-    /// word for the code, or to the code itself.
+    /// Null against an API that predates the change, in which case a caller falls back to the code
+    /// itself.
     /// </para>
     /// </remarks>
     [JsonPropertyName("displayName")] public string? DisplayName { get; init; }

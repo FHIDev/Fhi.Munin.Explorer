@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
@@ -279,64 +280,22 @@ public class LanguageTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("no", "String", "Streng")]
-    [InlineData("no", "tekst", "Streng")]
-    [InlineData("no", "BOOLEAN", "Boolsk")]
-    [InlineData("en", "String", "String")]
-    [InlineData("en", "tekst", "String")]
-    [InlineData("en", "BOOLEAN", "Boolean")]
-    public void Texts_WhenTheApiNamesADatatypeInALegacyForm_ThenEverySurfaceSaysTheSameWord(
-        string language, string apiName, string expected)
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Texts_WhenRead_ThenItCarriesNoDatatypeVocabulary(string language)
     {
-        // The filters endpoint echoes back the word a variable predating the codes was stored as,
-        // so a Norwegian call is answered displayName "String" for code "1" and the rows drew an
-        // English word beside a panel and a facet drawing the Norwegian one. The two paths are
-        // asserted together because fixing one alone is how that shipped. (Fhi.Metadata-l9l2n.49)
+        // The API names datatypes, in both languages, from editable master data. A shipped table
+        // keyed by the codes is how "Streng" stood beside the API's "Tekst" once the vocabulary
+        // gained display labels, so no Texts dictionary may be keyed by them. (Fhi.Metadata-0mohg)
         var texts = Texts.For(language);
+        var codes = Enumerable.Range(1, 10).Select(n => n.ToString(CultureInfo.InvariantCulture)).ToHashSet();
 
-        Assert.Equal(expected, texts.NormalizeDataTypeDisplayName(apiName));
-        Assert.Equal(expected, texts.DataTypeLabel(apiName));
-    }
+        var keyedByCodes = typeof(Texts).GetProperties()
+            .Where(property => property.GetValue(texts) is IReadOnlyDictionary<string, string> table
+                && table.Keys.Any(codes.Contains))
+            .Select(property => property.Name);
 
-    [Theory]
-    [InlineData("no", "Date", "Dato")]
-    [InlineData("en", "Date", "Date")]
-    [InlineData("no", "Tekst", "Streng")]
-    public void Texts_WhenALegacySpellingArrivesInAnotherCasing_ThenItStillResolvesToOneWord(
-        string language, string apiName, string expected)
-    {
-        // The alias table is case-insensitive, which is deliberate — the stored spellings are not
-        // consistently cased — and is the reason a name that merely looks like a name can be
-        // rewritten. Pinned so that widening the table is a decision somebody makes on purpose
-        // rather than one that lands by accident. (Fhi.Metadata-l9l2n.49)
-        Assert.Equal(expected, Texts.For(language).NormalizeDataTypeDisplayName(apiName));
-    }
-
-    [Theory]
-    [InlineData("Kvasistreng")]
-    [InlineData("Fødselsnummer (11 siffer)")]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData("11")]
-    [InlineData("1")]
-    public void Texts_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenItIsShownExactlyAsItArrived(
-        string apiName)
-    {
-        // The decision this pins: the API owns the vocabulary, and the shipped table only supplies
-        // the word behind a legacy stored spelling. Routing every name through that table would fix
-        // the word above by freezing editable master data in a package other people ship, so a
-        // datatype added on the API's side has to reach the page unaltered. Without this, widening
-        // the alias table would silently start rewriting names nobody here chose.
-        Assert.Equal(apiName, Texts.For("no").NormalizeDataTypeDisplayName(apiName));
-        Assert.Equal(apiName, Texts.For("en").NormalizeDataTypeDisplayName(apiName));
-    }
-
-    [Fact]
-    public void Texts_WhenThereIsNoNameAtAll_ThenNothingIsInventedForIt()
-    {
-        // A nameless facet is what an API predating displayName sends. Null has to survive so the
-        // caller can see there was no name and fall back to its own word for the code.
-        Assert.Null(Texts.For("no").NormalizeDataTypeDisplayName(null));
+        Assert.Empty(keyedByCodes);
     }
 
     [Theory]

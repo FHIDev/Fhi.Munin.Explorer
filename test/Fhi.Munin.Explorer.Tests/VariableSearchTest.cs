@@ -3649,7 +3649,7 @@ public class VariableSearchTest : ExplorerTestContext
             new() { Id = Tromso4Visit, Name = "Første besøk", KildeId = Tromso, ParentDelkildeId = Tromso4, Count = 3 }
         ],
         Variabelgrupper = [new() { Id = Bakgrunn, Name = "Bakgrunn", Count = 7 }],
-        DataTypes = [new() { Value = "1", Count = 9 }],
+        DataTypes = [new() { Value = "1", DisplayName = "Tekst", Count = 9 }],
         KildeKodeverkCount = 4,
         TotalCount = 42
     };
@@ -4457,7 +4457,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Theory]
     [InlineData("Dødsårsaksregisteret")]
     [InlineData("Bakgrunn")]
-    [InlineData("Streng")]
+    [InlineData("Tekst")]
     public void Filter_WhenASelectionLeavesNothing_ThenTheFacetThatMadeItSurvivesAndCanBeUndone(string chosen)
     {
         // THE TRAP, and why a case per facet: the ten groups are built by ten separate methods.
@@ -6368,43 +6368,36 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Render_WhenADatatypeArrivesAsABareCode_ThenTheButtonSaysWhatTheCodeMeans()
+    public void Render_WhenADatatypeFacetCarriesTheApisName_ThenTheButtonSaysIt()
     {
-        // A facet carrying no label at all — what an API predating the names sends, and what this
-        // fixture holds — is the one case the button still resolves from the shipped table keyed
-        // by the code. A facet that does carry a name shows that name. (Fhi.Metadata-l9l2n.49)
+        // The facet's displayName is the whole of the button's word: the API resolves it from
+        // the DataType vocabulary in the reader's language. (Fhi.Metadata-0mohg)
         var cut = RenderWith(new FilteringClient(OnePage()));
 
-        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+        Assert.Equal("Tekst (9)", Facet(cut, "Tekst").TextContent);
     }
 
     [Theory]
     [InlineData("1")]
     [InlineData("String")]
-    public void Render_WhenTheApiNamesADatatypeInEnglish_ThenTheRowSaysItTheWayTheFacetDoes(
-        string stored)
+    [InlineData("tekst")]
+    public void Render_WhenTheApiNamesADatatype_ThenTheRowSaysItTheWayTheFacetDoes(string stored)
     {
-        // The bug: the filters endpoint answers a Norwegian call with displayName "String" for code
-        // "1", and the row rendered that beside a facet and a detail panel both reading "Streng".
-        // The stored legacy form is the case that proves it — a row already holding "1" read
-        // correctly on the panel before this and proved nothing. (Fhi.Metadata-l9l2n.49)
-        var facets = Facets() with
-        {
-            DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
-        };
+        // A stored legacy spelling has to be resolved to its code before the facets are searched,
+        // or the row falls back to a bare value beside a facet that names it. (Fhi.Metadata-l9l2n.49)
         var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
 
-        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+        var cut = RenderWith(new FilteringClient(OnePage(row)));
 
-        Assert.Equal("Streng", CellText(cut, "dataType"));
-        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+        Assert.Equal("Tekst", CellText(cut, "dataType"));
+        Assert.Equal("Tekst (9)", Facet(cut, "Tekst").TextContent);
     }
 
     [Fact]
-    public void Render_WhenADatatypeFacetIsNamedInALegacyForm_ThenTheButtonSaysTheReadersWord()
+    public void Render_WhenADatatypeFacetIsNamedAsTheSpecificationTerm_ThenTheButtonIsNotRewritten()
     {
-        // The facet's own branch, asserted apart from the row: the API's word is what shows, and
-        // the shipped table is consulted for the one word that is not a name. (Fhi.Metadata-l9l2n.49)
+        // The package used to rewrite "String" into its own "Tekst". The API owns the word now, so
+        // whatever it sends is what shows. (Fhi.Metadata-0mohg)
         var facets = Facets() with
         {
             DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
@@ -6412,14 +6405,13 @@ public class VariableSearchTest : ExplorerTestContext
 
         var cut = RenderWith(new FilteringClient(OnePage(), facets));
 
-        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+        Assert.Equal("String (9)", Facet(cut, "String").TextContent);
     }
 
     [Fact]
-    public void Render_WhenADatatypeFacetIsNamedSomethingTheShippedTableHasNeverHeardOf_ThenItSaysIt()
+    public void Render_WhenADatatypeFacetIsNamedSomethingNew_ThenItSaysIt()
     {
-        // The pass-through branch. A name the alias table does not know reaches the button
-        // unaltered, which is what keeps the API owning the vocabulary. (Fhi.Metadata-l9l2n.49)
+        // A datatype added on the API's side reaches the button unaltered. (Fhi.Metadata-l9l2n.49)
         var facets = Facets() with
         {
             DataTypes = [new() { Value = "11", DisplayName = "Kvasistreng", Count = 2 }]
@@ -6434,21 +6426,21 @@ public class VariableSearchTest : ExplorerTestContext
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void Render_WhenADatatypeFacetArrivesWithABlankName_ThenTheButtonIsNotBlank(string? name)
+    public void Render_WhenADatatypeFacetArrivesWithABlankName_ThenTheButtonAndTheRowSayTheCode(string? name)
     {
-        // The subtle branch. Normalisation returns a blank string as it found it, so the
-        // IsNullOrWhiteSpace guard is the only thing between a facet named "" and a button with an
-        // empty accessible name — unreadable to a screen reader and unclickable-looking to
-        // everyone else. Asserted twice: the word is there, and no facet is left labelled by its
-        // count alone. (Fhi.Metadata-l9l2n.49)
+        // The IsNullOrWhiteSpace guard is the only thing between a facet named "" and a button with
+        // an empty accessible name. The row falls back to the same code, so the two never disagree.
+        // (Fhi.Metadata-l9l2n.49)
         var facets = Facets() with
         {
             DataTypes = [new() { Value = "1", DisplayName = name, Count = 9 }]
         };
+        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "1" };
 
-        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
 
-        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
+        Assert.Equal("1", CellText(cut, "dataType"));
+        Assert.Equal("1 (9)", Facet(cut, "1").TextContent);
         Assert.DoesNotContain(FacetControls(cut),
                               c => c.TextContent.TrimStart().StartsWith('('));
     }
@@ -6457,15 +6449,11 @@ public class VariableSearchTest : ExplorerTestContext
     [InlineData("1")]
     [InlineData("String")]
     [InlineData("tekst")]
-    public void Render_WhenTheApisNameForACodeIsNotTheShippedWord_ThenTheRowStillSaysWhatTheFacetDoes(
+    public void Render_WhenTheApiRenamesACode_ThenTheRowStillSaysWhatTheFacetDoes(
         string stored)
     {
-        // The row and the facet are the two API-driven surfaces, so they have to agree whatever the
-        // API calls a code. The name here is one the shipped table has never heard of on purpose:
-        // while the API's Norwegian for code 1 happens to be "Streng", a row that never reached the
-        // facets at all still landed on the right word through the shipped table, and the
-        // disagreement would only appear the day someone edited the name. The stored spelling has
-        // to be resolved to its code before the facets are searched. (Fhi.Metadata-l9l2n.49)
+        // The row and the facet agree whatever the API calls a code, including the day somebody
+        // edits the name in the master data. (Fhi.Metadata-l9l2n.49)
         var facets = Facets() with
         {
             DataTypes = [new() { Value = "1", DisplayName = "Tekststreng", Count = 9 }]
@@ -6484,23 +6472,17 @@ public class VariableSearchTest : ExplorerTestContext
     [InlineData("tekst")]
     public void Render_WhenADatatypeIsShownOnEverySurface_ThenAllThreeSayTheSameWord(string stored)
     {
-        // The reported bug, asserted once across the three surfaces rather than three times inside
-        // one of them: the row resolves through the facets, the facet through its own displayName,
-        // and the panel through the stored code alone. The panel can only reach as far as the
-        // shipped table, so this is the invariant while the API's word for a code is that table's
-        // word; the test above is the one that holds when it stops being. (Fhi.Metadata-l9l2n.49)
-        var facets = Facets() with
-        {
-            DataTypes = [new() { Value = "1", DisplayName = "String", Count = 9 }]
-        };
+        // The row resolves through the facets, the facet through its own displayName, and the panel
+        // through the DataType vocabulary's options. Three sources, one vocabulary, so one word.
+        // (Fhi.Metadata-l9l2n.49, Fhi.Metadata-0mohg)
         var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
 
-        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+        var cut = RenderWith(new FilteringClient(OnePage(row)));
         var panel = Render<VariableView>(b => b.Add(c => c.Variable, WholeVariable(stored)));
 
         var word = CellText(cut, "dataType");
 
-        Assert.Equal("Streng", word);
+        Assert.Equal("Tekst", word);
         Assert.Equal($"{word} (9)", Facet(cut, word).TextContent);
         Assert.Equal(word, PanelDataType(panel));
     }
@@ -6513,6 +6495,15 @@ public class VariableSearchTest : ExplorerTestContext
         PreferredTerm = "1. Tale",
         KildeName = "Als registeret",
         DataType = dataType,
+        PropertyMetadata =
+        [
+            new PropertyMetadataEntry
+            {
+                Key = "DataType",
+                Type = "SingleSelect",
+                OptionsJson = """[{"value":"1","label":"String","labelEn":"String","displayLabel":"Tekst","displayLabelEn":"Text"}]"""
+            }
+        ],
     };
 
     /// <summary>The word under the panel's Datatype heading, which is a sibling rather than a
@@ -6523,10 +6514,8 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Render_WhenTheApiNamesADatatypeWeHaveNoAliasFor_ThenTheRowAndTheFacetShowIt()
     {
-        // The API owns the vocabulary: a datatype added on its side reaches the row unaltered, and
-        // is not routed through a table shipped inside this package. The facet is asserted beside
-        // the row because it was the surface still keyed by the code, drawing "11" against the
-        // row's "Kvasistreng" until this. (Fhi.Metadata-l9l2n.49)
+        // The facet is asserted beside the row because it was the surface still keyed by the code,
+        // drawing "11" against the row's "Kvasistreng" until l9l2n.49. (Fhi.Metadata-l9l2n.49)
         var facets = Facets() with
         {
             DataTypes = [new() { Value = "11", DisplayName = "Kvasistreng", Count = 2 }]
@@ -6540,41 +6529,16 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void Render_WhenADatatypeFacetArrivesWithABlankName_ThenTheRowSaysWhatTheButtonSays(
-        string? name)
-    {
-        // The button's blank-name guard used to have no counterpart on the row, so the one facet
-        // this fixture models — an API predating displayName — put "Streng" on the button and "1"
-        // on every row beside it. Both fall back to the shipped table now. (Fhi.Metadata-l9l2n.49)
-        var facets = Facets() with
-        {
-            DataTypes = [new() { Value = "1", DisplayName = name, Count = 9 }]
-        };
-        var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "1" };
-
-        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
-
-        Assert.Equal("Streng", CellText(cut, "dataType"));
-        Assert.Equal("Streng (9)", Facet(cut, "Streng").TextContent);
-    }
-
-    [Theory]
-    [InlineData("String", "Streng")]
-    [InlineData("tekst", "Streng")]
-    [InlineData("2", "Heltall")]
+    [InlineData("String", "1")]
+    [InlineData("tekst", "1")]
+    [InlineData("2", "2")]
     [InlineData("11", "11")]
-    public void Render_WhenTheFacetsCannotBeFetched_ThenTheRowsStillNameTheirDatatype(
+    public void Render_WhenTheFacetsCannotBeFetched_ThenTheRowsShowTheCanonicalCode(
         string stored, string expected)
     {
-        // A first-load facets failure leaves _facets null while the rows render anyway, so this is
-        // the branch every other row assertion here skips by supplying a matching facet. Both
-        // halves are pinned: a legacy spelling resolves to its code's word, and a code the shipped
-        // table has never heard of survives as itself rather than becoming another code's word —
-        // which is what "tidying" the lookup key onto the fallback would do.
-        // (Fhi.Metadata-l9l2n.49)
+        // A first-load facets failure leaves _facets null while the rows render anyway. The package
+        // has no names of its own any more, so the row shows the code: a legacy spelling as the
+        // code it means, an unknown code as itself. (Fhi.Metadata-0mohg)
         var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = stored };
         var client = new FilteringClient(OnePage(row)) { FailFacets = true };
 
@@ -6584,20 +6548,15 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Render_WhenNoFacetMatchesTheRowsDatatype_ThenTheRowFallsBackAsThePanelDoes()
+    public void Render_WhenNoFacetMatchesTheRowsDatatype_ThenTheRowShowsItsCode()
     {
         // Facets that landed but name only the codes the current search matched. A row outside
-        // that set has no API name of its own, which is the panel's situation exactly, so it reads
-        // the panel's word rather than a bare number. (Fhi.Metadata-l9l2n.49)
-        var facets = Facets() with
-        {
-            DataTypes = [new() { Value = "1", DisplayName = "Streng", Count = 9 }]
-        };
+        // that set has no name the reader's language can vouch for. (Fhi.Metadata-0mohg)
         var row = Variable("1. Tale", "V_ALS.F1.ALSFRSR1TALE") with { DataType = "2" };
 
-        var cut = RenderWith(new FilteringClient(OnePage(row), facets));
+        var cut = RenderWith(new FilteringClient(OnePage(row)));
 
-        Assert.Equal("Heltall", CellText(cut, "dataType"));
+        Assert.Equal("2", CellText(cut, "dataType"));
     }
 
     [Fact]
@@ -8536,7 +8495,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client);
 
         ClickFacet(cut, "Dødsårsaksregisteret");
-        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Tekst");
         ClearAll(cut).Click();
 
         Assert.True(client.SearchFilter?.IsEmpty);
@@ -8786,7 +8745,7 @@ public class VariableSearchTest : ExplorerTestContext
         "Fjerde runde",                           // datasamling, hanging under a delkilde
         "ehds-cat:population-health-surveys",     // datakategori
         "Bakgrunn",                               // variabelgruppe
-        "Streng",                                 // datatype
+        "Tekst",                                 // datatype
         "ICD-10",                                 // helsefaglig kodeverk
         "Kommunenummer",                          // administrativt kodeverk
         "RAND-36 spørreskjema",                   // instrument
@@ -8844,22 +8803,26 @@ public class VariableSearchTest : ExplorerTestContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
         var cut = RenderWith(client);
 
-        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Tekst");
 
         Assert.Equal(1, client.SearchFilter!.ActiveCount);
-        Assert.Equal(["Streng"], Chips(cut));
+        Assert.Equal(["Tekst"], Chips(cut));
 
         ClickFacet(cut, "RAND-36 spørreskjema");
 
         Assert.Equal(2, client.SearchFilter!.ActiveCount);
-        Assert.Equal(["Streng", "RAND-36 spørreskjema"], Chips(cut));
+        Assert.Equal(["Tekst", "RAND-36 spørreskjema"], Chips(cut));
 
         // And the way back: clearing the instrument leaves the datatype and nothing else.
         RemoveChip(cut, "RAND-36 spørreskjema");
 
         Assert.Equal(1, client.SearchFilter!.ActiveCount);
-        Assert.Equal(["Streng"], Chips(cut));
+        Assert.Equal(["Tekst"], Chips(cut));
     }
+
+    /// <summary>The datatype facet as the API names it for an English reader.</summary>
+    private static FilterOptions InEnglish(FilterOptions facets) =>
+        facets with { DataTypes = [new() { Value = "1", DisplayName = "Text", Count = 9 }] };
 
     [Fact]
     public void ActiveFilters_WhenAChipNamesACatalogueValue_ThenThoseWordsAloneAreMarkedNorwegian()
@@ -8867,19 +8830,19 @@ public class VariableSearchTest : ExplorerTestContext
         // A Norwegian name inside an English page is read out with English phonetics otherwise,
         // which is WCAG 3.1.2. The kildeutforsker's chips have carried the marking from the start;
         // these are the same capsule and were the only ones passing no language at all.
-        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), InEnglish(EveryFacet()));
         var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
 
         ClickFacet(cut, "Tromsøundersøkelsen");
         ClickFacet(cut, "ICD-10");
-        ClickFacet(cut, "String");
+        ClickFacet(cut, "Text");
 
         // The catalogue's own name for the kilde, which is the whole point of the marking.
         Assert.Equal("no", ChipLang(cut, "Tromsøundersøkelsen"));
 
-        // The datatype is resolved into the reader's own language, so marking it Norwegian would
+        // The API names the datatype in the reader's own language, so marking it Norwegian would
         // be the same defect the other way round — an English word in a Norwegian voice.
-        Assert.Null(ChipLang(cut, "String"));
+        Assert.Null(ChipLang(cut, "Text"));
 
         // A V-HK short name is the catalogue's key rather than its prose, and the set holds
         // ICD-10 and NCMP-NCSP-NCRP beside DÅR — nothing here can say which a given key is.
@@ -8993,12 +8956,12 @@ public class VariableSearchTest : ExplorerTestContext
         // One kilde named two ways on one page otherwise: Norwegian in the chip over the results
         // and unmarked in the panel the chip was ticked from. The kildeutforsker's own facet
         // labels carry the marking, and both explorers ship from this package.
-        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), InEnglish(EveryFacet()));
         var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
 
         Assert.Equal("no", FacetLang(cut, "Tromsøundersøkelsen"));
         Assert.Equal("no", FacetLang(cut, "Tromsø 4"));
-        Assert.Null(FacetLang(cut, "String"));
+        Assert.Null(FacetLang(cut, "Text"));
         Assert.Null(FacetLang(cut, "ICD-10"));
 
         ClickFacet(cut, "Tromsøundersøkelsen");
@@ -9376,7 +9339,7 @@ public class VariableSearchTest : ExplorerTestContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet());
         var cut = RenderWith(client);
 
-        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Tekst");
         ClickFacet(cut, "Dødsårsaksregisteret");
         ClickFacet(cut, "ICD-10");
 
@@ -9385,9 +9348,9 @@ public class VariableSearchTest : ExplorerTestContext
         RemoveChip(cut, "Dødsårsaksregisteret");
 
         Assert.Equal(2, client.SearchFilter!.ActiveCount);
-        Assert.Equal(["Streng", "ICD-10"], Chips(cut));
+        Assert.Equal(["Tekst", "ICD-10"], Chips(cut));
         Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
-        Assert.True(FacetChosen(cut, "Streng"));
+        Assert.True(FacetChosen(cut, "Tekst"));
         Assert.True(FacetChosen(cut, "ICD-10"));
     }
 
@@ -9415,10 +9378,10 @@ public class VariableSearchTest : ExplorerTestContext
         // value. Both languages live in Texts, so neither is written into the markup.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet()));
 
-        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Tekst");
         ClickFacet(cut, "Har kildekodeverk");
 
-        Assert.Equal(["Streng", "Andre filtre: Har kildekodeverk"], Chips(cut));
+        Assert.Equal(["Tekst", "Andre filtre: Har kildekodeverk"], Chips(cut));
     }
 
     [Fact]
@@ -9499,12 +9462,12 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client);
 
         ClickFacet(cut, "Dødsårsaksregisteret");
-        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Tekst");
 
-        RemoveChip(cut, "Streng");
+        RemoveChip(cut, "Tekst");
 
         Assert.Equal(["Dødsårsaksregisteret"], Chips(cut));
-        Assert.False(FacetChosen(cut, "Streng"));
+        Assert.False(FacetChosen(cut, "Tekst"));
         Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
         Assert.Empty(client.SearchFilter!.DataTypes);
         Assert.Single(client.SearchFilter!.KildeIds);
@@ -9520,7 +9483,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client);
 
         ClickFacet(cut, "Dødsårsaksregisteret");
-        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Tekst");
         ClickFacet(cut, "Har kildekodeverk");
 
         ClearAll(cut).Click();
@@ -9528,7 +9491,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Empty(Chips(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-filters__active"));
         Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
-        Assert.False(FacetChosen(cut, "Streng"));
+        Assert.False(FacetChosen(cut, "Tekst"));
         Assert.False(FacetChosen(cut, "Har kildekodeverk"));
         Assert.True(client.SearchFilter!.IsEmpty);
     }
@@ -9669,7 +9632,7 @@ public class VariableSearchTest : ExplorerTestContext
         ClickFacet(cut, "Dødsårsaksregisteret");
         Assert.Contains("avgrenset av 1 filter", cut.Find("p[role='status']").TextContent);
 
-        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Tekst");
         Assert.Contains("avgrenset av 2 filtre", cut.Find("p[role='status']").TextContent);
     }
 
@@ -9682,7 +9645,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), EveryFacet()));
 
         ClickFacet(cut, "Dødsårsaksregisteret");
-        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Tekst");
         ClickFacet(cut, "ICD-10");
 
         var panel = cut.Find("fieldset.munin-explorer-filters");
@@ -9696,7 +9659,7 @@ public class VariableSearchTest : ExplorerTestContext
         // The two places the number does live, asserted here because this is the change that made
         // them the only ones. Their own tests cover what each says; these say they still say it.
         Assert.Contains("avgrenset av 3 filtre", cut.Find("p[role='status']").TextContent);
-        Assert.Equal(["Dødsårsaksregisteret", "Streng", "ICD-10"], Chips(cut));
+        Assert.Equal(["Dødsårsaksregisteret", "Tekst", "ICD-10"], Chips(cut));
     }
 
     [Fact]
@@ -9979,7 +9942,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         client.StallSearch = true;
         ClickFacet(cut, "Dødsårsaksregisteret");
-        ClickFacet(cut, "Streng");
+        ClickFacet(cut, "Tekst");
 
         Assert.Equal(2, client.SearchCalls); // the initial load and the first press, not the second
         Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
@@ -10363,7 +10326,7 @@ public class VariableSearchTest : ExplorerTestContext
         // The level's own word, exactly as the trail's step reads it — the chip names what it takes
         // off, and a guid would name nothing. It stands where the kilde facet holding that level
         // stands, ahead of the datatype, rather than after every facet in the panel.
-        Assert.Equal(["Datasamling", "Streng"], Chips(cut));
+        Assert.Equal(["Datasamling", "Tekst"], Chips(cut));
         Assert.Equal("Fjern filteret Datasamling",
                      AccessibleName.Of(cut.FindAll(".munin-explorer-filters__chip")[0]
                                           .QuerySelector(".munin-explorer-filters__chip-remove")!));
@@ -10393,7 +10356,7 @@ public class VariableSearchTest : ExplorerTestContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderFiltered(client, UnknownAtEveryLevel());
 
-        Assert.Equal(["Kilde", "Delkilde", "Datasamling", "Variabelgruppe", "Streng"], Chips(cut));
+        Assert.Equal(["Kilde", "Delkilde", "Datasamling", "Variabelgruppe", "Tekst"], Chips(cut));
 
         RemoveChip(cut, word);
 
@@ -10423,7 +10386,7 @@ public class VariableSearchTest : ExplorerTestContext
             DataTypes = ["1"]
         });
 
-        Assert.Equal(["Datasamling (+1)", "Streng"], Chips(cut));
+        Assert.Equal(["Datasamling (+1)", "Tekst"], Chips(cut));
 
         RemoveChip(cut, "Datasamling (+1)");
 
@@ -10558,7 +10521,7 @@ public class VariableSearchTest : ExplorerTestContext
         // than after the datatype: one level split across two ends of the row would read as two
         // different filters, on nothing but which values the payload happened to name.
         Assert.Equal(
-            ["Tromsøundersøkelsen", "Tromsø 4", "Fjerde runde", "Datasamling", "Bakgrunn", "Streng"],
+            ["Tromsøundersøkelsen", "Tromsø 4", "Fjerde runde", "Datasamling", "Bakgrunn", "Tekst"],
             Chips(cut));
         Assert.Equal(6, cut.FindAll(".munin-explorer-filters__chip").Count);
     }

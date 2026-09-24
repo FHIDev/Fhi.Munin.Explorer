@@ -147,7 +147,7 @@ public sealed partial class VariableView : ComponentBase
     private static readonly IReadOnlySet<string> DrawnElsewhere =
         new HashSet<string>(StringComparer.Ordinal)
         {
-            "DataType", CatalogueColumns.Description, CatalogueColumns.PreferredTerm,
+            DataTypeKey, CatalogueColumns.Description, CatalogueColumns.PreferredTerm,
         };
 
     /// <summary>Where the variable sits in the catalogue, as the open row's panel draws it.</summary>
@@ -210,15 +210,36 @@ public sealed partial class VariableView : ComponentBase
             ? CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T, Dates)
             : null;
 
-    /// <summary>This variable's data type in the reader's language, or null when the catalogue names none.</summary>
+    /// <summary>This variable's data type as the API names it, or null when the catalogue names none.</summary>
     /// <remarks>
     /// The same shape as <see cref="DataPeriod"/>, and for the same reason: the block is drawn
     /// exactly when there is a label to put in it, and the contents nav asks that same question.
     /// </remarks>
-    private string? DataTypeLabel =>
-        Variable is { DataType: { } dataType } && !string.IsNullOrWhiteSpace(dataType)
-            ? T.DataTypeLabel(dataType)
-            : null;
+    private string? DataTypeLabel => DataTypeWord?.Text;
+
+    /// <summary>
+    /// The word from the DataType vocabulary's options, which carry both languages, so it follows
+    /// the reader rather than the language the detail was fetched in; the code when it lists none.
+    /// </summary>
+    private (string Text, string? Lang)? DataTypeWord
+    {
+        get
+        {
+            if (Variable is not { DataType: { } stored } variable || string.IsNullOrWhiteSpace(stored))
+            {
+                return null;
+            }
+
+            var code = T.CanonicalDataTypeCode(stored);
+            var entry = variable.PropertyMetadata.FirstOrDefault(e => e.Key == DataTypeKey);
+
+            return entry is not null && CatalogueProperties.Option(entry, code, Reader) is { Curated: true } option
+                ? (option.Label, CatalogueProperties.Foreign(option.Language, Reader))
+                : (code, null);
+        }
+    }
+
+    private const string DataTypeKey = "DataType";
 
     // The catalogue's own keys for the three curated properties the hero row leads with. Named here
     // because a hero fact has to be chosen; their labels, words and order are still the payload's.
