@@ -529,14 +529,8 @@ function stillShowing(state, name, where) {
 }
 
 /**
- * The row disclosures whose GLYPH is their state, one per surface.
- *
- * Since Fhi.Metadata-l9l2n.84 the glyph class alone no longer names the picture:
- * `icon-keyboard-arrow-down` resolves to icon_up.svg through the legacy unscoped override Stiler
- * 0.1.107 and both samples still carry, and the shut row is rescued only by the
- * `[aria-expanded=false]` rule beside it out-specifying that one. So which picture a reader sees is
- * a question about a cascade, and nothing else resolves one: bUnit has no CSS at all, and the
- * sample-stylesheet guards match selector text.
+ * The row disclosures whose GLYPH is their state, one per surface. The picture is a cascade (base
+ * icon rules at rest, hover rules over them; Fhi.Metadata-trfs0) that no test in test/ resolves.
  */
 const CHEVRONS = [
   {
@@ -633,16 +627,12 @@ const chevronAssertions = CHEVRONS.map(chevron => ({
       .join('; ');
   },
 
-  // Both halves, because breaking one proves only that one fires: dropping the
-  // `[aria-expanded=false]` rules leaves the legacy unscoped override drawing the shut row, which
-  // is the Stiler that never scoped its own rules, and dropping the `icon-keyboard-arrow-up` rules
-  // leaves the open row nothing to draw at all. Both shipped green past every test in test/.
-  //
-  // Matched on a pattern rather than on the stylesheet's own text: the CSSOM hands back a
-  // selectorText it has normalised, quoting the unquoted `false` this file writes.
+  // Both halves, because breaking one proves only that one fires. The rest state is the base icon
+  // rules' since Stiler 0.1.110 (Fhi.Metadata-trfs0), so they go with the explorer's hover rules;
+  // matched on a pattern because the CSSOM normalises selectorText.
   async control(page) {
     await page.evaluate(() => {
-      const shut = /\[aria-expanded\s*=\s*["']?false["']?\]/;
+      const base = /^\.icon-keyboard-arrow-(down|up)$/;
       const deleted = { shut: 0, open: 0 };
 
       for (const sheet of document.styleSheets) {
@@ -654,10 +644,10 @@ const chevronAssertions = CHEVRONS.map(chevron => ({
         }
 
         for (let at = rules.length - 1; at >= 0; at -= 1) {
-          const selector = rules[at].selectorText ?? '';
-          if (!selector.includes('expand-icon')) continue;
+          const selector = (rules[at].selectorText ?? '').trim();
+          if (!selector.includes('expand-icon') && !base.test(selector)) continue;
 
-          const half = shut.test(selector) ? 'shut'
+          const half = selector.includes('icon-keyboard-arrow-down') ? 'shut'
             : selector.includes('icon-keyboard-arrow-up') ? 'open' : null;
 
           if (half !== null) {

@@ -26,9 +26,9 @@
 # own tick beside it is a question a render tree cannot answer. (Fhi.Metadata-kd9ts)
 #
 # And it asks both row chevrons which PICTURE they draw in each of their four states. That is a
-# question about a cascade rather than about a class name: `icon-keyboard-arrow-down` means shut
-# only where `[aria-expanded=false]` reaches it, and no test in test/ resolves a rule at all.
-# (Fhi.Metadata-l9l2n.84)
+# question about a cascade rather than about a class name: base icon rules draw the rest state and
+# the explorer's hover rules sit over them (Fhi.Metadata-trfs0), and no test in test/ resolves a
+# rule at all. (Fhi.Metadata-l9l2n.84)
 #
 # And it asks a detail page's sticky fact bar when it appears, which is neither a press nor a render
 # tree question at all: the bar is drawn hidden and an IntersectionObserver shows it, so the answer
@@ -53,7 +53,7 @@
 #     way by construction, but by construction is not measured;
 #   - the sample stylesheet, not helsedata's. This runs ModernHost, as check-accessibility.sh does,
 #     because a control's own state is mostly not a question about CSS. The chevron assertions are,
-#     and what they measure is the sample's MIRROR of Stiler 0.1.107 rather than any Stiler a host
+#     and what they measure is the sample's MIRROR of Stiler 0.1.113 rather than any Stiler a host
 #     has restored; what a rule of Stiler's does to the same markup is check-hostile-host.sh's;
 #   - whether the refusal is the RIGHT rule. It asks the picker and the header to say the same
 #     thing, not whether the last column should be the one that cannot be turned off.

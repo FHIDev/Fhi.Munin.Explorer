@@ -222,9 +222,30 @@ internal static class HostClassNames
         [.. Regex.Matches(SampleStylesheet.Value,
                 $@"@container\s+{Regex.Escape(container)}(?=[\s(])[^{{]*\{{(?<body>(?:[^{{}}]*\{{[^{{}}]*\}})*[^{{}}]*)\}}")
             .SelectMany(block => RulesIn(block.Groups["body"].Value))
-            .Where(rule => rule.Selector.Split(',')
+            .Where(rule => SelectorList(rule.Selector)
                 .Any(s => Regex.Replace(s.Trim(), @"\s+", " ") == selector))
             .Select(rule => Regex.Replace(rule.Declarations, @"\s+", ""))];
+
+    // Top-level commas only: Stiler's handle gates carry `:has(a, b, c, d)` inside one entry.
+    private static IEnumerable<string> SelectorList(string selectors)
+    {
+        var depth = 0;
+        var start = 0;
+        for (var i = 0; i < selectors.Length; i++)
+        {
+            switch (selectors[i])
+            {
+                case '(': depth++; break;
+                case ')': depth--; break;
+                case ',' when depth == 0:
+                    yield return selectors[start..i];
+                    start = i + 1;
+                    break;
+            }
+        }
+
+        yield return selectors[start..];
+    }
 
     /// <summary>
     /// Null when <paramref name="rules"/> really draw <paramref name="name"/>; otherwise the line
