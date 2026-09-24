@@ -11429,13 +11429,14 @@ public class VariableSearchTest : ExplorerTestContext
         TabButton(cut, "Data").Click();
 
         var panel = Panel(cut);
-        var statistics = panel.QuerySelectorAll("h4")
+        var statistics = panel.QuerySelectorAll("h5")
             .Single(h => h.TextContent.StartsWith("Statistikk", StringComparison.Ordinal));
 
-        // HeadingLevel 3 → title h3 → RowLevel h4, which is where the kodeverk kinds beside it
-        // sit. The two must land on the same level or the tab reads as two outlines.
-        Assert.Equal("H4", statistics.TagName);
-        Assert.Contains("Kildekodeverk", panel.QuerySelectorAll("h4").Select(h => h.TextContent));
+        // HeadingLevel 3 → title h3 → drawer heading h4 → h5, where the kodeverk kinds beside it
+        // sit too. The two must land on the same level or the tab reads as two outlines.
+        Assert.Equal("H4", panel.QuerySelector(".munin-explorer-meta__heading")!.TagName);
+        Assert.Equal("H5", statistics.TagName);
+        Assert.Contains("Kildekodeverk", panel.QuerySelectorAll("h5").Select(h => h.TextContent));
     }
 
     // The payload Fhi.Metadata-e3e2d captured from prod. Its four code counts sum to exactly the

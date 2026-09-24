@@ -45,6 +45,9 @@ public partial class VariableSearch
     /// </remarks>
     private string? DetailControls(VariableSummary v) => IsSelected(v) ? DetailId(v) : null;
 
+    // One below the drawer's own heading, so the Data tab's group headings nest under it.
+    private int DrawerSectionLevel => Math.Clamp(RowLevel + 1, 1, 6);
+
     private string DrawerHeadingId(VariableSummary v) => $"munin-explorer-meta-heading-{_instance}-{v.Id:N}";
 
     // Drawn from the row rather than the detail payload, so the region has its name while the fetch
@@ -280,7 +283,7 @@ public partial class VariableSearch
     private IReadOnlyList<DetailNamedSection> KodeverkSections(VariableDetail detail) =>
         detail.KodeverkLinks.Count == 0
             ? []
-            : [new DetailNamedSection(DetailSectionIds.CodeLists, T.HeadingKodeverk, KodeverkGroups(detail))];
+            : [new DetailNamedSection(DetailSectionIds.CodeLists, T.HeadingKodeverk, KodeverkGroups(detail, RowLevel))];
 
     /// <summary>
     /// The kodeverk the variable's values are drawn from, grouped by the kind of link they are.
@@ -307,7 +310,7 @@ public partial class VariableSearch
     /// would be a second opinion about a list this component does not own.
     /// </para>
     /// </remarks>
-    private RenderFragment KodeverkGroups(VariableDetail detail) => builder =>
+    private RenderFragment KodeverkGroups(VariableDetail detail, int level) => builder =>
     {
         // Nothing, as the whole variable draws no section: the tab says so once for both blocks.
         if (detail.KodeverkLinks.Count == 0)
@@ -325,7 +328,7 @@ public partial class VariableSearch
 
         foreach (var group in links.GroupBy(entry => entry.Link.KodeverkType, StringComparer.OrdinalIgnoreCase))
         {
-            builder.OpenElement(seq, $"h{RowLevel}");
+            builder.OpenElement(seq, $"h{level}");
             builder.AddAttribute(seq + 1, "class", "headline headline-xxs margin--none munin-explorer-group");
             builder.AddContent(seq + 2, T.KodeverkTypeLabel(group.Key));
             builder.CloseElement();

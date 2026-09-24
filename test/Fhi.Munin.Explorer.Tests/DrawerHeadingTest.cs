@@ -6,11 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>
-/// The opened row's panel opens with the variable's name as a heading, and is named by it
-/// (Fhi.Metadata-yaco2). Stiler's rule is scoped under <c>.munin-explorer-meta</c>, so where the
-/// heading sits is as load-bearing as its class: anywhere else it renders as a browser-default h3.
-/// </summary>
+// Stiler scopes the heading's rule under .munin-explorer-meta, so its place is as load-bearing as
+// its class: anywhere else it renders as a browser-default h3. (Fhi.Metadata-yaco2)
 public class DrawerHeadingTest : ExplorerTestContext
 {
     private const string Heading = "munin-explorer-meta__heading";
@@ -64,6 +61,33 @@ public class DrawerHeadingTest : ExplorerTestContext
         }
     }
 
+    private sealed class KodeverkClient : EmptyMuninExplorerClient
+    {
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [new() { Id = TaleId, Code = "V_ALS.TALE", PreferredTerm = "1. Tale" }],
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = 25,
+                TotalPages = 1,
+            });
+
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<VariableDetail?>(new VariableDetail
+            {
+                Id = id,
+                Code = "V_ALS.TALE",
+                PreferredTerm = "1. Tale",
+                KodeverkLinks = [new() { KodeverkType = "kildekodeverk", KodeverkReference = "ALS_TALE", DisplayName = "ALS tale" }],
+            });
+    }
+
     private IRenderedComponent<VariableSearch> Render(
         Action<ComponentParameterCollectionBuilder<VariableSearch>>? parameters = null,
         bool answer = true)
@@ -94,6 +118,20 @@ public class DrawerHeadingTest : ExplorerTestContext
         Assert.False(string.IsNullOrEmpty(heading.Id));
         Assert.Equal("1. Tale", heading.TextContent);
         Assert.Single(cut.FindAll($".{Heading}"));
+    }
+
+    // The Data tab's group headings sit under the drawer heading, not beside it.
+    [Fact]
+    public void Panel_WhenTheDataTabHasKodeverk_ThenItsGroupHeadingsNestUnderTheDrawerHeading()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new KodeverkClient());
+        var cut = Render<VariableSearch>();
+
+        var panel = Open(cut, 0);
+        var group = panel.QuerySelector("[role=tabpanel] .munin-explorer-group")!;
+
+        Assert.Equal("H3", panel.QuerySelector($".{Heading}")!.TagName);
+        Assert.Equal("H4", group.TagName);
     }
 
     [Fact]
