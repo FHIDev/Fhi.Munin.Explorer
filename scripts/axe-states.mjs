@@ -24,7 +24,7 @@ import {
   loadTreeFixture, panel as filterPanel, tree as kildeTree, boxes as treeBoxes, chips as filterChips,
   until as untilTrue,
 } from './tree-states.mjs';
-import { names as treeNames } from './tree-fixture.mjs';
+import { names as treeNames, LONG_NAME_SEARCH, LONG_NAME } from './tree-fixture.mjs';
 
 /** Playwright's default action timeout is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
@@ -384,6 +384,24 @@ export const states = {
 
     await page
       .locator('.munin-explorer-detail[aria-busy="false"]')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // The drawer opened on a row whose name has no break in it: the heading at its top only stays
+  // inside 320px because Stiler's rule carries overflow-wrap: anywhere (Fhi.Metadata-yaco2).
+  'variable-detail-long-name': async page => {
+    const box = page.locator('input.searchbox__freetext').first();
+    await box.waitFor({ state: 'visible', timeout: findTimeout });
+    await box.fill(LONG_NAME_SEARCH);
+    await press(page, 'Søk');
+
+    const row = page.locator('ul.munin-explorer-data-list > li', { hasText: LONG_NAME }).first();
+    await row.waitFor({ state: 'visible', timeout: findTimeout });
+    await row.locator('button.munin-explorer-dataitem__expand-toggle').click();
+
+    await page
+      .locator('.munin-explorer-meta[aria-busy="false"] > .munin-explorer-meta__heading', { hasText: LONG_NAME })
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },

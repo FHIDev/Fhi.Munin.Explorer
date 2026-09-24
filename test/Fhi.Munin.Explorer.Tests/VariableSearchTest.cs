@@ -11429,13 +11429,14 @@ public class VariableSearchTest : ExplorerTestContext
         TabButton(cut, "Data").Click();
 
         var panel = Panel(cut);
-        var statistics = panel.QuerySelectorAll("h4")
+        var statistics = panel.QuerySelectorAll("h5")
             .Single(h => h.TextContent.StartsWith("Statistikk", StringComparison.Ordinal));
 
-        // HeadingLevel 3 → title h3 → RowLevel h4, which is where the kodeverk kinds beside it
-        // sit. The two must land on the same level or the tab reads as two outlines.
-        Assert.Equal("H4", statistics.TagName);
-        Assert.Contains("Kildekodeverk", panel.QuerySelectorAll("h4").Select(h => h.TextContent));
+        // HeadingLevel 3 → title h3 → drawer heading h4 → h5, where the kodeverk kinds beside it
+        // sit too. The two must land on the same level or the tab reads as two outlines.
+        Assert.Equal("H4", panel.QuerySelector(".munin-explorer-meta__heading")!.TagName);
+        Assert.Equal("H5", statistics.TagName);
+        Assert.Contains("Kildekodeverk", panel.QuerySelectorAll("h5").Select(h => h.TextContent));
     }
 
     // The payload Fhi.Metadata-e3e2d captured from prod. Its four code counts sum to exactly the
@@ -14250,7 +14251,7 @@ public class VariableSearchTest : ExplorerTestContext
     {
         // Twenty-five buttons all called "Vis detaljer" say nothing about which row they open when
         // a screen reader lists them out of context, so the chevron's label carries the row's
-        // name, as Kelda's does. The panel is labelled by the name button, not by that sentence.
+        // name, as Kelda's does. The panel is labelled by its own heading, not by that sentence.
         var cut = RenderWith(TwoRows());
         var heading = cut.FindAll("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name")[0];
 
@@ -14264,7 +14265,9 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(Panel(cut).Id, Toggles(cut)[0].GetAttribute("aria-controls"));
         Assert.Equal("region", Panel(cut).GetAttribute("role"));
-        Assert.Equal(heading.Id, Panel(cut).GetAttribute("aria-labelledby"));
+        Assert.Equal(Panel(cut).QuerySelector("h3.munin-explorer-meta__heading")!.Id,
+                     Panel(cut).GetAttribute("aria-labelledby"));
+        Assert.Equal(heading.TextContent.Trim(), AccessibleName.Of(Panel(cut)));
     }
 
     [Fact]
