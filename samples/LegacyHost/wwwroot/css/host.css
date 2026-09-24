@@ -1465,20 +1465,23 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
   flex: 0 0 10rem;
 }
 
-/* A failed save's sentence, on a line of its own under the row's columns rather than cut off in
-   the fixed-width save cell. The cell is always there and empty until needed, so the spacing sits
-   on the alert and only while it has text. (Fhi.Metadata-q7i5e) */
+/* Brought in for the save status when it stood in the row (Fhi.Metadata-q7i5e); it is in the
+   open panel now. */
 .munin-explorer-data-list__item__row {
   flex-wrap: wrap;
 }
 
+/* The save status follows "Lagre i liste" in the panel's button row: beside it when the sentence
+   fits, otherwise on a line of its own flush with the buttons. Empty, it has no height; with text
+   it gets the buttons' margin-bottom under it. (Fhi.Metadata-35w0p.82) */
 .munin-explorer-data-list__save-status {
-  flex: 0 0 100%;
+  display: inline-block;
+  max-width: 100%;
 }
 
 .munin-explorer-data-list__save-status > [role="alert"]:not(:empty) {
   display: block;
-  padding: 0 0 12px 3rem;
+  margin-bottom: 16px;
 }
 
 /* --grey60 rather than the --grey30 every other border in this stylesheet uses. A field's own
@@ -2631,9 +2634,12 @@ table.munin-explorer-data-list tbody th {
   border-bottom: 0;
 }
 
+/* The code lines in the preview sit inside this, and "11002 Stavanger/Sandnes" has no break
+   opportunity: at 320 the Data tab scrolled 9px sideways. (Fhi.Metadata-pu2j7) */
 .munin-explorer-kodeverk__name {
   margin: 0;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 /* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
