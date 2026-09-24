@@ -1868,8 +1868,7 @@ table.munin-explorer-data-list tbody th {
    variables.css had no kilde section to read one back off, so there was nothing to copy and
    these had to be invented outright. What the layout HOLDS is named from elsewhere: the headings
    are Stiler's `headline`, the fact lists are `munin-explorer-page__fields` from the chassis
-   below, and the kildetype badge is named by nobody but us — see the rule for it
-   below.
+   below, and the kildetype badge that once stood under the name was named by nobody but us.
 
    They arrived unstyled. The view shipped in #43 with a whole prefix of its own and neither sample
    had a rule for one of them, so both rendered it at raw browser defaults — a sidebar stacked under
@@ -1899,7 +1898,7 @@ table.munin-explorer-data-list tbody th {
 
 /* The kildetype badge that stood here is gone: the name block no longer draws one, because the
    hero fact row right below it leads with Type and said the same words twice (Fhi.Metadata-pnn4w).
-   Stiler still carries a rule for the name; removing it is Fhi.Metadata-ua7rf's, not this file's. */
+   Stiler 0.1.123 retired its rule for the name as well (Fhi.Metadata-rlg1w). */
 
 /* No colour of ours. The host styles `ingress` only inside particular page types and none of those
    rules set one, so the ingress inherits the body colour the rest of the page reads in. */
@@ -2945,7 +2944,7 @@ table.munin-explorer-data-list tbody th {
   font-weight: 600;
 }
 
-/* Reads as a state, not as part of the name — the same move the kildetype tag makes. */
+/* Reads as a state, not as part of the name — the same move the retired kildetype tag made. */
 .munin-explorer-versions__badge {
   flex: 0 0 auto;
   padding: 1px 9px;
