@@ -124,6 +124,9 @@ THEIRS=(
 # follows, the same for every reader so a deep link resolves (Fhi.Metadata-uobxg). `-statistics`
 # and `-versions` are absent because they are also classes, and styled as such.
 #
+# `munin-explorer-source` is both kinds — DetailSectionIds.Source writes it whole — so it stays
+# listed even if the stem's prose goes away.
+#
 # Kept apart from THEIRS on purpose. THEIRS means "something else styles this, so a missing rule
 # here costs nothing"; this means "no rule is possible". Filing one under the other would claim
 # the name is styled somewhere, which it is not — it is not a class at all.
