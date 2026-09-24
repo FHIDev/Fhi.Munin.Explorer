@@ -266,6 +266,44 @@ public class MyListsClientTest
     }
 
     [Fact]
+    public async Task GetMyListVariablesAsync_WhenTheCoverageFlagsAreSent_ThenEachIsReadOnItsOwn()
+    {
+        // hasKodeverk and hasStatistikk feed the saved list's two coverage columns. Munin sends
+        // them as bool? and writes null for an entry the read model has lost, so a plain bool here
+        // would throw on the first orphan and take the whole page down with it.
+        var handler = StubHttpHandler.Ok(TestData.Read("my-list-variables.json"));
+
+        var page = await Client(handler).GetMyListVariablesAsync(ListId);
+
+        Assert.True(page!.Items[0].HasKodeverk);
+        Assert.False(page.Items[0].HasStatistikk);
+        Assert.Null(page.Items[1].HasKodeverk);
+        Assert.Null(page.Items[1].HasStatistikk);
+    }
+
+    [Fact]
+    public async Task GetMyListVariablesAsync_WhenTheCoverageFlagsAreAbsent_ThenTheyReadAsNotKnown()
+    {
+        // An API from before the flags. Not known is not "no": the cell says "Ikke oppgitt".
+        var handler = StubHttpHandler.Ok(
+            """
+            {
+              "items": [
+                { "variabelId": "b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90", "addedAt": "2026-08-19T11:03:55.008+00:00" }
+              ],
+              "totalCount": 1,
+              "page": 1,
+              "size": 100
+            }
+            """);
+
+        var page = await Client(handler).GetMyListVariablesAsync(ListId);
+
+        Assert.Null(page!.Items[0].HasKodeverk);
+        Assert.Null(page.Items[0].HasStatistikk);
+    }
+
+    [Fact]
     public async Task GetMyListVariablesAsync_WhenAnOrphanIsAnnotated_ThenTheAnnotationSurvivesTheMissingVariable()
     {
         // The annotation is stored on the membership, not resolved per page like the display fields

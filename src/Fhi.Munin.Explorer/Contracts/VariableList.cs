@@ -96,6 +96,19 @@ public sealed record VariableListItem
     /// </summary>
     [JsonPropertyName("versjonStatus")] public string? VersionStatus { get; init; }
 
+    /// <summary>
+    /// Whether the variable links a kodeverk. <see langword="null"/> means not known rather than
+    /// no: the API sends null with the other display fields for an entry the read model does not
+    /// hold, and a shared list's snapshot does not carry it at all.
+    /// </summary>
+    [JsonPropertyName("hasKodeverk")] public bool? HasKodeverk { get; init; }
+
+    /// <summary>
+    /// Whether the variable has published statistics, with <see langword="null"/> on the same
+    /// terms as <see cref="HasKodeverk"/>.
+    /// </summary>
+    [JsonPropertyName("hasStatistikk")] public bool? HasStatistikk { get; init; }
+
     // The reader's own annotation — "Ønskede data", what they want out of this variable. Stored on
     // the membership rather than resolved per page, so unlike the display fields above it survives
     // the variable leaving the catalogue: an orphaned entry still carries what its reader wrote.

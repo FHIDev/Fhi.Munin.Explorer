@@ -279,6 +279,8 @@ else if (State?.IsAuthenticated == true)
                                 <th scope="col" class="munin-explorer-dataitem-header__theme">@T.FieldVariableGroup</th>
                                 <th scope="col" class="munin-explorer-dataitem-header__dataType">@T.FieldDataType</th>
                                 <th scope="col" class="munin-explorer-dataitem-header__period">@T.FieldDataPeriod</th>
+                                <th scope="col" class="munin-explorer-dataitem-header__kodeverk">@T.FieldKodeverk</th>
+                                <th scope="col" class="munin-explorer-dataitem-header__statistikk">@T.FieldStatistikk</th>
                                 <th scope="col" class="munin-explorer-dataitem-header__desiredData">@T.FieldDesiredData</th>
 
                                 @* A control column with no visible heading, the shape Kelda's expand
@@ -304,10 +306,10 @@ else if (State?.IsAuthenticated == true)
                                               lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
                                     </th>
 
-                                    @* The six columns the result list draws too, built by the cell
-                                       helper both call — written out here as well, they could gain an
-                                       attribute in one place and not the other without anything
-                                       failing. *@
+                                    @* The six columns the result list draws too and the two coverage
+                                       columns only a list draws, built by the cell helper both call —
+                                       written out here as well, they could gain an attribute in one
+                                       place and not the other without anything failing. *@
                                     @Cells(item)
 
                                     @* Rendered from the draft rather than from the item, which keeps a
@@ -465,6 +467,8 @@ else if (State?.IsAuthenticated == true)
                                     <th scope="col" class="munin-explorer-dataitem-header__theme">@T.FieldVariableGroup</th>
                                     <th scope="col" class="munin-explorer-dataitem-header__dataType">@T.FieldDataType</th>
                                     <th scope="col" class="munin-explorer-dataitem-header__period">@T.FieldDataPeriod</th>
+                                    <th scope="col" class="munin-explorer-dataitem-header__kodeverk">@T.FieldKodeverk</th>
+                                    <th scope="col" class="munin-explorer-dataitem-header__statistikk">@T.FieldStatistikk</th>
                                 </tr>
                             </thead>
                             <tbody>

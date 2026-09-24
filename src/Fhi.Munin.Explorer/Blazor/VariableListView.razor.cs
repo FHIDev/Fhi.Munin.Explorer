@@ -359,6 +359,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // The component's words rather than the catalogue's — the dates are formatted for the
         // reader — so it is left unmarked, exactly as the explorer leaves it.
         RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false, tableCell: true);
+
+        // A word rather than a mark, in the reader's language. Unknown is not "Nei": an entry the
+        // read model lost, and every shared snapshot, carry no answer and say so.
+        RowCell.Write(builder, 700, T.FieldKodeverk, Flag(item.HasKodeverk), "kodeverk", T.NotSpecified, catalogue: false, tableCell: true);
+        RowCell.Write(builder, 800, T.FieldStatistikk, Flag(item.HasStatistikk), "statistikk", T.NotSpecified, catalogue: false, tableCell: true);
+    };
+
+    private string? Flag(bool? value) => value switch
+    {
+        true => T.FlagYes,
+        false => T.FlagNo,
+        null => null
     };
 
     // Withheld rather than passed empty: both controls in the row are conditional, and a fragment
