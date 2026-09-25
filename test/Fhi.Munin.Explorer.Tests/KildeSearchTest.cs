@@ -2004,7 +2004,7 @@ public class KildeSearchTest : ExplorerTestContext
     private static IReadOnlyList<string> PanelOutline(IRenderedComponent<KildeSearch> cut) =>
     [
         .. cut.Find(".munin-explorer-kilder__expanded")
-            .QuerySelectorAll(".munin-explorer-kilde__delkilde-name, tbody th")
+            .QuerySelectorAll(".munin-explorer-kilde__delkilde-name, th[scope=row]")
             .Select(e => $"{(e.ClassList.Contains("munin-explorer-kilde__delkilde-name") ? "#" : "")}{e.TextContent.Trim()}")
     ];
 
@@ -2081,7 +2081,7 @@ public class KildeSearchTest : ExplorerTestContext
         // The datasamlinger alone are in the filter tree's order for the same kilde.
         Assert.Equal(
             InterleavedKilde.RankedPreorder.Where(name => name is not ("Fødsel" or "Svangerskap")),
-            panel.QuerySelectorAll("tbody th").Select(e => e.TextContent.Trim()));
+            panel.QuerySelectorAll("th[scope=row]").Select(e => e.TextContent.Trim()));
     }
 
     [Fact]

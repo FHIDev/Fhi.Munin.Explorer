@@ -14968,15 +14968,19 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Source_WhenDatasamlingerShareASortOrder_ThenTheyFallBackToNorwegianAlphabetical()
+    public void Source_WhenDatasamlingerShareARank_ThenTheyFallBackToOrdinalName()
     {
-        // The names being sorted are the catalogue's, stored once in Norwegian, so å sorts last
-        // whoever is reading. Sorting by the reader's culture would give an English reader a
-        // different order from a Norwegian colleague looking at the same source, and sorting by the
-        // thread's would make it depend on whatever the host happened to set.
+        // Ties break as the filter tree's do, by ordinal name, so the source panel and the tree
+        // cannot disagree about the same kilde whoever is reading (Fhi.Metadata-fuzw0). Ordinal
+        // also puts Å last, as the Norwegian alphabet does.
         var client = TwoRows().Knows(Kilde() with
         {
-            Datasamlinger = [Datasamling("Ålesund"), Datasamling("Bergen"), Datasamling("Oslo")],
+            Datasamlinger =
+            [
+                Datasamling("Ålesund") with { DisplayOrder = 1 },
+                Datasamling("Oslo") with { DisplayOrder = 1 },
+                Datasamling("Bergen") with { DisplayOrder = 1 }
+            ],
             Delkilder = [],
         });
 
@@ -14988,6 +14992,27 @@ public class VariableSearchTest : ExplorerTestContext
         var names = SourcePanel(cut).QuerySelectorAll("table tbody th").Select(e => e.TextContent);
 
         Assert.Equal(["Bergen", "Oslo", "Ålesund"], names);
+    }
+
+    [Fact]
+    public void Source_WhenNoDatasamlingHasARank_ThenThePayloadOrderIsKept()
+    {
+        // An API predating displayOrder is not re-sorted by name: the order it sent is the only
+        // curation there is, and SiblingOrder.Merge keeps it.
+        var client = TwoRows().Knows(Kilde() with
+        {
+            Datasamlinger = [Datasamling("Ålesund"), Datasamling("Oslo"), Datasamling("Bergen")],
+            Delkilder = [],
+        });
+
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+
+        var names = SourcePanel(cut).QuerySelectorAll("table tbody th").Select(e => e.TextContent);
+
+        Assert.Equal(["Ålesund", "Oslo", "Bergen"], names);
     }
 
     private static KildeDatasamling Datasamling(string name) => new()
@@ -15823,10 +15848,12 @@ public class VariableSearchTest : ExplorerTestContext
                 "munin-explorer-hierarchy",
                 "munin-explorer-retry",
                 "munin-explorer-hierarchy__metadata",
-                "munin-explorer-kilde__datasamlinger",
+                // No displayOrder in this fixture, so the payload's order stands: delkilder first,
+                // and the first table is the one under a delkilde (Fhi.Metadata-fuzw0).
                 "munin-explorer-kilde__delkilder",
                 "munin-explorer-kilde__delkilde",
                 "munin-explorer-kilde__delkilde-name",
+                "munin-explorer-kilde__datasamlinger",
                 // The fact lists of the two blocks that close the kilde view. The chassis's own
                 // name since Fhi.Metadata-35w0p.11; the drill-in PANEL keeps munin-explorer-meta__grid.
                 "munin-explorer-page__fields",
