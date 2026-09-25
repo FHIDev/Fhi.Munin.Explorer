@@ -21,7 +21,6 @@ public class FilterHierarchyTest
     private static readonly Guid Utskriving = new("dddddddd-0000-0000-0000-000000000004");
     private static readonly Guid Tvilling = new("bbbbbbbb-0000-0000-0000-000000000003");
     private static readonly Guid Adopsjon = new("bbbbbbbb-0000-0000-0000-000000000004");
-    private static readonly Guid Kk = new("4bbb0000-0000-0000-0000-000000000000");
 
     [Fact]
     public void Build_WhenGroupsCarryEveryFilterValue_ThenTheTreeDrawsAllThree()
@@ -553,6 +552,27 @@ public class FilterHierarchyTest
     }
 
     [Fact]
+    public void Build_WhenAChildIsMovedUpPastAnAbsentParent_ThenItsOldParentsRankDoesNotPlaceIt()
+    {
+        // Both carry rank 1 from a parent the answer left out, which beside Fodsel's 2 is a
+        // stranger's number: taken at face value, either would jump ahead of the ranked sibling.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder =
+            [
+                Delkilde(Svangerskap, Mfr, parent: NotInThePayload, rank: 1), Delkilde(Fodsel, Mfr, rank: 2)
+            ],
+            Datasamlinger = [Datasamling(Registrering, Mfr, NotInThePayload, rank: 1)]
+        };
+
+        var kilde = Assert.Single(FilterHierarchy.Build(facets));
+
+        Assert.Equal([Fodsel, Svangerskap, Registrering], kilde.Children.Select(node => node.Id));
+        Assert.Equal([2, null, null], kilde.Children.Select(node => node.DisplayOrder));
+    }
+
+    [Fact]
     public void Build_WhenTheAnswerPredatesDisplayOrder_ThenSiblingsKeepPayloadOrderDelkilderFirst()
     {
         // An older API sends no rank, and its payload order is the imported order it already
@@ -587,16 +607,18 @@ public class FilterHierarchyTest
     /// <summary>One sibling-order scope as the /filters answer carries it, every child straight off K_KK.</summary>
     private static FilterOptions Ranked(SiblingScope scope) => Answer() with
     {
-        Kilder = [Kilde(Kk)],
+        Kilder = [Kilde(SiblingOrderFixtures.KildeKk)],
         Delkilder =
         [
             .. scope.Delkilder.Select(sibling =>
-                Delkilde(sibling.Id, Kk, rank: sibling.DisplayOrder) with { Name = sibling.Name })
+                Delkilde(sibling.Id, SiblingOrderFixtures.KildeKk, rank: sibling.DisplayOrder)
+                    with { Name = sibling.Name })
         ],
         Datasamlinger =
         [
             .. scope.Datasamlinger.Select(sibling =>
-                Datasamling(sibling.Id, Kk, rank: sibling.DisplayOrder) with { Name = sibling.Name })
+                Datasamling(sibling.Id, SiblingOrderFixtures.KildeKk, rank: sibling.DisplayOrder)
+                    with { Name = sibling.Name })
         ]
     };
 
