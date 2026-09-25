@@ -7799,6 +7799,80 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Single(FilterPanelRows(cut, "Kosthold"));
     }
 
+    // ---- sibling order in the kilde tree (Fhi.Metadata-vc789) ----
+
+    /// <summary>K_KK after a curator moved Cancer to the top, every child straight off the kilde.</summary>
+    /// <remarks><paramref name="countOffset"/> moves every count, so a second answer is told apart
+    /// from the first by the numbers beside the rows.</remarks>
+    private static FilterOptions RankedKildeKk(int countOffset = 0)
+    {
+        var scope = SiblingOrderFixtures.ManualCancerFirst();
+        var kilde = SiblingOrderFixtures.KildeKkId;
+        var count = countOffset;
+
+        return new FilterOptions
+        {
+            KildeTyper = [new() { Value = "biobank", DisplayName = "Biobank", Count = 1 }],
+            Kilder = [new() { Id = kilde, Name = "K_KK", KildeType = "biobank", Count = 20 + countOffset }],
+            Delkilder =
+            [
+                .. scope.Delkilder.Select(wave => new DelkildeFacet
+                {
+                    Id = wave.Id, Name = wave.Name, KildeId = kilde, Count = ++count,
+                    DisplayOrder = wave.DisplayOrder
+                })
+            ],
+            Datasamlinger =
+            [
+                .. scope.Datasamlinger.Select(datasamling => new DatasamlingFacet
+                {
+                    Id = datasamling.Id, Name = datasamling.Name, KildeId = kilde, Count = ++count,
+                    DisplayOrder = datasamling.DisplayOrder
+                })
+            ]
+        };
+    }
+
+    /// <summary>The names of the rows drawn under the kilde reading <paramref name="kilde"/>, in drawn order.</summary>
+    private static IReadOnlyList<string> KildeChildNames(IRenderedComponent<VariableSearch> cut, string kilde)
+    {
+        ExpandBranches(cut);
+
+        return [.. Assert.Single(FilterPanelRows(cut, kilde)).QuerySelectorAll("li")
+            .Select(row => FacetName(row.QuerySelector("label")!).TextContent)];
+    }
+
+    [Fact]
+    public void KildeTree_WhenFiltersRankADatasamlingAheadOfTheWaves_ThenK_KKIsDrawnInTheResolvedOrder()
+    {
+        // Builder order proves nothing about the page if the panel regroups by kind on the way out;
+        // Cancer ranks ahead of every wave, so a kind-first regroup fails here.
+        var cut = RenderWith(new FilteringClient(OnePage(), RankedKildeKk()));
+
+        Assert.Equal(SiblingOrderFixtures.ManualCancerFirst().Expected, KildeChildNames(cut, "K_KK"));
+    }
+
+    [Fact]
+    public void KildeTree_WhenAFilterIsAppliedAndANewAnswerArrives_ThenOrderSelectionAndCountsHold()
+    {
+        // Ordering only rearranges nodes the builder already placed, so a tick — which rebuilds the
+        // tree from the cross-filtered answer — keeps the row ticked, under its kilde and in rank,
+        // with the new answer's own count beside it.
+        var client = new RefreshingFacetsClient(RankedKildeKk(), RankedKildeKk(countOffset: 100));
+        var cut = RenderWith(client);
+
+        Assert.Contains("2", FacetCount(cut, "Wave 2"), StringComparison.Ordinal);
+
+        client.Refreshed = true;
+        ClickFacet(cut, "Wave 2");
+
+        Assert.Equal(SiblingOrderFixtures.ManualCancerFirst().Expected, KildeChildNames(cut, "K_KK"));
+        Assert.True(FacetChosen(cut, "Wave 2"));
+        Assert.Equal(["Wave 2"], Chips(cut));
+        Assert.Contains("102", FacetCount(cut, "Wave 2"), StringComparison.Ordinal);
+        Assert.Contains("107", FacetCount(cut, "Death"), StringComparison.Ordinal);
+    }
+
     // ---- one selection across both surfaces (Fhi.Metadata-km3zb) ----
 
     /// <summary>The standalone facet, told apart from the kilde tree it shares its ids with.</summary>

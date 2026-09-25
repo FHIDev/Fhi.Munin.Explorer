@@ -13,6 +13,7 @@ internal sealed record SiblingScope(
 /// </summary>
 internal static class SiblingOrderFixtures
 {
+    internal static readonly Guid KildeKkId = new("4bbb0000-0000-0000-0000-000000000000");
     internal static readonly Guid Wave1 = new("4b000000-0000-0000-0000-000000000001");
     internal static readonly Guid Wave2 = new("4b000000-0000-0000-0000-000000000002");
     internal static readonly Guid Wave3 = new("4b000000-0000-0000-0000-000000000003");

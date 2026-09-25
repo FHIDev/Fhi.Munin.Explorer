@@ -24,7 +24,8 @@ internal sealed record HierarchyNode(
     string? ShortName,
     int Count,
     IReadOnlyList<HierarchyNode> Children,
-    IReadOnlyList<string>? Categories = null);
+    IReadOnlyList<string>? Categories = null,
+    int? DisplayOrder = null);
 
 /// <summary>Keyed by what each hangs under. Two datasamling lookups rather than one keyed by
 /// parent: the id spaces are independent Guids off the wire, so a kilde id equal to a delkilde id
@@ -105,20 +106,26 @@ internal static class FilterHierarchy
     internal static Dictionary<Guid, T> ById<T>(IEnumerable<T> entries, Func<T, Guid> id) =>
         entries.GroupBy(id).ToDictionary(group => group.Key, group => group.First());
 
-    /// <summary>Datasamlinger before delkilder, the order the panel's kilde facet already draws
-    /// them in, and the groups last: a group no datasamling of the kilde holds is an appendix to
-    /// the structure.</summary>
+    /// <summary>Delkilder and datasamlinger as one ranked sequence, and the groups last: a group
+    /// no datasamling of the kilde holds is an appendix to the structure.</summary>
     private static HierarchyNode Kilde(KildeFacet kilde, KildeLevelLookup levels, VariabelgruppePlacements placements)
     {
         var path = NodePath("", HierarchyLevel.Kilde, kilde.Id);
 
         return new(path, HierarchyLevel.Kilde, kilde.Id, kilde.Name, kilde.ShortName, kilde.Count,
         [
-            .. Datasamlinger(levels.DatasamlingerByKilde[kilde.Id], path, placements),
-            .. Delkilder(levels.Delkilder[kilde.Id], path, levels, placements),
+            .. Siblings(Delkilder(levels.Delkilder[kilde.Id], path, levels, placements),
+                        Datasamlinger(levels.DatasamlingerByKilde[kilde.Id], null, path, placements)),
             .. Variabelgrupper(placements.ByKilde[kilde.Id], path)
         ]);
     }
+
+    /// <summary>One parent's delkilder and datasamlinger in the rank /filters sent, reordered only:
+    /// placement and dedup are settled before this, and paths are what selection keys on.
+    /// (Fhi.Metadata-vc789)</summary>
+    private static IReadOnlyList<HierarchyNode> Siblings(
+        IReadOnlyList<HierarchyNode> delkilder, IReadOnlyList<HierarchyNode> datasamlinger) =>
+        SiblingOrder.Merge(delkilder, datasamlinger, node => node.DisplayOrder, node => node.Name, node => node.Id);
 
     /// <summary>Takes the buckets as they come: <see cref="KildeLevels"/> settles repeated ids
     /// across all of them at once, which is the only place it can be done since copies of one id
@@ -133,18 +140,23 @@ internal static class FilterHierarchy
              parentPath,
              delkilde => delkilde.Id,
              delkilde => delkilde.ParentDelkildeId,
-             (delkilde, path, nested) => new HierarchyNode(
+             (delkilde, drawnUnder, path, nested) => new HierarchyNode(
                  path, HierarchyLevel.Delkilde, delkilde.Id, delkilde.Name, null, delkilde.Count,
                  [
-                     .. Datasamlinger(levels.DatasamlingerByDelkilde[delkilde.Id], path, placements),
-                     .. nested,
+                     .. Siblings(nested,
+                                 Datasamlinger(levels.DatasamlingerByDelkilde[delkilde.Id], delkilde.Id, path, placements)),
                      .. Variabelgrupper(placements.ByDelkilde[delkilde.Id], path)
-                 ]));
+                 ],
+                 DisplayOrder: RankUnder(delkilde.DisplayOrder, delkilde.ParentDelkildeId, drawnUnder)));
 
     /// <summary>Datasamlinger as branches: what hangs under one is the groups placed in it.</summary>
-    /// <remarks>Takes the buckets as they come, for the reason <see cref="Delkilder"/> gives.</remarks>
+    /// <remarks>Takes the buckets as they come, for the reason <see cref="Delkilder"/> gives.
+    /// <paramref name="drawnUnder"/> is the delkilde they are drawn under, null at the kilde.</remarks>
     private static IReadOnlyList<HierarchyNode> Datasamlinger(
-        IEnumerable<DatasamlingFacet> datasamlinger, string parentPath, VariabelgruppePlacements placements) =>
+        IEnumerable<DatasamlingFacet> datasamlinger,
+        Guid? drawnUnder,
+        string parentPath,
+        VariabelgruppePlacements placements) =>
     [
         .. datasamlinger.Select(datasamling =>
         {
@@ -153,9 +165,16 @@ internal static class FilterHierarchy
             return new HierarchyNode(
                 path, HierarchyLevel.Datasamling, datasamling.Id, datasamling.Name, null, datasamling.Count,
                 Variabelgrupper(placements.ByDatasamling[datasamling.Id], path),
-                Categories: datasamling.Categories);
+                Categories: datasamling.Categories,
+                DisplayOrder: RankUnder(datasamling.DisplayOrder, datasamling.DelkildeId, drawnUnder));
         })
     ];
+
+    /// <summary>A rank is only comparable among the parent that gave it, so a node moved up past an
+    /// absent parent goes after the ranked siblings rather than landing among them by a stranger's
+    /// number. (Fhi.Metadata-vc789)</summary>
+    private static int? RankUnder(int? rank, Guid? rankedUnder, Guid? drawnUnder) =>
+        rankedUnder == drawnUnder ? rank : null;
 
     /// <summary><see cref="VariabelgruppeFacet.ParentId"/> is another group and never the catalogue
     /// owner, so a group whose parent is placed elsewhere stands as a root here rather than
@@ -167,7 +186,7 @@ internal static class FilterHierarchy
              parentPath,
              variabelgruppe => variabelgruppe.Id,
              variabelgruppe => variabelgruppe.ParentId,
-             (variabelgruppe, path, nested) => new HierarchyNode(
+             (variabelgruppe, _, path, nested) => new HierarchyNode(
                  path, HierarchyLevel.Variabelgruppe, variabelgruppe.Id, variabelgruppe.Name, null,
                  variabelgruppe.Count, nested));
 
@@ -240,7 +259,7 @@ internal static class FilterHierarchy
         string parentPath,
         Func<T, Guid> id,
         Func<T, Guid?> parentId,
-        Func<T, string, IReadOnlyList<HierarchyNode>, HierarchyNode> build)
+        Func<T, Guid?, string, IReadOnlyList<HierarchyNode>, HierarchyNode> build)
     {
         if (all.Count == 0)
         {
@@ -275,12 +294,12 @@ internal static class FilterHierarchy
             {
                 if (isRoot(entry) && placed.Add(id(entry)))
                 {
-                    roots.Add(Node(entry, parentPath));
+                    roots.Add(Node(entry, null, parentPath));
                 }
             }
         }
 
-        HierarchyNode Node(T entry, string ownerPath)
+        HierarchyNode Node(T entry, Guid? owner, string ownerPath)
         {
             var path = NodePath(ownerPath, level, id(entry));
 
@@ -290,11 +309,11 @@ internal static class FilterHierarchy
             {
                 if (placed.Add(id(child)))
                 {
-                    nested.Add(Node(child, path));
+                    nested.Add(Node(child, id(entry), path));
                 }
             }
 
-            return build(entry, path, nested);
+            return build(entry, owner, path, nested);
         }
     }
 

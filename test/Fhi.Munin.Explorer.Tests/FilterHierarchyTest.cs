@@ -17,6 +17,10 @@ public class FilterHierarchyTest
     private static readonly Guid Levekaar = new("cccccccc-0000-0000-0000-000000000002");
     private static readonly Guid Diagnoser = new("cccccccc-0000-0000-0000-000000000003");
     private static readonly Guid NotInThePayload = new("ffffffff-0000-0000-0000-000000000001");
+    private static readonly Guid Kontroll = new("dddddddd-0000-0000-0000-000000000003");
+    private static readonly Guid Utskriving = new("dddddddd-0000-0000-0000-000000000004");
+    private static readonly Guid Tvilling = new("bbbbbbbb-0000-0000-0000-000000000003");
+    private static readonly Guid Adopsjon = new("bbbbbbbb-0000-0000-0000-000000000004");
 
     [Fact]
     public void Build_WhenGroupsCarryEveryFilterValue_ThenTheTreeDrawsAllThree()
@@ -266,7 +270,8 @@ public class FilterHierarchyTest
     public void Build_WhenADelkildeNamesAnotherAsItsParent_ThenItIsDrawnUnderItWithItsOwnLevelsBeneath()
     {
         // A delkilde hangs off a delkilde as readily as off its kilde, and drawing the child beside
-        // its parent instead would say the two are peers of one kilde.
+        // its parent instead would say the two are peers of one kilde. No displayOrder here, so the
+        // siblings keep SiblingOrder's legacy order: delkilder as sent, then datasamlinger.
         var facets = Answer() with
         {
             Kilder = [Kilde(Mfr)],
@@ -281,9 +286,9 @@ public class FilterHierarchyTest
 
         var tree = FilterHierarchy.Build(facets);
         var fodsel = Assert.Single(Assert.Single(tree).Children);
-        var svangerskap = fodsel.Children[1];
+        var svangerskap = fodsel.Children[0];
 
-        Assert.Equal([HierarchyLevel.Datasamling, HierarchyLevel.Delkilde, HierarchyLevel.Variabelgruppe],
+        Assert.Equal([HierarchyLevel.Delkilde, HierarchyLevel.Datasamling, HierarchyLevel.Variabelgruppe],
                      fodsel.Children.Select(node => node.Level));
         Assert.Equal(Svangerskap, svangerskap.Id);
         Assert.Equal($"Kilde:{Mfr}/Delkilde:{Fodsel}/Delkilde:{Svangerskap}", svangerskap.Path);
@@ -490,6 +495,161 @@ public class FilterHierarchyTest
         Assert.Empty(Assert.Single(tree[1].Children).Children);
     }
 
+    // ------------------------------------------------------ sibling order (Fhi.Metadata-vc789)
+
+    [Theory]
+    [InlineData(nameof(SiblingOrderFixtures.KildeKK))]
+    [InlineData(nameof(SiblingOrderFixtures.ManualCancerFirst))]
+    [InlineData(nameof(SiblingOrderFixtures.NewChildAfterManualPrefix))]
+    [InlineData(nameof(SiblingOrderFixtures.ResetToSource))]
+    public void Build_WhenTheAnswerRanksAKildesChildren_ThenTheyAreInTheResolvedOrder(string fixture)
+    {
+        // The rank the API resolved is the only way a curator's manual move, a new child or a reset
+        // reaches the tree, so each payload must draw exactly in that rank and in no kind-first order.
+        var scope = SiblingOrderFixtures.Named(fixture);
+
+        var kilde = Assert.Single(FilterHierarchy.Build(Ranked(scope)));
+
+        Assert.Equal(scope.Expected, kilde.Children.Select(node => node.Name));
+    }
+
+    [Fact]
+    public void Build_WhenRanksInterleaveTheKindsAtRootAndNested_ThenNeitherKindIsGroupedFirst()
+    {
+        // Either kind first, at either level, fails here: the kilde's delkilde sits between its two
+        // datasamlinger, and under that delkilde a nested delkilde sits between two datasamlinger.
+        var kilde = Assert.Single(FilterHierarchy.Build(Interleaved(ranked: true)));
+        var fodsel = kilde.Children[1];
+
+        Assert.Equal([Registrering, Fodsel, Oppfolging], kilde.Children.Select(node => node.Id));
+        Assert.Equal([Kontroll, Svangerskap, Utskriving, Bakgrunn], fodsel.Children.Select(node => node.Id));
+    }
+
+    [Fact]
+    public void Build_WhenTwoParentsRankTheirChildrenOppositely_ThenEachParentIsOrderedByItsOwnRanks()
+    {
+        // Ranks are per parent and reuse the same numbers, so ordering across parents — or letting
+        // one parent's kind order leak into the next — would put one of these two the wrong way up.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder =
+            [
+                Delkilde(Fodsel, Mfr, rank: 1), Delkilde(Svangerskap, Mfr, rank: 2),
+                Delkilde(Tvilling, Mfr, parent: Fodsel, rank: 2), Delkilde(Adopsjon, Mfr, parent: Svangerskap, rank: 1)
+            ],
+            Datasamlinger =
+            [
+                Datasamling(Registrering, Mfr, Fodsel, rank: 1), Datasamling(Oppfolging, Mfr, Svangerskap, rank: 2)
+            ]
+        };
+
+        var kilde = Assert.Single(FilterHierarchy.Build(facets));
+
+        Assert.Equal([Fodsel, Svangerskap], kilde.Children.Select(node => node.Id));
+        Assert.Equal([Registrering, Tvilling], kilde.Children[0].Children.Select(node => node.Id));
+        Assert.Equal([Adopsjon, Oppfolging], kilde.Children[1].Children.Select(node => node.Id));
+    }
+
+    [Fact]
+    public void Build_WhenAChildIsMovedUpPastAnAbsentParent_ThenItsOldParentsRankDoesNotPlaceIt()
+    {
+        // Both carry rank 1 from a parent the answer left out, which beside Fodsel's 2 is a
+        // stranger's number: taken at face value, either would jump ahead of the ranked sibling.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder =
+            [
+                Delkilde(Svangerskap, Mfr, parent: NotInThePayload, rank: 1), Delkilde(Fodsel, Mfr, rank: 2)
+            ],
+            Datasamlinger = [Datasamling(Registrering, Mfr, NotInThePayload, rank: 1)]
+        };
+
+        var kilde = Assert.Single(FilterHierarchy.Build(facets));
+
+        Assert.Equal([Fodsel, Svangerskap, Registrering], kilde.Children.Select(node => node.Id));
+        Assert.Equal([2, null, null], kilde.Children.Select(node => node.DisplayOrder));
+    }
+
+    [Fact]
+    public void Build_WhenTheAnswerPredatesDisplayOrder_ThenSiblingsKeepPayloadOrderDelkilderFirst()
+    {
+        // An older API sends no rank, and its payload order is the imported order it already
+        // applied: re-sorting by name, or falling back to datasamlinger first, would invent one.
+        var kilde = Assert.Single(FilterHierarchy.Build(Interleaved(ranked: false)));
+        var fodsel = kilde.Children[0];
+
+        Assert.Equal([Fodsel, Oppfolging, Registrering], kilde.Children.Select(node => node.Id));
+        Assert.Equal([Svangerskap, Utskriving, Kontroll, Bakgrunn], fodsel.Children.Select(node => node.Id));
+        Assert.All(Flatten([kilde]), node => Assert.Null(node.DisplayOrder));
+    }
+
+    [Fact]
+    public void Build_WhenTheAnswerIsRanked_ThenOnlyTheOrderChangesAndNotWhereOrWhatAnythingIs()
+    {
+        // Paths are what the panel's disclosure and selection keys are made of, and counts are the
+        // answer's own: ordering that rebuilt a node could move either while every order test passes.
+        static IEnumerable<(string, Guid, HierarchyLevel, int)> Shape(FilterOptions facets) =>
+            Flatten(FilterHierarchy.Build(facets))
+                .Select(node => (node.Path, node.Id, node.Level, node.Count))
+                .OrderBy(entry => entry.Path, StringComparer.Ordinal);
+
+        Assert.Equal(Shape(Interleaved(ranked: false)), Shape(Interleaved(ranked: true)));
+        Assert.Equal(
+            [2, 3, 5, 7, 11, 13, 17],
+            Flatten(FilterHierarchy.Build(Interleaved(ranked: true)))
+                .Where(node => node.Level is not HierarchyLevel.Kilde)
+                .Select(node => node.Count)
+                .Order());
+    }
+
+    /// <summary>One sibling-order scope as the /filters answer carries it, every child straight off K_KK.</summary>
+    private static FilterOptions Ranked(SiblingScope scope) => Answer() with
+    {
+        Kilder = [Kilde(SiblingOrderFixtures.KildeKkId)],
+        Delkilder =
+        [
+            .. scope.Delkilder.Select(sibling =>
+                Delkilde(sibling.Id, SiblingOrderFixtures.KildeKkId, rank: sibling.DisplayOrder)
+                    with { Name = sibling.Name })
+        ],
+        Datasamlinger =
+        [
+            .. scope.Datasamlinger.Select(sibling =>
+                Datasamling(sibling.Id, SiblingOrderFixtures.KildeKkId, rank: sibling.DisplayOrder)
+                    with { Name = sibling.Name })
+        ]
+    };
+
+    /// <summary>Both kinds under a kilde and under one of its delkilder, with a group beside them.</summary>
+    /// <remarks>Payload order is deliberately not the ranked order, at either level.</remarks>
+    private static FilterOptions Interleaved(bool ranked)
+    {
+        int? Rank(int rank) => ranked ? rank : null;
+
+        return Answer() with
+        {
+            Kilder = [Kilde(Mfr, count: 19)],
+            Delkilder =
+            [
+                Delkilde(Fodsel, Mfr, count: 2, rank: Rank(2)),
+                Delkilde(Svangerskap, Mfr, parent: Fodsel, count: 3, rank: Rank(2))
+            ],
+            Datasamlinger =
+            [
+                Datasamling(Oppfolging, Mfr, count: 5, rank: Rank(3)),
+                Datasamling(Registrering, Mfr, count: 7, rank: Rank(1)),
+                Datasamling(Utskriving, Mfr, Fodsel, count: 11, rank: Rank(3)),
+                Datasamling(Kontroll, Mfr, Fodsel, count: 13, rank: Rank(1))
+            ],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel), count: 17)
+            ]
+        };
+    }
+
     /// <summary>Every node of the tree, parents before what hangs under them.</summary>
     private static IEnumerable<HierarchyNode> Flatten(IEnumerable<HierarchyNode> nodes) =>
         nodes.SelectMany(node => new[] { node }.Concat(Flatten(node.Children)));
@@ -500,11 +660,29 @@ public class FilterHierarchyTest
     private static KildeFacet Kilde(Guid id, int count = 0) =>
         new() { Id = id, Name = $"Kilde {id:N}", ShortName = "", Count = count };
 
-    private static DelkildeFacet Delkilde(Guid id, Guid kilde, Guid? parent = null, int count = 0) =>
-        new() { Id = id, Name = $"Delkilde {id:N}", KildeId = kilde, ParentDelkildeId = parent, Count = count };
+    private static DelkildeFacet Delkilde(
+        Guid id, Guid kilde, Guid? parent = null, int count = 0, int? rank = null) =>
+        new()
+        {
+            Id = id,
+            Name = $"Delkilde {id:N}",
+            KildeId = kilde,
+            ParentDelkildeId = parent,
+            Count = count,
+            DisplayOrder = rank
+        };
 
-    private static DatasamlingFacet Datasamling(Guid id, Guid kilde, Guid? delkilde = null, int count = 0) =>
-        new() { Id = id, Name = $"Datasamling {id:N}", KildeId = kilde, DelkildeId = delkilde, Count = count };
+    private static DatasamlingFacet Datasamling(
+        Guid id, Guid kilde, Guid? delkilde = null, int count = 0, int? rank = null) =>
+        new()
+        {
+            Id = id,
+            Name = $"Datasamling {id:N}",
+            KildeId = kilde,
+            DelkildeId = delkilde,
+            Count = count,
+            DisplayOrder = rank
+        };
 
     private static VariabelgruppeFacet Variabelgruppe(
         Guid id,
