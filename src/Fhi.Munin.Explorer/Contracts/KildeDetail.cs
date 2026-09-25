@@ -101,6 +101,13 @@ public sealed record KildeDatasamling
     /// </summary>
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
 
+    /// <summary>
+    /// Rank among the delkilder and datasamlinger sharing its parent, both kinds on one scale, as
+    /// the API resolved it — not <c>presentationOrder</c>. Null from a server predating the field;
+    /// order siblings with <see cref="SiblingOrder.Merge{T}"/> either way.
+    /// </summary>
+    [JsonPropertyName("displayOrder")] public int? DisplayOrder { get; init; }
+
     /// <summary>Owning delkilde, or null when the datasamling hangs directly off the kilde.</summary>
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }
 
@@ -168,6 +175,13 @@ public sealed record KildeDelkilde
 
     /// <summary>Curated display order; null when unordered.</summary>
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
+
+    /// <summary>
+    /// Rank among the delkilder and datasamlinger sharing its parent, both kinds on one scale, as
+    /// the API resolved it — not <c>presentationOrder</c>. Null from a server predating the field;
+    /// order siblings with <see cref="SiblingOrder.Merge{T}"/> either way.
+    /// </summary>
+    [JsonPropertyName("displayOrder")] public int? DisplayOrder { get; init; }
 
     /// <summary>Parent delkilde when nested, null when it hangs directly off the kilde.</summary>
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }

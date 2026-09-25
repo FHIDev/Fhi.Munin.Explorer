@@ -50,6 +50,13 @@ public sealed record HierarchyDelkilde
 
     /// <summary>Curated display order; null when unordered.</summary>
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
+
+    /// <summary>
+    /// Rank among the delkilder and datasamlinger sharing its parent, both kinds on one scale, as
+    /// the API resolved it — not <c>presentationOrder</c>. Null from a server predating the field;
+    /// order siblings with <see cref="SiblingOrder.Merge{T}"/> either way.
+    /// </summary>
+    [JsonPropertyName("displayOrder")] public int? DisplayOrder { get; init; }
 }
 
 /// <summary>A datasamling node in the tree.</summary>
@@ -64,6 +71,13 @@ public sealed record HierarchyDatasamling
 
     /// <summary>Curated display order; null when unordered.</summary>
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
+
+    /// <summary>
+    /// Rank among the delkilder and datasamlinger sharing its parent, both kinds on one scale, as
+    /// the API resolved it — not <c>presentationOrder</c>. Null from a server predating the field;
+    /// order siblings with <see cref="SiblingOrder.Merge{T}"/> either way.
+    /// </summary>
+    [JsonPropertyName("displayOrder")] public int? DisplayOrder { get; init; }
 
     /// <summary>
     /// Datakategori tokens for the datasamling, passed through as the catalogue authored them:
