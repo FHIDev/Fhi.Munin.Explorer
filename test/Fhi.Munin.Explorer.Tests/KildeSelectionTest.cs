@@ -1496,11 +1496,11 @@ public class KildeSelectionTest : ExplorerTestContext
     }
 
     /// <summary>A kilde whose delkilder and datasamlinger interleave, as the only row in the list.</summary>
-    private static DrawerClient Interleaved() =>
+    private static DrawerClient Interleaved(bool ranked = true) =>
         new DrawerClient(
             Row(InterleavedKilde.Kilde, InterleavedKilde.KildeName, datasamlinger: 5),
             Row(KildeTwo, "Dødsårsaksregisteret", datasamlinger: 2))
-            .Describing(InterleavedKilde.Detail(ranked: true), DetailTwo());
+            .Describing(InterleavedKilde.Detail(ranked), DetailTwo());
 
     private static readonly IReadOnlyList<Guid> InterleavedDatasamlinger =
     [
@@ -1508,19 +1508,30 @@ public class KildeSelectionTest : ExplorerTestContext
         InterleavedKilde.Discharge, InterleavedKilde.FollowUp
     ];
 
-    [Fact]
-    public void Handover_WhenATickedKildesChildrenInterleave_ThenItsDatasamlingerTravelInTheDrawersOrder()
+    // Unranked, every level keeps the payload's order with its delkilder first.
+    private static readonly IReadOnlyList<Guid> UnrankedInterleavedDatasamlinger =
+    [
+        InterleavedKilde.Ultrasound, InterleavedKilde.Discharge, InterleavedKilde.Checkup,
+        InterleavedKilde.FollowUp, InterleavedKilde.Registration
+    ];
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Handover_WhenATickedKildesChildrenInterleave_ThenItsDatasamlingerTravelInTheDrawersOrder(bool ranked)
     {
         // The expansion is read off the drawer's groups, so reordering them reorders the handover:
         // it must follow the order the reader sees and still carry every datasamling once.
-        var (cut, _, datasamlinger) = RenderMarkable(Interleaved());
+        var (cut, _, datasamlinger) = RenderMarkable(Interleaved(ranked));
 
         Expand(cut, "Dødsårsaksregisteret");
         Mark(cut, KildeTwo, "Dødsfall");
         TickRow(cut, InterleavedKilde.KildeName);
         ExploreButton(cut).Click();
 
-        Assert.Equal([.. InterleavedDatasamlinger, CollectionTwoA], Assert.Single(datasamlinger));
+        Assert.Equal(
+            [.. ranked ? InterleavedDatasamlinger : UnrankedInterleavedDatasamlinger, CollectionTwoA],
+            Assert.Single(datasamlinger));
     }
 
     [Fact]

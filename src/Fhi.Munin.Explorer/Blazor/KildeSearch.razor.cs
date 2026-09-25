@@ -683,6 +683,13 @@ public sealed partial class KildeSearch : ComponentBase
 
                 if (groups.Count > before)
                 {
+                    // A child delkilde's group can come before any of this one's, so its heading
+                    // goes in bare there or the outline would skip a level.
+                    if (groups[before].Item3 != depth + 1)
+                    {
+                        groups.Insert(before, (delkilde.Name, delkilde.Code, depth + 1, []));
+                    }
+
                     run = null;
                 }
             }

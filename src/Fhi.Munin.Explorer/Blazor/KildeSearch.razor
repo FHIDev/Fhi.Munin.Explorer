@@ -143,8 +143,7 @@ else
     @* The filter, read once for the whole render. Four things below want it — the count, the empty
        state, the table's own name and its rows — and the getter re-runs the Where and materialises
        a new list on every one of them. Nothing changes between them, so this is shape rather than
-       correctness: it is how KildeView.DataCollectionTable opens (`var rows = DataCollections;`)
-       and what the variable explorer's `@if (HierarchyCrumbs is { Count: > 0 } crumbs)` does. *@
+       correctness, as the variable explorer's `@if (HierarchyCrumbs is { Count: > 0 } crumbs)` is. *@
     var visible = Visible;
     var summary = Summary(visible);
     @* Over every row the filter lets through, not the whole load (Fhi.Metadata-35w0p.30). *@

@@ -14971,8 +14971,8 @@ public class VariableSearchTest : ExplorerTestContext
     public void Source_WhenDatasamlingerShareARank_ThenTheyFallBackToOrdinalName()
     {
         // Ties break as the filter tree's do, by ordinal name, so the source panel and the tree
-        // cannot disagree about the same kilde whoever is reading (Fhi.Metadata-fuzw0). Ordinal
-        // also puts Å last, as the Norwegian alphabet does.
+        // cannot disagree about the same kilde whoever is reading (Fhi.Metadata-fuzw0). That is not
+        // the Norwegian alphabet: ordinal puts Å before Æ and Ø.
         var client = TwoRows().Knows(Kilde() with
         {
             Datasamlinger =

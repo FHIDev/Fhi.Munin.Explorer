@@ -1,7 +1,6 @@
 using AngleSharp.Dom;
 using Bunit;
 using Fhi.Munin.Explorer.Blazor;
-using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
