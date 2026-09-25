@@ -1414,9 +1414,11 @@ sibling never reorders the rest. It is not `presentationOrder`, which counts eac
 and stays on the contracts for compatibility.
 
 A host drawing that structure itself merges the two lists with `SiblingOrder.Merge`: ascending by
-`displayOrder`, and by name (ordinal) and then id where two ranks are equal. The package's own kilde,
-hierarchy and filter trees do not call it yet and still order as before; adopting it there is
-follow-up work. The field is additive, so a server predating it still
+`displayOrder`, and by name (ordinal) and then id where two ranks are equal. The package's own
+surfaces all order through it: the filter panel's kilde tree, `KildeHierarchyView`, `KildeView`'s
+delkilde structure — a table per run of datasamlinger and a list per run of delkilder, interleaved
+— and `KildeSearch`'s expanded row, whose groups follow the same sequence. Variabelgrupper keep
+their own order. The field is additive, so a server predating it still
 deserialises and every `DisplayOrder` reads null. `Merge` then keeps the order the payload sent —
 every delkilde as listed, then every datasamling — rather than re-sorting by name, and places any
 sibling without a rank after those that have one. It never decides between a curator's order and

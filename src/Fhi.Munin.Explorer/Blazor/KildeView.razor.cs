@@ -626,35 +626,16 @@ public sealed partial class KildeView : ComponentBase
     /// what the view draws. <see cref="DataCollectionStructure"/> keeps each under its own delkilde.
     /// </summary>
     private IReadOnlyList<KildeDatasamling> DataCollections =>
-        Kilde is { } kilde ? Ordered([.. Flatten(kilde)]) : [];
+        Kilde is { } kilde ? [.. Flatten(kilde)] : [];
 
-    /// <summary>The datasamlinger hanging directly off the source, in catalogue order.</summary>
-    private IReadOnlyList<KildeDatasamling> DirectDataCollections =>
-        Kilde is { } kilde ? Ordered(kilde.Datasamlinger) : [];
-
-    /// <summary>The source's own delkilder, in catalogue order. Most sources have none.</summary>
-    private IReadOnlyList<KildeDelkilde> Delkilder =>
-        Kilde is { } kilde ? Ordered(kilde.Delkilder) : [];
+    /// <summary>The source's own delkilder. Most sources have none.</summary>
+    private IReadOnlyList<KildeDelkilde> Delkilder => Kilde?.Delkilder ?? [];
 
     /// <summary>
     /// Where a top-level delkilde's name sits, so the heading outline walks the same tree the list
     /// draws. Stops at 6 with the outline.
     /// </summary>
     private int DelkildeLevel => Math.Min(BlockLevel + 1, 6);
-
-    /// <summary>
-    /// Catalogue order at every level: curated first, then the Norwegian alphabet. Two overloads
-    /// because the records share the fields but no interface, and a selector argument is a place
-    /// for one call site to sort by something else.
-    /// </summary>
-    private static IReadOnlyList<KildeDatasamling> Ordered(IReadOnlyList<KildeDatasamling> datasamlinger) =>
-        [.. datasamlinger.OrderBy(d => d.PresentationOrder ?? int.MaxValue)
-                         .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)];
-
-    /// <inheritdoc cref="Ordered(IReadOnlyList{KildeDatasamling})"/>
-    private static IReadOnlyList<KildeDelkilde> Ordered(IReadOnlyList<KildeDelkilde> delkilder) =>
-        [.. delkilder.OrderBy(d => d.PresentationOrder ?? int.MaxValue)
-                     .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)];
 
     private static IEnumerable<KildeDatasamling> Flatten(KildeDetail kilde) =>
         kilde.Datasamlinger.Concat(kilde.Delkilder.SelectMany(Flatten));
@@ -669,18 +650,34 @@ public sealed partial class KildeView : ComponentBase
     /// </summary>
     private RenderFragment DataCollectionStructure => builder =>
     {
-        var seq = 0;
-        var delkilder = Delkilder;
-
-        if (delkilder.Count == 0)
+        if (Kilde is not { } kilde)
         {
-            DatasamlingTable.Render(builder, ref seq, DataCollections, T, Language, Reader);
             return;
         }
 
-        DatasamlingTable.Render(builder, ref seq, DirectDataCollections, T, Language, Reader);
-        DelkildeList(builder, ref seq, delkilder, DelkildeLevel);
+        var seq = 0;
+        Children(builder, ref seq, KildeChildren.Of(kilde), DelkildeLevel);
     };
+
+    /// <summary>
+    /// One parent's children in the rank the API resolved across both kinds: each run of
+    /// datasamlinger a table and each run of delkilder a list, in one interleaved sequence.
+    /// </summary>
+    private void Children(RenderTreeBuilder builder, ref int seq, IReadOnlyList<KildeChild> children, int level)
+    {
+        foreach (var run in KildeChildren.Runs(children))
+        {
+            if (run[0].Datasamling is not null)
+            {
+                DatasamlingTable.Render(builder, ref seq, [.. run.Select(child => child.Datasamling!)],
+                                        T, Language, Reader);
+            }
+            else
+            {
+                DelkildeList(builder, ref seq, [.. run.Select(child => child.Delkilde!)], level);
+            }
+        }
+    }
 
     /// <summary>
     /// One level of the tree. The name wears <c>headline-xxs</c> because Stiler's scale has nothing
@@ -733,8 +730,7 @@ public sealed partial class KildeView : ComponentBase
                 builder.CloseElement();
             }
 
-            DatasamlingTable.Render(builder, ref seq, Ordered(delkilde.Datasamlinger), T, Language, Reader);
-            DelkildeList(builder, ref seq, Ordered(delkilde.Children), Math.Min(level + 1, 6));
+            Children(builder, ref seq, KildeChildren.Of(delkilde), Math.Min(level + 1, 6));
 
             builder.CloseElement();
         }

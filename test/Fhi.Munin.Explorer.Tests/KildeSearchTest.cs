@@ -1223,10 +1223,10 @@ public class KildeSearchTest : ExplorerTestContext
     private static KildeDetail DetailWithCollections(KildeSummary summary) =>
         Detail(summary) with
         {
-            Datasamlinger = [Collection("Hoveddatasamling")],
+            Datasamlinger = [Collection("Hoveddatasamling") with { DisplayOrder = 1 }],
             Delkilder =
             [
-                new() { Name = "Bølge 4", Datasamlinger = [Collection("Bølge 4 - serie 49")] }
+                new() { Name = "Bølge 4", DisplayOrder = 2, Datasamlinger = [Collection("Bølge 4 - serie 49")] }
             ]
         };
 
@@ -1976,18 +1976,18 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Render_WhenTheCatalogueCuratesAnOrder_ThenThePanelFollowsItAsTheDrilldownDoes()
+    public void Render_WhenTheCatalogueRanksTheDatasamlinger_ThenThePanelFollowsItAsTheDrilldownDoes()
     {
         // DatasamlingTable was shared so the two views agree about the same kilde; order is part of
-        // that agreement, and KildeView sorts every level by PresentationOrder then by name.
+        // that agreement, and KildeView orders every level by the API's displayOrder.
         var als = Kilde("Als registeret", "K_ALS", datasamlinger: 3);
         var detail = Detail(als) with
         {
             Datasamlinger =
             [
-                Collection("Siste") with { PresentationOrder = 3 },
-                Collection("Første") with { PresentationOrder = 1 },
-                Collection("Midten") with { PresentationOrder = 2 }
+                Collection("Siste") with { DisplayOrder = 3, PresentationOrder = 1 },
+                Collection("Første") with { DisplayOrder = 1, PresentationOrder = 3 },
+                Collection("Midten") with { DisplayOrder = 2 }
             ]
         };
 
@@ -1998,6 +1998,90 @@ public class KildeSearchTest : ExplorerTestContext
         var names = cut.FindAll(".munin-explorer-kilder__expanded tbody th").Select(c => c.TextContent);
 
         Assert.Equal(["Første", "Midten", "Siste"], names);
+    }
+
+    /// <summary>The open panel's group headings and datasamling rows, in document order.</summary>
+    private static IReadOnlyList<string> PanelOutline(IRenderedComponent<KildeSearch> cut) =>
+    [
+        .. cut.Find(".munin-explorer-kilder__expanded")
+            .QuerySelectorAll(".munin-explorer-kilde__delkilde-name, tbody th")
+            .Select(e => $"{(e.ClassList.Contains("munin-explorer-kilde__delkilde-name") ? "#" : "")}{e.TextContent.Trim()}")
+    ];
+
+    [Theory]
+    [InlineData(nameof(SiblingOrderFixtures.KildeKK))]
+    [InlineData(nameof(SiblingOrderFixtures.ManualCancerFirst))]
+    [InlineData(nameof(SiblingOrderFixtures.NewChildAfterManualPrefix))]
+    [InlineData(nameof(SiblingOrderFixtures.ResetToSource))]
+    public void Panel_WhenTheAnswerRanksAKildesChildren_ThenTheGroupsFollowTheResolvedOrder(string fixture)
+    {
+        // The panel used to put the kilde's own datasamlinger first whatever their rank, so K_KK
+        // opened on All waves, Cancer, Death above its waves while the kilde page read waves first.
+        var scope = SiblingOrderFixtures.Named(fixture);
+        var kk = Kilde("Kvinner og kreft", "K_KK", datasamlinger: scope.Delkilder.Count + 3);
+        var detail = InterleavedKilde.KildeKk(scope, kk.Id, questionnaires: true);
+        var waves = scope.Delkilder.Select(wave => wave.Name).ToHashSet(StringComparer.Ordinal);
+
+        var cut = RenderWith(new FakeClient(kk).Describing(detail));
+        ExpandToggle(cut, "Kvinner og kreft").Click();
+
+        // A wave is its heading and its questionnaire; the kilde's own run carries no heading while
+        // it opens the panel, and the kilde's name once it resumes after a wave's group.
+        List<string> expected = [];
+        var resumed = false;
+
+        foreach (var name in scope.Expected)
+        {
+            if (waves.Contains(name))
+            {
+                expected.AddRange([$"#{name}", $"{name} questionnaire"]);
+                resumed = false;
+                continue;
+            }
+
+            if (!resumed && expected.Count > 0)
+            {
+                expected.Add("#Kvinner og kreft");
+            }
+
+            resumed = true;
+            expected.Add(name);
+        }
+
+        Assert.Equal(expected, PanelOutline(cut));
+    }
+
+    [Fact]
+    public void Panel_WhenRanksInterleaveTheKinds_ThenEachRunIsAGroupAndAResumedOneIsHeadedByItsParent()
+    {
+        // Either kind first, at either level, fails here. A run of datasamlinger after a delkilde's
+        // groups carries its parent's name again, or it would read as the delkilde's own.
+        var summary = Kilde(InterleavedKilde.KildeName, "K_MFR", datasamlinger: 5);
+        var detail = InterleavedKilde.Detail(ranked: true) with { Id = summary.Id };
+
+        var cut = RenderWith(new FakeClient(summary).Describing(detail));
+        ExpandToggle(cut, InterleavedKilde.KildeName).Click();
+
+        Assert.Equal(
+        [
+            "Registrering",
+            "#Fødsel", "Kontroll",
+            "#Svangerskap", "Ultralyd",
+            "#Fødsel", "Utskriving",
+            $"#{InterleavedKilde.KildeName}", "Oppfølging"
+        ], PanelOutline(cut));
+
+        // The resumed groups sit at their parent's depth: the kilde at the panel's own heading level,
+        // the delkilde where its first group was.
+        var panel = cut.Find(".munin-explorer-kilder__expanded");
+        Assert.Equal(
+            ["H4", "H5", "H4", "H3"],
+            panel.QuerySelectorAll(".munin-explorer-kilde__delkilde-name").Select(e => e.TagName));
+
+        // The datasamlinger alone are in the filter tree's order for the same kilde.
+        Assert.Equal(
+            InterleavedKilde.RankedPreorder.Where(name => name is not ("Fødsel" or "Svangerskap")),
+            panel.QuerySelectorAll("tbody th").Select(e => e.TextContent.Trim()));
     }
 
     [Fact]

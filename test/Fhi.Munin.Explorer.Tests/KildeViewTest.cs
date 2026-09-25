@@ -99,7 +99,7 @@ public class KildeViewTest : ExplorerTestContext
 
     private static KildeDatasamling Collection(
         string name,
-        int? order = null,
+        int? rank = null,
         string? shortName = null,
         string description = "",
         DateTimeOffset? from = null,
@@ -111,7 +111,7 @@ public class KildeViewTest : ExplorerTestContext
             Name = name,
             ShortName = shortName,
             Description = description,
-            PresentationOrder = order,
+            DisplayOrder = rank,
             EffectiveValidFrom = from,
             EffectiveValidTo = to,
             VariableCount = variables,
@@ -121,7 +121,7 @@ public class KildeViewTest : ExplorerTestContext
         string name,
         IReadOnlyList<KildeDatasamling> datasamlinger,
         IReadOnlyList<KildeDelkilde>? children = null,
-        int? order = null,
+        int? rank = null,
         string code = "",
         string? shortName = null,
         string description = "") =>
@@ -132,7 +132,7 @@ public class KildeViewTest : ExplorerTestContext
             Name = name,
             ShortName = shortName,
             Description = description,
-            PresentationOrder = order,
+            DisplayOrder = rank,
             Datasamlinger = datasamlinger,
             Children = children ?? [],
         };
@@ -150,14 +150,15 @@ public class KildeViewTest : ExplorerTestContext
     /// </remarks>
     private static KildeDetail Study() => Kilde() with
     {
-        Datasamlinger = [Collection("Inklusjon")],
+        Datasamlinger = [Collection("Inklusjon", rank: 1)],
         Delkilder =
         [
             Delkilde("Tromsø 4",
-                     [Collection("Spørreskjema")],
+                     [Collection("Spørreskjema", rank: 1)],
                      [Delkilde("Første besøk", [Collection("Blodprøver")], code: "K_TR.TR4.V1",
-                               description: "Første besøksrunde.")],
+                               description: "Første besøksrunde.", rank: 2)],
                      code: "K_TR.TR4",
+                     rank: 2,
                      // A markdown link, because the captured Tromsø payload authors this field that
                      // way and delkilde.beskrivelse carries more of them than any other field.
                      description: "Fjerde runde av [Tromsøundersøkelsen](https://uit.no/tromsoundersokelsen)."),
@@ -1233,21 +1234,22 @@ public class KildeViewTest : ExplorerTestContext
            .QuerySelector("p.munin-explorer-kilde__delkilde-description");
 
     [Fact]
-    public void Delkilder_WhenTheCatalogueHasOrderedThem_ThenThoseComeFirstAndTheRestAlphabetically()
+    public void Delkilder_WhenTheCatalogueRanksThem_ThenEveryLevelFollowsTheRankAndTheUnrankedFollowAsSent()
     {
-        // The same two rules the datasamlinger follow, applied at every level of the tree rather
-        // than at the top of it: a curated order wins, and the Norwegian alphabet takes the rest.
-        // The nested pair is the half a top-level-only sort would get wrong.
+        // The rank the API resolved, applied at every level of the tree rather than at the top of
+        // it; the nested three are the half a top-level-only sort would get wrong. The unranked keep
+        // payload order, because that is the imported order an API without a rank already applied.
         var kilde = Kilde() with
         {
             Datasamlinger = [],
             Delkilder =
             [
                 Delkilde("Ålesund", []),
-                Delkilde("Bergen", [], order: 2),
+                Delkilde("Bergen", [], rank: 2),
                 Delkilde("Alta", [],
-                         [Delkilde("Åsane", []), Delkilde("Bønes", []), Delkilde("Sandviken", [], order: 1)]),
-                Delkilde("Oslo", [], order: 1),
+                         [Delkilde("Åsane", []), Delkilde("Bønes", [], rank: 2), Delkilde("Sandviken", [], rank: 1)],
+                         rank: 3),
+                Delkilde("Oslo", [], rank: 1),
             ],
         };
 
@@ -1261,6 +1263,46 @@ public class KildeViewTest : ExplorerTestContext
             "  [Åsane]",
             "[Ålesund]",
         ], Outline(Render(kilde, language: "en")));
+    }
+
+    [Theory]
+    [InlineData(nameof(SiblingOrderFixtures.KildeKK))]
+    [InlineData(nameof(SiblingOrderFixtures.ManualCancerFirst))]
+    [InlineData(nameof(SiblingOrderFixtures.NewChildAfterManualPrefix))]
+    [InlineData(nameof(SiblingOrderFixtures.ResetToSource))]
+    public void DataCollections_WhenTheAnswerRanksAKildesChildren_ThenTheStructureIsInTheResolvedOrder(string fixture)
+    {
+        // K_KK read its datasamlinger first here while the filter panel read its waves first. The
+        // rank is the one order both kinds share, so the page draws exactly it.
+        var scope = SiblingOrderFixtures.Named(fixture);
+        var waves = scope.Delkilder.Select(wave => wave.Name).ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(
+            scope.Expected.Select(name => waves.Contains(name) ? $"[{name}]" : name),
+            Outline(Render(InterleavedKilde.KildeKk(scope, Guid.NewGuid()))));
+    }
+
+    [Fact]
+    public void DataCollections_WhenRanksInterleaveTheKinds_ThenTablesAndListsAlternateInThatOrder()
+    {
+        // Either kind first, at either level, fails here. A run of datasamlinger is still a table
+        // and a run of delkilder still a list, so the markup keeps what each tells a screen reader.
+        var cut = Render(InterleavedKilde.Detail(ranked: true));
+
+        Assert.Equal(
+        [
+            "Registrering",
+            "[Fødsel]",
+            "  Kontroll",
+            "  [Svangerskap]",
+            "    Ultralyd",
+            "  Utskriving",
+            "Oppfølging",
+        ], Outline(cut));
+
+        Assert.Equal(
+            ["summary", "table", "ul", "table"],
+            cut.Find(".munin-explorer-hierarchy__metadata").Children.Select(e => e.LocalName));
     }
 
     [Fact]
@@ -1321,31 +1363,25 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void DataCollections_WhenTheCatalogueHasOrderedSome_ThenThoseComeFirstAndTheRestAlphabetically()
+    public void DataCollections_WhenTheCatalogueRanksSome_ThenThoseComeFirstAndTheRestKeepPayloadOrder()
     {
-        // Two rules in one list. A curated order is what Munin's own views follow, so it wins; the
-        // ones nobody has ordered fall back to the alphabet — the Norwegian one, because the names
-        // are the catalogue's and stored once in Norwegian, so å sorts last whoever is reading.
-        //
-        // Two pairs, because "Norwegian" is two claims and Ålesund only carries one of them. Å above
-        // Alta is what an English reader's collation would get wrong, since English folds Å to A —
-        // but it is also what a plain byte comparison gets right by accident, U+00C5 being above
-        // every ASCII letter, so a comparer with no collation at all would pass on that pair alone.
-        // Élan before Fana is the other half: Norwegian sorts É with E, ordinal puts U+00C9 after F.
+        // The ranked go first, by rank. The rest keep the order they were sent in rather than the
+        // alphabet: an unranked payload is the imported order already, and a name sort — the rule
+        // this view had before displayOrder — would invent one the catalogue never held.
         var kilde = Kilde() with
         {
             Datasamlinger =
             [
                 Collection("Ålesund"),
-                Collection("Bergen", order: 2),
+                Collection("Bergen", rank: 2),
                 Collection("Fana"),
                 Collection("Alta"),
                 Collection("Élan"),
-                Collection("Oslo", order: 1),
+                Collection("Oslo", rank: 1),
             ],
         };
 
-        Assert.Equal(["Oslo", "Bergen", "Alta", "Élan", "Fana", "Ålesund"],
+        Assert.Equal(["Oslo", "Bergen", "Ålesund", "Fana", "Alta", "Élan"],
                      CollectionNames(Render(kilde, language: "en")));
     }
 

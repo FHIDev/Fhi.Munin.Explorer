@@ -19,8 +19,7 @@ internal sealed record KildeHierarchyNode(
     Guid? DatasamlingId = null)
 {
     internal static IReadOnlyList<KildeHierarchyNode> From(KildeHierarchy hierarchy) =>
-        Ordered(hierarchy.Delkilder.Select(d => From(d, hierarchy.KildeId.ToString()))
-            .Concat(hierarchy.DirectDatasamlinger.Select(d => From(d, hierarchy.KildeId.ToString()))));
+        Siblings(hierarchy.Delkilder, hierarchy.DirectDatasamlinger, hierarchy.KildeId.ToString());
 
     private static KildeHierarchyNode From(HierarchyDelkilde node, string parent)
     {
@@ -30,11 +29,22 @@ internal sealed record KildeHierarchyNode(
         // ordered among themselves, behind the structure they are an appendix to.
         return new(key, node.Name, node.VariableCount, node.PresentationOrder, KildeNodeKind.Delkilde, [],
         [
-            .. Ordered(node.Children.Select(d => From(d, key))
-                .Concat(node.Datasamlinger.Select(d => From(d, key)))),
+            .. Siblings(node.Children, node.Datasamlinger, key),
             .. Ordered(node.UnassignedVariabelgrupper.Select(g => From(g, key)))
         ]);
     }
+
+    /// <summary>One parent's delkilder and datasamlinger on the API's shared displayOrder, never on
+    /// presentationOrder, which numbers each kind apart. (Fhi.Metadata-fuzw0)</summary>
+    private static IReadOnlyList<KildeHierarchyNode> Siblings(
+        IEnumerable<HierarchyDelkilde> delkilder, IEnumerable<HierarchyDatasamling> datasamlinger, string parent) =>
+    [
+        .. SiblingOrder.Merge(
+                delkilder.Select(d => (Rank: d.DisplayOrder, d.Id, Node: From(d, parent))),
+                datasamlinger.Select(d => (Rank: d.DisplayOrder, d.Id, Node: From(d, parent))),
+                sibling => sibling.Rank, sibling => sibling.Node.Name, sibling => sibling.Id)
+            .Select(sibling => sibling.Node)
+    ];
 
     private static KildeHierarchyNode From(HierarchyDatasamling node, string parent)
     {
