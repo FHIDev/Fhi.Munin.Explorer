@@ -35,6 +35,14 @@ public sealed record VariableDetail
     [JsonPropertyName("datasamlingName")] public string? DatasamlingName { get; init; }
 
     /// <summary>
+    /// The enabled delkilde owning <see cref="DatasamlingId"/>. Null when that datasamling hangs
+    /// straight off the kilde, when there is no primary one, or from an API older than the field.
+    /// </summary>
+    [JsonPropertyName("delkildeId")] public Guid? DelkildeId { get; init; }
+
+    [JsonPropertyName("delkildeName")] public string? DelkildeName { get; init; }
+
+    /// <summary>
     /// The primary datasamling's statistics cadence, e.g. <c>yearly</c>. Repeated here so a
     /// statistics view can render <see cref="Statistics"/> without fetching the datasamling.
     /// </summary>

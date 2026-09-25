@@ -1872,6 +1872,46 @@ public class VariableViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Placement_WhenThePrimaryDatasamlingHangsOffADelkilde_ThenTheDelkildeIsAStepOfItsOwn()
+    {
+        // Plain text in Munin's Norwegian, as the datasamling beside it is: this page presses nothing.
+        var cut = Render(Placed() with { DelkildeId = Guid.NewGuid(), DelkildeName = "Abortregisteret Delkilde" });
+
+        Assert.Equal(["Sentralt helseregister", "Abortregisteret (ABR)", "Abortregisteret Delkilde",
+                      "Abortregisteret Utlevering"], Placement(cut));
+        Assert.Equal("<li lang=\"no\">Abortregisteret Delkilde</li>", Steps(cut)[2].OuterHtml);
+    }
+
+    [Fact]
+    public void Placement_WhenTheTrailCountsSeveralDatasamlinger_ThenNoDelkildeStepIsDrawn()
+    {
+        // The delkilde names the primary datasamling's home only; the counted others may sit elsewhere.
+        var cut = Render(Placed() with
+        {
+            DelkildeId = Guid.NewGuid(),
+            DelkildeName = "Abortregisteret Delkilde",
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "Abortregisteret Utlevering" },
+                new() { Id = Guid.NewGuid(), Name = "Abortregisteret Statistikk" },
+            ],
+        });
+
+        Assert.Equal(["Sentralt helseregister", "Abortregisteret (ABR)", "2 datasamlinger"], Placement(cut));
+    }
+
+    [Fact]
+    public void Placement_WhenTheDatasamlingHangsStraightOffTheKilde_ThenTheTrailIsDrawnAsItWasBeforeDelkilder()
+    {
+        var cut = Render(Placed() with { DelkildeId = null, DelkildeName = null });
+
+        Assert.Equal(
+            "<ol><li>Sentralt helseregister</li><li lang=\"no\">Abortregisteret (ABR)</li>"
+            + "<li lang=\"no\">Abortregisteret Utlevering</li></ol>",
+            cut.Find($"#{DetailSectionIds.Placement} ol").OuterHtml);
+    }
+
+    [Fact]
     public void Placement_WhenALevelIsEmpty_ThenItIsLeftOutRatherThanWrittenAsNotSpecified()
     {
         // The rule that would have been re-derived wrongly by a second copy of the trail, asserted
