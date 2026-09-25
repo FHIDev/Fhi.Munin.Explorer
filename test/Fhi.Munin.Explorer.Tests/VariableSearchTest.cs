@@ -7833,8 +7833,8 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void KildeTree_WhenFiltersRankTheWavesAndDatasamlinger_ThenK_KKIsDrawnInTheResolvedOrder()
     {
-        // The panel drew a kilde's datasamlinger before its delkilder, which put Death and Cancer
-        // above K_KK's four waves; the tree is the order the reader sees, so it is asserted drawn.
+        // Builder order proves nothing about the page if the panel regroups by kind on the way out;
+        // the drawn rows are what the reader sees, so K_KK's rank is asserted there.
         var cut = RenderWith(new FilteringClient(OnePage(), RankedKildeKk()));
 
         Assert.Equal(SiblingOrderFixtures.KildeKK().Expected, KildeChildNames(cut, "K_KK"));

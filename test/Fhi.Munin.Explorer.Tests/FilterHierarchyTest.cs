@@ -505,8 +505,8 @@ public class FilterHierarchyTest
     [InlineData(nameof(SiblingOrderFixtures.ResetToSource))]
     public void Build_WhenTheAnswerRanksAKildesChildren_ThenTheyAreInTheResolvedOrder(string fixture)
     {
-        // Datasamlinger before delkilder put K_KK's Death and Cancer above its four waves; the rank
-        // the API resolved is the only order a curator's manual move or a reset reaches the tree by.
+        // The rank the API resolved is the only way a curator's manual move, a new child or a reset
+        // reaches the tree, so each payload must draw exactly in that rank and in no kind-first order.
         var scope = SiblingOrderFixtures.Named(fixture);
 
         var kilde = Assert.Single(FilterHierarchy.Build(Ranked(scope)));
