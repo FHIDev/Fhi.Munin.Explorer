@@ -607,17 +607,17 @@ public class FilterHierarchyTest
     /// <summary>One sibling-order scope as the /filters answer carries it, every child straight off K_KK.</summary>
     private static FilterOptions Ranked(SiblingScope scope) => Answer() with
     {
-        Kilder = [Kilde(SiblingOrderFixtures.KildeKk)],
+        Kilder = [Kilde(SiblingOrderFixtures.KildeKkId)],
         Delkilder =
         [
             .. scope.Delkilder.Select(sibling =>
-                Delkilde(sibling.Id, SiblingOrderFixtures.KildeKk, rank: sibling.DisplayOrder)
+                Delkilde(sibling.Id, SiblingOrderFixtures.KildeKkId, rank: sibling.DisplayOrder)
                     with { Name = sibling.Name })
         ],
         Datasamlinger =
         [
             .. scope.Datasamlinger.Select(sibling =>
-                Datasamling(sibling.Id, SiblingOrderFixtures.KildeKk, rank: sibling.DisplayOrder)
+                Datasamling(sibling.Id, SiblingOrderFixtures.KildeKkId, rank: sibling.DisplayOrder)
                     with { Name = sibling.Name })
         ]
     };
@@ -664,7 +664,11 @@ public class FilterHierarchyTest
         Guid id, Guid kilde, Guid? parent = null, int count = 0, int? rank = null) =>
         new()
         {
-            Id = id, Name = $"Delkilde {id:N}", KildeId = kilde, ParentDelkildeId = parent, Count = count,
+            Id = id,
+            Name = $"Delkilde {id:N}",
+            KildeId = kilde,
+            ParentDelkildeId = parent,
+            Count = count,
             DisplayOrder = rank
         };
 
@@ -672,7 +676,11 @@ public class FilterHierarchyTest
         Guid id, Guid kilde, Guid? delkilde = null, int count = 0, int? rank = null) =>
         new()
         {
-            Id = id, Name = $"Datasamling {id:N}", KildeId = kilde, DelkildeId = delkilde, Count = count,
+            Id = id,
+            Name = $"Datasamling {id:N}",
+            KildeId = kilde,
+            DelkildeId = delkilde,
+            Count = count,
             DisplayOrder = rank
         };
 

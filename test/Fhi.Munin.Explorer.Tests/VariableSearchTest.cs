@@ -7794,7 +7794,7 @@ public class VariableSearchTest : ExplorerTestContext
     private static FilterOptions RankedKildeKk(int countOffset = 0)
     {
         var scope = SiblingOrderFixtures.ManualCancerFirst();
-        var kilde = SiblingOrderFixtures.KildeKk;
+        var kilde = SiblingOrderFixtures.KildeKkId;
         var count = countOffset;
 
         return new FilterOptions
