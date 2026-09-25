@@ -124,12 +124,14 @@ export const states = {
   // summary's accessible name and toggle the node on the press that followed it.
   'kilde-hierarchy-open': async page => {
     await states['kilde-hierarchy-collapsed'](page);
-    if (!await page.locator('.munin-explorer-hierarchy__open:visible').count()) {
-      // A closed delkilde's links are in the DOM but hidden, and displayOrder can put one ahead
-      // of every top-level datasamling — so which kind comes first is not this state's to assume.
-      for (const summary of await page.locator('.munin-explorer-hierarchy > ul > li > details > summary').all()) {
-        await summary.click();
+    while (!await page.locator('.munin-explorer-hierarchy__open:visible').count()) {
+      // Links can sit several delkilder deep. Re-query after each press so the next closed
+      // branch is reachable without toggling an already-open ancestor shut again.
+      const summary = page.locator('.munin-explorer-hierarchy details:not([open]) > summary:visible').first();
+      if (!await summary.count()) {
+        throw new Error('No datasamling link is visible and no hierarchy branch remains to open');
       }
+      await summary.click();
     }
     await page.locator('.munin-explorer-hierarchy__open:visible').first()
       .waitFor({ state: 'visible', timeout: findTimeout });
