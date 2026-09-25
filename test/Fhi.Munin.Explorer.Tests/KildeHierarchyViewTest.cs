@@ -155,7 +155,7 @@ public sealed class KildeHierarchyViewTest : ExplorerTestContext
     public void From_WhenTheAnswerRanksAKildesChildren_ThenTheyAreInTheResolvedOrder(string fixture)
     {
         // The rank the API resolved is the only way a curator's move, a new child or a reset reaches
-        // the tree; presentationOrder numbers each kind apart and put K_KK's datasamlinger first.
+        // the tree; presentationOrder numbers each kind apart, so it cannot interleave them.
         var scope = SiblingOrderFixtures.Named(fixture);
         var hierarchy = new KildeHierarchy
         {

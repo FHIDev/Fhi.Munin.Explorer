@@ -13,7 +13,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 /// <remarks>
 /// Each surface has order tests of its own; this is what fails when one of them keeps its own rule
-/// and a reader sees one kilde arranged two ways on one page — which is how K_KK read before.
+/// and a reader sees one kilde arranged two ways on one page.
 /// <see cref="KildeSearchTest"/> puts its expanded row to the same fixture.
 /// </remarks>
 public sealed class SiblingOrderSurfacesTest : ExplorerTestContext
@@ -97,8 +97,8 @@ public sealed class SiblingOrderSurfacesTest : ExplorerTestContext
 
         Assert.Equal(
             [
-                Href(InterleavedKilde.Registrering), Href(InterleavedKilde.Kontroll), Href(InterleavedKilde.Ultralyd),
-                Href(InterleavedKilde.Utskriving), Href(InterleavedKilde.Oppfolging)
+                Href(InterleavedKilde.Registration), Href(InterleavedKilde.Checkup), Href(InterleavedKilde.Ultrasound),
+                Href(InterleavedKilde.Discharge), Href(InterleavedKilde.FollowUp)
             ],
             cut.FindAll("a.munin-explorer-hierarchy__open").Select(link => link.GetAttribute("href")));
         Assert.All(cut.FindAll("a.munin-explorer-hierarchy__open"), link =>

@@ -14,13 +14,13 @@ namespace Fhi.Munin.Explorer.Tests;
 internal static class InterleavedKilde
 {
     internal static readonly Guid Kilde = new("5a000000-0000-0000-0000-000000000000");
-    internal static readonly Guid Fodsel = new("5ad00000-0000-0000-0000-000000000001");
-    internal static readonly Guid Svangerskap = new("5ad00000-0000-0000-0000-000000000002");
-    internal static readonly Guid Registrering = new("5ada0000-0000-0000-0000-000000000001");
-    internal static readonly Guid Oppfolging = new("5ada0000-0000-0000-0000-000000000002");
-    internal static readonly Guid Kontroll = new("5ada0000-0000-0000-0000-000000000003");
-    internal static readonly Guid Utskriving = new("5ada0000-0000-0000-0000-000000000004");
-    internal static readonly Guid Ultralyd = new("5ada0000-0000-0000-0000-000000000005");
+    internal static readonly Guid Birth = new("5ad00000-0000-0000-0000-000000000001");
+    internal static readonly Guid Pregnancy = new("5ad00000-0000-0000-0000-000000000002");
+    internal static readonly Guid Registration = new("5ada0000-0000-0000-0000-000000000001");
+    internal static readonly Guid FollowUp = new("5ada0000-0000-0000-0000-000000000002");
+    internal static readonly Guid Checkup = new("5ada0000-0000-0000-0000-000000000003");
+    internal static readonly Guid Discharge = new("5ada0000-0000-0000-0000-000000000004");
+    internal static readonly Guid Ultrasound = new("5ada0000-0000-0000-0000-000000000005");
 
     internal const string KildeName = "Fødselsregisteret";
 
@@ -42,26 +42,26 @@ internal static class InterleavedKilde
         [
             new()
             {
-                Id = Fodsel, Name = "Fødsel", VariableCount = 3, DisplayOrder = Rank(ranked, 2),
+                Id = Birth, Name = "Fødsel", VariableCount = 3, DisplayOrder = Rank(ranked, 2),
                 Children =
                 [
                     new()
                     {
-                        Id = Svangerskap, Name = "Svangerskap", VariableCount = 1, DisplayOrder = Rank(ranked, 2),
-                        Datasamlinger = [new() { Id = Ultralyd, Name = "Ultralyd", VariableCount = 1 }]
+                        Id = Pregnancy, Name = "Svangerskap", VariableCount = 1, DisplayOrder = Rank(ranked, 2),
+                        Datasamlinger = [new() { Id = Ultrasound, Name = "Ultralyd", VariableCount = 1 }]
                     }
                 ],
                 Datasamlinger =
                 [
-                    new() { Id = Utskriving, Name = "Utskriving", VariableCount = 1, DisplayOrder = Rank(ranked, 3) },
-                    new() { Id = Kontroll, Name = "Kontroll", VariableCount = 1, DisplayOrder = Rank(ranked, 1) }
+                    new() { Id = Discharge, Name = "Utskriving", VariableCount = 1, DisplayOrder = Rank(ranked, 3) },
+                    new() { Id = Checkup, Name = "Kontroll", VariableCount = 1, DisplayOrder = Rank(ranked, 1) }
                 ]
             }
         ],
         DirectDatasamlinger =
         [
-            new() { Id = Oppfolging, Name = "Oppfølging", VariableCount = 1, DisplayOrder = Rank(ranked, 3) },
-            new() { Id = Registrering, Name = "Registrering", VariableCount = 1, DisplayOrder = Rank(ranked, 1) }
+            new() { Id = FollowUp, Name = "Oppfølging", VariableCount = 1, DisplayOrder = Rank(ranked, 3) },
+            new() { Id = Registration, Name = "Registrering", VariableCount = 1, DisplayOrder = Rank(ranked, 1) }
         ]
     };
 
@@ -74,26 +74,26 @@ internal static class InterleavedKilde
         [
             new()
             {
-                Id = Fodsel, Code = "K_MFR.F", Name = "Fødsel", DisplayOrder = Rank(ranked, 2),
+                Id = Birth, Code = "K_MFR.F", Name = "Fødsel", DisplayOrder = Rank(ranked, 2),
                 Children =
                 [
                     new()
                     {
-                        Id = Svangerskap, Code = "K_MFR.F.S", Name = "Svangerskap", DisplayOrder = Rank(ranked, 2),
-                        Datasamlinger = [Collection(Ultralyd, "Ultralyd", null)]
+                        Id = Pregnancy, Code = "K_MFR.F.S", Name = "Svangerskap", DisplayOrder = Rank(ranked, 2),
+                        Datasamlinger = [Collection(Ultrasound, "Ultralyd", null)]
                     }
                 ],
                 Datasamlinger =
                 [
-                    Collection(Utskriving, "Utskriving", Rank(ranked, 3)),
-                    Collection(Kontroll, "Kontroll", Rank(ranked, 1))
+                    Collection(Discharge, "Utskriving", Rank(ranked, 3)),
+                    Collection(Checkup, "Kontroll", Rank(ranked, 1))
                 ]
             }
         ],
         Datasamlinger =
         [
-            Collection(Oppfolging, "Oppfølging", Rank(ranked, 3)),
-            Collection(Registrering, "Registrering", Rank(ranked, 1))
+            Collection(FollowUp, "Oppfølging", Rank(ranked, 3)),
+            Collection(Registration, "Registrering", Rank(ranked, 1))
         ]
     };
 
@@ -102,16 +102,16 @@ internal static class InterleavedKilde
         Kilder = [new() { Id = Kilde, Name = KildeName, ShortName = "", Count = 5 }],
         Delkilder =
         [
-            Delkilde(Fodsel, "Fødsel", null, Rank(ranked, 2)),
-            Delkilde(Svangerskap, "Svangerskap", Fodsel, Rank(ranked, 2))
+            Delkilde(Birth, "Fødsel", null, Rank(ranked, 2)),
+            Delkilde(Pregnancy, "Svangerskap", Birth, Rank(ranked, 2))
         ],
         Datasamlinger =
         [
-            Datasamling(Oppfolging, "Oppfølging", null, Rank(ranked, 3)),
-            Datasamling(Registrering, "Registrering", null, Rank(ranked, 1)),
-            Datasamling(Ultralyd, "Ultralyd", Svangerskap, null),
-            Datasamling(Utskriving, "Utskriving", Fodsel, Rank(ranked, 3)),
-            Datasamling(Kontroll, "Kontroll", Fodsel, Rank(ranked, 1))
+            Datasamling(FollowUp, "Oppfølging", null, Rank(ranked, 3)),
+            Datasamling(Registration, "Registrering", null, Rank(ranked, 1)),
+            Datasamling(Ultrasound, "Ultralyd", Pregnancy, null),
+            Datasamling(Discharge, "Utskriving", Birth, Rank(ranked, 3)),
+            Datasamling(Checkup, "Kontroll", Birth, Rank(ranked, 1))
         ]
     };
 

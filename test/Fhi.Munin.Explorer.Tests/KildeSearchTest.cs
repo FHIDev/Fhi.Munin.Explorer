@@ -2015,8 +2015,8 @@ public class KildeSearchTest : ExplorerTestContext
     [InlineData(nameof(SiblingOrderFixtures.ResetToSource))]
     public void Panel_WhenTheAnswerRanksAKildesChildren_ThenTheGroupsFollowTheResolvedOrder(string fixture)
     {
-        // The panel used to put the kilde's own datasamlinger first whatever their rank, so K_KK
-        // opened on All waves, Cancer, Death above its waves while the kilde page read waves first.
+        // The kilde's own datasamlinger take their rank among its waves rather than going first,
+        // so the panel reads in the order the kilde page and the filter tree do.
         var scope = SiblingOrderFixtures.Named(fixture);
         var kk = Kilde("Kvinner og kreft", "K_KK", datasamlinger: scope.Delkilder.Count + 3);
         var detail = InterleavedKilde.KildeKk(scope, kk.Id, questionnaires: true);

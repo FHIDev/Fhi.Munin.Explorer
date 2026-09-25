@@ -1272,8 +1272,8 @@ public class KildeViewTest : ExplorerTestContext
     [InlineData(nameof(SiblingOrderFixtures.ResetToSource))]
     public void DataCollections_WhenTheAnswerRanksAKildesChildren_ThenTheStructureIsInTheResolvedOrder(string fixture)
     {
-        // K_KK read its datasamlinger first here while the filter panel read its waves first. The
-        // rank is the one order both kinds share, so the page draws exactly it.
+        // The rank is the one order both kinds share, and the filter panel draws it too, so the
+        // page must draw exactly it or the two disagree about one kilde.
         var scope = SiblingOrderFixtures.Named(fixture);
         var waves = scope.Delkilder.Select(wave => wave.Name).ToHashSet(StringComparer.Ordinal);
 
@@ -1366,8 +1366,8 @@ public class KildeViewTest : ExplorerTestContext
     public void DataCollections_WhenTheCatalogueRanksSome_ThenThoseComeFirstAndTheRestKeepPayloadOrder()
     {
         // The ranked go first, by rank. The rest keep the order they were sent in rather than the
-        // alphabet: an unranked payload is the imported order already, and a name sort — the rule
-        // this view had before displayOrder — would invent one the catalogue never held.
+        // alphabet: an unranked payload is the imported order already, and a name sort would invent
+        // one the catalogue never held.
         var kilde = Kilde() with
         {
             Datasamlinger =

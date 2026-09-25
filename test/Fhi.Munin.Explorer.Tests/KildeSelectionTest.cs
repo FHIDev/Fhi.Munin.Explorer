@@ -1504,8 +1504,8 @@ public class KildeSelectionTest : ExplorerTestContext
 
     private static readonly IReadOnlyList<Guid> InterleavedDatasamlinger =
     [
-        InterleavedKilde.Registrering, InterleavedKilde.Kontroll, InterleavedKilde.Ultralyd,
-        InterleavedKilde.Utskriving, InterleavedKilde.Oppfolging
+        InterleavedKilde.Registration, InterleavedKilde.Checkup, InterleavedKilde.Ultrasound,
+        InterleavedKilde.Discharge, InterleavedKilde.FollowUp
     ];
 
     [Fact]
@@ -1538,7 +1538,7 @@ public class KildeSelectionTest : ExplorerTestContext
         Mark(cut, InterleavedKilde.Kilde, "Ultralyd");
         ExploreButton(cut).Click();
 
-        Assert.Equal([InterleavedKilde.Ultralyd], Assert.Single(datasamlinger));
+        Assert.Equal([InterleavedKilde.Ultrasound], Assert.Single(datasamlinger));
     }
 
     [Fact]
