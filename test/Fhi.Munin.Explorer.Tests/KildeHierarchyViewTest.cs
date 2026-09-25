@@ -147,15 +147,53 @@ public sealed class KildeHierarchyViewTest : ExplorerTestContext
             Assert.Contains("variabler", count.TextContent));
     }
 
-    [Fact]
-    public void From_WhenSiblingTypesAreMixed_ThenCuratedOrderPrecedesDeterministicNorwegianNameOrder()
+    [Theory]
+    [InlineData(nameof(SiblingOrderFixtures.KildeKK))]
+    [InlineData(nameof(SiblingOrderFixtures.ManualCancerFirst))]
+    [InlineData(nameof(SiblingOrderFixtures.NewChildAfterManualPrefix))]
+    [InlineData(nameof(SiblingOrderFixtures.ResetToSource))]
+    public void From_WhenTheAnswerRanksAKildesChildren_ThenTheyAreInTheResolvedOrder(string fixture)
     {
+        // The rank the API resolved is the only way a curator's move, a new child or a reset reaches
+        // the tree; presentationOrder numbers each kind apart, so it cannot interleave them.
+        var scope = SiblingOrderFixtures.Named(fixture);
+        var hierarchy = new KildeHierarchy
+        {
+            KildeId = SiblingOrderFixtures.KildeKkId,
+            Delkilder = [.. scope.Delkilder.Select(s => new HierarchyDelkilde { Id = s.Id, Name = s.Name, DisplayOrder = s.DisplayOrder })],
+            DirectDatasamlinger =
+                [.. scope.Datasamlinger.Select(s => new HierarchyDatasamling { Id = s.Id, Name = s.Name, DisplayOrder = s.DisplayOrder })]
+        };
+
+        Assert.Equal(scope.Expected, KildeHierarchyNode.From(hierarchy).Select(n => n.Name));
+    }
+
+    [Fact]
+    public void From_WhenRanksInterleaveTheKindsAtRootAndNested_ThenNeitherKindIsGroupedFirst()
+    {
+        // Either kind first, at either level, fails here — the same structure the filter panel's
+        // tree is held to, so the two trees cannot drift apart.
+        var nodes = KildeHierarchyNode.From(InterleavedKilde.Hierarchy(ranked: true));
+
+        Assert.Equal(["Registrering", "Fødsel", "Oppfølging"], nodes.Select(n => n.Name));
+        Assert.Equal(["Kontroll", "Svangerskap", "Utskriving"], nodes[1].Children.Select(n => n.Name));
+        Assert.Equal(
+            [KildeNodeKind.Datasamling, KildeNodeKind.Delkilde, KildeNodeKind.Datasamling],
+            nodes[1].Children.Select(n => n.Kind));
+    }
+
+    [Fact]
+    public void From_WhenTheAnswerPredatesDisplayOrder_ThenPayloadOrderHoldsAndPresentationOrderIsIgnored()
+    {
+        // An older API's payload order is the imported order it already applied. presentationOrder
+        // counts each kind on its own scale, so sorting by it — or by name — would invent an order.
         var hierarchy = new KildeHierarchy
         {
             Delkilder = [new() { Name = "Ås" }, new() { Name = "First", PresentationOrder = 1 }],
             DirectDatasamlinger = [new() { Name = "Zulu", PresentationOrder = 2 }, new() { Name = "Ægir" }, new() { Name = "Beta" }]
         };
-        Assert.Equal(["First", "Zulu", "Beta", "Ægir", "Ås"], KildeHierarchyNode.From(hierarchy).Select(n => n.Name));
+
+        Assert.Equal(["Ås", "First", "Zulu", "Ægir", "Beta"], KildeHierarchyNode.From(hierarchy).Select(n => n.Name));
     }
 
     [Fact]
@@ -222,8 +260,8 @@ public sealed class KildeHierarchyViewTest : ExplorerTestContext
             [new()
             {
                 Id = Guid.NewGuid(), Name = "Parent",
-                Children = [new() { Id = Guid.NewGuid(), Name = "Child", PresentationOrder = 3 }],
-                Datasamlinger = [new() { Id = Guid.NewGuid(), Name = "Collection", PresentationOrder = 2 }],
+                Children = [new() { Id = Guid.NewGuid(), Name = "Child", DisplayOrder = 2 }],
+                Datasamlinger = [new() { Id = Guid.NewGuid(), Name = "Collection", DisplayOrder = 1 }],
                 UnassignedVariabelgrupper =
                 [
                     new() { Id = Guid.NewGuid(), Name = "Åpen gruppe" },

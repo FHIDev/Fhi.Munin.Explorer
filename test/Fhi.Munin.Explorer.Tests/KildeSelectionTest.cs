@@ -1231,8 +1231,8 @@ public class KildeSelectionTest : ExplorerTestContext
             PreferredTerm = "Als registeret",
             Datasamlinger =
             [
-                Collection(CollectionOneA, "Inklusjon"),
-                Collection(CollectionOneB, "Oppfølging"),
+                Collection(CollectionOneA, "Inklusjon") with { DisplayOrder = 1 },
+                Collection(CollectionOneB, "Oppfølging") with { DisplayOrder = 2 },
             ],
             Delkilder =
             [
@@ -1240,6 +1240,7 @@ public class KildeSelectionTest : ExplorerTestContext
                 {
                     Id = new("d1d1d1d1-0000-0000-0000-000000000001"),
                     Name = "Bølge 4",
+                    DisplayOrder = 3,
                     Datasamlinger = [Collection(CollectionOneC, "Bølge 4 - serie 49")],
                 },
             ],
@@ -1492,6 +1493,63 @@ public class KildeSelectionTest : ExplorerTestContext
             Assert.Single(datasamlinger));
 
         Assert.Empty(kilder);
+    }
+
+    /// <summary>A kilde whose delkilder and datasamlinger interleave, as the only row in the list.</summary>
+    private static DrawerClient Interleaved(bool ranked = true) =>
+        new DrawerClient(
+            Row(InterleavedKilde.Kilde, InterleavedKilde.KildeName, datasamlinger: 5),
+            Row(KildeTwo, "Dødsårsaksregisteret", datasamlinger: 2))
+            .Describing(InterleavedKilde.Detail(ranked), DetailTwo());
+
+    private static readonly IReadOnlyList<Guid> InterleavedDatasamlinger =
+    [
+        InterleavedKilde.Registration, InterleavedKilde.Checkup, InterleavedKilde.Ultrasound,
+        InterleavedKilde.Discharge, InterleavedKilde.FollowUp
+    ];
+
+    // Unranked, every level keeps the payload's order with its delkilder first.
+    private static readonly IReadOnlyList<Guid> UnrankedInterleavedDatasamlinger =
+    [
+        InterleavedKilde.Ultrasound, InterleavedKilde.Discharge, InterleavedKilde.Checkup,
+        InterleavedKilde.FollowUp, InterleavedKilde.Registration
+    ];
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Handover_WhenATickedKildesChildrenInterleave_ThenItsDatasamlingerTravelInTheDrawersOrder(bool ranked)
+    {
+        // The expansion is read off the drawer's groups, so reordering them reorders the handover:
+        // it must follow the order the reader sees and still carry every datasamling once.
+        var (cut, _, datasamlinger) = RenderMarkable(Interleaved(ranked));
+
+        Expand(cut, "Dødsårsaksregisteret");
+        Mark(cut, KildeTwo, "Dødsfall");
+        TickRow(cut, InterleavedKilde.KildeName);
+        ExploreButton(cut).Click();
+
+        Assert.Equal(
+            [.. ranked ? InterleavedDatasamlinger : UnrankedInterleavedDatasamlinger, CollectionTwoA],
+            Assert.Single(datasamlinger));
+    }
+
+    [Fact]
+    public void Marks_WhenTheDrawersChildrenInterleave_ThenEachBoxStillMarksItsOwnDatasamling()
+    {
+        // A box drawn in a new position has to keep naming, and marking, the row it sits on.
+        var (cut, _, datasamlinger) = RenderMarkable(Interleaved());
+
+        Expand(cut, InterleavedKilde.KildeName);
+
+        Assert.Equal(
+            ["Velg Registrering", "Velg Kontroll", "Velg Ultralyd", "Velg Utskriving", "Velg Oppfølging"],
+            MarkBoxes(cut, InterleavedKilde.Kilde).Select(AccessibleName.Of));
+
+        Mark(cut, InterleavedKilde.Kilde, "Ultralyd");
+        ExploreButton(cut).Click();
+
+        Assert.Equal([InterleavedKilde.Ultrasound], Assert.Single(datasamlinger));
     }
 
     [Fact]

@@ -237,6 +237,12 @@ else
   echo "==> BROWSER: ${PLAYWRIGHT_BROWSER_CHANNEL} (not the bundled chromium)"
 fi
 
+echo "==> checking browser state preparation"
+node --test "$ROOT/scripts/test-axe-states.mjs" || {
+  echo "the state-preparation tests failed - TOOLING failure, so nothing was scanned." >&2
+  exit 2
+}
+
 set +e
 node "$ROOT/scripts/axe-scan.mjs" $(for t in "${TARGETS[@]}"; do printf '%s ' "${BASE}${t}"; done)
 scan_status=$?

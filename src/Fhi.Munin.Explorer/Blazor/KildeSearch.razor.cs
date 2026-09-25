@@ -635,9 +635,9 @@ public sealed partial class KildeSearch : ComponentBase
         }
     }
 
-    // Direct datasamlinger first, then one group per delkilde that has any, at every depth — flat
-    // would lose which of them belong to a delkilde (Fhi.Metadata-wgpeo), and stopping at the first
-    // level would drop a grandchild's entirely while the row's count still promised them.
+    // One group per run of datasamlinger, in the rank KildeView draws them (Fhi.Metadata-fuzw0), at
+    // every depth — flat would lose which belong to a delkilde (Fhi.Metadata-wgpeo). A run resumed
+    // after a delkilde's groups is headed again by its parent, so it is not read as the delkilde's.
     private IReadOnlyList<(string? Heading, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)> DatasamlingGroups(Guid id)
     {
         if (!_datasamlinger.TryGetValue(id, out var detail) || detail is null)
@@ -645,43 +645,56 @@ public sealed partial class KildeSearch : ComponentBase
             return [];
         }
 
-        var groups = new List<(string?, string?, int, IReadOnlyList<KildeDatasamling>)>();
+        var groups = new List<(string? Heading, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)>();
 
-        if (detail.Datasamlinger.Count > 0)
-        {
-            groups.Add((null, null, 0, Ordered(detail.Datasamlinger)));
-        }
-
-        Collect(Ordered(detail.Delkilder), 0, groups);
+        // The kilde's own run opens the panel under the panel's heading; one resumed later is
+        // headed at that same level, one above its delkilder.
+        Collect(KildeChildren.Of(detail), detail.PreferredTerm, detail.Code, -1, groups);
 
         return groups;
     }
 
     private static void Collect(
-        IReadOnlyList<KildeDelkilde> delkilder,
+        IReadOnlyList<KildeChild> children,
+        string? heading,
+        string? code,
         int depth,
-        List<(string?, string?, int, IReadOnlyList<KildeDatasamling>)> groups)
+        List<(string? Heading, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)> groups)
     {
-        foreach (var delkilde in delkilder)
-        {
-            if (delkilde.Datasamlinger.Count > 0)
-            {
-                groups.Add((delkilde.Name, delkilde.Code, depth, Ordered(delkilde.Datasamlinger)));
-            }
+        List<KildeDatasamling>? run = null;
 
-            Collect(Ordered(delkilde.Children), depth + 1, groups);
+        foreach (var child in children)
+        {
+            if (child.Datasamling is { } datasamling)
+            {
+                if (run is null)
+                {
+                    run = [];
+                    var root = depth < 0 && groups.Count == 0;
+                    groups.Add((root ? null : heading, root ? null : code, depth, run));
+                }
+
+                run.Add(datasamling);
+            }
+            else if (child.Delkilde is { } delkilde)
+            {
+                var before = groups.Count;
+                Collect(KildeChildren.Of(delkilde), delkilde.Name, delkilde.Code, depth + 1, groups);
+
+                if (groups.Count > before)
+                {
+                    // A child delkilde's group can come before any of this one's, so its heading
+                    // goes in bare there or the outline would skip a level.
+                    if (groups[before].Depth != depth + 1)
+                    {
+                        groups.Insert(before, (delkilde.Name, delkilde.Code, depth + 1, []));
+                    }
+
+                    run = null;
+                }
+            }
         }
     }
-
-    // The catalogue's curated order, the same sort KildeView applies — the two views report the
-    // same datasamlinger about the same kilde and must not disagree about their order.
-    private static IReadOnlyList<KildeDatasamling> Ordered(IReadOnlyList<KildeDatasamling> rows) =>
-        [.. rows.OrderBy(d => d.PresentationOrder ?? int.MaxValue)
-                .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)];
-
-    private static IReadOnlyList<KildeDelkilde> Ordered(IReadOnlyList<KildeDelkilde> delkilder) =>
-        [.. delkilder.OrderBy(d => d.PresentationOrder ?? int.MaxValue)
-                     .ThenBy(d => d.Name, CatalogueProperties.CatalogueOrder)];
 
     // Unique per instance so two explorers on one page cannot collide on DOM ids, which would be a
     // WCAG 4.1.1 failure as well as breaking label association.
