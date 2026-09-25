@@ -3269,9 +3269,9 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Equal("SPAN", count.TagName);
         Assert.True(label.Contains(count));
 
-        // Untrimmed on purpose: the separating space has to be a text node of the label, not the
-        // span's first character, or the name announces as "Biobank(1)". Trim() would pass on both
-        // shapes, and so would AccessibleName.Of, which flattens descendants. This one can fail.
+        // Untrimmed on purpose: the space is a text node of the label, so the count's own box holds
+        // the number alone. Browsers keep either shape's space in the name (Fhi.Metadata-47lha), so
+        // neither Trim() nor AccessibleName.Of can tell them apart. This one can.
         Assert.Equal("(1)", count.TextContent);
 
         // The words and the number are still one run on screen, with exactly one space between

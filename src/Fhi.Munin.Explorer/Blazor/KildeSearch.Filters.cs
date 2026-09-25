@@ -150,9 +150,9 @@ public sealed partial class KildeSearch
 
         /// <summary>The count as it is drawn: the number in parentheses, and no space.</summary>
         /// <remarks>
-        /// Holds "(1)" alone: the separating space is emitted beside this element, because a name
-        /// is computed per element and a leading space inside it is trimmed off, announcing as
-        /// "Biobank(1)". (Fhi.Metadata-cgk85)
+        /// Holds "(1)" alone: the separating space is emitted beside this element, so a host rule
+        /// dressing the count dresses the number and not the gap. Browsers keep the space in the
+        /// accessible name either way. (Fhi.Metadata-cgk85, Fhi.Metadata-47lha)
         /// </remarks>
         public string CountText => $"({Count})";
 

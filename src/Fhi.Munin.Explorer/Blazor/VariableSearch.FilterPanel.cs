@@ -1563,9 +1563,9 @@ public partial class VariableSearch
                     builder.CloseElement();
                 }
 
-                // The space is a text node of the label, not the span's first character: a name is
-                // computed per element, so a space inside the span is trimmed off and the name
-                // announces as "Dødsårsaksregisteret(30)".
+                // The space is a text node of the label, not the span's first character, so a rule
+                // dressing the count dresses the number and not the gap. The name keeps the space
+                // either way (Fhi.Metadata-47lha).
                 if (value.Count is { } count)
                 {
                     builder.AddContent(44, " ");

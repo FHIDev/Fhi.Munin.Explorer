@@ -1,0 +1,2 @@
+category: Fixed
+- **Documentation no longer claims a space inside a count or category span is dropped from the accessible name.** Remarks beside the facet counts and the tree's spoken categories said such a space would be trimmed, announcing "Biobank(1)"; Chromium keeps it and announces "Biobank (1)". Documentation only — the markup and what screen readers announce are unchanged. (Fhi.Metadata-47lha)
