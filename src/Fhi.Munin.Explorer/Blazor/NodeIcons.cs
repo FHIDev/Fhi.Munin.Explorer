@@ -111,8 +111,8 @@ internal static class NodeIcons
 
     /// <summary>
     /// Writes those words beside the slot, or nothing when there are none. The separator is a text
-    /// node rather than the span's first character: an accessible name is computed per element, so
-    /// a space inside the span is trimmed off and the row announces as "Tromsø 1Datakategori: …".
+    /// node rather than the span's first character, so the span holds the words alone. Browsers
+    /// keep a space inside a child element in the name as well (Fhi.Metadata-47lha).
     /// </summary>
     internal static void WriteSpoken(
         RenderTreeBuilder builder, IReadOnlyList<NodeIcon> icons, Texts texts)
