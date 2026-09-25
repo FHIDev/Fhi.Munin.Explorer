@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Components.Web;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// Where a variable sits in the catalogue, drawn as an ordered list: kildetype, kilde, datasamling.
+/// Where a variable sits in the catalogue, drawn as an ordered list: kildetype, kilde, delkilde, datasamling.
 /// </summary>
 /// <remarks>
 /// Drawn by <see cref="VariableView"/> alone since the row drawer dropped its trail
@@ -36,7 +36,7 @@ internal static class KildeTrailBlock
     internal sealed record Crumb(string Text, bool Norwegian, bool OpensKilde = false);
 
     /// <summary>
-    /// The variable's place in the catalogue, widest first: kildetype, kilde, datasamling.
+    /// The variable's place in the catalogue, widest first: kildetype, kilde, delkilde, datasamling.
     /// </summary>
     /// <remarks>
     /// A level with nothing in it is left out rather than written as "Ikke oppgitt": a trail is
@@ -53,7 +53,7 @@ internal static class KildeTrailBlock
     internal static IReadOnlyList<Crumb> Steps(
         VariableDetail detail, Texts texts, string? kildeTypeApiName)
     {
-        var crumbs = new List<Crumb>(3);
+        var crumbs = new List<Crumb>(4);
 
         if (!string.IsNullOrWhiteSpace(detail.KildeType))
         {
@@ -80,6 +80,13 @@ internal static class KildeTrailBlock
 
         if (datasamlinger.Count == 1)
         {
+            // Only over one named datasamling: the delkilde is the primary's, and a count's others
+            // may sit under other delkilder. Plain text, as nothing here opens a delkilde.
+            if (detail.DelkildeId is not null && !string.IsNullOrWhiteSpace(detail.DelkildeName))
+            {
+                crumbs.Add(new Crumb(detail.DelkildeName, Norwegian: true));
+            }
+
             crumbs.Add(new Crumb(datasamlinger[0].Name, Norwegian: true));
         }
         else if (datasamlinger.Count > 1)

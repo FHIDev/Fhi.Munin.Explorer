@@ -27,6 +27,49 @@ public class KildeTrailBlockTest
                      StepTexts(Variable()));
     }
 
+    [Fact]
+    public void Steps_WhenThePrimaryDatasamlingHangsOffADelkilde_ThenTheDelkildeStandsBetweenKildeAndDatasamling()
+    {
+        var steps = KildeTrailBlock.Steps(
+            Variable() with { DelkildeId = Guid.NewGuid(), DelkildeName = "Oppfølging" },
+            Blazor.Texts.For("no"), null);
+
+        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret (ALS)", "Oppfølging", "Inklusjon"],
+                     steps.Select(step => step.Text));
+        Assert.True(steps[2].Norwegian);
+        Assert.False(steps[2].OpensKilde);
+    }
+
+    [Theory]
+    [InlineData(false, "Oppfølging")]
+    [InlineData(true, null)]
+    [InlineData(true, "  ")]
+    public void Steps_WhenTheDelkildeIsMissingOrUnnamed_ThenTheTrailIsAsItWasWithoutOne(bool hasId, string? name)
+    {
+        var detail = Variable() with { DelkildeId = hasId ? Guid.NewGuid() : null, DelkildeName = name };
+
+        Assert.Equal(StepTexts(Variable()), StepTexts(detail));
+    }
+
+    [Fact]
+    public void Steps_WhenTheTrailCountsSeveralDatasamlinger_ThenNoDelkildeStepStandsOverTheCount()
+    {
+        // The delkilde is the primary datasamling's; the others may sit under other delkilder.
+        var detail = Variable() with
+        {
+            DelkildeId = Guid.NewGuid(),
+            DelkildeName = "Oppfølging",
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "MS-oppfølging" },
+                new() { Id = Guid.NewGuid(), Name = "Inklusjon" },
+            ],
+        };
+
+        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister", "Als registeret (ALS)", "2 datasamlinger"],
+                     StepTexts(detail));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("  ")]

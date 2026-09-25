@@ -227,6 +227,21 @@ public class ContractCoverageTest
     }
 
     [Fact]
+    public void VariableDetail_WhenTheApiNamesTheDelkilde_ThenBothFieldsAreCovered()
+    {
+        // Inline: variable.json predates Munin's delkildeId/delkildeName (Fhi.Metadata-gsf16), and
+        // is still what an older API sends — so the capture also pins that both default to null.
+        var named = JsonSerializer.Deserialize<VariableDetail>(
+            """{ "delkildeId": "c1cc6266-ac04-4e7c-8b33-427dbb9d6871", "delkildeName": "Utlevering" }""", Strict)!;
+        var older = JsonSerializer.Deserialize<VariableDetail>(TestData.Read("variable.json"), Strict)!;
+
+        Assert.Equal(Guid.Parse("c1cc6266-ac04-4e7c-8b33-427dbb9d6871"), named.DelkildeId);
+        Assert.Equal("Utlevering", named.DelkildeName);
+        Assert.Null(older.DelkildeId);
+        Assert.Null(older.DelkildeName);
+    }
+
+    [Fact]
     public void Timeline_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<IReadOnlyList<VariableVersion>>("timeline.json");
 
