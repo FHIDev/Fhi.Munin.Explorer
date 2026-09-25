@@ -193,18 +193,28 @@ internal static class AccessibleName
     {
         var builder = new StringBuilder();
 
-        AppendVisible(builder, element);
+        Append(builder, element, named: null);
 
         return Collapse(builder.ToString());
     }
 
-    // Whitespace as written, unlike Append above, which trims each element's alternative before
-    // joining it. The two walks answer differently for a space living inside a child element, and
-    // this one keeps what TextContent always gave the controls named by their content.
-    private static void AppendVisible(StringBuilder builder, INode node)
+    // aria-hidden takes a subtree off the accessibility tree, so nothing under it is announced and
+    // nothing under it can contribute to a name.
+    private static bool IsHidden(IElement element) =>
+        string.Equals(element.GetAttribute("aria-hidden"), "true", StringComparison.OrdinalIgnoreCase);
+
+    // The one walk both paths take. Whitespace inside a child element is kept as written: real
+    // Chromium announces <label><input/>Biobank<span> (1)</span></label> as "Biobank (1)", so
+    // trimming per element would invent a join no browser makes (Fhi.Metadata-47lha).
+    private static void Append(StringBuilder builder, INode node, IElement? named)
     {
         foreach (var child in node.ChildNodes)
         {
+            if (named is not null && named.Contains(child))
+            {
+                continue;
+            }
+
             if (child is IElement element && IsHidden(element))
             {
                 continue;
@@ -216,45 +226,7 @@ internal static class AccessibleName
                 continue;
             }
 
-            AppendVisible(builder, child);
-        }
-    }
-
-    // aria-hidden takes a subtree off the accessibility tree, so nothing under it is announced and
-    // nothing under it can contribute to a name.
-    private static bool IsHidden(IElement element) =>
-        string.Equals(element.GetAttribute("aria-hidden"), "true", StringComparison.OrdinalIgnoreCase);
-
-    // accname computes each ELEMENT's alternative and trims it before joining, while a text node
-    // contributes its data as written. Flattening the label instead invents a space that no
-    // browser announces — Fhi.Metadata-ueiq6.
-    private static void Append(StringBuilder builder, INode node, IElement named)
-    {
-        foreach (var child in node.ChildNodes)
-        {
-            if (named.Contains(child))
-            {
-                continue;
-            }
-
-            if (child is IElement hidden && IsHidden(hidden))
-            {
-                continue;
-            }
-
-            if (child is IText text)
-            {
-                builder.Append(text.Data);
-                continue;
-            }
-
-            if (child is IElement element)
-            {
-                var nested = new StringBuilder();
-
-                Append(nested, element, named);
-                builder.Append(Collapse(nested.ToString()));
-            }
+            Append(builder, child, named);
         }
     }
 

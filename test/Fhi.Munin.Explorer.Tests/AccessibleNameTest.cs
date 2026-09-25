@@ -35,15 +35,63 @@ public class AccessibleNameTest
     }
 
     [Fact]
-    public void Of_WhenAnInlineChildOpensWithASpace_ThenThatSpaceIsNotAnnounced()
+    public void Of_WhenAnInlineChildOpensWithASpace_ThenThatSpaceIsAnnounced()
     {
-        // The facet count shape cgk85 shipped. accname computes each ELEMENT's alternative and
-        // trims it, so the span's leading space is discarded and a browser announces "Biobank(1)".
-        // Flattening the label instead invents a separator nobody hears — Fhi.Metadata-ueiq6.
+        // The facet count shape. Measured in Chromium 151: the space inside the span survives, so
+        // the name is "Biobank (1)". The ueiq6 per-element trim was measured against jsdom, not a
+        // browser, and made the two walks disagree (Fhi.Metadata-47lha).
         var element = Parse(
             "<label><input type=\"checkbox\"/>Biobank<span> (1)</span></label>", "input");
 
-        Assert.Equal("Biobank(1)", AccessibleName.Of(element));
+        Assert.Equal("Biobank (1)", AccessibleName.Of(element));
+    }
+
+    [Fact]
+    public void Of_WhenAButtonsSpaceLivesInANestedElement_ThenThatSpaceIsAnnounced()
+    {
+        // KildeHierarchyView's count: the space before "variabler" sits inside the screen-reader-only
+        // span. Chromium 151 announces "Parent 8 variabler", so the row has no defect to fix.
+        var element = Parse(
+            "<button type=\"button\">Parent <span>8<span class=\"screenreader-only\"> variabler</span></span></button>",
+            "button");
+
+        Assert.Equal("Parent 8 variabler", AccessibleName.Of(element));
+    }
+
+    [Fact]
+    public void Of_WhenASummarysSpaceLivesInANestedElement_ThenThatSpaceIsAnnounced()
+    {
+        // The same shape on a disclosure, measured the same in Chromium 151.
+        var element = Parse(
+            "<details><summary>Parent <span>8<span class=\"screenreader-only\"> variabler</span></span></summary></details>",
+            "summary");
+
+        Assert.Equal("Parent 8 variabler", AccessibleName.Of(element));
+    }
+
+    [Fact]
+    public void Of_WhenTheSameWordsAreALabelAndAButton_ThenBothWalksAgree()
+    {
+        // The two paths used to differ exactly here: the label trimmed the nested span and the
+        // button did not. One walk means one answer (Fhi.Metadata-47lha).
+        const string words = "Parent <span>8<span class=\"screenreader-only\"> variabler</span></span>";
+
+        var labelled = Parse($"<label><input type=\"checkbox\"/>{words}</label>", "input");
+        var button = Parse($"<button type=\"button\">{words}</button>", "button");
+
+        Assert.Equal("Parent 8 variabler", AccessibleName.Of(labelled));
+        Assert.Equal(AccessibleName.Of(button), AccessibleName.Of(labelled));
+    }
+
+    [Fact]
+    public void Of_WhenAnAriaLabelIsPresent_ThenItWinsOverTheContent()
+    {
+        // The attribute arms sit above both walks and must not move with them.
+        var element = Parse(
+            "<button type=\"button\" aria-label=\"Sorter etter navn\">Navn<span> (1)</span></button>",
+            "button");
+
+        Assert.Equal("Sorter etter navn", AccessibleName.Of(element));
     }
 
     [Fact]
