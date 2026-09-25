@@ -238,7 +238,10 @@ else
 fi
 
 echo "==> checking browser state preparation"
-node --test "$ROOT/scripts/test-axe-states.mjs" || exit 2
+node --test "$ROOT/scripts/test-axe-states.mjs" || {
+  echo "the state-preparation tests failed - TOOLING failure, so nothing was scanned." >&2
+  exit 2
+}
 
 set +e
 node "$ROOT/scripts/axe-scan.mjs" $(for t in "${TARGETS[@]}"; do printf '%s ' "${BASE}${t}"; done)

@@ -1,3 +1,9 @@
+// Guard for the state functions in axe-states.mjs, run by check-accessibility.sh before it scans,
+// so a state that stages the wrong page fails as TOOLING instead of scanning something nobody meant.
+//
+// A real browser on purpose: native <details> hides a closed branch's descendants without removing
+// them, which only a browser models. Keep it out of any unit-test runner that has no browser.
+
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { chromium } from 'playwright';
