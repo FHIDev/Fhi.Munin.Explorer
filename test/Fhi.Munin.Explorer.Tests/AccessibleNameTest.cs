@@ -38,8 +38,7 @@ public class AccessibleNameTest
     public void Of_WhenAnInlineChildOpensWithASpace_ThenThatSpaceIsAnnounced()
     {
         // The facet count shape. Measured in Chromium 151: the space inside the span survives, so
-        // the name is "Biobank (1)". The ueiq6 per-element trim was measured against jsdom, not a
-        // browser, and made the two walks disagree (Fhi.Metadata-47lha).
+        // the name is "Biobank (1)".
         var element = Parse(
             "<label><input type=\"checkbox\"/>Biobank<span> (1)</span></label>", "input");
 
@@ -72,8 +71,7 @@ public class AccessibleNameTest
     [Fact]
     public void Of_WhenTheSameWordsAreALabelAndAButton_ThenBothWalksAgree()
     {
-        // The two paths used to differ exactly here: the label trimmed the nested span and the
-        // button did not. One walk means one answer (Fhi.Metadata-47lha).
+        // Every name is built by one walk, so the same words name a label and a button alike.
         const string words = "Parent <span>8<span class=\"screenreader-only\"> variabler</span></span>";
 
         var labelled = Parse($"<label><input type=\"checkbox\"/>{words}</label>", "input");
@@ -81,6 +79,17 @@ public class AccessibleNameTest
 
         Assert.Equal("Parent 8 variabler", AccessibleName.Of(labelled));
         Assert.Equal(AccessibleName.Of(button), AccessibleName.Of(labelled));
+    }
+
+    [Theory]
+    [InlineData("<label for=\"x\">\n  Navn<span aria-hidden=\"true\">↑</span>\n</label><input id=\"x\"/>", "input")]
+    [InlineData("<span id=\"n\">\n  Navn<span aria-hidden=\"true\">↑</span>\n</span><input aria-labelledby=\"n\"/>", "input")]
+    [InlineData("<fieldset><legend>\n  Navn<span aria-hidden=\"true\">↑</span>\n</legend></fieldset>", "fieldset")]
+    public void Of_WhenTheNameComesFromAnotherElement_ThenItIsWalkedLikeTheContent(string html, string selector)
+    {
+        // The `for`, aria-labelledby and legend arms take the same walk: hidden subtrees skipped,
+        // whitespace collapsed.
+        Assert.Equal("Navn", AccessibleName.Of(Parse(html, selector)));
     }
 
     [Fact]

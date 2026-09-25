@@ -52,7 +52,7 @@ internal static class AccessibleName
         {
             var referenced = labelledBy
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                .Select(id => ById(element, id)?.TextContent.Trim())
+                .Select(id => ById(element, id) is { } target ? Content(target) : null)
                 .Where(text => !string.IsNullOrWhiteSpace(text));
 
             var joined = string.Join(" ", referenced).Trim();
@@ -78,7 +78,7 @@ internal static class AccessibleName
             var legend = element.Children.FirstOrDefault(child =>
                 child.TagName.Equals("LEGEND", StringComparison.OrdinalIgnoreCase));
 
-            return legend is not null ? Collapse(legend.TextContent) : "";
+            return legend is not null ? Content(legend) : "";
         }
 
         var id = element.GetAttribute("id");
@@ -90,9 +90,11 @@ internal static class AccessibleName
                 .FirstOrDefault(label => string.Equals(
                     label.GetAttribute("for"), id, StringComparison.Ordinal));
 
-            if (associated is not null && associated.TextContent.Trim().Length > 0)
+            var text = associated is null ? "" : TextExcept(associated, element);
+
+            if (text.Length > 0)
             {
-                return associated.TextContent.Trim();
+                return text;
             }
         }
 
@@ -203,7 +205,7 @@ internal static class AccessibleName
     private static bool IsHidden(IElement element) =>
         string.Equals(element.GetAttribute("aria-hidden"), "true", StringComparison.OrdinalIgnoreCase);
 
-    // The one walk both paths take. Whitespace inside a child element is kept as written: real
+    // The one walk every name is built by. Whitespace inside a child element is kept as written: real
     // Chromium announces <label><input/>Biobank<span> (1)</span></label> as "Biobank (1)", so
     // trimming per element would invent a join no browser makes (Fhi.Metadata-47lha).
     private static void Append(StringBuilder builder, INode node, IElement? named)
