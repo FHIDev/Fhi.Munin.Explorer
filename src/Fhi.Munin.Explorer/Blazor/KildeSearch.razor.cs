@@ -645,7 +645,7 @@ public sealed partial class KildeSearch : ComponentBase
             return [];
         }
 
-        var groups = new List<(string?, string?, int, IReadOnlyList<KildeDatasamling>)>();
+        var groups = new List<(string? Heading, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)>();
 
         // The kilde's own run opens the panel under the panel's heading; one resumed later is
         // headed at that same level, one above its delkilder.
@@ -659,7 +659,7 @@ public sealed partial class KildeSearch : ComponentBase
         string? heading,
         string? code,
         int depth,
-        List<(string?, string?, int, IReadOnlyList<KildeDatasamling>)> groups)
+        List<(string? Heading, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)> groups)
     {
         List<KildeDatasamling>? run = null;
 
@@ -685,7 +685,7 @@ public sealed partial class KildeSearch : ComponentBase
                 {
                     // A child delkilde's group can come before any of this one's, so its heading
                     // goes in bare there or the outline would skip a level.
-                    if (groups[before].Item3 != depth + 1)
+                    if (groups[before].Depth != depth + 1)
                     {
                         groups.Insert(before, (delkilde.Name, delkilde.Code, depth + 1, []));
                     }

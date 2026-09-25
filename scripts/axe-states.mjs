@@ -124,14 +124,14 @@ export const states = {
   // summary's accessible name and toggle the node on the press that followed it.
   'kilde-hierarchy-open': async page => {
     await states['kilde-hierarchy-collapsed'](page);
-    if (!await page.locator('.munin-explorer-hierarchy__open').count()) {
-      // A delkilde's datasamlinger are not drawn until it is opened, and which kind the fixture
-      // puts at the top is not this state's to depend on.
+    if (!await page.locator('.munin-explorer-hierarchy__open:visible').count()) {
+      // A closed delkilde's links are in the DOM but hidden, and displayOrder can put one ahead
+      // of every top-level datasamling — so which kind comes first is not this state's to assume.
       for (const summary of await page.locator('.munin-explorer-hierarchy > ul > li > details > summary').all()) {
         await summary.click();
       }
     }
-    await page.locator('.munin-explorer-hierarchy__open').first()
+    await page.locator('.munin-explorer-hierarchy__open:visible').first()
       .waitFor({ state: 'visible', timeout: findTimeout });
     if (await page.locator('.munin-explorer-hierarchy summary .munin-explorer-hierarchy__open').count()) {
       throw new Error('The datasamling link must not be a descendant of a <summary>');
@@ -142,7 +142,7 @@ export const states = {
   // intercepted the press.
   'kilde-datasamling': async page => {
     await states['kilde-hierarchy-open'](page);
-    const href = await page.locator('.munin-explorer-hierarchy__open').first().getAttribute('href');
+    const href = await page.locator('.munin-explorer-hierarchy__open:visible').first().getAttribute('href');
     if (!href) {
       throw new Error('The datasamling link must carry a real href');
     }
