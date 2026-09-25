@@ -4890,6 +4890,19 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Contains("Andre runde", KildeFacet(cut).TextContent, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("nb", "Søk etter navn, kode, beskrivelse eller datakilde")]
+    [InlineData("en", "Search by name, code, description or data source")]
+    public void Search_WhenTheBoxIsDrawn_ThenItsPlaceholderNamesWhatTheSearchMatches(string language, string expected)
+    {
+        // The API matches a variable's description (Fhi.Metadata-aw0rn) and its datakilde's name and
+        // kortnavn (Fhi.Metadata-3c9q7); a placeholder promising name and code understates the search.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))),
+                             b => b.Add(c => c.Language, language));
+
+        Assert.Equal(expected, cut.Find(SearchField).GetAttribute("placeholder"));
+    }
+
     [Fact]
     public void Filter_WhenTheKildeSearchIsDrawn_ThenItsPlaceholderNamesDatasamlingToo()
     {
