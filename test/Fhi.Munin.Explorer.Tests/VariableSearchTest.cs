@@ -10142,9 +10142,9 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("SPAN", count.TagName);
         Assert.True(label.Contains(count));
 
-        // Untrimmed: the separating space must be a text node of the label, not the span's first
-        // character, or the name announces as "Dødsårsaksregisteret(30)". Trim() passes on both
-        // shapes, and so does AccessibleName.Of. (Fhi.Metadata-cgk85)
+        // Untrimmed on purpose: the space is a text node of the label, so the count's own box holds
+        // the number alone. Browsers keep either shape's space in the name (Fhi.Metadata-47lha), so
+        // neither Trim() nor AccessibleName.Of can tell them apart. This one can.
         Assert.Equal("(30)", count.TextContent);
     }
 
