@@ -138,30 +138,6 @@ rules:
       added: "2026-09-14"
       paths:
         - src/**/*.cs
-    - id: changelog-fragment-english-only
-      category: style
-      pattern: >-
-        A changelog fragment in changelog.d/ contains Norwegian domain terms (e.g. datakategorier, datakategori) instead of English in its title or body
-      check: >-
-        Verify the title and body of every changelog.d/*.md fragment the diff adds or edits are English-only — standing fragments this PR does not touch are out of scope — translating any Norwegian term the canonical list in AGENTS.md ("Norwegian stays where it is read, not called") does not keep untranslated. That list is kilde, datasamling, delkilde, variabelgruppe, kildetype and kodeverk with the kinds it comes in (helsefagligKodeverk, administrativtKodeverk, kildekodeverk), plus the Norwegian plurals the API uses for their collections — kilder, delkilder, datasamlinger, variabelgrupper, kildetyper. Also untranslated, though AGENTS.md's list does not name them: kildeutforsker and variabelutforsker, this repository's own names for its two views, which ship throughout CHANGELOG.md, AGENTS.md and CLAUDE.md. Read AGENTS.md rather than trusting this restatement of it, which can drift; terms it keeps already ship in CHANGELOG.md and must not be flagged
-      source: copilot:PR#302
-      added: "2026-09-14"
-      paths:
-        - changelog.d/**/*.md
-    - id: comment-history-not-incident-history
-      category: style
-      pattern: >-
-        A comment anywhere in the repository — a test, a source or Razor file, a script — explains why the code exists by narrating past states (old counts, prior capture behavior, bead/PR history) instead of stating the current invariant
-      check: >-
-        Verify the comment states only the present-tense invariant the code enforces; confirm any incident history, counts, or 'used to'/'previously' narrative is removed and belongs in the bead instead. Public XML doc comments on the package's API are the exception, as AGENTS.md's "Comments" section has it: their reader has the package from the feed and its IntelliSense, not this repository, so a migration note they cannot reconstruct from the signature — what a member used to hold before the API resolved it — stays in the file, and the bead it would move to is unreadable to them. Internal types, tests and scripts have no such reader
-      source: copilot:PR#302
-      added: "2026-09-14"
-      paths:
-        - scripts/**/*.mjs
-        - scripts/**/*.sh
-        - src/**/*.cs
-        - src/**/*.razor
-        - test/**/*.cs
     - id: doc-prose-grammar
       category: style
       pattern: >-
@@ -193,19 +169,6 @@ rules:
       added: "2026-09-15"
       paths:
         - src/**/*.cs
-    - id: norwegian-identifier-not-in-domain-list
-      category: style
-      pattern: >-
-        A new C# identifier (class, property, local, method, etc.) uses a Norwegian word or abbreviation that is not one of the repository's approved closed-list domain terms defined in AGENTS.md under "Norwegian stays where it is read, not called"
-      check: >-
-        Read the canonical list in AGENTS.md before flagging a name. Keep `kilde`, `datasamling`, `delkilde`, `variabelgruppe`, `kildetype`, `kodeverk`, and its kinds (`helsefagligKodeverk`, `administrativtKodeverk`, `kildekodeverk`), plus the Norwegian collection plurals (`Kilder`, `Delkilder`, `Datasamlinger`, `Variabelgrupper`, `KildeTyper`), with casing appropriate to the identifier. All other identifier words must be English; abbreviations such as `gruppe` instead of `variabelgruppe` are not approved domain terms.
-      source: copilot:PR#312
-      added: "2026-09-15"
-      paths:
-        - src/**/*.cs
-        - src/**/*.razor
-        - test/**/*.cs
-        - test/**/*.razor
     - id: test-identifiers-full-domain-term
       category: style
       pattern: >-
@@ -289,3 +252,113 @@ rules:
       added: "2026-09-17"
       paths:
         - .forge/**/*.yaml
+    - id: inline-vs-block-caption-hint
+      category: ui
+      pattern: >-
+        A hint/caption/help-text element (e.g. format hint, error message) placed after a form label using an inline element like `span`, relying on a borrowed CSS class that doesn't force block/new-line layout
+      check: >-
+        Verify the element renders on its own line below the label/input as intended — check that either the wrapper element is block-level (e.g. `p`, `div`) or the CSS class applied actually sets `display: block`/`display: block-level`; don't assume an inline `span` will wrap just because a class name suggests it should
+      source: copilot:PR#431
+      added: "2026-09-23"
+      paths:
+        - src/**/*.cs
+    - id: disclosure-control-state-not-surfaced
+      category: ui
+      pattern: >-
+        A component renders a value or row sourced from an API/data model that can be withheld or suppressed for a stated policy reason (e.g. disclosure control, redaction, privacy threshold), but delegates rendering to a shared helper (e.g. StatisticsBlock.For) that only distinguishes 'present' vs 'absent' and shows missing fields as dashes/blanks
+      check: >-
+        Verify there is an explicit branch and user-facing text for the withheld/suppressed state, distinct from ordinary absent/missing data, so a reader cannot mistake a policy-driven withholding for a data gap; confirm this is backed by a test asserting the distinct text/state renders when the withheld condition is true
+      source: copilot:PR#433
+      added: "2026-09-23"
+      paths:
+        - changelog.d/**/*.md
+    - id: disclosure-control-state-collapsed
+      category: correctness
+      pattern: >-
+        A collection/result field is rendered based only on non-emptiness (e.g. `AnyX` checking row count) before an ordinary-data table/view, without checking for a special sentinel or suppressed state (e.g. statistical disclosure control markers)
+      check: >-
+        Verify that domain-specific suppressed/sentinel states are detected and rendered distinctly from both 'absent data' and 'ordinary data', and that each such state has its own test
+      source: copilot:PR#433
+      added: "2026-09-23"
+      paths:
+        - src/**/*.razor
+    - id: internal-comment-budget
+      category: style
+      pattern: >-
+        An internal (non-XML-doc) code comment exceeds three lines, and/or includes change history or personal attribution (names, dates, 'changed by')
+      check: >-
+        Verify internal comments are three lines or fewer and contain only the non-obvious why (e.g. an invariant); confirm change history and author attribution are absent and instead live in the bead or PR description
+      source: copilot:PR#433
+      added: "2026-09-23"
+      paths:
+        - src/**/*.razor
+    - id: test-xml-doc-comment-ceiling
+      category: style
+      pattern: >-
+        XML doc comments on test types/methods (not published API) that exceed three lines, especially ones narrating why tests were moved or restructured
+      check: >-
+        Verify test-file XML docs stay within the three-line ceiling and contain only the non-obvious why (not history); confirm any historical/rationale detail beyond that is moved to the tracking bead and referenced by ID rather than archived in the comment
+      source: copilot:PR#433
+      added: "2026-09-23"
+      paths:
+        - test/**/*.cs
+    - id: assert-subset-argument-order
+      category: testing
+      pattern: >-
+        Assert.Subset(expected, actual) called with a fixed allowed-set constant as one argument and a dynamically-rendered/filtered collection as the other
+      check: >-
+        Verify the first argument is the set being tested (rendered/actual) and the second is the allowed superset — not the reverse — especially when the actual set is conditionally smaller than the full allowed set (e.g. due to a feature flag like selectable: false), since Assert.Subset(expected, actual) fails whenever expected ⊄ actual even if every actual item is valid
+      source: copilot:PR#440
+      added: "2026-09-23"
+      paths:
+        - test/**/*.cs
+    - id: no-xml-docs-on-internal-members
+      category: style
+      pattern: >-
+        Internal (non-public) helper method, class, or member in src/ has an XML doc comment (/// summary, remarks, etc.), especially a multi-line block
+      check: >-
+        Confirm the documented member is actually part of the package's public API surface; if it is internal implementation code, the three-line comment ceiling applies and XML doc blocks are not exempt — reduce to a short why-comment (≤3 lines) or remove entirely
+      source: copilot:PR#440
+      added: "2026-09-23"
+      paths:
+        - src/**/*.cs
+    - id: no-incident-narrative-in-test-remarks
+      category: style
+      pattern: >-
+        A test class or method carries an XML doc /remarks (or similar multi-line comment) explaining the incident or rationale behind why the test exists, exceeding the repository's three-line comment ceiling
+      check: >-
+        Verify comments in test files stay within the three-line ceiling and contain only the why, not incident history; move longer rationale to the bead or PR description, since test types are not part of the public package API and don't get the XML-docs exception
+      source: copilot:PR#440
+      added: "2026-09-23"
+      paths:
+        - test/**/*.cs
+    - id: norwegian-term-outside-approved-domain-list
+      category: style
+      pattern: >-
+        New or edited content — a C# identifier or a changelog.d/*.md fragment's title/body — uses a Norwegian word or abbreviation that is not one of the repository's approved domain terms from AGENTS.md ('Norwegian stays where it is read, not called')
+      check: >-
+        Read the canonical list in AGENTS.md before flagging anything — this restatement can drift. Approved terms: kilde, datasamling, delkilde, variabelgruppe, kildetype, kodeverk and its kinds (helsefagligKodeverk, administrativtKodeverk, kildekodeverk), plus the Norwegian collection plurals the API uses (kilder, delkilder, datasamlinger, variabelgrupper, kildetyper), each with casing appropriate to its context. For changelog fragments, also keep kildeutforsker and variabelutforsker (this repository's own view names, not in AGENTS.md's list but already shipping in CHANGELOG.md/AGENTS.md/CLAUDE.md). Scope: for identifiers, any new C# class/property/local/method/etc. name; for changelog fragments, only *.md files the diff adds or edits under changelog.d/ — standing fragments this PR does not touch are out of scope. Everything else must be English; an abbreviation of an approved term (e.g. gruppe for variabelgruppe) is not itself approved.
+      source: ['copilot:PR#302', 'copilot:PR#312']
+      added: "2026-09-15"
+      paths:
+        - changelog.d/**/*.md
+        - src/**/*.cs
+        - src/**/*.razor
+        - test/**/*.cs
+        - test/**/*.razor
+      merged_at: "2026-09-26"
+    - id: comment-history-not-incident-history-2
+      category: style
+      pattern: >-
+        A comment — XML doc, or one on a test/source/Razor/script file — narrates past states (old counts, prior behavior, bead/PR/incident history, or what the code used to do) instead of, or in addition to, stating the current invariant concisely
+      check: >-
+        Verify the comment states only the present-tense invariant the code enforces and is at most three lines; confirm any incident history, restated-what narrative, counts, or 'used to'/'previously' language is removed and belongs in the bead or PR description instead. The exception is public XML doc comments on the package's API, per AGENTS.md's 'Comments' section: their reader has only the package from the feed and its IntelliSense, so a migration note they cannot reconstruct from the signature may stay in the file. Internal types, tests, and scripts have no such reader and get no exception
+      source: ['copilot:PR#302', 'copilot:PR#431']
+      added: "2026-09-23"
+      paths:
+        - scripts/**/*.mjs
+        - scripts/**/*.sh
+        - src/**/*.cs
+        - src/**/*.razor
+        - test/**/*.cs
+      merged_at: "2026-09-26"

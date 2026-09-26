@@ -1,8 +1,7 @@
 rules:
     - id: changelog-fragment-grammar
       category: style
-      pattern: >-
-        Prose in a changelog.d/ fragment, which ships to readers as release-note text
+      pattern: Prose in a changelog.d/ fragment, which ships to readers as release-note text
       check: >-
         Read each sentence of the fragment as written and verify it is grammatical — in particular that omitted relative pronouns ('that', 'which', 'who'), articles, and prepositions are present where the sentence needs them, since these fragments are assembled verbatim into CHANGELOG.md and the package's PackageReleaseNotes with no later editing pass.
       source: copilot:PR#250
@@ -26,4 +25,67 @@ rules:
       superseded_by: doc-prose-grammar
       last_seen: 2026-09-14T09:48:25.497638009Z
       archived_at: 2026-09-14T09:48:25.497638009Z
+      archive_reason: duplicate
+    - id: changelog-fragment-english-only
+      category: style
+      pattern: >-
+        A changelog fragment in changelog.d/ contains Norwegian domain terms (e.g. datakategorier, datakategori) instead of English in its title or body
+      check: >-
+        Verify the title and body of every changelog.d/*.md fragment the diff adds or edits are English-only — standing fragments this PR does not touch are out of scope — translating any Norwegian term the canonical list in AGENTS.md ("Norwegian stays where it is read, not called") does not keep untranslated. That list is kilde, datasamling, delkilde, variabelgruppe, kildetype and kodeverk with the kinds it comes in (helsefagligKodeverk, administrativtKodeverk, kildekodeverk), plus the Norwegian plurals the API uses for their collections — kilder, delkilder, datasamlinger, variabelgrupper, kildetyper. Also untranslated, though AGENTS.md's list does not name them: kildeutforsker and variabelutforsker, this repository's own names for its two views, which ship throughout CHANGELOG.md, AGENTS.md and CLAUDE.md. Read AGENTS.md rather than trusting this restatement of it, which can drift; terms it keeps already ship in CHANGELOG.md and must not be flagged
+      source: copilot:PR#302
+      added: "2026-09-14"
+      paths:
+        - changelog.d/**/*.md
+      superseded_by: norwegian-term-outside-approved-domain-list
+      last_seen: 2026-09-26T14:32:11.01952146Z
+      archived_at: 2026-09-26T14:32:11.01952146Z
+      archive_reason: duplicate
+    - id: norwegian-identifier-not-in-domain-list
+      category: style
+      pattern: >-
+        A new C# identifier (class, property, local, method, etc.) uses a Norwegian word or abbreviation that is not one of the repository's approved closed-list domain terms defined in AGENTS.md under "Norwegian stays where it is read, not called"
+      check: >-
+        Read the canonical list in AGENTS.md before flagging a name. Keep `kilde`, `datasamling`, `delkilde`, `variabelgruppe`, `kildetype`, `kodeverk`, and its kinds (`helsefagligKodeverk`, `administrativtKodeverk`, `kildekodeverk`), plus the Norwegian collection plurals (`Kilder`, `Delkilder`, `Datasamlinger`, `Variabelgrupper`, `KildeTyper`), with casing appropriate to the identifier. All other identifier words must be English; abbreviations such as `gruppe` instead of `variabelgruppe` are not approved domain terms.
+      source: copilot:PR#312
+      added: "2026-09-15"
+      paths:
+        - src/**/*.cs
+        - src/**/*.razor
+        - test/**/*.cs
+        - test/**/*.razor
+      superseded_by: norwegian-term-outside-approved-domain-list
+      last_seen: 2026-09-26T14:32:11.01952146Z
+      archived_at: 2026-09-26T14:32:11.01952146Z
+      archive_reason: duplicate
+    - id: comment-history-not-incident-history
+      category: style
+      pattern: >-
+        A comment anywhere in the repository — a test, a source or Razor file, a script — explains why the code exists by narrating past states (old counts, prior capture behavior, bead/PR history) instead of stating the current invariant
+      check: >-
+        Verify the comment states only the present-tense invariant the code enforces; confirm any incident history, counts, or 'used to'/'previously' narrative is removed and belongs in the bead instead. Public XML doc comments on the package's API are the exception, as AGENTS.md's "Comments" section has it: their reader has the package from the feed and its IntelliSense, not this repository, so a migration note they cannot reconstruct from the signature — what a member used to hold before the API resolved it — stays in the file, and the bead it would move to is unreadable to them. Internal types, tests and scripts have no such reader
+      source: copilot:PR#302
+      added: "2026-09-14"
+      paths:
+        - scripts/**/*.mjs
+        - scripts/**/*.sh
+        - src/**/*.cs
+        - src/**/*.razor
+        - test/**/*.cs
+      superseded_by: comment-history-not-incident-history-2
+      last_seen: 2026-09-26T14:32:11.01952146Z
+      archived_at: 2026-09-26T14:32:11.01952146Z
+      archive_reason: duplicate
+    - id: comment-ceiling-internal-xml
+      category: style
+      pattern: >-
+        XML doc /// <remarks> (or other XML doc comments) added to an internal/private member that narrate incident history, restate what the code does, or otherwise exceed three lines
+      check: >-
+        Confirm any comment on non-public API is at most three lines and states only the invariant; move restated-what or incident/bead narrative into the bead or PR description instead of the source
+      source: copilot:PR#431
+      added: "2026-09-23"
+      paths:
+        - src/**/*.cs
+      superseded_by: comment-history-not-incident-history-2
+      last_seen: 2026-09-26T14:32:11.01952146Z
+      archived_at: 2026-09-26T14:32:11.01952146Z
       archive_reason: duplicate
