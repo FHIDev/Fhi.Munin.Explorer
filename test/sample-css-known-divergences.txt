@@ -257,7 +257,6 @@ missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main > .muni
 # DATATYPE at 1281px, where graphik keeps it inside the gap (Fhi.Metadata-e0qbl).
 missing-declaration||.munin-explorer-dataitem-header|text-transform
 missing-selector||.munin-explorer-data-list__result:has(.munin-explorer-dataitem__expand-cell) .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button|
-missing-selector|@media (max-width:1280px)|.munin-explorer-meta|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions-button|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions|
 missing-selector|@media (max-width:2881px)|.munin-explorer-pagination-size select|
