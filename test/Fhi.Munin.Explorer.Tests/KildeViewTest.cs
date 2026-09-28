@@ -2538,21 +2538,31 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void FactLists_WhenAHostStylesThem_ThenTheLanesAreAsManyAsTheContainerFits()
+    public void FactLists_WhenAHostStylesThem_ThenThereIsOneLaneAndTheMainColumnKeepsAReadingMeasure()
     {
-        // The chassis's name now, not the panel's (Fhi.Metadata-35w0p.11). Anchored both ends:
-        // SampleDeclarationsFor keeps any rule MENTIONING the name, so an ancestor-scoped branch
-        // would otherwise answer for the bare class — what the old assertion excluded by hand.
+        // Stiler 0.1.135 (Fhi.Metadata-35w0p.62): one lane at every width, and the main column held
+        // to 47em only while a contents list stands beside it. Anchored both ends, because
+        // SampleDeclarationsFor keeps any rule MENTIONING the name.
         const string Base = @"^\.munin-explorer-page__fields$";
+        const string CappedMain = @"^\.munin-explorer-page__body:has\(\s*>\s*\.munin-explorer-page__toc\s*\)\s*>\s*\.munin-explorer-page__main$";
 
         var grids = HostClassNames.SampleDeclarationsFor("munin-explorer-page__fields");
+        var mains = HostClassNames.SampleDeclarationsFor("munin-explorer-page__main");
 
         // Per branch, so grouping the base rule with a scoped one stays equivalent CSS here.
         Assert.True(
-            grids.Any(rule => Regex.IsMatch(rule.Declarations,
-                                  @"grid-template-columns:\s*repeat\(\s*auto-fill,\s*minmax\(\s*min\(\s*440px,\s*100%\s*\),\s*1fr\s*\)\s*\)\s*(;|$)")
+            grids.Any(rule => Regex.IsMatch(rule.Declarations, @"grid-template-columns:\s*minmax\(\s*0,\s*1fr\s*\)\s*(;|$)")
                               && rule.Selector.Split(',').Any(branch => Regex.IsMatch(branch.Trim(), Base))),
-            "No unscoped rule gives munin-explorer-page__fields Stiler 0.1.107's container-sized lanes (Fhi.Metadata-5cu56).");
+            "No unscoped rule gives munin-explorer-page__fields Stiler 0.1.134's single lane (Fhi.Metadata-35w0p.62).");
+        var caps = mains.Count(rule => Regex.IsMatch(rule.Declarations, @"max-width:\s*47em\s*(;|$)")
+                                       && rule.Selector.Split(',').Any(branch => Regex.IsMatch(branch.Trim(), CappedMain)));
+        var sideBySideCaps = HostClassNames.SampleMediaDeclarationsFor("(min-width:1025px)",
+                ".munin-explorer-page__body:has(> .munin-explorer-page__toc) > .munin-explorer-page__main")
+            .Count(declarations => declarations.Contains("max-width:47em", StringComparison.Ordinal));
+        Assert.True(caps > 0, "No rule holds munin-explorer-page__main to 47em beside a contents list, as Stiler 0.1.135 does.");
+        // Stacked at 1024 and narrower, a capped main sat 846px wide under a full-width contents list.
+        Assert.True(caps == sideBySideCaps,
+            $"{caps - sideBySideCaps} of the 47em caps on munin-explorer-page__main apply outside @media (min-width: 1025px).");
     }
 
     [Fact]

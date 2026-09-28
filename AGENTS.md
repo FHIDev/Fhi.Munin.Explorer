@@ -315,7 +315,7 @@ measure on these pages at all:
   measures them against the real one at six widths.
 - `the detail page's main column is the wider part of its body` and `the detail page's two columns
   share a row` measure a `.munin-explorer-page__body`, the detail views' chassis, and `the detail
-  page's fact list has as many tracks as its container fits` its `.munin-explorer-page__fields`;
+  page's fact list is one column with a reading measure` its `.munin-explorer-page__fields`;
   none of the five states driven here opens one. That is a statement about the states and not about the pages: both
   draw one in a detail state — `/` in `variable-whole`, `/kilder` in `kilde-drilldown`, which axe
   scans above — so adding either state to this run would measure them. They run and find nothing

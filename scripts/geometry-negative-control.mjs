@@ -247,12 +247,22 @@ const cases = [
       '.munin-explorer-page__main { grid-row: 1 !important; grid-column: 2 !important; }'),
   },
   {
-    assertion: "the detail page's fact list has as many tracks as its container fits",
-    defect: 'one column at 1280, where two fit: the fact list keyed to the viewport again',
+    assertion: "the detail page's fact list is one column with a reading measure",
+    defect: 'two columns at 1280: the pre-0.1.134 layout back',
     path: '/', state: 'variable-page', width: 1280,
-    // 0.1.105's `auto` below its 1280 breakpoint, which drew one 927px track where two of 455.5px
-    // fit. Measured on the whole-variable page reached by its click path (Fhi.Metadata-2w7fx).
-    apply: css('.munin-explorer-page__fields { grid-template-columns: minmax(0, 1fr) !important; }'),
+    // Stiler 0.1.107-0.1.133: container-sized lanes in an uncapped main column, two 455.5px tracks
+    // at 1280 on the whole-variable page. Both halves, because auto-fill alone fits one lane in
+    // the capped 846px column and would leave the assertion rightly quiet (Fhi.Metadata-d3jz3).
+    apply: css('.munin-explorer-page__fields ' +
+      '{ grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)) !important; }\n' +
+      '.munin-explorer-page__main { max-width: none !important; }'),
+  },
+  {
+    assertion: "the detail page's fact list is one column with a reading measure",
+    defect: 'the main column uncapped beside a contents list at 1760',
+    path: '/', state: 'variable-page', width: 1760,
+    // Without 0.1.134's 47em the main column fills its track, about 1150px at this width.
+    apply: css('.munin-explorer-page__main { max-width: none !important; }'),
   },
   {
     assertion: 'no page shell class inside a tab panel',
