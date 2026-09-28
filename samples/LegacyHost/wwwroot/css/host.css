@@ -4591,7 +4591,15 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-page__stuckbar-name {
   font-size: 1rem;
   font-weight: 600;
-  white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.munin-explorer-page__stuckbar-name small {
+  display: inline-block;
+  max-width: 100%;
 }
 
 .munin-explorer-page__stuckbar.munin-explorer-page__stuckbar--on {
