@@ -545,31 +545,31 @@ export const assertions = [
   },
 
   {
-    name: "the detail page's fact list has as many tracks as its container fits",
+    name: "the detail page's fact list is one column with a reading measure",
     kind: 'invariant',
-    // Stiler 0.1.107 asks the container, not the viewport: `repeat(auto-fill, minmax(min(440px,
-    // 100%), 1fr))`, so a count per viewport width is wrong the moment the column around it moves.
-    // The expected count is auto-fill's own arithmetic on the measured box. (Fhi.Metadata-2w7fx)
+    // Stiler 0.1.134: one track at every width, and the main column held to 47em beside a contents
+    // list. A body with no contents list (the saved-list view) keeps its full width, so only bodies
+    // with one are measured. (Fhi.Metadata-35w0p.62, Fhi.Metadata-d3jz3)
     body: () => {
-      const minTrack = 440;
       const width = Math.round(window.innerWidth);
       for (const grid of document.querySelectorAll('.munin-explorer-page__fields')) {
         const style = getComputedStyle(grid);
-        const box = grid.getBoundingClientRect();
-        if (box.width === 0 || style.display !== 'grid') continue;
-
-        const inner = box.width - ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth']
-          .reduce((sum, side) => sum + (parseFloat(style[side]) || 0), 0);
-        const gap = parseFloat(style.columnGap) || 0;
-        const expected = Math.max(1, Math.floor((inner + gap + 0.01) / (Math.min(minTrack, inner) + gap)));
-        const tracks = style.gridTemplateColumns === 'none'
-          ? [inner]
-          : style.gridTemplateColumns.split(' ').map(parseFloat);
-        if (tracks.length === expected) continue;
-
-        return `at ${width}px a ${inner.toFixed(1)}px .munin-explorer-page__fields draws ` +
-          `${tracks.length} track(s) of ${tracks.map(t => `${t.toFixed(1)}px`).join(' + ')} with a ` +
-          `${gap}px gap; ${expected} of at least ${minTrack}px fit its container`;
+        if (grid.getBoundingClientRect().width === 0 || style.display !== 'grid') continue;
+        const tracks = style.gridTemplateColumns === 'none' ? [] : style.gridTemplateColumns.split(' ');
+        if (tracks.length <= 1) continue;
+        return `at ${width}px a .munin-explorer-page__fields draws ${tracks.length} tracks ` +
+          `(${style.gridTemplateColumns}); the fact list is one column at every width`;
+      }
+      for (const body of document.querySelectorAll('.munin-explorer-page__body')) {
+        const children = [...body.children];
+        if (!children.some(el => el.classList.contains('munin-explorer-page__toc'))) continue;
+        const main = children.find(el => el.classList.contains('munin-explorer-page__main'));
+        if (main === undefined) continue;
+        const measure = 47 * parseFloat(getComputedStyle(main).fontSize);
+        const held = main.getBoundingClientRect().width;
+        if (held <= measure + 0.5) continue;
+        return `at ${width}px the main column beside a contents list is ${held.toFixed(1)}px, ` +
+          `wider than its 47em measure of ${measure.toFixed(1)}px`;
       }
       return null;
     },
