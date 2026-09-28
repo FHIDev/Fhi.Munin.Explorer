@@ -4509,7 +4509,7 @@ table.munin-explorer-data-list tbody th {
 
 /* ---- mirrored from Fhi.Helsedata.Stiler 0.1.79 when samples/HostileHost's pin moved
    there from 0.1.75 (Fhi.Metadata-ofg1h). Rules the stand-in never had: four Stiler releases
-   of explorer work landed between the two pins. Declarations are Stiler's, verbatim. */
+   of explorer work landed between the two pins. Newer sources are identified below. */
 
 .munin-explorer-datasamling__identifiers {
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
@@ -4608,10 +4608,19 @@ table.munin-explorer-data-list tbody th {
   padding: 0.5625rem 0;
 }
 
+/* Stiler 0.1.136: long names and codes wrap inside the sticky detail bar (Fhi.Metadata-r0qd6). */
 .munin-explorer-page__stuckbar-name {
   font-size: 1rem;
   font-weight: 600;
-  white-space: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.munin-explorer-page__stuckbar-name small {
+  display: inline-block;
+  max-width: 100%;
 }
 
 .munin-explorer-page__stuckbar.munin-explorer-page__stuckbar--on {

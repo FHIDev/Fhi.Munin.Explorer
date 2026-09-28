@@ -19,7 +19,7 @@ const launchOptions = () => {
 import { states } from './axe-states.mjs';
 import { assertions, selectors } from './geometry-assertions.mjs';
 import { installUnhiddenOnPurpose } from './hidden-on-purpose.mjs';
-import { scrollToTop } from './reader-scroll.mjs';
+import { scrollPast, scrollToTop } from './reader-scroll.mjs';
 
 const base = process.argv[2];
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
@@ -59,6 +59,23 @@ const cases = [
     defect: 'the same value with no break point on the whole-variable page at 320px',
     path: '/', state: 'variable-page', width: 320,
     apply: noBreak,
+  },
+  {
+    assertion: 'no horizontal overflow',
+    defect: 'the shown sticky name and code forced onto one line at 320px',
+    path: '/', state: 'variable-whole', width: 320,
+    // Resting scans clip the hidden bar, so they cannot see this overflow. (Fhi.Metadata-r0qd6)
+    setup: async page => {
+      const facts = page.locator('.munin-explorer-page__facts').first();
+      await scrollPast(page, await facts.getAttribute('id'));
+      await page.locator('.munin-explorer-page__stuckbar--on:not([hidden]) .munin-explorer-page__stuckbar-inner')
+        .waitFor({ state: 'visible' });
+      await page.waitForFunction(() => {
+        const bar = document.querySelector('.munin-explorer-page__stuckbar--on');
+        return bar?.getAttribute('aria-hidden') === 'false' && getComputedStyle(bar).opacity === '1';
+      });
+    },
+    apply: css('.munin-explorer-page__stuckbar-name { white-space: nowrap !important; }'),
   },
   {
     assertion: 'the component stays inside the box the host gave it',

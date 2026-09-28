@@ -104,7 +104,7 @@ export function observeContents(columnId) {
     return;
   }
 
-  const spy = { column, clicked: null, frame: 0, scroller: null, lastRoot: null, lastTop: 0 };
+  const spy = { column, clicked: null, jump: null, settle: 0, frame: 0, scroller: null, lastRoot: null, lastTop: 0 };
   const schedule = () => {
     spy.frame ||= requestAnimationFrame(() => {
       spy.frame = 0;
@@ -115,23 +115,60 @@ export function observeContents(columnId) {
     // A modified or middle press opens another tab and leaves this one where it is.
     if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
       // The section's id rather than the link, which a re-render can replace.
-      spy.clicked = event.target.closest?.('a[href*="#"]')?.getAttribute('href').split('#')[1] ?? null;
+      const link = event.target.closest?.('a[href*="#"]');
+      spy.clicked = link?.getAttribute('href').split('#')[1] ?? null;
+      if (link && link.origin === location.origin && link.pathname === location.pathname
+        && link.search === location.search) {
+        spy.jump = spy.clicked;
+        settleJump();
+      }
       schedule();
     }
   };
   const unpin = () => {
     spy.clicked = null;
+    spy.jump = null;
+    clearTimeout(spy.settle);
   };
   // The scroller is the element seen scrolling the page, never one guessed from its styles: an
   // `overflow-x: hidden` wrapper computes as `overflow-y: auto` and would freeze the mark.
   const page = column.closest('.munin-explorer-page') ?? column;
+  const settleJump = () => {
+    clearTimeout(spy.settle);
+    // Native and router-owned fragment jumps both scroll; wait until their smooth motion stops.
+    spy.settle = setTimeout(() => {
+      const section = spy.jump ? page.querySelector(`#${CSS.escape(spy.jump)}`) : null;
+      if (section === null) {
+        spy.jump = null;
+        return;
+      }
+
+      const bottom = stickyBottom(page);
+      const top = section.getBoundingClientRect().top;
+      const root = spy.scroller?.isConnected ? spy.scroller : document.scrollingElement;
+      if (bottom > 0 && top < bottom) {
+        spy.jump = null;
+        root?.scrollBy({ top: top - bottom - 1, behavior: 'instant' });
+        schedule();
+      } else if (root) {
+        const origin = root === document.scrollingElement ? 0 : root.getBoundingClientRect().top + root.clientTop;
+        const line = origin + pixels(getComputedStyle(root).scrollPaddingTop, root.clientHeight)
+          + (parseFloat(getComputedStyle(section).scrollMarginTop) || 0);
+        // Focusing the link can scroll before a server-side router starts the actual jump.
+        if (Math.abs(top - line) < 2 || scrolledToEnd(root)) spy.jump = null;
+      }
+    }, 150);
+  };
   const scrolled = (event) => {
     if (event.target === document) {
       spy.scroller = null;
     } else if (event.target !== column && event.target.contains?.(page)) {
       spy.scroller = event.target;
+    } else {
+      return;
     }
 
+    if (spy.jump) settleJump();
     schedule();
   };
 
@@ -156,6 +193,7 @@ export function observeContents(columnId) {
 
   spies.set(columnId, () => {
     cancelAnimationFrame(spy.frame);
+    clearTimeout(spy.settle);
     rendered.disconnect();
     resized.disconnect();
     column.removeEventListener('click', click);
@@ -176,6 +214,12 @@ export function observeContents(columnId) {
 export function disconnectContents(columnId) {
   spies.get(columnId)?.();
   spies.delete(columnId);
+}
+
+// The wrapper deliberately has zero height; its visible inner row is what covers a jump target.
+function stickyBottom(page) {
+  const bar = page.querySelector(`.${SHOWN}:not([hidden])`);
+  return bar?.querySelector('.munin-explorer-page__stuckbar-inner')?.getBoundingClientRect().bottom ?? 0;
 }
 
 /** Sets the one current entry: the last section whose top has reached its jump line. */
@@ -204,16 +248,17 @@ function markCurrent(spy) {
   spy.lastRoot = root;
   spy.lastTop = root.scrollTop;
 
-  // The jump line is where a fragment jump puts a section — its scroll-margin-top plus the
-  // scroller's scroll-padding-top — so a click and a scroll to the same place mark the same entry.
+  // A wrapped bar can exceed the host's CSS clearance; follow the same line the jump clears.
   const origin = root === document.scrollingElement ? 0 : root.getBoundingClientRect().top + root.clientTop;
   const padding = pixels(getComputedStyle(root).scrollPaddingTop, root.clientHeight);
+  const bottom = stickyBottom(page) - origin;
   let current = entries[0];
 
   for (const entry of entries) {
     entry.top -= origin;
 
-    if (entry.top <= padding + (parseFloat(getComputedStyle(entry.section).scrollMarginTop) || 0) + 1) {
+    const jumpLine = Math.max(bottom, padding + (parseFloat(getComputedStyle(entry.section).scrollMarginTop) || 0));
+    if (entry.top <= jumpLine + 1) {
       current = entry;
     }
   }

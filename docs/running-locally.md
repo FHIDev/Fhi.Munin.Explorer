@@ -34,8 +34,13 @@ desktop widths and at 320px. Report the stylesheet version, failures and any ski
 Geometry scans use the shared scroll-to-top helper and confirm the scroll position before
 measuring. Containment checks apply to visible content, including visibility inherited from
 ancestors. Document overflow is checked even when transparent content causes it; negative
-controls verify both behaviors. Scrolled layouts, including the shown sticky fact bar, remain
-outside this script's coverage.
+controls verify both behaviors. The negative-control run also reveals the whole-variable sticky
+bar at 320px, checks that the page fits, and restores its old nowrap defect to prove detection.
+Other scrolled layouts remain outside the geometry scan's coverage.
+
+The component-state check also presses a whole-variable contents link at 320px and requires its
+heading to clear the wrapped sticky bar, with the correct contents entry still marked current.
+Disconnecting the contents observer must bring the overlap back for its negative control.
 
 ## 1. Sample host (the normal way)
 
