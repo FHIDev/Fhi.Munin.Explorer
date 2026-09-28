@@ -215,9 +215,6 @@ missing-declaration||.munin-explorer-dataitem-main__column|padding
 missing-declaration||.munin-explorer-dataitem-main__column|padding-left
 missing-declaration||.munin-explorer-dataitem-main__column|text-overflow
 missing-declaration||.munin-explorer-dataitem-main__column|white-space
-# Left out on purpose: without Stiler's stacked rows at 1280px and below, it shrinks the name to 0px
-# wide at 320 (Fhi.Metadata-hiz1k). It can come in with the @media (max-width:1280px) row collapse.
-missing-declaration||.munin-explorer-dataitem-main__name|min-width
 missing-declaration||.munin-explorer-dataitem-main|cursor
 missing-declaration||.munin-explorer-dataitem-main|height
 missing-declaration||.munin-explorer-dataitem-main|overflow
@@ -251,20 +248,13 @@ missing-declaration||.munin-explorer-search__clear|line-height
 missing-declaration||.munin-explorer-skiplink-pagination:focus|font-size
 missing-selector|@media (max-width:1024px)|.munin-explorer-meta td|
 missing-selector|@media (max-width:1024px)|.munin-explorer-meta th|
-missing-selector|@media (max-width:1280px)|.munin-explorer-data-list__header|
-missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main .icon|
-missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main > *|
-missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main__column|
-missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main__name|
-missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main|
 missing-selector|@media (max-width:1280px)|.munin-explorer-meta table|
-# Part of that row collapse: Stiler pins the chevron cell to a stacked row's corner. The sample's
-# rows never stack, so there it would leave the row and misalign the header (Fhi.Metadata-4xqhq).
+# Stiler's rules for the chevron cell, which variable rows no longer draw since the name button
+# became the disclosure (Fhi.Metadata-35w0p.78), so they match nothing in either stylesheet.
 missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main:has( > .munin-explorer-dataitem__expand-cell)|
 missing-selector|@media (max-width:1280px)|.munin-explorer-dataitem-main > .munin-explorer-dataitem__expand-cell|
-# Same cause, this time above the fold: Stiler HIDES the results header where its rows stack, so
-# it can afford uppercase labels and a 52px name indent. The sample keeps the header at every
-# width (Fhi.Metadata-e0qbl), where both widen it past a 320px viewport on the runner's fonts.
+# Uppercase header labels: on the sample's narrower column and fonts VARIABELGRUPPE runs 24px into
+# DATATYPE at 1281px, where graphik keeps it inside the gap (Fhi.Metadata-e0qbl).
 missing-declaration||.munin-explorer-dataitem-header|text-transform
 missing-selector||.munin-explorer-data-list__result:has(.munin-explorer-dataitem__expand-cell) .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button|
 missing-selector|@media (max-width:1280px)|.munin-explorer-meta|
@@ -527,13 +517,6 @@ invented-selector||.munin-explorer-header__actions-button > .icon-layout::before
 # Stiler gates the two tracks on :has() and leaves a one-child body alone; the sample also takes
 # them back explicitly.
 invented-selector|@media (min-width:1025px)|.munin-explorer-page__body:not(:has( > .munin-explorer-page__toc))|grid-template-columns
-
-# Navn's 420 share only where Stiler's rows sit side by side; the sample's rows never stack at 1280px
-# and below, so 420 there broke other cells mid-word (Fhi.Metadata-hiz1k).
-different-value||.munin-explorer-dataitem-header__name|flex
-different-value||.munin-explorer-dataitem-main__name|flex
-invented-selector|@media not all and (max-width:1280px)|.munin-explorer-dataitem-header__name|flex
-invented-selector|@media not all and (max-width:1280px)|.munin-explorer-dataitem-main__name|flex
 
 # Stiler removed this rule in its PR 39242 because it matches nothing (Fhi.Metadata-2er4n). The sample
 # still carries it; deleting it there retires this line.
