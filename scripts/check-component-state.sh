@@ -41,6 +41,8 @@
 # instead, and nothing but a browser can tell the two mechanisms apart (Fhi.Metadata-14j7i).
 # The collection's compact primary action is also focused while the hero returns, then blurred:
 # hiding its ancestor during focus would strand a keyboard reader (Fhi.Metadata-35w0p.23.4).
+# A whole-variable contents jump at 320px must clear the wrapped bar and keep its entry current;
+# disconnecting the contents observer must reproduce the covered heading (Fhi.Metadata-r0qd6).
 #
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
 #   - the assertions in state-assertions.mjs and tree-assertions.mjs are the whole of it;
@@ -272,7 +274,8 @@ pressed, on a viewport short enough for the hero row to start below the fold, an
 whether the sticky bar stayed away before the scroll and arrived after it. The kilde one is also
 JUMPED past the row and back in one step each way, and its contents nav pressed both ways, which is
 the scroll no observer crossing reports. All of it against the
-sample stylesheet. The collection action also retains focus when its hero returns and releases the
+sample stylesheet. A whole-variable contents jump at 320px also clears the wrapped sticky bar and
+marks the destination current. The collection action retains focus when its hero returns and releases the
 bar after focus leaves. The header of this script and of scripts/state-assertions.mjs list what that
 leaves out - the contents nav's focus step in particular, which this host's router takes over, and
 the bar painting for a single frame, which nothing headless sees.

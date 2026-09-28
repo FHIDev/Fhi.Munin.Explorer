@@ -52,8 +52,8 @@
 //     is the listener (Fhi.Metadata-14j7i) — but ModernHost's router takes the anchor press over and
 //     moves the page with history.pushState, so the press assertion is carried by `scrollend` and
 //     the hashchange one dispatches the event itself. No sample here leaves that press to the browser;
-//   - the contents-nav mark after a PRESS. Under Stiler the bar's reveal lands a jump 76px short
-//     (Fhi.Metadata-79t6z), so the mark is asserted at scroll positions and at each jump line.
+//   - contents jumps at every width: heading clearance and the current mark after a press are
+//     measured on the whole-variable page at 320px. Other widths use the scroll-position checks.
 //
 // HOW IT DIFFERS FROM geometry-assertions.mjs. Those bodies run inside the page, because measuring
 // a box is an expression. These do not: a state assertion has to PRESS something first, and a press
@@ -668,6 +668,57 @@ const chevronAssertions = CHEVRONS.map(chevron => ({
 }));
 
 export const assertions = [
+  {
+    name: 'a contents jump leaves its heading below a wrapped sticky bar',
+    kind: 'invariant',
+    states: ['variable-whole'],
+
+    async stage(page) {
+      await page.setViewportSize({ width: 320, height: 900 });
+      await page.evaluate(() => document.fonts.ready);
+      const column = page.locator('.munin-explorer-page__toc').first();
+      const columnId = await column.getAttribute('id');
+      const href = await column.locator('a[href*="#"]').first().getAttribute('href');
+      const sectionId = href.split('#')[1];
+      const factsId = await page.locator(HERO).first().getAttribute('id');
+      await scrollPast(page, factsId);
+      await page.locator('.munin-explorer-page__stuckbar--on:not([hidden]) .munin-explorer-page__stuckbar-inner')
+        .waitFor({ state: 'visible' });
+      const sizes = await page.evaluate(id => ({
+        bar: document.querySelector('.munin-explorer-page__stuckbar-inner').getBoundingClientRect().height,
+        margin: parseFloat(getComputedStyle(document.getElementById(id)).scrollMarginTop),
+      }), sectionId);
+      if (!columnId || sizes.bar <= sizes.margin) {
+        throw new Error(`the sticky bar must exceed the section's jump clearance: ${JSON.stringify(sizes)}`);
+      }
+      return { columnId, sectionId };
+    },
+
+    async measure(page, { columnId, sectionId }) {
+      await scrollToTop(page);
+      await page.locator(`#${columnId} a[href*="#"]`).first().press('Enter');
+      // The host's smooth jump finishes before the bar-height correction starts.
+      await page.waitForTimeout(PRESS_SETTLE_MS * 2);
+      return page.evaluate(({ columnId, sectionId }) => {
+        const bar = document.querySelector('.munin-explorer-page__stuckbar');
+        if (bar.hidden) return 'the jump never revealed the sticky bar';
+        const bottom = bar.querySelector('.munin-explorer-page__stuckbar-inner').getBoundingClientRect().bottom;
+        const section = document.getElementById(sectionId);
+        const heading = section.querySelector('h2,h3,h4,h5,h6');
+        const top = heading.getBoundingClientRect().top;
+        if (top < bottom - 0.5) return `heading starts at ${top}px under a bar ending at ${bottom}px`;
+        const link = document.querySelector(`#${CSS.escape(columnId)} a[href$="#${CSS.escape(sectionId)}"]`);
+        return link.getAttribute('aria-current') === 'location' ? null : 'the landed section lost its current mark';
+      }, { columnId, sectionId });
+    },
+
+    async control(page, { columnId }) {
+      await page.evaluate(async id => {
+        const module = await import(new URL('_content/Fhi.Munin.Explorer/explorer-interop.js', document.baseURI));
+        module.disconnectContents(id);
+      }, columnId);
+    },
+  },
   {
     name: 'the compact collection action remains focused until focus leaves the returning hero',
     kind: 'invariant',
