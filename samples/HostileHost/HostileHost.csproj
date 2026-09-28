@@ -26,8 +26,6 @@
        states it measures need those breaks, which is what this branch's negative control shows
        (Fhi.Metadata-ofg1h).
 
-       0.1.134 gives the detail pages one column with a 47em measure (Fhi.Metadata-35w0p.62), the
-       styling 1.0 is released against.
        0.1.133 drops the dead period-bar rules (Fhi.Metadata-4hhb2) and widens Runa's search list
        to 1760px (Fhi.Metadata-i1kwv); what else it carries is in Fhi.Metadata-v3e9o.
        0.1.125 carries the six releases after 0.1.119; which PR brought what is in
@@ -43,7 +41,7 @@
        0.1.103 brought the drawer's checkbox column and nested detail anchor clearance
        (Fhi.Metadata-h6dx7, Fhi.Metadata-17k34). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.134" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.133" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
