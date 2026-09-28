@@ -31,8 +31,9 @@ standard for accepting it.
 
 ## Contributing
 
-This package is developed for a specific consumer — helsedata.no — on a fixed timeline, so the
-API surface moves with that work and is deliberately below `1.0.0` until it settles.
+This package is developed for a specific consumer — helsedata.no — on a fixed timeline. From
+`1.0.0` its surface follows the SemVer promise in the README's Releasing section: `1.0.x` is fixes
+only, and anything a host has to act on is `2.0.0`.
 
 If you are using this package and something is wrong or missing, open an issue on
 [the repository](https://github.com/FHIDev/Fhi.Munin.Explorer/issues). Please say which version you

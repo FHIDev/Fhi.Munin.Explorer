@@ -12,11 +12,9 @@
 
   <!-- Package identity and version.
 
-       Deliberately 0.x. A 1.0.0 is a stability promise, and a published version cannot be
-       walked back: the feed does allow one to be deleted, but whoever already restored it keeps
-       what they got. We stay below 1.0 until a real
-       consumer (the helsedata POC) is wired up and the API surface has stopped moving.
-       The publish pipeline overrides this from the release tag with -p:Version=. -->
+       VersionPrefix is only the local-build fallback: the publish pipeline sets the real version
+       from the release tag with -p:Version=. From 1.0.0 the version is a SemVer promise to hosts,
+       set out in the README's Releasing section, and a published version cannot be walked back. -->
   <PropertyGroup>
     <VersionPrefix>0.1.0</VersionPrefix>
     <Authors>Folkehelseinstituttet (FHI)</Authors>
