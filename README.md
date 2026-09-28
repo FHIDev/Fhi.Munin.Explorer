@@ -1549,9 +1549,10 @@ dotnet pack -c Release -o artifacts
 ./scripts/assert-package-contents.sh artifacts
 ```
 
-Versions stay on `0.x` until the helsedata POC is wired up and the API surface has stopped
-moving — `1.0.0` is a stability promise, and a version that consumers have restored cannot be
-walked back.
+From `1.0.0` the version number is a promise to hosts. `1.0.x` releases are fixes only. Adding a
+component parameter or a class name is `1.x.0`. A change a host has to act on is `2.0.0`: a
+parameter removed or retyped, a `munin-explorer-` class name or section id renamed or dropped, or
+a higher Stiler floor. A version that consumers have restored cannot be walked back.
 
 ## Changelog
 
