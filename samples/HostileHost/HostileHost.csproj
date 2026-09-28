@@ -26,6 +26,11 @@
        states it measures need those breaks, which is what this branch's negative control shows
        (Fhi.Metadata-ofg1h).
 
+       0.1.133 carries the eight releases after 0.1.125. For this repository it drops the dead
+       period-bar rules (Fhi.Metadata-4hhb2) and widens Runa's search list to 1760px
+       (Fhi.Metadata-35w0p.62.1, Fhi.Metadata-i1kwv). The rest are site-wide: the «Gå til toppen»
+       fixes (Fhi.Metadata-g6dg7, Fhi.Metadata-wnu4k) and four of helsedata's own. The samples
+       follow in the same PR (Fhi.Metadata-v3e9o).
        0.1.125 carries the six releases after 0.1.119; which PR brought what is in
        Fhi.Metadata-35w0p.84.
        0.1.119 draws Runa's row ring on the name button and keys its chevron on that button's
