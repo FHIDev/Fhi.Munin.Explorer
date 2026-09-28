@@ -128,6 +128,13 @@ body {
   padding: 22px;
 }
 
+/* On a phone the frame gives the explorer what a host page does, near the full width: at 47px a
+   side it left 226px of 320, and the opened panel's buttons ran out of it (Fhi.Metadata-2z8jd). */
+@media (max-width: 767px) {
+  .hostmain { padding-left: 8px; padding-right: 8px; }
+  .hostframe { padding: 0; }
+}
+
 /* ======================================================================
    Stiler stand-in — everything from here down to the first "not Stiler"
    divider is one of Fhi.Helsedata.Stiler's own components, and Stiler's
@@ -1261,6 +1268,12 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
 .munin-explorer-meta {
   padding: 4px 8px 20px 44px;
   background: var(--grey10);
+}
+
+@media (max-width: 1280px) {
+  .munin-explorer-meta {
+    padding: 24px;
+  }
 }
 
 .munin-explorer-data-list__item--expanded {
