@@ -3764,9 +3764,11 @@ table.munin-explorer-data-list tbody th {
   min-inline-size: 0;
 }
 
-/* Stiler 0.1.134: one column, and a 47em measure beside a contents list (Fhi.Metadata-35w0p.62). */
+/* Stiler 0.1.135: a 47em measure only beside a contents list; stacked, main keeps the full width (Fhi.Metadata-35w0p.62). */
+@media (min-width:1025px) {
 .munin-explorer-page__body:has(> .munin-explorer-page__toc) > .munin-explorer-page__main {
   max-width: 47em;
+}
 }
 
 .munin-explorer-page__fields {

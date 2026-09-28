@@ -547,9 +547,9 @@ export const assertions = [
   {
     name: "the detail page's fact list is one column with a reading measure",
     kind: 'invariant',
-    // Stiler 0.1.134: one track at every width, and the main column held to 47em beside a contents
-    // list. A body with no contents list (the saved-list view) keeps its full width, so only bodies
-    // with one are measured. (Fhi.Metadata-35w0p.62, Fhi.Metadata-d3jz3)
+    // Stiler 0.1.135: one track at every width, and the main column held to 47em only while a
+    // contents list stands beside it; stacked, or with no list (saved-list view), main keeps its
+    // full width. (Fhi.Metadata-35w0p.62, Fhi.Metadata-d3jz3)
     body: () => {
       const width = Math.round(window.innerWidth);
       for (const grid of document.querySelectorAll('.munin-explorer-page__fields')) {
@@ -562,11 +562,14 @@ export const assertions = [
       }
       for (const body of document.querySelectorAll('.munin-explorer-page__body')) {
         const children = [...body.children];
-        if (!children.some(el => el.classList.contains('munin-explorer-page__toc'))) continue;
+        const toc = children.find(el => el.classList.contains('munin-explorer-page__toc'));
         const main = children.find(el => el.classList.contains('munin-explorer-page__main'));
-        if (main === undefined) continue;
+        if (toc === undefined || main === undefined) continue;
+        const rail = toc.getBoundingClientRect();
+        const column = main.getBoundingClientRect();
+        if (!(rail.right <= column.left + 1 || column.right <= rail.left + 1)) continue;
         const measure = 47 * parseFloat(getComputedStyle(main).fontSize);
-        const held = main.getBoundingClientRect().width;
+        const held = column.width;
         if (held <= measure + 0.5) continue;
         return `at ${width}px the main column beside a contents list is ${held.toFixed(1)}px, ` +
           `wider than its 47em measure of ${measure.toFixed(1)}px`;

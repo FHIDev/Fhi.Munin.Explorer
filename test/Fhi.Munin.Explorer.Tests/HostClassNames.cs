@@ -226,6 +226,20 @@ internal static class HostClassNames
                 .Any(s => Regex.Replace(s.Trim(), @"\s+", " ") == selector))
             .Select(rule => Regex.Replace(rule.Declarations, @"\s+", ""))];
 
+    /// <summary>
+    /// <see cref="SampleContainerDeclarationsFor"/> for an <c>@media</c> block whose prelude contains
+    /// <paramref name="query"/>, whitespace taken out of both before comparing.
+    /// </summary>
+    internal static IReadOnlyList<string> SampleMediaDeclarationsFor(string query, string selector) =>
+        [.. Regex.Matches(SampleStylesheet.Value,
+                @"@media(?<prelude>[^{]*)\{(?<body>(?:[^{}]*\{[^{}]*\})*[^{}]*)\}")
+            .Where(block => Regex.Replace(block.Groups["prelude"].Value, @"\s+", "")
+                .Contains(Regex.Replace(query, @"\s+", ""), StringComparison.Ordinal))
+            .SelectMany(block => RulesIn(block.Groups["body"].Value))
+            .Where(rule => SelectorList(rule.Selector)
+                .Any(s => Regex.Replace(s.Trim(), @"\s+", " ") == selector))
+            .Select(rule => Regex.Replace(rule.Declarations, @"\s+", ""))];
+
     // Top-level commas only: Stiler's handle gates carry `:has(a, b, c, d)` inside one entry.
     private static IEnumerable<string> SelectorList(string selectors)
     {
