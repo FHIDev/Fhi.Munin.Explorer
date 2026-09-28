@@ -4489,7 +4489,7 @@ table.munin-explorer-data-list tbody th {
 
 /* ---- mirrored from Fhi.Helsedata.Stiler 0.1.79 when samples/HostileHost's pin moved
    there from 0.1.75 (Fhi.Metadata-ofg1h). Rules the stand-in never had: four Stiler releases
-   of explorer work landed between the two pins. Declarations are Stiler's, verbatim. */
+   of explorer work landed between the two pins. Newer sources are identified below. */
 
 .munin-explorer-datasamling__identifiers {
   font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
@@ -4588,6 +4588,8 @@ table.munin-explorer-data-list tbody th {
   padding: 0.5625rem 0;
 }
 
+/* Stiler PR 39647, commit 073e5de (Fhi.Metadata-r0qd6), not yet published.
+   Record the released version here when the HostileHost pin adopts it. */
 .munin-explorer-page__stuckbar-name {
   font-size: 1rem;
   font-weight: 600;
