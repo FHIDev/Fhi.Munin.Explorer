@@ -696,9 +696,15 @@ export const assertions = [
 
     async measure(page, { columnId, sectionId }) {
       await scrollToTop(page);
-      await page.locator(`#${columnId} a[href*="#"]`).first().press('Enter');
+      const link = page.locator(`#${columnId} a[href*="#"]`).first();
+      // Let focus scrolling settle before activating the link, as a keyboard reader would.
+      await link.focus();
+      await page.waitForTimeout(PRESS_SETTLE_MS);
+      await link.press('Enter');
       // The host's smooth jump finishes before the bar-height correction starts.
       await page.waitForTimeout(PRESS_SETTLE_MS * 2);
+      await page.locator('.munin-explorer-page__stuckbar--on:not([hidden]) .munin-explorer-page__stuckbar-inner')
+        .waitFor({ state: 'visible' });
       return page.evaluate(({ columnId, sectionId }) => {
         const bar = document.querySelector('.munin-explorer-page__stuckbar');
         if (bar.hidden) return 'the jump never revealed the sticky bar';

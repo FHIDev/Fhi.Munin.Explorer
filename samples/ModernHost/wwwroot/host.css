@@ -4608,8 +4608,7 @@ table.munin-explorer-data-list tbody th {
   padding: 0.5625rem 0;
 }
 
-/* Stiler PR 39647, commit 073e5de (Fhi.Metadata-r0qd6), not yet published.
-   Record the released version here when the HostileHost pin adopts it. */
+/* Stiler 0.1.136: long names and codes wrap inside the sticky detail bar (Fhi.Metadata-r0qd6). */
 .munin-explorer-page__stuckbar-name {
   font-size: 1rem;
   font-weight: 600;
