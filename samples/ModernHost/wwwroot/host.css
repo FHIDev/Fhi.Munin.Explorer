@@ -3261,20 +3261,6 @@ table.munin-explorer-data-list tbody th {
 
 }
 
-.munin-explorer-dataitem-period {
-  background-color: rgb(187, 184, 201);
-  height: 8px;
-  position: relative;
-  width: 100%;
-}
-
-@media (max-width: 1280px) {
-  .munin-explorer-dataitem-period {
-    margin: 4px 0;
-  }
-
-}
-
 
 /* Stand-in for Stiler's published hierarchy rules; assert-sample-css-matches-stiler.sh compares them. */
 .munin-explorer-hierarchy {

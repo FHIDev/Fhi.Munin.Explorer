@@ -1576,8 +1576,8 @@ public sealed partial class VariableSearch : ComponentBase
             RowCell.Write(builder, 600, T.FieldStatus, status, "status", T.NotSpecified, catalogue: false);
         }
 
-        // Text, not helsedata's hover-only bar: an unstyled `munin-explorer-dataitem-period` would
-        // draw an empty cell, which reads as no period recorded.
+        // Text, not helsedata's hover-only bar: the package ships no rules to draw a bar with, and
+        // an unstyled one is an empty cell, which reads as no period recorded.
         // `catalogue: false`: the dates are formatted for the reader, so follow Language.
         if (ColumnVisible(ResultColumn.DataPeriod))
         {

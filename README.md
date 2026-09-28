@@ -833,10 +833,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   - `id` — not a class at all. Either a stem the package completes with a per-instance
     discriminator at runtime, or one of the detail views' section ids, which are whole and fixed
     — `munin-explorer-source` is both. Either way `.munin-explorer-source` selects nothing.
-  - `prose` — the package writes the name down in a comment and no element wears it.
-    `munin-explorer-dataitem-period` is the whole of this kind: the cell it describes is really
-    `munin-explorer-dataitem-main__period`. It is listed rather than dropped because
-    `assert-sample-css-in-step.sh` reads prose too, so both samples carry a rule for it.
+  - `prose` — the package writes the name down in a comment and no element wears it. No name
+    is of this kind today. It stays because `assert-class-names-listed.sh` and
+    `assert-sample-css-in-step.sh` read comments too, so a comment that names a class still needs
+    a row here and a rule in both samples.
   - `attribute` — not a class and not an id: part of an attribute name.
     `munin-explorer-version` is the whole of this kind, read out of
     `data-munin-explorer-version` on every root element, so `.munin-explorer-version` selects
@@ -893,7 +893,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main__desiredData` | handle |
   | `munin-explorer-dataitem-main__expand-icon` | handle |
   | `munin-explorer-dataitem-main__name` | handle |
-  | `munin-explorer-dataitem-period` | prose |
   | `munin-explorer-dataperiod` | id |
   | `munin-explorer-datasamling` | handle |
   | `munin-explorer-datasamling__criteria` | handle |
