@@ -29,7 +29,10 @@ public sealed record ExplorerUrlState
     /// <summary>The free-text search, or null when the reader has not searched.</summary>
     public string? Search { get; init; }
 
-    /// <summary>The column the reader sorted on.</summary>
+    /// <summary>
+    /// The order the reader chose; <see cref="SortField.Default"/>, the curated opening order with no
+    /// active column, when none.
+    /// </summary>
     public SortField Sort { get; init; } = SortField.Default;
 
     /// <summary>Which way that column is sorted.</summary>

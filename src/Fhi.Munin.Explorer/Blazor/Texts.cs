@@ -741,6 +741,7 @@ internal sealed record Texts(
         // on SortField.Default — so a button labelled Navn would describe an order the list is
         // not in, which is the one thing the live-region announcement exists to get right.
         SortField.Default => SortDefault,
+        SortField.Name => ColumnVariable,
         SortField.Code => FieldCode,
         SortField.Kilde => FieldSource,
         SortField.Datasamling => FieldDataCollection,

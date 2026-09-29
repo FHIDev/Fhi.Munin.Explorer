@@ -90,6 +90,7 @@ public class ContractDriftTest
         // value, so the rows being monotone in it is not something the API promises.
         static string? KeyOf(SortField field, VariableSummary row) => field switch
         {
+            SortField.Name => row.PreferredTerm,
             SortField.Code => row.Code,
             SortField.Kilde => row.KildeName,
             SortField.Datasamling => row.DatasamlingName,
