@@ -20,14 +20,7 @@
 import { chromium } from 'playwright';
 import { states } from './axe-states.mjs';
 import { assertions } from './state-assertions.mjs';
-
-// PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an installed browser instead of the bundled chromium, on
-// the same terms as the sibling scans: `playwright install chromium` cannot complete on Node 26,
-// the pinned fetcher calling fs.rmdir(recursive) which that version removed (Fhi.Metadata-2nfvm).
-const launchOptions = () => {
-  const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
-  return channel ? { channel } : {};
-};
+import { launchOptions } from './browser-launch.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);

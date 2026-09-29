@@ -12,11 +12,7 @@
 import { states } from './axe-states.mjs';
 import { scrollToTop } from './reader-scroll.mjs';
 import { installUnhiddenOnPurpose } from './hidden-on-purpose.mjs';
-
-const launchOptions = () => {
-  const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
-  return channel ? { channel } : {};
-};
+import { launchOptions } from './browser-launch.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);

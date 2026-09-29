@@ -7,15 +7,7 @@
 // check-hostile-host.sh, which owns starting the host.
 import { chromium } from 'playwright';
 
-// PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an installed browser instead of the bundled chromium.
-// Opt-in and unset in CI: a channel renders a different engine build, so a geometry number from
-// one is not interchangeable with a number from the other. It exists because `playwright install
-// chromium` cannot complete on Node 26 - the pinned fetcher calls fs.rmdir(recursive), removed in
-// that version - which leaves the port unrunnable on a developer machine (Fhi.Metadata-wgwa0).
-const launchOptions = () => {
-  const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
-  return channel ? { channel } : {};
-};
+import { launchOptions } from './browser-launch.mjs';
 import { states } from './axe-states.mjs';
 import { assertions, selectors } from './geometry-assertions.mjs';
 import { installUnhiddenOnPurpose } from './hidden-on-purpose.mjs';
