@@ -8,11 +8,11 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { chromium } from 'playwright';
 import { states } from './axe-states.mjs';
+import { launchOptions } from './browser-launch.mjs';
 
 let browser;
 before(async () => {
-  const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
-  browser = await chromium.launch(channel ? { channel } : {});
+  browser = await chromium.launch(launchOptions());
 });
 after(async () => { await browser?.close(); });
 
