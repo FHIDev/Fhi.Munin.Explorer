@@ -739,6 +739,18 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
+    public void SortField_Always_ThenEveryMemberKeepsTheValueItShippedWith()
+    {
+        // A public contract from 1.0: a host may persist the integer, so a member is appended with
+        // the next value and none moves (Fhi.Metadata-bgvdh).
+        Assert.Equal(
+            [(SortField.Default, 0), (SortField.Code, 1), (SortField.Kilde, 2), (SortField.Datasamling, 3),
+             (SortField.Variabelgruppe, 4), (SortField.DataType, 5), (SortField.Status, 6),
+             (SortField.DataPeriod, 7), (SortField.Name, 8)],
+            Enum.GetValues<SortField>().Select(field => (field, (int)field)));
+    }
+
+    [Fact]
     public async Task SearchVariablesAsync_WhenTheDefaultOrderIsReversed_ThenOnlyTheDirectionIsSent()
     {
         // The default order has no token: `name` is the API's name sort since Fhi.Metadata-bgvdh,

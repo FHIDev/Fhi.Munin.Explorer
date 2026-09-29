@@ -390,17 +390,9 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Render_Always_ThenTheDefaultOrderIsNotLabelledAsANameSort()
     {
-        // This guard used to say the opposite, and the reason it flipped is worth keeping.
-        //
-        // The API's `name` sort leads with kilde, not the name — see the remarks on
-        // SortField.Default. When the ordering was a row of standalone buttons, one reading "Navn"
-        // claimed the list was ordered by name, which it is not. In a COLUMN HEADER the same word
-        // names the column rather than the order: the column holds names, the arrow says it is the
-        // active one, and what the list is actually ordered by is stated in full in the status
-        // line below it.
-        //
-        // What must still not happen is the status line calling it a name sort. That is the
-        // sentence a reader gets read out, and it is the one that would be wrong.
+        // The list opens in the curated order (SortField.Default), not by name: `name` is an
+        // alphabetical sort only when Navn is pressed (Fhi.Metadata-bgvdh). So the Navn header
+        // carries no arrow here, and the status line names the order as Standard, not Navn.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
@@ -465,14 +457,11 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Sort_WhenEveryColumnIsOnScreen_ThenTheEnumIsDeclaredInTheOrderTheHeadersAreDrawn()
+    public void Sort_WhenEveryColumnIsOnScreen_ThenTheHeadersOfferTheOrdersInRunasColumnOrder()
     {
-        // SortField's remarks promise that a control built from Enum.GetValues needs no second
-        // list to stay in step, and helsedata is free to build one. A member appended at the end
-        // rather than inserted at its own column keeps every other test green and offers the
-        // orders in an order no table on screen is in — which is why this presses the headers in
-        // DOM order and reads back what each one asked the API for, rather than restating the
-        // order as a literal that could be corrected to match a mistake.
+        // SortField's remarks name the order a control should offer: Name first, then Code through
+        // DataPeriod by value. Pressed in DOM order and read back from what each header asked the
+        // API for, so a header wired to the wrong member fails here.
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
@@ -492,9 +481,10 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(HeaderSortFields, pressed);
     }
 
-    // Every member but Default, the order a list opens in, which no header claims (Fhi.Metadata-bgvdh).
+    // Runa's column order: Name first, where its column is, though its value is last; Default,
+    // the order a list opens in, has no header (Fhi.Metadata-bgvdh).
     private static SortField[] HeaderSortFields =>
-        [.. Enum.GetValues<SortField>().Where(sort => sort != SortField.Default)];
+        [SortField.Name, .. Enum.GetValues<SortField>().Where(sort => sort is not (SortField.Default or SortField.Name))];
 
     [Fact]
     public void Sort_WhenEachColumnIsPressedInTurn_ThenOnlyThatOneCarriesAriaSort()
