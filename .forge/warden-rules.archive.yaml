@@ -141,7 +141,21 @@ rules:
       added: "2026-09-23"
       paths:
         - test/**/*.cs
-      superseded_by: comment-history-not-incident-history-2
+      superseded_by: comment-three-line-ceiling
+      last_seen: 2026-09-29T00:00:00Z
+      archived_at: 2026-09-29T00:00:00Z
+      archive_reason: duplicate
+    - id: disclosure-control-state-collapsed
+      category: correctness
+      pattern: >-
+        A collection/result field is rendered based only on non-emptiness (e.g. `AnyX` checking row count) before an ordinary-data table/view, without checking for a special sentinel or suppressed state (e.g. statistical disclosure control markers)
+      check: >-
+        Verify that domain-specific suppressed/sentinel states are detected and rendered distinctly from both 'absent data' and 'ordinary data', and that each such state has its own test
+      source: copilot:PR#433
+      added: "2026-09-23"
+      paths:
+        - src/**/*.razor
+      superseded_by: disclosure-control-state-not-surfaced
       last_seen: 2026-09-29T00:00:00Z
       archived_at: 2026-09-29T00:00:00Z
       archive_reason: duplicate

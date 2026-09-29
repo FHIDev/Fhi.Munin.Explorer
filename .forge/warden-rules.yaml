@@ -266,25 +266,15 @@ rules:
     - id: disclosure-control-state-not-surfaced
       category: ui
       pattern: >-
-        A component renders a value or row sourced from an API/data model that can be withheld or suppressed for a stated policy reason (e.g. disclosure control, redaction, privacy threshold), but delegates rendering to a shared helper (e.g. StatisticsBlock.For) that only distinguishes 'present' vs 'absent' and shows missing fields as dashes/blanks
+        A component renders a value or row sourced from an API/data model that can be withheld or suppressed for a stated policy reason (e.g. disclosure control, redaction, privacy threshold), but delegates rendering to a shared helper (e.g. StatisticsBlock.For) that only distinguishes 'present' vs 'absent' and shows missing fields as dashes/blanks, or gates a collection on non-emptiness alone (e.g. `AnyX` checking row count) before an ordinary-data table/view without checking for a suppressed or sentinel state
       check: >-
-        Verify there is an explicit branch and user-facing text for the withheld/suppressed state, distinct from ordinary absent/missing data, so a reader cannot mistake a policy-driven withholding for a data gap; confirm this is backed by a test asserting the distinct text/state renders when the withheld condition is true
+        Verify there is an explicit branch and user-facing text for the withheld/suppressed state, distinct from both ordinary absent/missing data and ordinary present data, so a reader cannot mistake a policy-driven withholding for a data gap; confirm each such state is backed by its own test asserting the distinct text/state renders when its condition is true
       source: copilot:PR#433
       added: "2026-09-23"
       paths:
         - src/**/*.cs
         - src/**/*.razor
         - test/**/*.cs
-    - id: disclosure-control-state-collapsed
-      category: correctness
-      pattern: >-
-        A collection/result field is rendered based only on non-emptiness (e.g. `AnyX` checking row count) before an ordinary-data table/view, without checking for a special sentinel or suppressed state (e.g. statistical disclosure control markers)
-      check: >-
-        Verify that domain-specific suppressed/sentinel states are detected and rendered distinctly from both 'absent data' and 'ordinary data', and that each such state has its own test
-      source: copilot:PR#433
-      added: "2026-09-23"
-      paths:
-        - src/**/*.razor
     - id: assert-subset-argument-order
       category: testing
       pattern: >-
