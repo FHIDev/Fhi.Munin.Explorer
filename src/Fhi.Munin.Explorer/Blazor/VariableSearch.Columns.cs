@@ -128,7 +128,8 @@ public partial class VariableSearch
         SortField.DataType => ResultColumn.DataType,
         SortField.Status => ResultColumn.Status,
         SortField.DataPeriod => ResultColumn.DataPeriod,
-        SortField.Default => null,
+        // Navn is always on screen; the default order has no column of its own.
+        SortField.Default or SortField.Name => null,
         _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, "No column for this sort field."),
     };
 

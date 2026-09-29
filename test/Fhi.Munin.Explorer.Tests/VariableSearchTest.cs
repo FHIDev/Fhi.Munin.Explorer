@@ -360,7 +360,31 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(SortField.Default, client.LastSort);
         Assert.Equal(SortDirection.Ascending, client.LastDirection);
+
+        // The curated order is not a name sort, so no header claims it (Fhi.Metadata-bgvdh).
+        Assert.Equal("Navn", SortButtons(cut)[0].TextContent);
+        Assert.Empty(cut.FindAll("[role=columnheader][aria-sort]"));
+    }
+
+    [Fact]
+    public void Sort_WhenNavnIsPressed_ThenANameSortIsAskedForRatherThanTheDefaultOrder()
+    {
+        // Fhi.Metadata-bgvdh (ADO 121360): pressing Navn from the opening order used to reverse the
+        // default order instead, and ascending it sent no sort at all — so the list stayed curated.
+        var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        ClickSort(cut, "Navn");
+
+        Assert.Equal(SortField.Name, client.LastSort);
+        Assert.Equal(SortDirection.Ascending, client.LastDirection);
         Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
+        Assert.Equal("ascending", cut.Find("[role=columnheader][aria-sort]").GetAttribute("aria-sort"));
+
+        ClickSort(cut, "Navn");
+
+        Assert.Equal(SortField.Name, client.LastSort);
+        Assert.Equal(SortDirection.Descending, client.LastDirection);
     }
 
     [Fact]
@@ -381,7 +405,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Navn ↑", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode"],
+        Assert.Equal(["Navn", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode"],
                      labels);
         Assert.Contains("sortert på Standard", cut.Find("p.caption[role=status]").TextContent);
     }
@@ -399,7 +423,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         TurnEveryColumnOn(cut);
 
-        Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
+        Assert.Equal(HeaderSortFields.Length, SortButtons(cut).Count);
     }
 
     [Theory]
@@ -456,7 +480,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         var pressed = new List<SortField>();
 
-        for (var at = 0; at < Enum.GetValues<SortField>().Length; at++)
+        for (var at = 0; at < HeaderSortFields.Length; at++)
         {
             // Re-found on every pass: each press re-renders the row, so a node held across one is
             // stale. Pressing the already-active header only reverses the direction, which leaves
@@ -465,8 +489,12 @@ public class VariableSearchTest : ExplorerTestContext
             pressed.Add(client.LastSort);
         }
 
-        Assert.Equal(Enum.GetValues<SortField>(), pressed);
+        Assert.Equal(HeaderSortFields, pressed);
     }
+
+    // Every member but Default, the order a list opens in, which no header claims (Fhi.Metadata-bgvdh).
+    private static SortField[] HeaderSortFields =>
+        [.. Enum.GetValues<SortField>().Where(sort => sort != SortField.Default)];
 
     [Fact]
     public void Sort_WhenEachColumnIsPressedInTurn_ThenOnlyThatOneCarriesAriaSort()
@@ -524,11 +552,9 @@ public class VariableSearchTest : ExplorerTestContext
 
         TurnEveryColumnOn(cut);
 
-        // Navn is left out on purpose: it orders by SortField.Default, which is announced as
-        // "Standard" rather than as the word over the column. SortField.Default's remarks say why.
         foreach (var label in new[]
                  {
-                     "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"
+                     "Navn", "Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"
                  })
         {
             ClickSort(cut, label);
@@ -568,7 +594,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         TurnEveryColumnOn(cut);
 
-        Assert.Equal(Enum.GetValues<SortField>().Length, SortButtons(cut).Count);
+        Assert.Equal(HeaderSortFields.Length, SortButtons(cut).Count);
 
         foreach (var button in SortButtons(cut))
         {
@@ -620,8 +646,9 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(client);
 
         ClickSort(cut, "Navn");
+        ClickSort(cut, "Navn");
 
-        Assert.Equal(SortField.Default, client.LastSort);
+        Assert.Equal(SortField.Name, client.LastSort);
         Assert.Equal(SortDirection.Descending, client.LastDirection);
         Assert.Equal("Navn ↓", SortButtons(cut)[0].TextContent);
 
@@ -638,6 +665,7 @@ public class VariableSearchTest : ExplorerTestContext
         var client = new FakeClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
+        ClickSort(cut, "Navn");    // ascending
         ClickSort(cut, "Navn");    // descending
         ClickSort(cut, "Kilde");   // a different field
 
@@ -671,7 +699,7 @@ public class VariableSearchTest : ExplorerTestContext
         ClickSort(cut, "Kilde");
 
         Assert.Equal(1, client.Calls);
-        Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
+        Assert.Equal("Navn", SortButtons(cut)[0].TextContent);
     }
 
     [Fact]
@@ -689,10 +717,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(SortField.Kilde, client.LastSort);
         Assert.Contains("Kunne ikke hente variabler", cut.Markup);
-        Assert.Equal("Navn ↑", SortButtons(cut)[0].TextContent);
-
-        var marked = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
-        Assert.Equal("Navn ↑", Assert.Single(marked).TextContent);
+        Assert.Equal("Navn", SortButtons(cut)[0].TextContent);
+        Assert.DoesNotContain(SortButtons(cut), k => k.HasAttribute("aria-current"));
 
         ClickSort(cut, "Kilde"); // the same retry, not its reversal
 
@@ -868,9 +894,13 @@ public class VariableSearchTest : ExplorerTestContext
         // it reverses the direction, and a toggle that never toggles off misdescribes itself.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
+        Assert.DoesNotContain(SortButtons(cut), k => k.HasAttribute("aria-current"));
+
+        ClickSort(cut, "Kilde");
+
         var marked = SortButtons(cut).Where(k => k.HasAttribute("aria-current")).ToList();
 
-        Assert.Equal("Navn ↑", Assert.Single(marked).TextContent);
+        Assert.Equal("Kilde ↑", Assert.Single(marked).TextContent);
         Assert.Equal("true", marked[0].GetAttribute("aria-current"));
     }
 
@@ -9639,7 +9669,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new PagedClient(312));
 
         Assert.NotNull(cut.Find("a.munin-explorer-skiplink-pagination"));
-        Assert.Equal(["Navn ↑", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode"],
+        Assert.Equal(["Navn", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode"],
                      SortButtons(cut).Select(b => b.TextContent));
         Assert.NotEmpty(cut.FindAll(".munin-explorer-pagination-pages button"));
     }

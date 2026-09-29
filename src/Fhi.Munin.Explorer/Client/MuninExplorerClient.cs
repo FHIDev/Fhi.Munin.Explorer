@@ -53,13 +53,16 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
         url = WithFilter(url, filter);
 
-        // Left off entirely at the default, the same reasoning as includeHistorical below: the API
-        // already uses its default order ascending when neither parameter arrives, and a shorter URL
-        // caches better on a public page. Once either differs both are sent, so the URL says which
-        // order it asked for rather than leaving half of it implied.
-        if ((sort, direction) != (SortField.Default, SortDirection.Ascending))
+        // The default order has no token: it is what the API does when no sort arrives, so it sends
+        // only a non-default direction. Every chosen field sends both, so the URL says which order it
+        // asked for — Navn included, which is not the default order (Fhi.Metadata-bgvdh).
+        if (sort != SortField.Default)
         {
             url += $"&sort={SortToken(sort)}&sortDir={DirectionToken(direction)}";
+        }
+        else if (direction != SortDirection.Ascending)
+        {
+            url += $"&sortDir={DirectionToken(direction)}";
         }
 
         // An empty result is a normal answer to a search, not an error worth throwing over.
@@ -658,9 +661,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <summary>
-    /// The API's own token for a sort order. Spelled out rather than derived from the enum name:
-    /// <see cref="SortField.Default"/> goes over the wire as <c>name</c>, and an unrecognised token
-    /// is not rejected by the API — it silently falls back to that same default order instead.
+    /// The API's own token for a sort order. Spelled out rather than derived from the enum name,
+    /// because an unrecognised token is not rejected by the API — it silently falls back to the
+    /// default order instead. <see cref="SortField.Default"/> has no token and never reaches here.
     /// </summary>
     /// <remarks>
     /// Every member has its own arm, and an unknown one throws rather than falling through to
@@ -671,7 +674,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// </remarks>
     private static string SortToken(SortField sort) => sort switch
     {
-        SortField.Default => "name",
+        SortField.Name => "name",
         SortField.Code => "kode",
         SortField.Kilde => "kilde",
         SortField.Datasamling => "datasamling",

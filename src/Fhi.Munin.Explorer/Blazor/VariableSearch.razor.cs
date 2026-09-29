@@ -1140,8 +1140,8 @@ public sealed partial class VariableSearch : ComponentBase
     /// controls.
     /// <para>
     /// Every column maps to a real <see cref="SortField"/>. The variable column maps to
-    /// <see cref="SortField.Default"/>, which is honest rather than convenient: that member is
-    /// documented as the API's own order and its wire token is literally <c>name</c>. What each
+    /// <see cref="SortField.Name"/>, a real name sort; <see cref="SortField.Default"/>, the curated
+    /// order a list opens in, has no header, so no column claims it (Fhi.Metadata-bgvdh). What each
     /// column actually orders BY is the API's, and is on the <see cref="SortField"/> members —
     /// Dataperiode in particular, which orders by the period's start and not by the range this
     /// cell draws (Fhi.Metadata-35w0p.37).
@@ -1180,7 +1180,7 @@ public sealed partial class VariableSearch : ComponentBase
 
         // Navn is not in the picker and has no condition here. It is the first column: the chevron
         // lives inside the name button, so there is no control column to name (Fhi.Metadata-35w0p.78).
-        HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Default);
+        HeaderCell(builder, 100, "name", T.ColumnVariable, SortField.Name);
 
         if (ColumnVisible(ResultColumn.Code))
         {

@@ -686,7 +686,8 @@ public class MuninExplorerClientTest
     }
 
     [Theory]
-    [InlineData(SortField.Default, SortDirection.Descending, "name", "desc")]
+    [InlineData(SortField.Name, SortDirection.Ascending, "name", "asc")]
+    [InlineData(SortField.Name, SortDirection.Descending, "name", "desc")]
     [InlineData(SortField.Code, SortDirection.Ascending, "kode", "asc")]
     [InlineData(SortField.Kilde, SortDirection.Ascending, "kilde", "asc")]
     [InlineData(SortField.Datasamling, SortDirection.Ascending, "datasamling", "asc")]
@@ -716,11 +717,11 @@ public class MuninExplorerClientTest
         // fact, which is the failure mode this whole switch is spelled out by hand to prevent.
         var tokens = new List<string>();
 
-        foreach (var field in Enum.GetValues<SortField>())
+        foreach (var field in Enum.GetValues<SortField>().Where(field => field != SortField.Default))
         {
             var handler = StubHttpHandler.Ok("{}");
 
-            // Descending, because the default order ascending sends no sort parameter at all.
+            // Descending, so a token that only goes out off the default direction still shows.
             await Client(handler).SearchVariablesAsync(null, sort: field, direction: SortDirection.Descending);
 
             var sent = handler.LastUri?.Query;
@@ -734,7 +735,19 @@ public class MuninExplorerClientTest
             tokens.Add(token);
         }
 
-        Assert.Equal(Enum.GetValues<SortField>().Length, tokens.Distinct().Count());
+        Assert.Equal(Enum.GetValues<SortField>().Length - 1, tokens.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task SearchVariablesAsync_WhenTheDefaultOrderIsReversed_ThenOnlyTheDirectionIsSent()
+    {
+        // The default order has no token: `name` is the API's name sort since Fhi.Metadata-bgvdh,
+        // so sending it here would reorder the list rather than reverse it.
+        var handler = StubHttpHandler.Ok("{}");
+
+        await Client(handler).SearchVariablesAsync(null, sort: SortField.Default, direction: SortDirection.Descending);
+
+        Assert.Equal("?page=1&size=25&sortDir=desc", handler.LastUri?.Query);
     }
 
     [Fact]

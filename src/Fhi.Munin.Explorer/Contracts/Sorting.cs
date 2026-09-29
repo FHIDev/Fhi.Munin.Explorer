@@ -30,16 +30,17 @@ namespace Fhi.Munin.Explorer.Contracts;
 public enum SortField
 {
     /// <summary>
-    /// The API's own default order, sent as <c>name</c>: kilde, then the catalogue's curated
-    /// presentation order, then the display name, with the code as the tie-break.
+    /// The API's own default order: kilde, then the catalogue's curated presentation order, then
+    /// the display name, with the code as the tie-break. Sends no <c>sort</c> at all.
     /// </summary>
     /// <remarks>
-    /// Named for what it does rather than for the token it sends. Calling this a name sort — which
-    /// the wire token invites — would misdescribe it in any label built from this member: the
-    /// primary key is kilde, and what separates it from <see cref="Kilde"/> is only the ordering
-    /// inside a kilde, where this one follows the catalogue's curated sequence.
+    /// No token because the API has none for it: <c>name</c> is a real name sort since
+    /// Fhi.Metadata-bgvdh, so the curated order is only what the API does when nothing is asked for.
     /// </remarks>
     Default,
+
+    /// <summary>Variable display name, alphabetical in Norwegian collation. Sent as <c>name</c>.</summary>
+    Name,
 
     /// <summary>Variable code. Sent as <c>kode</c>.</summary>
     /// <remarks>The code is also every other member's tie-break, so this order has no second key.</remarks>

@@ -1,0 +1,2 @@
+category: Fixed
+- **Sorting the variable list by Navn now asks for a name sort.** The Navn header was wired to the API's default order, so the first press reversed the curated order and the second sent no sort at all. It now sends `sort=name` in both directions, which Munin sorts alphabetically with Norwegian collation. The list still opens in the curated order and sends no `sort`, and no header shows an arrow until one is pressed. `SortField` gains a `Name` member between `Default` and `Code`; `Default` no longer has a wire token, and reversing it sends only `sortDir=desc`.
