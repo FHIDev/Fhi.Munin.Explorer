@@ -305,6 +305,18 @@ public class SharedListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Open_WhenASharedListIsShown_ThenEveryCellNamesItsColumnForTheCards()
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Kollegas liste", Three);
+
+        var cut = RenderView(new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] }, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        ColumnLabels.AssertEveryCellNamesItsColumn(cut.Find("table.munin-explorer-data-list"));
+    }
+
+    [Fact]
     public void Open_WhenALinkFailsToLoad_ThenTheAlertSaysTheListCouldNotBeOpened()
     {
         var client = new ShareClient(new ShareStore())

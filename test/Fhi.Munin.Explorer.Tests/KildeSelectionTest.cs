@@ -1880,6 +1880,16 @@ public class KildeSelectionTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Drawer_WhenBothHandoversAreWired_ThenEveryCellNamesItsColumnForTheCards()
+    {
+        var (cut, _, _) = RenderMarkable(ThreeKilder());
+
+        Expand(cut, "Als registeret");
+
+        ColumnLabels.AssertEveryCellNamesItsColumn(Drawer(cut, KildeOne).QuerySelector("table")!);
+    }
+
+    [Fact]
     public void Drawer_WhenBothHandoversAreWired_ThenTheTableWearsTheModifierAndALeadingColumn()
     {
         // The markup agreed with the Stiler half (Fhi.Metadata-h6dx7). The modifier is not

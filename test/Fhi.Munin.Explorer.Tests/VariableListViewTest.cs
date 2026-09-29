@@ -1169,6 +1169,16 @@ public class VariableListViewTest : ExplorerTestContext
     // -----------------------------------------------------------------------
 
     [Fact]
+    public void View_WhenTheListHasVariables_ThenEveryCellNamesItsColumnForTheCards()
+    {
+        // The remove column's header is screenreader-only and still names its cells: a card has
+        // no header row, so "Fjern variabel" is the only thing beside that button saying what it does.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        ColumnLabels.AssertEveryCellNamesItsColumn(cut.Find("table.munin-explorer-data-list"));
+    }
+
+    [Fact]
     public void View_WhenTheListHasVariables_ThenTheRowsExposeTableStructure()
     {
         // Fhi.Metadata-3b1l4. These rows share `munin-explorer-data-list` with the explorer's own

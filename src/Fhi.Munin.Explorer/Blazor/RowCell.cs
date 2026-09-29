@@ -70,6 +70,12 @@ internal static class RowCell
             // 1.3.1). A <td> is one already and may not be told so again.
             builder.AddAttribute(seq + 2, "role", "cell");
         }
+        else
+        {
+            // For Stiler's cards at 767px and below, where a stacked cell is out from under its
+            // header and CSS cannot read the header's text. (Fhi.Metadata-n8ygv)
+            builder.AddAttribute(seq + 2, "data-label", label);
+        }
 
         // The full value as a tooltip on the CELL, because a cell can be clipped — the code column
         // truncates rather than wraps, since a broken identifier is neither readable nor copyable.
