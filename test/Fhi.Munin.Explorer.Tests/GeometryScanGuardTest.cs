@@ -246,8 +246,10 @@ public class GeometryScanGuardTest
         Assert.Contains(@"[ ""$reflow_status"" -ne 0 ]", verdict.Groups["condition"].Value, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void HostileHost_WhenTheNegativeControlFails_ThenItExitsThreeAndNotOne()
+    [Theory]
+    [InlineData("control_status", "-ne 0")]
+    [InlineData("toolbar_status", "-eq 3")]
+    public void HostileHost_WhenTheNegativeControlFails_ThenItExitsThreeAndNotOne(string status, string comparison)
     {
         // The exit code is this script's only channel to an unattended caller, and 1 there means
         // "renders wrong" while this means "nobody measured". Sharing 1 put a control failure and a
@@ -256,10 +258,11 @@ public class GeometryScanGuardTest
 
         var control = Regex.Match(
             source,
-            @"^if \[ ""\$control_status"" -ne 0 \]; then\r?\n(?<body>.*?)^fi$",
+            @"^if (?<condition>[^\n]*\$control_status[^\n]*); then\r?\n(?<body>.*?)^fi$",
             RegexOptions.Multiline | RegexOptions.Singleline);
 
         Assert.True(control.Success, "check-hostile-host.sh no longer branches on control_status.");
+        Assert.Contains($"[ \"${status}\" {comparison} ]", control.Groups["condition"].Value, StringComparison.Ordinal);
 
         // Both halves of the name. Asserting only that a 3 is present would let a later edit leave
         // an `exit 1` earlier in the branch: the shell returns on the first one it reaches, so the
