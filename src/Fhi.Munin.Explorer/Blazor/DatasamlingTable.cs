@@ -82,6 +82,8 @@ internal static class DatasamlingTable
         builder.CloseElement();
         builder.CloseElement();
 
+        // Every td names its column in data-label, for Stiler's cards at 767px and below, where a
+        // stacked cell is out from under its header. (Fhi.Metadata-n8ygv)
         builder.OpenElement(seq++, "tbody");
 
         foreach (var row in rows)
@@ -108,12 +110,12 @@ internal static class DatasamlingTable
                 : named.Text);
             builder.CloseElement();
 
-            DescriptionCell(builder, ref seq, row.Description, reader);
-            Cell(builder, ref seq,
+            DescriptionCell(builder, ref seq, texts.FieldDescription, row.Description, reader);
+            Cell(builder, ref seq, texts.FieldValidity,
                  CatalogueDate.Period(row.EffectiveValidFrom, row.EffectiveValidTo, language, texts),
                  reader,
                  norwegian: false);
-            Cell(builder, ref seq, $"{row.VariableCount} {texts.VariableCountSuffix}", reader, norwegian: false);
+            Cell(builder, ref seq, texts.FieldTotalVariables, $"{row.VariableCount} {texts.VariableCountSuffix}", reader, norwegian: false);
 
             builder.CloseElement();
         }
@@ -158,6 +160,7 @@ internal static class DatasamlingTable
 
         builder.OpenElement(seq++, "td");
         builder.AddAttribute(seq++, "class", "munin-explorer-kilde__datasamling-select");
+        builder.AddAttribute(seq++, "data-label", texts.SelectDatasamlingColumn);
 
         builder.OpenElement(seq++, "input");
         builder.AddAttribute(seq++, "type", "checkbox");
@@ -184,18 +187,21 @@ internal static class DatasamlingTable
     /// field (FHIDev/Munin#5385), and the fragment scopes its own sequence numbers, so the varying
     /// markdown structure never shifts the cells after it.
     /// </summary>
-    private static void DescriptionCell(RenderTreeBuilder builder, ref int seq, string? value, string reader)
+    private static void DescriptionCell(
+        RenderTreeBuilder builder, ref int seq, string label, string? value, string reader)
     {
         builder.OpenElement(seq++, "td");
+        builder.AddAttribute(seq++, "data-label", label);
         builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", reader));
         builder.AddContent(seq++, CatalogueMarkdown.Render(value));
         builder.CloseElement();
     }
 
     private static void Cell(
-        RenderTreeBuilder builder, ref int seq, string? value, string reader, bool norwegian)
+        RenderTreeBuilder builder, ref int seq, string label, string? value, string reader, bool norwegian)
     {
         builder.OpenElement(seq++, "td");
+        builder.AddAttribute(seq++, "data-label", label);
 
         if (norwegian)
         {

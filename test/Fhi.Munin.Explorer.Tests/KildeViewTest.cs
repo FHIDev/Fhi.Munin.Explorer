@@ -2771,4 +2771,15 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal(["Kortnavn"], Labels(cut.Find("section#munin-explorer-section-om-registeret dl.munin-explorer-page__fields")));
     }
+
+    [Fact]
+    public void Datasamlinger_Always_ThenEveryCellNamesItsColumnForTheCards()
+    {
+        // Every level's table, delkilder included: Study() has three, and a label written only
+        // at the top level would pass on the kilder that have no delkilder, which is most of them.
+        var tables = Render(Study()).FindAll("table.munin-explorer-kilde__datasamlinger");
+
+        Assert.Equal(3, tables.Count);
+        Assert.All(tables, ColumnLabels.AssertEveryCellNamesItsColumn);
+    }
 }
