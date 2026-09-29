@@ -1477,7 +1477,8 @@
         "Databehandler": "St. Olavs hospital ",
         "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": 2
     },
     {
       "id": "e441cf5f-fa2c-43da-afea-2576aa28c379",
@@ -1506,7 +1507,8 @@
         "Databehandler": "St. Olavs hospital ",
         "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": 4
     },
     {
       "id": "084ebb57-fc6f-41c4-8755-50fd23b6c083",
@@ -1535,7 +1537,8 @@
         "Databehandler": "St. Olavs hospital ",
         "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": 3
     },
     {
       "id": "16cbe98e-217c-451f-a9a3-413203098075",
@@ -1564,7 +1567,8 @@
         "Databehandler": "St. Olavs hospital ",
         "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": 1
     },
     {
       "id": "eb0f1463-4748-4b45-a8f9-39530a6e65a4",
@@ -1593,7 +1597,8 @@
         "Databehandler": "St. Olavs hospital ",
         "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": null
     },
     {
       "id": "6430a851-358a-45c0-a252-565312955f40",
@@ -1622,7 +1627,8 @@
         "Databehandler": "St. Olavs hospital ",
         "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": null
     },
     {
       "id": "91c1b0ce-e4d5-4bb6-bfa1-515cd6cb05ee",
@@ -1651,7 +1657,8 @@
         "Databehandler": "St. Olavs hospital ",
         "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": null
     },
     {
       "id": "9190f534-9b61-427c-b9cc-fd9959ec589e",
@@ -1680,7 +1687,8 @@
         "Databehandler": "St. Olavs hospital ",
         "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": null
     },
     {
       "id": "375edec8-3cf3-4f9f-9e63-ecc8285aa7d9",
@@ -1709,7 +1717,8 @@
         "Databehandler": "St. Olavs hospital ",
         "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": null
     }
   ],
   "delkilder": [],

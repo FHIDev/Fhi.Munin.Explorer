@@ -19,7 +19,9 @@
       "dataType": "2",
       "dataTypeDisplayName": "Heltall",
       "versjonStatus": "Active",
-      "versjonId": "13e96651-095d-4337-8721-ab30a15e36df"
+      "versjonId": "13e96651-095d-4337-8721-ab30a15e36df",
+      "hasKodeverk": true,
+      "hasStatistikk": false
     },
     {
       "id": "83ced574-6d32-447e-ad65-c54c63327476",
@@ -40,7 +42,9 @@
       "dataType": "2",
       "dataTypeDisplayName": "Heltall",
       "versjonStatus": "Active",
-      "versjonId": "39a5c77c-f0af-435c-ab2c-e80daa862ade"
+      "versjonId": "39a5c77c-f0af-435c-ab2c-e80daa862ade",
+      "hasKodeverk": false,
+      "hasStatistikk": true
     }
   ],
   "totalCount": 18289,
