@@ -770,7 +770,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         var labels = SortButtons(cut).Select(k => k.TextContent).ToList();
 
-        Assert.Equal(["Name ↑", "Source", "Data collection", "Variable group", "Data type", "Data period"],
+        Assert.Equal(["Name", "Source", "Data collection", "Variable group", "Data type", "Data period"],
                      labels);
         Assert.NotNull(cut.Find($"{SortControl} .munin-explorer-data-list__item__row--header"));
     }
@@ -1377,6 +1377,8 @@ public class VariableSearchTest : ExplorerTestContext
         // and the cell carrying it had no role at all — so the attribute was discarded and the
         // sort state was announced to nobody.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        ClickSort(cut, "Navn");
 
         var sorted = cut.Find("[aria-sort]");
 
