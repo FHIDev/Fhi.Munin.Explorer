@@ -50,6 +50,12 @@ const cases = [
     assertion: 'no horizontal overflow',
     defect: 'the same value with no break point on the whole-variable page at 320px',
     path: '/', state: 'variable-page', width: 320,
+    // Unbroken, the stub's 41-character code is 293px on Windows fonts and ends at 317px, so it
+    // needed wider Linux fonts to trip. Doubled, it is long past 320 on any (Fhi.Metadata-rvrez).
+    setup: page => page.evaluate(() => {
+      const code = document.querySelector('.munin-explorer-whole__code');
+      code.textContent = code.textContent.trim().repeat(2);
+    }),
     apply: noBreak,
   },
   {
