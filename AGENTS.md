@@ -294,11 +294,11 @@ only stays inside 320px because the label rule carries `overflow-wrap: anywhere`
 not run in CI.
 
 It runs three of the sixteen assertions, by name through `GEOMETRY_ASSERTIONS`: `no horizontal
-overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. Seven
+overflow`, `hidden means hidden`, and `text a reader is meant to see has a box to see it in`. Four
 of the thirteen left out were **measured there and then excluded**, which is a different claim from
-"they are written for HostileHost" and the only one the numbers support; `Runa's row disclosure is big
-enough to hit` is scoped to states this run does not drive, the last three have nothing to
-measure on these pages at all, and the two newest have never run here:
+"they are written for HostileHost" and the only one the numbers support; four are scoped to states
+this run does not drive (the three `explorer-*` ones below and `Runa's row disclosure is big enough
+to hit`), three have nothing to measure on these pages at all, and the two newest have never run here:
 
 - `a table cell holding visible text is at least 4em wide` and `the saved list shows every column at
   767px and below` came with Stiler's 320px cards (`Fhi.Metadata-n8ygv`, `Fhi.Metadata-z4r1d`). The pin is
@@ -323,7 +323,7 @@ measure on these pages at all, and the two newest have never run here:
   none of the five states driven here opens one. That is a statement about the states and not about the pages: both
   draw one in a detail state — `/` in `variable-whole`, `/kilder` in `kilde-drilldown`, which axe
   scans above — so adding either state to this run would measure them. They run and find nothing
-  rather than failing, so they were never measured here in the sense the seven above were.
+  rather than failing, so they were never measured here in the sense the four above were.
 
 Read the run for exactly what it is: three assertions, two pages, five states, against the sample
 stylesheet. The pinned-Stiler pages are measured at 320 by `check-hostile-host.sh`, in a step of
