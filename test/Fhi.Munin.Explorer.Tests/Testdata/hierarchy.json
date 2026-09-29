@@ -242,7 +242,8 @@
           "presentationOrder": 1,
           "categories": [
             "RPDG"
-          ]
+          ],
+          "displayOrder": 2
         },
         {
           "id": "08010ed0-ec9a-47be-87d9-a53f09847fa2",
@@ -317,12 +318,14 @@
           "categories": [
             "RPDG",
             "HGPD"
-          ]
+          ],
+          "displayOrder": 1
         }
       ],
       "unassignedVariabelgrupper": [],
       "children": [],
-      "presentationOrder": 1
+      "presentationOrder": 1,
+      "displayOrder": 4
     },
     {
       "id": "5d918571-ae1a-41bf-ac56-56c65e6c7b04",
@@ -590,7 +593,8 @@
           "presentationOrder": 1,
           "categories": [
             "RPDG"
-          ]
+          ],
+          "displayOrder": 2
         },
         {
           "id": "be0c142f-6fbc-4ef2-b95f-d662ee33e1a7",
@@ -678,12 +682,14 @@
           "presentationOrder": 2,
           "categories": [
             "RPDG"
-          ]
+          ],
+          "displayOrder": 1
         }
       ],
       "unassignedVariabelgrupper": [],
       "children": [],
-      "presentationOrder": 2
+      "presentationOrder": 2,
+      "displayOrder": 5
     },
     {
       "id": "db784dca-0f4a-4fc5-81bf-d1c0a57b3c1f",
@@ -980,7 +986,8 @@
           "categories": [
             "RPDG",
             "HGPD"
-          ]
+          ],
+          "displayOrder": 2
         },
         {
           "id": "c0ab0929-0cb2-4191-901e-bbc824b2c0de",
@@ -1117,12 +1124,14 @@
           "presentationOrder": 2,
           "categories": [
             "RPDG"
-          ]
+          ],
+          "displayOrder": 1
         }
       ],
       "unassignedVariabelgrupper": [],
       "children": [],
-      "presentationOrder": 3
+      "presentationOrder": 3,
+      "displayOrder": 6
     },
     {
       "id": "de056903-7b6d-401f-9aa0-e245fd7f0235",
@@ -1775,7 +1784,8 @@
           "presentationOrder": 1,
           "categories": [
             "RPDG"
-          ]
+          ],
+          "displayOrder": 2
         },
         {
           "id": "3b9a812b-c54c-4547-9c2c-af7eeee4b1da",
@@ -2031,12 +2041,14 @@
           "presentationOrder": 2,
           "categories": [
             "RPDG"
-          ]
+          ],
+          "displayOrder": 1
         }
       ],
       "unassignedVariabelgrupper": [],
       "children": [],
-      "presentationOrder": 4
+      "presentationOrder": 4,
+      "displayOrder": 7
     }
   ],
   "directDatasamlinger": [
@@ -2120,7 +2132,8 @@
       "categories": [
         "RPDG",
         "HGPD"
-      ]
+      ],
+      "displayOrder": 1
     },
     {
       "id": "515fa447-b65d-49eb-afcf-d17701d0902e",
@@ -2230,7 +2243,8 @@
       "categories": [
         "RPDG",
         "HGPD"
-      ]
+      ],
+      "displayOrder": 2
     },
     {
       "id": "85fdc669-0511-4c3f-8acc-0f7fbf7f43fc",
@@ -2536,7 +2550,8 @@
       "categories": [
         "RPDG",
         "HGPD"
-      ]
+      ],
+      "displayOrder": 3
     }
   ]
 }

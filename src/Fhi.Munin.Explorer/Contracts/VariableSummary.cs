@@ -70,4 +70,16 @@ public sealed record VariableSummary
 
     /// <summary>The published version this row was built from — the one <see cref="VariableDetail"/> opens on.</summary>
     [JsonPropertyName("versjonId")] public Guid? VersionId { get; init; }
+
+    /// <summary>
+    /// Whether the variable links a kodeverk, of any type; the kodeverk itself is on
+    /// <see cref="VariableDetail"/>. <see langword="null"/> from an API older than the flag.
+    /// </summary>
+    [JsonPropertyName("hasKodeverk")] public bool? HasKodeverk { get; init; }
+
+    /// <summary>
+    /// Whether the variable has published statistics, withheld figures included, with
+    /// <see langword="null"/> on the same terms as <see cref="HasKodeverk"/>.
+    /// </summary>
+    [JsonPropertyName("hasStatistikk")] public bool? HasStatistics { get; init; }
 }
