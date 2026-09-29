@@ -28,7 +28,8 @@
 
        0.1.140 keeps hidden sticky toolbar actions out of the Tab order (Fhi.Metadata-5fuvd): the styling
        1.0 is released against (Fhi.Metadata-d3jz3).
-       0.1.139 adds mobile cards for datasamlinger and saved variables (Fhi.Metadata-n8ygv, Fhi.Metadata-z4r1d).
+       0.1.139 adds mobile cards for datasamlinger and saved variables (Fhi.Metadata-n8ygv,
+       Fhi.Metadata-z4r1d).
        0.1.136 wraps long names and codes inside the revealed sticky detail bar (Fhi.Metadata-r0qd6).
        0.1.135 holds that 47em measure to the side-by-side layout, so a stacked main keeps its full
        width (Fhi.Metadata-35w0p.62).
