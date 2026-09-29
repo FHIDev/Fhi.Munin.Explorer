@@ -367,7 +367,7 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Sort_WhenNavnIsPressed_ThenANameSortIsAskedForRatherThanTheDefaultOrder()
+    public void Sort_WhenNameIsPressed_ThenANameSortIsAskedForRatherThanTheDefaultOrder()
     {
         // Fhi.Metadata-bgvdh (ADO 121360): pressing Navn from the opening order used to reverse the
         // default order instead, and ascending it sent no sort at all — so the list stayed curated.

@@ -441,7 +441,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// </remarks>
     [Parameter] public EventCallback<VariableFilter> FilterChanged { get; set; }
 
-    /// <summary>The column the list is ordered by, and the direction. Two-way.</summary>
+    /// <summary>
+    /// The order the list is in, and the direction. Two-way. <see cref="SortField.Default"/> is the
+    /// curated opening order, which has no active column.
+    /// </summary>
     /// <remarks>
     /// Runa keeps both in the URL, so a colleague opening a shared link sees the same order. They
     /// are two parameters rather than one because a host binds each with <c>@bind-Sort</c> and

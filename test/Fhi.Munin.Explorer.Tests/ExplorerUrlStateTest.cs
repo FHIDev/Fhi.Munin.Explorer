@@ -75,7 +75,7 @@ public class ExplorerUrlStateTest
     }
 
     [Fact]
-    public void ToQueryString_WhenNavnIsChosenAscending_ThenTheSortIsWrittenRatherThanLeftAsTheDefault()
+    public void ToQueryString_WhenNameIsChosenAscending_ThenTheSortIsWrittenRatherThanLeftAsTheDefault()
     {
         // Ascending is the default direction, so only the field tells this link from an untouched
         // one — and the untouched one opens in the curated order, not by name (Fhi.Metadata-bgvdh).
