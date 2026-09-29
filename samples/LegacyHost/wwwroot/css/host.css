@@ -4636,6 +4636,10 @@ table.munin-explorer-data-list tbody th {
   border-bottom: 1px solid rgb(230, 230, 237);
 }
 
+.munin-explorer-page__stuckbar[hidden] {
+  display: none;
+}
+
 .munin-explorer-page__stuckbar {
   position: sticky;
   top: 0;
@@ -4938,4 +4942,79 @@ table.munin-explorer-data-list tbody th {
   border-left: 3px solid rgb(187, 184, 201);
   color: rgb(38, 32, 69);
   padding-left: 12px;
+}
+
+
+@media all and (max-width: 767px) {
+  .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *), .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tbody, .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tr, .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) th, .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) td {
+    display: block;
+  }
+  .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) thead {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+  .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tr > :nth-child(n) {
+    border-bottom: 0;
+    padding: 0 0 8px;
+    white-space: normal;
+    width: auto;
+  }
+  .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tbody tr {
+    border-bottom: 1px solid rgb(230, 230, 237);
+    padding: 12px 0 4px;
+  }
+  .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) td::before {
+    color: rgb(81, 84, 123);
+    content: attr(data-label);
+    content: attr(data-label)/"";
+    display: block;
+  }
+  .munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) td:empty {
+    display: none;
+  }
+}
+
+
+@media all and (max-width: 767px) {
+  .munin-explorer-list-scroll table.munin-explorer-data-list, .munin-explorer-list-scroll table.munin-explorer-data-list tbody, .munin-explorer-list-scroll table.munin-explorer-data-list tr, .munin-explorer-list-scroll table.munin-explorer-data-list th, .munin-explorer-list-scroll table.munin-explorer-data-list td {
+    display: block;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list thead {
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list th, .munin-explorer-list-scroll table.munin-explorer-data-list td {
+    border-bottom: 0;
+    padding: 0 0 8px;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list tbody tr {
+    border-bottom: 1px solid rgb(230, 230, 237);
+    margin-bottom: 0;
+    padding: 12px 0 4px;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list tbody th {
+    font-weight: 600;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list td {
+    column-gap: 12px;
+    display: grid;
+    grid-template-columns: 8.5rem minmax(0, 1fr);
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list td::before {
+    color: rgb(81, 84, 123);
+    content: attr(data-label);
+    content: attr(data-label)/"";
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__code .munin-explorer-dataitem-main__column__text {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
 }

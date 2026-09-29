@@ -38,6 +38,13 @@ controls verify both behaviors. The negative-control run also reveals the whole-
 bar at 320px, checks that the page fits, and restores its old nowrap defect to prove detection.
 Other scrolled layouts remain outside the geometry scan's coverage.
 
+`check-hostile-host.sh` also runs `sticky-toolbar-scan.mjs` against the kilde, datasamling and
+whole-variable pages at 1689px and 320px, with the optional browser module both loaded and blocked.
+It checks that hidden toolbars generate no boxes and that Tab skips the datasamling's hidden action.
+At desktop width it also checks that scrolling reveals the action, Tab reaches it, and returning
+to the hero preserves focus until Tab leaves the bar. Each page is checked again with its hidden
+rule deliberately overridden, so a check that misses the defect cannot pass.
+
 The component-state check also presses a whole-variable contents link at 320px and requires its
 heading to clear the wrapped sticky bar, with the correct contents entry still marked current.
 Disconnecting the contents observer must bring the overlap back for its negative control.

@@ -12,8 +12,8 @@
 # stylesheet would have caught neither. (Fhi.Metadata-l9l2n.40)
 #
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
-#   - anything below the fold that only misbehaves once scrolled; every assertion measures at
-#     scroll offset 0, which is where the absolute header overlaps;
+#   - general scrolled layouts: geometry measures at scroll offset 0; the toolbar step checks
+#     its hidden state and the datasamling action's focus through a scroll;
 #   - the search-only mount, which this host does not render. The kildeutforsker IS measured, on
 #     /kilder, as of Fhi.Metadata-fih3y;
 #   - widths other than the six in GEOMETRY_WIDTHS and 320, and any height at all — nothing here
@@ -280,16 +280,6 @@ fi
 urls=()
 for t in "${TARGETS[@]}"; do urls+=("${BASE}${t}"); done
 
-# Measured for geometry but not scanned by axe, each with the open bead that keeps it out. The
-# datasamling page's stuck bar is `hidden` and `aria-hidden`, but Stiler's `div { display: block }`
-# draws it with a focusable link inside: aria-hidden-focus (Fhi.Metadata-5fuvd).
-AXE_EXCEPT_TARGETS=("/kilder::kilde-datasamling")
-axe_urls=()
-for t in "${TARGETS[@]}"; do
-  [[ " ${AXE_EXCEPT_TARGETS[*]} " == *" ${t} "* ]] && continue
-  axe_urls+=("${BASE}${t}")
-done
-
 set +e
 GEOMETRY_EXCEPT= ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" node "$ROOT/scripts/geometry-scan.mjs" "${urls[@]}"
 geometry_status=$?
@@ -366,6 +356,13 @@ set -e
 
 [ "$tab_stop_status" -eq 2 ] && exit 2
 
+# Hidden toolbar actions must stay out of the Tab order even if the optional module fails.
+set +e
+node "$ROOT/scripts/sticky-toolbar-scan.mjs" "$BASE"
+toolbar_status=$?
+set -e
+[ "$toolbar_status" -eq 2 ] && exit 2
+
 # axe on the same page, and it is not a duplicate of the accessibility job: that one scans
 # ModernHost, where the cascade is the sample stylesheet's. A contrast or focus rule can hold
 # there and fail here, because here the colours are helsedata's.
@@ -373,16 +370,16 @@ set -e
 # row to zero height (Fhi.Metadata-l9l2n.41), so at the default viewport the states cannot be
 # entered at all and the scan stops before it judges anything. Drop this line the day that lands.
 set +e
-ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900   node "$ROOT/scripts/axe-scan.mjs" "${axe_urls[@]}"
+ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900   node "$ROOT/scripts/axe-scan.mjs" "${urls[@]}"
 axe_status=$?
 set -e
 
 [ "$axe_status" -eq 2 ] && exit 2
 
 echo
-if [ "$control_status" -ne 0 ]; then
+if [ "$control_status" -ne 0 ] || [ "$toolbar_status" -eq 3 ]; then
   cat >&2 <<'EOF'
-A geometry assertion did not fire against the defect it exists for.
+A geometry or toolbar assertion did not fire against the defect it exists for.
 
 Read the geometry result above as unmeasured, whichever way it went: an assertion that holds
 against a page carrying its own defect is not passing, it is absent.
@@ -400,7 +397,7 @@ if [ "$tab_stop_status" -eq 3 ]; then
   exit 3
 fi
 
-if [ "$geometry_status" -ne 0 ] || [ "$reflow_status" -ne 0 ] || [ "$axe_status" -ne 0 ] || [ "$tab_stop_status" -ne 0 ]; then
+if [ "$geometry_status" -ne 0 ] || [ "$reflow_status" -ne 0 ] || [ "$axe_status" -ne 0 ] || [ "$tab_stop_status" -ne 0 ] || [ "$toolbar_status" -ne 0 ]; then
   cat >&2 <<'EOF'
 The component does not render correctly inside helsedata's stylesheet and chrome.
 
@@ -417,7 +414,8 @@ cat <<'EOF'
 Every geometry assertion that applies held, each one still fires against the defect it exists
 for, and axe found no violations - against helsedata's real stylesheet.
 
-Read that for what it is. It says the boxes are where they should be at six widths and at
+Read that for what it is. The toolbar checks cover hiding and the compact action's focus.
+The geometry checks say the boxes are where they should be at six widths and at
 scroll offset 0, and at 320 minus the gaps the reflow step names, on the front page and on the
 kildeutforsker; it does not say the page looks
 right, and it says nothing at all about the search-only mount this host does not render. The

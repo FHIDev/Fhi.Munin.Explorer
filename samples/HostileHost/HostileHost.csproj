@@ -26,6 +26,8 @@
        states it measures need those breaks, which is what this branch's negative control shows
        (Fhi.Metadata-ofg1h).
 
+       0.1.140 keeps hidden sticky toolbar actions out of the Tab order (Fhi.Metadata-5fuvd).
+       0.1.139 adds mobile cards for datasamlinger and saved variables.
        0.1.136 wraps long names and codes inside the revealed sticky detail bar (Fhi.Metadata-r0qd6).
        0.1.135 holds that 47em measure to the side-by-side layout, so a stacked main keeps its full
        width (Fhi.Metadata-35w0p.62): the styling 1.0 is released against (Fhi.Metadata-d3jz3).
@@ -45,7 +47,7 @@
        0.1.103 brought the drawer's checkbox column and nested detail anchor clearance
        (Fhi.Metadata-h6dx7, Fhi.Metadata-17k34). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.136" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.140" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
