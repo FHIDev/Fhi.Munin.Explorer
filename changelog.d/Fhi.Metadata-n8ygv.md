@@ -1,2 +1,2 @@
 category: Added
-- **Table cells name their column in `data-label`.** The kilde page's datasamling tables and the saved and shared variable lists carry it on every `td`, so a stylesheet can show the rows as labelled cards on narrow screens. Nothing changes on screen until Stiler adds those rules.
+- **Table cells name their column in `data-label`.** The kilde page's datasamling tables and the saved and shared variable lists carry it on every `td`, so a stylesheet can show the rows as labelled cards on narrow screens.
