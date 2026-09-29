@@ -19,9 +19,12 @@ import { installUnhiddenOnPurpose } from './hidden-on-purpose.mjs';
 // one is not interchangeable with a number from the other. It exists because `playwright install
 // chromium` cannot complete on Node 26 - the pinned fetcher calls fs.rmdir(recursive), removed in
 // that version - which leaves the port unrunnable on a developer machine (Fhi.Metadata-wgwa0).
+// --disable-dev-shm-usage because a container's /dev/shm can be too small for one long-lived
+// Chromium, which then dies mid-scan as 'Target page, context or browser has been closed' (#462).
 const launchOptions = () => {
   const channel = process.env.PLAYWRIGHT_BROWSER_CHANNEL;
-  return channel ? { channel } : {};
+  const args = ['--disable-dev-shm-usage'];
+  return channel ? { channel, args } : { args };
 };
 
 const targets = process.argv.slice(2);
