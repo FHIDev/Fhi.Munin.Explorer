@@ -334,7 +334,7 @@ reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tr
 reflow "" "/::filters-level-lines" "/::filters-node-icons-off"
 # The three detail pages' fact lists, one track at 320 (Fhi.Metadata-2w7fx).
 reflow "" "/kilder::kilde-drilldown" "/kilder::kilde-datasamling" "/::variable-page"
-# Stiler draws the cards at 767 and below; 767 is the widest width that still does (n8ygv, z4r1d).
+# 767 is the widest width Stiler still draws the cards at (Fhi.Metadata-n8ygv, Fhi.Metadata-z4r1d).
 REFLOW_WIDTH=767 reflow "" "/kilder::kilde-hierarchy-metadata" "/::explorer-list-tab"
 
 # An assertion that has quietly stopped measuring anything reports success forever, so each one is

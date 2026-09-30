@@ -151,7 +151,7 @@ public class GeometryScanGuardTest
         var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
         var calls = Regex.Matches(
             source,
-            @"^(?:REFLOW_WIDTH=\d+ )?reflow ""(?<except>[^""]*)""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+            @"^(?:REFLOW_WIDTH=(?<width>\d+) )?reflow ""(?<except>[^""]*)""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
             RegexOptions.Multiline);
 
         Assert.NotEmpty(calls);
@@ -159,6 +159,7 @@ public class GeometryScanGuardTest
 
         foreach (Match call in calls)
         {
+            var width = call.Groups["width"].Success ? call.Groups["width"].Value : "320";
             var names = call.Groups["except"].Value
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -166,7 +167,7 @@ public class GeometryScanGuardTest
             {
                 Assert.True(
                     Assertions.ContainsKey(name),
-                    $"check-hostile-host.sh leaves out '{name}' at 320px, which geometry-assertions.mjs "
+                    $"check-hostile-host.sh leaves out '{name}' at {width}px, which geometry-assertions.mjs "
                     + "does not define.");
             }
 
@@ -180,7 +181,7 @@ public class GeometryScanGuardTest
             {
                 Assert.True(
                     KnownStates.Value.Contains(state),
-                    $"check-hostile-host.sh measures the state '{state}' at 320px, which axe-states.mjs "
+                    $"check-hostile-host.sh measures the state '{state}' at {width}px, which axe-states.mjs "
                     + "does not define.");
             }
         }
