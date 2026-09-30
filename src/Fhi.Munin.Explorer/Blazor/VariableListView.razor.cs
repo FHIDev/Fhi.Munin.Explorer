@@ -134,6 +134,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _loading;
     private bool _failed;
     private bool _askedOnMount;
+    private bool _retryingLists;
+    private bool _focusAfterRetry;
+    private ElementReference _createToggle;
+    private ElementReference _listRegion;
 
     private Dictionary<string, string>? _dataTypeNames;
 
@@ -500,7 +504,81 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         State?.KildeFilter.Count > 0 ? T.NoVariablesForTheseKilder : T.EmptyList;
 
     /// <summary>The lists are still being read, so an empty list says nothing about the reader yet.</summary>
-    private bool ListsPending => !_failed && State is { IsReadingLists: true } && Lists.Count == 0;
+    private bool ListsPending =>
+        !_failed && ((State is { IsReadingLists: true } && Lists.Count == 0) || (_retryingLists && _page is null));
+
+    /// <summary>No list is shown because a read failed and nothing is reading now: the lists, the chosen
+    /// list's membership, or its first page. The reader is offered a retry.</summary>
+    private bool ListsFailureShown =>
+        State is { IsReadingLists: false } && !_retryingLists && (_failed || State.ListsReadFailed)
+        && _page is null && (Lists.Count > 0 || !State.HasLoaded);
+
+    /// <summary>Reads the lists again for a reader who asked, the one retry a render never makes.</summary>
+    /// <remarks>Inert while it reads, so the pressed button keeps focus; once the list is shown the
+    /// button goes and focus moves to the list, or to "Legg til ny liste" when there is none.</remarks>
+    private async Task RetryListsAsync()
+    {
+        if (State is null || !ListsFailureShown)
+        {
+            return;
+        }
+
+        _retryingLists = true;
+        _failed = false;
+
+        try
+        {
+            await State.EnsureActiveListAsync(readerAsked: true);
+            await ShowActiveListAsync();
+        }
+        catch (Exception ex)
+        {
+            if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+            {
+                Log?.LogWarning(ex, "the API refused the reader's lists on retry");
+            }
+            else
+            {
+                Log?.LogError(ex, "could not read the reader's lists on retry");
+            }
+
+            _page = null;
+            _failed = true;
+        }
+        finally
+        {
+            // The button leaves with its offer; the focus it held must go somewhere, not to <body>.
+            _retryingLists = false;
+            _focusAfterRetry = !ListsFailureShown;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusAfterRetry)
+        {
+            return;
+        }
+
+        _focusAfterRetry = false;
+
+        // Never while the reader has moved on to a form of their own, and only to what this render drew.
+        if (ShowsSharedList || State?.IsAuthenticated != true
+            || _creating || _renaming || _openingShared || _copying || _confirmingDelete)
+        {
+            return;
+        }
+
+        try
+        {
+            await (_page is not null && (_page.Items.Count > 0 || _loading) ? _listRegion : _createToggle).FocusAsync();
+        }
+        catch (Exception ex)
+        {
+            // A focus nicety must not take the circuit down with it.
+            Log?.LogWarning(ex, "could not move focus after the lists retry");
+        }
+    }
 
     /// <summary>A read has answered, so an empty list means the reader has none rather than that we never found out.</summary>
     private bool ListsAnswered => !_failed && State is { HasLoaded: true };

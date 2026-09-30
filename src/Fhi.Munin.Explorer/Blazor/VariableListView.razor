@@ -16,7 +16,6 @@ else if (State?.IsAuthenticated == true)
     <DetailPage ViewRoot="" ViewMain=""
                 Eyebrow="@ShownListEyebrow"
                 Actions="@(HasActions ? ActionRow : null)"
-                aria-busy="@(ListsPending ? "true" : null)"
                 data-munin-explorer-version="@ExplorerVersion.Current">
         <Header>
             @* The chassis's own header name: the other three wear a prefixed one beside it and this
@@ -42,6 +41,7 @@ else if (State?.IsAuthenticated == true)
                         type="button"
                         id="@CreateToggleId"
                         aria-expanded="@Expanded(_creating)"
+                        @ref="_createToggle"
                         @onclick="ToggleCreatingFromControl">@T.AddNewList</button>
 
                 @* Never disabled: it acts on no list, so an empty one does not stand in its way. *@
@@ -232,6 +232,18 @@ else if (State?.IsAuthenticated == true)
                same update is announced unreliably. Same shape as the explorer's own alert region. *@
             <div role="alert" aria-live="assertive" aria-atomic="true">
                 @(_failed ? T.ListLoadError : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null))
+
+                @* In the region, so the failure and the way out are one utterance; the search's retry does the same.
+                   Its own block, so it sits under the sentence rather than running on from it. *@
+                @if (_retryingLists || ListsFailureShown)
+                {
+                    <div>
+                        <button class="hd-button-square button-square--secondary margin-right margin-bottom munin-explorer-retry"
+                                type="button"
+                                aria-disabled="@AriaDisabled(ListsFailureShown)"
+                                @onclick="RetryListsAsync">@T.RetryLists</button>
+                    </div>
+                }
             </div>
 
             @* A refused annotation gets its own region, because it outlasts whatever the reader does
@@ -273,7 +285,8 @@ else if (State?.IsAuthenticated == true)
                      style="overflow-x:auto;position:relative"
                      role="region"
                      tabindex="0"
-                     aria-labelledby="@ListHeadingId">
+                     aria-labelledby="@ListHeadingId"
+                     @ref="_listRegion">
                     <table class="munin-explorer-data-list" aria-labelledby="@ListHeadingId">
                         <thead>
                             <tr class="munin-explorer-data-list__item__row--header">

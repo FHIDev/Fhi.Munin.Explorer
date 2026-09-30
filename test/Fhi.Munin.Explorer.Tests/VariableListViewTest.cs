@@ -247,6 +247,9 @@ public class VariableListViewTest : ExplorerTestContext
         /// </remarks>
         public bool VariablesAreUnreadable { get; set; }
 
+        /// <summary>Refuses the page read but not the membership walk, which asks for 1000 at a time.</summary>
+        public bool PageReadThrows { get; set; }
+
         /// <summary>Holds every variable read for this list until <see cref="ReleaseVariables"/>.</summary>
         /// <remarks>
         /// A real read is still out when the next caller arrives; a fake that answers at once is
@@ -285,6 +288,11 @@ public class VariableListViewTest : ExplorerTestContext
             VariablesCalls++;
             LastPageAsked = page;
             _askedFor.Add(id);
+
+            if (PageReadThrows && pageSize != 1000)
+            {
+                throw new InvalidOperationException("page refused");
+            }
 
             // Counted before the wait, so a second caller arriving mid-read is recorded.
             if (StallVariablesFor == id)
@@ -891,7 +899,7 @@ public class VariableListViewTest : ExplorerTestContext
 
         Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
         Assert.Equal("Henter variabellistene dine …", cut.Find("[role=status]").TextContent.Trim());
-        Assert.Equal("true", cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
+        Assert.Null(cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
     }
 
     [Fact]
@@ -921,6 +929,210 @@ public class VariableListViewTest : ExplorerTestContext
         Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
         Assert.Null(cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
+    }
+
+    private static AngleSharp.Dom.IElement? RetryButton(IRenderedComponent<VariableListView> cut) =>
+        cut.FindAll("button").FirstOrDefault(b => b.TextContent.Trim() == "Prøv å hente listene på nytt");
+
+    [Fact]
+    public async Task RetryLists_WhenTheListsCannotBeRead_ThenTheButtonReadsThemLeavesAndFocusGoesToTheList()
+    {
+        // Renders never retry a refused read, so the button is the reader's way back. Once the list
+        // is shown it goes, and the focus it held moves to the list rather than to <body>.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+        Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
+
+        client.ListsThrow = false;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+        Assert.Equal(2, client.ListsCalls);
+        Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+        Assert.Null(RetryButton(cut));
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus")
+            .Arguments[0].ShouldBeElementReferenceTo(cut.Find(".munin-explorer-list-scroll")));
+    }
+
+    [Fact]
+    public async Task RetryLists_WhenTheReaderTurnsOutToHaveNoLists_ThenFocusGoesToCreatingOne()
+    {
+        var client = new ListClient { HasList = false, ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+
+        client.ListsThrow = false;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        cut.WaitForAssertion(() => Assert.Contains("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal));
+        Assert.Null(RetryButton(cut));
+        // No list region to go to; a reference to one never drawn would be empty.
+        cut.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(Assert.IsType<Microsoft.AspNetCore.Components.ElementReference>(
+            JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus").Arguments[0]).Id)));
+    }
+
+    [Fact]
+    public async Task RetryLists_WhileItIsReading_ThenTheButtonIsInertAndTheFetchingLineShows()
+    {
+        var client = new ListClient { ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+
+        client.ListsThrow = false;
+        client.ListsHang = true;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        Assert.Equal("true", RetryButton(cut)?.GetAttribute("aria-disabled"));
+        Assert.Contains("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RetryLists_WhenItIsRefusedAgain_ThenTheFailureAndALiveButtonReturn()
+    {
+        var client = new ListClient { ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        Assert.Equal(2, client.ListsCalls);
+        Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void RetryLists_WhenTheListsWereRead_ThenNoRetryIsOffered()
+    {
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        Assert.Null(RetryButton(cut));
+    }
+
+    [Fact]
+    public async Task RetryLists_WhenTheOnlyListHasNoRows_ThenFocusGoesToCreatingOneAndNothingThrows()
+    {
+        // The list region is not drawn for an empty list; focusing its unset reference took the circuit down.
+        var client = new ListClient { ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+
+        client.ListsThrow = false;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        cut.WaitForAssertion(() => Assert.Contains("Denne listen er tom.", cut.Markup, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(Assert.IsType<Microsoft.AspNetCore.Components.ElementReference>(
+            JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus").Arguments[0]).Id)));
+        Assert.Empty(cut.FindAll(".munin-explorer-list-scroll"));
+    }
+
+    [Fact]
+    public async Task RetryLists_WhenThePageReadAfterItFails_ThenTheRetryStaysOffered()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+
+        client.ListsThrow = false;
+        client.PageReadThrows = true;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
+
+        client.PageReadThrows = false;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+        Assert.Null(RetryButton(cut));
+    }
+
+    [Fact]
+    public async Task RetryLists_WhenTheReaderOpensAFormWhileItReads_ThenFocusIsLeftWhereTheyAre()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+
+        client.ListsThrow = false;
+        client.ListsHang = true;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Legg til ny liste");
+        await cut.InvokeAsync(client.AnswerNoLists);
+
+        cut.WaitForAssertion(() => Assert.Null(RetryButton(cut)));
+        Assert.DoesNotContain(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public async Task RetryLists_WhileTheChosenListIsReadAgain_ThenTheFetchingLineShows()
+    {
+        // The lists are in and only the chosen list is being read: nothing else would say so.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+        client.ListsThrow = false;
+        client.ThrottledList = ListId;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+        Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+
+        client.ThrottledList = null;
+        client.StallVariablesFor = ListId;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        Assert.Contains("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("true", RetryButton(cut)?.GetAttribute("aria-disabled"));
+        client.ReleaseVariables();
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RetryLists_AfterARefreshFailedWithListsOnScreen_ThenASecondPressWhileItReadsDoesNothing()
+    {
+        // The failed refresh leaves ListsReadFailed set, and the retry never re-reads the lists to clear it.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+        var state = Services.GetRequiredService<VariableListState>();
+        client.ListsThrow = true;
+        client.ThrottledList = ListId;
+        await cut.InvokeAsync(async () => await Assert.ThrowsAnyAsync<Exception>(() => state.RefreshAsync()));
+        Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
+
+        client.ListsThrow = false;
+        client.ThrottledList = null;
+        client.StallVariablesFor = ListId;
+        var pageReads = client.VariablesCalls;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+        Assert.Equal("true", RetryButton(cut)?.GetAttribute("aria-disabled"));
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        Assert.Equal(pageReads + 1, client.VariablesCalls);
+        client.ReleaseVariables();
+    }
+
+    [Fact]
+    public async Task RetryLists_WhenTheListsAnswerButTheChosenListIsRefused_ThenTheRetryStaysOffered()
+    {
+        // The lists land, the chosen list's membership read is refused: no list is shown, so the
+        // reader still needs the way back rather than an inert button beside the failure.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+
+        client.ListsThrow = false;
+        client.ThrottledList = ListId;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
+
+        client.ThrottledList = null;
+        await PressAsync(cut, "Prøv å hente listene på nytt");
+
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+        Assert.Null(RetryButton(cut));
     }
 
     [Fact]
@@ -985,6 +1197,7 @@ public class VariableListViewTest : ExplorerTestContext
         Assert.Null(cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
         Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
     }
 
     [Fact]
