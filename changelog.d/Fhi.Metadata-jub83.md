@@ -1,0 +1,3 @@
+category: Fixed
+- **The saved-list view no longer says the reader has no lists while it is still reading them.** On first visit it said "Du har ingen variabellister ennå" for about a second before the lists appeared. It now shows "Henter variabellistene dine …", with `aria-busy` on the view, while the read is in flight. If the read fails, whichever part of the explorer started it, the view says the lists could not be read instead of saying there are none.
+- **The variable explorer's filter column says it is loading instead of standing empty.** Until the first filter counts arrive, the column shows "Henter filtre …" and carries `aria-busy`. It uses the existing `munin-explorer-filters` and `caption` names, so no new class name and no Stiler change.

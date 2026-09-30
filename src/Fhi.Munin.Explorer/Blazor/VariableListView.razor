@@ -16,6 +16,7 @@ else if (State?.IsAuthenticated == true)
     <DetailPage ViewRoot="" ViewMain=""
                 Eyebrow="@ShownListEyebrow"
                 Actions="@(HasActions ? ActionRow : null)"
+                aria-busy="@(ListsPending ? "true" : null)"
                 data-munin-explorer-version="@ExplorerVersion.Current">
         <Header>
             @* The chassis's own header name: the other three wear a prefixed one beside it and this
@@ -230,7 +231,7 @@ else if (State?.IsAuthenticated == true)
             @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
                same update is announced unreliably. Same shape as the explorer's own alert region. *@
             <div role="alert" aria-live="assertive" aria-atomic="true">
-                @(_failed ? T.ListLoadError : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
+                @(_failed ? T.ListLoadError : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null))
             </div>
 
             @* A refused annotation gets its own region, because it outlasts whatever the reader does
@@ -245,7 +246,11 @@ else if (State?.IsAuthenticated == true)
                "du har ingen variabellister ennå" beside it answers the same question the other way —
                the reader cannot tell whether they have none or whether we never found out. The two
                branches below are already unreachable then, because a failure leaves _page null. *@
-            @if (!_failed && Lists.Count == 0)
+            @if (ListsPending)
+            {
+                <p class="caption" role="status">@T.ListsLoading</p>
+            }
+            else if (!ListsUnknown && Lists.Count == 0)
             {
                 <p>@T.NoListsYet</p>
             }

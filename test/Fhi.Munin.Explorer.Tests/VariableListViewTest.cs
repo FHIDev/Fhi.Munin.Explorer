@@ -375,6 +375,12 @@ public class VariableListViewTest : ExplorerTestContext
 
         private readonly TaskCompletionSource<IReadOnlyList<VariableList>> _hangingLists = new();
 
+        /// <summary>Lets a held lists read answer that the reader has none.</summary>
+        public void AnswerNoLists() => _hangingLists.SetResult([]);
+
+        /// <summary>Fails a held lists read the way a throttled call would.</summary>
+        public void FailLists() => _hangingLists.SetException(new InvalidOperationException("too many requests"));
+
         /// <summary>Set when the test wants the export to fail the way a blocked browser would.</summary>
         public bool ExportThrows { get; init; }
 
@@ -868,6 +874,72 @@ public class VariableListViewTest : ExplorerTestContext
 
         await cut.InvokeAsync(() => { });
 
+        Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+        Assert.Null(cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
+    }
+
+    [Fact]
+    public void View_BeforeTheListsHaveArrived_ThenItSaysItIsFetchingThemRatherThanThatThereAreNone()
+    {
+        // Loki's review saw "ingen variabellister" for ~1.2 s on first visit, then the lists appear.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsHang = true });
+
+        Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
+        Assert.Equal("Henter variabellistene dine …", cut.Find("[role=status]").TextContent.Trim());
+        Assert.Equal("true", cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
+    }
+
+    [Fact]
+    public async Task View_WhenTheListsArriveEmpty_ThenTheFetchingLineGivesWayToTheSentence()
+    {
+        var client = new ListClient { ListsHang = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(client.AnswerNoLists);
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal));
+        Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+        Assert.Null(cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
+    }
+
+    [Fact]
+    public void View_WhenTheListsCannotBeReadAndALaterActionFails_ThenItNeitherFetchesNorSaysThereAreNone()
+    {
+        // A failed create clears the view's own failure; the lists are still unread all the same.
+        var client = new ListClient { HasList = false, ListsThrow = true, CreateThrows = true };
+        var cut = RenderView(client);
+
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
+
+        Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
+        Assert.Null(cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
+    }
+
+    [Fact]
+    public async Task View_WhenAnotherSurfacesListsReadFails_ThenItStopsFetchingAndSaysTheListsCouldNotBeRead()
+    {
+        // The search's save button starts the read on mount; this view joins it and never sees the throw.
+        var client = new ListClient { ListsHang = true };
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        var state = Services.GetRequiredService<VariableListState>();
+        state.SetAuthenticated(true);
+        var othersRead = state.EnsureLoadedAsync();
+
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+        Assert.Contains("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+
+        await cut.InvokeAsync(client.FailLists);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => othersRead);
+
+        cut.WaitForAssertion(() =>
+            Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal));
+        Assert.Null(cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
         Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
     }

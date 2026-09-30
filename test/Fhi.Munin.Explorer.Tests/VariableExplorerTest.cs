@@ -124,6 +124,28 @@ public class VariableExplorerTest : ExplorerTestContext
 
             return Task.FromResult(true);
         }
+
+        /// <summary>Leave the facets read in flight, as on a slow first visit.</summary>
+        public bool HoldFacets { get; init; }
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            HoldFacets
+                ? new TaskCompletionSource<FilterOptions>().Task
+                : base.GetFiltersAsync(search, filter, language, cancellationToken);
+    }
+
+    [Fact]
+    public void ListTab_WhileTheSearchFacetsAreStillLoading_ThenTheirFetchingLineIsNotDrawnThere()
+    {
+        // The list tab has a filter panel of its own; the search's "Henter filtre" beside it filters nothing.
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")) { HoldFacets = true });
+        Assert.Contains("Henter filtre", cut.Markup, StringComparison.Ordinal);
+
+        Tab(cut, "Variabelliste").Click();
+
+        Assert.DoesNotContain("Henter filtre", cut.Markup, StringComparison.Ordinal);
     }
 
     private static VariableSummary Variable(string name, string code) =>
