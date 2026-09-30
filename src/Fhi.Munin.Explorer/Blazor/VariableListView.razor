@@ -250,7 +250,7 @@ else if (State?.IsAuthenticated == true)
             {
                 <p class="caption" role="status">@T.ListsLoading</p>
             }
-            else if (!ListsUnknown && Lists.Count == 0)
+            else if (ListsAnswered && Lists.Count == 0)
             {
                 <p>@T.NoListsYet</p>
             }

@@ -88,7 +88,8 @@ public class VariableListStateTest : ExplorerTestContext
         public bool TimeOut { get; set; }
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
-            Hold ? new TaskCompletionSource<IReadOnlyList<VariableList>>().Task
+            Hold ? Task.Delay(Timeout.Infinite, cancellationToken).ContinueWith<IReadOnlyList<VariableList>>(
+                    _ => [], cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default)
             : TimeOut ? Task.FromException<IReadOnlyList<VariableList>>(new TaskCanceledException("timeout"))
             : Fail ? Task.FromException<IReadOnlyList<VariableList>>(new HttpRequestException("nede"))
             : Task.FromResult<IReadOnlyList<VariableList>>([]);
@@ -114,13 +115,46 @@ public class VariableListStateTest : ExplorerTestContext
     {
         // HttpClient's timeout is a TaskCanceledException; the caller cancelled nothing.
         var state = SignedIn(new FlakyListsClient { TimeOut = true });
-        var told = 0;
-        state.Changed += _ => told++;
+        var toldItEnded = false;
+        state.Changed += _ => toldItEnded |= !state.IsReadingLists;
 
         await Assert.ThrowsAsync<TaskCanceledException>(() => state.EnsureLoadedAsync());
 
         Assert.True(state.ListsReadFailed);
-        Assert.Equal(1, told);
+        Assert.True(toldItEnded);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenARetryStarts_ThenEverySurfaceIsToldBeforeItAnswers()
+    {
+        // A view still showing the last failure has to learn the retry began, not only how it ended.
+        var client = new FlakyListsClient();
+        var state = SignedIn(client);
+        await Assert.ThrowsAsync<HttpRequestException>(() => state.EnsureLoadedAsync());
+
+        VariableListState.ListChange? told = null;
+        state.Changed += change => told = change;
+        client.Hold = true;
+        _ = state.EnsureLoadedAsync();
+
+        Assert.True(state.IsReadingLists);
+        Assert.Equal(new VariableListState.ListChange(null, AffectsRows: false), told);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheCallerCancels_ThenEverySurfaceIsToldTheReadEnded()
+    {
+        var state = SignedIn(new FlakyListsClient { Hold = true });
+        using var cancel = new CancellationTokenSource();
+        var toldItEnded = false;
+        state.Changed += _ => toldItEnded |= !state.IsReadingLists;
+
+        var read = state.EnsureLoadedAsync(cancel.Token);
+        await cancel.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read);
+        Assert.False(state.IsReadingLists);
+        Assert.True(toldItEnded);
     }
 
     [Fact]

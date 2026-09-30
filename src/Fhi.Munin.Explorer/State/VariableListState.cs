@@ -63,6 +63,9 @@ public sealed partial class VariableListState(
     /// <summary>The lists as last read. Empty for a signed-out reader, always.</summary>
     public IReadOnlyList<VariableList> Lists => _lists;
 
+    /// <summary>Whether <see cref="Lists"/> is an answer, so an empty one means the reader has none.</summary>
+    internal bool HasLoaded => _loaded;
+
     /// <summary>Whether a read of <see cref="Lists"/> is in flight, whichever surface started it.</summary>
     internal bool IsReadingLists => _loading;
 
@@ -133,6 +136,9 @@ public sealed partial class VariableListState(
         _loading = true;
         ListsReadFailed = false;
 
+        // Every surface draws this read's progress, not only the one that started it.
+        RaiseChanged(listId: null, affectsRows: false);
+
         IReadOnlyList<VariableList> lists;
 
         try
@@ -148,6 +154,17 @@ public sealed partial class VariableListState(
             {
                 ListsReadFailed = true;
                 RaiseChanged(listId: null, affectsRows: true);
+            }
+
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            _loading = false;
+
+            if (StillCurrent(startedAt))
+            {
+                RaiseChanged(listId: null, affectsRows: false);
             }
 
             throw;

@@ -368,15 +368,18 @@ public class VariableListViewTest : ExplorerTestContext
         public bool? LastIncludeKodeverk { get; private set; }
 
         /// <summary>Set when the reader's lists cannot be read - a throttled call, for instance.</summary>
-        public bool ListsThrow { get; init; }
+        public bool ListsThrow { get; set; }
 
         /// <summary>Leave the lists read in flight: the state the view first renders in.</summary>
-        public bool ListsHang { get; init; }
+        public bool ListsHang { get; set; }
 
         private readonly TaskCompletionSource<IReadOnlyList<VariableList>> _hangingLists = new();
 
         /// <summary>Lets a held lists read answer that the reader has none.</summary>
         public void AnswerNoLists() => _hangingLists.SetResult([]);
+
+        /// <summary>Ends a held lists read the way a caller's own cancel does.</summary>
+        public void CancelLists(CancellationToken token) => _hangingLists.SetCanceled(token);
 
         /// <summary>Fails a held lists read the way a throttled call would.</summary>
         public void FailLists() => _hangingLists.SetException(new InvalidOperationException("too many requests"));
@@ -918,6 +921,46 @@ public class VariableListViewTest : ExplorerTestContext
         Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
         Assert.Null(cut.Find(".munin-explorer-page").GetAttribute("aria-busy"));
+    }
+
+    [Fact]
+    public async Task View_WhenAnotherSurfaceRetriesAfterAFailure_ThenItShowsTheRetryRatherThanTheOldFailure()
+    {
+        var client = new ListClient { ListsThrow = true };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+        Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+
+        client.ListsThrow = false;
+        client.ListsHang = true;
+        var state = Services.GetRequiredService<VariableListState>();
+        _ = cut.InvokeAsync(() => state.EnsureLoadedAsync());
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal));
+        Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task View_WhenTheListsReadIsCancelled_ThenItNeitherFetchesNorSaysThereAreNone()
+    {
+        // A cancel is not an answer: "du har ingen" would be a guess.
+        var client = new ListClient { ListsHang = true };
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        var state = Services.GetRequiredService<VariableListState>();
+        state.SetAuthenticated(true);
+        using var cancel = new CancellationTokenSource();
+        var othersRead = state.EnsureLoadedAsync(cancel.Token);
+
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true));
+        await cancel.CancelAsync();
+        await cut.InvokeAsync(() => client.CancelLists(cancel.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => othersRead);
+
+        cut.WaitForAssertion(() =>
+            Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal));
+        Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -501,8 +501,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The lists are still being read, so an empty list says nothing about the reader yet.</summary>
     private bool ListsPending => !_failed && State is { IsReadingLists: true } && Lists.Count == 0;
 
-    /// <summary>The lists could not be read, whichever surface asked, so "you have none" would be a guess.</summary>
-    private bool ListsUnknown => _failed || State is { ListsReadFailed: true };
+    /// <summary>A read has answered, so an empty list means the reader has none rather than that we never found out.</summary>
+    private bool ListsAnswered => !_failed && State is { HasLoaded: true };
 
     protected override void OnInitialized()
     {
@@ -655,6 +655,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             {
                 _seenKildeFilter = version;
                 _pageNumber = 1;
+            }
+
+            // A fresh read of the lists supersedes this view's last failure; its own outcome is told when it lands.
+            if (State is { IsReadingLists: true })
+            {
+                _failed = false;
             }
 
             if (ShouldReloadFor(change))
