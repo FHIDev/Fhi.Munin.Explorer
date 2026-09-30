@@ -29,6 +29,24 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 1.0.0-rc.1 — 2026-09-29
+
+### Added
+
+- **`VariableSummary` carries `HasKodeverk` and `HasStatistics`.** The variable search now says for each hit whether it links a kodeverk and whether it has statistics, which Munin has sent since 2026-09-23. Both are null from an older API.
+- **Table cells name their column in `data-label`.** The kilde page's datasamling tables and the saved and shared variable lists carry it on every `td`, so a stylesheet can show the rows as labelled cards on narrow screens.
+
+### Fixed
+
+- **Sorting the variable list by Navn now asks for a name sort.** The Navn header was wired to the API's default order, so the first press reversed the curated order and the second sent no sort at all. It now sends `sort=name` in both directions, which Munin sorts alphabetically with Norwegian collation. The list still opens in the curated order and sends no `sort`, and no header shows an arrow until one is pressed. `SortField` gains `Name` = 8, appended so no existing value changes; every member now has an explicit value. `Default` no longer has a wire token, and reversing it sends only `sortDir=desc`. A control offering the orders leaves `Default` out and shows `Name` first, as Runa's columns do; `Enum.GetValues` no longer gives that order.
+- **Contents links keep their destination heading clear of a wrapped sticky bar.** After a section jump settles, the explorer accounts for the bar's rendered height. Scrolling or pressing a key cancels any pending adjustment.
+
+### Notes for hosts
+
+- **1.0 is a stability promise: from here on, anything a host has to act on is a new major version.** The contract is the components and parameters the README documents under "What a host mounts", the class names it lists under the `munin-explorer-` prefix, and the fixed section ids the detail pages name themselves, which 0.1.0-alpha.15 moved under that prefix. A catalogue-placed section's id follows the group keys in Munin's catalogue, so it is not part of the promise. A `1.0.x` release is fixes only. Adding a parameter or a name is `1.x.0`. Removing, renaming or retyping one is `2.0.0`, and so is raising the Stiler floor. What the component does is described release by release in the `0.1.0-alpha` sections of `CHANGELOG.md`.
+- **1.0 is styled for `Fhi.Helsedata.Stiler` 0.1.140, and its floor is 0.1.114.** 0.1.133 widened Runa's search list to 1760px for every reader, signed in or not. 0.1.134 gives the kilde, datasamling and variable pages one column with a 47em reading measure, and 0.1.135 keeps that measure to the layout where the contents list stands beside the page, so a stacked page at 1024px and narrower keeps its full width. From 0.1.114 to 0.1.133 everything renders, with the detail pages' older two-column layout. Below 0.1.114, the floor, a variable row has no visible focus ring and its chevron shows no picture.
+- **Stiler 0.1.140 keeps hidden toolbar actions out of the Tab order.** It ensures `.munin-explorer-page__stuckbar[hidden]` has `display: none`. Hosts supplying their own stylesheet need the same rule: `div { display: block }` overrides the browser's default hiding and can leave the compact collection action in the Tab order while hidden from screen readers.
+
 ## 0.1.0-alpha.15 — 2026-09-25
 
 ### Added
