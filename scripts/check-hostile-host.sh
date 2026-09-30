@@ -16,7 +16,7 @@
 #     its hidden state and the datasamling action's focus through a scroll;
 #   - the search-only mount, which this host does not render. The kildeutforsker IS measured, on
 #     /kilder, as of Fhi.Metadata-fih3y;
-#   - widths other than the six in GEOMETRY_WIDTHS, 320 and the cards' 767, and any height at all — nothing here
+#   - widths other than the six in GEOMETRY_WIDTHS, 320 and 767, and any height at all — nothing here
 #     asks about vertical layout. At 320 some assertions are left out in some states, by name;
 #   - whether it LOOKS right. Boxes in the right places can still be the wrong design.
 #
@@ -288,7 +288,9 @@ set -e
 [ "$geometry_status" -eq 2 ] && exit 2
 
 # 320px, WCAG 1.4.10 Reflow. Each call leaves out only what fails in its states today, with the bead
-# that says why; an open bead's last step is deleting its call's exception.
+# that says why; an open bead's last step is deleting its call's exception. The last call measures
+# Stiler's card breakpoint, 767, instead; an exported REFLOW_WIDTH would move every call.
+unset REFLOW_WIDTH
 reflow_status=0
 reflow() {
   local except="$1"; shift
@@ -332,7 +334,7 @@ reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tr
 reflow "" "/::filters-level-lines" "/::filters-node-icons-off"
 # The three detail pages' fact lists, one track at 320 (Fhi.Metadata-2w7fx).
 reflow "" "/kilder::kilde-drilldown" "/kilder::kilde-datasamling" "/::variable-page"
-# Stiler's cards stop at 767; the widest page still drawing them (Fhi.Metadata-n8ygv, z4r1d).
+# Stiler draws the cards at 767 and below; 767 is the widest width that still does (n8ygv, z4r1d).
 REFLOW_WIDTH=767 reflow "" "/kilder::kilde-hierarchy-metadata" "/::explorer-list-tab"
 
 # An assertion that has quietly stopped measuring anything reports success forever, so each one is

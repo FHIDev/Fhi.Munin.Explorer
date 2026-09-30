@@ -151,11 +151,11 @@ public class GeometryScanGuardTest
         var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
         var calls = Regex.Matches(
             source,
-            @"^reflow ""(?<except>[^""]*)""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+            @"^(?:REFLOW_WIDTH=\d+ )?reflow ""(?<except>[^""]*)""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
             RegexOptions.Multiline);
 
         Assert.NotEmpty(calls);
-        Assert.Equal(Regex.Matches(source, @"^reflow ", RegexOptions.Multiline).Count, calls.Count);
+        Assert.Equal(Regex.Matches(source, @"^(?:REFLOW_WIDTH=\d+ )?reflow ", RegexOptions.Multiline).Count, calls.Count);
 
         foreach (Match call in calls)
         {
@@ -190,7 +190,7 @@ public class GeometryScanGuardTest
     public void HostileHost_WhenMeasuringAt320_ThenEveryTargetIsInExactlyOneCall()
     {
         // A state added to TARGETS and not to a reflow call would never be measured at 320, and
-        // both the gate and the test above would stay green.
+        // both the gate and the test above would stay green. Only the 320 calls: no REFLOW_WIDTH.
         var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
         var array = Regex.Match(source, @"^TARGETS=\((?<items>[^)]*)^\)", RegexOptions.Multiline);
 
@@ -211,6 +211,15 @@ public class GeometryScanGuardTest
 
         Assert.NotEmpty(targets);
         Assert.Equal(targets, measured);
+    }
+
+    [Fact]
+    public void HostileHost_WhenMeasuringAt320_ThenAnExportedWidthCannotMoveIt()
+    {
+        // reflow() reads REFLOW_WIDTH, so one left exported would run every 320 call elsewhere.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+
+        Assert.Matches(@"(?m)^unset REFLOW_WIDTH\r?\n(?:[^\n]*\n)*?^reflow\(\) \{", source);
     }
 
     [Fact]
