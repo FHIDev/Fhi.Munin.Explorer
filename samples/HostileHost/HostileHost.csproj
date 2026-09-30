@@ -21,8 +21,8 @@
        Stiler half of Fhi.Metadata-b3brc and what /kilder needs to fit at 1024 and 843.
 
        HELSEDATA: test had 0.1.141 on 2026-09-30; production was not checked. Not bumped to it:
-       0.1.141 has no SCSS change. This pin ran ahead while they had 0.1.68, which lacks the 320px
-       step's long-value breaks (Fhi.Metadata-ofg1h).
+       0.1.141 has no SCSS change. This pin ran ahead while they had 0.1.68, which lacks the branch
+       disclosure rules and the 320px step's long-value breaks (Fhi.Metadata-adog5, Fhi.Metadata-ofg1h).
 
        0.1.141 changes only Stiler's build pipeline and draws as 0.1.140. 1.0 is released against
        0.1.141, and hosts are to run the latest Stiler (decided 2026-09-30; Fhi.Metadata-d3jz3).

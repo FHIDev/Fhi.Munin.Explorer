@@ -1557,8 +1557,8 @@ component parameter or a class name is `1.x.0`. A change a host has to act on is
 parameter removed or retyped, a `munin-explorer-` class name or fixed section id renamed or
 dropped, or a higher Stiler floor. The fixed section ids are the ones the component names itself.
 A catalogue-placed section's `#munin-explorer-section-<group key>` follows the group keys Munin's
-catalogue sets, and is not part of the promise. Hosts are to run the latest Stiler, decided
-2026-09-30, when that was 0.1.141, the version 1.0 is styled for. The floor, 0.1.114, is the oldest
+catalogue sets, and is not part of the promise. Hosts are to run the latest Stiler, which was
+decided on 2026-09-30; that was 0.1.141, the version 1.0 is styled for. The floor, 0.1.114, is the oldest
 Stiler 1.0 still renders correctly with: the line below which 1.0 breaks, not a version to target.
 A version that consumers have restored cannot be walked back.
 
