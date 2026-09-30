@@ -25,7 +25,7 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Eight of the fourteen below are invariants. If that ratio ever inverts, this file has become a
+// Nine of the sixteen below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
@@ -539,6 +539,65 @@ export const assertions = [
           return `at ${width}px the main column starts at ${column.top.toFixed(1)} and the ` +
             `contents rail at ${rail.top.toFixed(1)} — the two tracks are not one row`;
         }
+      }
+      return null;
+    },
+  },
+
+  {
+    name: 'a table cell holding visible text is at least 4em wide',
+    kind: 'invariant',
+    // A squeezed column wraps a letter or two per line and overflows nothing, so no check above
+    // sees it: the kilde table's Beskrivelse was 37px at 320 (Fhi.Metadata-n8ygv).
+    body: ({ mount: mountSel }) => {
+      const mount = document.querySelector(mountSel);
+      if (!mount) return `no ${mountSel} on the page — nothing was measured`;
+      // Text only a screen reader gets: clipped (the cards' header row) or screenreader-only.
+      const unseen = el => {
+        for (let e = el; e && e !== mount; e = e.parentElement) {
+          const s = getComputedStyle(e);
+          if (s.clipPath !== 'none' || s.clip !== 'auto' || e.classList.contains('screenreader-only')) return true;
+        }
+        return false;
+      };
+      for (const cell of mount.querySelectorAll('td, th')) {
+        // The border box, padding included: the content box flags "Ikke oppgitt" in the saved
+        // list's narrow desktop columns, which reads fine on two lines.
+        const room = cell.getBoundingClientRect().width;
+        const floor = 4 * parseFloat(getComputedStyle(cell).fontSize);
+        if (room >= floor) continue;
+        if (!cell.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
+        const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+        let text = '';
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (!unseen(node.parentElement)) text += node.textContent;
+        }
+        text = text.trim();
+        if (text.length < 10) continue;
+        return `at ${Math.round(window.innerWidth)}px a <${cell.tagName.toLowerCase()}> in ` +
+          `${cell.closest('table')?.className || 'a table'} is ${room.toFixed(1)}px for "${text.slice(0, 40)}"; ` +
+          `the floor is ${floor.toFixed(1)}px`;
+      }
+      return null;
+    },
+  },
+
+  {
+    name: 'the saved list shows every column at 767px and below',
+    kind: 'pin',
+    states: ['explorer-list-tab'],
+    // Stiler 0.1.139 stacks each row as a card at $mobile. Before it the other columns sat
+    // unseen to the right of a 257px box at 320 (Fhi.Metadata-z4r1d).
+    body: () => {
+      const width = Math.round(window.innerWidth);
+      if (width > 767) return null;
+      const boxes = [...document.querySelectorAll('.munin-explorer-list-scroll')]
+        .filter(box => box.getBoundingClientRect().width > 0);
+      if (boxes.length === 0) return 'no saved list on screen — nothing was measured';
+      for (const box of boxes) {
+        if (box.scrollWidth <= box.clientWidth + 1) continue;
+        return `at ${width}px the saved list is ${box.scrollWidth}px of columns in a ` +
+          `${box.clientWidth}px box`;
       }
       return null;
     },

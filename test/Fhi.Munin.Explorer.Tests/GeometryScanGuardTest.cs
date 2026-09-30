@@ -151,14 +151,15 @@ public class GeometryScanGuardTest
         var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
         var calls = Regex.Matches(
             source,
-            @"^reflow ""(?<except>[^""]*)""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+            @"^(?:REFLOW_WIDTH=(?<width>\d+) )?reflow ""(?<except>[^""]*)""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
             RegexOptions.Multiline);
 
         Assert.NotEmpty(calls);
-        Assert.Equal(Regex.Matches(source, @"^reflow ", RegexOptions.Multiline).Count, calls.Count);
+        Assert.Equal(Regex.Matches(source, @"^(?:REFLOW_WIDTH=\d+ )?reflow ", RegexOptions.Multiline).Count, calls.Count);
 
         foreach (Match call in calls)
         {
+            var width = call.Groups["width"].Success ? call.Groups["width"].Value : "320";
             var names = call.Groups["except"].Value
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -166,7 +167,7 @@ public class GeometryScanGuardTest
             {
                 Assert.True(
                     Assertions.ContainsKey(name),
-                    $"check-hostile-host.sh leaves out '{name}' at 320px, which geometry-assertions.mjs "
+                    $"check-hostile-host.sh leaves out '{name}' at {width}px, which geometry-assertions.mjs "
                     + "does not define.");
             }
 
@@ -180,7 +181,7 @@ public class GeometryScanGuardTest
             {
                 Assert.True(
                     KnownStates.Value.Contains(state),
-                    $"check-hostile-host.sh measures the state '{state}' at 320px, which axe-states.mjs "
+                    $"check-hostile-host.sh measures the state '{state}' at {width}px, which axe-states.mjs "
                     + "does not define.");
             }
         }
@@ -190,7 +191,7 @@ public class GeometryScanGuardTest
     public void HostileHost_WhenMeasuringAt320_ThenEveryTargetIsInExactlyOneCall()
     {
         // A state added to TARGETS and not to a reflow call would never be measured at 320, and
-        // both the gate and the test above would stay green.
+        // both the gate and the test above would stay green. Only the 320 calls: no REFLOW_WIDTH.
         var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
         var array = Regex.Match(source, @"^TARGETS=\((?<items>[^)]*)^\)", RegexOptions.Multiline);
 
@@ -211,6 +212,32 @@ public class GeometryScanGuardTest
 
         Assert.NotEmpty(targets);
         Assert.Equal(targets, measured);
+    }
+
+    [Fact]
+    public void HostileHost_WhenMeasuringAt767_ThenBothCardPagesAreMeasured()
+    {
+        // 767 is the widest width Stiler still draws the cards at. Deleting that call, moving its
+        // width or dropping a page left every other guard green.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+        var call = Assert.Single(Regex.Matches(
+            source,
+            @"^REFLOW_WIDTH=767 reflow ""[^""]*""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+            RegexOptions.Multiline));
+        var targets = Regex.Matches(call.Groups["targets"].Value, @"""(?<target>[^""]+)""")
+            .Select(match => match.Groups["target"].Value)
+            .Order(StringComparer.Ordinal);
+
+        Assert.Equal(["/::explorer-list-tab", "/kilder::kilde-hierarchy-metadata"], targets);
+    }
+
+    [Fact]
+    public void HostileHost_WhenMeasuringAt320_ThenAnExportedWidthCannotMoveIt()
+    {
+        // reflow() reads REFLOW_WIDTH, so one left exported would run every 320 call elsewhere.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+
+        Assert.Matches(@"(?m)^unset REFLOW_WIDTH\r?\n(?:[^\n]*\n)*?^reflow\(\) \{", source);
     }
 
     [Fact]
