@@ -359,10 +359,9 @@ public class KildeSectionsTest : ExplorerTestContext
         ], TextOf(cut.FindAll(
             ".munin-explorer-hierarchy__metadata > table.munin-explorer-kilde__datasamlinger tbody th")));
 
-        // Then the four waves, in the catalogue's order, each with what is inside it. Within a
-        // wave that order is displayOrder, which the test catalogue sets second visit first (#480). A wave that
-        // holds nothing is drawn all the same; this capture has none, so KildeViewTest pins that
-        // against a written source.
+        // Then the four waves, each with what is inside it, in the catalogue's displayOrder (the test
+        // catalogue puts the second visit first, #480). An empty wave is drawn too; KildeViewTest pins
+        // that against a written source, since this capture has none.
         Assert.Equal(
         [
             "Tromsø4 - Den fjerde Tromsøundersøkelsen: "
