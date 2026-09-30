@@ -10,16 +10,16 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// fail — it would quietly return a different order than the one the UI says it is showing.
 /// </para>
 /// <para>
-/// The set matches Runa's sortable columns exactly, which since Fhi.Metadata-0ayti is every column
-/// holding a fact about the variable — code, datatype, status and data period included. The one
-/// column with no member is the signed-in reader's save column, which holds a control rather than a
-/// value, so there is nothing for the API to order by.
+/// Every member but <see cref="Default"/> is one of Runa's sortable columns, which since
+/// Fhi.Metadata-0ayti is every column holding a fact about the variable. <see cref="Default"/> is
+/// the sentinel for "no order chosen": it has no column and no wire token, so a control offering
+/// the orders leaves it out and shows it as the unsorted state rather than as a choice.
 /// </para>
 /// <para>
-/// The members are declared in the order a UI should offer them, so a control built from
-/// <c>Enum.GetValues</c> needs no second list to keep in step with this one. That order is Runa's
-/// left-to-right column order, which is why the four newer members are interleaved rather than
-/// appended — appending them would have offered the list in an order no table is in.
+/// The numeric values are fixed and part of the contract; a new member is appended with the next
+/// value. So <c>Enum.GetValues</c> is not the order a control should offer: that is Runa's
+/// left-to-right column order, <see cref="Name"/> first, then <see cref="Code"/> through
+/// <see cref="DataPeriod"/> in value order.
 /// </para>
 /// <para>
 /// Ordering happens in the API's own SQL, for every member alike. Nothing here or in
@@ -30,29 +30,27 @@ namespace Fhi.Munin.Explorer.Contracts;
 public enum SortField
 {
     /// <summary>
-    /// The API's own default order, sent as <c>name</c>: kilde, then the catalogue's curated
-    /// presentation order, then the display name, with the code as the tie-break.
+    /// The API's own default order: kilde, then the catalogue's curated presentation order, then
+    /// the display name, with the code as the tie-break. Sends no <c>sort</c> at all.
     /// </summary>
     /// <remarks>
-    /// Named for what it does rather than for the token it sends. Calling this a name sort — which
-    /// the wire token invites — would misdescribe it in any label built from this member: the
-    /// primary key is kilde, and what separates it from <see cref="Kilde"/> is only the ordering
-    /// inside a kilde, where this one follows the catalogue's curated sequence.
+    /// No token because the API has none for it: <c>name</c> is a real name sort since
+    /// Fhi.Metadata-bgvdh, so the curated order is only what the API does when nothing is asked for.
     /// </remarks>
-    Default,
+    Default = 0,
 
     /// <summary>Variable code. Sent as <c>kode</c>.</summary>
     /// <remarks>The code is also every other member's tie-break, so this order has no second key.</remarks>
-    Code,
+    Code = 1,
 
     /// <summary>Kilde name, code as the tie-break. Sent as <c>kilde</c>.</summary>
-    Kilde,
+    Kilde = 2,
 
     /// <summary>Primary datasamling name, code as the tie-break. Sent as <c>datasamling</c>.</summary>
-    Datasamling,
+    Datasamling = 3,
 
     /// <summary>Primary variabelgruppe name, code as the tie-break. Sent as <c>variabelgruppe</c>.</summary>
-    Variabelgruppe,
+    Variabelgruppe = 4,
 
     /// <summary>
     /// Datatype, by the catalogue's own code for it, with the variable code as the tie-break. Sent
@@ -63,7 +61,7 @@ public enum SortField
     /// language. A variable with no datatype — blank and absent alike — comes last whichever
     /// direction is asked for, so the group of dashes cannot lead a descending page.
     /// </remarks>
-    DataType,
+    DataType = 5,
 
     /// <summary>
     /// Version status, active before historical, with the code as the tie-break. Sent as
@@ -74,7 +72,7 @@ public enum SortField
     /// shows, for <see cref="DataType"/>'s reason: a localised status label would reorder the list
     /// when the reader switched language.
     /// </remarks>
-    Status,
+    Status = 6,
 
     /// <summary>
     /// The start of the period the data covers, with the code as the tie-break. Sent as
@@ -98,7 +96,11 @@ public enum SortField
     /// how this goes wrong.
     /// </para>
     /// </remarks>
-    DataPeriod
+    DataPeriod = 7,
+
+    /// <summary>Variable display name, alphabetical in Norwegian collation. Sent as <c>name</c>.</summary>
+    /// <remarks>Appended rather than placed first, where its column is, so no value moved (Fhi.Metadata-bgvdh).</remarks>
+    Name = 8,
 }
 
 /// <summary>Sort direction, sent as <c>sortDir</c>.</summary>

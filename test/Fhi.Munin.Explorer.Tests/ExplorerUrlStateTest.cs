@@ -74,6 +74,17 @@ public class ExplorerUrlStateTest
         }
     }
 
+    [Fact]
+    public void ToQueryString_WhenNameIsChosenAscending_ThenTheSortIsWrittenRatherThanLeftAsTheDefault()
+    {
+        // Ascending is the default direction, so only the field tells this link from an untouched
+        // one — and the untouched one opens in the curated order, not by name (Fhi.Metadata-bgvdh).
+        var query = new ExplorerUrlState { Sort = SortField.Name }.ToQueryString();
+
+        Assert.Equal("sort=Name", query);
+        Assert.Equal(SortField.Name, ExplorerUrlState.Parse(query).Sort);
+    }
+
     /// <summary>The open variable is what a reader most wants to send someone.</summary>
     [Fact]
     public void RoundTrip_WhenAVariableIsOpen_ThenItComesBackTheSame()
