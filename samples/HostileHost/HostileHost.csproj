@@ -20,12 +20,13 @@
        0.1.41 is the first release carrying `.munin-explorer-kilder-scroll`, which is the
        Stiler half of Fhi.Metadata-b3brc and what /kilder needs to fit at 1024 and 843.
 
-       HELSEDATA: test had 0.1.141 on 2026-09-30; production was not checked. Not bumped to it:
-       0.1.141 has no SCSS change. This pin ran ahead while they had 0.1.68, which lacks the branch
-       disclosure rules and the 320px step's long-value breaks (Fhi.Metadata-adog5, Fhi.Metadata-ofg1h).
+       HELSEDATA: test had 0.1.141 on 2026-09-30; production was not checked. This pin ran ahead while
+       they had 0.1.68, which lacks the branch disclosure rules and the 320px step's long-value breaks
+       (Fhi.Metadata-adog5, Fhi.Metadata-ofg1h).
 
-       0.1.141 changes only Stiler's build pipeline and draws as 0.1.140. 1.0 is released against
-       0.1.141, and hosts are to run the latest Stiler (decided 2026-09-30; Fhi.Metadata-d3jz3).
+       0.1.142 gives the sentence under the Kodeverk heading its 8px margin (Fhi.Metadata-3z2s3). 1.0 is
+       released against it, and hosts are to run the latest Stiler (decided 2026-09-30; Fhi.Metadata-d3jz3).
+       0.1.141 changes only Stiler's build pipeline and draws as 0.1.140.
        0.1.140 keeps hidden sticky toolbar actions out of the Tab order (Fhi.Metadata-5fuvd).
        0.1.139 adds mobile cards for datasamlinger and saved variables (Fhi.Metadata-n8ygv,
        Fhi.Metadata-z4r1d).
@@ -48,7 +49,7 @@
        0.1.103 brought the drawer's checkbox column and nested detail anchor clearance
        (Fhi.Metadata-h6dx7, Fhi.Metadata-17k34). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.140" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.142" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
