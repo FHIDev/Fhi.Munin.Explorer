@@ -133,6 +133,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private int _seenKildeFilter;
     private bool _loading;
     private bool _failed;
+    private bool _askedOnMount;
 
     private Dictionary<string, string>? _dataTypeNames;
 
@@ -534,7 +535,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // list.
         try
         {
-            await State.EnsureActiveListAsync();
+            // Mounting is opening the tab, a reader asking; a later parameter set is only a render.
+            // Spent before the await, so a refusal does not leave every later render asking too.
+            var asking = !_askedOnMount;
+            _askedOnMount = true;
+            await State.EnsureActiveListAsync(readerAsked: asking);
             await ShowActiveListAsync();
         }
         catch (Exception ex)

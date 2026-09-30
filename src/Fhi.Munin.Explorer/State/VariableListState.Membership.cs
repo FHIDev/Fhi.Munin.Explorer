@@ -228,7 +228,7 @@ public sealed partial class VariableListState
         return _saved.Count - before;
     }
 
-    private async Task EnsureActiveListAsync(bool readerAsked, CancellationToken cancellationToken)
+    internal async Task EnsureActiveListAsync(bool readerAsked, CancellationToken cancellationToken = default)
     {
         if (!IsAuthenticated || (_activeListId is not null && _membershipLoaded))
         {
@@ -259,6 +259,12 @@ public sealed partial class VariableListState
             // necessarily the one the reader — or another surface — chose.
             await LoadMembershipAsync(cancellationToken).ConfigureAwait(false);
 
+            return;
+        }
+
+        // The same rule for a refused lists read: its failure raises Changed, so a render retrying it is a storm.
+        if (ListsReadFailed && !readerAsked)
+        {
             return;
         }
 
