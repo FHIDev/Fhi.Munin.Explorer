@@ -304,6 +304,12 @@ const cases = [
     apply: dropMediaRules('.munin-explorer-list-scroll table.munin-explorer-data-list'),
   },
   {
+    assertion: 'the saved list shows every column at 767px and below',
+    defect: 'the list cards gone at 767, the widest width that still draws them',
+    path: '/', state: 'explorer-list-tab', width: 767,
+    apply: dropMediaRules('.munin-explorer-list-scroll table.munin-explorer-data-list'),
+  },
+  {
     assertion: 'no page shell class inside a tab panel',
     defect: 'a nested view wearing the page shell class',
     path: '/', state: 'explorer-tabs', width: 1440,
