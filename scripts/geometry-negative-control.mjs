@@ -23,6 +23,18 @@ if (!base) {
 
 const css = content => page => page.addStyleTag({ content });
 
+// Deletes every @media block of the page's own stylesheets that holds `selector`: the Stiler rule
+// going missing, rather than a stand-in written to look like its absence.
+const dropMediaRules = selector => page => page.evaluate(sel => {
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try { rules = sheet.cssRules; } catch { continue; } // cross-origin: not ours to break
+    for (let i = rules.length - 1; i >= 0; i--) {
+      if (rules[i] instanceof CSSMediaRule && rules[i].cssText.includes(sel)) sheet.deleteRule(i);
+    }
+  }
+}, selector);
+
 const noBreak = css(`.munin-explorer-page__fields dd, .munin-explorer-meta__grid dd,
                      .munin-explorer-page__facts dt, .munin-explorer-whole__code
                      { overflow-wrap: normal !important; }`);
@@ -278,6 +290,24 @@ const cases = [
     path: '/', state: 'variable-page', width: 1760,
     // Without 0.1.134's 47em the main column fills its track, about 1150px at this width.
     apply: css('.munin-explorer-page__main { max-width: none !important; }'),
+  },
+  {
+    assertion: 'a table cell holding visible text is at least 4em wide',
+    defect: "Stiler 0.1.139's kilde cards gone at 320: a letter or two per line",
+    path: '/kilder', state: 'kilde-hierarchy-metadata', width: 320,
+    apply: dropMediaRules('.munin-explorer-kilde__datasamlinger:not('),
+  },
+  {
+    assertion: 'the saved list shows every column at 767px and below',
+    defect: "Stiler 0.1.139's list cards gone at 320: columns hidden to the right",
+    path: '/', state: 'explorer-list-tab', width: 320,
+    apply: dropMediaRules('.munin-explorer-list-scroll table.munin-explorer-data-list'),
+  },
+  {
+    assertion: 'the saved list shows every column at 767px and below',
+    defect: 'the list cards gone at 767, the widest width that still draws them',
+    path: '/', state: 'explorer-list-tab', width: 767,
+    apply: dropMediaRules('.munin-explorer-list-scroll table.munin-explorer-data-list'),
   },
   {
     assertion: 'no page shell class inside a tab panel',
