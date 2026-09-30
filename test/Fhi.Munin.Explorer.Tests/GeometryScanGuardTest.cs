@@ -215,6 +215,23 @@ public class GeometryScanGuardTest
     }
 
     [Fact]
+    public void HostileHost_WhenMeasuringAt767_ThenBothCardPagesAreMeasured()
+    {
+        // 767 is the widest width Stiler still draws the cards at. Deleting that call, moving its
+        // width or dropping a page left every other guard green.
+        var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
+        var call = Assert.Single(Regex.Matches(
+            source,
+            @"^REFLOW_WIDTH=767 reflow ""[^""]*""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+            RegexOptions.Multiline));
+        var targets = Regex.Matches(call.Groups["targets"].Value, @"""(?<target>[^""]+)""")
+            .Select(match => match.Groups["target"].Value)
+            .Order(StringComparer.Ordinal);
+
+        Assert.Equal(["/::explorer-list-tab", "/kilder::kilde-hierarchy-metadata"], targets);
+    }
+
+    [Fact]
     public void HostileHost_WhenMeasuringAt320_ThenAnExportedWidthCannotMoveIt()
     {
         // reflow() reads REFLOW_WIDTH, so one left exported would run every 320 call elsewhere.
