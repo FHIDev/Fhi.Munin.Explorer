@@ -1492,7 +1492,8 @@
         "NavnEngelsk": "Tromsø1 - The First Tromsø Study",
         "healthCategory": "[\"RPDG\",\"HGPD\"]",
         "BeskrivelseEngelsk": "The first Tromsø Study (Tromsø 1) was conducted in 1974 and included only men aged 20 to 49 years (born between 1925 and 1954). Because younger men had substantially higher morbidity and mortality from cardiovascular diseases at the time, only men were invited to participate in this first survey.\n[Tromsø1 - The First Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708230)"
-      }
+      },
+      "displayOrder": 1
     },
     {
       "id": "515fa447-b65d-49eb-afcf-d17701d0902e",
@@ -1519,7 +1520,8 @@
         "NavnEngelsk": "Tromsø2 - The Second Tromsø Study",
         "healthCategory": "[\"RPDG\",\"HGPD\"]",
         "BeskrivelseEngelsk": "[Tromsø2 - The Second Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708899)"
-      }
+      },
+      "displayOrder": 2
     },
     {
       "id": "85fdc669-0511-4c3f-8acc-0f7fbf7f43fc",
@@ -1546,7 +1548,8 @@
         "NavnEngelsk": "Tromsø3 - The Third Tromsø Study",
         "healthCategory": "[\"RPDG\",\"HGPD\"]",
         "BeskrivelseEngelsk": "[Tromsø3 - The Third Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708900)"
-      }
+      },
+      "displayOrder": 3
     }
   ],
   "delkilder": [
@@ -1600,7 +1603,8 @@
             "SistOppdatert": "20230327",
             "NavnEngelsk": "Tromsø4 - The Fourth Tromsø Study - first visit",
             "healthCategory": "[\"RPDG\"]"
-          }
+          },
+          "displayOrder": 2
         },
         {
           "id": "08010ed0-ec9a-47be-87d9-a53f09847fa2",
@@ -1627,10 +1631,12 @@
             "NavnEngelsk": "Tromsø4 - The Fourth Tromsø Study - second visit",
             "healthCategory": "[\"RPDG\",\"HGPD\"]",
             "BeskrivelseEngelsk": "Everyone in the 55-74 age group, along with 5-10 percent in the 25-54 and 75-85 age groups were given the opportunity to undergo an extensive special study. A total of 7965 people accepted this offer. This included also measurement of bone density as a part of the TROST study"
-          }
+          },
+          "displayOrder": 1
         }
       ],
-      "children": []
+      "children": [],
+      "displayOrder": 4
     },
     {
       "id": "5d918571-ae1a-41bf-ac56-56c65e6c7b04",
@@ -1683,7 +1689,8 @@
             "NavnEngelsk": "Tromsø5 - The Fifth Tromsø Study - first visit",
             "healthCategory": "[\"RPDG\"]",
             "BeskrivelseEngelsk": "The fifth survey of the Tromsø Study (Tromsø5) was conducted in 2001. A total of 8130 men and women aged between 30 and 89 participated in this study. Two groups of people were invited to participate. The largest group comprised men and women in the Tromsø municipality who had participated in the special study in 1994-95 (the Tromsø Study Panel). A somewhat smaller group of 1916 men and women consisted of people who the Norwegian Institute of Public Health (FHI) wanted to study as part of its nationwide health study of people in the following age groups: 30, 40, 45, 60 or 75 (the FHI panel).\n[Tromsø5 - The Fifth Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708903)"
-          }
+          },
+          "displayOrder": 2
         },
         {
           "id": "be0c142f-6fbc-4ef2-b95f-d662ee33e1a7",
@@ -1710,10 +1717,12 @@
             "NavnEngelsk": "Tromsø5 - The Fifth Tromsø Study - second visit",
             "healthCategory": "[\"RPDG\"]",
             "BeskrivelseEngelsk": "Members of the Tromsø Study panel who attended, 89 percent in all, were invited to attend a much more comprehensive examination like the one they experienced in the Tromsø4.\n\n[Tromsø5 - The Fifth Tromsø Study - Second visit](https://uit.no/research/tromsoundersokelsen/project?pid=710325)\n"
-          }
+          },
+          "displayOrder": 1
         }
       ],
-      "children": []
+      "children": [],
+      "displayOrder": 5
     },
     {
       "id": "db784dca-0f4a-4fc5-81bf-d1c0a57b3c1f",
@@ -1766,7 +1775,8 @@
             "NavnEngelsk": "Tromsø6 - The Sixth Tromsø Study - first visit",
             "healthCategory": "[\"RPDG\",\"HGPD\"]",
             "BeskrivelseEngelsk": "The sixth survey of the Tromsø Study (Tromsø6) was conducted in 2007-08. A total of 12984 men and women aged 30-87 took part. The invited population consisted of four groups: Subjects who took part in the special study in the Tromsø 4, a 10 % random sample of subjects aged 30-39, all individuals aged 40-42 or 60-87 and a 40 % random sample of subjects aged 43-59 years. A total of 12984 men and women (65,7 % of the invited population) attended the survey.\n[Tromsø6 - The Sixth Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708904)"
-          }
+          },
+          "displayOrder": 2
         },
         {
           "id": "c0ab0929-0cb2-4191-901e-bbc824b2c0de",
@@ -1793,10 +1803,12 @@
             "NavnEngelsk": "Tromsø6 - The Sixth Tromsø Study - second visit",
             "healthCategory": "[\"RPDG\"]",
             "BeskrivelseEngelsk": "All individuals who had taken part in the special study in Tromsø4, who were aged 50-62 or 75-84 as well as a 20 % random sample of subjects aged 63-74 were invited to a more comprehensive examionation in the same way as in the Tromsø4 and Tromsø5 surveys. "
-          }
+          },
+          "displayOrder": 1
         }
       ],
-      "children": []
+      "children": [],
+      "displayOrder": 6
     },
     {
       "id": "de056903-7b6d-401f-9aa0-e245fd7f0235",
@@ -1848,7 +1860,8 @@
             "SistOppdatert": "20230327",
             "NavnEngelsk": "Tromsø7 - The Seventh Tromsø Study - first visit",
             "healthCategory": "[\"RPDG\"]"
-          }
+          },
+          "displayOrder": 2
         },
         {
           "id": "3b9a812b-c54c-4547-9c2c-af7eeee4b1da",
@@ -1874,10 +1887,12 @@
             "SistOppdatert": "20230327",
             "NavnEngelsk": "Tromsø7 - The Seventh Tromsø Study - second visit",
             "healthCategory": "[\"RPDG\"]"
-          }
+          },
+          "displayOrder": 1
         }
       ],
-      "children": []
+      "children": [],
+      "displayOrder": 7
     }
   ],
   "totalVariables": 12728,

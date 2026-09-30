@@ -359,23 +359,23 @@ public class KildeSectionsTest : ExplorerTestContext
         ], TextOf(cut.FindAll(
             ".munin-explorer-hierarchy__metadata > table.munin-explorer-kilde__datasamlinger tbody th")));
 
-        // Then the four waves, in the catalogue's order, each with what is inside it. A wave that
-        // holds nothing is drawn all the same; this capture has none, so KildeViewTest pins that
-        // against a written source.
+        // Then the four waves, each with what is inside it, in the catalogue's displayOrder (the test
+        // catalogue puts the second visit first, #480). An empty wave is drawn too; KildeViewTest pins
+        // that against a written source, since this capture has none.
         Assert.Equal(
         [
             "Tromsø4 - Den fjerde Tromsøundersøkelsen: "
-            + "Tromsø4 - Den fjerde Tromsøundersøkelsen - føste besøk, "
-            + "Tromsø4 - Den fjerde Tromsøundersøkelsen - andre besøk",
+            + "Tromsø4 - Den fjerde Tromsøundersøkelsen - andre besøk, "
+            + "Tromsø4 - Den fjerde Tromsøundersøkelsen - føste besøk",
             "Tromsø5 - Den femte Tromsøundersøkelsen: "
-            + "Tromsø5 - Den femte Tromsøundersøkelsen - første besøk, "
-            + "Tromsø5 - Den femte Tromsøundersøkelsen - andre besøk",
+            + "Tromsø5 - Den femte Tromsøundersøkelsen - andre besøk, "
+            + "Tromsø5 - Den femte Tromsøundersøkelsen - første besøk",
             "Tromsø6 - Den sjette Tromsøundersøkelsen: "
-            + "Tromsø6 - Den sjette Tromsøundersøkelsen første besøk, "
-            + "Tromsø6 - Den sjette Tromsøundersøkelsen - andre besøk",
+            + "Tromsø6 - Den sjette Tromsøundersøkelsen - andre besøk, "
+            + "Tromsø6 - Den sjette Tromsøundersøkelsen første besøk",
             "Tromsø7 - Den sjuende Tromsøundersøkelsen: "
-            + "Tromsø7 - Den sjuende Tromsøundersøkelsen - første besøk, "
-            + "Tromsø7 - Den sjuende Tromsøundersøkelsen - andre besøk",
+            + "Tromsø7 - Den sjuende Tromsøundersøkelsen - andre besøk, "
+            + "Tromsø7 - Den sjuende Tromsøundersøkelsen - første besøk",
         ], Waves(cut));
     }
 
