@@ -465,7 +465,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the same order, in inline flow instead of a row of capsules. What the rules buy is the capsule
     itself and a 24×24 box for the close control, which is a WCAG 2.5.5 target rather than a
     decoration. The rules are `Fhi.Helsedata.Stiler` PR 39206's, which 0.1.42 predates and 0.1.68 —
-    the version helsedata.no pins — carries. The two other names in that
+    what helsedata.no pinned when this was written; their test environment had 0.1.141 on 2026-09-30 — carries. The two other names in that
     row are borrowed and need nothing new — the heading is `caption margin--none` and the clear-all
     is `hd-button-square button-square--ghost`, Stiler's, worn in this component already by the
     facet panel's fold toggle.
@@ -1558,7 +1558,8 @@ parameter removed or retyped, a `munin-explorer-` class name or fixed section id
 dropped, or a higher Stiler floor. The fixed section ids are the ones the component names itself.
 A catalogue-placed section's `#munin-explorer-section-<group key>` follows the group keys Munin's
 catalogue sets, and is not part of the promise. The Stiler floor is 0.1.114, the oldest Stiler 1.0
-renders correctly with. 1.0 is styled for 0.1.140. A version that consumers have restored cannot
+renders correctly with. 1.0 is styled for 0.1.141, and hosts are to run the latest Stiler (decided
+2026-09-30, when helsedata's test environment had 0.1.141). A version that consumers have restored cannot
 be walked back.
 
 ## Changelog

@@ -20,14 +20,14 @@
        0.1.41 is the first release carrying `.munin-explorer-kilder-scroll`, which is the
        Stiler half of Fhi.Metadata-b3brc and what /kilder needs to fit at 1024 and 843.
 
-       AHEAD OF HELSEDATA ON PURPOSE, against the bump rule above: helsedata.no pins 0.1.68 (their
-       PR 39284, checked 2026-09-14), which lacks both the branch disclosure rules
-       (Fhi.Metadata-adog5) and the long-value breaks 0.1.79 carries. The 320px step no longer passes on 0.1.68: the
-       states it measures need those breaks, which is what this branch's negative control shows
-       (Fhi.Metadata-ofg1h).
+       HELSEDATA: their test environment had 0.1.141 on 2026-09-30, one release past this pin and
+       drawing the same; production was not checked. This pin ran ahead of theirs on purpose while they
+       pinned 0.1.68 (their PR 39284, checked 2026-09-14), which lacks the branch disclosure rules
+       (Fhi.Metadata-adog5) and 0.1.79's long-value breaks the 320px step needs (Fhi.Metadata-ofg1h).
 
-       0.1.140 keeps hidden sticky toolbar actions out of the Tab order (Fhi.Metadata-5fuvd): the styling
-       1.0 is released against (Fhi.Metadata-d3jz3).
+       0.1.141 changes only Stiler's build pipeline and draws as 0.1.140. It is the styling 1.0 is
+       released against, and hosts are to run the latest Stiler (decided 2026-09-30; Fhi.Metadata-d3jz3).
+       0.1.140 keeps hidden sticky toolbar actions out of the Tab order (Fhi.Metadata-5fuvd).
        0.1.139 adds mobile cards for datasamlinger and saved variables (Fhi.Metadata-n8ygv,
        Fhi.Metadata-z4r1d).
        0.1.136 wraps long names and codes inside the revealed sticky detail bar (Fhi.Metadata-r0qd6).
