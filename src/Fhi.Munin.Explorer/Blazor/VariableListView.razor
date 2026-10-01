@@ -245,6 +245,7 @@ else if (State?.IsAuthenticated == true)
                         <button class="hd-button-square button-square--secondary @(AlertText is null ? "margin-top " : "")margin-right margin-bottom munin-explorer-retry"
                                 type="button"
                                 aria-disabled="@AriaDisabled(ListsFailureShown)"
+                                aria-label="@T.RetryListsName"
                                 @onclick="RetryListsAsync">@T.RetryLists</button>
                     </div>
                 }

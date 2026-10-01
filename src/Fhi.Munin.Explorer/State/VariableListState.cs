@@ -133,6 +133,7 @@ public sealed partial class VariableListState(
         }
 
         var startedAt = _generation;
+        var activeAtStart = _activeListId;
         _loading = true;
         ListsReadFailed = false;
 
@@ -182,6 +183,16 @@ public sealed partial class VariableListState(
         _lists = lists;
         _loaded = true;
         ListsReadFailed = false;
+
+        // Deleted elsewhere, say in another tab: forgotten as DeleteAsync forgets it, so the next ask picks another.
+        // Only if it was already active when the read began: a list made during the read is not in its answer.
+        if (_activeListId is { } active && active == activeAtStart && !lists.Any(l => l.Id == active))
+        {
+            _activeListId = null;
+            _membershipLoaded = false;
+            _saved.Clear();
+            ForgetKilder();
+        }
 
         RaiseChanged(listId: null, affectsRows: true);
     }

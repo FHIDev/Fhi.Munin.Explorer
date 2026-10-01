@@ -54,6 +54,9 @@ public class VariableListStateTest : ExplorerTestContext
             return Task.FromResult(true);
         }
 
+        /// <summary>Drops a list from the answers, as a delete in another tab would.</summary>
+        public void Forget(Guid id) => _lists.RemoveAll(l => l.Id == id);
+
         public override Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
@@ -167,6 +170,52 @@ public class VariableListStateTest : ExplorerTestContext
         await Assert.ThrowsAsync<TaskCanceledException>(() => state.EnsureLoadedAsync(cancelled.Token));
 
         Assert.False(state.ListsReadFailed);
+    }
+
+    /// <summary>Holds the lists read until told, and makes lists the held answer never mentions.</summary>
+    private sealed class HeldListsClient : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource<IReadOnlyList<VariableList>> _lists = new();
+
+        public void Answer() => _lists.SetResult([]);
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            _lists.Task;
+
+        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new VariableList { Id = Guid.NewGuid(), Name = name });
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenAListIsMadeActiveWhileItReads_ThenItsAnswerDoesNotForgetIt()
+    {
+        // A save made before the mount's read lands creates and activates a list that read never saw.
+        var client = new HeldListsClient();
+        var state = SignedIn(client);
+        var read = state.EnsureLoadedAsync();
+        var made = await state.CreateAsync("Ny");
+        await state.SetActiveListAsync(made!.Id);
+
+        client.Answer();
+        await read;
+
+        Assert.Equal(made.Id, state.ActiveListId);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheActiveListIsNoLongerAmongTheLists_ThenItIsForgotten()
+    {
+        // Deleted in another tab: kept active, the view would ask for a list the API no longer has.
+        var client = new CountingClient();
+        var state = SignedIn(client);
+        var gone = await state.CreateAsync("Borte");
+        await state.SetActiveListAsync(gone!.Id);
+        await client.DeleteMyListAsync(gone.Id);
+        client.Forget(gone.Id);
+
+        await state.RefreshAsync();
+
+        Assert.Null(state.ActiveListId);
     }
 
     [Fact]

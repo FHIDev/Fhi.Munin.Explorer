@@ -1142,6 +1142,41 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task RetryLists_WhenTheShownListWasDeletedElsewhere_ThenTheNextListIsShown()
+    {
+        // The refreshed lists no longer hold the active one; left pointing at it, nothing was shown.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+        var state = Services.GetRequiredService<VariableListState>();
+        client.ListsThrow = true;
+        client.ThrottledList = ListId;
+        await cut.InvokeAsync(async () => await Assert.ThrowsAnyAsync<Exception>(() => state.RefreshAsync()));
+
+        client.ListsThrow = false;
+        client.ThrottledList = null;
+        await client.DeleteMyListAsync(ListId);
+        await PressAsync(cut, "Prøv igjen");
+
+        cut.WaitForAssertion(() => Assert.Equal("Hjerte og kar", ListHeading(cut).TextContent));
+        Assert.Equal(ListClient.SecondListId, state.ActiveListId);
+        Assert.Null(RetryButton(cut));
+    }
+
+    [Fact]
+    public async Task RetryLists_ItsAccessibleName_StartsWithTheCaptionAndSaysWhatItRetries()
+    {
+        // Beside the search's own retries in a screen reader's button list, "Prøv igjen" alone is ambiguous.
+        var cut = RenderView(new ListClient { ListsThrow = true });
+        await cut.InvokeAsync(() => { });
+
+        var button = RetryButton(cut)!;
+
+        Assert.Equal("Prøv igjen å hente listene", AccessibleName.Of(button));
+        Assert.StartsWith(button.TextContent.Trim(), AccessibleName.Of(button), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task RetryLists_WhenTheListsAnswerButTheChosenListIsRefused_ThenTheRetryStaysOffered()
     {
         // The lists land, the chosen list's membership read is refused: no list is shown, so the
