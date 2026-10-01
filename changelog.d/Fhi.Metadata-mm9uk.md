@@ -1,0 +1,2 @@
+category: Fixed
+- **An empty saved list says so once.** It used to show "Listen er tom" beside the actions and "Denne listen er tom." below them. The first is now visually hidden while the sentence below says the list is empty; with a kilde ticked that sentence says something else, and the first stays visible. It stays in the page as the reason the copy, empty and share buttons are refused, so a screen reader still hears why. It uses the existing `screenreader-only` name, so no new class name and no Stiler change.

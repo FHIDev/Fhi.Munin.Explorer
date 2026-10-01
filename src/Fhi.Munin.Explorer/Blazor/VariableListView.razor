@@ -123,9 +123,11 @@ else if (State?.IsAuthenticated == true)
                             aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
                             @onclick="ToggleSharingFromControl">@T.ShareList</button>
 
+                    @* The refused buttons' reason. Hidden to sight, not removed, while the sentence below
+                       says the same, so it is said once and the buttons still describe themselves. *@
                     @if (ShownListIsEmpty)
                     {
-                        <span id="@ListEmptyReasonId">@T.ListIsEmpty</span>
+                        <span id="@ListEmptyReasonId" class="@(ListEmptySaidBelow ? "screenreader-only" : null)">@T.ListIsEmpty</span>
                     }
                 }
             </div>
@@ -271,7 +273,7 @@ else if (State?.IsAuthenticated == true)
             {
                 <p>@T.NoListsYet</p>
             }
-            else if (_page is not null && _page.Items.Count == 0 && !_loading)
+            else if (EmptyRowsShown)
             {
                 <p>@EmptyMessage</p>
             }

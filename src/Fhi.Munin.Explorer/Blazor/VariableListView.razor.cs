@@ -503,6 +503,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string EmptyMessage =>
         State?.KildeFilter.Count > 0 ? T.NoVariablesForTheseKilder : T.EmptyList;
 
+    private bool EmptyRowsShown => _page is { Items.Count: 0 } && !_loading;
+
+    // With a kilde ticked the sentence says none come from those kilder, which is not why the buttons are refused.
+    private bool ListEmptySaidBelow => EmptyRowsShown && EmptyMessage == T.EmptyList;
+
     /// <summary>The one sentence the view's alert region says, the most recent failure first.</summary>
     private string? AlertText =>
         _failed ? T.ListLoadError
