@@ -1909,24 +1909,64 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void View_WhenAListWasJustCreated_ThenTheFormStaysOpenUnderTheReadersFocus()
+    public void View_WhenAListWasJustCreated_ThenTheFormClosesAndFocusGoesToThePickerNamingIt()
     {
-        // The one thing a disclosure must not do: fold away the control the reader is standing on.
-        // Removing a focused element drops focus to <body>, which is the reason nothing here is
-        // ever `disabled` either — so a create that succeeds clears the field and leaves the block.
-        var client = new ListClient { HasList = false };
+        // Skuld has no standing form. Folding it away takes the control under the reader's focus,
+        // so focus moves to what now names the new list rather than dropping to <body>.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
         var cut = RenderView(client);
 
         CreateField(cut).Change("Hjerte og kar");
         Press(cut, "Opprett liste");
 
         Assert.Equal(1, client.CreateCalls);
+        Assert.Empty(cut.FindAll("input[id^='munin-explorer-new-list-']"));
+        Assert.Equal("false",
+                     cut.Find("button[id^='munin-explorer-create-toggle-']").GetAttribute("aria-expanded"));
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus")
+            .Arguments[0].ShouldBeElementReferenceTo(cut.Find("select")));
+    }
+
+    [Fact]
+    public void View_WhenTheReadersFirstListWasJustCreated_ThenFocusReturnsToTheCreateControl()
+    {
+        // One list draws no picker; the control that opened the form is where focus goes back to.
+        var client = new ListClient { HasList = false };
+        var cut = RenderView(client);
+
+        CreateField(cut).Change("Hjerte og kar");
+        Press(cut, "Opprett liste");
+
+        Assert.Empty(cut.FindAll("select"));
+        Assert.Empty(cut.FindAll("input[id^='munin-explorer-new-list-']"));
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_createToggle"), FocusedId()));
+    }
+
+    /// <summary>The id of the reference the view holds for one of its controls.</summary>
+    /// <remarks>bUnit leaves the reference off buttons drawn inside DetailPage's content, so the
+    /// markup cannot be asked which element was focused; the component's own field can.</remarks>
+    private static string Held(IRenderedComponent<VariableListView> cut, string field) =>
+        ((Microsoft.AspNetCore.Components.ElementReference)typeof(VariableListView)
+            .GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(cut.Instance)!).Id;
+
+    private string? FocusedId() =>
+        JSInterop.Invocations.Where(i => i.Identifier == "Blazor._internal.domWrapper.focus").Select(i => i.Arguments[0]).LastOrDefault()
+            is Microsoft.AspNetCore.Components.ElementReference focused ? focused.Id : null;
+
+    [Fact]
+    public void View_WhenTheCreateFormIsOpen_ThenItsFieldAndButtonWearHelsedatasFormStyles()
+    {
+        // Unclassed, the field rendered at browser defaults and the ghost-blue button read as a link.
+        var cut = RenderView(new ListClient { HasList = false });
+        Press(cut, "Legg til ny liste");
 
         var field = cut.Find("input[id^='munin-explorer-new-list-']");
+        var create = cut.FindAll("button").First(b => b.TextContent.Trim() == "Opprett liste");
 
-        Assert.Equal("", field.GetAttribute("value") ?? "");
-        Assert.Equal("true",
-                     cut.Find("button.button-square--ghost-blue[aria-disabled]").GetAttribute("aria-disabled"));
+        Assert.Contains("input__field", field.ClassList);
+        Assert.Contains("button-square--secondary", create.ClassList);
+        Assert.DoesNotContain("button-square--ghost-blue", create.ClassList);
     }
 
     [Fact]
@@ -2078,11 +2118,10 @@ public class VariableListViewTest : ExplorerTestContext
         cut.FindAll("select option")[0].TextContent.Trim();
 
     [Fact]
-    public async Task View_WhenAListWasJustRenamed_ThenTheFormStaysOpenUnderTheReadersFocus()
+    public async Task View_WhenAListWasJustRenamed_ThenTheFormClosesAndFocusReturnsToRename()
     {
-        // The mirror of the create case above, and it needs its own: the holder patches the name in
-        // place rather than refetching, so this path never re-renders from an API answer and could
-        // fold the block away without any create test noticing.
+        // The mirror of the create case, and it needs its own: the holder patches the name in place
+        // rather than refetching, so this path never re-renders from an API answer.
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
         var cut = RenderView(client);
 
@@ -2090,13 +2129,56 @@ public class VariableListViewTest : ExplorerTestContext
         await PressAsync(cut, "Lagre navnet");
 
         Assert.Equal(1, client.RenameCalls);
+        Assert.Empty(cut.FindAll("input[id^='munin-explorer-rename-list-']"));
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_renameToggle"), FocusedId()));
+    }
 
-        var field = cut.Find("input[id^='munin-explorer-rename-list-']");
+    [Fact]
+    public async Task View_WhenARenameSucceedsWithTheCreateFormAlsoOpen_ThenFocusStillReturnsToRename()
+    {
+        // The forms open independently; one already open is not the reader moving on, and the folded
+        // rename form held their focus.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+        CreateField(cut);
 
-        Assert.Equal("", field.GetAttribute("value") ?? "");
-        Assert.Equal("true",
-                     cut.Find("input[id^='munin-explorer-rename-list-'] + button")
-                        .GetAttribute("aria-disabled"));
+        RenameField(cut).Change("Hjertet mitt");
+        await PressAsync(cut, "Lagre navnet");
+
+        Assert.Single(cut.FindAll("input[id^='munin-explorer-new-list-']"));
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_renameToggle"), FocusedId()));
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderOpensAnotherFormWhileACreateFinishes_ThenFocusIsLeftThere()
+    {
+        // A form opened during the call is the reader moving on; pulling them to the picker would steal it.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("button[id^='munin-explorer-rename-toggle-']")));
+        client.StallPageReads = true;
+
+        CreateField(cut).Change("Kreft og svulster");
+        var create = PressAsync(cut, "Opprett liste");
+        cut.WaitForAssertion(() => Assert.Equal("Kreft og svulster", ListHeading(cut).TextContent));
+        Reveal(cut, "button[id^='munin-explorer-rename-toggle-']");
+        client.ReleaseVariables();
+        await create;
+
+        await cut.InvokeAsync(() => { });
+        Assert.DoesNotContain(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
+    }
+
+    [Fact]
+    public void View_WhenTheRenameFormIsOpen_ThenItsFieldAndButtonWearHelsedatasFormStyles()
+    {
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        var field = RenameField(cut);
+        var save = cut.FindAll("button").First(b => b.TextContent.Trim() == "Lagre navnet");
+
+        Assert.Contains("input__field", field.ClassList);
+        Assert.Contains("button-square--secondary", save.ClassList);
     }
 
     [Fact]

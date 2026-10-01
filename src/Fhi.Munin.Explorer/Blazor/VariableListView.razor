@@ -58,6 +58,7 @@ else if (State?.IsAuthenticated == true)
                             type="button"
                             id="@RenameToggleId"
                             aria-expanded="@Expanded(_renaming)"
+                            @ref="_renameToggle"
                             @onclick="ToggleRenamingFromControl">@T.RenameList</button>
 
                     @* Refused on an empty list the way sharing is, and described by the same reason. *@
@@ -166,43 +167,50 @@ else if (State?.IsAuthenticated == true)
                 </div>
             }
 
-            @* Revealed by the button above, and NOT closed again by a create that succeeds: the reader
-               is standing on the button inside this block, and removing it would drop their focus to
-               <body> — the same reason nothing here is ever `disabled`. *@
+            @* Revealed by the button above and folded once the list is made. The reader is standing on
+               the button inside it, so TakeFocusTarget moves focus to the picker that now names the list
+               rather than letting the fold drop it to <body>. *@
             @if (_creating)
             {
                 <div>
                     @* A real label, never a placeholder: no accessible name, and gone the moment the
                        reader types (WCAG 4.1.2, 3.3.2). The id is per-mount, or two mounts name one
                        field twice. onchange, never oninput — a round trip per keystroke on a circuit. *@
-                    <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
-                    <input type="text"
-                           id="@NewListNameId"
-                           @bind="_newName"
-                           @bind:event="onchange" />
+                    @* helsedata's own field: label above, the bordered input under it. *@
+                    <div class="input__container">
+                        <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
+                        <input type="text"
+                               class="input__field input__field--small"
+                               id="@NewListNameId"
+                               @bind="_newName"
+                               @bind:event="onchange" />
+                    </div>
 
                     @* aria-disabled rather than disabled: it becomes unavailable the moment a
                        successful create clears the name, and disabling the element that has focus
                        drops focus to <body>. CreateListAsync already refuses an empty name, so the
                        press is inert. *@
-                    <button class="hd-button-square button-square--ghost-blue"
+                    @* Solid, so it reads as the form's action; primary is "Legg til ny liste" above it. *@
+                    <button class="hd-button-square button-square--secondary margin-top"
                             type="button"
                             aria-disabled="@AriaDisabled(_newName.Trim().Length > 0)"
                             @onclick="CreateListAsync">@T.CreateList</button>
                 </div>
             }
 
-            @* The same shape, for the list on screen. Left open after a rename that succeeds for the
-               reason the create block gives. *@
+            @* The same shape, for the list on screen, folded the same way once the rename is made. *@
             @if (_renaming && _shownList is not null)
             {
                 <div>
-                    <label class="form-element__label" for="@RenameListNameId">@T.RenameListName</label>
-                    <input type="text"
-                           id="@RenameListNameId"
-                           @bind="_renameName"
-                           @bind:event="onchange" />
-                    <button class="hd-button-square button-square--ghost-blue"
+                    <div class="input__container">
+                        <label class="form-element__label" for="@RenameListNameId">@T.RenameListName</label>
+                        <input type="text"
+                               class="input__field input__field--small"
+                               id="@RenameListNameId"
+                               @bind="_renameName"
+                               @bind:event="onchange" />
+                    </div>
+                    <button class="hd-button-square button-square--secondary margin-top"
                             type="button"
                             aria-disabled="@AriaDisabled(_renameName.Trim().Length > 0)"
                             @onclick="RenameListAsync">@T.SaveListName</button>
@@ -549,7 +557,7 @@ else if (State?.IsAuthenticated == true)
         {
             <label>
                 @T.ChooseList
-                <select value="@_shownList" @onchange="ChooseListAsync">
+                <select value="@_shownList" @onchange="ChooseListAsync" @ref="_listPicker">
                     @* Every option says what its list holds, which is what makes
                        helsedata's own overview readable at a glance — see ListOption. *@
                     @foreach (var list in Lists)
