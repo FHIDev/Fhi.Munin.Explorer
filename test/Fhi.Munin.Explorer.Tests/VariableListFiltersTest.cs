@@ -106,14 +106,19 @@ public class VariableListFiltersTest : ExplorerTestContext
         public override Task<bool> DeleteMyListAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(true);
 
-        public override Task<ExportedList> ExportListAsync(
-            IReadOnlyCollection<Guid> variableIds, ExportFormat format = ExportFormat.Xlsx,
-            bool includeKodeverk = false, Guid? kildeIdFilter = null,
-            CancellationToken cancellationToken = default)
-        {
-            ExportedIds = variableIds;
+        /// <summary>The kilder the export was narrowed by.</summary>
+        public IReadOnlyCollection<Guid>? ExportedKildeIds { get; private set; }
 
-            return Task.FromResult(new ExportedList([1], "application/vnd.ms-excel", "liste.xlsx"));
+        public override Task<ExportedList?> ExportMyListAsync(
+            Guid id, ExportFormat format = ExportFormat.Xlsx, bool includeKodeverk = false,
+            IReadOnlyCollection<Guid>? kildeIds = null, CancellationToken cancellationToken = default)
+        {
+            // What the API would put in the file: the list narrowed by kilde, as GetMyListVariablesAsync narrows it.
+            ExportedKildeIds = kildeIds;
+            ExportedIds = [.. _items.Where(i => kildeIds is not { Count: > 0 } || (i.KildeId is { } k && kildeIds.Contains(k)))
+                .Select(i => i.VariableId)];
+
+            return Task.FromResult<ExportedList?>(new ExportedList([1], "application/vnd.ms-excel", "liste.xlsx"));
         }
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
@@ -628,7 +633,7 @@ public class VariableListFiltersTest : ExplorerTestContext
             .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal))
             .Click());
 
-        Assert.NotNull(client.ExportedIds);
+        Assert.Equal([Reseptregisteret], client.ExportedKildeIds);
         Assert.Equal(15, client.ExportedIds!.Count);
     }
 

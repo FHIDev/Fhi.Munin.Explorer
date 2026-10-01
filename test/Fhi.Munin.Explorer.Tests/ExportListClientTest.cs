@@ -168,6 +168,68 @@ public class ExportListClientTest
         Assert.False(string.IsNullOrWhiteSpace(file.FileName));
     }
 
+    // ---- ExportMyListAsync (Fhi.Metadata-fiht4): the saved list's own export, which carries "Ønskede data" ----
+
+    private static readonly Guid MyListId = new("5f0c2e7a-91b4-4d3e-8a6f-2c7d1b9e4a30");
+
+    [Fact]
+    public async Task ExportMyListAsync_WhenAsked_ThenItPostsToTheListsOwnExportRouteWithTheChoices()
+    {
+        var handler = new FileHandler("application/zip", "variabelliste.zip");
+
+        var file = await Client(handler).ExportMyListAsync(MyListId, ExportFormat.Csv, includeKodeverk: true, kildeIds: [One, Two]);
+
+        Assert.Equal(HttpMethod.Post, handler.LastMethod);
+        Assert.Equal($"/api/explorer/my/lists/{MyListId}/export", handler.LastUri?.AbsolutePath);
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal("csv", sent.RootElement.GetProperty("format").GetString());
+        Assert.True(sent.RootElement.GetProperty("includeKodeverk").GetBoolean());
+        Assert.Equal([One, Two], sent.RootElement.GetProperty("kildeIds").EnumerateArray().Select(e => e.GetGuid()));
+
+        // No ids in the body: the API reads the list, which is what lets it fill in "Ønskede data".
+        Assert.False(sent.RootElement.TryGetProperty("variabelIds", out _));
+        Assert.Equal("application/zip", file!.ContentType);
+        Assert.Equal("variabelliste.zip", file.FileName);
+    }
+
+    [Fact]
+    public async Task ExportMyListAsync_WithNoKildeNarrowing_ThenKildeIdsIsNull()
+    {
+        var handler = new FileHandler("text/csv", "variabelliste.csv");
+
+        await Client(handler).ExportMyListAsync(MyListId, ExportFormat.Xlsx, kildeIds: []);
+
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal(JsonValueKind.Null, sent.RootElement.GetProperty("kildeIds").ValueKind);
+        Assert.Equal("xlsx", sent.RootElement.GetProperty("format").GetString());
+    }
+
+    [Fact]
+    public async Task ExportMyListAsync_WhenTheListIsGone_ThenItAnswersNull()
+    {
+        var handler = new FileHandler("text/plain", "x") { Status = HttpStatusCode.NotFound };
+
+        Assert.Null(await Client(handler).ExportMyListAsync(MyListId));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task ExportMyListAsync_WhenTheApiDeclinesTheCaller_ThenItThrowsTheUnauthorisedType(HttpStatusCode status)
+    {
+        var handler = new FileHandler("text/plain", "x") { Status = status };
+
+        await Assert.ThrowsAsync<MuninExplorerUnauthorizedException>(() => Client(handler).ExportMyListAsync(MyListId));
+    }
+
+    [Fact]
+    public async Task ExportMyListAsync_WhenTheApiRateLimits_ThenItThrowsItsOwnException()
+    {
+        var handler = StubHttpHandler.RateLimited(TimeSpan.FromSeconds(30));
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => Client(handler).ExportMyListAsync(MyListId));
+    }
+
     private sealed class NoDispositionHandler : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(

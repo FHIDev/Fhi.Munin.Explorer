@@ -386,6 +386,36 @@ public class VariableListViewTest : ExplorerTestContext
         /// </remarks>
         public bool ExportThrottles { get; init; }
 
+        /// <summary>The list the export named; null until a download.</summary>
+        public Guid? ExportedListId { get; private set; }
+
+        /// <summary>Set if the anonymous ids export was used, which carries no "Ønskede data".</summary>
+        public bool IdsExportUsed { get; private set; }
+
+        public override Task<ExportedList?> ExportMyListAsync(
+            Guid id,
+            ExportFormat format = ExportFormat.Xlsx,
+            bool includeKodeverk = false,
+            IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default)
+        {
+            // What the API would put in the file: the whole list, narrowed by kilde.
+            ExportedListId = id;
+            ExportedIds = [.. _items.Where(i => kildeIds is not { Count: > 0 } || (i.KildeId is { } k && kildeIds.Contains(k)))
+                .Select(i => i.VariableId)];
+            LastExportFormat = format;
+            LastIncludeKodeverk = includeKodeverk;
+
+            if (ExportThrottles)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            return ExportThrows
+                ? throw new InvalidOperationException("the browser refused")
+                : Task.FromResult<ExportedList?>(new ExportedList([1, 2, 3], "text/csv", "variabelliste.csv"));
+        }
+
         public override Task<ExportedList> ExportListAsync(
             IReadOnlyCollection<Guid> variableIds,
             ExportFormat format = ExportFormat.Xlsx,
@@ -393,6 +423,7 @@ public class VariableListViewTest : ExplorerTestContext
             Guid? kildeIdFilter = null,
             CancellationToken cancellationToken = default)
         {
+            IdsExportUsed = true;
             ExportedIds = variableIds;
             LastExportFormat = format;
             LastIncludeKodeverk = includeKodeverk;
@@ -2156,10 +2187,10 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task View_WhenTheListIsDownloaded_ThenEveryPageOfIdsIsSentNotJustTheOneOnScreen()
+    public async Task View_WhenTheListIsDownloaded_ThenTheListItselfIsExportedNotJustTheRowsOnScreen()
     {
-        // The reader asked for their list. A file holding only the 25 rows they happened to be
-        // looking at would be wrong in a way nobody notices until they open it.
+        // Fhi.Metadata-fiht4 (ADO 121736): only the list's own export carries each row's "Ønskede data"; the ids
+        // export left the column empty. And a file holding only the 25 rows on screen would be wrong too.
         var many = Enumerable.Range(1, 30).Select(i => Item($"Variabel {i}", $"V_{i}")).ToArray();
         var client = new ListClient(many) { PageSize = 25 };
         var cut = RenderView(client);
@@ -2167,7 +2198,8 @@ public class VariableListViewTest : ExplorerTestContext
         await cut.InvokeAsync(() => cut.FindAll("button")
             .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal)).Click());
 
-        Assert.NotNull(client.ExportedIds);
+        Assert.Equal(ListId, client.ExportedListId);
+        Assert.False(client.IdsExportUsed);
         Assert.Equal(30, client.ExportedIds!.Count);
     }
 

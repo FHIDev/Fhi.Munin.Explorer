@@ -316,6 +316,12 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// The export request. Named rather than anonymous, like the bodies beside it: the wire names
     /// carry the Norwegian stem, and an anonymous object puts that spelling out of reach of review.
     /// </summary>
+    /// <summary>The body of a saved list's export; the list itself is in the route.</summary>
+    private sealed record ExportMyListBody(
+        [property: JsonPropertyName("format")] string Format,
+        [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
+        [property: JsonPropertyName("kildeIds")] IReadOnlyCollection<Guid>? KildeIds);
+
     private sealed record ExportRequestBody(
         [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
         [property: JsonPropertyName("format")] string Format,
@@ -398,6 +404,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     private static string MyList(Guid id) => $"{MyLists}/{id}";
 
     private static string MyListVariables(Guid id) => $"{MyList(id)}/variables";
+
+    private static string MyListExport(Guid id) => $"{MyList(id)}/export";
 
     /// <summary>The per-variable annotation route. The API spells the segment <c>variabelId</c>.</summary>
     private static string MyListVariableDesiredData(Guid id, Guid variableId) =>
@@ -767,6 +775,40 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
         // The API's own name and type. Composing them here would get CSV-with-codebooks wrong: it
         // answers with a zip of two files, not a csv.
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "variabelliste";
+
+        return new ExportedList(bytes, contentType, fileName);
+    }
+
+    /// <inheritdoc />
+    public async Task<ExportedList?> ExportMyListAsync(
+        Guid id,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        IReadOnlyCollection<Guid>? kildeIds = null,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new ExportMyListBody(WireName(format), includeKodeverk, kildeIds is { Count: > 0 } ? kildeIds : null);
+
+        using var response = await SendAsync(HttpMethod.Post, MyListExport(id), body, cancellationToken);
+
+        // Another tab deleted the list, or it was never this reader's: the API answers both alike.
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            throw new MuninExplorerUnauthorizedException();
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
         var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
             ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
