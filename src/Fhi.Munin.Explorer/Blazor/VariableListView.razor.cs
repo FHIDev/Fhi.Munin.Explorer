@@ -503,6 +503,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string EmptyMessage =>
         State?.KildeFilter.Count > 0 ? T.NoVariablesForTheseKilder : T.EmptyList;
 
+    /// <summary>The one sentence the view's alert region says, the most recent failure first.</summary>
+    private string? AlertText =>
+        _failed ? T.ListLoadError
+        : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage
+          ?? CreateMessage ?? DesiredDataMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
+
     /// <summary>The lists are still being read, so an empty list says nothing about the reader yet.</summary>
     private bool ListsPending =>
         !_failed && ((State is { IsReadingLists: true } && Lists.Count == 0) || (_retryingLists && _page is null));

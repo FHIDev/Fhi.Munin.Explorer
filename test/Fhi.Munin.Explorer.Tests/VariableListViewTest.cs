@@ -932,7 +932,7 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     private static AngleSharp.Dom.IElement? RetryButton(IRenderedComponent<VariableListView> cut) =>
-        cut.FindAll("button").FirstOrDefault(b => b.TextContent.Trim() == "Prøv å hente listene på nytt");
+        cut.FindAll("button").FirstOrDefault(b => b.TextContent.Trim() == "Prøv igjen");
 
     [Fact]
     public async Task RetryLists_WhenTheListsCannotBeRead_ThenTheButtonReadsThemLeavesAndFocusGoesToTheList()
@@ -945,7 +945,7 @@ public class VariableListViewTest : ExplorerTestContext
         Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
 
         client.ListsThrow = false;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
         Assert.Equal(2, client.ListsCalls);
@@ -963,7 +963,7 @@ public class VariableListViewTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         client.ListsThrow = false;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         cut.WaitForAssertion(() => Assert.Contains("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal));
         Assert.Null(RetryButton(cut));
@@ -981,7 +981,7 @@ public class VariableListViewTest : ExplorerTestContext
 
         client.ListsThrow = false;
         client.ListsHang = true;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         Assert.Equal("true", RetryButton(cut)?.GetAttribute("aria-disabled"));
         Assert.Contains("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
@@ -995,7 +995,7 @@ public class VariableListViewTest : ExplorerTestContext
         var cut = RenderView(client);
         await cut.InvokeAsync(() => { });
 
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         Assert.Equal(2, client.ListsCalls);
         Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
@@ -1019,7 +1019,7 @@ public class VariableListViewTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         client.ListsThrow = false;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         cut.WaitForAssertion(() => Assert.Contains("Denne listen er tom.", cut.Markup, StringComparison.Ordinal));
         cut.WaitForAssertion(() => Assert.False(string.IsNullOrEmpty(Assert.IsType<Microsoft.AspNetCore.Components.ElementReference>(
@@ -1036,13 +1036,13 @@ public class VariableListViewTest : ExplorerTestContext
 
         client.ListsThrow = false;
         client.PageReadThrows = true;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
         Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
 
         client.PageReadThrows = false;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
         Assert.Null(RetryButton(cut));
@@ -1057,7 +1057,7 @@ public class VariableListViewTest : ExplorerTestContext
 
         client.ListsThrow = false;
         client.ListsHang = true;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
         await PressAsync(cut, "Legg til ny liste");
         await cut.InvokeAsync(client.AnswerNoLists);
 
@@ -1074,12 +1074,12 @@ public class VariableListViewTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
         client.ListsThrow = false;
         client.ThrottledList = ListId;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
         Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
 
         client.ThrottledList = null;
         client.StallVariablesFor = ListId;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         Assert.Contains("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
         Assert.Equal("true", RetryButton(cut)?.GetAttribute("aria-disabled"));
@@ -1104,9 +1104,9 @@ public class VariableListViewTest : ExplorerTestContext
         client.ThrottledList = null;
         client.StallVariablesFor = ListId;
         var pageReads = client.VariablesCalls;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
         Assert.Equal("true", RetryButton(cut)?.GetAttribute("aria-disabled"));
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         Assert.Equal(pageReads + 1, client.VariablesCalls);
         client.ReleaseVariables();
@@ -1123,13 +1123,13 @@ public class VariableListViewTest : ExplorerTestContext
 
         client.ListsThrow = false;
         client.ThrottledList = ListId;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
         Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
 
         client.ThrottledList = null;
-        await PressAsync(cut, "Prøv å hente listene på nytt");
+        await PressAsync(cut, "Prøv igjen");
 
         cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
         Assert.Null(RetryButton(cut));

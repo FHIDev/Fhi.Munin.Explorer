@@ -231,14 +231,18 @@ else if (State?.IsAuthenticated == true)
             @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
                same update is announced unreliably. Same shape as the explorer's own alert region. *@
             <div role="alert" aria-live="assertive" aria-atomic="true">
-                @(_failed ? T.ListLoadError : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null))
+                @* A paragraph, so the sentence keeps its distance from the buttons above it. *@
+                @if (AlertText is { } alert)
+                {
+                    <p>@alert</p>
+                }
 
                 @* In the region, so the failure and the way out are one utterance; the search's retry does the same.
-                   Its own block with a top margin, so it neither runs on from the sentence nor sits on the buttons above. *@
+                   Its own block; the top margin only while no sentence stands above it to give the gap. *@
                 @if (_retryingLists || ListsFailureShown)
                 {
                     <div>
-                        <button class="hd-button-square button-square--secondary margin-top margin-right margin-bottom munin-explorer-retry"
+                        <button class="hd-button-square button-square--secondary @(AlertText is null ? "margin-top " : "")margin-right margin-bottom munin-explorer-retry"
                                 type="button"
                                 aria-disabled="@AriaDisabled(ListsFailureShown)"
                                 @onclick="RetryListsAsync">@T.RetryLists</button>
