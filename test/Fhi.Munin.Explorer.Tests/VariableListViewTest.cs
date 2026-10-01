@@ -1103,13 +1103,42 @@ public class VariableListViewTest : ExplorerTestContext
         client.ListsThrow = false;
         client.ThrottledList = null;
         client.StallVariablesFor = ListId;
-        var pageReads = client.VariablesCalls;
+        var listReads = client.ListsCalls;
         await PressAsync(cut, "Prøv igjen");
         Assert.Equal("true", RetryButton(cut)?.GetAttribute("aria-disabled"));
+        var pageReads = client.VariablesCalls;
+        await PressAsync(cut, "Prøv igjen");
+
+        Assert.Equal(pageReads, client.VariablesCalls);
+        client.ReleaseVariables();
+
+        // The retry reads the lists again too: the refused refresh left them, and the flag, stale.
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+        Assert.Equal(listReads + 1, client.ListsCalls);
+        Assert.False(state.ListsReadFailed);
+    }
+
+    [Fact]
+    public async Task RetryLists_AfterARefusedRefresh_ThenOnePressReadsThePageOnce()
+    {
+        // The refresh's own Changed reloads the page too; the retry is the one that should.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => { });
+        var state = Services.GetRequiredService<VariableListState>();
+        client.ListsThrow = true;
+        client.ThrottledList = ListId;
+        await cut.InvokeAsync(async () => await Assert.ThrowsAnyAsync<Exception>(() => state.RefreshAsync()));
+
+        client.ListsThrow = false;
+        client.ThrottledList = null;
+        client.StallVariablesFor = ListId;
+        var pageReads = client.VariablesCalls;
         await PressAsync(cut, "Prøv igjen");
 
         Assert.Equal(pageReads + 1, client.VariablesCalls);
         client.ReleaseVariables();
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
     }
 
     [Fact]

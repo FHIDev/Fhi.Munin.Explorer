@@ -534,6 +534,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         try
         {
+            // A refused refresh leaves the old lists in place, which EnsureActiveListAsync would take as read.
+            if (State.ListsReadFailed)
+            {
+                await State.RefreshAsync();
+            }
+
             await State.EnsureActiveListAsync(readerAsked: true);
             await ShowActiveListAsync();
         }
@@ -752,7 +758,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 _failed = false;
             }
 
-            if (ShouldReloadFor(change))
+            // A retry reads the page itself once its lists are in; reloading here too would ask twice.
+            if (ShouldReloadFor(change) && !_retryingLists)
             {
                 await LoadPageAsync();
             }
