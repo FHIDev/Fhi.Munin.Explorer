@@ -136,6 +136,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _askedOnMount;
     private bool _retryingLists;
     private bool _focusAfterRetry;
+    private bool _focusAfterCreate;
+    private bool _focusAfterRename;
+    private int _formsOpenAtCreate;
+    private int _formsOpenAtRename;
+    private ElementReference _renameToggle;
+    private ElementReference _listPicker;
     private ElementReference _createToggle;
     private ElementReference _listRegion;
 
@@ -145,8 +151,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string _newName = "";
     private string _renameName = "";
 
-    // Both start closed, and neither is closed again by the write that succeeds: the reader is
-    // standing on the button inside the block, and removing it drops focus to <body>.
+    // Both start closed and fold once their write succeeds. The reader is standing on the button
+    // inside the block, so TakeFocusTarget moves focus on rather than letting the fold drop it.
     private bool _creating;
 
     private bool _renaming;
@@ -572,30 +578,60 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_focusAfterRetry)
-        {
-            return;
-        }
-
-        _focusAfterRetry = false;
-
-        // Never while the reader has moved on to a form of their own, and only to what this render drew.
-        if (ShowsSharedList || State?.IsAuthenticated != true
-            || _creating || _renaming || _openingShared || _copying || _confirmingDelete)
+        if (TakeFocusTarget() is not { } target)
         {
             return;
         }
 
         try
         {
-            await (_page is not null && (_page.Items.Count > 0 || _loading) ? _listRegion : _createToggle).FocusAsync();
+            await target.FocusAsync();
         }
         catch (Exception ex)
         {
             // A focus nicety must not take the circuit down with it.
-            Log?.LogWarning(ex, "could not move focus after the lists retry");
+            Log?.LogWarning(ex, "could not move focus after a retry, a create or a rename");
         }
     }
+
+    /// <summary>Where focus goes once the control that held it has left, or null to leave it be.</summary>
+    private ElementReference? TakeFocusTarget()
+    {
+        var afterCreate = _focusAfterCreate;
+        var afterRename = _focusAfterRename;
+        var afterRetry = _focusAfterRetry;
+        _focusAfterCreate = _focusAfterRename = _focusAfterRetry = false;
+
+        if ((!afterCreate && !afterRename && !afterRetry) || ShowsSharedList || State?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        // Never while the reader has moved on to a form of their own. For a create or a rename only a
+        // form opened during that call counts, against its own record, as the two can overlap.
+        var since = afterCreate ? _formsOpenAtCreate : afterRename ? _formsOpenAtRename : 0;
+        var movedOn = (OpenForms() & ~since) != 0;
+
+        if (movedOn)
+        {
+            return null;
+        }
+
+        if (afterCreate)
+        {
+            return Lists.Count > 1 ? _listPicker : _createToggle;
+        }
+
+        if (afterRename)
+        {
+            return _shownList is not null ? _renameToggle : null;
+        }
+
+        return _page is not null && (_page.Items.Count > 0 || _loading) ? _listRegion : _createToggle;
+    }
+
+    private int OpenForms() =>
+        (_creating ? 1 : 0) | (_renaming ? 2 : 0) | (_openingShared ? 4 : 0) | (_copying ? 8 : 0) | (_confirmingDelete ? 16 : 0);
 
     /// <summary>A read has answered, so an empty list means the reader has none rather than that we never found out.</summary>
     private bool ListsAnswered => !_failed && State is { HasLoaded: true };
@@ -1192,6 +1228,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         ForgetFailures();
+        _formsOpenAtCreate = OpenForms();
 
         VariableList? created;
 
@@ -1275,6 +1312,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _shownListMoves++;
         _pageNumber = 1;
         await LoadPageAsync();
+
+        // Folded once the list exists, as Skuld has no standing form; focus goes to what names it.
+        _creating = false;
+        _focusAfterCreate = true;
     }
 
     /// <summary>
@@ -1291,6 +1332,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         ForgetFailures();
+        _formsOpenAtRename = OpenForms();
 
         // Renaming never reads the page again: its own notification names _shownList but carries
         // AffectsRows: false, so ShouldReloadFor skips it without anything armed here for it.
@@ -1299,6 +1341,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             if (await State.RenameAsync(_shownList.Value, name))
             {
                 _renameName = "";
+                _renaming = false;
+                _focusAfterRename = true;
             }
             else
             {
