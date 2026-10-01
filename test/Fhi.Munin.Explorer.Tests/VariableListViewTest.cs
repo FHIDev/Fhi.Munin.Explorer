@@ -392,6 +392,9 @@ public class VariableListViewTest : ExplorerTestContext
         /// <summary>Set if the anonymous ids export was used, which carries no "Ønskede data".</summary>
         public bool IdsExportUsed { get; private set; }
 
+        /// <summary>Answer the export with null: the list was deleted in another tab, or is not the reader's.</summary>
+        public bool ExportListGone { get; init; }
+
         public override Task<ExportedList?> ExportMyListAsync(
             Guid id,
             ExportFormat format = ExportFormat.Xlsx,
@@ -409,6 +412,11 @@ public class VariableListViewTest : ExplorerTestContext
             if (ExportThrottles)
             {
                 throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (ExportListGone)
+            {
+                return Task.FromResult<ExportedList?>(null);
             }
 
             return ExportThrows
@@ -2216,6 +2224,21 @@ public class VariableListViewTest : ExplorerTestContext
 
         Assert.Contains("Kunne ikke laste ned", cut.Markup);
         Assert.DoesNotContain("for mange forespørsler", cut.Markup);
+    }
+
+    [Fact]
+    public async Task View_WhenTheListIsGoneByTheTimeItIsDownloaded_ThenTheReaderIsToldRatherThanGivenNothing()
+    {
+        // The API answers 404 for a list deleted in another tab; the client maps that to null, and a silent
+        // return would leave a button that looks like it worked.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ExportListGone = true };
+        var cut = RenderView(client);
+
+        await cut.InvokeAsync(() => cut.FindAll("button")
+            .First(b => b.TextContent.Contains("Excel", StringComparison.Ordinal)).Click());
+
+        Assert.Equal(ListId, client.ExportedListId);
+        Assert.Contains("Kunne ikke laste ned", cut.Markup);
     }
 
     [Fact]

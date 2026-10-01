@@ -312,16 +312,16 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// a body whose one property is unrecognised binds to null — which the API answers as
     /// "request body is required", a message that says nothing about the spelling that caused it.
     /// </remarks>
-    /// <summary>
-    /// The export request. Named rather than anonymous, like the bodies beside it: the wire names
-    /// carry the Norwegian stem, and an anonymous object puts that spelling out of reach of review.
-    /// </summary>
     /// <summary>The body of a saved list's export; the list itself is in the route.</summary>
     private sealed record ExportMyListBody(
         [property: JsonPropertyName("format")] string Format,
         [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
         [property: JsonPropertyName("kildeIds")] IReadOnlyCollection<Guid>? KildeIds);
 
+    /// <summary>
+    /// The export request. Named rather than anonymous, like the bodies beside it: the wire names
+    /// carry the Norwegian stem, and an anonymous object puts that spelling out of reach of review.
+    /// </summary>
     private sealed record ExportRequestBody(
         [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds,
         [property: JsonPropertyName("format")] string Format,
