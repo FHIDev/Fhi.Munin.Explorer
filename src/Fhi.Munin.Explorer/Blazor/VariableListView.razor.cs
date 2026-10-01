@@ -503,6 +503,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string EmptyMessage =>
         State?.KildeFilter.Count > 0 ? T.NoVariablesForTheseKilder : T.EmptyList;
 
+    /// <summary>The rows have been read and there are none, so <see cref="EmptyMessage"/> is on screen.</summary>
+    private bool EmptyRowsShown => _page is { Items.Count: 0 } && !_loading;
+
+    /// <summary>The sentence below says the list itself is empty, not only that the ticked kilder are.</summary>
+    private bool ListEmptySaidBelow => EmptyRowsShown && EmptyMessage == T.EmptyList;
+
     /// <summary>The one sentence the view's alert region says, the most recent failure first.</summary>
     private string? AlertText =>
         _failed ? T.ListLoadError

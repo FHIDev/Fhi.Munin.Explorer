@@ -250,6 +250,9 @@ public class VariableListViewTest : ExplorerTestContext
         /// <summary>Refuses the page read but not the membership walk, which asks for 1000 at a time.</summary>
         public bool PageReadThrows { get; set; }
 
+        /// <summary>Holds page reads, not the membership walk, until <see cref="ReleaseVariables"/>.</summary>
+        public bool StallPageReads { get; set; }
+
         /// <summary>Holds every variable read for this list until <see cref="ReleaseVariables"/>.</summary>
         /// <remarks>
         /// A real read is still out when the next caller arrives; a fake that answers at once is
@@ -295,7 +298,7 @@ public class VariableListViewTest : ExplorerTestContext
             }
 
             // Counted before the wait, so a second caller arriving mid-read is recorded.
-            if (StallVariablesFor == id)
+            if (StallVariablesFor == id || (StallPageReads && pageSize != 1000))
             {
                 await _variablesGate.Task;
             }
@@ -1000,6 +1003,50 @@ public class VariableListViewTest : ExplorerTestContext
         Assert.Equal(2, client.ListsCalls);
         Assert.Contains("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
         Assert.Equal("false", RetryButton(cut)?.GetAttribute("aria-disabled"));
+    }
+
+    private static AngleSharp.Dom.IElement EmptyReason(IRenderedComponent<VariableListView> cut) =>
+        cut.Find("[id^=munin-explorer-list-empty-]");
+
+    [Fact]
+    public void EmptyList_WhenItsRowsAreShownEmpty_ThenItIsSaidOnceAndTheButtonsKeepTheirReason()
+    {
+        // Loki's review: "Listen er tom" beside the actions and "Denne listen er tom." below.
+        var cut = RenderView(new ListClient());
+        cut.WaitForAssertion(() => Assert.Contains("Denne listen er tom.", cut.Markup, StringComparison.Ordinal));
+
+        var reason = EmptyReason(cut);
+
+        Assert.Contains("screenreader-only", reason.ClassList);
+        Assert.Equal("Listen er tom", reason.TextContent.Trim());
+        Assert.Equal(reason.Id, cut.FindAll("button").First(b => b.TextContent.Trim() == "Kopier liste").GetAttribute("aria-describedby"));
+    }
+
+    [Fact]
+    public async Task EmptyList_WithAKildeTicked_ThenTheReasonByTheButtonsStaysVisible()
+    {
+        // The sentence below then says no variables from those kilder, which reads as the rest still having some.
+        var client = new ListClient();
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Contains("Denne listen er tom.", cut.Markup, StringComparison.Ordinal));
+        var state = Services.GetRequiredService<VariableListState>();
+
+        await cut.InvokeAsync(() => state.ToggleKildeFilter(Guid.NewGuid()));
+
+        cut.WaitForAssertion(() => Assert.Contains("Ingen variabler fra de valgte kildene.", cut.Markup, StringComparison.Ordinal));
+        Assert.DoesNotContain("screenreader-only", EmptyReason(cut).ClassList);
+    }
+
+    [Fact]
+    public void EmptyList_WhileItsRowsAreStillBeingRead_ThenTheReasonByTheButtonsIsVisible()
+    {
+        // Until the sentence below is drawn, this is the only visible reason the buttons are refused.
+        var client = new ListClient { StallPageReads = true };
+        var cut = RenderView(client);
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("screenreader-only", EmptyReason(cut).ClassList));
+        Assert.DoesNotContain("Denne listen er tom.", cut.Markup, StringComparison.Ordinal);
+        client.ReleaseVariables();
     }
 
     [Fact]
