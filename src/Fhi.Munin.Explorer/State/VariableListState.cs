@@ -63,6 +63,15 @@ public sealed partial class VariableListState(
     /// <summary>The lists as last read. Empty for a signed-out reader, always.</summary>
     public IReadOnlyList<VariableList> Lists => _lists;
 
+    /// <summary>Whether <see cref="Lists"/> is an answer, so an empty one means the reader has none.</summary>
+    internal bool HasLoaded => _loaded;
+
+    /// <summary>Whether a read of <see cref="Lists"/> is in flight, whichever surface started it.</summary>
+    internal bool IsReadingLists => _loading;
+
+    /// <summary>Whether the last read of <see cref="Lists"/> failed, so an empty one is not an answer.</summary>
+    internal bool ListsReadFailed { get; private set; }
+
     /// <summary>Set by the root component from its parameter. Signing out drops what was loaded.</summary>
     public void SetAuthenticated(bool isAuthenticated)
     {
@@ -95,6 +104,7 @@ public sealed partial class VariableListState(
         }
 
         _loaded = false;
+        ListsReadFailed = false;
         RaiseChanged(listId: null, affectsRows: true);
     }
 
@@ -123,23 +133,65 @@ public sealed partial class VariableListState(
         }
 
         var startedAt = _generation;
+        var activeAtStart = _activeListId;
         _loading = true;
+        ListsReadFailed = false;
+
+        // Every surface draws this read's progress, not only the one that started it.
+        RaiseChanged(listId: null, affectsRows: false);
+
+        IReadOnlyList<VariableList> lists;
 
         try
         {
-            var lists = await _client.GetMyListsAsync(cancellationToken).ConfigureAwait(false);
+            lists = await _client.GetMyListsAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            _loading = false;
 
-            if (!StillCurrent(startedAt))
+            // Raised as well as thrown: a surface that joined this read in flight never sees the throw.
+            if (StillCurrent(startedAt))
             {
-                return;
+                ListsReadFailed = true;
+                RaiseChanged(listId: null, affectsRows: true);
             }
 
-            _lists = lists;
-            _loaded = true;
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            _loading = false;
+
+            if (StillCurrent(startedAt))
+            {
+                RaiseChanged(listId: null, affectsRows: false);
+            }
+
+            throw;
         }
         finally
         {
             _loading = false;
+        }
+
+        if (!StillCurrent(startedAt))
+        {
+            return;
+        }
+
+        _lists = lists;
+        _loaded = true;
+        ListsReadFailed = false;
+
+        // Deleted elsewhere, say in another tab: forgotten as DeleteAsync forgets it, so the next ask picks another.
+        // Only if it was already active when the read began: a list made during the read is not in its answer.
+        if (_activeListId is { } active && active == activeAtStart && !lists.Any(l => l.Id == active))
+        {
+            _activeListId = null;
+            _membershipLoaded = false;
+            _saved.Clear();
+            ForgetKilder();
         }
 
         RaiseChanged(listId: null, affectsRows: true);

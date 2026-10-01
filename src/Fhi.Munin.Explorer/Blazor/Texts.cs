@@ -23,6 +23,10 @@ internal sealed record Texts(
     string SearchPlaceholder,
     string SearchButton,
     string Loading,
+    string ListsLoading,
+    string RetryLists,
+    string RetryListsName,
+    string FiltersLoading,
     string Error,
 
     // The 429 answer, which is a different thing from the API being unreachable and has to read
@@ -1018,6 +1022,11 @@ internal sealed record Texts(
         SearchPlaceholder: "Søk etter navn, kode, beskrivelse eller datakilde",
         SearchButton: "Søk",
         Loading: "Henter variabler …",
+        ListsLoading: "Henter variabellistene dine …",
+        RetryLists: "Prøv igjen",
+        // Starts with the caption, so a voice-control user can say what they see (WCAG 2.5.3).
+        RetryListsName: "Prøv igjen å hente listene",
+        FiltersLoading: "Henter filtre …",
         Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
         RateLimitError: "Du har gjort for mange forespørsler. Vent litt før du prøver igjen.",
         Retrying: "Prøver igjen …",
@@ -1484,6 +1493,10 @@ internal sealed record Texts(
         SearchPlaceholder: "Search by name, code, description or data source",
         SearchButton: "Search",
         Loading: "Loading variables …",
+        ListsLoading: "Loading your variable lists …",
+        RetryLists: "Try again",
+        RetryListsName: "Try again to load the lists",
+        FiltersLoading: "Loading filters …",
         Error: "Could not load variables right now. Please try again shortly.",
         RateLimitError: "You have made too many requests. Please wait a little before trying again.",
         Retrying: "Trying again …",

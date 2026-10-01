@@ -54,6 +54,9 @@ public class VariableListStateTest : ExplorerTestContext
             return Task.FromResult(true);
         }
 
+        /// <summary>Drops a list from the answers, as a delete in another tab would.</summary>
+        public void Forget(Guid id) => _lists.RemoveAll(l => l.Id == id);
+
         public override Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
@@ -74,6 +77,174 @@ public class VariableListStateTest : ExplorerTestContext
         var state = new VariableListState(client);
         state.SetAuthenticated(true);
         return state;
+    }
+
+    /// <summary>Fails the lists read until told to answer.</summary>
+    private sealed class FlakyListsClient : EmptyMuninExplorerClient
+    {
+        public bool Fail { get; set; } = true;
+
+        /// <summary>Leave the next read in flight instead of answering it.</summary>
+        public bool Hold { get; set; }
+
+        /// <summary>Fail the way HttpClient's own timeout does: a cancellation nobody asked for.</summary>
+        public bool TimeOut { get; set; }
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            Hold ? Task.Delay(Timeout.Infinite, cancellationToken).ContinueWith<IReadOnlyList<VariableList>>(
+                    _ => [], cancellationToken, TaskContinuationOptions.None, TaskScheduler.Default)
+            : TimeOut ? Task.FromException<IReadOnlyList<VariableList>>(new TaskCanceledException("timeout"))
+            : Fail ? Task.FromException<IReadOnlyList<VariableList>>(new HttpRequestException("nede"))
+            : Task.FromResult<IReadOnlyList<VariableList>>([]);
+    }
+
+    [Fact]
+    public async Task ListsReadFailed_WhileARetryIsInFlight_ThenItIsNotStillSaid()
+    {
+        // Otherwise "Henter …" and "Kunne ikke hente" stand side by side for the whole retry.
+        var client = new FlakyListsClient();
+        var state = SignedIn(client);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => state.EnsureLoadedAsync());
+        client.Hold = true;
+        _ = state.EnsureLoadedAsync();
+
+        Assert.True(state.IsReadingLists);
+        Assert.False(state.ListsReadFailed);
+    }
+
+    [Fact]
+    public async Task ListsReadFailed_WhenTheReadTimesOut_ThenItIsSaidAndEverySurfaceIsTold()
+    {
+        // HttpClient's timeout is a TaskCanceledException; the caller cancelled nothing.
+        var state = SignedIn(new FlakyListsClient { TimeOut = true });
+        var toldItEnded = false;
+        state.Changed += _ => toldItEnded |= !state.IsReadingLists;
+
+        await Assert.ThrowsAsync<TaskCanceledException>(() => state.EnsureLoadedAsync());
+
+        Assert.True(state.ListsReadFailed);
+        Assert.True(toldItEnded);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenARetryStarts_ThenEverySurfaceIsToldBeforeItAnswers()
+    {
+        // A view still showing the last failure has to learn the retry began, not only how it ended.
+        var client = new FlakyListsClient();
+        var state = SignedIn(client);
+        await Assert.ThrowsAsync<HttpRequestException>(() => state.EnsureLoadedAsync());
+
+        VariableListState.ListChange? told = null;
+        state.Changed += change => told = change;
+        client.Hold = true;
+        _ = state.EnsureLoadedAsync();
+
+        Assert.True(state.IsReadingLists);
+        Assert.Equal(new VariableListState.ListChange(null, AffectsRows: false), told);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheCallerCancels_ThenEverySurfaceIsToldTheReadEnded()
+    {
+        var state = SignedIn(new FlakyListsClient { Hold = true });
+        using var cancel = new CancellationTokenSource();
+        var toldItEnded = false;
+        state.Changed += _ => toldItEnded |= !state.IsReadingLists;
+
+        var read = state.EnsureLoadedAsync(cancel.Token);
+        await cancel.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => read);
+        Assert.False(state.IsReadingLists);
+        Assert.True(toldItEnded);
+    }
+
+    [Fact]
+    public async Task ListsReadFailed_WhenTheCallerCancels_ThenItIsNotCalledAFailure()
+    {
+        var state = SignedIn(new FlakyListsClient { TimeOut = true });
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Assert.ThrowsAsync<TaskCanceledException>(() => state.EnsureLoadedAsync(cancelled.Token));
+
+        Assert.False(state.ListsReadFailed);
+    }
+
+    /// <summary>Holds the lists read until told, and makes lists the held answer never mentions.</summary>
+    private sealed class HeldListsClient : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource<IReadOnlyList<VariableList>> _lists = new();
+
+        public void Answer() => _lists.SetResult([]);
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            _lists.Task;
+
+        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new VariableList { Id = Guid.NewGuid(), Name = name });
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenAListIsMadeActiveWhileItReads_ThenItsAnswerDoesNotForgetIt()
+    {
+        // A save made before the mount's read lands creates and activates a list that read never saw.
+        var client = new HeldListsClient();
+        var state = SignedIn(client);
+        var read = state.EnsureLoadedAsync();
+        var made = await state.CreateAsync("Ny");
+        await state.SetActiveListAsync(made!.Id);
+
+        client.Answer();
+        await read;
+
+        Assert.Equal(made.Id, state.ActiveListId);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheActiveListIsNoLongerAmongTheLists_ThenItIsForgotten()
+    {
+        // Deleted in another tab: kept active, the view would ask for a list the API no longer has.
+        var client = new CountingClient();
+        var state = SignedIn(client);
+        var gone = await state.CreateAsync("Borte");
+        await state.SetActiveListAsync(gone!.Id);
+        await client.DeleteMyListAsync(gone.Id);
+        client.Forget(gone.Id);
+
+        await state.RefreshAsync();
+
+        Assert.Null(state.ActiveListId);
+    }
+
+    [Fact]
+    public async Task ListsReadFailed_WhenALaterReadSucceeds_ThenItIsCleared()
+    {
+        // Left set, an empty answer would be taken for an unread one, and the reader told nothing.
+        var client = new FlakyListsClient();
+        var state = SignedIn(client);
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => state.EnsureLoadedAsync());
+        Assert.True(state.ListsReadFailed);
+
+        client.Fail = false;
+        await state.EnsureLoadedAsync();
+
+        Assert.False(state.ListsReadFailed);
+    }
+
+    [Fact]
+    public async Task ListsReadFailed_WhenTheReaderSignsOutAndIn_ThenItIsCleared()
+    {
+        // The failure was the previous reader's read; the next reader's lists are not yet asked for.
+        var state = SignedIn(new FlakyListsClient());
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => state.EnsureLoadedAsync());
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+
+        Assert.False(state.ListsReadFailed);
     }
 
     // -----------------------------------------------------------------------

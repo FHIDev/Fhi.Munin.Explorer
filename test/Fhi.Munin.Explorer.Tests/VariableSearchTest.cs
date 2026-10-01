@@ -3652,6 +3652,85 @@ public class VariableSearchTest : ExplorerTestContext
     private static readonly Guid Bakgrunn = new("cccccccc-0000-0000-0000-000000000001");
     private static readonly Guid Levekaar = new("cccccccc-0000-0000-0000-000000000002");
 
+    /// <summary>Holds the facets read until the test answers it.</summary>
+    private sealed class HeldFacetsClient(Page<VariableSummary> answer) : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource<FilterOptions> _facets = new();
+        private bool _failedOnce;
+
+        /// <summary>Fail the first facets read, then hold every later one.</summary>
+        public bool FailFirst { get; init; }
+
+        public void Answer() => _facets.SetResult(Facets());
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(answer);
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (FailFirst && !_failedOnce)
+            {
+                _failedOnce = true;
+                return Task.FromException<FilterOptions>(new HttpRequestException("nede"));
+            }
+
+            return _facets.Task;
+        }
+    }
+
+    [Fact]
+    public void Filters_BeforeTheFacetsHaveArrived_ThenTheColumnSaysItIsFetchingThem()
+    {
+        // Loki's review saw the filter column blank for ~2.4 s on first visit.
+        var cut = RenderWith(new HeldFacetsClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        var column = cut.Find(".munin-explorer-filters");
+
+        Assert.Equal("true", column.GetAttribute("aria-busy"));
+        Assert.Equal("Henter filtre …", column.TextContent.Trim());
+        Assert.Empty(cut.FindAll("fieldset.munin-explorer-filters"));
+    }
+
+    [Fact]
+    public async Task Filters_WhenTheFacetsArrive_ThenTheFetchingLineGivesWayToThePanel()
+    {
+        var client = new HeldFacetsClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        await cut.InvokeAsync(client.Answer);
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("fieldset.munin-explorer-filters")));
+        Assert.DoesNotContain("Henter filtre", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filters_WhenTheFirstFacetsReadFails_ThenNoFetchingLineIsLeftBehind()
+    {
+        // The failure is said in the alert region; a "fetching" line beside it would contradict it.
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))) { FailFacets = true });
+
+        Assert.DoesNotContain("Henter filtre", cut.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".munin-explorer-filters"));
+    }
+
+    [Fact]
+    public void Filters_WhenTheFacetsFailedAndANewSearchRuns_ThenNoFetchingLineSitsBesideTheFailure()
+    {
+        // The alert still says the filters could not be read; "Henter filtre" beside it would say the opposite.
+        var cut = RenderWith(new HeldFacetsClient(OnePage(Variable("1. Tale", "KODE"))) { FailFirst = true });
+
+        cut.Find(".searchbox__freetext").Change("tale");
+        cut.Find("form").Submit();
+
+        Assert.Contains("Kunne ikke oppdatere filtrene", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Henter filtre", cut.Markup, StringComparison.Ordinal);
+    }
+
     /// <summary>Facets shaped like the real ones: two kildetyper, a kilde each, a nested delkilde.</summary>
     private static FilterOptions Facets() => new()
     {

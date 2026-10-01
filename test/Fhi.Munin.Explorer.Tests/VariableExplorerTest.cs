@@ -124,6 +124,74 @@ public class VariableExplorerTest : ExplorerTestContext
 
             return Task.FromResult(true);
         }
+
+        /// <summary>Leave the facets read in flight, as on a slow first visit.</summary>
+        public bool HoldFacets { get; init; }
+
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null, VariableFilter? filter = null, string? language = null,
+            CancellationToken cancellationToken = default) =>
+            HoldFacets
+                ? new TaskCompletionSource<FilterOptions>().Task
+                : base.GetFiltersAsync(search, filter, language, cancellationToken);
+    }
+
+    /// <summary>Refuses every lists read, a moment after it is asked or at once, as a throttled API or a throwing token provider does.</summary>
+    private sealed class RefusingListsClient : EmptyMuninExplorerClient
+    {
+        private int _listsCalls;
+
+        public int ListsCalls => Volatile.Read(ref _listsCalls);
+
+        public bool AtOnce { get; init; }
+
+        public override async Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
+        {
+            // Answers after 50, so a regression fails the count rather than spinning the render queue for good.
+            if (Interlocked.Increment(ref _listsCalls) > 50)
+            {
+                return [];
+            }
+
+            if (AtOnce)
+            {
+                throw new HttpRequestException("nede");
+            }
+
+            await Task.Delay(5, cancellationToken);
+            throw new HttpRequestException("nede");
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ListTab_WhenTheListsReadKeepsFailing_ThenOpeningItRetriesOnceAndRendersNever(bool atOnce)
+    {
+        // A failed read raises Changed; a render retrying it made a storm of ~100 reads in 1.5 s.
+        var client = new RefusingListsClient { AtOnce = atOnce };
+        Prepare(client);
+        var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
+        var state = Services.GetRequiredService<VariableListState>();
+        cut.WaitForAssertion(() => Assert.True(state.ListsReadFailed));
+        Assert.Equal(1, client.ListsCalls);
+
+        await cut.InvokeAsync(() => Tab(cut, "Variabelliste").Click());
+        await Task.Delay(1000);
+
+        Assert.Equal(2, client.ListsCalls);
+    }
+
+    [Fact]
+    public void ListTab_WhileTheSearchFacetsAreStillLoading_ThenTheirFetchingLineIsNotDrawnThere()
+    {
+        // The list tab has a filter panel of its own; the search's "Henter filtre" beside it filters nothing.
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")) { HoldFacets = true });
+        Assert.Contains("Henter filtre", cut.Markup, StringComparison.Ordinal);
+
+        Tab(cut, "Variabelliste").Click();
+
+        Assert.DoesNotContain("Henter filtre", cut.Markup, StringComparison.Ordinal);
     }
 
     private static VariableSummary Variable(string name, string code) =>

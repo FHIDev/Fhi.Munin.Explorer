@@ -41,6 +41,7 @@ else if (State?.IsAuthenticated == true)
                         type="button"
                         id="@CreateToggleId"
                         aria-expanded="@Expanded(_creating)"
+                        @ref="_createToggle"
                         @onclick="ToggleCreatingFromControl">@T.AddNewList</button>
 
                 @* Never disabled: it acts on no list, so an empty one does not stand in its way. *@
@@ -230,7 +231,24 @@ else if (State?.IsAuthenticated == true)
             @* Always in the DOM, empty when nothing is wrong — a role="alert" inserted and filled in the
                same update is announced unreliably. Same shape as the explorer's own alert region. *@
             <div role="alert" aria-live="assertive" aria-atomic="true">
-                @(_failed ? T.ListLoadError : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage)
+                @* A paragraph, so the sentence keeps its distance from the buttons above it. *@
+                @if (AlertText is { } alert)
+                {
+                    <p>@alert</p>
+                }
+
+                @* In the region, so the failure and the way out are one utterance; the search's retry does the same.
+                   Its own block; the top margin only while no sentence stands above it to give the gap. *@
+                @if (_retryingLists || ListsFailureShown)
+                {
+                    <div>
+                        <button class="hd-button-square button-square--secondary @(AlertText is null ? "margin-top " : "")margin-right margin-bottom munin-explorer-retry"
+                                type="button"
+                                aria-disabled="@AriaDisabled(ListsFailureShown)"
+                                aria-label="@T.RetryListsName"
+                                @onclick="RetryListsAsync">@T.RetryLists</button>
+                    </div>
+                }
             </div>
 
             @* A refused annotation gets its own region, because it outlasts whatever the reader does
@@ -245,7 +263,11 @@ else if (State?.IsAuthenticated == true)
                "du har ingen variabellister ennå" beside it answers the same question the other way —
                the reader cannot tell whether they have none or whether we never found out. The two
                branches below are already unreachable then, because a failure leaves _page null. *@
-            @if (!_failed && Lists.Count == 0)
+            @if (ListsPending)
+            {
+                <p class="caption" role="status">@T.ListsLoading</p>
+            }
+            else if (ListsAnswered && Lists.Count == 0)
             {
                 <p>@T.NoListsYet</p>
             }
@@ -268,7 +290,8 @@ else if (State?.IsAuthenticated == true)
                      style="overflow-x:auto;position:relative"
                      role="region"
                      tabindex="0"
-                     aria-labelledby="@ListHeadingId">
+                     aria-labelledby="@ListHeadingId"
+                     @ref="_listRegion">
                     <table class="munin-explorer-data-list" aria-labelledby="@ListHeadingId">
                         <thead>
                             <tr class="munin-explorer-data-list__item__row--header">

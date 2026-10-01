@@ -449,6 +449,13 @@ else
             }
         </fieldset>
     }
+    else if (_loading && _resultsTab != ExplorerTab.VariableList && _facetError is null)
+    {
+        @* No role="status": the line over the rows already says a search is running. *@
+        <div class="munin-explorer-filters" aria-busy="true">
+            <p class="caption">@T.FiltersLoading</p>
+        </div>
+    }
 
     @* Which filters are on, said over the results because the panel can be folded away, scrolled
        past or simply long. Every chip writes the same `_filter` its own checkbox does, and the
