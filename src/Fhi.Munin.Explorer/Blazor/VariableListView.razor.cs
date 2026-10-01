@@ -151,8 +151,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string _newName = "";
     private string _renameName = "";
 
-    // Both start closed, and neither is closed again by the write that succeeds: the reader is
-    // standing on the button inside the block, and removing it drops focus to <body>.
+    // Both start closed and fold once their write succeeds. The reader is standing on the button
+    // inside the block, so TakeFocusTarget moves focus on rather than letting the fold drop it.
     private bool _creating;
 
     private bool _renaming;
