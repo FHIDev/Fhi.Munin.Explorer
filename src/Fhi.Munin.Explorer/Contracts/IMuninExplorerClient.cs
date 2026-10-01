@@ -447,6 +447,32 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
+    /// One of the signed-in reader's lists as a file, with each variable's "Ønskede data" filled in: xlsx, csv,
+    /// or a zip when codebooks come too.
+    /// </summary>
+    /// <remarks>
+    /// Authenticated, unlike <see cref="ExportListAsync"/>: the annotations belong to the reader's list, so the API
+    /// reads the list itself rather than ids from the body. <paramref name="kildeIds"/> narrows it the way it
+    /// narrows <see cref="GetMyListVariablesAsync"/>, so the file holds the rows on screen. The API's ceiling is
+    /// 2000 variables. Carries a default body for the reader <see cref="ExportListAsync"/> names.
+    /// </remarks>
+    /// <param name="id">The list to export.</param>
+    /// <param name="format">Xlsx or Csv. Csv with codebooks answers with a zip.</param>
+    /// <param name="includeKodeverk">Whether to include the codebooks alongside the variables.</param>
+    /// <param name="kildeIds">When non-empty, only the variables from these kilder.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    /// <returns>The file, or <see langword="null"/> when the list is not the reader's or no longer exists.</returns>
+    Task<ExportedList?> ExportMyListAsync(
+        Guid id,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        IReadOnlyCollection<Guid>? kildeIds = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportMyListAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
     /// Redeem a code minted on the reader's other login, so both logins become one person and the
     /// lists saved under either are visible from both.
     /// </summary>

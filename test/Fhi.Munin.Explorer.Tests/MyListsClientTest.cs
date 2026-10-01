@@ -853,7 +853,7 @@ public class MyListsClientTest
     // ------------------------------------------------------------------------------- the trap itself
 
     [Fact]
-    public async Task EveryCall_WhenAHostSuppliesAToken_ThenItIsSentAsBearerOnAllEight()
+    public async Task EveryCall_WhenAHostSuppliesAToken_ThenItIsSentAsBearerOnAllNine()
     {
         // The point of this file in one test. Every one of these endpoints is [Authorize], and a
         // stub handler answers whatever it is told whether or not a token arrived — so a suite that
@@ -892,7 +892,8 @@ public class MyListsClientTest
             ("GetMyListVariablesAsync", () => client.GetMyListVariablesAsync(ListId)),
             ("AddVariablesToMyListAsync", () => client.AddVariablesToMyListAsync(ListId, ids)),
             ("RemoveVariablesFromMyListAsync", () => client.RemoveVariablesFromMyListAsync(ListId, ids)),
-            ("SetMyListDesiredDataAsync", () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76"))
+            ("SetMyListDesiredDataAsync", () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76")),
+            ("ExportMyListAsync", () => client.ExportMyListAsync(ListId))
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);
@@ -933,7 +934,8 @@ public class MyListsClientTest
             () => client.GetMyListVariablesAsync(ListId),
             () => client.AddVariablesToMyListAsync(ListId, ids),
             () => client.RemoveVariablesFromMyListAsync(ListId, ids),
-            () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76")
+            () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76"),
+            () => client.ExportMyListAsync(ListId)
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);

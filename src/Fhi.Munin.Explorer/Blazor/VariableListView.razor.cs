@@ -1528,21 +1528,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         try
         {
-            var ids = await AllVariableIdsAsync();
+            // The list itself rather than its ids, so the file carries each row's "Ønskede data" (Fhi.Metadata-fiht4).
+            // Narrowed by the same kilder as the table, so it holds what the reader was looking at.
+            var file = await Client.ExportMyListAsync(_shownList.Value, format, _includeKodeverk, State?.KildeFilter);
 
-            if (ids.Count == 0)
+            if (file is null)
             {
+                _downloadFailure = DownloadFailure.Failed;
                 return;
             }
 
-            var file = await Client.ExportListAsync(ids, format, _includeKodeverk);
             await BrowserDownload.OfferAsync(Js, file);
         }
         catch (MuninExplorerRateLimitedException ex)
         {
-            // The export sits under the browse policy, not the write one the saves use, and the
-            // id walk in front of it counts against that same bucket — keyed per user here, since
-            // the view only renders signed in. The generic sentence names no cause; this one does.
+            // The export sits under the browse policy, not the write one the saves use, keyed per user
+            // since the view only renders signed in. The generic sentence names no cause; this one does.
             Log?.LogWarning(
                 ex,
                 "the rate limiter refused the {Format} export of list {ListId}",
@@ -1553,8 +1554,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
         catch (MuninExplorerUnauthorizedException ex)
         {
-            // The id walk in front of the export reads my/lists, so a declined caller lands here
-            // rather than on a broken download.
+            // The export reads the reader's own list, so a declined caller lands here rather than
+            // on a broken download.
             Log?.LogWarning(
                 ex,
                 "the API refused the {Format} export of list {ListId} as unauthorised",
@@ -1576,44 +1577,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             _downloading = false;
         }
-    }
-
-    /// <summary>Every id in the list, read a page at a time.</summary>
-    private async Task<List<Guid>> AllVariableIdsAsync()
-    {
-        // A set, not a list, for the reason LoadMembershipAsync uses one: the list can be changed
-        // in another tab while these pages are being read, and an entry that drifts across a page
-        // boundary would otherwise appear twice in the downloaded file.
-        var ids = new HashSet<Guid>();
-        var page = 1;
-
-        while (true)
-        {
-            // The API's own ceiling per page, so a long list costs few round trips. Narrowed the
-            // same way the rows are: the button sits under a table showing 47 of 247, and a file
-            // holding the other 200 as well is not the list the reader was looking at.
-            var slice = await Client.GetMyListVariablesAsync(
-                _shownList!.Value, page, 1000, State?.KildeFilter);
-
-            if (slice is null || slice.Items.Count == 0)
-            {
-                break;
-            }
-
-            foreach (var item in slice.Items)
-            {
-                ids.Add(item.VariableId);
-            }
-
-            if (ids.Count >= slice.TotalCount)
-            {
-                break;
-            }
-
-            page++;
-        }
-
-        return [.. ids];
     }
 
     private enum SaveNameProblem

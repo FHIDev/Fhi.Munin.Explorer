@@ -29,6 +29,15 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This fake does not export.");
 
+    /// <inheritdoc cref="ExportListAsync"/>
+    public virtual Task<ExportedList?> ExportMyListAsync(
+        Guid id,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        IReadOnlyCollection<Guid>? kildeIds = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This fake does not export.");
+
     /// <summary>
     /// Refuses, like the interface's own default. A fake that answered <c>Linked</c> would let a
     /// test pass while the reader's two accounts stayed apart.
