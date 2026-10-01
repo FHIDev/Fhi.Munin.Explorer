@@ -234,11 +234,11 @@ else if (State?.IsAuthenticated == true)
                 @(_failed ? T.ListLoadError : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage ?? CreateMessage ?? DesiredDataMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null))
 
                 @* In the region, so the failure and the way out are one utterance; the search's retry does the same.
-                   Its own block, so it sits under the sentence rather than running on from it. *@
+                   Its own block with a top margin, so it neither runs on from the sentence nor sits on the buttons above. *@
                 @if (_retryingLists || ListsFailureShown)
                 {
                     <div>
-                        <button class="hd-button-square button-square--secondary margin-right margin-bottom munin-explorer-retry"
+                        <button class="hd-button-square button-square--secondary margin-top margin-right margin-bottom munin-explorer-retry"
                                 type="button"
                                 aria-disabled="@AriaDisabled(ListsFailureShown)"
                                 @onclick="RetryListsAsync">@T.RetryLists</button>
