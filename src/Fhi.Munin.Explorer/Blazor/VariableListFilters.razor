@@ -1,8 +1,9 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
 @* Signed out there is nothing here, the same as the view beside it: a filter panel over a list
-   nobody can read is a control with nothing behind it. *@
-@if (State?.IsAuthenticated == true)
+   nobody can read is a control with nothing behind it. Nor before the list's kilder are known:
+   with no lists, or while they are read, the headings would stand over nothing. *@
+@if (State?.IsAuthenticated == true && (Known || Chosen.Count > 0))
 {
     @* `munin-explorer-filters` and nothing invented: Stiler places this name in the grid's filters
        track, through a CHILD combinator on `.munin-explorer` — see the note in VariableSearch.razor
