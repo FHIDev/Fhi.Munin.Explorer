@@ -520,10 +520,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     two-track rule to a body that has one, as Stiler has since `Fhi.Metadata-ex5wb`. Ungated, a
     fixed 250px first track would lay a lone main column out in it.
     `VariableListView` is a fourth surface on that chassis since `Fhi.Metadata-35w0p.13`, and
-    `InstrumentView` a fifth since `Fhi.Metadata-hkf58`. Neither has a prefix of its own: both wear
-    `munin-explorer-page` and `munin-explorer-page__body` and `munin-explorer-page__main` with
-    nothing beside them, which is what lets the instrument page ship with no rule written in Stiler
-    for it at all. `VariableListView` is the view that never has a
+    `InstrumentView` a fifth since `Fhi.Metadata-hkf58`. Neither has a chassis prefix of its own:
+    both wear `munin-explorer-page` and `munin-explorer-page__body` and `munin-explorer-page__main`
+    with nothing beside them, which is what let the instrument page ship before Stiler had any
+    rule for it. `VariableListView` is the view that never has a
     contents column — the Kilde filter beside the list does the grouping a nav would, so the gate
     above is what decides whether it draws a rail it has nothing to put in. It and the instrument
     view both use `munin-explorer-page__header` for their name block, the chassis's own name for
@@ -531,8 +531,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     and since 0.1.144 the instrument view also wears `munin-explorer-instrument__header`, the name
     Stiler sizes as H1, while the saved lists' name stays `headline-s` (`Fhi.Metadata-86lt8`).
     Both are handles in the table below, and undefined they degrade quietly:
-    the heading is still a heading and still wears Stiler's own `headline headline-s`, so what is
-    lost is the rule and the space under the name block that separate it from the list.
+    the heading is still a heading and still wears Stiler's own `headline headline-s`. Without
+    `page__header` what is lost is the rule and the space under the name block that separate it
+    from the list; without `instrument__header`, the instrument's name drops to `headline-s`.
     The chassis adds two chrome names above the name block, `munin-explorer-page__eyebrow` and
     `munin-explorer-page__actions`, and the chrome's third piece — the breadcrumb — adds none at
     all, because it wears helsedata's own `breadcrumbs*` names listed further up. The eyebrow is

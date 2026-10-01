@@ -1956,7 +1956,7 @@ table.munin-explorer-data-list tbody th {
   padding-top: 40px;
 }
 
-/* Stiler 0.1.117's page-name and section-heading sizes (Fhi.Metadata-hphfz). The 500 stands in for
+/* Stiler 0.1.144's page-name and section-heading sizes (Fhi.Metadata-hphfz, -86lt8). The 500 stands in for
    graphik-medium, as elsewhere. */
 :is(.munin-explorer-kilde__header, .munin-explorer-whole__header, .munin-explorer-datasamling__header, .munin-explorer-instrument__header) > :is(h1, h2, h3, h4, h5, h6):first-child {
   font: normal 500 3.5rem/160% var(--font);
