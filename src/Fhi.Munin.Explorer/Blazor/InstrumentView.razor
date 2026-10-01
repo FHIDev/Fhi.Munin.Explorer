@@ -15,7 +15,9 @@
                 StickyCode="@StickyCode"
                 Contents="@DetailToc.Column(Toc, T.HeadingContents)">
         <Header>
-            <div class="munin-explorer-page__header">
+            @* Its own name beside the chassis's, so Stiler can size this page's name as H1 and the
+               saved lists' name, which shares the chassis header, as an ordinary heading. *@
+            <div class="munin-explorer-page__header munin-explorer-instrument__header">
 
                 @* The catalogue holds the Norwegian name in a column and the English as a curated
                    property, so the heading is marked with whichever of the two it resolved to. *@
