@@ -102,6 +102,7 @@ TARGETS=(
   "/kilder::kilde-facets"
   "/utforsker::explorer-tabs"
   "/utforsker::explorer-list-tab"
+  "/utforsker::list-row-panel"
 )
 
 host_pid=""

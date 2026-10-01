@@ -215,6 +215,18 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Navigation.ToAbsoluteUri(_mirror.Address(new ExplorerUrlState { ShareCode = code }.ToQueryString()))
                 .ToString();
 
+    private Func<VariableListItem, string>? _variableAddress;
+
+    // Searched by its code, because the search keeps a selection only on a row its first page shows.
+    private Func<VariableListItem, string>? VariableHref => Declined("variabelId")
+        ? null
+        : _variableAddress ??= item =>
+            Navigation.ToAbsoluteUri(_mirror.Address(Linkable(new ExplorerUrlState
+            {
+                Search = item.VariableCode,
+                SelectedVariableId = item.VariableId,
+            }).ToQueryString())).ToString();
+
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 
     private bool Owns(string key) =>

@@ -32,6 +32,9 @@ internal sealed class VariablePanelTabs : ComponentBase
 
     [Parameter] public string Language { get; set; } = "no";
 
+    /// <summary>Whether the second tab opens with the description, which a parent may already show above.</summary>
+    [Parameter] public bool ShowDescription { get; set; } = true;
+
     /// <summary>A datatype code's name where the detail's own vocabulary has none.</summary>
     [Parameter] public Func<string, string?>? DataTypeName { get; set; }
 
@@ -116,9 +119,12 @@ internal sealed class VariablePanelTabs : ComponentBase
     private RenderFragment AboutTab => builder =>
     {
         // A <div>, not a <p>: authored text can hold a list.
-        builder.OpenElement(0, "div");
-        builder.AddContent(1, DetailValue(Detail.Description, authored: true));
-        builder.CloseElement();
+        if (ShowDescription)
+        {
+            builder.OpenElement(0, "div");
+            builder.AddContent(1, DetailValue(Detail.Description, authored: true));
+            builder.CloseElement();
+        }
 
         builder.OpenElement(2, "dl");
         builder.AddAttribute(3, "class", "munin-explorer-meta__grid munin-explorer-meta__grid-1");

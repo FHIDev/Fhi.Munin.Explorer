@@ -799,4 +799,18 @@ export const states = {
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
+
+  // A saved list's row opened into the variable's panel, which spans the table (ADO 121586).
+  'list-row-panel': async page => {
+    await states['explorer-list-tab'](page);
+
+    const name = page.locator('[role=tabpanel]:not([hidden]) th[scope=row] button').first();
+    await name.waitFor({ state: 'visible', timeout: findTimeout });
+    await name.click();
+
+    await page
+      .locator('[role=tabpanel]:not([hidden]) .munin-explorer-detail[aria-busy="false"] [role=tablist]')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
 };
