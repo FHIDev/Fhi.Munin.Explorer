@@ -431,13 +431,14 @@ public partial class VariableSearch
     }
 
     /// <summary>What is open in the panel and what was fetched into it.</summary>
-    private readonly record struct PanelState(Guid? Id, VariableDetail? Detail, string? Error, SourceState Source);
+    private readonly record struct PanelState(
+        Guid? Id, VariableDetail? Detail, string? Error, SourceState Source, KodeverkCodeLists? CodeLists);
 
     /// <summary>What is open in the kilde or datasamling panel inside it, and what was fetched.</summary>
     private readonly record struct SourceState(
         SourceKind? Kind, Guid? TargetId, KildeDetail? Kilde, DatasamlingDetail? Datasamling, string? Error);
 
-    private PanelState CapturePanel() => new(_selectedId, _detail, _detailError, CaptureSource());
+    private PanelState CapturePanel() => new(_selectedId, _detail, _detailError, CaptureSource(), _codeLists);
 
     private SourceState CaptureSource() => new(_sourceKind, _sourceTargetId, _kilde, _datasamling, _sourceError);
 
@@ -463,6 +464,7 @@ public partial class VariableSearch
         _selectedId = id;
         _detail = panel.Detail;
         _detailError = panel.Error;
+        _codeLists = panel.CodeLists ?? new KodeverkCodeLists(id, Client, Log);
 
         // A new owner of the panel: whatever was in flight when it closed must not land in the one
         // just put back.

@@ -599,6 +599,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     private static readonly Type[] Swept =
     [
         typeof(KildeSearch),
+        typeof(KodeverkGroups),
         typeof(VariableListFilters),
         typeof(VariableListView),
         typeof(VariableSearch),
