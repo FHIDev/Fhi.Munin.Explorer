@@ -138,7 +138,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _focusAfterRetry;
     private bool _focusAfterCreate;
     private bool _focusAfterRename;
-    private int _formsOpenAtWrite;
+    private int _formsOpenAtCreate;
+    private int _formsOpenAtRename;
     private ElementReference _renameToggle;
     private ElementReference _listPicker;
     private ElementReference _createToggle;
@@ -607,8 +608,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         // Never while the reader has moved on to a form of their own. For a create or a rename only a
-        // form opened during the call counts: one already open beside it is not the reader moving on.
-        var movedOn = afterRetry ? OpenForms() != 0 : (OpenForms() & ~_formsOpenAtWrite) != 0;
+        // form opened during that call counts, against its own record, as the two can overlap.
+        var since = afterCreate ? _formsOpenAtCreate : afterRename ? _formsOpenAtRename : 0;
+        var movedOn = (OpenForms() & ~since) != 0;
 
         if (movedOn)
         {
@@ -1226,7 +1228,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         ForgetFailures();
-        _formsOpenAtWrite = OpenForms();
+        _formsOpenAtCreate = OpenForms();
 
         VariableList? created;
 
@@ -1330,7 +1332,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         ForgetFailures();
-        _formsOpenAtWrite = OpenForms();
+        _formsOpenAtRename = OpenForms();
 
         // Renaming never reads the page again: its own notification names _shownList but carries
         // AffectsRows: false, so ShouldReloadFor skips it without anything armed here for it.

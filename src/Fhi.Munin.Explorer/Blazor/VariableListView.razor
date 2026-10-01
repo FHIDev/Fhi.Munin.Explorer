@@ -176,7 +176,6 @@ else if (State?.IsAuthenticated == true)
                     @* A real label, never a placeholder: no accessible name, and gone the moment the
                        reader types (WCAG 4.1.2, 3.3.2). The id is per-mount, or two mounts name one
                        field twice. onchange, never oninput — a round trip per keystroke on a circuit. *@
-                    @* helsedata's own field: label above, the bordered input under it. *@
                     <div class="input__container">
                         <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
                         <input type="text"
@@ -198,7 +197,6 @@ else if (State?.IsAuthenticated == true)
                 </div>
             }
 
-            @* The same shape, for the list on screen, folded the same way once the rename is made. *@
             @if (_renaming && _shownList is not null)
             {
                 <div>

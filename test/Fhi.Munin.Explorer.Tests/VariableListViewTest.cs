@@ -2170,6 +2170,32 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task View_WhenARenameLandsWhileACreateStartedAfterItIsStillOut_ThenFocusStaysWithTheCreate()
+    {
+        // Each write compares against the forms open when it began; a shared record let the create
+        // overwrite the rename's, and the rename then pulled focus out of the create form.
+        var renameHeld = new TaskCompletionSource();
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DuringRename = () => renameHeld.Task };
+        var cut = RenderView(client);
+
+        RenameField(cut).Change("Hjertet mitt");
+        var rename = PressAsync(cut, "Lagre navnet");
+
+        client.StallPageReads = true;
+        CreateField(cut).Change("Kreft og svulster");
+        var create = PressAsync(cut, "Opprett liste");
+
+        await cut.InvokeAsync(renameHeld.SetResult);
+        await rename;
+        await cut.InvokeAsync(() => { });
+
+        Assert.Single(cut.FindAll("input[id^='munin-explorer-new-list-']"));
+        Assert.NotEqual(Held(cut, "_renameToggle"), FocusedId());
+        client.ReleaseVariables();
+        await create;
+    }
+
+    [Fact]
     public void View_WhenTheRenameFormIsOpen_ThenItsFieldAndButtonWearHelsedatasFormStyles()
     {
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
