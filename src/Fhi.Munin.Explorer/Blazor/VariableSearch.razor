@@ -1118,7 +1118,9 @@ else
              hidden="@(_resultsTab != ExplorerTab.VariableList)">
             @if (_resultsTab == ExplorerTab.VariableList)
             {
-                @VariableList
+                <CascadingValue Value="@ShowSearch" IsFixed="true">
+                    @VariableList
+                </CascadingValue>
             }
         </div>
     }

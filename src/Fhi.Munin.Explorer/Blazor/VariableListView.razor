@@ -277,7 +277,11 @@ else if (State?.IsAuthenticated == true)
             }
             else if (ListsAnswered && Lists.Count == 0)
             {
-                <p>@T.NoListsYet</p>
+                @EmptyPanel(T.NoListsYet)
+            }
+            else if (ListEmptySaidBelow)
+            {
+                @EmptyPanel(T.EmptyList)
             }
             else if (EmptyRowsShown)
             {
@@ -412,6 +416,20 @@ else if (State?.IsAuthenticated == true)
             }
         </ChildContent>
     </DetailPage>
+}
+
+@code {
+    // helsedata's own empty state. The button only where the explorer can take the reader to its
+    // search; a list standing alone on a host page says where to go and offers nothing it cannot do.
+    private RenderFragment EmptyPanel(string title) => @<div class="emptystate">
+        @DetailBlocks.Heading(Math.Clamp(TitleLevel + 1, 1, 6), title, "emptystate__title")
+        <div class="emptystate__body"><p>@T.EmptyListHint</p></div>
+        @if (ShowSearch is { } search)
+        {
+            <button class="hd-button-square button-square--secondary" type="button"
+                    @onclick="search.ShowAsync">@T.GoToSearch</button>
+        }
+    </div>;
 }
 
 @code {

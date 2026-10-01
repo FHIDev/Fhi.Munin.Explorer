@@ -183,6 +183,25 @@ public class VariableExplorerTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task ListTab_WhenTheListIsEmpty_ThenItsButtonOpensTheSearchWithFocusInTheField()
+    {
+        // The button the reader pressed leaves with the list tab; focus goes where they can search.
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")));
+        Tab(cut, "Variabelliste").Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".emptystate")));
+
+        await cut.InvokeAsync(() =>
+            cut.FindAll(".emptystate button").Single(b => b.TextContent.Trim() == "Gå til variabelutforskeren").Click());
+
+        Assert.Equal("true", Tab(cut, "Søkeresultat").GetAttribute("aria-selected"));
+        var search = cut.FindComponent<VariableSearch>().Instance;
+        var field = (ElementReference)typeof(VariableSearch)
+            .GetField("_searchField", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(search)!;
+        cut.WaitForAssertion(() => Assert.Contains(JSInterop.Invocations, i =>
+            i.Identifier == "Blazor._internal.domWrapper.focus" && i.Arguments[0] is ElementReference r && r.Id == field.Id));
+    }
+
+    [Fact]
     public void ListTab_WhileTheSearchFacetsAreStillLoading_ThenTheirFetchingLineIsNotDrawnThere()
     {
         // The list tab has a filter panel of its own; the search's "Henter filtre" beside it filters nothing.

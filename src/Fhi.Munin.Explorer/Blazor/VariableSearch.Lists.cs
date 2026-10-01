@@ -14,6 +14,21 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 public partial class VariableSearch : IDisposable
 {
+    private ShowSearchTab? _showSearch;
+
+    // The list tab's way to the search, the only place a variable is added to a list. Internal, so
+    // the 1.0 contract is unchanged; a host page showing the list alone simply has none.
+    private ShowSearchTab ShowSearch => _showSearch ??= new ShowSearchTab(ShowSearchFromListAsync);
+
+    private async Task ShowSearchFromListAsync()
+    {
+        _resultsTab = ExplorerTab.Search;
+        StateHasChanged();
+
+        // The pressed button leaves with the list tab; the search field is where its reader goes next.
+        await _searchField.FocusAsync();
+    }
+
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;
 
     private ILogger? _log;

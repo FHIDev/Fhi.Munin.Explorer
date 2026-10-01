@@ -1050,6 +1050,50 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void EmptyState_WhenTheReaderHasNoLists_ThenAPanelSaysSoAndHowToAddOne()
+    {
+        // Loki's review: a bare sentence where Skuld has a panel with a heading and guidance.
+        var cut = RenderView(new ListClient { HasList = false });
+
+        var panel = cut.Find(".emptystate");
+
+        Assert.Equal("Du har ingen variabellister ennå.", panel.QuerySelector(".emptystate__title")?.TextContent.Trim());
+        Assert.Contains("Lagre i liste", panel.QuerySelector(".emptystate__body")?.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void EmptyState_WhenTheShownListIsEmpty_ThenThePanelSaysTheListIsEmpty()
+    {
+        var cut = RenderView(new ListClient());
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal("Denne listen er tom.", cut.Find(".emptystate .emptystate__title").TextContent.Trim()));
+    }
+
+    [Fact]
+    public async Task EmptyState_WhenTheTickedKildeLeavesNothing_ThenItIsASentenceNotThePanel()
+    {
+        // The list is not empty; guidance to go and add variables would be wrong.
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+        var state = Services.GetRequiredService<VariableListState>();
+
+        await cut.InvokeAsync(() => state.ToggleKildeFilter(Guid.NewGuid()));
+
+        cut.WaitForAssertion(() => Assert.Contains("Ingen variabler fra de valgte kildene.", cut.Markup, StringComparison.Ordinal));
+        Assert.Empty(cut.FindAll(".emptystate"));
+    }
+
+    [Fact]
+    public void EmptyState_WhenTheListStandsAloneOnAHostPage_ThenItOffersNoButtonItCannotHonour()
+    {
+        // Outside the explorer the package does not know where the search lives.
+        var cut = RenderView(new ListClient { HasList = false });
+
+        Assert.DoesNotContain(cut.FindAll(".emptystate button"), b => b.TextContent.Trim() == "Gå til variabelutforskeren");
+    }
+
+    [Fact]
     public void RetryLists_WhenTheListsWereRead_ThenNoRetryIsOffered()
     {
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
