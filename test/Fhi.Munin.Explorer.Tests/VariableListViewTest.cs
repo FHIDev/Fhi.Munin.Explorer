@@ -1011,7 +1011,7 @@ public class VariableListViewTest : ExplorerTestContext
     [Fact]
     public void EmptyList_WhenItsRowsAreShownEmpty_ThenItIsSaidOnceAndTheButtonsKeepTheirReason()
     {
-        // Loki's review: "Listen er tom" beside the actions and "Denne listen er tom." below.
+        // Said once to sight, and still the refused buttons' description: hiding it by removal would break both.
         var cut = RenderView(new ListClient());
         cut.WaitForAssertion(() => Assert.Contains("Denne listen er tom.", cut.Markup, StringComparison.Ordinal));
 
