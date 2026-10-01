@@ -1,0 +1,2 @@
+category: Fixed
+- **The saved-list filter panel no longer shows "Filtre" and "Kilde" over nothing.** With no saved lists, while the lists are being read, or after adding or removing a variable has made the list's kilder unknown (they come back when the reader switches list), the panel is left out rather than drawn as two headings over an empty column. It stays whenever a kilde is ticked, so a narrowing is always visible and can be cleared. No class names change.

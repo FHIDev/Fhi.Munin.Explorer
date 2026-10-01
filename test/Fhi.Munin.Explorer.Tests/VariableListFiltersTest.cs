@@ -84,8 +84,29 @@ public class VariableListFiltersTest : ExplorerTestContext
         /// <summary>What the second list holds. One kilde unless a test needs a longer one.</summary>
         public VariableListItem[] Second { get; init; } = [Item(Årsaksregisteret, 1)];
 
+        /// <summary>The reader has saved no list at all.</summary>
+        public bool NoLists { get; init; }
+
+        /// <summary>Accepted, so the state records the write and drops its kilde tally.</summary>
+        public override Task<bool> RemoveVariablesFromMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
+
+        /// <summary>Leave the lists read in flight.</summary>
+        public bool ListsHang { get; init; }
+
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
+            if (ListsHang)
+            {
+                return new TaskCompletionSource<IReadOnlyList<VariableList>>().Task;
+            }
+
+            if (NoLists)
+            {
+                return Task.FromResult<IReadOnlyList<VariableList>>([]);
+            }
+
             List<VariableList> lists =
                 [new VariableList { Id = ListId, Name = "Mine hjertevariabler", VariableCount = _items.Count }];
 
@@ -370,6 +391,57 @@ public class VariableListFiltersTest : ExplorerTestContext
 
         Assert.Equal(30, Facets(cut.Filters).Count);
         Assert.Equal("true", RestControl(cut.Filters)!.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Panel_WhenTheReaderHasNoLists_ThenNoHeadingsStandOverNothing()
+    {
+        // "Filtre" and "Kilde" over an empty column read as a panel that failed to load.
+        var cut = RenderBoth(new ListClient { NoLists = true });
+
+        cut.View.WaitForAssertion(() =>
+            Assert.Contains("Du har ingen variabellister ennå", cut.View.Markup, StringComparison.Ordinal));
+        Assert.Empty(cut.Filters.FindAll(".munin-explorer-filters"));
+    }
+
+    [Fact]
+    public void Panel_WhileTheListsAreStillBeingRead_ThenNoHeadingsStandOverNothing()
+    {
+        var cut = RenderBoth(new ListClient { ListsHang = true });
+
+        Assert.Contains("Henter variabellistene dine", cut.View.Markup, StringComparison.Ordinal);
+        Assert.Empty(cut.Filters.FindAll(".munin-explorer-filters"));
+    }
+
+    [Fact]
+    public async Task Panel_WhenAWriteDropsTheTallyWithNothingTicked_ThenNoHeadingsStandOverNothing()
+    {
+        // The write drops the kilde tally until the reader switches list; the headings would stand alone.
+        var client = new ListClient(List((Kreftregisteret, 4), (Reseptregisteret, 2)));
+        var cut = RenderBoth(client);
+        Assert.Single(cut.Filters.FindAll(".munin-explorer-filters"));
+        var state = Services.GetRequiredService<VariableListState>();
+
+        await cut.View.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [Guid.NewGuid()]));
+
+        Assert.False(state.KilderInListKnown);
+        Assert.Empty(cut.Filters.FindAll(".munin-explorer-filters"));
+    }
+
+    [Fact]
+    public async Task Panel_WhenAWriteDropsTheTallyWithAKildeTicked_ThenItStaysToClearTheNarrowing()
+    {
+        // The rows stay narrowed by the tick; without the panel nothing would say so or undo it.
+        var client = new ListClient(List((Kreftregisteret, 4), (Reseptregisteret, 2)));
+        var cut = RenderBoth(client);
+        Boxes(cut.Filters)[1].Change(true);
+        var state = Services.GetRequiredService<VariableListState>();
+
+        await cut.View.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [Guid.NewGuid()]));
+
+        Assert.False(state.KilderInListKnown);
+        Assert.Single(cut.Filters.FindAll(".munin-explorer-filters"));
+        Assert.Contains(cut.Filters.FindAll("button"), b => b.TextContent.Trim() == "Fjern alle filtre");
     }
 
     [Fact]
