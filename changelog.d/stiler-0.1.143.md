@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **Run `Fhi.Helsedata.Stiler` 0.1.143 or later for the saved-list heading at its intended size.** Before 0.1.143 Stiler set the saved list's name in "Mine variabellister" at the page-H1 size (42px, 32px on mobile), larger than the explorer's own title. From 0.1.143 it takes its `headline-s` size. Nothing else changes, and nothing in this package depends on it; the kilde, variable and datasamling pages keep their large names.
