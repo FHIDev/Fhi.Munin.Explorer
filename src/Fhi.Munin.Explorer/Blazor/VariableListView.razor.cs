@@ -514,6 +514,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // With a kilde ticked the sentence says none come from those kilder, which is not why the buttons are refused.
     private bool ListEmptySaidBelow => EmptyRowsShown && EmptyMessage == T.EmptyList;
 
+    [CascadingParameter] internal ShowSearchTab? ShowSearch { get; set; }
+
     /// <summary>The one sentence the view's alert region says, the most recent failure first.</summary>
     private string? AlertText =>
         _failed ? T.ListLoadError
