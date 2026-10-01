@@ -527,9 +527,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     contents column — the Kilde filter beside the list does the grouping a nav would, so the gate
     above is what decides whether it draws a rail it has nothing to put in. It and the instrument
     view both use `munin-explorer-page__header` for their name block, the chassis's own name for
-    what the other three wear a prefixed one for, and **no Stiler carries a rule for it**:
-    `Fhi.Metadata-urbj0` is the bead that writes one. It is a handle in the table below, and
-    undefined it degrades quietly:
+    what the other three wear a prefixed one for. Stiler gives it the other three's padding and rule,
+    and since 0.1.144 the instrument view also wears `munin-explorer-instrument__header`, the name
+    Stiler sizes as H1, while the saved lists' name stays `headline-s` (`Fhi.Metadata-86lt8`).
+    Both are handles in the table below, and undefined they degrade quietly:
     the heading is still a heading and still wears Stiler's own `headline headline-s`, so what is
     lost is the rule and the space under the name block that separate it from the list.
     The chassis adds two chrome names above the name block, `munin-explorer-page__eyebrow` and
@@ -943,6 +944,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-header` | handle |
   | `munin-explorer-header__actions` | handle |
   | `munin-explorer-header__actions-button` | handle |
+  | `munin-explorer-instrument__header` | handle |
   | `munin-explorer-instruments` | id |
   | `munin-explorer-kilde` | handle |
   | `munin-explorer-hierarchy` | handle |
