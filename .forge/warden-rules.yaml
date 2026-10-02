@@ -313,3 +313,13 @@ rules:
         - src/**/*.cs
         - src/**/*.razor
         - test/**/*.cs
+    - id: no-overlapping-warden-rules
+      category: other
+      pattern: >-
+        A new or edited rule in a rule-matching config (e.g. warden-rules.yaml) targets a member/code-element kind that already overlaps an existing active rule's pattern, so a single match satisfies both
+      check: >-
+        Verify each active rule's matcher is mutually exclusive with the others, or that overlapping rules are intentionally consolidated into one — a member matching multiple rules simultaneously produces duplicate findings for the same code
+      source: copilot:PR#370
+      added: "2026-09-29"
+      paths:
+        - .forge/**/*.yaml
