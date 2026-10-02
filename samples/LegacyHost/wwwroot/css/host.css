@@ -2695,6 +2695,17 @@ table.munin-explorer-data-list tbody th {
   font-size: 0.875rem;
 }
 
+/* Stiler 0.1.147: the code table scrolls sideways on phones (Fhi.Metadata-i6gkz). */
+@media all and (max-width: 767px) {
+  .munin-explorer-codes__table {
+    min-width: 100%;
+    width: max-content;
+  }
+  .munin-explorer-codes__table :is(th, td) {
+    white-space: nowrap;
+  }
+}
+
 .munin-explorer-codes__table th,
 .munin-explorer-codes__table td {
   padding: 6px 12px;
