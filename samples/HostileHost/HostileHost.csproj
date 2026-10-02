@@ -24,6 +24,7 @@
        they had 0.1.68, which lacks the branch disclosure rules and the 320px step's long-value breaks
        (Fhi.Metadata-adog5, Fhi.Metadata-ofg1h).
 
+       0.1.146 keeps the saved list's cell rules off the tables inside an opened row (Fhi.Metadata-dfy9u.9).
        0.1.145 lays out an opened saved-list row's panel and chevron (Fhi.Metadata-dfy9u.9).
        0.1.144 sizes the instrument page's name as H1 again (Fhi.Metadata-r9ivc).
        0.1.143 stops sizing the saved-list heading as the page H1 (Fhi.Metadata-emsqm).
@@ -52,7 +53,7 @@
        0.1.103 brought the drawer's checkbox column and nested detail anchor clearance
        (Fhi.Metadata-h6dx7, Fhi.Metadata-17k34). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.145" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.146" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
