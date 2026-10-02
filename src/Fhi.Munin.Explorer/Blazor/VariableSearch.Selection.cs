@@ -255,7 +255,9 @@ public partial class VariableSearch
         // one abandoned and then thrown reaches this line (Fhi.Metadata-l9l2n.38).
         if (_detailGeneration == generation && _detail is { } loaded && _codeLists is { } lists)
         {
-            await lists.LoadUnnamedAsync(loaded, StateHasChanged);
+            // Drawn first, so the panel does not wait for these fetches to appear.
+            StateHasChanged();
+            await lists.LoadUnnamedAsync(loaded, () => ReferenceEquals(_codeLists, lists));
         }
     }
 

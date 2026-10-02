@@ -1143,6 +1143,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // for reads as a rename under way. No caller here has focus inside it.
         _renaming = false;
         ForgetCopyAndEmptyControls();
+        CloseRow();
     }
 
     /// <summary>
@@ -1438,6 +1439,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         ForgetFailures();
+
+        if (_openId == variableId)
+        {
+            CloseRow();
+        }
 
         try
         {

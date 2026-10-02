@@ -15,7 +15,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// lists live in <see cref="Lists"/>, which the parent owns so that two views of one variable share
 /// what was fetched.
 /// </remarks>
-internal sealed class KodeverkGroups : ComponentBase
+internal sealed class KodeverkGroups : ComponentBase, IDisposable
 {
     // Runa's INLINE_CODE_PREVIEW, so the two clients draw the same list to the same length.
     private const int InlineCodePreview = 8;
@@ -31,6 +31,31 @@ internal sealed class KodeverkGroups : ComponentBase
     [Parameter] public string Language { get; set; } = "no";
 
     private Texts T => Texts.For(Language);
+
+    private KodeverkCodeLists? _listening;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_listening, Lists))
+        {
+            return;
+        }
+
+        Dispose();
+        _listening = Lists;
+        _listening.Changed += Redraw;
+    }
+
+    public void Dispose()
+    {
+        if (_listening is not null)
+        {
+            _listening.Changed -= Redraw;
+            _listening = null;
+        }
+    }
+
+    private void Redraw() => _ = InvokeAsync(StateHasChanged);
 
     // By the link's place in the payload: a reference is catalogue text whose punctuation cannot be
     // made into an id without two references minting the same one.
@@ -69,7 +94,7 @@ internal sealed class KodeverkGroups : ComponentBase
     }
 
     private Task ToggleFromControlAsync(KodeverkLink link, MouseEventArgs released) =>
-        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : Lists.ToggleAsync(link, StateHasChanged);
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : Lists.ToggleAsync(link);
 
     private enum InlineCodes
     {

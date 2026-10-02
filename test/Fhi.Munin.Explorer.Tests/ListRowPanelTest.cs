@@ -13,6 +13,8 @@ namespace Fhi.Munin.Explorer.Tests;
 public class ListRowPanelTest : ExplorerTestContext
 {
     private static readonly Guid ListId = new("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid HjerteKilde = new("cccccccc-0000-0000-0000-000000000001");
+
     private static readonly Guid OtherListId = new("22222222-2222-2222-2222-222222222222");
 
     private static readonly VariableListItem Databaseversjon = new()
@@ -20,6 +22,7 @@ public class ListRowPanelTest : ExplorerTestContext
         VariableId = new Guid("aaaaaaaa-0000-0000-0000-000000000001"),
         VariableName = "Databaseversjon",
         VariableCode = "V_HKR.VERSJON_DATABASE",
+        KildeId = HjerteKilde,
         KildeName = "Hjerte- og karregisteret",
         DataFrom = new DateTimeOffset(2012, 1, 1, 0, 0, 0, TimeSpan.Zero),
         DataTo = new DateTimeOffset(2022, 12, 31, 0, 0, 0, TimeSpan.Zero),
@@ -32,46 +35,98 @@ public class ListRowPanelTest : ExplorerTestContext
         VariableCode = "V_HKR.ALDER",
     };
 
-    private sealed class PanelClient(params VariableListItem[] items) : EmptyMuninExplorerClient
+    private sealed class PanelClient(params VariableListItem[] all) : EmptyMuninExplorerClient
     {
+        private readonly List<VariableListItem> items = [.. all];
+
         public List<Guid> DetailsAskedFor { get; } = [];
 
         public bool DetailMissing { get; init; }
+
+        /// <summary>Held until the test releases it, as a browser's fetch is never instant.</summary>
+        public TaskCompletionSource? DetailGate { get; init; }
+
+        /// <summary>One nameless kildekodeverk, whose codes are fetched with the variable and never answer.</summary>
+        public bool NamelessStalled { get; init; }
+
+        public int CodeRequests { get; private set; }
+
+        public List<string> CodeReferences { get; } = [];
+
+        private readonly List<TaskCompletionSource<KodeverkCodes?>> _codeStalls = [];
+
+        /// <summary>A second nameless kildekodeverk, fetched only after the first answers.</summary>
+        public bool TwoNameless { get; init; }
+
+        public void AnswerOldestCodes() =>
+            _codeStalls.First(stall => !stall.Task.IsCompleted).TrySetResult(null);
+
+        /// <summary>The detail's own period, where a test needs it to differ from the list's.</summary>
+        public (DateTimeOffset? From, DateTimeOffset? To)? DetailPeriod { get; init; }
+
+        public override Task<KodeverkCodes?> GetKodeverkCodesAsync(
+            Guid variableId, string kodeverkType, string kodeverkReference, CancellationToken cancellationToken = default)
+        {
+            CodeRequests++;
+            CodeReferences.Add(kodeverkReference);
+            var stall = new TaskCompletionSource<KodeverkCodes?>();
+            _codeStalls.Add(stall);
+            return stall.Task;
+        }
 
         /// <summary>A second list holding the same variables, which makes the list picker appear.</summary>
         public bool TwoLists { get; init; }
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>(TwoLists
-                ? [new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = items.Length },
-                   new VariableList { Id = OtherListId, Name = "Kopien", VariableCount = items.Length }]
-                : [new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = items.Length }]);
+                ? [new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = items.Count },
+                   new VariableList { Id = OtherListId, Name = "Kopien", VariableCount = items.Count }]
+                : [new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = items.Count }]);
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
-                Items = items,
-                TotalCount = items.Length,
+                Items = [.. items],
+                TotalCount = items.Count,
                 PageNumber = 1,
                 Size = pageSize,
                 TotalPages = 1,
             });
 
-        public override Task<VariableDetail?> GetVariableAsync(
+        public override Task<bool> AddVariablesToMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            items.AddRange(all.Where(item => variableIds.Contains(item.VariableId)));
+            return Task.FromResult(true);
+        }
+
+        public override Task<bool> RemoveVariablesFromMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            items.RemoveAll(item => variableIds.Contains(item.VariableId));
+            return Task.FromResult(true);
+        }
+
+        public override async Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
         {
             DetailsAskedFor.Add(id);
 
-            if (DetailMissing)
+            if (DetailGate is { } gate)
             {
-                return Task.FromResult<VariableDetail?>(null);
+                await gate.Task;
             }
 
-            var item = items.Single(i => i.VariableId == id);
+            if (DetailMissing)
+            {
+                return null;
+            }
 
-            return Task.FromResult<VariableDetail?>(new VariableDetail
+            var item = all.Single(i => i.VariableId == id);
+
+            return new VariableDetail
             {
                 Id = id,
                 Code = item.VariableCode ?? "",
@@ -80,9 +135,19 @@ public class ListRowPanelTest : ExplorerTestContext
                 KildeName = "Hjerte- og karregisteret",
                 DatasamlingName = "Alle variabler",
                 VariabelgruppeName = "Datakilde",
-                DataFrom = item.DataFrom,
-                DataTo = item.DataTo,
-            });
+                DataFrom = DetailPeriod is { } period ? period.From : item.DataFrom,
+                DataTo = DetailPeriod is { } periodTo ? periodTo.To : item.DataTo,
+                KodeverkLinks = (NamelessStalled, TwoNameless) switch
+                {
+                    (_, true) =>
+                    [
+                        new KodeverkLink { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", HasCodeValues = true },
+                        new KodeverkLink { KodeverkType = "Kildekodeverk", KodeverkReference = "2338", HasCodeValues = true },
+                    ],
+                    (true, _) => [new KodeverkLink { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", HasCodeValues = true }],
+                    _ => [],
+                },
+            };
         }
     }
 
@@ -218,6 +283,49 @@ public class ListRowPanelTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal("false", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded")));
         Assert.Null(Panel(cut));
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
+
+        cut.WaitForAssertion(() => Assert.Equal("false", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded")));
+        Assert.Null(Panel(cut));
+    }
+
+    private static IElement RemoveButton(IRenderedComponent<VariableListView> cut, string name)
+    {
+        var nameId = cut.FindAll("th[scope=row] span[id]").Single(span => span.TextContent.Trim() == name).Id;
+        return cut.FindAll("button").Single(b => b.GetAttribute("aria-labelledby")?.Contains(nameId!) == true);
+    }
+
+    [Fact]
+    public async Task Row_WhenTheOpenVariableIsRemovedAndAddedBack_ThenItComesBackClosed()
+    {
+        var cut = RenderView(new PanelClient(Databaseversjon, Alder));
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+        RemoveButton(cut, "Databaseversjon").Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("th[scope=row] button")));
+
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [Databaseversjon.VariableId]));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("th[scope=row] button").Count));
+        Assert.Equal("false", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded"));
+        Assert.Null(Panel(cut));
+    }
+
+    [Fact]
+    public void Row_WhenAnotherVariableIsRemoved_ThenTheOpenOneStaysOpen()
+    {
+        var cut = RenderView(new PanelClient(Databaseversjon, Alder));
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+        RemoveButton(cut, "Alder").Click();
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("th[scope=row] button")));
+        Assert.Equal("true", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded"));
+        Assert.NotNull(Panel(cut));
     }
 
     [Fact]
@@ -240,6 +348,62 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
             Assert.Equal("Fant ingen detaljer for denne variabelen.", Panel(cut)!.QuerySelector("[role=status]")!.TextContent.Trim()));
         Assert.Empty(cut.FindAll("[role=tablist]"));
+    }
+
+    [Fact]
+    public async Task Panel_WhileANamelessKodeverksCodesLoad_ThenItIsAlreadyDrawn()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(Databaseversjon) { DetailGate = gate, NamelessStalled = true };
+        var cut = RenderView(client);
+
+        NameButton(cut, "Databaseversjon").Click();
+        await cut.InvokeAsync(gate.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal(1, client.CodeRequests));
+        cut.WaitForAssertion(() => Assert.NotNull(Panel(cut)!.QuerySelector("[role=tablist]")));
+    }
+
+    [Fact]
+    public async Task NamelessCodes_WhenThePanelClosesWhileTheyLoad_ThenTheRestAreNotAskedFor()
+    {
+        var client = new PanelClient(Databaseversjon) { TwoNameless = true };
+        var cut = RenderView(client);
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForAssertion(() => Assert.Equal(["2336"], client.CodeReferences));
+        NameButton(cut, "Databaseversjon").Click();
+        await cut.InvokeAsync(client.AnswerOldestCodes);
+
+        Assert.Equal(["2336"], client.CodeReferences);
+    }
+
+    [Fact]
+    public void Period_WhenTheDetailKnowsNoPeriod_ThenTheListsIsShown()
+    {
+        var cut = RenderView(new PanelClient(Databaseversjon) { DetailPeriod = (null, null) });
+
+        NameButton(cut, "Databaseversjon").Click();
+        var panel = cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+
+        Assert.Contains("2012", Fact(panel, "Dataperiode"));
+        Assert.Contains("2022", Fact(panel, "Dataperiode"));
+    }
+
+    [Fact]
+    public void Period_WhenTheDetailKnowsOnlyItsStart_ThenTheListsEndIsNotBorrowed()
+    {
+        var client = new PanelClient(Databaseversjon)
+        {
+            DetailPeriod = (new DateTimeOffset(2015, 1, 1, 0, 0, 0, TimeSpan.Zero), null),
+        };
+        var cut = RenderView(client);
+
+        NameButton(cut, "Databaseversjon").Click();
+        var panel = cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+
+        Assert.Contains("2015", Fact(panel, "Dataperiode"));
+        Assert.DoesNotContain("2022", Fact(panel, "Dataperiode"));
     }
 
     [Fact]
@@ -283,7 +447,50 @@ public class ListRowPanelTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Contains(
             cut.FindAll("[role=status]"),
-            s => s.TextContent.Trim() == "Kunne ikke kopiere lenken. Send den på e-post i stedet."));
+            s => s.TextContent.Trim() == "Nettleseren tillot ikke kopiering. Kopier lenken under, eller send den på e-post."));
+
+        var label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Lenke til variabelen");
+        var field = cut.Find($"#{label.GetAttribute("for")}");
+        Assert.Equal("https://helsedata.example/variabler", field.GetAttribute("value"));
+        Assert.True(field.HasAttribute("readonly"));
+    }
+
+    [Fact]
+    public void CopyLink_WhenPressedAgain_ThenTheStatusEmptiesFirstSoItIsAnnouncedAgain()
+    {
+        var copied = JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
+        var cut = RenderView(new PanelClient(Databaseversjon), _ => "https://helsedata.example/variabler");
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+
+        Copy(cut);
+        Assert.Equal("", LinkStatus(cut));
+        cut.InvokeAsync(() => copied.SetVoidResult());
+        cut.WaitForAssertion(() => Assert.Equal("Lenken er kopiert.", LinkStatus(cut)));
+
+        JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
+        Copy(cut);
+        Assert.Equal("", LinkStatus(cut));
+    }
+
+    private static void Copy(IRenderedComponent<VariableListView> cut) =>
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Kopier lenke").Click();
+
+    private static string LinkStatus(IRenderedComponent<VariableListView> cut) =>
+        cut.Find("[role=group] [role=status]").TextContent.Trim();
+
+    [Fact]
+    public void CopyLink_WhenTheCircuitIsGone_ThenThePressDoesNotThrow()
+    {
+        JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true).SetException(new JSDisconnectedException("gone"));
+        var cut = RenderView(new PanelClient(Databaseversjon), _ => "https://helsedata.example/variabler");
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+        Copy(cut);
+
+        cut.WaitForAssertion(() => Assert.StartsWith("Nettleseren tillot ikke kopiering", LinkStatus(cut)));
     }
 
     [Fact]
@@ -300,17 +507,26 @@ public class ListRowPanelTest : ExplorerTestContext
         Assert.EndsWith("Databaseversjon: https://helsedata.example/variabler?search=V_HKR&variabelId=1", href);
     }
 
-    [Fact]
-    public void Explorer_WhenARowIsShared_ThenTheLinkSearchesItsCodeAndOpensIt()
+    private IRenderedComponent<VariableExplorer> OpenInExplorer(
+        PanelClient client, IReadOnlyCollection<string>? declined = null)
     {
-        Services.AddSingleton<IMuninExplorerClient>(new PanelClient(Databaseversjon));
+        Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
         this.SetRendererInfo(new RendererInfo("Server", true));
         Services.GetRequiredService<NavigationManager>().NavigateTo("/variabler");
 
-        var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
+        var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.DeclinedKeys, declined));
         cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
         cut.WaitForElement("th[scope=row] button").Click();
+        cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+
+        return cut;
+    }
+
+    [Fact]
+    public void Explorer_WhenARowIsShared_ThenTheLinkSearchesItsCodeWithinItsKilde()
+    {
+        var cut = OpenInExplorer(new PanelClient(Databaseversjon));
 
         var mail = cut.WaitForElement("a[href^='mailto:']");
         var body = Uri.UnescapeDataString(mail.GetAttribute("href")!).Split("&body=")[1];
@@ -319,6 +535,23 @@ public class ListRowPanelTest : ExplorerTestContext
 
         Assert.True(link.IsAbsoluteUri);
         Assert.Equal("V_HKR.VERSJON_DATABASE", state.Search);
+        Assert.Equal([HjerteKilde], state.Filter.KildeIds);
         Assert.Equal(Databaseversjon.VariableId, state.SelectedVariableId);
+    }
+
+    [Fact]
+    public void Explorer_WhenTheHostDeclinesSearch_ThenThePanelOffersNoLinkThatCouldNotOpenIt()
+    {
+        var cut = OpenInExplorer(new PanelClient(Databaseversjon), declined: ["search"]);
+
+        Assert.DoesNotContain("Del variabel", cut.Find("[role=region][id^='munin-explorer-list-panel-']").TextContent);
+    }
+
+    [Fact]
+    public void Explorer_WhenTheVariableHasNoCode_ThenThePanelOffersNoLink()
+    {
+        var cut = OpenInExplorer(new PanelClient(Databaseversjon with { VariableCode = null }));
+
+        Assert.DoesNotContain("Del variabel", cut.Find("[role=region][id^='munin-explorer-list-panel-']").TextContent);
     }
 }

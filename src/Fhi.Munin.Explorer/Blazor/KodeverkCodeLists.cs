@@ -18,8 +18,8 @@ internal enum CodesFailure
 
 /// <summary>The code lists opened under one variable, and what was fetched for each.</summary>
 /// <remarks>
-/// One instance per open variable, replaced rather than emptied when another opens: a fetch still in
-/// flight then writes into the instance nobody draws, so no generation counter is needed.
+/// One instance per open variable, replaced when another opens, so a late fetch can only land in the
+/// variable it was asked for. <see cref="Changed"/> reaches whichever view draws it when the answer comes.
 /// </remarks>
 internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient client, ILogger? log)
 {
@@ -29,6 +29,9 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
     private readonly Dictionary<KodeverkKey, CodesFailure> _failures = [];
 
     public Guid VariableId => variableId;
+
+    // The view that pressed may be gone by the time the answer comes, so every view showing these listens.
+    public event Action? Changed;
 
     public bool IsOpen(KodeverkKey key) => _open.Contains(key);
 
@@ -41,7 +44,7 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
     public IReadOnlyList<KodeverkCode>? CodesOf(KodeverkKey key) => _codes.GetValueOrDefault(key);
 
     /// <summary>Open this link's list, or close it. A failed list is fetched again: the press is the reader's only retry.</summary>
-    public async Task ToggleAsync(KodeverkLink link, Action changed)
+    public async Task ToggleAsync(KodeverkLink link)
     {
         var key = KodeverkKey.Of(link);
 
@@ -57,14 +60,20 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
             return;
         }
 
-        await LoadAsync(key, changed);
+        await LoadAsync(key);
     }
 
     /// <summary>Fetch the codes that stand in for a name, for every link that has none, one at a time.</summary>
-    public async Task LoadUnnamedAsync(VariableDetail detail, Action changed)
+    /// <remarks>Stops once <paramref name="wanted"/> says the owner has let these lists go.</remarks>
+    public async Task LoadUnnamedAsync(VariableDetail detail, Func<bool> wanted)
     {
         foreach (var link in detail.KodeverkLinks.Where(IsUnnamedKildekodeverk))
         {
+            if (!wanted())
+            {
+                return;
+            }
+
             var key = KodeverkKey.Of(link);
 
             // A failure counts as asked, so a kodeverk the payload names twice is not retried back to back.
@@ -73,7 +82,7 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
                 continue;
             }
 
-            await LoadAsync(key, changed);
+            await LoadAsync(key);
         }
     }
 
@@ -83,11 +92,11 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
         && DisplayText.Trimmed(link.DisplayName) is null
         && link.HasCodeValues;
 
-    private async Task LoadAsync(KodeverkKey key, Action changed)
+    private async Task LoadAsync(KodeverkKey key)
     {
         _failures.Remove(key);
         _loading.Add(key);
-        changed();
+        Changed?.Invoke();
 
         try
         {
@@ -109,6 +118,7 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
         finally
         {
             _loading.Remove(key);
+            Changed?.Invoke();
         }
     }
 }

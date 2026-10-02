@@ -215,15 +215,18 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Navigation.ToAbsoluteUri(_mirror.Address(new ExplorerUrlState { ShareCode = code }.ToQueryString()))
                 .ToString();
 
-    private Func<VariableListItem, string>? _variableAddress;
+    private Func<VariableListItem, string?>? _variableAddress;
 
-    // Searched by its code, because the search keeps a selection only on a row its first page shows.
-    private Func<VariableListItem, string>? VariableHref => Declined("variabelId")
+    // The search keeps a selection only on a row its first page shows, so the link searches the code
+    // within the kilde; without a code, or with search declined, no link could open the variable.
+    private Func<VariableListItem, string?>? VariableHref => Declined("variabelId") || Declined("search")
         ? null
-        : _variableAddress ??= item =>
-            Navigation.ToAbsoluteUri(_mirror.Address(Linkable(new ExplorerUrlState
+        : _variableAddress ??= item => string.IsNullOrWhiteSpace(item.VariableCode)
+            ? null
+            : Navigation.ToAbsoluteUri(_mirror.Address(Linkable(new ExplorerUrlState
             {
                 Search = item.VariableCode,
+                Filter = item.KildeId is { } kilde ? VariableFilter.None with { KildeIds = [kilde] } : VariableFilter.None,
                 SelectedVariableId = item.VariableId,
             }).ToQueryString())).ToString();
 

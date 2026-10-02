@@ -12,9 +12,10 @@ public sealed partial class VariableListView
 {
     /// <summary>
     /// The address that opens one variable in the explorer, absolute because it leaves the page by
-    /// e-mail and the clipboard. Without it a row's panel offers no way to share the variable.
+    /// e-mail and the clipboard. Without it, or where it answers <see langword="null"/> for a row,
+    /// that row's panel offers no way to share the variable.
     /// </summary>
-    [Parameter] public Func<VariableListItem, string>? VariableHref { get; set; }
+    [Parameter] public Func<VariableListItem, string?>? VariableHref { get; set; }
 
     // One row open at a time, and only in the list it was opened in.
     private Guid? _openId;
@@ -26,6 +27,7 @@ public sealed partial class VariableListView
     private KodeverkCodeLists? _openCodes;
     private PanelTab _openTab = PanelTab.Data;
     private string? _linkStatus;
+    private bool _linkNotCopied;
 
     private static bool IsOrphan(VariableListItem item) => string.IsNullOrWhiteSpace(item.VariableName);
 
@@ -35,6 +37,9 @@ public sealed partial class VariableListView
 
     private string RowPanelHeadingId(VariableListItem item) =>
         $"munin-explorer-list-panel-heading-{_instance}-{item.VariableId:N}";
+
+    private string RowLinkFieldId(VariableListItem item) =>
+        $"munin-explorer-list-link-{_instance}-{item.VariableId:N}";
 
     private string RowShareHeadingId(VariableListItem item) =>
         $"munin-explorer-list-share-{_instance}-{item.VariableId:N}";
@@ -76,7 +81,7 @@ public sealed partial class VariableListView
         _openId = item.VariableId;
         _openListId = _shownList;
         _openTab = PanelTab.Data;
-        _linkStatus = null;
+        ForgetLinkStatus();
 
         await LoadRowDetailAsync(item.VariableId);
     }
@@ -88,7 +93,7 @@ public sealed partial class VariableListView
         _openError = null;
         _openLoading = false;
         _openCodes = null;
-        _linkStatus = null;
+        ForgetLinkStatus();
 
         // Disowns a fetch still in flight for the row that was open.
         _openGeneration++;
@@ -144,7 +149,9 @@ public sealed partial class VariableListView
 
         if (_openGeneration == generation && _openDetail is { } loaded && _openCodes is { } lists)
         {
-            await lists.LoadUnnamedAsync(loaded, StateHasChanged);
+            // Drawn first, so the panel does not wait for these fetches to appear.
+            StateHasChanged();
+            await lists.LoadUnnamedAsync(loaded, () => ReferenceEquals(_openCodes, lists));
         }
     }
 
@@ -173,8 +180,11 @@ public sealed partial class VariableListView
             ? string.Join(", ", groups.Select(group => group.Name))
             : null;
 
+    // One source for both ends, so a period is never half the detail's and half the list's.
     private string RowPanelPeriod(VariableListItem item, VariableDetail detail) =>
-        CatalogueDate.Period(detail.DataFrom ?? item.DataFrom, detail.DataTo ?? item.DataTo, Language, T, DateWidth.Narrow)
+        (detail.DataFrom is null && detail.DataTo is null
+            ? CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T, DateWidth.Narrow)
+            : CatalogueDate.Period(detail.DataFrom, detail.DataTo, Language, T, DateWidth.Narrow))
         ?? T.NotSpecified;
 
     private string VariableMailTo(VariableListItem item, string link)
@@ -186,19 +196,29 @@ public sealed partial class VariableListView
         return $"mailto:?subject={Uri.EscapeDataString(subject)}&body={Uri.EscapeDataString(body)}";
     }
 
-    // The clipboard is refused outside a secure context or without permission, so a failure says
-    // where else the link can be had rather than staying silent.
+    private void ForgetLinkStatus()
+    {
+        _linkStatus = null;
+        _linkNotCopied = false;
+    }
+
+    // Safari refuses a clipboard write that arrives after a server round trip, so a refusal shows the
+    // link itself to be copied by hand. Emptied first, so a second press is announced again.
     private async Task CopyVariableLinkAsync(string link)
     {
+        ForgetLinkStatus();
+        StateHasChanged();
+
         try
         {
             await Js.InvokeVoidAsync("navigator.clipboard.writeText", link);
             _linkStatus = T.VariableLinkCopied;
         }
-        catch (Exception ex) when (ex is JSException or InvalidOperationException or TaskCanceledException)
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException)
         {
             Log?.LogWarning(ex, "the browser refused to copy a variable link");
             _linkStatus = T.VariableLinkNotCopied;
+            _linkNotCopied = true;
         }
     }
 }

@@ -345,16 +345,16 @@ else if (State?.IsAuthenticated == true)
                                         }
                                         else
                                         {
-                                        <button class="hd-button-reset"
-                                                type="button"
-                                                aria-expanded="@Expanded(IsOpen(item))"
-                                                aria-controls="@RowPanelControls(item)"
-                                                @onclick="e => ToggleRowFromNameAsync(item, e)">
-                                            <span class="@RowChevron(item)" aria-hidden="true"></span>
-                                            <span class="munin-explorer-dataitem-main__column__text"
-                                                  id="@RowNameId(item)"
-                                                  lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
-                                        </button>
+                                            <button class="hd-button-reset"
+                                                    type="button"
+                                                    aria-expanded="@Expanded(IsOpen(item))"
+                                                    aria-controls="@RowPanelControls(item)"
+                                                    @onclick="e => ToggleRowFromNameAsync(item, e)">
+                                                <span class="@RowChevron(item)" aria-hidden="true"></span>
+                                                <span class="munin-explorer-dataitem-main__column__text"
+                                                      id="@RowNameId(item)"
+                                                      lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                            </button>
                                         }
                                     </th>
 
@@ -712,6 +712,12 @@ else if (State?.IsAuthenticated == true)
                 <a class="hd-button-square button-square--ghost margin-right margin-bottom"
                    href="@VariableMailTo(item, link)">@T.SendVariableByEmail</a>
                 <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_linkStatus</p>
+
+                @if (_linkNotCopied)
+                {
+                    <label class="form-element__label" for="@RowLinkFieldId(item)">@T.VariableLinkLabel</label>
+                    <input type="text" id="@RowLinkFieldId(item)" readonly value="@link" />
+                }
             </div>
         }
     </div>;

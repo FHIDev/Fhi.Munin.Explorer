@@ -812,5 +812,11 @@ export const states = {
       .locator('[role=tabpanel]:not([hidden]) .munin-explorer-detail[aria-busy="false"] [role=tablist]')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+
+    // A code table inside the list's own table, which the list's cell rules must leave alone.
+    const panel = page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-detail').first();
+    await panel.getByRole('button', { name: /Vis alle/ }).first().click();
+    await panel.locator('table.munin-explorer-codes__table').first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
   },
 };

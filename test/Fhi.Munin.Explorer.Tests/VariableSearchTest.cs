@@ -12456,6 +12456,80 @@ public class VariableSearchTest : ExplorerTestContext
         IRenderedComponent<VariableSearch> cut) =>
         [.. Panel(cut).QuerySelectorAll("li.munin-explorer-kodeverk__item > button")];
 
+
+    [Fact]
+    public async Task Panel_WhileANamelessKodeverksCodesLoad_ThenItIsAlreadyDrawn()
+    {
+        // The detail answers after a real wait, as it does in a browser: an instant answer leaves
+        // the codes' stall as the handler's first yield, and Blazor draws then anyway.
+        var client = KodeverkRows();
+        client.StallDetail = true;
+        client.StallCodes = true;
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        await cut.InvokeAsync(() => client.AnswerStalled(WithKodeverk(TaleId)));
+
+        cut.WaitForAssertion(() => Assert.Single(client.RequestsFor("2336")));
+        cut.WaitForAssertion(() => Assert.NotNull(Panel(cut).QuerySelector("[role=tablist]")));
+        Assert.Equal("Henter koder …", KodeverkLines(cut)[0].QuerySelector(".munin-explorer-kodeverk__name")!.TextContent);
+    }
+
+    [Fact]
+    public async Task NamelessCodes_WhenThePanelClosesWhileTheyLoad_ThenTheRestAreNotAskedFor()
+    {
+        var twoNameless = WithKodeverk(TaleId) with
+        {
+            KodeverkLinks =
+            [
+                new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", HasCodeValues = true },
+                new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2338", HasCodeValues = true },
+            ]
+        };
+        var client = KodeverkRows().Knows(twoNameless);
+        client.StallCodes = true;
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        Toggles(cut)[0].Click();
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
+
+        Assert.Single(client.RequestsFor("2336"));
+        Assert.Empty(client.RequestsFor("2338"));
+    }
+
+    [Fact]
+    public async Task Codes_WhenTheTabsAreRoundTrippedWhileTheyLoad_ThenTheAnswerStillShows()
+    {
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+        client.StallCodes = true;
+        CodeToggles(cut)[0].Click();
+        TabButton(cut, "Om variabelen").Click();
+        TabButton(cut, "Data").Click();
+        Assert.Equal("Henter koder …", Panel(cut).QuerySelector(".munin-explorer-codes p")!.TextContent);
+
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2337()));
+
+        cut.WaitForAssertion(() =>
+            Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table")), TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public async Task Codes_WhenTheWholeVariableOpensWhileTheyLoad_ThenTheAnswerShowsThere()
+    {
+        var client = KodeverkRows();
+        var cut = OpenData(client);
+        client.StallCodes = true;
+        CodeToggles(cut)[0].Click();
+        cut.FindAll("button").First(b => b.TextContent == "Vis hele variabelen").Click();
+        Assert.NotNull(cut.Find(".munin-explorer-drilldown .munin-explorer-codes p"));
+
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2337()));
+
+        cut.WaitForAssertion(() =>
+            Assert.NotNull(cut.Find(".munin-explorer-drilldown").QuerySelector(".munin-explorer-codes table")), TimeSpan.FromSeconds(2));
+    }
     [Fact]
     public void Kodeverk_WhenTheDataTabIsOpen_ThenTheLinksAreGroupedByKindInPayloadOrder()
     {
@@ -13104,7 +13178,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         // And the table this press produces is there by the time Click returns, so the read below
         // needs no wait of its own: StallCodes is off again, GetKodeverkCodesAsync hands back a
-        // Task.FromResult, and LoadCodesAsync neither yields nor leaves the dispatcher — so its
+        // Task.FromResult, and KodeverkCodeLists neither yields nor leaves the dispatcher — so its
         // await continues inline, inside the dispatch bUnit blocks on. Deterministic rather than
         // fast, which is why load does not change it, and why every other codes test in this file
         // reads the table straight after the press as well.
