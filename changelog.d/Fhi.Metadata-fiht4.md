@@ -1,2 +1,0 @@
-category: Fixed
-- **A downloaded variable list now carries its "Ønskede data".** The list download sent only variable ids to an anonymous export, which left the "Ønskede data" column empty in both Excel and CSV. It now asks for the reader's own list through the new `IMuninExplorerClient.ExportMyListAsync`, narrowed by the same kilder as the table, and Munin fills in each row's annotation. This needs Munin with `POST api/explorer/my/lists/{id}/export`. Against an older API the download fails rather than offering a file without the column. `ExportListAsync` is unchanged.

@@ -29,6 +29,29 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 1.0.1 — 2026-10-01
+
+### Added
+
+- **The instrument page's header wears a new class, `munin-explorer-instrument__header`.** It sits beside `munin-explorer-page__header` on `InstrumentView`'s name block, so Stiler can size the instrument's name as H1 without sizing the saved lists' name with it.
+
+### Changed
+
+- **An empty saved-list view is a panel that says what to do next.** With no lists, or with one of the reader's own lists that holds no variables, the view shows helsedata's own `emptystate` panel: a heading ("Du har ingen variabellister ennå." or "Denne listen er tom."), the hint "Søk opp variabler i variabelutforskeren og velg «Lagre i liste».", and, inside the variable explorer, a "Gå til variabelutforskeren" button that opens the Søkeresultat tab with focus in the search field. A `VariableListView` mounted on its own gets the panel without the button, since it does not know where the host's search is. A list whose rows a ticked kilde filters out entirely keeps its plain sentence, and so does an empty shared list, which the reader cannot add to. No new class names; Stiler already styles `emptystate`.
+
+### Fixed
+
+- **The saved-list filter panel no longer shows "Filtre" and "Kilde" over nothing.** With no saved lists, while the lists are being read, or after adding or removing a variable has made the list's kilder unknown (they come back when the reader switches list), the panel is left out rather than drawn as two headings over an empty column. It stays whenever a kilde is ticked, so a narrowing is always visible and can be cleared. No class names change.
+- **A downloaded variable list now carries its "Ønskede data".** The list download sent only variable ids to an anonymous export, which left the "Ønskede data" column empty in both Excel and CSV. It now asks for the reader's own list through the new `IMuninExplorerClient.ExportMyListAsync`, narrowed by the same kilder as the table, and Munin fills in each row's annotation. This needs Munin with `POST api/explorer/my/lists/{id}/export`. Against an older API the download fails rather than offering a file without the column. `ExportListAsync` is unchanged.
+- **The saved-list view no longer says the reader has no lists while it is still reading them.** On first visit it said "Du har ingen variabellister ennå" for about a second before the lists appeared. It now shows "Henter variabellistene dine …" as a status line while the read is in flight. If the read fails, whichever part of the explorer started it, the view says the lists could not be read instead of saying there are none, and offers "Prøv igjen" under the message. Once the list is shown the button goes and focus moves to the list, or to "Legg til ny liste" when the reader has none. A refused read is retried only by that button, by opening the list tab, or by saving a variable, never by a re-render, so a throttled API is not asked again on every render.
+- **The variable explorer's filter column says it is loading instead of standing empty.** Until the first filter counts arrive, the column shows "Henter filtre …" and carries `aria-busy`. It uses the existing `munin-explorer-filters` and `caption` names, so no new class name and no Stiler change.
+- **An empty saved list says so once.** It used to show "Listen er tom" beside the actions and "Denne listen er tom." below them. The first is now visually hidden while the sentence below says the list is empty; with a kilde ticked that sentence says something else, and the first stays visible. It stays in the page as the reason the copy, empty and share buttons are refused, so a screen reader still hears why. It uses the existing `screenreader-only` name, so no new class name and no Stiler change.
+- **The new-list and rename forms look like helsedata's own and fold away once they have done their job.** Each name field wears `input__field input__field--small` under its label in an `input__container`, and "Opprett liste" and "Lagre navnet" are solid `button-square--secondary` buttons instead of link-styled ghost buttons. After a list is created, the form closes and focus moves to the list picker, which names the new list, or back to "Legg til ny liste" when it is the reader's only list. After a rename, the form closes and focus returns to "Gi nytt navn". All borrowed names Stiler and helsedata already style, so no Stiler change.
+
+### Notes for hosts
+
+- **Run `Fhi.Helsedata.Stiler` 0.1.144 or later: the saved lists' name is no longer page-H1-sized, and the instrument page's name still is.** Stiler 0.1.143 stopped setting `munin-explorer-page__header`'s heading at the H1 size, so a saved or shared list's name no longer outranks the explorer's own title; it takes its `headline-s` size. The instrument page shared that header and lost its large name with it, so its header now also wears `munin-explorer-instrument__header`, which 0.1.144 sizes as H1 beside the kilde, variable and datasamling pages. On 0.1.143 the instrument name is small; below 0.1.143 the saved list's name is large. Nothing else changes.
+
 ## 1.0.0 — 2026-09-30
 
 ### Notes for hosts
