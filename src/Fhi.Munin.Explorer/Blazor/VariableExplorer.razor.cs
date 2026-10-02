@@ -226,9 +226,17 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             : Navigation.ToAbsoluteUri(_mirror.Address(Linkable(new ExplorerUrlState
             {
                 Search = item.VariableCode,
-                Filter = item.KildeId is { } kilde ? VariableFilter.None with { KildeIds = [kilde] } : VariableFilter.None,
+                Filter = VariableFilter.None with
+                {
+                    KildeIds = item.KildeId is { } kilde ? [kilde] : [],
+                    IncludeHistorical = IsHistorical(item.VersionStatus),
+                },
                 SelectedVariableId = item.VariableId,
             }).ToQueryString())).ToString();
+
+    private static bool IsHistorical(string? status) =>
+        string.Equals(status, "historical", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(status, "historisk", StringComparison.OrdinalIgnoreCase);
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 

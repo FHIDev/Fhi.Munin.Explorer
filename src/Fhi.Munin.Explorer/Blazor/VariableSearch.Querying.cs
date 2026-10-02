@@ -484,6 +484,13 @@ public partial class VariableSearch
         // yields with the rows already back on screen and clickable, so another row may have been
         // opened while it ran, and what the host is told has to be what is open.
         await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
+
+        // Closing stopped the loop for nameless kodeverk; drawn first, and what it fetched is skipped.
+        if (panel.Detail is { } restored && _codeLists is { } lists)
+        {
+            StateHasChanged();
+            await lists.LoadUnnamedAsync(restored, () => ReferenceEquals(_codeLists, lists));
+        }
     }
 
     /// <summary>

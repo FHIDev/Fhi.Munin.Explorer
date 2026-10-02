@@ -207,18 +207,29 @@ public sealed partial class VariableListView
     private async Task CopyVariableLinkAsync(string link)
     {
         ForgetLinkStatus();
-        StateHasChanged();
+        var row = _openGeneration;
 
         try
         {
             await Js.InvokeVoidAsync("navigator.clipboard.writeText", link);
-            _linkStatus = T.VariableLinkCopied;
+            SayLinkStatus(row, T.VariableLinkCopied, notCopied: false);
         }
         catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException)
         {
             Log?.LogWarning(ex, "the browser refused to copy a variable link");
-            _linkStatus = T.VariableLinkNotCopied;
-            _linkNotCopied = true;
+            SayLinkStatus(row, T.VariableLinkNotCopied, notCopied: true);
         }
+    }
+
+    // Only into the panel that asked: another row opened meanwhile has its own link.
+    private void SayLinkStatus(int row, string status, bool notCopied)
+    {
+        if (row != _openGeneration)
+        {
+            return;
+        }
+
+        _linkStatus = status;
+        _linkNotCopied = notCopied;
     }
 }

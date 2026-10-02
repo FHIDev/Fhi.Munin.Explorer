@@ -11002,6 +11002,11 @@ public class VariableSearchTest : ExplorerTestContext
         {
             SearchCalls++;
 
+            if (SearchGates.TryGetValue(SearchCalls, out var gate))
+            {
+                return Gated(gate);
+            }
+
             if (_nextAnswers.Count == 0)
             {
                 return Task.FromResult(Answer);
@@ -11010,6 +11015,21 @@ public class VariableSearchTest : ExplorerTestContext
             return _nextAnswers.Dequeue() is { } next
                 ? Task.FromResult(next)
                 : throw new HttpRequestException("nede");
+        }
+
+        /// <summary>Search calls, by their number, held until the test releases them.</summary>
+        public Dictionary<int, TaskCompletionSource> SearchGates { get; } = [];
+
+        private async Task<Page<VariableSummary>> Gated(TaskCompletionSource gate)
+        {
+            await gate.Task;
+
+            if (_nextAnswers.Count == 0)
+            {
+                return Answer;
+            }
+
+            return _nextAnswers.Dequeue() ?? throw new HttpRequestException("nede");
         }
 
         /// <summary>What the filters endpoint answers with; null answers with no facets at all.</summary>
@@ -12456,7 +12476,6 @@ public class VariableSearchTest : ExplorerTestContext
         IRenderedComponent<VariableSearch> cut) =>
         [.. Panel(cut).QuerySelectorAll("li.munin-explorer-kodeverk__item > button")];
 
-
     [Fact]
     public async Task Panel_WhileANamelessKodeverksCodesLoad_ThenItIsAlreadyDrawn()
     {
@@ -12530,6 +12549,64 @@ public class VariableSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
             Assert.NotNull(cut.Find(".munin-explorer-drilldown").QuerySelector(".munin-explorer-codes table")), TimeSpan.FromSeconds(2));
     }
+
+    private static readonly Page<VariableSummary> TwoPages = new()
+    {
+        Items = [Row(TaleId, "1. Tale")], TotalCount = 30, PageNumber = 1, Size = 25, TotalPages = 2
+    };
+
+    [Fact]
+    public async Task NamelessCodes_WhenAFailedPageTurnRestoresThePanel_ThenTheSkippedOnesAreAskedFor()
+    {
+        var twoNameless = WithKodeverk(TaleId) with
+        {
+            KodeverkLinks =
+            [
+                new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", HasCodeValues = true },
+                new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2338", HasCodeValues = true },
+            ]
+        };
+        var client = new DetailClient(TwoPages).Knows(twoNameless);
+        client.StallCodes = true;
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        Assert.Single(client.RequestsFor("2336"));
+
+        // Page 2 comes back empty, the retreat to page 1 is held, and then fails.
+        var retreat = new TaskCompletionSource();
+        client.SearchGates[3] = retreat;
+        client.Then(new Page<VariableSummary>()).Then(null);
+        Next(cut).Click();
+        Assert.Empty(cut.FindAll(".munin-explorer-detail"));
+
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
+        await cut.InvokeAsync(retreat.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded")));
+        cut.WaitForAssertion(() => Assert.Single(client.RequestsFor("2338")));
+        Assert.Single(client.RequestsFor("2336"));
+    }
+
+    [Fact]
+    public async Task Codes_WhenAFailedPageTurnRestoresThePanel_ThenTheOpenListComesBackWithoutAskingAgain()
+    {
+        var client = new DetailClient(TwoPages)
+            .Knows(WithKodeverk(TaleId)).Knows(Codes2336()).Knows(Codes2337()).Knows(Codes3402());
+        var cut = OpenData(client);
+        CodeToggles(cut)[0].Click();
+        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+
+        client.Then(new Page<VariableSummary>()).Then(null);
+        Next(cut).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded")));
+        TabButton(cut, "Data").Click();
+        Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
+        Assert.Single(client.RequestsFor("2337"));
+        await Task.CompletedTask;
+    }
+
     [Fact]
     public void Kodeverk_WhenTheDataTabIsOpen_ThenTheLinksAreGroupedByKindInPayloadOrder()
     {
@@ -12834,6 +12911,21 @@ public class VariableSearchTest : ExplorerTestContext
     private static void PressCodeToggle(
         IRenderedComponent<VariableSearch> cut, int control = 0, long clicks = 1, bool shift = false) =>
         CodeToggles(cut)[control].Click(new MouseEventArgs { Detail = clicks, ShiftKey = shift });
+
+    [Fact]
+    public void Codes_WhenOpened_ThenTheirScrollBoxIsANamedRegionTheKeyboardReaches()
+    {
+        var cut = OpenData(KodeverkRows());
+
+        CodeToggles(cut)[0].Click();
+
+        var box = Panel(cut).QuerySelector(".munin-explorer-codes")!;
+        var name = cut.Find($"#{box.GetAttribute("aria-labelledby")}");
+        Assert.Equal("region", box.GetAttribute("role"));
+        Assert.Equal("0", box.GetAttribute("tabindex"));
+        Assert.Equal(box.QuerySelector("table")!.GetAttribute("aria-labelledby"), name.Id);
+        Assert.Contains("munin-explorer-kodeverk__name", name.ClassName);
+    }
 
     [Fact]
     public void CodeToggle_WhenItIsDoubleClicked_ThenTheCodeTableIsLeftOpen()

@@ -215,10 +215,14 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             return;
         }
 
+        // Stiler makes this box scroll, and a scroll box a keyboard cannot reach fails WCAG 2.1.1.
         builder.OpenElement(7, "div");
         builder.AddAttribute(8, "id", CodesId(index));
         builder.AddAttribute(9, "class", "munin-explorer-codes");
-        builder.AddContent(10, CodesBody(key, index));
+        builder.AddAttribute(10, "role", "region");
+        builder.AddAttribute(11, "tabindex", "0");
+        builder.AddAttribute(12, "aria-labelledby", NameId(index));
+        builder.AddContent(13, CodesBody(key, index));
         builder.CloseElement();
     };
 

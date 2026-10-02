@@ -1440,16 +1440,16 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         ForgetFailures();
 
-        if (_openId == variableId)
-        {
-            CloseRow();
-        }
-
         try
         {
             // The holder raises Changed, and OnStateChanged re-reads the page — so no fetch here.
             if (await State.RemoveVariablesAsync(_shownList.Value, [variableId]))
             {
+                if (_openId == variableId)
+                {
+                    CloseRow();
+                }
+
                 await RetreatFromEmptyPageAsync();
             }
             else

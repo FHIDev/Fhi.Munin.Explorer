@@ -96,7 +96,6 @@ internal sealed class KodeverkCodeLists(Guid variableId, IMuninExplorerClient cl
     {
         _failures.Remove(key);
         _loading.Add(key);
-        Changed?.Invoke();
 
         try
         {

@@ -1,0 +1,2 @@
+category: Fixed
+- **An open code table's scroll box can be reached and scrolled with the keyboard.** Stiler caps the box's height and lets it scroll, but nothing could take focus there, so a keyboard reader could not see the codes below the fold (WCAG 2.1.1). The box is now a region named after its kodeverk, with `tabindex="0"`, in the search panel, the whole-variable view and an opened list row alike.
