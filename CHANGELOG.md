@@ -50,6 +50,7 @@ under alpha.8, which is the whole reason this file exists.
 
 ### Notes for hosts
 
+- **Versioning error: 1.0.1 is an accidental exception to the fixes-only patch policy.** The instrument-header fix adds the public host class `munin-explorer-instrument__header`, which requires a minor release under the 1.0 contract below. This was missed before 1.0.1 was published; the published package and tag remain unchanged, and the version will not be reused. This note records the mistake rather than relaxing the policy: future parameter or class-name additions require a minor release, and changes that require host action, including a higher Stiler floor, require a major release.
 - **Run `Fhi.Helsedata.Stiler` 0.1.144 or later: the saved lists' name is no longer page-H1-sized, and the instrument page's name still is.** Stiler 0.1.143 stopped setting `munin-explorer-page__header`'s heading at the H1 size, so a saved or shared list's name no longer outranks the explorer's own title; it takes its `headline-s` size. The instrument page shared that header and lost its large name with it, so its header now also wears `munin-explorer-instrument__header`, which 0.1.144 sizes as H1 beside the kilde, variable and datasamling pages. On 0.1.143 the instrument name is small; below 0.1.143 the saved list's name is large. Nothing else changes.
 
 ## 1.0.0 — 2026-09-30
