@@ -1,2 +1,3 @@
 category: Notes for hosts
 - **`VariableListView` takes an optional `VariableHref`.** A `Func<VariableListItem, string>` returning an absolute address that opens one variable. `VariableExplorer` passes its own, so a host using it needs no change; one that declines the `variabelId` query key gets no share controls in the list panel.
+- **Run `Fhi.Helsedata.Stiler` 0.1.145 or later for an opened saved-list row.** On 0.1.144 and earlier the panel is squeezed into one column of the phone card, is as wide as the whole table on larger screens, and the row's chevron stands above the name instead of beside it.

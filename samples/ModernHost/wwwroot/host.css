@@ -1616,6 +1616,7 @@ table.munin-explorer-data-list tbody th {
    the focus ring is the half that is genuinely the host's, and it is owed because the box carries
    tabindex="0" and a focus stop nobody can see is WCAG 2.4.7. */
 .munin-explorer-list-scroll {
+  container-type: inline-size;
   overflow-x: auto;
 }
 
@@ -5017,4 +5018,29 @@ table.munin-explorer-data-list tbody th {
     overflow-wrap: anywhere;
     white-space: normal;
   }
+  .munin-explorer-list-scroll table.munin-explorer-data-list td:not([data-label]) {
+    display: block;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list td:not([data-label])::before {
+    content: none;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list td:not([data-label]) > .munin-explorer-detail {
+    max-width: none;
+    position: static;
+  }
+}
+
+/* Stiler 0.1.145: an opened saved-list row's panel and its name button (Fhi.Metadata-dfy9u.9). */
+table.munin-explorer-data-list td:not([data-label]) > .munin-explorer-detail {
+  box-sizing: border-box;
+  left: 12px;
+  max-width: calc(100cqi - 24px);
+  position: sticky;
+}
+
+table.munin-explorer-data-list th[scope=row] > button {
+  align-items: center;
+  column-gap: 8px;
+  display: inline-flex;
+  text-align: start;
 }
