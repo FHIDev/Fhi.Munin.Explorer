@@ -651,7 +651,9 @@ else if (State?.IsAuthenticated == true)
     private const int OwnListColumnCount = 11;
 
     private string RowChevron(VariableListItem item) =>
-        IsOpen(item) ? "icon icon-keyboard-arrow-up" : "icon icon-keyboard-arrow-down";
+        IsOpen(item)
+            ? "icon icon-keyboard-arrow-up munin-explorer-dataitem-main__expand-icon"
+            : "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon";
 
     // The search panel's classes, so Stiler dresses both panels alike and no new name is invented.
     private RenderFragment RowPanel(VariableListItem item) => @<div class="munin-explorer-meta munin-explorer-detail"
