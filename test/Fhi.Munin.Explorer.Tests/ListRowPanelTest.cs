@@ -79,7 +79,7 @@ public class ListRowPanelTest : ExplorerTestContext
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>(TwoLists
-                ? [new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = items.Count },
+                ? [new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = items.Count(item => !_removed.Contains((ListId, item.VariableId))) },
                    new VariableList { Id = OtherListId, Name = "Kopien", VariableCount = items.Count }]
                 : [new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = items.Count }]);
 
@@ -105,9 +105,6 @@ public class ListRowPanelTest : ExplorerTestContext
 
         public bool RefuseRemoval { get; init; }
 
-        /// <summary>Removals that have reached the fake, so a test can wait for one to land.</summary>
-        public int Removals { get; private set; }
-
         private readonly HashSet<(Guid List, Guid Variable)> _removed = [];
 
         /// <summary>Held until the test releases it, so the reader can move on meanwhile.</summary>
@@ -120,8 +117,6 @@ public class ListRowPanelTest : ExplorerTestContext
             {
                 await gate.Task;
             }
-
-            Removals++;
 
             if (RefuseRemoval)
             {
