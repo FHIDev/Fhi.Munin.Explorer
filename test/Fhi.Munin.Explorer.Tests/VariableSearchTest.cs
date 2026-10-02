@@ -12517,6 +12517,85 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Empty(client.RequestsFor("2338"));
     }
 
+    private static VariableDetail TwoNameless(Guid id) => WithKodeverk(id) with
+    {
+        KodeverkLinks =
+        [
+            new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2336", HasCodeValues = true },
+            new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2338", HasCodeValues = true },
+        ]
+    };
+
+    [Fact]
+    public async Task NamelessCodes_WhenAnotherRowOpensDuringARestore_ThenTheyAreNeverAskedForUnderIt()
+    {
+        var page = TwoPages with { Items = [Row(TaleId, "1. Tale"), Row(SpyttId, "2. Spytt")] };
+        var threeNameless = TwoNameless(TaleId) with
+        {
+            KodeverkLinks =
+            [
+                .. TwoNameless(TaleId).KodeverkLinks,
+                new() { KodeverkType = "Kildekodeverk", KodeverkReference = "2339", HasCodeValues = true },
+            ]
+        };
+        var client = new DetailClient(page).Knows(threeNameless).Knows(Detail(SpyttId, "2. Spytt") with { KodeverkLinks = [] });
+        client.StallCodes = true;
+        var hold = new TaskCompletionSource();
+        var holding = false;
+        var cut = RenderWith(client, b => b.Add(c => c.SelectedVariableIdChanged, async (Guid? id) =>
+        {
+            if (holding && id == TaleId)
+            {
+                holding = false;
+                await hold.Task;
+            }
+        }));
+
+        Toggles(cut)[0].Click();
+        var retreat = new TaskCompletionSource();
+        client.SearchGates[3] = retreat;
+        client.Then(new Page<VariableSummary>()).Then(null);
+        Next(cut).Click();
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
+        holding = true;
+        await cut.InvokeAsync(retreat.SetResult);
+
+        // The host is still being told about the restored row when the reader opens the other one;
+        // the rows are drawn by then wherever anything else rendered meanwhile.
+        cut.Render();
+        cut.WaitForAssertion(() => Assert.Equal(2, Toggles(cut).Count));
+        Toggles(cut)[1].Click();
+        await cut.InvokeAsync(hold.SetResult);
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336() with { KodeverkReference = "2338" }));
+
+        Assert.DoesNotContain(client.CodeRequests, request => request.VariableId == SpyttId);
+        Assert.Empty(client.RequestsFor("2339"));
+    }
+
+    [Fact]
+    public async Task Retry_WhenItsRetreatRestoresAPanelWithCodesStillToFetch_ThenItSettlesWithoutWaitingForThem()
+    {
+        var client = new DetailClient(TwoPages).Knows(TwoNameless(TaleId));
+        client.StallCodes = true;
+        var cut = RenderWith(client);
+
+        Toggles(cut)[0].Click();
+        client.Then(null);
+        Next(cut).Click();
+        cut.WaitForAssertion(() => Assert.Single(RetryButtons(cut)));
+
+        var retreat = new TaskCompletionSource();
+        client.SearchGates[client.SearchCalls + 2] = retreat;
+        client.Then(new Page<VariableSummary>()).Then(null);
+        Retry(cut, RetryRows).Click();
+        await cut.InvokeAsync(() => client.AnswerStalledCodes(Codes2336()));
+        await cut.InvokeAsync(retreat.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Single(client.RequestsFor("2338")));
+        cut.WaitForAssertion(() => Assert.DoesNotContain(
+            "Prøver igjen", string.Join("", AlertMessages(cut).Select(p => p.TextContent))));
+    }
+
     [Fact]
     public async Task Codes_WhenTheTabsAreRoundTrippedWhileTheyLoad_ThenTheAnswerStillShows()
     {
@@ -12589,7 +12668,7 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task Codes_WhenAFailedPageTurnRestoresThePanel_ThenTheOpenListComesBackWithoutAskingAgain()
+    public void Codes_WhenAFailedPageTurnRestoresThePanel_ThenTheOpenListComesBackWithoutAskingAgain()
     {
         var client = new DetailClient(TwoPages)
             .Knows(WithKodeverk(TaleId)).Knows(Codes2336()).Knows(Codes2337()).Knows(Codes3402());
@@ -12604,7 +12683,6 @@ public class VariableSearchTest : ExplorerTestContext
         TabButton(cut, "Data").Click();
         Assert.NotNull(Panel(cut).QuerySelector(".munin-explorer-codes table"));
         Assert.Single(client.RequestsFor("2337"));
-        await Task.CompletedTask;
     }
 
     [Fact]

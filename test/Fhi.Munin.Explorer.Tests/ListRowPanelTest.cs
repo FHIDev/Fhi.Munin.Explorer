@@ -88,8 +88,8 @@ public class ListRowPanelTest : ExplorerTestContext
             CancellationToken cancellationToken = default) =>
             Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
-                Items = [.. items],
-                TotalCount = items.Count,
+                Items = [.. items.Where(item => !_removed.Contains((id, item.VariableId)))],
+                TotalCount = items.Count(item => !_removed.Contains((id, item.VariableId))),
                 PageNumber = 1,
                 Size = pageSize,
                 TotalPages = 1,
@@ -98,22 +98,38 @@ public class ListRowPanelTest : ExplorerTestContext
         public override Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
-            items.AddRange(all.Where(item => variableIds.Contains(item.VariableId)));
+            _removed.RemoveWhere(entry => entry.List == id && variableIds.Contains(entry.Variable));
+            items.AddRange(all.Where(item => variableIds.Contains(item.VariableId) && !items.Contains(item)));
             return Task.FromResult(true);
         }
 
         public bool RefuseRemoval { get; init; }
 
-        public override Task<bool> RemoveVariablesFromMyListAsync(
+        /// <summary>Removals that have reached the fake, so a test can wait for one to land.</summary>
+        public int Removals { get; private set; }
+
+        private readonly HashSet<(Guid List, Guid Variable)> _removed = [];
+
+        /// <summary>Held until the test releases it, so the reader can move on meanwhile.</summary>
+        public TaskCompletionSource? RemovalGate { get; init; }
+
+        public override async Task<bool> RemoveVariablesFromMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
-            if (RefuseRemoval)
+            if (RemovalGate is { } gate)
             {
-                return Task.FromResult(false);
+                await gate.Task;
             }
 
-            items.RemoveAll(item => variableIds.Contains(item.VariableId));
-            return Task.FromResult(true);
+            Removals++;
+
+            if (RefuseRemoval)
+            {
+                return false;
+            }
+
+            _removed.UnionWith(variableIds.Select(variable => (id, variable)));
+            return true;
         }
 
         public override async Task<VariableDetail?> GetVariableAsync(
@@ -329,6 +345,24 @@ public class ListRowPanelTest : ExplorerTestContext
         NameButton(cut, "Databaseversjon").Click();
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
         RemoveButton(cut, "Databaseversjon").Click();
+
+        Assert.Equal("true", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded"));
+        Assert.NotNull(Panel(cut));
+    }
+
+    [Fact]
+    public async Task Row_WhenARemovalLandsAfterTheSameVariableWasOpenedInAnotherList_ThenThatPanelStaysOpen()
+    {
+        var gate = new TaskCompletionSource();
+        var cut = RenderView(new PanelClient(Databaseversjon) { TwoLists = true, RemovalGate = gate });
+
+        RemoveButton(cut, "Databaseversjon").Click();
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        cut.WaitForAssertion(() => NameButton(cut, "Databaseversjon").Click());
+        cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+
+        await cut.InvokeAsync(gate.SetResult);
+        await cut.InvokeAsync(() => Task.Delay(100));
 
         Assert.Equal("true", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded"));
         Assert.NotNull(Panel(cut));

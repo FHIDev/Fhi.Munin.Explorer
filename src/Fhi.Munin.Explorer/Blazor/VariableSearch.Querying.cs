@@ -464,7 +464,7 @@ public partial class VariableSearch
         _selectedId = id;
         _detail = panel.Detail;
         _detailError = panel.Error;
-        _codeLists = panel.CodeLists ?? new KodeverkCodeLists(id, Client, Log);
+        var restoredLists = _codeLists = panel.CodeLists ?? new KodeverkCodeLists(id, Client, Log);
 
         // A new owner of the panel: whatever was in flight when it closed must not land in the one
         // just put back.
@@ -475,6 +475,12 @@ public partial class VariableSearch
         {
             await LoadDetailAsync(id);
         }
+        else if (panel.Detail is { } restored)
+        {
+            // Closing stopped the loop for nameless kodeverk. Not awaited: the page turn's own state
+            // must settle without waiting on code fetches, and each answer redraws its own list.
+            _ = restoredLists.LoadUnnamedAsync(restored, () => ReferenceEquals(_codeLists, restoredLists));
+        }
 
         // After the detail, for the reason the detail comes after the rows: the owner panel is
         // drawn inside the variable's, and LoadDetailAsync clears it on its way through.
@@ -484,13 +490,6 @@ public partial class VariableSearch
         // yields with the rows already back on screen and clickable, so another row may have been
         // opened while it ran, and what the host is told has to be what is open.
         await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
-
-        // Closing stopped the loop for nameless kodeverk; drawn first, and what it fetched is skipped.
-        if (panel.Detail is { } restored && _codeLists is { } lists)
-        {
-            StateHasChanged();
-            await lists.LoadUnnamedAsync(restored, () => ReferenceEquals(_codeLists, lists));
-        }
     }
 
     /// <summary>
