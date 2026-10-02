@@ -335,10 +335,27 @@ else if (State?.IsAuthenticated == true)
                                        the way Kelda's table does, and with no class:
                                        munin-explorer-dataitem-main__name is `display: inline-flex`,
                                        which a table header cell cannot be. *@
+                                    @* The name is the row's disclosure; it never disables, as pressing it again is how the panel closes.
+                                       An orphan has no variable to open, so its name stays text. *@
                                     <th scope="row">
-                                        <span class="munin-explorer-dataitem-main__column__text"
-                                              id="@RowNameId(item)"
-                                              lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                        @if (IsOrphan(item))
+                                        {
+                                            <span class="munin-explorer-dataitem-main__column__text"
+                                                  id="@RowNameId(item)">@RowName(item)</span>
+                                        }
+                                        else
+                                        {
+                                            <button class="hd-button-reset"
+                                                    type="button"
+                                                    aria-expanded="@Expanded(IsOpen(item))"
+                                                    aria-controls="@RowPanelControls(item)"
+                                                    @onclick="e => ToggleRowFromNameAsync(item, e)">
+                                                <span class="@RowChevron(item)" aria-hidden="true"></span>
+                                                <span class="munin-explorer-dataitem-main__column__text"
+                                                      id="@RowNameId(item)"
+                                                      lang="@CatalogueLang(item.VariableName)">@RowName(item)</span>
+                                            </button>
+                                        }
                                     </th>
 
                                     @* The six columns the result list draws too and the two coverage
@@ -373,6 +390,13 @@ else if (State?.IsAuthenticated == true)
                                                 @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
                                     </td>
                                 </tr>
+
+                                @if (IsOpen(item))
+                                {
+                                    <tr>
+                                        <td colspan="@OwnListColumnCount">@RowPanel(item)</td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                     </table>
@@ -620,4 +644,81 @@ else if (State?.IsAuthenticated == true)
             </details>
         }
     </text>;
+}
+
+@code {
+    // Eleven: the name, nine columns and the remove button. The panel row spans all of them.
+    private const int OwnListColumnCount = 11;
+
+    private string RowChevron(VariableListItem item) =>
+        IsOpen(item)
+            ? "icon icon-keyboard-arrow-up munin-explorer-dataitem-main__expand-icon"
+            : "icon icon-keyboard-arrow-down munin-explorer-dataitem-main__expand-icon";
+
+    // The search panel's classes, so Stiler dresses both panels alike and no new name is invented.
+    private RenderFragment RowPanel(VariableListItem item) => @<div class="munin-explorer-meta munin-explorer-detail"
+                                                                   id="@RowPanelId(item)"
+                                                                   role="region"
+                                                                   aria-labelledby="@RowPanelHeadingId(item)"
+                                                                   aria-busy="@Expanded(_openLoading)">
+        @RowPanelHeading(item)
+
+        <p class="@RowPanelStatusClass" role="status" aria-live="polite" aria-atomic="true">@RowPanelStatus</p>
+
+        @if (_openDetail is { } detail)
+        {
+            <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">
+                <div>
+                    <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
+                    @if (RowPanelDescription(detail) is { } description)
+                    {
+                        <dd lang="no">@CatalogueMarkdown.Render(description)</dd>
+                    }
+                    else
+                    {
+                        <dd>@T.NotSpecified</dd>
+                    }
+                </div>
+
+                <div>
+                    <dt class="headline headline-xxs margin--none">@T.FieldDataPeriod</dt>
+                    <dd>@RowPanelPeriod(item, detail)</dd>
+                </div>
+
+                <div>
+                    <dt class="headline headline-xxs margin--none">@T.FieldSource</dt>
+                    <dd class="munin-explorer-breadcrumb">@RowPanelTrail(detail)</dd>
+                </div>
+
+                @if (RowPanelVariabelgrupper(detail) is { } groups)
+                {
+                    <div>
+                        <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
+                        <dd lang="no">@groups</dd>
+                    </div>
+                }
+            </dl>
+
+            @RowPanelTabs(item, detail)
+        }
+
+        @if (VariableHref?.Invoke(item) is { } link)
+        {
+            <div role="group" aria-labelledby="@RowShareHeadingId(item)">
+                <p class="headline headline-xxs margin--none" id="@RowShareHeadingId(item)">@T.ShareVariable</p>
+                <button class="hd-button-square button-square--ghost margin-right margin-bottom"
+                        type="button"
+                        @onclick="() => CopyVariableLinkAsync(link)">@T.CopyVariableLink</button>
+                <a class="hd-button-square button-square--ghost margin-right margin-bottom"
+                   href="@VariableMailTo(item, link)">@T.SendVariableByEmail</a>
+                <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_linkStatus</p>
+
+                @if (_linkNotCopied)
+                {
+                    <label class="form-element__label" for="@RowLinkFieldId(item)">@T.VariableLinkLabel</label>
+                    <input type="text" id="@RowLinkFieldId(item)" readonly value="@link" />
+                }
+            </div>
+        }
+    </div>;
 }

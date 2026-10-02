@@ -215,7 +215,7 @@ public class GeometryScanGuardTest
     }
 
     [Fact]
-    public void HostileHost_WhenMeasuringAt767_ThenBothCardPagesAreMeasured()
+    public void HostileHost_WhenMeasuringAt767_ThenEveryCardPageIsMeasured()
     {
         // 767 is the widest width Stiler still draws the cards at. Deleting that call, moving its
         // width or dropping a page left every other guard green.
@@ -228,7 +228,7 @@ public class GeometryScanGuardTest
             .Select(match => match.Groups["target"].Value)
             .Order(StringComparer.Ordinal);
 
-        Assert.Equal(["/::explorer-list-tab", "/kilder::kilde-hierarchy-metadata"], targets);
+        Assert.Equal(["/::explorer-list-tab", "/::list-row-panel", "/kilder::kilde-hierarchy-metadata"], targets);
     }
 
     [Fact]

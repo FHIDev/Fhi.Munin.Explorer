@@ -1143,6 +1143,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // for reads as a rename under way. No caller here has focus inside it.
         _renaming = false;
         ForgetCopyAndEmptyControls();
+        CloseRow();
     }
 
     /// <summary>
@@ -1439,11 +1440,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         ForgetFailures();
 
+        var list = _shownList.Value;
+
         try
         {
             // The holder raises Changed, and OnStateChanged re-reads the page — so no fetch here.
-            if (await State.RemoveVariablesAsync(_shownList.Value, [variableId]))
+            if (await State.RemoveVariablesAsync(list, [variableId]))
             {
+                // Only the row it was removed from: the same variable may be open in another list by now.
+                if (_openId == variableId && _openListId == list)
+                {
+                    CloseRow();
+                }
+
                 await RetreatFromEmptyPageAsync();
             }
             else

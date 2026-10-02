@@ -215,6 +215,29 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Navigation.ToAbsoluteUri(_mirror.Address(new ExplorerUrlState { ShareCode = code }.ToQueryString()))
                 .ToString();
 
+    private Func<VariableListItem, string?>? _variableAddress;
+
+    // The search keeps a selection only on a row its first page shows, so the link searches the code
+    // within the kilde; without a code, or with search declined, no link could open the variable.
+    private Func<VariableListItem, string?>? VariableHref => Declined("variabelId") || Declined("search")
+        ? null
+        : _variableAddress ??= item => string.IsNullOrWhiteSpace(item.VariableCode)
+            ? null
+            : Navigation.ToAbsoluteUri(_mirror.Address(Linkable(new ExplorerUrlState
+            {
+                Search = item.VariableCode,
+                Filter = VariableFilter.None with
+                {
+                    KildeIds = item.KildeId is { } kilde ? [kilde] : [],
+                    IncludeHistorical = IsHistorical(item.VersionStatus),
+                },
+                SelectedVariableId = item.VariableId,
+            }).ToQueryString())).ToString();
+
+    private static bool IsHistorical(string? status) =>
+        string.Equals(status, "historical", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(status, "historisk", StringComparison.OrdinalIgnoreCase);
+
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 
     private bool Owns(string key) =>

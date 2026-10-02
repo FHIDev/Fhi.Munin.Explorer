@@ -201,10 +201,9 @@ public partial class VariableSearch
         // kilde under the new variable's name until its own fetch landed.
         ClearSource();
 
-        // Neither can the code lists, and the reason is sharper: the codes are fetched per variable
-        // as well as per reference, so a cache kept across the replacement would answer the new
-        // variable's kodeverk with the old one's codes rather than merely looking out of place.
-        ClearCodes();
+        // Neither can the code lists: they are fetched per variable, so a cache kept across the
+        // replacement would answer the new variable's kodeverk with the old one's codes.
+        _codeLists = new KodeverkCodeLists(id, Client, Log);
 
         StateHasChanged();
 
@@ -254,9 +253,11 @@ public partial class VariableSearch
         // Outside the fetch, so a nameless link's codes do not hold back the lines that are ready.
         // Its own check, because only an abandoned fetch that SUCCEEDED returns out of the try —
         // one abandoned and then thrown reaches this line (Fhi.Metadata-l9l2n.38).
-        if (_detailGeneration == generation)
+        if (_detailGeneration == generation && _detail is { } loaded && _codeLists is { } lists)
         {
-            await LoadUnnamedCodesAsync();
+            // Drawn first, so the panel does not wait for these fetches to appear.
+            StateHasChanged();
+            await lists.LoadUnnamedAsync(loaded, () => ReferenceEquals(_codeLists, lists));
         }
     }
 
@@ -286,10 +287,8 @@ public partial class VariableSearch
         // would be a kilde nothing draws, and the next variable opened would inherit it.
         ClearSource();
 
-        // The code lists hang in it too, and for them "inherited by the next variable" is worse
-        // than a stray panel: two variables can share a reference, so a cache left behind would
-        // look right and be another variable's answer.
-        ClearCodes();
+        // Two variables can share a reference, so a cache left behind would look right and be wrong.
+        _codeLists = null;
     }
 
     /// <summary>Close the kilde or datasamling panel and forget what was fetched for it.</summary>
