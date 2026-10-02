@@ -1475,7 +1475,8 @@
         "Lovverk": "Registerets innhold av datavariabler forholder seg til  den til enhver tid gjeldende tematiske konsesjon for registeret; sist oppdatert ved brev fra  Datatilsynet 5. januar 2009 (01/ 04302-35/CAO). Juridisk hjemmelsgrunnlag: Personvernombudet ved OUS har 01.07.2020 gitt tilrådning av Barnediabetesregisteret, saksnummer 20/09791 (GSNR:2015/5739).",
         "GradAvPersonidentifikasjon": "1",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": 1
     },
     {
       "id": "2ebfa0a0-2410-4457-888a-81cd8a593501",
@@ -1504,7 +1505,8 @@
         "Lovverk": "Registerets innhold av datavariabler forholder seg til  den til enhver tid gjeldende tematiske konsesjon for registeret; sist oppdatert ved brev fra  Datatilsynet 5. januar 2009 (01/ 04302-35/CAO). Juridisk hjemmelsgrunnlag: Personvernombudet ved OUS har 01.07.2020 gitt tilrådning av Barnediabetesregisteret, saksnummer 20/09791 (GSNR:2015/5739).",
         "GradAvPersonidentifikasjon": "1",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": 2
     },
     {
       "id": "3791e23c-b13c-4bcd-ac8d-47a6fc06dc84",
@@ -1533,7 +1535,8 @@
         "Lovverk": "Registerets innhold av datavariabler forholder seg til  den til enhver tid gjeldende tematiske konsesjon for registeret; sist oppdatert ved brev fra  Datatilsynet 5. januar 2009 (01/ 04302-35/CAO). Juridisk hjemmelsgrunnlag: Personvernombudet ved OUS har 01.07.2020 gitt tilrådning av Barnediabetesregisteret, saksnummer 20/09791 (GSNR:2015/5739).",
         "GradAvPersonidentifikasjon": "1",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": 3
     },
     {
       "id": "d6cbd91d-461a-4485-8a52-d0d6c7da4403",
@@ -1562,7 +1565,8 @@
         "Lovverk": "Registerets innhold av datavariabler forholder seg til  den til enhver tid gjeldende tematiske konsesjon for registeret; sist oppdatert ved brev fra  Datatilsynet 5. januar 2009 (01/ 04302-35/CAO). Juridisk hjemmelsgrunnlag: Personvernombudet ved OUS har 01.07.2020 gitt tilrådning av Barnediabetesregisteret, saksnummer 20/09791 (GSNR:2015/5739).",
         "GradAvPersonidentifikasjon": "1",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": 4
     },
     {
       "id": "3bfea39c-b010-41cd-aa56-60dd117721ed",
@@ -1591,7 +1595,8 @@
         "Lovverk": "Registerets innhold av datavariabler forholder seg til  den til enhver tid gjeldende tematiske konsesjon for registeret; sist oppdatert ved brev fra  Datatilsynet 5. januar 2009 (01/ 04302-35/CAO). Juridisk hjemmelsgrunnlag: Personvernombudet ved OUS har 01.07.2020 gitt tilrådning av Barnediabetesregisteret, saksnummer 20/09791 (GSNR:2015/5739).",
         "GradAvPersonidentifikasjon": "1",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": 5
     },
     {
       "id": "b156aec4-7d9a-4a07-8079-52d94f3b1a06",
@@ -1620,7 +1625,8 @@
         "Lovverk": "Registerets innhold av datavariabler forholder seg til  den til enhver tid gjeldende tematiske konsesjon for registeret; sist oppdatert ved brev fra  Datatilsynet 5. januar 2009 (01/ 04302-35/CAO). Juridisk hjemmelsgrunnlag: Personvernombudet ved OUS har 01.07.2020 gitt tilrådning av Barnediabetesregisteret, saksnummer 20/09791 (GSNR:2015/5739).",
         "GradAvPersonidentifikasjon": "1",
         "healthCategory": "[\"MRMR\"]"
-      }
+      },
+      "displayOrder": null
     }
   ],
   "delkilder": [],
