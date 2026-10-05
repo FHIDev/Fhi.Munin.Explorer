@@ -40,7 +40,9 @@ public class SaveToListTest : ExplorerTestContext
                     Id = v.Id,
                     Code = v.Code,
                     PreferredTerm = v.PreferredTerm,
-                    KildeName = v.KildeName
+                    KildeId = v.KildeId,
+                    KildeName = v.KildeName,
+                    KildeShortName = v.KildeShortName
                 })],
                 TotalCount = answer.TotalCount,
                 PageNumber = answer.PageNumber,
@@ -505,6 +507,34 @@ public class SaveToListTest : ExplorerTestContext
         Assert.Equal(1, client.AddCalls);
         Assert.Single(client.Stored);
         Assert.Equal("true", SaveButton(cut).GetAttribute("aria-pressed"));
+    }
+
+    [Fact]
+    public void Row_WhenSaveIsPressed_ThenTheListsKildeTallyCountsTheVariablesKilde()
+    {
+        // The list tab's kilde panel follows the save rather than going blank (Fhi.Metadata-5s4uj).
+        var kilde = Guid.NewGuid();
+        var row = Variable("Alder ved diagnose", "V_BDR.ALDER") with { KildeId = kilde };
+        var cut = RenderSignedIn(new ListClient(OnePage(row)));
+        var state = Services.GetRequiredService<VariableListState>();
+
+        SaveButton(cut).Click();
+
+        cut.WaitForAssertion(() => Assert.True(state.KilderInListKnown));
+        Assert.Equal(new KildeInList(kilde, "Als registeret", 1), Assert.Single(state.KilderInList));
+    }
+
+    [Fact]
+    public void Row_WhenSaveIsPressedOnARowWithOnlyAShortKildeName_ThenTheTallyUsesIt()
+    {
+        var kilde = Guid.NewGuid();
+        var row = Variable("Alder ved diagnose", "V_BDR.ALDER") with { KildeId = kilde, KildeName = null, KildeShortName = "ALS" };
+        var cut = RenderSignedIn(new ListClient(OnePage(row)));
+        var state = Services.GetRequiredService<VariableListState>();
+
+        SaveButton(cut).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("ALS", Assert.Single(state.KilderInList).Name));
     }
 
     [Fact]
