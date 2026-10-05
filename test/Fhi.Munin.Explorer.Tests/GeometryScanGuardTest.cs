@@ -228,7 +228,7 @@ public class GeometryScanGuardTest
             .Select(match => match.Groups["target"].Value)
             .Order(StringComparer.Ordinal);
 
-        Assert.Equal(["/::explorer-list-tab", "/::list-row-panel", "/kilder::kilde-hierarchy-metadata"], targets);
+        Assert.Equal(["/::explorer-list-tab", "/::list-row-notes", "/::list-row-panel", "/kilder::kilde-hierarchy-metadata"], targets);
     }
 
     [Fact]

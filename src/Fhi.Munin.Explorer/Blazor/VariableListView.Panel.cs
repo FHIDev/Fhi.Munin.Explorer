@@ -26,6 +26,16 @@ public sealed partial class VariableListView
     private int _openGeneration;
     private KodeverkCodeLists? _openCodes;
     private PanelTab _openTab = PanelTab.Data;
+
+    // The API's ceiling, for the counter and maxlength; a refusal naming another one still wins.
+    private const int NotesMaxLength = 2000;
+
+    // What the open row's notes field shows, and what was saved since the page was last read.
+    private string _notesDraft = "";
+    private readonly Dictionary<Guid, string> _savedNotes = [];
+    private int _notesWrites;
+    private int? _notesRefusedMax;
+    private DesiredDataFailure _notesFailure;
     private string? _linkStatus;
     private bool _linkNotCopied;
 
@@ -82,6 +92,8 @@ public sealed partial class VariableListView
         _openListId = _shownList;
         _openTab = PanelTab.Data;
         ForgetLinkStatus();
+        ForgetNotesStatus();
+        _notesDraft = _savedNotes.TryGetValue(item.VariableId, out var saved) ? saved : item.Notes ?? "";
 
         await LoadRowDetailAsync(item.VariableId, VersionStatusRule.IsHistorical(item.VersionStatus));
     }
@@ -167,6 +179,8 @@ public sealed partial class VariableListView
         builder.AddComponentParameter(6, nameof(VariablePanelTabs.SectionLevel), RowPanelSectionLevel);
         builder.AddComponentParameter(7, nameof(VariablePanelTabs.Language), Language);
         builder.AddComponentParameter(8, nameof(VariablePanelTabs.ShowDescription), false);
+        builder.AddComponentParameter(9, nameof(VariablePanelTabs.DataTop), RowDesiredDataField(item));
+        builder.AddComponentParameter(10, nameof(VariablePanelTabs.Notes), RowNotesField(item));
         builder.CloseComponent();
     };
 
@@ -231,5 +245,103 @@ public sealed partial class VariableListView
 
         _linkStatus = status;
         _linkNotCopied = notCopied;
+    }
+
+    private string RowDesiredDataId(VariableListItem item) =>
+        $"munin-explorer-list-panel-desired-{_instance}-{item.VariableId:N}";
+
+    private string RowDesiredDataHintId(VariableListItem item) => $"{RowDesiredDataId(item)}-hint";
+
+    // The hint always, and the refusal sentence the column's field points at too while this row stands refused.
+    private string RowDesiredDataDescribedBy(VariableListItem item) =>
+        DesiredDataDescribedBy(item) is { } refusal ? $"{RowDesiredDataHintId(item)} {refusal}" : RowDesiredDataHintId(item);
+
+    private string RowNotesId(VariableListItem item) =>
+        $"munin-explorer-list-panel-notes-{_instance}-{item.VariableId:N}";
+
+    private string RowNotesCountId(VariableListItem item) => $"{RowNotesId(item)}-count";
+
+    private string RowNotesStatusId(VariableListItem item) => $"{RowNotesId(item)}-status";
+
+    private string RowNotesDescribedBy(VariableListItem item) =>
+        $"{RowNotesCountId(item)} {RowNotesStatusId(item)}";
+
+    private string? NotesInvalid => _notesRefusedMax is null ? null : "true";
+
+    private string? NotesStatus => _notesRefusedMax is { } max
+        ? T.NotesTooLong(max)
+        : _notesFailure switch
+        {
+            DesiredDataFailure.Throttled => T.RateLimitError,
+            DesiredDataFailure.Failed => T.NotesError,
+            _ => null,
+        };
+
+    private string NotesStatusClass => NotesStatus is null ? "caption" : "infobox infobox--bg-yellow";
+
+    private void ForgetNotesStatus()
+    {
+        _notesRefusedMax = null;
+        _notesFailure = DesiredDataFailure.None;
+    }
+
+    // A page read is what the API holds, so the notes saved since then are no longer needed to bridge it.
+    private void ForgetSavedNotes() => _savedNotes.Clear();
+
+    private async Task SaveNotesAsync(VariableListItem item, string? text)
+    {
+        if (_shownList is not { } list)
+        {
+            return;
+        }
+
+        var trimmed = text?.Trim() ?? "";
+        var row = _openGeneration;
+        var sequence = ++_notesWrites;
+
+        _notesDraft = trimmed;
+        ForgetNotesStatus();
+
+        int? refused = null;
+        var failure = DesiredDataFailure.None;
+
+        try
+        {
+            var result = await Client.SetMyListNotesAsync(list, item.VariableId, trimmed);
+
+            switch (result)
+            {
+                case { Outcome: DesiredDataOutcome.Saved }:
+                    _savedNotes[item.VariableId] = trimmed;
+                    break;
+
+                case { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength }:
+                    refused = maxLength;
+                    break;
+
+                default:
+                    failure = DesiredDataFailure.Failed;
+                    break;
+            }
+        }
+        catch (MuninExplorerRateLimitedException ex)
+        {
+            Log?.LogWarning(ex, "the rate limiter refused the notes on variable {VariableId} in list {ListId}", item.VariableId, list);
+            failure = DesiredDataFailure.Throttled;
+        }
+        catch (Exception ex)
+        {
+            Log?.LogError(ex, "could not save the notes on variable {VariableId} in list {ListId}", item.VariableId, list);
+            failure = DesiredDataFailure.Failed;
+        }
+
+        // Only the newest write in the panel that asked may say how it went.
+        if (row != _openGeneration || sequence != _notesWrites)
+        {
+            return;
+        }
+
+        _notesRefusedMax = refused;
+        _notesFailure = failure;
     }
 }

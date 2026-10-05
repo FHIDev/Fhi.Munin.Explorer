@@ -721,4 +721,31 @@ else if (State?.IsAuthenticated == true)
             </div>
         }
     </div>;
+
+    // The same value as the row's column: one draft, one save, one refusal for both fields.
+    private RenderFragment RowDesiredDataField(VariableListItem item) => @<div>
+        <label class="form-element__label" for="@RowDesiredDataId(item)">@T.FieldDesiredData</label>
+        <p class="caption" id="@RowDesiredDataHintId(item)">@T.DesiredDataHint</p>
+        <textarea id="@RowDesiredDataId(item)"
+                  rows="4"
+                  value="@DesiredDataOf(item)"
+                  aria-invalid="@DesiredDataInvalid(item)"
+                  aria-describedby="@RowDesiredDataDescribedBy(item)"
+                  @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())"></textarea>
+    </div>;
+
+    // Saved when the field is left, like Ønskede data; the counter follows each keystroke.
+    private RenderFragment RowNotesField(VariableListItem item) => @<div>
+        <label class="form-element__label" for="@RowNotesId(item)">@T.NotesLabel</label>
+        <textarea id="@RowNotesId(item)"
+                  rows="6"
+                  maxlength="@NotesMaxLength"
+                  value="@_notesDraft"
+                  aria-invalid="@NotesInvalid"
+                  aria-describedby="@RowNotesDescribedBy(item)"
+                  @oninput="e => _notesDraft = e.Value?.ToString() ?? string.Empty"
+                  @onchange="e => SaveNotesAsync(item, e.Value?.ToString())"></textarea>
+        <p class="caption" id="@RowNotesCountId(item)">@T.NotesCount(_notesDraft.Length, NotesMaxLength)</p>
+        <p class="@NotesStatusClass" id="@RowNotesStatusId(item)" role="status" aria-live="polite" aria-atomic="true">@NotesStatus</p>
+    </div>;
 }

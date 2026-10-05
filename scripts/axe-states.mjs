@@ -819,4 +819,14 @@ export const states = {
     await panel.locator('table.munin-explorer-codes__table').first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
+
+  // The opened row's "Mine notater" tab: the notes field, its counter and its status line.
+  'list-row-notes': async page => {
+    await states['list-row-panel'](page);
+
+    const panel = page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-detail').first();
+    await panel.getByRole('tab', { name: 'Mine notater', exact: true }).click();
+    await panel.getByRole('textbox', { name: 'Egne notater', exact: true })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
 };

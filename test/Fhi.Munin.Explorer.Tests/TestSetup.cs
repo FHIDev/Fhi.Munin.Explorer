@@ -139,6 +139,10 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
     public virtual Task<DesiredDataResult> SetMyListDesiredDataAsync(
         Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default) =>
         Task.FromResult(new DesiredDataResult(DesiredDataOutcome.NotFound));
+
+    public virtual Task<DesiredDataResult> SetMyListNotesAsync(
+        Guid id, Guid variableId, string? text, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DesiredDataResult(DesiredDataOutcome.NotFound));
 }
 
 /// <summary>

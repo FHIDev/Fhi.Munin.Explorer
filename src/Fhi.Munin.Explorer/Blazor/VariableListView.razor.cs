@@ -913,6 +913,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private void SeedDesiredData()
     {
         _desiredDataSeeds++;
+        ForgetSavedNotes();
 
         if (_desiredDataRefusal is { } stale && stale.ListId != _shownList)
         {

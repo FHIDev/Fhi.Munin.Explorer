@@ -296,6 +296,41 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return new DesiredDataResult(DesiredDataOutcome.Saved);
     }
 
+    /// <inheritdoc/>
+    public async Task<DesiredDataResult> SetMyListNotesAsync(
+        Guid id,
+        Guid variableId,
+        string? text,
+        CancellationToken cancellationToken = default)
+    {
+        var trimmed = text?.Trim();
+        var body = new NotesBody(string.IsNullOrEmpty(trimmed) ? null : trimmed);
+
+        using var response = await SendAsync(
+            HttpMethod.Put, MyListVariableNotes(id, variableId), body, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return new DesiredDataResult(DesiredDataOutcome.NotFound);
+        }
+
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            var refusal = await ReadRefusalAsync(response, cancellationToken);
+
+            return new DesiredDataResult(DesiredDataOutcome.Refused, refusal?.MaxLength, refusal?.Received);
+        }
+
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            throw new MuninExplorerUnauthorizedException();
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        return new DesiredDataResult(DesiredDataOutcome.Saved);
+    }
+
     /// <summary>The create and rename body, spelled the way the API spells it.</summary>
     /// <remarks>
     /// A private record rather than a public contract: a caller passes a name, and the envelope it
@@ -356,6 +391,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         [property: JsonPropertyName("type")] string? Type,
         [property: JsonPropertyName("freeText")] string? FreeText);
 
+    /// <summary>The notes body; a null text is what the API reads as a clear.</summary>
+    private sealed record NotesBody([property: JsonPropertyName("text")] string? Text);
+
     /// <summary>What the API called the annotation the reader typed, as it spells it.</summary>
     /// <remarks>
     /// <c>ExplorerDesiredDataTypes.FreeText</c> on the API's side. Any other value is refused with
@@ -410,6 +448,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     /// <summary>The per-variable annotation route. The API spells the segment <c>variabelId</c>.</summary>
     private static string MyListVariableDesiredData(Guid id, Guid variableId) =>
         $"{MyListVariables(id)}/{variableId}/desired-data";
+
+    private static string MyListVariableNotes(Guid id, Guid variableId) =>
+        $"{MyListVariables(id)}/{variableId}/notes";
 
     /// <summary>Refuses a batch the API would refuse, before it costs a round trip.</summary>
     /// <remarks>

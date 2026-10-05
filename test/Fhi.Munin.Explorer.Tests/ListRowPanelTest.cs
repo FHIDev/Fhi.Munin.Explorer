@@ -43,6 +43,47 @@ public class ListRowPanelTest : ExplorerTestContext
 
         public List<bool> HistoricalAskedFor { get; } = [];
 
+        public List<(Guid Variable, string? Text)> NotesWritten { get; } = [];
+
+        public List<(Guid Variable, string? Text)> DesiredDataWritten { get; } = [];
+
+        /// <summary>What the notes endpoint answers; it throws instead when this is null.</summary>
+        public DesiredDataResult? NotesAnswer { get; set; } = new(DesiredDataOutcome.Saved);
+
+        public bool NotesThrottled { get; set; }
+
+        /// <summary>Holds the notes answer until the test releases it.</summary>
+        public TaskCompletionSource? NotesGate { get; set; }
+
+        /// <summary>What the API holds after a write from somewhere else, such as another tab.</summary>
+        public void NotesChangedElsewhere(Guid variableId, string notes)
+        {
+            var index = items.FindIndex(item => item.VariableId == variableId);
+            items[index] = items[index] with { Notes = notes };
+        }
+
+        public override async Task<DesiredDataResult> SetMyListNotesAsync(
+            Guid id, Guid variableId, string? text, CancellationToken cancellationToken = default)
+        {
+            NotesWritten.Add((variableId, text));
+
+            if (NotesGate is { } gate)
+            {
+                await gate.Task;
+            }
+
+            return NotesThrottled
+                ? throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30))
+                : NotesAnswer ?? throw new HttpRequestException("nede");
+        }
+
+        public override Task<DesiredDataResult> SetMyListDesiredDataAsync(
+            Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default)
+        {
+            DesiredDataWritten.Add((variableId, freeText));
+            return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
+        }
+
         public bool DetailMissing { get; init; }
 
         /// <summary>Held until the test releases it, as a browser's fetch is never instant.</summary>
@@ -247,14 +288,14 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Panel_WhenOpened_ThenItHasTheExplorersTwoTabsAndTheSecondDoesNotRepeatTheDescription()
+    public void Panel_WhenOpened_ThenItHasTheExplorersTwoTabsAndNotesAndTheSecondDoesNotRepeatTheDescription()
     {
         var cut = RenderView(new PanelClient(DatabaseVersion));
 
         NameButton(cut, "Databaseversjon").Click();
         cut.WaitForElement("[role=tablist]");
 
-        Assert.Equal(["Data", "Om variabelen"], cut.FindAll("[role=tab]").Select(t => t.TextContent.Trim()));
+        Assert.Equal(["Data", "Om variabelen", "Mine notater"], cut.FindAll("[role=tab]").Select(t => t.TextContent.Trim()));
         Assert.Equal("true", cut.FindAll("[role=tab]")[0].GetAttribute("aria-selected"));
 
         cut.FindAll("[role=tab]")[1].Click();
@@ -421,6 +462,188 @@ public class ListRowPanelTest : ExplorerTestContext
 
         Assert.Single(cut.FindAll("th[scope=row] button"));
         Assert.Contains(cut.FindAll("th[scope=row] span"), s => s.TextContent.Trim() == "Variabelen er ikke tilgjengelig lenger");
+    }
+
+    private static IElement OpenNotes(IRenderedComponent<VariableListView> cut, string name = "Databaseversjon")
+    {
+        NameButton(cut, name).Click();
+        cut.WaitForElement("[role=tablist]");
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Mine notater").Click();
+        var label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Egne notater");
+        return cut.Find($"#{label.GetAttribute("for")}");
+    }
+
+    private static string NotesCount(IRenderedComponent<VariableListView> cut, IElement field) =>
+        cut.Find($"#{field.GetAttribute("aria-describedby")!.Split(' ')[0]}").TextContent.Trim();
+
+    private static string NotesStatusText(IRenderedComponent<VariableListView> cut, IElement field) =>
+        cut.Find($"#{field.GetAttribute("aria-describedby")!.Split(' ')[1]}").TextContent.Trim();
+
+    [Fact]
+    public void Notes_WhenTheTabOpens_ThenTheSavedNotesAreInTheFieldWithTheirCount()
+    {
+        var cut = RenderView(new PanelClient(DatabaseVersion with { Notes = "Spør om 2012" }));
+
+        var field = OpenNotes(cut);
+
+        Assert.Equal("textarea", field.TagName, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("Spør om 2012", field.GetAttribute("value"));
+        Assert.Equal("2000", field.GetAttribute("maxlength"));
+        Assert.Equal("12/2000", NotesCount(cut, field));
+    }
+
+    [Fact]
+    public void Notes_WhenTyped_ThenTheCountFollowsEachKeystroke()
+    {
+        var cut = RenderView(new PanelClient(DatabaseVersion));
+
+        var field = OpenNotes(cut);
+        field.Input("abc");
+
+        Assert.Equal("3/2000", NotesCount(cut, OpenNotesField(cut)));
+    }
+
+    private static IElement OpenNotesField(IRenderedComponent<VariableListView> cut)
+    {
+        var label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Egne notater");
+        return cut.Find($"#{label.GetAttribute("for")}");
+    }
+
+    [Fact]
+    public void Notes_WhenTheFieldIsLeft_ThenTheyAreSavedTrimmedAndKeptWhenTheRowIsReopened()
+    {
+        var client = new PanelClient(DatabaseVersion);
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("  Spør om 2012  ");
+
+        Assert.Equal([(DatabaseVersion.VariableId, (string?)"Spør om 2012")], client.NotesWritten);
+
+        NameButton(cut, "Databaseversjon").Click();
+        var reopened = OpenNotes(cut);
+        Assert.Equal("Spør om 2012", reopened.GetAttribute("value"));
+        Assert.Null(reopened.GetAttribute("aria-invalid"));
+        Assert.Equal("", NotesStatusText(cut, reopened));
+    }
+
+    [Fact]
+    public void Notes_WhenTheApiRefusesTheLength_ThenTheFieldIsMarkedAndTheCeilingIsSaid()
+    {
+        var client = new PanelClient(DatabaseVersion) { NotesAnswer = new(DesiredDataOutcome.Refused, 1500, 1600) };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change(new string('x', 1600));
+
+        var field = OpenNotesField(cut);
+        Assert.Equal("true", field.GetAttribute("aria-invalid"));
+        Assert.Equal("Notatene kan ikke overstige 1500 tegn. Teksten er ikke lagret.", NotesStatusText(cut, field));
+        Assert.Equal(1600, field.GetAttribute("value")!.Length);
+    }
+
+    [Fact]
+    public void Notes_WhenTheWriteFails_ThenItIsSaidAndTheTextStays()
+    {
+        var client = new PanelClient(DatabaseVersion) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("Spør om 2012");
+
+        var field = OpenNotesField(cut);
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, field));
+        Assert.Equal("Spør om 2012", field.GetAttribute("value"));
+        Assert.Null(field.GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public void Notes_WhenTheWriteIsThrottled_ThenTheRateLimitIsSaid()
+    {
+        var client = new PanelClient(DatabaseVersion) { NotesThrottled = true };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("Spør om 2012");
+
+        Assert.StartsWith("Du har gjort for mange forespørsler", NotesStatusText(cut, OpenNotesField(cut)));
+    }
+
+    [Fact]
+    public void Notes_WhenAnotherRowOpens_ThenItShowsItsOwnNotesNotTheDraft()
+    {
+        var cut = RenderView(new PanelClient(DatabaseVersion with { Notes = "første" }, Age with { Notes = "andre" }));
+
+        OpenNotes(cut).Input("ulagret utkast");
+        var other = OpenNotes(cut, "Alder");
+
+        Assert.Equal("andre", other.GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task Notes_WhenTheAnswerLandsAfterAnotherRowOpened_ThenThatRowSaysNothing()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion, Age)
+        {
+            NotesGate = gate,
+            NotesAnswer = new(DesiredDataOutcome.Refused, 1500, 1600),
+        };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change(new string('x', 1600));
+        var other = OpenNotes(cut, "Alder");
+        await cut.InvokeAsync(gate.SetResult);
+
+        other = OpenNotesField(cut);
+        Assert.Null(other.GetAttribute("aria-invalid"));
+        Assert.Equal("", NotesStatusText(cut, other));
+    }
+
+    [Fact]
+    public void Notes_WhenAnotherRowOpensAfterARefusal_ThenItIsNotMarked()
+    {
+        var client = new PanelClient(DatabaseVersion, Age) { NotesAnswer = new(DesiredDataOutcome.Refused, 1500, 1600) };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change(new string('x', 1600));
+        var other = OpenNotes(cut, "Alder");
+
+        Assert.Null(other.GetAttribute("aria-invalid"));
+        Assert.Equal("", NotesStatusText(cut, other));
+    }
+
+    [Fact]
+    public async Task Notes_WhenThePageIsReadAgain_ThenWhatTheApiHoldsWinsOverThisSessionsSave()
+    {
+        var client = new PanelClient(DatabaseVersion) { TwoLists = true };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("skrevet her");
+        client.NotesChangedElsewhere(DatabaseVersion.VariableId, "skrevet i en annen fane");
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
+
+        cut.WaitForAssertion(() => Assert.Equal("skrevet i en annen fane", OpenNotes(cut).GetAttribute("value")));
+    }
+
+    [Fact]
+    public void DesiredData_InTheDataTab_ShowsTheColumnsValueAndSavesThroughTheSameRoute()
+    {
+        var client = new PanelClient(DatabaseVersion with { DesiredDataType = "freeText", DesiredDataFreeText = "C76" });
+        var cut = RenderView(client);
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=tablist]");
+        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Ønskede data");
+        var field = cut.Find($"#{label.GetAttribute("for")}");
+
+        Assert.Equal("C76", field.GetAttribute("value"));
+        Assert.Contains(
+            "Angi hvilke kodeverdier du ønsker å søke om",
+            cut.Find($"#{field.GetAttribute("aria-describedby")!.Split(' ')[0]}").TextContent);
+
+        field.Change("  C76 og C77  ");
+
+        Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76 og C77")], client.DesiredDataWritten);
+        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData input");
+        Assert.Equal("C76 og C77", column.GetAttribute("value"));
     }
 
     [Fact]

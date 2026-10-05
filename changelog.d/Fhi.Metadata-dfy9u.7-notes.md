@@ -1,0 +1,3 @@
+category: Added
+- **An opened list row has a "Mine notater" tab for the reader's own notes.** The notes are saved when the field is left, up to 2000 characters with a counter beside the field, and a refusal or a failed save is said under it. They belong to the row in that list and are never sent when the list is shared. Needs Munin with the notes endpoint (`PUT .../variables/{variabelId}/notes`); `IMuninExplorerClient.SetMyListNotesAsync` is new, with a default body that refuses for a host implementing the interface itself.
+- **"Ønskede data" can also be written in an opened row's Data tab.** It is the same value as the table's column, saved through the same route, with a hint saying what to write.

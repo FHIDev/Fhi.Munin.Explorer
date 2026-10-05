@@ -126,6 +126,14 @@ public sealed record VariableListItem
     /// <see cref="IMuninExplorerClient.SetMyListDesiredDataAsync"/> for what happens to a longer one.
     /// </summary>
     [JsonPropertyName("desiredDataFreeText")] public string? DesiredDataFreeText { get; init; }
+
+    /// <summary>
+    /// The reader's own notes on this variable in this list ("Mine notater"), or <see langword="null"/>
+    /// when they have written none. Private like <see cref="DesiredDataFreeText"/>: a shared list never
+    /// carries them. The API trims them and holds them to 2000 characters — see
+    /// <see cref="IMuninExplorerClient.SetMyListNotesAsync"/>.
+    /// </summary>
+    [JsonPropertyName("notes")] public string? Notes { get; init; }
 }
 
 /// <summary>
