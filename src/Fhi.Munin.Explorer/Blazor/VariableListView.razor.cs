@@ -1004,10 +1004,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        // Trimmed once, then both shown and sent: the API trims before it measures, and a draft
-        // holding padding the request did not carry shows a value the server does not have.
+        // Trimmed once, then both shown and sent: the API trims before it measures. Lines from the
+        // Data tab's textarea are joined, since the column's one-line input would run them together.
         var list = _shownList.Value;
-        var trimmed = text?.Trim() ?? "";
+        var trimmed = string.Join(", ", (text ?? "").Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
         _desiredData[variableId] = trimmed;
 

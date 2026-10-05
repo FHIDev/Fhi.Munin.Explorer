@@ -1013,6 +1013,22 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
+    public void DesiredData_WhenWrittenOnSeveralLinesInTheDataTab_ThenTheLinesAreJoinedForTheColumn()
+    {
+        var client = new PanelClient(DatabaseVersion);
+        var cut = RenderView(client);
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=tablist]");
+        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Ønskede data");
+        cut.Find($"#{label.GetAttribute("for")}").Change("C76\r\n  C77 \n\nC78");
+
+        Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76, C77, C78")], client.DesiredDataWritten);
+        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData input");
+        Assert.Equal("C76, C77, C78", column.GetAttribute("value"));
+    }
+
+    [Fact]
     public void DesiredData_InTheDataTab_ShowsTheColumnsValueAndSavesThroughTheSameRoute()
     {
         var client = new PanelClient(DatabaseVersion with { DesiredDataType = "freeText", DesiredDataFreeText = "C76" });
