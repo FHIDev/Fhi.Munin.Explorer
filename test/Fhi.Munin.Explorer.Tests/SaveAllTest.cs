@@ -306,7 +306,45 @@ public class SaveAllTest : ExplorerTestContext
 
         Assert.Equal(0, client.CreateCalls);
         Assert.Empty(client.Adds);
-        Assert.Equal("", Status(cut));
+        Assert.Equal("Søket gir ingen variabler å lagre lenger.", Status(cut));
+        Assert.Equal("Lagre disse variablene", SaveAll(cut)!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Confirm_DoesNotSurviveASignOut()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 250, [rows[0].Id]);
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        Assert.False(Asking(cut));
+        Assert.Empty(client.Adds);
+    }
+
+    [Fact]
+    public void Confirm_AskedOnAnotherSearch_IsGoneWhenTheSavedSearchComesBack()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 250, [rows[0].Id]);
+        var cut = Render(client);
+
+        Search(cut, "vekt");
+        SaveAll(cut)!.Click();
+        Ja(cut);
+        Assert.Equal("\u2713 Lagret", SaveAll(cut)!.TextContent.Trim());
+        Search(cut, "høyde");
+        Assert.Equal("Lagre disse variablene", SaveAll(cut)!.TextContent.Trim());
+        SaveAll(cut)!.Click();
+        Search(cut, "vekt");
+
+        Assert.Equal("\u2713 Lagret", SaveAll(cut)!.TextContent.Trim());
+        Assert.False(Asking(cut));
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Trim() == "Ja, lagre dem");
+        Assert.Single(client.Adds);
     }
 
     [Fact]

@@ -208,7 +208,8 @@ public sealed partial class VariableListState
         string nameForFirstList,
         CancellationToken cancellationToken = default)
     {
-        if (!IsAuthenticated)
+        // Nothing to put anywhere, so no first list is made for it.
+        if (!IsAuthenticated || variableIds.Count == 0)
         {
             return null;
         }

@@ -279,6 +279,7 @@ internal sealed record Texts(
     Func<int, string> SaveAllTooMany,
     Func<int?, string, string> SavedAllStatus,
     Func<string, string> SavedInList,
+    string NothingToSave,
     // The saved-list view: its heading, the picker, the create form, and what it says when
     // there is nothing to show yet.
     string MyListsHeading,
@@ -1219,6 +1220,7 @@ internal sealed record Texts(
             _ => $"{count} variabler lagret i {list}.",
         },
         SavedInList: list => $"Lagret i liste {list}",
+        NothingToSave: "Søket gir ingen variabler å lagre lenger.",
         MyListsHeading: "Mine variabellister",
         ChooseList: "Velg liste",
         NewListName: "Navn på ny liste",
@@ -1719,6 +1721,7 @@ internal sealed record Texts(
             _ => $"{count} variables saved to {list}.",
         },
         SavedInList: list => $"Saved to list {list}",
+        NothingToSave: "The search no longer has any variables to save.",
         MyListsHeading: "My variable lists",
         ChooseList: "Choose list",
         NewListName: "Name of new list",

@@ -1521,8 +1521,8 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
   }
 }
 
-/* Brought in for the save status when it stood in the row (Fhi.Metadata-q7i5e); it is in the
-   open panel now. */
+/* Brought in for the save status when it stood in the row (Fhi.Metadata-q7i5e). It is in the
+   open panel, and in a shut row's save cell under its pointer button (Fhi.Metadata-dfy9u.8). */
 .munin-explorer-data-list__item__row {
   flex-wrap: wrap;
 }

@@ -18,10 +18,10 @@ public partial class VariableSearch
 
     // What the last press produced, and for whom: a sign-in or sign-out moves the reader, and an
     // outcome recorded for another reader is not drawn.
-    private sealed record SaveAllOutcome(int Reader, SaveAllQuery Query, SaveFailure Failure, int? TooManyFrom, int? Saved, string? List);
+    private sealed record SaveAllOutcome(int Reader, SaveAllQuery Query, SaveFailure Failure, int? TooManyFrom, int? Saved, string? List, bool Empty = false);
 
     private SaveAllOutcome? _saveAll;
-    private SaveAllQuery? _confirmingFor;
+    private (int Reader, SaveAllQuery Query)? _confirmingFor;
     private bool _savingAll;
     private bool _focusSaveAll;
     private bool _disposed;
@@ -49,7 +49,8 @@ public partial class VariableSearch
 
     private bool SavedAllForThisSearch => SaveAllShown is { List: not null };
 
-    private bool ConfirmingSaveAll => _confirmingFor == CurrentQuery && !SavedAllForThisSearch;
+    private bool ConfirmingSaveAll =>
+        _confirmingFor is { } asked && asked.Reader == ListState?.Reader && asked.Query == CurrentQuery && !SavedAllForThisSearch;
 
     private bool SaveAllWouldAsk => TotalCount >= ConfirmSaveAllFrom && TotalCount <= IMuninExplorerClient.MaxVariablesPerBatch;
 
@@ -107,24 +108,30 @@ public partial class VariableSearch
             builder.AddAttribute(25, "class", "hd-button-square button-square--ghost-blue");
             builder.AddAttribute(26, "type", "button");
             builder.AddAttribute(27, "aria-describedby", ConfirmSaveAllId);
-            builder.AddAttribute(28, "onclick", EventCallback.Factory.Create(this, ConfirmSaveAllAsync));
-            builder.AddContent(29, T.ConfirmSaveAllYes);
+            builder.AddAttribute(28, "aria-disabled", SaveAllReady ? null : "true");
+            builder.AddAttribute(29, "onclick", EventCallback.Factory.Create(this, ConfirmSaveAllAsync));
+            builder.AddContent(30, T.ConfirmSaveAllYes);
             builder.CloseElement();
         }
 
         // Both regions are always present and empty until needed: one inserted and filled at once is announced unreliably.
-        builder.OpenElement(30, "p");
-        builder.AddAttribute(31, "role", "status");
-        builder.AddAttribute(32, "aria-live", "polite");
-        builder.AddAttribute(33, "aria-atomic", "true");
-        builder.AddContent(34, shown is { List: { } list } ? T.SavedAllStatus(shown.Saved, list) : null);
+        builder.OpenElement(40, "p");
+        builder.AddAttribute(41, "role", "status");
+        builder.AddAttribute(42, "aria-live", "polite");
+        builder.AddAttribute(43, "aria-atomic", "true");
+        builder.AddContent(44, shown switch
+        {
+            { List: { } list } => T.SavedAllStatus(shown.Saved, list),
+            { Empty: true } => T.NothingToSave,
+            _ => null
+        });
         builder.CloseElement();
 
-        builder.OpenElement(35, "p");
-        builder.AddAttribute(36, "role", "alert");
-        builder.AddAttribute(37, "aria-live", "assertive");
-        builder.AddAttribute(38, "aria-atomic", "true");
-        builder.AddContent(39, shown switch
+        builder.OpenElement(45, "p");
+        builder.AddAttribute(46, "role", "alert");
+        builder.AddAttribute(47, "aria-live", "assertive");
+        builder.AddAttribute(48, "aria-atomic", "true");
+        builder.AddContent(49, shown switch
         {
             { TooManyFrom: { } max } => T.SaveAllTooMany(max),
             { Failure: SaveFailure.Throttled } => T.RateLimitError,
@@ -159,8 +166,13 @@ public partial class VariableSearch
 
         if (SaveAllWouldAsk)
         {
-            _saveAll = null;
-            _confirmingFor = CurrentQuery;
+            // Only this search's old message goes: another search's «Lagret» still stands when the reader returns to it.
+            if (SaveAllShown is not null)
+            {
+                _saveAll = null;
+            }
+
+            _confirmingFor = (ListState.Reader, CurrentQuery);
             return;
         }
 
@@ -211,6 +223,7 @@ public partial class VariableSearch
             // The result emptied between the count on screen and the press: nothing to save, and no list to make.
             if (ids.Ids.Count == 0)
             {
+                _saveAll = Outcome() with { Empty = true };
                 return;
             }
 
@@ -269,6 +282,12 @@ public partial class VariableSearch
             await Task.Delay(SavedNoticeDuration, Clock, cancellationToken);
             await InvokeAsync(() =>
             {
+                // A later save may have put its own rows in after this delay ended.
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 _noticeRows.Clear();
                 StateHasChanged();
             });
