@@ -27,6 +27,9 @@ internal enum PanelTab
 
     /// <summary>Description, code, datatype and the latest year set.</summary>
     About,
+
+    /// <summary>The reader's own notes, drawn only in a saved list's row.</summary>
+    Notes,
 }
 
 

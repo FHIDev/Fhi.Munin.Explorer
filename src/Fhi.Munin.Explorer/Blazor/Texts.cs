@@ -319,6 +319,13 @@ internal sealed record Texts(
     string FlagNo,
     // (maxLength) — "Ønskede data kan ikke overstige 500 tegn."
     Func<int, string> DesiredDataTooLong,
+    // An opened list row: the hint over its "Ønskede data" field, and the "Mine notater" tab.
+    string DesiredDataHint,
+    string TabNotes,
+    string NotesLabel,
+    // (maxLength) — the API's refusal of notes that are too long.
+    Func<int, string> NotesTooLong,
+    string NotesError,
     // Renaming and deleting the list on screen. The deletion is confirmed first: a list can have
     // taken a long time to build, and neither the API nor this view offers an undo.
     string RenameListName,
@@ -1211,6 +1218,11 @@ internal sealed record Texts(
         FlagNo: "Nei",
         DesiredDataTooLong: maxLength =>
             $"Ønskede data kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
+        DesiredDataHint: "Angi hvilke kodeverdier du ønsker å søke om",
+        TabNotes: "Mine notater",
+        NotesLabel: "Egne notater",
+        NotesTooLong: maxLength => $"Notatene kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
+        NotesError: "Kunne ikke lagre notatene nå. Prøv igjen om litt.",
         RenameListName: "Nytt navn på listen",
         RenameList: "Gi nytt navn",
         SaveListName: "Lagre navnet",
@@ -1691,6 +1703,11 @@ internal sealed record Texts(
         FlagNo: "No",
         DesiredDataTooLong: maxLength =>
             $"Desired data must be {maxLength} characters or fewer. Your text has not been saved.",
+        DesiredDataHint: "Say which code values you want to apply for",
+        TabNotes: "My notes",
+        NotesLabel: "Your notes",
+        NotesTooLong: maxLength => $"Notes must be {maxLength} characters or fewer. Your text has not been saved.",
+        NotesError: "Could not save the notes just now. Try again shortly.",
         RenameListName: "New name for the list",
         RenameList: "Rename",
         SaveListName: "Save the name",

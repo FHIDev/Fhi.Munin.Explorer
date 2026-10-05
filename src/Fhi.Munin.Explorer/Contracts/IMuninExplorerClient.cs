@@ -410,6 +410,33 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
+    /// Writes the reader's own notes ("Mine notater") on one variable in one of their lists, or
+    /// clears them.
+    /// </summary>
+    /// <remarks>
+    /// Answers the way <see cref="SetMyListDesiredDataAsync"/> does, with the same result: the API caps
+    /// the notes at 2000 characters and a longer text comes back as
+    /// <see cref="DesiredDataOutcome.Refused"/> with the ceiling attached. Null, empty or whitespace
+    /// clears them, and the text is trimmed on the way out because the API trims it on the way in.
+    /// <para>
+    /// Carries a default body that refuses, for the reason <see cref="SetMyListDesiredDataAsync"/>
+    /// does: a host implementing this interface itself keeps building on the upgrade.
+    /// </para>
+    /// </remarks>
+    /// <param name="id">The list the variable is in.</param>
+    /// <param name="variableId">The variable the notes are about. Spelled <c>variabelId</c> in the route.</param>
+    /// <param name="text">The notes. Null, empty or whitespace clears them.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    Task<DesiredDataResult> SetMyListNotesAsync(
+        Guid id,
+        Guid variableId,
+        string? text,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(SetMyListNotesAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
     /// The reader's chosen variables as a file — xlsx, csv, or a zip when codebooks come too.
     /// </summary>
     /// <remarks>

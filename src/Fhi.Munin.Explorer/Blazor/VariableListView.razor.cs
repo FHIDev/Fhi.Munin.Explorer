@@ -520,7 +520,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string? AlertText =>
         _failed ? T.ListLoadError
         : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage
-          ?? CreateMessage ?? DesiredDataMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
+          ?? CreateMessage ?? DesiredDataMessage ?? NotesMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
 
     /// <summary>The lists are still being read, so an empty list says nothing about the reader yet.</summary>
     private bool ListsPending =>
@@ -913,6 +913,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private void SeedDesiredData()
     {
         _desiredDataSeeds++;
+        ForgetSavedNotes();
 
         if (_desiredDataRefusal is { } stale && stale.ListId != _shownList)
         {
@@ -1003,10 +1004,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        // Trimmed once, then both shown and sent: the API trims before it measures, and a draft
-        // holding padding the request did not carry shows a value the server does not have.
+        // Trimmed once, then both shown and sent: the API trims before it measures. Lines from the
+        // Data tab's textarea are joined, since the column's one-line input would run them together.
         var list = _shownList.Value;
-        var trimmed = text?.Trim() ?? "";
+        var trimmed = string.Join(", ", (text ?? "").Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
         _desiredData[variableId] = trimmed;
 
@@ -1168,6 +1169,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;
         _desiredDataFailure = DesiredDataFailure.None;
+        _notesFailure = DesiredDataFailure.None;
         ForgetSharingFailures();
         ForgetCopyAndEmptyFailures();
     }
@@ -1458,6 +1460,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 {
                     CloseRow();
                 }
+
+                ForgetNotesFor(list, variableId);
 
                 await RetreatFromEmptyPageAsync();
             }

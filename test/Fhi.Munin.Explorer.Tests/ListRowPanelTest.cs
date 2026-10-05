@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -42,6 +43,71 @@ public class ListRowPanelTest : ExplorerTestContext
         public List<Guid> DetailsAskedFor { get; } = [];
 
         public List<bool> HistoricalAskedFor { get; } = [];
+
+        public List<(Guid Variable, string? Text)> NotesWritten { get; } = [];
+
+        public List<(Guid Variable, string? Text)> DesiredDataWritten { get; } = [];
+
+        /// <summary>What the notes endpoint answers; it throws instead when this is null.</summary>
+        public DesiredDataResult? NotesAnswer { get; set; } = new(DesiredDataOutcome.Saved);
+
+        public bool NotesThrottled { get; set; }
+
+        public bool NotesUnauthorized { get; set; }
+
+        /// <summary>The most notes writes that were ever out at once.</summary>
+        public int MostNotesInFlight { get; private set; }
+
+        private int _notesInFlight;
+
+        /// <summary>Holds the notes answer until the test releases it.</summary>
+        public TaskCompletionSource? NotesGate { get; set; }
+
+        /// <summary>One gate per write, in the order the writes are made, with the answer each gives.</summary>
+        public Queue<(TaskCompletionSource Gate, DesiredDataResult Answer)> NotesGates { get; } = [];
+
+        /// <summary>What the API holds after a write from somewhere else, such as another tab.</summary>
+        public void NotesChangedElsewhere(Guid variableId, string notes)
+        {
+            var index = items.FindIndex(item => item.VariableId == variableId);
+            items[index] = items[index] with { Notes = notes };
+        }
+
+        public override async Task<DesiredDataResult> SetMyListNotesAsync(
+            Guid id, Guid variableId, string? text, CancellationToken cancellationToken = default)
+        {
+            NotesWritten.Add((variableId, text));
+            MostNotesInFlight = Math.Max(MostNotesInFlight, ++_notesInFlight);
+
+            try
+            {
+                if (NotesGates.TryDequeue(out var queued))
+                {
+                    await queued.Gate.Task;
+                    return queued.Answer;
+                }
+
+                if (NotesGate is { } gate)
+                {
+                    await gate.Task;
+                }
+
+                return NotesThrottled ? throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30))
+                    : NotesUnauthorized ? throw new MuninExplorerUnauthorizedException()
+                    : NotesAnswer ?? throw new HttpRequestException("nede");
+            }
+            finally
+            {
+                _notesInFlight--;
+            }
+        }
+
+        public override Task<DesiredDataResult> SetMyListDesiredDataAsync(
+            Guid id, Guid variableId, string? freeText, CancellationToken cancellationToken = default)
+        {
+            DesiredDataWritten.Add((variableId, freeText));
+            return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
+        }
 
         public bool DetailMissing { get; init; }
 
@@ -247,14 +313,14 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Panel_WhenOpened_ThenItHasTheExplorersTwoTabsAndTheSecondDoesNotRepeatTheDescription()
+    public void Panel_WhenOpened_ThenItHasTheExplorersTwoTabsAndNotesAndTheSecondDoesNotRepeatTheDescription()
     {
         var cut = RenderView(new PanelClient(DatabaseVersion));
 
         NameButton(cut, "Databaseversjon").Click();
         cut.WaitForElement("[role=tablist]");
 
-        Assert.Equal(["Data", "Om variabelen"], cut.FindAll("[role=tab]").Select(t => t.TextContent.Trim()));
+        Assert.Equal(["Data", "Om variabelen", "Mine notater"], cut.FindAll("[role=tab]").Select(t => t.TextContent.Trim()));
         Assert.Equal("true", cut.FindAll("[role=tab]")[0].GetAttribute("aria-selected"));
 
         cut.FindAll("[role=tab]")[1].Click();
@@ -421,6 +487,568 @@ public class ListRowPanelTest : ExplorerTestContext
 
         Assert.Single(cut.FindAll("th[scope=row] button"));
         Assert.Contains(cut.FindAll("th[scope=row] span"), s => s.TextContent.Trim() == "Variabelen er ikke tilgjengelig lenger");
+    }
+
+    private static IElement OpenNotes(IRenderedComponent<VariableListView> cut, string name = "Databaseversjon")
+    {
+        NameButton(cut, name).Click();
+        cut.WaitForElement("[role=tablist]");
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Mine notater").Click();
+        var label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Egne notater");
+        return cut.Find($"#{label.GetAttribute("for")}");
+    }
+
+    private static string NotesStatusText(IRenderedComponent<VariableListView> cut, IElement field) =>
+        cut.Find($"#{field.GetAttribute("aria-describedby")}").TextContent.Trim();
+
+    private static string PageAlert(IRenderedComponent<VariableListView> cut) =>
+        string.Join(" ", cut.FindAll("[role=alert]").Select(alert => alert.TextContent.Trim()).Where(text => text.Length > 0));
+
+    [Fact]
+    public void Notes_WhenTheTabOpens_ThenTheSavedNotesAreInTheField()
+    {
+        var cut = RenderView(new PanelClient(DatabaseVersion with { Notes = "Spør om 2012" }));
+
+        var field = OpenNotes(cut);
+
+        Assert.Equal("textarea", field.TagName, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("Spør om 2012", field.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Notes_WhileTyped_ThenNoKeystrokeReachesTheServer()
+    {
+        // A round trip per keystroke drops characters on a paste inside a Blazor Server circuit, the
+        // reason KildeSearch and VariableSearch save on change too.
+        var cut = RenderView(new PanelClient(DatabaseVersion));
+
+        var field = OpenNotes(cut);
+
+        Assert.Throws<MissingEventHandlerException>(() => field.Input("abc"));
+    }
+
+    private static IElement OpenNotesField(IRenderedComponent<VariableListView> cut)
+    {
+        var label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Egne notater");
+        return cut.Find($"#{label.GetAttribute("for")}");
+    }
+
+    [Fact]
+    public void Notes_WhenTheFieldIsLeft_ThenTheyAreSavedTrimmedAndKeptWhenTheRowIsReopened()
+    {
+        var client = new PanelClient(DatabaseVersion);
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("  Spør om 2012  ");
+
+        Assert.Equal([(DatabaseVersion.VariableId, (string?)"Spør om 2012")], client.NotesWritten);
+
+        NameButton(cut, "Databaseversjon").Click();
+        var reopened = OpenNotes(cut);
+        Assert.Equal("Spør om 2012", reopened.GetAttribute("value"));
+        Assert.Null(reopened.GetAttribute("aria-invalid"));
+        Assert.Equal("", NotesStatusText(cut, reopened));
+    }
+
+    [Fact]
+    public void Notes_WhenTheApiRefusesTheLength_ThenTheFieldIsMarkedAndTheCeilingIsSaid()
+    {
+        var client = new PanelClient(DatabaseVersion) { NotesAnswer = new(DesiredDataOutcome.Refused, 1500, 1600) };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change(new string('x', 1600));
+
+        var field = OpenNotesField(cut);
+        Assert.Equal("true", field.GetAttribute("aria-invalid"));
+        Assert.Equal("Notatene kan ikke overstige 1500 tegn. Teksten er ikke lagret.", NotesStatusText(cut, field));
+        Assert.Equal(1600, field.GetAttribute("value")!.Length);
+    }
+
+    [Fact]
+    public void Notes_WhenTheWriteFailsWithTheRowOpen_ThenItIsSaidUnderTheFieldOnlyAndTheTextStays()
+    {
+        var client = new PanelClient(DatabaseVersion) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("Spør om 2012");
+
+        var field = OpenNotesField(cut);
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, field));
+        Assert.Equal("", PageAlert(cut));
+        Assert.Equal("Spør om 2012", field.GetAttribute("value"));
+        Assert.Null(field.GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public void Notes_WhenTheWriteIsThrottled_ThenTheRateLimitIsSaid()
+    {
+        var client = new PanelClient(DatabaseVersion) { NotesThrottled = true };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("Spør om 2012");
+
+        Assert.StartsWith("Du har gjort for mange forespørsler", NotesStatusText(cut, OpenNotesField(cut)));
+        Assert.Equal("", PageAlert(cut));
+    }
+
+    [Fact]
+    public void Notes_WhenAnotherRowOpens_ThenItShowsItsOwnNotesNotTheDraft()
+    {
+        var cut = RenderView(new PanelClient(DatabaseVersion with { Notes = "første" }, Age with { Notes = "andre" }));
+
+        OpenNotes(cut).Change("lagret for den første");
+        var other = OpenNotes(cut, "Alder");
+
+        Assert.Equal("andre", other.GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task Notes_WhenTheAnswerLandsAfterAnotherRowOpened_ThenThatRowSaysNothing()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion, Age)
+        {
+            NotesGate = gate,
+            NotesAnswer = new(DesiredDataOutcome.Refused, 1500, 1600),
+        };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change(new string('x', 1600));
+        var other = OpenNotes(cut, "Alder");
+        await cut.InvokeAsync(gate.SetResult);
+
+        other = OpenNotesField(cut);
+        Assert.Null(other.GetAttribute("aria-invalid"));
+        Assert.Equal("", NotesStatusText(cut, other));
+    }
+
+    [Fact]
+    public void Notes_WhenTheSaveFailedAndTheRowIsReopened_ThenTheUnsavedTextIsStillThere()
+    {
+        var client = new PanelClient(DatabaseVersion, Age) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("tekst som ikke ble lagret");
+        OpenNotes(cut, "Alder");
+        var again = OpenNotes(cut);
+
+        Assert.Equal("tekst som ikke ble lagret", again.GetAttribute("value"));
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, again));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAnOlderAnswerLandsAfterANewerOne_ThenTheNewerOneStands()
+    {
+        var first = new TaskCompletionSource();
+        var second = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion);
+        client.NotesGates.Enqueue((first, new DesiredDataResult(DesiredDataOutcome.Refused, 1500, 1600)));
+        client.NotesGates.Enqueue((second, new DesiredDataResult(DesiredDataOutcome.Saved)));
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change(new string('x', 1600));
+        OpenNotesField(cut).Change("kortere");
+        await cut.InvokeAsync(second.SetResult);
+        await cut.InvokeAsync(first.SetResult);
+
+        var field = OpenNotesField(cut);
+        Assert.Null(field.GetAttribute("aria-invalid"));
+        Assert.Equal("", NotesStatusText(cut, field));
+    }
+
+    [Fact]
+    public async Task Notes_WhenASaveLandsAfterTheReaderSwitchedList_ThenTheOtherListDoesNotShowThem()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { TwoLists = true, NotesGate = gate };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("skrevet i liste A");
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        await cut.InvokeAsync(gate.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal("", OpenNotes(cut).GetAttribute("value") ?? ""));
+    }
+
+    [Fact]
+    public async Task Notes_WhenThePageIsReadAgainAfterAFailedSave_ThenTheUnsavedTextStays()
+    {
+        var client = new PanelClient(DatabaseVersion) { TwoLists = true, NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("ikke lagret ennå");
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
+
+        cut.WaitForAssertion(() => Assert.Equal("ikke lagret ennå", OpenNotes(cut).GetAttribute("value")));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAFailedSaveIsFollowedByAnotherWrite_ThenTheAlertNoLongerSaysIt()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { NotesAnswer = null, NotesGate = gate };
+        var cut = RenderView(client);
+
+        // Lands after the row is closed, so it goes to the list's alert.
+        OpenNotes(cut).Change("feiler");
+        NameButton(cut, "Databaseversjon").Click();
+        await cut.InvokeAsync(gate.SetResult);
+        Assert.NotEqual("", PageAlert(cut));
+
+        cut.Find("td.munin-explorer-dataitem-main__desiredData input").Change("C76");
+
+        Assert.Equal("", PageAlert(cut));
+    }
+
+    [Fact]
+    public void Notes_WhileTheSaveIsOut_ThenTheFieldDoesNotClaimTheyAreUnsaved()
+    {
+        var client = new PanelClient(DatabaseVersion) { NotesGate = new TaskCompletionSource() };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("på vei");
+
+        Assert.Equal("", NotesStatusText(cut, OpenNotesField(cut)));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAnotherRowsSaveSucceedsAfterAFailure_ThenTheFailureIsStillSaid()
+    {
+        var failing = new TaskCompletionSource();
+        var succeeding = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion, Age);
+        client.NotesGates.Enqueue((failing, new DesiredDataResult(DesiredDataOutcome.NotFound)));
+        client.NotesGates.Enqueue((succeeding, new DesiredDataResult(DesiredDataOutcome.Saved)));
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler");
+        OpenNotes(cut, "Alder").Change("lagres");
+        await cut.InvokeAsync(failing.SetResult);
+        await cut.InvokeAsync(succeeding.SetResult);
+
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAFailureLandsAfterTheReaderSwitchedList_ThenTheOtherListSaysNothing()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { TwoLists = true, NotesGate = gate, NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler i liste A");
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        await cut.InvokeAsync(gate.SetResult);
+
+        Assert.Equal("", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAVariableWithUnsavedNotesIsRemovedAndAddedBack_ThenTheyAreGone()
+    {
+        var client = new PanelClient(DatabaseVersion with { Notes = "lagret" }, Age) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("ikke lagret");
+        RemoveButton(cut, "Databaseversjon").Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("th[scope=row] button")));
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [DatabaseVersion.VariableId]));
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("th[scope=row] button").Count));
+
+        var field = OpenNotes(cut);
+        Assert.Equal("lagret", field.GetAttribute("value"));
+        Assert.Equal("", NotesStatusText(cut, field));
+    }
+
+    [Fact]
+    public async Task Notes_WhenASaveFromBeforeARemoveAndReAddLandsLast_ThenTheNewerSaveStands()
+    {
+        var old = new TaskCompletionSource();
+        var newer = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion, Age);
+        client.NotesGates.Enqueue((old, new DesiredDataResult(DesiredDataOutcome.NotFound)));
+        client.NotesGates.Enqueue((newer, new DesiredDataResult(DesiredDataOutcome.Saved)));
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("gammel");
+        RemoveButton(cut, "Databaseversjon").Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("th[scope=row] button")));
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [DatabaseVersion.VariableId]));
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("th[scope=row] button").Count));
+        OpenNotes(cut).Change("ny");
+        await cut.InvokeAsync(newer.SetResult);
+        await cut.InvokeAsync(old.SetResult);
+
+        var field = OpenNotesField(cut);
+        Assert.Equal("ny", field.GetAttribute("value"));
+        Assert.Equal("", NotesStatusText(cut, field));
+        Assert.Equal("", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenTheListIsEmptiedAndAVariableAddedBack_ThenItsUnsavedNotesAreGone()
+    {
+        var client = new PanelClient(DatabaseVersion with { Notes = "lagret" }, Age) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("ikke lagret");
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Tøm liste").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Ja, tøm listen").Click();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("th[scope=row] button")));
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [DatabaseVersion.VariableId]));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("th[scope=row] button")));
+
+        var field = OpenNotes(cut);
+        Assert.Equal("lagret", field.GetAttribute("value"));
+        Assert.Equal("", NotesStatusText(cut, field));
+    }
+
+    [Fact]
+    public async Task Notes_WhenTheSaveFailsAfterTheReaderMovedToTheDataTab_ThenTheAlertSaysIt()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { NotesAnswer = null, NotesGate = gate };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler");
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Data").Click();
+        await cut.InvokeAsync(gate.SetResult);
+
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAThrottledSaveLandsWithTheRowClosed_ThenTheAlertSaysTheRateLimit()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { NotesThrottled = true, NotesGate = gate };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("for raskt");
+        NameButton(cut, "Databaseversjon").Click();
+        await cut.InvokeAsync(gate.SetResult);
+
+        Assert.StartsWith("Du har gjort for mange forespørsler", PageAlert(cut));
+    }
+
+    [Fact]
+    public void Notes_WhenAnotherRowOpensAfterARefusal_ThenItIsNotMarked()
+    {
+        var client = new PanelClient(DatabaseVersion, Age) { NotesAnswer = new(DesiredDataOutcome.Refused, 1500, 1600) };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change(new string('x', 1600));
+        var other = OpenNotes(cut, "Alder");
+
+        Assert.Null(other.GetAttribute("aria-invalid"));
+        Assert.Equal("", NotesStatusText(cut, other));
+    }
+
+    [Fact]
+    public async Task Notes_WhenWrittenAgainWhileASaveIsOut_ThenOneGoesAtATimeAndTheLastTextIsSent()
+    {
+        // The API keeps whichever write it commits last, so two out at once could leave the older text.
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion);
+        client.NotesGates.Enqueue((gate, new DesiredDataResult(DesiredDataOutcome.Saved)));
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("første");
+        OpenNotesField(cut).Change("andre");
+        OpenNotesField(cut).Change("tredje");
+        await cut.InvokeAsync(gate.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal(["første", "tredje"], client.NotesWritten.Select(write => write.Text)));
+        Assert.Equal(1, client.MostNotesInFlight);
+        Assert.Equal("tredje", OpenNotesField(cut).GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAnOlderWriteIsRefusedWhileANewerOneWaits_ThenTheFieldIsNotMarked()
+    {
+        var first = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion);
+        client.NotesGates.Enqueue((first, new DesiredDataResult(DesiredDataOutcome.Refused, 1500, 1600)));
+        client.NotesGates.Enqueue((new TaskCompletionSource(), new DesiredDataResult(DesiredDataOutcome.Saved)));
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change(new string('x', 1600));
+        OpenNotesField(cut).Change("kortere");
+        await cut.InvokeAsync(first.SetResult);
+
+        var field = OpenNotesField(cut);
+        Assert.Null(field.GetAttribute("aria-invalid"));
+        Assert.Equal("", NotesStatusText(cut, field));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAnOlderWriteFailsAndTheNewerOneIsSaved_ThenTheAlertSaysNothing()
+    {
+        var first = new TaskCompletionSource();
+        var second = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion);
+        client.NotesGates.Enqueue((first, new DesiredDataResult(DesiredDataOutcome.NotFound)));
+        client.NotesGates.Enqueue((second, new DesiredDataResult(DesiredDataOutcome.Saved)));
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler");
+        OpenNotesField(cut).Change("lagres");
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Data").Click();
+        await cut.InvokeAsync(first.SetResult);
+        await cut.InvokeAsync(second.SetResult);
+
+        Assert.Equal("", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenTheVariableIsRemovedWhileAWriteWaits_ThenTheWaitingWriteIsNotSent()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion, Age) { NotesGate = gate };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("første");
+        OpenNotesField(cut).Change("andre");
+        RemoveButton(cut, "Databaseversjon").Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("th[scope=row] button")));
+        await cut.InvokeAsync(gate.SetResult);
+
+        Assert.Equal(["første"], client.NotesWritten.Select(write => write.Text));
+    }
+
+    [Fact]
+    public void Notes_WhenTheLoginHasExpired_ThenItIsLoggedAsAWarning()
+    {
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b
+            .AddProvider(recorder)
+            .SetMinimumLevel(LogLevel.Trace)
+            .AddFilter((category, _) =>
+                category?.StartsWith("Fhi.Munin.Explorer", StringComparison.Ordinal) == true));
+        var cut = RenderView(new PanelClient(DatabaseVersion) { NotesUnauthorized = true });
+
+        var field = OpenNotes(cut);
+        field.Change("utløpt innlogging");
+
+        var entry = Assert.Single(recorder.Entries, e => e.Exception is MuninExplorerUnauthorizedException);
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, OpenNotesField(cut)));
+    }
+
+    [Fact]
+    public async Task Notes_WhenTheRowWhoseSaveFailedIsReopened_ThenTheAlertStepsAsideForTheField()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion, Age) { NotesAnswer = null, NotesGate = gate };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler");
+        NameButton(cut, "Databaseversjon").Click();
+        await cut.InvokeAsync(gate.SetResult);
+        Assert.NotEqual("", PageAlert(cut));
+
+        var field = OpenNotes(cut);
+
+        Assert.Equal("", PageAlert(cut));
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, field));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAnotherRowsNotesAreOpenAsASaveFails_ThenTheAlertSaysIt()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion, Age) { NotesAnswer = null, NotesGate = gate };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler");
+        OpenNotes(cut, "Alder");
+        await cut.InvokeAsync(gate.SetResult);
+
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenThePageIsReadWhileTheRowStaysOpen_ThenTheFieldShowsWhatTheApiHolds()
+    {
+        var client = new PanelClient(DatabaseVersion, Age);
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("skrevet her");
+        client.NotesChangedElsewhere(DatabaseVersion.VariableId, "skrevet i en annen fane");
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [Age.VariableId]));
+
+        cut.WaitForAssertion(() => Assert.Equal("skrevet i en annen fane", OpenNotesField(cut).GetAttribute("value")));
+    }
+
+    [Fact]
+    public async Task Notes_WhenThePageIsReadWhileAFailedSaveIsOpen_ThenTheUnsavedTextStays()
+    {
+        var client = new PanelClient(DatabaseVersion, Age) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("ikke lagret");
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [Age.VariableId]));
+
+        cut.WaitForAssertion(() => Assert.Equal("ikke lagret", OpenNotesField(cut).GetAttribute("value")));
+    }
+
+    [Fact]
+    public async Task Notes_WhenThePageIsReadAgain_ThenWhatTheApiHoldsWinsOverThisSessionsSave()
+    {
+        var client = new PanelClient(DatabaseVersion) { TwoLists = true };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("skrevet her");
+        client.NotesChangedElsewhere(DatabaseVersion.VariableId, "skrevet i en annen fane");
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
+
+        cut.WaitForAssertion(() => Assert.Equal("skrevet i en annen fane", OpenNotes(cut).GetAttribute("value")));
+    }
+
+    [Fact]
+    public void DesiredData_WhenWrittenOnSeveralLinesInTheDataTab_ThenTheLinesAreJoinedForTheColumn()
+    {
+        var client = new PanelClient(DatabaseVersion);
+        var cut = RenderView(client);
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=tablist]");
+        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Ønskede data");
+        cut.Find($"#{label.GetAttribute("for")}").Change("C76\r\n  C77 \n\nC78");
+
+        Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76, C77, C78")], client.DesiredDataWritten);
+        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData input");
+        Assert.Equal("C76, C77, C78", column.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void DesiredData_InTheDataTab_ShowsTheColumnsValueAndSavesThroughTheSameRoute()
+    {
+        var client = new PanelClient(DatabaseVersion with { DesiredDataType = "freeText", DesiredDataFreeText = "C76" });
+        var cut = RenderView(client);
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=tablist]");
+        var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Ønskede data");
+        var field = cut.Find($"#{label.GetAttribute("for")}");
+
+        Assert.Equal("C76", field.GetAttribute("value"));
+        Assert.Contains(
+            "Angi hvilke kodeverdier du ønsker å søke om",
+            cut.Find($"#{field.GetAttribute("aria-describedby")!.Split(' ')[0]}").TextContent);
+
+        field.Change("  C76 og C77  ");
+
+        Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76 og C77")], client.DesiredDataWritten);
+        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData input");
+        Assert.Equal("C76 og C77", column.GetAttribute("value"));
     }
 
     [Fact]

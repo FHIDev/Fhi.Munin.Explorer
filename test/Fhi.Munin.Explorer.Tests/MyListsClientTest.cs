@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using Fhi.Munin.Explorer.Client;
 using Fhi.Munin.Explorer.Contracts;
 
@@ -323,6 +324,59 @@ public class MyListsClientTest
     /// <summary>The annotation route for one variable in one list.</summary>
     private static string DesiredDataRoute(Guid variableId) =>
         $"{Collection}/{ListId}/variables/{variableId}/desired-data";
+
+    [Fact]
+    public async Task SetMyListNotesAsync_WhenTextIsWritten_ThenItIsPutTrimmedToTheVariablesNotesRoute()
+    {
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+        var variableId = new Guid("b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90");
+
+        var result = await Client(handler).SetMyListNotesAsync(ListId, variableId, "  Spør om 2012  ");
+
+        Assert.Equal(DesiredDataOutcome.Saved, result.Outcome);
+        Assert.Equal(HttpMethod.Put, handler.LastMethod);
+        Assert.Equal($"/api/explorer/my/lists/{ListId}/variables/{variableId}/notes", handler.LastUri?.AbsolutePath);
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal("Spør om 2012", Assert.Single(sent.RootElement.EnumerateObject(), p => p.Name == "text").Value.GetString());
+        AssertAuthenticated(handler);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task SetMyListNotesAsync_WhenTheTextIsBlank_ThenANullTextClearsThem(string? blank)
+    {
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+
+        await Client(handler).SetMyListNotesAsync(ListId, Guid.NewGuid(), blank);
+
+        Assert.Equal("""{"text":null}""", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task SetMyListNotesAsync_WhenTheTextIsTooLong_ThenTheApisCeilingComesBack()
+    {
+        var handler = StubHttpHandler.Answering(
+            HttpStatusCode.BadRequest,
+            """{"error":"Notes must be 2000 characters or fewer.","maxLength":2000,"received":2100}""");
+
+        var result = await Client(handler).SetMyListNotesAsync(ListId, Guid.NewGuid(), new string('x', 2100));
+
+        Assert.Equal(DesiredDataOutcome.Refused, result.Outcome);
+        Assert.Equal(2000, result.MaxLength);
+        Assert.Equal(2100, result.Received);
+    }
+
+    [Fact]
+    public async Task SetMyListNotesAsync_WhenTheListIsNotTheReaders_ThenItIsNotFound()
+    {
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+
+        var result = await Client(handler).SetMyListNotesAsync(ListId, Guid.NewGuid(), "noe");
+
+        Assert.Equal(DesiredDataOutcome.NotFound, result.Outcome);
+    }
 
     [Fact]
     public async Task SetMyListDesiredDataAsync_WhenTextIsWritten_ThenItIsPutToTheVariablesOwnRoute()
@@ -853,7 +907,7 @@ public class MyListsClientTest
     // ------------------------------------------------------------------------------- the trap itself
 
     [Fact]
-    public async Task EveryCall_WhenAHostSuppliesAToken_ThenItIsSentAsBearerOnAllNine()
+    public async Task EveryCall_WhenAHostSuppliesAToken_ThenItIsSentAsBearerOnEveryOne()
     {
         // The point of this file in one test. Every one of these endpoints is [Authorize], and a
         // stub handler answers whatever it is told whether or not a token arrived — so a suite that
@@ -893,6 +947,7 @@ public class MyListsClientTest
             ("AddVariablesToMyListAsync", () => client.AddVariablesToMyListAsync(ListId, ids)),
             ("RemoveVariablesFromMyListAsync", () => client.RemoveVariablesFromMyListAsync(ListId, ids)),
             ("SetMyListDesiredDataAsync", () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76")),
+            ("SetMyListNotesAsync", () => client.SetMyListNotesAsync(ListId, ids[0], "Spør om 2012")),
             ("ExportMyListAsync", () => client.ExportMyListAsync(ListId))
         };
 
@@ -935,6 +990,7 @@ public class MyListsClientTest
             () => client.AddVariablesToMyListAsync(ListId, ids),
             () => client.RemoveVariablesFromMyListAsync(ListId, ids),
             () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76"),
+            () => client.SetMyListNotesAsync(ListId, ids[0], "Spør om 2012"),
             () => client.ExportMyListAsync(ListId)
         };
 

@@ -103,6 +103,7 @@ TARGETS=(
   "/utforsker::explorer-tabs"
   "/utforsker::explorer-list-tab"
   "/utforsker::list-row-panel"
+  "/utforsker::list-row-notes"
 )
 
 host_pid=""

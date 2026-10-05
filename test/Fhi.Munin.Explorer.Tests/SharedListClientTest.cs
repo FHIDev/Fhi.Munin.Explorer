@@ -22,6 +22,7 @@ public class SharedListClientTest
     {
         VariableId = id,
         AddedAt = DateTimeOffset.UtcNow,
+        Notes = "egne notater om " + name,
         VariableCode = "V_" + name,
         VariableName = name,
         KildeId = Kilde,
@@ -73,6 +74,7 @@ public class SharedListClientTest
         Assert.Equal(One.ToString(), items[0].GetProperty("variabelId").GetString());
         Assert.Equal("ALS", items[0].GetProperty("kildeKortNavn").GetString());
         Assert.DoesNotContain("privat notat", handler.LastBody);
+        Assert.DoesNotContain("egne notater", handler.LastBody);
     }
 
     [Fact]

@@ -80,6 +80,7 @@ TARGETS=(
   "/::explorer-tabs"
   "/::explorer-list-tab"
   "/::list-row-panel"
+  "/::list-row-notes"
   "/::variable-detail"
   "/::variable-detail-about"
   "/::variable-detail-long-name"
@@ -310,7 +311,7 @@ reflow() {
 
 echo
 echo "==> measuring the reflow width WCAG 1.4.10 names"
-reflow "" "/::explorer-tabs" "/::explorer-list-tab" "/::list-row-panel"
+reflow "" "/::explorer-tabs" "/::explorer-list-tab" "/::list-row-panel" "/::list-row-notes"
 # The closed column picker hangs 2px off the left edge; Fhi.Metadata-abmom records why that stays.
 reflow "the component stays inside the box the host gave it" \
   "/kilder::kilder-list" "/kilder::kilder-counts" "/kilder::kilde-facets"
@@ -336,7 +337,7 @@ reflow "" "/::filters-level-lines" "/::filters-node-icons-off"
 # The three detail pages' fact lists, one track at 320 (Fhi.Metadata-2w7fx).
 reflow "" "/kilder::kilde-drilldown" "/kilder::kilde-datasamling" "/::variable-page"
 # 767 is the widest width Stiler still draws the cards at (Fhi.Metadata-n8ygv, Fhi.Metadata-z4r1d).
-REFLOW_WIDTH=767 reflow "" "/kilder::kilde-hierarchy-metadata" "/::explorer-list-tab" "/::list-row-panel"
+REFLOW_WIDTH=767 reflow "" "/kilder::kilde-hierarchy-metadata" "/::explorer-list-tab" "/::list-row-panel" "/::list-row-notes"
 
 # An assertion that has quietly stopped measuring anything reports success forever, so each one is
 # handed a page carrying the defect it was written for and required to say so.

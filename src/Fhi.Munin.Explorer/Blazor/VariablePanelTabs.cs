@@ -5,14 +5,13 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
-/// <summary>An opened variable's two tabs: the data behind it, and what it is.</summary>
+/// <summary>An opened variable's tabs: the data behind it, what it is, and where a parent gives them, the reader's notes.</summary>
 /// <remarks>
 /// The tab is the parent's, so the parent decides when to go back to Data: on opening another
 /// variable, and not on coming back from the whole-variable view.
 /// </remarks>
 internal sealed class VariablePanelTabs : ComponentBase
 {
-    private static readonly PanelTab[] Tabs = Enum.GetValues<PanelTab>();
 
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
@@ -35,10 +34,18 @@ internal sealed class VariablePanelTabs : ComponentBase
     /// <summary>Whether the second tab opens with the description, which a parent may already show above.</summary>
     [Parameter] public bool ShowDescription { get; set; } = true;
 
+    /// <summary>Drawn at the top of the Data tab, where a saved list puts the row's "Ønskede data".</summary>
+    [Parameter] public RenderFragment? DataTop { get; set; }
+
+    /// <summary>The third tab's content; without it there is no third tab.</summary>
+    [Parameter] public RenderFragment? Notes { get; set; }
+
     /// <summary>A datatype code's name where the detail's own vocabulary has none.</summary>
     [Parameter] public Func<string, string?>? DataTypeName { get; set; }
 
     private Texts T => Texts.For(Language);
+
+    private PanelTab[] Tabs => Notes is null ? [PanelTab.Data, PanelTab.About] : [PanelTab.Data, PanelTab.About, PanelTab.Notes];
 
     private string Reader => ReaderLanguage.Of(Language);
 
@@ -90,13 +97,25 @@ internal sealed class VariablePanelTabs : ComponentBase
         builder.AddAttribute(24, "id", TabPanelId);
         builder.AddAttribute(25, "aria-labelledby", TabId(Tab));
         builder.AddAttribute(26, "tabindex", 0);
-        builder.AddContent(27, Tab is PanelTab.Data ? DataTab : AboutTab);
+        builder.AddContent(27, Tab switch
+        {
+            PanelTab.Data => DataTab,
+            PanelTab.Notes when Notes is { } notes => notes,
+            _ => AboutTab,
+        });
         builder.CloseElement();
         builder.CloseElement();
     }
 
     private RenderFragment DataTab => builder =>
     {
+        if (DataTop is { } top)
+        {
+            builder.OpenRegion(30);
+            builder.AddContent(0, top);
+            builder.CloseRegion();
+        }
+
         if (Detail.KodeverkLinks.Count == 0 && !StatisticsBlock.AnyStatistics(Detail, StatisticsLayout.Drawer))
         {
             builder.OpenElement(0, "p");
@@ -182,6 +201,7 @@ internal sealed class VariablePanelTabs : ComponentBase
     {
         PanelTab.Data => T.TabData,
         PanelTab.About => T.TabAbout,
+        PanelTab.Notes => T.TabNotes,
         _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "No label for this tab."),
     };
 

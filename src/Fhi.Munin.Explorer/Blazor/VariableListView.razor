@@ -721,4 +721,30 @@ else if (State?.IsAuthenticated == true)
             </div>
         }
     </div>;
+
+    // The same value as the row's column: one draft, one save, one refusal for both fields.
+    private RenderFragment RowDesiredDataField(VariableListItem item) => @<div class="margin-bottom">
+        <div><label class="form-element__label" for="@RowDesiredDataId(item)">@T.FieldDesiredData</label></div>
+        <p class="caption" id="@RowDesiredDataHintId(item)">@T.DesiredDataHint</p>
+        <textarea id="@RowDesiredDataId(item)"
+                  class="textarea__field"
+                  rows="4"
+                  value="@DesiredDataOf(item)"
+                  aria-invalid="@DesiredDataInvalid(item)"
+                  aria-describedby="@RowDesiredDataDescribedBy(item)"
+                  @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())"></textarea>
+    </div>;
+
+    // Saved when the field is left, like Ønskede data: no keystroke costs a round trip on the host's circuit.
+    private RenderFragment RowNotesField(VariableListItem item) => @<div>
+        <div><label class="form-element__label" for="@RowNotesId(item)">@T.NotesLabel</label></div>
+        <textarea id="@RowNotesId(item)"
+                  class="textarea__field"
+                  rows="6"
+                  value="@_notesDraft"
+                  aria-invalid="@NotesInvalid"
+                  aria-describedby="@RowNotesStatusId(item)"
+                  @onchange="e => SaveNotesAsync(item, e.Value?.ToString())"></textarea>
+        <p class="@NotesStatusClass" id="@RowNotesStatusId(item)" role="status" aria-live="polite" aria-atomic="true">@NotesRefusal</p>
+    </div>;
 }
