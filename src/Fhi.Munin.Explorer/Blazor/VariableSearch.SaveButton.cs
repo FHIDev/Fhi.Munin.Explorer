@@ -1,4 +1,5 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -115,6 +116,10 @@ public partial class VariableSearch
         builder.CloseElement();
     };
 
+    // Named the way the membership walk names it, so a saved variable's kilde reads alike in the list's panel.
+    private static KildeOfVariable KildeOf(VariableSummary v) =>
+        new(v.KildeId, DisplayText.Trimmed(v.KildeName) ?? DisplayText.Trimmed(v.KildeShortName) ?? "");
+
     private async Task ToggleSavedAsync(VariableSummary v)
     {
         if (ListState is null)
@@ -128,7 +133,7 @@ public partial class VariableSearch
         try
         {
             _saveError.Remove(v.Id);
-            await ListState.ToggleSavedAsync(v.Id, T.FirstListName);
+            await ListState.ToggleSavedAsync(v.Id, T.FirstListName, KildeOf(v));
         }
         catch (MuninExplorerRateLimitedException ex)
         {

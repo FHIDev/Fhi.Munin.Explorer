@@ -87,10 +87,28 @@ public class VariableListFiltersTest : ExplorerTestContext
         /// <summary>The reader has saved no list at all.</summary>
         public bool NoLists { get; init; }
 
-        /// <summary>Accepted, so the state records the write and drops its kilde tally.</summary>
+        /// <summary>Accepted and applied, so the reload after a write reads what the API would hold.</summary>
         public override Task<bool> RemoveVariablesFromMyListAsync(
-            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            _items.RemoveAll(i => variableIds.Contains(i.VariableId));
+            return Task.FromResult(true);
+        }
+
+        /// <summary>The rows a later add puts in the list, by variable id.</summary>
+        public Dictionary<Guid, VariableListItem> Addable { get; } = [];
+
+        /// <summary>Accepted; an id with a row in <see cref="Addable"/> lands in the list.</summary>
+        public override Task<bool> AddVariablesToMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            _items.AddRange(variableIds.Where(v => _items.TrueForAll(i => i.VariableId != v))
+                .Select(v => Addable.TryGetValue(v, out var row) ? row : null).OfType<VariableListItem>());
+            return Task.FromResult(true);
+        }
+
+        /// <summary>How many reads walked the list for its membership, the page size only the walk asks for.</summary>
+        public int Walks { get; private set; }
 
         /// <summary>Leave the lists read in flight.</summary>
         public bool ListsHang { get; init; }
@@ -148,6 +166,11 @@ public class VariableListFiltersTest : ExplorerTestContext
         {
             Narrowings.Add(kildeIds is null ? [] : [.. kildeIds]);
             PagesAsked.Add(page);
+
+            if (pageSize == 1000 && page == 1)
+            {
+                Walks++;
+            }
 
             if (StallReadsFor is { } stalled && kildeIds is not null && kildeIds.Contains(stalled))
             {
@@ -421,13 +444,13 @@ public class VariableListFiltersTest : ExplorerTestContext
     [Fact]
     public async Task Panel_WhenAWriteDropsTheTallyWithNothingTicked_ThenNoHeadingsStandOverNothing()
     {
-        // The write drops the kilde tally until the reader switches list; the headings would stand alone.
+        // An add whose kilde is unknown drops the tally until the reader switches list; the headings would stand alone.
         var client = new ListClient(List((Kreftregisteret, 4), (Reseptregisteret, 2)));
         var cut = RenderBoth(client);
         Assert.Single(cut.Filters.FindAll(".munin-explorer-filters"));
         var state = Services.GetRequiredService<VariableListState>();
 
-        await cut.View.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [Guid.NewGuid()]));
+        await cut.View.InvokeAsync(() => state.AddVariablesAsync(ListId, [Guid.NewGuid()]));
 
         Assert.False(state.KilderInListKnown);
         Assert.Empty(cut.Filters.FindAll(".munin-explorer-filters"));
@@ -442,11 +465,230 @@ public class VariableListFiltersTest : ExplorerTestContext
         Boxes(cut.Filters)[1].Change(true);
         var state = Services.GetRequiredService<VariableListState>();
 
-        await cut.View.InvokeAsync(() => state.RemoveVariablesAsync(ListId, [Guid.NewGuid()]));
+        await cut.View.InvokeAsync(() => state.AddVariablesAsync(ListId, [Guid.NewGuid()]));
 
         Assert.False(state.KilderInListKnown);
         Assert.Single(cut.Filters.FindAll(".munin-explorer-filters"));
         Assert.Contains(cut.Filters.FindAll("button"), b => b.TextContent.Trim() == "Fjern alle filtre");
+    }
+
+    // -----------------------------------------------------------------------
+    // A write keeps the tally rather than dropping it (Fhi.Metadata-5s4uj).
+
+    private VariableListState State() => Services.GetRequiredService<VariableListState>();
+
+    private static VariableListItem Row(IEnumerable<VariableListItem> rows, Guid kilde) =>
+        rows.First(i => i.KildeId == kilde);
+
+    [Fact]
+    public async Task Tally_WhenARowIsRemoved_ThenItsKildeCountsOneLessAndThePanelStays()
+    {
+        // The defect: after «Fjern» the panel went blank until the reader switched list and back.
+        var rows = List((Kreftregisteret, 4), (Reseptregisteret, 2));
+        var cut = RenderBoth(new ListClient(rows));
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [Row(rows, Kreftregisteret).VariableId]));
+
+        Assert.True(State().KilderInListKnown);
+        Assert.Equal(["Kreftregisteret (3)", "Reseptregisteret (2)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public async Task Tally_WhenAWriteIsRecorded_ThenTheListIsNotWalkedAgain()
+    {
+        // The walk reads every page; one per write is the burst the rate limiter counts.
+        var rows = List((Kreftregisteret, 4), (Reseptregisteret, 2));
+        var client = new ListClient(rows);
+        var cut = RenderBoth(client);
+        var walks = client.Walks;
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [Row(rows, Kreftregisteret).VariableId]));
+
+        Assert.Equal(walks, client.Walks);
+    }
+
+    [Fact]
+    public async Task Tally_WhenAKildesLastRowIsRemoved_ThenTheKildeLeavesThePanel()
+    {
+        var rows = List((Kreftregisteret, 4), (Reseptregisteret, 1));
+        var cut = RenderBoth(new ListClient(rows));
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [Row(rows, Reseptregisteret).VariableId]));
+
+        Assert.Equal(["Kreftregisteret (4)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public async Task Tally_WhenATickedKildesLastRowIsRemoved_ThenTheTickGoesWithIt()
+    {
+        // Left ticked, it would narrow the list to nothing with no box on screen to untick.
+        var rows = List((Kreftregisteret, 4), (Reseptregisteret, 1));
+        var client = new ListClient(rows);
+        var cut = RenderBoth(client);
+        Boxes(cut.Filters)[1].Change(true);
+        var version = State().KildeFilterVersion;
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [Row(rows, Reseptregisteret).VariableId]));
+
+        Assert.Empty(State().KildeFilter);
+        Assert.NotEqual(version, State().KildeFilterVersion);
+        cut.View.WaitForAssertion(() => Assert.Empty(client.Narrowings[^1]));
+        Assert.Equal(1, client.PagesAsked[^1]);
+    }
+
+    [Fact]
+    public async Task Tally_WhenAnUntickedKildesLastRowIsRemoved_ThenTheTicksStandAsTheyWere()
+    {
+        var rows = List((Kreftregisteret, 4), (Reseptregisteret, 1));
+        var cut = RenderBoth(new ListClient(rows));
+        Boxes(cut.Filters)[0].Change(true);
+        var version = State().KildeFilterVersion;
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [Row(rows, Reseptregisteret).VariableId]));
+
+        Assert.Equal([Kreftregisteret], State().KildeFilter);
+        Assert.Equal(version, State().KildeFilterVersion);
+    }
+
+    [Fact]
+    public async Task Tally_WhenEveryRowIsRemoved_ThenItSaysTheListHoldsNoKilder()
+    {
+        var rows = List((Kreftregisteret, 2), (Reseptregisteret, 1));
+        var cut = RenderBoth(new ListClient(rows));
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [.. rows.Select(r => r.VariableId)]));
+
+        Assert.True(State().KilderInListKnown);
+        Assert.Empty(State().KilderInList);
+    }
+
+    [Fact]
+    public async Task Tally_WhenARowWithNoKildeIsRemoved_ThenTheCountsStandAndStayKnown()
+    {
+        var rows = List((Kreftregisteret, 2));
+        var orphan = new VariableListItem { VariableId = Guid.NewGuid(), AddedAt = DateTimeOffset.UtcNow, VariableName = "Uten kilde" };
+        var cut = RenderBoth(new ListClient([.. rows, orphan]));
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [orphan.VariableId]));
+
+        Assert.True(State().KilderInListKnown);
+        Assert.Equal(["Kreftregisteret (2)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public async Task Tally_WhenAnIdTheListDoesNotHoldIsRemoved_ThenNothingMoves()
+    {
+        var cut = RenderBoth(new ListClient(List((Kreftregisteret, 2))));
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [Guid.NewGuid()]));
+
+        Assert.True(State().KilderInListKnown);
+        Assert.Equal(["Kreftregisteret (2)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public async Task Tally_WhenAVariableIsSavedWithItsKilde_ThenThatKildeCountsOneMore()
+    {
+        var client = new ListClient(List((Kreftregisteret, 2)));
+        var saved = Item(Kreftregisteret, 9);
+        client.Addable[saved.VariableId] = saved;
+        var cut = RenderBoth(client);
+
+        await cut.View.InvokeAsync(() => State().ToggleSavedAsync(
+            saved.VariableId, "Min liste", new KildeOfVariable(Kreftregisteret, "Kreftregisteret")));
+
+        Assert.True(State().KilderInListKnown);
+        Assert.Equal(["Kreftregisteret (3)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public async Task Tally_WhenAVariableOfANewKildeIsSaved_ThenTheKildeJoinsThePanelNamed()
+    {
+        var client = new ListClient(List((Kreftregisteret, 2)));
+        var saved = Item(Årsaksregisteret, 1);
+        client.Addable[saved.VariableId] = saved;
+        var cut = RenderBoth(client);
+
+        await cut.View.InvokeAsync(() => State().ToggleSavedAsync(
+            saved.VariableId, "Min liste", new KildeOfVariable(Årsaksregisteret, "Årsaksregisteret")));
+
+        Assert.Equal(["Kreftregisteret (2)", "Årsaksregisteret (1)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public async Task Tally_WhenAVariableWithNoKildeIsSaved_ThenTheCountsStandAndStayKnown()
+    {
+        var cut = RenderBoth(new ListClient(List((Kreftregisteret, 2))));
+
+        await cut.View.InvokeAsync(() => State().ToggleSavedAsync(Guid.NewGuid(), "Min liste", new KildeOfVariable(null, "")));
+
+        Assert.True(State().KilderInListKnown);
+        Assert.Equal(["Kreftregisteret (2)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public async Task Tally_WhenASavedVariableIsRemovedAgain_ThenItsKildeIsCountedDownAsItWasUp()
+    {
+        // The save noted which kilde it came from, so taking it out again is not a variable of unknown kilde.
+        var client = new ListClient(List((Kreftregisteret, 2)));
+        var saved = Item(Årsaksregisteret, 1);
+        client.Addable[saved.VariableId] = saved;
+        var cut = RenderBoth(client);
+        await cut.View.InvokeAsync(() => State().ToggleSavedAsync(
+            saved.VariableId, "Min liste", new KildeOfVariable(Årsaksregisteret, "Årsaksregisteret")));
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [saved.VariableId]));
+
+        Assert.True(State().KilderInListKnown);
+        Assert.Equal(["Kreftregisteret (2)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public async Task Tally_WhenAWriteLandsOnATallyAlreadyUnknown_ThenItStaysUnknown()
+    {
+        // Counting onto a dropped tally would publish one variable's kilde as the whole list's.
+        var client = new ListClient(List((Kreftregisteret, 2)));
+        var saved = Item(Kreftregisteret, 9);
+        client.Addable[saved.VariableId] = saved;
+        var cut = RenderBoth(client);
+        await cut.View.InvokeAsync(() => State().AddVariablesAsync(ListId, [Guid.NewGuid()]));
+
+        await cut.View.InvokeAsync(() => State().ToggleSavedAsync(
+            saved.VariableId, "Min liste", new KildeOfVariable(Kreftregisteret, "Kreftregisteret")));
+
+        Assert.False(State().KilderInListKnown);
+        Assert.Empty(State().KilderInList);
+    }
+
+    [Fact]
+    public async Task Tally_WhenOneWriteNamesAVariableTwice_ThenItIsCountedOnce()
+    {
+        var rows = List((Kreftregisteret, 3));
+        var cut = RenderBoth(new ListClient(rows));
+        var id = rows[0].VariableId;
+
+        await cut.View.InvokeAsync(() => State().RemoveVariablesAsync(ListId, [id, id]));
+
+        Assert.Equal(["Kreftregisteret (2)"], Facets(cut.Filters));
+    }
+
+    [Fact]
+    public async Task Tally_WhenASaveNamesAKildeTheListLeftUnnamed_ThenThePanelTakesTheName()
+    {
+        // The list's own entries carried no name for it; the saved variable's does, and is better than none.
+        var unnamed = new VariableListItem
+        {
+            VariableId = Guid.NewGuid(), AddedAt = DateTimeOffset.UtcNow, VariableName = "V1", KildeId = Kreftregisteret,
+        };
+        var client = new ListClient([unnamed]);
+        var saved = Item(Kreftregisteret, 9);
+        client.Addable[saved.VariableId] = saved;
+        var cut = RenderBoth(client);
+
+        await cut.View.InvokeAsync(() => State().ToggleSavedAsync(
+            saved.VariableId, "Min liste", new KildeOfVariable(Kreftregisteret, "Kreftregisteret")));
+
+        Assert.Equal(new KildeInList(Kreftregisteret, "Kreftregisteret", 2), Assert.Single(State().KilderInList));
     }
 
     [Fact]

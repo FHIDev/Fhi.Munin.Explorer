@@ -299,9 +299,17 @@ public sealed partial class VariableListState(
     }
 
     /// <summary>Puts variables in a list. Returns whether the API accepted it.</summary>
-    public async Task<bool> AddVariablesAsync(
+    public Task<bool> AddVariablesAsync(
         Guid id,
         IReadOnlyCollection<Guid> variableIds,
+        CancellationToken cancellationToken = default) =>
+        AddVariablesAsync(id, variableIds, kilder: null, cancellationToken);
+
+    /// <summary>Puts variables in a list, saying which kilde each belongs to so the tally can follow.</summary>
+    internal async Task<bool> AddVariablesAsync(
+        Guid id,
+        IReadOnlyCollection<Guid> variableIds,
+        IReadOnlyDictionary<Guid, KildeOfVariable>? kilder,
         CancellationToken cancellationToken = default)
     {
         if (!IsAuthenticated)
@@ -319,7 +327,7 @@ public sealed partial class VariableListState(
 
         if (accepted)
         {
-            var delta = RecordMembership(id, variableIds, saved: true, startedAt);
+            var delta = RecordMembership(id, variableIds, saved: true, startedAt, kilder);
 
             RecordCountChange(id, delta, startedAt);
             RaiseChanged(id, affectsRows: true);

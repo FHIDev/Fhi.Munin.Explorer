@@ -14,6 +14,11 @@ namespace Fhi.Munin.Explorer.State;
 /// </param>
 public sealed record KildeInList(Guid Id, string Name, int Count);
 
+/// <summary>The kilde a variable belongs to, as the surface writing it knows it.</summary>
+/// <param name="Id">The kilde, or null for a variable the catalogue gives none.</param>
+/// <param name="Name">Its name, or empty when the catalogue names it neither way.</param>
+internal readonly record struct KildeOfVariable(Guid? Id, string Name);
+
 /// <summary>
 /// Which kilder the active list draws from, and which of them the reader has narrowed to.
 /// </summary>
@@ -51,15 +56,18 @@ public sealed partial class VariableListState
     /// </summary>
     public IReadOnlyList<KildeInList> KilderInList => _kilder;
 
-    // Set by a write the walk did not see, and cleared by the walk that publishes a tally again.
-    // The tally is dropped rather than adjusted: the ids of a write do not say which kilder held
-    // them, so a kilde whose last variable just left would stay counted.
+    // Set by a write whose kilder are not known, and cleared by the walk that publishes a tally again.
     private bool _kilderStale;
+
+    // Which kilde each variable in the list belongs to, null for none: what lets a write move the
+    // tally rather than drop it. Replaced by every walk; read only while the tally is known.
+    private readonly Dictionary<Guid, Guid?> _kildeOf = [];
 
     /// <summary>
     /// Whether the walk that fills <see cref="KilderInList"/> has finished and still describes the
-    /// list. False while it runs, false when it was refused, and false after a write it did not
-    /// see — reading the empty tally as "no kilder" would say so about a list never read at all.
+    /// list. False while it runs, false when it was refused, and false after a write whose kilder
+    /// were not known — reading the empty tally as "no kilder" would say so about a list never read.
+    /// A removal, and a save from the explorer's own button, move the tally instead.
     /// </summary>
     public bool KilderInListKnown => _membershipLoaded && !_kilderStale;
 
@@ -131,5 +139,75 @@ public sealed partial class VariableListState
     {
         _kilder.Clear();
         _kilderStale = true;
+    }
+
+    /// <summary>
+    /// Moves the tally by a write the API accepted, or drops it when the write's kilder are not known.
+    /// </summary>
+    /// <param name="changed">The ids the write actually added or took out, each once.</param>
+    /// <param name="saved">Whether they were added rather than taken out.</param>
+    /// <param name="kilder">The added variables' kilder, or null when the surface did not know them.</param>
+    private void MoveKildeTally(
+        IEnumerable<Guid> changed, bool saved, IReadOnlyDictionary<Guid, KildeOfVariable>? kilder)
+    {
+        // A tally already dropped stays dropped: counting onto it would publish one variable's kilde as the list's.
+        if (!KilderInListKnown)
+        {
+            return;
+        }
+
+        foreach (var variableId in changed)
+        {
+            if (saved)
+            {
+                if (kilder is null || !kilder.TryGetValue(variableId, out var kilde))
+                {
+                    ForgetKildeTally();
+                    return;
+                }
+
+                _kildeOf[variableId] = kilde.Id;
+                MoveKildeCount(kilde.Id, +1, kilde.Name);
+            }
+            else
+            {
+                // Every id the list holds is mapped while the tally is known; one that is not was never counted.
+                _kildeOf.Remove(variableId, out var kildeId);
+                MoveKildeCount(kildeId, -1, "");
+            }
+        }
+    }
+
+    private void MoveKildeCount(Guid? kildeId, int by, string name)
+    {
+        if (kildeId is not { } id)
+        {
+            return;
+        }
+
+        var at = _kilder.FindIndex(k => k.Id == id);
+
+        if (at < 0)
+        {
+            _kilder.Add(new KildeInList(id, name, by));
+            return;
+        }
+
+        var now = _kilder[at] with { Count = _kilder[at].Count + by };
+
+        if (now.Count > 0)
+        {
+            _kilder[at] = now.Name.Length > 0 ? now : now with { Name = name };
+            return;
+        }
+
+        // Its last variable left. A tick left on it would narrow the list to nothing with no box to untick.
+        _kilder.RemoveAt(at);
+
+        if (_kildeFilter.Contains(id))
+        {
+            _kildeFilter = [.. _kildeFilter.Where(k => k != id)];
+            KildeFilterVersion++;
+        }
     }
 }

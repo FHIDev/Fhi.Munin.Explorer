@@ -57,7 +57,7 @@ public sealed partial class VariableListState
     /// a fresh multi-page membership read alongside every search and every page turn, at the one
     /// moment the address is known to be over the per-address limit. The package deliberately does
     /// not retry on a shared <c>Retry-After</c>, and a repair path that did would rebuild the burst
-    /// that caused the 429. The retry belongs to <see cref="ToggleSavedAsync"/>, which is a reader
+    /// that caused the 429. The retry belongs to <see cref="ToggleSavedAsync(Guid, string, CancellationToken)"/>, which is a reader
     /// asking for something rather than a render happening.
     /// </para>
     /// </remarks>
@@ -103,9 +103,17 @@ public sealed partial class VariableListState
     /// not.
     /// </para>
     /// </remarks>
-    public async Task<bool> ToggleSavedAsync(
+    public Task<bool> ToggleSavedAsync(
         Guid variableId,
         string nameForFirstList,
+        CancellationToken cancellationToken = default) =>
+        ToggleSavedAsync(variableId, nameForFirstList, kilde: null, cancellationToken);
+
+    /// <summary>The same press, from a surface that knows the variable's kilde, so the tally can follow.</summary>
+    internal async Task<bool> ToggleSavedAsync(
+        Guid variableId,
+        string nameForFirstList,
+        KildeOfVariable? kilde,
         CancellationToken cancellationToken = default)
     {
         if (!IsAuthenticated)
@@ -173,7 +181,9 @@ public sealed partial class VariableListState
         // themselves, so a removal from any other surface maintains it as well as this press does.
         _ = drawnAsSaved
             ? await RemoveVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false)
-            : await AddVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false);
+            : await AddVariablesAsync(
+                listId, [variableId], kilde is { } k ? new Dictionary<Guid, KildeOfVariable> { [variableId] = k } : null,
+                cancellationToken).ConfigureAwait(false);
 
         // The call may well have succeeded on the server — it went out under the old token. It is
         // this circuit's copy that must not keep the answer, because the reader it belongs to is no
@@ -198,7 +208,8 @@ public sealed partial class VariableListState
         Guid listId,
         IReadOnlyCollection<Guid> variableIds,
         bool saved,
-        int startedAt)
+        int startedAt,
+        IReadOnlyDictionary<Guid, KildeOfVariable>? kilder = null)
     {
         if (!StillCurrent(startedAt) || listId != _activeListId)
         {
@@ -211,6 +222,7 @@ public sealed partial class VariableListState
         // the list already holds and removing one it does not are no-ops on the API's side, and
         // no-ops here too — so the change in size is what the API did, and what the count moves by.
         var before = _saved.Count;
+        List<Guid> changed = [.. variableIds.Distinct().Where(id => _saved.Contains(id) != saved)];
 
         if (saved)
         {
@@ -221,9 +233,7 @@ public sealed partial class VariableListState
             _saved.ExceptWith(variableIds);
         }
 
-        // The walk that built the kilde tally did not see this write, and the ids alone do not say
-        // which kilder they belonged to — so the tally is dropped rather than left to lie.
-        ForgetKildeTally();
+        MoveKildeTally(changed, saved, kilder);
 
         return _saved.Count - before;
     }
@@ -351,6 +361,7 @@ public sealed partial class VariableListState
         // list, kildeId and kildeName travel on each entry, and a tally taken anywhere cheaper
         // would be one taken over a page. Collected alongside `found` and published with it.
         var kilder = new Dictionary<Guid, KildeTally>();
+        var kildeOf = new Dictionary<Guid, Guid?>();
 
         while (true)
         {
@@ -380,7 +391,14 @@ public sealed partial class VariableListState
                 // Only an entry this walk has not seen before is tallied. The list can be written
                 // to in another tab while these pages are read, and an entry that drifts across a
                 // page boundary arrives twice — deduplicated in the set, doubled in the counts.
-                if (!found.Add(item.VariableId) || item.KildeId is not { } kildeId)
+                if (!found.Add(item.VariableId))
+                {
+                    continue;
+                }
+
+                kildeOf[item.VariableId] = item.KildeId;
+
+                if (item.KildeId is not { } kildeId)
                 {
                     continue;
                 }
@@ -417,6 +435,13 @@ public sealed partial class VariableListState
         // neither, so the sidebar cannot read a half-filled tally as the list's own kilder.
         _kilder.Clear();
         _kilder.AddRange(kilder.Select(k => new KildeInList(k.Key, k.Value.Name, k.Value.Count)));
+        _kildeOf.Clear();
+
+        foreach (var (variableId, kildeId) in kildeOf)
+        {
+            _kildeOf[variableId] = kildeId;
+        }
+
         _kilderStale = false;
 
         _membershipLoaded = true;
