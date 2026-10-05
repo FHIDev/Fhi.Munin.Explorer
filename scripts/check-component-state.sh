@@ -102,6 +102,7 @@ TARGETS=(
   "/kilder::kilder-list"
   "/utforsker::variable-whole"
   "/utforsker::variable-datasamling"
+  "/utforsker::explorer-tabs"
 )
 
 host_pid=""

@@ -63,6 +63,7 @@
   --grey40: #bbb8c9;
   --grey60: #51547b;
   --warning-light: #fff3cd;
+  --accent: #9be9f3;
   --error-dark: #b4002c;
 
   /* Stiler sets Graphik here. It is a licensed typeface and is not redistributed with this
@@ -1539,6 +1540,38 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
   margin-bottom: 16px;
 }
 
+/* «Lagre disse variablene»: each saved row is covered by its notice for a few seconds, as on
+   helsedata's own page, with Fjern fra liste painted above it. The colour is that page's.
+   (Fhi.Metadata-dfy9u.8) */
+.munin-explorer-data-list__item--saved .munin-explorer-data-list__item__row {
+  position: relative;
+}
+
+.munin-explorer-data-list__saved-notice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  background-color: var(--accent);
+  font-weight: 500;
+  pointer-events: none;
+  animation: munin-explorer-saved-notice 3s ease-in forwards;
+}
+
+.munin-explorer-data-list__item--saved .munin-explorer-dataitem-main__save {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes munin-explorer-saved-notice {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .munin-explorer-data-list__saved-notice { animation: none; }
+}
 /* --grey60 rather than the --grey30 every other border in this stylesheet uses. A field's own
    border is what says there is a field there at all, which makes it a non-text control indicator
    under WCAG 1.4.11 and owes 3:1: --grey30 measures 1.16:1 against the page ground and --grey40

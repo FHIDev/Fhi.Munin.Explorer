@@ -974,6 +974,49 @@ export const assertions = [
     },
   },
   {
+    name: 'Lagre i liste on a collapsed row saves it and leaves the row shut',
+    // bUnit does not bubble a click, so only a browser shows the row strip's own handler firing
+    // under the button. The stopPropagation in RowSaveCell is what keeps it out. (Fhi.Metadata-dfy9u.8)
+    kind: 'invariant',
+    states: ['explorer-tabs'],
+
+    async stage(page) {
+      const row = page.locator('ul.munin-explorer-data-list > li').first();
+      const button = row.locator('.munin-explorer-dataitem-main__save button');
+      await button.waitFor({ state: 'visible', timeout: findTimeout });
+      const before = (await button.textContent()).trim();
+      await button.click();
+      await page.waitForFunction(
+        ([text]) => document.querySelector('ul.munin-explorer-data-list > li .munin-explorer-dataitem-main__save button')
+          ?.textContent.trim() !== text,
+        [before], { timeout: findTimeout });
+      return { before };
+    },
+
+    async measure(page, { before }) {
+      const row = page.locator('ul.munin-explorer-data-list > li').first();
+      const after = (await row.locator('.munin-explorer-dataitem-main__save button').textContent()).trim();
+      const expanded = await row.locator('button.munin-explorer-dataitem-main__name').getAttribute('aria-expanded');
+
+      if (after === before) {
+        return `the row's button still reads "${after}" after the press, so nothing was saved or removed`;
+      }
+
+      return expanded === 'false'
+        ? null
+        : `pressing "${before}" on a shut row also opened it (aria-expanded="${expanded}"): the press reached the row`;
+    },
+
+    // What a missing stopPropagation does: the row strip's click opens the panel as well.
+    async control(page) {
+      await page.locator('ul.munin-explorer-data-list > li').first()
+        .locator('button.munin-explorer-dataitem-main__name').click();
+      await page.locator('ul.munin-explorer-data-list > li').first()
+        .locator('button.munin-explorer-dataitem-main__name[aria-expanded="true"]')
+        .waitFor({ timeout: findTimeout });
+    },
+  },
+  {
     name: 'a refused column toggle leaves the picker agreeing with the columns drawn',
     // Nothing about one defect is encoded here: it asks the picker and the header the same
     // question and requires one answer, whichever control the picker is built from.

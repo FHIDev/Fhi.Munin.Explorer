@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **Two new class names, `munin-explorer-data-list__item--saved` and `munin-explorer-data-list__saved-notice`, need Stiler's rules.** For three seconds after «Lagre disse variablene», each newly saved row's `<li>` carries the modifier, and its row holds the notice «Lagret i liste <name>», which is `aria-hidden`. The sample stylesheets lay the notice over the row's columns in helsedata's cyan, keep «Fjern fra liste» painted above it, and fade it out. Without rules the notice is a line of text under the row's columns for three seconds.

@@ -24,7 +24,7 @@ import {
   loadTreeFixture, panel as filterPanel, tree as kildeTree, boxes as treeBoxes, chips as filterChips,
   until as untilTrue,
 } from './tree-states.mjs';
-import { names as treeNames, LONG_NAME_SEARCH, LONG_NAME } from './tree-fixture.mjs';
+import { names as treeNames, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH } from './tree-fixture.mjs';
 import {
   STATISTICS_SEARCH, SUPPRESSED_SEARCH, STATISTICS_NAME, SUPPRESSED_NAME, LONG_LABEL,
 } from './statistics-fixture.mjs';
@@ -798,6 +798,30 @@ export const states = {
       .locator('[role=tabpanel]:not([hidden]) .munin-explorer-data-list')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // «Lagre disse variablene» on the captured 18289 hits: the question 200 or more asks first.
+  'explorer-save-all-confirm': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    await press(page, 'Lagre disse variablene');
+    await page.getByRole('button', { name: 'Ja, lagre dem', exact: true }).waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // Answered yes: more than the API returns, so the alert asks the reader to narrow the result.
+  'explorer-save-all-too-many': async page => {
+    await states['explorer-save-all-confirm'](page);
+    await press(page, 'Ja, lagre dem');
+    await page.getByRole('alert').filter({ hasText: 'Begrens utvalget' }).waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  // A result small enough to save at once: Lagret, the status line, and Fjern fra liste on every row.
+  'explorer-saved-all': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    const box = page.locator('input.searchbox__freetext').first();
+    await box.fill(SAVE_ALL_SEARCH);
+    await press(page, 'Søk');
+    await page.getByRole('button', { name: 'Lagre disse variablene', exact: true }).click();
+    await page.getByRole('status').filter({ hasText: /lagret i|allerede i/ }).waitFor({ state: 'visible', timeout: findTimeout });
   },
 
   // A saved list's row opened into the variable's panel, which spans the table (ADO 121586).

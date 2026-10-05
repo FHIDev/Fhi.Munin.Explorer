@@ -205,9 +205,9 @@ public class SaveToListTest : ExplorerTestContext
         }
     }
 
-    /// <summary>Every save button on the page, open panel or not.</summary>
+    /// <summary>The open panel's save button; a collapsed row's pointer copy is not counted.</summary>
     private static IReadOnlyList<IElement> SaveButtons(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll("button[aria-pressed]");
+        cut.FindAll(".munin-explorer-detail button[aria-pressed]");
 
     /// <summary>The first row's save button, which lives in its open panel (Fhi.Metadata-35w0p.78).</summary>
     private static IElement SaveButton(IRenderedComponent<VariableSearch> cut, int row = 0)
@@ -253,7 +253,7 @@ public class SaveToListTest : ExplorerTestContext
         var button = Assert.Single(SaveButtons(cut));
         Assert.Equal("false", button.GetAttribute("aria-pressed"));
         Assert.Equal(cut.Find(".munin-explorer-detail").Id, button.Closest(".munin-explorer-detail")!.Id);
-        Assert.NotNull(cut.FindAll("ul.munin-explorer-data-list > li")[1].QuerySelector("button[aria-pressed]"));
+        Assert.NotNull(cut.FindAll("ul.munin-explorer-data-list > li")[1].QuerySelector(".munin-explorer-detail button[aria-pressed]"));
     }
 
     [Fact]
@@ -460,7 +460,7 @@ public class SaveToListTest : ExplorerTestContext
         page.FindAll("button.munin-explorer-dataitem-main__name")[0].Click(new MouseEventArgs { Detail = 1 });
         page.FindAll("button.munin-explorer-dataitem-main__name")[1].Click(new MouseEventArgs { Detail = 1 });
 
-        var buttons = page.FindAll("button[aria-pressed]");
+        var buttons = page.FindAll(".munin-explorer-detail button[aria-pressed]");
 
         Assert.Equal(2, buttons.Count);
 
@@ -807,16 +807,16 @@ public class SaveToListTest : ExplorerTestContext
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Header_WhateverTheSignIn_ThenThereIsNoSaveColumnInTheHeaderThePickerOrTheRow(bool signedIn)
+    public void Header_SignedInOnly_ThenTheSaveColumnIsLastAndNeverInThePicker(bool signedIn)
     {
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))), signedIn);
 
         Assert.StartsWith("Navn", HeaderNames(cut)[0], StringComparison.Ordinal);
-        Assert.DoesNotContain("Variabelliste", HeaderNames(cut));
+        Assert.Equal(signedIn, HeaderNames(cut)[^1] == "Variabelliste");
         Assert.DoesNotContain("Variabelliste", PickerNames(cut));
         Assert.Contains("Kilde", PickerNames(cut));
-        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-header__save"));
-        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__save"));
+        Assert.Equal(signedIn ? 1 : 0, cut.FindAll(".munin-explorer-dataitem-header__save").Count);
+        Assert.Equal(signedIn ? 1 : 0, cut.FindAll(".munin-explorer-dataitem-main__save").Count);
         Assert.Equal("munin-explorer-dataitem-main__name", cut.Find(".munin-explorer-dataitem-main").Children[0].ClassName);
     }
 

@@ -69,6 +69,18 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return await GetOrNullAsync<Page<VariableSummary>>(url, cancellationToken) ?? new Page<VariableSummary>();
     }
 
+    public async Task<VariableIdSet> GetVariableIdsAsync(
+        string? search,
+        VariableFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var url = WithFilter("api/explorer/variables/ids" + Query(("search", search)), filter);
+
+        // The route has no id to miss, so a 404 means an API older than it, not an empty result.
+        return await GetOrNullAsync<VariableIdSet>(url, cancellationToken)
+            ?? throw new HttpRequestException($"{url} answered 404: this Munin API has no variables/ids.");
+    }
+
     public async Task<FilterOptions> GetFiltersAsync(
         string? search = null,
         VariableFilter? filter = null,

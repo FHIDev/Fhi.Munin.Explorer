@@ -67,6 +67,10 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         Task.FromResult(new Page<VariableSummary>());
 
+    public virtual Task<VariableIdSet> GetVariableIdsAsync(
+        string? search, VariableFilter? filter = null, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new VariableIdSet());
+
     public virtual Task<FilterOptions> GetFiltersAsync(
         string? search = null,
         VariableFilter? filter = null,

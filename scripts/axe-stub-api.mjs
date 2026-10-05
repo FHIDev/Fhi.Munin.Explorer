@@ -16,7 +16,7 @@ import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, treeFilters } from './tree-fixture.mjs';
+import { TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, treeFilters } from './tree-fixture.mjs';
 import * as detailTree from './hierarchy-fixture.mjs';
 import * as statisticsFixture from './statistics-fixture.mjs';
 
@@ -272,6 +272,17 @@ function serve(url, request, response) {
     body.datasamlingStatistikkType = 'accumulated';
     body.statistikker = statistikker;
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(body));
+    return;
+  }
+  // Before the route table, whose variables/{id} would answer it with a variable's detail.
+  if (path === '/api/explorer/variables/ids') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+      .end(JSON.stringify({ ids: variables.items.map(v => v.id), tooMany: false, maxIds: 2000 }));
+    return;
+  }
+  if (search === SAVE_ALL_SEARCH && path === '/api/explorer/variables') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+      .end(JSON.stringify({ ...variables, totalCount: variables.items.length, totalPages: 1 }));
     return;
   }
   if (search === LONG_NAME_SEARCH && path === '/api/explorer/variables') {

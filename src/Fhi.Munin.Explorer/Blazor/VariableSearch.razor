@@ -657,6 +657,8 @@ else
         @ColumnPicker()
     </div>
 
+    @SaveAllControl()
+
     @* The container and its header render whether or not anything was found. The ordering lives
        in that header, and hiding it when a search comes back empty would take the button the reader
        just pressed out of the document — the same reason the Søk button is never disabled. *@
@@ -749,12 +751,15 @@ else
                              @onclick="e => ToggleDetailFromRowAsync(v, e)">
                         @RowHeading(v)
                         @InfoLine(v)
+                        @RowSaveCell(v)
                         </div>@* munin-explorer-dataitem-main — the columns end here *@
 
                     @* No description in the row. Neither reference has one: Runa's rows are a
                        single table row, and helsedata's are one line high (3.5rem); Stiler lets
                        only a long name grow the row. A paragraph under the columns fights both.
                        The description is the first field in the panel, one click away. *@
+
+                    @SavedNotice(v)
 
                     </div>@* munin-explorer-data-list__item__row — the panel below is its SIBLING,
                               not its child, which is how helsedata nests it *@

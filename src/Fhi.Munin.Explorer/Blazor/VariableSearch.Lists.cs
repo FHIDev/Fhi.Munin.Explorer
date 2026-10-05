@@ -65,6 +65,8 @@ public partial class VariableSearch : IDisposable
 
     public void Dispose()
     {
+        StopSavedNotices();
+
         if (_listState is not null)
         {
             _listState.Changed -= OnListStateChanged;

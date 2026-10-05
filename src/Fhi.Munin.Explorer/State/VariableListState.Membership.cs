@@ -1,3 +1,4 @@
+using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Display;
 using Microsoft.Extensions.Logging;
 
@@ -195,6 +196,68 @@ public sealed partial class VariableListState
 
         RaiseChanged(listId, affectsRows: true);
         return _saved.Contains(variableId);
+    }
+
+    /// <summary>Saves all of <paramref name="variableIds"/> to the active list, making a first list if needed.</summary>
+    /// <returns>The ids the list did not hold before; null if nothing was saved or a later batch was refused.</returns>
+    public async Task<IReadOnlyList<Guid>?> SaveAllAsync(
+        IReadOnlyCollection<Guid> variableIds,
+        string nameForFirstList,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAuthenticated)
+        {
+            return null;
+        }
+
+        var startedAt = _generation;
+
+        try
+        {
+            await EnsureActiveListAsync(readerAsked: true, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (_activeListId is not null && e is not OperationCanceledException)
+        {
+            // As in ToggleSavedAsync: the write can go out, the API skips what the list already holds.
+            _logger?.LogWarning(
+                e, "could not refresh the membership of list {ListId}", _activeListId);
+        }
+
+        if (!StillCurrent(startedAt))
+        {
+            return null;
+        }
+
+        if (_activeListId is null)
+        {
+            var target = await CreateAsync(nameForFirstList, cancellationToken).ConfigureAwait(false);
+
+            if (target is null)
+            {
+                return null;
+            }
+
+            await SetActiveListAsync(target.Id, cancellationToken).ConfigureAwait(false);
+
+            if (!StillCurrent(startedAt))
+            {
+                return null;
+            }
+        }
+
+        var listId = _activeListId!.Value;
+        var added = variableIds.Where(id => !_saved.Contains(id)).Distinct().ToList();
+
+        foreach (var batch in variableIds.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+        {
+            if (!await AddVariablesAsync(listId, batch, cancellationToken).ConfigureAwait(false)
+                || !StillCurrent(startedAt))
+            {
+                return null;
+            }
+        }
+
+        return added;
     }
 
     /// <summary>

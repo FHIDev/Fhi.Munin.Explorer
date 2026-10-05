@@ -5,6 +5,8 @@ export const EMPTY_SEARCH = 'browser-tree-empty';
 export const LARGE_COUNT = 120;
 // The first row's name unbroken, for the drawer heading at 320px (Fhi.Metadata-yaco2).
 export const LONG_NAME_SEARCH = 'browser-long-name';
+// A result small enough for «Lagre disse variablene» to save without asking (Fhi.Metadata-dfy9u.8).
+export const SAVE_ALL_SEARCH = 'browser-save-all';
 export const LONG_NAME = 'Antall_tidligere_fødsler_og_dødfødsler_etter_22_fullgåtte_uker';
 export const names = {
   kilde: 'Prøvekilde', delkilde: 'Delkilde', first: 'Samling A', second: 'Samling B',

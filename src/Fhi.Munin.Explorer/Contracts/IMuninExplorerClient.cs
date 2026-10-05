@@ -62,6 +62,15 @@ public interface IMuninExplorerClient
         SortDirection direction = SortDirection.Ascending,
         CancellationToken cancellationToken = default);
 
+    /// <summary>The ids <see cref="SearchVariablesAsync"/> would page through, unpaged. The default throws: this interface is on the feed.</summary>
+    Task<VariableIdSet> GetVariableIdsAsync(
+        string? search,
+        VariableFilter? filter = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(GetVariableIdsAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
     /// <summary>
     /// Fetch the filter facets and their counts.
     /// </summary>
