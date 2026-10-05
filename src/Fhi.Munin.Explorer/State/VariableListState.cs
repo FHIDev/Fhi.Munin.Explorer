@@ -108,6 +108,9 @@ public sealed partial class VariableListState(
         RaiseChanged(listId: null, affectsRows: true);
     }
 
+    /// <summary>Moves on every sign-in and sign-out, so a view can tell its own reader's outcome from the last one's.</summary>
+    internal int Reader => _generation;
+
     /// <summary>
     /// True when the answer to a call started at <paramref name="startedAt"/> may still be used.
     /// </summary>

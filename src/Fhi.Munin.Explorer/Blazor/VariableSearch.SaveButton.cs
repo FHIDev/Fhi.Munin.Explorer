@@ -120,16 +120,14 @@ public partial class VariableSearch
         builder.AddContent(12, saved ? T.RemoveFromList : T.SaveToList);
         builder.CloseElement();
 
-        builder.CloseElement();
-
-        // An open row says it in the panel; two alerts for one failure would be announced twice.
+        // In the same cell, so the row has as many cells as the header has columns. An open row says
+        // it in the panel instead; two alerts for one failure would be announced twice.
         if (!IsSelected(v))
         {
-            builder.OpenElement(13, "div");
-            builder.AddAttribute(14, "role", "cell");
-            builder.AddContent(15, PanelSaveStatus(v));
-            builder.CloseElement();
+            builder.AddContent(13, PanelSaveStatus(v));
         }
+
+        builder.CloseElement();
     };
 
     // Over the row's columns, as on helsedata's own page, but hidden from the tree: the status line

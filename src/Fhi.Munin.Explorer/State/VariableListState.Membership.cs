@@ -198,9 +198,12 @@ public sealed partial class VariableListState
         return _saved.Contains(variableId);
     }
 
+    /// <summary>What <see cref="SaveAllAsync"/> wrote, and where. <c>Added</c> is null when the membership could not be read.</summary>
+    public sealed record SaveAllResult(Guid ListId, string ListName, IReadOnlyList<Guid>? Added);
+
     /// <summary>Saves all of <paramref name="variableIds"/> to the active list, making a first list if needed.</summary>
-    /// <returns>The ids the list did not hold before; null if nothing was saved or a later batch was refused.</returns>
-    public async Task<IReadOnlyList<Guid>?> SaveAllAsync(
+    /// <returns>Null if nothing was saved, the reader changed, or a later batch was refused.</returns>
+    public async Task<SaveAllResult?> SaveAllAsync(
         IReadOnlyCollection<Guid> variableIds,
         string nameForFirstList,
         CancellationToken cancellationToken = default)
@@ -246,7 +249,8 @@ public sealed partial class VariableListState
         }
 
         var listId = _activeListId!.Value;
-        var added = variableIds.Where(id => !_saved.Contains(id)).Distinct().ToList();
+        var listName = _lists.FirstOrDefault(l => l.Id == listId)?.Name ?? nameForFirstList;
+        var added = _membershipLoaded ? variableIds.Where(id => !_saved.Contains(id)).Distinct().ToList() : null;
 
         foreach (var batch in variableIds.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
         {
@@ -257,7 +261,7 @@ public sealed partial class VariableListState
             }
         }
 
-        return added;
+        return new SaveAllResult(listId, listName, added);
     }
 
     /// <summary>

@@ -277,7 +277,7 @@ internal sealed record Texts(
     string ConfirmSaveAllYes,
     string ConfirmSaveAllNo,
     Func<int, string> SaveAllTooMany,
-    Func<int, string, string> SavedAllStatus,
+    Func<int?, string, string> SavedAllStatus,
     Func<string, string> SavedInList,
     // The saved-list view: its heading, the picker, the create form, and what it says when
     // there is nothing to show yet.
@@ -1213,6 +1213,7 @@ internal sealed record Texts(
         SaveAllTooMany: max => $"Begrens utvalget til høyst {max} variabler for å lagre dem samlet.",
         SavedAllStatus: (count, list) => count switch
         {
+            null => $"Variablene er lagret i {list}.",
             0 => $"Alle variablene var allerede i {list}.",
             1 => $"1 variabel lagret i {list}.",
             _ => $"{count} variabler lagret i {list}.",
@@ -1712,6 +1713,7 @@ internal sealed record Texts(
         SaveAllTooMany: max => $"Narrow the result to at most {max} variables to save them together.",
         SavedAllStatus: (count, list) => count switch
         {
+            null => $"The variables are saved to {list}.",
             0 => $"All the variables were already in {list}.",
             1 => $"1 variable saved to {list}.",
             _ => $"{count} variables saved to {list}.",

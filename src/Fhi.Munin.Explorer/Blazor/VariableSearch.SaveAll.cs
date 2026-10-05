@@ -14,17 +14,18 @@ public partial class VariableSearch
     /// <summary>How long each saved row shows its notice.</summary>
     internal static readonly TimeSpan SavedNoticeDuration = TimeSpan.FromSeconds(3);
 
-    private bool _confirmingSaveAll;
+    private readonly record struct SaveAllQuery(string? Search, VariableFilter Filter);
+
+    // What the last press produced, and for whom: a sign-in or sign-out moves the reader, and an
+    // outcome recorded for another reader is not drawn.
+    private sealed record SaveAllOutcome(int Reader, SaveAllQuery Query, SaveFailure Failure, int? TooManyFrom, int? Saved, string? List);
+
+    private SaveAllOutcome? _saveAll;
+    private SaveAllQuery? _confirmingFor;
     private bool _savingAll;
     private bool _focusSaveAll;
+    private bool _disposed;
     private ElementReference _saveAllButton;
-
-    private SaveFailure _saveAllFailure;
-    private int? _saveAllTooManyFrom;
-    private (int Count, string List)? _savedAll;
-
-    // The search the last save covered: a new search or filter offers the button again.
-    private (string? Search, VariableFilter Filter)? _savedAllQuery;
 
     private readonly HashSet<Guid> _noticeRows = [];
     private string _noticeList = "";
@@ -35,10 +36,22 @@ public partial class VariableSearch
 
     private TimeProvider Clock => ServiceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
 
-    private bool SavedAllForThisSearch =>
-        _savedAllQuery is { } saved
-        && string.Equals(saved.Search, _executedSearch, StringComparison.Ordinal)
-        && saved.Filter.Equals(_filter);
+    private SaveAllQuery CurrentQuery => new(_executedSearch, _filter);
+
+    // While a fetch is out, _filter is already the next one and the count on screen is the last one's.
+    private bool SaveAllReady => !_loading && !_savingAll;
+
+    /// <summary>The outcome of the last press, when it was this reader's and this search's.</summary>
+    private SaveAllOutcome? SaveAllShown =>
+        _saveAll is { } outcome && ListState is { } state && outcome.Reader == state.Reader && outcome.Query == CurrentQuery
+            ? outcome
+            : null;
+
+    private bool SavedAllForThisSearch => SaveAllShown is { List: not null };
+
+    private bool ConfirmingSaveAll => _confirmingFor == CurrentQuery && !SavedAllForThisSearch;
+
+    private bool SaveAllWouldAsk => TotalCount >= ConfirmSaveAllFrom && TotalCount <= IMuninExplorerClient.MaxVariablesPerBatch;
 
     private bool ShowSaveAll =>
         ShowSaveButton && _result is { Items.Count: > 0 } && _resultsTab == ExplorerTab.Search;
@@ -51,17 +64,19 @@ public partial class VariableSearch
         }
 
         var done = SavedAllForThisSearch;
+        var confirming = ConfirmingSaveAll;
+        var shown = SaveAllShown;
 
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "margin-bottom");
 
-        // aria-disabled rather than disabled while saving or done: disabling the pressed button drops focus to <body>.
+        // aria-disabled rather than disabled: disabling the pressed button drops focus to <body>.
         builder.OpenElement(2, "button");
         builder.AddAttribute(3, "class", "hd-button-square button-square--ghost-blue margin-right");
         builder.AddAttribute(4, "type", "button");
         builder.AddAttribute(5, "id", SaveAllButtonId);
-        builder.AddAttribute(6, "aria-disabled", done || _savingAll ? "true" : null);
-        builder.AddAttribute(7, "aria-expanded", _confirmingSaveAll ? "true" : null);
+        builder.AddAttribute(6, "aria-disabled", done || !SaveAllReady ? "true" : null);
+        builder.AddAttribute(7, "aria-expanded", SaveAllWouldAsk && !done ? (confirming ? "true" : "false") : null);
         builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, PressSaveAllAsync));
         builder.AddElementReferenceCapture(9, element => _saveAllButton = element);
 
@@ -75,12 +90,12 @@ public partial class VariableSearch
         }
         else
         {
-            builder.AddContent(14, _confirmingSaveAll ? T.ConfirmSaveAllNo : T.SaveAllResults);
+            builder.AddContent(14, confirming ? T.ConfirmSaveAllNo : T.SaveAllResults);
         }
 
         builder.CloseElement();
 
-        if (_confirmingSaveAll)
+        if (confirming)
         {
             builder.OpenElement(20, "span");
             builder.AddAttribute(21, "id", ConfirmSaveAllId);
@@ -102,22 +117,21 @@ public partial class VariableSearch
         builder.AddAttribute(31, "role", "status");
         builder.AddAttribute(32, "aria-live", "polite");
         builder.AddAttribute(33, "aria-atomic", "true");
-        builder.AddContent(34, _savedAll is { } saved && done ? T.SavedAllStatus(saved.Count, saved.List) : null);
+        builder.AddContent(34, shown is { List: { } list } ? T.SavedAllStatus(shown.Saved, list) : null);
         builder.CloseElement();
 
         builder.OpenElement(35, "p");
         builder.AddAttribute(36, "role", "alert");
         builder.AddAttribute(37, "aria-live", "assertive");
         builder.AddAttribute(38, "aria-atomic", "true");
-        builder.AddContent(39, _saveAllTooManyFrom is { } max
-            ? T.SaveAllTooMany(max)
-            : _saveAllFailure switch
-            {
-                SaveFailure.Throttled => T.RateLimitError,
-                SaveFailure.SignInRequired => T.SignInRequiredError,
-                SaveFailure.Failed => T.SaveError,
-                _ => null
-            });
+        builder.AddContent(39, shown switch
+        {
+            { TooManyFrom: { } max } => T.SaveAllTooMany(max),
+            { Failure: SaveFailure.Throttled } => T.RateLimitError,
+            { Failure: SaveFailure.SignInRequired } => T.SignInRequiredError,
+            { Failure: SaveFailure.Failed } => T.SaveError,
+            _ => null
+        });
         builder.CloseElement();
 
         builder.CloseElement();
@@ -125,21 +139,28 @@ public partial class VariableSearch
 
     private async Task PressSaveAllAsync()
     {
-        if (_savingAll || SavedAllForThisSearch)
+        if (!SaveAllReady || SavedAllForThisSearch || ListState is null)
         {
             return;
         }
 
-        if (_confirmingSaveAll)
+        if (ConfirmingSaveAll)
         {
-            _confirmingSaveAll = false;
+            _confirmingFor = null;
             return;
         }
 
-        if (TotalCount >= ConfirmSaveAllFrom)
+        // Known from the count already, so the reader is neither asked nor sent a request the API would refuse.
+        if (TotalCount > IMuninExplorerClient.MaxVariablesPerBatch)
         {
-            ForgetSaveAllOutcome();
-            _confirmingSaveAll = true;
+            _saveAll = new SaveAllOutcome(ListState.Reader, CurrentQuery, SaveFailure.None, IMuninExplorerClient.MaxVariablesPerBatch, null, null);
+            return;
+        }
+
+        if (SaveAllWouldAsk)
+        {
+            _saveAll = null;
+            _confirmingFor = CurrentQuery;
             return;
         }
 
@@ -148,80 +169,76 @@ public partial class VariableSearch
 
     private Task ConfirmSaveAllAsync()
     {
+        if (!SaveAllReady || !ConfirmingSaveAll)
+        {
+            return Task.CompletedTask;
+        }
+
         // The Ja button leaves the document with the question, so focus goes back to the one it answered.
-        _confirmingSaveAll = false;
+        _confirmingFor = null;
         _focusSaveAll = true;
 
         return SaveAllAsync();
     }
 
-    private void ForgetSaveAllOutcome()
-    {
-        _saveAllFailure = SaveFailure.None;
-        _saveAllTooManyFrom = null;
-        _savedAll = null;
-    }
-
     private async Task SaveAllAsync()
     {
-        if (ListState is null)
+        if (ListState is not { } state)
         {
             return;
         }
 
-        var search = _executedSearch;
-        var filter = _filter;
+        var reader = state.Reader;
+        var query = CurrentQuery;
 
-        ForgetSaveAllOutcome();
+        SaveAllOutcome Outcome(SaveFailure failure = SaveFailure.None, int? tooManyFrom = null, int? saved = null, string? list = null) =>
+            new(reader, query, failure, tooManyFrom, saved, list);
 
-        // Known from the count already, so the reader is told without a request the API would refuse.
-        if (TotalCount > IMuninExplorerClient.MaxVariablesPerBatch)
-        {
-            _saveAllTooManyFrom = IMuninExplorerClient.MaxVariablesPerBatch;
-            return;
-        }
-
+        _saveAll = null;
         _savingAll = true;
         StateHasChanged();
 
         try
         {
-            var ids = await Client.GetVariableIdsAsync(search, filter);
+            var ids = await Client.GetVariableIdsAsync(query.Search, query.Filter);
 
             if (ids.TooMany)
             {
-                _saveAllTooManyFrom = ids.MaxIds;
+                _saveAll = Outcome(tooManyFrom: ids.MaxIds);
                 return;
             }
 
-            var added = await ListState.SaveAllAsync(ids.Ids, T.FirstListName);
-
-            if (added is null)
+            // The result emptied between the count on screen and the press: nothing to save, and no list to make.
+            if (ids.Ids.Count == 0)
             {
-                _saveAllFailure = SaveFailure.Failed;
                 return;
             }
 
-            var list = ListState.Lists.FirstOrDefault(l => l.Id == ListState.ActiveListId)?.Name ?? "";
+            var result = await state.SaveAllAsync(ids.Ids, T.FirstListName);
 
-            _savedAllQuery = (search, filter);
-            _savedAll = (added.Count, list);
-            ShowSavedNotices(added, list);
+            if (result is null)
+            {
+                _saveAll = Outcome(SaveFailure.Failed);
+                return;
+            }
+
+            _saveAll = Outcome(saved: result.Added?.Count, list: result.ListName);
+            ShowSavedNotices(result.Added ?? ids.Ids, result.ListName);
         }
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused saving the whole result");
-            _saveAllFailure = SaveFailure.Throttled;
+            _saveAll = Outcome(SaveFailure.Throttled);
         }
         catch (MuninExplorerUnauthorizedException ex)
         {
             Log?.LogWarning(ex, "the API refused saving the whole result as unauthorised");
-            _saveAllFailure = SaveFailure.SignInRequired;
+            _saveAll = Outcome(SaveFailure.SignInRequired);
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not save the whole result");
-            _saveAllFailure = SaveFailure.Failed;
+            _saveAll = Outcome(SaveFailure.Failed);
         }
         finally
         {
@@ -231,18 +248,15 @@ public partial class VariableSearch
 
     private void ShowSavedNotices(IReadOnlyCollection<Guid> rows, string list)
     {
-        _noticeTimer?.Cancel();
-        _noticeTimer?.Dispose();
+        StopSavedNotices();
 
-        _noticeRows.Clear();
-        _noticeRows.UnionWith(rows);
-        _noticeList = list;
-
-        if (_noticeRows.Count == 0)
+        if (_disposed || rows.Count == 0)
         {
-            _noticeTimer = null;
             return;
         }
+
+        _noticeRows.UnionWith(rows);
+        _noticeList = list;
 
         var timer = _noticeTimer = new CancellationTokenSource();
         _ = HideSavedNoticesAsync(timer.Token);
@@ -253,17 +267,20 @@ public partial class VariableSearch
         try
         {
             await Task.Delay(SavedNoticeDuration, Clock, cancellationToken);
+            await InvokeAsync(() =>
+            {
+                _noticeRows.Clear();
+                StateHasChanged();
+            });
         }
         catch (OperationCanceledException)
         {
-            return;
+            // Superseded by a later save, or the component was disposed.
         }
-
-        await InvokeAsync(() =>
+        catch (ObjectDisposedException)
         {
-            _noticeRows.Clear();
-            StateHasChanged();
-        });
+            // The renderer went away while the timer ran.
+        }
     }
 
     private bool ShowsSavedNotice(VariableSummary v) => _noticeRows.Contains(v.Id) && ListState?.IsSaved(v.Id) == true;
@@ -273,5 +290,6 @@ public partial class VariableSearch
         _noticeTimer?.Cancel();
         _noticeTimer?.Dispose();
         _noticeTimer = null;
+        _noticeRows.Clear();
     }
 }

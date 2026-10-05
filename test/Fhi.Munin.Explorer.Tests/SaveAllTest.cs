@@ -3,7 +3,6 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -22,21 +21,36 @@ public class SaveAllTest : ExplorerTestContext
         public readonly HashSet<Guid> Stored = [];
         public readonly List<IReadOnlyCollection<Guid>> Adds = [];
         public readonly List<(string? Search, VariableFilter? Filter)> IdCalls = [];
+        public int CreateCalls { get; private set; }
         public bool TooMany { get; init; }
         public bool RateLimitAdd { get; init; }
+        public bool HasList { get; init; } = true;
+        public bool RateLimitMembership { get; set; }
 
-        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+        /// <summary>Searches after the first wait on this while it is set, so a test can press mid-fetch.</summary>
+        public TaskCompletionSource? HoldSearches { get; set; }
+
+        private int _searches;
+
+        public override async Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new Page<VariableSummary>
+            CancellationToken cancellationToken = default)
+        {
+            if (_searches++ > 0 && HoldSearches is { } hold)
+            {
+                await hold.Task;
+            }
+
+            return new Page<VariableSummary>
             {
                 Items = [.. rows.Select(v => v with { })],
                 TotalCount = totalCount,
                 PageNumber = 1,
                 Size = 25,
                 TotalPages = (totalCount + 24) / 25
-            });
+            };
+        }
 
         public override Task<VariableIdSet> GetVariableIdsAsync(
             string? search, VariableFilter? filter = null, CancellationToken cancellationToken = default)
@@ -48,12 +62,25 @@ public class SaveAllTest : ExplorerTestContext
         }
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = ListId, Name = "Variabelliste forsvaret" }]);
+            Task.FromResult<IReadOnlyList<VariableList>>(
+                HasList || CreateCalls > 0 ? [new VariableList { Id = ListId, Name = "Variabelliste forsvaret" }] : []);
+
+        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
+        {
+            CreateCalls++;
+            return Task.FromResult(new VariableList { Id = ListId, Name = name });
+        }
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            CancellationToken cancellationToken = default)
+        {
+            if (RateLimitMembership)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
                 Items = [.. Stored.Select(v => new VariableListItem { VariableId = v })],
                 TotalCount = Stored.Count,
@@ -61,6 +88,7 @@ public class SaveAllTest : ExplorerTestContext
                 Size = pageSize,
                 TotalPages = 1
             });
+        }
 
         public override Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
@@ -132,6 +160,18 @@ public class SaveAllTest : ExplorerTestContext
     private static string Alert(IRenderedComponent<VariableSearch> cut) =>
         SaveAll(cut)!.ParentElement!.QuerySelector("[role=alert]")!.TextContent;
 
+    private static bool Asking(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("[id^=munin-explorer-save-all-confirm-]").Count == 1;
+
+    private static void Ja(IRenderedComponent<VariableSearch> cut) =>
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Ja, lagre dem").Click();
+
+    private static void Search(IRenderedComponent<VariableSearch> cut, string term)
+    {
+        cut.Find(".searchbox__freetext").Change(term);
+        cut.Find("form").Submit();
+    }
+
     private static IReadOnlyList<IElement> RowSaveButtons(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll(".munin-explorer-dataitem-main__save button");
 
@@ -153,18 +193,50 @@ public class SaveAllTest : ExplorerTestContext
         var client = new Client(rows, 3, [rows[0].Id, rows[1].Id, offPage]);
         var cut = Render(client);
 
+        Search(cut, "sesjon");
         Assert.Equal("Lagre disse variablene", SaveAll(cut)!.TextContent.Trim());
         SaveAll(cut)!.Click();
 
         var add = Assert.Single(client.Adds);
         Assert.Equal(new[] { rows[0].Id, rows[1].Id, offPage }.Order(), add.Order());
-        Assert.Single(client.IdCalls);
+        Assert.Equal("sesjon", Assert.Single(client.IdCalls).Search);
         Assert.Equal("3 variabler lagret i Variabelliste forsvaret.", Status(cut));
         Assert.Equal("✓ Lagret", SaveAll(cut)!.TextContent.Trim());
         Assert.Equal("true", SaveAll(cut)!.GetAttribute("aria-disabled"));
 
         SaveAll(cut)!.Click();
         Assert.Single(client.Adds);
+    }
+
+    [Fact]
+    public void Saved_ANewSearchOffersTheButtonAgain_AndTheOldOneStillSaysLagret()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var cut = Render(new Client(rows, 1, [rows[0].Id]));
+
+        SaveAll(cut)!.Click();
+        Search(cut, "høyde");
+
+        Assert.Equal("Lagre disse variablene", SaveAll(cut)!.TextContent.Trim());
+        Assert.Equal("", Status(cut));
+
+        Search(cut, "");
+        Assert.Equal("✓ Lagret", SaveAll(cut)!.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Saved_ANewReaderSeesNeitherLagretNorTheLastReadersList()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var cut = Render(new Client(rows, 1, [rows[0].Id]));
+
+        SaveAll(cut)!.Click();
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        Assert.Equal("Lagre disse variablene", SaveAll(cut)!.TextContent.Trim());
+        Assert.Equal("", Status(cut));
+        Assert.Equal("", Alert(cut));
     }
 
     [Fact]
@@ -182,18 +254,92 @@ public class SaveAllTest : ExplorerTestContext
         Assert.Contains("munin-explorer-data-list__item--saved", cut.FindAll("ul.munin-explorer-data-list > li")[1].ClassName);
     }
 
+    [Fact]
+    public void Press_WhenTheListAlreadyHeldThemAll_SaysSo()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, [rows[0].Id]);
+        client.Stored.Add(rows[0].Id);
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+
+        Assert.Equal("Alle variablene var allerede i Variabelliste forsvaret.", Status(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-data-list__saved-notice"));
+    }
+
+    [Fact]
+    public void Press_WhenTheMembershipCannotBeRead_DoesNotClaimACount()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, [rows[0].Id]) { RateLimitMembership = true };
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+
+        Assert.Single(client.Adds);
+        Assert.Equal("Variablene er lagret i Variabelliste forsvaret.", Status(cut));
+    }
+
+    [Fact]
+    public void Press_WithNoListYet_MakesMinVariabelliste()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, [rows[0].Id]) { HasList = false };
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+
+        Assert.Equal(1, client.CreateCalls);
+        Assert.Single(client.Adds);
+        Assert.Equal("1 variabel lagret i Min variabelliste.", Status(cut));
+    }
+
+    [Fact]
+    public void Press_WhenTheResultEmptiedUnderneath_SavesNothingAndMakesNoList()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, []) { HasList = false };
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+
+        Assert.Equal(0, client.CreateCalls);
+        Assert.Empty(client.Adds);
+        Assert.Equal("", Status(cut));
+    }
+
+    [Fact]
+    public void Press_WhileASearchIsBeingFetched_DoesNothing()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, [rows[0].Id]) { HoldSearches = new TaskCompletionSource() };
+        var cut = Render(client);
+
+        Search(cut, "høyde");
+        Assert.Equal("true", SaveAll(cut)!.GetAttribute("aria-disabled"));
+        SaveAll(cut)!.Click();
+
+        Assert.Empty(client.IdCalls);
+        client.HoldSearches.SetResult();
+        cut.WaitForAssertion(() => Assert.Null(SaveAll(cut)!.GetAttribute("aria-disabled")));
+    }
+
     [Theory]
     [InlineData(199, false)]
     [InlineData(200, true)]
+    [InlineData(2000, true)]
     public void Press_AResultOf200OrMoreAsksFirst(int total, bool asks)
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, total, [rows[0].Id]);
         var cut = Render(client);
 
+        Assert.Equal(asks ? "false" : null, SaveAll(cut)!.GetAttribute("aria-expanded"));
         SaveAll(cut)!.Click();
 
-        Assert.Equal(asks, cut.FindAll($"[id^=munin-explorer-save-all-confirm-]").Count == 1);
+        Assert.Equal(asks, Asking(cut));
+        Assert.Equal(asks ? "true" : null, SaveAll(cut)!.GetAttribute("aria-expanded"));
         Assert.Equal(asks ? 0 : 1, client.Adds.Count);
     }
 
@@ -209,13 +355,27 @@ public class SaveAllTest : ExplorerTestContext
         Assert.Equal("Nei", SaveAll(cut)!.TextContent.Trim());
 
         SaveAll(cut)!.Click();
-        Assert.Empty(cut.FindAll("[id^=munin-explorer-save-all-confirm-]"));
+        Assert.False(Asking(cut));
         Assert.Empty(client.IdCalls);
         Assert.Empty(client.Adds);
 
         SaveAll(cut)!.Click();
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Ja, lagre dem").Click();
+        Ja(cut);
         Assert.Single(client.Adds);
+    }
+
+    [Fact]
+    public void Confirm_IsDroppedWhenTheSearchChanges()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 250, [rows[0].Id]);
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+        Search(cut, "høyde");
+
+        Assert.False(Asking(cut));
+        Assert.Equal("Lagre disse variablene", SaveAll(cut)!.TextContent.Trim());
     }
 
     [Fact]
@@ -225,9 +385,10 @@ public class SaveAllTest : ExplorerTestContext
         var client = new Client(rows, 2001, [rows[0].Id]);
         var cut = Render(client);
 
+        Assert.Null(SaveAll(cut)!.GetAttribute("aria-expanded"));
         SaveAll(cut)!.Click();
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Ja, lagre dem").Click();
 
+        Assert.False(Asking(cut));
         Assert.Equal("Begrens utvalget til høyst 2000 variabler for å lagre dem samlet.", Alert(cut));
         Assert.Empty(client.IdCalls);
         Assert.Empty(client.Adds);
@@ -294,5 +455,17 @@ public class SaveAllTest : ExplorerTestContext
         Assert.Contains(rows[0].Id, client.Stored);
         Assert.Equal("false", cut.Find("button.munin-explorer-dataitem-main__name").GetAttribute("aria-expanded"));
         Assert.Equal("Fjern fra liste", Assert.Single(RowSaveButtons(cut)).TextContent.Trim());
+    }
+
+    [Fact]
+    public void RowCells_MatchTheHeaderColumns()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var cut = Render(new Client(rows, 1, [rows[0].Id]));
+
+        var headers = cut.FindAll("[role=columnheader]").Count;
+        var cells = cut.Find("ul.munin-explorer-data-list > li").QuerySelectorAll("[role=cell], [role=rowheader]").Length;
+
+        Assert.Equal(headers, cells);
     }
 }
