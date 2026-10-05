@@ -891,6 +891,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _failed = failed;
         _page = failed ? null : read;
 
+        // Removed elsewhere, or paged away from: an open panel must not come back with stale detail.
+        if (_openId is { } open && _page?.Items.Any(item => item.VariableId == open) != true)
+        {
+            CloseRow();
+        }
+
         SeedDesiredData();
     }
 

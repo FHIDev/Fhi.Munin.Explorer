@@ -229,14 +229,10 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                 Filter = VariableFilter.None with
                 {
                     KildeIds = item.KildeId is { } kilde ? [kilde] : [],
-                    IncludeHistorical = IsHistorical(item.VersionStatus),
+                    IncludeHistorical = VersionStatusRule.IsHistorical(item.VersionStatus),
                 },
                 SelectedVariableId = item.VariableId,
             }).ToQueryString())).ToString();
-
-    private static bool IsHistorical(string? status) =>
-        string.Equals(status, "historical", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(status, "historisk", StringComparison.OrdinalIgnoreCase);
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
 

@@ -83,7 +83,7 @@ public sealed partial class VariableListView
         _openTab = PanelTab.Data;
         ForgetLinkStatus();
 
-        await LoadRowDetailAsync(item.VariableId);
+        await LoadRowDetailAsync(item.VariableId, VersionStatusRule.IsHistorical(item.VersionStatus));
     }
 
     private void CloseRow()
@@ -99,7 +99,7 @@ public sealed partial class VariableListView
         _openGeneration++;
     }
 
-    private async Task LoadRowDetailAsync(Guid id)
+    private async Task LoadRowDetailAsync(Guid id, bool historical)
     {
         var generation = ++_openGeneration;
 
@@ -111,7 +111,7 @@ public sealed partial class VariableListView
 
         try
         {
-            var detail = await Client.GetVariableAsync(id);
+            var detail = await Client.GetVariableAsync(id, includeHistorical: historical);
 
             if (_openGeneration != generation)
             {

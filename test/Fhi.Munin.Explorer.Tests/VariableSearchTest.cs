@@ -12631,7 +12631,11 @@ public class VariableSearchTest : ExplorerTestContext
 
     private static readonly Page<VariableSummary> TwoPages = new()
     {
-        Items = [Row(TaleId, "1. Tale")], TotalCount = 30, PageNumber = 1, Size = 25, TotalPages = 2
+        Items = [Row(TaleId, "1. Tale")],
+        TotalCount = 30,
+        PageNumber = 1,
+        Size = 25,
+        TotalPages = 2
     };
 
     [Fact]
