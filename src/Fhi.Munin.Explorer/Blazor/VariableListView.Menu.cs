@@ -8,6 +8,9 @@ public sealed partial class VariableListView
 {
     private bool _menuOpen;
     private bool _downloadOpen;
+
+    // Moved by every disclosure press and by CloseFolds, so a late share can tell the reader acted since.
+    private int _readerMoves;
     private MenuFocus _menuFocus;
     private ElementReference _menuToggle;
     private ElementReference _downloadToggle;
@@ -66,6 +69,7 @@ public sealed partial class VariableListView
     // Closed without moving focus, which stays on the control the reader pressed outside them.
     private void CloseFolds()
     {
+        _readerMoves++;
         _menuOpen = false;
         _downloadOpen = false;
         DisarmConfirmations();
@@ -134,8 +138,14 @@ public sealed partial class VariableListView
     private async Task ChooseSharingFromMenu(MouseEventArgs released)
     {
         var before = _sharingList;
+        var moves = _readerMoves;
         await ToggleSharingFromControl(released);
-        LeaveMenuFor(before, _sharingList, MenuFocus.Share);
+
+        // The press moved the count once; any more is the reader acting while the share was out.
+        if (_readerMoves - moves <= 1)
+        {
+            LeaveMenuFor(before, _sharingList, MenuFocus.Share);
+        }
     }
 
     // Closed before the write, so focus lands on the toggle as the pressed button leaves.

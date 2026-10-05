@@ -427,11 +427,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // The gestures RowPress calls a selection, less the drag it takes a press to tell. All three
     // controls ask it: a double-click used to shut the form its own first click opened, and on the
     // delete control to re-arm the confirmation it had just cancelled. (Fhi.Metadata-zel47)
-    private static void Toggle(MouseEventArgs released, ref bool open)
+    private void Toggle(MouseEventArgs released, ref bool open)
     {
         if (!RowPress.WasSelectionStandingStill(released))
         {
             open = !open;
+            _readerMoves++;
         }
     }
 
@@ -596,7 +597,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         catch (Exception ex)
         {
             // A focus nicety must not take the circuit down with it.
-            Log?.LogWarning(ex, "could not move focus after a retry, a create or a rename");
+            Log?.LogWarning(ex, "could not move focus after the reader's action");
         }
     }
 
@@ -637,7 +638,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     }
 
     private int OpenForms() =>
-        (_creating ? 1 : 0) | (_renaming ? 2 : 0) | (_openingShared ? 4 : 0) | (_copying ? 8 : 0) | (_confirmingDelete ? 16 : 0) | (_sharingList ? 32 : 0);
+        (_creating ? 1 : 0) | (_renaming ? 2 : 0) | (_openingShared ? 4 : 0) | (_copying ? 8 : 0) | (_confirmingDelete ? 16 : 0) | (_sharingList ? 32 : 0)
+        | (_menuOpen ? 64 : 0) | (_downloadOpen ? 128 : 0);
 
     /// <summary>A read has answered, so an empty list means the reader has none rather than that we never found out.</summary>
     private bool ListsAnswered => !_failed && State is { HasLoaded: true };

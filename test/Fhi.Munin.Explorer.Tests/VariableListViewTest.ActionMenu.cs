@@ -18,9 +18,19 @@ public partial class VariableListViewTest
 
     private sealed class ShareClient(params VariableListItem[] items) : ListClient(items)
     {
-        public override Task<string> ShareListAsync(
-            string name, IReadOnlyCollection<VariableListItem> items, CancellationToken cancellationToken = default) =>
-            Task.FromResult("ABC123");
+        /// <summary>Holds the share open until released, the window a reader can act in.</summary>
+        public TaskCompletionSource? HoldShare { get; init; }
+
+        public override async Task<string> ShareListAsync(
+            string name, IReadOnlyCollection<VariableListItem> items, CancellationToken cancellationToken = default)
+        {
+            if (HoldShare is not null)
+            {
+                await HoldShare.Task;
+            }
+
+            return "ABC123";
+        }
     }
 
     private static string[] Words(IEnumerable<AngleSharp.Dom.IElement> buttons) =>
@@ -435,5 +445,111 @@ public partial class VariableListViewTest
         cut.WaitForAssertion(() => Assert.Equal("Hjertet mitt", ListHeading(cut).TextContent));
         await cut.InvokeAsync(() => { });
         Assert.Equal(Held(cut, "_shareCodeField"), FocusedId());
+    }
+
+    [Fact]
+    public async Task Menu_WhenEscapeIsPressedWhileAShareIsOut_ThenTheShareLandingLeavesFocusOnTheToggle()
+    {
+        // The reader closed the fold while the request was out; its answer must not move them again.
+        var held = new TaskCompletionSource();
+        var cut = RenderView(new ShareClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldShare = held });
+        OpenMenu(cut);
+        var share = ChooseAsync(cut, "Del liste");
+        Menu(cut).KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_menuToggle"), FocusedId()));
+
+        await cut.InvokeAsync(held.SetResult);
+        await share;
+
+        await cut.InvokeAsync(() => { });
+        Assert.Equal(Held(cut, "_menuToggle"), FocusedId());
+    }
+
+    [Fact]
+    public async Task Menu_WhenTheDownloadIsOpenedWhileAShareIsOut_ThenTheShareLandingLeavesItOpen()
+    {
+        var held = new TaskCompletionSource();
+        var cut = RenderView(new ShareClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldShare = held });
+        OpenMenu(cut);
+        var share = ChooseAsync(cut, "Del liste");
+        cut.Find(DownloadToggle).Click();
+
+        await cut.InvokeAsync(held.SetResult);
+        await share;
+
+        cut.WaitForAssertion(() => Assert.Equal("ABC123", cut.Find("input[id^='munin-explorer-share-code-']").GetAttribute("value")));
+        Assert.True(Open(cut, DownloadPanel));
+        Assert.NotEqual(Held(cut, "_shareCodeField"), FocusedId());
+    }
+
+    [Fact]
+    public async Task Download_WhenOpenedWhileARenameFinishes_ThenFocusIsLeftInIt()
+    {
+        // An open fold is the reader moving on, as an open form is; the rename must not pull them to «Flere valg».
+        var renameHeld = new TaskCompletionSource();
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DuringRename = () => renameHeld.Task };
+        var cut = RenderView(client);
+        RenameField(cut).Change("Hjertet mitt");
+        var rename = PressAsync(cut, "Lagre navnet");
+        cut.Find(DownloadToggle).Click();
+        var before = FocusedId();
+
+        await cut.InvokeAsync(renameHeld.SetResult);
+        await rename;
+
+        cut.WaitForAssertion(() => Assert.Equal("Hjertet mitt", ListHeading(cut).TextContent));
+        await cut.InvokeAsync(() => { });
+        Assert.Equal(before, FocusedId());
+    }
+
+    [Fact]
+    public async Task Menu_WhenOpenedWhileARenameFinishes_ThenFocusIsLeftInIt()
+    {
+        var renameHeld = new TaskCompletionSource();
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DuringRename = () => renameHeld.Task };
+        var cut = RenderView(client);
+        RenameField(cut).Change("Hjertet mitt");
+        var rename = PressAsync(cut, "Lagre navnet");
+        OpenMenu(cut);
+        var before = FocusedId();
+
+        await cut.InvokeAsync(renameHeld.SetResult);
+        await rename;
+
+        cut.WaitForAssertion(() => Assert.Equal("Hjertet mitt", ListHeading(cut).TextContent));
+        await cut.InvokeAsync(() => { });
+        Assert.Equal(before, FocusedId());
+    }
+
+    [Fact]
+    public async Task Menu_WhenADeleteIsArmedWhileAShareIsOut_ThenTheShareLandingLeavesItArmed()
+    {
+        var held = new TaskCompletionSource();
+        var cut = RenderView(new ShareClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldShare = held });
+        OpenMenu(cut);
+        var share = ChooseAsync(cut, "Del liste");
+        await ChooseAsync(cut, "Slett listen");
+
+        await cut.InvokeAsync(held.SetResult);
+        await share;
+
+        Assert.Equal("true", Disclosed(cut, DeleteToggle));
+        Assert.True(Open(cut, MenuPanel));
+    }
+
+    [Fact]
+    public async Task Menu_WhenClosedAndReopenedWhileAShareIsOut_ThenTheShareLandingLeavesItOpen()
+    {
+        var held = new TaskCompletionSource();
+        var cut = RenderView(new ShareClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldShare = held });
+        OpenMenu(cut);
+        var share = ChooseAsync(cut, "Del liste");
+        Menu(cut).KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        OpenMenu(cut);
+
+        await cut.InvokeAsync(held.SetResult);
+        await share;
+
+        Assert.True(Open(cut, MenuPanel));
     }
 }
