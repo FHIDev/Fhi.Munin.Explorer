@@ -678,7 +678,10 @@ public class VariableListFiltersTest : ExplorerTestContext
         // The list's own entries carried no name for it; the saved variable's does, and is better than none.
         var unnamed = new VariableListItem
         {
-            VariableId = Guid.NewGuid(), AddedAt = DateTimeOffset.UtcNow, VariableName = "V1", KildeId = Kreftregisteret,
+            VariableId = Guid.NewGuid(),
+            AddedAt = DateTimeOffset.UtcNow,
+            VariableName = "V1",
+            KildeId = Kreftregisteret,
         };
         var client = new ListClient([unnamed]);
         var saved = Item(Kreftregisteret, 9);

@@ -14,9 +14,7 @@ namespace Fhi.Munin.Explorer.State;
 /// </param>
 public sealed record KildeInList(Guid Id, string Name, int Count);
 
-/// <summary>The kilde a variable belongs to, as the surface writing it knows it.</summary>
-/// <param name="Id">The kilde, or null for a variable the catalogue gives none.</param>
-/// <param name="Name">Its name, or empty when the catalogue names it neither way.</param>
+// A variable's kilde as the surface writing it knows it: a null Id for none, an empty Name for an unnamed one.
 internal readonly record struct KildeOfVariable(Guid? Id, string Name);
 
 /// <summary>
@@ -141,12 +139,7 @@ public sealed partial class VariableListState
         _kilderStale = true;
     }
 
-    /// <summary>
-    /// Moves the tally by a write the API accepted, or drops it when the write's kilder are not known.
-    /// </summary>
-    /// <param name="changed">The ids the write actually added or took out, each once.</param>
-    /// <param name="saved">Whether they were added rather than taken out.</param>
-    /// <param name="kilder">The added variables' kilder, or null when the surface did not know them.</param>
+    // Moves the tally by the ids a write really added or took out, or drops it when an added id's kilde is unknown.
     private void MoveKildeTally(
         IEnumerable<Guid> changed, bool saved, IReadOnlyDictionary<Guid, KildeOfVariable>? kilder)
     {
