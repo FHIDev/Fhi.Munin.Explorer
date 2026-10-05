@@ -34,7 +34,13 @@ public sealed partial class VariableListView
     // again, and unsaved text (refused or failed) stays until written again, as Ønskede data's does.
     private readonly Dictionary<(Guid List, Guid Variable), NotesWrite> _notesWritten = [];
     private readonly Dictionary<(Guid List, Guid Variable), int> _notesWrites = [];
+
+    // One write out per row at a time, the newest text waiting behind it, so the API keeps the latest.
+    private readonly HashSet<(Guid List, Guid Variable)> _notesInFlight = [];
+    private readonly Dictionary<(Guid List, Guid Variable), string> _notesQueued = [];
+
     private DesiredDataFailure _notesFailure;
+    private (Guid List, Guid Variable)? _notesFailureKey;
 
     private sealed record NotesWrite(
         string Text, bool Saved, int? RefusedMax, bool Pending = false,
@@ -286,22 +292,37 @@ public sealed partial class VariableListView
     private void ForgetNotesFor(Guid list, Guid variable)
     {
         _notesWritten.Remove((list, variable));
+        _notesQueued.Remove((list, variable));
         _notesWrites[(list, variable)] = _notesWrites.GetValueOrDefault((list, variable)) + 1;
     }
 
-    private string? NotesMessage => _notesFailure switch
-    {
-        DesiredDataFailure.Throttled => T.RateLimitError,
-        DesiredDataFailure.Failed => T.NotesError,
-        _ => null,
-    };
+    // Steps aside while the failed row's own field is on screen, which says the same thing.
+    private string? NotesMessage => _notesFailureKey is { } failed && failed == OpenNotesKey && _openTab == PanelTab.Notes
+        ? null
+        : _notesFailure switch
+        {
+            DesiredDataFailure.Throttled => T.RateLimitError,
+            DesiredDataFailure.Failed => T.NotesError,
+            _ => null,
+        };
 
-    // A page read is what the API holds, so saved text no longer needs bridging; unsaved text stays.
+    private (Guid List, Guid Variable)? OpenNotesKey =>
+        _openId is { } variable && _shownList is { } list ? (list, variable) : null;
+
+    // A page read is what the API holds: saved text no longer needs bridging, and an open field
+    // with nothing unsaved shows what the read brought, as Ønskede data's column does.
     private void ForgetSavedNotes()
     {
         foreach (var key in _notesWritten.Where(entry => entry.Value.Saved).Select(entry => entry.Key).ToList())
         {
             _notesWritten.Remove(key);
+        }
+
+        if (OpenNotesKey is { } open
+            && !_notesWritten.ContainsKey(open)
+            && _page?.Items.FirstOrDefault(item => item.VariableId == open.Variable) is { } read)
+        {
+            _notesDraft = read.Notes ?? "";
         }
     }
 
@@ -313,57 +334,88 @@ public sealed partial class VariableListView
         }
 
         var key = (list, item.VariableId);
-        var trimmed = text?.Trim() ?? "";
-        var sequence = _notesWrites.GetValueOrDefault(key) + 1;
-        _notesWrites[key] = sequence;
+        var next = text?.Trim() ?? "";
 
-        _notesDraft = trimmed;
-        _notesWritten[key] = new NotesWrite(trimmed, Saved: false, RefusedMax: null, Pending: true);
+        _notesDraft = next;
+        _notesWritten[key] = new NotesWrite(next, Saved: false, RefusedMax: null, Pending: true);
         ForgetFailures();
 
-        NotesWrite written;
-        var failure = DesiredDataFailure.None;
-
-        try
+        if (!_notesInFlight.Add(key))
         {
-            var result = await Client.SetMyListNotesAsync(list, item.VariableId, trimmed);
-
-            written = result switch
-            {
-                { Outcome: DesiredDataOutcome.Saved } => new NotesWrite(trimmed, Saved: true, RefusedMax: null),
-                { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength } => new NotesWrite(trimmed, false, maxLength),
-                _ => new NotesWrite(trimmed, false, null),
-            };
-
-            failure = written is { Saved: false, RefusedMax: null } ? DesiredDataFailure.Failed : DesiredDataFailure.None;
-        }
-        catch (MuninExplorerRateLimitedException ex)
-        {
-            Log?.LogWarning(ex, "the rate limiter refused the notes on variable {VariableId} in list {ListId}", item.VariableId, list);
-            written = new NotesWrite(trimmed, false, null);
-            failure = DesiredDataFailure.Throttled;
-        }
-        catch (Exception ex)
-        {
-            Log?.LogError(ex, "could not save the notes on variable {VariableId} in list {ListId}", item.VariableId, list);
-            written = new NotesWrite(trimmed, false, null);
-            failure = DesiredDataFailure.Failed;
-        }
-
-        // An older answer for the same row and list must not overwrite what a newer write says.
-        if (_notesWrites.GetValueOrDefault(key) != sequence)
-        {
+            _notesQueued[key] = next;
             return;
         }
 
-        _notesWritten[key] = written with { Failure = failure };
+        try
+        {
+            while (true)
+            {
+                var sequence = _notesWrites.GetValueOrDefault(key) + 1;
+                _notesWrites[key] = sequence;
 
-        // Said under the field while it is on screen (Georgi, 2026-10-05); otherwise in the list's alert,
-        // only ever set there, and only for the list the reader is still on.
-        var fieldShown = _openId == item.VariableId && _openTab == PanelTab.Notes;
-        if (failure is not DesiredDataFailure.None && _shownList == list && !fieldShown)
+                var (written, failure) = await WriteNotesAsync(list, item.VariableId, next);
+
+                // A removal, or a newer text waiting to go, makes this answer one about the past.
+                if (_notesWrites.GetValueOrDefault(key) == sequence && !_notesQueued.ContainsKey(key))
+                {
+                    Land(key, written with { Failure = failure }, failure);
+                }
+
+                if (!_notesQueued.Remove(key, out var queued))
+                {
+                    break;
+                }
+
+                next = queued;
+            }
+        }
+        finally
+        {
+            _notesInFlight.Remove(key);
+        }
+    }
+
+    private async Task<(NotesWrite Written, DesiredDataFailure Failure)> WriteNotesAsync(Guid list, Guid variable, string text)
+    {
+        try
+        {
+            var result = await Client.SetMyListNotesAsync(list, variable, text);
+
+            return result switch
+            {
+                { Outcome: DesiredDataOutcome.Saved } => (new NotesWrite(text, Saved: true, RefusedMax: null), DesiredDataFailure.None),
+                { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength } => (new NotesWrite(text, false, maxLength), DesiredDataFailure.None),
+                _ => (new NotesWrite(text, false, null), DesiredDataFailure.Failed),
+            };
+        }
+        catch (MuninExplorerRateLimitedException ex)
+        {
+            Log?.LogWarning(ex, "the rate limiter refused the notes on variable {VariableId} in list {ListId}", variable, list);
+            return (new NotesWrite(text, false, null), DesiredDataFailure.Throttled);
+        }
+        catch (MuninExplorerUnauthorizedException ex)
+        {
+            Log?.LogWarning(ex, "the API refused the notes on variable {VariableId} in list {ListId} as unauthorised", variable, list);
+            return (new NotesWrite(text, false, null), DesiredDataFailure.Failed);
+        }
+        catch (Exception ex)
+        {
+            Log?.LogError(ex, "could not save the notes on variable {VariableId} in list {ListId}", variable, list);
+            return (new NotesWrite(text, false, null), DesiredDataFailure.Failed);
+        }
+    }
+
+    // Said under the field while it is on screen (Georgi, 2026-10-05); otherwise in the list's alert,
+    // only ever set there, and only for the list the reader is still on.
+    private void Land((Guid List, Guid Variable) key, NotesWrite written, DesiredDataFailure failure)
+    {
+        _notesWritten[key] = written;
+
+        var fieldShown = _openId == key.Variable && _openTab == PanelTab.Notes;
+        if (failure is not DesiredDataFailure.None && _shownList == key.List && !fieldShown)
         {
             _notesFailure = failure;
+            _notesFailureKey = key;
         }
     }
 }
