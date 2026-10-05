@@ -3927,7 +3927,7 @@ table.munin-explorer-data-list tbody th {
   right: 0;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 479px) {
   .munin-explorer-page__actions:has(> .munin-explorer-list-menu) {
     position: relative;
   }
