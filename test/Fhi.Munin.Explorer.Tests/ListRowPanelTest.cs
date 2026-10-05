@@ -549,7 +549,7 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Notes_WhenTheWriteFails_ThenItIsSaidAndTheTextStays()
+    public void Notes_WhenTheWriteFailsWithTheRowOpen_ThenItIsSaidUnderTheFieldOnlyAndTheTextStays()
     {
         var client = new PanelClient(DatabaseVersion) { NotesAnswer = null };
         var cut = RenderView(client);
@@ -557,7 +557,8 @@ public class ListRowPanelTest : ExplorerTestContext
         OpenNotes(cut).Change("Spør om 2012");
 
         var field = OpenNotesField(cut);
-        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, field));
+        Assert.Equal("", PageAlert(cut));
         Assert.Equal("Spør om 2012", field.GetAttribute("value"));
         Assert.Null(field.GetAttribute("aria-invalid"));
     }
@@ -570,7 +571,8 @@ public class ListRowPanelTest : ExplorerTestContext
 
         OpenNotes(cut).Change("Spør om 2012");
 
-        Assert.StartsWith("Du har gjort for mange forespørsler", PageAlert(cut));
+        Assert.StartsWith("Du har gjort for mange forespørsler", NotesStatusText(cut, OpenNotesField(cut)));
+        Assert.Equal("", PageAlert(cut));
     }
 
     [Fact]
@@ -615,8 +617,7 @@ public class ListRowPanelTest : ExplorerTestContext
         var again = OpenNotes(cut);
 
         Assert.Equal("tekst som ikke ble lagret", again.GetAttribute("value"));
-        Assert.Equal("Notatene er ikke lagret.", NotesStatusText(cut, again));
-        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, again));
     }
 
     [Fact]
@@ -667,12 +668,16 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Notes_WhenAFailedSaveIsFollowedByAnotherWrite_ThenTheAlertNoLongerSaysIt()
+    public async Task Notes_WhenAFailedSaveIsFollowedByAnotherWrite_ThenTheAlertNoLongerSaysIt()
     {
-        var client = new PanelClient(DatabaseVersion) { NotesAnswer = null };
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { NotesAnswer = null, NotesGate = gate };
         var cut = RenderView(client);
 
+        // Lands after the row is closed, so it goes to the list's alert.
         OpenNotes(cut).Change("feiler");
+        NameButton(cut, "Databaseversjon").Click();
+        await cut.InvokeAsync(gate.SetResult);
         Assert.NotEqual("", PageAlert(cut));
 
         cut.Find("td.munin-explorer-dataitem-main__desiredData input").Change("C76");

@@ -36,7 +36,9 @@ public sealed partial class VariableListView
     private readonly Dictionary<(Guid List, Guid Variable), int> _notesWrites = [];
     private DesiredDataFailure _notesFailure;
 
-    private sealed record NotesWrite(string Text, bool Saved, int? RefusedMax, bool Pending = false);
+    private sealed record NotesWrite(
+        string Text, bool Saved, int? RefusedMax, bool Pending = false,
+        DesiredDataFailure Failure = DesiredDataFailure.None);
     private string? _linkStatus;
     private bool _linkNotCopied;
 
@@ -272,7 +274,8 @@ public sealed partial class VariableListView
     private string? NotesRefusal => OpenNotesWrite switch
     {
         { RefusedMax: { } max } => T.NotesTooLong(max),
-        { Saved: false, Pending: false } => T.NotesUnsaved,
+        { Failure: DesiredDataFailure.Throttled } => T.RateLimitError,
+        { Saved: false, Pending: false } => T.NotesError,
         _ => null,
     };
 
@@ -353,11 +356,12 @@ public sealed partial class VariableListView
             return;
         }
 
-        _notesWritten[key] = written;
+        _notesWritten[key] = written with { Failure = failure };
 
-        // Only ever set: a success clearing it would take away the sentence another row's failure put
-        // there, and a failure from a list the reader has left belongs to that list.
-        if (failure is not DesiredDataFailure.None && _shownList == list)
+        // Said under the field while its row is open (Georgi, 2026-10-05); otherwise in the list's alert,
+        // only ever set there, and only for the list the reader is still on.
+        var rowOpen = _openId == item.VariableId && _openListId == list;
+        if (failure is not DesiredDataFailure.None && _shownList == list && !rowOpen)
         {
             _notesFailure = failure;
         }
