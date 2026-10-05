@@ -140,7 +140,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _focusAfterRename;
     private int _formsOpenAtCreate;
     private int _formsOpenAtRename;
-    private ElementReference _renameToggle;
     private ElementReference _listPicker;
     private ElementReference _createToggle;
     private ElementReference _listRegion;
@@ -384,10 +383,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         null => null
     };
 
-    // Withheld rather than passed empty: both controls in the row are conditional, and a fragment
-    // that renders nothing still draws the chassis's row — a gap under the chrome of the page.
-    private bool HasActions => Lists.Count > 1 || _page is { TotalCount: > 0 };
-
     /// <summary>
     /// The list on screen: its size and last change off <c>my/lists</c>, so neither can contradict
     /// the picker, and its kilde count off the membership walk — left out until that walk is done,
@@ -440,7 +435,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
     }
 
-    private void ToggleCreatingFromControl(MouseEventArgs released) => Toggle(released, ref _creating);
+    // The form opens under the row, where an open fold's panel would cover it.
+    private void ToggleCreatingFromControl(MouseEventArgs released)
+    {
+        Toggle(released, ref _creating);
+        CloseFolds();
+    }
 
     private void ToggleRenamingFromControl(MouseEventArgs released) => Toggle(released, ref _renaming);
 
@@ -580,7 +580,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (TakeFocusTarget() is not { } target)
+        // Both taken, so a flag neither acts on does not linger to move focus on a later render.
+        var fromMenu = TakeMenuFocusTarget();
+        var fromWrite = TakeFocusTarget();
+
+        if ((fromMenu ?? fromWrite) is not { } target)
         {
             return;
         }
@@ -626,14 +630,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         if (afterRename)
         {
-            return _shownList is not null ? _renameToggle : null;
+            return _shownList is not null ? _menuToggle : null;
         }
 
         return _page is not null && (_page.Items.Count > 0 || _loading) ? _listRegion : _createToggle;
     }
 
     private int OpenForms() =>
-        (_creating ? 1 : 0) | (_renaming ? 2 : 0) | (_openingShared ? 4 : 0) | (_copying ? 8 : 0) | (_confirmingDelete ? 16 : 0);
+        (_creating ? 1 : 0) | (_renaming ? 2 : 0) | (_openingShared ? 4 : 0) | (_copying ? 8 : 0) | (_confirmingDelete ? 16 : 0) | (_sharingList ? 32 : 0);
 
     /// <summary>A read has answered, so an empty list means the reader has none rather than that we never found out.</summary>
     private bool ListsAnswered => !_failed && State is { HasLoaded: true };
@@ -1151,6 +1155,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _renaming = false;
         ForgetCopyAndEmptyControls();
         CloseRow();
+        _menuOpen = false;
+        _downloadOpen = false;
     }
 
     /// <summary>

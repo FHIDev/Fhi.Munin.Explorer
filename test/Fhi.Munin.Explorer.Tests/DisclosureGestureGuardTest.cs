@@ -576,15 +576,15 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableListView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Eight: create, open a shared list, rename, copy, the delete confirmation, the empty
-        // confirmation, share and the row's name. One native: the download fold.
+        // Ten: create, open a shared list, rename, copy, the delete confirmation, the empty
+        // confirmation, share, the row's name, «Last ned» and «Flere valg». None native any more.
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
 
         AssertStandingGesturesAreRefused(
             () => Render<VariableListView>(b => b.Add(c => c.IsAuthenticated, true)),
-            expected: 8,
-            native: 1);
+            expected: 10,
+            native: 0);
     }
 
     // -----------------------------------------------------------------------
@@ -732,7 +732,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     }
 
     /// <summary>How many <c>&lt;details&gt;</c> and <c>&lt;summary&gt;</c> elements <c>src/</c> draws.</summary>
-    private const int NativeDisclosuresDrawn = 16;
+    private const int NativeDisclosuresDrawn = 14;
 
     /// <summary>Whether what a native disclosure was opened with means the package drives it.</summary>
     /// <remarks>
