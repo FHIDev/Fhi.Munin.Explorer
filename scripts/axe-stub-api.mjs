@@ -155,6 +155,8 @@ bodies.set(variablesRoute, JSON.stringify(variables));
 // the circuit asks forever (measured at ~7000 requests a second). The counts are made to agree with
 // the entries actually being served instead.
 const listVariables = /^\/api\/explorer\/my\/lists\/[^/]+\/variables$/;
+const codesRoute = routes.find(([, source]) => source === 'kodeverk-codes.json')[0];
+const LIST_PANEL_VARIABLE = 'b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90';
 
 function pagedListVariables(body, query) {
   const page = Math.max(1, Number(query.get('page') ?? 1) || 1);
@@ -253,6 +255,13 @@ function serve(url, request, response) {
     page.items[0].id = withStatistics.id;
     page.items[0].preferredTerm = withStatistics.name;
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(page));
+    return;
+  }
+  // The first saved-list entry's kodeverk gets a dozen codes, so its panel draws a code table (Fhi.Metadata-dfy9u.9).
+  if (path.startsWith(`/api/explorer/variables/${LIST_PANEL_VARIABLE}/kodeverk/`)) {
+    const codes = JSON.parse(bodies.get(codesRoute));
+    codes.koder = Array.from({ length: 12 }, (_, i) => ({ ...codes.koder[i % codes.koder.length], verdi: String(i) }));
+    response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(codes));
     return;
   }
   const [, variableId] = path.match(/^\/api\/explorer\/variables\/([^/]+)$/) ?? [];

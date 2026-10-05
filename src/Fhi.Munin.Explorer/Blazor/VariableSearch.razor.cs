@@ -712,32 +712,8 @@ public sealed partial class VariableSearch : ComponentBase
     // inside one panel, and neither the rows nor the variable above it are stale because of it.
     private string? _sourceError;
 
-    // The kodeverk whose code lists the reader has opened, and what has been fetched for each.
-    //
-    // Keyed rather than single, unlike the owner panel above: the kodeverk are a list of peers
-    // under one heading and a reader comparing two of them is a thing the panel has room for,
-    // where the kilde and the datasamling answer the same question twice and do not.
-    //
-    // Nothing here is fetched with the variable. A kodeverk can run to hundreds of codes —
-    // Kommunenummer is 885 — and most readers open none of them, so putting the codes in the
-    // detail payload would make every opened row pay for a list almost nobody reads.
-    private readonly HashSet<KodeverkKey> _openCodes = [];
-
-    // What came back, kept after a list is collapsed so opening it again costs no second request.
-    // Emptied with the panel it hangs in, not before: a variable's codes are only ever drawn under
-    // that variable, so there is nothing for a cache that outlives it to be right about.
-    private readonly Dictionary<KodeverkKey, IReadOnlyList<KodeverkCode>> _codes = [];
-    private readonly HashSet<KodeverkKey> _codesLoading = [];
-
-    // Per link, for the reason the owner panel's error is its own field: one code list that could
-    // not be fetched leaves every other line on the panel describing exactly what it did before.
-    private readonly Dictionary<KodeverkKey, string> _codesError = [];
-
-    // One generation for all of them rather than one each, because they are only ever abandoned
-    // together: what disowns a code fetch is the variable panel closing, and that closes every list
-    // in it at once. Two lists open on one variable are not racing each other — they ask different
-    // questions of different references.
-    private int _codesGeneration;
+    // The code lists of the open variable, replaced with the variable so a late fetch writes nowhere.
+    private KodeverkCodeLists? _codeLists;
 
     // The API's own default order, ascending, which is also where Runa starts — and the order the
     // API returns when it is asked for none, so the first render costs no extra query parameters.
@@ -797,18 +773,6 @@ public sealed partial class VariableSearch : ComponentBase
     private string SourceHeadingId => $"munin-explorer-source-heading-{_instance}";
     private string SourceToggleId(SourceKind kind) =>
         $"munin-explorer-source-toggle-{_instance}-{kind.ToString().ToLowerInvariant()}";
-
-    // Per instance and per link. There is one open variable panel, so the variable does not need to
-    // be in the id, but the links inside it do: several code lists can be open together, and the
-    // table in each is named from the line above it.
-    //
-    // The link's position in the payload rather than its type and reference, which read better and
-    // cannot safely be used: a reference is the catalogue's own text — dotted OIDs for V-AK,
-    // hyphenated acronyms like NCMP-NCSP-NCRP for V-HK — and punctuation stripped to make it an id
-    // would let two different references mint the same one, which is a duplicate-id WCAG failure
-    // and an aria-controls naming the wrong table. The position is unique by construction.
-    private string KodeverkNameId(int index) => $"munin-explorer-kodeverk-{_instance}-{index}";
-    private string KodeverkCodesId(int index) => $"munin-explorer-codes-{_instance}-{index}";
 
     private Texts T => Texts.For(Language);
 
@@ -1317,57 +1281,6 @@ public sealed partial class VariableSearch : ComponentBase
     /// </remarks>
     private PanelTab _tab = PanelTab.Data;
 
-    /// <summary>The panel's tabs, in the order they are drawn.</summary>
-    private static readonly PanelTab[] Tabs = Enum.GetValues<PanelTab>();
-
-    private string TabId(PanelTab tab) => $"munin-explorer-tab-{_instance}-{tab}";
-
-    /// <summary>
-    /// The one tab panel. Its id does not vary by tab: there is a single panel whose contents
-    /// change, so every tab points at it. An id per tab would leave the unselected tab's
-    /// aria-controls naming an element that is not rendered.
-    /// </summary>
-    private string TabPanelId() => $"munin-explorer-tabpanel-{_instance}";
-
-    private string TabLabel(PanelTab tab) => tab switch
-    {
-        PanelTab.Data => T.TabData,
-        PanelTab.About => T.TabAbout,
-        _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "No label for this tab."),
-    };
-
-    private string TabClass(PanelTab tab) =>
-        tab == _tab
-            ? "munin-explorer-meta__tab munin-explorer-meta__tab--active"
-            : "munin-explorer-meta__tab";
-
-    private void SelectTab(PanelTab tab) => _tab = tab;
-
-    /// <summary>
-    /// Arrow-key movement between the tabs, as the APG tabs pattern prescribes.
-    /// </summary>
-    /// <remarks>
-    /// Without this a keyboard user tabs into the tablist and cannot change tab: the buttons carry
-    /// <c>tabindex="-1"</c> when not selected, which is what stops the tablist costing one tab stop
-    /// per tab. Arrow keys are what replaces those stops, so leaving them out makes the panel
-    /// unreachable rather than merely awkward.
-    /// </remarks>
-    private void TabKey(KeyboardEventArgs e)
-    {
-        var i = Array.IndexOf(Tabs, _tab);
-
-        var next = e.Key switch
-        {
-            "ArrowRight" or "ArrowDown" => (i + 1) % Tabs.Length,
-            "ArrowLeft" or "ArrowUp" => (i - 1 + Tabs.Length) % Tabs.Length,
-            "Home" => 0,
-            "End" => Tabs.Length - 1,
-            _ => i,
-        };
-
-        _tab = Tabs[next];
-    }
-
     /// <summary>A datatype code as its name, from the facets the filter panel has already loaded.</summary>
     /// <remarks>
     /// Not the row's own <c>dataTypeDisplayName</c>: the search is fetched without a language, so
@@ -1385,24 +1298,6 @@ public sealed partial class VariableSearch : ComponentBase
         var named = _facets?.DataTypes.FirstOrDefault(d => d.Value == canonical)?.DisplayName;
 
         return string.IsNullOrWhiteSpace(named) ? canonical : named;
-    }
-
-    /// <summary>The open row's datatype, from the detail's own vocabulary before the facets.</summary>
-    /// <remarks>
-    /// The detail carries the DataType options in both languages, so the panel names the code even
-    /// when the facets failed or were scoped to a search that does not match it. (Fhi.Metadata-0mohg)
-    /// </remarks>
-    private (string Text, string? Lang)? PanelDataType(VariableDetail detail)
-    {
-        if (string.IsNullOrWhiteSpace(detail.DataType))
-        {
-            return null;
-        }
-
-        var code = T.CanonicalDataTypeCode(detail.DataType);
-
-        return CatalogueProperties.DataTypeWord(detail.PropertyMetadata, code, Reader)
-            ?? (DataTypeName(code)!, null);
     }
 
     /// <summary>
