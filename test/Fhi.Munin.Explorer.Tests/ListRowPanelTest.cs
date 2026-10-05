@@ -55,6 +55,9 @@ public class ListRowPanelTest : ExplorerTestContext
         /// <summary>Holds the notes answer until the test releases it.</summary>
         public TaskCompletionSource? NotesGate { get; set; }
 
+        /// <summary>One gate per write, in the order the writes are made, with the answer each gives.</summary>
+        public Queue<(TaskCompletionSource Gate, DesiredDataResult Answer)> NotesGates { get; } = [];
+
         /// <summary>What the API holds after a write from somewhere else, such as another tab.</summary>
         public void NotesChangedElsewhere(Guid variableId, string notes)
         {
@@ -66,6 +69,12 @@ public class ListRowPanelTest : ExplorerTestContext
             Guid id, Guid variableId, string? text, CancellationToken cancellationToken = default)
         {
             NotesWritten.Add((variableId, text));
+
+            if (NotesGates.TryDequeue(out var queued))
+            {
+                await queued.Gate.Task;
+                return queued.Answer;
+            }
 
             if (NotesGate is { } gate)
             {
@@ -473,14 +482,14 @@ public class ListRowPanelTest : ExplorerTestContext
         return cut.Find($"#{label.GetAttribute("for")}");
     }
 
-    private static string NotesCount(IRenderedComponent<VariableListView> cut, IElement field) =>
-        cut.Find($"#{field.GetAttribute("aria-describedby")!.Split(' ')[0]}").TextContent.Trim();
-
     private static string NotesStatusText(IRenderedComponent<VariableListView> cut, IElement field) =>
-        cut.Find($"#{field.GetAttribute("aria-describedby")!.Split(' ')[1]}").TextContent.Trim();
+        cut.Find($"#{field.GetAttribute("aria-describedby")}").TextContent.Trim();
+
+    private static string PageAlert(IRenderedComponent<VariableListView> cut) =>
+        string.Join(" ", cut.FindAll("[role=alert]").Select(alert => alert.TextContent.Trim()).Where(text => text.Length > 0));
 
     [Fact]
-    public void Notes_WhenTheTabOpens_ThenTheSavedNotesAreInTheFieldWithTheirCount()
+    public void Notes_WhenTheTabOpens_ThenTheSavedNotesAreInTheField()
     {
         var cut = RenderView(new PanelClient(DatabaseVersion with { Notes = "Spør om 2012" }));
 
@@ -488,19 +497,18 @@ public class ListRowPanelTest : ExplorerTestContext
 
         Assert.Equal("textarea", field.TagName, StringComparer.OrdinalIgnoreCase);
         Assert.Equal("Spør om 2012", field.GetAttribute("value"));
-        Assert.Equal("2000", field.GetAttribute("maxlength"));
-        Assert.Equal("12/2000", NotesCount(cut, field));
     }
 
     [Fact]
-    public void Notes_WhenTyped_ThenTheCountFollowsEachKeystroke()
+    public void Notes_WhileTyped_ThenNoKeystrokeReachesTheServer()
     {
+        // A round trip per keystroke drops characters on a paste inside a Blazor Server circuit, the
+        // reason KildeSearch and VariableSearch save on change too.
         var cut = RenderView(new PanelClient(DatabaseVersion));
 
         var field = OpenNotes(cut);
-        field.Input("abc");
 
-        Assert.Equal("3/2000", NotesCount(cut, OpenNotesField(cut)));
+        Assert.Throws<MissingEventHandlerException>(() => field.Input("abc"));
     }
 
     private static IElement OpenNotesField(IRenderedComponent<VariableListView> cut)
@@ -549,7 +557,7 @@ public class ListRowPanelTest : ExplorerTestContext
         OpenNotes(cut).Change("Spør om 2012");
 
         var field = OpenNotesField(cut);
-        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, field));
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
         Assert.Equal("Spør om 2012", field.GetAttribute("value"));
         Assert.Null(field.GetAttribute("aria-invalid"));
     }
@@ -562,7 +570,7 @@ public class ListRowPanelTest : ExplorerTestContext
 
         OpenNotes(cut).Change("Spør om 2012");
 
-        Assert.StartsWith("Du har gjort for mange forespørsler", NotesStatusText(cut, OpenNotesField(cut)));
+        Assert.StartsWith("Du har gjort for mange forespørsler", PageAlert(cut));
     }
 
     [Fact]
@@ -570,7 +578,7 @@ public class ListRowPanelTest : ExplorerTestContext
     {
         var cut = RenderView(new PanelClient(DatabaseVersion with { Notes = "første" }, Age with { Notes = "andre" }));
 
-        OpenNotes(cut).Input("ulagret utkast");
+        OpenNotes(cut).Change("lagret for den første");
         var other = OpenNotes(cut, "Alder");
 
         Assert.Equal("andre", other.GetAttribute("value"));
@@ -594,6 +602,81 @@ public class ListRowPanelTest : ExplorerTestContext
         other = OpenNotesField(cut);
         Assert.Null(other.GetAttribute("aria-invalid"));
         Assert.Equal("", NotesStatusText(cut, other));
+    }
+
+    [Fact]
+    public void Notes_WhenTheSaveFailedAndTheRowIsReopened_ThenTheUnsavedTextIsStillThere()
+    {
+        var client = new PanelClient(DatabaseVersion, Age) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("tekst som ikke ble lagret");
+        OpenNotes(cut, "Alder");
+        var again = OpenNotes(cut);
+
+        Assert.Equal("tekst som ikke ble lagret", again.GetAttribute("value"));
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAnOlderAnswerLandsAfterANewerOne_ThenTheNewerOneStands()
+    {
+        var first = new TaskCompletionSource();
+        var second = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion);
+        client.NotesGates.Enqueue((first, new DesiredDataResult(DesiredDataOutcome.Refused, 1500, 1600)));
+        client.NotesGates.Enqueue((second, new DesiredDataResult(DesiredDataOutcome.Saved)));
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change(new string('x', 1600));
+        OpenNotesField(cut).Change("kortere");
+        await cut.InvokeAsync(second.SetResult);
+        await cut.InvokeAsync(first.SetResult);
+
+        var field = OpenNotesField(cut);
+        Assert.Null(field.GetAttribute("aria-invalid"));
+        Assert.Equal("", NotesStatusText(cut, field));
+    }
+
+    [Fact]
+    public async Task Notes_WhenASaveLandsAfterTheReaderSwitchedList_ThenTheOtherListDoesNotShowThem()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { TwoLists = true, NotesGate = gate };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("skrevet i liste A");
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        await cut.InvokeAsync(gate.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal("", OpenNotes(cut).GetAttribute("value") ?? ""));
+    }
+
+    [Fact]
+    public async Task Notes_WhenThePageIsReadAgainAfterAFailedSave_ThenTheUnsavedTextStays()
+    {
+        var client = new PanelClient(DatabaseVersion) { TwoLists = true, NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("ikke lagret ennå");
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
+
+        cut.WaitForAssertion(() => Assert.Equal("ikke lagret ennå", OpenNotes(cut).GetAttribute("value")));
+    }
+
+    [Fact]
+    public void Notes_WhenAFailedSaveIsFollowedByAnotherWrite_ThenTheAlertNoLongerSaysIt()
+    {
+        var client = new PanelClient(DatabaseVersion) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler");
+        Assert.NotEqual("", PageAlert(cut));
+
+        cut.Find("td.munin-explorer-dataitem-main__desiredData input").Change("C76");
+
+        Assert.Equal("", PageAlert(cut));
     }
 
     [Fact]

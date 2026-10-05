@@ -520,7 +520,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string? AlertText =>
         _failed ? T.ListLoadError
         : SharedListMessage ?? ShareMessage ?? CopyMessage ?? EmptyingMessage ?? DownloadMessage ?? ActionMessage
-          ?? CreateMessage ?? DesiredDataMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
+          ?? CreateMessage ?? DesiredDataMessage ?? NotesMessage ?? (State is { ListsReadFailed: true, Lists.Count: 0 } ? T.ListLoadError : null);
 
     /// <summary>The lists are still being read, so an empty list says nothing about the reader yet.</summary>
     private bool ListsPending =>
@@ -1169,6 +1169,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;
         _desiredDataFailure = DesiredDataFailure.None;
+        _notesFailure = DesiredDataFailure.None;
         ForgetSharingFailures();
         ForgetCopyAndEmptyFailures();
     }

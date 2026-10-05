@@ -323,8 +323,6 @@ internal sealed record Texts(
     string DesiredDataHint,
     string TabNotes,
     string NotesLabel,
-    // (length, maxLength) — "12/2000", how much of the room the notes have used.
-    Func<int, int, string> NotesCount,
     // (maxLength) — the API's refusal of notes that are too long.
     Func<int, string> NotesTooLong,
     string NotesError,
@@ -1223,7 +1221,6 @@ internal sealed record Texts(
         DesiredDataHint: "Angi hvilke kodeverdier du ønsker å søke om",
         TabNotes: "Mine notater",
         NotesLabel: "Egne notater",
-        NotesCount: (length, maxLength) => $"{length}/{maxLength}",
         NotesTooLong: maxLength => $"Notatene kan ikke overstige {maxLength} tegn. Teksten er ikke lagret.",
         NotesError: "Kunne ikke lagre notatene nå. Prøv igjen om litt.",
         RenameListName: "Nytt navn på listen",
@@ -1709,7 +1706,6 @@ internal sealed record Texts(
         DesiredDataHint: "Say which code values you want to apply for",
         TabNotes: "My notes",
         NotesLabel: "Your notes",
-        NotesCount: (length, maxLength) => $"{length}/{maxLength}",
         NotesTooLong: maxLength => $"Notes must be {maxLength} characters or fewer. Your text has not been saved.",
         NotesError: "Could not save the notes just now. Try again shortly.",
         RenameListName: "New name for the list",

@@ -27,15 +27,16 @@ public sealed partial class VariableListView
     private KodeverkCodeLists? _openCodes;
     private PanelTab _openTab = PanelTab.Data;
 
-    // The API's ceiling, for the counter and maxlength; a refusal naming another one still wins.
-    private const int NotesMaxLength = 2000;
-
-    // What the open row's notes field shows, and what was saved since the page was last read.
+    // What the open row's notes field shows.
     private string _notesDraft = "";
-    private readonly Dictionary<Guid, string> _savedNotes = [];
-    private int _notesWrites;
-    private int? _notesRefusedMax;
+
+    // What this session wrote per list and variable: saved text bridges until the page is read
+    // again, and unsaved text (refused or failed) stays until written again, as Ønskede data's does.
+    private readonly Dictionary<(Guid List, Guid Variable), NotesWrite> _notesWritten = [];
+    private readonly Dictionary<(Guid List, Guid Variable), int> _notesWrites = [];
     private DesiredDataFailure _notesFailure;
+
+    private sealed record NotesWrite(string Text, bool Saved, int? RefusedMax);
     private string? _linkStatus;
     private bool _linkNotCopied;
 
@@ -92,8 +93,7 @@ public sealed partial class VariableListView
         _openListId = _shownList;
         _openTab = PanelTab.Data;
         ForgetLinkStatus();
-        ForgetNotesStatus();
-        _notesDraft = _savedNotes.TryGetValue(item.VariableId, out var saved) ? saved : item.Notes ?? "";
+        _notesDraft = OpenNotesWrite is { } written ? written.Text : item.Notes ?? "";
 
         await LoadRowDetailAsync(item.VariableId, VersionStatusRule.IsHistorical(item.VersionStatus));
     }
@@ -259,34 +259,35 @@ public sealed partial class VariableListView
     private string RowNotesId(VariableListItem item) =>
         $"munin-explorer-list-panel-notes-{_instance}-{item.VariableId:N}";
 
-    private string RowNotesCountId(VariableListItem item) => $"{RowNotesId(item)}-count";
-
     private string RowNotesStatusId(VariableListItem item) => $"{RowNotesId(item)}-status";
 
-    private string RowNotesDescribedBy(VariableListItem item) =>
-        $"{RowNotesCountId(item)} {RowNotesStatusId(item)}";
+    private NotesWrite? OpenNotesWrite =>
+        _openId is { } variable && _shownList is { } list && _notesWritten.TryGetValue((list, variable), out var written)
+            ? written
+            : null;
 
-    private string? NotesInvalid => _notesRefusedMax is null ? null : "true";
+    private string? NotesInvalid => OpenNotesWrite?.RefusedMax is null ? null : "true";
 
-    private string? NotesStatus => _notesRefusedMax is { } max
-        ? T.NotesTooLong(max)
-        : _notesFailure switch
-        {
-            DesiredDataFailure.Throttled => T.RateLimitError,
-            DesiredDataFailure.Failed => T.NotesError,
-            _ => null,
-        };
+    // The refusal is about the text in the field, so it is said there; a failed save goes to the page's alert.
+    private string? NotesRefusal => OpenNotesWrite?.RefusedMax is { } max ? T.NotesTooLong(max) : null;
 
-    private string NotesStatusClass => NotesStatus is null ? "caption" : "infobox infobox--bg-yellow";
+    private string NotesStatusClass => NotesRefusal is null ? "caption" : "infobox infobox--bg-yellow";
 
-    private void ForgetNotesStatus()
+    private string? NotesMessage => _notesFailure switch
     {
-        _notesRefusedMax = null;
-        _notesFailure = DesiredDataFailure.None;
-    }
+        DesiredDataFailure.Throttled => T.RateLimitError,
+        DesiredDataFailure.Failed => T.NotesError,
+        _ => null,
+    };
 
-    // A page read is what the API holds, so the notes saved since then are no longer needed to bridge it.
-    private void ForgetSavedNotes() => _savedNotes.Clear();
+    // A page read is what the API holds, so saved text no longer needs bridging; unsaved text stays.
+    private void ForgetSavedNotes()
+    {
+        foreach (var key in _notesWritten.Where(entry => entry.Value.Saved).Select(entry => entry.Key).ToList())
+        {
+            _notesWritten.Remove(key);
+        }
+    }
 
     private async Task SaveNotesAsync(VariableListItem item, string? text)
     {
@@ -295,53 +296,52 @@ public sealed partial class VariableListView
             return;
         }
 
+        var key = (list, item.VariableId);
         var trimmed = text?.Trim() ?? "";
-        var row = _openGeneration;
-        var sequence = ++_notesWrites;
+        var sequence = _notesWrites.GetValueOrDefault(key) + 1;
+        _notesWrites[key] = sequence;
 
         _notesDraft = trimmed;
-        ForgetNotesStatus();
+        _notesWritten[key] = new NotesWrite(trimmed, Saved: false, RefusedMax: null);
+        ForgetFailures();
+        _notesFailure = DesiredDataFailure.None;
 
-        int? refused = null;
+        NotesWrite written;
         var failure = DesiredDataFailure.None;
 
         try
         {
             var result = await Client.SetMyListNotesAsync(list, item.VariableId, trimmed);
 
-            switch (result)
+            written = result switch
             {
-                case { Outcome: DesiredDataOutcome.Saved }:
-                    _savedNotes[item.VariableId] = trimmed;
-                    break;
+                { Outcome: DesiredDataOutcome.Saved } => new NotesWrite(trimmed, Saved: true, RefusedMax: null),
+                { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength } => new NotesWrite(trimmed, false, maxLength),
+                _ => new NotesWrite(trimmed, false, null),
+            };
 
-                case { Outcome: DesiredDataOutcome.Refused, MaxLength: { } maxLength }:
-                    refused = maxLength;
-                    break;
-
-                default:
-                    failure = DesiredDataFailure.Failed;
-                    break;
-            }
+            failure = written is { Saved: false, RefusedMax: null } ? DesiredDataFailure.Failed : DesiredDataFailure.None;
         }
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused the notes on variable {VariableId} in list {ListId}", item.VariableId, list);
+            written = new NotesWrite(trimmed, false, null);
             failure = DesiredDataFailure.Throttled;
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not save the notes on variable {VariableId} in list {ListId}", item.VariableId, list);
+            written = new NotesWrite(trimmed, false, null);
             failure = DesiredDataFailure.Failed;
         }
 
-        // Only the newest write in the panel that asked may say how it went.
-        if (row != _openGeneration || sequence != _notesWrites)
+        // An older answer for the same row and list must not overwrite what a newer write says.
+        if (_notesWrites.GetValueOrDefault(key) != sequence)
         {
             return;
         }
 
-        _notesRefusedMax = refused;
+        _notesWritten[key] = written;
         _notesFailure = failure;
     }
 }
