@@ -287,6 +287,11 @@ public sealed partial class VariableListView
                     _emptyFailure = ListActionFailure.Failed;
                     break;
                 }
+
+                foreach (var variable in chunk)
+                {
+                    ForgetNotesFor(list, variable);
+                }
             }
         }
         catch (MuninExplorerRateLimitedException ex)

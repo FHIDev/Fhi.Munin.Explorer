@@ -742,6 +742,51 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Notes_WhenASaveFromBeforeARemoveAndReAddLandsLast_ThenTheNewerSaveStands()
+    {
+        var old = new TaskCompletionSource();
+        var newer = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion, Age);
+        client.NotesGates.Enqueue((old, new DesiredDataResult(DesiredDataOutcome.NotFound)));
+        client.NotesGates.Enqueue((newer, new DesiredDataResult(DesiredDataOutcome.Saved)));
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("gammel");
+        RemoveButton(cut, "Databaseversjon").Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("th[scope=row] button")));
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [DatabaseVersion.VariableId]));
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("th[scope=row] button").Count));
+        OpenNotes(cut).Change("ny");
+        await cut.InvokeAsync(newer.SetResult);
+        await cut.InvokeAsync(old.SetResult);
+
+        var field = OpenNotesField(cut);
+        Assert.Equal("ny", field.GetAttribute("value"));
+        Assert.Equal("", NotesStatusText(cut, field));
+        Assert.Equal("", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenTheListIsEmptiedAndAVariableAddedBack_ThenItsUnsavedNotesAreGone()
+    {
+        var client = new PanelClient(DatabaseVersion with { Notes = "lagret" }, Age) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("ikke lagret");
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Tøm liste").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Ja, tøm listen").Click();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("th[scope=row] button")));
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [DatabaseVersion.VariableId]));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("th[scope=row] button")));
+
+        var field = OpenNotes(cut);
+        Assert.Equal("lagret", field.GetAttribute("value"));
+        Assert.Equal("", NotesStatusText(cut, field));
+    }
+
+    [Fact]
     public void Notes_WhenAnotherRowOpensAfterARefusal_ThenItIsNotMarked()
     {
         var client = new PanelClient(DatabaseVersion, Age) { NotesAnswer = new(DesiredDataOutcome.Refused, 1500, 1600) };

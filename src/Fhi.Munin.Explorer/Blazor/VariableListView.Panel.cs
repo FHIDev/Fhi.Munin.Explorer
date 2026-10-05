@@ -279,10 +279,11 @@ public sealed partial class VariableListView
     private string NotesStatusClass => NotesRefusal is null ? "caption" : "infobox infobox--bg-yellow";
 
     // A variable leaving the list takes its unsaved notes with it, so they cannot return on a re-add.
+    // The write count moves on rather than restarting, so a save still out can never pass for a newer one.
     private void ForgetNotesFor(Guid list, Guid variable)
     {
         _notesWritten.Remove((list, variable));
-        _notesWrites.Remove((list, variable));
+        _notesWrites[(list, variable)] = _notesWrites.GetValueOrDefault((list, variable)) + 1;
     }
 
     private string? NotesMessage => _notesFailure switch
