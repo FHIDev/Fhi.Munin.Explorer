@@ -792,6 +792,34 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Notes_WhenTheSaveFailsAfterTheReaderMovedToTheDataTab_ThenTheAlertSaysIt()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { NotesAnswer = null, NotesGate = gate };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler");
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Data").Click();
+        await cut.InvokeAsync(gate.SetResult);
+
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAThrottledSaveLandsWithTheRowClosed_ThenTheAlertSaysTheRateLimit()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { NotesThrottled = true, NotesGate = gate };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("for raskt");
+        NameButton(cut, "Databaseversjon").Click();
+        await cut.InvokeAsync(gate.SetResult);
+
+        Assert.StartsWith("Du har gjort for mange forespørsler", PageAlert(cut));
+    }
+
+    [Fact]
     public void Notes_WhenAnotherRowOpensAfterARefusal_ThenItIsNotMarked()
     {
         var client = new PanelClient(DatabaseVersion, Age) { NotesAnswer = new(DesiredDataOutcome.Refused, 1500, 1600) };

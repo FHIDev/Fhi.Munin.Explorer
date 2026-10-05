@@ -358,10 +358,10 @@ public sealed partial class VariableListView
 
         _notesWritten[key] = written with { Failure = failure };
 
-        // Said under the field while its row is open (Georgi, 2026-10-05); otherwise in the list's alert,
+        // Said under the field while it is on screen (Georgi, 2026-10-05); otherwise in the list's alert,
         // only ever set there, and only for the list the reader is still on.
-        var rowOpen = _openId == item.VariableId && _openListId == list;
-        if (failure is not DesiredDataFailure.None && _shownList == list && !rowOpen)
+        var fieldShown = _openId == item.VariableId && _openTab == PanelTab.Notes;
+        if (failure is not DesiredDataFailure.None && _shownList == list && !fieldShown)
         {
             _notesFailure = failure;
         }
