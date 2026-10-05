@@ -723,10 +723,11 @@ else if (State?.IsAuthenticated == true)
     </div>;
 
     // The same value as the row's column: one draft, one save, one refusal for both fields.
-    private RenderFragment RowDesiredDataField(VariableListItem item) => @<div>
-        <label class="form-element__label" for="@RowDesiredDataId(item)">@T.FieldDesiredData</label>
+    private RenderFragment RowDesiredDataField(VariableListItem item) => @<div class="margin-bottom">
+        <div><label class="form-element__label" for="@RowDesiredDataId(item)">@T.FieldDesiredData</label></div>
         <p class="caption" id="@RowDesiredDataHintId(item)">@T.DesiredDataHint</p>
         <textarea id="@RowDesiredDataId(item)"
+                  class="textarea__field"
                   rows="4"
                   value="@DesiredDataOf(item)"
                   aria-invalid="@DesiredDataInvalid(item)"
@@ -736,8 +737,9 @@ else if (State?.IsAuthenticated == true)
 
     // Saved when the field is left, like Ønskede data; the counter follows each keystroke.
     private RenderFragment RowNotesField(VariableListItem item) => @<div>
-        <label class="form-element__label" for="@RowNotesId(item)">@T.NotesLabel</label>
+        <div><label class="form-element__label" for="@RowNotesId(item)">@T.NotesLabel</label></div>
         <textarea id="@RowNotesId(item)"
+                  class="textarea__field"
                   rows="6"
                   maxlength="@NotesMaxLength"
                   value="@_notesDraft"
