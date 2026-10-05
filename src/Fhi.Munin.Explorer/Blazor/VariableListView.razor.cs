@@ -140,7 +140,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _focusAfterRename;
     private int _formsOpenAtCreate;
     private int _formsOpenAtRename;
-    private ElementReference _renameToggle;
+    private int _movesAtRename;
     private ElementReference _listPicker;
     private ElementReference _createToggle;
     private ElementReference _listRegion;
@@ -384,10 +384,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         null => null
     };
 
-    // Withheld rather than passed empty: both controls in the row are conditional, and a fragment
-    // that renders nothing still draws the chassis's row — a gap under the chrome of the page.
-    private bool HasActions => Lists.Count > 1 || _page is { TotalCount: > 0 };
-
     /// <summary>
     /// The list on screen: its size and last change off <c>my/lists</c>, so neither can contradict
     /// the picker, and its kilde count off the membership walk — left out until that walk is done,
@@ -432,15 +428,21 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // The gestures RowPress calls a selection, less the drag it takes a press to tell. All three
     // controls ask it: a double-click used to shut the form its own first click opened, and on the
     // delete control to re-arm the confirmation it had just cancelled. (Fhi.Metadata-zel47)
-    private static void Toggle(MouseEventArgs released, ref bool open)
+    private void Toggle(MouseEventArgs released, ref bool open)
     {
         if (!RowPress.WasSelectionStandingStill(released))
         {
             open = !open;
+            _readerMoves++;
         }
     }
 
-    private void ToggleCreatingFromControl(MouseEventArgs released) => Toggle(released, ref _creating);
+    // The form opens under the row, where an open fold's panel would cover it.
+    private void ToggleCreatingFromControl(MouseEventArgs released)
+    {
+        Toggle(released, ref _creating);
+        CloseFolds();
+    }
 
     private void ToggleRenamingFromControl(MouseEventArgs released) => Toggle(released, ref _renaming);
 
@@ -580,7 +582,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (TakeFocusTarget() is not { } target)
+        // Both taken, so a flag neither acts on does not linger to move focus on a later render.
+        var fromMenu = TakeMenuFocusTarget();
+        var fromWrite = TakeFocusTarget();
+
+        if ((fromMenu ?? fromWrite) is not { } target)
         {
             return;
         }
@@ -592,7 +598,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         catch (Exception ex)
         {
             // A focus nicety must not take the circuit down with it.
-            Log?.LogWarning(ex, "could not move focus after a retry, a create or a rename");
+            Log?.LogWarning(ex, "could not move focus after the reader's action");
         }
     }
 
@@ -611,8 +617,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         // Never while the reader has moved on to a form of their own. For a create or a rename only a
         // form opened during that call counts, against its own record, as the two can overlap.
+        // A fold opened and shut during a rename leaves no open state, so its moves count too. Not for a
+        // create: it switches to the new list, which closes the folds and may draw no «Last ned» to stay on.
         var since = afterCreate ? _formsOpenAtCreate : afterRename ? _formsOpenAtRename : 0;
-        var movedOn = (OpenForms() & ~since) != 0;
+        var movesSince = afterRename ? _movesAtRename : _readerMoves;
+        var movedOn = (OpenForms() & ~since) != 0 || _readerMoves != movesSince;
 
         if (movedOn)
         {
@@ -626,14 +635,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         if (afterRename)
         {
-            return _shownList is not null ? _renameToggle : null;
+            return _shownList is not null ? _menuToggle : null;
         }
 
         return _page is not null && (_page.Items.Count > 0 || _loading) ? _listRegion : _createToggle;
     }
 
     private int OpenForms() =>
-        (_creating ? 1 : 0) | (_renaming ? 2 : 0) | (_openingShared ? 4 : 0) | (_copying ? 8 : 0) | (_confirmingDelete ? 16 : 0);
+        (_creating ? 1 : 0) | (_renaming ? 2 : 0) | (_openingShared ? 4 : 0) | (_copying ? 8 : 0) | (_confirmingDelete ? 16 : 0) | (_sharingList ? 32 : 0)
+        | (_menuOpen ? 64 : 0) | (_downloadOpen ? 128 : 0);
 
     /// <summary>A read has answered, so an empty list means the reader has none rather than that we never found out.</summary>
     private bool ListsAnswered => !_failed && State is { HasLoaded: true };
@@ -1151,6 +1161,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _renaming = false;
         ForgetCopyAndEmptyControls();
         CloseRow();
+        _menuOpen = false;
+        _downloadOpen = false;
     }
 
     /// <summary>
@@ -1344,6 +1356,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         ForgetFailures();
         _formsOpenAtRename = OpenForms();
+        _movesAtRename = _readerMoves;
 
         // Renaming never reads the page again: its own notification names _shownList but carries
         // AffectsRows: false, so ShouldReloadFor skips it without anything armed here for it.

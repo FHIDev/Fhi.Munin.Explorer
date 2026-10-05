@@ -3843,6 +3843,17 @@ table.munin-explorer-data-list tbody th {
   max-width: 100%;
 }
 
+.munin-explorer-page__actions > label {
+  display: flex;
+  flex-basis: 100%;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.munin-explorer-page__actions > label > select {
+  width: 20rem;
+}
+
 .munin-explorer-page__actions > details > summary {
   align-items: center;
   border-radius: 6px;
@@ -3877,6 +3888,83 @@ table.munin-explorer-data-list tbody th {
   color: rgb(255, 255, 255);
   outline: 2px solid rgb(66, 139, 255);
   outline-offset: 2px;
+}
+
+/* The «Last ned» and «Flere valg» folds (Fhi.Metadata-x47p0); `--end` pushes «Flere valg» to the end
+   of its line and opens leftward. `[hidden]` again: `display: flex` would show a closed panel. */
+.munin-explorer-list-menu {
+  position: relative;
+}
+
+.munin-explorer-list-menu__panel {
+  align-items: stretch;
+  background-color: rgb(255, 255, 255);
+  border: 1px solid rgb(230, 230, 237);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(38, 32, 69, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: calc(100vw - 32px);
+  min-width: 14rem;
+  padding: 8px;
+  left: 0;
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 99;
+}
+
+.munin-explorer-list-menu__panel[hidden] {
+  display: none;
+}
+
+.munin-explorer-list-menu--end {
+  margin-left: auto;
+}
+
+.munin-explorer-list-menu--end > .munin-explorer-list-menu__panel {
+  left: auto;
+  right: 0;
+}
+
+@media (max-width: 479px) {
+  .munin-explorer-page__actions:has(> .munin-explorer-list-menu) {
+    position: relative;
+  }
+
+  .munin-explorer-list-menu {
+    position: static;
+  }
+
+  .munin-explorer-list-menu > .munin-explorer-list-menu__panel {
+    left: 0;
+    margin-top: 4px;
+    right: 0;
+    top: auto;
+  }
+}
+
+.munin-explorer-list-menu > button::after {
+  background-color: currentColor;
+  content: "";
+  flex: none;
+  height: 1rem;
+  margin-left: 8px;
+  mask: url(../img/icons/keyboard-arrow/icon_down.svg) no-repeat center/contain;
+  width: 1rem;
+}
+
+.munin-explorer-list-menu > button[aria-expanded="true"]::after {
+  mask-image: url(../img/icons/keyboard-arrow/icon_up.svg);
+}
+
+.munin-explorer-list-menu > button {
+  padding-right: 8px;
+}
+
+.munin-explorer-list-menu__panel > button {
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .munin-explorer-page__facts {

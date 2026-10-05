@@ -15,7 +15,7 @@ else if (State?.IsAuthenticated == true)
        third. (Fhi.Metadata-sqbei) *@
     <DetailPage ViewRoot="" ViewMain=""
                 Eyebrow="@ShownListEyebrow"
-                Actions="@(HasActions ? ActionRow : null)"
+                Actions="@ActionRow"
                 data-munin-explorer-version="@ExplorerVersion.Current">
         <Header>
             @* The chassis's own header name: the other three wear a prefixed one beside it and this
@@ -34,111 +34,13 @@ else if (State?.IsAuthenticated == true)
         </Header>
         <ChildContent>
 
-            @* helsedata's own variants: primary for the one action that makes something new,
-               ghost-blue for the rest. Create and rename were standing forms and are disclosures. *@
-            <div>
-                <button class="hd-button-square button-square--primary"
-                        type="button"
-                        id="@CreateToggleId"
-                        aria-expanded="@Expanded(_creating)"
-                        @ref="_createToggle"
-                        @onclick="ToggleCreatingFromControl">@T.AddNewList</button>
-
-                @* Never disabled: it acts on no list, so an empty one does not stand in its way. *@
-                <button class="hd-button-square button-square--ghost-blue"
-                        type="button"
-                        id="@OpenSharedToggleId"
-                        aria-expanded="@Expanded(_openingShared)"
-                        @onclick="ToggleOpeningSharedFromControl">@T.OpenSharedList</button>
-
-                @* These act on the list on screen, so none is drawn when there is none. *@
-                @if (_shownList is not null)
-                {
-                    <button class="hd-button-square button-square--ghost-blue"
-                            type="button"
-                            id="@RenameToggleId"
-                            aria-expanded="@Expanded(_renaming)"
-                            @ref="_renameToggle"
-                            @onclick="ToggleRenamingFromControl">@T.RenameList</button>
-
-                    @* Refused on an empty list the way sharing is, and described by the same reason. *@
-                    <button class="hd-button-square button-square--ghost-blue"
-                            type="button"
-                            id="@CopyToggleId"
-                            aria-expanded="@Expanded(_copying)"
-                            aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
-                            aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
-                            @onclick="ToggleCopyingFromControl">@T.CopyList</button>
-
-                    @* Two steps because the API offers no undo, and in the page rather than a JS
-                       confirm a host's CSP may suppress. One control, so neither step removes the
-                       element under the reader's focus. Ghost, not ghost-blue: it destroys something. *@
-                    <button class="hd-button-square button-square--ghost"
-                            type="button"
-                            id="@DeleteButtonId"
-                            aria-expanded="@Expanded(_confirmingDelete)"
-                            @onclick="ToggleConfirmingDeleteFromControl">
-                        @(_confirmingDelete ? T.ConfirmDeleteNo : T.DeleteList)
-                    </button>
-
-                    @if (_confirmingDelete)
-                    {
-                        @* The question describes the button that acts on it rather than being announced
-                           on its own: a role="alert" inserted and filled in one update is announced
-                           unreliably, which the alert region below is already shaped around. *@
-                        <span id="@ConfirmDeleteId">@T.ConfirmDeleteList</span>
-                        <button class="hd-button-square button-square--ghost"
-                                type="button"
-                                aria-describedby="@ConfirmDeleteId"
-                                @onclick="DeleteListAsync">@T.ConfirmDeleteYes</button>
-                    }
-
-                    @* The delete control's shape, for the rows rather than the list. *@
-                    <button class="hd-button-square button-square--ghost"
-                            type="button"
-                            id="@EmptyButtonId"
-                            aria-expanded="@Expanded(_confirmingEmpty)"
-                            aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
-                            aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
-                            @onclick="ToggleConfirmingEmptyFromControl">
-                        @(_confirmingEmpty ? T.ConfirmEmptyNo : T.EmptyListAction)
-                    </button>
-
-                    @if (_confirmingEmpty)
-                    {
-                        <span id="@ConfirmEmptyId">@T.ConfirmEmptyList</span>
-                        <button class="hd-button-square button-square--ghost"
-                                type="button"
-                                aria-describedby="@ConfirmEmptyId"
-                                @onclick="EmptyListAsync">@T.ConfirmEmptyYes</button>
-                    }
-
-                    @* The reason is visible and wired by aria-describedby rather than a title
-                       tooltip, which a keyboard reader never sees. aria-disabled for the reason the
-                       create button gives; ToggleSharingFromControl refuses the press. *@
-                    <button class="hd-button-square button-square--ghost-blue"
-                            type="button"
-                            id="@ShareToggleId"
-                            aria-expanded="@Expanded(_sharingList)"
-                            aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
-                            aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
-                            @onclick="ToggleSharingFromControl">@T.ShareList</button>
-
-                    @* The refused buttons' reason. Hidden to sight, not removed, while the sentence below
-                       says the same, so it is said once and the buttons still describe themselves. *@
-                    @if (ShownListIsEmpty)
-                    {
-                        <span id="@ListEmptyReasonId" class="@(ListEmptySaidBelow ? "screenreader-only" : null)">@T.ListIsEmpty</span>
-                    }
-                }
-            </div>
-
             @if (_openingShared)
             {
                 <div>
                     <label class="form-element__label" for="@SharedCodeFieldId">@T.SharedListCodeLabel</label>
                     <input type="text"
                            id="@SharedCodeFieldId"
+                           @ref="_sharedCodeField"
                            autocomplete="off"
                            @bind="_sharedCodeInput"
                            @bind:event="onchange" />
@@ -154,7 +56,7 @@ else if (State?.IsAuthenticated == true)
             {
                 <div>
                     <label class="form-element__label" for="@ShareCodeFieldId">@T.ShareCodeLabel</label>
-                    <input type="text" id="@ShareCodeFieldId" readonly value="@made.Code" />
+                    <input type="text" id="@ShareCodeFieldId" readonly value="@made.Code" @ref="_shareCodeField" />
 
                     @if (made.Link is { } link)
                     {
@@ -205,6 +107,7 @@ else if (State?.IsAuthenticated == true)
                         <input type="text"
                                class="input__field input__field--small"
                                id="@RenameListNameId"
+                               @ref="_renameField"
                                @bind="_renameName"
                                @bind:event="onchange" />
                     </div>
@@ -222,6 +125,7 @@ else if (State?.IsAuthenticated == true)
                     <label class="form-element__label" for="@CopyListNameId">@T.CopyListName</label>
                     <input type="text"
                            id="@CopyListNameId"
+                           @ref="_copyField"
                            aria-invalid="@(CopyNameMessage is null ? null : "true")"
                            aria-describedby="@CopyNameDescribedBy"
                            @bind="_copyName"
@@ -587,9 +491,7 @@ else if (State?.IsAuthenticated == true)
         </DetailPage>
     </text>;
 
-    // The chassis's action row, which this surface alone did not fill: the picker and the download
-    // sat loose in the flow while the other three put their actions here. A fragment rather than
-    // child content so it can be withheld — see HasActions, and DetailPage.razor:22.
+    // The chassis's action row: the picker, creating, downloading and the fold holding the rest.
     private RenderFragment ActionRow => @<text>
         @* The picker is only a choice when there is one to make. With a single list it
            would be a control whose every option is already selected. *@
@@ -608,19 +510,33 @@ else if (State?.IsAuthenticated == true)
             </label>
         }
 
+        <button class="hd-button-square button-square--primary"
+                type="button"
+                id="@CreateToggleId"
+                aria-expanded="@Expanded(_creating)"
+                @ref="_createToggle"
+                @onclick="ToggleCreatingFromControl">@T.AddNewList</button>
+
         @* Only when there is something to download. A button that exports an empty list would
            produce a file with a header row and nothing under it. *@
         @if (_page is not null && _page.TotalCount > 0)
         {
-            @* Folded, so three controls do not stand across a row meant for actions. The user
-               agent owns this toggle, which is why there is no handler and no aria-expanded. *@
-            <details>
-                <summary>@T.DownloadList</summary>
+            @* Folded the way «Flere valg» is, so the row has one way of opening things. The panel is the
+               named group: three controls that only make sense together, named as the fold is. *@
+            <div class="munin-explorer-list-menu" @onkeydown="CloseDownloadOnEscape">
+                <button class="hd-button-square button-square--ghost-blue"
+                        type="button"
+                        id="@DownloadToggleId"
+                        aria-expanded="@Expanded(_downloadOpen)"
+                        aria-controls="@DownloadPanelId"
+                        @ref="_downloadToggle"
+                        @onclick="ToggleDownloadFromControl">@T.DownloadList</button>
 
-                @* A named group, not just a visual one: three controls that only make sense
-                   together, and a screen reader moving between them otherwise hears three
-                   unrelated widgets. Named as the fold is, so the fold says what it opens. *@
-                <div role="group" aria-label="@T.DownloadList">
+                <div class="munin-explorer-list-menu__panel"
+                     id="@DownloadPanelId"
+                     role="group"
+                     aria-label="@T.DownloadList"
+                     hidden="@(!_downloadOpen)">
                     <label>
                         <input type="checkbox"
                                checked="@_includeKodeverk"
@@ -628,9 +544,8 @@ else if (State?.IsAuthenticated == true)
                         @T.IncludeKodeverk
                     </label>
 
-                    @* Two formats, two buttons. aria-disabled while a download is in flight
-                       rather than disabled, for the reason the pager gives: disabling the
-                       element that has focus drops focus to <body>. *@
+                    @* aria-disabled while a download is in flight rather than disabled, for the reason
+                       the pager gives: disabling the element that has focus drops focus to <body>. *@
                     <button class="hd-button-square button-square--ghost-blue"
                             type="button"
                             aria-disabled="@AriaDisabled(!_downloading)"
@@ -641,8 +556,109 @@ else if (State?.IsAuthenticated == true)
                             aria-disabled="@AriaDisabled(!_downloading)"
                             @onclick="() => DownloadAsync(ExportFormat.Csv)">@T.DownloadCsv</button>
                 </div>
-            </details>
+            </div>
         }
+
+        @* Everything but creating and downloading, so the row is one line at 1280 and the extras
+           stop standing five rows deep at 320. Items stay in the DOM so their ids still describe. *@
+        <div class="munin-explorer-list-menu munin-explorer-list-menu--end" @onkeydown="CloseMenuOnEscape">
+            <button class="hd-button-square button-square--ghost-blue"
+                    type="button"
+                    id="@MenuToggleId"
+                    aria-expanded="@Expanded(_menuOpen)"
+                    aria-controls="@MenuPanelId"
+                    @ref="_menuToggle"
+                    @onclick="ToggleMenuFromControl">@T.MoreActions</button>
+
+            <div class="munin-explorer-list-menu__panel" id="@MenuPanelId" hidden="@(!_menuOpen)">
+                @* These act on the list on screen, so none is drawn when there is none. *@
+                @if (_shownList is not null)
+                {
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            id="@RenameToggleId"
+                            aria-expanded="@Expanded(_renaming)"
+                            @onclick="ChooseRenamingFromMenu">@T.RenameList</button>
+
+                    @* The reason is visible and wired by aria-describedby rather than a title
+                       tooltip, which a keyboard reader never sees. aria-disabled for the reason the
+                       create button gives; ToggleSharingFromControl refuses the press. *@
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            id="@ShareToggleId"
+                            aria-expanded="@Expanded(_sharingList)"
+                            aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
+                            aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
+                            @onclick="ChooseSharingFromMenu">@T.ShareList</button>
+
+                    @* Refused on an empty list the way sharing is, and described by the same reason. *@
+                    <button class="hd-button-square button-square--ghost-blue"
+                            type="button"
+                            id="@CopyToggleId"
+                            aria-expanded="@Expanded(_copying)"
+                            aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
+                            aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
+                            @onclick="ChooseCopyingFromMenu">@T.CopyList</button>
+
+                    @* The delete control's shape, for the rows rather than the list. *@
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            id="@EmptyButtonId"
+                            aria-expanded="@Expanded(_confirmingEmpty)"
+                            aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
+                            aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
+                            @onclick="ToggleConfirmingEmptyFromControl">
+                        @(_confirmingEmpty ? T.ConfirmEmptyNo : T.EmptyListAction)
+                    </button>
+
+                    @if (_confirmingEmpty)
+                    {
+                        <span id="@ConfirmEmptyId">@T.ConfirmEmptyList</span>
+                        <button class="hd-button-square button-square--ghost"
+                                type="button"
+                                aria-describedby="@ConfirmEmptyId"
+                                @onclick="ConfirmEmptyFromMenuAsync">@T.ConfirmEmptyYes</button>
+                    }
+
+                    @* Two steps because the API offers no undo, and in the page rather than a JS
+                       confirm a host's CSP may suppress. One control, so neither step removes the
+                       element under the reader's focus. Ghost, not ghost-blue: it destroys something. *@
+                    <button class="hd-button-square button-square--ghost"
+                            type="button"
+                            id="@DeleteButtonId"
+                            aria-expanded="@Expanded(_confirmingDelete)"
+                            @onclick="ToggleConfirmingDeleteFromControl">
+                        @(_confirmingDelete ? T.ConfirmDeleteNo : T.DeleteList)
+                    </button>
+
+                    @if (_confirmingDelete)
+                    {
+                        @* The question describes the button that acts on it rather than being announced
+                           on its own: a role="alert" inserted and filled in one update is announced
+                           unreliably, which the alert region below is already shaped around. *@
+                        <span id="@ConfirmDeleteId">@T.ConfirmDeleteList</span>
+                        <button class="hd-button-square button-square--ghost"
+                                type="button"
+                                aria-describedby="@ConfirmDeleteId"
+                                @onclick="ConfirmDeleteFromMenuAsync">@T.ConfirmDeleteYes</button>
+                    }
+
+                    @* The refused buttons' reason. Hidden to sight, not removed, while the sentence below
+                       says the same, so it is said once and the buttons still describe themselves. *@
+                    @if (ShownListIsEmpty)
+                    {
+                        <span id="@ListEmptyReasonId" class="@(ListEmptySaidBelow ? "screenreader-only" : null)">@T.ListIsEmpty</span>
+                    }
+                }
+
+                @* Never disabled: it acts on no list, so an empty one does not stand in its way. *@
+                <button class="hd-button-square button-square--ghost-blue"
+                        type="button"
+                        id="@OpenSharedToggleId"
+                        aria-expanded="@Expanded(_openingShared)"
+                        @onclick="ChooseOpeningSharedFromMenu">@T.OpenSharedList</button>
+            </div>
+        </div>
     </text>;
 }
 

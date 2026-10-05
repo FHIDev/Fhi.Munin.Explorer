@@ -11,7 +11,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// The saved-list view: what is in the list the reader is looking at, and the two things they can
 /// do to it. Shares its state with the explorer's save button, and owns its own paging.
 /// </summary>
-public class VariableListViewTest : ExplorerTestContext
+public partial class VariableListViewTest : ExplorerTestContext
 {
     private static readonly Guid ListId = new("11111111-1111-1111-1111-111111111111");
 
@@ -33,7 +33,7 @@ public class VariableListViewTest : ExplorerTestContext
     private static VariableListItem Orphan() =>
         new() { VariableId = Guid.NewGuid(), AddedAt = DateTimeOffset.UtcNow };
 
-    private sealed class ListClient(params VariableListItem[] items) : EmptyMuninExplorerClient
+    private class ListClient(params VariableListItem[] items) : EmptyMuninExplorerClient
     {
         public int VariablesCalls { get; private set; }
         public int RemoveCalls { get; private set; }
@@ -2201,7 +2201,7 @@ public class VariableListViewTest : ExplorerTestContext
         cut.FindAll("select option")[0].TextContent.Trim();
 
     [Fact]
-    public async Task View_WhenAListWasJustRenamed_ThenTheFormClosesAndFocusReturnsToRename()
+    public async Task View_WhenAListWasJustRenamed_ThenTheFormClosesAndFocusReturnsToTheFold()
     {
         // The mirror of the create case, and it needs its own: the holder patches the name in place
         // rather than refetching, so this path never re-renders from an API answer.
@@ -2213,11 +2213,11 @@ public class VariableListViewTest : ExplorerTestContext
 
         Assert.Equal(1, client.RenameCalls);
         Assert.Empty(cut.FindAll("input[id^='munin-explorer-rename-list-']"));
-        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_renameToggle"), FocusedId()));
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_menuToggle"), FocusedId()));
     }
 
     [Fact]
-    public async Task View_WhenARenameSucceedsWithTheCreateFormAlsoOpen_ThenFocusStillReturnsToRename()
+    public async Task View_WhenARenameSucceedsWithTheCreateFormAlsoOpen_ThenFocusStillReturnsToTheFold()
     {
         // The forms open independently; one already open is not the reader moving on, and the folded
         // rename form held their focus.
@@ -2229,7 +2229,7 @@ public class VariableListViewTest : ExplorerTestContext
         await PressAsync(cut, "Lagre navnet");
 
         Assert.Single(cut.FindAll("input[id^='munin-explorer-new-list-']"));
-        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_renameToggle"), FocusedId()));
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_menuToggle"), FocusedId()));
     }
 
     [Fact]
@@ -2248,8 +2248,9 @@ public class VariableListViewTest : ExplorerTestContext
         client.ReleaseVariables();
         await create;
 
+        // Choosing rename from the fold put focus in its field; the create finishing must not take it.
         await cut.InvokeAsync(() => { });
-        Assert.DoesNotContain(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
+        Assert.Equal(Held(cut, "_renameField"), FocusedId());
     }
 
     [Fact]
@@ -2273,7 +2274,7 @@ public class VariableListViewTest : ExplorerTestContext
         await cut.InvokeAsync(() => { });
 
         Assert.Single(cut.FindAll("input[id^='munin-explorer-new-list-']"));
-        Assert.NotEqual(Held(cut, "_renameToggle"), FocusedId());
+        Assert.NotEqual(Held(cut, "_menuToggle"), FocusedId());
         client.ReleaseVariables();
         await create;
     }
@@ -4171,17 +4172,14 @@ public class VariableListViewTest : ExplorerTestContext
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
         var cut = RenderView(client);
 
-        var fold = cut.Find($"{ActionRow} details");
+        var toggle = cut.Find(DownloadToggle);
 
         // The fold has to say what it opens, and it says it in the words the group is named by.
-        Assert.Equal("Last ned listen", fold.QuerySelector("summary")!.TextContent.Trim());
-        Assert.Equal(
-            "Last ned listen",
-            cut.Find($"{ActionRow} details [role=group]").GetAttribute("aria-label"));
+        Assert.Equal("Last ned", toggle.TextContent.Trim());
+        Assert.Equal("Last ned", cut.Find($"{ActionRow} [role=group]").GetAttribute("aria-label"));
 
-        // A <details> belongs to the user agent, so there is no handler to send Enter to. This is
-        // what Enter on the summary does in a browser; everything after it is dispatched.
-        ((AngleSharp.Html.Dom.IHtmlDetailsElement)fold).IsOpen = true;
+        await cut.InvokeAsync(() => toggle.Click(new MouseEventArgs { Detail = 0 }));
+        Assert.Equal("true", cut.Find(DownloadToggle).GetAttribute("aria-expanded"));
 
         await cut.InvokeAsync(() =>
             cut.Find($"{ActionRow} [role=group] input[type=checkbox]").Change(true));
@@ -4210,7 +4208,7 @@ public class VariableListViewTest : ExplorerTestContext
         Assert.Empty(cut.FindAll(".munin-explorer-page__header select"));
 
         // The same container the download moved into, so the two cannot be split again quietly.
-        Assert.Single(cut.FindAll($"{ActionRow} details"));
+        Assert.Single(cut.FindAll($"{ActionRow} {DownloadToggle}"));
     }
 
     [Fact]
@@ -4243,14 +4241,14 @@ public class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Actions_WhenTheOneListIsEmpty_ThenTheRowIsNotDrawnAtAll()
+    public void Actions_WhenTheOneListIsEmpty_ThenTheRowHoldsNoPickerAndNoDownload()
     {
-        // Both controls in the row are conditional and both are off here, but a fragment that
-        // renders nothing is still a fragment — the chassis draws the row for any non-null one,
-        // and Stiler gives it 24px of margin (DetailPageTest.Actions_WhenNoViewFillsIt...).
+        // Creating and the fold are always there; the picker and the download have nothing to offer.
         var cut = RenderView(new ListClient());
 
-        Assert.Empty(cut.FindAll(ActionRow));
+        var row = cut.Find(ActionRow);
+        Assert.Empty(row.QuerySelectorAll("select"));
+        Assert.Empty(row.QuerySelectorAll(DownloadToggle));
     }
 
     private static readonly Guid AlsKildeId = new("aaaaaaaa-0000-0000-0000-0000000000a1");
