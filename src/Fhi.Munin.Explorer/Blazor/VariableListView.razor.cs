@@ -1461,6 +1461,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                     CloseRow();
                 }
 
+                ForgetNotesFor(list, variableId);
+
                 await RetreatFromEmptyPageAsync();
             }
             else

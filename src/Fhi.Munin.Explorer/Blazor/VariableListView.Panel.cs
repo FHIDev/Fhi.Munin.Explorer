@@ -36,7 +36,7 @@ public sealed partial class VariableListView
     private readonly Dictionary<(Guid List, Guid Variable), int> _notesWrites = [];
     private DesiredDataFailure _notesFailure;
 
-    private sealed record NotesWrite(string Text, bool Saved, int? RefusedMax);
+    private sealed record NotesWrite(string Text, bool Saved, int? RefusedMax, bool Pending = false);
     private string? _linkStatus;
     private bool _linkNotCopied;
 
@@ -268,10 +268,22 @@ public sealed partial class VariableListView
 
     private string? NotesInvalid => OpenNotesWrite?.RefusedMax is null ? null : "true";
 
-    // The refusal is about the text in the field, so it is said there; a failed save goes to the page's alert.
-    private string? NotesRefusal => OpenNotesWrite?.RefusedMax is { } max ? T.NotesTooLong(max) : null;
+    // Said in the field: a refusal names the ceiling, and unsaved text kept from a failed save says so.
+    private string? NotesRefusal => OpenNotesWrite switch
+    {
+        { RefusedMax: { } max } => T.NotesTooLong(max),
+        { Saved: false, Pending: false } => T.NotesUnsaved,
+        _ => null,
+    };
 
     private string NotesStatusClass => NotesRefusal is null ? "caption" : "infobox infobox--bg-yellow";
+
+    // A variable leaving the list takes its unsaved notes with it, so they cannot return on a re-add.
+    private void ForgetNotesFor(Guid list, Guid variable)
+    {
+        _notesWritten.Remove((list, variable));
+        _notesWrites.Remove((list, variable));
+    }
 
     private string? NotesMessage => _notesFailure switch
     {
@@ -302,9 +314,8 @@ public sealed partial class VariableListView
         _notesWrites[key] = sequence;
 
         _notesDraft = trimmed;
-        _notesWritten[key] = new NotesWrite(trimmed, Saved: false, RefusedMax: null);
+        _notesWritten[key] = new NotesWrite(trimmed, Saved: false, RefusedMax: null, Pending: true);
         ForgetFailures();
-        _notesFailure = DesiredDataFailure.None;
 
         NotesWrite written;
         var failure = DesiredDataFailure.None;
@@ -342,6 +353,12 @@ public sealed partial class VariableListView
         }
 
         _notesWritten[key] = written;
-        _notesFailure = failure;
+
+        // Only ever set: a success clearing it would take away the sentence another row's failure put
+        // there, and a failure from a list the reader has left belongs to that list.
+        if (failure is not DesiredDataFailure.None && _shownList == list)
+        {
+            _notesFailure = failure;
+        }
     }
 }

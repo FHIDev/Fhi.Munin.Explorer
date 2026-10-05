@@ -615,6 +615,7 @@ public class ListRowPanelTest : ExplorerTestContext
         var again = OpenNotes(cut);
 
         Assert.Equal("tekst som ikke ble lagret", again.GetAttribute("value"));
+        Assert.Equal("Notatene er ikke lagret.", NotesStatusText(cut, again));
         Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
     }
 
@@ -677,6 +678,67 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.Find("td.munin-explorer-dataitem-main__desiredData input").Change("C76");
 
         Assert.Equal("", PageAlert(cut));
+    }
+
+    [Fact]
+    public void Notes_WhileTheSaveIsOut_ThenTheFieldDoesNotClaimTheyAreUnsaved()
+    {
+        var client = new PanelClient(DatabaseVersion) { NotesGate = new TaskCompletionSource() };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("på vei");
+
+        Assert.Equal("", NotesStatusText(cut, OpenNotesField(cut)));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAnotherRowsSaveSucceedsAfterAFailure_ThenTheFailureIsStillSaid()
+    {
+        var failing = new TaskCompletionSource();
+        var succeeding = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion, Age);
+        client.NotesGates.Enqueue((failing, new DesiredDataResult(DesiredDataOutcome.NotFound)));
+        client.NotesGates.Enqueue((succeeding, new DesiredDataResult(DesiredDataOutcome.Saved)));
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler");
+        OpenNotes(cut, "Alder").Change("lagres");
+        await cut.InvokeAsync(failing.SetResult);
+        await cut.InvokeAsync(succeeding.SetResult);
+
+        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAFailureLandsAfterTheReaderSwitchedList_ThenTheOtherListSaysNothing()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new PanelClient(DatabaseVersion) { TwoLists = true, NotesGate = gate, NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("feiler i liste A");
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        await cut.InvokeAsync(gate.SetResult);
+
+        Assert.Equal("", PageAlert(cut));
+    }
+
+    [Fact]
+    public async Task Notes_WhenAVariableWithUnsavedNotesIsRemovedAndAddedBack_ThenTheyAreGone()
+    {
+        var client = new PanelClient(DatabaseVersion with { Notes = "lagret" }, Age) { NotesAnswer = null };
+        var cut = RenderView(client);
+
+        OpenNotes(cut).Change("ikke lagret");
+        RemoveButton(cut, "Databaseversjon").Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("th[scope=row] button")));
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.AddVariablesAsync(ListId, [DatabaseVersion.VariableId]));
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("th[scope=row] button").Count));
+
+        var field = OpenNotes(cut);
+        Assert.Equal("lagret", field.GetAttribute("value"));
+        Assert.Equal("", NotesStatusText(cut, field));
     }
 
     [Fact]
