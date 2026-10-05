@@ -140,6 +140,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _focusAfterRename;
     private int _formsOpenAtCreate;
     private int _formsOpenAtRename;
+    private int _movesAtRename;
     private ElementReference _listPicker;
     private ElementReference _createToggle;
     private ElementReference _listRegion;
@@ -616,8 +617,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         // Never while the reader has moved on to a form of their own. For a create or a rename only a
         // form opened during that call counts, against its own record, as the two can overlap.
+        // A fold opened and shut during a rename leaves no open state, so its moves count too. Not for a
+        // create: it switches to the new list, which closes the folds and may draw no «Last ned» to stay on.
         var since = afterCreate ? _formsOpenAtCreate : afterRename ? _formsOpenAtRename : 0;
-        var movedOn = (OpenForms() & ~since) != 0;
+        var movesSince = afterRename ? _movesAtRename : _readerMoves;
+        var movedOn = (OpenForms() & ~since) != 0 || _readerMoves != movesSince;
 
         if (movedOn)
         {
@@ -1352,6 +1356,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         ForgetFailures();
         _formsOpenAtRename = OpenForms();
+        _movesAtRename = _readerMoves;
 
         // Renaming never reads the page again: its own notification names _shownList but carries
         // AffectsRows: false, so ShouldReloadFor skips it without anything armed here for it.

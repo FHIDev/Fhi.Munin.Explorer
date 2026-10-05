@@ -552,4 +552,68 @@ public partial class VariableListViewTest
 
         Assert.True(Open(cut, MenuPanel));
     }
+
+    [Fact]
+    public async Task Download_WhenOpenedAndClosedWhileARenameFinishes_ThenFocusStaysOnItsToggle()
+    {
+        // Both folds are shut again when the rename lands, so their open state alone cannot say the reader moved on.
+        var renameHeld = new TaskCompletionSource();
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DuringRename = () => renameHeld.Task };
+        var cut = RenderView(client);
+        RenameField(cut).Change("Hjertet mitt");
+        var rename = PressAsync(cut, "Lagre navnet");
+        cut.Find(DownloadToggle).Click();
+        cut.Find($"{DownloadPanel} button").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_downloadToggle"), FocusedId()));
+
+        await cut.InvokeAsync(renameHeld.SetResult);
+        await rename;
+
+        cut.WaitForAssertion(() => Assert.Equal("Hjertet mitt", ListHeading(cut).TextContent));
+        await cut.InvokeAsync(() => { });
+        Assert.Equal(Held(cut, "_downloadToggle"), FocusedId());
+    }
+
+    [Fact]
+    public async Task Menu_WhenOpenedAndClosedWhileARenameFinishes_ThenFocusIsNotMovedAgain()
+    {
+        var renameHeld = new TaskCompletionSource();
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { DuringRename = () => renameHeld.Task };
+        var cut = RenderView(client);
+        RenameField(cut).Change("Hjertet mitt");
+        var rename = PressAsync(cut, "Lagre navnet");
+        OpenMenu(cut);
+        Menu(cut).Click();
+        var focusCalls = JSInterop.Invocations.Count(i => i.Identifier == "Blazor._internal.domWrapper.focus");
+
+        await cut.InvokeAsync(renameHeld.SetResult);
+        await rename;
+
+        cut.WaitForAssertion(() => Assert.Equal("Hjertet mitt", ListHeading(cut).TextContent));
+        await cut.InvokeAsync(() => { });
+        Assert.Equal(focusCalls, JSInterop.Invocations.Count(i => i.Identifier == "Blazor._internal.domWrapper.focus"));
+    }
+
+    [Fact]
+    public async Task Download_WhenOpenedAndClosedWhileACreateFinishes_ThenFocusStillGoesToThePicker()
+    {
+        // The create switches to the new, empty list, which draws no «Last ned»: staying would drop focus to <body>.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER"));
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find(DownloadToggle)));
+        client.StallPageReads = true;
+
+        CreateField(cut).Change("Kreft og svulster");
+        var create = PressAsync(cut, "Opprett liste");
+        cut.WaitForAssertion(() => Assert.Equal("Kreft og svulster", ListHeading(cut).TextContent));
+        cut.Find(DownloadToggle).Click();
+        cut.Find($"{DownloadPanel} button").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_downloadToggle"), FocusedId()));
+        client.ReleaseVariables();
+        await create;
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(DownloadToggle)));
+        await cut.InvokeAsync(() => { });
+        Assert.Equal(Held(cut, "_listPicker"), FocusedId());
+    }
 }
