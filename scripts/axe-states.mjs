@@ -24,7 +24,7 @@ import {
   loadTreeFixture, panel as filterPanel, tree as kildeTree, boxes as treeBoxes, chips as filterChips,
   until as untilTrue,
 } from './tree-states.mjs';
-import { names as treeNames, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH } from './tree-fixture.mjs';
+import { names as treeNames, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, SAVE_ALL_CONFIRM_SEARCH } from './tree-fixture.mjs';
 import {
   STATISTICS_SEARCH, SUPPRESSED_SEARCH, STATISTICS_NAME, SUPPRESSED_NAME, LONG_LABEL,
 } from './statistics-fixture.mjs';
@@ -800,17 +800,20 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // «Lagre disse variablene» on the captured 18289 hits: the question 200 or more asks first.
+  // «Lagre disse variablene» on 250 hits: the question 200 or more asks first.
   'explorer-save-all-confirm': async page => {
     await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    await page.locator('input.searchbox__freetext').first().fill(SAVE_ALL_CONFIRM_SEARCH);
+    await press(page, 'Søk');
+    await page.locator('.munin-explorer-results__toolbar', { hasText: '250' }).first().waitFor({ timeout: findTimeout });
     await press(page, 'Lagre disse variablene');
     await page.getByRole('button', { name: 'Ja, lagre dem', exact: true }).waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // Answered yes: more than the API returns, so the alert asks the reader to narrow the result.
+  // The captured 18289 hits: more than the API returns, so the press asks the reader to narrow it.
   'explorer-save-all-too-many': async page => {
-    await states['explorer-save-all-confirm'](page);
-    await press(page, 'Ja, lagre dem');
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    await press(page, 'Lagre disse variablene');
     await page.getByRole('alert').filter({ hasText: 'Begrens utvalget' }).waitFor({ state: 'visible', timeout: findTimeout });
   },
 

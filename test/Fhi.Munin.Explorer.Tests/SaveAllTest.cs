@@ -311,6 +311,35 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task State_AnEmptySetSavesNothingAndMakesNoList()
+    {
+        var client = new Client([Variable("Vekt")], 1, []) { HasList = false };
+        Render(client);
+
+        var result = await Services.GetRequiredService<VariableListState>().SaveAllAsync([], "Min variabelliste");
+
+        Assert.Null(result);
+        Assert.Equal(0, client.CreateCalls);
+        Assert.Empty(client.Adds);
+    }
+
+    [Fact]
+    public void Confirm_AskingAgainClearsThisSearchsLastFailure()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var cut = Render(new Client(rows, 250, [rows[0].Id]) { RateLimitAdd = true });
+
+        SaveAll(cut)!.Click();
+        Ja(cut);
+        Assert.Contains("for mange forespørsler", Alert(cut));
+
+        SaveAll(cut)!.Click();
+
+        Assert.True(Asking(cut));
+        Assert.Equal("", Alert(cut));
+    }
+
+    [Fact]
     public void Confirm_DoesNotSurviveASignOut()
     {
         var rows = new[] { Variable("Vekt") };
@@ -403,7 +432,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Confirm_IsDroppedWhenTheSearchChanges()
+    public void Confirm_IsNotShownOnAnotherSearch()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 250, [rows[0].Id]);

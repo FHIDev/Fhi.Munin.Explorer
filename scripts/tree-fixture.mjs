@@ -7,6 +7,8 @@ export const LARGE_COUNT = 120;
 export const LONG_NAME_SEARCH = 'browser-long-name';
 // A result small enough for «Lagre disse variablene» to save without asking (Fhi.Metadata-dfy9u.8).
 export const SAVE_ALL_SEARCH = 'browser-save-all';
+// Between 200 and the API's 2000, so the press asks before it saves.
+export const SAVE_ALL_CONFIRM_SEARCH = 'browser-save-all-confirm';
 export const LONG_NAME = 'Antall_tidligere_fødsler_og_dødfødsler_etter_22_fullgåtte_uker';
 export const names = {
   kilde: 'Prøvekilde', delkilde: 'Delkilde', first: 'Samling A', second: 'Samling B',

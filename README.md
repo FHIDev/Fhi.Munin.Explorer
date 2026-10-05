@@ -887,7 +887,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-data-list__item__row--header` | handle |
   | `munin-explorer-data-list__result` | handle |
   | `munin-explorer-data-list__save-status` | handle |
-  | `munin-explorer-data-list__saved-notice` | meaning |
+  | `munin-explorer-data-list__saved-notice` | handle |
   | `munin-explorer-datacollections` | id |
   | `munin-explorer-dataitem-header` | handle |
   | `munin-explorer-dataitem-header__button` | handle |

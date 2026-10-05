@@ -166,7 +166,7 @@ public partial class VariableSearch
 
         if (SaveAllWouldAsk)
         {
-            // Only this search's old message goes: another search's «Lagret» still stands when the reader returns to it.
+            // Asking clears only this search's old message; another search's outcome stays until the next save.
             if (SaveAllShown is not null)
             {
                 _saveAll = null;
