@@ -3794,6 +3794,53 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Sort_WhenTheHostSortsAfterAFailedFirstSearch_ThenItKeepsTheSearchTerm()
+    {
+        // Nothing had been answered yet, so the last good term was none: the sort read the whole catalogue under «tale».
+        var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE"))) { FailSearch = true };
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
+        client.FailSearch = false;
+
+        cut.Render(b => b.Add(c => c.Search, "tale").Add(c => c.Sort, SortField.Code));
+
+        cut.WaitForAssertion(() => Assert.Equal(SortField.Code, client.LastSort));
+        Assert.Equal("tale", client.LastSearch);
+        Assert.Equal("tale", client.FacetSearch);
+    }
+
+    [Fact]
+    public void Sort_WhenTheHostSortsAfterALaterSearchFailed_ThenTheCountsFollowTheRowsTerm()
+    {
+        // The rows go out for the failed term in the box; counts left from the earlier one would describe other rows.
+        var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        client.FailSearch = true;
+        cut.Find(".searchbox__freetext").Change("syn");
+        cut.Find("form").Submit();
+        client.FailSearch = false;
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        cut.WaitForAssertion(() => Assert.Equal(SortField.Code, client.LastSort));
+        Assert.Equal("syn", client.LastSearch);
+        Assert.Equal("syn", client.FacetSearch);
+    }
+
+    [Fact]
+    public void Sort_WhenTheHostSortsAfterAnUntrimmedSearch_ThenItSendsTheTrimmedTerm()
+    {
+        var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        cut.Find(".searchbox__freetext").Change("  tale ");
+        cut.Find("form").Submit();
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        cut.WaitForAssertion(() => Assert.Equal(SortField.Code, client.LastSort));
+        Assert.Equal("tale", client.LastSearch);
+    }
+
+    [Fact]
     public void Sort_WhenTheHostSortsWithTheCountsAlreadyIn_ThenTheyAreNotReadAgain()
     {
         // An ordering does not move the counts, so asking again would only spend the reader's limit.

@@ -215,13 +215,14 @@ public partial class VariableSearch
         var previousDirection = _direction;
         var previousPage = _page;
         var previousKeepPager = _keepPager;
+        var countedSearch = _executedSearch;
 
         _sort = Sort;
         _direction = Direction;
         _page = 1;
         _keepPager = false;
 
-        if (!await FetchAsync(_executedSearch))
+        if (!await FetchAsync(_requestedSearch))
         {
             _sort = previousSort;
             _direction = previousDirection;
@@ -236,8 +237,8 @@ public partial class VariableSearch
 
         ShowRestoredSortColumn();
 
-        // After a first read that failed, this is the rows' first arrival, and nothing else would ask for the counts.
-        if (_facets is null)
+        // After a failed read the rows can arrive for a term the counts do not yet describe, or before any counts at all.
+        if (_facets is null || _executedSearch != countedSearch)
         {
             await FetchFacetsAsync();
         }
@@ -686,6 +687,7 @@ public partial class VariableSearch
     {
         _loading = true;
         _rowsLoading = true;
+        _requestedSearch = DisplayText.Trimmed(search);
         _error = null;
         _retryRowsEnabled = false;
         StateHasChanged();

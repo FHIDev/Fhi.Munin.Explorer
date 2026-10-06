@@ -755,6 +755,10 @@ public sealed partial class VariableSearch : ComponentBase
     // what is on screen.
     private string? _executedSearch;
 
+    // The term the last rows read asked for, trimmed as an answered one is, whether or not it was answered.
+    // A host sort resends it: after a failed search it is the term that search sent; with rows on screen it is theirs.
+    private string? _requestedSearch;
+
     // Unique per instance so two explorers on one page cannot collide on DOM ids,
     // which would be a WCAG 4.1.1 failure as well as breaking label association.
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
