@@ -236,6 +236,12 @@ public partial class VariableSearch
 
         ShowRestoredSortColumn();
 
+        // After a first read that failed, this is the rows' first arrival, and nothing else would ask for the counts.
+        if (_facets is null)
+        {
+            await FetchFacetsAsync();
+        }
+
         if (_page != previousPage)
         {
             await NotifyPageChangedAsync();
@@ -679,6 +685,7 @@ public partial class VariableSearch
     private async Task<bool> FetchRowsAsync(string? search, bool keepResult = false)
     {
         _loading = true;
+        _rowsLoading = true;
         _error = null;
         _retryRowsEnabled = false;
         StateHasChanged();
@@ -773,6 +780,7 @@ public partial class VariableSearch
         finally
         {
             _loading = false;
+            _rowsLoading = false;
         }
     }
 

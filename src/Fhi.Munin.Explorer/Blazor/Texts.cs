@@ -27,6 +27,8 @@ internal sealed record Texts(
     string RetryLists,
     string RetryListsName,
     string FiltersLoading,
+    // A datatype cell before the names arrive with the facet counts, in place of the bare code.
+    string DataTypeLoading,
     string Error,
 
     // The 429 answer, which is a different thing from the API being unreachable and has to read
@@ -1062,6 +1064,7 @@ internal sealed record Texts(
         // Starts with the caption, so a voice-control user can say what they see (WCAG 2.5.3).
         RetryListsName: "Prøv igjen å hente listene",
         FiltersLoading: "Henter filtre …",
+        DataTypeLoading: "Henter …",
         Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
         RateLimitError: "Du har gjort for mange forespørsler. Vent litt før du prøver igjen.",
         Retrying: "Prøver igjen …",
@@ -1564,6 +1567,7 @@ internal sealed record Texts(
         RetryLists: "Try again",
         RetryListsName: "Try again to load the lists",
         FiltersLoading: "Loading filters …",
+        DataTypeLoading: "Loading …",
         Error: "Could not load variables right now. Please try again shortly.",
         RateLimitError: "You have made too many requests. Please wait a little before trying again.",
         Retrying: "Trying again …",

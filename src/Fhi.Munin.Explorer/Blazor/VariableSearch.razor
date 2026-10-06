@@ -338,7 +338,7 @@ else
         <fieldset class="form-fieldset munin-explorer-filters munin-explorer-filters__facets"
                   id="@FacetsId"
                   hidden="@(!_filtersOpen)"
-                  aria-busy="@Busy"
+                  aria-busy="@FiltersBusy"
                   data-level-lines="@LevelLinesMarker">
             @* No count in the legend. The count line over the results and the chip row beside it
                both say the number already, and this said it without saying which.
@@ -451,7 +451,7 @@ else
     }
     else if (_loading && _resultsTab != ExplorerTab.VariableList && _facetError is null)
     {
-        @* No role="status": the line over the rows already says a search is running. *@
+        @* No role="status": the line over the rows has already said the search is running, and this region says the rest. *@
         <div class="munin-explorer-filters" aria-busy="true">
             <p class="caption">@T.FiltersLoading</p>
         </div>
@@ -631,7 +631,7 @@ else
        screen twice. *@
     <div class="munin-explorer-results__toolbar">
         <p class="caption" role="status" aria-live="polite" aria-atomic="true">
-            @if (_loading)
+            @if (_rowsLoading)
             {
                 @T.Loading
             }

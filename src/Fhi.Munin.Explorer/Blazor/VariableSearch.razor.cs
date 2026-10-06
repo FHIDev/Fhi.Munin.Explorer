@@ -638,6 +638,10 @@ public sealed partial class VariableSearch : ComponentBase
     private ElementReference _searchField;
 
     private bool _loading;
+
+    // The rows read alone. _loading also covers the facets read that follows, which is what holds every press
+    // back; the line over the rows reads this one, so it reports them as soon as they land.
+    private bool _rowsLoading;
     private string? _error;
     private Page<VariableSummary>? _result;
 
@@ -779,7 +783,10 @@ public sealed partial class VariableSearch : ComponentBase
 
     private Texts T => Texts.For(Language);
 
-    private string Busy => _loading ? "true" : "false";
+    private string Busy => _rowsLoading ? "true" : "false";
+
+    // The panel's counts are re-read after every rows read, so the panel is busy for both.
+    private string FiltersBusy => _loading ? "true" : "false";
 
     /// <summary>Whether the rows' failure box is showing a retry in progress rather than a failure.</summary>
     /// <remarks>
@@ -1294,13 +1301,20 @@ public sealed partial class VariableSearch : ComponentBase
     /// <remarks>
     /// Not the row's own <c>dataTypeDisplayName</c>: the search is fetched without a language, so
     /// that name is in the API's default one, while the facets follow the reader's. With no facet
-    /// the code itself is shown. AGENTS.md, "The API names a datatype, not this package".
+    /// the code itself is shown, once the facets have answered. AGENTS.md, "The API names a
+    /// datatype, not this package".
     /// </remarks>
     private string? DataTypeName(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
             return code;
+        }
+
+        // Before the first facets the code would read as the value; after a failed read it is all there is.
+        if (_facets is null && _facetError is null)
+        {
+            return T.DataTypeLoading;
         }
 
         var canonical = T.CanonicalDataTypeCode(code);
