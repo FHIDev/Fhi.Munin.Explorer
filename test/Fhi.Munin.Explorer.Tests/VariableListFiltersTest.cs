@@ -110,6 +110,9 @@ public class VariableListFiltersTest : ExplorerTestContext
         /// <summary>How many reads walked the list for its membership, the page size only the walk asks for.</summary>
         public int Walks { get; private set; }
 
+        /// <summary>Refuse every walk with the API's 429 while set.</summary>
+        public bool RateLimitWalks { get; set; }
+
         /// <summary>Leave the lists read in flight.</summary>
         public bool ListsHang { get; init; }
 
@@ -170,6 +173,11 @@ public class VariableListFiltersTest : ExplorerTestContext
             if (pageSize == 1000 && page == 1)
             {
                 Walks++;
+            }
+
+            if (RateLimitWalks && pageSize == 1000)
+            {
+                throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
             }
 
             if (StallReadsFor is { } stalled && kildeIds is not null && kildeIds.Contains(stalled))
@@ -495,6 +503,35 @@ public class VariableListFiltersTest : ExplorerTestContext
         Assert.True(State().KilderInListKnown);
         Assert.Equal(["Kreftregisteret (2)", "Årsaksregisteret (2)"], Facets(cut.Filters));
         Assert.Equal(2, Boxes(cut.Filters).Count);
+    }
+
+    [Fact]
+    public async Task Kilder_WhenTheReadBackAfterASaveIsRefused_ThenTheSaveStillStands()
+    {
+        var client = new ListClient(List((Kreftregisteret, 2)));
+        RenderBoth(client);
+        var added = Item(Årsaksregisteret, 1);
+        client.Addable[added.VariableId] = added;
+        client.RateLimitWalks = true;
+
+        var result = await State().SaveAllAsync([added.VariableId], "Min liste");
+
+        Assert.NotNull(result);
+        Assert.True(State().IsSaved(added.VariableId));
+    }
+
+    [Fact]
+    public async Task Kilder_WhenASaveAddsNothingNew_ThenTheListIsNotWalkedAgain()
+    {
+        var items = List((Kreftregisteret, 2));
+        var client = new ListClient(items);
+        RenderBoth(client);
+        var walks = client.Walks;
+
+        await State().SaveAllAsync([items[0].VariableId], "Min liste");
+
+        Assert.Equal(walks, client.Walks);
+        Assert.True(State().KilderInListKnown);
     }
 
     private static VariableListItem Row(IEnumerable<VariableListItem> rows, Guid kilde) =>
