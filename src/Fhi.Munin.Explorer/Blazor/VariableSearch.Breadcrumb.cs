@@ -76,9 +76,30 @@ public partial class VariableSearch
             ids => _filter with { DelkildeIds = ids }),
         new(HierarchyLevel.Datasamling, () => _filter.DatasamlingIds, DatasamlingName, T.FieldDataCollection,
             ids => _filter with { DatasamlingIds = ids }),
-        new(HierarchyLevel.Variabelgruppe, () => _filter.VariabelgruppeIds, VariabelgruppeName,
-            T.FieldVariableGroup, ids => _filter with { VariabelgruppeIds = ids })
+        new(HierarchyLevel.Variabelgruppe, ChosenVariabelgruppeIds, VariabelgruppeName,
+            T.FieldVariableGroup, KeepVariabelgrupper)
     ];
+
+    /// <summary>Every chosen group once, whether ticked everywhere or under one placement: a chip
+    /// and a trail step name a group, not where it was pressed. (Fhi.Metadata-59dh0)</summary>
+    private IReadOnlyList<Guid> ChosenVariabelgruppeIds() =>
+    [
+        .. _filter.VariabelgruppeIds
+            .Concat(_filter.VariabelgruppeScopes.Select(scope => scope.VariabelgruppeId))
+            .Distinct()
+    ];
+
+    /// <summary>The variabelgruppe selection cut down to <paramref name="ids"/>: a group left out goes
+    /// from both lists, and one new to them is chosen everywhere, as the flat facet chooses it.</summary>
+    private VariableFilter KeepVariabelgrupper(IReadOnlyList<Guid> ids) => _filter with
+    {
+        VariabelgruppeIds =
+        [
+            .. ids.Where(id => _filter.VariabelgruppeIds.Contains(id)
+                               || _filter.VariabelgruppeScopes.All(scope => scope.VariabelgruppeId != id))
+        ],
+        VariabelgruppeScopes = [.. _filter.VariabelgruppeScopes.Where(scope => ids.Contains(scope.VariabelgruppeId))]
+    };
 
     /// <summary>
     /// One step of the trail: which level it stands for, and how it reads.
@@ -277,7 +298,8 @@ public partial class VariableSearch
         {
             DelkildeIds = Keep(HierarchyLevel.Delkilde, _filter.DelkildeIds),
             DatasamlingIds = Keep(HierarchyLevel.Datasamling, _filter.DatasamlingIds),
-            VariabelgruppeIds = Keep(HierarchyLevel.Variabelgruppe, _filter.VariabelgruppeIds)
+            VariabelgruppeIds = Keep(HierarchyLevel.Variabelgruppe, _filter.VariabelgruppeIds),
+            VariabelgruppeScopes = HierarchyLevel.Variabelgruppe <= level ? _filter.VariabelgruppeScopes : []
         });
 
         IReadOnlyList<Guid> Keep(HierarchyLevel of, IReadOnlyList<Guid> ids) => of <= level ? ids : [];

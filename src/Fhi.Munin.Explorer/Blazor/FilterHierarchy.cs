@@ -13,9 +13,9 @@ internal enum HierarchyLevel
     Variabelgruppe
 }
 
-/// <summary><c>Path</c> is where the node is drawn and <c>Id</c> what ticking it selects, since one
-/// group hangs under every datasamling its variables are in. <c>Categories</c> are a datasamling's
-/// datakategori tokens, so the row drawing them needs no second pass over the facets.</summary>
+/// <summary><c>Path</c> is where the node is drawn, <c>Id</c> what ticking it selects and <c>OwnerId</c> the
+/// kilde, delkilde or datasamling a variabelgruppe is placed under (null on the other levels). <c>Categories</c>
+/// are a datasamling's datakategori tokens, so the row drawing them needs no second pass over the facets.</summary>
 internal sealed record HierarchyNode(
     string Path,
     HierarchyLevel Level,
@@ -25,7 +25,8 @@ internal sealed record HierarchyNode(
     int Count,
     IReadOnlyList<HierarchyNode> Children,
     IReadOnlyList<string>? Categories = null,
-    int? DisplayOrder = null);
+    int? DisplayOrder = null,
+    Guid? OwnerId = null);
 
 /// <summary>Keyed by what each hangs under. Two datasamling lookups rather than one keyed by
 /// parent: the id spaces are independent Guids off the wire, so a kilde id equal to a delkilde id
@@ -116,7 +117,7 @@ internal static class FilterHierarchy
         [
             .. Siblings(Delkilder(levels.Delkilder[kilde.Id], path, levels, placements),
                         Datasamlinger(levels.DatasamlingerByKilde[kilde.Id], null, path, placements)),
-            .. Variabelgrupper(placements.ByKilde[kilde.Id], path)
+            .. Variabelgrupper(placements.ByKilde[kilde.Id], path, kilde.Id)
         ]);
     }
 
@@ -145,7 +146,7 @@ internal static class FilterHierarchy
                  [
                      .. Siblings(nested,
                                  Datasamlinger(levels.DatasamlingerByDelkilde[delkilde.Id], delkilde.Id, path, placements)),
-                     .. Variabelgrupper(placements.ByDelkilde[delkilde.Id], path)
+                     .. Variabelgrupper(placements.ByDelkilde[delkilde.Id], path, delkilde.Id)
                  ],
                  DisplayOrder: RankUnder(delkilde.DisplayOrder, delkilde.ParentDelkildeId, drawnUnder)));
 
@@ -164,7 +165,7 @@ internal static class FilterHierarchy
 
             return new HierarchyNode(
                 path, HierarchyLevel.Datasamling, datasamling.Id, datasamling.Name, null, datasamling.Count,
-                Variabelgrupper(placements.ByDatasamling[datasamling.Id], path),
+                Variabelgrupper(placements.ByDatasamling[datasamling.Id], path, datasamling.Id),
                 Categories: datasamling.Categories,
                 DisplayOrder: RankUnder(datasamling.DisplayOrder, datasamling.DelkildeId, drawnUnder));
         })
@@ -180,7 +181,7 @@ internal static class FilterHierarchy
     /// owner, so a group whose parent is placed elsewhere stands as a root here rather than
     /// following it out.</summary>
     private static IReadOnlyList<HierarchyNode> Variabelgrupper(
-        IEnumerable<VariabelgruppeFacet> placed, string parentPath) =>
+        IEnumerable<VariabelgruppeFacet> placed, string parentPath, Guid owner) =>
         Nest(OnePerId(placed, variabelgruppe => variabelgruppe.Id, variabelgruppe => variabelgruppe.ParentId),
              HierarchyLevel.Variabelgruppe,
              parentPath,
@@ -188,7 +189,7 @@ internal static class FilterHierarchy
              variabelgruppe => variabelgruppe.ParentId,
              (variabelgruppe, _, path, nested) => new HierarchyNode(
                  path, HierarchyLevel.Variabelgruppe, variabelgruppe.Id, variabelgruppe.Name, null,
-                 variabelgruppe.Count, nested));
+                 variabelgruppe.Count, nested, OwnerId: owner));
 
     /// <summary>Every variabelgruppe under the ids its owners name. Three lookups rather than one
     /// keyed by owner, for the reason <see cref="KildeLevelLookup"/> gives: the id spaces are

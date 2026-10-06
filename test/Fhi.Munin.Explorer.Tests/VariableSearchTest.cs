@@ -8009,26 +8009,33 @@ public class VariableSearchTest : ExplorerTestContext
     };
 
     [Fact]
-    public void Variabelgrupper_WhenOneIsTickedInTheKildeTree_ThenTheStandaloneFacetTicksWithIt()
+    public void Variabelgrupper_WhenOneIsTickedInTheKildeTree_ThenItIsScopedAndTheStandaloneFacetStaysGlobal()
     {
-        // One identity behind two checkboxes. Two surfaces keeping their own would put a ticked box
-        // over an unticked one for the same group, and a second chip beside the first.
+        // The tree tick means "this group, here"; the standalone facet means "this group, anywhere",
+        // so it stays unticked. One chip all the same, since a chip names the group. (Fhi.Metadata-59dh0)
         var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
         var cut = RenderWith(client);
 
         ExpandBranches(cut);
         Press(SurfaceBox(KildeFacet(cut), "Kosthold"));
 
-        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
-        Assert.True(SurfaceBox(StandaloneFacet(cut), "Kosthold").HasAttribute("checked"));
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.Equal([new VariabelgruppeScope(Nutrition, Tromso1)], client.SearchFilter!.VariabelgruppeScopes);
+        Assert.Equal(client.SearchFilter, client.FacetFilter);
+        Assert.False(SurfaceBox(StandaloneFacet(cut), "Kosthold").HasAttribute("checked"));
         Assert.Equal(["Kosthold"], Chips(cut));
         Assert.Contains("Variabelgruppe (1)", FacetHeadings(cut));
 
-        // And the facet's own checkbox is the way off it again, the tree following it back.
+        // Ticking the standalone facet chooses the group everywhere, which supersedes the placement.
+        Press(SurfaceBox(StandaloneFacet(cut), "Kosthold"));
+
+        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
+        Assert.Empty(client.SearchFilter!.VariabelgruppeScopes);
+        Assert.Equal(["Kosthold"], Chips(cut));
+
         Press(SurfaceBox(StandaloneFacet(cut), "Kosthold"));
 
         Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
-        Assert.False(SurfaceBox(KildeFacet(cut), "Kosthold").HasAttribute("checked"));
         Assert.Empty(Chips(cut));
     }
 
@@ -8066,13 +8073,13 @@ public class VariableSearchTest : ExplorerTestContext
         ExpandBranches(cut);
         Press(SurfaceBox(KildeFacet(cut), "Måltider"));
 
-        Assert.Equal([Meals], client.SearchFilter!.VariabelgruppeIds);
+        Assert.Equal([new VariabelgruppeScope(Meals, Tromso1)], client.SearchFilter!.VariabelgruppeScopes);
         Assert.DoesNotContain("Måltider", StandaloneFacet(cut).TextContent, StringComparison.Ordinal);
         Assert.Equal(["Måltider"], Chips(cut));
 
         Press(SurfaceBox(KildeFacet(cut), "Måltider"));
 
-        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.Empty(client.SearchFilter!.VariabelgruppeScopes);
         Assert.Empty(Chips(cut));
     }
 
@@ -8105,7 +8112,7 @@ public class VariableSearchTest : ExplorerTestContext
         ExpandBranches(cut);
         Press(SurfaceBox(KildeFacet(cut), "Måltider"));
 
-        Assert.Equal([Meals], client.SearchFilter!.VariabelgruppeIds);
+        Assert.Equal([new VariabelgruppeScope(Meals, Tromso1)], client.SearchFilter!.VariabelgruppeScopes);
 
         var container = Assert.Single(
             StandaloneFacet(cut).QuerySelectorAll("li"),
@@ -8145,8 +8152,7 @@ public class VariableSearchTest : ExplorerTestContext
         ExpandBranches(cut);
         Press(SurfaceBox(KildeFacet(cut), "Måltidsvaner"));
 
-        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
-        Assert.True(SurfaceBox(StandaloneFacet(cut), "Kosthold").HasAttribute("checked"));
+        Assert.Equal([new VariabelgruppeScope(Nutrition, Tromso1)], client.SearchFilter!.VariabelgruppeScopes);
         Assert.Equal(["Kosthold"], Chips(cut));
         Assert.Equal("Kosthold", Crumbs(cut)[^1].TextContent);
     }
@@ -8230,7 +8236,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.DoesNotContain("Kosthold", KildeFacet(cut).TextContent, StringComparison.Ordinal);
         Assert.Equal(["Kosthold"], Chips(cut));
-        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
+        Assert.Equal([new VariabelgruppeScope(Nutrition, Tromso1)], client.SearchFilter!.VariabelgruppeScopes);
 
         Branch(cut, "Tromsø 1").Click();
 
@@ -8238,41 +8244,112 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(["Kosthold"], Chips(cut));
     }
 
-    [Fact]
-    public void Variabelgrupper_WhenOneIsDrawnAtTwoPlacements_ThenBothTickTogetherAndOneChipStands()
+    /// <summary>One group drawn under two datasamlinger of one kilde.</summary>
+    private static FilterOptions FacetsWithOneGroupAtTwoPlacements() => FacetsWithDatasamlinger() with
     {
-        // A group hangs under every datasamling its variables are in, and the rows are keyed by
-        // where they are drawn — so a chip per drawn row is exactly what this shape produces, and
-        // two controls reading "Prøvesvar" are two a screen reader cannot tell apart.
-        var facets = FacetsWithDatasamlinger() with
-        {
-            Variabelgrupper = [],
-            HierarchyVariabelgrupper =
-            [
-                Variabelgruppe(TestResults, "Prøvesvar",
-                       [Under(Tromso, datasamling: Tromso1), Under(Tromso, Tromso4, Tromso4Round)], count: 6)
-            ]
-        };
+        Variabelgrupper = [],
+        HierarchyVariabelgrupper =
+        [
+            Variabelgruppe(TestResults, "Prøvesvar",
+                   [Under(Tromso, datasamling: Tromso1), Under(Tromso, Tromso4, Tromso4Round)], count: 6)
+        ]
+    };
 
-        var client = new FilteringClient(OnePage(), facets);
+    /// <summary>Row 0 is the Tromsø 4 placement, drawn under its delkilde before Tromsø 1.</summary>
+    private static IElement PlacementBox(IRenderedComponent<VariableSearch> cut, int placement) =>
+        FilterPanelRows(cut, "Prøvesvar")[placement].QuerySelector("input[type=checkbox]")!;
+
+    [Fact]
+    public void Variabelgrupper_WhenOneIsDrawnAtTwoPlacements_ThenEachTicksOnItsOwnAndOneChipStands()
+    {
+        // The #6191 shape: a group ticked under one datasamling filtered it in every datasamling of
+        // the kilde. Each placement is its own scoped selection now, as in Runa, while the chip
+        // names the group once. (Fhi.Metadata-59dh0)
+        var client = new FilteringClient(OnePage(), FacetsWithOneGroupAtTwoPlacements());
         var cut = RenderWith(client);
 
         ExpandBranches(cut);
 
         Assert.Equal(2, FilterPanelRows(cut, "Prøvesvar").Count);
 
-        Press(FilterPanelRows(cut, "Prøvesvar")[0].QuerySelector("input[type=checkbox]")!);
-
-        Assert.Equal([TestResults], client.SearchFilter!.VariabelgruppeIds);
-        Assert.All(FilterPanelRows(cut, "Prøvesvar"),
-                   row => Assert.True(row.QuerySelector("input[type=checkbox]")!.HasAttribute("checked")));
-        Assert.Equal(["Prøvesvar"], Chips(cut));
-
-        // The other placement is the same filter, so pressing it clears rather than adds a second.
-        Press(FilterPanelRows(cut, "Prøvesvar")[1].QuerySelector("input[type=checkbox]")!);
+        Press(PlacementBox(cut, 0));
 
         Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
-        Assert.Empty(Chips(cut));
+        Assert.Equal([new VariabelgruppeScope(TestResults, Tromso4Round)], client.SearchFilter!.VariabelgruppeScopes);
+        Assert.Equal(client.SearchFilter, client.FacetFilter);
+        Assert.True(PlacementBox(cut, 0).HasAttribute("checked"));
+        Assert.False(PlacementBox(cut, 1).HasAttribute("checked"));
+        Assert.Equal(["Prøvesvar"], Chips(cut));
+
+        Press(PlacementBox(cut, 1));
+
+        Assert.Equal(
+            [new VariabelgruppeScope(TestResults, Tromso4Round), new VariabelgruppeScope(TestResults, Tromso1)],
+            client.SearchFilter!.VariabelgruppeScopes);
+        Assert.Equal(["Prøvesvar"], Chips(cut));
+
+        // The chip stands for the group, so it takes both placements off.
+        RemoveChip(cut, "Prøvesvar");
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeScopes);
+        Assert.False(PlacementBox(cut, 0).HasAttribute("checked"));
+        Assert.False(PlacementBox(cut, 1).HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenALinkCarriesAScope_ThenOnlyThatPlacementIsTicked()
+    {
+        // A shared link reproduces the scoped result, not the global one. (Fhi.Metadata-59dh0)
+        var client = new FilteringClient(OnePage(), FacetsWithOneGroupAtTwoPlacements());
+        var cut = RenderFiltered(client, new VariableFilter
+        {
+            VariabelgruppeScopes = [new VariabelgruppeScope(TestResults, Tromso4Round)]
+        });
+
+        ExpandBranches(cut);
+
+        Assert.Equal([new VariabelgruppeScope(TestResults, Tromso4Round)], client.SearchFilter!.VariabelgruppeScopes);
+        Assert.True(PlacementBox(cut, 0).HasAttribute("checked"));
+        Assert.False(PlacementBox(cut, 1).HasAttribute("checked"));
+        Assert.Equal(["Prøvesvar"], Chips(cut));
+        Assert.Equal("Prøvesvar", Crumbs(cut)[^1].TextContent);
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenAnOlderLinkCarriesABareId_ThenItStillMeansEveryPlacement()
+    {
+        // Links made before scopes existed keep their meaning: every placement ticked, and unticking
+        // any of them takes the one global filter off.
+        var client = new FilteringClient(OnePage(), FacetsWithOneGroupAtTwoPlacements());
+        var cut = RenderFiltered(client, new VariableFilter { VariabelgruppeIds = [TestResults] });
+
+        ExpandBranches(cut);
+
+        Assert.True(PlacementBox(cut, 0).HasAttribute("checked"));
+        Assert.True(PlacementBox(cut, 1).HasAttribute("checked"));
+
+        Press(PlacementBox(cut, 1));
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeIds);
+        Assert.Empty(client.SearchFilter!.VariabelgruppeScopes);
+    }
+
+    [Fact]
+    public void Variabelgrupper_WhenTheTrailNarrowsAboveAScopedTick_ThenTheScopeGoesWithIt()
+    {
+        // A step above the variabelgruppe level clears what is under it, scoped ticks included, or a
+        // filter would stay in force with no step and no chip naming it.
+        var client = new FilteringClient(OnePage(), FacetsWithOneGroupAtTwoPlacements());
+        var cut = RenderFiltered(client, new VariableFilter
+        {
+            KildeIds = [Tromso],
+            VariabelgruppeScopes = [new VariabelgruppeScope(TestResults, Tromso1)]
+        });
+
+        Crumbs(cut)[0].Click();
+
+        Assert.Equal([Tromso], client.SearchFilter!.KildeIds);
+        Assert.Empty(client.SearchFilter!.VariabelgruppeScopes);
     }
 
     [Fact]

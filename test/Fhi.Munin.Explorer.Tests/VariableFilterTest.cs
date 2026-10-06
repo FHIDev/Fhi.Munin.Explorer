@@ -48,6 +48,7 @@ public class VariableFilterTest
         Assert.Contains($"delkildeIds={Delkilde}", query, StringComparison.Ordinal);
         Assert.Contains($"datasamlingIds={Gruppe}", query, StringComparison.Ordinal);
         Assert.Contains($"variabelgruppeIds={Gruppe}", query, StringComparison.Ordinal);
+        Assert.Contains($"variabelgruppeScopes={Gruppe}%3A{Delkilde}", query, StringComparison.Ordinal);
         Assert.Contains($"filterIds={Kilde}", query, StringComparison.Ordinal);
         Assert.Contains("datatypes=1", query, StringComparison.Ordinal);
         Assert.Contains("helsefagligKodeverkReferanser=ICD-10", query, StringComparison.Ordinal);
@@ -224,6 +225,38 @@ public class VariableFilterTest
         Assert.Equal("", blank.ToQueryString());
     }
 
+    [Fact]
+    public void Parse_WhenAScopeIsMalformed_ThenOnlyThatScopeIsDropped()
+    {
+        // A pair the API cannot bind is a 400 for the whole search, so it never leaves the parse.
+        var parsed = VariableFilter.Parse(
+            $"variabelgruppeScopes={Gruppe}&variabelgruppeScopes={Gruppe}:nope&variabelgruppeScopes={Gruppe}:{Kilde}");
+
+        Assert.Equal([new VariabelgruppeScope(Gruppe, Kilde)], parsed.VariabelgruppeScopes);
+    }
+
+    [Fact]
+    public void Parse_WhenALinkCarriesMoreScopesThanTheApiTakes_ThenTheExtraAreDropped()
+    {
+        // One over the API's 50 fails the whole search rather than the one pair.
+        var query = string.Join('&', Enumerable.Range(0, 60)
+            .Select(_ => $"variabelgruppeScopes={Guid.NewGuid()}:{Kilde}"));
+
+        Assert.Equal(VariableFilter.MaxVariabelgruppeScopes, VariableFilter.Parse(query).VariabelgruppeScopes.Count);
+    }
+
+    [Fact]
+    public void ToQuery_WhenMoreScopesAreSetThanTheApiTakes_ThenOnlyTheFirstFiftyAreSent()
+    {
+        var filter = new VariableFilter
+        {
+            VariabelgruppeScopes = [.. Enumerable.Range(0, 60).Select(_ => new VariabelgruppeScope(Guid.NewGuid(), Kilde))]
+        };
+
+        Assert.Equal(VariableFilter.MaxVariabelgruppeScopes,
+                     filter.ToQuery().Count(pair => pair.Name == "variabelgruppeScopes"));
+    }
+
     /// <summary>
     /// A name missing from this set is one an explorer component carries through and then writes a
     /// second time, so the URL ends up narrowing by a facet twice.
@@ -244,6 +277,7 @@ public class VariableFilterTest
         DelkildeIds = [Delkilde],
         DatasamlingIds = [Gruppe],
         VariabelgruppeIds = [Gruppe],
+        VariabelgruppeScopes = [new VariabelgruppeScope(Gruppe, Delkilde)],
         FilterIds = [Kilde],
         DataTypes = ["1", "2"],
         HelsefagligKodeverk = ["ICD-10"],

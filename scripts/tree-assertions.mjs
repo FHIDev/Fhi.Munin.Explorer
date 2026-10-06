@@ -17,17 +17,21 @@ async function toggle(page, stub, control) {
   await until(async () => await panel(page).getAttribute('aria-busy') === 'false', 'filter response rendered');
 }
 
-async function selection(page, name, count, checked) {
+// `ticks` is each drawn placement in tree order. A tree tick is scoped to its placement, while the
+// standalone facet means the group everywhere, so the two are expected separately (Fhi.Metadata-59dh0).
+async function selection(page, name, ticks, everywhere, chosen = ticks.some(Boolean)) {
   const values = boxes(tree(page), name);
-  if (await values.count() !== count) return `${name}: expected ${count} tree placements`;
-  const ticks = await values.evaluateAll(items => items.map(item => item.checked));
-  if (ticks.some(value => value !== checked)) return `${name}: tree placements disagree with selection`;
-  const options = boxes(standalone(page), name);
-  if ((await options.evaluateAll(items => items.map(item => item.checked))).some(value => value !== checked)) {
-    return `${name}: standalone facet disagrees with the tree`;
+  if (await values.count() !== ticks.length) return `${name}: expected ${ticks.length} tree placements`;
+  const drawn = await values.evaluateAll(items => items.map(item => item.checked));
+  if (JSON.stringify(drawn) !== JSON.stringify(ticks)) {
+    return `${name}: tree placements ${JSON.stringify(drawn)}, expected ${JSON.stringify(ticks)}`;
   }
-  if (await chips(page).count() !== Number(checked)) return `${name}: expected ${Number(checked)} chip(s)`;
-  if (checked && !(await chips(page).innerText()).includes(name)) return `${name}: chip names another selection`;
+  const options = boxes(standalone(page), name);
+  if ((await options.evaluateAll(items => items.map(item => item.checked))).some(value => value !== everywhere)) {
+    return `${name}: standalone facet disagrees with the selection`;
+  }
+  if (await chips(page).count() !== Number(chosen)) return `${name}: expected ${Number(chosen)} chip(s)`;
+  if (chosen && !(await chips(page).innerText()).includes(name)) return `${name}: chip names another selection`;
   if (await boxes(standalone(page), names.excluded).count() || await boxes(standalone(page), names.container).count()) {
     return 'Filter="2" leaked into the standalone checkbox options';
   }
@@ -36,6 +40,8 @@ async function selection(page, name, count, checked) {
 
 const placements = [[names.offered, 2], [names.excluded, 2], [names.unset, 1],
   [names.unassigned, 1], [names.root, 1], [names.child, 1], ['Gruppe 120', 1]];
+
+const only = (count, at) => Array.from({ length: count }, (_, index) => index === at);
 
 export const treeAssertions = [
   {
@@ -53,7 +59,7 @@ export const treeAssertions = [
     },
   },
   ...placements.map(([name, count]) => ({
-    name: `${name}: one tree selection synchronizes all placements and produces one chip`,
+    name: `${name}: one tree selection ticks only its own placement and produces one chip`,
     kind: 'invariant', states: ['tree-populated', 'tree-empty-results'],
     async stage(page, stub) {
       const before = await openBranches(page);
@@ -61,7 +67,7 @@ export const treeAssertions = [
       return { before };
     },
     async measure(page, { before }) {
-      const finding = await selection(page, name, count, true);
+      const finding = await selection(page, name, only(count, 0), false);
       if (finding !== null) return finding;
       if (JSON.stringify(await openBranches(page)) !== JSON.stringify(before)) {
         return `${name}: selection changed branch disclosure state`;
@@ -69,7 +75,7 @@ export const treeAssertions = [
       return null;
     },
     async control(page) {
-      await boxes(tree(page), name).last().evaluate(box => { box.checked = false; });
+      await boxes(tree(page), name).first().evaluate(box => { box.checked = false; });
     },
   })),
   {
@@ -80,7 +86,8 @@ export const treeAssertions = [
       const before = await openBranches(page);
       await fold(tree(page), names.first, false);
       const hidden = await row(tree(page), names.first).locator(':scope > ul').count();
-      const chosen = await selection(page, names.excluded, 1, true);
+      // The placement left on screen is the other one, which a scoped tick leaves unticked; the chip stays.
+      const chosen = await selection(page, names.excluded, [false], false, true);
       await fold(tree(page), names.first, true);
       return { before, hidden, chosen };
     },
@@ -90,7 +97,7 @@ export const treeAssertions = [
       if (JSON.stringify(await openBranches(page)) !== JSON.stringify(before)) {
         return 'Reopening a branch changed its siblings';
       }
-      return selection(page, names.excluded, 2, true);
+      return selection(page, names.excluded, only(2, 0), false);
     },
     async control(page) {
       await disclosure(tree(page), names.second).evaluate(button => button.setAttribute('aria-expanded', 'false'));
@@ -102,12 +109,17 @@ export const treeAssertions = [
     async stage(page, stub) {
       const name = surface === 'chip' ? names.excluded : names.offered;
       await toggle(page, stub, boxes(tree(page), name).first());
-      const selected = await selection(page, name, 2, true);
+      let selected = await selection(page, name, only(2, 0), false);
+      if (surface === 'standalone') {
+        // Unticked over a scoped tick, so its first press chooses the group everywhere.
+        await toggle(page, stub, boxes(standalone(page), name));
+        selected ??= await selection(page, name, [true, true], true);
+      }
       await toggle(page, stub, surface === 'chip' ? chips(page).getByRole('button') : boxes(standalone(page), name));
       return { name, selected };
     },
     async measure(page, { name, selected }) {
-      return selected ?? await selection(page, name, 2, false);
+      return selected ?? await selection(page, name, [false, false], false);
     },
     async control(page, { name }) {
       await boxes(tree(page), name).last().evaluate(box => { box.checked = true; });

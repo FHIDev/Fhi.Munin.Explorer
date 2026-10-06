@@ -56,8 +56,14 @@ public sealed record VariableFilter
     /// </remarks>
     public IReadOnlyList<Guid> DatasamlingIds { get; init; } = [];
 
-    /// <summary>Variabelgrupper to restrict to. Empty means every group.</summary>
+    /// <summary>Variabelgrupper to restrict to wherever they are placed — under a kilde, delkilde or datasamling. Empty means every group.</summary>
     public IReadOnlyList<Guid> VariabelgruppeIds { get; init; } = [];
+
+    /// <summary>
+    /// Variabelgrupper to restrict to under one owner each — what a tick in the kilde tree selects.
+    /// ORed with <see cref="VariabelgruppeIds"/>. At most 50, which is all the API accepts.
+    /// </summary>
+    public IReadOnlyList<VariabelgruppeScope> VariabelgruppeScopes { get; init; } = [];
 
     /// <summary>Saved catalogue filters to restrict to — see <see cref="FilterOptions.Filters"/>.</summary>
     public IReadOnlyList<Guid> FilterIds { get; init; } = [];
@@ -146,7 +152,7 @@ public sealed record VariableFilter
     /// </remarks>
     public static IReadOnlySet<string> QueryKeys { get; } = new HashSet<string>(
     [
-        "kildeIds", "kildeType", "delkildeIds", "datasamlingIds", "variabelgruppeIds", "filterIds",
+        "kildeIds", "kildeType", "delkildeIds", "datasamlingIds", "variabelgruppeIds", "variabelgruppeScopes", "filterIds",
         "datatypes", "helsefagligKodeverkReferanser", "administrativtKodeverkOids", "instrumentIds",
         "datakategorier", "harKildekodeverk", "dataFrom", "dataTo", "includeHistorical"
     ], StringComparer.OrdinalIgnoreCase);
@@ -182,6 +188,12 @@ public sealed record VariableFilter
         }
 
         foreach (var pair in Repeat("variabelgruppeIds", VariabelgruppeIds))
+        {
+            yield return pair;
+        }
+
+        // Capped here as well as in Parse: one over the API's limit is a 400 for the whole search.
+        foreach (var pair in Repeat("variabelgruppeScopes", VariabelgruppeScopes.Take(MaxVariabelgruppeScopes).ToList()))
         {
             yield return pair;
         }
@@ -303,6 +315,9 @@ public sealed record VariableFilter
     /// </remarks>
     private const int MaxValuesPerFacet = 100;
 
+    /// <summary>Mirrors the API's <c>MaxVariabelgruppeScopes</c>.</summary>
+    public const int MaxVariabelgruppeScopes = 50;
+
     /// <summary>How long one value may be before <see cref="Parse"/> drops it.</summary>
     /// <remarks>
     /// The bound on the free-form facets, where nothing else limits the length: a guid is 36
@@ -349,6 +364,7 @@ public sealed record VariableFilter
         List<Guid> kildeIds = [], delkildeIds = [], datasamlingIds = [], variabelgruppeIds = [],
                    filterIds = [], instrumentIds = [];
         List<string> dataTypes = [], helsefagligKodeverk = [], administrativtKodeverk = [], categories = [];
+        List<VariabelgruppeScope> variabelgruppeScopes = [];
         string? kildeType = null;
         bool? hasKildekodeverk = null;
         DateOnly? dataFrom = null, dataTo = null;
@@ -365,6 +381,7 @@ public sealed record VariableFilter
             ["delkildeIds"] = value => AddGuid(delkildeIds, value),
             ["datasamlingIds"] = value => AddGuid(datasamlingIds, value),
             ["variabelgruppeIds"] = value => AddGuid(variabelgruppeIds, value),
+            ["variabelgruppeScopes"] = value => AddScope(variabelgruppeScopes, value),
             ["filterIds"] = value => AddGuid(filterIds, value),
             ["datatypes"] = value => Add(dataTypes, value),
             ["helsefagligKodeverkReferanser"] = value => Add(helsefagligKodeverk, value),
@@ -413,6 +430,7 @@ public sealed record VariableFilter
             DelkildeIds = delkildeIds,
             DatasamlingIds = datasamlingIds,
             VariabelgruppeIds = variabelgruppeIds,
+            VariabelgruppeScopes = variabelgruppeScopes,
             FilterIds = filterIds,
             DataTypes = dataTypes,
             HelsefagligKodeverk = helsefagligKodeverk,
@@ -467,6 +485,14 @@ public sealed record VariableFilter
         if (ids.Count < MaxValuesPerFacet && Guid.TryParse(value, out var id))
         {
             ids.Add(id);
+        }
+    }
+
+    private static void AddScope(List<VariabelgruppeScope> scopes, string value)
+    {
+        if (scopes.Count < MaxVariabelgruppeScopes && VariabelgruppeScope.TryParse(value, out var scope))
+        {
+            scopes.Add(scope);
         }
     }
 
