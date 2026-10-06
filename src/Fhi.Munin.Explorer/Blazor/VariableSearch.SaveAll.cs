@@ -71,39 +71,43 @@ public partial class VariableSearch
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "margin-bottom");
 
+        // A line of its own above the buttons, so a narrow page never breaks the question between them.
+        if (confirming)
+        {
+            builder.OpenElement(2, "div");
+            builder.AddAttribute(3, "id", ConfirmSaveAllId);
+            builder.AddContent(4, T.ConfirmSaveAll(TotalCount));
+            builder.CloseElement();
+        }
+
         // aria-disabled rather than disabled: disabling the pressed button drops focus to <body>.
-        builder.OpenElement(2, "button");
-        builder.AddAttribute(3, "class", "hd-button-square button-square--ghost-blue margin-right");
-        builder.AddAttribute(4, "type", "button");
-        builder.AddAttribute(5, "id", SaveAllButtonId);
-        builder.AddAttribute(6, "aria-disabled", done || !SaveAllReady ? "true" : null);
-        builder.AddAttribute(7, "aria-expanded", SaveAllWouldAsk && !done ? (confirming ? "true" : "false") : null);
-        builder.AddAttribute(8, "onclick", EventCallback.Factory.Create(this, PressSaveAllAsync));
-        builder.AddElementReferenceCapture(9, element => _saveAllButton = element);
+        builder.OpenElement(5, "button");
+        builder.AddAttribute(6, "class", "hd-button-square button-square--ghost-blue margin-right");
+        builder.AddAttribute(7, "type", "button");
+        builder.AddAttribute(8, "id", SaveAllButtonId);
+        builder.AddAttribute(9, "aria-disabled", done || !SaveAllReady ? "true" : null);
+        builder.AddAttribute(10, "aria-expanded", SaveAllWouldAsk && !done ? (confirming ? "true" : "false") : null);
+        builder.AddAttribute(11, "onclick", EventCallback.Factory.Create(this, PressSaveAllAsync));
+        builder.AddElementReferenceCapture(12, element => _saveAllButton = element);
 
         if (done)
         {
-            builder.OpenElement(10, "span");
-            builder.AddAttribute(11, "aria-hidden", "true");
-            builder.AddContent(12, "✓ ");
+            builder.OpenElement(13, "span");
+            builder.AddAttribute(14, "aria-hidden", "true");
+            builder.AddContent(15, "✓ ");
             builder.CloseElement();
-            builder.AddContent(13, T.SavedAllResults);
+            builder.AddContent(16, T.SavedAllResults);
         }
         else
         {
-            builder.AddContent(14, confirming ? T.ConfirmSaveAllNo : T.SaveAllResults);
+            builder.AddContent(17, confirming ? T.ConfirmSaveAllNo : T.SaveAllResults);
         }
 
         builder.CloseElement();
 
+        // After «Nei», which is the pressed button, so «Ja» is the next Tab stop.
         if (confirming)
         {
-            builder.OpenElement(20, "span");
-            builder.AddAttribute(21, "id", ConfirmSaveAllId);
-            builder.AddAttribute(22, "class", "margin-right");
-            builder.AddContent(23, T.ConfirmSaveAll(TotalCount));
-            builder.CloseElement();
-
             builder.OpenElement(24, "button");
             builder.AddAttribute(25, "class", "hd-button-square button-square--ghost-blue");
             builder.AddAttribute(26, "type", "button");
