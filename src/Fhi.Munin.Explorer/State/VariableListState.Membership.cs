@@ -262,6 +262,22 @@ public sealed partial class VariableListState
             }
         }
 
+        // The ids carry no kilde, so the tally the add dropped is read back once rather than left
+        // blank under the list view's kilde filter (Fhi.Metadata-5s4uj). The save stands either way.
+        if (_kilderStale && _activeListId == listId)
+        {
+            _membershipLoaded = false;
+
+            try
+            {
+                await LoadMembershipAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                _logger?.LogWarning(e, "could not read list {ListId} back after saving a search result", listId);
+            }
+        }
+
         return new SaveAllResult(listId, listName, added);
     }
 

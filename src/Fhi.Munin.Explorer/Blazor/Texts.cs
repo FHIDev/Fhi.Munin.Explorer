@@ -258,10 +258,10 @@ internal sealed record Texts(
     // The row's name button, named for its variable for ExpandDatasamlinger's reason. (Fhi.Metadata-35w0p.78)
     Func<string, string> ExpandVariableDetail,
     Func<string, string> CollapseVariableDetail,
-    // The open panel's save action, in both of its states. One control, two words: the button says
-    // what pressing it does, not what the variable currently is.
     // The heading over a collapsed row's save button: helsedata's own word for its action column.
     string ColumnActions,
+    // The open panel's save action, in both of its states. One control, two words: the button says
+    // what pressing it does, not what the variable currently is.
     string SaveToList,
     string RemoveFromList,
     // The list made for a reader who saves before they have made one themselves.

@@ -477,6 +477,26 @@ public class VariableListFiltersTest : ExplorerTestContext
 
     private VariableListState State() => Services.GetRequiredService<VariableListState>();
 
+    [Fact]
+    public async Task Kilder_WhenASearchResultIsSavedWhole_ThenTheTallyIsReadBackWithTheNewKilde()
+    {
+        // «Lagre disse variablene» sends ids with no kilde, so the tally is read back (Fhi.Metadata-dfy9u.8).
+        var client = new ListClient(List((Kreftregisteret, 2)));
+        var cut = RenderBoth(client);
+        Boxes(cut.Filters)[0].Change(true);
+        var added = new[] { Item(Årsaksregisteret, 1), Item(Årsaksregisteret, 2) };
+        foreach (var row in added)
+        {
+            client.Addable[row.VariableId] = row;
+        }
+
+        await cut.View.InvokeAsync(() => State().SaveAllAsync([.. added.Select(r => r.VariableId)], "Min liste"));
+
+        Assert.True(State().KilderInListKnown);
+        Assert.Equal(["Kreftregisteret (2)", "Årsaksregisteret (2)"], Facets(cut.Filters));
+        Assert.Equal(2, Boxes(cut.Filters).Count);
+    }
+
     private static VariableListItem Row(IEnumerable<VariableListItem> rows, Guid kilde) =>
         rows.First(i => i.KildeId == kilde);
 
