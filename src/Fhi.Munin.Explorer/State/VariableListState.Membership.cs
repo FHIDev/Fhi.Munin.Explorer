@@ -220,7 +220,7 @@ public sealed partial class VariableListState
         {
             await EnsureActiveListAsync(readerAsked: true, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception e) when (_activeListId is not null && e is not OperationCanceledException)
+        catch (Exception e) when (_activeListId is not null && !cancellationToken.IsCancellationRequested)
         {
             // As in ToggleSavedAsync: the write can go out, the API skips what the list already holds.
             _logger?.LogWarning(

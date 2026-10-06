@@ -30,6 +30,12 @@ public class SaveAllTest : ExplorerTestContext
         /// <summary>Time out every membership read once an add has gone through, as HttpClient's timeout does.</summary>
         public bool TimeOutMembershipAfterAdd { get; init; }
 
+        /// <summary>Time out every membership read.</summary>
+        public bool TimeOutMembership { get; init; }
+
+        /// <summary>Time out every lists read once an add has gone through.</summary>
+        public bool TimeOutListsAfterAdd { get; init; }
+
         /// <summary>Searches after the first wait on this while it is set, so a test can press mid-fetch.</summary>
         public TaskCompletionSource? HoldSearches { get; set; }
 
@@ -78,6 +84,12 @@ public class SaveAllTest : ExplorerTestContext
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
             ListsCalls++;
+
+            if (TimeOutListsAfterAdd && Adds.Count > 0)
+            {
+                throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout.");
+            }
+
             return Task.FromResult<IReadOnlyList<VariableList>>(
                 HasList || CreateCalls > 0 ? [new VariableList { Id = ListId, Name = "Variabelliste forsvaret" }] : []);
         }
@@ -97,7 +109,7 @@ public class SaveAllTest : ExplorerTestContext
                 throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
             }
 
-            if (TimeOutMembershipAfterAdd && Adds.Count > 0)
+            if (TimeOutMembership || (TimeOutMembershipAfterAdd && Adds.Count > 0))
             {
                 throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout.");
             }
@@ -319,6 +331,26 @@ public class SaveAllTest : ExplorerTestContext
 
         Assert.Single(client.Adds);
         Assert.Equal("1 variabel lagret i Variabelliste forsvaret.", Status(cut));
+        Assert.Equal("", Alert(cut));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void SaveAll_WhenAReadAroundTheWriteTimesOut_ThenTheSaveStillGoesThrough(bool hasList, bool listsTimeOut)
+    {
+        // Before the write with a list, reading a just-made first list, and the count refresh after.
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, [rows[0].Id])
+        {
+            HasList = hasList, TimeOutMembership = true, TimeOutListsAfterAdd = listsTimeOut,
+        };
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+
+        Assert.Single(client.Adds);
         Assert.Equal("", Alert(cut));
     }
 
