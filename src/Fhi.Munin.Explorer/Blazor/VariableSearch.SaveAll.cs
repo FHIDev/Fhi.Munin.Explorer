@@ -115,11 +115,13 @@ public partial class VariableSearch
         }
 
         // Both regions are always present and empty until needed: one inserted and filled at once is announced unreliably.
-        builder.OpenElement(40, "p");
-        builder.AddAttribute(41, "role", "status");
-        builder.AddAttribute(42, "aria-live", "polite");
-        builder.AddAttribute(43, "aria-atomic", "true");
-        builder.AddContent(44, shown switch
+        // A <div>, not a <p>: an empty paragraph keeps its margins. Stiler's caption, as the result count above wears.
+        builder.OpenElement(40, "div");
+        builder.AddAttribute(41, "class", "caption");
+        builder.AddAttribute(42, "role", "status");
+        builder.AddAttribute(43, "aria-live", "polite");
+        builder.AddAttribute(44, "aria-atomic", "true");
+        builder.AddContent(45, shown switch
         {
             { List: { } list } => T.SavedAllStatus(shown.Saved, list),
             { Empty: true } => T.NothingToSave,
@@ -127,11 +129,12 @@ public partial class VariableSearch
         });
         builder.CloseElement();
 
-        builder.OpenElement(45, "p");
-        builder.AddAttribute(46, "role", "alert");
-        builder.AddAttribute(47, "aria-live", "assertive");
-        builder.AddAttribute(48, "aria-atomic", "true");
-        builder.AddContent(49, shown switch
+        builder.OpenElement(46, "div");
+        builder.AddAttribute(47, "class", "caption");
+        builder.AddAttribute(48, "role", "alert");
+        builder.AddAttribute(49, "aria-live", "assertive");
+        builder.AddAttribute(50, "aria-atomic", "true");
+        builder.AddContent(51, shown switch
         {
             { TooManyFrom: { } max } => T.SaveAllTooMany(max),
             { Failure: SaveFailure.Throttled } => T.RateLimitError,
