@@ -236,6 +236,12 @@ public partial class VariableSearch
                 return;
             }
 
+            // These ids are the last reader's search; a reader who signed in meanwhile did not ask for them.
+            if (state.Reader != reader)
+            {
+                return;
+            }
+
             var result = await state.SaveAllAsync(ids.Ids, T.FirstListName);
 
             if (result is null)

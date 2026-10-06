@@ -52,18 +52,32 @@ public class SaveAllTest : ExplorerTestContext
             };
         }
 
-        public override Task<VariableIdSet> GetVariableIdsAsync(
+        /// <summary>The ids answer waits on this while it is set, so a test can act mid-fetch.</summary>
+        public TaskCompletionSource? HoldIds { get; set; }
+
+        public int ListsCalls { get; private set; }
+
+        public override async Task<VariableIdSet> GetVariableIdsAsync(
             string? search, VariableFilter? filter = null, CancellationToken cancellationToken = default)
         {
             IdCalls.Add((search, filter));
-            return Task.FromResult(TooMany
+
+            if (HoldIds is { } hold)
+            {
+                await hold.Task;
+            }
+
+            return TooMany
                 ? new VariableIdSet { TooMany = true, MaxIds = 2000 }
-                : new VariableIdSet { Ids = allIds, MaxIds = 2000 });
+                : new VariableIdSet { Ids = allIds, MaxIds = 2000 };
         }
 
-        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<VariableList>>(
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
+        {
+            ListsCalls++;
+            return Task.FromResult<IReadOnlyList<VariableList>>(
                 HasList || CreateCalls > 0 ? [new VariableList { Id = ListId, Name = "Variabelliste forsvaret" }] : []);
+        }
 
         public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
@@ -163,7 +177,7 @@ public class SaveAllTest : ExplorerTestContext
     private static bool Asking(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll("[id^=munin-explorer-save-all-confirm-]").Count == 1;
 
-    private static void Ja(IRenderedComponent<VariableSearch> cut) =>
+    private static void PressYes(IRenderedComponent<VariableSearch> cut) =>
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Ja, lagre dem").Click();
 
     private static void Search(IRenderedComponent<VariableSearch> cut, string term)
@@ -176,7 +190,7 @@ public class SaveAllTest : ExplorerTestContext
         cut.FindAll(".munin-explorer-dataitem-main__save button");
 
     [Fact]
-    public void SignedOut_ThereIsNoButtonAndNoSaveColumn()
+    public void SaveAll_WhenSignedOut_ThenThereIsNoButtonAndNoSaveColumn()
     {
         var rows = new[] { Variable("Vekt") };
         var cut = Render(new Client(rows, 1, [rows[0].Id]), signedIn: false);
@@ -186,7 +200,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_SavesEveryIdOfTheSearchIncludingLaterPages_InOneAdd()
+    public void SaveAll_WhenPressed_ThenEveryIdOfTheSearchIsAddedInOneCall()
     {
         var rows = new[] { Variable("Vekt"), Variable("Høyde") };
         var offPage = Guid.NewGuid();
@@ -209,7 +223,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Saved_ANewSearchOffersTheButtonAgain_AndTheOldOneStillSaysLagret()
+    public void SaveAll_WhenAnotherSearchRuns_ThenTheButtonIsOfferedAgainAndTheSavedSearchStaysDone()
     {
         var rows = new[] { Variable("Vekt") };
         var cut = Render(new Client(rows, 1, [rows[0].Id]));
@@ -225,7 +239,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Saved_ANewReaderSeesNeitherLagretNorTheLastReadersList()
+    public void SaveAll_WhenAnotherReaderSignsIn_ThenTheLastReadersOutcomeIsNotShown()
     {
         var rows = new[] { Variable("Vekt") };
         var cut = Render(new Client(rows, 1, [rows[0].Id]));
@@ -240,7 +254,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_CountsOnlyTheVariablesTheListDidNotAlreadyHold()
+    public void SaveAll_WhenSomeAreAlreadyInTheList_ThenOnlyTheNewOnesAreCounted()
     {
         var rows = new[] { Variable("Vekt"), Variable("Høyde") };
         var client = new Client(rows, 2, [rows[0].Id, rows[1].Id]);
@@ -255,7 +269,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_WhenTheListAlreadyHeldThemAll_SaysSo()
+    public void SaveAll_WhenTheListHoldsThemAll_ThenTheStatusSaysSo()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 1, [rows[0].Id]);
@@ -269,21 +283,39 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_WhenTheMembershipCannotBeRead_DoesNotClaimACount()
+    public void SaveAll_WhenTheMembershipCannotBeRead_ThenNoCountIsClaimed()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 1, [rows[0].Id]) { RateLimitMembership = true };
         var cut = Render(client);
+        var listsBefore = client.ListsCalls;
 
         SaveAll(cut)!.Click();
 
         Assert.Single(client.Adds);
         Assert.Equal("Variablene er lagret i Variabelliste forsvaret.", Status(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-data-list__saved-notice"));
+        Assert.Equal(listsBefore + 1, client.ListsCalls);
     }
 
     [Fact]
-    public void Press_WithNoListYet_StillSavesWhenTheNewListCannotBeRead()
+    public void SaveAll_WhenAnotherReaderSignsInDuringTheFetch_ThenTheirListIsNotWritten()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, [rows[0].Id]) { HoldIds = new TaskCompletionSource() };
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        client.HoldIds.SetResult();
+
+        cut.WaitForAssertion(() => Assert.Null(SaveAll(cut)!.GetAttribute("aria-disabled")));
+        Assert.Empty(client.Adds);
+    }
+
+    [Fact]
+    public void SaveAll_WhenTheNewFirstListCannotBeRead_ThenTheSaveStillGoesThrough()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 1, [rows[0].Id]) { HasList = false, RateLimitMembership = true };
@@ -297,7 +329,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Saved_TheNoticesDoNotOutliveTheReader()
+    public void Notices_WhenTheReaderSignsOut_ThenTheyAreNotShownToTheNext()
     {
         var rows = new[] { Variable("Vekt") };
         var cut = Render(new Client(rows, 1, [rows[0].Id]));
@@ -311,7 +343,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_WithNoListYet_MakesMinVariabelliste()
+    public void SaveAll_WhenTheReaderHasNoList_ThenAFirstListIsMade()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 1, [rows[0].Id]) { HasList = false };
@@ -325,7 +357,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_WhenTheResultEmptiedUnderneath_SavesNothingAndMakesNoList()
+    public void SaveAll_WhenTheResultHasEmptied_ThenNothingIsSavedAndNoListIsMade()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 1, []) { HasList = false };
@@ -340,7 +372,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public async Task State_AnEmptySetSavesNothingAndMakesNoList()
+    public async Task SaveAllAsync_WhenTheSetIsEmpty_ThenNothingIsSavedAndNoListIsMade()
     {
         var client = new Client([Variable("Vekt")], 1, []) { HasList = false };
         Render(client);
@@ -353,13 +385,13 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Confirm_AskingAgainClearsThisSearchsLastFailure()
+    public void Confirm_WhenAskedAgain_ThenThisSearchsLastFailureIsCleared()
     {
         var rows = new[] { Variable("Vekt") };
         var cut = Render(new Client(rows, 250, [rows[0].Id]) { RateLimitAdd = true });
 
         SaveAll(cut)!.Click();
-        Ja(cut);
+        PressYes(cut);
         Assert.Contains("for mange forespørsler", Alert(cut));
 
         SaveAll(cut)!.Click();
@@ -369,7 +401,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Confirm_DoesNotSurviveASignOut()
+    public void Confirm_WhenTheReaderSignsOut_ThenTheQuestionIsGone()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 250, [rows[0].Id]);
@@ -384,7 +416,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Confirm_AskedOnAnotherSearch_IsGoneWhenTheSavedSearchComesBack()
+    public void Confirm_WhenTheSavedSearchComesBack_ThenNoQuestionIsShown()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 250, [rows[0].Id]);
@@ -392,7 +424,7 @@ public class SaveAllTest : ExplorerTestContext
 
         Search(cut, "vekt");
         SaveAll(cut)!.Click();
-        Ja(cut);
+        PressYes(cut);
         Assert.Equal("\u2713 Lagret", SaveAll(cut)!.TextContent.Trim());
         Search(cut, "høyde");
         Assert.Equal("Lagre disse variablene", SaveAll(cut)!.TextContent.Trim());
@@ -406,7 +438,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_WhileASearchIsBeingFetched_DoesNothing()
+    public void SaveAll_WhenASearchIsBeingFetched_ThenThePressDoesNothing()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 1, [rows[0].Id]) { HoldSearches = new TaskCompletionSource() };
@@ -425,7 +457,7 @@ public class SaveAllTest : ExplorerTestContext
     [InlineData(199, false)]
     [InlineData(200, true)]
     [InlineData(2000, true)]
-    public void Press_AResultOf200OrMoreAsksFirst(int total, bool asks)
+    public void SaveAll_WhenTheResultIs200OrMore_ThenItAsksFirst(int total, bool asks)
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, total, [rows[0].Id]);
@@ -440,7 +472,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Confirm_NeiSavesNothing_JaSavesAll()
+    public void Confirm_WhenDeclined_ThenNothingIsSavedAndWhenAcceptedAllIs()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 250, [rows[0].Id]);
@@ -457,12 +489,12 @@ public class SaveAllTest : ExplorerTestContext
         Assert.Empty(client.Adds);
 
         SaveAll(cut)!.Click();
-        Ja(cut);
+        PressYes(cut);
         Assert.Single(client.Adds);
     }
 
     [Fact]
-    public void Confirm_IsNotShownOnAnotherSearch()
+    public void Confirm_WhenAnotherSearchRuns_ThenTheQuestionIsNotShown()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 250, [rows[0].Id]);
@@ -476,7 +508,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_MoreThanTheApiReturnsIsRefusedWithoutAsking()
+    public void SaveAll_WhenTheResultExceedsTheCap_ThenItIsRefusedWithoutAsking()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 2001, [rows[0].Id]);
@@ -492,7 +524,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_TheApisTooManyIsSaidAndNothingIsSaved()
+    public void SaveAll_WhenTheApiAnswersTooMany_ThenNothingIsSaved()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 1, [rows[0].Id]) { TooMany = true };
@@ -505,7 +537,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Press_AThrottledAddSaysSoAndOffersTheButtonAgain()
+    public void SaveAll_WhenTheAddIsThrottled_ThenItSaysSoAndOffersTheButtonAgain()
     {
         var rows = new[] { Variable("Vekt") };
         var cut = Render(new Client(rows, 1, [rows[0].Id]) { RateLimitAdd = true });
@@ -517,7 +549,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Saved_EachRowSaysFjernAndShowsItsNoticeUntilTheTimePasses()
+    public void Notices_WhenSaved_ThenEachRowOffersRemovalAndShowsANoticeForThreeSeconds()
     {
         var rows = new[] { Variable("Vekt"), Variable("Høyde") };
         var cut = Render(new Client(rows, 2, [rows[0].Id, rows[1].Id]));
@@ -537,7 +569,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void RowButton_IsNoTabStopAndSavesWithoutOpeningTheRow()
+    public void RowButton_WhenPressed_ThenItSavesWithoutOpeningTheRowAndIsNoTabStop()
     {
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 1, [rows[0].Id]);
@@ -555,7 +587,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void RowCells_MatchTheHeaderColumns()
+    public void RowCells_WhenSignedIn_ThenTheyMatchTheHeaderColumns()
     {
         var rows = new[] { Variable("Vekt") };
         var cut = Render(new Client(rows, 1, [rows[0].Id]));

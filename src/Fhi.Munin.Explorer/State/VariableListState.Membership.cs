@@ -286,6 +286,19 @@ public sealed partial class VariableListState
             }
         }
 
+        // With the membership unknown the add counted every id as new; the API's own count corrects it.
+        if (added is null && StillCurrent(startedAt))
+        {
+            try
+            {
+                await RefreshAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                _logger?.LogWarning(e, "could not read the lists' counts back after saving a search result");
+            }
+        }
+
         return new SaveAllResult(listId, listName, added);
     }
 
