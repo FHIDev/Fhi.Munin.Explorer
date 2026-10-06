@@ -806,6 +806,7 @@ export const states = {
     await page.locator('input.searchbox__freetext').first().fill(SAVE_ALL_CONFIRM_SEARCH);
     await press(page, 'Søk');
     await page.locator('.munin-explorer-results__toolbar', { hasText: '250' }).first().waitFor({ timeout: findTimeout });
+    await page.locator('button[id^=munin-explorer-save-all-]:not([aria-disabled])').waitFor({ timeout: findTimeout });
     await press(page, 'Lagre disse variablene');
     await page.getByRole('button', { name: 'Ja, lagre dem', exact: true }).waitFor({ state: 'visible', timeout: findTimeout });
   },
@@ -813,6 +814,7 @@ export const states = {
   // The captured 18289 hits: more than the API returns, so the press asks the reader to narrow it.
   'explorer-save-all-too-many': async page => {
     await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    await page.locator('button[id^=munin-explorer-save-all-]:not([aria-disabled])').waitFor({ timeout: findTimeout });
     await press(page, 'Lagre disse variablene');
     await page.getByRole('alert').filter({ hasText: 'Begrens utvalget' }).waitFor({ state: 'visible', timeout: findTimeout });
   },
@@ -823,8 +825,16 @@ export const states = {
     const box = page.locator('input.searchbox__freetext').first();
     await box.fill(SAVE_ALL_SEARCH);
     await press(page, 'Søk');
+    // A press while the search is still fetching is ignored by design, so wait for its rows first.
+    await page.locator('.munin-explorer-results__toolbar', { hasText: SAVE_ALL_SEARCH }).first().waitFor({ timeout: findTimeout });
+    await page.locator('button[id^=munin-explorer-save-all-]:not([aria-disabled])').waitFor({ timeout: findTimeout });
     await page.getByRole('button', { name: 'Lagre disse variablene', exact: true }).click();
     await page.getByRole('status').filter({ hasText: /lagret i|allerede i/ }).waitFor({ state: 'visible', timeout: findTimeout });
+    // Every row's save has to hold after the read-back, or this scans rows that offer to save again.
+    await page.waitForFunction(() => {
+      const buttons = [...document.querySelectorAll('.munin-explorer-dataitem-main__save button')];
+      return buttons.length > 0 && buttons.every(b => b.textContent.trim() === 'Fjern fra liste');
+    }, null, { timeout: findTimeout });
   },
 
   // A saved list's row opened into the variable's panel, which spans the table (ADO 121586).
