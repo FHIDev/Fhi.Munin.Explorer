@@ -13494,6 +13494,34 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Codes_WhenTheInlinePreviewIsDrawn_ThenEachCodeAndNameIsACellOfItsOwn()
+    {
+        // Stiler sets the two cells in columns so names line up whatever the code's width; one
+        // text node per line would leave it nothing to align. (Fhi.Metadata-gdek7, sak #6132)
+        var cut = OpenData(KodeverkRows());
+
+        Assert.Equal(Codes2336().Codes.Select(code => new[] { code.Value, code.Name }),
+                     PreviewItems(KodeverkLines(cut)[0])
+                         .Select(li => li.Children.Select(cell => cell.TextContent).ToArray()));
+        Assert.All(PreviewItems(KodeverkLines(cut)[0]),
+                   li => Assert.All(li.Children, cell => Assert.Equal("SPAN", cell.TagName)));
+    }
+
+    [Fact]
+    public void Codes_WhenAPreviewedCodeHasNoName_ThenItIsTheCodeCellAlone()
+    {
+        // No empty name cell and no trailing space: the line reads as the code and nothing else.
+        var unnamed = Codes2336() with
+        {
+            Codes = [new KodeverkCode { Value = "1", Name = "" }, new KodeverkCode { Value = "10", Name = "  " }]
+        };
+        var cut = OpenData(KodeverkRows().Knows(unnamed));
+
+        Assert.All(PreviewItems(KodeverkLines(cut)[0]), li => Assert.Single(li.Children));
+        Assert.Equal(["1", "10"], PreviewItems(KodeverkLines(cut)[0]).Select(li => li.TextContent));
+    }
+
+    [Fact]
     public void Codes_WhenANamelessLinkHasMoreCodesThanFitInline_ThenAControlOpensTheSameFullList()
     {
         var client = KodeverkRows().Knows(ManyCodes2336());

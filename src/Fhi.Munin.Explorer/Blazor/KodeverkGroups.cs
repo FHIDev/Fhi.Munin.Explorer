@@ -111,6 +111,8 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
         : codes.Count == 0 ? InlineCodes.None
         : InlineCodes.Codes;
 
+    // Code and name in a span each, so Stiler can set them in two columns (sak #6132); the space
+    // between them keeps the line reading "1 Ja" where no stylesheet does.
     private static RenderFragment InlineCodesPreview(IReadOnlyList<KodeverkCode> codes) => builder =>
     {
         builder.OpenElement(0, "ul");
@@ -119,7 +121,18 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
         foreach (var code in codes.Take(InlineCodePreview))
         {
             builder.OpenElement(2, "li");
-            builder.AddContent(3, DisplayText.Trimmed(code.Name) is { } name ? $"{code.Value} {name}" : code.Value);
+            builder.OpenElement(3, "span");
+            builder.AddContent(4, code.Value);
+            builder.CloseElement();
+
+            if (DisplayText.Trimmed(code.Name) is { } name)
+            {
+                builder.AddContent(5, " ");
+                builder.OpenElement(6, "span");
+                builder.AddContent(7, name);
+                builder.CloseElement();
+            }
+
             builder.CloseElement();
         }
 
