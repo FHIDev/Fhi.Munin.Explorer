@@ -882,10 +882,12 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-data-list__header` | handle |
   | `munin-explorer-data-list__item` | handle |
   | `munin-explorer-data-list__item--expanded` | handle |
+  | `munin-explorer-data-list__item--saved` | handle |
   | `munin-explorer-data-list__item__row` | handle |
   | `munin-explorer-data-list__item__row--header` | handle |
   | `munin-explorer-data-list__result` | handle |
   | `munin-explorer-data-list__save-status` | handle |
+  | `munin-explorer-data-list__saved-notice` | handle |
   | `munin-explorer-datacollections` | id |
   | `munin-explorer-dataitem-header` | handle |
   | `munin-explorer-dataitem-header__button` | handle |
@@ -905,6 +907,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-main__desiredData` | handle |
   | `munin-explorer-dataitem-main__expand-icon` | handle |
   | `munin-explorer-dataitem-main__name` | handle |
+  | `munin-explorer-dataitem-main__save` | handle |
   | `munin-explorer-dataperiod` | id |
   | `munin-explorer-datasamling` | handle |
   | `munin-explorer-datasamling__criteria` | handle |
@@ -1031,6 +1034,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-prices` | id |
   | `munin-explorer-results` | handle |
   | `munin-explorer-results__toolbar` | handle |
+  | `munin-explorer-save-all` | handle |
   | `munin-explorer-retry` | meaning |
   | `munin-explorer-search__clear` | handle |
   | `munin-explorer-selection` | handle |

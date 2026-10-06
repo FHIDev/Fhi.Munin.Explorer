@@ -104,6 +104,9 @@ TARGETS=(
   "/utforsker::explorer-list-tab"
   "/utforsker::list-row-panel"
   "/utforsker::list-row-notes"
+  "/utforsker::explorer-save-all-confirm"
+  "/utforsker::explorer-save-all-too-many"
+  "/utforsker::explorer-saved-all"
 )
 
 host_pid=""

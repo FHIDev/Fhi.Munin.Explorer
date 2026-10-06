@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Display;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -85,6 +86,63 @@ public partial class VariableSearch
         builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
 
         builder.AddContent(7, saved ? T.RemoveFromList : T.SaveToList);
+        builder.CloseElement();
+    };
+
+    private string RowSaveButtonId(VariableSummary v) => $"{SaveButtonId(v)}-row";
+
+    // The collapsed row's copy of the panel's button, for a pointer. tabindex -1 keeps the row at one
+    // Tab stop (Fhi.Metadata-35w0p.78); the keyboard saves from the panel, one Enter further in.
+    private RenderFragment RowSaveCell(VariableSummary v) => builder =>
+    {
+        if (!ColumnVisible(ResultColumn.SaveToList))
+        {
+            return;
+        }
+
+        var saved = ListState!.IsSaved(v.Id);
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "role", "cell");
+        builder.AddAttribute(2, "class", "munin-explorer-dataitem-main__save");
+
+        builder.OpenElement(3, "button");
+        builder.AddAttribute(4, "class", "hd-button-square button-square--ghost-blue");
+        builder.AddAttribute(5, "type", "button");
+        builder.AddAttribute(6, "id", RowSaveButtonId(v));
+        builder.AddAttribute(7, "tabindex", "-1");
+        builder.AddAttribute(8, "aria-pressed", saved ? "true" : "false");
+        builder.AddAttribute(9, "aria-labelledby", $"{RowSaveButtonId(v)} {RowHeadingId(v)}");
+        builder.AddAttribute(10, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
+
+        // Saving is not a request to read the variable, so the row around it must not open the panel.
+        builder.AddEventStopPropagationAttribute(11, "onclick", true);
+        builder.AddContent(12, saved ? T.RemoveFromList : T.SaveToList);
+        builder.CloseElement();
+
+        // In the same cell, so the row has as many cells as the header has columns. An open row says
+        // it in the panel instead; two alerts for one failure would be announced twice.
+        if (!IsSelected(v))
+        {
+            builder.AddContent(13, PanelSaveStatus(v));
+        }
+
+        builder.CloseElement();
+    };
+
+    // Over the row's columns, as on helsedata's own page, but hidden from the tree: the status line
+    // beside «Lagre disse variablene» says it once rather than once per row.
+    private RenderFragment SavedNotice(VariableSummary v) => builder =>
+    {
+        if (!ShowsSavedNotice(v))
+        {
+            return;
+        }
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "munin-explorer-data-list__saved-notice");
+        builder.AddAttribute(2, "aria-hidden", "true");
+        builder.AddContent(3, T.SavedInList(_noticeList));
         builder.CloseElement();
     };
 

@@ -8,15 +8,15 @@
 // report asks for it, instead of a second set here that nothing would ever look at again.
 //
 // They are not one snapshot: filters.json reports 46037 variables where variables.json holds
-// 18289, and its facet counts are that catalogue's. Nothing here reads a count back out, and
-// re-capturing the corpus together is its own job.
+// 18289, and its facet counts are that catalogue's. Nothing here reads a captured count back out
+// (the save-all states make up their own), and re-capturing the corpus together is its own job.
 //
 // Usage:  node scripts/axe-stub-api.mjs <port>
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, treeFilters } from './tree-fixture.mjs';
+import { TREE_SEARCH, EMPTY_SEARCH, LONG_NAME_SEARCH, LONG_NAME, SAVE_ALL_SEARCH, SAVE_ALL_CONFIRM_SEARCH, treeFilters } from './tree-fixture.mjs';
 import * as detailTree from './hierarchy-fixture.mjs';
 import * as statisticsFixture from './statistics-fixture.mjs';
 
@@ -272,6 +272,22 @@ function serve(url, request, response) {
     body.datasamlingStatistikkType = 'accumulated';
     body.statistikker = statistikker;
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(body));
+    return;
+  }
+  // Before the route table, whose variables/{id} would answer it with a variable's detail.
+  if (path === '/api/explorer/variables/ids') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+      .end(JSON.stringify({ ids: variables.items.map(v => v.id), tooMany: false, maxIds: 2000 }));
+    return;
+  }
+  if (search === SAVE_ALL_CONFIRM_SEARCH && path === '/api/explorer/variables') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+      .end(JSON.stringify({ ...variables, totalCount: 250, totalPages: Math.ceil(250 / variables.size) }));
+    return;
+  }
+  if (search === SAVE_ALL_SEARCH && path === '/api/explorer/variables') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+      .end(JSON.stringify({ ...variables, totalCount: variables.items.length, totalPages: 1 }));
     return;
   }
   if (search === LONG_NAME_SEARCH && path === '/api/explorer/variables') {

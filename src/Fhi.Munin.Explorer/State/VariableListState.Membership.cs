@@ -1,3 +1,4 @@
+using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Display;
 using Microsoft.Extensions.Logging;
 
@@ -195,6 +196,110 @@ public sealed partial class VariableListState
 
         RaiseChanged(listId, affectsRows: true);
         return _saved.Contains(variableId);
+    }
+
+    /// <summary>What <see cref="SaveAllAsync"/> wrote, and where. <c>Added</c> is null when the membership could not be read.</summary>
+    public sealed record SaveAllResult(Guid ListId, string ListName, IReadOnlyList<Guid>? Added);
+
+    /// <summary>Saves all of <paramref name="variableIds"/> to the active list, making a first list if needed.</summary>
+    /// <returns>Null if nothing was saved, the reader changed, or a later batch was refused.</returns>
+    public async Task<SaveAllResult?> SaveAllAsync(
+        IReadOnlyCollection<Guid> variableIds,
+        string nameForFirstList,
+        CancellationToken cancellationToken = default)
+    {
+        // Nothing to put anywhere, so no first list is made for it.
+        if (!IsAuthenticated || variableIds.Count == 0)
+        {
+            return null;
+        }
+
+        var startedAt = _generation;
+
+        try
+        {
+            await EnsureActiveListAsync(readerAsked: true, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (_activeListId is not null && !cancellationToken.IsCancellationRequested)
+        {
+            // As in ToggleSavedAsync: the write can go out, the API skips what the list already holds.
+            _logger?.LogWarning(
+                e, "could not refresh the membership of list {ListId}", _activeListId);
+        }
+
+        if (!StillCurrent(startedAt))
+        {
+            return null;
+        }
+
+        if (_activeListId is null)
+        {
+            var target = await CreateAsync(nameForFirstList, cancellationToken).ConfigureAwait(false);
+
+            if (target is null)
+            {
+                return null;
+            }
+
+            try
+            {
+                await SetActiveListAsync(target.Id, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested)
+            {
+                // A new list is empty, so a refused read of it loses nothing; the write must still go.
+                _logger?.LogWarning(e, "could not read new list {ListId} before saving into it", target.Id);
+            }
+
+            if (!StillCurrent(startedAt))
+            {
+                return null;
+            }
+        }
+
+        var listId = _activeListId!.Value;
+        var listName = _lists.FirstOrDefault(l => l.Id == listId)?.Name ?? nameForFirstList;
+        var added = _membershipLoaded ? variableIds.Where(id => !_saved.Contains(id)).Distinct().ToList() : null;
+
+        foreach (var batch in variableIds.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+        {
+            if (!await AddVariablesAsync(listId, batch, cancellationToken).ConfigureAwait(false)
+                || !StillCurrent(startedAt))
+            {
+                return null;
+            }
+        }
+
+        // The ids carry no kilde, so the tally the add dropped is read back once rather than left
+        // blank under the list view's kilde filter (Fhi.Metadata-5s4uj). The save stands either way.
+        if (_kilderStale && _activeListId == listId)
+        {
+            _membershipLoaded = false;
+
+            try
+            {
+                await LoadMembershipAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger?.LogWarning(e, "could not read list {ListId} back after saving a search result", listId);
+            }
+        }
+
+        // With the membership unknown the add counted every id as new; the API's own count corrects it.
+        if (added is null && StillCurrent(startedAt))
+        {
+            try
+            {
+                await RefreshAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger?.LogWarning(e, "could not read the lists' counts back after saving a search result");
+            }
+        }
+
+        return new SaveAllResult(listId, listName, added);
     }
 
     /// <summary>

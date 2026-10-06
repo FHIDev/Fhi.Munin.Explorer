@@ -422,6 +422,12 @@ public partial class VariableSearch
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusSaveAll)
+        {
+            _focusSaveAll = false;
+            await _saveAllButton.FocusAsync();
+        }
+
         if (_focusSearchAfterSource && _sourceKind is null && _selectedId is null)
         {
             _focusSearchAfterSource = false;

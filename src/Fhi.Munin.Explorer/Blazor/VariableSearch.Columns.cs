@@ -22,8 +22,7 @@ public partial class VariableSearch
     /// </remarks>
     private enum ResultColumn
     {
-        // Kept so the enum's values stay put; it draws nothing and the picker never offers it.
-        [Obsolete("Lagre i liste is in the open panel since Fhi.Metadata-35w0p.78; this column draws nothing.")]
+        // A signed-in reader's pointer shortcut, not a fact about the variable, so the picker never offers it.
         SaveToList,
         Code,
         Kilde,
@@ -40,10 +39,8 @@ public partial class VariableSearch
     /// independently, and a column added to <see cref="ResultColumn"/> without a line here would
     /// be one the reader could see but not turn off.
     /// </remarks>
-#pragma warning disable CS0618 // SaveToList is the one member left out.
     private static readonly ResultColumn[] OptionalColumns =
         [.. Enum.GetValues<ResultColumn>().Where(c => c != ResultColumn.SaveToList)];
-#pragma warning restore CS0618
 
     /// <summary>The columns that say something about the variable, which is all the last-column rule counts.</summary>
     private static readonly ResultColumn[] DataColumns = OptionalColumns;
@@ -89,9 +86,7 @@ public partial class VariableSearch
     /// <summary>Whether a column is on screen.</summary>
     private bool ColumnVisible(ResultColumn column) => column switch
     {
-#pragma warning disable CS0618
-        ResultColumn.SaveToList => false,
-#pragma warning restore CS0618
+        ResultColumn.SaveToList => ShowSaveButton,
         ResultColumn.Status when !_statusColumnChosen =>
             ShowStatusColumn || StatusIsAllThatIsLeft || _statusShownForSort,
         _ => !_hiddenColumns.Contains(column),

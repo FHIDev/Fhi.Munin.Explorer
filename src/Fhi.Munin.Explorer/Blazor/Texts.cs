@@ -258,6 +258,8 @@ internal sealed record Texts(
     // The row's name button, named for its variable for ExpandDatasamlinger's reason. (Fhi.Metadata-35w0p.78)
     Func<string, string> ExpandVariableDetail,
     Func<string, string> CollapseVariableDetail,
+    // The heading over a collapsed row's save button: helsedata's own word for its action column.
+    string ColumnActions,
     // The open panel's save action, in both of its states. One control, two words: the button says
     // what pressing it does, not what the variable currently is.
     string SaveToList,
@@ -269,6 +271,17 @@ internal sealed record Texts(
     // Said in the row when the save answers 401/403 despite the host's own claim that the reader
     // is signed in — a different sentence from SaveError, because retrying this one cannot work.
     string SignInRequiredError,
+    // «Lagre disse variablene» over the results: the button, its state once done, the confirmation a
+    // large result asks for, the refusal past the API's cap, and the notice each saved row shows.
+    string SaveAllResults,
+    string SavedAllResults,
+    Func<int, string> ConfirmSaveAll,
+    string ConfirmSaveAllYes,
+    string ConfirmSaveAllNo,
+    Func<int, string> SaveAllTooMany,
+    Func<int?, string, string> SavedAllStatus,
+    Func<string, string> SavedInList,
+    string NothingToSave,
     // The saved-list view: its heading, the picker, the create form, and what it says when
     // there is nothing to show yet.
     string MyListsHeading,
@@ -1190,11 +1203,27 @@ internal sealed record Texts(
         ShowWholeVariable: "Vis hele variabelen",
         ExpandVariableDetail: name => $"Vis detaljer for {name}",
         CollapseVariableDetail: name => $"Skjul detaljer for {name}",
+        ColumnActions: "Valg",
         SaveToList: "Lagre i liste",
         RemoveFromList: "Fjern fra liste",
         FirstListName: "Min variabelliste",
         SaveError: "Kunne ikke lagre nå. Prøv igjen om litt.",
         SignInRequiredError: "Du er ikke logget inn. Logg inn for å lagre i listen.",
+        SaveAllResults: "Lagre disse variablene",
+        SavedAllResults: "Lagret",
+        ConfirmSaveAll: count => $"Lagre alle {count} variablene i listen?",
+        ConfirmSaveAllYes: "Ja, lagre dem",
+        ConfirmSaveAllNo: "Nei",
+        SaveAllTooMany: max => $"Begrens utvalget til høyst {max} variabler for å lagre dem samlet.",
+        SavedAllStatus: (count, list) => count switch
+        {
+            null => $"Variablene er lagret i {list}.",
+            0 => $"Alle variablene var allerede i {list}.",
+            1 => $"1 variabel lagret i {list}.",
+            _ => $"{count} variabler lagret i {list}.",
+        },
+        SavedInList: list => $"Lagret i liste {list}",
+        NothingToSave: "Søket gir ingen variabler å lagre lenger.",
         MyListsHeading: "Mine variabellister",
         ChooseList: "Velg liste",
         NewListName: "Navn på ny liste",
@@ -1676,11 +1705,27 @@ internal sealed record Texts(
         ShowWholeVariable: "Show the whole variable",
         ExpandVariableDetail: name => $"Show details for {name}",
         CollapseVariableDetail: name => $"Hide details for {name}",
+        ColumnActions: "Actions",
         SaveToList: "Save to list",
         RemoveFromList: "Remove from list",
         FirstListName: "My variable list",
         SaveError: "Could not save just now. Try again shortly.",
         SignInRequiredError: "You are not signed in. Sign in to save to the list.",
+        SaveAllResults: "Save these variables",
+        SavedAllResults: "Saved",
+        ConfirmSaveAll: count => $"Save all {count} variables to the list?",
+        ConfirmSaveAllYes: "Yes, save them",
+        ConfirmSaveAllNo: "No",
+        SaveAllTooMany: max => $"Narrow the result to at most {max} variables to save them together.",
+        SavedAllStatus: (count, list) => count switch
+        {
+            null => $"The variables are saved to {list}.",
+            0 => $"All the variables were already in {list}.",
+            1 => $"1 variable saved to {list}.",
+            _ => $"{count} variables saved to {list}.",
+        },
+        SavedInList: list => $"Saved to list {list}",
+        NothingToSave: "The search no longer has any variables to save.",
         MyListsHeading: "My variable lists",
         ChooseList: "Choose list",
         NewListName: "Name of new list",

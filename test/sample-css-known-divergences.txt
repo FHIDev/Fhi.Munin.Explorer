@@ -425,6 +425,12 @@ invented-declaration||.munin-explorer-page__fields dd|margin
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
 
+# New in Fhi.Metadata-dfy9u.8's «Lagre disse variablene». The Stiler rules are Fhi.Metadata-dfy9u.10;
+# these lines go when the pin moves to the Stiler version that carries them.
+unstyled-name||.munin-explorer-save-all|
+unstyled-name||.munin-explorer-data-list__item--saved|
+unstyled-name||.munin-explorer-data-list__saved-notice|
+
 
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
 # only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.98.

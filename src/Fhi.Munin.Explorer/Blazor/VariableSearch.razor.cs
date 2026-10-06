@@ -1187,6 +1187,12 @@ public sealed partial class VariableSearch : ComponentBase
             HeaderCell(builder, 800, "period", T.FieldDataPeriod, SortField.DataPeriod);
         }
 
+        // «Valg», as on helsedata's own page and the saved list's action column; the tab's word read as a tab.
+        if (ColumnVisible(ResultColumn.SaveToList))
+        {
+            HeaderCell(builder, 900, "save", T.ColumnActions, null);
+        }
+
         builder.CloseElement();
         builder.CloseElement();
         builder.CloseElement();
@@ -1391,9 +1397,9 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>The list item's class, carrying helsedata's expanded state.</summary>
     private string RowItemClass(VariableSummary v) =>
-        IsSelected(v)
-            ? "munin-explorer-data-list__item munin-explorer-data-list__item--expanded"
-            : "munin-explorer-data-list__item";
+        "munin-explorer-data-list__item"
+        + (IsSelected(v) ? " munin-explorer-data-list__item--expanded" : "")
+        + (ShowsSavedNotice(v) ? " munin-explorer-data-list__item--saved" : "");
 
     /// <summary>
     /// The row's metadata line: code, source, data collection and period, in helsedata's own
