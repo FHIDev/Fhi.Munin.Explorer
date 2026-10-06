@@ -676,7 +676,7 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
-    public async Task GetVariableIdsAsync_SendsTheSearchAndFilterAndReadsTheSet()
+    public async Task GetVariableIdsAsync_WhenSearchAndFilterAreSet_ThenBothAreSentAndTheSetIsRead()
     {
         var kilde = Guid.NewGuid();
         var id = Guid.NewGuid();
