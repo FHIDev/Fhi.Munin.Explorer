@@ -344,7 +344,9 @@ public class SaveAllTest : ExplorerTestContext
         var rows = new[] { Variable("Vekt") };
         var client = new Client(rows, 1, [rows[0].Id])
         {
-            HasList = hasList, TimeOutMembership = true, TimeOutListsAfterAdd = listsTimeOut,
+            HasList = hasList,
+            TimeOutMembership = true,
+            TimeOutListsAfterAdd = listsTimeOut,
         };
         var cut = Render(client);
 
