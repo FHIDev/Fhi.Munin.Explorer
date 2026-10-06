@@ -1034,6 +1034,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-prices` | id |
   | `munin-explorer-results` | handle |
   | `munin-explorer-results__toolbar` | handle |
+  | `munin-explorer-save-all` | handle |
   | `munin-explorer-retry` | meaning |
   | `munin-explorer-search__clear` | handle |
   | `munin-explorer-selection` | handle |

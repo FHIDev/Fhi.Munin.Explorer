@@ -69,7 +69,7 @@ public partial class VariableSearch
         var shown = SaveAllShown;
 
         builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "margin-bottom");
+        builder.AddAttribute(1, "class", "munin-explorer-save-all");
 
         // A line of its own above the buttons, so a narrow page never breaks the question between them.
         if (confirming)

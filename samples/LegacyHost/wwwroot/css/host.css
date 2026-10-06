@@ -1490,7 +1490,7 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
   flex: 260 1 0;
 }
 
-/* Lagre i liste, and the "Variabelliste" header over it. A fixed width rather than a weight: the
+/* Lagre i liste, and the «Valg» header over it. A fixed width rather than a weight: the
    button's words change when it is pressed, and a content-sized cell moved every later column in
    the row. 10rem is the longest label, "Remove from list". (Fhi.Metadata-q7i5e) */
 .munin-explorer-dataitem-main__save,
@@ -1538,6 +1538,12 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
 .munin-explorer-data-list__save-status > [role="alert"]:not(:empty) {
   display: block;
   margin-bottom: 16px;
+}
+
+/* «Lagre disse variablene» under the result count. Its own room above, so below 375px the
+   confirmation question does not sit tight under «Kolonner». (Fhi.Metadata-dfy9u.8) */
+.munin-explorer-save-all {
+  margin: 12px 0 16px;
 }
 
 /* «Lagre disse variablene»: each saved row is covered by its notice for a few seconds, as on

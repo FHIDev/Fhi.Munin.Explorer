@@ -260,6 +260,8 @@ internal sealed record Texts(
     Func<string, string> CollapseVariableDetail,
     // The open panel's save action, in both of its states. One control, two words: the button says
     // what pressing it does, not what the variable currently is.
+    // The heading over a collapsed row's save button: helsedata's own word for its action column.
+    string ColumnActions,
     string SaveToList,
     string RemoveFromList,
     // The list made for a reader who saves before they have made one themselves.
@@ -1201,6 +1203,7 @@ internal sealed record Texts(
         ShowWholeVariable: "Vis hele variabelen",
         ExpandVariableDetail: name => $"Vis detaljer for {name}",
         CollapseVariableDetail: name => $"Skjul detaljer for {name}",
+        ColumnActions: "Valg",
         SaveToList: "Lagre i liste",
         RemoveFromList: "Fjern fra liste",
         FirstListName: "Min variabelliste",
@@ -1702,6 +1705,7 @@ internal sealed record Texts(
         ShowWholeVariable: "Show the whole variable",
         ExpandVariableDetail: name => $"Show details for {name}",
         CollapseVariableDetail: name => $"Hide details for {name}",
+        ColumnActions: "Actions",
         SaveToList: "Save to list",
         RemoveFromList: "Remove from list",
         FirstListName: "My variable list",

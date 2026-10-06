@@ -1187,10 +1187,10 @@ public sealed partial class VariableSearch : ComponentBase
             HeaderCell(builder, 800, "period", T.FieldDataPeriod, SortField.DataPeriod);
         }
 
-        // The tab's own word, so the column and the place its button puts a variable are one name.
+        // «Valg», as on helsedata's own page and the saved list's action column; the tab's word read as a tab.
         if (ColumnVisible(ResultColumn.SaveToList))
         {
-            HeaderCell(builder, 900, "save", T.TabVariableList, null);
+            HeaderCell(builder, 900, "save", T.ColumnActions, null);
         }
 
         builder.CloseElement();

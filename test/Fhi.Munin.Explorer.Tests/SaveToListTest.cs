@@ -812,8 +812,8 @@ public class SaveToListTest : ExplorerTestContext
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))), signedIn);
 
         Assert.StartsWith("Navn", HeaderNames(cut)[0], StringComparison.Ordinal);
-        Assert.Equal(signedIn, HeaderNames(cut)[^1] == "Variabelliste");
-        Assert.DoesNotContain("Variabelliste", PickerNames(cut));
+        Assert.Equal(signedIn, HeaderNames(cut)[^1] == "Valg");
+        Assert.DoesNotContain("Valg", PickerNames(cut));
         Assert.Contains("Kilde", PickerNames(cut));
         Assert.Equal(signedIn ? 1 : 0, cut.FindAll(".munin-explorer-dataitem-header__save").Count);
         Assert.Equal(signedIn ? 1 : 0, cut.FindAll(".munin-explorer-dataitem-main__save").Count);
