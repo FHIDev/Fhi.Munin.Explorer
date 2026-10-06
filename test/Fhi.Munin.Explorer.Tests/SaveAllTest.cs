@@ -27,6 +27,9 @@ public class SaveAllTest : ExplorerTestContext
         public bool HasList { get; init; } = true;
         public bool RateLimitMembership { get; set; }
 
+        /// <summary>Time out every membership read once an add has gone through, as HttpClient's timeout does.</summary>
+        public bool TimeOutMembershipAfterAdd { get; init; }
+
         /// <summary>Searches after the first wait on this while it is set, so a test can press mid-fetch.</summary>
         public TaskCompletionSource? HoldSearches { get; set; }
 
@@ -92,6 +95,11 @@ public class SaveAllTest : ExplorerTestContext
             if (RateLimitMembership)
             {
                 throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
+            }
+
+            if (TimeOutMembershipAfterAdd && Adds.Count > 0)
+            {
+                throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout.");
             }
 
             return Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
@@ -209,11 +217,13 @@ public class SaveAllTest : ExplorerTestContext
 
         Search(cut, "sesjon");
         Assert.Equal("Lagre disse variablene", SaveAll(cut)!.TextContent.Trim());
+        var listsBefore = client.ListsCalls;
         SaveAll(cut)!.Click();
 
         var add = Assert.Single(client.Adds);
         Assert.Equal(new[] { rows[0].Id, rows[1].Id, offPage }.Order(), add.Order());
         Assert.Equal("sesjon", Assert.Single(client.IdCalls).Search);
+        Assert.Equal(listsBefore, client.ListsCalls);
         Assert.Equal("3 variabler lagret i Variabelliste forsvaret.", Status(cut));
         Assert.Equal("✓ Lagret", SaveAll(cut)!.TextContent.Trim());
         Assert.Equal("true", SaveAll(cut)!.GetAttribute("aria-disabled"));
@@ -296,6 +306,20 @@ public class SaveAllTest : ExplorerTestContext
         Assert.Equal("Variablene er lagret i Variabelliste forsvaret.", Status(cut));
         Assert.Empty(cut.FindAll(".munin-explorer-data-list__saved-notice"));
         Assert.Equal(listsBefore + 1, client.ListsCalls);
+    }
+
+    [Fact]
+    public void SaveAll_WhenTheReadBackTimesOut_ThenTheSaveIsStillReportedSaved()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, [rows[0].Id]) { TimeOutMembershipAfterAdd = true };
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+
+        Assert.Single(client.Adds);
+        Assert.Equal("1 variabel lagret i Variabelliste forsvaret.", Status(cut));
+        Assert.Equal("", Alert(cut));
     }
 
     [Fact]
@@ -385,7 +409,7 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Confirm_WhenAskedAgain_ThenThisSearchsLastFailureIsCleared()
+    public void Confirm_WhenAskedAgain_ThenTheLastFailureForThisSearchIsCleared()
     {
         var rows = new[] { Variable("Vekt") };
         var cut = Render(new Client(rows, 250, [rows[0].Id]) { RateLimitAdd = true });

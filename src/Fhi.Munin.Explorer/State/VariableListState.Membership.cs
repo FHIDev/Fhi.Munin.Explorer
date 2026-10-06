@@ -245,7 +245,7 @@ public sealed partial class VariableListState
             {
                 await SetActiveListAsync(target.Id, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception e) when (e is not OperationCanceledException)
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested)
             {
                 // A new list is empty, so a refused read of it loses nothing; the write must still go.
                 _logger?.LogWarning(e, "could not read new list {ListId} before saving into it", target.Id);
@@ -280,7 +280,7 @@ public sealed partial class VariableListState
             {
                 await LoadMembershipAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception e) when (e is not OperationCanceledException)
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested)
             {
                 _logger?.LogWarning(e, "could not read list {ListId} back after saving a search result", listId);
             }
@@ -293,7 +293,7 @@ public sealed partial class VariableListState
             {
                 await RefreshAsync(cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception e) when (e is not OperationCanceledException)
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested)
             {
                 _logger?.LogWarning(e, "could not read the lists' counts back after saving a search result");
             }
