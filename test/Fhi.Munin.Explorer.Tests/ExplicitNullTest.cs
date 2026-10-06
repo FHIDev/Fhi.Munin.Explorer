@@ -51,7 +51,7 @@ public class ExplicitNullTest
     private static readonly string[] NotDeserialised =
     [
         nameof(ExplorerUrlState), nameof(VariableFilter), nameof(ExportedList), nameof(DesiredDataResult),
-        nameof(SharedList), nameof(SiblingOrder)
+        nameof(SharedList), nameof(SiblingOrder), nameof(VariabelgruppeScope)
     ];
 
     [Fact]

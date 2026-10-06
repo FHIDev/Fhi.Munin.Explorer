@@ -90,8 +90,8 @@ public partial class VariableSearch
     /// show. <c>Toggle</c> is what ticking it does, or null for a value that is not selectable: a
     /// kildetype heading the kilder are grouped under, a label rather than a filter because
     /// kildetype has a facet of its own, or a variabelgruppe the standalone facet returns to nest an
-    /// offered one under. The kilde tree offers every group it draws, both surfaces writing the one
-    /// <see cref="VariableFilter.VariabelgruppeIds"/>. (Fhi.Metadata-km3zb)
+    /// offered one under. The kilde tree offers every group it draws, each row ticking the group
+    /// under its own placement; the standalone facet ticks it everywhere. (Fhi.Metadata-59dh0)
     /// <para>
     /// <c>GroupHeading</c> says such a row is a heading the values below are grouped under, so its
     /// <c>Count</c> is how many of them there are rather than how many variables a value would
@@ -776,14 +776,22 @@ public partial class VariableSearch
                     Icons: Glyphs(node));
             }
 
+            // A variabelgruppe ticks under the placement it is drawn at, as Runa does: a bare id
+            // would filter the group in every datasamling of the kilde. (Fhi.Metadata-59dh0)
+            if (node is { Level: HierarchyLevel.Variabelgruppe, OwnerId: { } owner })
+            {
+                return new FacetValue(NodeKey(node), label, language, Counted(node.Count),
+                                      IsPlacementChosen(node.Id, owner),
+                                      () => TogglePlacementAsync(node.Id, owner),
+                                      children,
+                                      Icons: Glyphs(node));
+            }
+
             return new FacetValue(NodeKey(node),
                                   label,
                                   language,
                                   Counted(node.Count),
                                   reading.Chosen().Contains(node.Id),
-                                  // Every level ticks through its own reading, so a variabelgruppe
-                                  // drawn once per placement here and once in its own facet writes
-                                  // — and reads back — the one id. (Fhi.Metadata-km3zb)
                                   () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply),
                                   children,
                                   Icons: Glyphs(node));
@@ -896,7 +904,7 @@ public partial class VariableSearch
     private IReadOnlyList<FacetValue> ChosenVariabelgrupper(FilterOptions facets) =>
     [
         .. ListedVariabelgrupper(facets)
-            .Where(gruppe => IsGruppeChosen(gruppe.Id))
+            .Where(gruppe => ChosenVariabelgruppeIds().Contains(gruppe.Id))
             .Select(VariabelgruppeValue)
     ];
 
@@ -930,19 +938,50 @@ public partial class VariableSearch
     {
         var (label, language) = CatalogueName(gruppe.Name, null);
 
+        // The chip stands for the group wherever it was ticked, so pressing it takes off every placement.
         return new(FacetValueKey(HierarchyLevel.Variabelgruppe, gruppe.Id),
             label,
             language,
             null,
-            IsGruppeChosen(gruppe.Id),
-            ToggleGruppe(gruppe.Id),
+            true,
+            () => ApplyFilterAsync(KeepVariabelgrupper([.. ChosenVariabelgruppeIds().Where(id => id != gruppe.Id)])),
             []);
     }
 
     private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
 
+    private bool IsPlacementChosen(Guid id, Guid owner) =>
+        IsGruppeChosen(id) || _filter.VariabelgruppeScopes.Contains(new VariabelgruppeScope(id, owner));
+
+    /// <summary>Tick or untick a group under one placement.</summary>
+    /// <remarks>A group chosen everywhere — by the flat facet or an older link — is one filter, so
+    /// unticking any placement of it takes that filter off. A tick past the API's cap does nothing,
+    /// since sending it would fail the whole search.</remarks>
+    private Task TogglePlacementAsync(Guid id, Guid owner)
+    {
+        if (IsGruppeChosen(id))
+        {
+            return ToggleGruppe(id)();
+        }
+
+        var scope = new VariabelgruppeScope(id, owner);
+
+        if (!_filter.VariabelgruppeScopes.Contains(scope)
+            && _filter.VariabelgruppeScopes.Count >= VariableFilter.MaxVariabelgruppeScopes)
+        {
+            return Task.CompletedTask;
+        }
+
+        return ToggleAsync(_filter.VariabelgruppeScopes, scope, scopes => _filter with { VariabelgruppeScopes = scopes });
+    }
+
+    // Choosing a group everywhere supersedes its placements, so their scopes go with the tick.
     private Func<Task> ToggleGruppe(Guid id) =>
-        () => ToggleAsync(_filter.VariabelgruppeIds, id, ids => _filter with { VariabelgruppeIds = ids });
+        () => ToggleAsync(_filter.VariabelgruppeIds, id, ids => _filter with
+        {
+            VariabelgruppeIds = ids,
+            VariabelgruppeScopes = [.. _filter.VariabelgruppeScopes.Where(scope => scope.VariabelgruppeId != id)]
+        });
 
     /// <summary>The saved catalogue filters — see <see cref="FilterOptions.Filters"/> for why this is usually empty.</summary>
     private FacetGroup SavedFilterGroup(FilterOptions facets) =>
