@@ -638,6 +638,10 @@ public sealed partial class VariableSearch : ComponentBase
     private ElementReference _searchField;
 
     private bool _loading;
+
+    // The rows read alone. _loading also covers the facets read that follows, which is what holds every press
+    // back; the line over the rows reads this one, so it reports them as soon as they land.
+    private bool _rowsLoading;
     private string? _error;
     private Page<VariableSummary>? _result;
 
@@ -751,6 +755,10 @@ public sealed partial class VariableSearch : ComponentBase
     // what is on screen.
     private string? _executedSearch;
 
+    // The term the last rows read asked for, trimmed as an answered one is, whether or not it was answered.
+    // A host sort resends it: after a failed search it is the term that search sent; with rows on screen it is theirs.
+    private string? _requestedSearch;
+
     // Unique per instance so two explorers on one page cannot collide on DOM ids,
     // which would be a WCAG 4.1.1 failure as well as breaking label association.
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
@@ -779,7 +787,10 @@ public sealed partial class VariableSearch : ComponentBase
 
     private Texts T => Texts.For(Language);
 
-    private string Busy => _loading ? "true" : "false";
+    private string Busy => _rowsLoading ? "true" : "false";
+
+    // The shared lock, as before: the panel is busy for any request out, its own counts or the rows.
+    private string FiltersBusy => _loading ? "true" : "false";
 
     /// <summary>Whether the rows' failure box is showing a retry in progress rather than a failure.</summary>
     /// <remarks>
@@ -1294,13 +1305,20 @@ public sealed partial class VariableSearch : ComponentBase
     /// <remarks>
     /// Not the row's own <c>dataTypeDisplayName</c>: the search is fetched without a language, so
     /// that name is in the API's default one, while the facets follow the reader's. With no facet
-    /// the code itself is shown. AGENTS.md, "The API names a datatype, not this package".
+    /// the code itself is shown, once the facets have answered. AGENTS.md, "The API names a
+    /// datatype, not this package".
     /// </remarks>
     private string? DataTypeName(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
             return code;
+        }
+
+        // Before the first facets the code would read as the value; after a failed read it is all there is.
+        if (_facets is null && _facetError is null)
+        {
+            return T.DataTypeLoading;
         }
 
         var canonical = T.CanonicalDataTypeCode(code);

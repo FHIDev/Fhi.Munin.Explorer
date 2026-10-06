@@ -3663,11 +3663,16 @@ public class VariableSearchTest : ExplorerTestContext
 
         public void Answer() => _facets.SetResult(Facets());
 
+        public int SearchCalls { get; private set; }
+
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(answer);
+            CancellationToken cancellationToken = default)
+        {
+            SearchCalls++;
+            return Task.FromResult(answer);
+        }
 
         public override Task<FilterOptions> GetFiltersAsync(
             string? search = null, VariableFilter? filter = null, string? language = null,
@@ -3706,6 +3711,156 @@ public class VariableSearchTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("fieldset.munin-explorer-filters")));
         Assert.DoesNotContain("Henter filtre", cut.Markup, StringComparison.Ordinal);
+    }
+
+    // The rows and the facets are two reads; the line over the rows reports the first alone (Fhi.Metadata-ur7iu).
+
+    private static VariableSummary Typed(string name, string code) => Variable(name, code) with { DataType = "1" };
+
+    private static IElement RowsStatus(IRenderedComponent<VariableSearch> cut) =>
+        cut.Find(".munin-explorer-results__toolbar p[role=status]");
+
+    [Fact]
+    public void Status_WhenTheRowsHaveLandedAndTheFacetsHaveNot_ThenItReportsTheRows()
+    {
+        // It said «Henter variabler» over rows already on screen until the counts came, ~2.4 s on test.
+        var cut = RenderWith(new HeldFacetsClient(OnePage(Typed("1. Tale", "KODE"))));
+
+        Assert.DoesNotContain("Henter variabler", RowsStatus(cut).TextContent, StringComparison.Ordinal);
+        Assert.NotEqual("", RowsStatus(cut).TextContent.Trim());
+        Assert.Equal("false", cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-busy"));
+    }
+
+    [Fact]
+    public void Status_WhileTheFacetsAreStillOut_ThenAPressIsStillDroppedAsBefore()
+    {
+        // Only what the line says moved: a second search while the counts are out would race them.
+        var client = new HeldFacetsClient(OnePage(Typed("1. Tale", "KODE"), Typed("2. Syn", "KODE2")));
+        var cut = RenderWith(client);
+        var calls = client.SearchCalls;
+
+        ClickSort(cut, "Navn");
+
+        Assert.Equal(calls, client.SearchCalls);
+    }
+
+    [Fact]
+    public void DataType_WhileTheFirstFacetsAreStillOut_ThenTheCellSaysSoRatherThanShowTheCode()
+    {
+        // The names come with the counts; the bare code «1» before them read as a value.
+        var cut = RenderWith(new HeldFacetsClient(OnePage(Typed("1. Tale", "KODE"))));
+
+        Assert.Equal("Henter …", CellText(cut, "dataType"));
+    }
+
+    [Fact]
+    public async Task DataType_WhenTheFacetsArrive_ThenTheCellTakesTheirName()
+    {
+        var client = new HeldFacetsClient(OnePage(Typed("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        await cut.InvokeAsync(client.Answer);
+
+        cut.WaitForAssertion(() => Assert.Equal("Tekst", CellText(cut, "dataType")));
+    }
+
+    [Fact]
+    public void Filters_WhileTheirCountsAreReadAgain_ThenThePanelIsBusyAndTheRowsAreNot()
+    {
+        // The panel's aria-busy stays on the shared lock the browser gates wait on; only the rows' moved to their own flag.
+        var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        client.HoldFacets = true;
+
+        cut.Find(".searchbox__freetext").Change("tale");
+        cut.Find("form").Submit();
+
+        Assert.Equal("true", cut.Find("fieldset.munin-explorer-filters").GetAttribute("aria-busy"));
+        Assert.Equal("false", cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-busy"));
+        Assert.DoesNotContain("Henter variabler", RowsStatus(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DataType_WhenTheHostSortsAfterAFailedFirstRead_ThenTheCountsAreReadAndTheNameShown()
+    {
+        // The only rows read that did not go on to the counts, which would have left «Henter …» standing.
+        var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE"))) { FailSearch = true };
+        var cut = RenderWith(client);
+        client.FailSearch = false;
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        cut.WaitForAssertion(() => Assert.Equal("Tekst", CellText(cut, "dataType")));
+    }
+
+    [Fact]
+    public void Sort_WhenTheHostSortsAfterAFailedFirstSearch_ThenItKeepsTheSearchTerm()
+    {
+        // Nothing had been answered yet, so the last good term was none: the sort read the whole catalogue under «tale».
+        var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE"))) { FailSearch = true };
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "tale"));
+        client.FailSearch = false;
+
+        cut.Render(b => b.Add(c => c.Search, "tale").Add(c => c.Sort, SortField.Code));
+
+        cut.WaitForAssertion(() => Assert.Equal(SortField.Code, client.LastSort));
+        Assert.Equal("tale", client.LastSearch);
+        Assert.Equal("tale", client.FacetSearch);
+    }
+
+    [Fact]
+    public void Sort_WhenTheHostSortsAfterALaterSearchFailed_ThenTheCountsFollowTheRowsTerm()
+    {
+        // The rows go out for the failed term in the box; counts left from the earlier one would describe other rows.
+        var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        client.FailSearch = true;
+        cut.Find(".searchbox__freetext").Change("syn");
+        cut.Find("form").Submit();
+        client.FailSearch = false;
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        cut.WaitForAssertion(() => Assert.Equal(SortField.Code, client.LastSort));
+        Assert.Equal("syn", client.LastSearch);
+        Assert.Equal("syn", client.FacetSearch);
+    }
+
+    [Fact]
+    public void Sort_WhenTheHostSortsAfterAnUntrimmedSearch_ThenItSendsTheTrimmedTerm()
+    {
+        var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        cut.Find(".searchbox__freetext").Change("  tale ");
+        cut.Find("form").Submit();
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        cut.WaitForAssertion(() => Assert.Equal(SortField.Code, client.LastSort));
+        Assert.Equal("tale", client.LastSearch);
+    }
+
+    [Fact]
+    public void Sort_WhenTheHostSortsWithTheCountsAlreadyIn_ThenTheyAreNotReadAgain()
+    {
+        // An ordering does not move the counts, so asking again would only spend the reader's limit.
+        var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        var facetCalls = client.FacetCalls;
+
+        cut.Render(b => b.Add(c => c.Sort, SortField.Code));
+
+        cut.WaitForAssertion(() => Assert.Equal(SortField.Code, client.LastSort));
+        Assert.Equal(facetCalls, client.FacetCalls);
+    }
+
+    [Fact]
+    public void DataType_WhenTheFacetsReadFailed_ThenTheCellFallsBackToTheCode()
+    {
+        // Nothing is on its way any more, so «Henter …» would never go; the code is the fallback it always was.
+        var cut = RenderWith(new HeldFacetsClient(OnePage(Typed("1. Tale", "KODE"))) { FailFirst = true });
+
+        Assert.Equal("1", CellText(cut, "dataType"));
     }
 
     [Fact]
@@ -3892,10 +4047,20 @@ public class VariableSearchTest : ExplorerTestContext
                 throw new MuninExplorerRateLimitedException(TimeSpan.FromSeconds(30));
             }
 
+            if (HoldFacets)
+            {
+                return _heldFacets.Task;
+            }
+
             return FailFacets
                 ? throw new HttpRequestException("nede")
                 : Task.FromResult(_facets);
         }
+
+        /// <summary>Leave every facet refresh from the next one on unanswered.</summary>
+        public bool HoldFacets { get; set; }
+
+        private readonly TaskCompletionSource<FilterOptions> _heldFacets = new();
     }
 
     /// <summary>
