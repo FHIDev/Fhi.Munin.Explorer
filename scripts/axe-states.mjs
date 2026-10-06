@@ -825,6 +825,9 @@ export const states = {
     await press(page, 'Søk');
     await page.getByRole('button', { name: 'Lagre disse variablene', exact: true }).click();
     await page.getByRole('status').filter({ hasText: /lagret i|allerede i/ }).waitFor({ state: 'visible', timeout: findTimeout });
+    // The save has to hold after the read-back, or this scans rows that offer to save again.
+    await page.locator('.munin-explorer-dataitem-main__save button', { hasText: 'Fjern fra liste' }).first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
   // A saved list's row opened into the variable's panel, which spans the table (ADO 121586).

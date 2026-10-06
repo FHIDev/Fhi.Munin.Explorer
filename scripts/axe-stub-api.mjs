@@ -161,7 +161,9 @@ const LIST_PANEL_VARIABLE = 'b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90';
 function pagedListVariables(body, query) {
   const page = Math.max(1, Number(query.get('page') ?? 1) || 1);
   const size = Math.max(1, Number(query.get('pageSize') ?? 100) || 100);
-  const items = JSON.parse(body).items ?? [];
+  const captured = (JSON.parse(body).items ?? []).filter(i => !removedIds.has(i.variabelId));
+  const items = [...captured, ...[...addedIds].filter(id => !captured.some(i => i.variabelId === id))
+    .map(id => ({ ...JSON.parse(body).items[0], variabelId: id }))];
   const slice = items.slice((page - 1) * size, page * size);
 
   return JSON.stringify({
@@ -312,8 +314,25 @@ function serve(url, request, response) {
   response.writeHead(200, { 'content-type': 'application/json' }).end(body);
 }
 
+// The list remembers what was written to it, so the read-back after «Lagre disse variablene»
+// finds the save rather than undoing it on screen (Fhi.Metadata-dfy9u.10).
+const addedIds = new Set();
+const removedIds = new Set();
+
 const server = createServer((request, response) => {
   const url = new URL(request.url, 'http://localhost');
+  if ((request.method === 'POST' || request.method === 'DELETE') && listVariables.test(url.pathname)) {
+    let raw = '';
+    request.on('data', chunk => { raw += chunk; });
+    request.on('end', () => {
+      for (const id of JSON.parse(raw || '{}').variabelIds ?? []) {
+        if (request.method === 'POST') { addedIds.add(id); removedIds.delete(id); }
+        else { addedIds.delete(id); removedIds.add(id); }
+      }
+      response.writeHead(200, { 'content-type': 'application/json' }).end('{}');
+    });
+    return;
+  }
 
   if (url.pathname === '/__stub/hold-next') {
     control(url, request, response);

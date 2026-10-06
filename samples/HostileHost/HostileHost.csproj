@@ -24,6 +24,8 @@
        they had 0.1.68, which lacks the branch disclosure rules and the 320px step's long-value breaks
        (Fhi.Metadata-adog5, Fhi.Metadata-ofg1h).
 
+       0.1.152 styles «Lagre disse variablene»: its row, the saved-row notice (Fhi.Metadata-dfy9u.10).
+       0.1.151 adds Søknader's optional-field style; nothing Munin draws.
        0.1.150 keeps the action row's panels at their own width down to 480px (Fhi.Metadata-x47p0).
        0.1.149 draws the saved list's action row and its two folds (Fhi.Metadata-zohu3).
        0.1.148 adds helsedata's choice cards and a persident-trigger button rule; nothing Munin draws.
@@ -57,7 +59,7 @@
        0.1.103 brought the drawer's checkbox column and nested detail anchor clearance
        (Fhi.Metadata-h6dx7, Fhi.Metadata-17k34). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.150" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.152" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
