@@ -3767,7 +3767,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Filters_WhileTheirCountsAreReadAgain_ThenThePanelIsBusyAndTheRowsAreNot()
     {
-        // The panel's aria-busy is its own counts' state, which the browser gates wait on; only the rows moved.
+        // The panel's aria-busy stays on the shared lock the browser gates wait on; only the rows' moved to their own flag.
         var client = new FilteringClient(OnePage(Typed("1. Tale", "KODE")));
         var cut = RenderWith(client);
         client.HoldFacets = true;

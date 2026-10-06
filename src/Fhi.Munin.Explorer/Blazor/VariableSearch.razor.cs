@@ -785,7 +785,7 @@ public sealed partial class VariableSearch : ComponentBase
 
     private string Busy => _rowsLoading ? "true" : "false";
 
-    // The panel's counts are re-read after every rows read, so the panel is busy for both.
+    // The shared lock, as before: the panel is busy for any request out, its own counts or the rows.
     private string FiltersBusy => _loading ? "true" : "false";
 
     /// <summary>Whether the rows' failure box is showing a retry in progress rather than a failure.</summary>
