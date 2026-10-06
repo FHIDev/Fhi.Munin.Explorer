@@ -246,7 +246,7 @@ public partial class VariableSearch
 
             _saveAll = Outcome(saved: result.Added?.Count, list: result.ListName);
             // Unknown when the list could not be read: rows it already held must not read as new.
-            ShowSavedNotices(result.Added ?? [], result.ListName);
+            ShowSavedNotices(result.Added ?? [], result.ListName, reader);
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -269,7 +269,7 @@ public partial class VariableSearch
         }
     }
 
-    private void ShowSavedNotices(IReadOnlyCollection<Guid> rows, string list)
+    private void ShowSavedNotices(IReadOnlyCollection<Guid> rows, string list, int reader)
     {
         StopSavedNotices();
 
@@ -280,7 +280,7 @@ public partial class VariableSearch
 
         _noticeRows.UnionWith(rows);
         _noticeList = list;
-        _noticeReader = ListState?.Reader ?? 0;
+        _noticeReader = reader;
 
         var timer = _noticeTimer = new CancellationTokenSource();
         _ = HideSavedNoticesAsync(timer.Token);
