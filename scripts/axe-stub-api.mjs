@@ -8,8 +8,8 @@
 // report asks for it, instead of a second set here that nothing would ever look at again.
 //
 // They are not one snapshot: filters.json reports 46037 variables where variables.json holds
-// 18289, and its facet counts are that catalogue's. Nothing here reads a count back out, and
-// re-capturing the corpus together is its own job.
+// 18289, and its facet counts are that catalogue's. Nothing here reads a captured count back out
+// (the save-all states make up their own), and re-capturing the corpus together is its own job.
 //
 // Usage:  node scripts/axe-stub-api.mjs <port>
 import { createServer } from 'node:http';
@@ -282,7 +282,7 @@ function serve(url, request, response) {
   }
   if (search === SAVE_ALL_CONFIRM_SEARCH && path === '/api/explorer/variables') {
     response.writeHead(200, { 'content-type': 'application/json' })
-      .end(JSON.stringify({ ...variables, totalCount: 250, totalPages: 10 }));
+      .end(JSON.stringify({ ...variables, totalCount: 250, totalPages: Math.ceil(250 / variables.size) }));
     return;
   }
   if (search === SAVE_ALL_SEARCH && path === '/api/explorer/variables') {
