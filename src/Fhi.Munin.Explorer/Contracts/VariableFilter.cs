@@ -56,7 +56,7 @@ public sealed record VariableFilter
     /// </remarks>
     public IReadOnlyList<Guid> DatasamlingIds { get; init; } = [];
 
-    /// <summary>Variabelgrupper to restrict to, in every datasamling they hang under. Empty means every group.</summary>
+    /// <summary>Variabelgrupper to restrict to wherever they are placed — under a kilde, delkilde or datasamling. Empty means every group.</summary>
     public IReadOnlyList<Guid> VariabelgruppeIds { get; init; } = [];
 
     /// <summary>
