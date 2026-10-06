@@ -163,7 +163,7 @@ function pagedListVariables(body, query) {
   const size = Math.max(1, Number(query.get('pageSize') ?? 100) || 100);
   const captured = (JSON.parse(body).items ?? []).filter(i => !removedIds.has(i.variabelId));
   const items = [...captured, ...[...addedIds].filter(id => !captured.some(i => i.variabelId === id))
-    .map(id => ({ ...JSON.parse(body).items[0], variabelId: id }))];
+    .map(id => ({ ...(JSON.parse(body).items ?? [])[0], variabelId: id }))];
   const slice = items.slice((page - 1) * size, page * size);
 
   return JSON.stringify({
@@ -325,7 +325,9 @@ const server = createServer((request, response) => {
     let raw = '';
     request.on('data', chunk => { raw += chunk; });
     request.on('end', () => {
-      for (const id of JSON.parse(raw || '{}').variabelIds ?? []) {
+      let ids = [];
+      try { ids = JSON.parse(raw || '{}').variabelIds ?? []; } catch { console.error(`stub: unreadable body for ${request.method} ${url.pathname}`); }
+      for (const id of ids) {
         if (request.method === 'POST') { addedIds.add(id); removedIds.delete(id); }
         else { addedIds.delete(id); removedIds.add(id); }
       }
