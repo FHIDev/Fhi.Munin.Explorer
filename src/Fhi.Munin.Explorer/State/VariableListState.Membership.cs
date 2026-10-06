@@ -241,7 +241,15 @@ public sealed partial class VariableListState
                 return null;
             }
 
-            await SetActiveListAsync(target.Id, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await SetActiveListAsync(target.Id, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                // A new list is empty, so a refused read of it loses nothing; the write must still go.
+                _logger?.LogWarning(e, "could not read new list {ListId} before saving into it", target.Id);
+            }
 
             if (!StillCurrent(startedAt))
             {

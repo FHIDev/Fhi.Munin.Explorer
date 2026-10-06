@@ -279,6 +279,35 @@ public class SaveAllTest : ExplorerTestContext
 
         Assert.Single(client.Adds);
         Assert.Equal("Variablene er lagret i Variabelliste forsvaret.", Status(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-data-list__saved-notice"));
+    }
+
+    [Fact]
+    public void Press_WithNoListYet_StillSavesWhenTheNewListCannotBeRead()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, [rows[0].Id]) { HasList = false, RateLimitMembership = true };
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+
+        Assert.Equal(1, client.CreateCalls);
+        Assert.Single(client.Adds);
+        Assert.Equal("", Alert(cut));
+    }
+
+    [Fact]
+    public void Saved_TheNoticesDoNotOutliveTheReader()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var cut = Render(new Client(rows, 1, [rows[0].Id]));
+
+        SaveAll(cut)!.Click();
+        Assert.Single(cut.FindAll(".munin-explorer-data-list__saved-notice"));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        Assert.Empty(cut.FindAll(".munin-explorer-data-list__saved-notice"));
     }
 
     [Fact]
@@ -420,6 +449,7 @@ public class SaveAllTest : ExplorerTestContext
         SaveAll(cut)!.Click();
         Assert.Equal("Lagre alle 250 variablene i listen?", cut.Find("[id^=munin-explorer-save-all-confirm-]").TextContent);
         Assert.Equal("Nei", SaveAll(cut)!.TextContent.Trim());
+        Assert.Equal(cut.Find("[id^=munin-explorer-save-all-confirm-]").Id, SaveAll(cut)!.GetAttribute("aria-describedby"));
 
         SaveAll(cut)!.Click();
         Assert.False(Asking(cut));

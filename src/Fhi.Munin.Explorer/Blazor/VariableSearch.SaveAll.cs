@@ -29,6 +29,7 @@ public partial class VariableSearch
 
     private readonly HashSet<Guid> _noticeRows = [];
     private string _noticeList = "";
+    private int _noticeReader;
     private CancellationTokenSource? _noticeTimer;
 
     private string SaveAllButtonId => $"munin-explorer-save-all-{_instance}";
@@ -87,20 +88,21 @@ public partial class VariableSearch
         builder.AddAttribute(8, "id", SaveAllButtonId);
         builder.AddAttribute(9, "aria-disabled", done || !SaveAllReady ? "true" : null);
         builder.AddAttribute(10, "aria-expanded", SaveAllWouldAsk && !done ? (confirming ? "true" : "false") : null);
-        builder.AddAttribute(11, "onclick", EventCallback.Factory.Create(this, PressSaveAllAsync));
-        builder.AddElementReferenceCapture(12, element => _saveAllButton = element);
+        builder.AddAttribute(11, "aria-describedby", confirming ? ConfirmSaveAllId : null);
+        builder.AddAttribute(12, "onclick", EventCallback.Factory.Create(this, PressSaveAllAsync));
+        builder.AddElementReferenceCapture(13, element => _saveAllButton = element);
 
         if (done)
         {
-            builder.OpenElement(13, "span");
-            builder.AddAttribute(14, "aria-hidden", "true");
-            builder.AddContent(15, "✓ ");
+            builder.OpenElement(14, "span");
+            builder.AddAttribute(15, "aria-hidden", "true");
+            builder.AddContent(16, "✓ ");
             builder.CloseElement();
-            builder.AddContent(16, T.SavedAllResults);
+            builder.AddContent(17, T.SavedAllResults);
         }
         else
         {
-            builder.AddContent(17, confirming ? T.ConfirmSaveAllNo : T.SaveAllResults);
+            builder.AddContent(18, confirming ? T.ConfirmSaveAllNo : T.SaveAllResults);
         }
 
         builder.CloseElement();
@@ -243,7 +245,8 @@ public partial class VariableSearch
             }
 
             _saveAll = Outcome(saved: result.Added?.Count, list: result.ListName);
-            ShowSavedNotices(result.Added ?? ids.Ids, result.ListName);
+            // Unknown when the list could not be read: rows it already held must not read as new.
+            ShowSavedNotices(result.Added ?? [], result.ListName);
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -277,6 +280,7 @@ public partial class VariableSearch
 
         _noticeRows.UnionWith(rows);
         _noticeList = list;
+        _noticeReader = ListState?.Reader ?? 0;
 
         var timer = _noticeTimer = new CancellationTokenSource();
         _ = HideSavedNoticesAsync(timer.Token);
@@ -309,7 +313,8 @@ public partial class VariableSearch
         }
     }
 
-    private bool ShowsSavedNotice(VariableSummary v) => _noticeRows.Contains(v.Id) && ListState?.IsSaved(v.Id) == true;
+    private bool ShowsSavedNotice(VariableSummary v) =>
+        _noticeRows.Contains(v.Id) && ListState is { } state && state.Reader == _noticeReader && state.IsSaved(v.Id);
 
     private void StopSavedNotices()
     {

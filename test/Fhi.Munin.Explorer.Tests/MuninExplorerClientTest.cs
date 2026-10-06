@@ -676,6 +676,41 @@ public class MuninExplorerClientTest
     }
 
     [Fact]
+    public async Task GetVariableIdsAsync_SendsTheSearchAndFilterAndReadsTheSet()
+    {
+        var kilde = Guid.NewGuid();
+        var id = Guid.NewGuid();
+        var handler = StubHttpHandler.Ok($$"""{"ids":["{{id}}"],"tooMany":false,"maxIds":2000}""");
+
+        var set = await Client(handler).GetVariableIdsAsync("hjerte og kar", new VariableFilter { KildeIds = [kilde] });
+
+        Assert.Equal("/api/explorer/variables/ids", handler.LastUri?.AbsolutePath);
+        Assert.Equal($"?search=hjerte%20og%20kar&kildeIds={kilde}", handler.LastUri?.Query);
+        Assert.Equal([id], set.Ids);
+        Assert.False(set.TooMany);
+        Assert.Equal(2000, set.MaxIds);
+    }
+
+    [Fact]
+    public async Task GetVariableIdsAsync_WhenTooMany_ThenTheEmptySetSaysSo()
+    {
+        var set = await WithJson("""{"ids":[],"tooMany":true,"maxIds":2000}""").GetVariableIdsAsync(null);
+
+        Assert.Empty(set.Ids);
+        Assert.True(set.TooMany);
+    }
+
+    [Fact]
+    public async Task GetVariableIdsAsync_WhenTheApiHasNoSuchRoute_ThenItThrowsAndKeepsTheSearchOutOfTheMessage()
+    {
+        var thrown = await Assert.ThrowsAsync<HttpRequestException>(
+            () => WithStatus(HttpStatusCode.NotFound).GetVariableIdsAsync("personnummer 12345"));
+
+        Assert.Equal(HttpStatusCode.NotFound, thrown.StatusCode);
+        Assert.DoesNotContain("12345", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GetKilderAsync_WhenNoParametersAreSet_ThenNoQueryIsSent()
     {
         var handler = StubHttpHandler.Ok("[]");
