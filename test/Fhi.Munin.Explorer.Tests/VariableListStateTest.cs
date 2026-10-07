@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -461,7 +462,8 @@ public class VariableListStateTest : ExplorerTestContext
         public void Answer(int read, params string[] names) =>
             _reads[read].SetResult([.. names.Select(n => new VariableList { Id = Guid.NewGuid(), Name = n })]);
 
-        public void Fail(int read) => _reads[read].SetException(new HttpRequestException("too many requests"));
+        public void Fail(int read, Exception? failure = null) =>
+            _reads[read].SetException(failure ?? new HttpRequestException("the API is down"));
 
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
@@ -535,6 +537,27 @@ public class VariableListStateTest : ExplorerTestContext
 
         Assert.False(state.ListsReadFailed);
         Assert.Equal("Den nye leserens liste", Assert.Single(state.Lists).Name);
+    }
+
+    [Theory]
+    [InlineData(true, LogLevel.Warning)]
+    [InlineData(false, LogLevel.Error)]
+    public async Task EnsureLoaded_WhenTheStaleReadFails_ThenItIsLoggedAtTheLevelARefusalOrAFaultGets(bool refused, LogLevel expected)
+    {
+        // Dropped from the reader's view, but a fault must still reach the host's error telemetry.
+        var recorder = new RecordingLoggerProvider();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(recorder));
+        var client = new QueuedListsClient();
+        var state = new VariableListState(client, factory.CreateLogger<VariableListState>());
+        state.SetAuthenticated(true);
+        var stale = state.EnsureLoadedAsync();
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+
+        client.Fail(0, refused ? new MuninExplorerRateLimitedException() : new HttpRequestException("the API is down"));
+        await stale;
+
+        Assert.Equal(expected, Assert.Single(recorder.Entries).Level);
     }
 
     /// <summary>A client whose add is held open until the test lets it finish.</summary>

@@ -159,7 +159,15 @@ public sealed partial class VariableListState(
             // replace the next reader's lists with an error that was never theirs.
             if (!StillCurrent(startedAt))
             {
-                _logger?.LogInformation(ex, "dropped a failed lists read that belonged to the previous reader");
+                if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+                {
+                    _logger?.LogWarning(ex, "the API refused a lists read that belonged to the previous reader");
+                }
+                else
+                {
+                    _logger?.LogError(ex, "a lists read that belonged to the previous reader failed");
+                }
+
                 return;
             }
 

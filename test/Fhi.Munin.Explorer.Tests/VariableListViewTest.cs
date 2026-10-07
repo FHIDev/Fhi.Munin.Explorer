@@ -4,6 +4,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -1392,6 +1393,8 @@ public partial class VariableListViewTest : ExplorerTestContext
     [Fact]
     public async Task View_WhenThePreviousReadersListsReadFailsAfterTheNewReadersLanded_ThenTheListStaysOnScreen()
     {
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b.AddProvider(recorder));
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsHang = true };
         var cut = RenderView(client);
         client.ListsHang = false;
@@ -1401,8 +1404,12 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         await cut.InvokeAsync(client.FailLists);
 
-        // The failure would surface in the first mount's still-running lifecycle, which nothing here can await.
-        await Task.Delay(200);
+        cut.WaitForAssertion(() => Assert.Contains(recorder.Entries, e =>
+            e.Category.EndsWith(nameof(VariableListState), StringComparison.Ordinal) && e.Exception is InvalidOperationException
+            && e.Level == LogLevel.Error));
+
+        // The first mount's continuation was queued on the dispatcher when the read failed; one queued after it runs after it.
+        await cut.InvokeAsync(() => { });
 
         Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
