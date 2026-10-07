@@ -290,8 +290,8 @@ set -e
 [ "$geometry_status" -eq 2 ] && exit 2
 
 # 320px, WCAG 1.4.10 Reflow. Each call leaves out only what fails in its states today, with the bead
-# that says why; an open bead's last step is deleting its call's exception. The last call measures
-# Stiler's card breakpoint, 767, instead; an exported REFLOW_WIDTH would move every call.
+# that says why; an open bead's last step is deleting its call's exception. The last two calls
+# measure Stiler's card breakpoints instead; an exported REFLOW_WIDTH would move every call.
 unset REFLOW_WIDTH
 reflow_status=0
 reflow() {
@@ -336,8 +336,9 @@ reflow "" "/::tree-collapsed" "/::tree-populated" "/::tree-empty-results" "/::tr
 reflow "" "/::filters-level-lines" "/::filters-node-icons-off"
 # The three detail pages' fact lists, one track at 320 (Fhi.Metadata-2w7fx).
 reflow "" "/kilder::kilde-drilldown" "/kilder::kilde-datasamling" "/::variable-page"
-# 767 is the widest width Stiler still draws the cards at (Fhi.Metadata-n8ygv, Fhi.Metadata-z4r1d).
-REFLOW_WIDTH=767 reflow "" "/kilder::kilde-hierarchy-metadata" "/::explorer-list-tab" "/::list-row-panel" "/::list-row-notes"
+# 767 is the widest width Stiler still draws the kilde cards at (Fhi.Metadata-n8ygv), 1279 the list's (Fhi.Metadata-b2w2z).
+REFLOW_WIDTH=767 reflow "" "/kilder::kilde-hierarchy-metadata"
+REFLOW_WIDTH=1279 reflow "" "/::explorer-list-tab" "/::list-row-panel" "/::list-row-notes"
 
 # An assertion that has quietly stopped measuring anything reports success forever, so each one is
 # handed a page carrying the defect it was written for and required to say so.

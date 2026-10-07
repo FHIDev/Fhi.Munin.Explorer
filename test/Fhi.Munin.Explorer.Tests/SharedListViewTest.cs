@@ -237,7 +237,7 @@ public class SharedListViewTest : ExplorerTestContext
         cut.Find("div[role=alert][aria-live=assertive]").TextContent.Trim();
 
     private static List<string> RowNames<T>(IRenderedComponent<T> cut) where T : IComponent =>
-        [.. cut.FindAll("table.munin-explorer-data-list tbody th[scope=row]").Select(c => c.TextContent.Trim())];
+        [.. cut.FindAll("table.munin-explorer-data-list tbody th[scope=row] .munin-explorer-dataitem-main__column__text").Select(c => c.TextContent.Trim())];
 
     private static string? Mirrored(BunitContext context) =>
         context.JSInterop.Invocations[ReplaceState] is { Count: > 0 } calls
@@ -286,15 +286,23 @@ public class SharedListViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Open_WhenASharedListIsShown_ThenItHasTheCoverageColumnsAndSaysTheyAreNotKnown()
+    public void Open_WhenASharedListsCoverageColumnsAreTurnedOn_ThenTheySayTheyAreNotKnown()
     {
-        // The same row cells as an own list, so the same two columns. A snapshot carries no
-        // coverage flags — the share body is Runa's field set — so "Nei" here would be invented.
+        // The same row cells as an own list, so the same two columns behind the same picker. A snapshot
+        // carries no coverage flags — the share body is Runa's field set — so "Nei" here would be invented.
         var store = new ShareStore();
         store.ByCode["AB12CD"] = new SharedList("Kollegas liste", Three);
 
         var cut = RenderView(new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] }, shareCode: "AB12CD");
         cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        // Behind the picker by default since Fhi.Metadata-b2w2z, so turned on first.
+        foreach (var label in new[] { "Kodeverk", "Statistikk" })
+        {
+            cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]")
+               .Single(b => b.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim() == label)
+               .Change(true);
+        }
 
         Assert.Equal("Kodeverk", cut.Find("thead th.munin-explorer-dataitem-header__kodeverk").TextContent.Trim());
         Assert.Equal("Statistikk", cut.Find("thead th.munin-explorer-dataitem-header__statistikk").TextContent.Trim());

@@ -1585,8 +1585,11 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
    lines fell into (Fhi.Metadata-wcbxi). */
 .munin-explorer-dataitem-main__desiredData input {
   width: 100%;
+}
+
+.munin-explorer-dataitem-main__desiredData textarea {
+  width: 100%;
   font: inherit;
-  padding: 4px 6px;
   border: 1px solid var(--grey60);
   border-radius: 2px;
 }
@@ -1595,7 +1598,7 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
    the list carries the sentence; this is what marks the field it is about, so a reader scrolled
    past the alert can still see which row to shorten. Not colour alone — the border thickens as
    well, because 1.4.1 does not accept a hue as the whole signal. */
-.munin-explorer-dataitem-main__desiredData input[aria-invalid="true"] {
+.munin-explorer-dataitem-main__desiredData textarea[aria-invalid="true"] {
   border: 2px solid var(--error-dark);
 }
 
@@ -1616,7 +1619,7 @@ table.munin-explorer-data-list {
 table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > th,
 table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > td {
   border-bottom: 1px solid var(--grey30);
-  padding: 8px 12px;
+  padding: 8px;
   text-align: start;
   vertical-align: top;
 }
@@ -1631,6 +1634,30 @@ table.munin-explorer-data-list > thead > :where(tr) > th {
 
 table.munin-explorer-data-list :is(th, td):not(.munin-explorer-dataitem-main__code) > .munin-explorer-dataitem-main__column__text {
   white-space: inherit;
+}
+
+.munin-explorer-list-code {
+  color: var(--grey60);
+  display: block;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* Stiler's own: one line to start, growing to four, then scrolling. Without field-sizing it stays one line. */
+table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > textarea {
+  field-sizing: content;
+  font-size: 0.9375rem;
+  max-height: calc(4lh + 10px);
+  min-height: calc(1lh + 10px);
+  overflow-y: auto;
+  padding: 4px 8px;
+  resize: none;
+}
+
+@media (width >= 1280px) {
+  table.munin-explorer-data-list .munin-explorer-dataitem-main__desiredData > textarea {
+    width: 6rem;
+  }
 }
 
 table.munin-explorer-data-list > thead .munin-explorer-dataitem-header__desiredData {
@@ -2704,6 +2731,27 @@ table.munin-explorer-data-list tbody th {
   margin: 0;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+/* Stiler 0.1.153's code and name in columns of the kodeverk preview, copied as compiled (Fhi.Metadata-gdek7). */
+.munin-explorer-kodeverk__name > ul:has(> li > span) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 400;
+}
+
+.munin-explorer-kodeverk__name > ul:has(> li > span) > li {
+  display: grid;
+  grid-column: 1/-1;
+  grid-template-columns: subgrid;
+}
+
+.munin-explorer-kodeverk__name > ul:has(> li > span) > li > span:first-child {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
 }
 
 /* The reference is the thing a reader can look the kodeverk up by, so it is set in a monospace
@@ -5118,7 +5166,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 
-@media all and (max-width: 767px) {
+@media (width < 1280px) {
   .munin-explorer-list-scroll table.munin-explorer-data-list, .munin-explorer-list-scroll table.munin-explorer-data-list > tbody, .munin-explorer-list-scroll table.munin-explorer-data-list > :where(thead, tbody) > tr, .munin-explorer-list-scroll table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > th, .munin-explorer-list-scroll table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > td {
     display: block;
   }
@@ -5137,12 +5185,13 @@ table.munin-explorer-data-list tbody th {
   .munin-explorer-list-scroll table.munin-explorer-data-list > tbody > tr {
     border-bottom: 1px solid rgb(230, 230, 237);
     margin-bottom: 0;
-    padding: 12px 0 4px;
+    padding: 12px 8px 4px;
   }
   .munin-explorer-list-scroll table.munin-explorer-data-list > tbody > :where(tr) > th {
     font-weight: 600;
   }
   .munin-explorer-list-scroll table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > td {
+    align-items: baseline;
     column-gap: 12px;
     display: grid;
     grid-template-columns: 8.5rem minmax(0, 1fr);
@@ -5152,9 +5201,14 @@ table.munin-explorer-data-list tbody th {
     content: attr(data-label);
     content: attr(data-label)/"";
   }
-  .munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__code .munin-explorer-dataitem-main__column__text {
+  .munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-dataitem-main__code .munin-explorer-dataitem-main__column__text,
+  .munin-explorer-list-scroll table.munin-explorer-data-list .munin-explorer-list-code {
     overflow-wrap: anywhere;
     white-space: normal;
+  }
+  .munin-explorer-list-scroll table.munin-explorer-data-list > tbody > :where(tr) > td > button {
+    justify-self: start;
+    padding-inline: 0;
   }
   .munin-explorer-list-scroll table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > td:not([data-label]) {
     display: block;
@@ -5171,8 +5225,8 @@ table.munin-explorer-data-list tbody th {
 /* Stiler 0.1.145-0.1.146: an opened saved-list row's panel and its name button (Fhi.Metadata-dfy9u.9). */
 table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > td:not([data-label]) > .munin-explorer-detail {
   box-sizing: border-box;
-  left: 12px;
-  max-width: calc(100cqi - 24px);
+  left: 8px;
+  max-width: calc(100cqi - 16px);
   position: sticky;
 }
 

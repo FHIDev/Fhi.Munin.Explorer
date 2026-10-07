@@ -158,9 +158,8 @@ invented-declaration||.munin-explorer-data-list__item--expanded|background
 invented-declaration||.munin-explorer-data-list__item__row--header|padding-bottom
 invented-declaration||.munin-explorer-data-list__item__row|padding
 invented-declaration||.munin-explorer-data-list__item|border-bottom
-invented-declaration||.munin-explorer-dataitem-main__desiredData input|border
-invented-declaration||.munin-explorer-dataitem-main__desiredData input|border-radius
-invented-declaration||.munin-explorer-dataitem-main__desiredData input|padding
+invented-declaration||.munin-explorer-dataitem-main__desiredData textarea|border
+invented-declaration||.munin-explorer-dataitem-main__desiredData textarea|border-radius
 invented-declaration||.munin-explorer-dataitem-main__expand-icon|display
 invented-declaration||.munin-explorer-detail|border-top
 invented-declaration||.munin-explorer-filters__count|overflow-wrap
@@ -527,7 +526,7 @@ invented-selector||.munin-explorer-alert .infobox[aria-busy=true]|background-ima
 invented-selector||.munin-explorer-alert .infobox[aria-busy=true]|background-repeat
 invented-selector||.munin-explorer-alert .infobox[aria-busy=true]|background-size
 invented-selector||.munin-explorer-alert .munin-explorer-retry|margin-bottom
-invented-selector||.munin-explorer-dataitem-main__desiredData input[aria-invalid=true]|border
+invented-selector||.munin-explorer-dataitem-main__desiredData textarea[aria-invalid=true]|border
 invented-selector||.munin-explorer-meta__tab--active > .hd-button-reset|color
 invented-selector||.munin-explorer-meta__tab--active > .hd-button-reset|font-weight
 invented-selector||.munin-explorer-meta__tab > .hd-button-reset:hover|color

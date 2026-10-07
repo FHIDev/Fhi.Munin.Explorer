@@ -357,24 +357,48 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // tableCell: these are real <td>s under real <th scope="col">s, so the helper leaves out
         // the per-cell field name the explorer's <div>s need and the flex column class a table
         // cell cannot wear.
-        RowCell.Write(builder, 100, T.FieldCode, item.VariableCode, "code", T.NotSpecified, tableCell: true);
         // Trimmed rather than `??`: a kortnavn the API leaves out arrives as null or as "", and
         // `??` only catches the first — RowCell then draws the "" as "Ikke oppgitt" over a name
         // it is holding.
-        RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(item.KildeShortName) ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
-        RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified, tableCell: true);
-        RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified, tableCell: true);
+        if (Shown(ListColumn.Source))
+        {
+            RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(item.KildeShortName) ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
+        }
+
+        if (Shown(ListColumn.DataCollection))
+        {
+            RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified, tableCell: true);
+        }
+
+        if (Shown(ListColumn.VariableGroup))
+        {
+            RowCell.Write(builder, 400, T.FieldVariableGroup, item.VariabelgruppeName, "theme", T.NotSpecified, tableCell: true);
+        }
+
         // Unmarked: the API resolves the name in the reader's language (Fhi.Metadata-13xf8).
-        RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified, catalogue: false, tableCell: true);
+        if (Shown(ListColumn.DataType))
+        {
+            RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(item.DataType), "dataType", T.NotSpecified, catalogue: false, tableCell: true);
+        }
 
         // The component's words rather than the catalogue's — the dates are formatted for the
         // reader — so it is left unmarked, exactly as the explorer leaves it.
-        RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false, tableCell: true);
+        if (Shown(ListColumn.DataPeriod))
+        {
+            RowCell.Write(builder, 600, T.FieldDataPeriod, Period(item), "period", T.NotSpecified, catalogue: false, tableCell: true);
+        }
 
         // A word rather than a mark, in the reader's language. Unknown is not "Nei": an entry the
         // read model lost, and every shared snapshot, carry no answer and say so.
-        RowCell.Write(builder, 700, T.FieldKodeverk, Flag(item.HasKodeverk), "kodeverk", T.NotSpecified, catalogue: false, tableCell: true);
-        RowCell.Write(builder, 800, T.FieldStatistics, Flag(item.HasStatistics), "statistikk", T.NotSpecified, catalogue: false, tableCell: true);
+        if (Shown(ListColumn.Kodeverk))
+        {
+            RowCell.Write(builder, 700, T.FieldKodeverk, Flag(item.HasKodeverk), "kodeverk", T.NotSpecified, catalogue: false, tableCell: true);
+        }
+
+        if (Shown(ListColumn.Statistics))
+        {
+            RowCell.Write(builder, 800, T.FieldStatistics, Flag(item.HasStatistics), "statistikk", T.NotSpecified, catalogue: false, tableCell: true);
+        }
     };
 
     private string? Flag(bool? value) => value switch
@@ -1014,8 +1038,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        // Trimmed once, then both shown and sent: the API trims before it measures. Lines from the
-        // Data tab's textarea are joined, since the column's one-line input would run them together.
+        // Trimmed once, then both shown and sent: the API trims before it measures. Lines are joined,
+        // from either textarea: the API keeps one line, and the column would run them together.
         var list = _shownList.Value;
         var trimmed = string.Join(", ", (text ?? "").Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 

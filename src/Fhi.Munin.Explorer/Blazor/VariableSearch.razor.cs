@@ -1213,6 +1213,8 @@ public sealed partial class VariableSearch : ComponentBase
     private void HeaderCell(RenderTreeBuilder builder, int seq, string? key, string label, SortField? sort)
     {
         builder.OpenElement(seq, "div");
+        // Built from the key, so the class inventory cannot see them: munin-explorer-dataitem-header__code,
+        // munin-explorer-dataitem-header__status and munin-explorer-dataitem-header__save are named here for it.
         builder.AddAttribute(seq + 1, "class",
             key is null ? "sortable-header" : $"sortable-header munin-explorer-dataitem-header__{key}");
 

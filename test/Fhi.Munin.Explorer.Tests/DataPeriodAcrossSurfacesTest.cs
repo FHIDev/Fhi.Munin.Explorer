@@ -203,6 +203,12 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
             .Add(c => c.IsAuthenticated, true)
             .Add(c => c.Language, language ?? "no"));
 
+        // The list keeps the period behind its column picker by default (Fhi.Metadata-b2w2z).
+        list.FindAll(".dropdown-choicepicker__item input[type=checkbox]")
+            .Single(b => b.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim()
+                         == Texts.For(language).FieldDataPeriod)
+            .Change(true);
+
         var cell = search.Find(
             ".munin-explorer-dataitem-main__period .munin-explorer-dataitem-main__column__text");
         var saved = list.Find(

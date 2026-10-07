@@ -577,14 +577,14 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     public void VariableListView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
         // Ten: create, open a shared list, rename, copy, the delete confirmation, the empty
-        // confirmation, share, the row's name, «Last ned» and «Flere valg». None native any more.
+        // confirmation, share, the row's name, «Last ned» and «Flere valg». One native: the column picker.
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
 
         AssertStandingGesturesAreRefused(
             () => Render<VariableListView>(b => b.Add(c => c.IsAuthenticated, true)),
             expected: 10,
-            native: 0);
+            native: 1);
     }
 
     // -----------------------------------------------------------------------

@@ -583,14 +583,13 @@ export const assertions = [
   },
 
   {
-    name: 'the saved list shows every column at 767px and below',
+    name: 'the saved list fits its box at every width',
     kind: 'pin',
     states: ['explorer-list-tab'],
-    // Stiler 0.1.139 stacks each row as a card at $mobile. Before it the other columns sat
-    // unseen to the right of a 257px box at 320 (Fhi.Metadata-z4r1d).
+    // Cards below 1280, six columns from 1280 (Fhi.Metadata-b2w2z). Before the cards the other
+    // columns sat unseen to the right of a 257px box at 320 (Fhi.Metadata-z4r1d).
     body: () => {
       const width = Math.round(window.innerWidth);
-      if (width > 767) return null;
       const boxes = [...document.querySelectorAll('.munin-explorer-list-scroll')]
         .filter(box => box.getBoundingClientRect().width > 0);
       if (boxes.length === 0) return 'no saved list on screen — nothing was measured';
