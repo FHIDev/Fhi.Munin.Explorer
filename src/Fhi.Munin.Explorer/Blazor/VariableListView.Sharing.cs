@@ -53,6 +53,9 @@ public sealed partial class VariableListView
     private bool _savingShared;
     private string _saveSharedName = "";
     private SaveNameProblem _saveNameProblem;
+
+    // A second press while the create is out would make the list twice, as the copy's guard prevents.
+    private bool _saveSharedInFlight;
     private ListActionFailure _saveSharedFailure;
 
     /// <summary>A code made for one list, and the link that opens it when there is one.</summary>
@@ -364,6 +367,25 @@ public sealed partial class VariableListView
     /// </summary>
     private async Task SaveSharedListAsync()
     {
+        if (_saveSharedInFlight)
+        {
+            return;
+        }
+
+        _saveSharedInFlight = true;
+
+        try
+        {
+            await SaveSharedListOnceAsync();
+        }
+        finally
+        {
+            _saveSharedInFlight = false;
+        }
+    }
+
+    private async Task SaveSharedListOnceAsync()
+    {
         if (State is null || !IsAuthenticated || _sharedList is not { } shared)
         {
             return;
@@ -423,7 +445,10 @@ public sealed partial class VariableListView
             return;
         }
 
+        // Its refresh would reload the reader's own list behind the shared one; the saved list is read once, below.
+        _holdingReloads = true;
         await CountTheAddsAsync(created.Id);
+        _holdingReloads = false;
 
         ForgetSharedList();
         await AnnounceShareCodeAsync(null);

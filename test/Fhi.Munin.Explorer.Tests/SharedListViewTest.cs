@@ -75,6 +75,9 @@ public class SharedListViewTest : ExplorerTestContext
         public bool AddsRefused { get; init; }
 
         public int MyListsCalls { get; private set; }
+
+        /// <summary>Every page read of an own list, in order; the holder's whole-list walks of 1000 excluded.</summary>
+        public List<Guid> PageReads { get; } = [];
         public int CreateCalls { get; private set; }
         public int ShareCalls { get; private set; }
         public int SharedReads { get; private set; }
@@ -134,16 +137,24 @@ public class SharedListViewTest : ExplorerTestContext
                 [.. _lists.Select(l => l with { VariableCount = _items[l.Id].Count })]);
         }
 
-        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
+        /// <summary>Left unfinished until the test completes it, so the reader can press again meanwhile.</summary>
+        public TaskCompletionSource? HoldCreate { get; init; }
+
+        public override async Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
             MyListsCalls++;
             CreateCalls++;
+
+            if (HoldCreate is not null)
+            {
+                await HoldCreate.Task;
+            }
 
             var created = new VariableList { Id = Guid.NewGuid(), Name = name };
             _lists.Add(created);
             _items[created.Id] = [];
 
-            return Task.FromResult(created);
+            return created;
         }
 
         public override Task<bool> AddVariablesToMyListAsync(
@@ -169,6 +180,11 @@ public class SharedListViewTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             MyListsCalls++;
+
+            if (pageSize != 1000)
+            {
+                PageReads.Add(id);
+            }
 
             if (!_items.TryGetValue(id, out var items))
             {
@@ -571,6 +587,76 @@ public class SharedListViewTest : ExplorerTestContext
         Assert.DoesNotContain("Listen er tom", cut.Markup);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Save_WhenTheListsAreReadAgainAfterTheAdds_ThenTheSavedListsPageIsReadOnce(bool listsReadFails)
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Mine hjertevariabler", Three);
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")], ReadAfterCreateThrows = listsReadFails };
+
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        var before = client.PageReads.Count;
+
+        Button(cut, "Lagre som min liste").Click();
+        Labelled(cut, "Navn på din kopi av listen").Change("Delt hjerteliste");
+        Button(cut, "Lagre listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "Delt hjerteliste", cut.Find("[id^=munin-explorer-list-heading-]").TextContent.Trim()));
+        await cut.InvokeAsync(() => { });
+
+        Assert.Single(client.PageReads.Skip(before));
+    }
+
+    [Fact]
+    public async Task Save_WhenItIsDone_ThenAnotherSurfacesChangeReadsThePageAgain()
+    {
+        // The save holds this view's reloads while its refresh runs; held past it, the view would go stale.
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Mine hjertevariabler", Three);
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] };
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Lagre som min liste").Click();
+        Labelled(cut, "Navn på din kopi av listen").Change("Delt hjerteliste");
+        Button(cut, "Lagre listen").Click();
+        cut.WaitForAssertion(() => Assert.Equal(
+            "Delt hjerteliste", cut.Find("[id^=munin-explorer-list-heading-]").TextContent.Trim()));
+        await cut.InvokeAsync(() => { });
+        var reads = client.PageReads.Count;
+
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.RefreshAsync());
+
+        cut.WaitForAssertion(() => Assert.Equal(reads + 1, client.PageReads.Count));
+    }
+
+    [Fact]
+    public async Task Save_WhenPressedAgainWhileSaving_ThenTheListIsMadeOnceAndTheButtonSaysItIsBusy()
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Mine hjertevariabler", Three);
+        var hold = new TaskCompletionSource();
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")], HoldCreate = hold };
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Lagre som min liste").Click();
+        Labelled(cut, "Navn på din kopi av listen").Change("Delt hjerteliste");
+        Assert.Equal("false", Button(cut, "Lagre listen").GetAttribute("aria-disabled"));
+
+        Button(cut, "Lagre listen").Click();
+        Assert.Equal("true", Button(cut, "Lagre listen").GetAttribute("aria-disabled"));
+        Button(cut, "Lagre listen").Click();
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "Delt hjerteliste", cut.Find("[id^=munin-explorer-list-heading-]").TextContent.Trim()));
+        Assert.Equal(1, client.CreateCalls);
+    }
+
     [Fact]
     public void Save_WhenReadingTheListsAgainFails_ThenTheSaveStillSucceedsAndTheHostIsWarned()
     {
@@ -619,6 +705,9 @@ public class SharedListViewTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal("Kunne ikke lagre nå. Prøv igjen om litt.", Alert(cut)));
         Assert.Equal(1, client.CreateCalls);
         Assert.True(HasButton(cut, "Lukk delt liste"));
+
+        // The alert says to try again, so the press has to be live again.
+        Assert.Equal("false", Button(cut, "Lagre listen").GetAttribute("aria-disabled"));
     }
 
     // -----------------------------------------------------------------------

@@ -195,6 +195,7 @@ public sealed partial class VariableListView
             }
 
             await CountTheAddsAsync(created.Id);
+            await LeaveAListDeletedElsewhereAsync();
             return;
         }
 
@@ -203,6 +204,9 @@ public sealed partial class VariableListView
         _shownListMoves++;
         _pageNumber = 1;
         ForgetListControls();
+
+        // The switch and the refresh each raise a reload of the copy's page; it is read once, below.
+        _holdingReloads = true;
 
         // Left open even if the switch throws, now offering to copy the copy: focus is on its submit.
         _copying = true;
@@ -230,6 +234,7 @@ public sealed partial class VariableListView
         }
 
         await CountTheAddsAsync(created.Id);
+        _holdingReloads = false;
         await LoadPageAsync();
     }
 
@@ -253,6 +258,31 @@ public sealed partial class VariableListView
         catch (Exception ex)
         {
             Log?.LogWarning(ex, "could not read the lists again after adding to {ListId}", list);
+        }
+    }
+
+    // The holder forgets a list the refresh no longer has; the view has to stop showing it too.
+    private async Task LeaveAListDeletedElsewhereAsync()
+    {
+        if (State is { } state && _shownList is { } shown && !state.Lists.Any(l => l.Id == shown))
+        {
+            try
+            {
+                await state.EnsureActiveListAsync();
+            }
+            catch (Exception ex)
+            {
+                if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+                {
+                    Log?.LogWarning(ex, "the API refused picking another list after {ListId} was deleted", shown);
+                }
+                else
+                {
+                    Log?.LogError(ex, "could not pick another list after {ListId} was deleted", shown);
+                }
+            }
+
+            await ShowActiveListAsync();
         }
     }
 

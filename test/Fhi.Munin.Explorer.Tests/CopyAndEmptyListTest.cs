@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -91,6 +92,17 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         /// <summary>Set part-way through a test, so the name check's own read fails.</summary>
         public Exception? ListsThrows { get; set; }
 
+        /// <summary>Page reads per list, not counting the holder's whole-list walks of 1000.</summary>
+        public Dictionary<Guid, int> PageReads { get; } = [];
+
+        public Guid? LastCreated { get; private set; }
+
+        /// <summary>Set part-way through a test, so the holder's next whole-list walk fails.</summary>
+        public Exception? MembershipThrows { get; set; }
+
+        /// <summary>Drops a list as another tab deleting it would.</summary>
+        public void DeleteElsewhere(Guid id) => _lists.RemoveAll(l => l.Id == id);
+
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             ListsThrows is not null
                 ? throw ListsThrows
@@ -114,6 +126,7 @@ public class CopyAndEmptyListTest : ExplorerTestContext
             Created.Add(name);
 
             var created = new VariableList { Id = Guid.NewGuid(), Name = name };
+            LastCreated = created.Id;
             _lists.Add(created);
             _items[created.Id] = [];
 
@@ -194,6 +207,15 @@ public class CopyAndEmptyListTest : ExplorerTestContext
             if (CopyMembershipThrows is not null && id != SourceId && id != OtherId && pageSize == 1000)
             {
                 throw CopyMembershipThrows;
+            }
+
+            if (pageSize != 1000)
+            {
+                PageReads[id] = PageReads.GetValueOrDefault(id) + 1;
+            }
+            else if (MembershipThrows is not null)
+            {
+                throw MembershipThrows;
             }
 
             if ((SourceGone && id == SourceId) || !_items.TryGetValue(id, out var items))
@@ -514,6 +536,123 @@ public class CopyAndEmptyListTest : ExplorerTestContext
     // -----------------------------------------------------------------------
     // The source stays the active list until the copy's writes are done, and a reader who chooses
     // another list meanwhile stays on it — even one who came back to the source
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Copy_WhenTheListsAreReadAgainAfterTheAdds_ThenTheCopysPageIsReadOnce(bool listsReadFails)
+    {
+        var hold = new TaskCompletionSource();
+        var client = new ListsClient(Items(3)) { HoldAdd = hold };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Single(client.AddBatches));
+        client.ListsThrows = listsReadFails ? new HttpRequestException("429") : null;
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal($"{SourceName} - kopi", Heading(cut)));
+        await cut.InvokeAsync(() => { });
+
+        Assert.Equal(1, client.PageReads[client.LastCreated!.Value]);
+    }
+
+    [Fact]
+    public async Task Copy_WhenTheReaderMovedToAnotherList_ThenTheRefreshReadsThatListsPageAgain()
+    {
+        // Nothing reads the page after this branch, so a change raised during its refresh must still reload.
+        var hold = new TaskCompletionSource();
+        var client = new ListsClient(Items(3)) { HoldAdd = hold };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Single(client.AddBatches));
+        cut.Find("select").Change(OtherId.ToString());
+        cut.WaitForAssertion(() => Assert.Equal("Hjerte og kar", Heading(cut)));
+        await cut.InvokeAsync(() => { });
+        var reads = client.PageReads[OtherId];
+
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal(reads + 1, client.PageReads[OtherId]));
+    }
+
+    [Fact]
+    public async Task Copy_WhenItIsDone_ThenAnotherSurfacesChangeReadsThePageAgain()
+    {
+        // The copy holds this view's reloads while its own reads run; held past it, the view would go stale.
+        var client = new ListsClient(Items(3));
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Equal($"{SourceName} - kopi", Heading(cut)));
+        await cut.InvokeAsync(() => { });
+        var copy = client.LastCreated!.Value;
+        var reads = client.PageReads[copy];
+
+        await cut.InvokeAsync(() => State.RefreshAsync());
+
+        cut.WaitForAssertion(() => Assert.Equal(reads + 1, client.PageReads[copy]));
+    }
+
+    [Fact]
+    public async Task Copy_WhenTheShownListIsDeletedElsewhereBeforeTheListsAreReadAgain_ThenItIsNoLongerShown()
+    {
+        var hold = new TaskCompletionSource();
+        var client = new ListsClient(Items(3)) { HoldAdd = hold };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Single(client.AddBatches));
+        cut.Find("select").Change(OtherId.ToString());
+        cut.WaitForAssertion(() => Assert.Equal("Hjerte og kar", Heading(cut)));
+
+        client.DeleteElsewhere(OtherId);
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotEqual("Hjerte og kar", Heading(cut));
+            var picker = cut.Find("select");
+            Assert.Contains(picker.QuerySelectorAll("option"), o => o.GetAttribute("value") == picker.GetAttribute("value"));
+            Assert.DoesNotContain(picker.QuerySelectorAll("option"), o => o.GetAttribute("value") == OtherId.ToString());
+        });
+    }
+
+    [Theory]
+    [InlineData(true, LogLevel.Warning)]
+    [InlineData(false, LogLevel.Error)]
+    public async Task Copy_WhenPickingAnotherListAfterTheShownOneWasDeletedFails_ThenItIsLoggedAndTheViewStillMovesOffIt(
+        bool refused, LogLevel expected)
+    {
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b.AddProvider(recorder));
+        var hold = new TaskCompletionSource();
+        var client = new ListsClient(Items(3)) { HoldAdd = hold };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Single(client.AddBatches));
+        cut.Find("select").Change(OtherId.ToString());
+        cut.WaitForAssertion(() => Assert.Equal("Hjerte og kar", Heading(cut)));
+
+        client.DeleteElsewhere(OtherId);
+        client.MembershipThrows = refused ? new MuninExplorerRateLimitedException() : new HttpRequestException("500");
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Contains(recorder.Entries, e =>
+            e.Category.EndsWith(nameof(VariableListView), StringComparison.Ordinal) && e.Level == expected
+            && e.Message.Contains("after", StringComparison.Ordinal)));
+        Assert.NotEqual("Hjerte og kar", Heading(cut));
+    }
 
     [Fact]
     public async Task Copy_WhileTheVariablesAreAdded_ThenTheSourceStaysTheActiveList()

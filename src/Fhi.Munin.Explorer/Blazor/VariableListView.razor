@@ -409,6 +409,7 @@ else if (State?.IsAuthenticated == true)
                                @bind:event="onchange" />
                         <button class="hd-button-square button-square--ghost-blue"
                                 type="button"
+                                aria-disabled="@AriaDisabled(!_saveSharedInFlight)"
                                 @onclick="SaveSharedListAsync">@T.SaveSharedListSubmit</button>
 
                         @* In the DOM while the field is, for the reason the alert region below gives. *@
