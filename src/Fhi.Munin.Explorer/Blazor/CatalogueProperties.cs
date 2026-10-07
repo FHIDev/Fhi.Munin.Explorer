@@ -571,11 +571,12 @@ internal static class CatalogueProperties
             return bag;
         }
 
+        var option = Option(entry, raw, reader);
+        var word = Word(option);
+
         // An unwrapping declines on a value that is not the shape its type promises, which the
         // catalogue produces often enough to be the path rather than the net — and a value that
         // disagrees with its type is still a value, so it is shown as it arrived.
-        var option = Option(entry, raw, reader);
-        (string Label, string Language)? word = option is { } found ? (found.Label, found.Language) : null;
         var (text, language) =
             (Typed(entry, MultiSelectType) ? Chosen(entry, raw, reader) : null)
             ?? (option is { Curated: true } ? word : null)
@@ -783,14 +784,17 @@ internal static class CatalogueProperties
     /// </para>
     /// </remarks>
     internal static (string Label, string Language)? Word(PropertyMetadataEntry entry, string raw, string reader) =>
-        Option(entry, raw, reader) is { } option ? (option.Label, option.Language) : null;
+        Word(Option(entry, raw, reader));
+
+    private static (string Label, string Language)? Word((string Label, string Language, bool Curated)? option) =>
+        option is { } found ? (found.Label, found.Language) : null;
 
     /// <summary>
     /// The same lookup, saying as well whether the vocabulary curated that label or handed the code
     /// back for want of one.
     /// </summary>
     /// <remarks>
-    /// <see cref="Word"/> answers what to show, which is the code itself for an option carrying no
+    /// <see cref="Word(PropertyMetadataEntry, string, string)"/> answers what to show, which is the code itself for an option carrying no
     /// label — the right answer for text and the wrong one for a <c>lang</c>, since marking a bare
     /// CURIE Norwegian is the defect the remarks above describe. <c>Curated</c> is decided here,
     /// off the option the label came from, so a caller needing the distinction does not re-derive
