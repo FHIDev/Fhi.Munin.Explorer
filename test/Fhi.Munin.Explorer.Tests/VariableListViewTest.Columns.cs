@@ -81,8 +81,13 @@ public partial class VariableListViewTest
         Assert.Equal(
             new Dictionary<string, bool>
             {
-                ["Kilde"] = true, ["Datasamling"] = true, ["Variabelgruppe"] = true,
-                ["Datatype"] = false, ["Dataperiode"] = false, ["Kodeverk"] = false, ["Statistikk"] = false,
+                ["Kilde"] = true,
+                ["Datasamling"] = true,
+                ["Variabelgruppe"] = true,
+                ["Datatype"] = false,
+                ["Dataperiode"] = false,
+                ["Kodeverk"] = false,
+                ["Statistikk"] = false,
             },
             offered);
     }
