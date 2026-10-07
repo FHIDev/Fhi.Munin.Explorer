@@ -574,11 +574,13 @@ internal static class CatalogueProperties
         // An unwrapping declines on a value that is not the shape its type promises, which the
         // catalogue produces often enough to be the path rather than the net — and a value that
         // disagrees with its type is still a value, so it is shown as it arrived.
+        var option = Option(entry, raw, reader);
+        (string Label, string Language)? word = option is { } found ? (found.Label, found.Language) : null;
         var (text, language) =
             (Typed(entry, MultiSelectType) ? Chosen(entry, raw, reader) : null)
-            ?? (Option(entry, raw, reader) is { Curated: true } ? Word(entry, raw, reader) : null)
+            ?? (option is { Curated: true } ? word : null)
             ?? PackageWord(entry, raw, reader)
-            ?? Word(entry, raw, reader)
+            ?? word
             ?? (raw, "no");
 
         return [new LocalisedText(text, language)];
