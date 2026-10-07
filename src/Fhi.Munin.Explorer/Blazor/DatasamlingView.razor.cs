@@ -416,6 +416,12 @@ public sealed partial class DatasamlingView : ComponentBase
             ? T.StatisticsTypeLabel(type)
             : null;
 
+    /// <summary>The catalogue's Frekvens in this package's vocabulary, for the row.</summary>
+    private string? FrequencyLabel =>
+        Datasamling?.Frequency is { } frequency && !string.IsNullOrWhiteSpace(frequency)
+            ? T.FrequencyLabel(frequency)
+            : null;
+
     /// <inheritdoc cref="KildetypeLabel"/>
     private string? Validity =>
         Datasamling is { } datasamling
@@ -432,8 +438,7 @@ public sealed partial class DatasamlingView : ComponentBase
     /// How the data is collected and how much of it there is.
     /// </summary>
     /// <remarks>
-    /// Frekvens is in the contract and in Runa's block, and no datasamling in the test catalogue
-    /// has one, so it reads "Ingen" until the catalogue carries it. A count of nothing reads "Ingen"
+    /// Frekvens reads "Ingen" where the catalogue holds none. A count of nothing reads "Ingen"
     /// too rather than a zero, which is what lets a datasamling with no numbers at all draw no block.
     /// <para>
     /// Statistikktype, Frekvens and Telleenhet all yield to a section that has been given their
@@ -447,7 +452,7 @@ public sealed partial class DatasamlingView : ComponentBase
             : [
                 .. UnlessPlaced(CatalogueColumns.StatisticsType,
                                 (T.FieldStatisticsType, StatisticsTypeLabel, false)),
-                .. UnlessPlaced(CatalogueColumns.Frequency, (T.FieldFrequency, datasamling.Frequency, true)),
+                .. UnlessPlaced(CatalogueColumns.Frequency, (T.FieldFrequency, FrequencyLabel, false)),
                 .. UnlessPlaced(CatalogueColumns.CountingUnit, (T.FieldCountingUnit, datasamling.CountingUnit, true)),
                 (T.FieldVariableCount, VariableCount, false),
             ];

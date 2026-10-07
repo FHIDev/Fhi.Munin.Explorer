@@ -2587,4 +2587,49 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.DoesNotContain("Kode", labels);
         Assert.Contains("Kortnavn", labels);
     }
+
+    [Fact]
+    public void Frequency_WhenNotPlaced_ThenTheFactRowReadsTheWordAndNotTheWireName()
+    {
+        var cut = Render(Datasamling() with { Frequency = "kvartalsvis" });
+
+        Assert.Equal("Kvartalsvis", Value(Box(cut, "Statistikk (årsbasert)"), "Frekvens"));
+        Assert.DoesNotContain("kvartalsvis", cut.Find(".munin-explorer-page").TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null, "Kvartalsvis")]
+    [InlineData("en", "Quarterly")]
+    public void Frequency_WhenPlacedInASection_ThenTheSectionReadsTheWordAndNotTheWireName(
+        string? language, string expected)
+    {
+        // The trap the bead names: the placed section reads the value from CatalogueColumns, not the
+        // fact row, so a fix to the row alone left this path drawing the raw member name.
+        var cut = Render(Placed() with { Frequency = "kvartalsvis" }, language: language);
+        var section = cut.Find("#munin-explorer-section-variabler");
+
+        Assert.Contains(expected, section.TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll("#" + DetailSectionIds.Statistics));
+        Assert.DoesNotContain("kvartalsvis", cut.Find(".munin-explorer-page").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Frequency_WhenTheCatalogueLabelsTheCode_ThenItsWordWinsOverThePackages()
+    {
+        var curated = Placed() with
+        {
+            Frequency = "kvartalsvis",
+            PropertyMetadata =
+            [
+                .. Placed().PropertyMetadata.Where(entry => entry.Key != CatalogueColumns.Frequency),
+                Definition(CatalogueColumns.Frequency, "Frekvens", "SingleSelect", 2003, "variabler",
+                           """[{"value":"kvartalsvis","label":"Hvert kvartal","labelEn":"Every quarter"}]"""),
+            ],
+        };
+
+        var section = Render(curated).Find("#munin-explorer-section-variabler");
+
+        Assert.Contains("Hvert kvartal", section.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Kvartalsvis", section.TextContent, StringComparison.Ordinal);
+    }
 }
