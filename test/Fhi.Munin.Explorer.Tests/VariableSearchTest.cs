@@ -8174,6 +8174,35 @@ public class VariableSearchTest : ExplorerTestContext
     };
 
     [Fact]
+    public void Variabelgrupper_WhenAScopedTickWouldPassTheCap_ThenItIsRefusedWithAMessageThatTheNextFilterChangeClears()
+    {
+        // The API refuses the whole search past MaxVariabelgruppeScopes, so the 51st tick is not sent;
+        // without a word the box just stayed unticked. Runa's scopeLimitReached hint. (Fhi.Metadata-9s75x)
+        var full = VariableFilter.None with
+        {
+            VariabelgruppeScopes =
+                [.. Enumerable.Range(0, VariableFilter.MaxVariabelgruppeScopes).Select(_ => new VariabelgruppeScope(Guid.NewGuid(), Tromso1))]
+        };
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderWith(client, p => p.Add(x => x.Filter, full));
+        ExpandBranches(cut);
+        Assert.Null(KildeFacet(cut).QuerySelector("p.infobox"));
+
+        Press(SurfaceBox(KildeFacet(cut), "Kosthold"));
+
+        Assert.Equal(full.VariabelgruppeScopes, client.SearchFilter!.VariabelgruppeScopes);
+        var message = Assert.Single(KildeFacet(cut).QuerySelectorAll("p.infobox"));
+        Assert.Equal("status", message.GetAttribute("role"));
+        Assert.Contains($"opptil {VariableFilter.MaxVariabelgruppeScopes} variabelgrupper", message.TextContent);
+
+        // An accepted change, here the group chosen everywhere from the standalone facet, retires it.
+        Press(SurfaceBox(StandaloneFacet(cut), "Kosthold"));
+
+        Assert.Equal([Nutrition], client.SearchFilter!.VariabelgruppeIds);
+        Assert.Null(KildeFacet(cut).QuerySelector("p.infobox"));
+    }
+
+    [Fact]
     public void Variabelgrupper_WhenOneIsTickedInTheKildeTree_ThenItIsScopedAndTheStandaloneFacetStaysGlobal()
     {
         // The tree tick means "this group, here"; the standalone facet means "this group, anywhere",

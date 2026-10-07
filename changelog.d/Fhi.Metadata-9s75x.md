@@ -1,0 +1,2 @@
+category: Fixed
+- **A refused variabelgruppe tick in the source filter now says why.** Munin's API accepts at most 50 variabelgrupper chosen under datasamlinger, so a 51st tick in the kilde tree is not sent; the box used to stay unticked without a word. The facet now shows "Du kan velge opptil 50 variabelgrupper under datasamlinger i kildefilteret. Fjern et valg før du legger til flere." (English when `Language` is `"en"`) in Stiler's yellow infobox, until the next change to the filter. No new class name.

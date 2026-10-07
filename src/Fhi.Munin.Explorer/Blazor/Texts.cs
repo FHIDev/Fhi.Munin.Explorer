@@ -668,6 +668,8 @@ internal sealed record Texts(
     // That kilde facet's own placeholder, because its box searches the whole tree below a kilde,
     // datasamlinger included, and nothing else said so. (Fhi.Metadata-35w0p.38)
     string FacetSearchPlaceholderKilder,
+    // Why a variabelgruppe tick under a datasamling did nothing: the API takes at most this many. Runa's wording.
+    Func<int, string> VariabelgruppeScopeLimit,
     // The control that reveals the values a long facet's cap is holding back, and what it says once
     // it has. The number is the remainder the panel computes per render, never one written here.
     Func<int, string> ShowMoreFacetValues,
@@ -1479,6 +1481,7 @@ internal sealed record Texts(
         FacetSearchPlaceholder: "Søk i verdiene",
         FacetSearchNoMatch: "Ingen verdier passer søket",
         FacetSearchPlaceholderKilder: "Søk etter kilde eller datasamling",
+        VariabelgruppeScopeLimit: max => $"Du kan velge opptil {max} variabelgrupper under datasamlinger i kildefilteret. Fjern et valg før du legger til flere.",
         ShowMoreFacetValues: hidden => $"Vis {hidden} til",
         ShowFewerFacetValues: "Vis færre",
         FacetChosen: chosen => $"{chosen} valgt",
@@ -1976,6 +1979,7 @@ internal sealed record Texts(
         FacetSearchPlaceholder: "Search the values",
         FacetSearchNoMatch: "No values match the search",
         FacetSearchPlaceholderKilder: "Search for a source or data collection",
+        VariabelgruppeScopeLimit: max => $"You can select up to {max} variable groups under data collections in the source filter. Remove a selection before adding more.",
         ShowMoreFacetValues: hidden => $"Show {hidden} more",
         ShowFewerFacetValues: "Show fewer",
         FacetChosen: chosen => $"{chosen} selected",
