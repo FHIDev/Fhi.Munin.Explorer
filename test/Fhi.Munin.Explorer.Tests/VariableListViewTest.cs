@@ -1408,7 +1408,7 @@ public partial class VariableListViewTest : ExplorerTestContext
             e.Category.EndsWith(nameof(VariableListState), StringComparison.Ordinal) && e.Exception is InvalidOperationException
             && e.Level == LogLevel.Error));
 
-        // The first mount's continuation was queued on the dispatcher when the read failed; one queued after it runs after it.
+        // Order, not time: whether the first mount's continuation ran inline or was posted, this item runs after it.
         await cut.InvokeAsync(() => { });
 
         Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);

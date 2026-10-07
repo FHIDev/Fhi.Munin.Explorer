@@ -540,9 +540,10 @@ public class VariableListStateTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(true, LogLevel.Warning)]
-    [InlineData(false, LogLevel.Error)]
-    public async Task EnsureLoaded_WhenTheStaleReadFails_ThenItIsLoggedAtTheLevelARefusalOrAFaultGets(bool refused, LogLevel expected)
+    [InlineData("rate-limited", LogLevel.Warning)]
+    [InlineData("unauthorized", LogLevel.Warning)]
+    [InlineData("fault", LogLevel.Error)]
+    public async Task EnsureLoaded_WhenTheStaleReadFails_ThenItIsLoggedAtTheLevelARefusalOrAFaultGets(string failure, LogLevel expected)
     {
         // Dropped from the reader's view, but a fault must still reach the host's error telemetry.
         var recorder = new RecordingLoggerProvider();
@@ -554,7 +555,12 @@ public class VariableListStateTest : ExplorerTestContext
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
 
-        client.Fail(0, refused ? new MuninExplorerRateLimitedException() : new HttpRequestException("the API is down"));
+        client.Fail(0, failure switch
+        {
+            "rate-limited" => new MuninExplorerRateLimitedException(),
+            "unauthorized" => new MuninExplorerUnauthorizedException(),
+            _ => new HttpRequestException("the API is down"),
+        });
         await stale;
 
         Assert.Equal(expected, Assert.Single(recorder.Entries).Level);
