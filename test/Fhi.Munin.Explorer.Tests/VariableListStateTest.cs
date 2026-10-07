@@ -451,6 +451,69 @@ public class VariableListStateTest : ExplorerTestContext
         Assert.Empty(state.Lists);
     }
 
+    /// <summary>Holds every lists read open on its own gate, so a stale read and a fresh one can be told apart.</summary>
+    private sealed class QueuedListsClient : EmptyMuninExplorerClient
+    {
+        private readonly List<TaskCompletionSource<IReadOnlyList<VariableList>>> _reads = [];
+
+        public int Calls => _reads.Count;
+
+        public void Answer(int read, params string[] names) =>
+            _reads[read].SetResult([.. names.Select(n => new VariableList { Id = Guid.NewGuid(), Name = n })]);
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
+        {
+            var read = new TaskCompletionSource<IReadOnlyList<VariableList>>();
+            _reads.Add(read);
+            return read.Task;
+        }
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheReaderSignsOutAndInWhileTheListsAreRead_ThenTheNewReadersReadStarts()
+    {
+        var client = new QueuedListsClient();
+        var state = SignedIn(client);
+        var stale = state.EnsureLoadedAsync();
+
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        var fresh = state.EnsureLoadedAsync();
+
+        Assert.Equal(2, client.Calls);
+        Assert.True(state.IsReadingLists);
+
+        client.Answer(1, "Den nye leserens liste");
+        await fresh;
+        client.Answer(0, "Den forrige leserens liste");
+        await stale;
+
+        Assert.Equal("Den nye leserens liste", Assert.Single(state.Lists).Name);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheStaleReadFinishesFirst_ThenTheNewReadIsStillJoinedRatherThanSentAgain()
+    {
+        // The stale read clearing the in-flight mark would let the next surface to mount send a second read.
+        var client = new QueuedListsClient();
+        var state = SignedIn(client);
+        var stale = state.EnsureLoadedAsync();
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        var fresh = state.EnsureLoadedAsync();
+
+        client.Answer(0, "Den forrige leserens liste");
+        await stale;
+        var joined = state.EnsureLoadedAsync();
+
+        Assert.Equal(2, client.Calls);
+        Assert.True(state.IsReadingLists);
+
+        client.Answer(1, "Den nye leserens liste");
+        await Task.WhenAll(fresh, joined);
+        Assert.False(state.IsReadingLists);
+    }
+
     /// <summary>A client whose add is held open until the test lets it finish.</summary>
     private sealed class BlockingAddClient : EmptyMuninExplorerClient
     {

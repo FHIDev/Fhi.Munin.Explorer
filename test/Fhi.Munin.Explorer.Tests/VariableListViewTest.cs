@@ -1370,6 +1370,26 @@ public partial class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task View_WhenTheReaderSignsOutAndInWhileTheListsAreRead_ThenItReadsTheNewReadersListsUnasked()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsHang = true };
+        var cut = RenderView(client);
+        Assert.Contains("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+
+        client.ListsHang = false;
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+        Assert.Equal(2, client.ListsCalls);
+        Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+
+        // The previous reader's read landing late must change nothing on screen.
+        await cut.InvokeAsync(client.AnswerNoLists);
+        Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task View_WhenAnotherSurfacesListsReadFails_ThenItStopsFetchingAndSaysTheListsCouldNotBeRead()
     {
         // The search's save button starts the read on mount; this view joins it and never sees the throw.
