@@ -948,6 +948,12 @@ public partial class VariableSearch
             []);
     }
 
+    // Set when a scoped tick is refused at the cap, which would otherwise leave the box unticked without a word;
+    // any filter change clears it, as Runa's hint does. (Fhi.Metadata-9s75x)
+    private bool _scopeLimitRefused;
+
+    private string ScopeLimitText => T.VariabelgruppeScopeLimit(VariableFilter.MaxVariabelgruppeScopes);
+
     private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
 
     private bool IsPlacementChosen(Guid id, Guid owner) =>
@@ -969,6 +975,7 @@ public partial class VariableSearch
         if (!_filter.VariabelgruppeScopes.Contains(scope)
             && _filter.VariabelgruppeScopes.Count >= VariableFilter.MaxVariabelgruppeScopes)
         {
+            _scopeLimitRefused = true;
             return Task.CompletedTask;
         }
 
@@ -2070,6 +2077,7 @@ public partial class VariableSearch
         // A refused date entry stops standing in for its field once any filter is applied, so
         // both fields show what the results are actually narrowed by.
         _refusedDates.Clear();
+        _scopeLimitRefused = false;
 
         // Narrowing renumbers every page, so the page the reader is on is no longer the same rows.
         _page = 1;

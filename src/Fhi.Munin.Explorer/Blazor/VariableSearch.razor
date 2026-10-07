@@ -398,6 +398,11 @@ else
                                autocomplete="off"
                                maxlength="200" />
                     }
+                    @* The cap's refusal, said where the refused tick is. Stiler's warning box, as the instrument panel's error wears. *@
+                    @if (_scopeLimitRefused && group.Key == FacetName(HierarchyLevel.Kilde))
+                    {
+                        <p class="infobox infobox--bg-yellow" role="status">@ScopeLimitText</p>
+                    }
                     @* A facet's own control first, where it has one: the dataperiode holds no
                        values and would otherwise draw the empty-state sentence. (Fhi.Metadata-uidue) *@
                     @if (group.Body is { } body)
