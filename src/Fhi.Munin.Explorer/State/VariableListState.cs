@@ -37,7 +37,9 @@ public sealed partial class VariableListState(
 
     private IReadOnlyList<VariableList> _lists = [];
     private bool _loaded;
-    private bool _loading;
+    // Which reader's read is in flight, not merely whether one is: a read the previous reader
+    // started must neither turn the next reader's away nor end theirs when it lands.
+    private int? _readingFor;
     private int _generation;
 
     /// <summary>Raised after any change, so every surface can re-render without refetching. What
@@ -67,7 +69,7 @@ public sealed partial class VariableListState(
     internal bool HasLoaded => _loaded;
 
     /// <summary>Whether a read of <see cref="Lists"/> is in flight, whichever surface started it.</summary>
-    internal bool IsReadingLists => _loading;
+    internal bool IsReadingLists => _readingFor == _generation;
 
     /// <summary>Whether the last read of <see cref="Lists"/> failed, so an empty one is not an answer.</summary>
     internal bool ListsReadFailed { get; private set; }
@@ -128,16 +130,16 @@ public sealed partial class VariableListState(
     /// </summary>
     public async Task EnsureLoadedAsync(CancellationToken cancellationToken = default)
     {
-        // _loading as well as _loaded: three surfaces mounting together all reach this before any of
-        // them has finished, and without it each would send its own request for the same lists.
-        if (!IsAuthenticated || _loaded || _loading)
+        // The in-flight check as well as _loaded: three surfaces mounting together all reach this before
+        // any of them has finished, and without it each would send its own request for the same lists.
+        if (!IsAuthenticated || _loaded || IsReadingLists)
         {
             return;
         }
 
         var startedAt = _generation;
         var activeAtStart = _activeListId;
-        _loading = true;
+        _readingFor = startedAt;
         ListsReadFailed = false;
 
         // Every surface draws this read's progress, not only the one that started it.
@@ -149,22 +151,35 @@ public sealed partial class VariableListState(
         {
             lists = await _client.GetMyListsAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            _loading = false;
+            EndRead(startedAt);
+
+            // Dropped like a stale answer: thrown, it would reach the surface that started it and
+            // replace the next reader's lists with an error that was never theirs.
+            if (!StillCurrent(startedAt))
+            {
+                if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+                {
+                    _logger?.LogWarning(ex, "the API refused a lists read that belonged to the previous reader");
+                }
+                else
+                {
+                    _logger?.LogError(ex, "a lists read that belonged to the previous reader failed");
+                }
+
+                return;
+            }
 
             // Raised as well as thrown: a surface that joined this read in flight never sees the throw.
-            if (StillCurrent(startedAt))
-            {
-                ListsReadFailed = true;
-                RaiseChanged(listId: null, affectsRows: true);
-            }
+            ListsReadFailed = true;
+            RaiseChanged(listId: null, affectsRows: true);
 
             throw;
         }
         catch (OperationCanceledException)
         {
-            _loading = false;
+            EndRead(startedAt);
 
             if (StillCurrent(startedAt))
             {
@@ -175,7 +190,7 @@ public sealed partial class VariableListState(
         }
         finally
         {
-            _loading = false;
+            EndRead(startedAt);
         }
 
         if (!StillCurrent(startedAt))
@@ -198,6 +213,14 @@ public sealed partial class VariableListState(
         }
 
         RaiseChanged(listId: null, affectsRows: true);
+    }
+
+    private void EndRead(int startedAt)
+    {
+        if (_readingFor == startedAt)
+        {
+            _readingFor = null;
+        }
     }
 
     /// <summary>Forces the next <see cref="EnsureLoadedAsync"/> to read again.</summary>

@@ -4,6 +4,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -1367,6 +1368,51 @@ public partial class VariableListViewTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
             Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal));
         Assert.DoesNotContain("Du har ingen variabellister ennå", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task View_WhenTheReaderSignsOutAndInWhileTheListsAreRead_ThenItReadsTheNewReadersListsUnasked()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsHang = true };
+        var cut = RenderView(client);
+        Assert.Contains("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+
+        client.ListsHang = false;
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+        Assert.Equal(2, client.ListsCalls);
+        Assert.DoesNotContain("Henter variabellistene dine", cut.Markup, StringComparison.Ordinal);
+
+        // The previous reader's read landing late must change nothing on screen.
+        await cut.InvokeAsync(client.AnswerNoLists);
+        Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task View_WhenThePreviousReadersListsReadFailsAfterTheNewReadersLanded_ThenTheListStaysOnScreen()
+    {
+        var recorder = new RecordingLoggerProvider();
+        Services.AddLogging(b => b.AddProvider(recorder));
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsHang = true };
+        var cut = RenderView(client);
+        client.ListsHang = false;
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+
+        await cut.InvokeAsync(client.FailLists);
+
+        cut.WaitForAssertion(() => Assert.Contains(recorder.Entries, e =>
+            e.Category.EndsWith(nameof(VariableListState), StringComparison.Ordinal) && e.Exception is InvalidOperationException
+            && e.Level == LogLevel.Error));
+
+        // Order, not time: whether the first mount's continuation ran inline or was posted, this item runs after it.
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
     }
 
     [Fact]

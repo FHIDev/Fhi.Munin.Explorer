@@ -21,7 +21,7 @@ public sealed partial class VariableListState
 
     /// <summary>The membership read walking pages right now, or <see langword="null"/> when none is.</summary>
     /// <remarks>
-    /// The counterpart to <c>_loading</c> in <see cref="EnsureLoadedAsync"/>, and here for the same
+    /// The counterpart to <c>_readingFor</c> in <see cref="EnsureLoadedAsync"/>, and here for the same
     /// reason: several surfaces mount together and each one asks before any of them has finished. A
     /// task rather than a flag because the asker has to wait for the answer and not merely decline
     /// to ask again — a press that skipped a read still in flight would decide its direction from a

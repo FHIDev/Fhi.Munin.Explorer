@@ -3,6 +3,7 @@ using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -449,6 +450,120 @@ public class VariableListStateTest : ExplorerTestContext
         await inFlight;
 
         Assert.Empty(state.Lists);
+    }
+
+    /// <summary>Holds every lists read open on its own gate, so a stale read and a fresh one can be told apart.</summary>
+    private sealed class QueuedListsClient : EmptyMuninExplorerClient
+    {
+        private readonly List<TaskCompletionSource<IReadOnlyList<VariableList>>> _reads = [];
+
+        public int Calls => _reads.Count;
+
+        public void Answer(int read, params string[] names) =>
+            _reads[read].SetResult([.. names.Select(n => new VariableList { Id = Guid.NewGuid(), Name = n })]);
+
+        public void Fail(int read, Exception? failure = null) =>
+            _reads[read].SetException(failure ?? new HttpRequestException("the API is down"));
+
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
+        {
+            var read = new TaskCompletionSource<IReadOnlyList<VariableList>>();
+            _reads.Add(read);
+            return read.Task;
+        }
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheReaderSignsOutAndInWhileTheListsAreRead_ThenTheNewReadersReadStarts()
+    {
+        var client = new QueuedListsClient();
+        var state = SignedIn(client);
+        var stale = state.EnsureLoadedAsync();
+
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        var fresh = state.EnsureLoadedAsync();
+
+        Assert.Equal(2, client.Calls);
+        Assert.True(state.IsReadingLists);
+
+        client.Answer(1, "Den nye leserens liste");
+        await fresh;
+        client.Answer(0, "Den forrige leserens liste");
+        await stale;
+
+        Assert.Equal("Den nye leserens liste", Assert.Single(state.Lists).Name);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheStaleReadFinishesFirst_ThenTheNewReadIsStillJoinedRatherThanSentAgain()
+    {
+        // The stale read clearing the in-flight mark would let the next surface to mount send a second read.
+        var client = new QueuedListsClient();
+        var state = SignedIn(client);
+        var stale = state.EnsureLoadedAsync();
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        var fresh = state.EnsureLoadedAsync();
+        Assert.Equal(2, client.Calls);
+
+        client.Answer(0, "Den forrige leserens liste");
+        await stale;
+        var joined = state.EnsureLoadedAsync();
+
+        Assert.Equal(2, client.Calls);
+        Assert.True(state.IsReadingLists);
+
+        client.Answer(1, "Den nye leserens liste");
+        await Task.WhenAll(fresh, joined);
+        Assert.False(state.IsReadingLists);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheStaleReadFailsAfterTheNewReadersListsLanded_ThenItsCallerIsNotToldOfIt()
+    {
+        // Thrown, it reaches the view that started it, which would replace the new reader's lists with an error.
+        var client = new QueuedListsClient();
+        var state = SignedIn(client);
+        var stale = state.EnsureLoadedAsync();
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        var fresh = state.EnsureLoadedAsync();
+        client.Answer(1, "Den nye leserens liste");
+        await fresh;
+
+        client.Fail(0);
+        await stale;
+
+        Assert.False(state.ListsReadFailed);
+        Assert.Equal("Den nye leserens liste", Assert.Single(state.Lists).Name);
+    }
+
+    [Theory]
+    [InlineData("rate-limited", LogLevel.Warning)]
+    [InlineData("unauthorized", LogLevel.Warning)]
+    [InlineData("fault", LogLevel.Error)]
+    public async Task EnsureLoaded_WhenTheStaleReadFails_ThenItIsLoggedAtTheLevelARefusalOrAFaultGets(string failure, LogLevel expected)
+    {
+        // Dropped from the reader's view, but a fault must still reach the host's error telemetry.
+        var recorder = new RecordingLoggerProvider();
+        using var factory = LoggerFactory.Create(b => b.AddProvider(recorder));
+        var client = new QueuedListsClient();
+        var state = new VariableListState(client, factory.CreateLogger<VariableListState>());
+        state.SetAuthenticated(true);
+        var stale = state.EnsureLoadedAsync();
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+
+        client.Fail(0, failure switch
+        {
+            "rate-limited" => new MuninExplorerRateLimitedException(),
+            "unauthorized" => new MuninExplorerUnauthorizedException(),
+            _ => new HttpRequestException("the API is down"),
+        });
+        await stale;
+
+        Assert.Equal(expected, Assert.Single(recorder.Entries).Level);
     }
 
     /// <summary>A client whose add is held open until the test lets it finish.</summary>
