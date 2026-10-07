@@ -604,6 +604,29 @@ public class SharedListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Save_WhenItIsDone_ThenAnotherSurfacesChangeReadsThePageAgain()
+    {
+        // The save holds this view's reloads while its refresh runs; held past it, the view would go stale.
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Mine hjertevariabler", Three);
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] };
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Lagre som min liste").Click();
+        Labelled(cut, "Navn på din kopi av listen").Change("Delt hjerteliste");
+        Button(cut, "Lagre listen").Click();
+        cut.WaitForAssertion(() => Assert.Equal(
+            "Delt hjerteliste", cut.Find("[id^=munin-explorer-list-heading-]").TextContent.Trim()));
+        await cut.InvokeAsync(() => { });
+        var reads = client.PageReads.Count;
+
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.RefreshAsync());
+
+        cut.WaitForAssertion(() => Assert.Equal(reads + 1, client.PageReads.Count));
+    }
+
+    [Fact]
     public void Save_WhenReadingTheListsAgainFails_ThenTheSaveStillSucceedsAndTheHostIsWarned()
     {
         var recorder = new RecordingLoggerProvider();

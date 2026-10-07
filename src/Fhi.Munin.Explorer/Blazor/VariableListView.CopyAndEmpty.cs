@@ -195,6 +195,7 @@ public sealed partial class VariableListView
             }
 
             await CountTheAddsAsync(created.Id);
+            await LeaveAListDeletedElsewhereAsync();
             return;
         }
 
@@ -208,9 +209,10 @@ public sealed partial class VariableListView
         _copying = true;
         _copyName = T.DefaultCopyName(created.Name);
 
-        // Before the switch, as in ChooseListAsync: the holder names the copy active even when it throws.
+        // The switch and the refresh each raise a reload of the copy's page; it is read once, below.
         _holdingReloads = true;
 
+        // Before the switch, as in ChooseListAsync: the holder names the copy active even when it throws.
         try
         {
             await State.SetActiveListAsync(created.Id);
@@ -232,6 +234,7 @@ public sealed partial class VariableListView
         }
 
         await CountTheAddsAsync(created.Id);
+        _holdingReloads = false;
         await LoadPageAsync();
     }
 
@@ -248,8 +251,6 @@ public sealed partial class VariableListView
     // Shared with saving a shared list, which writes the same way (Fhi.Metadata-60skm).
     private async Task CountTheAddsAsync(Guid list)
     {
-        _holdingReloads = true;
-
         try
         {
             await State!.RefreshAsync();
@@ -258,12 +259,11 @@ public sealed partial class VariableListView
         {
             Log?.LogWarning(ex, "could not read the lists again after adding to {ListId}", list);
         }
-        finally
-        {
-            _holdingReloads = false;
-        }
+    }
 
-        // The holder forgets a list the refresh no longer has; the view has to stop showing it too.
+    // The holder forgets a list the refresh no longer has; the view has to stop showing it too.
+    private async Task LeaveAListDeletedElsewhereAsync()
+    {
         if (State is { } state && _shownList is { } shown && !state.Lists.Any(l => l.Id == shown))
         {
             try

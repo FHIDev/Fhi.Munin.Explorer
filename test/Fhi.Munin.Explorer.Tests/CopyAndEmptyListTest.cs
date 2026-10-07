@@ -560,6 +560,27 @@ public class CopyAndEmptyListTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Copy_WhenTheReaderMovedToAnotherList_ThenTheRefreshReadsThatListsPageAgain()
+    {
+        // Nothing reads the page after this branch, so a change raised during its refresh must still reload.
+        var hold = new TaskCompletionSource();
+        var client = new ListsClient(Items(3)) { HoldAdd = hold };
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowCount(cut)));
+        Button(cut, "Kopier liste").Click();
+        Button(cut, "Kopier listen").Click();
+        cut.WaitForAssertion(() => Assert.Single(client.AddBatches));
+        cut.Find("select").Change(OtherId.ToString());
+        cut.WaitForAssertion(() => Assert.Equal("Hjerte og kar", Heading(cut)));
+        await cut.InvokeAsync(() => { });
+        var reads = client.PageReads[OtherId];
+
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal(reads + 1, client.PageReads[OtherId]));
+    }
+
+    [Fact]
     public async Task Copy_WhenItIsDone_ThenAnotherSurfacesChangeReadsThePageAgain()
     {
         // The copy holds this view's reloads while its own reads run; held past it, the view would go stale.
