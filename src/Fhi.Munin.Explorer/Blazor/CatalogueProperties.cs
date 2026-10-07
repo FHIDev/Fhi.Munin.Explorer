@@ -794,11 +794,12 @@ internal static class CatalogueProperties
     /// back for want of one.
     /// </summary>
     /// <remarks>
-    /// <see cref="Word(PropertyMetadataEntry, string, string)"/> answers what to show, which is the code itself for an option carrying no
-    /// label — the right answer for text and the wrong one for a <c>lang</c>, since marking a bare
-    /// CURIE Norwegian is the defect the remarks above describe. <c>Curated</c> is decided here,
-    /// off the option the label came from, so a caller needing the distinction does not re-derive
-    /// it by comparing the label back against the code it was asked about.
+    /// <see cref="Word(PropertyMetadataEntry, string, string)"/> answers what to show, which is
+    /// the code itself for an option carrying no label — the right answer for text and the wrong
+    /// one for a <c>lang</c>, since marking a bare CURIE Norwegian is the defect the remarks above
+    /// describe. <c>Curated</c> is decided here, off the option the label came from, so a caller
+    /// needing the distinction does not re-derive it by comparing the label back against the code
+    /// it was asked about.
     /// </remarks>
     internal static (string Label, string Language, bool Curated)? Option(
         PropertyMetadataEntry entry, string raw, string reader)
