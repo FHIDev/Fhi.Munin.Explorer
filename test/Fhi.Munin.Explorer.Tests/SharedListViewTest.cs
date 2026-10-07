@@ -137,16 +137,24 @@ public class SharedListViewTest : ExplorerTestContext
                 [.. _lists.Select(l => l with { VariableCount = _items[l.Id].Count })]);
         }
 
-        public override Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
+        /// <summary>Left unfinished until the test completes it, so the reader can press again meanwhile.</summary>
+        public TaskCompletionSource? HoldCreate { get; init; }
+
+        public override async Task<VariableList> CreateMyListAsync(string name, CancellationToken cancellationToken = default)
         {
             MyListsCalls++;
             CreateCalls++;
+
+            if (HoldCreate is not null)
+            {
+                await HoldCreate.Task;
+            }
 
             var created = new VariableList { Id = Guid.NewGuid(), Name = name };
             _lists.Add(created);
             _items[created.Id] = [];
 
-            return Task.FromResult(created);
+            return created;
         }
 
         public override Task<bool> AddVariablesToMyListAsync(
@@ -627,6 +635,29 @@ public class SharedListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Save_WhenPressedAgainWhileSaving_ThenTheListIsMadeOnceAndTheButtonSaysItIsBusy()
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Mine hjertevariabler", Three);
+        var hold = new TaskCompletionSource();
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")], HoldCreate = hold };
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Lagre som min liste").Click();
+        Labelled(cut, "Navn på din kopi av listen").Change("Delt hjerteliste");
+        Assert.Equal("false", Button(cut, "Lagre listen").GetAttribute("aria-disabled"));
+
+        Button(cut, "Lagre listen").Click();
+        Assert.Equal("true", Button(cut, "Lagre listen").GetAttribute("aria-disabled"));
+        Button(cut, "Lagre listen").Click();
+        await cut.InvokeAsync(hold.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "Delt hjerteliste", cut.Find("[id^=munin-explorer-list-heading-]").TextContent.Trim()));
+        Assert.Equal(1, client.CreateCalls);
+    }
+
+    [Fact]
     public void Save_WhenReadingTheListsAgainFails_ThenTheSaveStillSucceedsAndTheHostIsWarned()
     {
         var recorder = new RecordingLoggerProvider();
@@ -674,6 +705,9 @@ public class SharedListViewTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal("Kunne ikke lagre nå. Prøv igjen om litt.", Alert(cut)));
         Assert.Equal(1, client.CreateCalls);
         Assert.True(HasButton(cut, "Lukk delt liste"));
+
+        // The alert says to try again, so the press has to be live again.
+        Assert.Equal("false", Button(cut, "Lagre listen").GetAttribute("aria-disabled"));
     }
 
     // -----------------------------------------------------------------------
