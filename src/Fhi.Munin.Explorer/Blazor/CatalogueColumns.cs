@@ -135,19 +135,6 @@ internal static class CatalogueColumns
             values[PersonIdentification] = effective;
         }
 
-        // A curated word in the vocabulary wins; the package's stands in only for a code it does not
-        // label, so a placed Frekvens never draws the raw member name (Fhi.Metadata-l9l2n.121).
-        var frequencyDefinition = datasamling.PropertyMetadata.FirstOrDefault(entry => entry.Key == Frequency);
-
-        if (values.TryGetValue(Frequency, out var frequency)
-            && frequency == datasamling.Frequency
-            && !string.IsNullOrWhiteSpace(frequency)
-            && (frequencyDefinition is null
-                || CatalogueProperties.Option(frequencyDefinition, frequency, reader) is not { Curated: true }))
-        {
-            values[Frequency] = Texts.For(language).FrequencyLabel(frequency);
-        }
-
         return values;
     }
 

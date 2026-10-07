@@ -849,7 +849,10 @@ internal sealed record Texts(
     /// them, mapped as Munin's <c>FrekvensValueConverter</c> reads them (<c>continuous</c> is
     /// Hyppigere enn daglig). Anything else is shown as it arrived, as in <see cref="StatisticsTypeLabel"/>.
     /// </remarks>
-    public string FrequencyLabel(string value) => value.Trim().ToLowerInvariant() switch
+    public string FrequencyLabel(string value) => KnownFrequencyLabel(value) ?? value;
+
+    /// <summary>The same word, or null for a value that is not one of Munin's Frekvens members.</summary>
+    internal string? KnownFrequencyLabel(string value) => value.ToLowerInvariant() switch
     {
         "sjeldnereennarlig" => FrequencyLessThanYearly,
         "arlig" or "yearly" => FrequencyYearly,
@@ -860,7 +863,7 @@ internal sealed record Texts(
         "ukentlig" or "weekly" => FrequencyWeekly,
         "daglig" or "daily" => FrequencyDaily,
         "hyppigereenndaglig" or "continuous" => FrequencyMoreThanDaily,
-        _ => value
+        _ => null
     };
 
     /// <summary>A version's status as a word, or as it arrived when we have not seen it before.</summary>

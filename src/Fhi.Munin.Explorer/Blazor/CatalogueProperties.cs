@@ -576,11 +576,25 @@ internal static class CatalogueProperties
         // disagrees with its type is still a value, so it is shown as it arrived.
         var (text, language) =
             (Typed(entry, MultiSelectType) ? Chosen(entry, raw, reader) : null)
+            ?? (Option(entry, raw, reader) is { Curated: true } ? Word(entry, raw, reader) : null)
+            ?? PackageWord(entry, raw, reader)
             ?? Word(entry, raw, reader)
             ?? (raw, "no");
 
         return [new LocalisedText(text, language)];
     }
+
+    /// <summary>
+    /// This package's own word for a code the vocabulary does not label, in the reader's language.
+    /// </summary>
+    /// <remarks>
+    /// Only Frekvens has one: Munin sends its enum member's name, which no reader should see, and the
+    /// word carries the reader's tag because it is written in their language (Fhi.Metadata-l9l2n.121).
+    /// </remarks>
+    private static (string Label, string Language)? PackageWord(PropertyMetadataEntry entry, string raw, string reader) =>
+        entry.Key == CatalogueColumns.Frequency && Texts.For(reader).KnownFrequencyLabel(raw) is { } word
+            ? (word, reader)
+            : null;
 
     /// <summary>A value parsed as JSON, or nothing where it is not structured.</summary>
     /// <returns>A document the caller owns; <see cref="JsonElement"/> outlives no document.</returns>
