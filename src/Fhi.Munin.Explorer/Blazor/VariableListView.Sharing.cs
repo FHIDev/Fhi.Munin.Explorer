@@ -423,7 +423,7 @@ public sealed partial class VariableListView
             return;
         }
 
-        // Its refresh would reload the page the shared list is leaving; the saved one is read once, below.
+        // Its refresh would reload the reader's own list behind the shared one; the saved list is read once, below.
         _holdingReloads = true;
         await CountTheAddsAsync(created.Id);
         _holdingReloads = false;

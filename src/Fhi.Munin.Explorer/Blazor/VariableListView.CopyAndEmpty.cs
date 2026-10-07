@@ -205,12 +205,12 @@ public sealed partial class VariableListView
         _pageNumber = 1;
         ForgetListControls();
 
+        // The switch and the refresh each raise a reload of the copy's page; it is read once, below.
+        _holdingReloads = true;
+
         // Left open even if the switch throws, now offering to copy the copy: focus is on its submit.
         _copying = true;
         _copyName = T.DefaultCopyName(created.Name);
-
-        // The switch and the refresh each raise a reload of the copy's page; it is read once, below.
-        _holdingReloads = true;
 
         // Before the switch, as in ChooseListAsync: the holder names the copy active even when it throws.
         try
