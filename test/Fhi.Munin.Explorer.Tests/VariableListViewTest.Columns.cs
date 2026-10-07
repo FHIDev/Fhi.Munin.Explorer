@@ -37,7 +37,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public void Columns_WhenNothingIsTicked_ThenTheTableShowsTheSixThatFit1280()
+    public void Columns_WhenFirstDrawn_ThenTheTableShowsTheSixThatFit1280()
     {
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
@@ -45,7 +45,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public void Columns_WhenNothingIsTicked_ThenEveryRowHasACellUnderEveryHeading()
+    public void Columns_WhenFirstDrawn_ThenEveryRowHasACellUnderEveryHeading()
     {
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
