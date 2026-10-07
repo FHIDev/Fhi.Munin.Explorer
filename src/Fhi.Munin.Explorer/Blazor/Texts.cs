@@ -232,6 +232,16 @@ internal sealed record Texts(
     string FieldStandardDeviation,
     string StatisticsYearly,
     string StatisticsAccumulated,
+    // The nine Frekvens values of the national specification, in its order: codes 1 to 9.
+    string FrequencyLessThanYearly,
+    string FrequencyYearly,
+    string FrequencyHalfYearly,
+    string FrequencyEveryFourMonths,
+    string FrequencyQuarterly,
+    string FrequencyMonthly,
+    string FrequencyWeekly,
+    string FrequencyDaily,
+    string FrequencyMoreThanDaily,
     // The categorical frequency table, which reports how a coded variable's values are distributed.
     // ColumnLastUpdated is not FieldLastUpdated: that one says when Munin's record changed, this
     // one heads the year set an accumulated statistic was last computed over.
@@ -835,6 +845,29 @@ internal sealed record Texts(
         _ => type
     };
 
+    /// <summary>A datasamling's Frekvens as a word rather than an API token.</summary>
+    /// <remarks>
+    /// Keyed by Munin's camelCase <c>Frekvens</c> members, plus the English names stored before
+    /// them, mapped as Munin's <c>FrekvensValueConverter</c> reads them (<c>continuous</c> is
+    /// Hyppigere enn daglig). Anything else is shown as it arrived, as in <see cref="StatisticsTypeLabel"/>.
+    /// </remarks>
+    public string FrequencyLabel(string value) => KnownFrequencyLabel(value) ?? value;
+
+    /// <summary>The same word, or null for a value that is not one of Munin's Frekvens members.</summary>
+    internal string? KnownFrequencyLabel(string value) => value.ToLowerInvariant() switch
+    {
+        "sjeldnereennarlig" => FrequencyLessThanYearly,
+        "arlig" or "yearly" => FrequencyYearly,
+        "halvarlig" => FrequencyHalfYearly,
+        "tertialvis" => FrequencyEveryFourMonths,
+        "kvartalsvis" or "quarterly" => FrequencyQuarterly,
+        "manedlig" or "monthly" => FrequencyMonthly,
+        "ukentlig" or "weekly" => FrequencyWeekly,
+        "daglig" or "daily" => FrequencyDaily,
+        "hyppigereenndaglig" or "continuous" => FrequencyMoreThanDaily,
+        _ => null
+    };
+
     /// <summary>A version's status as a word, or as it arrived when we have not seen it before.</summary>
     /// <remarks>
     /// Only <c>Active</c> has come back from the test API - every version on every variable
@@ -1182,6 +1215,15 @@ internal sealed record Texts(
         FieldStandardDeviation: "Standardavvik",
         StatisticsYearly: "\u00c5rsbasert",
         StatisticsAccumulated: "Akkumulert",
+        FrequencyLessThanYearly: "Sjeldnere enn \u00e5rlig",
+        FrequencyYearly: "\u00c5rlig",
+        FrequencyHalfYearly: "Halv\u00e5rlig",
+        FrequencyEveryFourMonths: "Tertialvis",
+        FrequencyQuarterly: "Kvartalsvis",
+        FrequencyMonthly: "M\u00e5nedlig",
+        FrequencyWeekly: "Ukentlig",
+        FrequencyDaily: "Daglig",
+        FrequencyMoreThanDaily: "Hyppigere enn daglig",
         ColumnCategory: "Kategori",
         ColumnShareOfValid: "% av gyldige",
         ColumnCount: "Antall",
@@ -1685,6 +1727,15 @@ internal sealed record Texts(
         FieldStandardDeviation: "Standard deviation",
         StatisticsYearly: "Yearly",
         StatisticsAccumulated: "Accumulated",
+        FrequencyLessThanYearly: "Less often than yearly",
+        FrequencyYearly: "Yearly",
+        FrequencyHalfYearly: "Half-yearly",
+        FrequencyEveryFourMonths: "Every four months",
+        FrequencyQuarterly: "Quarterly",
+        FrequencyMonthly: "Monthly",
+        FrequencyWeekly: "Weekly",
+        FrequencyDaily: "Daily",
+        FrequencyMoreThanDaily: "More often than daily",
         ColumnCategory: "Category",
         ColumnShareOfValid: "% of valid",
         ColumnCount: "Count",

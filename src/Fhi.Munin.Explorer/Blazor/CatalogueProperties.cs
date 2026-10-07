@@ -571,16 +571,33 @@ internal static class CatalogueProperties
             return bag;
         }
 
+        var option = Option(entry, raw, reader);
+        var word = Word(option);
+
         // An unwrapping declines on a value that is not the shape its type promises, which the
         // catalogue produces often enough to be the path rather than the net — and a value that
         // disagrees with its type is still a value, so it is shown as it arrived.
         var (text, language) =
             (Typed(entry, MultiSelectType) ? Chosen(entry, raw, reader) : null)
-            ?? Word(entry, raw, reader)
+            ?? (option is { Curated: true } ? word : null)
+            ?? PackageWord(entry, raw, reader)
+            ?? word
             ?? (raw, "no");
 
         return [new LocalisedText(text, language)];
     }
+
+    /// <summary>
+    /// This package's own word for a code the vocabulary does not label, in the reader's language.
+    /// </summary>
+    /// <remarks>
+    /// Only Frekvens has one: Munin sends its enum member's name, which no reader should see, and the
+    /// word carries the reader's tag because it is written in their language (Fhi.Metadata-l9l2n.121).
+    /// </remarks>
+    private static (string Label, string Language)? PackageWord(PropertyMetadataEntry entry, string raw, string reader) =>
+        entry.Key == CatalogueColumns.Frequency && Texts.For(reader).KnownFrequencyLabel(raw) is { } word
+            ? (word, reader)
+            : null;
 
     /// <summary>A value parsed as JSON, or nothing where it is not structured.</summary>
     /// <returns>A document the caller owns; <see cref="JsonElement"/> outlives no document.</returns>
@@ -767,18 +784,22 @@ internal static class CatalogueProperties
     /// </para>
     /// </remarks>
     internal static (string Label, string Language)? Word(PropertyMetadataEntry entry, string raw, string reader) =>
-        Option(entry, raw, reader) is { } option ? (option.Label, option.Language) : null;
+        Word(Option(entry, raw, reader));
+
+    private static (string Label, string Language)? Word((string Label, string Language, bool Curated)? option) =>
+        option is { } found ? (found.Label, found.Language) : null;
 
     /// <summary>
     /// The same lookup, saying as well whether the vocabulary curated that label or handed the code
     /// back for want of one.
     /// </summary>
     /// <remarks>
-    /// <see cref="Word"/> answers what to show, which is the code itself for an option carrying no
-    /// label — the right answer for text and the wrong one for a <c>lang</c>, since marking a bare
-    /// CURIE Norwegian is the defect the remarks above describe. <c>Curated</c> is decided here,
-    /// off the option the label came from, so a caller needing the distinction does not re-derive
-    /// it by comparing the label back against the code it was asked about.
+    /// <see cref="Word(PropertyMetadataEntry, string, string)"/> answers what to show, which is
+    /// the code itself for an option carrying no label — the right answer for text and the wrong
+    /// one for a <c>lang</c>, since marking a bare CURIE Norwegian is the defect the remarks above
+    /// describe. <c>Curated</c> is decided here, off the option the label came from, so a caller
+    /// needing the distinction does not re-derive it by comparing the label back against the code
+    /// it was asked about.
     /// </remarks>
     internal static (string Label, string Language, bool Curated)? Option(
         PropertyMetadataEntry entry, string raw, string reader)

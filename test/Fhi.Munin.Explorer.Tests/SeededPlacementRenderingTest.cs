@@ -337,10 +337,10 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
             [CatalogueColumns.PersonIdentification] = "Indirekte identifiserbar",
             [CatalogueColumns.ValidFrom] = "3. februar 2023 – 5. april 2024",
             [CatalogueColumns.ValidTo] = "3. februar 2023 – 5. april 2024",
-            // Unresolved, because the fact box draws the stored code rather than the vocabulary's
-            // word for it. Statistikktype is left out of the count entirely: the heading, the nav
-            // entry and the row all read it off one field, so exactly-once is the wrong question.
-            [CatalogueColumns.Frequency] = "manedlig",
+            // This package's word rather than the vocabulary's, as for the identification level.
+            // Statistikktype is left out of the count entirely: the heading, the nav entry and the
+            // row all read it off one field, so exactly-once is the wrong question.
+            [CatalogueColumns.Frequency] = "Månedlig",
         };
 
         facts.Remove(CatalogueColumns.StatisticsType);

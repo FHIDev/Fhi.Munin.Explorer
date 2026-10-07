@@ -241,7 +241,7 @@ public partial class VariableSearch
     /// itself where there is none.
     /// </summary>
     /// <remarks>
-    /// The miss is shown rather than hidden, which is the rule <see cref="CatalogueProperties.Word"/>
+    /// The miss is shown rather than hidden, which is the rule <see cref="CatalogueProperties.Word(PropertyMetadataEntry, string, string)"/>
     /// states: a facet drawing nothing for a token it cannot name would silently offer fewer
     /// choices than the catalogue has. A token is ugly and honest — and unmarked, a CURIE being
     /// prose in no language at all. An option the vocabulary lists but curated no label for is a

@@ -2587,4 +2587,98 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.DoesNotContain("Kode", labels);
         Assert.Contains("Kortnavn", labels);
     }
+
+    [Fact]
+    public void Frequency_WhenNotPlaced_ThenTheFactRowReadsTheWordAndNotTheWireName()
+    {
+        var cut = Render(Datasamling() with { Frequency = "kvartalsvis" });
+
+        Assert.Equal("Kvartalsvis", Value(Box(cut, "Statistikk (årsbasert)"), "Frekvens"));
+        Assert.DoesNotContain("kvartalsvis", cut.Find(".munin-explorer-page").TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null, "Kvartalsvis")]
+    [InlineData("en", "Quarterly")]
+    public void Frequency_WhenPlacedInASection_ThenTheSectionReadsTheWordAndNotTheWireName(
+        string? language, string expected)
+    {
+        // A placed section reads Frekvens from CatalogueColumns.Values rather than the fact row, so
+        // the row's label alone does not cover it. The word is the reader's, so it carries no lang.
+        var cut = Render(Placed() with { Frequency = "kvartalsvis" }, language: language);
+        var section = cut.Find("#munin-explorer-section-variabler");
+
+        Assert.Null(FrequencyValue(section, expected).GetAttribute("lang"));
+        Assert.Empty(cut.FindAll("#" + DetailSectionIds.Statistics));
+        Assert.DoesNotContain("kvartalsvis", cut.Find(".munin-explorer-page").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Frequency_WhenTheCatalogueLabelsTheCode_ThenItsWordWinsOverThePackages()
+    {
+        var curated = Placed() with
+        {
+            Frequency = "kvartalsvis",
+            PropertyMetadata =
+            [
+                .. Placed().PropertyMetadata.Where(entry => entry.Key != CatalogueColumns.Frequency),
+                Definition(CatalogueColumns.Frequency, "Frekvens", "SingleSelect", 2003, "variabler",
+                           """[{"value":"kvartalsvis","label":"Hvert kvartal","labelEn":"Every quarter"}]"""),
+            ],
+        };
+
+        var section = Render(curated).Find("#munin-explorer-section-variabler");
+
+        Assert.Contains("Hvert kvartal", section.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Kvartalsvis", section.TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null, "Kvartalsvis")]
+    [InlineData("en", "Quarterly")]
+    public void Frequency_WhenTheVocabularyListsTheCodeWithoutALabel_ThenThePackagesWordStandsIn(
+        string? language, string expected)
+    {
+        // An uncurated option hands its code back as the label, and matches the package's word
+        // case-insensitively, so it must not get the last say.
+        var listed = Placed() with
+        {
+            Frequency = "kvartalsvis",
+            PropertyMetadata =
+            [
+                .. Placed().PropertyMetadata.Where(entry => entry.Key != CatalogueColumns.Frequency),
+                Definition(CatalogueColumns.Frequency, "Frekvens", "SingleSelect", 2003, "variabler",
+                           """[{"value":"kvartalsvis"},{"value":"manedlig"}]"""),
+            ],
+        };
+
+        var cut = Render(listed, language: language);
+
+        Assert.Null(FrequencyValue(cut.Find("#munin-explorer-section-variabler"), expected).GetAttribute("lang"));
+        Assert.DoesNotContain("kvartalsvis", cut.Find(".munin-explorer-page").TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("monthly", "Månedlig")]
+    [InlineData("Hver fullmåne", "Hver fullmåne")]
+    public void Frequency_WhenTheBagHoldsItsOwn_ThenAKnownCodeIsRelabelledAndFreeTextIsLeftAlone(
+        string curated, string expected)
+    {
+        var detail = Placed() with
+        {
+            Frequency = "kvartalsvis",
+            AdditionalProperties = new Dictionary<string, string?>(Placed().AdditionalProperties)
+            {
+                [CatalogueColumns.Frequency] = curated,
+            },
+        };
+
+        var section = Render(detail).Find("#munin-explorer-section-variabler");
+
+        Assert.NotNull(FrequencyValue(section, expected));
+        Assert.DoesNotContain("Kvartalsvis", section.TextContent, StringComparison.Ordinal);
+    }
+
+    private static AngleSharp.Dom.IElement FrequencyValue(AngleSharp.Dom.IElement section, string text) =>
+        section.QuerySelectorAll("dd").Single(dd => dd.TextContent.Trim() == text);
 }
