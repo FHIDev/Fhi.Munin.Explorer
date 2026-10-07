@@ -1804,10 +1804,8 @@ public partial class VariableListViewTest : ExplorerTestContext
     [Fact]
     public void View_WhenTheTableIsDrawn_ThenTheCodeStandsUnderTheNameWithNoToggleToHideIt()
     {
-        // The code came out of the variabelutforsker's hit list (Fhi.Metadata-l9l2n.69) and stayed
-        // here: a saved list is an attachment to an application, and the code is what the applicant
-        // asks for. Under the name rather than in a column of its own since Fhi.Metadata-b2w2z, and
-        // still offered by no toggle, so it cannot be turned off.
+        // A saved list is attached to an application, and the code is what the applicant asks for,
+        // so no toggle may hide it.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
         Assert.Equal("V_BDR.ALDER", cut.Find("tbody th[scope=row] .munin-explorer-list-code").TextContent.Trim());

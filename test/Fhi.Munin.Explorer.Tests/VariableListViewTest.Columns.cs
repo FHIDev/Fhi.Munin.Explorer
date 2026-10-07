@@ -37,7 +37,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public void Columns_ByDefault_ThenTheTableShowsTheSixThatFit1280()
+    public void Columns_WhenNothingIsTicked_ThenTheTableShowsTheSixThatFit1280()
     {
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
@@ -45,7 +45,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public void Columns_ByDefault_ThenEveryRowHasACellUnderEveryHeading()
+    public void Columns_WhenNothingIsTicked_ThenEveryRowHasACellUnderEveryHeading()
     {
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
@@ -73,7 +73,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public void Columns_ThePicker_OffersTheOptionalColumnsWithTheHiddenOnesUnticked()
+    public void ColumnPicker_WhenDrawn_ThenItOffersTheOptionalColumnsWithTheHiddenOnesUnticked()
     {
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
@@ -126,7 +126,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public void Columns_TheRemoveColumn_IsHeadedValgOnScreenAndInTheCards()
+    public void RemoveColumn_WhenDrawn_ThenItIsHeadedValgOnScreenAndInTheCards()
     {
         // The old helsedata page heads it «Valg», and Inge kept that; the cards label the button the same.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
@@ -138,7 +138,7 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public void Columns_DesiredData_IsATextareaThatStartsOneLineHigh()
+    public void DesiredData_WhenDrawn_ThenItIsATextareaOneLineHigh()
     {
         // A text field cut a long note off; a textarea wraps, and Stiler grows it to four lines.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
