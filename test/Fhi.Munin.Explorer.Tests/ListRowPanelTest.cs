@@ -696,7 +696,7 @@ public class ListRowPanelTest : ExplorerTestContext
         await cut.InvokeAsync(gate.SetResult);
         Assert.NotEqual("", PageAlert(cut));
 
-        cut.Find("td.munin-explorer-dataitem-main__desiredData input").Change("C76");
+        cut.Find("td.munin-explorer-dataitem-main__desiredData textarea").Change("C76");
 
         Assert.Equal("", PageAlert(cut));
     }
@@ -1024,7 +1024,7 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.Find($"#{label.GetAttribute("for")}").Change("C76\r\n  C77 \n\nC78");
 
         Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76, C77, C78")], client.DesiredDataWritten);
-        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData input");
+        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData textarea");
         Assert.Equal("C76, C77, C78", column.GetAttribute("value"));
     }
 
@@ -1047,7 +1047,7 @@ public class ListRowPanelTest : ExplorerTestContext
         field.Change("  C76 og C77  ");
 
         Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76 og C77")], client.DesiredDataWritten);
-        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData input");
+        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData textarea");
         Assert.Equal("C76 og C77", column.GetAttribute("value"));
     }
 

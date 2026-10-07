@@ -298,15 +298,15 @@ const cases = [
     apply: dropMediaRules('.munin-explorer-kilde__datasamlinger:not('),
   },
   {
-    assertion: 'the saved list shows every column at 767px and below',
+    assertion: 'the saved list fits its box at every width',
     defect: "Stiler 0.1.139's list cards gone at 320: columns hidden to the right",
     path: '/', state: 'explorer-list-tab', width: 320,
     apply: dropMediaRules('.munin-explorer-list-scroll table.munin-explorer-data-list'),
   },
   {
-    assertion: 'the saved list shows every column at 767px and below',
-    defect: 'the list cards gone at 767, the widest width that still draws them',
-    path: '/', state: 'explorer-list-tab', width: 767,
+    assertion: 'the saved list fits its box at every width',
+    defect: 'the list cards gone at 1024, where six columns cannot fit the box',
+    path: '/', state: 'explorer-list-tab', width: 1024,
     apply: dropMediaRules('.munin-explorer-list-scroll table.munin-explorer-data-list'),
   },
   {

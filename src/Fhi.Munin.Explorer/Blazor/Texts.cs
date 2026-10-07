@@ -300,9 +300,6 @@ internal sealed record Texts(
     // its own. The act rather than the field it reveals: "Navn på ny liste" is the label inside,
     // and a button repeating it would name the same field twice.
     string AddNewList,
-    // The header over the column of remove buttons. Never on screen — each button says "Fjern"
-    // itself — but a screen reader arriving in that column has nothing else to hear.
-    string ColumnRemove,
     // The saved-list tab's own filter panel, where the search facets are hidden. Only the empty
     // case earns a string of its own: the panel's title and the Kilde heading are FiltersTitle and
     // FieldSource, the same words for the same things the search panel uses.
@@ -1238,7 +1235,6 @@ internal sealed record Texts(
         RemoveFromThisList: "Fjern",
         ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
         AddNewList: "Legg til ny liste",
-        ColumnRemove: "Fjern variabel",
         NoKilderInList: "Ingen kilder i listen ennå.",
         NoVariablesForTheseKilder: "Ingen variabler fra de valgte kildene.",
         ListVariableCount: count => count == 1 ? "1 variabel" : $"{count} variabler",
@@ -1741,7 +1737,6 @@ internal sealed record Texts(
         RemoveFromThisList: "Remove",
         ListLoadError: "Could not fetch the list just now. Try again shortly.",
         AddNewList: "Add new list",
-        ColumnRemove: "Remove variable",
         NoKilderInList: "No sources in the list yet.",
         NoVariablesForTheseKilder: "No variables from the selected sources.",
         ListVariableCount: count => count == 1 ? "1 variable" : $"{count} variables",

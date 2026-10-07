@@ -366,7 +366,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the pictures. A folder says nothing of the kind and is announced nowhere: it repeats the
     nesting the list already carries, so it is the one glyph `NodeIcons.SpokenCategories` withholds.
     The rules are `Fhi.Helsedata.Stiler` PR 39340's and are **published in 0.1.75**;
-    `samples/HostileHost` pins 0.1.152 today (`Fhi.Metadata-dfy9u.10`).
+    `samples/HostileHost` pins 0.1.155 today (`Fhi.Metadata-exfp4`).
     The words for those glyphs are under the facets, in an `Ikonforklaring` legend that adds two
     names of its own — `munin-explorer-filters__legend` on the list and
     `munin-explorer-filters__legend-item` on each row. It lists the whole vocabulary rather than
@@ -382,7 +382,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the row each pairing sits on and the columns the eighteen of them are laid out in. Both sample
     stylesheets already carried the rules before any markup wore the names, copied off the published
     0.1.75 that `samples/HostileHost` pinned when they were written and compared since against the
-    0.1.152 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
+    0.1.155 it pins today. `assert-sample-css-matches-stiler.sh` against that pin is the whole of the
     evidence on this side that Stiler really has them — nothing in this repository reads Stiler,
     and that guard runs only in the job holding the feed secret. A legend that rests shut is a
     `<details>` and nothing invented: its `<summary>` is the control's accessible name and its
@@ -409,7 +409,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     name — stood in under their "since an earlier Stiler pin" heading,
     which is where a rule copied off the pinned published package goes — so
     `assert-sample-css-matches-stiler.sh` against that pin is what says whether the published
-    Stiler really has it — 0.1.152 today, 0.1.75 when this was written. Nothing on this side
+    Stiler really has it — 0.1.155 today, 0.1.75 when this was written. Nothing on this side
     reads Stiler, and this paragraph does not claim to —
     `Fhi.Metadata-gegtb` is the bead that goes and looks, and writes the rule if it is not there.
     The saved-list view's `munin-explorer-dataitem-*__desiredData` pair is a handle on the same
@@ -489,7 +489,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     of a sticky header, rather than under it. Stiler's rules for
     it are written — `components/munin-explorer/_page.scss`, merged as PR 39299 — and hang the
     offset on the `data-nav-section` attribute rather than on the class. That PR bumped no version
-    of its own, but 0.1.75 carries the file, and so does the 0.1.152 pinned today: both sample
+    of its own, but 0.1.75 carries the file, and so does the 0.1.155 pinned today: both sample
     stylesheets stand in at its declarations for the name and
     `assert-sample-css-matches-stiler.sh` finds no divergence against the pin.
     Which PR bumped a version says nothing about what a later release shipped — read the pin.
@@ -513,7 +513,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     blocks and draw whichever the host loaded last. Handles, all four — undefined, the body and its
     two columns are blocks in ordinary flow, which stacks the contents column above the main one and
     loses no words. Stiler's rules are written, in the same
-    `_page.scss` and merged as PR 39300, and 0.1.75 carries them, as the pinned 0.1.152 does.
+    `_page.scss` and merged as PR 39300, and 0.1.75 carries them, as the pinned 0.1.155 does.
     The contents column is drawn only when something fills it, which since
     `Fhi.Metadata-35w0p.12` is the contents nav — and only when the view drew a section
     for it to link to, so a view with none still has no rail. Both sample stylesheets scope the
@@ -544,7 +544,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     trail, before the hero facts, using `DetailPage.ActionsAfterHeader`; other views retain the
     default placement above the header. Both are handles: undefined, the eyebrow
     is a paragraph above the title and the row is its children in ordinary flow, and no word is
-    lost either way. `Fhi.Helsedata.Stiler` 0.1.152 — the pin `samples/HostileHost` restores —
+    lost either way. `Fhi.Helsedata.Stiler` 0.1.155 — the pin `samples/HostileHost` restores —
     carries a rule for each, as every release since 0.1.75 has, in the same
     `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at its
     declarations. Four of the five surfaces set the eyebrow — the kilde,
@@ -562,7 +562,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     facts, because a list of saved variables is not an entity with facts about it. The instrument
     page names two — how many variables it holds and how long it has been in use — and the row
     draws whichever of them the catalogue filled in. Both sample
-    stylesheets stand in at exactly what the pinned 0.1.152 declares, the `small` included — and
+    stylesheets stand in at exactly what the pinned 0.1.155 declares, the `small` included — and
     at 0.1.75 they no longer would, since the label's `overflow-wrap: anywhere` came later.
     `DetailFact.LabelLang` marks a label that falls back to another language, independently of
     the value’s `Lang`, in both the hero and sticky bar.
@@ -596,7 +596,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     the foot of the page with no bar at all. The module re-reads the row's own box on `scrollend`,
     and on `hashchange` for a host that leaves the anchor press to the browser, so a jump now moves
     the bar both ways. `Fhi.Metadata-14j7i`, measured rather than reasoned about.
-    `Fhi.Helsedata.Stiler` 0.1.152 — the pin `samples/HostileHost` restores — carries all four in
+    `Fhi.Helsedata.Stiler` 0.1.155 — the pin `samples/HostileHost` restores — carries all four in
     `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at exactly what it
     declares. `VariableListView` draws no bar: it names no hero facts, and the bar exists only where
     that row does.
@@ -612,7 +612,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     whatever a host declares. Stiler's rules are written — the same
     `components/munin-explorer/_page.scss`, merged as PR 39301 — and the fact list's copied the
     panel's numbers declaration for declaration in 0.1.75, so on a host that had it the grid and
-    type moved nothing. At the pinned 0.1.152 they have parted: the fact list's `dd` carries a
+    type moved nothing. At the pinned 0.1.155 they have parted: the fact list's `dd` carries a
     `max-width: 45ch` the panel's has none of, and the fact list is one column
     (`minmax(0, 1fr)`), with the page's main column held to `47em` beside a contents list, where
     the panel keeps its two. Not so in the sample hosts: their
@@ -655,6 +655,10 @@ These are not style preferences — each one is a host that breaks otherwise.
     without it a host using the `clip` idiom rather than a negative offset scrolls sideways through
     them anyway. The class is still the hook, and the `:focus-visible` outline under it is still
     the host's, for the reason the kilder box gives.
+    `munin-explorer-list-code` is a saved-list row's variable code, under its name since the code
+    column went (`Fhi.Metadata-b2w2z`). Undrawn, it runs on after the name at the name's size, so
+    a host owes it `display: block`; Stiler also sets it small and grey, and lets it break in the
+    cards, where a code too long for the card would otherwise be cut off.
     `munin-explorer-list-menu`, `munin-explorer-list-menu__panel` and `munin-explorer-list-menu--end`
     are the saved-list view's «Last ned» and «Flere valg» folds (`Fhi.Metadata-x47p0`). The panel
     is drawn `hidden` while its fold is closed, so the one rule a host cannot do without is
@@ -898,8 +902,10 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-dataitem-header__kodeverk` | handle |
   | `munin-explorer-dataitem-header__name` | handle |
   | `munin-explorer-dataitem-header__period` | handle |
+  | `munin-explorer-dataitem-header__save` | handle |
   | `munin-explorer-dataitem-header__source` | handle |
   | `munin-explorer-dataitem-header__statistikk` | handle |
+  | `munin-explorer-dataitem-header__status` | handle |
   | `munin-explorer-dataitem-header__theme` | handle |
   | `munin-explorer-dataitem-main` | handle |
   | `munin-explorer-dataitem-main__column` | handle |
@@ -996,6 +1002,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kodeverk__name` | handle |
   | `munin-explorer-kodeverk__reference` | handle |
   | `munin-explorer-lead` | handle |
+  | `munin-explorer-list-code` | meaning |
   | `munin-explorer-list-menu` | meaning |
   | `munin-explorer-list-menu--end` | meaning |
   | `munin-explorer-list-menu__panel` | meaning |
@@ -1322,7 +1329,7 @@ through either explorer or mounted directly. Register the client with `AddMuninE
 mounting `KildeView`. `KildeHierarchyView` can also be mounted with `KildeId` and `Language`.
 The hierarchy's class names are in the inventory above, and their rules are Stiler's, not this
 package's (`Fhi.Metadata-wihod`, Stiler PR 39239). The tree is measured in `samples/HostileHost`
-against the Stiler it pins, 0.1.152 today. `KildeView` has no `LevelLines`: the detail tree's rails are
+against the Stiler it pins, 0.1.155 today. `KildeView` has no `LevelLines`: the detail tree's rails are
 the stylesheet's, drawn for every reader, while `LevelLines` is the filter panel's own preference.
 
 Each row carries a node icon for its name — a folder on a delkilde, one glyph per

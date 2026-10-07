@@ -214,21 +214,23 @@ public class GeometryScanGuardTest
         Assert.Equal(targets, measured);
     }
 
-    [Fact]
-    public void HostileHost_WhenMeasuringAt767_ThenEveryCardPageIsMeasured()
+    [Theory]
+    [InlineData(767, new[] { "/kilder::kilde-hierarchy-metadata" })]
+    [InlineData(1279, new[] { "/::explorer-list-tab", "/::list-row-notes", "/::list-row-panel" })]
+    public void HostileHost_WhenMeasuringAtACardBreakpoint_ThenEveryCardPageIsMeasured(int width, string[] expected)
     {
-        // 767 is the widest width Stiler still draws the cards at. Deleting that call, moving its
-        // width or dropping a page left every other guard green.
+        // The widest widths Stiler still draws the cards at: the kilde cards' 767, the saved list's 1279
+        // (Fhi.Metadata-b2w2z). Deleting a call, moving its width or dropping a page left every other guard green.
         var source = File.ReadAllText(Repo.In("scripts", "check-hostile-host.sh"));
         var call = Assert.Single(Regex.Matches(
             source,
-            @"^REFLOW_WIDTH=767 reflow ""[^""]*""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
+            $@"^REFLOW_WIDTH={width} reflow ""[^""]*""(?<targets>(?:[ \t]*\\?\r?\n?[ \t]*""[^""]+"")+)",
             RegexOptions.Multiline));
         var targets = Regex.Matches(call.Groups["targets"].Value, @"""(?<target>[^""]+)""")
             .Select(match => match.Groups["target"].Value)
             .Order(StringComparer.Ordinal);
 
-        Assert.Equal(["/::explorer-list-tab", "/::list-row-notes", "/::list-row-panel", "/kilder::kilde-hierarchy-metadata"], targets);
+        Assert.Equal(expected, targets);
     }
 
     [Fact]

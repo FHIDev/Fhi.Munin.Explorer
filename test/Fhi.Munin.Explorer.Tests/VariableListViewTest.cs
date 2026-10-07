@@ -1483,6 +1483,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { DataFrom = from, DataTo = null };
 
         var cut = RenderView(new ListClient(item));
+        ShowEveryColumn(cut);
 
         Assert.Contains(CatalogueDate.Day(from, "no", DateWidth.Narrow), cut.Markup, StringComparison.Ordinal);
         Assert.Contains("Pågående", cut.Markup);
@@ -1498,6 +1499,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         {
             DataTypeFacets = [new DataTypeFacet { Value = "2", DisplayName = "Heltall" }]
         });
+        ShowEveryColumn(cut);
 
         AngleSharp.Dom.IElement Cell(string key) =>
             cut.Find($"td.munin-explorer-dataitem-main__{key} .munin-explorer-dataitem-main__column__text");
@@ -1505,10 +1507,13 @@ public partial class VariableListViewTest : ExplorerTestContext
         Assert.Equal("Heltall", Cell("dataType").TextContent.Trim());
         Assert.Empty(Cell("dataType").QuerySelectorAll("[lang='no']"));
 
-        foreach (var key in new[] { "code", "source", "dataCollection", "theme" })
+        foreach (var key in new[] { "source", "dataCollection", "theme" })
         {
             Assert.NotNull(Cell(key).QuerySelector("span[lang='no']"));
         }
+
+        // The code stands under the name now, and keeps the marking it had as a cell.
+        Assert.Equal("no", cut.Find("tbody th[scope=row] .munin-explorer-list-code").GetAttribute("lang"));
     }
 
     [Fact]
@@ -1531,6 +1536,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         };
 
         var cut = RenderView(client);
+        ShowEveryColumn(cut);
 
         Assert.Contains("Heltall", cut.Markup);
     }
@@ -1720,12 +1726,12 @@ public partial class VariableListViewTest : ExplorerTestContext
         // list, so this view can have the element that brings the structure with it.
         var table = cut.Find("table.munin-explorer-data-list");
 
-        // Eleven headers, each a real <th scope="col">: the seven catalogue columns, the two
-        // coverage columns, the reader's own annotation, and the control column over the remove
-        // buttons.
+        // Six headers by default, each a real <th scope="col">: the name, three catalogue columns, the
+        // reader's own annotation and «Valg» over the remove buttons. The other four are behind the
+        // picker, by Inge's decision (Fhi.Metadata-b2w2z).
         var headers = table.QuerySelectorAll("thead th");
 
-        Assert.Equal(11, headers.Length);
+        Assert.Equal(6, headers.Length);
         Assert.All(headers, h => Assert.Equal("col", h.GetAttribute("scope")));
         Assert.Equal("Navn", headers[0].TextContent.Trim());
 
@@ -1737,13 +1743,12 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         Assert.NotNull(rowHeader);
         Assert.Equal("row", rowHeader!.GetAttribute("scope"));
-        Assert.Equal("Alder ved diagnose", rowHeader.TextContent.Trim());
+        Assert.Equal("Alder ved diagnose", rowHeader.QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent.Trim());
 
-        // Ten <td> under it: six catalogue columns, two coverage columns, the annotation field,
-        // the remove button.
+        // Five <td> under it by default: three catalogue columns, the annotation field, the remove button.
         var cells = row.QuerySelectorAll("td");
 
-        Assert.Equal(10, cells.Length);
+        Assert.Equal(5, cells.Length);
         Assert.Equal("BUTTON", cells[^1].Children[0].TagName);
 
         // And nothing left claiming to be a table in ARIA. A role over a real table is at best a
@@ -1773,21 +1778,40 @@ public partial class VariableListViewTest : ExplorerTestContext
     }
 
     /// <summary>The text of one named column's cell in the first row of the list.</summary>
-    private static string CellText(IRenderedComponent<VariableListView> cut, string key) =>
-        cut.Find($".munin-explorer-dataitem-main__{key} .munin-explorer-dataitem-main__column__text")
-           .TextContent;
+    /// <remarks>
+    /// Four columns start hidden behind the picker (Fhi.Metadata-b2w2z), so a test about one of their
+    /// cells turns the column on first, as a reader would.
+    /// </remarks>
+    private static string CellText(IRenderedComponent<VariableListView> cut, string key)
+    {
+        if (HiddenByDefault.TryGetValue(key, out var label)
+            && cut.FindAll($".munin-explorer-dataitem-header__{key}").Count == 0)
+        {
+            ToggleListColumn(cut, label);
+        }
+
+        return cut.Find($".munin-explorer-dataitem-main__{key} .munin-explorer-dataitem-main__column__text").TextContent;
+    }
+
+    private static readonly Dictionary<string, string> HiddenByDefault = new()
+    {
+        ["dataType"] = "Datatype",
+        ["period"] = "Dataperiode",
+        ["kodeverk"] = "Kodeverk",
+        ["statistikk"] = "Statistikk",
+    };
 
     [Fact]
-    public void View_WhenTheTableIsDrawn_ThenTheCodeIsAColumnOfItsOwnWithNoPickerToHideIt()
+    public void View_WhenTheTableIsDrawn_ThenTheCodeStandsUnderTheNameWithNoToggleToHideIt()
     {
         // The code came out of the variabelutforsker's hit list (Fhi.Metadata-l9l2n.69) and stayed
-        // here. A saved list is an attachment to an application, and the code is what the applicant
-        // is asking for — this table has no column picker at all, so there is nowhere for the code
-        // to be turned off and it must never be removed on the argument that it is optional above.
+        // here: a saved list is an attachment to an application, and the code is what the applicant
+        // asks for. Under the name rather than in a column of its own since Fhi.Metadata-b2w2z, and
+        // still offered by no toggle, so it cannot be turned off.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
-        Assert.Equal("Kode", cut.Find("thead th.munin-explorer-dataitem-header__code").TextContent.Trim());
-        Assert.Equal("V_BDR.ALDER", CellText(cut, "code"));
+        Assert.Equal("V_BDR.ALDER", cut.Find("tbody th[scope=row] .munin-explorer-list-code").TextContent.Trim());
+        Assert.DoesNotContain(ListColumnToggles(cut), t => ListColumnName(t) == "Kode");
     }
 
     [Theory]
@@ -1795,10 +1819,11 @@ public partial class VariableListViewTest : ExplorerTestContext
     [InlineData("en", "Statistics")]
     public void View_WhenTheTableIsDrawn_ThenKodeverkAndStatisticsFollowThePeriod(string language, string statistics)
     {
-        // A saved list is the one surface where the reader has already said these variables belong
-        // together, so the coverage columns are always on here (Fhi.Metadata-l9l2n.95). The keys
-        // are the ones Stiler's rule names; any other spelling would ship them unstyled.
+        // The coverage columns were always on here (Fhi.Metadata-l9l2n.95); Inge put them behind the
+        // picker in Fhi.Metadata-b2w2z, so they are turned on first. The keys are the ones Stiler's
+        // rule names; any other spelling would ship them unstyled.
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")), language: language);
+        ShowEveryColumn(cut);
 
         var headers = cut.FindAll("thead th");
         var period = headers.ToList().FindIndex(h => h.ClassList.Contains("munin-explorer-dataitem-header__period"));
@@ -1834,6 +1859,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var item = Item("Alder ved diagnose", "V_BDR.ALDER") with { HasKodeverk = kodeverk, HasStatistics = statistics };
 
         var cut = RenderView(new ListClient(item), language: language);
+        ShowEveryColumn(cut);
 
         Assert.Equal(kodeverkText, CellText(cut, "kodeverk"));
         Assert.Equal(statisticsText, CellText(cut, "statistikk"));
@@ -1858,6 +1884,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var cut = RenderView(
             new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER") with { HasKodeverk = true, HasStatistics = false }),
             language: "en");
+        ShowEveryColumn(cut);
 
         Assert.Empty(cut.Find(".munin-explorer-dataitem-main__kodeverk").QuerySelectorAll("[lang]"));
         Assert.Empty(cut.Find(".munin-explorer-dataitem-main__statistikk").QuerySelectorAll("[lang]"));
@@ -1928,10 +1955,11 @@ public partial class VariableListViewTest : ExplorerTestContext
             .ToArray();
 
         var cut = RenderView(new ListClient(many) { PageSize = 25 });
+        ShowEveryColumn(cut);
 
         await cut.InvokeAsync(() => cut.FindAll(".munin-explorer-pagination-content button")[^1].Click());
 
-        Assert.Equal("V_26", CellText(cut, "code"));
+        Assert.Equal("V_26", cut.Find("tbody th[scope=row] .munin-explorer-list-code").TextContent.Trim());
         Assert.Equal("ALS", CellText(cut, "source"));
         Assert.Equal("Samling 26", CellText(cut, "dataCollection"));
         Assert.Equal("Gruppe 26", CellText(cut, "theme"));
@@ -1940,7 +1968,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         // which is what the hidden per-cell field name used to say and a <th scope="col"> now does.
         var headers = cut.FindAll("thead th");
 
-        Assert.Equal("Datasamling", headers[3].TextContent.Trim());
+        Assert.Equal("Datasamling", headers[2].TextContent.Trim());
     }
 
     [Fact]
@@ -2415,7 +2443,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var names = cut.FindAll("tbody th[scope=row]");
 
         Assert.Equal(2, names.Count);
-        Assert.Equal("Alder ved diagnose", names[0].TextContent.Trim());
+        Assert.Equal("Alder ved diagnose", names[0].QuerySelector(".munin-explorer-dataitem-main__column__text")!.TextContent.Trim());
         Assert.Equal("Variabelen er ikke tilgjengelig lenger", names[1].TextContent.Trim());
     }
 
@@ -3402,7 +3430,7 @@ public partial class VariableListViewTest : ExplorerTestContext
     /// </remarks>
     private static IReadOnlyList<AngleSharp.Dom.IElement> DesiredDataFields(
         IRenderedComponent<VariableListView> cut) =>
-        cut.FindAll(".munin-explorer-dataitem-main__desiredData input");
+        cut.FindAll(".munin-explorer-dataitem-main__desiredData textarea");
 
     /// <summary>
     /// Reads the list again from the API, so what is on screen afterwards is what was stored
