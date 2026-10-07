@@ -135,6 +135,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _failed;
     private bool _askedOnMount;
     private bool _retryingLists;
+
+    // Set while a copy or a shared save runs its own follow-up reads; it reads the page itself,
+    // once, if the page it leaves on screen needs reading.
+    private bool _holdingReloads;
     private bool _focusAfterRetry;
     private bool _focusAfterCreate;
     private bool _focusAfterRename;
@@ -836,7 +840,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             }
 
             // A retry reads the page itself once its lists are in; reloading here too would ask twice.
-            if (ShouldReloadFor(change) && !_retryingLists)
+            if (ShouldReloadFor(change) && !_retryingLists && !_holdingReloads)
             {
                 await LoadPageAsync();
             }

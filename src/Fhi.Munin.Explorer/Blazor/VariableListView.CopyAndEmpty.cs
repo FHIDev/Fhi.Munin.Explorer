@@ -209,6 +209,8 @@ public sealed partial class VariableListView
         _copyName = T.DefaultCopyName(created.Name);
 
         // Before the switch, as in ChooseListAsync: the holder names the copy active even when it throws.
+        _holdingReloads = true;
+
         try
         {
             await State.SetActiveListAsync(created.Id);
@@ -246,6 +248,8 @@ public sealed partial class VariableListView
     // Shared with saving a shared list, which writes the same way (Fhi.Metadata-60skm).
     private async Task CountTheAddsAsync(Guid list)
     {
+        _holdingReloads = true;
+
         try
         {
             await State!.RefreshAsync();
@@ -253,6 +257,32 @@ public sealed partial class VariableListView
         catch (Exception ex)
         {
             Log?.LogWarning(ex, "could not read the lists again after adding to {ListId}", list);
+        }
+        finally
+        {
+            _holdingReloads = false;
+        }
+
+        // The holder forgets a list the refresh no longer has; the view has to stop showing it too.
+        if (State is { } state && _shownList is { } shown && !state.Lists.Any(l => l.Id == shown))
+        {
+            try
+            {
+                await state.EnsureActiveListAsync();
+            }
+            catch (Exception ex)
+            {
+                if (ex is MuninExplorerRateLimitedException or MuninExplorerUnauthorizedException)
+                {
+                    Log?.LogWarning(ex, "the API refused picking another list after {ListId} was deleted", shown);
+                }
+                else
+                {
+                    Log?.LogError(ex, "could not pick another list after {ListId} was deleted", shown);
+                }
+            }
+
+            await ShowActiveListAsync();
         }
     }
 

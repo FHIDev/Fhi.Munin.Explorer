@@ -75,6 +75,9 @@ public class SharedListViewTest : ExplorerTestContext
         public bool AddsRefused { get; init; }
 
         public int MyListsCalls { get; private set; }
+
+        /// <summary>Every page read of an own list, in order; the holder's whole-list walks of 1000 excluded.</summary>
+        public List<Guid> PageReads { get; } = [];
         public int CreateCalls { get; private set; }
         public int ShareCalls { get; private set; }
         public int SharedReads { get; private set; }
@@ -169,6 +172,11 @@ public class SharedListViewTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             MyListsCalls++;
+
+            if (pageSize != 1000)
+            {
+                PageReads.Add(id);
+            }
 
             if (!_items.TryGetValue(id, out var items))
             {
@@ -569,6 +577,30 @@ public class SharedListViewTest : ExplorerTestContext
             }
         });
         Assert.DoesNotContain("Listen er tom", cut.Markup);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Save_WhenTheListsAreReadAgainAfterTheAdds_ThenTheSavedListsPageIsReadOnce(bool listsReadFails)
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD"] = new SharedList("Mine hjertevariabler", Three);
+        var client = new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")], ReadAfterCreateThrows = listsReadFails };
+
+        var cut = RenderView(client, shareCode: "AB12CD");
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        var before = client.PageReads.Count;
+
+        Button(cut, "Lagre som min liste").Click();
+        Labelled(cut, "Navn på din kopi av listen").Change("Delt hjerteliste");
+        Button(cut, "Lagre listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "Delt hjerteliste", cut.Find("[id^=munin-explorer-list-heading-]").TextContent.Trim()));
+        await cut.InvokeAsync(() => { });
+
+        Assert.Single(client.PageReads.Skip(before));
     }
 
     [Fact]
