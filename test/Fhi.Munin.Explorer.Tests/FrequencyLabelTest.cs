@@ -38,7 +38,9 @@ public class FrequencyLabelTest
     [InlineData("Continuous")]
     public void FrequencyLabel_WhenTheCaseDiffers_ThenItIsStillRecognised(string wire)
     {
-        Assert.NotEqual(wire, Texts.For("nb").FrequencyLabel(wire));
+        // Compared with the lower-cased wire name, since "Kvartalsvis" is already its own nb label.
+        Assert.Equal(Texts.For("en").FrequencyLabel(wire.ToLowerInvariant()), Texts.For("en").FrequencyLabel(wire));
+        Assert.NotEqual(wire, Texts.For("en").FrequencyLabel(wire));
     }
 
     [Theory]
