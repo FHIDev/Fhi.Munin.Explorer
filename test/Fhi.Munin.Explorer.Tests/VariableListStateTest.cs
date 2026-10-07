@@ -501,6 +501,7 @@ public class VariableListStateTest : ExplorerTestContext
         state.SetAuthenticated(false);
         state.SetAuthenticated(true);
         var fresh = state.EnsureLoadedAsync();
+        Assert.Equal(2, client.Calls);
 
         client.Answer(0, "Den forrige leserens liste");
         await stale;
