@@ -151,16 +151,21 @@ public sealed partial class VariableListState(
         {
             lists = await _client.GetMyListsAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             EndRead(startedAt);
 
-            // Raised as well as thrown: a surface that joined this read in flight never sees the throw.
-            if (StillCurrent(startedAt))
+            // Dropped like a stale answer: thrown, it would reach the surface that started it and
+            // replace the next reader's lists with an error that was never theirs.
+            if (!StillCurrent(startedAt))
             {
-                ListsReadFailed = true;
-                RaiseChanged(listId: null, affectsRows: true);
+                _logger?.LogInformation(ex, "dropped a failed lists read that belonged to the previous reader");
+                return;
             }
+
+            // Raised as well as thrown: a surface that joined this read in flight never sees the throw.
+            ListsReadFailed = true;
+            RaiseChanged(listId: null, affectsRows: true);
 
             throw;
         }

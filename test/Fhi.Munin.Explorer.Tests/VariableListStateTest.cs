@@ -461,6 +461,8 @@ public class VariableListStateTest : ExplorerTestContext
         public void Answer(int read, params string[] names) =>
             _reads[read].SetResult([.. names.Select(n => new VariableList { Id = Guid.NewGuid(), Name = n })]);
 
+        public void Fail(int read) => _reads[read].SetException(new HttpRequestException("too many requests"));
+
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default)
         {
             var read = new TaskCompletionSource<IReadOnlyList<VariableList>>();
@@ -513,6 +515,26 @@ public class VariableListStateTest : ExplorerTestContext
         client.Answer(1, "Den nye leserens liste");
         await Task.WhenAll(fresh, joined);
         Assert.False(state.IsReadingLists);
+    }
+
+    [Fact]
+    public async Task EnsureLoaded_WhenTheStaleReadFailsAfterTheNewReadersListsLanded_ThenItsCallerIsNotToldOfIt()
+    {
+        // Thrown, it reaches the view that started it, which would replace the new reader's lists with an error.
+        var client = new QueuedListsClient();
+        var state = SignedIn(client);
+        var stale = state.EnsureLoadedAsync();
+        state.SetAuthenticated(false);
+        state.SetAuthenticated(true);
+        var fresh = state.EnsureLoadedAsync();
+        client.Answer(1, "Den nye leserens liste");
+        await fresh;
+
+        client.Fail(0);
+        await stale;
+
+        Assert.False(state.ListsReadFailed);
+        Assert.Equal("Den nye leserens liste", Assert.Single(state.Lists).Name);
     }
 
     /// <summary>A client whose add is held open until the test lets it finish.</summary>

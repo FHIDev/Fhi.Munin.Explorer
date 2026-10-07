@@ -1390,6 +1390,25 @@ public partial class VariableListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task View_WhenThePreviousReadersListsReadFailsAfterTheNewReadersLanded_ThenTheListStaysOnScreen()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListsHang = true };
+        var cut = RenderView(client);
+        client.ListsHang = false;
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+        cut.WaitForAssertion(() => Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal));
+
+        await cut.InvokeAsync(client.FailLists);
+
+        // The failure would surface in the first mount's still-running lifecycle, which nothing here can await.
+        await Task.Delay(200);
+
+        Assert.Contains("Alder ved diagnose", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Kunne ikke hente listen", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task View_WhenAnotherSurfacesListsReadFails_ThenItStopsFetchingAndSaysTheListsCouldNotBeRead()
     {
         // The search's save button starts the read on mount; this view joins it and never sees the throw.
