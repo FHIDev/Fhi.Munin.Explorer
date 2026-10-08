@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Fhi.Munin.Explorer.Parsing;
 
 namespace Fhi.Munin.Explorer.Contracts;
 
@@ -333,7 +334,7 @@ public sealed record VariableFilter
     /// own cap amounts to, plus room for the host's own parameters, so a real query string is
     /// never truncated.
     /// </remarks>
-    private const int MaxParameters = 2_000;
+    internal const int MaxParameters = 2_000;
 
     /// <summary>
     /// Read a filter back from a query string, with or without a leading <c>?</c>.
@@ -394,24 +395,8 @@ public sealed record VariableFilter
             ["includeHistorical"] = value => includeHistorical = Bool(value) ?? includeHistorical
         };
 
-        var read = 0;
-
-        foreach (var pair in queryString.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var (_, name, value) in QueryPairs.Split(queryString, MaxParameters))
         {
-            if (++read > MaxParameters)
-            {
-                break;
-            }
-
-            var separator = pair.IndexOf('=', StringComparison.Ordinal);
-            if (separator <= 0)
-            {
-                continue;
-            }
-
-            var name = Decode(pair[..separator]);
-            var value = Decode(pair[(separator + 1)..]);
-
             if (string.IsNullOrWhiteSpace(value) || value.Length > MaxValueLength)
             {
                 continue;
@@ -443,17 +428,6 @@ public sealed record VariableFilter
             IncludeHistorical = includeHistorical
         };
     }
-
-    /// <summary>One query-string token, unescaped — <c>+</c> as a space as well as <c>%XX</c>.</summary>
-    /// <remarks>
-    /// <see cref="Uri.UnescapeDataString(string)"/> on its own leaves <c>+</c> as itself, which is
-    /// right for what <see cref="ToQueryString"/> writes — it escapes a space as <c>%20</c> — and
-    /// wrong for what a host hands over. An HTML GET form, <c>WebUtility.UrlEncode</c> and
-    /// <c>QueryHelpers.AddQueryString</c> all write a space as <c>+</c>, so without this
-    /// <c>?helsefagligKodeverkReferanser=ICD+10</c> parses to the literal "ICD+10", goes back to the
-    /// API as <c>ICD%2B10</c> and matches nothing, silently.
-    /// </remarks>
-    private static string Decode(string token) => Uri.UnescapeDataString(token.Replace('+', ' '));
 
     /// <summary>
     /// Two filters are equal when they narrow the same way, compared through
