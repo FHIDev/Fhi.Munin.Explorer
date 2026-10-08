@@ -4,8 +4,8 @@ description: >
   Cut a Fhi.Munin.Explorer release (v0.1.0-alpha.N and friends). Use when asked to
   cut, publish or tag an Explorer release, or to open the changelog PR that follows
   one. Covers the preconditions, the two local traps that waste a step every time,
-  and the human step Actions cannot do. NOT for Fhi.Helsedata.Stiler — that one
-  releases on merge to main and has no tag at all.
+  and the changelog PR that must merge before the next release. NOT for
+  Fhi.Helsedata.Stiler — that one releases on merge to main and has no tag at all.
 ---
 
 # Cutting an Explorer release
@@ -92,16 +92,24 @@ git tag -a v0.1.0-alpha.N <sha-on-origin-main> -m "Explorer 0.1.0-alpha.N"
 git push origin v0.1.0-alpha.N
 ```
 
-## Then the human step — and it blocks the next release
+## Then merge the changelog PR — it blocks the next release
 
-The workflow pushes `changelog/v0.1.0-alpha.N` but **cannot open the PR**: org policy
-forbids Actions opening PRs in FHIDev. Open it yourself, immediately, and say in the
-body that the next release is blocked until it merges. Forgetting this does not fail
-today; it fails the *next* release, confusingly, with a message about an old version.
+The workflow pushes `changelog/v0.1.0-alpha.N` and **opens its PR itself, as
+`fhi-munin[bot]`** (the fhi-munin GitHub App; org policy still keeps `GITHUB_TOKEN` from
+opening PRs, so the App does it). The run summary links the PR. Your job is to get it
+merged: an App-opened PR runs CI like any other, then needs a review. Leaving it unmerged
+does not fail today; it fails the *next* release, confusingly, with a message about an old
+version.
+
+**If the run summary says it could not open the PR**, the App step failed (the release
+itself still went out). Open it by hand with the `gh pr create` command the summary prints,
+and say in the body that the next release is blocked until it merges.
 
 ## Verify, then report
 
 - `git ls-remote --heads origin 'changelog/v0.1.0-alpha.N'` — the branch exists
+- `gh pr list --repo FHIDev/Fhi.Munin.Explorer --head changelog/v0.1.0-alpha.N --author app/fhi-munin`
+  — its PR is open and was opened by the App (a hand-opened PR does not match)
 - `gh release view v0.1.0-alpha.N --repo FHIDev/Fhi.Munin.Explorer` — published,
   `isPrerelease` true for an alpha
 - `gh run view <id> --json jobs` — the feed publish job succeeded
