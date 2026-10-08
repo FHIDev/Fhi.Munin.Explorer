@@ -177,11 +177,15 @@ jobs:
           TITLE="docs(changelog): assemble v$VERSION"
           existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json url --jq '.[0].url // empty' || true)
           if [ -n "$existing" ]; then
+            # A re-run force-pushed a new head with GITHUB_TOKEN, which starts no workflow. Reopening
+            # as the App emits a pull_request event, so CI runs on that head.
             url="$existing"
+            gh pr close "$url" && gh pr reopen "$url" \
+              || echo "::warning::could not reopen $url; CI may not have run on its new head"
           else
             url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
               --title "$TITLE" \
-              --body "Assembled changelog for v$VERSION, written by the release workflow. The package and the GitHub release already carry these notes; merging puts them in \`CHANGELOG.md\` and clears \`changelog.d/\`." \
+              --body "Assembled changelog for v$VERSION, written by the release workflow for the v$VERSION tag. Once that run succeeds, the package and the GitHub release carry these notes. Merging puts them in \`CHANGELOG.md\` and removes the fragments this version consumed from \`changelog.d/\`." \
               ) || url=""
           fi
 

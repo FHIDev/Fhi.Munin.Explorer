@@ -108,8 +108,8 @@ and say in the body that the next release is blocked until it merges.
 ## Verify, then report
 
 - `git ls-remote --heads origin 'changelog/v0.1.0-alpha.N'` — the branch exists
-- `gh pr list --repo FHIDev/Fhi.Munin.Explorer --head changelog/v0.1.0-alpha.N` — its PR
-  is open, authored by `app/fhi-munin`
+- `gh pr list --repo FHIDev/Fhi.Munin.Explorer --head changelog/v0.1.0-alpha.N --author app/fhi-munin`
+  — its PR is open and was opened by the App (a hand-opened PR does not match)
 - `gh release view v0.1.0-alpha.N --repo FHIDev/Fhi.Munin.Explorer` — published,
   `isPrerelease` true for an alpha
 - `gh run view <id> --json jobs` — the feed publish job succeeded
