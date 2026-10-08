@@ -691,17 +691,15 @@ public sealed partial class VariableSearch : ComponentBase
     private bool _retryFacetsShown;
     private bool _retryFacetsEnabled;
 
-    // The variable whose detail panel is open, and what has been fetched for it. Never a variable
-    // that is not among the rows on screen: the panel is drawn inside its own row, so a selection
+    // The row whose detail panel is open — a variable from one datasamling — and what has been fetched
+    // for it. Never a row that is not on screen: the panel is drawn inside its own row, so a selection
     // the current result does not contain is one nothing can render — see DropSelectionIfGoneAsync.
     private VariableDatasamlingKey? _selected;
-
-    // The open row's variable, which is what the detail, the timeline and the host's URL key on.
-    private Guid? _selectedId => _selected?.VariableId;
 
     // A host named the variable and no datasamling, as a link from before rows were per datasamling
     // does: the first fetch resolves it to that variable's first row on the page.
     private bool _selectionNeedsRow;
+
     private VariableDetail? _detail;
     private bool _detailLoading;
 

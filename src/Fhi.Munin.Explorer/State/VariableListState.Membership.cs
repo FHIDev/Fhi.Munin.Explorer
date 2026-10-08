@@ -108,11 +108,11 @@ public sealed partial class VariableListState
     /// again does not take the write down with it — the write is what was asked for, the read was
     /// not.
     /// </para>
-    /// </remarks>
-    /// <remarks>
+    /// <para>
     /// This overload names no datasamling: it saves the variable's one open datasamling, which the API
     /// refuses for a variable in several, and it takes the variable out from every datasamling.
     /// Prefer the overload taking a <see cref="VariableDatasamlingKey"/>.
+    /// </para>
     /// </remarks>
     public Task<bool> ToggleSavedAsync(
         Guid variableId,

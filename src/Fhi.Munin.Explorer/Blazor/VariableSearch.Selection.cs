@@ -437,7 +437,7 @@ public partial class VariableSearch
             await _saveAllButton.FocusAsync();
         }
 
-        if (_focusSearchAfterSource && _sourceKind is null && _selectedId is null)
+        if (_focusSearchAfterSource && _sourceKind is null && _selected is null)
         {
             _focusSearchAfterSource = false;
             await _searchField.FocusAsync();
