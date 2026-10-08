@@ -720,7 +720,11 @@ export const assertions = [
 
     async control(page, { columnId }) {
       await page.evaluate(async id => {
-        const module = await import(new URL('_content/Fhi.Munin.Explorer/explorer-interop.js', document.baseURI));
+        // The page's own instance: the import carries a version query, and another URL is another module.
+        const loaded = performance.getEntriesByType('resource')
+          .map(e => e.name).find(n => new URL(n).pathname.endsWith('/_content/Fhi.Munin.Explorer/explorer-interop.js'));
+        if (!loaded) throw new Error('the page never loaded explorer-interop.js');
+        const module = await import(loaded);
         module.disconnectContents(id);
       }, columnId);
     },

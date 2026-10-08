@@ -1,0 +1,2 @@
+category: Fixed
+- **A new release's JavaScript is no longer served stale by a CDN in front of the host.** The explorer now imports `_content/Fhi.Munin.Explorer/explorer-interop.js?v=<package version>`, so each release has its own URL. Before, helsedata's Cloudflare kept serving the previous release's module for up to four hours after 1.2.0 deployed (the half-tick's `markMixed` was missing until it expired). The file and its path are unchanged; a host whose content-security-policy allows the path allows the query too.
