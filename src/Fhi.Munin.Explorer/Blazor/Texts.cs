@@ -137,7 +137,7 @@ internal sealed record Texts(
     string Kildekodeverk,
     // The kilde and datasamling panel, one level in from the variable's own. Where it names
     // something the card or the facets already name — Datakilde, Datasamling, Beskrivelse,
-    // Periode, Type datakilde — it borrows their words rather than minting a synonym, so moving
+    // Dataperiode, Type datakilde — it borrows their words rather than minting a synonym, so moving
     // inwards renames nothing. What is here is what only the owners have.
     string ShowKilde,
     string HideKilde,
