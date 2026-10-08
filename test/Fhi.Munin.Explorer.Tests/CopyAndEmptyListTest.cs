@@ -133,6 +133,16 @@ public class CopyAndEmptyListTest : ExplorerTestContext
             return created;
         }
 
+        /// <summary>Every item an add named, datasamling included, in the order they were sent.</summary>
+        public List<VariableDatasamlingKey> AddedItems { get; } = [];
+
+        public override Task<bool> AddItemsToMyListAsync(
+            Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default)
+        {
+            AddedItems.AddRange(items);
+            return AddVariablesToMyListAsync(id, [.. items.Select(i => i.VariableId).Distinct()], cancellationToken);
+        }
+
         public override async Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
         {
@@ -356,6 +366,31 @@ public class CopyAndEmptyListTest : ExplorerTestContext
         Assert.Equal("Kopi til prosjektet - kopi", Labelled(cut, "Navn på kopien").GetAttribute("value"));
         // Counted against the copy, not left at the zero it was made with: the picker says so.
         cut.WaitForAssertion(() => Assert.Contains("Kopi til prosjektet (2500 variabler)", cut.Markup));
+    }
+
+    // -----------------------------------------------------------------------
+    // Fhi.Metadata-d07al.2: an item whose datasamling is not chosen is copied as one, not resolved by guessing
+
+    [Fact]
+    public void Copy_WhenAnItemHasNoDatasamlingChosen_ThenItIsSentAsAnItemNamingNoneBesideTheChosenOne()
+    {
+        var datasamling = Guid.NewGuid();
+        var unresolved = Item(0);
+        var chosen = Item(1) with { DatasamlingId = datasamling };
+        var client = new ListsClient([unresolved, chosen]);
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Equal(2, RowCount(cut)));
+
+        Button(cut, "Kopier liste").Click();
+        Labelled(cut, "Navn på kopien").Change("Kopi");
+        Button(cut, "Kopier listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kopi", Heading(cut)));
+        Assert.Equal(
+            [new VariableDatasamlingKey(unresolved.VariableId, null), new VariableDatasamlingKey(chosen.VariableId, datasamling)],
+            client.AddedItems.OrderBy(k => k.DatasamlingId is null ? 0 : 1));
+        Assert.Equal([2], client.AddBatches);
+        Assert.Equal("", Alert(cut));
     }
 
     // -----------------------------------------------------------------------

@@ -30,29 +30,16 @@ public sealed partial class VariableListView
     }
 
     /// <summary>
-    /// Writes <paramref name="items"/> into <paramref name="list"/>, a datasamling chosen staying chosen.
+    /// Writes <paramref name="items"/> into <paramref name="list"/> as they are: a datasamling chosen stays chosen, and
+    /// one not chosen goes as an item naming none, which the API keeps unresolved (Fhi.Metadata-d07al.2).
     /// </summary>
-    /// <remarks>
-    /// An item with no datasamling goes by variable: the API then saves the variable's one open
-    /// datasamling, or none, and refuses one in several, which it also refuses as an item naming none.
-    /// </remarks>
     private async Task<bool> AddEveryItemAsync(Guid list, IEnumerable<VariableListItem> items)
     {
-        var all = items.ToList();
-        List<VariableDatasamlingKey> chosen = [.. all.Where(i => i.DatasamlingId is not null).Select(VariableDatasamlingKey.Of).Distinct()];
-        List<Guid> unchosen = [.. all.Where(i => i.DatasamlingId is null).Select(i => i.VariableId).Distinct()];
+        List<VariableDatasamlingKey> keys = [.. items.Select(VariableDatasamlingKey.Of).Distinct()];
 
-        foreach (var chunk in chosen.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+        foreach (var chunk in keys.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
         {
             if (!await State!.AddItemsAsync(list, chunk))
-            {
-                return false;
-            }
-        }
-
-        foreach (var chunk in unchosen.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
-        {
-            if (!await State!.AddVariablesAsync(list, chunk))
             {
                 return false;
             }
