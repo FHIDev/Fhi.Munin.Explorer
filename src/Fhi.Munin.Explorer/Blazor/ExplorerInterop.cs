@@ -1,4 +1,3 @@
-using System.Reflection;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -19,17 +18,11 @@ internal sealed class ExplorerInterop : IAsyncDisposable
     /// <summary>The module's file name, as it sits in the RCL's <c>wwwroot</c>.</summary>
     internal const string ModuleFile = "explorer-interop.js";
 
-    /// <summary>The informational version the package was built with, which includes the commit where SourceLink stamps it.</summary>
-    internal static string PackageVersion { get; } =
-        typeof(ExplorerInterop).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-        ?? typeof(ExplorerInterop).Assembly.GetName().Version?.ToString()
-        ?? "0";
-
     // Off the assembly rather than written down: the segment the SDK publishes these assets under
     // is the assembly's own name, so a literal here would survive a project rename as a 404.
-    // The version query gives each release its own URL, so a CDN cannot keep serving the last one (nbxzs).
+    // The version query gives each release its own URL, so a CDN cannot keep serving the last one (Fhi.Metadata-nbxzs).
     internal static string ModulePath { get; } =
-        $"./_content/{typeof(ExplorerInterop).Assembly.GetName().Name}/{ModuleFile}?v={Uri.EscapeDataString(PackageVersion)}";
+        $"./_content/{typeof(ExplorerInterop).Assembly.GetName().Name}/{ModuleFile}?v={Uri.EscapeDataString(ExplorerVersion.Current)}";
 
 
     private readonly IJSRuntime _js;

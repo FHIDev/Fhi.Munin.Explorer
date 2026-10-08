@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Fhi.Munin.Explorer.Blazor;
 using Microsoft.JSInterop;
@@ -36,10 +37,13 @@ public partial class ExplorerInteropTest
     {
         // A CDN in front of a host caches the plain path for hours, so a release changing the module was
         // served stale on helsedata's test (Fhi.Metadata-nbxzs). A new version is a new URL.
+        // Read off the assembly, not off ExplorerVersion, so a literal behind the path would fail here.
+        var version = typeof(ExplorerInterop).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
         var query = ExplorerInterop.ModulePath[(ExplorerInterop.ModulePath.IndexOf('?') + 1)..];
 
-        Assert.Equal($"v={Uri.EscapeDataString(ExplorerInterop.PackageVersion)}", query);
-        Assert.NotEqual("0", ExplorerInterop.PackageVersion);
+        Assert.False(string.IsNullOrWhiteSpace(version), "the RCL has no AssemblyInformationalVersion");
+        Assert.Equal($"v={Uri.EscapeDataString(version)}", query);
         Assert.DoesNotContain("+", query, StringComparison.Ordinal);
     }
 
