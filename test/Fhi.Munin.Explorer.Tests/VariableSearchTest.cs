@@ -1007,6 +1007,7 @@ public class VariableSearchTest : ExplorerTestContext
         // same word on every row is furniture. See ShowStatusColumn.
         Assert.Equal([false, true, true, true, true, false, true],
                      ColumnToggles(cut).Select(Ticked));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__dataCollection"));
     }
 
     [Fact]
@@ -1069,8 +1070,8 @@ public class VariableSearchTest : ExplorerTestContext
         // Kode first, because it starts off: the sequence numbers have to hold for the cell that
         // arrives late as much as for the ones that were there from the first render.
         ToggleColumn(cut, "Kode");
-        ToggleColumn(cut, "Datasamling");
-        ToggleColumn(cut, "Datasamling");
+        ToggleColumn(cut, "Kilde");
+        ToggleColumn(cut, "Kilde");
 
         Assert.Equal("V_ALS.F1.TALE", CellText(cut, "code"));
         Assert.Equal("ALS", CellText(cut, "source"));
@@ -1087,43 +1088,46 @@ public class VariableSearchTest : ExplorerTestContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        ToggleColumn(cut, "Datasamling");
-        ToggleColumn(cut, "Datasamling");
+        ToggleColumn(cut, "Variabelgruppe");
+        ToggleColumn(cut, "Variabelgruppe");
 
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__dataCollection"));
-        Assert.True(Ticked(ColumnToggle(cut, "Datasamling")));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__theme"));
+        Assert.True(Ticked(ColumnToggle(cut, "Variabelgruppe")));
     }
 
     [Fact]
-    public void Columns_WhenOnlyOneIsLeft_ThenItRefusesToHideAndSaysWhy()
+    public void Columns_WhenDatasamlingIsPressed_ThenItRefusesToHideAndSaysWhy()
     {
+        // Two rows of one variable differ by their datasamling alone (Fhi.Metadata-d07al.1), so it
+        // is locked on, and with it on no other column is ever the last one left.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        // Kode and Status are already off, so four presses leave Dataperiode alone.
-        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        foreach (var column in new[] { "Kilde", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
             ToggleColumn(cut, column);
         }
 
-        var last = ColumnToggle(cut, "Dataperiode");
+        var locked = ColumnToggle(cut, "Datasamling");
 
         // Inert rather than disabled, the same treatment the pager's buttons get: `disabled` would
         // take it out of the tab order, so the one column a reader might ask about would be the
         // one they could not reach.
-        Assert.Equal("true", last.GetAttribute("aria-disabled"));
-        Assert.False(last.HasAttribute("disabled"));
+        Assert.Equal("true", locked.GetAttribute("aria-disabled"));
+        Assert.False(locked.HasAttribute("disabled"));
+        Assert.Equal(
+            ["Datasamling"],
+            ColumnToggles(cut).Where(box => box.GetAttribute("aria-disabled") == "true").Select(ColumnName));
 
-        // And it says why, once, rather than on every button.
-        var hint = last.GetAttribute("aria-describedby");
-        Assert.Equal("Minst én kolonne må vises.", cut.Find($"#{hint}").TextContent);
+        var hint = locked.GetAttribute("aria-describedby");
+        Assert.Equal("Datasamling vises alltid, fordi den skiller radene for samme variabel.", cut.Find($"#{hint}").TextContent);
 
         // A render tree never experiences the browser flipping the box before the handler runs, so
         // deleting SetUpdatesAttributeName("checked") leaves this file green. Measured in a browser
         // instead, on Fhi.Metadata-f6az7; the missing guard is Fhi.Metadata-1s7z1.
-        last.Change(!Ticked(last));
+        locked.Change(!Ticked(locked));
 
-        Assert.True(Ticked(ColumnToggle(cut, "Dataperiode")));
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__period"));
+        Assert.True(Ticked(ColumnToggle(cut, "Datasamling")));
+        Assert.Equal("Inklusjon", CellText(cut, "dataCollection"));
     }
 
     [Fact]
@@ -1131,7 +1135,7 @@ public class VariableSearchTest : ExplorerTestContext
     {
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
-        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        foreach (var column in new[] { "Kilde", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
             ToggleColumn(cut, column);
         }
@@ -1784,31 +1788,25 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Columns_WhenTheFilterWouldTakeTheLastColumnAway_ThenStatusStaysOnScreen()
+    public void Columns_WhenEveryOtherOfferedOneIsOff_ThenTheFilterStillTakesStatus()
     {
-        // The one route around "the last column cannot be hidden" that does not go through the
-        // picker. Status is normally the filter's to give and take — it says the same word on every
-        // row unless historical variables are in the list — but a reader who has hidden the other
-        // six has made it the last column, and a filter nobody associates with columns must not
-        // then empty every row down to its name. Deleting this brings that state back, reachable in
-        // six presses and explained by nothing on screen — Kode is already off, so the reader only
-        // has to clear the five that are on.
+        // Status was once held on screen when it was the last column, so a filter could not empty a
+        // row to its name. Datasamling now always stays, so Status is the filter's to take again.
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
 
         ClickFacet(cut, "Vis historiske");
 
-        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        foreach (var column in new[] { "Kilde", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
             ToggleColumn(cut, column);
         }
 
-        Assert.Equal("true", ColumnToggle(cut, "Status").GetAttribute("aria-disabled"));
+        Assert.Null(ColumnToggle(cut, "Status").GetAttribute("aria-disabled"));
 
         ClickFacet(cut, "Vis historiske");
 
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__status"));
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__status"));
-        Assert.True(Ticked(ColumnToggle(cut, "Status")));
+        Assert.Empty(cut.FindAll(".munin-explorer-dataitem-main__status"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__dataCollection"));
     }
 
     [Fact]
@@ -1821,7 +1819,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         ClickFacet(cut, "Vis historiske");
 
-        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Dataperiode" })
+        foreach (var column in new[] { "Kilde", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
             ToggleColumn(cut, column);
         }

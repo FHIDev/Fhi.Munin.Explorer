@@ -14,7 +14,8 @@ public partial class VariableSearch
     {
         _search = Search;
         _filter = Filter ?? VariableFilter.None;
-        _selectedId = SelectedVariableId;
+        _selected = SelectedVariableId is { } selected ? new VariableDatasamlingKey(selected, SelectedDatasamlingId) : null;
+        _selectionNeedsRow = SelectedVariableId is not null && SelectedDatasamlingId is null;
         _instrumentId = SelectedInstrumentId;
         _sort = _sortParameter = Sort;
         _direction = Direction;
@@ -439,13 +440,13 @@ public partial class VariableSearch
 
     /// <summary>What is open in the panel and what was fetched into it.</summary>
     private readonly record struct PanelState(
-        Guid? Id, VariableDetail? Detail, string? Error, SourceState Source, KodeverkCodeLists? CodeLists);
+        VariableDatasamlingKey? Id, VariableDetail? Detail, string? Error, SourceState Source, KodeverkCodeLists? CodeLists);
 
     /// <summary>What is open in the kilde or datasamling panel inside it, and what was fetched.</summary>
     private readonly record struct SourceState(
         SourceKind? Kind, Guid? TargetId, KildeDetail? Kilde, DatasamlingDetail? Datasamling, string? Error);
 
-    private PanelState CapturePanel() => new(_selectedId, _detail, _detailError, CaptureSource(), _codeLists);
+    private PanelState CapturePanel() => new(_selected, _detail, _detailError, CaptureSource(), _codeLists);
 
     private SourceState CaptureSource() => new(_sourceKind, _sourceTargetId, _kilde, _datasamling, _sourceError);
 
@@ -463,12 +464,13 @@ public partial class VariableSearch
     /// </remarks>
     private async Task RestorePanelAsync(PanelState panel)
     {
-        if (panel.Id is not { } id || _selectedId == id)
+        if (panel.Id is not { } row || _selected == row)
         {
             return;
         }
 
-        _selectedId = id;
+        var id = row.VariableId;
+        _selected = row;
         _detail = panel.Detail;
         _detailError = panel.Error;
         var restoredLists = _codeLists = panel.CodeLists ?? new KodeverkCodeLists(id, Client, Log);
@@ -480,7 +482,7 @@ public partial class VariableSearch
 
         if (panel.Detail is null && panel.Error is null)
         {
-            await LoadDetailAsync(id);
+            await LoadDetailAsync(row);
         }
         else if (panel.Detail is { } restored)
         {
@@ -491,12 +493,12 @@ public partial class VariableSearch
 
         // After the detail, for the reason the detail comes after the rows: the owner panel is
         // drawn inside the variable's, and LoadDetailAsync clears it on its way through.
-        await RestoreSourceAsync(panel.Source, id);
+        await RestoreSourceAsync(panel.Source, row);
 
-        // _selectedId rather than id, for the reason ToggleDetailAsync gives: the fetch above
+        // _selected rather than row, for the reason ToggleDetailAsync gives: the fetch above
         // yields with the rows already back on screen and clickable, so another row may have been
         // opened while it ran, and what the host is told has to be what is open.
-        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
+        await RaiseSelectionAsync();
     }
 
     /// <summary>
@@ -515,9 +517,9 @@ public partial class VariableSearch
     /// the wrong variable.
     /// </para>
     /// </remarks>
-    private async Task RestoreSourceAsync(SourceState source, Guid id)
+    private async Task RestoreSourceAsync(SourceState source, VariableDatasamlingKey row)
     {
-        if (source.Kind is not { } kind || _selectedId != id)
+        if (source.Kind is not { } kind || _selected != row)
         {
             return;
         }
@@ -602,6 +604,13 @@ public partial class VariableSearch
     /// rewrite a URL. The logger is a parameter rather than a read of <c>Log</c>,
     /// so the helper stays <see langword="static"/> and free of component state.
     /// </remarks>
+    // The datasamling first, so a host reacting to the variable already holds the row's datasamling.
+    private async Task RaiseSelectionAsync()
+    {
+        await RaiseAsync(SelectedDatasamlingIdChanged, _selected?.DatasamlingId, Log);
+        await RaiseAsync(SelectedVariableIdChanged, _selected?.VariableId, Log);
+    }
+
     private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value, ILogger? log)
     {
         if (!callback.HasDelegate)

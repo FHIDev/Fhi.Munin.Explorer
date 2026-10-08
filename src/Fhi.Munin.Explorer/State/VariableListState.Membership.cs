@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.State;
 
 /// <summary>
-/// Which variables are in the active list, held for the circuit rather than by the row that draws
-/// the button.
+/// Which (variable, datasamling) items are in the active list, held for the circuit rather than by
+/// the row that draws the button.
 /// </summary>
 /// <remarks>
 /// The result rows are redrawn whenever the facet counts change, so a row that remembered "saved"
@@ -15,7 +15,7 @@ namespace Fhi.Munin.Explorer.State;
 /// </remarks>
 public sealed partial class VariableListState
 {
-    private readonly HashSet<Guid> _saved = [];
+    private readonly HashSet<VariableDatasamlingKey> _saved = [];
     private Guid? _activeListId;
     private bool _membershipLoaded;
 
@@ -36,10 +36,15 @@ public sealed partial class VariableListState
     public Guid? ActiveListId => _activeListId;
 
     /// <summary>
-    /// Whether the variable is in the active list. A plain read with no request behind it, because
-    /// every row on screen calls it on every render.
+    /// Whether the variable is in the active list from any datasamling. A plain read with no request behind it.
     /// </summary>
-    public bool IsSaved(Guid variableId) => _saved.Contains(variableId);
+    public bool IsSaved(Guid variableId) => _saved.Any(key => key.VariableId == variableId);
+
+    /// <summary>
+    /// Whether this variable from this datasamling is in the active list. A plain read with no request
+    /// behind it, because every row on screen calls it on every render.
+    /// </summary>
+    public bool IsSaved(VariableDatasamlingKey item) => _saved.Contains(item);
 
     /// <summary>
     /// Picks the reader's first list as the active one and reads what is in it, so the rows know
@@ -103,20 +108,54 @@ public sealed partial class VariableListState
     /// again does not take the write down with it — the write is what was asked for, the read was
     /// not.
     /// </para>
+    /// <para>
+    /// This overload names no datasamling: it saves the variable's one open datasamling, which the API
+    /// refuses for a variable in several, and it takes the variable out from every datasamling.
+    /// Prefer the overload taking a <see cref="VariableDatasamlingKey"/>.
+    /// </para>
     /// </remarks>
     public Task<bool> ToggleSavedAsync(
         Guid variableId,
         string nameForFirstList,
         CancellationToken cancellationToken = default) =>
-        ToggleSavedAsync(variableId, nameForFirstList, kilde: null, cancellationToken);
+        ToggleAsync(new VariableDatasamlingKey(variableId, null), byVariable: true, nameForFirstList, kilde: null, cancellationToken);
 
-    /// <summary>The same press, from a surface that knows the variable's kilde, so the tally can follow.</summary>
-    internal async Task<bool> ToggleSavedAsync(
+    /// <summary>
+    /// Puts this variable from this datasamling in the active list, or takes it out if it is already
+    /// there, leaving the same variable from any other datasamling as it was. Returns the item's
+    /// state afterwards. Creates a first list as <see cref="ToggleSavedAsync(Guid, string, CancellationToken)"/> does.
+    /// </summary>
+    public Task<bool> ToggleSavedAsync(
+        VariableDatasamlingKey item,
+        string nameForFirstList,
+        CancellationToken cancellationToken = default) =>
+        ToggleAsync(item, byVariable: false, nameForFirstList, kilde: null, cancellationToken);
+
+    /// <summary>The by-variable press, from a surface that knows the variable's kilde, so the tally can follow.</summary>
+    internal Task<bool> ToggleSavedAsync(
         Guid variableId,
         string nameForFirstList,
         KildeOfVariable? kilde,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        ToggleAsync(new VariableDatasamlingKey(variableId, null), byVariable: true, nameForFirstList, kilde, cancellationToken);
+
+    /// <summary>The same press, from a surface that knows the variable's kilde, so the tally can follow.</summary>
+    internal Task<bool> ToggleSavedAsync(
+        VariableDatasamlingKey item,
+        string nameForFirstList,
+        KildeOfVariable? kilde,
+        CancellationToken cancellationToken = default) =>
+        ToggleAsync(item, byVariable: false, nameForFirstList, kilde, cancellationToken);
+
+    private async Task<bool> ToggleAsync(
+        VariableDatasamlingKey item,
+        bool byVariable,
+        string nameForFirstList,
+        KildeOfVariable? kilde,
+        CancellationToken cancellationToken)
     {
+        var variableId = item.VariableId;
+
         if (!IsAuthenticated)
         {
             return false;
@@ -132,7 +171,7 @@ public sealed partial class VariableListState
         // of the call: a variable already in the list, drawn as "save" because the mount's read was
         // refused, would otherwise be found saved here and removed — the press doing the exact
         // opposite of its label, which is the disagreement this whole path exists to prevent.
-        var drawnAsSaved = _saved.Contains(variableId);
+        var drawnAsSaved = byVariable ? IsSaved(variableId) : _saved.Contains(item);
 
         try
         {
@@ -180,11 +219,14 @@ public sealed partial class VariableListState
 
         // Discarded because the set is no longer maintained here: the two calls record the write
         // themselves, so a removal from any other surface maintains it as well as this press does.
-        _ = drawnAsSaved
-            ? await RemoveVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false)
-            : await AddVariablesAsync(
-                listId, [variableId], kilde is { } k ? new Dictionary<Guid, KildeOfVariable> { [variableId] = k } : null,
-                cancellationToken).ConfigureAwait(false);
+        var kilder = kilde is { } k ? new Dictionary<Guid, KildeOfVariable> { [variableId] = k } : null;
+        _ = (drawnAsSaved, byVariable) switch
+        {
+            (true, true) => await RemoveVariablesAsync(listId, [variableId], cancellationToken).ConfigureAwait(false),
+            (false, true) => await AddVariablesAsync(listId, [variableId], kilder, cancellationToken).ConfigureAwait(false),
+            (true, false) => await RemoveItemsAsync(listId, [item], cancellationToken).ConfigureAwait(false),
+            (false, false) => await AddItemsAsync(listId, [item], kilder, cancellationToken).ConfigureAwait(false),
+        };
 
         // The call may well have succeeded on the server — it went out under the old token. It is
         // this circuit's copy that must not keep the answer, because the reader it belongs to is no
@@ -195,21 +237,41 @@ public sealed partial class VariableListState
         }
 
         RaiseChanged(listId, affectsRows: true);
-        return _saved.Contains(variableId);
+        return byVariable ? IsSaved(variableId) : _saved.Contains(item);
     }
 
     /// <summary>What <see cref="SaveAllAsync"/> wrote, and where. <c>Added</c> is null when the membership could not be read.</summary>
-    public sealed record SaveAllResult(Guid ListId, string ListName, IReadOnlyList<Guid>? Added);
+    public sealed record SaveAllResult(Guid ListId, string ListName, IReadOnlyList<Guid>? Added)
+    {
+        /// <summary>The items <see cref="SaveAllItemsAsync"/> added, or null on the terms <see cref="Added"/> is.</summary>
+        public IReadOnlyList<VariableDatasamlingKey>? AddedItems { get; init; }
+    }
 
     /// <summary>Saves all of <paramref name="variableIds"/> to the active list, making a first list if needed.</summary>
+    /// <remarks>Names no datasamling, on the terms <see cref="AddVariablesAsync(Guid, IReadOnlyCollection{Guid}, CancellationToken)"/> does.</remarks>
     /// <returns>Null if nothing was saved, the reader changed, or a later batch was refused.</returns>
-    public async Task<SaveAllResult?> SaveAllAsync(
+    public Task<SaveAllResult?> SaveAllAsync(
         IReadOnlyCollection<Guid> variableIds,
         string nameForFirstList,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        SaveAllCoreAsync(variableIds.Select(id => new VariableDatasamlingKey(id, null)).ToList(), byVariable: true, nameForFirstList, cancellationToken);
+
+    /// <summary>Saves all of <paramref name="items"/> to the active list, making a first list if needed.</summary>
+    /// <returns>Null if nothing was saved, the reader changed, or a later batch was refused.</returns>
+    public Task<SaveAllResult?> SaveAllItemsAsync(
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        string nameForFirstList,
+        CancellationToken cancellationToken = default) =>
+        SaveAllCoreAsync(items, byVariable: false, nameForFirstList, cancellationToken);
+
+    private async Task<SaveAllResult?> SaveAllCoreAsync(
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        bool byVariable,
+        string nameForFirstList,
+        CancellationToken cancellationToken)
     {
         // Nothing to put anywhere, so no first list is made for it.
-        if (!IsAuthenticated || variableIds.Count == 0)
+        if (!IsAuthenticated || items.Count == 0)
         {
             return null;
         }
@@ -259,12 +321,19 @@ public sealed partial class VariableListState
 
         var listId = _activeListId!.Value;
         var listName = _lists.FirstOrDefault(l => l.Id == listId)?.Name ?? nameForFirstList;
-        var added = _membershipLoaded ? variableIds.Where(id => !_saved.Contains(id)).Distinct().ToList() : null;
+        var added = !_membershipLoaded
+            ? null
+            : byVariable
+                ? items.Where(i => !IsSaved(i.VariableId)).Distinct().ToList()
+                : items.Where(i => !_saved.Contains(i)).Distinct().ToList();
 
-        foreach (var batch in variableIds.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+        foreach (var batch in items.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
         {
-            if (!await AddVariablesAsync(listId, batch, cancellationToken).ConfigureAwait(false)
-                || !StillCurrent(startedAt))
+            var accepted = byVariable
+                ? await AddVariablesAsync(listId, [.. batch.Select(i => i.VariableId)], cancellationToken).ConfigureAwait(false)
+                : await AddItemsAsync(listId, batch, kilder: null, cancellationToken).ConfigureAwait(false);
+
+            if (!accepted || !StillCurrent(startedAt))
             {
                 return null;
             }
@@ -299,7 +368,7 @@ public sealed partial class VariableListState
             }
         }
 
-        return new SaveAllResult(listId, listName, added);
+        return new SaveAllResult(listId, listName, added?.Select(i => i.VariableId).Distinct().ToList()) { AddedItems = added };
     }
 
     /// <summary>
@@ -311,7 +380,7 @@ public sealed partial class VariableListState
     // sign-out guard the press above carries (Fhi.Metadata-ehghv).
     private int RecordMembership(
         Guid listId,
-        IReadOnlyCollection<Guid> variableIds,
+        IReadOnlyCollection<VariableDatasamlingKey> items,
         bool saved,
         int startedAt,
         IReadOnlyDictionary<Guid, KildeOfVariable>? kilder = null)
@@ -327,15 +396,15 @@ public sealed partial class VariableListState
         // the list already holds and removing one it does not are no-ops on the API's side, and
         // no-ops here too — so the change in size is what the API did, and what the count moves by.
         var before = _saved.Count;
-        List<Guid> changed = [.. variableIds.Distinct().Where(id => _saved.Contains(id) != saved)];
+        List<VariableDatasamlingKey> changed = [.. items.Distinct().Where(key => _saved.Contains(key) != saved)];
 
         if (saved)
         {
-            _saved.UnionWith(variableIds);
+            _saved.UnionWith(items);
         }
         else
         {
-            _saved.ExceptWith(variableIds);
+            _saved.ExceptWith(items);
         }
 
         MoveKildeTally(changed, saved, kilder);
@@ -460,7 +529,7 @@ public sealed partial class VariableListState
         const int pageSize = 1000; // The API's own ceiling — fewer round trips for a long list.
         var page = 1;
         var startedAt = _generation;
-        var found = new HashSet<Guid>();
+        var found = new HashSet<VariableDatasamlingKey>();
 
         // Tallied here rather than by a call of its own: this walk already reads every page of the
         // list, kildeId and kildeName travel on each entry, and a tally taken anywhere cheaper
@@ -496,7 +565,7 @@ public sealed partial class VariableListState
                 // Only an entry this walk has not seen before is tallied. The list can be written
                 // to in another tab while these pages are read, and an entry that drifts across a
                 // page boundary arrives twice — deduplicated in the set, doubled in the counts.
-                if (!found.Add(item.VariableId))
+                if (!found.Add(VariableDatasamlingKey.Of(item)))
                 {
                     continue;
                 }

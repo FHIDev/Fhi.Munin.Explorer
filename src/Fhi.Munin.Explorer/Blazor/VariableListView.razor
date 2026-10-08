@@ -225,7 +225,8 @@ else if (State?.IsAuthenticated == true)
                         <tbody>
                             @foreach (var item in _page.Items)
                             {
-                                <tr class="munin-explorer-data-list__item">
+                                @* Keyed on the pair: one variable can be two rows, and removing one must not patch the next into its fields. *@
+                                <tr class="munin-explorer-data-list__item" @key="VariableDatasamlingKey.Of(item)">
 
                                     @* An orphaned entry keeps its place, so the paging totals stay
                                        honest; RowName decides in one place what it reads as, because
@@ -276,7 +277,7 @@ else if (State?.IsAuthenticated == true)
                                                   aria-labelledby="@DesiredDataLabelledBy(item)"
                                                   aria-invalid="@DesiredDataInvalid(item)"
                                                   aria-describedby="@DesiredDataDescribedBy(item)"
-                                                  @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())"></textarea>
+                                                  @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
                                     </td>
 
                                     @* "Fjern" on every button in the column, so the accessible name
@@ -288,13 +289,13 @@ else if (State?.IsAuthenticated == true)
                                                 type="button"
                                                 id="@RemoveButtonId(item)"
                                                 aria-labelledby="@RemoveLabelledBy(item)"
-                                                @onclick="() => RemoveAsync(item.VariableId)">@T.RemoveFromThisList</button>
+                                                @onclick="() => RemoveAsync(item)">@T.RemoveFromThisList</button>
                                     </td>
                                 </tr>
 
                                 @if (IsOpen(item))
                                 {
-                                    <tr>
+                                    <tr @key="(VariableDatasamlingKey.Of(item), PanelRow: true)">
                                         <td colspan="@OwnListColumnCount">@RowPanel(item)</td>
                                     </tr>
                                 }
@@ -444,7 +445,7 @@ else if (State?.IsAuthenticated == true)
                             <tbody>
                                 @foreach (var item in SharedPageItems)
                                 {
-                                    <tr class="munin-explorer-data-list__item" @key="item.VariableId">
+                                    <tr class="munin-explorer-data-list__item" @key="VariableDatasamlingKey.Of(item)">
                                         <th scope="row">
                                             <span class="munin-explorer-dataitem-main__column__text"
                                                   id="@RowNameId(item)"
@@ -713,6 +714,8 @@ else if (State?.IsAuthenticated == true)
 
         <p class="@RowPanelStatusClass" role="status" aria-live="polite" aria-atomic="true">@RowPanelStatus</p>
 
+        @DatasamlingPicker(item)
+
         @if (_openDetail is { } detail)
         {
             <dl class="munin-explorer-meta__grid munin-explorer-meta__grid-2">
@@ -780,7 +783,7 @@ else if (State?.IsAuthenticated == true)
                   value="@DesiredDataOf(item)"
                   aria-invalid="@DesiredDataInvalid(item)"
                   aria-describedby="@RowDesiredDataDescribedBy(item)"
-                  @onchange="e => SaveDesiredDataAsync(item.VariableId, e.Value?.ToString())"></textarea>
+                  @onchange="e => SaveDesiredDataAsync(item, e.Value?.ToString())"></textarea>
     </div>;
 
     // Saved when the field is left, like Ønskede data: no keystroke costs a round trip on the host's circuit.

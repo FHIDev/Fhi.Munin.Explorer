@@ -821,18 +821,19 @@ public class SaveToListTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Picker_WhenOneDataColumnIsLeftForASignedInReader_ThenItIsLocked()
+    public void Picker_WhenEveryOfferedColumnIsOffForASignedInReader_ThenTheDatasamlingStays()
     {
-        // The lock exists so a row never shows nothing but a name; the save column that once sat
-        // outside it is gone, so the rule is the same signed in and out.
+        // A row never shows nothing but a name: the datasamling, which tells a variable's rows apart,
+        // is not the picker's to take, signed in or out (Fhi.Metadata-d07al.1).
         var cut = RenderSignedIn(new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER"))));
 
-        foreach (var column in new[] { "Kilde", "Datasamling", "Variabelgruppe", "Datatype" })
+        foreach (var column in new[] { "Kilde", "Variabelgruppe", "Datatype", "Dataperiode" })
         {
             PressColumn(cut, column);
         }
 
-        Assert.Equal("true", PickerBox(cut, "Dataperiode").GetAttribute("aria-disabled"));
+        Assert.Equal("true", PickerBox(cut, "Datasamling").GetAttribute("aria-disabled"));
+        Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__dataCollection"));
     }
 
     [Fact]

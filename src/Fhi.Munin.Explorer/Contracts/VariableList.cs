@@ -134,6 +134,37 @@ public sealed record VariableListItem
     /// <see cref="IMuninExplorerClient.SetMyListNotesAsync"/>.
     /// </summary>
     [JsonPropertyName("notes")] public string? Notes { get; init; }
+
+    /// <summary>
+    /// This item's own id in the list, which the notes and "Ønskede data" writes address. Null from
+    /// an API older than items keyed by datasamling, and in a shared list's snapshot.
+    /// </summary>
+    [JsonPropertyName("itemId")] public Guid? ItemId { get; init; }
+
+    /// <summary>
+    /// The datasamling the variable was saved from: an item is the variable as delivered from one
+    /// datasamling, and <see cref="DatasamlingName"/>, <see cref="DataFrom"/>, <see cref="DataTo"/>
+    /// and <see cref="HasStatistics"/> are that datasamling's. Null for a variable in none, and for
+    /// one saved before items named a datasamling — see <see cref="CandidateDatasamlinger"/>.
+    /// </summary>
+    [JsonPropertyName("datasamlingId")] public Guid? DatasamlingId { get; init; }
+
+    /// <summary>The code of <see cref="DatasamlingId"/>, or null on the same terms.</summary>
+    [JsonPropertyName("datasamlingCode")] public string? DatasamlingCode { get; init; }
+
+    /// <summary>
+    /// The datasamlinger the reader can choose among for an item whose datasamling is not chosen
+    /// ("datasamling ikke valgt"). Empty for every other item, and from an older API.
+    /// </summary>
+    [JsonPropertyName("candidateDatasamlinger")] public IReadOnlyList<DatasamlingCandidate> CandidateDatasamlinger { get; init; } = [];
+}
+
+/// <summary>A datasamling an item whose datasamling is not chosen can be resolved to.</summary>
+public sealed record DatasamlingCandidate
+{
+    [JsonPropertyName("id")] public Guid Id { get; init; }
+
+    [JsonPropertyName("name")] public string Name { get; init; } = "";
 }
 
 /// <summary>

@@ -15,6 +15,13 @@ public sealed record VariableSummary
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
 
+    /// <summary>
+    /// This row's identity: <c>&lt;id&gt;:&lt;datasamlingId|none&gt;</c>. One variable has a row per
+    /// datasamling it is delivered from, so <see cref="Id"/> alone repeats down a page. Null from an
+    /// older API, whose rows are one per variable and <see cref="Id"/> is the identity.
+    /// </summary>
+    [JsonPropertyName("rowKey")] public string? RowKey { get; init; }
+
     /// <summary>Stable variable code, e.g. <c>V_ALS.F1.ALSFRSR1TALE</c>.</summary>
     [JsonPropertyName("code")] public string Code { get; init; } = "";
 
@@ -34,6 +41,11 @@ public sealed record VariableSummary
     /// </summary>
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
 
+    /// <summary>
+    /// The datasamling this row is the variable as delivered from. <see cref="DataFrom"/>,
+    /// <see cref="DataTo"/> and <see cref="HasStatistics"/> are that datasamling's. From an older
+    /// API, one row per variable, it is the variable's primary datasamling.
+    /// </summary>
     [JsonPropertyName("datasamlingId")] public Guid? DatasamlingId { get; init; }
     [JsonPropertyName("datasamlingName")] public string? DatasamlingName { get; init; }
 

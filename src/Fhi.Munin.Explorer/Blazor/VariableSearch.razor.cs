@@ -629,6 +629,24 @@ public sealed partial class VariableSearch : ComponentBase
     /// </remarks>
     [Parameter] public EventCallback<Guid?> SelectedVariableIdChanged { get; set; }
 
+    /// <summary>
+    /// The datasamling of the open row, beside <see cref="SelectedVariableId"/>: a variable has a row
+    /// per datasamling it is delivered from, so the variable alone does not say which row is open.
+    /// </summary>
+    /// <remarks>
+    /// Read once, with <see cref="SelectedVariableId"/>. Null with a variable set opens that variable's
+    /// first row on the page — what an older link carries — and the component then reports the row's
+    /// datasamling through <see cref="SelectedDatasamlingIdChanged"/>.
+    /// </remarks>
+    [Parameter] public Guid? SelectedDatasamlingId { get; set; }
+
+    /// <summary>
+    /// Raised with the open row's datasamling whenever <see cref="SelectedVariableIdChanged"/> is, and
+    /// just before it; null when the panel closes or the open row has no datasamling. Gives the host
+    /// <c>@bind-SelectedDatasamlingId</c>, on the interactivity terms that callback states.
+    /// </summary>
+    [Parameter] public EventCallback<Guid?> SelectedDatasamlingIdChanged { get; set; }
+
     [Inject] private IMuninExplorerClient Client { get; set; } = null!;
 
     private string? _search;
@@ -673,10 +691,15 @@ public sealed partial class VariableSearch : ComponentBase
     private bool _retryFacetsShown;
     private bool _retryFacetsEnabled;
 
-    // The variable whose detail panel is open, and what has been fetched for it. Never a variable
-    // that is not among the rows on screen: the panel is drawn inside its own row, so a selection
+    // The row whose detail panel is open — a variable from one datasamling — and what has been fetched
+    // for it. Never a row that is not on screen: the panel is drawn inside its own row, so a selection
     // the current result does not contain is one nothing can render — see DropSelectionIfGoneAsync.
-    private Guid? _selectedId;
+    private VariableDatasamlingKey? _selected;
+
+    // A host named the variable and no datasamling, as a link from before rows were per datasamling
+    // does: the first fetch resolves it to that variable's first row on the page.
+    private bool _selectionNeedsRow;
+
     private VariableDetail? _detail;
     private bool _detailLoading;
 
@@ -772,10 +795,17 @@ public sealed partial class VariableSearch : ComponentBase
     // Per row as well as per instance: the detail panel is wired to its own row with
     // aria-controls and aria-labelledby, and two explorers listing the same variable would
     // otherwise mint the same id twice on one page.
-    private string RowHeadingId(VariableSummary v) => $"munin-explorer-heading-{_instance}-{v.Id:N}";
-    private string RowNameId(VariableSummary v) => $"munin-explorer-name-{_instance}-{v.Id:N}";
-    private string DetailId(VariableSummary v) => $"munin-explorer-detail-{_instance}-{v.Id:N}";
-    private string SaveButtonId(VariableSummary v) => $"munin-explorer-save-{_instance}-{v.Id:N}";
+    private string RowHeadingId(VariableSummary v) => $"munin-explorer-heading-{_instance}-{RowSuffix(v)}";
+    private string RowNameId(VariableSummary v) => $"munin-explorer-name-{_instance}-{RowSuffix(v)}";
+    private string DetailId(VariableSummary v) => $"munin-explorer-detail-{_instance}-{RowSuffix(v)}";
+    private string SaveButtonId(VariableSummary v) => $"munin-explorer-save-{_instance}-{RowSuffix(v)}";
+
+    // The row's own key: a variable repeats down the page once per datasamling (Fhi.Metadata-d07al.1).
+    private static string RowKeyOf(VariableSummary v) => v.RowKey ?? v.Id.ToString();
+
+    // The id half that tells two rows of one variable apart; just the variable from an API with one row per variable.
+    private static string RowSuffix(VariableSummary v) =>
+        v.RowKey is null ? v.Id.ToString("N") : $"{v.Id:N}-{(v.DatasamlingId is { } d ? d.ToString("N") : "none")}";
 
     // Per instance and not per row: the owner panel hangs inside the one open variable panel, so
     // there is never more than one of it in this component's DOM. The kind is in the toggle's id
@@ -1370,7 +1400,7 @@ public sealed partial class VariableSearch : ComponentBase
     // The name the reader pressed, from the row it was on: the detail it opens has not arrived yet.
     private RenderFragment WholeVariableHeading => builder =>
     {
-        var row = _result?.Items.FirstOrDefault(v => v.Id == _selectedId);
+        var row = _result?.Items.FirstOrDefault(v => VariableDatasamlingKey.Of(v) == _selected);
         var named = T.Named(row?.PreferredTerm, row?.Code);
 
         builder.OpenElement(0, $"h{RowLevel}");

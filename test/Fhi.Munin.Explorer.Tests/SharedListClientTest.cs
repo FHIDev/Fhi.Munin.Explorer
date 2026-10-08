@@ -61,7 +61,8 @@ public class SharedListClientTest
         string[] expected =
         [
             "variabelId", "variabelCode", "variabelName", "kildeId", "kildeName", "kildeKortNavn",
-            "datasamlingName", "variabelgruppeName", "dataType", "dataFrom", "dataTo", "versjonStatus"
+            "datasamlingName", "variabelgruppeName", "dataType", "dataFrom", "dataTo", "versjonStatus",
+            "datasamlingId"
         ];
 
         foreach (var item in items)
@@ -190,6 +191,29 @@ public class SharedListClientTest
         // Missing display fields and an unreadable date cost the field, not the item.
         Assert.Null(shared.Items[1].VariableName);
         Assert.Null(shared.Items[1].DataFrom);
+    }
+
+    [Fact]
+    public async Task GetSharedListAsync_WhenOneVariableIsSharedFromTwoDatasamlinger_ThenBothItemsAreReadAndAnOlderOneIsUnchosen()
+    {
+        // Two datasamlinger are two items, deduplicated on the pair; an item from before the field reads as none chosen.
+        var lungekreft = Guid.NewGuid();
+        var livmorhals = Guid.NewGuid();
+        var handler = StubHttpHandler.Ok($$"""
+            {"name":"Kreft","items":[
+              {"variabelId":"{{One}}","datasamlingId":"{{lungekreft}}","datasamlingName":"Lungekreft"},
+              {"variabelId":"{{One}}","datasamlingId":"{{livmorhals}}","datasamlingName":"Livmorhals"},
+              {"variabelId":"{{One}}","datasamlingId":"{{lungekreft}}","variabelName":"Duplikat"},
+              {"variabelId":"{{Two}}","datasamlingName":"Eldre"}
+            ]}
+            """);
+
+        var shared = await Client(handler).GetSharedListAsync("AB12CD");
+
+        Assert.NotNull(shared);
+        Assert.Equal(
+            [new VariableDatasamlingKey(One, lungekreft), new VariableDatasamlingKey(One, livmorhals), new VariableDatasamlingKey(Two, null)],
+            shared.Items.Select(VariableDatasamlingKey.Of));
     }
 
     /// <summary>Runa's cloneListFromSnapshot still reads the older ids-only snapshot, so this does too.</summary>

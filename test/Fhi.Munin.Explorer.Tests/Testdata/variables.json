@@ -2,6 +2,7 @@
   "items": [
     {
       "id": "bc8a6515-af36-44d0-aa10-b498813327b4",
+      "rowKey": "bc8a6515-af36-44d0-aa10-b498813327b4:0c027ce6-2994-45bf-99ec-facad3d1703e",
       "code": "V_ALS.F1.ALSFRSR1TALE",
       "preferredTerm": "1. Tale",
       "beskrivelse": "Angir pasientens grad av utfall på \"1. Tale\" i ALSFRS-R.",
@@ -25,6 +26,7 @@
     },
     {
       "id": "83ced574-6d32-447e-ad65-c54c63327476",
+      "rowKey": "83ced574-6d32-447e-ad65-c54c63327476:4411873c-0367-4334-a7cf-8e763c8e3490",
       "code": "V_ALS.F2.OSALSFRSR1TALE",
       "preferredTerm": "1. Tale",
       "beskrivelse": "Angir pasientens grad av utfall på \"1. Tale\" i ALSFRS-R.",

@@ -45,7 +45,7 @@ public partial class VariableSearch
             return CloseWholeVariableAsync();
         }
 
-        _beforeWhole = new(_selectedId, _tab);
+        _beforeWhole = new(_selected, _tab);
         _wholeVariable = true;
 
         return Task.CompletedTask;
@@ -53,7 +53,7 @@ public partial class VariableSearch
 
     // Which row was open, and on which tab, when the whole variable was asked for: Back puts the
     // list back as it was. (Fhi.Metadata-35w0p.34)
-    private readonly record struct Disclosed(Guid? Row, PanelTab Tab);
+    private readonly record struct Disclosed(VariableDatasamlingKey? Row, PanelTab Tab);
 
     private Disclosed? _beforeWhole;
 
@@ -65,7 +65,7 @@ public partial class VariableSearch
         var before = _beforeWhole;
         _beforeWhole = null;
 
-        if (before is not { } was || was.Row == _selectedId)
+        if (before is not { } was || was.Row == _selected)
         {
             return;
         }
@@ -75,22 +75,22 @@ public partial class VariableSearch
         if (was.Row is not { } row || !IsOnScreen(row))
         {
             ClearSelection();
-            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null, Log);
+            await RaiseSelectionAsync();
 
             return;
         }
 
-        _selectedId = row;
+        _selected = row;
         _tab = was.Tab;
 
         await LoadDetailAsync(row);
-        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
+        await RaiseSelectionAsync();
     }
 
     // The same question the row asks: the name is the row's most copyable text, and a double-click
     // or a drag inside it lands its click here. RowPress says which gestures those are.
     private Task ToggleDetailFromNameAsync(VariableSummary v, MouseEventArgs released) =>
-        _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : ToggleDetailAsync(v);
+        _rowPress.WasSelection(RowKeyOf(v), released) ? Task.CompletedTask : ToggleDetailAsync(v);
 
     // One gesture at a time, because a pointer has one: the row it went down on is part of what
     // RowPress records. Kelda keeps its own, over the same rule.
@@ -98,12 +98,12 @@ public partial class VariableSearch
 
     // No preventDefault, so the row's text still selects — this only records where the pointer was.
     private void RowPressed(VariableSummary v, MouseEventArgs pressed) =>
-        _rowPress.Pressed(v.Id, pressed);
+        _rowPress.Pressed(RowKeyOf(v), pressed);
 
     // On the row rather than on the controls inside it: a press that goes down on the variable's
     // name and travels across the row is a selection, and the release is where that can be told.
     private void RowReleased(VariableSummary v, MouseEventArgs released) =>
-        _rowPress.Released(v.Id, released);
+        _rowPress.Released(RowKeyOf(v), released);
 
     /// <summary>Open or close this row's panel from a press anywhere on the row's column strip.</summary>
     /// <remarks>
@@ -119,7 +119,7 @@ public partial class VariableSearch
     /// </para>
     /// </remarks>
     private Task ToggleDetailFromRowAsync(VariableSummary v, MouseEventArgs released) =>
-        _rowPress.WasSelection(v.Id, released) ? Task.CompletedTask : ToggleDetailAsync(v);
+        _rowPress.WasSelection(RowKeyOf(v), released) ? Task.CompletedTask : ToggleDetailAsync(v);
 
     /// <summary>
     /// Open this row's detail panel, or close it when it is the one already open.
@@ -144,28 +144,30 @@ public partial class VariableSearch
         if (IsSelected(v))
         {
             ClearSelection();
-            await RaiseAsync<Guid?>(SelectedVariableIdChanged, null, Log);
+            await RaiseSelectionAsync();
 
             return;
         }
 
-        _selectedId = v.Id;
+        _selected = VariableDatasamlingKey.Of(v);
+        _selectionNeedsRow = false;
 
         // Back to the first tab for the newly opened row. A reader who was on Om variabelen for one
         // variable has not asked to be there for the next, and arriving on a tab you did not choose —
         // with different content under it — reads as the panel having lost your place.
         _tab = PanelTab.Data;
 
-        await LoadDetailAsync(v.Id);
+        await LoadDetailAsync(VariableDatasamlingKey.Of(v));
 
-        // _selectedId rather than v.Id: the fetch above yields, so another row may have been opened
+        // _selected rather than v: the fetch above yields, so another row may have been opened
         // while it ran, and what the host is told has to be what is open — the same rule
         // FilterChanged follows after a rollback.
-        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
+        await RaiseSelectionAsync();
     }
 
     /// <summary>
-    /// Fetch the detail for <paramref name="id"/> into the open panel.
+    /// Fetch the detail for <paramref name="row"/> into the open panel, as delivered from the row's
+    /// datasamling: its period and its statistics.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -188,8 +190,10 @@ public partial class VariableSearch
     /// which is advice that would never come good.
     /// </para>
     /// </remarks>
-    private async Task LoadDetailAsync(Guid id)
+    private async Task LoadDetailAsync(VariableDatasamlingKey row)
     {
+        var id = row.VariableId;
+
         // Claimed before anything is written, and never reused: ownership of the panel is per call,
         // which is what the guards below compare against.
         var generation = ++_detailGeneration;
@@ -211,7 +215,9 @@ public partial class VariableSearch
 
         try
         {
-            var detail = await Client.GetVariableAsync(id, includeHistorical: _filter.IncludeHistorical);
+            var detail = row.DatasamlingId is { } datasamlingId
+                ? await Client.GetVariableAsync(id, _filter.IncludeHistorical, datasamlingId)
+                : await Client.GetVariableAsync(id, includeHistorical: _filter.IncludeHistorical);
 
             if (_detailGeneration != generation)
             {
@@ -273,7 +279,8 @@ public partial class VariableSearch
 
         _tab = PanelTab.Data;
 
-        _selectedId = null;
+        _selected = null;
+        _selectionNeedsRow = false;
         _detail = null;
         _detailError = null;
 
@@ -406,7 +413,7 @@ public partial class VariableSearch
 
         _focusSearchAfterSource = true;
         ClearSelection();
-        await RaiseAsync(SelectedVariableIdChanged, _selectedId, Log);
+        await RaiseSelectionAsync();
 
         if (narrowed == _filter)
         {
@@ -430,7 +437,7 @@ public partial class VariableSearch
             await _saveAllButton.FocusAsync();
         }
 
-        if (_focusSearchAfterSource && _sourceKind is null && _selectedId is null)
+        if (_focusSearchAfterSource && _sourceKind is null && _selected is null)
         {
             _focusSearchAfterSource = false;
             await _searchField.FocusAsync();
@@ -565,16 +572,31 @@ public partial class VariableSearch
     /// </remarks>
     private async Task DropSelectionIfGoneAsync()
     {
-        if (_selectedId is not { } id || IsOnScreen(id))
+        // An older link names the variable alone: it opens that variable's first row on the page.
+        if (_selectionNeedsRow && _selected is { } named
+            && _result?.Items.FirstOrDefault(v => v.Id == named.VariableId) is { } first)
+        {
+            _selected = VariableDatasamlingKey.Of(first);
+            _selectionNeedsRow = false;
+
+            if (first.DatasamlingId is not null)
+            {
+                await RaiseAsync(SelectedDatasamlingIdChanged, first.DatasamlingId, Log);
+            }
+
+            return;
+        }
+
+        if (_selected is not { } row || IsOnScreen(row))
         {
             return;
         }
 
         ClearSelection();
-        await RaiseAsync<Guid?>(SelectedVariableIdChanged, null, Log);
+        await RaiseSelectionAsync();
     }
 
-    private bool IsOnScreen(Guid id) => _result?.Items.Any(v => v.Id == id) is true;
+    private bool IsOnScreen(VariableDatasamlingKey row) => _result?.Items.Any(v => VariableDatasamlingKey.Of(v) == row) is true;
 
     /// <summary>
     /// Open the panel the host asked for, once the first result is known.
@@ -589,11 +611,11 @@ public partial class VariableSearch
     /// </remarks>
     private async Task OpenInitialSelectionAsync()
     {
-        if (_selectedId is not { } id)
+        if (_selected is not { } row)
         {
             return;
         }
 
-        await LoadDetailAsync(id);
+        await LoadDetailAsync(row);
     }
 }

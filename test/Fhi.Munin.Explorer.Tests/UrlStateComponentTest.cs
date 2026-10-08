@@ -332,6 +332,84 @@ public class UrlStateComponentTest : ExplorerTestContext
             });
     }
 
+    /// <summary>One variable as two rows, from Lungekreft and from Livmorhals (Fhi.Metadata-d07al.1).</summary>
+    private sealed class TwoRowClient : EmptyMuninExplorerClient
+    {
+        public static readonly Guid VariableId = Guid.NewGuid();
+        public static readonly Guid Lungekreft = Guid.NewGuid();
+        public static readonly Guid Livmorhals = Guid.NewGuid();
+
+        private static VariableSummary Row(Guid datasamling, string name) => new()
+        {
+            Id = VariableId,
+            RowKey = $"{VariableId}:{datasamling}",
+            Code = "V_KREG.S_DATOOPRPRIMAR",
+            PreferredTerm = "Operasjonsdato for primærtumor",
+            DatasamlingId = datasamling,
+            DatasamlingName = name,
+        };
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default,
+            SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [Row(Lungekreft, "Lungekreft"), Row(Livmorhals, "Livmorhals")],
+                TotalCount = 2,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1,
+            });
+
+        public override Task<VariableDetail?> GetVariableAsync(
+            Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult<VariableDetail?>(new VariableDetail { Id = id, PreferredTerm = "Operasjonsdato for primærtumor" });
+    }
+
+    [Fact]
+    public void Selection_WhenTheReaderOpensTheSecondRowOfAVariable_ThenTheLinkNamesItsDatasamling()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new TwoRowClient());
+        Services.AddScoped<VariableListState>();
+        Prepare();
+        Navigation.NavigateTo("http://localhost/variabler");
+        var cut = Render<VariableExplorer>();
+
+        Rows(cut)[1].Click();
+
+        Assert.Equal(
+            $"/variabler?variabelId={TwoRowClient.VariableId}&datasamlingId={TwoRowClient.Livmorhals}", Mirrored());
+    }
+
+    [Fact]
+    public void Selection_WhenALinkNamesTheVariableAndItsDatasamling_ThenThatRowOpens()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new TwoRowClient());
+        Services.AddScoped<VariableListState>();
+        Prepare();
+        Navigation.NavigateTo(
+            $"http://localhost/variabler?variabelId={TwoRowClient.VariableId}&datasamlingId={TwoRowClient.Livmorhals}");
+        var cut = Render<VariableExplorer>();
+
+        Assert.Equal(["false", "true"], Rows(cut).Select(r => r.GetAttribute("aria-expanded")));
+    }
+
+    [Fact]
+    public void Selection_WhenAnOlderLinkNamesOnlyTheVariable_ThenItsFirstRowOpensAndTheLinkGainsTheDatasamling()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new TwoRowClient());
+        Services.AddScoped<VariableListState>();
+        Prepare();
+        Navigation.NavigateTo($"http://localhost/variabler?variabelId={TwoRowClient.VariableId}");
+        var cut = Render<VariableExplorer>();
+
+        Assert.Equal(["true", "false"], Rows(cut).Select(r => r.GetAttribute("aria-expanded")));
+        Assert.Equal(
+            $"/variabler?variabelId={TwoRowClient.VariableId}&datasamlingId={TwoRowClient.Lungekreft}", Mirrored());
+    }
+
     /// <inheritdoc cref="RenderExplorer"/>
     private IRenderedComponent<VariableExplorer> RenderVariables(
         string url,

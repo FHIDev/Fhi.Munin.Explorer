@@ -87,6 +87,7 @@ public partial class VariableSearch
     private bool ColumnVisible(ResultColumn column) => column switch
     {
         ResultColumn.SaveToList => ShowSaveButton,
+        ResultColumn.Datasamling => true,
         ResultColumn.Status when !_statusColumnChosen =>
             ShowStatusColumn || StatusIsAllThatIsLeft || _statusShownForSort,
         _ => !_hiddenColumns.Contains(column),
@@ -167,8 +168,10 @@ public partial class VariableSearch
     /// a filter nobody associates with columns would together empty every row down to its name.
     /// </para>
     /// </remarks>
+    // Datasamling is always locked on: it is what tells a variable's rows apart (Fhi.Metadata-d07al.1),
+    // which also means the last-column rule can no longer be reached by another column.
     private bool ColumnLocked(ResultColumn column) =>
-        ColumnVisible(column) && VisibleColumnCount == 1;
+        column == ResultColumn.Datasamling || (ColumnVisible(column) && VisibleColumnCount == 1);
 
     /// <summary>Turns a column on or off, unless it is the last one left.</summary>
     /// <remarks>
@@ -255,5 +258,5 @@ public partial class VariableSearch
 
                     return Task.CompletedTask;
                 }))],
-            (ColumnsHintId, T.LastColumnHint));
+            (ColumnsHintId, T.DatasamlingColumnHint));
 }

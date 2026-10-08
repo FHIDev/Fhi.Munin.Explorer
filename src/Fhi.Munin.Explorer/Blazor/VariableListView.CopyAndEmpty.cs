@@ -150,13 +150,9 @@ public sealed partial class VariableListView
 
             // The source stays active through the writes, so the save buttons never write to a copy
             // that is not on screen; the sibling save of a shared list does the same.
-            foreach (var chunk in items.Select(i => i.VariableId).Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+            if (!await AddEveryItemAsync(created.Id, items))
             {
-                if (!await State.AddVariablesAsync(created.Id, chunk))
-                {
-                    _copyFailure = CopyFailure.Incomplete;
-                    break;
-                }
+                _copyFailure = CopyFailure.Incomplete;
             }
         }
         catch (MuninExplorerRateLimitedException ex)
@@ -310,17 +306,22 @@ public sealed partial class VariableListView
 
             // Through the holder, which drops the removed ids from its membership, so the search
             // rows' save buttons redraw as unsaved.
-            foreach (var chunk in items.Select(i => i.VariableId).Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+            foreach (var chunk in items.Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
             {
-                if (!await State.RemoveVariablesAsync(list, chunk))
+                // By item from an API that names items, by variable from one that does not.
+                var removed = chunk.All(i => i.ItemId is not null)
+                    ? await State.RemoveItemsAsync(list, [.. chunk.Select(VariableDatasamlingKey.Of)])
+                    : await State.RemoveVariablesAsync(list, [.. chunk.Select(i => i.VariableId).Distinct()]);
+
+                if (!removed)
                 {
                     _emptyFailure = ListActionFailure.Failed;
                     break;
                 }
 
-                foreach (var variable in chunk)
+                foreach (var item in chunk)
                 {
-                    ForgetNotesFor(list, variable);
+                    ForgetNotesFor(list, VariableDatasamlingKey.Of(item));
                 }
             }
         }

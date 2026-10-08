@@ -414,13 +414,10 @@ public sealed partial class VariableListView
                 return;
             }
 
-            foreach (var chunk in shared.Items.Select(i => i.VariableId).Chunk(IMuninExplorerClient.MaxVariablesPerBatch))
+            if (!await AddEveryItemAsync(created.Id, shared.Items))
             {
-                if (!await State.AddVariablesAsync(created.Id, chunk))
-                {
-                    _saveSharedFailure = ListActionFailure.Failed;
-                    return;
-                }
+                _saveSharedFailure = ListActionFailure.Failed;
+                return;
             }
 
             await State.SetActiveListAsync(created.Id);

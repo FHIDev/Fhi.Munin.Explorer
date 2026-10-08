@@ -740,7 +740,7 @@ public class MuninExplorerClientTest
 
         await Client(handler).SearchVariablesAsync(null, sort: field, direction: direction);
 
-        Assert.Equal($"?page=1&size=25&sort={sort}&sortDir={sortDir}", handler.LastUri?.Query);
+        Assert.Equal($"?rader=datasamling&page=1&size=25&sort={sort}&sortDir={sortDir}", handler.LastUri?.Query);
     }
 
     [Fact]
@@ -794,7 +794,7 @@ public class MuninExplorerClientTest
 
         await Client(handler).SearchVariablesAsync(null, sort: SortField.Default, direction: SortDirection.Descending);
 
-        Assert.Equal("?page=1&size=25&sortDir=desc", handler.LastUri?.Query);
+        Assert.Equal("?rader=datasamling&page=1&size=25&sortDir=desc", handler.LastUri?.Query);
     }
 
     [Fact]
@@ -807,7 +807,7 @@ public class MuninExplorerClientTest
 
         await Client(handler).SearchVariablesAsync(null);
 
-        Assert.Equal("?page=1&size=25", handler.LastUri?.Query);
+        Assert.Equal("?rader=datasamling&page=1&size=25", handler.LastUri?.Query);
     }
 
     [Fact]
@@ -819,7 +819,7 @@ public class MuninExplorerClientTest
         await Client(handler).SearchVariablesAsync(
             "tale", new VariableFilter { KildeIds = [kilde], DataTypes = ["1"] });
 
-        Assert.Equal($"?page=1&size=25&search=tale&kildeIds={kilde}&datatypes=1", handler.LastUri?.Query);
+        Assert.Equal($"?rader=datasamling&page=1&size=25&search=tale&kildeIds={kilde}&datatypes=1", handler.LastUri?.Query);
     }
 
     [Fact]
@@ -831,7 +831,7 @@ public class MuninExplorerClientTest
 
         await Client(handler).SearchVariablesAsync(null, VariableFilter.None);
 
-        Assert.Equal("?page=1&size=25", handler.LastUri?.Query);
+        Assert.Equal("?rader=datasamling&page=1&size=25", handler.LastUri?.Query);
     }
 
     [Fact]
@@ -882,7 +882,7 @@ public class MuninExplorerClientTest
 
         await Client(handler).GetFiltersAsync("tale", new VariableFilter { KildeIds = [kilde] });
 
-        Assert.Equal($"?search=tale&kildeIds={kilde}", handler.LastUri?.Query);
+        Assert.Equal($"?rader=datasamling&search=tale&kildeIds={kilde}", handler.LastUri?.Query);
     }
 
     [Fact]
@@ -894,7 +894,7 @@ public class MuninExplorerClientTest
 
         await Client(handler).GetFiltersAsync(filter: new VariableFilter { KildeType = "biobank" });
 
-        Assert.Equal("?kildeType=biobank", handler.LastUri?.Query);
+        Assert.Equal("?rader=datasamling&kildeType=biobank", handler.LastUri?.Query);
     }
 
     [Fact]
@@ -929,6 +929,48 @@ public class MuninExplorerClientTest
         await Client(handler).GetVariableAsync(Guid.NewGuid());
 
         Assert.Equal("", handler.LastUri?.Query);
+    }
+
+    [Fact]
+    public async Task GetVariableAsync_WhenADatasamlingIsNamed_ThenTheDetailIsAskedForFromIt()
+    {
+        // The row's own datasamling: without it the API answers the primary one's period and statistics.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NotFound);
+        var id = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+
+        await Client(handler).GetVariableAsync(id, includeHistorical: true, datasamling);
+
+        Assert.Equal($"/api/explorer/variables/{id}", handler.LastUri?.AbsolutePath);
+        Assert.Equal($"?includeHistorical=true&datasamlingId={datasamling}", handler.LastUri?.Query);
+    }
+
+    [Fact]
+    public async Task GetVariableRowsAsync_WhenASearchIsGiven_ThenTheRowsRouteIsAskedWithTheSameNarrowing()
+    {
+        var kilde = Guid.NewGuid();
+        var variable = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var handler = StubHttpHandler.Ok(
+            $$"""{"rader":[{"variabelId":"{{variable}}","datasamlingId":"{{datasamling}}"},{"variabelId":"{{variable}}","datasamlingId":null}],"tooMany":false,"maxRader":2000}""");
+
+        var rows = await Client(handler).GetVariableRowsAsync("tale", new VariableFilter { KildeIds = [kilde] });
+
+        Assert.Equal("/api/explorer/variables/rows", handler.LastUri?.AbsolutePath);
+        Assert.Equal($"?search=tale&kildeIds={kilde}", handler.LastUri?.Query);
+        Assert.Equal([new VariableDatasamlingKey(variable, datasamling), new VariableDatasamlingKey(variable, null)], rows.Rows);
+        Assert.Equal(2000, rows.MaxRows);
+    }
+
+    [Fact]
+    public async Task GetVariableRowsAsync_WhenTheApiHasNoSuchRoute_ThenItThrowsNotFound()
+    {
+        // An API older than the route: "Lagre alle" falls back to the ids on this, so it must not read as empty.
+        var thrown = await Assert.ThrowsAsync<HttpRequestException>(
+            () => WithStatus(HttpStatusCode.NotFound).GetVariableRowsAsync("personnummer 12345"));
+
+        Assert.Equal(HttpStatusCode.NotFound, thrown.StatusCode);
+        Assert.DoesNotContain("12345", thrown.Message, StringComparison.Ordinal);
     }
 
     [Fact]

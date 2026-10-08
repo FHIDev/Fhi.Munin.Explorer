@@ -8,7 +8,8 @@ namespace Fhi.Munin.Explorer.Client;
 /// <remarks>
 /// By hand rather than by <c>JsonSerializer</c>: the items are whatever Runa or this package posted,
 /// stored verbatim, and one unreadable date must cost that field rather than the whole list.
-/// Mirrors Runa's cloneListFromSnapshot, legacy <c>variableIds</c> form included.
+/// Mirrors Runa's cloneListFromSnapshot, legacy <c>variableIds</c> form included. An item is a
+/// (variable, datasamling) pair; one written before items named a datasamling reads as not chosen.
 /// </remarks>
 internal static class SharedSnapshot
 {
@@ -20,7 +21,7 @@ internal static class SharedSnapshot
         }
 
         var name = Text(root, "name")?.Trim() ?? "";
-        var seen = new HashSet<Guid>();
+        var seen = new HashSet<VariableDatasamlingKey>();
         var items = new List<VariableListItem>();
 
         if (root.TryGetProperty("items", out var array) && array.ValueKind == JsonValueKind.Array)
@@ -29,7 +30,7 @@ internal static class SharedSnapshot
             {
                 if (element.ValueKind == JsonValueKind.Object
                     && Id(element, "variabelId") is { } id
-                    && seen.Add(id))
+                    && seen.Add(new VariableDatasamlingKey(id, Id(element, "datasamlingId"))))
                 {
                     items.Add(Item(element, id));
                 }
@@ -41,7 +42,7 @@ internal static class SharedSnapshot
             {
                 if (element.ValueKind == JsonValueKind.String
                     && Guid.TryParse(element.GetString(), out var id)
-                    && seen.Add(id))
+                    && seen.Add(new VariableDatasamlingKey(id, null)))
                 {
                     items.Add(new VariableListItem { VariableId = id });
                 }
@@ -65,6 +66,7 @@ internal static class SharedSnapshot
         DataFrom = Date(element, "dataFrom"),
         DataTo = Date(element, "dataTo"),
         VersionStatus = Text(element, "versjonStatus"),
+        DatasamlingId = Id(element, "datasamlingId"),
     };
 
     // A number is kept as written: Runa's dataType is a string today, and a code sent bare is

@@ -699,6 +699,77 @@ public class MyListsClientTest
     }
 
     [Fact]
+    public async Task AddItemsToMyListAsync_WhenItemsAreAdded_ThenEachIsPostedAsAVariableAndItsDatasamling()
+    {
+        // Two rows of one variable are two items; the old variabelIds body would make the API pick one.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+        var variable = new Guid("b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90");
+        var lungekreft = new Guid("0c027ce6-2994-45bf-99ec-facad3d1703e");
+        var livmorhals = new Guid("4411873c-0367-4334-a7cf-8e763c8e3490");
+
+        Assert.True(await Client(handler).AddItemsToMyListAsync(
+            ListId, [new VariableDatasamlingKey(variable, lungekreft), new VariableDatasamlingKey(variable, livmorhals)]));
+
+        Assert.Equal(HttpMethod.Post, handler.LastMethod);
+        Assert.Equal($"{Collection}/{ListId}/variables", handler.LastUri?.AbsolutePath);
+        Assert.Equal(
+            $$"""{"items":[{"variabelId":"{{variable}}","datasamlingId":"{{lungekreft}}"},{"variabelId":"{{variable}}","datasamlingId":"{{livmorhals}}"}]}""",
+            handler.LastBody);
+        AssertAuthenticated(handler);
+    }
+
+    [Fact]
+    public async Task RemoveItemsFromMyListAsync_WhenAnItemWithNoDatasamlingIsRemoved_ThenItsNullIsSent()
+    {
+        // The unresolved item is the (variable, null) pair; leaving the key out would bind as a different body.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+        var variable = new Guid("b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90");
+
+        Assert.True(await Client(handler).RemoveItemsFromMyListAsync(ListId, [new VariableDatasamlingKey(variable, null)]));
+
+        Assert.Equal(HttpMethod.Delete, handler.LastMethod);
+        Assert.Equal($$"""{"items":[{"variabelId":"{{variable}}","datasamlingId":null}]}""", handler.LastBody);
+    }
+
+    [Fact]
+    public async Task AddItemsToMyListAsync_WhenTheBatchIsTooLarge_ThenItIsRefusedBeforeSending()
+    {
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+        var items = Ids(IMuninExplorerClient.MaxVariablesPerBatch + 1).Select(id => new VariableDatasamlingKey(id, null)).ToList();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => Client(handler).AddItemsToMyListAsync(ListId, items));
+        Assert.Equal(0, handler.Calls);
+    }
+
+    [Fact]
+    public async Task SetMyListItemNotesAsync_WhenTextIsWritten_ThenItIsPutToTheItemsOwnRoute()
+    {
+        // The variable's route answers 409 once it is in the list from two datasamlinger.
+        var handler = StubHttpHandler.Status(HttpStatusCode.NoContent);
+        var itemId = Guid.NewGuid();
+
+        var result = await Client(handler).SetMyListItemNotesAsync(ListId, itemId, "  Spør om 2012  ");
+
+        Assert.Equal(DesiredDataOutcome.Saved, result.Outcome);
+        Assert.Equal(HttpMethod.Put, handler.LastMethod);
+        Assert.Equal($"{Collection}/{ListId}/items/{itemId}/notes", handler.LastUri?.AbsolutePath);
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal("Spør om 2012", sent.RootElement.GetProperty("text").GetString());
+    }
+
+    [Fact]
+    public async Task SetMyListItemDesiredDataAsync_WhenTheApiRefusesTheLength_ThenTheCeilingComesBack()
+    {
+        var handler = StubHttpHandler.Answering(HttpStatusCode.BadRequest, """{"maxLength":500,"received":612}""");
+        var itemId = Guid.NewGuid();
+
+        var result = await Client(handler).SetMyListItemDesiredDataAsync(ListId, itemId, new string('x', 612));
+
+        Assert.Equal(new DesiredDataResult(DesiredDataOutcome.Refused, 500, 612), result);
+        Assert.Equal($"{Collection}/{ListId}/items/{itemId}/desired-data", handler.LastUri?.AbsolutePath);
+    }
+
+    [Fact]
     public async Task RemoveVariablesFromMyListAsync_WhenVariablesAreRemoved_ThenTheyAreSentAsABodyOnTheDelete()
     {
         // A DELETE carrying a body, which is unusual enough to pin: the same route removes on
@@ -948,6 +1019,10 @@ public class MyListsClientTest
             ("RemoveVariablesFromMyListAsync", () => client.RemoveVariablesFromMyListAsync(ListId, ids)),
             ("SetMyListDesiredDataAsync", () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76")),
             ("SetMyListNotesAsync", () => client.SetMyListNotesAsync(ListId, ids[0], "Spør om 2012")),
+            ("AddItemsToMyListAsync", () => client.AddItemsToMyListAsync(ListId, [new VariableDatasamlingKey(ids[0], ids[0])])),
+            ("RemoveItemsFromMyListAsync", () => client.RemoveItemsFromMyListAsync(ListId, [new VariableDatasamlingKey(ids[0], null)])),
+            ("SetMyListItemDesiredDataAsync", () => client.SetMyListItemDesiredDataAsync(ListId, ids[0], "C76")),
+            ("SetMyListItemNotesAsync", () => client.SetMyListItemNotesAsync(ListId, ids[0], "Spør om 2012")),
             ("ExportMyListAsync", () => client.ExportMyListAsync(ListId))
         };
 
@@ -991,6 +1066,10 @@ public class MyListsClientTest
             () => client.RemoveVariablesFromMyListAsync(ListId, ids),
             () => client.SetMyListDesiredDataAsync(ListId, ids[0], "C76"),
             () => client.SetMyListNotesAsync(ListId, ids[0], "Spør om 2012"),
+            () => client.AddItemsToMyListAsync(ListId, [new VariableDatasamlingKey(ids[0], ids[0])]),
+            () => client.RemoveItemsFromMyListAsync(ListId, [new VariableDatasamlingKey(ids[0], null)]),
+            () => client.SetMyListItemDesiredDataAsync(ListId, ids[0], "C76"),
+            () => client.SetMyListItemNotesAsync(ListId, ids[0], "Spør om 2012"),
             () => client.ExportMyListAsync(ListId)
         };
 

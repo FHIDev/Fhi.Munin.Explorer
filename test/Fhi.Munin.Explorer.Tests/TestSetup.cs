@@ -71,6 +71,11 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         string? search, VariableFilter? filter = null, CancellationToken cancellationToken = default) =>
         Task.FromResult(new VariableIdSet());
 
+    /// <summary>Refuses, like the interface's own default, so a fake that has not opted in saves by variable.</summary>
+    public virtual Task<VariableRowSet> GetVariableRowsAsync(
+        string? search, VariableFilter? filter = null, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This fake has no rows route.");
+
     public virtual Task<FilterOptions> GetFiltersAsync(
         string? search = null,
         VariableFilter? filter = null,
@@ -98,6 +103,11 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
     public virtual Task<VariableDetail?> GetVariableAsync(
         Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
         Task.FromResult<VariableDetail?>(null);
+
+    /// <summary>The interface's own default: the datasamling ignored, the variable answered as the other overload does.</summary>
+    public virtual Task<VariableDetail?> GetVariableAsync(
+        Guid id, bool includeHistorical, Guid? datasamlingId, CancellationToken cancellationToken = default) =>
+        GetVariableAsync(id, includeHistorical, cancellationToken);
 
     public virtual Task<IReadOnlyList<VariableVersion>> GetVariableTimelineAsync(
         Guid id, CancellationToken cancellationToken = default) =>
@@ -137,6 +147,24 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
     public virtual Task<bool> RemoveVariablesFromMyListAsync(
         Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
         Task.FromResult(false);
+
+    /// <summary>The interface's own default, by variable, so a fake overriding only that sees every add.</summary>
+    public virtual Task<bool> AddItemsToMyListAsync(
+        Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default) =>
+        AddVariablesToMyListAsync(id, [.. items.Select(i => i.VariableId).Distinct()], cancellationToken);
+
+    /// <summary>The interface's own default, by variable.</summary>
+    public virtual Task<bool> RemoveItemsFromMyListAsync(
+        Guid id, IReadOnlyCollection<VariableDatasamlingKey> items, CancellationToken cancellationToken = default) =>
+        RemoveVariablesFromMyListAsync(id, [.. items.Select(i => i.VariableId).Distinct()], cancellationToken);
+
+    public virtual Task<DesiredDataResult> SetMyListItemDesiredDataAsync(
+        Guid id, Guid itemId, string? freeText, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DesiredDataResult(DesiredDataOutcome.NotFound));
+
+    public virtual Task<DesiredDataResult> SetMyListItemNotesAsync(
+        Guid id, Guid itemId, string? text, CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DesiredDataResult(DesiredDataOutcome.NotFound));
 
     // "Nothing" for this write is the API's own 404: no such list, or no such variable in it. Not
     // Saved, which would report an annotation this fake never held.

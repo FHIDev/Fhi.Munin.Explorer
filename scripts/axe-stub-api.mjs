@@ -161,9 +161,13 @@ const LIST_PANEL_VARIABLE = 'b7c1f4a2-5d38-4e6b-9c02-8a1e3f7d5b90';
 function pagedListVariables(body, query) {
   const page = Math.max(1, Number(query.get('page') ?? 1) || 1);
   const size = Math.max(1, Number(query.get('pageSize') ?? 100) || 100);
-  const captured = (JSON.parse(body).items ?? []).filter(i => !removedIds.has(i.variabelId));
-  const items = [...captured, ...[...addedIds].filter(id => !captured.some(i => i.variabelId === id))
-    .map(id => ({ ...(JSON.parse(body).items ?? [])[0], variabelId: id }))];
+  const template = (JSON.parse(body).items ?? [])[0];
+  const captured = (JSON.parse(body).items ?? [])
+    .filter(i => !removedVariables.has(i.variabelId) && !removedKeys.has(itemKey(i.variabelId, i.datasamlingId)));
+  const items = [...captured, ...[...added.values()]
+    .filter(a => !captured.some(i => itemKey(i.variabelId, i.datasamlingId) === itemKey(a.variabelId, a.datasamlingId)
+      || (a.datasamlingId === null && i.variabelId === a.variabelId)))
+    .map(a => ({ ...template, variabelId: a.variabelId, datasamlingId: a.datasamlingId, itemId: null }))];
   const slice = items.slice((page - 1) * size, page * size);
 
   return JSON.stringify({
@@ -276,6 +280,16 @@ function serve(url, request, response) {
     response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(body));
     return;
   }
+  // Before the route table too: every (variable, datasamling) row, for «Lagre disse variablene».
+  if (path === '/api/explorer/variables/rows') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+      .end(JSON.stringify({
+        rader: variables.items.map(v => ({ variabelId: v.id, datasamlingId: v.datasamlingId ?? null })),
+        tooMany: false,
+        maxRader: 2000,
+      }));
+    return;
+  }
   // Before the route table, whose variables/{id} would answer it with a variable's detail.
   if (path === '/api/explorer/variables/ids') {
     response.writeHead(200, { 'content-type': 'application/json' })
@@ -316,8 +330,11 @@ function serve(url, request, response) {
 
 // The list remembers what was written to it, so the read-back after «Lagre disse variablene»
 // finds the save rather than undoing it on screen (Fhi.Metadata-dfy9u.10).
-const addedIds = new Set();
-const removedIds = new Set();
+// Keyed by (variable, datasamling), as the API keys items; the older variabelIds body is by variable.
+const itemKey = (variabelId, datasamlingId) => `${variabelId}|${datasamlingId ?? ''}`;
+const added = new Map();
+const removedKeys = new Set();
+const removedVariables = new Set();
 
 const server = createServer((request, response) => {
   const url = new URL(request.url, 'http://localhost');
@@ -325,11 +342,14 @@ const server = createServer((request, response) => {
     let raw = '';
     request.on('data', chunk => { raw += chunk; });
     request.on('end', () => {
-      let ids = [];
-      try { ids = JSON.parse(raw || '{}').variabelIds ?? []; } catch { console.error(`stub: unreadable body for ${request.method} ${url.pathname}`); }
-      for (const id of ids) {
-        if (request.method === 'POST') { addedIds.add(id); removedIds.delete(id); }
-        else { addedIds.delete(id); removedIds.add(id); }
+      let sent = {};
+      try { sent = JSON.parse(raw || '{}'); } catch { console.error(`stub: unreadable body for ${request.method} ${url.pathname}`); }
+      const items = sent.items ?? (sent.variabelIds ?? []).map(variabelId => ({ variabelId, datasamlingId: null }));
+      for (const { variabelId, datasamlingId } of items) {
+        const key = itemKey(variabelId, datasamlingId);
+        if (request.method === 'POST') { added.set(key, { variabelId, datasamlingId: datasamlingId ?? null }); removedKeys.delete(key); removedVariables.delete(variabelId); }
+        else if (sent.items) { added.delete(key); removedKeys.add(key); }
+        else { for (const [k, a] of added) { if (a.variabelId === variabelId) { added.delete(k); } } removedVariables.add(variabelId); }
       }
       response.writeHead(200, { 'content-type': 'application/json' }).end('{}');
     });

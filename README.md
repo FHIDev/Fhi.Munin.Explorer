@@ -1285,9 +1285,11 @@ restoring part of a search. It names the instrument — the questionnaire or sca
 collected with — whose own page `InstrumentView` draws in place of the result list, reached from
 the Instrument entry on a variable. A link can carry it beside `?variabelId=`, because the variable
 underneath is never torn down; the instrument is the one that opens, since that is the page the
-link was made on. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
-`page`, `pageSize`, `variabelId` and `instrumentId` — plus `VariableFilter.QueryKeys`, and any of
-the scalars can be declined.
+link was made on. `?datasamlingId=` goes beside `?variabelId=`: a variable is a row per datasamling
+it is delivered from, so the pair names the open row, and a link with the variable alone opens its
+first row. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
+`page`, `pageSize`, `variabelId`, `datasamlingId`, `instrumentId` and `delekode` — plus
+`VariableFilter.QueryKeys`, and any of the scalars can be declined.
 
 `KildeExplorer` is the kildeutforsker's equivalent, and `Language` is all it takes:
 
