@@ -1004,17 +1004,6 @@ public sealed partial class VariableSearch : ComponentBase
     private int RowLevel => Math.Clamp(TitleLevel + 1, 1, 6);
 
     /// <summary>
-    /// The heading level for the kilde or datasamling panel: one step below the result card it
-    /// opens inside, so the owner reads as part of the variable rather than as a sibling of it.
-    /// </summary>
-    /// <remarks>
-    /// Clamped the same way <see cref="RowLevel"/> is, and flattens against the card's own level
-    /// for the same reason: HTML stops at <c>h6</c>, and a flattened outline is a smaller loss than
-    /// a missing heading.
-    /// </remarks>
-    private int SourceLevel => Math.Clamp(RowLevel + 1, 1, 6);
-
-    /// <summary>
     /// One sentence describing the visible result, used both as the live announcement and
     /// as the list's accessible name so the two can never drift apart.
     /// </summary>
@@ -1550,52 +1539,6 @@ public sealed partial class VariableSearch : ComponentBase
     /// </remarks>
     private string? PeriodText(DateTimeOffset? from, DateTimeOffset? to) =>
         CatalogueDate.Period(from, to, Language, T, DateWidth.Narrow);
-
-    /// <summary>
-    /// One labelled item in the metadata line.
-    /// </summary>
-    /// <remarks>
-    /// A missing value is written out as "Ikke oppgitt" in plain sight rather than drawn as an
-    /// em dash with the words hidden behind a visually-hidden class. An em dash is either read
-    /// as "em dash" or skipped in silence depending on the reader's punctuation setting, and
-    /// neither says "we do not know" — but saying it out loud to everyone is better than saying
-    /// it to assistive technology alone, and it means this markup needs no screen-reader-only
-    /// rule from the host, which is just as well: Stiler has none.
-    /// </remarks>
-    private void Field(RenderTreeBuilder builder, int seq, string label, string? value, bool first)
-    {
-        builder.OpenElement(seq, "span");
-        builder.AddAttribute(seq + 1, "class", "munin-explorer-dataitem-main__column__text");
-
-        if (!first)
-        {
-            // Stiler's dot separator between card metadata items. Purely decorative and empty,
-            // so it is kept out of the accessibility tree rather than left as a nameless node.
-            builder.OpenElement(seq + 2, "span");
-            builder.AddAttribute(seq + 3, "class", "dot");
-            builder.AddAttribute(seq + 4, "aria-hidden", "true");
-            builder.CloseElement();
-        }
-
-        builder.AddContent(seq + 5, $"{label}: ");
-
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            builder.AddContent(seq + 6, T.NotSpecified);
-        }
-        else
-        {
-            // The label follows Language; the value does not. Munin's metadata is Norwegian
-            // whatever language the surrounding UI is in, and an English speech synthesiser
-            // reading Norwegian variable names is unintelligible (WCAG 3.1.2).
-            builder.OpenElement(seq + 7, "span");
-            builder.AddAttribute(seq + 8, "lang", "no");
-            builder.AddContent(seq + 9, value);
-            builder.CloseElement();
-        }
-
-        builder.CloseElement();
-    }
 
     /// <summary>The two tabs, in the order they are drawn.</summary>
     private static readonly ExplorerTab[] ResultTabs = Enum.GetValues<ExplorerTab>();
