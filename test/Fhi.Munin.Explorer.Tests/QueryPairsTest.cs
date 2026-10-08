@@ -8,7 +8,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 /// <remarks>
 /// Each cap is proved through its caller's own entry point, because a caller passing the wrong
-/// constant — or none — is the defect: the split was hand-written three times and one had no cap.
+/// constant to the shared splitter is a defect no test of the splitter alone can see.
 /// </remarks>
 public class QueryPairsTest
 {
@@ -66,8 +66,8 @@ public class QueryPairsTest
     }
 
     /// <summary>
-    /// The mirror had no cap at all, and what it reads is held for the circuit's life and written
-    /// back into every link — so the bound covers carried pairs as well as owned ones.
+    /// What the mirror reads is held for the circuit's life and written back into every link, so
+    /// the bound covers carried pairs as well as owned ones.
     /// </summary>
     [Fact]
     public void UrlMirror_WhenTheQueryIsPastTheCap_ThenNeitherOwnedNorCarriedPairsBeyondItAreKept()

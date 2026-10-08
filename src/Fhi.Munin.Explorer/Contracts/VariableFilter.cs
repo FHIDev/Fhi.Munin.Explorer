@@ -428,7 +428,6 @@ public sealed record VariableFilter
         };
     }
 
-
     /// <summary>
     /// Two filters are equal when they narrow the same way, compared through
     /// <see cref="ToQueryString"/>.
