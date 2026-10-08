@@ -1,2 +1,0 @@
-category: Removed
-- **Dead private members of `VariableSearch` and the four strings only they used are gone** - `ShowRowDescription`, `DetailToggleText`, `DetailDescription`, `SourceLevel` and the uncalled `Field(...)` helper, with the internal `Texts.ShowDetails`, `HideDetails`, `FieldPeriod` and `LastColumnHint`. Nothing rendered used them, so a host sees no change in markup, text or API; the uncalled helper was the only code that could have emitted Stiler's `dot` class, which the component therefore no longer references at all. (Fhi.Metadata-eeuey.4.1)

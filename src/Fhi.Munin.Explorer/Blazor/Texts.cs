@@ -95,10 +95,7 @@ internal sealed record Texts(
     string GroupPlacement,
     string ColumnVariable,
     // The column picker: Runa's own name for the control ("Kolonner", where helsedata's button
-    // says "Vis kolonner"), and the sentence the last column left points at to say why it refuses
-    // to go. Named ...Hint because it is a sentence rather than a column's name, which is what
-    // every other string around it is. Runa decides what the component says; helsedata decides
-    // what it looks like.
+    // says "Vis kolonner"). Runa decides what the component says; helsedata decides what it looks like.
     string Columns,
     string FieldDataType,
     string FieldStatus,
@@ -133,7 +130,7 @@ internal sealed record Texts(
     string ColumnValidFrom,
     string ColumnValidTo,
     // The detail panel. Its labels are the card's own words wherever it names the same thing —
-    // Datakilde, Variabelgruppe, Periode — so opening a row renames nothing.
+    // Datakilde, Variabelgruppe — so opening a row renames nothing.
     string DetailLoading,
     string DetailError,
     string DetailMissing,
