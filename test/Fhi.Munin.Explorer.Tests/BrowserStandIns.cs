@@ -1,4 +1,5 @@
 using Microsoft.JSInterop;
+using Microsoft.JSInterop.Infrastructure;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -336,5 +337,64 @@ internal sealed class StagingJsRuntime : IJSRuntime
         }
 
         return (TValue)(object)await mine.Task;
+    }
+}
+
+/// <summary>A plain JS object — a Blob, an anchor — that records what was set on it and invoked.</summary>
+/// <remarks>
+/// Not <see cref="RecordingModule"/>: this one records <c>SetValueAsync</c>, and refuses anything but
+/// <c>click</c>, so a misspelt identifier fails instead of answering <c>default</c>.
+/// </remarks>
+/// <param name="clickThrows">What <c>click</c> throws, as a browser refusing the download would.</param>
+/// <param name="onClick">Runs as <c>click</c> arrives, for a test asking what had happened by then.</param>
+internal sealed class RecordingJsObject(Exception? clickThrows = null, Action? onClick = null) : IJSObjectReference
+{
+    internal List<(string Identifier, object? Value)> Set { get; } = [];
+    internal List<string> Invoked { get; } = [];
+    internal bool Disposed { get; private set; }
+
+    public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
+        InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+    public ValueTask<TValue> InvokeAsync<TValue>(
+        string identifier, CancellationToken cancellationToken, object?[]? args)
+    {
+        Assert.True(typeof(TValue) == typeof(IJSVoidResult), $"{identifier} was read for a value");
+        Invoked.Add(identifier);
+        if (identifier != "click")
+        {
+            throw new InvalidOperationException($"unexpected call to {identifier}");
+        }
+
+        onClick?.Invoke();
+        return clickThrows is null ? ValueTask.FromResult(default(TValue)!) : throw clickThrows;
+    }
+
+    public ValueTask SetValueAsync<TValue>(string identifier, TValue value) =>
+        SetValueAsync(identifier, value, CancellationToken.None);
+
+    public ValueTask SetValueAsync<TValue>(string identifier, TValue value, CancellationToken cancellationToken)
+    {
+        Set.Add((identifier, value));
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<TValue> GetValueAsync<TValue>(string identifier) =>
+        throw new InvalidOperationException($"unexpected read of {identifier}");
+
+    public ValueTask<TValue> GetValueAsync<TValue>(string identifier, CancellationToken cancellationToken) =>
+        throw new InvalidOperationException($"unexpected read of {identifier}");
+
+    public ValueTask<IJSObjectReference> InvokeConstructorAsync(string identifier, object?[]? args) =>
+        throw new InvalidOperationException($"unexpected constructor {identifier}");
+
+    public ValueTask<IJSObjectReference> InvokeConstructorAsync(
+        string identifier, CancellationToken cancellationToken, object?[]? args) =>
+        throw new InvalidOperationException($"unexpected constructor {identifier}");
+
+    public ValueTask DisposeAsync()
+    {
+        Disposed = true;
+        return ValueTask.CompletedTask;
     }
 }

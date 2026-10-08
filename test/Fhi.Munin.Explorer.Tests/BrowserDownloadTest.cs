@@ -3,7 +3,6 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.JSInterop;
-using Microsoft.JSInterop.Infrastructure;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -21,60 +20,6 @@ public class BrowserDownloadTest
 
     private static readonly ExportedList Export = new([1, 2, 3], "text/csv", "variabler.csv");
 
-    /// <summary>
-    /// A JS object that answers only what the download asks of it, and records what that was.
-    /// </summary>
-    private sealed class RecordingObject(Exception? clickThrows = null) : IJSObjectReference
-    {
-        public List<(string Identifier, object? Value)> Set { get; } = [];
-        public List<string> Invoked { get; } = [];
-        public bool Disposed { get; private set; }
-
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
-            InvokeAsync<TValue>(identifier, CancellationToken.None, args);
-
-        public ValueTask<TValue> InvokeAsync<TValue>(
-            string identifier, CancellationToken cancellationToken, object?[]? args)
-        {
-            Assert.True(typeof(TValue) == typeof(IJSVoidResult), $"{identifier} was read for a value");
-            Invoked.Add(identifier);
-            if (identifier != "click")
-            {
-                throw new InvalidOperationException($"unexpected call to {identifier}");
-            }
-
-            return clickThrows is null ? ValueTask.FromResult(default(TValue)!) : throw clickThrows;
-        }
-
-        public ValueTask SetValueAsync<TValue>(string identifier, TValue value) =>
-            SetValueAsync(identifier, value, CancellationToken.None);
-
-        public ValueTask SetValueAsync<TValue>(string identifier, TValue value, CancellationToken cancellationToken)
-        {
-            Set.Add((identifier, value));
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask<TValue> GetValueAsync<TValue>(string identifier) =>
-            throw new InvalidOperationException($"unexpected read of {identifier}");
-
-        public ValueTask<TValue> GetValueAsync<TValue>(string identifier, CancellationToken cancellationToken) =>
-            throw new InvalidOperationException($"unexpected read of {identifier}");
-
-        public ValueTask<IJSObjectReference> InvokeConstructorAsync(string identifier, object?[]? args) =>
-            throw new InvalidOperationException($"unexpected constructor {identifier}");
-
-        public ValueTask<IJSObjectReference> InvokeConstructorAsync(
-            string identifier, CancellationToken cancellationToken, object?[]? args) =>
-            throw new InvalidOperationException($"unexpected constructor {identifier}");
-
-        public ValueTask DisposeAsync()
-        {
-            Disposed = true;
-            return ValueTask.CompletedTask;
-        }
-    }
-
     /// <summary>bUnit refuses <c>Setup&lt;IJSObjectReference&gt;</c>, steering to modules; these are not modules.</summary>
     private sealed class ObjectHandler : JSRuntimeInvocationHandler<IJSObjectReference>
     {
@@ -83,12 +28,14 @@ public class BrowserDownloadTest
             SetResult(result);
     }
 
-    private static (BunitJSInterop Interop, RecordingObject Blob, RecordingObject Anchor) Arrange(
+    private static (BunitJSInterop Interop, RecordingJsObject Blob, RecordingJsObject Anchor) Arrange(
         Exception? clickThrows = null)
     {
         var interop = new BunitJSInterop { Mode = JSRuntimeMode.Strict };
-        var blob = new RecordingObject();
-        var anchor = new RecordingObject(clickThrows);
+        var blob = new RecordingJsObject();
+        var anchor = new RecordingJsObject(clickThrows, onClick: () => Assert.True(
+            interop.Invocations["URL.revokeObjectURL"].Count == 0,
+            "the object URL was revoked before the anchor was clicked"));
 
         interop.AddInvocationHandler(new ObjectHandler("Blob", "InvokeConstructorAsync", blob));
         interop.Setup<string>("URL.createObjectURL", _ => true).SetResult(Url);
@@ -134,15 +81,15 @@ public class BrowserDownloadTest
     [Fact]
     public async Task OfferAsync_WhenTheClickThrows_ThenTheSameUrlIsStillRevokedAndTheErrorTravelsOn()
     {
-        // The finally is what this pins: without it the object URL keeps the whole export alive in
-        // the browser's memory for as long as the page is open, and nothing on screen says so.
         var refused = new JSException("blocked by Content-Security-Policy");
-        var (interop, _, anchor) = Arrange(clickThrows: refused);
+        var (interop, blob, anchor) = Arrange(clickThrows: refused);
 
         var thrown = await Assert.ThrowsAsync<JSException>(() => BrowserDownload.OfferAsync(interop.JSRuntime, Export));
 
         Assert.Same(refused, thrown);
         Assert.Equal(["click"], anchor.Invoked);
         Assert.Equal(Url, Assert.Single(interop.VerifyInvoke("URL.revokeObjectURL").Arguments));
+        Assert.True(anchor.Disposed, "the anchor reference was never released");
+        Assert.True(blob.Disposed, "the Blob reference was never released");
     }
 }
