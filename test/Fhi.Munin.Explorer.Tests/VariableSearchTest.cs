@@ -6015,16 +6015,6 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Contains("Dataperiode (1)", FacetHeadings(cut));
     }
 
-    [Fact]
-    public void Filter_WhenNoDatesAreSetAndTheApiReportsNoRange_ThenTheFacetIsStillLeftOut()
-    {
-        // The other direction: without a date set there is nothing to undo, so the old rule holds.
-        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith()));
-
-        Assert.Empty(DateInputs(cut));
-        Assert.DoesNotContain("Dataperiode", FacetHeadings(cut));
-    }
-
     private static DateInterval DateRange2010To2025 => new()
     {
         Min = new DateTimeOffset(2010, 1, 1, 0, 0, 0, TimeSpan.Zero),

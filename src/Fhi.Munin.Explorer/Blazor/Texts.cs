@@ -95,19 +95,14 @@ internal sealed record Texts(
     string GroupPlacement,
     string ColumnVariable,
     // The column picker: Runa's own name for the control ("Kolonner", where helsedata's button
-    // says "Vis kolonner"), and the sentence the last column left points at to say why it refuses
-    // to go. Named ...Hint because it is a sentence rather than a column's name, which is what
-    // every other string around it is. Runa decides what the component says; helsedata decides
-    // what it looks like.
+    // says "Vis kolonner"). Runa decides what the component says; helsedata decides what it looks like.
     string Columns,
-    string LastColumnHint,
     string FieldDataType,
     string FieldStatus,
     string FieldCode,
     string FieldSource,
     string FieldDataCollection,
     string FieldVariableGroup,
-    string FieldPeriod,
     string FieldDescription,
     // The Data tab's kodeverk section, Runa's words throughout. The reference is labelled
     // rather than left to stand on its own, and a link the API resolved no name for says so
@@ -135,16 +130,14 @@ internal sealed record Texts(
     string ColumnValidFrom,
     string ColumnValidTo,
     // The detail panel. Its labels are the card's own words wherever it names the same thing —
-    // Datakilde, Variabelgruppe, Periode — so opening a row renames nothing.
-    string ShowDetails,
-    string HideDetails,
+    // Datakilde, Variabelgruppe — so opening a row renames nothing.
     string DetailLoading,
     string DetailError,
     string DetailMissing,
     string Kildekodeverk,
     // The kilde and datasamling panel, one level in from the variable's own. Where it names
     // something the card or the facets already name — Datakilde, Datasamling, Beskrivelse,
-    // Periode, Type datakilde — it borrows their words rather than minting a synonym, so moving
+    // Dataperiode, Type datakilde — it borrows their words rather than minting a synonym, so moving
     // inwards renames nothing. What is here is what only the owners have.
     string ShowKilde,
     string HideKilde,
@@ -1134,14 +1127,12 @@ internal sealed record Texts(
         GroupPlacement: "Plassering",
         ColumnVariable: "Navn",
         Columns: "Kolonner",
-        LastColumnHint: "Minst én kolonne må vises.",
         FieldDataType: "Datatype",
         FieldStatus: "Status",
         FieldCode: "Kode",
         FieldSource: "Kilde",
         FieldDataCollection: "Datasamling",
         FieldVariableGroup: "Variabelgruppe",
-        FieldPeriod: "Periode",
         FieldDescription: "Beskrivelse",
         FieldKodeverkReference: "Referanse",
         KodeverkUnnamed: "Ukjent navn",
@@ -1159,8 +1150,6 @@ internal sealed record Texts(
         ColumnCodeName: "Navn",
         ColumnValidFrom: "Gyldig fra",
         ColumnValidTo: "Gyldig til",
-        ShowDetails: "Vis detaljer",
-        HideDetails: "Skjul detaljer",
         DetailLoading: "Henter detaljer …",
         DetailError: "Kunne ikke hente detaljene nå. Prøv igjen om litt.",
         DetailMissing: "Fant ingen detaljer for denne variabelen.",
@@ -1654,14 +1643,12 @@ internal sealed record Texts(
         GroupPlacement: "Placement",
         ColumnVariable: "Name",
         Columns: "Columns",
-        LastColumnHint: "At least one column has to stay visible.",
         FieldDataType: "Data type",
         FieldStatus: "Status",
         FieldCode: "Code",
         FieldSource: "Source",
         FieldDataCollection: "Data collection",
         FieldVariableGroup: "Variable group",
-        FieldPeriod: "Period",
         FieldDescription: "Description",
         FieldKodeverkReference: "Reference",
         KodeverkUnnamed: "Unnamed",
@@ -1679,8 +1666,6 @@ internal sealed record Texts(
         ColumnCodeName: "Name",
         ColumnValidFrom: "Valid from",
         ColumnValidTo: "Valid to",
-        ShowDetails: "Show details",
-        HideDetails: "Hide details",
         DetailLoading: "Loading details …",
         DetailError: "Could not load the details right now. Please try again shortly.",
         DetailMissing: "No details were found for this variable.",

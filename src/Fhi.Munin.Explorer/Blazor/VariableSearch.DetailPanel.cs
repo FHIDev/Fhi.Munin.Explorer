@@ -1,5 +1,4 @@
 using Fhi.Munin.Explorer.Contracts;
-using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -10,25 +9,7 @@ public partial class VariableSearch
     /// <summary>Whether this row is the one whose detail panel is open.</summary>
     private bool IsSelected(VariableSummary v) => _selected == VariableDatasamlingKey.Of(v);
 
-    /// <summary>The open panel's description, trimmed, or null while there is none to show.</summary>
-    private string? DetailDescription => DisplayText.Trimmed(_detail?.Description);
-
-    /// <summary>
-    /// Whether the card draws the description the search listed it with.
-    /// </summary>
-    /// <remarks>
-    /// It stops as soon as the panel underneath is showing the same sentence out of the detail
-    /// payload, which is the fuller and the more authoritative of the two — the search returns the
-    /// description of the row, the detail returns the one on the version being shown. Printing both
-    /// would put the same paragraph on screen twice inside one card. The card keeps its own until
-    /// the fetch lands, so nothing blinks out while the panel is loading.
-    /// </remarks>
-    private bool ShowRowDescription(VariableSummary v) =>
-        !string.IsNullOrWhiteSpace(v.Description) && !(IsSelected(v) && DetailDescription is not null);
-
     private string DetailBusy => _detailLoading ? "true" : "false";
-
-    private string DetailToggleText(VariableSummary v) => IsSelected(v) ? T.HideDetails : T.ShowDetails;
 
     private string DetailExpanded(VariableSummary v) => IsSelected(v) ? "true" : "false";
 
