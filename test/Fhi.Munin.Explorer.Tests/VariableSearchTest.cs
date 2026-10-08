@@ -982,18 +982,16 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Render_Always_ThenThePickerOffersRunasColumnsButNeitherTheNameNorTheDatasamling()
+    public void Render_Always_ThenThePickerOffersRunasSevenColumnsAndNotTheName()
     {
         // Runa's set, in Runa's order. It is deliberately not helsedata's five: the variable page
         // is the thing this component REPLACES, so it decides how a row looks and Runa decides
         // what a row says. Navn is missing on purpose — it is the row's disclosure button as well
         // as its first column, so turning it off would take the control that opens the panel away.
-        // Datasamling too: one variable is a row per datasamling, and it is what tells them apart
-        // (Fhi.Metadata-d07al.1).
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         Assert.Equal(
-            ["Kode", "Kilde", "Variabelgruppe", "Datatype", "Status", "Dataperiode"],
+            ["Kode", "Kilde", "Datasamling", "Variabelgruppe", "Datatype", "Status", "Dataperiode"],
             ColumnToggles(cut).Select(ColumnName));
     }
 
@@ -1007,7 +1005,7 @@ public class VariableSearchTest : ExplorerTestContext
         // and in the picker instead. Status is the filter's doing rather than the picker's: with
         // historical variables excluded every row would say "Active", and a column that says the
         // same word on every row is furniture. See ShowStatusColumn.
-        Assert.Equal([false, true, true, true, false, true],
+        Assert.Equal([false, true, true, true, true, false, true],
                      ColumnToggles(cut).Select(Ticked));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__dataCollection"));
     }
@@ -1098,10 +1096,10 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Columns_WhenEveryOfferedOneIsOff_ThenTheDatasamlingStillTellsTheRowsApart()
+    public void Columns_WhenDatasamlingIsPressed_ThenItRefusesToHideAndSaysWhy()
     {
-        // Two rows of one variable differ by their datasamling alone, so the picker cannot take it,
-        // and the last-column lock has nothing left to guard: a row never shows only its name.
+        // Two rows of one variable differ by their datasamling alone (Fhi.Metadata-d07al.1), so it
+        // is locked on, and with it on no other column is ever the last one left.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
 
         foreach (var column in new[] { "Kilde", "Variabelgruppe", "Datatype", "Dataperiode" })
@@ -1109,10 +1107,27 @@ public class VariableSearchTest : ExplorerTestContext
             ToggleColumn(cut, column);
         }
 
-        Assert.All(ColumnToggles(cut), box => Assert.Null(box.GetAttribute("aria-disabled")));
-        Assert.All(ColumnToggles(cut), box => Assert.False(Ticked(box)));
+        var locked = ColumnToggle(cut, "Datasamling");
+
+        // Inert rather than disabled, the same treatment the pager's buttons get: `disabled` would
+        // take it out of the tab order, so the one column a reader might ask about would be the
+        // one they could not reach.
+        Assert.Equal("true", locked.GetAttribute("aria-disabled"));
+        Assert.False(locked.HasAttribute("disabled"));
+        Assert.Equal(
+            ["Datasamling"],
+            ColumnToggles(cut).Where(box => box.GetAttribute("aria-disabled") == "true").Select(ColumnName));
+
+        var hint = locked.GetAttribute("aria-describedby");
+        Assert.Equal("Datasamling vises alltid, fordi den skiller radene for samme variabel.", cut.Find($"#{hint}").TextContent);
+
+        // A render tree never experiences the browser flipping the box before the handler runs, so
+        // deleting SetUpdatesAttributeName("checked") leaves this file green. Measured in a browser
+        // instead, on Fhi.Metadata-f6az7; the missing guard is Fhi.Metadata-1s7z1.
+        locked.Change(!Ticked(locked));
+
+        Assert.True(Ticked(ColumnToggle(cut, "Datasamling")));
         Assert.Equal("Inklusjon", CellText(cut, "dataCollection"));
-        Assert.NotNull(cut.Find(".munin-explorer-dataitem-header__dataCollection"));
     }
 
     [Fact]
@@ -1824,12 +1839,12 @@ public class VariableSearchTest : ExplorerTestContext
         // focus to <body>. Moving @ColumnPicker() inside the "there are hits" block would break
         // nothing else in this file, so the rule is asserted here rather than only in prose.
         // A count and no more: which columns the picker offers is
-        // Render_Always_ThenThePickerOffersRunasColumnsButNeitherTheNameNorTheDatasamling's to say, and asserting
+        // Render_Always_ThenThePickerOffersRunasSevenColumnsAndNotTheName's to say, and asserting
         // the list twice would make a change to Runa's set fail here too, reading as "the picker
         // vanished on an empty search" when it did nothing of the kind.
         var cut = RenderWith(new FakeClient(OnePage()));
 
-        Assert.Equal(6, ColumnToggles(cut).Count);
+        Assert.Equal(7, ColumnToggles(cut).Count);
     }
 
     [Fact]
@@ -1906,7 +1921,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("Kolonner", summary.TextContent);
 
         Assert.NotNull(cut.Find("ul.dropdown-choicepicker.dropdown-choicepicker--right"));
-        Assert.Equal(6, cut.FindAll("li.dropdown-choicepicker__item").Count);
+        Assert.Equal(7, cut.FindAll("li.dropdown-choicepicker__item").Count);
 
         // Not sortable-dropdown, which the bead named: that is their MOBILE sort control and it is
         // display:none above 1280px, so a picker wearing it would vanish on every desktop.

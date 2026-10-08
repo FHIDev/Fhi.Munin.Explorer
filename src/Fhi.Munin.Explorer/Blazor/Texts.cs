@@ -785,7 +785,9 @@ internal sealed record Texts(
     string ChooseDatasamlingHint,
     string ChooseDatasamlingSave,
     string ChooseDatasamlingNone,
-    string ChooseDatasamlingError)
+    string ChooseDatasamlingError,
+    // Why the result list's Datasamling column cannot be turned off.
+    string DatasamlingColumnHint)
 {
     /// <summary>
     /// The label for a sort order. Every one that names a field uses the same words the result
@@ -1614,7 +1616,8 @@ internal sealed record Texts(
         ChooseDatasamlingHint: "Variabelen ble lagret før lista skilte mellom datasamlinger, og den finnes i flere. Velg én eller flere. Ønskede data og notatene dine blir med.",
         ChooseDatasamlingSave: "Lagre valget",
         ChooseDatasamlingNone: "Velg minst én datasamling.",
-        ChooseDatasamlingError: "Kunne ikke lagre valget nå. Prøv igjen om litt.");
+        ChooseDatasamlingError: "Kunne ikke lagre valget nå. Prøv igjen om litt.",
+        DatasamlingColumnHint: "Datasamling vises alltid, fordi den skiller radene for samme variabel.");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2128,7 +2131,8 @@ internal sealed record Texts(
         ChooseDatasamlingHint: "This variable was saved before lists told datasamlinger apart, and it is in several. Choose one or more. Your desired data and notes come along.",
         ChooseDatasamlingSave: "Save choice",
         ChooseDatasamlingNone: "Choose at least one datasamling.",
-        ChooseDatasamlingError: "Could not save the choice right now. Try again shortly.");
+        ChooseDatasamlingError: "Could not save the choice right now. Try again shortly.",
+        DatasamlingColumnHint: "Datasamling is always shown, because it tells a variable's rows apart.");
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>

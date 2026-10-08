@@ -45,8 +45,8 @@ public partial class VariableSearch
     /// <summary>The columns that say something about the variable, which is all the last-column rule counts.</summary>
     private static readonly ResultColumn[] DataColumns = OptionalColumns;
 
-    /// <summary>What the picker lists: not Datasamling, which tells a variable's rows apart (Fhi.Metadata-d07al.1).</summary>
-    private IEnumerable<ResultColumn> OfferedColumns => OptionalColumns.Where(c => c != ResultColumn.Datasamling);
+    /// <summary>What the picker lists.</summary>
+    private IEnumerable<ResultColumn> OfferedColumns => OptionalColumns;
 
     /// <summary>
     /// The columns the reader has turned off, seeded with the one that starts off.
@@ -168,8 +168,10 @@ public partial class VariableSearch
     /// a filter nobody associates with columns would together empty every row down to its name.
     /// </para>
     /// </remarks>
+    // Datasamling is always locked on: it is what tells a variable's rows apart (Fhi.Metadata-d07al.1),
+    // which also means the last-column rule can no longer be reached by another column.
     private bool ColumnLocked(ResultColumn column) =>
-        ColumnVisible(column) && VisibleColumnCount == 1;
+        column == ResultColumn.Datasamling || (ColumnVisible(column) && VisibleColumnCount == 1);
 
     /// <summary>Turns a column on or off, unless it is the last one left.</summary>
     /// <remarks>
@@ -256,5 +258,5 @@ public partial class VariableSearch
 
                     return Task.CompletedTask;
                 }))],
-            (ColumnsHintId, T.LastColumnHint));
+            (ColumnsHintId, T.DatasamlingColumnHint));
 }

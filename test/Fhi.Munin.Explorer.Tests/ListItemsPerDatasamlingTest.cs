@@ -104,6 +104,7 @@ public class ListItemsPerDatasamlingTest : ExplorerTestContext
         {
             Calls.Add("notes");
             NotesByItem.Add((itemId, text));
+            Items.FindAll(i => i.ItemId == itemId).ForEach(i => Items[Items.IndexOf(i)] = i with { Notes = text });
             return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
         }
 
@@ -112,6 +113,7 @@ public class ListItemsPerDatasamlingTest : ExplorerTestContext
         {
             Calls.Add("desired");
             DesiredByItem.Add((itemId, freeText));
+            Items.FindAll(i => i.ItemId == itemId).ForEach(i => Items[Items.IndexOf(i)] = i with { DesiredDataFreeText = freeText });
             return Task.FromResult(new DesiredDataResult(DesiredDataOutcome.Saved));
         }
 
@@ -259,6 +261,24 @@ public class ListItemsPerDatasamlingTest : ExplorerTestContext
         Assert.All(client.NotesByItem, write => Assert.Equal("Spør om 2012", write.Text));
         Assert.Equal(2, client.NotesByItem.Select(w => w.ItemId).Distinct().Count());
         cut.WaitForAssertion(() => Assert.Equal(2, Rows(cut).Count));
+    }
+
+    [Fact]
+    public void Unresolved_WhenItsDesiredDataWasEditedFirst_ThenTheEditIsWhatIsCopied()
+    {
+        // The words come from what the API holds at the choice, not from the page as first read.
+        var client = new ItemClient(Unresolved());
+        var cut = RenderView(client);
+        cut.WaitForAssertion(() => Assert.Single(Rows(cut)));
+
+        Rows(cut)[0].QuerySelector("td.munin-explorer-dataitem-main__desiredData textarea")!.Change("C34.9");
+        cut.WaitForAssertion(() => Assert.Single(client.DesiredByItem));
+        OpenRow(cut, 0);
+        Tick(cut, "Livmorhals");
+        SaveChoice(cut).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal([$"desired", $"add {Livmorhals}", "desired", "notes", "remove none"], client.Calls));
+        Assert.Equal("C34.9", client.DesiredByItem[^1].Text);
     }
 
     [Fact]

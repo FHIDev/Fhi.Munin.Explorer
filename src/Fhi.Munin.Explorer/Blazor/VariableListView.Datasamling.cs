@@ -201,18 +201,11 @@ public sealed partial class VariableListView
         }
     }
 
-    // The new items' ids are read back, since an add answers with none; narrowed to the variable's kilde to keep the read short.
+    // The new items' ids are read back, since an add answers with none, and the old item's words with them: the
+    // page on screen may predate an edit saved since. Narrowed to the variable's kilde to keep the read short.
     private async Task<bool> CopyAnnotationsAsync(Guid list, VariableListItem item, IReadOnlyCollection<Guid> chosen)
     {
-        var desired = string.IsNullOrWhiteSpace(item.DesiredDataFreeText) ? null : item.DesiredDataFreeText;
-        var notes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes;
-
-        if (desired is null && notes is null)
-        {
-            return true;
-        }
-
-        var targets = new List<Guid>();
+        var read = new List<VariableListItem>();
         var page = 1;
         IReadOnlyCollection<Guid>? kilder = item.KildeId is { } kilde ? [kilde] : null;
 
@@ -225,10 +218,7 @@ public sealed partial class VariableListView
                 return false;
             }
 
-            targets.AddRange(slice.Items
-                .Where(i => i.VariableId == item.VariableId && i.DatasamlingId is { } d && chosen.Contains(d))
-                .Select(i => i.ItemId)
-                .OfType<Guid>());
+            read.AddRange(slice.Items.Where(i => i.VariableId == item.VariableId));
 
             if (slice.Items.Count == 0 || page * 1000 >= slice.TotalCount)
             {
@@ -237,6 +227,20 @@ public sealed partial class VariableListView
 
             page++;
         }
+
+        var source = read.FirstOrDefault(i => i.DatasamlingId is null) ?? item;
+        var desired = string.IsNullOrWhiteSpace(source.DesiredDataFreeText) ? null : source.DesiredDataFreeText;
+        var notes = string.IsNullOrWhiteSpace(source.Notes) ? null : source.Notes;
+
+        if (desired is null && notes is null)
+        {
+            return true;
+        }
+
+        List<Guid> targets = [.. read
+            .Where(i => i.DatasamlingId is { } d && chosen.Contains(d))
+            .Select(i => i.ItemId)
+            .OfType<Guid>()];
 
         if (targets.Count != chosen.Count)
         {

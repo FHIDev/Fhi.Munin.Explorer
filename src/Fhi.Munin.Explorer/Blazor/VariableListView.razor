@@ -225,7 +225,8 @@ else if (State?.IsAuthenticated == true)
                         <tbody>
                             @foreach (var item in _page.Items)
                             {
-                                <tr class="munin-explorer-data-list__item">
+                                @* Keyed on the pair: one variable can be two rows, and removing one must not patch the next into its fields. *@
+                                <tr class="munin-explorer-data-list__item" @key="VariableDatasamlingKey.Of(item)">
 
                                     @* An orphaned entry keeps its place, so the paging totals stay
                                        honest; RowName decides in one place what it reads as, because
@@ -294,7 +295,7 @@ else if (State?.IsAuthenticated == true)
 
                                 @if (IsOpen(item))
                                 {
-                                    <tr>
+                                    <tr @key="(VariableDatasamlingKey.Of(item), PanelRow: true)">
                                         <td colspan="@OwnListColumnCount">@RowPanel(item)</td>
                                     </tr>
                                 }

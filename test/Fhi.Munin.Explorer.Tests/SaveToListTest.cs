@@ -832,7 +832,7 @@ public class SaveToListTest : ExplorerTestContext
             PressColumn(cut, column);
         }
 
-        Assert.Null(PickerBox(cut, "Kilde").GetAttribute("aria-disabled"));
+        Assert.Equal("true", PickerBox(cut, "Datasamling").GetAttribute("aria-disabled"));
         Assert.NotNull(cut.Find(".munin-explorer-dataitem-main__dataCollection"));
     }
 
