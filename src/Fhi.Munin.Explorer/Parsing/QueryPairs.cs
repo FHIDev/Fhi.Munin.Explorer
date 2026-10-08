@@ -1,4 +1,4 @@
-namespace Fhi.Munin.Explorer.Contracts;
+namespace Fhi.Munin.Explorer.Parsing;
 
 /// <summary>One <c>name=value</c> pair of a query string, decoded beside the text it came from.</summary>
 /// <param name="Raw">The pair exactly as it arrived, for a caller re-emitting what it does not own.</param>
@@ -64,5 +64,5 @@ internal static class QueryPairs
     /// <c>QueryHelpers.AddQueryString</c> all spell a space that way, and unescaping first would turn
     /// <c>%2B</c> into one. Without it <c>?helsefagligKodeverkReferanser=ICD+10</c> matches nothing.
     /// </remarks>
-    public static string Decode(string token) => Uri.UnescapeDataString(token.Replace('+', ' '));
+    private static string Decode(string token) => Uri.UnescapeDataString(token.Replace('+', ' '));
 }

@@ -1,5 +1,6 @@
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Parsing;
 
 namespace Fhi.Munin.Explorer.Tests;
 
