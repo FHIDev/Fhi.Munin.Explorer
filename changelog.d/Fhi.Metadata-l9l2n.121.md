@@ -1,2 +1,0 @@
-category: Fixed
-- **A datasamling's Frekvens reads as a word rather than the API's enum name** - The fact row and a section the catalogue places Frekvens in now show the specification's label ("Kvartalsvis", "Quarterly" in English) instead of `kvartalsvis` or `quarterly`. A curated word in the catalogue's own vocabulary still wins, an unknown value is shown as it arrived, and no value still reads "Ingen". (Fhi.Metadata-l9l2n.121)
