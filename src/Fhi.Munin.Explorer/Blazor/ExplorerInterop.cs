@@ -20,8 +20,10 @@ internal sealed class ExplorerInterop : IAsyncDisposable
 
     // Off the assembly rather than written down: the segment the SDK publishes these assets under
     // is the assembly's own name, so a literal here would survive a project rename as a 404.
+    // The version query gives each release its own URL, so a CDN cannot keep serving the last one (Fhi.Metadata-nbxzs).
     internal static string ModulePath { get; } =
-        $"./_content/{typeof(ExplorerInterop).Assembly.GetName().Name}/{ModuleFile}";
+        $"./_content/{typeof(ExplorerInterop).Assembly.GetName().Name}/{ModuleFile}?v={Uri.EscapeDataString(ExplorerVersion.Current)}";
+
 
     private readonly IJSRuntime _js;
 
