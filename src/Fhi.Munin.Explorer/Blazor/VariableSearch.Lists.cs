@@ -12,7 +12,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <see cref="VariableListState"/>, so every surface that touches saved lists agrees on who the
 /// reader is — and, through <c>Changed</c>, on what is in the list.
 /// </summary>
-public partial class VariableSearch : IDisposable
+public partial class VariableSearch : IDisposable, IAsyncDisposable
 {
     private ShowSearchTab? _showSearch;
 
@@ -72,6 +72,15 @@ public partial class VariableSearch : IDisposable
         {
             _listState.Changed -= OnListStateChanged;
         }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>The renderer calls only this where both are implemented, so it runs <see cref="Dispose"/> itself.</remarks>
+    public ValueTask DisposeAsync()
+    {
+        Dispose();
+        GC.SuppressFinalize(this);
+        return _interop?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
 
     private string? _followedShareCode;

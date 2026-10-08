@@ -166,6 +166,27 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
+    /// <summary>Half-ticks the checkboxes under <paramref name="rootId"/> that carry <c>data-mixed</c>.</summary>
+    /// <remarks>
+    /// Tolerates a <see cref="JSException"/>: it runs from a render continuation, where a throw takes the
+    /// circuit down, and the count is said in words beside the box anyway. (Fhi.Metadata-cjezd)
+    /// </remarks>
+    internal async Task MarkMixedAsync(string rootId)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        try
+        {
+            await Tolerated(() => module.InvokeVoidAsync("markMixed", rootId)).ConfigureAwait(false);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {

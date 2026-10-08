@@ -199,7 +199,7 @@ public sealed partial class KildeSearch
     /// <remarks>
     /// Over the visible rows in both directions, so the control means the same thing whichever way
     /// it is pressed. No indeterminate state: it is a DOM property with no attribute behind it, and
-    /// the count above the table says the same thing in words. (Fhi.Metadata-5ghur)
+    /// the count above the table says the same thing in words. (Fhi.Metadata-5ghur; exception: cjezd)
     /// </remarks>
     private async Task TickAllVisibleAsync(IReadOnlyList<KildeSummary> visible)
     {

@@ -8174,6 +8174,37 @@ public class VariableSearchTest : ExplorerTestContext
     };
 
     [Fact]
+    public void Variabelgrupper_WhenOneIsTickedInTheKildeTree_ThenItsDatasamlingAndKildeAreHalfTickedAndSaySo()
+    {
+        // Robin's choice for ADO 121689 (Fhi.Metadata-cjezd), as helsedata.no draws it: the levels above a
+        // scoped tick are marked for the half-tick and say it in words, while neither is chosen itself.
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderWith(client);
+        ExpandBranches(cut);
+
+        Press(SurfaceBox(KildeFacet(cut), "Kosthold"));
+
+        Assert.Equal([new VariabelgruppeScope(Nutrition, Tromso1)], client.SearchFilter!.VariabelgruppeScopes);
+        foreach (var level in new[] { "Tromsøundersøkelsen", "Tromsø 1" })
+        {
+            var box = SurfaceBox(KildeFacet(cut), level);
+            Assert.Equal("true", box.GetAttribute("data-mixed"));
+            Assert.False(box.HasAttribute("checked"));
+            Assert.Contains("(1 valgt under)", box.ParentElement!.TextContent, StringComparison.Ordinal);
+        }
+
+        Assert.Null(SurfaceBox(KildeFacet(cut), "Kosthold").GetAttribute("data-mixed"));
+        Assert.Contains(JSInterop.Invocations, call => call.Identifier == "markMixed");
+
+        // Unticked again, nothing is half-ticked.
+        Press(SurfaceBox(KildeFacet(cut), "Kosthold"));
+
+        Assert.Empty(client.SearchFilter!.VariabelgruppeScopes);
+        Assert.Empty(KildeFacet(cut).QuerySelectorAll("input[data-mixed]"));
+        Assert.DoesNotContain("valgt under", KildeFacet(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Variabelgrupper_WhenAScopedTickWouldPassTheCap_ThenItIsRefusedWithAMessageThatTheNextFilterChangeClears()
     {
         // The API refuses the whole search past MaxVariabelgruppeScopes, so the 51st tick is not sent;

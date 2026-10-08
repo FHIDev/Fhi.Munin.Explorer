@@ -123,7 +123,8 @@ public partial class VariableSearch
         IReadOnlyList<FacetValue> Children,
         bool GroupHeading = false,
         IReadOnlyList<NodeIcon>? Icons = null,
-        string? Badge = null);
+        string? Badge = null,
+        int ChosenBelow = 0);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
     /// <remarks>
@@ -469,6 +470,16 @@ public partial class VariableSearch
     private FacetGroup KildeTypeGroup(FilterOptions facets) =>
         new("kildetype", T.FacetKildeType, OpenByDefault: false, [.. facets.KildeTyper.Select(KildeTypeValue)]);
 
+    /// <summary>The kilde tree with each value told how many values beneath it are chosen.</summary>
+    /// <remarks>An unchosen value with a choice beneath it draws half-ticked and says the count in words. (cjezd)</remarks>
+    private static IReadOnlyList<FacetValue> WithChosenBelow(IReadOnlyList<FacetValue> values) =>
+        [.. values.Select(value =>
+        {
+            var children = WithChosenBelow(value.Children);
+            var below = children.Sum(child => (child is { Selected: true, Toggle: not null } ? 1 : 0) + child.ChosenBelow);
+            return value with { Children = children, ChosenBelow = below };
+        })];
+
     /// <summary>One kildetype, in the reader's own language whichever source names it.</summary>
     /// <remarks>
     /// So it is unmarked whichever way <see cref="Texts.KildeTypeNameFromApi"/> answers: the API
@@ -522,7 +533,7 @@ public partial class VariableSearch
         // With one kildetype in the list its heading says nothing the facet above does not — and it
         // is exactly one whenever a kildetype has been chosen, which is when the panel is most
         // crowded. So the kilder are lifted out of it.
-        var values = grouped.Count == 1 ? grouped[0].Children : grouped;
+        var values = WithChosenBelow(grouped.Count == 1 ? grouped[0].Children : grouped);
 
         // The top level as it stands with no term, because that is the length a lifted cap is
         // recorded against: recording the survivors of a search would put the cap back over the
@@ -1560,9 +1571,17 @@ public partial class VariableSearch
                 builder.AddAttribute(32, "type", "checkbox");
                 builder.AddAttribute(33, "checked", value.Selected);
 
+                // The half-tick itself is a DOM property with no attribute, so markup carries this and
+                // explorer-interop.js's markMixed sets it after render. (Fhi.Metadata-cjezd)
+                var mixed = !value.Selected && value.ChosenBelow > 0;
+                if (mixed)
+                {
+                    builder.AddAttribute(34, "data-mixed", "true");
+                }
+
                 // The event's own value is ignored: the toggle flips what the filter holds, which
                 // is the one state a press and the render after it are certain to agree about.
-                builder.AddAttribute(34, "onchange",
+                builder.AddAttribute(35, "onchange",
                                      EventCallback.Factory.Create<ChangeEventArgs>(this, _ => toggle()));
 
                 // What a plain onchange does not do and this panel needs: a press that ApplyFilterAsync
@@ -1578,22 +1597,32 @@ public partial class VariableSearch
                 var icons = _showNodeIcons ? value.Icons : null;
                 if (icons is { Count: > 0 })
                 {
-                    builder.AddContent(35, (RenderFragment)(nested =>
+                    builder.AddContent(36, (RenderFragment)(nested =>
                         NodeIcons.Write(nested, icons, NodeIconClasses.Facets)));
                 }
 
                 // The marking sits on the name, not on the label around it: the label also carries
                 // this package's own prose below, which is the reader's language and not the
                 // catalogue's and must not be pronounced as Norwegian. (WCAG 3.1.2)
-                builder.OpenElement(36, "span");
-                builder.AddAttribute(37, "lang", value.Language);
-                builder.AddContent(38, value.Label);
+                builder.OpenElement(37, "span");
+                builder.AddAttribute(38, "lang", value.Language);
+                builder.AddContent(39, value.Label);
                 builder.CloseElement();
+
+                // The half-tick in words, inside the label so it is part of the checkbox's name.
+                if (mixed)
+                {
+                    builder.AddContent(40, " ");
+                    builder.OpenElement(41, "span");
+                    builder.AddAttribute(42, "class", "screenreader-only");
+                    builder.AddContent(43, T.ChosenBelow(value.ChosenBelow));
+                    builder.CloseElement();
+                }
 
                 // Keep the spoken categories after the name even though the decorative icons lead it.
                 if (icons is { Count: > 0 })
                 {
-                    builder.AddContent(39, (RenderFragment)(nested =>
+                    builder.AddContent(44, (RenderFragment)(nested =>
                         NodeIcons.WriteSpoken(nested, icons, T)));
                 }
 
@@ -1602,10 +1631,10 @@ public partial class VariableSearch
                 // mark only a stylesheet drew would reach a sighted reader and nobody else.
                 if (value.Badge is { } badge)
                 {
-                    builder.AddContent(40, " ");
-                    builder.OpenElement(41, "span");
-                    builder.AddAttribute(42, "class", "munin-explorer-filters__badge");
-                    builder.AddContent(43, badge);
+                    builder.AddContent(45, " ");
+                    builder.OpenElement(46, "span");
+                    builder.AddAttribute(47, "class", "munin-explorer-filters__badge");
+                    builder.AddContent(48, badge);
                     builder.CloseElement();
                 }
 
@@ -1614,10 +1643,10 @@ public partial class VariableSearch
                 // either way (Fhi.Metadata-47lha).
                 if (value.Count is { } count)
                 {
-                    builder.AddContent(44, " ");
-                    builder.OpenElement(45, "span");
-                    builder.AddAttribute(46, "class", "munin-explorer-filters__count");
-                    builder.AddContent(47, $"({count})");
+                    builder.AddContent(49, " ");
+                    builder.OpenElement(50, "span");
+                    builder.AddAttribute(51, "class", "munin-explorer-filters__count");
+                    builder.AddContent(52, $"({count})");
                     builder.CloseElement();
                 }
 
@@ -1626,7 +1655,7 @@ public partial class VariableSearch
 
             if (open)
             {
-                builder.AddContent(50, FacetList(value.Children, BranchId(value.Key)));
+                builder.AddContent(60, FacetList(value.Children, BranchId(value.Key)));
             }
 
             builder.CloseElement();

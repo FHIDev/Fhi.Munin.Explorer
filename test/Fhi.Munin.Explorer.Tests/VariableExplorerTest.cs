@@ -817,7 +817,8 @@ public class VariableExplorerTest : ExplorerTestContext
 
         await Renderer.DisposeComponents();
 
-        Assert.Equal(1, module.Disposals);
+        // One module per component: the explorer's own and its search panel's half-ticks (Fhi.Metadata-cjezd).
+        Assert.Equal(2, module.Disposals);
     }
 
     [Fact]
