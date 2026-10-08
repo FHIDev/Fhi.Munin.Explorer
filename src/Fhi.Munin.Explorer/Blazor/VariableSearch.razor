@@ -726,7 +726,7 @@ else
         <ul class="munin-explorer-data-list" role="rowgroup" aria-busy="@Busy">
             @foreach (var v in _result.Items)
             {
-                @* Keyed by the variable's own id, the same reason the facet values are keyed: a row
+                @* Keyed by the row's own key, the same reason the facet values are keyed: a row
                    carries a control the reader can be standing on — the name button — and the
                    rows reorder whenever the search, the filter or the ordering moves. Without a key
                    the renderer would patch that button into a different variable's rather than
@@ -736,7 +736,7 @@ else
                    row has to start above both, or the panel ends up beside the rows rather than
                    in one. The two wrappers below then wear role="none" and the panel becomes the
                    row's last cell. *@
-                <li class="@RowItemClass(v)" role="row" @key="v.Id">
+                <li class="@RowItemClass(v)" role="row" @key="RowKeyOf(v)">
                     @* One Tab stop per collapsed row, as on helsedata's own list: the name button
                        is the disclosure, with the chevron inside it, and the panel holds the rest.
                        (Fhi.Metadata-35w0p.78, reversing Fhi.Metadata-35w0p.34) *@

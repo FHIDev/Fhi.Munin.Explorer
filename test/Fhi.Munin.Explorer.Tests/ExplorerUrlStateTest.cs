@@ -98,6 +98,40 @@ public class ExplorerUrlStateTest
         Assert.Equal(variable, ExplorerUrlState.Parse(query).SelectedVariableId);
     }
 
+    /// <summary>A variable is a row per datasamling, so the link names the row (Fhi.Metadata-d07al.1).</summary>
+    [Fact]
+    public void RoundTrip_WhenARowIsOpen_ThenItsDatasamlingComesBackBesideTheVariable()
+    {
+        var variable = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var state = new ExplorerUrlState { SelectedVariableId = variable, SelectedDatasamlingId = datasamling };
+
+        var query = state.ToQueryString();
+
+        Assert.Equal($"variabelId={variable}&datasamlingId={datasamling}", query);
+        Assert.Equal(state, ExplorerUrlState.Parse(query));
+        Assert.Contains("datasamlingId", ExplorerUrlState.ScalarQueryKeys);
+    }
+
+    [Fact]
+    public void ToQueryString_WhenOnlyADatasamlingIsSet_ThenNeitherKeyIsWritten()
+    {
+        // A datasamling names a row only with its variable; alone it would open nothing anyway.
+        Assert.Equal("", new ExplorerUrlState { SelectedDatasamlingId = Guid.NewGuid() }.ToQueryString());
+    }
+
+    [Fact]
+    public void Parse_WhenAnOlderLinkNamesOnlyTheVariable_ThenNoDatasamlingIsRead()
+    {
+        // The component opens that variable's first row, which is what such a link meant.
+        var variable = Guid.NewGuid();
+
+        var state = ExplorerUrlState.Parse($"?variabelId={variable}");
+
+        Assert.Equal(variable, state.SelectedVariableId);
+        Assert.Null(state.SelectedDatasamlingId);
+    }
+
     /// <summary>
     /// A URL that kept the id after the panel was closed would send the next reader to a variable
     /// the sender was no longer looking at.

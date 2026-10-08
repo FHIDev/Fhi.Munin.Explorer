@@ -18,7 +18,11 @@
       "desiredDataFreeText": "C36.2 og C36.4, og C76",
       "hasKodeverk": true,
       "hasStatistikk": false,
-      "notes": null
+      "notes": null,
+      "itemId": "5d0e2b71-94c3-4a8f-b1e6-7c2f9a3d4e15",
+      "datasamlingId": "a41f7c3e-2b9d-4e60-8c15-f3d7e2b19a04",
+      "datasamlingCode": "K_BDR.FORSTEGANG",
+      "candidateDatasamlinger": null
     },
     {
       "variabelId": "3e5a8c11-7b42-49df-a6c8-1d904f2e6b73",
@@ -38,7 +42,11 @@
       "desiredDataFreeText": "Alle registrerte verdier",
       "hasKodeverk": null,
       "hasStatistikk": null,
-      "notes": null
+      "notes": null,
+      "itemId": "c2a9e4f6-1b37-48d5-9e0a-6f8b3c71d2e9",
+      "datasamlingId": null,
+      "datasamlingCode": null,
+      "candidateDatasamlinger": null
     }
   ],
   "totalCount": 247,

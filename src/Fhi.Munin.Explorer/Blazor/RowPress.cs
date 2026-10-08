@@ -21,9 +21,9 @@ internal sealed class RowPress
     /// </remarks>
     private const double Slack = 4;
 
-    private (Guid Row, double X, double Y)? _wentDown;
+    private (object Row, double X, double Y)? _wentDown;
 
-    private Guid? _dragged;
+    private object? _dragged;
 
     /// <summary>Take note of a press going down inside <paramref name="row"/>.</summary>
     /// <remarks>
@@ -31,7 +31,7 @@ internal sealed class RowPress
     /// from the name across the row is selecting text, and the browser lands that gesture's click
     /// on the row rather than on the control it began in.
     /// </remarks>
-    internal void Pressed(Guid row, MouseEventArgs pressed) =>
+    internal void Pressed(object row, MouseEventArgs pressed) =>
         _wentDown = (row, pressed.ClientX, pressed.ClientY);
 
     /// <summary>Settle whether the gesture ending on <paramref name="row"/> travelled across it.</summary>
@@ -40,13 +40,13 @@ internal sealed class RowPress
     /// way: a gesture is over once the pointer comes up, and one left standing is what the release
     /// after it — a selection begun off the list and let go over a row — would be measured against.
     /// </remarks>
-    internal void Released(Guid row, MouseEventArgs released)
+    internal void Released(object row, MouseEventArgs released)
     {
         var wentDown = _wentDown;
         _wentDown = null;
 
         _dragged = wentDown is { } start
-            && start.Row == row
+            && start.Row.Equals(row)
             && (Math.Abs(released.ClientX - start.X) > Slack
                 || Math.Abs(released.ClientY - start.Y) > Slack)
             ? row
@@ -71,8 +71,8 @@ internal sealed class RowPress
     /// read the verdict its release found. (Fhi.Metadata-l9l2n.81)
     /// </para>
     /// </remarks>
-    internal bool WasSelection(Guid row, MouseEventArgs clicked) =>
-        clicked.Detail > 0 && (_dragged == row || WasSelectionStandingStill(clicked));
+    internal bool WasSelection(object row, MouseEventArgs clicked) =>
+        clicked.Detail > 0 && (Equals(_dragged, row) || WasSelectionStandingStill(clicked));
 
     /// <summary>
     /// Whether <paramref name="clicked"/> was one of the two selection gestures that stand still,

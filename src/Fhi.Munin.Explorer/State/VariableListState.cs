@@ -324,7 +324,12 @@ public sealed partial class VariableListState(
         return true;
     }
 
-    /// <summary>Puts variables in a list. Returns whether the API accepted it.</summary>
+    /// <summary>Puts variables in a list, naming no datasamling. Returns whether the API accepted it.</summary>
+    /// <remarks>
+    /// The API saves each variable's one open datasamling and refuses one in several with a <c>400</c>,
+    /// which throws. Which datasamling it chose is read back with the list. Prefer
+    /// <see cref="AddItemsAsync(Guid, IReadOnlyCollection{VariableDatasamlingKey}, CancellationToken)"/>.
+    /// </remarks>
     public Task<bool> AddVariablesAsync(
         Guid id,
         IReadOnlyCollection<Guid> variableIds,
@@ -353,7 +358,11 @@ public sealed partial class VariableListState(
 
         if (accepted)
         {
-            var delta = RecordMembership(id, variableIds, saved: true, startedAt, kilder);
+            // The API chose the datasamling, which the answer does not name: a variable not yet in the set stands
+            // in as (variable, none) until the list is read again, so IsSaved(Guid) and the count still hold.
+            var delta = RecordMembership(
+                id, [.. variableIds.Distinct().Where(v => !IsSaved(v)).Select(v => new VariableDatasamlingKey(v, null))],
+                saved: true, startedAt, kilder);
 
             RecordCountChange(id, delta, startedAt);
             RaiseChanged(id, affectsRows: true);
@@ -362,7 +371,68 @@ public sealed partial class VariableListState(
         return accepted;
     }
 
-    /// <summary>Takes variables out of a list. Returns whether the API accepted it.</summary>
+    /// <summary>Puts (variable, datasamling) items in a list. Returns whether the API accepted it.</summary>
+    public Task<bool> AddItemsAsync(
+        Guid id,
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        CancellationToken cancellationToken = default) =>
+        AddItemsAsync(id, items, kilder: null, cancellationToken);
+
+    /// <summary>Puts items in a list, saying which kilde each variable belongs to so the tally can follow.</summary>
+    internal async Task<bool> AddItemsAsync(
+        Guid id,
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        IReadOnlyDictionary<Guid, KildeOfVariable>? kilder,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAuthenticated)
+        {
+            return false;
+        }
+
+        var startedAt = _generation;
+        var accepted = await _client.AddItemsToMyListAsync(id, items, cancellationToken).ConfigureAwait(false);
+
+        if (accepted)
+        {
+            var delta = RecordMembership(id, items, saved: true, startedAt, kilder);
+
+            RecordCountChange(id, delta, startedAt);
+            RaiseChanged(id, affectsRows: true);
+        }
+
+        return accepted;
+    }
+
+    /// <summary>
+    /// Takes (variable, datasamling) items out of a list, leaving the same variable from any other
+    /// datasamling in it. Returns whether the API accepted it.
+    /// </summary>
+    public async Task<bool> RemoveItemsAsync(
+        Guid id,
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAuthenticated)
+        {
+            return false;
+        }
+
+        var startedAt = _generation;
+        var accepted = await _client.RemoveItemsFromMyListAsync(id, items, cancellationToken).ConfigureAwait(false);
+
+        if (accepted)
+        {
+            var delta = RecordMembership(id, items, saved: false, startedAt);
+
+            RecordCountChange(id, delta, startedAt);
+            RaiseChanged(id, affectsRows: true);
+        }
+
+        return accepted;
+    }
+
+    /// <summary>Takes variables out of a list, from every datasamling. Returns whether the API accepted it.</summary>
     public async Task<bool> RemoveVariablesAsync(
         Guid id,
         IReadOnlyCollection<Guid> variableIds,
@@ -381,7 +451,8 @@ public sealed partial class VariableListState(
 
         if (accepted)
         {
-            var delta = RecordMembership(id, variableIds, saved: false, startedAt);
+            var ids = variableIds.ToHashSet();
+            var delta = RecordMembership(id, [.. _saved.Where(key => ids.Contains(key.VariableId))], saved: false, startedAt);
 
             RecordCountChange(id, delta, startedAt);
             RaiseChanged(id, affectsRows: true);

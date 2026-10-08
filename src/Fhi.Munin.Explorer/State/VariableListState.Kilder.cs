@@ -141,7 +141,7 @@ public sealed partial class VariableListState
 
     // Moves the tally by the ids a write really added or took out, or drops it when an added id's kilde is unknown.
     private void MoveKildeTally(
-        IEnumerable<Guid> changed, bool saved, IReadOnlyDictionary<Guid, KildeOfVariable>? kilder)
+        IEnumerable<VariableDatasamlingKey> changed, bool saved, IReadOnlyDictionary<Guid, KildeOfVariable>? kilder)
     {
         // A tally already dropped stays dropped: counting onto it would publish one variable's kilde as the list's.
         if (!KilderInListKnown)
@@ -149,7 +149,7 @@ public sealed partial class VariableListState
             return;
         }
 
-        foreach (var variableId in changed)
+        foreach (var variableId in changed.Select(key => key.VariableId))
         {
             if (saved)
             {
@@ -165,8 +165,11 @@ public sealed partial class VariableListState
             else
             {
                 // Every id the list holds is mapped while the tally is known; one that is not was never counted.
-                _kildeOf.Remove(variableId, out var kildeId);
-                MoveKildeCount(kildeId, -1, "");
+                // Kept, not removed: the same variable can still be in the list from another datasamling.
+                if (_kildeOf.TryGetValue(variableId, out var kildeId))
+                {
+                    MoveKildeCount(kildeId, -1, "");
+                }
             }
         }
     }

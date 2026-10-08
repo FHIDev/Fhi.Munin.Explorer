@@ -45,7 +45,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         SortDirection direction = SortDirection.Ascending,
         CancellationToken cancellationToken = default)
     {
-        var url = $"api/explorer/variables?page={page}&size={pageSize}";
+        var url = $"api/explorer/variables?{RowsPerDatasamling}&page={page}&size={pageSize}";
         if (!string.IsNullOrWhiteSpace(search))
         {
             url += $"&search={Uri.EscapeDataString(search)}";
@@ -85,6 +85,26 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
                 HttpStatusCode.NotFound);
     }
 
+    public async Task<VariableRowSet> GetVariableRowsAsync(
+        string? search,
+        VariableFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var url = WithFilter("api/explorer/variables/rows" + Query(("search", search)), filter);
+
+        return await GetOrNullAsync<VariableRowSet>(url, cancellationToken)
+            ?? throw new HttpRequestException(
+                "api/explorer/variables/rows answered 404: this Munin API predates the route.",
+                inner: null,
+                HttpStatusCode.NotFound);
+    }
+
+    // The opt-in to one row per (variable, datasamling); without it the API answers one per variable,
+    // which a deployed older package keys on (Fhi.Metadata-d07al.1).
+    private const string RowsPerDatasamling = "rader=datasamling";
+
+    private static readonly (string, string?) Rader = ("rader", "datasamling");
+
     public async Task<FilterOptions> GetFiltersAsync(
         string? search = null,
         VariableFilter? filter = null,
@@ -93,7 +113,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     {
         // The same narrowing the variable search was given, so the counts describe the list beside
         // them. The API is what makes a facet not narrow itself — see the remarks on the interface.
-        var url = WithFilter("api/explorer/filters" + Query(("search", search)), filter);
+        var url = WithFilter("api/explorer/filters" + Query(Rader, ("search", search)), filter);
 
         // No facets is a legitimate answer to a narrow search — same reasoning as an empty page.
         return await GetOrNullAsync<FilterOptions>(url, cancellationToken, language)
@@ -136,10 +156,19 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     public Task<VariableDetail?> GetVariableAsync(
         Guid id,
         bool includeHistorical = false,
+        CancellationToken cancellationToken = default) =>
+        GetVariableAsync(id, includeHistorical, datasamlingId: null, cancellationToken);
+
+    public Task<VariableDetail?> GetVariableAsync(
+        Guid id,
+        bool includeHistorical,
+        Guid? datasamlingId,
         CancellationToken cancellationToken = default)
     {
-        // Only sent when true: the API defaults to false, and a shorter URL caches better.
-        var url = $"api/explorer/variables/{id}" + (includeHistorical ? "?includeHistorical=true" : "");
+        // Only sent when set: the API defaults to false and to the primary datasamling, and a shorter URL caches better.
+        var url = $"api/explorer/variables/{id}" + Query(
+            ("includeHistorical", includeHistorical ? "true" : null),
+            ("datasamlingId", datasamlingId?.ToString("D")));
 
         return GetOrNullAsync<VariableDetail>(url, cancellationToken);
     }
@@ -247,6 +276,29 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             HttpMethod.Post, MyListVariables(id), new VariableIdsBody(variableIds), cancellationToken);
     }
 
+    public Task<bool> AddItemsToMyListAsync(
+        Guid id,
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        RefuseAnOversizedBatch(items.Count, nameof(items));
+
+        return SendForFoundAsync(HttpMethod.Post, MyListVariables(id), new ItemsBody(items), cancellationToken);
+    }
+
+    public Task<bool> RemoveItemsFromMyListAsync(
+        Guid id,
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        RefuseAnOversizedBatch(items.Count, nameof(items));
+
+        // A DELETE with a body, as RemoveVariablesFromMyListAsync explains.
+        return SendForFoundAsync(HttpMethod.Delete, MyListVariables(id), new ItemsBody(items), cancellationToken);
+    }
+
     public Task<bool> RemoveVariablesFromMyListAsync(
         Guid id,
         IReadOnlyCollection<Guid> variableIds,
@@ -264,11 +316,25 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <inheritdoc/>
-    public async Task<DesiredDataResult> SetMyListDesiredDataAsync(
+    public Task<DesiredDataResult> SetMyListDesiredDataAsync(
         Guid id,
         Guid variableId,
         string? freeText,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        WriteDesiredDataAsync(MyListVariableDesiredData(id, variableId), freeText, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<DesiredDataResult> SetMyListItemDesiredDataAsync(
+        Guid id,
+        Guid itemId,
+        string? freeText,
+        CancellationToken cancellationToken = default) =>
+        WriteDesiredDataAsync($"{MyList(id)}/items/{itemId}/desired-data", freeText, cancellationToken);
+
+    private async Task<DesiredDataResult> WriteDesiredDataAsync(
+        string route,
+        string? freeText,
+        CancellationToken cancellationToken)
     {
         // Trimmed here because the API trims before it measures, so a caller told "612 of 500" got
         // the number the API used rather than one counting whitespace it was about to drop.
@@ -281,8 +347,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         // rather than the empty string the trim produced, so "", "   " and null are one request.
         var body = new DesiredDataBody(clearing ? null : FreeTextType, clearing ? null : text);
 
-        using var response = await SendAsync(
-            HttpMethod.Put, MyListVariableDesiredData(id, variableId), body, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Put, route, body, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
@@ -313,17 +378,27 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <inheritdoc/>
-    public async Task<DesiredDataResult> SetMyListNotesAsync(
+    public Task<DesiredDataResult> SetMyListNotesAsync(
         Guid id,
         Guid variableId,
         string? text,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        WriteNotesAsync(MyListVariableNotes(id, variableId), text, cancellationToken);
+
+    /// <inheritdoc/>
+    public Task<DesiredDataResult> SetMyListItemNotesAsync(
+        Guid id,
+        Guid itemId,
+        string? text,
+        CancellationToken cancellationToken = default) =>
+        WriteNotesAsync($"{MyList(id)}/items/{itemId}/notes", text, cancellationToken);
+
+    private async Task<DesiredDataResult> WriteNotesAsync(string route, string? text, CancellationToken cancellationToken)
     {
         var trimmed = text?.Trim();
         var body = new NotesBody(string.IsNullOrEmpty(trimmed) ? null : trimmed);
 
-        using var response = await SendAsync(
-            HttpMethod.Put, MyListVariableNotes(id, variableId), body, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Put, route, body, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
@@ -396,6 +471,10 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
     private sealed record VariableIdsBody(
         [property: JsonPropertyName("variabelIds")] IReadOnlyCollection<Guid> VariableIds);
+
+    /// <summary>The (variable, datasamling) add and remove body; the pair's own wire names spell each item.</summary>
+    private sealed record ItemsBody(
+        [property: JsonPropertyName("items")] IReadOnlyCollection<VariableDatasamlingKey> Items);
 
     /// <summary>The "Ønskede data" body, spelled the way the API spells it.</summary>
     /// <remarks>
@@ -1030,11 +1109,12 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         [property: JsonPropertyName("dataType")] string? DataType,
         [property: JsonPropertyName("dataFrom")] DateTimeOffset? DataFrom,
         [property: JsonPropertyName("dataTo")] DateTimeOffset? DataTo,
-        [property: JsonPropertyName("versjonStatus")] string? VersionStatus)
+        [property: JsonPropertyName("versjonStatus")] string? VersionStatus,
+        [property: JsonPropertyName("datasamlingId")] Guid? DatasamlingId)
     {
         public static SharedItemBody From(VariableListItem item) => new(
             item.VariableId, item.VariableCode, item.VariableName, item.KildeId, item.KildeName,
             item.KildeShortName, item.DatasamlingName, item.VariabelgruppeName, item.DataType,
-            item.DataFrom, item.DataTo, item.VersionStatus);
+            item.DataFrom, item.DataTo, item.VersionStatus, item.DatasamlingId);
     }
 }

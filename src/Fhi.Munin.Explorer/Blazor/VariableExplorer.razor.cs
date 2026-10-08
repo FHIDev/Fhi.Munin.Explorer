@@ -167,6 +167,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Filter = _state.Filter with { DatasamlingIds = [id] },
             Page = 1,
             SelectedVariableId = null,
+            SelectedDatasamlingId = null,
         }).ToQueryString());
 
     private Func<Guid, string>? _instrumentAddress;
@@ -202,6 +203,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Search = null,
             Page = 1,
             SelectedVariableId = null,
+            SelectedDatasamlingId = null,
             SelectedInstrumentId = null,
         }).ToQueryString());
 
@@ -232,6 +234,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                     IncludeHistorical = VersionStatusRule.IsHistorical(item.VersionStatus),
                 },
                 SelectedVariableId = item.VariableId,
+                SelectedDatasamlingId = item.DatasamlingId,
             }).ToQueryString())).ToString();
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;
@@ -254,6 +257,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         {
             Search = Declined("search") ? null : state.Search,
             SelectedVariableId = Declined("variabelId") ? null : state.SelectedVariableId,
+            SelectedDatasamlingId = Declined("variabelId") || Declined("datasamlingId") ? null : state.SelectedDatasamlingId,
             SelectedInstrumentId = Declined("instrumentId") ? null : state.SelectedInstrumentId,
             ShareCode = Declined("delekode") ? null : state.ShareCode,
             Sort = Declined("sort") ? SortField.Default : state.Sort,
@@ -280,6 +284,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         public Guid? SelectedVariableId { get; set; }
 
+        public Guid? SelectedDatasamlingId { get; set; }
+
         public Guid? SelectedInstrumentId { get; set; }
 
         public string? ShareCode { get; set; }
@@ -293,6 +299,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Page = state.Page,
             PageSize = state.PageSize,
             SelectedVariableId = state.SelectedVariableId,
+            SelectedDatasamlingId = state.SelectedDatasamlingId,
             SelectedInstrumentId = state.SelectedInstrumentId,
             ShareCode = state.ShareCode,
         };
@@ -306,6 +313,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             Page = Page,
             PageSize = PageSize,
             SelectedVariableId = SelectedVariableId,
+            SelectedDatasamlingId = SelectedDatasamlingId,
             SelectedInstrumentId = SelectedInstrumentId,
             ShareCode = ShareCode,
         };

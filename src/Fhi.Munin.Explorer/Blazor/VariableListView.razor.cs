@@ -107,7 +107,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>The word "Ønskede data" in one row, which that row's field is named from.</summary>
     private string DesiredDataLabelId(VariableListItem item) =>
-        $"munin-explorer-list-desired-data-label-{_instance}-{item.VariableId:N}";
+        $"munin-explorer-list-desired-data-label-{_instance}-{ItemSuffix(item)}";
 
     /// <summary>
     /// The annotation field's accessible name, as two elements: the column's word, then the row's
@@ -177,7 +177,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// Reseeded from the API on every page read, which is the only thing that knows what was
     /// actually saved.
     /// </remarks>
-    private readonly Dictionary<Guid, string> _desiredData = [];
+    private readonly Dictionary<VariableDatasamlingKey, string> _desiredData = [];
 
     private DesiredDataFailure _desiredDataFailure;
 
@@ -187,7 +187,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// leaves before the first answer is back. Ordered by arrival, the first answer wins and marks
     /// a text that was accepted — with nothing after it to take the mark away again.
     /// </remarks>
-    private readonly Dictionary<Guid, int> _desiredDataWrites = [];
+    private readonly Dictionary<VariableDatasamlingKey, int> _desiredDataWrites = [];
 
     /// <summary>How many times the fields have been seeded from a page read.</summary>
     /// <remarks>
@@ -207,7 +207,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private DesiredDataRefusal? _desiredDataRefusal;
 
     /// <summary>One refused row: which list it is in, which row, and the ceiling to shorten to.</summary>
-    private sealed record DesiredDataRefusal(Guid ListId, Guid VariableId, int MaxLength);
+    private sealed record DesiredDataRefusal(Guid ListId, VariableDatasamlingKey VariableId, int MaxLength);
 
     /// <summary>How the last download ended, when it ended badly.</summary>
     /// <remarks>
@@ -371,7 +371,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         if (Shown(ListColumn.DataCollection))
         {
-            RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified, tableCell: true);
+            // The component's words for an item whose datasamling is not chosen, so unmarked; its panel holds the picker.
+            if (IsUnresolved(item))
+            {
+                RowCell.Write(builder, 300, T.FieldDataCollection, T.DatasamlingNotChosen, "dataCollection", T.NotSpecified, catalogue: false, tableCell: true);
+            }
+            else
+            {
+                RowCell.Write(builder, 300, T.FieldDataCollection, item.DatasamlingName, "dataCollection", T.NotSpecified, tableCell: true);
+            }
         }
 
         if (Shown(ListColumn.VariableGroup))
@@ -482,11 +490,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>The name cell of one row, which the row's remove button is named from.</summary>
     private string RowNameId(VariableListItem item) =>
-        $"munin-explorer-list-name-{_instance}-{item.VariableId:N}";
+        $"munin-explorer-list-name-{_instance}-{ItemSuffix(item)}";
 
     /// <summary>The remove button of one row, which names itself from its own words first.</summary>
     private string RemoveButtonId(VariableListItem item) =>
-        $"munin-explorer-list-remove-{_instance}-{item.VariableId:N}";
+        $"munin-explorer-list-remove-{_instance}-{ItemSuffix(item)}";
 
     /// <summary>
     /// The remove button's accessible name, as two elements: its own word, then the row's name.
@@ -930,7 +938,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _page = failed ? null : read;
 
         // Removed elsewhere, or paged away from: an open panel must not come back with stale detail.
-        if (_openId is { } open && _page?.Items.Any(item => item.VariableId == open) != true)
+        if (_openId is { } open && _page?.Items.Any(item => VariableDatasamlingKey.Of(item) == open) != true)
         {
             CloseRow();
         }
@@ -980,7 +988,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         foreach (var item in _page.Items)
         {
-            _desiredData[item.VariableId] = item.DesiredDataFreeText ?? "";
+            _desiredData[VariableDatasamlingKey.Of(item)] = item.DesiredDataFreeText ?? "";
         }
 
         if (refused is null)
@@ -1002,7 +1010,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>What the annotation field for one row shows.</summary>
     private string DesiredDataOf(VariableListItem item) =>
-        _desiredData.TryGetValue(item.VariableId, out var text) ? text : item.DesiredDataFreeText ?? "";
+        _desiredData.TryGetValue(VariableDatasamlingKey.Of(item), out var text) ? text : item.DesiredDataFreeText ?? "";
 
     /// <summary>
     /// <c>"true"</c> for the one row the API last refused, and nothing at all for the rest.
@@ -1012,7 +1020,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// wrong, but it is announced on some readers, so forty rows would say "valid" forty times.
     /// </remarks>
     private string? DesiredDataInvalid(VariableListItem item) =>
-        _desiredDataRefusal?.VariableId == item.VariableId ? "true" : null;
+        _desiredDataRefusal?.VariableId == VariableDatasamlingKey.Of(item) ? "true" : null;
 
     /// <summary>
     /// The refusal sentence's id for the one refused field, and nothing at all for the rest.
@@ -1024,7 +1032,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// row's text.
     /// </remarks>
     private string? DesiredDataDescribedBy(VariableListItem item) =>
-        _desiredDataRefusal?.VariableId == item.VariableId ? DesiredDataRefusalId : null;
+        _desiredDataRefusal?.VariableId == VariableDatasamlingKey.Of(item) ? DesiredDataRefusalId : null;
 
     /// <summary>
     /// Writes one row's annotation, or clears it, and says so when the API will not have it.
@@ -1035,8 +1043,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// stored value instead would empty the field, which is the one thing a reader who has just
     /// typed 500 characters cannot recover from.
     /// </remarks>
-    private async Task SaveDesiredDataAsync(Guid variableId, string? text)
+    private async Task SaveDesiredDataAsync(VariableListItem item, string? text)
     {
+        var variableId = VariableDatasamlingKey.Of(item);
+
         if (_shownList is null)
         {
             return;
@@ -1069,7 +1079,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         try
         {
-            var result = await Client.SetMyListDesiredDataAsync(list, variableId, trimmed);
+            // By item where the API names one: the variable's own route refuses once it is in the list twice.
+            var result = item.ItemId is { } itemId
+                ? await Client.SetMyListItemDesiredDataAsync(list, itemId, trimmed)
+                : await Client.SetMyListDesiredDataAsync(list, item.VariableId, trimmed);
 
             switch (result)
             {
@@ -1097,7 +1110,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             Log?.LogWarning(
                 ex,
                 "the rate limiter refused the annotation of variable {VariableId} in list {ListId}",
-                variableId,
+                item.VariableId,
                 list);
 
             failure = DesiredDataFailure.Throttled;
@@ -1108,7 +1121,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             Log?.LogWarning(
                 ex,
                 "the API refused the annotation of variable {VariableId} in list {ListId} as unauthorised",
-                variableId,
+                item.VariableId,
                 list);
 
             failure = DesiredDataFailure.Failed;
@@ -1121,7 +1134,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             Log?.LogError(
                 ex,
                 "could not write the annotation of variable {VariableId} in list {ListId}",
-                variableId,
+                item.VariableId,
                 list);
 
             failure = DesiredDataFailure.Failed;
@@ -1480,8 +1493,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         await ShowActiveListAsync();
     }
 
-    private async Task RemoveAsync(Guid variableId)
+    private async Task RemoveAsync(VariableListItem item)
     {
+        var variableId = item.VariableId;
+        var key = VariableDatasamlingKey.Of(item);
+
         if (State is null || _shownList is null)
         {
             return;
@@ -1494,15 +1510,20 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         try
         {
             // The holder raises Changed, and OnStateChanged re-reads the page — so no fetch here.
-            if (await State.RemoveVariablesAsync(list, [variableId]))
+            // By item from an API that keys items by datasamling, so the variable's other items stay.
+            var removed = item.ItemId is null
+                ? await State.RemoveVariablesAsync(list, [variableId])
+                : await State.RemoveItemsAsync(list, [key]);
+
+            if (removed)
             {
                 // Only the row it was removed from: the same variable may be open in another list by now.
-                if (_openId == variableId && _openListId == list)
+                if (_openId == key && _openListId == list)
                 {
                     CloseRow();
                 }
 
-                ForgetNotesFor(list, variableId);
+                ForgetNotesFor(list, key);
 
                 await RetreatFromEmptyPageAsync();
             }
@@ -1686,7 +1707,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>Every item in the list, unnarrowed, 1000 at a time; null when the list is gone.</summary>
     private async Task<List<VariableListItem>?> ReadWholeListAsync(Guid list)
     {
-        var seen = new HashSet<Guid>();
+        var seen = new HashSet<VariableDatasamlingKey>();
         var items = new List<VariableListItem>();
         var page = 1;
 
@@ -1704,7 +1725,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 break;
             }
 
-            items.AddRange(slice.Items.Where(item => seen.Add(item.VariableId)));
+            items.AddRange(slice.Items.Where(item => seen.Add(VariableDatasamlingKey.Of(item))));
 
             if (items.Count >= slice.TotalCount)
             {

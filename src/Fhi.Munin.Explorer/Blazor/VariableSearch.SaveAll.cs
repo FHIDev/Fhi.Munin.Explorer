@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
-/// <summary>«Lagre disse variablene»: the whole search result, every page, into the active list.</summary>
+/// <summary>«Lagre disse variablene»: the whole search result, every page, into the active list, row by row.</summary>
 public partial class VariableSearch
 {
     /// <summary>A result this large asks before it is saved, as ADO 118713 specifies.</summary>
@@ -27,7 +27,7 @@ public partial class VariableSearch
     private bool _disposed;
     private ElementReference _saveAllButton;
 
-    private readonly HashSet<Guid> _noticeRows = [];
+    private readonly HashSet<VariableDatasamlingKey> _noticeRows = [];
     private string _noticeList = "";
     private int _noticeReader;
     private CancellationTokenSource? _noticeTimer;
@@ -221,28 +221,30 @@ public partial class VariableSearch
 
         try
         {
-            var ids = await Client.GetVariableIdsAsync(query.Search, query.Filter);
+            var rows = await RowsToSaveAsync(query);
 
-            if (ids.TooMany)
+            if (rows.TooMany)
             {
-                _saveAll = Outcome(tooManyFrom: ids.MaxIds);
+                _saveAll = Outcome(tooManyFrom: rows.MaxRows);
                 return;
             }
 
             // The result emptied between the count on screen and the press: nothing to save, and no list to make.
-            if (ids.Ids.Count == 0)
+            if (rows.Rows.Count == 0)
             {
                 _saveAll = Outcome() with { Empty = true };
                 return;
             }
 
-            // These ids are the last reader's search; a reader who signed in meanwhile did not ask for them.
+            // These rows are the last reader's search; a reader who signed in meanwhile did not ask for them.
             if (state.Reader != reader)
             {
                 return;
             }
 
-            var result = await state.SaveAllAsync(ids.Ids, T.FirstListName);
+            var result = rows.ByVariable
+                ? await state.SaveAllAsync([.. rows.Rows.Select(r => r.VariableId).Distinct()], T.FirstListName)
+                : await state.SaveAllItemsAsync(rows.Rows, T.FirstListName);
 
             if (result is null)
             {
@@ -250,9 +252,13 @@ public partial class VariableSearch
                 return;
             }
 
-            _saveAll = Outcome(saved: result.Added?.Count, list: result.ListName);
+            var added = rows.ByVariable
+                ? result.Added?.SelectMany(id => rows.Rows.Where(r => r.VariableId == id)).ToList()
+                : result.AddedItems;
+
+            _saveAll = Outcome(saved: added?.Count, list: result.ListName);
             // Unknown when the list could not be read: rows it already held must not read as new.
-            ShowSavedNotices(result.Added ?? [], result.ListName, reader);
+            ShowSavedNotices(added ?? [], result.ListName, reader);
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -275,7 +281,34 @@ public partial class VariableSearch
         }
     }
 
-    private void ShowSavedNotices(IReadOnlyCollection<Guid> rows, string list, int reader)
+    // Every row the search matches. An API or a host client older than the rows route answers with the
+    // variables instead, saved without a datasamling, which is what that API stores anyway.
+    private async Task<(IReadOnlyList<VariableDatasamlingKey> Rows, bool TooMany, int MaxRows, bool ByVariable)> RowsToSaveAsync(SaveAllQuery query)
+    {
+        try
+        {
+            var rows = await Client.GetVariableRowsAsync(query.Search, query.Filter);
+
+            return (rows.Rows, rows.TooMany, rows.MaxRows, ByVariable: false);
+        }
+        catch (NotSupportedException ex)
+        {
+            Log?.LogWarning(ex, "the client has no rows route, so the whole result is saved by variable");
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            Log?.LogWarning(ex, "the API has no rows route, so the whole result is saved by variable");
+        }
+
+        var ids = await Client.GetVariableIdsAsync(query.Search, query.Filter);
+
+        return ([.. ids.Ids.Select(id => _result?.Items.FirstOrDefault(v => v.Id == id) is { } row
+                ? VariableDatasamlingKey.Of(row)
+                : new VariableDatasamlingKey(id, null))],
+            ids.TooMany, ids.MaxIds, ByVariable: true);
+    }
+
+    private void ShowSavedNotices(IReadOnlyCollection<VariableDatasamlingKey> rows, string list, int reader)
     {
         StopSavedNotices();
 
@@ -320,7 +353,8 @@ public partial class VariableSearch
     }
 
     private bool ShowsSavedNotice(VariableSummary v) =>
-        _noticeRows.Contains(v.Id) && ListState is { } state && state.Reader == _noticeReader && state.IsSaved(v.Id);
+        _noticeRows.Contains(VariableDatasamlingKey.Of(v)) && ListState is { } state && state.Reader == _noticeReader
+        && IsRowSaved(v);
 
     private void StopSavedNotices()
     {

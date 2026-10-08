@@ -18,7 +18,7 @@ public sealed partial class VariableListView
     [Parameter] public Func<VariableListItem, string?>? VariableHref { get; set; }
 
     // One row open at a time, and only in the list it was opened in.
-    private Guid? _openId;
+    private VariableDatasamlingKey? _openId;
     private Guid? _openListId;
     private VariableDetail? _openDetail;
     private string? _openError;
@@ -32,15 +32,15 @@ public sealed partial class VariableListView
 
     // What this session wrote per list and variable: saved text bridges until the page is read
     // again, and unsaved text (refused or failed) stays until written again, as Ønskede data's does.
-    private readonly Dictionary<(Guid List, Guid Variable), NotesWrite> _notesWritten = [];
-    private readonly Dictionary<(Guid List, Guid Variable), int> _notesWrites = [];
+    private readonly Dictionary<(Guid List, VariableDatasamlingKey Variable), NotesWrite> _notesWritten = [];
+    private readonly Dictionary<(Guid List, VariableDatasamlingKey Variable), int> _notesWrites = [];
 
     // One write out per row at a time, the newest text waiting behind it, so the API keeps the latest.
-    private readonly HashSet<(Guid List, Guid Variable)> _notesInFlight = [];
-    private readonly Dictionary<(Guid List, Guid Variable), string> _notesQueued = [];
+    private readonly HashSet<(Guid List, VariableDatasamlingKey Variable)> _notesInFlight = [];
+    private readonly Dictionary<(Guid List, VariableDatasamlingKey Variable), string> _notesQueued = [];
 
     private DesiredDataFailure _notesFailure;
-    private (Guid List, Guid Variable)? _notesFailureKey;
+    private (Guid List, VariableDatasamlingKey Variable)? _notesFailureKey;
 
     private sealed record NotesWrite(
         string Text, bool Saved, int? RefusedMax, bool Pending = false,
@@ -50,18 +50,22 @@ public sealed partial class VariableListView
 
     private static bool IsOrphan(VariableListItem item) => string.IsNullOrWhiteSpace(item.VariableName);
 
-    private bool IsOpen(VariableListItem item) => _openId == item.VariableId && _openListId == _shownList;
+    private bool IsOpen(VariableListItem item) => _openId == VariableDatasamlingKey.Of(item) && _openListId == _shownList;
 
-    private string RowPanelId(VariableListItem item) => $"munin-explorer-list-panel-{_instance}-{item.VariableId:N}";
+    // The id half that tells two items of one variable apart; just the variable for an item with no datasamling.
+    private static string ItemSuffix(VariableListItem item) =>
+        item.DatasamlingId is { } datasamling ? $"{item.VariableId:N}-{datasamling:N}" : item.VariableId.ToString("N");
+
+    private string RowPanelId(VariableListItem item) => $"munin-explorer-list-panel-{_instance}-{ItemSuffix(item)}";
 
     private string RowPanelHeadingId(VariableListItem item) =>
-        $"munin-explorer-list-panel-heading-{_instance}-{item.VariableId:N}";
+        $"munin-explorer-list-panel-heading-{_instance}-{ItemSuffix(item)}";
 
     private string RowLinkFieldId(VariableListItem item) =>
-        $"munin-explorer-list-link-{_instance}-{item.VariableId:N}";
+        $"munin-explorer-list-link-{_instance}-{ItemSuffix(item)}";
 
     private string RowShareHeadingId(VariableListItem item) =>
-        $"munin-explorer-list-share-{_instance}-{item.VariableId:N}";
+        $"munin-explorer-list-share-{_instance}-{ItemSuffix(item)}";
 
     // Drawn from the row, so the region has its name while the fetch is in flight.
     private RenderFragment RowPanelHeading(VariableListItem item) => builder =>
@@ -97,13 +101,14 @@ public sealed partial class VariableListView
             return;
         }
 
-        _openId = item.VariableId;
+        _openId = VariableDatasamlingKey.Of(item);
         _openListId = _shownList;
         _openTab = PanelTab.Data;
         ForgetLinkStatus();
+        ForgetPicker();
         _notesDraft = OpenNotesWrite is { } written ? written.Text : item.Notes ?? "";
 
-        await LoadRowDetailAsync(item.VariableId, VersionStatusRule.IsHistorical(item.VersionStatus));
+        await LoadRowDetailAsync(item.VariableId, VersionStatusRule.IsHistorical(item.VersionStatus), item.DatasamlingId);
     }
 
     private void CloseRow()
@@ -119,7 +124,8 @@ public sealed partial class VariableListView
         _openGeneration++;
     }
 
-    private async Task LoadRowDetailAsync(Guid id, bool historical)
+    // The item's own datasamling, so its period and its Data tab's statistics are that datasamling's.
+    private async Task LoadRowDetailAsync(Guid id, bool historical, Guid? datasamlingId)
     {
         var generation = ++_openGeneration;
 
@@ -131,7 +137,9 @@ public sealed partial class VariableListView
 
         try
         {
-            var detail = await Client.GetVariableAsync(id, includeHistorical: historical);
+            var detail = datasamlingId is { } datasamling
+                ? await Client.GetVariableAsync(id, historical, datasamling)
+                : await Client.GetVariableAsync(id, includeHistorical: historical);
 
             if (_openGeneration != generation)
             {
@@ -256,7 +264,7 @@ public sealed partial class VariableListView
     }
 
     private string RowDesiredDataId(VariableListItem item) =>
-        $"munin-explorer-list-panel-desired-{_instance}-{item.VariableId:N}";
+        $"munin-explorer-list-panel-desired-{_instance}-{ItemSuffix(item)}";
 
     private string RowDesiredDataHintId(VariableListItem item) => $"{RowDesiredDataId(item)}-hint";
 
@@ -265,7 +273,7 @@ public sealed partial class VariableListView
         DesiredDataDescribedBy(item) is { } refusal ? $"{RowDesiredDataHintId(item)} {refusal}" : RowDesiredDataHintId(item);
 
     private string RowNotesId(VariableListItem item) =>
-        $"munin-explorer-list-panel-notes-{_instance}-{item.VariableId:N}";
+        $"munin-explorer-list-panel-notes-{_instance}-{ItemSuffix(item)}";
 
     private string RowNotesStatusId(VariableListItem item) => $"{RowNotesId(item)}-status";
 
@@ -289,7 +297,7 @@ public sealed partial class VariableListView
 
     // A variable leaving the list takes its unsaved notes with it, so they cannot return on a re-add.
     // The write count moves on rather than restarting, so a save still out can never pass for a newer one.
-    private void ForgetNotesFor(Guid list, Guid variable)
+    private void ForgetNotesFor(Guid list, VariableDatasamlingKey variable)
     {
         _notesWritten.Remove((list, variable));
         _notesQueued.Remove((list, variable));
@@ -306,7 +314,7 @@ public sealed partial class VariableListView
             _ => null,
         };
 
-    private (Guid List, Guid Variable)? OpenNotesKey =>
+    private (Guid List, VariableDatasamlingKey Variable)? OpenNotesKey =>
         _openId is { } variable && _shownList is { } list ? (list, variable) : null;
 
     // A page read is what the API holds: saved text no longer needs bridging, and an open field
@@ -320,7 +328,7 @@ public sealed partial class VariableListView
 
         if (OpenNotesKey is { } open
             && !_notesWritten.ContainsKey(open)
-            && _page?.Items.FirstOrDefault(item => item.VariableId == open.Variable) is { } read)
+            && _page?.Items.FirstOrDefault(item => VariableDatasamlingKey.Of(item) == open.Variable) is { } read)
         {
             _notesDraft = read.Notes ?? "";
         }
@@ -333,7 +341,7 @@ public sealed partial class VariableListView
             return;
         }
 
-        var key = (list, item.VariableId);
+        var key = (list, VariableDatasamlingKey.Of(item));
         var next = text?.Trim() ?? "";
 
         _notesDraft = next;
@@ -353,7 +361,7 @@ public sealed partial class VariableListView
                 var sequence = _notesWrites.GetValueOrDefault(key) + 1;
                 _notesWrites[key] = sequence;
 
-                var (written, failure) = await WriteNotesAsync(list, item.VariableId, next);
+                var (written, failure) = await WriteNotesAsync(list, item, next);
 
                 // A removal, or a newer text waiting to go, makes this answer one about the past.
                 if (_notesWrites.GetValueOrDefault(key) == sequence && !_notesQueued.ContainsKey(key))
@@ -375,11 +383,16 @@ public sealed partial class VariableListView
         }
     }
 
-    private async Task<(NotesWrite Written, DesiredDataFailure Failure)> WriteNotesAsync(Guid list, Guid variable, string text)
+    private async Task<(NotesWrite Written, DesiredDataFailure Failure)> WriteNotesAsync(Guid list, VariableListItem item, string text)
     {
+        var variable = item.VariableId;
+
         try
         {
-            var result = await Client.SetMyListNotesAsync(list, variable, text);
+            // By item where the API names one: the variable's own route refuses once it is in the list twice.
+            var result = item.ItemId is { } itemId
+                ? await Client.SetMyListItemNotesAsync(list, itemId, text)
+                : await Client.SetMyListNotesAsync(list, variable, text);
 
             return result switch
             {
@@ -407,7 +420,7 @@ public sealed partial class VariableListView
 
     // Said under the field while it is on screen (Georgi, 2026-10-05); otherwise in the list's alert,
     // only ever set there, and only for the list the reader is still on.
-    private void Land((Guid List, Guid Variable) key, NotesWrite written, DesiredDataFailure failure)
+    private void Land((Guid List, VariableDatasamlingKey Variable) key, NotesWrite written, DesiredDataFailure failure)
     {
         _notesWritten[key] = written;
 

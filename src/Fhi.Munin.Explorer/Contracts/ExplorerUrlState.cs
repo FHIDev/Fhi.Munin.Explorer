@@ -51,6 +51,13 @@ public sealed record ExplorerUrlState
     /// </remarks>
     public Guid? SelectedVariableId { get; init; }
 
+    /// <summary>
+    /// The datasamling of the open row, written as <c>datasamlingId</c> beside <c>variabelId</c>: a
+    /// variable has a row per datasamling, so the variable alone does not name the row. A link without
+    /// it opens the variable's first row. Never written without <see cref="SelectedVariableId"/>.
+    /// </summary>
+    public Guid? SelectedDatasamlingId { get; init; }
+
     /// <summary>The instrument whose page is open, or null when the reader is not on one.</summary>
     /// <remarks>
     /// An instrument opens as a view in place of the search, the same drill-in move a whole
@@ -158,6 +165,11 @@ public sealed record ExplorerUrlState
         if (SelectedVariableId is { } selected)
         {
             Append(query, "variabelId", selected.ToString());
+
+            if (SelectedDatasamlingId is { } datasamling)
+            {
+                Append(query, "datasamlingId", datasamling.ToString());
+            }
         }
 
         if (SelectedInstrumentId is { } instrument)
@@ -264,6 +276,12 @@ public sealed record ExplorerUrlState
             return Guid.TryParse(value, out var variable) ? state with { SelectedVariableId = variable } : state;
         }
 
+        // On the same terms as the variable; a datasamling it has no row in leaves the row closed.
+        if (Is(name, "datasamlingId"))
+        {
+            return Guid.TryParse(value, out var datasamling) ? state with { SelectedDatasamlingId = datasamling } : state;
+        }
+
         // Read on the same terms, and dropped the same way: an instrument the API does not publish
         // is reported back as null by the component once it has asked.
         if (Is(name, "instrumentId"))
@@ -295,11 +313,11 @@ public sealed record ExplorerUrlState
     /// component to leave alone. <c>variabelId</c> and <c>instrumentId</c> are in here for that
     /// reason too: a host with a variable or instrument page of its own plausibly already means
     /// something by either, and so is <c>delekode</c>, which a host may already use for sharing
-    /// of its own.
+    /// of its own. <c>datasamlingId</c> goes with <c>variabelId</c>; declining either leaves both out.
     /// </remarks>
     public static IReadOnlySet<string> ScalarQueryKeys { get; } =
         new HashSet<string>(
-            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "instrumentId", "delekode"],
+            ["search", "sort", "sortDir", "page", "pageSize", "variabelId", "datasamlingId", "instrumentId", "delekode"],
             StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The keys this type reads and writes, so a host can tell them from its own.</summary>

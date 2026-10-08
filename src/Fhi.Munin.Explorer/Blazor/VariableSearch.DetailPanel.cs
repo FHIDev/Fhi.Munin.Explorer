@@ -8,7 +8,7 @@ public partial class VariableSearch
 {
 
     /// <summary>Whether this row is the one whose detail panel is open.</summary>
-    private bool IsSelected(VariableSummary v) => _selectedId == v.Id;
+    private bool IsSelected(VariableSummary v) => _selected == VariableDatasamlingKey.Of(v);
 
     /// <summary>The open panel's description, trimmed, or null while there is none to show.</summary>
     private string? DetailDescription => DisplayText.Trimmed(_detail?.Description);
@@ -50,7 +50,7 @@ public partial class VariableSearch
     // below, the level VariableView gives its own metadata groups. (Fhi.Metadata-35w0p.81)
     private int WholeGroupLevel => Math.Clamp(RowLevel + 2, 1, 6);
 
-    private string DrawerHeadingId(VariableSummary v) => $"munin-explorer-meta-heading-{_instance}-{v.Id:N}";
+    private string DrawerHeadingId(VariableSummary v) => $"munin-explorer-meta-heading-{_instance}-{RowSuffix(v)}";
 
     // Drawn from the row rather than the detail payload, so the region has its name while the fetch
     // is still in flight. Stiler scopes the rule under .munin-explorer-meta, so it must stay inside

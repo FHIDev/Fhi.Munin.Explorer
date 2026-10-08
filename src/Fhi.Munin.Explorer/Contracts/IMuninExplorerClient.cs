@@ -40,11 +40,17 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// </remarks>
 public interface IMuninExplorerClient
 {
-    /// <summary>Search published variables.</summary>
+    /// <summary>Search published variables: one row per variable and datasamling it is delivered from.</summary>
     /// <remarks>
     /// The server orders with the variable code as a secondary key, so rows sharing a value come
     /// back in the same sequence every time — which is what keeps paging through a sorted result
-    /// from showing the same variable twice.
+    /// from showing the same row twice.
+    /// <para>
+    /// A variable in three datasamlinger is three rows sharing one <see cref="VariableSummary.Id"/>,
+    /// each with that datasamling's period and statistics flag; <see cref="VariableSummary.RowKey"/>
+    /// tells them apart and <see cref="Page{T}.TotalCount"/> counts rows. An API older than the
+    /// opt-in answers one row per variable, with <see cref="VariableSummary.RowKey"/> null.
+    /// </para>
     /// </remarks>
     /// <param name="search">Free-text search. Null or empty returns unfiltered results.</param>
     /// <param name="filter">Facet narrowing on top of the search. Null, or <see cref="VariableFilter.None"/>, narrows nothing.</param>
@@ -62,7 +68,10 @@ public interface IMuninExplorerClient
         SortDirection direction = SortDirection.Ascending,
         CancellationToken cancellationToken = default);
 
-    /// <summary>The ids <see cref="SearchVariablesAsync"/> would page through, unpaged. The default throws: this interface is on the feed.</summary>
+    /// <summary>
+    /// The distinct variable ids a search matches, unpaged. Not the rows <see cref="SearchVariablesAsync"/>
+    /// pages through — see <see cref="GetVariableRowsAsync"/>. The default throws: this interface is on the feed.
+    /// </summary>
     Task<VariableIdSet> GetVariableIdsAsync(
         string? search,
         VariableFilter? filter = null,
@@ -72,7 +81,28 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
-    /// Fetch the filter facets and their counts.
+    /// The (variable, datasamling) rows <see cref="SearchVariablesAsync"/> would page through, unpaged,
+    /// for saving a whole result row by row.
+    /// </summary>
+    /// <remarks>
+    /// Throws <see cref="HttpRequestException"/> with <see cref="System.Net.HttpStatusCode.NotFound"/>
+    /// from an API older than the route. The default throws <see cref="NotSupportedException"/>: this
+    /// interface is on the feed, and a host implementing it keeps building on the upgrade.
+    /// </remarks>
+    /// <param name="search">Same free-text search as <see cref="SearchVariablesAsync"/>.</param>
+    /// <param name="filter">Same narrowing as <see cref="SearchVariablesAsync"/>.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    Task<VariableRowSet> GetVariableRowsAsync(
+        string? search,
+        VariableFilter? filter = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(GetVariableRowsAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// Fetch the filter facets and their counts. The counts count rows, as
+    /// <see cref="SearchVariablesAsync"/> does, so a facet total equals the list total.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -204,6 +234,27 @@ public interface IMuninExplorerClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Fetch one variable as delivered from one datasamling: that datasamling's period, statistics
+    /// type and statistics. Null when not published, or not in that datasamling.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="DatasamlingReference.DataFrom"/> and <see cref="DatasamlingReference.DataTo"/> are
+    /// filled for every datasamling in the answer. The default ignores
+    /// <paramref name="datasamlingId"/> and answers the variable as <see cref="GetVariableAsync(Guid, bool, CancellationToken)"/>
+    /// does, so a host implementing this interface keeps building and still draws a detail.
+    /// </remarks>
+    /// <param name="id">The variable's id.</param>
+    /// <param name="includeHistorical">As on the overload without a datasamling.</param>
+    /// <param name="datasamlingId">The datasamling; null is the variable's primary one, as the other overload answers.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    Task<VariableDetail?> GetVariableAsync(
+        Guid id,
+        bool includeHistorical,
+        Guid? datasamlingId,
+        CancellationToken cancellationToken = default) =>
+        GetVariableAsync(id, includeHistorical, cancellationToken);
+
+    /// <summary>
     /// Fetch every published version of a variable, newest and oldest alike. Empty when the
     /// variable does not exist.
     /// </summary>
@@ -216,7 +267,7 @@ public interface IMuninExplorerClient
     /// publishes none for it.
     /// </summary>
     /// <remarks>
-    /// Its own call rather than part of <see cref="GetVariableAsync"/>, because a kodeverk can run
+    /// Its own call rather than part of <see cref="GetVariableAsync(Guid, bool, CancellationToken)"/>, because a kodeverk can run
     /// to hundreds of codes and most readers never open one. Ask for it when a reader says so.
     /// <para>
     /// Null covers three cases the caller cannot usefully tell apart, and all of which read as "no
@@ -363,8 +414,44 @@ public interface IMuninExplorerClient
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Remove variables from one of the signed-in user's lists. False when they have no list with
-    /// that id.
+    /// Add (variable, datasamling) items to one of the signed-in user's lists. False when they have
+    /// no list with that id.
+    /// </summary>
+    /// <remarks>
+    /// The API refuses a datasamling that is not one of the variable's own with a <c>400</c>, which
+    /// throws. An item the list already holds is skipped, as with <see cref="AddVariablesToMyListAsync"/>.
+    /// The default sends the variables through <see cref="AddVariablesToMyListAsync"/>, which saves a
+    /// variable's one open datasamling and is refused for a variable in several.
+    /// </remarks>
+    /// <param name="id">The list to add to.</param>
+    /// <param name="items">The items, at most <see cref="MaxVariablesPerBatch"/>, refused before sending otherwise.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    Task<bool> AddItemsToMyListAsync(
+        Guid id,
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        CancellationToken cancellationToken = default) =>
+        AddVariablesToMyListAsync(id, [.. items.Select(i => i.VariableId).Distinct()], cancellationToken);
+
+    /// <summary>
+    /// Remove (variable, datasamling) items from one of the signed-in user's lists, leaving the same
+    /// variable from another datasamling where it is. False when they have no list with that id.
+    /// </summary>
+    /// <remarks>
+    /// The default sends the variables through <see cref="RemoveVariablesFromMyListAsync"/>, which
+    /// takes each variable out from every datasamling.
+    /// </remarks>
+    /// <param name="id">The list to remove from.</param>
+    /// <param name="items">The items, at most <see cref="MaxVariablesPerBatch"/>.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    Task<bool> RemoveItemsFromMyListAsync(
+        Guid id,
+        IReadOnlyCollection<VariableDatasamlingKey> items,
+        CancellationToken cancellationToken = default) =>
+        RemoveVariablesFromMyListAsync(id, [.. items.Select(i => i.VariableId).Distinct()], cancellationToken);
+
+    /// <summary>
+    /// Remove variables from one of the signed-in user's lists, from every datasamling they were
+    /// saved from. False when they have no list with that id.
     /// </summary>
     /// <remarks>
     /// Removing an id the list does not hold is not an error either, for the same reason adding a
@@ -416,6 +503,40 @@ public interface IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(SetMyListDesiredDataAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// <see cref="SetMyListDesiredDataAsync"/> for one item, by <see cref="VariableListItem.ItemId"/>:
+    /// the route that still answers when the variable is in the list from several datasamlinger,
+    /// where the variable's own route answers <c>409</c>.
+    /// </summary>
+    /// <remarks>The default refuses, for the reason <see cref="SetMyListDesiredDataAsync"/>'s does.</remarks>
+    /// <param name="id">The list the item is in.</param>
+    /// <param name="itemId">The item.</param>
+    /// <param name="freeText">Null, empty or whitespace clears the annotation.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    Task<DesiredDataResult> SetMyListItemDesiredDataAsync(
+        Guid id,
+        Guid itemId,
+        string? freeText,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(SetMyListItemDesiredDataAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary><see cref="SetMyListNotesAsync"/> for one item, by <see cref="VariableListItem.ItemId"/>.</summary>
+    /// <remarks>The default refuses, for the reason <see cref="SetMyListDesiredDataAsync"/>'s does.</remarks>
+    /// <param name="id">The list the item is in.</param>
+    /// <param name="itemId">The item.</param>
+    /// <param name="text">Null, empty or whitespace clears the notes.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    Task<DesiredDataResult> SetMyListItemNotesAsync(
+        Guid id,
+        Guid itemId,
+        string? text,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(SetMyListItemNotesAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>

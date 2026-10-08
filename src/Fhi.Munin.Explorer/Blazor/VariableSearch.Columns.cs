@@ -45,8 +45,8 @@ public partial class VariableSearch
     /// <summary>The columns that say something about the variable, which is all the last-column rule counts.</summary>
     private static readonly ResultColumn[] DataColumns = OptionalColumns;
 
-    /// <summary>What the picker lists.</summary>
-    private IEnumerable<ResultColumn> OfferedColumns => OptionalColumns;
+    /// <summary>What the picker lists: not Datasamling, which tells a variable's rows apart (Fhi.Metadata-d07al.1).</summary>
+    private IEnumerable<ResultColumn> OfferedColumns => OptionalColumns.Where(c => c != ResultColumn.Datasamling);
 
     /// <summary>
     /// The columns the reader has turned off, seeded with the one that starts off.
@@ -87,6 +87,7 @@ public partial class VariableSearch
     private bool ColumnVisible(ResultColumn column) => column switch
     {
         ResultColumn.SaveToList => ShowSaveButton,
+        ResultColumn.Datasamling => true,
         ResultColumn.Status when !_statusColumnChosen =>
             ShowStatusColumn || StatusIsAllThatIsLeft || _statusShownForSort,
         _ => !_hiddenColumns.Contains(column),

@@ -38,6 +38,74 @@ public class ContractCoverageTest
         Covers<Page<VariableSummary>>("variables.json");
 
     [Fact]
+    public void VariableRows_WhenReadFromTheDocumentedResponse_ThenEveryFieldIsCovered()
+    {
+        // Inline: GET variables/rows answers only behind "Lagre alle", and its shape is PR 2's
+        // ExplorerVariabelRaderResult (Fhi.Metadata-d07al.1).
+        var rows = JsonSerializer.Deserialize<VariableRowSet>(
+            """
+            {
+              "rader": [
+                { "variabelId": "bc8a6515-af36-44d0-aa10-b498813327b4", "datasamlingId": "0c027ce6-2994-45bf-99ec-facad3d1703e" },
+                { "variabelId": "83ced574-6d32-447e-ad65-c54c63327476", "datasamlingId": null }
+              ],
+              "tooMany": false,
+              "maxRader": 2000
+            }
+            """,
+            Strict);
+
+        Assert.Equal(2, rows!.Rows.Count);
+        Assert.Null(rows.Rows[1].DatasamlingId);
+    }
+
+    [Fact]
+    public void DetailFromADatasamling_WhenEachDatasamlingCarriesItsPeriod_ThenItIsCovered()
+    {
+        // ?datasamlingId= adds dataFrom/dataTo to every alleDatasamlinger entry; the capture is the default shape.
+        var detail = JsonSerializer.Deserialize<VariableDetail>(
+            """
+            {
+              "alleDatasamlinger": [
+                {
+                  "id": "0c027ce6-2994-45bf-99ec-facad3d1703e",
+                  "name": "Lungekreft",
+                  "validFrom": "2020-01-01T00:00:00",
+                  "validTo": null,
+                  "dataFrom": "2002-01-01T00:00:00",
+                  "dataTo": null
+                }
+              ]
+            }
+            """,
+            Strict);
+
+        Assert.Equal(2002, detail!.AllDatasamlinger.Single().DataFrom?.Year);
+    }
+
+    [Fact]
+    public void UnresolvedListItem_WhenTheApiOffersItsCandidates_ThenEveryFieldIsCovered()
+    {
+        // An item saved before items named a datasamling, whose variable has several; the capture holds none.
+        var item = JsonSerializer.Deserialize<VariableListItem>(
+            """
+            {
+              "variabelId": "bc8a6515-af36-44d0-aa10-b498813327b4",
+              "itemId": "5d0e2b71-94c3-4a8f-b1e6-7c2f9a3d4e15",
+              "datasamlingId": null,
+              "datasamlingCode": null,
+              "candidateDatasamlinger": [
+                { "id": "0c027ce6-2994-45bf-99ec-facad3d1703e", "name": "Lungekreft" },
+                { "id": "4411873c-0367-4334-a7cf-8e763c8e3490", "name": "Livmorhals" }
+              ]
+            }
+            """,
+            Strict);
+
+        Assert.Equal(["Lungekreft", "Livmorhals"], item!.CandidateDatasamlinger.Select(c => c.Name));
+    }
+
+    [Fact]
     public void Filters_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<FilterOptions>("filters.json");
 

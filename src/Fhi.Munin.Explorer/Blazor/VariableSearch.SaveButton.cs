@@ -8,7 +8,8 @@ using Microsoft.Extensions.Logging;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
-/// The open panel's save action: puts the variable in the reader's list, and takes it out again.
+/// The open panel's save action: puts the row — the variable as delivered from its datasamling — in
+/// the reader's list, and takes it out again, leaving the same variable's other rows as they were.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -56,7 +57,7 @@ public partial class VariableSearch
     /// The condition and not the sentence, so the text is still resolved at render time and a host
     /// that switches language mid-session does not leave one row speaking the old one.
     /// </remarks>
-    private readonly Dictionary<Guid, SaveFailure> _saveError = [];
+    private readonly Dictionary<VariableDatasamlingKey, SaveFailure> _saveError = [];
 
     // In the open panel, as on helsedata's own list: a collapsed row keeps one Tab stop (35w0p.78).
     // Drawn from the row's summary, so it is there while the detail loads and after it fails (35w0p.83).
@@ -67,7 +68,7 @@ public partial class VariableSearch
             return;
         }
 
-        var saved = ListState!.IsSaved(v.Id);
+        var saved = IsRowSaved(v);
 
         // The panel's own button shape, so it reads as one of the actions beside it.
         builder.OpenElement(0, "button");
@@ -100,7 +101,7 @@ public partial class VariableSearch
             return;
         }
 
-        var saved = ListState!.IsSaved(v.Id);
+        var saved = IsRowSaved(v);
 
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "role", "cell");
@@ -155,7 +156,7 @@ public partial class VariableSearch
             return;
         }
 
-        _saveError.TryGetValue(v.Id, out var failure);
+        _saveError.TryGetValue(VariableDatasamlingKey.Of(v), out var failure);
 
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "munin-explorer-data-list__save-status");
@@ -178,6 +179,11 @@ public partial class VariableSearch
     private static KildeOfVariable KildeOf(VariableSummary v) =>
         new(v.KildeId, DisplayText.Trimmed(v.KildeName) ?? DisplayText.Trimmed(v.KildeShortName) ?? "");
 
+    // A row from an API older than rows per datasamling names its variable's primary datasamling, which that
+    // API's lists do not store: it saves and reads by variable, as before (Fhi.Metadata-d07al.1).
+    private bool IsRowSaved(VariableSummary v) =>
+        v.RowKey is null ? ListState!.IsSaved(v.Id) : ListState!.IsSaved(VariableDatasamlingKey.Of(v));
+
     private async Task ToggleSavedAsync(VariableSummary v)
     {
         if (ListState is null)
@@ -188,10 +194,14 @@ public partial class VariableSearch
         // Caught here the way every other await in this component catches: an unhandled exception
         // out of an EventCallback takes the whole circuit down, which is a far worse answer to a
         // failed save than a line of text beside the button.
+        var row = VariableDatasamlingKey.Of(v);
+
         try
         {
-            _saveError.Remove(v.Id);
-            await ListState.ToggleSavedAsync(v.Id, T.FirstListName, KildeOf(v));
+            _saveError.Remove(row);
+            _ = v.RowKey is null
+                ? await ListState.ToggleSavedAsync(v.Id, T.FirstListName, KildeOf(v))
+                : await ListState.ToggleSavedAsync(row, T.FirstListName, KildeOf(v));
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -200,7 +210,7 @@ public partial class VariableSearch
 
             // The writes go through the same client as the reads and meet the same per-address
             // limiter, so this row's save can be refused while the catalogue is perfectly up.
-            _saveError[v.Id] = SaveFailure.Throttled;
+            _saveError[row] = SaveFailure.Throttled;
         }
         catch (MuninExplorerUnauthorizedException ex)
         {
@@ -209,13 +219,13 @@ public partial class VariableSearch
 
             // The API's own answer, not IsAuthenticated read again — that is the host's claim the
             // API just contradicted, and asking it a second time would repeat the same wrong word.
-            _saveError[v.Id] = SaveFailure.SignInRequired;
+            _saveError[row] = SaveFailure.SignInRequired;
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not save variable {VariableId}", v.Id);
 
-            _saveError[v.Id] = SaveFailure.Failed;
+            _saveError[row] = SaveFailure.Failed;
         }
 
         StateHasChanged();

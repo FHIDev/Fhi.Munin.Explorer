@@ -776,7 +776,16 @@ internal sealed record Texts(
     // Shown where the Variabelliste tab would otherwise sit, for a signed-out reader: helsedata's
     // own header already has a working Log in, so this names what it unlocks rather than
     // duplicating it. (Fhi.Metadata-4ifsa)
-    string SignInForVariableLists)
+    string SignInForVariableLists,
+
+    // A saved item from before lists named a datasamling, whose variable is in several: its
+    // datasamling cell, and the picker in its panel that resolves it (Fhi.Metadata-d07al.1).
+    string DatasamlingNotChosen,
+    string ChooseDatasamlingLegend,
+    string ChooseDatasamlingHint,
+    string ChooseDatasamlingSave,
+    string ChooseDatasamlingNone,
+    string ChooseDatasamlingError)
 {
     /// <summary>
     /// The label for a sort order. Every one that names a field uses the same words the result
@@ -1599,7 +1608,13 @@ internal sealed record Texts(
 
             return filters == 0 ? $"{forSearch}." : $"{forSearch} og filtrene som er valgt.";
         },
-        SignInForVariableLists: "Logg inn for å lage og bruke egne variabellister.");
+        SignInForVariableLists: "Logg inn for å lage og bruke egne variabellister.",
+        DatasamlingNotChosen: "Datasamling ikke valgt",
+        ChooseDatasamlingLegend: "Velg datasamling",
+        ChooseDatasamlingHint: "Variabelen ble lagret før lista skilte mellom datasamlinger, og den finnes i flere. Velg én eller flere. Ønskede data og notatene dine blir med.",
+        ChooseDatasamlingSave: "Lagre valget",
+        ChooseDatasamlingNone: "Velg minst én datasamling.",
+        ChooseDatasamlingError: "Kunne ikke lagre valget nå. Prøv igjen om litt.");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2107,7 +2122,13 @@ internal sealed record Texts(
 
             return filters == 0 ? $"{forSearch}." : $"{forSearch} and the filters you have chosen.";
         },
-        SignInForVariableLists: "Sign in to create and use your own variable lists.");
+        SignInForVariableLists: "Sign in to create and use your own variable lists.",
+        DatasamlingNotChosen: "Datasamling not chosen",
+        ChooseDatasamlingLegend: "Choose datasamling",
+        ChooseDatasamlingHint: "This variable was saved before lists told datasamlinger apart, and it is in several. Choose one or more. Your desired data and notes come along.",
+        ChooseDatasamlingSave: "Save choice",
+        ChooseDatasamlingNone: "Choose at least one datasamling.",
+        ChooseDatasamlingError: "Could not save the choice right now. Try again shortly.");
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>

@@ -72,7 +72,7 @@ public sealed record VariableDetail
     /// API older than the name.
     /// </summary>
     /// <remarks>
-    /// <see cref="IMuninExplorerClient.GetVariableAsync"/> sends no <c>Accept-Language</c>, so through it
+    /// <see cref="IMuninExplorerClient.GetVariableAsync(Guid, bool, CancellationToken)"/> sends no <c>Accept-Language</c>, so through it
     /// this is in the API's default language. The components name a datatype in the reader's
     /// language from <see cref="DataTypeFacet.DisplayName"/> or the DataType property's options.
     /// </remarks>
@@ -332,4 +332,13 @@ public sealed record DatasamlingReference
 
     /// <summary>When it left; null while it is still a member.</summary>
     [JsonPropertyName("validTo")] public DateTimeOffset? ValidTo { get; init; }
+
+    /// <summary>
+    /// Start of the period this datasamling's data covers. Sent only for a detail fetched for one
+    /// datasamling; null otherwise, and from an API older than the field.
+    /// </summary>
+    [JsonPropertyName("dataFrom")] public DateTimeOffset? DataFrom { get; init; }
+
+    /// <summary>End of that period; null while ongoing, or on the same terms as <see cref="DataFrom"/>.</summary>
+    [JsonPropertyName("dataTo")] public DateTimeOffset? DataTo { get; init; }
 }
