@@ -1,7 +1,9 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
@@ -439,6 +441,33 @@ public partial class VariableSearch
         {
             await FollowSortParameterAsync();
             StateHasChanged();
+        }
+
+        await MarkMixedAsync();
+    }
+
+    private ExplorerInterop? _interop;
+
+    // After every render: the half-ticks follow the filter, and markup alone cannot set them. Only from
+    // OnAfterRenderAsync, which prerender never reaches, so there is a browser to ask. (Fhi.Metadata-cjezd)
+    private async Task MarkMixedAsync()
+    {
+        // GetService, as for the list state: a host that registers no JS runtime still draws the panel.
+        if (_disposed || (_interop is null && ServiceProvider.GetService<IJSRuntime>() is null))
+        {
+            return;
+        }
+
+        var interop = _interop ??= new ExplorerInterop(ServiceProvider.GetRequiredService<IJSRuntime>());
+        if (await interop.TryLoadAsync())
+        {
+            await interop.MarkMixedAsync(FacetsId);
+        }
+
+        // Disposal can land during the awaits above, which the renderer does not wait for.
+        if (_disposed)
+        {
+            await interop.DisposeAsync();
         }
     }
 

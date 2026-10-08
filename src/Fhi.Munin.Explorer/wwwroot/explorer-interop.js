@@ -292,3 +292,20 @@ function pixels(value, height) {
 function scrolledToEnd(root) {
   return root.scrollTop > 0 && root.scrollTop + root.clientHeight >= root.scrollHeight - 1;
 }
+
+/**
+ * Half-ticks every checkbox under `rootId` that carries `data-mixed`, and clears the half-tick on
+ * every other one. `indeterminate` is a DOM property with no attribute, so markup cannot carry it;
+ * the component marks the box and this sets it after each render (Fhi.Metadata-cjezd).
+ */
+export function markMixed(rootId) {
+  const root = document.getElementById(rootId);
+
+  if (root === null) {
+    return;
+  }
+
+  for (const box of root.querySelectorAll('input[type="checkbox"]')) {
+    box.indeterminate = box.hasAttribute('data-mixed');
+  }
+}

@@ -43,7 +43,31 @@ const placements = [[names.offered, 2], [names.excluded, 2], [names.unset, 1],
 
 const only = (count, at) => Array.from({ length: count }, (_, index) => index === at);
 
+// The DOM property itself, which markup cannot carry: what explorer-interop.js sets after render.
+const mixed = (scope, name) => boxes(scope, name).first().evaluate(box => box.indeterminate);
+
 export const treeAssertions = [
+  {
+    name: 'a tree selection half-ticks the levels above it and nothing else (Fhi.Metadata-cjezd)',
+    kind: 'invariant', states: ['tree-populated'],
+    async stage(page, stub) {
+      await toggle(page, stub, boxes(tree(page), names.excluded).first());
+      // After the render the module sets the property; give it the round trip.
+      await until(async () => await mixed(tree(page), names.kilde), 'kilde half-ticked');
+    },
+    async measure(page) {
+      for (const level of [names.kilde, names.delkilde, names.first]) {
+        if (!await mixed(tree(page), level)) return `${level}: not half-ticked above a chosen placement`;
+        if (await boxes(tree(page), level).first().evaluate(box => box.checked)) return `${level}: ticked, not half-ticked`;
+      }
+      if (await mixed(tree(page), names.excluded)) return `${names.excluded}: the chosen placement is half-ticked`;
+      if (await mixed(tree(page), names.second)) return `${names.second}: half-ticked with nothing chosen under it`;
+      return null;
+    },
+    async control(page) {
+      await boxes(tree(page), names.kilde).first().evaluate(box => { box.indeterminate = false; });
+    },
+  },
   {
     name: 'a populated variabelgruppe tree starts collapsed without selecting anything',
     kind: 'invariant', states: ['tree-collapsed'],

@@ -680,6 +680,8 @@ internal sealed record Texts(
     string FacetSearchPlaceholderKilder,
     // Why a variabelgruppe tick under a datasamling did nothing: the API takes at most this many. Runa's wording.
     Func<int, string> VariabelgruppeScopeLimit,
+    // Said for a half-ticked kilde or datasamling in the kilde tree: how many values beneath it are chosen.
+    Func<int, string> ChosenBelow,
     // The control that reveals the values a long facet's cap is holding back, and what it says once
     // it has. The number is the remainder the panel computes per render, never one written here.
     Func<int, string> ShowMoreFacetValues,
@@ -1524,6 +1526,7 @@ internal sealed record Texts(
         FacetSearchNoMatch: "Ingen verdier passer søket",
         FacetSearchPlaceholderKilder: "Søk etter kilde eller datasamling",
         VariabelgruppeScopeLimit: max => $"Du kan velge opptil {max} variabelgrupper under datasamlinger i kildefilteret. Fjern et valg før du legger til flere.",
+        ChosenBelow: count => $"({count} valgt under)",
         ShowMoreFacetValues: hidden => $"Vis {hidden} til",
         ShowFewerFacetValues: "Vis færre",
         FacetChosen: chosen => $"{chosen} valgt",
@@ -2031,6 +2034,7 @@ internal sealed record Texts(
         FacetSearchNoMatch: "No values match the search",
         FacetSearchPlaceholderKilder: "Search for a source or data collection",
         VariabelgruppeScopeLimit: max => $"You can select up to {max} variable groups under data collections in the source filter. Remove a selection before adding more.",
+        ChosenBelow: count => $"({count} chosen below)",
         ShowMoreFacetValues: hidden => $"Show {hidden} more",
         ShowFewerFacetValues: "Show fewer",
         FacetChosen: chosen => $"{chosen} selected",

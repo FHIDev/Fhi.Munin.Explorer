@@ -123,7 +123,8 @@ public partial class VariableSearch
         IReadOnlyList<FacetValue> Children,
         bool GroupHeading = false,
         IReadOnlyList<NodeIcon>? Icons = null,
-        string? Badge = null);
+        string? Badge = null,
+        int ChosenBelow = 0);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
     /// <remarks>
@@ -469,6 +470,20 @@ public partial class VariableSearch
     private FacetGroup KildeTypeGroup(FilterOptions facets) =>
         new("kildetype", T.FacetKildeType, OpenByDefault: false, [.. facets.KildeTyper.Select(KildeTypeValue)]);
 
+    /// <summary>The kilde tree with each value told how many values beneath it are chosen.</summary>
+    /// <remarks>
+    /// A kilde or datasamling over a chosen scoped variabelgruppe draws half-ticked, as helsedata.no does: the
+    /// one place this package sets <c>indeterminate</c>, an exception to Fhi.Metadata-5ghur Robin approved for
+    /// Fhi.Metadata-cjezd. The count is said in words too, since the half-tick reaches a sighted reader only.
+    /// </remarks>
+    private static IReadOnlyList<FacetValue> WithChosenBelow(IReadOnlyList<FacetValue> values) =>
+        [.. values.Select(value =>
+        {
+            var children = WithChosenBelow(value.Children);
+            var below = children.Sum(child => (child is { Selected: true, Toggle: not null } ? 1 : 0) + child.ChosenBelow);
+            return value with { Children = children, ChosenBelow = below };
+        })];
+
     /// <summary>One kildetype, in the reader's own language whichever source names it.</summary>
     /// <remarks>
     /// So it is unmarked whichever way <see cref="Texts.KildeTypeNameFromApi"/> answers: the API
@@ -522,7 +537,7 @@ public partial class VariableSearch
         // With one kildetype in the list its heading says nothing the facet above does not — and it
         // is exactly one whenever a kildetype has been chosen, which is when the panel is most
         // crowded. So the kilder are lifted out of it.
-        var values = grouped.Count == 1 ? grouped[0].Children : grouped;
+        var values = WithChosenBelow(grouped.Count == 1 ? grouped[0].Children : grouped);
 
         // The top level as it stands with no term, because that is the length a lifted cap is
         // recorded against: recording the survivors of a search would put the cap back over the
@@ -1560,6 +1575,14 @@ public partial class VariableSearch
                 builder.AddAttribute(32, "type", "checkbox");
                 builder.AddAttribute(33, "checked", value.Selected);
 
+                // The half-tick itself is a DOM property with no attribute, so markup carries this and
+                // explorer-interop.js's markMixed sets it after render. (Fhi.Metadata-cjezd)
+                var mixed = !value.Selected && value.ChosenBelow > 0;
+                if (mixed)
+                {
+                    builder.AddAttribute(48, "data-mixed", "true");
+                }
+
                 // The event's own value is ignored: the toggle flips what the filter holds, which
                 // is the one state a press and the render after it are certain to agree about.
                 builder.AddAttribute(34, "onchange",
@@ -1589,6 +1612,16 @@ public partial class VariableSearch
                 builder.AddAttribute(37, "lang", value.Language);
                 builder.AddContent(38, value.Label);
                 builder.CloseElement();
+
+                // The half-tick in words, inside the label so it is part of the checkbox's name.
+                if (mixed)
+                {
+                    builder.AddContent(51, " ");
+                    builder.OpenElement(52, "span");
+                    builder.AddAttribute(53, "class", "screenreader-only");
+                    builder.AddContent(54, T.ChosenBelow(value.ChosenBelow));
+                    builder.CloseElement();
+                }
 
                 // Keep the spoken categories after the name even though the decorative icons lead it.
                 if (icons is { Count: > 0 })
