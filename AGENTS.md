@@ -195,7 +195,8 @@ have no such reader and stay under the ceiling.
 **CI enforces the ceiling on what a pull request adds.** The `comment budget` job runs
 `scripts/comment-budget.py`, ported from Munin's: a block gaining more than three lines of comment
 text fails in `src/` and warns in `test/`, and editing an existing long block warns. Tag-only lines
-(`<summary>`, `</remarks>`) and one-line `<param>` / `<returns>` / `<inheritdoc/>` do not count. A
+(`<summary>`, `</remarks>`, `<inheritdoc/>`) do not count, nor does a one-line per-member tag:
+`<param>`, `<typeparam>`, `<returns>`, `<exception>`, or JSDoc's `@param`, `@returns`, `@throws`. A
 `///` block on a type or member a host can see — public, in public types all the way out, in
 `src/Fhi.Munin.Explorer` — is exempt, and the script decides that from modifiers and indentation
 rather than from the compiler, so `scripts/test_comment_budget.py` pins the shapes it recognises.

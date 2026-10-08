@@ -115,10 +115,9 @@ something everyone needs rather than everyone touching this file, it belongs in 
 Two things this screen deliberately does not do. It exempts `///` on the package's public types
 and members, the standing exception — their reader has only the package — so read those yourself
 for padding. And it is scoped to the diff on purpose: **the repository holds hundreds of
-pre-existing blocks over the ceiling.** The
-ceiling arrived after most of this code did, and cleaning up files you did not otherwise touch is
-a separate piece of work with its own bead, not something to smuggle into an unrelated pull
-request.
+pre-existing blocks over the ceiling.** The ceiling arrived after most of this code did, and
+cleaning up files you did not otherwise touch is a separate piece of work with its own bead, not
+something to smuggle into an unrelated pull request.
 
 ## 6. Scope
 

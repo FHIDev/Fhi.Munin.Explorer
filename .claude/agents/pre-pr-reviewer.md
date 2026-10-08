@@ -160,10 +160,10 @@ python3 scripts/comment-budget.py   # diffs against origin/main; CI runs the sam
 ```
 
 It exempts `///` on the public surface, so read those doc comments yourself; it counts lines,
-not padding, so a three-line comment can still be filler. A warning is where you stop and ask whether the
-block carries unrecoverable knowledge — not automatically a defect. Do not flag pre-existing
-blocks the branch did not touch: the ceiling arrived after most of this code did, and cleaning
-those up is its own bead.
+not padding, so a three-line comment can still be filler. A warning is where you stop and ask
+whether the block carries unrecoverable knowledge — not automatically a defect. Do not flag
+pre-existing blocks the branch did not touch: the ceiling arrived after most of this code did,
+and cleaning those up is its own bead.
 
 ---
 

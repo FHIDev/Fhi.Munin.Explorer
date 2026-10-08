@@ -49,7 +49,7 @@ def git(*args):
 
 
 def opens_block(s, syntax):
-    """The closing token when a code line ends inside an unterminated block comment, else None."""
+    """(closer, text after the opener) when a code line ends inside an unterminated block comment, else None."""
     quote, i = None, 0
     while i < len(s):
         c = s[i]
@@ -67,7 +67,7 @@ def opens_block(s, syntax):
                 if s.startswith(opener, i):
                     end = s.find(closer, i + len(opener))
                     if end < 0:
-                        return closer
+                        return closer, s[i + len(opener):]
                     i = end + len(closer) - 1
                     break
         i += 1
@@ -84,8 +84,7 @@ def classify(lines, syntax=CSHARP):
         else:
             opener = None if closer else next((p for p in syntax.blocks if s.startswith(p[0])), None)
             if closer is None and opener is None:
-                closer = opens_block(s, syntax)
-                kinds.append("code" if s else "blank")
+                closer = code_kind(kinds, s, opens_block(s, syntax))
                 continue
             body = s[len(opener[0]):] if opener else s
             closer = opener[1] if opener else closer
@@ -94,14 +93,25 @@ def classify(lines, syntax=CSHARP):
                 rest = rest.strip()
                 closer = None
                 if rest and not rest.startswith(syntax.line):
-                    closer = opens_block(rest, syntax)
-                    kinds.append("code")
+                    closer = code_kind(kinds, rest, opens_block(rest, syntax))
                     continue
             else:
                 text = body
             text = text.lstrip("*").strip()
-        kinds.append("tag" if TAG_ONLY.match(text) or PER_MEMBER.match(text) else "text")
+        kinds.append(comment_kind(text))
     return kinds
+
+
+def comment_kind(text):
+    return "tag" if TAG_ONLY.match(text) or PER_MEMBER.match(text) else "text"
+
+
+def code_kind(kinds, s, opened):
+    """Appends the kind of a code line and returns the closer it leaves open."""
+    text = opened[1].lstrip("*").strip() if opened else ""
+    # Words after an unclosed opener are the block's first line, so the line counts as text.
+    kinds.append("text" if text and comment_kind(text) == "text" else "code" if s else "blank")
+    return opened[0] if opened else None
 
 
 def blocks(kinds):

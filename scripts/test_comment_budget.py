@@ -37,13 +37,30 @@ class ClassifyTests(unittest.TestCase):
 
     def test_razor_comment_opened_after_markup(self):
         kinds = cb.classify(["<p>Don't @* why", "   more *@"], cb.RAZOR)
-        self.assertEqual(kinds, ["code", "text"])
+        self.assertEqual(kinds, ["text", "text"])
+
+    def test_block_opened_after_code_counts_its_opening_line(self):
+        self.assertEqual(cb.classify(["x(); /* a", " b", " c", " d */"]), ["text"] * 4)
+        self.assertEqual(cb.classify(["x(); /*", " b", " */"]), ["code", "text", "tag"])
 
     def test_html_comment_in_razor(self):
         self.assertEqual(cb.classify(["<!--", "why", "-->"], cb.RAZOR), ["tag", "text", "tag"])
 
     def test_template_literal_in_javascript(self):
         self.assertEqual(cb.classify(["const g = `/*`;", "// a"], cb.JAVASCRIPT), ["code", "text"])
+
+
+class ParseAddedTests(unittest.TestCase):
+    def test_edge_cases(self):
+        cases = [
+            ("path with a space", "+++ b/src/A B.cs\t\n@@ -0,0 +1,2 @@\n", {"src/A B.cs": {1, 2}}),
+            ("deleted file", "--- a/src/A.cs\n+++ /dev/null\n@@ -1,3 +0,0 @@\n", {}),
+            ("hunk that only removes", "+++ b/src/A.cs\n@@ -4,2 +3,0 @@\n", {"src/A.cs": set()}),
+            ("count omitted means one", "+++ b/src/A.cs\n@@ -4 +7 @@\n", {"src/A.cs": {7}}),
+        ]
+        for name, diff, expected in cases:
+            with self.subTest(name):
+                self.assertEqual(cb.parse_added(diff), expected)
 
 
 class ModeTests(unittest.TestCase):
@@ -129,6 +146,33 @@ class ModeTests(unittest.TestCase):
     def test_interface_member_without_modifier_is_exempt(self):
         self.assert_passes_clean(
             "src/Fhi.Munin.Explorer/I.cs", "public interface I\n{\n" + DOC + "    Task<int> GetAsync();\n}\n")
+
+    def test_protected_member_doc_is_exempt(self):
+        for modifier in ("protected", "protected internal"):
+            with self.subTest(modifier):
+                self.assert_passes_clean(
+                    "src/Fhi.Munin.Explorer/B.cs",
+                    "public class B\n{\n" + DOC + f"    {modifier} virtual void M() {{ }}\n}}\n")
+
+    def test_private_protected_member_doc_fails(self):
+        self.assert_fails(
+            "src/Fhi.Munin.Explorer/B.cs", "public class B\n{\n" + DOC + "    private protected void M() { }\n}\n")
+
+    def test_class_member_without_modifier_fails(self):
+        self.assert_fails("src/Fhi.Munin.Explorer/B.cs", "public class B\n{\n" + DOC + "    void M() { }\n}\n")
+
+    def test_enum_member_is_exempt(self):
+        self.assert_passes_clean("src/Fhi.Munin.Explorer/E.cs", "public enum E\n{\n" + DOC + "    One,\n}\n")
+
+    def test_block_scoped_namespace_is_walked_through(self):
+        self.assert_passes_clean(
+            "src/Fhi.Munin.Explorer/B.cs",
+            "namespace N\n{\n    public sealed class B\n    {\n" + DOC.replace("    ", "        ")
+            + "        public int X { get; }\n    }\n}\n")
+        self.assert_fails(
+            "src/Fhi.Munin.Explorer/C.cs",
+            "namespace N\n{\n    internal sealed class C\n    {\n" + DOC.replace("    ", "        ")
+            + "        public int X { get; }\n    }\n}\n")
 
     def test_public_member_doc_of_internal_type_fails(self):
         self.assert_fails(
