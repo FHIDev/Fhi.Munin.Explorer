@@ -107,13 +107,13 @@ Nobody has to remember any of that, which is the point of it being on the tag. I
 manual step for three weeks, and in that time eight versions shipped with the step never once run:
 166 fragments piled up and `CHANGELOG.md` had no version sections at all (`Fhi.Metadata-l9l2n.44`).
 
-**The commit reaches `main` through a pull request somebody opens by hand.** The `MainRules`
+**The commit reaches `main` through a pull request the workflow opens.** The `MainRules`
 ruleset requires one for `main` and has no bypass actors, so an unattended push is refused whoever
 makes it — and a credential that could bypass it is one this public repository deliberately does
-not hold. The workflow cannot open it either: FHIDev withholds pull-request permission from
-Actions. It prints the `gh pr create` command in the run summary instead. Merging it is the one
-step left to a person; the package and the GitHub release already carry the notes by then, and the
-next release refuses to run until the section is on `main`.
+not hold. FHIDev withholds pull-request permission from `GITHUB_TOKEN`, so the workflow opens the
+pull request as the fhi-munin GitHub App; if that fails it prints the `gh pr create` command in the
+run summary instead. Merging it is the one step left to a person; the package and the GitHub release
+already carry the notes by then, and the next release refuses to run until the section is on `main`.
 
 Two things to know before running anything by hand:
 

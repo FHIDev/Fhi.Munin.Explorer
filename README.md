@@ -1528,11 +1528,12 @@ makes it, and a credential that could bypass it is one this public repository de
 hold. Re-running a tag is safe — the assembler finds the section already there, writes no
 duplicate, and leaves the fragments queued for the next release alone.
 
-**Opening that pull request is a manual step, and it is one somebody has to remember.** The
-workflow used to attempt it, but FHIDev withholds pull-request permission from Actions, so the call
-failed on every release; it now prints the `gh pr create` command in the run summary instead of
-making a call that cannot succeed. Until the branch is merged the fragments stay queued, and the
-next release would publish them under its own version.
+**The workflow opens that pull request itself, as the fhi-munin GitHub App; merging it is the step
+somebody has to remember.** FHIDev withholds pull-request permission from `GITHUB_TOKEN`, so the
+call made with it failed on every release, and for a while the workflow only printed the
+`gh pr create` command. It now uses an App token, and prints the command only if opening the pull
+request fails. Until the branch is merged the fragments stay queued, and the next release would
+publish them under its own version.
 
 Forgetting is caught rather than trusted: the release **refuses to run** while a `changelog/v*`
 branch exists whose version has no section in `CHANGELOG.md`. That check sits before the feed push,

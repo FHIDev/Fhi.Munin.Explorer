@@ -13,7 +13,7 @@ on:
 
 permissions:
   contents: write # create the GitHub Release for the tag, and push the changelog branch
-  pull-requests: write # open the pull request that records the assembled changelog on main
+  # No pull-requests here: the changelog pull request is opened with the fhi-munin App token.
 
 concurrency:
   # Deliberately not cancel-in-progress. Cancelling a run mid-push leaves nobody able to say
@@ -139,8 +139,8 @@ jobs:
         # manual step and a documented manual step does not get run (Fhi.Metadata-l9l2n.44).
         #
         # It cannot push to main itself — MainRules requires a pull request there and has no
-        # bypass actors — so it prepares the commit on a branch and the next step offers it.
-        # The script's header has the rest.
+        # bypass actors — so it prepares the commit on a branch and the next steps open a pull
+        # request for it. The script's header has the rest.
         run: |
           git fetch --quiet origin +refs/heads/main:refs/remotes/origin/main
           ./scripts/release-changelog.sh "${{ steps.version.outputs.version }}" \
@@ -148,32 +148,69 @@ jobs:
             --base origin/main \
             --notes "$GITHUB_WORKSPACE/release-notes.md"
 
-      - name: Say where the assembled changelog is
+      # FHIDev withholds pull-request permission from GITHUB_TOKEN, so the pull request is opened
+      # as the fhi-munin App. Its pull request also starts CI, which a GITHUB_TOKEN one would not.
+      - name: Create fhi-munin App token for the changelog pull request
+        id: app-token
         if: steps.changelog.outputs.assembled == 'true'
-        # Prints the command rather than calling gh pr create: FHIDev withholds pull-request
-        # permission from Actions, so the call can never succeed. The branch is the durable record,
-        # and a forgotten pull request is caught by the guard at the top of this job next release.
+        # A failed mint must not stop the release; the next step then falls back to the manual command.
+        continue-on-error: true
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.MUNIN_APP_ID }}
+          private-key: ${{ secrets.MUNIN_APP_PRIVATE_KEY }}
+          owner: FHIDev
+          repositories: Fhi.Munin.Explorer
+          permission-contents: read
+          permission-pull-requests: write
+
+      - name: Open the changelog pull request
+        if: steps.changelog.outputs.assembled == 'true'
+        # Never fails the job: the feed push comes later, and a missing pull request is caught by
+        # the guard at the top of this job next release. On failure it falls back to the manual
+        # command in the step summary.
         env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           BRANCH: ${{ steps.changelog.outputs.branch }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          TITLE="docs(changelog): assemble v$VERSION"
+          existing=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open --json url --jq '.[0].url // empty' || true)
+          if [ -n "$existing" ]; then
+            url="$existing"
+          else
+            url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
+              --title "$TITLE" \
+              --body "Assembled changelog for v$VERSION, written by the release workflow. The package and the GitHub release already carry these notes; merging puts them in \`CHANGELOG.md\` and clears \`changelog.d/\`." \
+              ) || url=""
+          fi
+
+          if [ -n "$url" ]; then
+            {
+              echo "### Changelog pull request"
+              echo
+              echo "$url holds this version's assembled section. Until it merges the fragments stay"
+              echo 'queued, and the next release will refuse to run.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::changelog pull request: $url"
+            exit 0
+          fi
+
           {
             echo "### Open the changelog pull request"
             echo
-            echo "Branch \`$BRANCH\` is pushed and holds this version's assembled section."
-            echo "The package and the GitHub release already carry these notes; merging the pull"
-            echo 'request is what puts them in `CHANGELOG.md` and clears `changelog.d/`.'
+            echo "Branch \`$BRANCH\` is pushed and holds this version's assembled section, but"
+            echo 'opening its pull request as the fhi-munin App failed (see the log). Open it by hand:'
             echo
             echo '```'
             echo "gh pr create --repo $GITHUB_REPOSITORY --base main --head $BRANCH \\"
-            echo "  --title 'docs(changelog): assemble v$VERSION'"
+            echo "  --title '$TITLE'"
             echo '```'
             echo
             echo 'Until it merges the fragments stay queued, and the next release would publish'
             echo 'them under its own version. That release will refuse to run until this is merged.'
           } >> "$GITHUB_STEP_SUMMARY"
-
-          echo "::notice::changelog branch $BRANCH is pushed — open its pull request by hand; the step summary has the command"
+          echo "::warning::could not open the changelog pull request for $BRANCH; the step summary has the command"
 
       - name: Restore
         run: dotnet restore
