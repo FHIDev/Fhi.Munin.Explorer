@@ -674,7 +674,7 @@ public partial class VariableSearch
         bool KeepPager);
 
     /// <summary>
-    /// Resend the failed row request unchanged; <see cref="SearchAsync"/> would read a box since edited.
+    /// Resend the failed row request unchanged; <see cref="SearchAsync"/> would read the box, which may have been edited since.
     /// </summary>
     /// <remarks>
     /// Counts are re-asked only after a search or filter change, which they are cross-filtered against;
