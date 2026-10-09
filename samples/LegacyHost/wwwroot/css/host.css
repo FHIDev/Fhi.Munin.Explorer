@@ -2881,6 +2881,9 @@ table.munin-explorer-data-list tbody th {
    to the nearest positioned ancestor, which has to be this element. (Fhi.Metadata-f6az7) */
 .munin-explorer__dropdown {
   position: relative;
+}
+
+.munin-explorer__dropdown[open] {
   z-index: 99;
 }
 
@@ -4018,7 +4021,7 @@ table.munin-explorer-data-list tbody th {
   left: 0;
   position: absolute;
   top: calc(100% + 4px);
-  z-index: 99;
+  z-index: 100;
 }
 
 .munin-explorer-list-menu__panel[hidden] {

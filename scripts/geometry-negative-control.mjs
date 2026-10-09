@@ -44,6 +44,13 @@ const noBreak = css(`.munin-explorer-page__fields dd, .munin-explorer-meta__grid
 // under test.
 const cases = [
   {
+    assertion: 'saved-list menu controls receive pointer input',
+    defect: 'the closed column picker raised to the open action menu layer (ADO 122180)',
+    path: '/', state: 'list-actions-menu', width: 1440,
+    apply: css('.munin-explorer__dropdown { z-index: 99 !important; }\n' +
+      '.munin-explorer-list-menu__panel { z-index: 99 !important; }'),
+  },
+  {
     assertion: 'no horizontal overflow',
     defect: 'an element wider than the page',
     path: '/kilder', state: 'kilder-list', width: 1440,
