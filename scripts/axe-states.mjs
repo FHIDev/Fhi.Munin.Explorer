@@ -857,6 +857,30 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // Action controls must remain clickable beside the saved list's column picker (ADO 122180).
+  'list-actions-menu': async page => {
+    await states['explorer-list-tab'](page);
+    await press(page, 'Flere valg');
+    await page.getByRole('button', { name: 'Tøm liste', exact: true })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  'list-actions-and-columns': async page => {
+    await states['explorer-list-tab'](page);
+    await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer__dropdown > summary').click();
+    await press(page, 'Flere valg');
+    await page.getByRole('button', { name: 'Tøm liste', exact: true })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
+  'list-download-and-columns': async page => {
+    await states['explorer-list-tab'](page);
+    await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer__dropdown > summary').click();
+    await press(page, 'Last ned');
+    await page.getByRole('button', { name: 'Last ned som Excel', exact: true })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
   // The opened row's "Mine notater" tab: the notes field, its counter and its status line.
   'list-row-notes': async page => {
     await states['list-row-panel'](page);

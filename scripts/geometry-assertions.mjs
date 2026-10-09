@@ -46,6 +46,33 @@ export const selectors = { mount: MOUNT, header: HEADER };
 
 export const assertions = [
   {
+    name: 'saved-list menu controls receive pointer input',
+    kind: 'invariant',
+    states: ['list-actions-menu', 'list-actions-and-columns', 'list-download-and-columns'],
+    body: () => {
+      const panels = [...document.querySelectorAll('.munin-explorer-list-menu__panel:not([hidden])')]
+        .filter(panel => panel.getBoundingClientRect().width > 0);
+      if (panels.length === 0) return 'no open saved-list menu was measured';
+      const scroll = { left: window.scrollX, top: window.scrollY };
+      try {
+        for (const panel of panels) {
+          panel.scrollIntoView({ block: 'center' });
+          for (const control of panel.querySelectorAll('button, input')) {
+            const box = control.getBoundingClientRect();
+            for (const fraction of [0.1, 0.5, 0.9]) {
+              const hit = document.elementFromPoint(box.left + box.width * fraction, box.top + box.height / 2);
+              if (hit && control.contains(hit)) continue;
+              return `${control.textContent.trim() || control.type} is covered by ${hit?.className ?? 'the viewport'}`;
+            }
+          }
+        }
+        return null;
+      } finally {
+        window.scrollTo(scroll);
+      }
+    },
+  },
+  {
     name: 'no horizontal overflow',
     kind: 'invariant',
     // The plainest statement of "it fits", and the one that does not care WHY it did not. Defect
