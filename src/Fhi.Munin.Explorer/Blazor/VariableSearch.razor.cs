@@ -39,12 +39,12 @@ internal enum PanelTab
 /// <remarks>
 /// <para>
 /// This package ships no CSS, so the host stylesheet owns everything visual. Page furniture wears
-/// <c>Fhi.Helsedata.Stiler</c>'s own names: <c>form-element__label</c>, <c>form-fieldset</c>, <c>searchbox__freetext*</c>,
-/// <c>hd-button-square</c> with <c>button-square--primary</c>, <c>button-square--secondary</c>,
-/// <c>button-square--ghost</c>, <c>button-square--ghost-blue</c>, <c>hd-button-reset</c>,
-/// <c>margin-right</c>, <c>margin-bottom</c>,
-/// <c>margin--bottom</c> and <c>margin--none</c>, <c>headline</c> with <c>headline-3</c>,
-/// <c>headline-s</c> and <c>headline-xxs</c>, <c>caption</c>, <c>ingress</c>, <c>tag</c>,
+/// <c>Fhi.Helsedata.Stiler</c>'s own names: <c>form-element__label</c>, <c>form-fieldset</c>,
+/// <c>searchbox__freetext*</c>, <c>hd-button-square</c> with <c>button-square--primary</c>,
+/// <c>button-square--secondary</c>, <c>button-square--ghost</c>, <c>button-square--ghost-blue</c>,
+/// <c>hd-button-reset</c>, <c>margin-right</c>, <c>margin-bottom</c>, <c>margin--bottom</c> and
+/// <c>margin--none</c>, <c>headline</c> with <c>headline-3</c>, <c>headline-s</c> and
+/// <c>headline-xxs</c>, <c>caption</c>, <c>ingress</c>, <c>tag</c>,
 /// <c>dot</c>, <c>infobox</c> with <c>infobox--bg-yellow</c>, and <c>screenreader-only</c>.
 /// </para>
 /// <para>
@@ -55,7 +55,8 @@ internal enum PanelTab
 /// (<c>munin-explorer-meta*</c>), the pager (<c>munin-explorer-pagination</c>,
 /// <c>munin-explorer-pagination-content</c>) and its skip link,
 /// <c>munin-explorer-skiplink-pagination</c>, whose rule has to hide it until it is focused and
-/// must not be scoped under <c>munin-explorer-header</c>, which the link sits outside.
+/// must not be scoped under <c>munin-explorer-header</c>, which the link sits outside. The pager's
+/// and the skip link's rules arrived in Stiler 0.1.14; on 0.1.13 the skip link stays visible.
 /// <c>README.md</c> has the full inventory.
 /// </para>
 /// <para>
@@ -776,8 +777,8 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>How many pages the result has; at least 1, so "Side 1 av 0" is never written.</summary>
     /// <remarks>
-    /// The server's count first, since the server clamps the page size. The arithmetic is a fallback
-    /// for a client that leaves it at zero, and divides by <see cref="ResultPageSize"/>, the size the rows were built with.
+    /// The server's count first, since the server clamps the page size. A client that leaves it at
+    /// zero falls back to dividing by <see cref="ResultPageSize"/>, the size the rows were built with.
     /// </remarks>
     private int TotalPages
     {
