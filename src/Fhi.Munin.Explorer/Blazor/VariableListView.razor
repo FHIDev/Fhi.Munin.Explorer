@@ -791,20 +791,24 @@ else if (State?.IsAuthenticated == true)
             </dl>
 
             @* The search panel's own pair, opening the same two views in place of the list. *@
-            @if (VariableOwners.IdOf(detail, SourceKind.Kilde) is not null)
-            {
-                <button class="hd-button-square button-square--ghost margin-right margin-bottom"
-                        type="button"
-                        @ref="_kildeButton"
-                        @onclick="e => OpenSourceFromControlAsync(SourceKind.Kilde, e)">@OwnerButtonText(SourceKind.Kilde)</button>
-            }
-            @if (VariableOwners.IdOf(detail, SourceKind.Datasamling) is not null)
-            {
-                <button class="hd-button-square button-square--ghost margin-right margin-bottom"
-                        type="button"
-                        @ref="_datasamlingButton"
-                        @onclick="e => OpenSourceFromControlAsync(SourceKind.Datasamling, e)">@OwnerButtonText(SourceKind.Datasamling)</button>
-            }
+            <div style="@OwnerButtonGrid">
+                @if (VariableOwners.IdOf(detail, SourceKind.Kilde) is not null)
+                {
+                    <button class="hd-button-square button-square--ghost"
+                            style="@OwnerButtonCell"
+                            type="button"
+                            @ref="_kildeButton"
+                            @onclick="e => OpenSourceFromControlAsync(SourceKind.Kilde, e)">@OwnerButtonText(SourceKind.Kilde)</button>
+                }
+                @if (VariableOwners.IdOf(detail, SourceKind.Datasamling) is not null)
+                {
+                    <button class="hd-button-square button-square--ghost"
+                            style="@OwnerButtonCell"
+                            type="button"
+                            @ref="_datasamlingButton"
+                            @onclick="e => OpenSourceFromControlAsync(SourceKind.Datasamling, e)">@OwnerButtonText(SourceKind.Datasamling)</button>
+                }
+            </div>
 
             @RowPanelTabs(item, detail)
         }

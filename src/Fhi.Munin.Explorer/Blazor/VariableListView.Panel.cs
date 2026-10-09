@@ -209,6 +209,14 @@ public sealed partial class VariableListView
     // Each group opens the search narrowed to it; words only where no search tab is there to open.
     private RenderFragment RowPanelVariabelgrupper(IReadOnlyList<VariabelgruppeReference> groups) => builder =>
     {
+        var asButtons = ShowSearch is not null;
+
+        if (asButtons)
+        {
+            builder.OpenElement(12, "div");
+            builder.AddAttribute(13, "style", OwnerButtonGrid);
+        }
+
         for (var i = 0; i < groups.Count; i++)
         {
             var group = groups[i];
@@ -216,22 +224,28 @@ public sealed partial class VariableListView
             if (ShowSearch is { } search && group.Id != Guid.Empty)
             {
                 builder.OpenElement(0, "button");
-                builder.AddAttribute(1, "class", "hd-button-square button-square--ghost margin-right margin-bottom");
-                builder.AddAttribute(2, "type", "button");
-                builder.AddAttribute(3, "aria-label", T.ShowVariabelgruppeVariables(group.Name));
-                builder.AddAttribute(4, "onclick",
+                builder.AddAttribute(1, "class", "hd-button-square button-square--ghost");
+                builder.AddAttribute(2, "style", OwnerButtonCell);
+                builder.AddAttribute(3, "type", "button");
+                builder.AddAttribute(4, "aria-label", T.ShowVariabelgruppeVariables(group.Name));
+                builder.AddAttribute(5, "onclick",
                     EventCallback.Factory.Create(this, () => search.ShowVariabelgruppeAsync(group.Id)));
-                builder.AddContent(5, group.Name);
+                builder.AddContent(6, group.Name);
                 builder.CloseElement();
             }
             else
             {
-                builder.AddContent(8, i == 0 ? "" : ", ");
+                builder.AddContent(8, i == 0 || asButtons ? "" : ", ");
                 builder.OpenElement(9, "span");
                 builder.AddAttribute(10, "lang", CatalogueLang(group.Name));
                 builder.AddContent(11, group.Name);
                 builder.CloseElement();
             }
+        }
+
+        if (asButtons)
+        {
+            builder.CloseElement();
         }
     };
 
