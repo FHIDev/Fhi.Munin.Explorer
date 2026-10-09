@@ -442,7 +442,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     private sealed record ExportMyListBody(
         [property: JsonPropertyName("format")] string Format,
         [property: JsonPropertyName("includeKodeverk")] bool IncludeKodeverk,
-        [property: JsonPropertyName("kildeIds")] IReadOnlyCollection<Guid>? KildeIds);
+        [property: JsonPropertyName("kildeIds")] IReadOnlyCollection<Guid>? KildeIds,
+        [property: JsonPropertyName("explorerPageUrl")] Uri? ExplorerPageUrl);
 
     /// <summary>
     /// The export request. Named rather than anonymous, like the bodies beside it: the wire names
@@ -923,14 +924,25 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <inheritdoc />
+    public Task<ExportedList?> ExportMyListAsync(
+        Guid id,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        IReadOnlyCollection<Guid>? kildeIds = null,
+        CancellationToken cancellationToken = default) =>
+        ExportMyListAsync(id, null, format, includeKodeverk, kildeIds, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<ExportedList?> ExportMyListAsync(
         Guid id,
+        Uri? explorerPageUrl,
         ExportFormat format = ExportFormat.Xlsx,
         bool includeKodeverk = false,
         IReadOnlyCollection<Guid>? kildeIds = null,
         CancellationToken cancellationToken = default)
     {
-        var body = new ExportMyListBody(WireName(format), includeKodeverk, kildeIds is { Count: > 0 } ? kildeIds : null);
+        var body = new ExportMyListBody(WireName(format), includeKodeverk, kildeIds is { Count: > 0 } ? kildeIds : null,
+            explorerPageUrl);
 
         using var response = await SendAsync(HttpMethod.Post, MyListExport(id), body, cancellationToken);
 

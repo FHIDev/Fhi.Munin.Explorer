@@ -17,6 +17,12 @@ public sealed partial class VariableListView
     /// </summary>
     [Parameter] public Func<VariableListItem, string?>? VariableHref { get; set; }
 
+    /// <summary>
+    /// Absolute address of the host's VariableExplorer page, without Explorer query state or a fragment.
+    /// Null leaves export link columns empty. VariableExplorer supplies its own address automatically.
+    /// </summary>
+    [Parameter] public Uri? ExplorerPageUrl { get; set; }
+
     // One row open at a time, and only in the list it was opened in.
     private VariableDatasamlingKey? _openId;
     private Guid? _openListId;

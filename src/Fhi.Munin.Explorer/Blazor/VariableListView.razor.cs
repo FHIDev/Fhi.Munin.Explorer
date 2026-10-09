@@ -1611,7 +1611,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             // The list itself rather than its ids, so the file carries each row's "Ønskede data" (Fhi.Metadata-fiht4).
             // Narrowed by the same kilder as the table, so it holds what the reader was looking at.
-            var file = await Client.ExportMyListAsync(_shownList.Value, format, _includeKodeverk, State?.KildeFilter);
+            var file = await Client.ExportMyListAsync(_shownList.Value, ExplorerPageUrl, format, _includeKodeverk, State?.KildeFilter);
 
             if (file is null)
             {

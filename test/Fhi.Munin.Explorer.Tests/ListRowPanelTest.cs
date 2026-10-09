@@ -1273,12 +1273,12 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     private IRenderedComponent<VariableExplorer> OpenInExplorer(
-        PanelClient client, IReadOnlyCollection<string>? declined = null)
+        PanelClient client, IReadOnlyCollection<string>? declined = null, string address = "/variabler")
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
         this.SetRendererInfo(new RendererInfo("Server", true));
-        Services.GetRequiredService<NavigationManager>().NavigateTo("/variabler");
+        Services.GetRequiredService<NavigationManager>().NavigateTo(address);
 
         var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.DeclinedKeys, declined));
         cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
@@ -1286,6 +1286,26 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
 
         return cut;
+    }
+
+    [Fact]
+    public void Explorer_WhenExporting_ThenTheHostPageKeepsItsPathAndDropsExplorerState()
+    {
+        var cut = OpenInExplorer(new PanelClient(DatabaseVersion), address:
+            $"http://localhost/portal/en/variables/?theme=contrast&search=ALDER&kildeIds={HeartKildeId}#old-section");
+
+        Assert.Equal("http://localhost/portal/en/variables/?theme=contrast",
+            cut.FindComponent<VariableListView>().Instance.ExplorerPageUrl?.AbsoluteUri);
+    }
+
+    [Theory]
+    [InlineData("search")]
+    [InlineData("variabelId")]
+    [InlineData("datasamlingId")]
+    public void Explorer_WhenTheHostDeclinesRowLinks_ThenExportsHaveNoGuessedAddress(string declined)
+    {
+        var cut = OpenInExplorer(new PanelClient(DatabaseVersion), declined: [declined]);
+        Assert.Null(cut.FindComponent<VariableListView>().Instance.ExplorerPageUrl);
     }
 
     [Fact]

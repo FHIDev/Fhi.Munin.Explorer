@@ -630,6 +630,17 @@ public interface IMuninExplorerClient
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportMyListAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
 
+    /// <summary>Exports with links to the host's Explorer page, without its search state or fragment.</summary>
+    /// <remarks>Existing client implementations retain their export behavior through the default overload.</remarks>
+    Task<ExportedList?> ExportMyListAsync(
+        Guid id,
+        Uri? explorerPageUrl,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        IReadOnlyCollection<Guid>? kildeIds = null,
+        CancellationToken cancellationToken = default) =>
+        ExportMyListAsync(id, format, includeKodeverk, kildeIds, cancellationToken);
+
     /// <summary>
     /// Redeem a code minted on the reader's other login, so both logins become one person and the
     /// lists saved under either are visible from both.
