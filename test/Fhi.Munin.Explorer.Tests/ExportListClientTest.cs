@@ -178,6 +178,20 @@ public class ExportListClientTest
     private static readonly Guid MyListId = new("5f0c2e7a-91b4-4d3e-8a6f-2c7d1b9e4a30");
 
     [Fact]
+    public async Task ExportMyListAsync_WhenGivenAHostPage_ThenTheRequestCarriesItsEnvironmentAndPath()
+    {
+        var handler = new FileHandler("text/csv", "list.csv");
+        var page = new Uri("https://test.example:8443/portal/en/variables/?theme=contrast");
+
+        await Client(handler).ExportMyListAsync(MyListId, page, ExportFormat.Csv, kildeIds: [One]);
+
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal(page.AbsoluteUri, sent.RootElement.GetProperty("explorerPageUrl").GetString());
+        Assert.Equal("csv", sent.RootElement.GetProperty("format").GetString());
+        Assert.Equal([One], sent.RootElement.GetProperty("kildeIds").EnumerateArray().Select(e => e.GetGuid()));
+    }
+
+    [Fact]
     public async Task ExportMyListAsync_WhenAsked_ThenItPostsToTheListsOwnExportRouteWithTheChoices()
     {
         var handler = new FileHandler("application/zip", "variabelliste.zip");
@@ -206,6 +220,7 @@ public class ExportListClientTest
 
         using var sent = JsonDocument.Parse(handler.LastBody!);
         Assert.Equal(JsonValueKind.Null, sent.RootElement.GetProperty("kildeIds").ValueKind);
+        Assert.Equal(JsonValueKind.Null, sent.RootElement.GetProperty("explorerPageUrl").ValueKind);
         Assert.Equal("xlsx", sent.RootElement.GetProperty("format").GetString());
     }
 

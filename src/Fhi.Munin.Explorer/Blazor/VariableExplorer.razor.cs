@@ -219,6 +219,10 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     private Func<VariableListItem, string?>? _variableAddress;
 
+    private Uri? ExportPageUrl => Declined("variabelId") || Declined("search") || Declined("datasamlingId")
+        ? null
+        : Navigation.ToAbsoluteUri(_mirror.Address(""));
+
     // The search keeps a selection only on a row its first page shows, so the link searches the code
     // within the kilde; without a code, or with search declined, no link could open the variable.
     private Func<VariableListItem, string?>? VariableHref => Declined("variabelId") || Declined("search")

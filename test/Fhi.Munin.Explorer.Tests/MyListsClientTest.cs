@@ -1023,7 +1023,8 @@ public class MyListsClientTest
             ("RemoveItemsFromMyListAsync", () => client.RemoveItemsFromMyListAsync(ListId, [new VariableDatasamlingKey(ids[0], null)])),
             ("SetMyListItemDesiredDataAsync", () => client.SetMyListItemDesiredDataAsync(ListId, ids[0], "C76")),
             ("SetMyListItemNotesAsync", () => client.SetMyListItemNotesAsync(ListId, ids[0], "Spør om 2012")),
-            ("ExportMyListAsync", () => client.ExportMyListAsync(ListId))
+            ("ExportMyListAsync", () => client.ExportMyListAsync(ListId)),
+            ("ExportMyListAsync with host page", () => client.ExportMyListAsync(ListId, new Uri("https://host.example/variables/")))
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);
@@ -1070,7 +1071,8 @@ public class MyListsClientTest
             () => client.RemoveItemsFromMyListAsync(ListId, [new VariableDatasamlingKey(ids[0], null)]),
             () => client.SetMyListItemDesiredDataAsync(ListId, ids[0], "C76"),
             () => client.SetMyListItemNotesAsync(ListId, ids[0], "Spør om 2012"),
-            () => client.ExportMyListAsync(ListId)
+            () => client.ExportMyListAsync(ListId),
+            () => client.ExportMyListAsync(ListId, new Uri("https://host.example/variables/"))
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);
