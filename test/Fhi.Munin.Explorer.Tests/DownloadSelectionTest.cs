@@ -19,18 +19,30 @@ public class DownloadSelectionTest : ExplorerTestContext
         public readonly List<(string? Search, VariableFilter? Filter, ExportFormat Format, bool IncludeKodeverk)> Exports = [];
         public Exception? Refuse { get; init; }
 
-        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+        /// <summary>Searches after the first wait on this while it is set, so a test can press mid-fetch.</summary>
+        public TaskCompletionSource? HoldSearches { get; init; }
+
+        private int _searches;
+
+        public override async Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new Page<VariableSummary>
+            CancellationToken cancellationToken = default)
+        {
+            if (_searches++ > 0 && HoldSearches is { } hold)
+            {
+                await hold.Task;
+            }
+
+            return new Page<VariableSummary>
             {
                 Items = totalCount == 0 ? [] : [Variable("Alder")],
                 TotalCount = totalCount,
                 PageNumber = 1,
                 Size = 25,
                 TotalPages = Math.Max(1, (totalCount + 24) / 25)
-            });
+            };
+        }
 
         public override Task<ExportedList> ExportVariablesAsync(
             string? search, VariableFilter? filter, ExportFormat format = ExportFormat.Xlsx,
@@ -74,6 +86,12 @@ public class DownloadSelectionTest : ExplorerTestContext
 
     private static string Alert(IRenderedComponent<VariableSearch> cut) =>
         Panel(cut).ParentElement!.QuerySelector("[role=alert]")!.TextContent.Trim();
+
+    private static void Search(IRenderedComponent<VariableSearch> cut, string term)
+    {
+        cut.Find(".searchbox__freetext").Change(term);
+        cut.Find("form").Submit();
+    }
 
     [Theory]
     [InlineData(false)]
@@ -143,6 +161,40 @@ public class DownloadSelectionTest : ExplorerTestContext
         Toggle(cut)!.Click();
 
         Assert.Equal(warns, Panel(cut).TextContent.Contains($"Utvalget har {hits} treff", StringComparison.Ordinal));
+        var describedBy = Button(cut, "Last ned som Excel").GetAttribute("aria-describedby");
+        Assert.Equal(warns, describedBy is not null && cut.Find($"#{describedBy}").TextContent.Contains($"{hits} treff", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Download_WhileASearchIsBeingFetched_DoesNothing()
+    {
+        var client = new Client(80) { HoldSearches = new TaskCompletionSource() };
+        var cut = Render(client);
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        Search(cut, "høyde");
+        Assert.Equal("true", Button(cut, "Last ned som Excel").GetAttribute("aria-disabled"));
+        Button(cut, "Last ned som Excel").Click();
+
+        Assert.Empty(client.Exports);
+        client.HoldSearches!.SetResult();
+        cut.WaitForAssertion(() => Assert.Null(Button(cut, "Last ned som Excel").GetAttribute("aria-disabled")));
+    }
+
+    [Fact]
+    public void Download_AFailure_IsNotShownUnderTheNextSearch()
+    {
+        var client = new Client(80) { Refuse = new HttpRequestException("503") };
+        var cut = Render(client);
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Button(cut, "Last ned som Excel").Click();
+        cut.WaitForAssertion(() => Assert.NotEqual("", Alert(cut)));
+
+        Search(cut, "høyde");
+
+        cut.WaitForAssertion(() => Assert.Equal("", Alert(cut)));
     }
 
     [Fact]
