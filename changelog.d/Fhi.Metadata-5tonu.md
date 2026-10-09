@@ -1,0 +1,2 @@
+category: Changed
+- **The data-period filters now offer the browser's native date picker.** Readers can choose or type a date in the browser's format, with the filter applied when they leave the field so typing a year is uninterrupted; shared links still use ISO dates. Valid dates outside the catalogue's reported range are accepted for overlap searches, while reversed intervals are rejected. Labels and validation messages remain; duplicate format instructions and placeholders have been removed.

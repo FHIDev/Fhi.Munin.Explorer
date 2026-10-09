@@ -1280,6 +1280,13 @@ no wrapper component, no query parsing, no `history.replaceState`. Which tab is 
 deliberately *not* in the link: a shared URL that opened on the sender's Variabelliste would be an
 empty page for everybody else.
 
+The data-period filters use native date inputs, as Helsedata's new application forms do. Readers can
+type a date or choose one in the browser's calendar; the filter updates when they leave the field.
+The browser determines the displayed format; input values and `dataFrom`/`dataTo` query parameters
+remain ISO dates (`yyyy-MM-dd`). Both ends are inclusive, and From must be on or before To. The search matches overlapping data periods,
+so dates outside the catalogue's reported range are valid: for example, a search from 1940 to
+2026 can include data starting in 1991. The reported range does not limit either input.
+
 `?instrumentId=` is the newest of the keys it owns, and the only one that opens a page rather than
 restoring part of a search. It names the instrument — the questionnaire or scale a variable was
 collected with — whose own page `InstrumentView` draws in place of the result list, reached from

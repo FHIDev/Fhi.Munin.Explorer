@@ -26,8 +26,8 @@
 //     here because the browser holds state the render tree has not got — the facet tree's two
 //     branch disclosures, that a shut branch leaves nothing behind for a Tab to land on and that
 //     folding one over a ticked value leaves the value ticked, the toolbar's Ikoner switch,
-//     where what is asked is what the redraw left alone, and a dataperiode field retyped as the
-//     day it holds, where the browser holds the reader's spelling;
+//     where what is asked is what the redraw left alone, and a native dataperiode field corrected after a
+//     refused reversed interval, where both browser validity and component state must agree;
 //   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
 //     visited at all;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this
@@ -246,10 +246,22 @@ const REFUSAL_MS = Number(process.env.STATE_REFUSAL_MS ?? 3000);
 // reader taken off the page — so this is a ceiling on a press that does neither, not a flat spend.
 const JUMP_MS = Number(process.env.STATE_JUMP_MS ?? 5000);
 
-/** The dataperiode from-field, one day inside the captured range as it writes it, and respelled. */
+/** Native controls exchange ISO dates, regardless of their displayed locale. */
 const DATE_FROM = 'Fra og med';
-const DATE_WRITTEN = '01.01.2000';
-const DATE_RESPELLED = '1.1.2000';
+const DATE_WRITTEN = '1940-01-01';
+const DATE_TO = 'Til og med';
+const DATE_END = '2026-10-14';
+const DATE_REVERSED = '2030-01-01';
+
+// Tab moves between native date segments before leaving the input itself.
+async function leaveDateField(page, field) {
+  await field.focus();
+  for (let i = 0; i < 5; i++) {
+    await page.keyboard.press('Tab');
+    if (!await field.evaluate(input => input === document.activeElement)) return;
+  }
+  throw new Error('Tab did not leave the date field');
+}
 
 /** Playwright's default is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
@@ -1465,13 +1477,12 @@ export const assertions = [
     },
   },
   {
-    name: 'a dataperiode field retyped as the day it already holds shows that day as the field writes it',
+    name: 'a native dataperiode field accepts 1940 and recovers from a reversed interval',
     kind: 'invariant',
     states: ['variables-list'],
 
-    // The same equal-render trap over a text value. 1.1.2000 over an applied 01.01.2000 changes no
-    // filter, so the render equals the one before it, and only SetUpdatesAttributeName("value")
-    // gives the diff an edit to write. bUnit's value never held the reader's spelling at all.
+    // Real controls enforce native min/max as well as the component's validation. A catalogue
+    // bound would wrongly reject 1940; a reversed interval must still be refused and recoverable.
     async stage(page) {
       const panel = page.locator(PANEL);
       await panel.waitFor({ state: 'visible', timeout: findTimeout });
@@ -1486,7 +1497,7 @@ export const assertions = [
       // Applied first, both edges of the refetch waited out, so the second entry meets a filter
       // that already holds the day.
       await field.fill(DATE_WRITTEN);
-      await field.press('Enter');
+      await leaveDateField(page, field);
       await panel.and(page.locator('[aria-busy="true"]'))
         .waitFor({ state: 'visible', timeout: BUSY_MS }).catch(() => {});
       await panel.and(page.locator('[aria-busy="false"]'))
@@ -1496,14 +1507,23 @@ export const assertions = [
         throw new Error(`typing ${DATE_WRITTEN} into "${DATE_FROM}" did not leave ${DATE_WRITTEN} in it`);
       }
 
-      await field.fill(DATE_RESPELLED);
-      await field.press('Enter');
+      const to = panel.getByLabel(DATE_TO, { exact: true });
+      await to.fill(DATE_END);
+      await leaveDateField(page, to);
+      await page.waitForFunction(({ id, end }) => document.getElementById(id)?.max === end,
+        { id: await field.getAttribute('id'), end: DATE_END });
+      await field.fill(DATE_REVERSED);
+      await leaveDateField(page, field);
+      await page.waitForFunction(id => document.getElementById(id)?.getAttribute('aria-invalid') === 'true',
+        await field.getAttribute('id'));
+      await field.fill(DATE_WRITTEN);
+      await leaveDateField(page, field);
 
       // A ceiling on the write that proves the call is there, swallowed so the missing write is
       // measure's finding rather than the harness's.
       await field.evaluate((input, wanted) => new Promise(resolve => {
         const deadline = Date.now() + wanted.ms;
-        const poll = () => (input.value === wanted.value || Date.now() > deadline
+        const poll = () => ((input.value === wanted.value && input.getAttribute('aria-invalid') !== 'true') || Date.now() > deadline
           ? resolve()
           : setTimeout(poll, 50));
         poll();
@@ -1520,21 +1540,23 @@ export const assertions = [
       }
 
       if (await field.getAttribute('aria-invalid') === 'true') {
-        return `the field refused ${DATE_RESPELLED}, a spelling of the day it holds`;
+        return `the field refused ${DATE_WRITTEN}, which overlaps the available data`;
       }
 
+      const valid = await field.evaluate(input => input.validity.valid && input.min === '');
+      if (!valid) return 'the native field still rejects the corrected date or carries a catalogue minimum';
       const shown = await field.inputValue();
 
       return shown === DATE_WRITTEN
         ? null
-        : `the field shows "${shown}" over an applied ${DATE_WRITTEN}: the equal render left the ` +
-          "reader's spelling standing";
+        : `the field shows "${shown}" over an applied ${DATE_WRITTEN}: the corrected entry left the ` +
+          "refused date standing";
     },
 
-    // What the missing call leaves behind: the reader's spelling, which nothing re-renders over.
+    // Simulate a stale refused value to prove the measurement detects disagreement.
     async control(page) {
       await page.locator(PANEL).getByLabel(DATE_FROM, { exact: true })
-        .evaluate((input, typed) => { input.value = typed; }, DATE_RESPELLED);
+        .evaluate((input, typed) => { input.value = typed; }, DATE_REVERSED);
     },
   },
   {

@@ -1515,10 +1515,10 @@ internal sealed record Texts(
         FacetDateFormat: DateFormatNo,
         FacetDateInvalid: (min, max) => (min, max) switch
         {
-            ({ } from, { } to) => $"Skriv datoen som {DateFormatNo}, fra og med {from} til og med {to}.",
-            ({ } from, null) => $"Skriv datoen som {DateFormatNo}, fra og med {from}.",
-            (null, { } to) => $"Skriv datoen som {DateFormatNo}, til og med {to}.",
-            _ => $"Skriv datoen som {DateFormatNo}."
+            ({ } from, { } to) => $"Velg en gyldig dato fra og med {from} til og med {to}.",
+            ({ } from, null) => $"Velg en gyldig dato fra og med {from}.",
+            (null, { } to) => $"Velg en gyldig dato til og med {to}.",
+            _ => "Velg en gyldig dato."
         },
         FacetAccessLevel: "Tilgangsnivå",
         FacetSearchLabel: heading => $"Søk i {heading}",
@@ -2026,10 +2026,10 @@ internal sealed record Texts(
         FacetDateFormat: DateFormatEn,
         FacetDateInvalid: (min, max) => (min, max) switch
         {
-            ({ } from, { } to) => $"Write the date as {DateFormatEn}, from {from} to {to}.",
-            ({ } from, null) => $"Write the date as {DateFormatEn}, on or after {from}.",
-            (null, { } to) => $"Write the date as {DateFormatEn}, on or before {to}.",
-            _ => $"Write the date as {DateFormatEn}."
+            ({ } from, { } to) => $"Choose a valid date from {from} to {to}, inclusive.",
+            ({ } from, null) => $"Choose a valid date on or after {from}.",
+            (null, { } to) => $"Choose a valid date on or before {to}.",
+            _ => "Choose a valid date."
         },
         FacetAccessLevel: "Access level",
         FacetSearchLabel: heading => $"Search in {heading}",
