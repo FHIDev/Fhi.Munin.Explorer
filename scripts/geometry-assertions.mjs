@@ -25,7 +25,7 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Nine of the sixteen below are invariants. If that ratio ever inverts, this file has become a
+// Nine of the seventeen below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
@@ -47,7 +47,7 @@ export const selectors = { mount: MOUNT, header: HEADER };
 export const assertions = [
   {
     name: 'saved-list menu controls receive pointer input',
-    kind: 'invariant',
+    kind: 'pin',
     states: ['list-actions-menu', 'list-actions-and-columns', 'list-download-and-columns'],
     body: () => {
       const panels = [...document.querySelectorAll('.munin-explorer-list-menu__panel:not([hidden])')]
