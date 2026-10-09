@@ -56,7 +56,7 @@ export const assertions = [
       const scroll = { left: window.scrollX, top: window.scrollY };
       try {
         for (const panel of panels) {
-          panel.scrollIntoView({ block: 'center' });
+          panel.scrollIntoView({ block: 'center', behavior: 'instant' });
           for (const control of panel.querySelectorAll('button, input')) {
             const box = control.getBoundingClientRect();
             for (const fraction of [0.1, 0.5, 0.9]) {
@@ -68,7 +68,7 @@ export const assertions = [
         }
         return null;
       } finally {
-        window.scrollTo(scroll);
+        window.scrollTo({ ...scroll, behavior: 'instant' });
       }
     },
   },
