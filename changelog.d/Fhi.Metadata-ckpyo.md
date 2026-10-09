@@ -1,0 +1,2 @@
+category: Added
+- **A variable opened in a variabelliste leads on to its datakilde, datasamling and variabelgrupper.** The panel under the row gains the search panel's "Vis datakilde" and "Vis datasamling", which show the same kilde and datasamling views in place of the list, with "← Tilbake til variabler" back to the row. Each variabelgruppe becomes a button that opens the search narrowed to that group alone, with no search term and no other filter; where the list stands on a host page without the search, the groups stay words. (Fhi.Metadata-ckpyo, ADO 121586)

@@ -211,9 +211,9 @@ internal static class FilterHierarchy
         var datasamlinger = ById(facets.Datasamlinger, datasamling => datasamling.Id);
         var delkilder = ById(facets.Delkilder, delkilde => delkilde.Id);
 
-        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe)> byKilde = [];
-        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe)> byDelkilde = [];
-        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe)> byDatasamling = [];
+        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe, bool Exact)> byKilde = [];
+        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe, bool Exact)> byDelkilde = [];
+        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe, bool Exact)> byDatasamling = [];
 
         foreach (var variabelgruppe in variabelgrupper)
         {
@@ -229,26 +229,39 @@ internal static class FilterHierarchy
                     && datasamlinger.TryGetValue(datasamlingId, out var datasamling)
                     && datasamling.KildeId == owner.KildeId)
                 {
-                    byDatasamling.Add((datasamlingId, variabelgruppe));
+                    byDatasamling.Add(CountedAt(datasamlingId, variabelgruppe, owner, exact: true));
                 }
                 else if (owner.DelkildeId is { } delkildeId
                          && delkilder.TryGetValue(delkildeId, out var delkilde)
                          && delkilde.KildeId == owner.KildeId)
                 {
-                    byDelkilde.Add((delkildeId, variabelgruppe));
+                    byDelkilde.Add(CountedAt(delkildeId, variabelgruppe, owner, exact: owner.DatasamlingId is null));
                 }
                 else
                 {
-                    byKilde.Add((owner.KildeId, variabelgruppe));
+                    byKilde.Add(CountedAt(owner.KildeId, variabelgruppe, owner,
+                        exact: owner.DelkildeId is null && owner.DatasamlingId is null));
                 }
             }
         }
 
         return new VariabelgruppePlacements(Lookup(byKilde), Lookup(byDelkilde), Lookup(byDatasamling));
 
+        // The placement's own count only where the node is that placement; one drawn higher because
+        // its level dropped out keeps the group's count. (Fhi.Metadata-i1rbm)
+        static (Guid, VariabelgruppeFacet, bool) CountedAt(
+            Guid node, VariabelgruppeFacet variabelgruppe, VariabelgruppeOwner owner, bool exact) =>
+            exact && owner.Count is { } count
+                ? (node, variabelgruppe with { Count = count }, true)
+                : (node, variabelgruppe, false);
+
+        // Where two placements of one group land on one node, the exact copy's count wins, in the
+        // position the group was first listed; siblings keep the payload's order.
         static ILookup<Guid, VariabelgruppeFacet> Lookup(
-            IEnumerable<(Guid Owner, VariabelgruppeFacet Variabelgruppe)> placed) =>
-            placed.ToLookup(entry => entry.Owner, entry => entry.Variabelgruppe);
+            IEnumerable<(Guid Owner, VariabelgruppeFacet Variabelgruppe, bool Exact)> placed) =>
+            placed.GroupBy(entry => (entry.Owner, entry.Variabelgruppe.Id))
+                  .Select(copies => copies.OrderByDescending(entry => entry.Exact).First())
+                  .ToLookup(entry => entry.Owner, entry => entry.Variabelgruppe);
     }
 
     /// <summary>Nest one level by the parent id its entries carry. A parent the cross-filtering

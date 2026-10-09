@@ -65,6 +65,7 @@ internal sealed record Texts(
     // and two buttons that both only name a destination read as the same button twice.
     string ShowKildeVariables,
     string ShowDatasamlingVariables,
+    string ShowVariabelgruppeVariables,
     string ViewDatasamlingKilde,
     string ViewVariables,
     string Ongoing,
@@ -1113,6 +1114,7 @@ internal sealed record Texts(
         BackToVariables: "← Tilbake til variabler",
         ShowKildeVariables: "Vis bare variabler fra denne datakilden",
         ShowDatasamlingVariables: "Vis bare variabler fra denne datasamlingen",
+        ShowVariabelgruppeVariables: "Vis variablene i variabelgruppen",
         ViewDatasamlingKilde: "Vis datakilden",
         ViewVariables: "Vis variablene",
         Ongoing: "Pågående",
@@ -1629,6 +1631,7 @@ internal sealed record Texts(
         BackToVariables: "← Back to variables",
         ShowKildeVariables: "Show only variables from this data source",
         ShowDatasamlingVariables: "Show only variables from this data collection",
+        ShowVariabelgruppeVariables: "Show the variables in the variable group",
         ViewDatasamlingKilde: "View the data source",
         ViewVariables: "View variables",
         Ongoing: "Ongoing",

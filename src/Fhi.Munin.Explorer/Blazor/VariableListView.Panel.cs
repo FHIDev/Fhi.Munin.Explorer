@@ -119,6 +119,7 @@ public sealed partial class VariableListView
         _openLoading = false;
         _openCodes = null;
         ForgetLinkStatus();
+        ClearSource();
 
         // Disowns a fetch still in flight for the row that was open.
         _openGeneration++;
@@ -205,10 +206,57 @@ public sealed partial class VariableListView
     private RenderFragment RowPanelTrail(VariableDetail detail) =>
         KildeTrailBlock.Write(KildeTrailBlock.Steps(detail, T, kildeTypeApiName: null), T);
 
-    private string? RowPanelVariabelgrupper(VariableDetail detail) =>
-        KildeTrailBlock.NamedVariabelgrupper(detail) is { Count: > 0 } groups
-            ? string.Join(", ", groups.Select(group => group.Name))
-            : null;
+    // Each group opens the search narrowed to it; words only where no search tab is there to open.
+    private RenderFragment RowPanelVariabelgrupper(IReadOnlyList<VariabelgruppeReference> groups) => builder =>
+    {
+        var asButtons = ShowSearch is not null;
+
+        if (asButtons)
+        {
+            builder.OpenElement(12, "div");
+            builder.AddAttribute(13, "style", OwnerButtonGrid);
+        }
+
+        for (var i = 0; i < groups.Count; i++)
+        {
+            var group = groups[i];
+
+            if (ShowSearch is { } search && group.Id != Guid.Empty)
+            {
+                builder.OpenElement(0, "button");
+                builder.AddAttribute(1, "class", "hd-button-square button-square--ghost");
+                builder.AddAttribute(2, "style", OwnerButtonCell);
+                builder.AddAttribute(3, "type", "button");
+                builder.AddAttribute(5, "onclick",
+                    EventCallback.Factory.Create(this, () => search.ShowVariabelgruppeAsync(group.Id)));
+
+                // Spoken, not shown, and kept out of aria-label so the name keeps its own lang.
+                builder.OpenElement(14, "span");
+                builder.AddAttribute(15, "class", "screenreader-only");
+                builder.AddContent(16, T.ShowVariabelgruppeVariables);
+                builder.CloseElement();
+                builder.AddContent(20, " ");
+                builder.OpenElement(17, "span");
+                builder.AddAttribute(18, "lang", CatalogueLang(group.Name));
+                builder.AddContent(19, group.Name);
+                builder.CloseElement();
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.AddContent(8, i == 0 || asButtons ? "" : ", ");
+                builder.OpenElement(9, "span");
+                builder.AddAttribute(10, "lang", CatalogueLang(group.Name));
+                builder.AddContent(11, group.Name);
+                builder.CloseElement();
+            }
+        }
+
+        if (asButtons)
+        {
+            builder.CloseElement();
+        }
+    };
 
     // One source for both ends, so a period is never half the detail's and half the list's.
     private string RowPanelPeriod(VariableListItem item, VariableDetail detail) =>
