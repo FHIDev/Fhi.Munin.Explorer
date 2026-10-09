@@ -42,11 +42,9 @@ public partial class VariableSearch
 
             await LandOnRealPageAsync();
 
-            // Both echoed back on mount, as SearchAsync did when it ran this path. The search echo
-            // is a no-op for a host that just supplied it, but it is existing behaviour and not
-            // this change's to remove. The page echo is not a no-op: LandOnRealPageAsync above may
-            // have moved the reader off a page the link asked for and the result set no longer has,
-            // and the host is holding the number from the link until it is told otherwise.
+            // Both echoed back on mount. The search echo is a no-op for a host that just supplied it;
+            // the page echo is not: LandOnRealPageAsync may have moved the reader off a page the link
+            // asked for, and the host holds the link's number until it is told otherwise.
             await NotifySearchChangedAsync();
             await NotifyPageChangedAsync();
 
@@ -90,9 +88,8 @@ public partial class VariableSearch
 
     /// <summary>Take focus off the control about to vanish, then clear the search.</summary>
     /// <remarks>
-    /// Focus moves <em>first</em>: <see cref="SearchAsync"/> yields at the request, and the render
-    /// at that yield takes the control off the page under the reader's focus — so moving it
-    /// afterwards returns focus only once the fetch has landed. (Fhi.Metadata-ag4n7)
+    /// Focus moves <em>first</em>: the render at <see cref="SearchAsync"/>'s yield removes the control
+    /// under the reader's focus, so moving it afterwards returns focus only once the fetch lands. (Fhi.Metadata-ag4n7)
     /// </remarks>
     private async Task ClearSearchAndRefocusAsync()
     {
@@ -168,18 +165,14 @@ public partial class VariableSearch
         _page = 1;
         _keepPager = false;
 
-        // _executedSearch, not _search. Sorting is not searching: a click blurs the field first, so
-        // by the time this runs the box's contents have already been written to _search — text the
-        // user may never have submitted. Fetching with it would run a search nobody asked for,
-        // quietly, under a status line that then described the accidental search instead of saying
-        // anything moved. It would also desynchronise the host, whose URL only follows SearchChanged.
+        // _executedSearch, not _search: a click blurs the field first, so _search may hold text the
+        // user never submitted. Fetching it would quietly run a search nobody asked for, and
+        // desynchronise the host, whose URL only follows SearchChanged.
         if (!await FetchAsync(_executedSearch))
         {
-            // The same invariant the _loading guard above protects, on the path that guard cannot
-            // see: the list is still in the old order, so the buttons have to say so. Left moved,
-            // they would claim an order the API never delivered — and pressing the same button
-            // again would take the reversal branch and ask for descending, with no way back to the
-            // ascending fetch that just failed short of cycling twice.
+            // The list is still in the old order, so the buttons have to say so. Left moved, they
+            // would claim an order the API never delivered, and pressing the same button again would
+            // ask for descending, with no way back to the failed ascending fetch short of cycling twice.
             _sort = previousSort;
             _direction = previousDirection;
             _page = previousPage;
@@ -254,23 +247,14 @@ public partial class VariableSearch
     /// Show page <paramref name="page"/> of the current result, keeping the search and the order.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The one way the page number ever changes, which is what the pager's two buttons, the clamp
-    /// and a future URL-backed page all go through. Both buttons hand it an out-of-range number at
-    /// the ends of the list rather than being guarded at the call site, so the boundary is enforced
-    /// once, here, instead of once per caller.
-    /// </para>
-    /// <para>
-    /// Not a search, so <see cref="SearchChanged"/> is not raised: the host's URL follows what was
-    /// searched for, and turning a page did not change that.
-    /// </para>
+    /// The buttons hand it out-of-range numbers at the list's ends, so the boundary is enforced once, here.
+    /// Not a search, so no <see cref="SearchChanged"/>: the host's URL follows the search, which is unchanged.
     /// </remarks>
     private async Task GoToPageAsync(int page)
     {
-        // Dropped rather than queued while a fetch is in flight, the same as a second submit and a
-        // sort click — and for the same reason the buttons carry aria-disabled instead of disabled:
-        // neither is taken out of the document under the finger that pressed it, which is also why
-        // a failed page turn below keeps the rows it already had.
+        // Dropped while a fetch is in flight, like a second submit. The buttons carry aria-disabled,
+        // not disabled, so neither leaves the document under the finger that pressed it — which is
+        // also why a failed page turn below keeps the rows it already had.
         if (_loading)
         {
             return;
@@ -285,10 +269,9 @@ public partial class VariableSearch
             return;
         }
 
-        // All three kept so a failed fetch can put them back. The result as well as the number,
-        // because the retreat below turns a second page and has to be able to undo both of them
-        // together — and the panel with them, because the retreat's route passes through an empty
-        // answer that closes it on the way.
+        // All three kept so a failed fetch can put them back: the result too, because the retreat
+        // below turns a second page and must undo both, and the panel, because the retreat passes
+        // through an empty answer that closes it.
         var previous = _page;
         var previousResult = _result;
         var previousPanel = CapturePanel();
@@ -299,11 +282,9 @@ public partial class VariableSearch
 
         _page = target;
 
-        // keepResult: the pressed button must survive the failure. The rest of the component
-        // never removes a control the user just used, and the pager is the only pressable thing in
-        // it that is rendered conditionally — so a page turn that cleared the rows would take
-        // Forrige and Neste out of the document in the same render that reports the error, drop
-        // focus to <body>, and leave a keyboard user restarting from the top of the host's page.
+        // keepResult: the pager is the only pressable thing rendered conditionally, so clearing the
+        // rows would take Forrige and Neste out of the document in the error's render, drop focus
+        // to <body>, and send a keyboard user back to the top of the host's page.
         if (!await FetchAsync(_executedSearch, keepResult: true))
         {
             // Nothing arrived, so the state has to keep describing what did — and what did is
@@ -321,21 +302,11 @@ public partial class VariableSearch
     }
 
     /// <summary>
-    /// Show <paramref name="size"/> rows per page, from the first page of the result.
+    /// Show <paramref name="size"/> rows per page, from page 1: a new size renumbers the rows.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// Back to page 1, always. A change of size renumbers the rows, so page 3 of the old paging and
-    /// page 3 of the new one are not the same rows: keeping the number would move the reader
-    /// somewhere they never asked to go and leave them looking for their place in a result that no
-    /// longer has one. A change of search or of sort resets the page for the same reason.
-    /// </para>
-    /// <para>
-    /// The pager is kept afterwards the way a page turn keeps it. A larger size can collapse a
-    /// three-page result into one, and dropping the pager in that render would take the button the
-    /// reader just pressed out of the document, along with the only control that could put the size
-    /// back.
-    /// </para>
+    /// The pager is kept, as a page turn keeps it: a larger size can collapse the result to one page,
+    /// and dropping the pager would remove the pressed button and the only control that puts the size back.
     /// </remarks>
     private async Task SetPageSizeAsync(int size)
     {
@@ -375,39 +346,10 @@ public partial class VariableSearch
         await NotifyPageChangedAsync();
     }
 
-    /// <summary>
-    /// Step back to a page that has rows, when the page just fetched turned out not to.
-    /// </summary>
+    /// <summary>Step back once to a page with rows rather than show "Ingen variabler passet søket".</summary>
     /// <remarks>
-    /// <para>
-    /// The clamp in <see cref="GoToPageAsync"/> measures the target against the count the
-    /// <em>previous</em> answer carried, so it can only ever ask for a page that existed when that
-    /// answer was written. Two routes lead past it: the index shrinks between the two requests, and
-    /// the API answers an out-of-range page with 404 — which
-    /// <see cref="IMuninExplorerClient.SearchVariablesAsync"/> reports as an empty page rather than
-    /// throwing, so no rollback runs.
-    /// </para>
-    /// <para>
-    /// Left alone, either one strands the reader: the status line would say "Ingen variabler passet
-    /// søket" over a search that matched hundreds, with no rows to show and nothing but a fresh
-    /// search to get back from. So the component takes itself back to a page that exists — the last
-    /// one the new answer admits to, or page 1, which is the one page that can never be out of
-    /// range. One step only: a second empty answer is not retreated from again, so the reader is
-    /// left on that page with the pager still under their finger rather than walking backwards
-    /// through the result a page at a time.
-    /// </para>
-    /// <para>
-    /// And its own fetch is checked like every other one. <paramref name="previous"/>,
-    /// <paramref name="previousResult"/> and <paramref name="previousPanel"/> are the page turn's
-    /// starting point — a page that had rows on it, and whatever was open among them — so a retreat
-    /// that fails puts the reader back where they pressed the button instead of leaving
-    /// <c>_page</c> naming one page while the empty answer for another is still on screen. That
-    /// pairing is what would otherwise report "Ingen variabler passet søket" over a search that
-    /// matched hundreds and take the pager with it, which is the exact state this method exists to
-    /// prevent. The panel is part of the same undo: the empty answer closed it on the way past, and
-    /// a rollback that put the rows back without it would leave the reader looking at the row they
-    /// opened, shut, with their URL no longer naming it.
-    /// </para>
+    /// The clamp trusts the previous count, so a shrunk index or an out-of-range 404 (an empty page,
+    /// not a throw) gets past it. A failed retreat restores the starting page, its rows and its panel.
     /// </remarks>
     private async Task RetreatFromEmptyPageAsync(
         int previous, Page<VariableSummary>? previousResult, PanelState previousPanel)
@@ -454,13 +396,8 @@ public partial class VariableSearch
     /// Reopen a panel that a fetch closed on its way through, when that fetch then failed.
     /// </summary>
     /// <remarks>
-    /// The fetched detail goes back rather than being asked for again, for the reason the previous
-    /// result does: it is the answer that described these very rows, and putting a second request
-    /// in the way of a rollback would let one failure turn into two. The exception is a panel
-    /// captured while its own fetch was still running — it has no answer to put back, so that one
-    /// is fetched, and the host waits for that fetch before being told: what is raised is the
-    /// selection as it stands afterwards, which on a slow re-fetch the reader may have moved.
-    /// The host is told at all because it was told null on the way in.
+    /// The detail goes back rather than being asked for again, so one failure cannot turn into two; only a
+    /// panel captured mid-fetch is fetched again. The host, told null on the way in, is told what is open after.
     /// </remarks>
     private async Task RestorePanelAsync(PanelState panel)
     {
@@ -505,17 +442,8 @@ public partial class VariableSearch
     /// Put the kilde or datasamling panel back alongside the variable panel it hung inside.
     /// </summary>
     /// <remarks>
-    /// Same reasoning as <see cref="RestorePanelAsync"/>, one level down: the rollback exists so a
-    /// failed page turn does not leave the reader on the row they had opened, shut — and a reader
-    /// who had opened the kilde inside it was two presses in, not one. The fetched payload goes
-    /// back rather than being asked for again, except when it had not arrived yet, which is the one
-    /// case with nothing to put back.
-    /// <para>
-    /// Guarded on the selection still being the restored row: the detail above may have been
-    /// re-fetched, and that yields with the rows clickable, so the reader can have opened another
-    /// variable in the meantime. Restoring an owner into that one would name the wrong kilde under
-    /// the wrong variable.
-    /// </para>
+    /// As <see cref="RestorePanelAsync"/>, one level down. Guarded on <paramref name="row"/> still being
+    /// selected: a detail re-fetch yields with rows clickable, and another variable must not get this kilde.
     /// </remarks>
     private async Task RestoreSourceAsync(SourceState source, VariableDatasamlingKey row)
     {
@@ -551,13 +479,10 @@ public partial class VariableSearch
         }
     }
 
-    /// <summary>
-    /// Tell the host what was searched for, so it can reflect it in its own URL.
-    /// </summary>
+    /// <summary>Tell the host what was searched for, so it can reflect it in its own URL.</summary>
     /// <remarks>
-    /// Raised whether or not the fetch succeeded, which is what <see cref="SearchChanged"/>
-    /// documents: a host whose URL kept the previous query after a failed search would hand out a
-    /// link that reloads into a different search than the box on screen is showing.
+    /// Raised whether or not the fetch succeeded: a host URL keeping the previous query after a failed
+    /// search would hand out a link that reloads into a different search than the box is showing.
     /// </remarks>
     private Task NotifySearchChangedAsync() => RaiseAsync(SearchChanged, _search, Log);
 
@@ -565,20 +490,8 @@ public partial class VariableSearch
     /// Move to the last real page when a restored link asks for one past the end.
     /// </summary>
     /// <remarks>
-    /// A link outlives the result set it was made from. Someone shares page 40, a filter is
-    /// tightened or rows are unpublished, and the link now points past the end.
-    /// <para>
-    /// The API does not clamp: asked for page 99999 of 734 it answers with page 99999 and no rows,
-    /// which is truthful and useless. The reader gets an empty list under "Side 99999 av 734" and
-    /// nothing to press, because the pager's Next is already at the end and Previous steps back one
-    /// page at a time from 99999. Found by opening such a link rather than by any test — the stub
-    /// in the suite had never been asked for a page it did not have.
-    /// </para>
-    /// <para>
-    /// Only on this path. A page turn cannot overshoot, because the pager clamps what it asks for,
-    /// and an emptied page reached by turning is <see cref="RetreatFromEmptyPageAsync"/>'s job —
-    /// that one has rollback state to unwind, which a first render does not.
-    /// </para>
+    /// The API does not clamp: page 99999 of 734 is empty, with nothing to press (Fhi.Metadata-eujqw).
+    /// A page turn's emptied page is <see cref="RetreatFromEmptyPageAsync"/>'s, which can roll back.
     /// </remarks>
     private async Task LandOnRealPageAsync()
     {
@@ -595,15 +508,6 @@ public partial class VariableSearch
     /// <summary>Tell the host which page is showing, whether it turned, reset or was clamped.</summary>
     private Task NotifyPageChangedAsync() => RaiseAsync(PageChanged, _page, Log);
 
-    /// <summary>
-    /// Hand a value to one of the host's callbacks without letting the host's own failure out.
-    /// </summary>
-    /// <remarks>
-    /// Shared by <see cref="SearchChanged"/> and <see cref="FilterChanged"/>, because what has to be
-    /// survived is the same for both: the handler is the host's, and what it most often does is
-    /// rewrite a URL. The logger is a parameter rather than a read of <c>Log</c>,
-    /// so the helper stays <see langword="static"/> and free of component state.
-    /// </remarks>
     // The datasamling first, so a host reacting to the variable already holds the row's datasamling.
     private async Task RaiseSelectionAsync()
     {
@@ -611,6 +515,11 @@ public partial class VariableSearch
         await RaiseAsync(SelectedVariableIdChanged, _selected?.VariableId, Log);
     }
 
+    /// <summary>Hand a value to one of the host's callbacks without letting the host's own failure out.</summary>
+    /// <remarks>
+    /// The handler is the host's, and what it most often does is rewrite a URL. The logger is a
+    /// parameter rather than a read of <c>Log</c>, so the helper stays <see langword="static"/>.
+    /// </remarks>
     private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value, ILogger? log)
     {
         if (!callback.HasDelegate)
@@ -633,39 +542,18 @@ public partial class VariableSearch
         {
             log?.LogError(ex, "a host callback threw");
 
-            // The host's handler threw, and a NavigationManager call or a CMS URL rewrite is
-            // exactly the kind that does. Left unhandled it would propagate out of Blazor's event
-            // dispatch — and this same path runs from OnInitializedAsync, so during initial render
-            // too. In helsedata's legacy Blazor Server host inside Optimizely that tears down the
-            // circuit for the whole CMS page, not just this component.
-            //
-            // Nothing is said to the reader on top of what the search already reported for itself,
-            // success or failure. What broke here is the host's own URL, which is the host's bug to
-            // find in the host's logs — and reporting it as "Kunne ikke hente variabler" would
-            // blame the API for a call the API was never part of.
+            // Unhandled, the host's throw would escape Blazor's dispatch, initial render included, and
+            // tear down the circuit for helsedata's whole CMS page. The reader is told nothing more: it
+            // is the host's bug, and "Kunne ikke hente variabler" would blame the API for it.
         }
     }
 
     /// <summary>
-    /// Fetch <paramref name="search"/> at the current page and ordering, and settle what the new
-    /// rows mean for the open detail panel. True when the fetch succeeded.
+    /// Fetch <paramref name="search"/> and settle what the new rows mean for the open panel; true on success.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// The panel is settled here rather than at the five call sites, which is what makes "the
-    /// selection is always a row on screen" one rule instead of five. It is outside the fetch's own
-    /// try/catch on purpose: the host's callback runs in it, and a host that navigates from its
-    /// handler signals that with an exception the catch would otherwise swallow and report as a
-    /// failed search.
-    /// </para>
-    /// <para>
-    /// Settled after a failure too, not only after an answer. A search or a sort that fails clears
-    /// the rows, so the panel leaves the document with them — and a selection left set behind it is
-    /// the invisible, unremovable state <see cref="DropSelectionIfGoneAsync"/> exists to prevent,
-    /// with the host's URL still naming a variable the page is not showing. A page turn fails with
-    /// <paramref name="keepResult"/>, so its rows and its panel are both still there and the check
-    /// finds nothing to drop.
-    /// </para>
+    /// Settled for every caller here, outside the fetch's try/catch, which would report a host navigating from
+    /// its callback as a failed search; and after a failure too, or a cleared list hides a selection the URL names.
     /// </remarks>
     private async Task<bool> FetchAsync(string? search, bool keepResult = false)
     {
@@ -678,19 +566,8 @@ public partial class VariableSearch
 
     /// <summary>Fetch <paramref name="search"/> at the current page and ordering. True when it succeeded.</summary>
     /// <remarks>
-    /// <para>
-    /// The search is a parameter rather than read from <c>_search</c>, because the two callers do
-    /// not mean the same thing by it: searching means the live contents of the box, sorting means
-    /// the text the visible rows actually came from.
-    /// </para>
-    /// <para>
-    /// <paramref name="keepResult"/> keeps the rows already on screen when the call fails,
-    /// which is what a page turn wants and a search does not. A search that failed has no result
-    /// to describe — the rows on screen came from a different query, and leaving them there under
-    /// the new search's error message would say they answered it. A page turn's rows came from the
-    /// query that is still on screen, so they stay, and with them the pager button the reader is
-    /// standing on.
-    /// </para>
+    /// The search is a parameter, not <c>_search</c>: searching means the box's live contents, sorting the rows' text.
+    /// <paramref name="keepResult"/> keeps a failed page turn's rows and pager; a failed search's must go.
     /// </remarks>
     private async Task<bool> FetchRowsAsync(string? search, bool keepResult = false)
     {
@@ -712,13 +589,9 @@ public partial class VariableSearch
                 direction: _direction);
             _executedSearch = DisplayText.Trimmed(search);
 
-            // The page we are on is the page that arrived, not the page that was asked for. A
-            // server that clamps page 12 to page 8 and says so has answered truthfully, and
-            // ResultPage already counts the row range from its answer — leaving _page at 12 would
-            // caption those rows "Side 12 av 8" and, worse, keep Neste enabled against a number
-            // the server disowned, so every further press would walk the position further from the
-            // rows without ever moving them. One page number for the caption, the two buttons and
-            // the range, taken from the same place.
+            // The page that arrived, not the one asked for: a server clamping page 12 to page 8, say,
+            // would otherwise caption the rows "Side 12 av 8" and keep Neste walking away from them.
+            // One page number for the caption, the two buttons and the range.
             _page = ResultPage;
 
             // The offer belongs to the failure it answers. Left standing after a fetch someone
@@ -748,18 +621,9 @@ public partial class VariableSearch
                 Log?.LogError(ex, "could not load result page {Page}", _page);
             }
 
-            // One branch for both failures, because everything except the sentence is the same: say
-            // what the reader can do about it and clear the rows. The detail belongs in the host's
-            // logs, not on the page.
-            //
-            // A 429 gets its own sentence because the answer differs — the catalogue is up and the
-            // reader has asked too often, so pressing Søk again at once is the one thing that cannot
-            // help, which is exactly what the generic text advises.
-            //
-            // The rows are cleared either way. Leaving the previous page under a failed search would
-            // caption somebody else's result with this search's terms; clearing them says nothing
-            // about hits, because the summary line only speaks when there is a result at all
-            // (VariableSearch.razor:275).
+            // A 429 gets its own sentence: pressing Søk again at once, the generic advice, cannot help.
+            // The rows are cleared either way, or the old page is captioned with this search's terms;
+            // clearing says nothing about hits, since the summary line only speaks over a result.
             if (!keepResult)
             {
                 _result = null;
@@ -797,22 +661,8 @@ public partial class VariableSearch
 
     /// <summary>The row request that failed, so the retry button can send that one again.</summary>
     /// <remarks>
-    /// Not the fields as they stand when the button is pressed. Every caller that fails rolls its
-    /// own state back to describe the rows still on screen, so by then <c>_page</c> is the page the
-    /// reader never left and <c>_sort</c> the order they are still looking at. Retrying from those
-    /// would re-fetch what is already there and clear the error, reporting success for a page turn
-    /// or a reordering that never happened.
-    /// <para>
-    /// <c>KeepPager</c> travels with <c>Page</c>, because every handler that moves one moves the
-    /// other: a sort or a narrowing renumbers to page one and takes the pager down with it.
-    /// </para>
-    /// <para>
-    /// <c>Size</c> is here for the same reason the page is, and it is the one field a reader could
-    /// not otherwise get back to. A failed size change rolls the size back to describe the rows
-    /// still on screen, so a retry replaying the fields as they stand would fetch the old size,
-    /// succeed, and clear the error — reporting a size change that never happened, from the one
-    /// control the reader has no other way to press again once the pager is gone.
-    /// </para>
+    /// Not the fields at press time: each failing caller rolls them back, size included, so replaying them
+    /// would report a page turn, sort or size change that never happened. <c>KeepPager</c> moves with <c>Page</c>.
     /// </remarks>
     private readonly record struct RowRequest(
         string? Search,
@@ -823,26 +673,12 @@ public partial class VariableSearch
         VariableFilter Filter,
         bool KeepPager);
 
-    /// <summary>Send the row request that failed once more, unchanged.</summary>
+    /// <summary>
+    /// Resend the failed row request unchanged; <see cref="SearchAsync"/> would read the box, which may have been edited since.
+    /// </summary>
     /// <remarks>
-    /// <para>
-    /// Deliberately not <see cref="SearchAsync"/>. That is a new search — page one, and the live
-    /// contents of the box, which the reader may have typed into while the error sat on screen.
-    /// What failed was one particular request, and that is the one the button offers to repeat.
-    /// </para>
-    /// <para>
-    /// The counts follow only when the retried request moved the selection they describe — a search
-    /// or a filter change, which they are cross-filtered against. A failed refresh of them reports
-    /// itself separately, so re-asking after a page turn or a sort would answer that message with
-    /// the other one's request; not asking after a search or a narrowing would leave the numbers
-    /// describing a selection nothing on screen is in any more, and say nothing about it.
-    /// </para>
-    /// <para>
-    /// The host is told what moved and nothing else, the way each original handler is. A retried
-    /// page turn raises <see cref="PageChanged"/> alone: the other three carry values the host was
-    /// told during the rollback and the retried request never touched, and a host rewriting a URL
-    /// per callback would take three more history entries for a page turn.
-    /// </para>
+    /// Counts are re-asked only after a search or filter change, which they are cross-filtered against;
+    /// the host is told only what moved, since a URL rewritten per callback gains needless history.
     /// </remarks>
     private async Task RetryRowsAsync()
     {
