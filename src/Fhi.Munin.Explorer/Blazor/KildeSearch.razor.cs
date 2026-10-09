@@ -753,9 +753,9 @@ public sealed partial class KildeSearch : ComponentBase
         value is not null && value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// The live announcement and the table's accessible name, so they cannot drift; it names the
-    /// order, or a sort goes unannounced. It counts the list it is handed, not <see cref="Visible"/>,
-    /// and <see cref="ChosenCount"/>, so it cannot disagree with the rows or with the empty state.
+    /// The live announcement and the table's accessible name, so they cannot drift; it names a chosen
+    /// order (the catalogue's own goes unsaid). It counts the list it is handed, not <see cref="Visible"/>,
+    /// and shares <see cref="ChosenCount"/> with the empty state, so it cannot disagree with either.
     /// </summary>
     private string Summary(IReadOnlyList<KildeSummary> visible) =>
         T.KildeCount(
@@ -1127,12 +1127,10 @@ public sealed partial class KildeSearch : ComponentBase
         ? (_selectedDatasamlingId is null ? T.KildeLoading : T.DatasamlingLoading)
         : _detailError;
 
-    /// <summary>
-    /// The address of the open kilde without the datasamling, for the way back out of one.
-    /// </summary>
+    /// <summary>The address of the open kilde without the datasamling, for the way back out of one.</summary>
     /// <remarks>
-    /// Null when the host supplied neither href, and the drill-in keeps its button back to the list:
-    /// a control with nowhere to go is worse than the coarser one.
+    /// <see cref="KildeDetailHref"/> of the parent kilde if there is one, else <see cref="DatasamlingHref"/>
+    /// of null. Null when no href applies, and the drill-in keeps its button back to the list.
     /// </remarks>
     private string? KildeHref => _datasamling is { ParentKildeId: var id } && id != Guid.Empty
         && KildeDetailHref is not null ? KildeDetailHref(id) : DatasamlingHref?.Invoke(null);
