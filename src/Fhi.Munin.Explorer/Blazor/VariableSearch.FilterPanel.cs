@@ -12,27 +12,8 @@ public partial class VariableSearch
 {
     /// <summary>One facet, as the panel draws it: a disclosure holding a list of values.</summary>
     /// <remarks>
-    /// <c>Key</c> is stable across renders, so the disclosure's open state stays with its own facet.
-    /// <c>EmptyText</c> is what to say when the facet has no values; null means the facet is left out
-    /// instead, which is the right answer for most of them, because a facet the API returned nothing
-    /// for is one there is nothing to choose from. Variabelgruppe is the exception: its emptiness is
-    /// a message.
-    /// <para>
-    /// <c>Body</c> is a facet whose control is not a list of values — the dataperiode's date fields,
-    /// which hold no <see cref="FacetValue"/> and so survive neither other shape. Such a facet has
-    /// to report <c>Chosen</c> itself, or it would say nothing in the summary while narrowing.
-    /// (Fhi.Metadata-uidue)
-    /// </para>
-    /// <para>
-    /// <c>Searchable</c> gives the facet a box that narrows its own values. The search is the
-    /// panel's alone — it never reaches the ticks — so such a facet reports <c>Chosen</c> over its
-    /// whole list as well, or a chosen value typed out of sight would stop being counted while it
-    /// is still narrowing.
-    /// </para>
-    /// <para>
-    /// <c>NameInChips</c> is for a facet whose values do not say what they are away from their own
-    /// heading — the catch-all's yes/no questions. A chip from one reads "Andre filtre: X".
-    /// </para>
+    /// A null <c>EmptyText</c> drops an empty facet. A <c>Body</c> facet and a <c>Searchable</c> one
+    /// report <c>Chosen</c> themselves, so a value out of sight still counts. (Fhi.Metadata-uidue)
     /// </remarks>
     private sealed record FacetGroup(
         string Key,
@@ -47,17 +28,12 @@ public partial class VariableSearch
         int? ValuesBeforeSearch = null)
     {
         /// <summary>How many top-level values the facet holds before its own search narrows it.</summary>
-        /// <remarks>
-        /// The length a lifted cap is judged against — see <see cref="FacetLimits.StillExpanded"/>.
-        /// Only a searchable facet passes one: for every other, <c>Values</c> is the whole of it
-        /// already, and a term's survivors are not what the reader asked to see the whole of.
-        /// </remarks>
+        /// <remarks>The length a lifted cap is judged against: <see cref="FacetLimits.StillExpanded"/>.</remarks>
         public int TotalValues => ValuesBeforeSearch ?? Values.Count;
 
         /// <summary>What is chosen in this facet: the summary's count, and the row of chips.</summary>
         /// <remarks>
-        /// One projection for both, so the number on a folded facet and the chips over the results
-        /// can never describe two different selections. (Fhi.Metadata-l9l2n.68)
+        /// One projection for both, so the two can never describe different selections. (Fhi.Metadata-l9l2n.68)
         /// </remarks>
         public IReadOnlyList<FacetValue> ChosenValues => Chosen ?? [.. Selected(Values)];
 
@@ -82,36 +58,10 @@ public partial class VariableSearch
         }
     }
 
-    /// <summary>
-    /// One value inside a facet, and the values nested under it.
-    /// </summary>
+    /// <summary>One facet value and its children; a null <c>Toggle</c> is a container, not a filter.</summary>
     /// <remarks>
-    /// <c>Count</c> is how many variables the value would leave, or null where there is no count to
-    /// show. <c>Toggle</c> is what ticking it does, or null for a value that is not selectable: a
-    /// kildetype heading the kilder are grouped under, a label rather than a filter because
-    /// kildetype has a facet of its own, or a variabelgruppe the standalone facet returns to nest an
-    /// offered one under. The kilde tree offers every group it draws, each row ticking the group
-    /// under its own placement; the standalone facet ticks it everywhere. (Fhi.Metadata-59dh0)
-    /// <para>
-    /// <c>GroupHeading</c> says such a row is a heading the values below are grouped under, so its
-    /// <c>Count</c> is how many of them there are rather than how many variables a value would
-    /// leave — and is drawn as a group size. Every value with children is a disclosure of its own
-    /// whether or not it is one. (Fhi.Metadata-adog5)
-    /// </para>
-    /// <para>
-    /// <c>Language</c> is what <c>Label</c> is written in, and null means "do not mark this"
-    /// rather than "mark it as the page's". Every value decides it, because nothing downstream
-    /// can tell a catalogue name from prose this package composed.
-    /// </para>
-    /// <para><c>Icons</c> are a row's decorative glyphs — a datasamling's datakategorier, or the
-    /// folder a kilde and a delkilde wear — off the same facet payload as the row; the panel draws
-    /// them and the chip for the same value does not.</para>
-    /// <para>
-    /// <c>Badge</c> is a word on the row rather than a picture of one, so it joins the checkbox's
-    /// accessible name. Its own member and never a glyph, because the two are not the same offer:
-    /// a host turning decoration off must not take a fact off the row with it. It is drawn inside
-    /// that label, so a value with no <c>Toggle</c> — a group heading — renders none at all.
-    /// </para>
+    /// <c>GroupHeading</c> counts children (Fhi.Metadata-adog5); a null <c>Language</c> means "do not
+    /// mark". <c>Badge</c> is a word apart from <c>Icons</c>, so hiding decoration hides no fact.
     /// </remarks>
     private sealed record FacetValue(
         string Key,
@@ -127,25 +77,17 @@ public partial class VariableSearch
         int ChosenBelow = 0);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
-    /// <remarks>
-    /// The delkilde, variabelgruppe and saved-filter facets all arrive as a flat list carrying a
-    /// parent id, and all three become a tree the same way. This is the shape <see cref="Tree"/>
-    /// works in so that rule lives in one place.
-    /// </remarks>
+    /// <remarks>The flat parented facets all become trees through <see cref="Tree"/>, so the rule lives once.</remarks>
     private sealed record TreeNode(Guid Id, Guid? ParentId, string Label, string? Language, int Count);
 
     /// <summary>A node whose label came out of the catalogue, carrying that label's language with it.</summary>
     private static TreeNode Node(Guid id, Guid? parentId, (string Text, string? Language) label, int count) =>
         new(id, parentId, label.Text, label.Language, count);
 
-    /// <summary>
-    /// What a facet value shows for a thing the catalogue may have left unnamed, and the language
-    /// those words are in.
-    /// </summary>
+    /// <summary>A facet value's words for a thing the catalogue may have left unnamed, and their language.</summary>
     /// <remarks>
-    /// The name is the catalogue's own Norwegian; a code and <see cref="Texts.NotSpecified"/> are
-    /// neither, and marking one of those hands a screen reader an identifier — or this package's
-    /// prose — in a Norwegian voice, which is <c>lang</c> applied backwards (WCAG 3.1.2).
+    /// Only the catalogue's own name is Norwegian; marking a code or this package's prose would read it
+    /// in a Norwegian voice, which is <c>lang</c> applied backwards (WCAG 3.1.2).
     /// </remarks>
     private (string Text, string? Language) CatalogueName(string? name, string? code)
     {
@@ -157,8 +99,7 @@ public partial class VariableSearch
     /// <summary>The facets on screen, in the order they are drawn.</summary>
     /// <remarks>
     /// Built from the last answer rather than cached, so a facet's selected state and its count can
-    /// never describe two different moments. It is a few hundred records per render, which is the
-    /// same order as the rows the component already renders.
+    /// never describe two different moments.
     /// </remarks>
     private IReadOnlyList<FacetGroup> FacetGroups
     {
@@ -169,17 +110,8 @@ public partial class VariableSearch
                 return [];
             }
 
-            // Kildetype first and kilde second, which is the order helsedata's own variable page
-            // puts them in; the rest follow Munin's explorer.
-            //
-            // Datakategori third. Runa puts it FIRST, and that slot is not available here: the two
-            // above it are in helsedata's order on purpose, and moving them would trade a reason
-            // this panel has for one it is copying. Third is as near Runa's placement as that
-            // leaves, and it keeps datakategori above the facets it is coarser than — a reader
-            // narrowing by kind of data does it before picking variabelgrupper.
-            //
-            // Dataperiode after datatype and before helsefaglig kodeverk, which IS Runa's own slot
-            // for it. (Fhi.Metadata-uidue)
+            // Kildetype and kilde in helsedata's order; datakategori third, as near Runa's first slot as that
+            // leaves; dataperiode in Runa's own slot after datatype. The rest follow Munin. (Fhi.Metadata-uidue)
             List<FacetGroup?> groups =
             [
                 KildeTypeGroup(facets),
@@ -195,10 +127,8 @@ public partial class VariableSearch
                 OtherGroup(facets)
             ];
 
-            // A facet the API returned nothing for is left out rather than drawn as an empty
-            // disclosure — except where the emptiness is itself the message, or where the facet's
-            // control is not a list of values at all. The dataperiode is the latter: it holds no
-            // FacetValue and would be dropped here as empty, though it has two date fields to draw.
+            // An empty facet is dropped unless its emptiness is the message, or its control is not a list of
+            // values at all — the dataperiode holds no FacetValue but has two date fields to draw.
             return
             [
                 .. groups
@@ -211,10 +141,8 @@ public partial class VariableSearch
 
     /// <summary>The datakategori facet — the EHDS tokens a variable's datasamling carries.</summary>
     /// <remarks>
-    /// An ordinary multi-select facet: the values are a flat list, ticking one adds it to
-    /// <see cref="VariableFilter.Categories"/>, and two ticked leave the variables matching either.
-    /// The words come from the catalogue's vocabulary rather than from this package — see
-    /// <see cref="_vocabulary"/> for why a table here would be wrong.
+    /// An ordinary multi-select facet. The words come from the catalogue's vocabulary rather than
+    /// from this package — see <see cref="_vocabulary"/>.
     /// </remarks>
     private FacetGroup DataCategoryGroup(FilterOptions facets) =>
         new("datakategori", T.FacetDataCategory, OpenByDefault: false,
@@ -238,16 +166,11 @@ public partial class VariableSearch
     }
 
     /// <summary>
-    /// The catalogue's word for one EHDS token and the language it is written in, or the token
-    /// itself where there is none.
+    /// The catalogue's word for one EHDS token and its language, or the unmarked token where there is none.
     /// </summary>
     /// <remarks>
-    /// The miss is shown rather than hidden, which is the rule <see cref="CatalogueProperties.Word(PropertyMetadataEntry, string, string)"/>
-    /// states: a facet drawing nothing for a token it cannot name would silently offer fewer
-    /// choices than the catalogue has. A token is ugly and honest — and unmarked, a CURIE being
-    /// prose in no language at all. An option the vocabulary lists but curated no label for is a
-    /// miss on the same terms, and <see cref="CatalogueProperties.Option"/> is asked which it was
-    /// rather than that being inferred here by comparing the label back against the token.
+    /// A miss is shown rather than hidden, so the facet never offers fewer choices than the catalogue
+    /// has. <see cref="CatalogueProperties.Option"/> says whether a label was curated.
     /// </remarks>
     private (string Text, string? Language) CategoryWord(string value) =>
         _vocabulary.TryGetValue(DataCategoryKey, out var entry)
@@ -255,13 +178,10 @@ public partial class VariableSearch
             ? (word.Label, Foreign(word.Language))
             : (value, null);
 
-    /// <summary>
-    /// The dataperiode facet — two date fields rather than a list of values.
-    /// </summary>
+    /// <summary>The dataperiode facet — two date fields rather than a list of values.</summary>
     /// <remarks>
-    /// The <c>Body</c> shape. Bounds come from the API's range where it reports one; without one
-    /// the fields are unbounded, and drawn at all only when a date is already set — so the control
-    /// that applied a filter cannot vanish under it. (Fhi.Metadata-yxhv1)
+    /// Without a reported range it is drawn only while a date is set, so the control that applied a
+    /// filter cannot vanish under it. (Fhi.Metadata-yxhv1)
     /// </remarks>
     private FacetGroup? DataPeriodGroup(FilterOptions facets)
     {
@@ -310,9 +230,8 @@ public partial class VariableSearch
 
     /// <summary>One bound, written the way the reader's own language writes a day.</summary>
     /// <remarks>
-    /// Unmarked: the field's name is this package's word and the date is formatted for the reader,
-    /// so both are in the reader's own language. Narrow, through
-    /// <see cref="CatalogueDate.Day(DateOnly, string, DateWidth)"/>, so a chip reads like the results.
+    /// Unmarked, since the field's name and the date are both in the reader's language; narrow, so a
+    /// chip reads like the results.
     /// </remarks>
     private FacetValue DateValue(string key, string field, DateOnly date, Func<Task> clear) =>
         new(key,
@@ -339,10 +258,7 @@ public partial class VariableSearch
                   value => ApplyFilterAsync(_filter with { DataTo = value }));
     };
 
-    /// <summary>
-    /// One date field: a label, the format it takes, a text input, and a sentence when what was
-    /// typed is not a day inside the bounds.
-    /// </summary>
+    /// <summary>One date field: label, format hint, text input, and a sentence when an entry is refused.</summary>
     /// <remarks>
     /// Text rather than <c>type="date"</c>, whose format follows the browser's locale, not the page's
     /// language. A refused entry is kept so the reader sees it beside the reason.
@@ -377,13 +293,8 @@ public partial class VariableSearch
         builder.AddAttribute(seq + 16, "aria-invalid", refused ? "true" : null);
         builder.AddAttribute(seq + 17, "aria-describedby", refused ? $"{hintId} {errorId}" : hintId);
 
-        // onchange, not oninput: a partly typed date is not a date, and every keystroke would be a
-        // search. The same reason the search box binds on change.
-        //
-        // The awaiting binder overload rather than a void one discarding the task. A dropped task
-        // is a fetch whose failure nothing observes — the rollback ApplyFilterAsync does on a failed
-        // search would run with no one waiting on it, and the exception would surface as an
-        // unobserved task rather than in the panel's own alert region.
+        // onchange, not oninput: a partly typed date is not a date. The awaiting binder overload, so a
+        // failed fetch reaches the panel's alert region rather than surfacing as an unobserved task.
         builder.AddAttribute(seq + 18, "onchange",
             EventCallback.Factory.CreateBinder<string?>(this, raw =>
             {
@@ -448,16 +359,10 @@ public partial class VariableSearch
     /// <summary>What the reader typed into a date field that was refused, by the field's id.</summary>
     private readonly Dictionary<string, string> _refusedDates = [];
 
-    /// <summary>
-    /// A reported bound as the date it names, without asking what time zone anyone is in.
-    /// </summary>
+    /// <summary>A reported bound as the date it names, without asking what time zone anyone is in.</summary>
     /// <remarks>
-    /// <see cref="DateTimeOffset.Date"/> is the date as the value itself writes it, so
-    /// <c>2020-01-01T00:00:00+02:00</c> is 1 January whoever reads it. <c>UtcDateTime.Date</c> would
-    /// make it 31 December, and <c>LocalDateTime.Date</c> would hand the answer to whichever machine
-    /// the code runs on — so CI and a Norwegian laptop would disagree and neither would be wrong.
-    /// The filter is a <see cref="DateOnly"/> for the same reason; see the remarks on
-    /// <see cref="VariableFilter.DataFrom"/>, which prescribes exactly this conversion.
+    /// <see cref="DateTimeOffset.Date"/> keeps <c>2020-01-01T00:00:00+02:00</c> on 1 January; UTC would
+    /// make it 31 December. The same conversion <see cref="VariableFilter.DataFrom"/> prescribes.
     /// </remarks>
     private static DateOnly? Bound(DateTimeOffset? instant) =>
         instant is { } value ? DateOnly.FromDateTime(value.Date) : null;
@@ -482,9 +387,8 @@ public partial class VariableSearch
 
     /// <summary>One kildetype, in the reader's own language whichever source names it.</summary>
     /// <remarks>
-    /// So it is unmarked whichever way <see cref="Texts.KildeTypeNameFromApi"/> answers: the API
-    /// resolves the word in the language this package asked in, the table under it is this
-    /// package's own, and what is left is a bare enum token belonging to no language.
+    /// Unmarked either way: the API answers in the language asked for, the fallback table is this
+    /// package's own, and a bare enum token belongs to no language.
     /// </remarks>
     private FacetValue KildeTypeValue(KildetypeFacet type) =>
         new($"kildetype:{type.Value}",
@@ -496,13 +400,10 @@ public partial class VariableSearch
             []);
 
     /// <summary>
-    /// The kilde facet: kilder grouped under their kildetype, each with its own delkilde,
-    /// datasamling and variabelgruppe tree.
+    /// The kilde facet: kilder grouped under their kildetype, each with its own tree beneath it.
     /// </summary>
     /// <remarks>
-    /// The whole tree is built from the facet payload alone — every level carries the parents it
-    /// hangs under precisely so this needs no second request. The counts are the facet payload's
-    /// own, which the API cross-filters like every other facet it answers — unlike the hierarchy
+    /// Built from the facet payload alone, whose counts the API cross-filters — unlike the hierarchy
     /// endpoint's kilde totals, which is why the level is drawn from facets at all.
     /// </remarks>
     private FacetGroup KildeGroup(FilterOptions facets)
@@ -547,11 +448,8 @@ public partial class VariableSearch
 
     /// <summary>Which of the three source levels are ticked, whatever the facet's own search is showing.</summary>
     /// <remarks>
-    /// Read off the answer rather than off the values drawn, because a ticked kilde the search has
-    /// hidden is still narrowing the results — and would otherwise lose its place in the summary's
-    /// count and its chip over the results at once. (Fhi.Metadata-uidue) Every level is read through
-    /// something that leaves one entry per id, or a chip could name a filter its own checkbox does
-    /// not, or stand beside a second chip for the one press. (Fhi.Metadata-l9l2n.82)
+    /// Read off the answer, so a ticked kilde the search hides still counts (Fhi.Metadata-uidue); one
+    /// entry per id, so no chip names a filter twice (Fhi.Metadata-l9l2n.82).
     /// </remarks>
     private IReadOnlyList<FacetValue> ChosenKilder(FilterOptions facets, KildeLevelLookup levels) =>
     [
@@ -570,9 +468,7 @@ public partial class VariableSearch
 
     /// <summary>The payload's kilder, an id it names more than once standing for one kilde.</summary>
     /// <remarks>
-    /// Every reading of <see cref="FilterOptions.Kilder"/> that becomes markup goes through here:
-    /// two entries with one id are two <c>&lt;li&gt;</c> siblings under the one key, and the
-    /// renderer throws on the next diff rather than drawing it wrongly. (Fhi.Metadata-l9l2n.82)
+    /// Two entries with one id are two keyed siblings, and the renderer throws. (Fhi.Metadata-l9l2n.82)
     /// </remarks>
     private static IReadOnlyList<KildeFacet> ListedKilder(FilterOptions facets) =>
         [.. facets.Kilder.DistinctBy(kilde => kilde.Id)];
@@ -598,10 +494,8 @@ public partial class VariableSearch
 
     /// <summary>Record what was typed into the kilde facet's search box.</summary>
     /// <remarks>
-    /// Focus first and the state after, because <c>onchange</c> fires <em>because</em> focus has
-    /// left the box: a narrowing commit rewrites the list a reader who tabbed out is now standing
-    /// in. (Fhi.Metadata-6we8a) Nothing here touches <see cref="_filter"/> — unticking a kilde the
-    /// reader can no longer see would drop a choice they never released.
+    /// Focus first: a narrowing commit rewrites the list a reader who tabbed out is standing in
+    /// (Fhi.Metadata-6we8a). <see cref="_filter"/> is untouched, so a hidden tick is never released.
     /// </remarks>
     private async Task SearchKilderAsync(string? text)
     {
@@ -616,11 +510,7 @@ public partial class VariableSearch
     }
 
     /// <summary>Whether committing <paramref name="text"/> takes a kilde the panel is drawing off the screen.</summary>
-    /// <remarks>
-    /// The half of the rescue that says when there is anything to rescue focus from: a commit that
-    /// widens the facet, or that leaves every drawn kilde standing, removed nothing, and the reader
-    /// who blurred the box by clicking into something else is already there.
-    /// </remarks>
+    /// <remarks>Otherwise nothing was removed, and focus is left where the reader put it.</remarks>
     private bool RemovesDrawnKilder(string? text)
     {
         if (string.IsNullOrWhiteSpace(text) || _facets is not { } facets)
@@ -636,10 +526,8 @@ public partial class VariableSearch
 
     /// <summary>The kilder the facet's own search leaves, each with its whole tree under it.</summary>
     /// <remarks>
-    /// The name of anything below a kilde counts as the kilde's own, or a reader typing a name they
-    /// can see in the tree would empty the facet. <see cref="StringComparison.OrdinalIgnoreCase"/>,
-    /// the comparison the kildeutforsker's facet search uses, so "does this text contain that text"
-    /// means one thing.
+    /// A name anywhere below a kilde counts as the kilde's own, or typing a visible name would empty
+    /// the facet. Ordinal ignore-case, as the kildeutforsker's facet search compares.
     /// </remarks>
     private IReadOnlyList<KildeFacet> VisibleKilder(
         FilterOptions facets, IReadOnlyDictionary<Guid, HierarchyNode> tree)
@@ -654,9 +542,8 @@ public partial class VariableSearch
 
     /// <summary>Whether a kilde, or anything drawn under it, holds <paramref name="term"/>.</summary>
     /// <remarks>
-    /// The whole subtree the builder placed, variabelgrupper included, because every one of those
-    /// names is on screen once its branch is open. What the reader sees of a deep match is
-    /// <see cref="OpenBranchesToMatches"/>'s business.
+    /// Variabelgrupper included, since each is on screen once its branch is open; revealing a deep
+    /// match is <see cref="OpenBranchesToMatches"/>'s business.
     /// </remarks>
     private bool KildeMatches(KildeFacet kilde, IReadOnlyDictionary<Guid, HierarchyNode> tree, string term) =>
         LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)
@@ -672,9 +559,8 @@ public partial class VariableSearch
 
     /// <summary>How many rows <paramref name="kilder"/> would put on the facet's top level.</summary>
     /// <remarks>
-    /// <see cref="KildeGroup"/>'s grouping counted rather than built, for the length the cap is
-    /// judged against while a term narrows the facet: one kildetype lifts its kilder out of the
-    /// heading, so the top level is then the kilder themselves.
+    /// <see cref="KildeGroup"/>'s grouping counted rather than built: one kildetype lifts its kilder
+    /// out of the heading.
     /// </remarks>
     private static int TopLevelKilder(IReadOnlyList<KildeFacet> kilder)
     {
@@ -689,9 +575,7 @@ public partial class VariableSearch
 
     /// <summary>A kildetype heading: a label rather than a filter, because kildetype has its own facet.</summary>
     /// <remarks>
-    /// Shut like every other branch, so the panel opens on three group rows rather than on 46
-    /// kilder. Its count is how many kilder the group holds — what the row is hiding — rather than
-    /// the variable count the values under it carry. (Fhi.Metadata-l9l2n.67)
+    /// Shut at rest, and counting the kilder it hides rather than variables. (Fhi.Metadata-l9l2n.67)
     /// </remarks>
     private FacetValue KildeTypeHeading(
         FilterOptions facets,
@@ -737,9 +621,7 @@ public partial class VariableSearch
 
     /// <summary>What hangs under each kilde, by kilde id: the whole tree the builder places.</summary>
     /// <remarks>
-    /// One filters answer and nothing else, so the variabelgrupper under a kilde cost no request of
-    /// their own (Fhi.Metadata-raspm). Every listed kilde is a root of
-    /// <see cref="FilterHierarchy.Build"/>, so each of them reaches its own subtree through this key.
+    /// From one filters answer, so variabelgrupper cost no request of their own. (Fhi.Metadata-raspm)
     /// </remarks>
     private IReadOnlyDictionary<Guid, HierarchyNode> KildeTree(FilterOptions facets)
     {
@@ -760,9 +642,8 @@ public partial class VariableSearch
 
     /// <summary>The levels under a kilde as the panel draws them, each where the builder placed it.</summary>
     /// <remarks>
-    /// Nothing here draws a disclosure: <see cref="FacetList"/> gives one to whatever has children,
-    /// so a datasamling holding groups is a branch and a leaf gets none (Fhi.Metadata-adog5). The
-    /// walk needs no guard of its own — <see cref="FilterHierarchy.Build"/> places each node once.
+    /// <see cref="FacetList"/> gives a disclosure to whatever has children (Fhi.Metadata-adog5), and
+    /// <see cref="FilterHierarchy.Build"/> places each node once, so the walk needs no guard.
     /// </remarks>
     private IReadOnlyList<FacetValue> HierarchyValues(IReadOnlyList<HierarchyNode> nodes)
     {
@@ -819,10 +700,8 @@ public partial class VariableSearch
 
     /// <summary>What tells one drawn row of the kilde tree from every other.</summary>
     /// <remarks>
-    /// A group hangs under every datasamling its variables are in, so its key is where it is drawn
-    /// rather than the id ticking it selects: two placements sharing one would share an expansion
-    /// and hand their two lists one <c>id</c>. Under <see cref="FacetName"/>'s prefix all the same,
-    /// so a path can never read as the value key that name builds.
+    /// A group drawn under several datasamlinger is keyed by placement, or they would share an expansion
+    /// and an <c>id</c>. <see cref="FacetName"/>'s prefix keeps a path from reading as a value key.
     /// </remarks>
     private static string NodeKey(HierarchyNode node) =>
         node.Level == HierarchyLevel.Variabelgruppe
@@ -874,15 +753,10 @@ public partial class VariableSearch
     private Func<Task> ToggleDelkilde(Guid id) =>
         () => ToggleAsync(_filter.DelkildeIds, id, ids => _filter with { DelkildeIds = ids });
 
-    /// <summary>
-    /// The variabelgruppe facet, as a tree.
-    /// </summary>
+    /// <summary>The variabelgruppe facet, as a tree.</summary>
     /// <remarks>
-    /// Its empty state is a message rather than an omission. With nothing chosen in the source
-    /// hierarchy the API answers this facet with a curated shortlist — the whole catalogue is 930
-    /// per-kilde groups and useless as a starting point — and that shortlist is empty in every
-    /// environment probed so far. Saying "pick a datakilde" is what stops an empty list from
-    /// reading as a broken one.
+    /// Its empty state is a message: with no source chosen the API answers with a curated shortlist,
+    /// empty everywhere so far, and "pick a datakilde" stops that reading as broken.
     /// </remarks>
     private FacetGroup VariabelgruppeGroup(FilterOptions facets)
     {
@@ -971,9 +845,8 @@ public partial class VariableSearch
         IsGruppeChosen(id) || _filter.VariabelgruppeScopes.Contains(new VariabelgruppeScope(id, owner));
 
     /// <summary>Tick or untick a group under one placement.</summary>
-    /// <remarks>A group chosen everywhere — by the flat facet or an older link — is one filter, so
-    /// unticking any placement of it takes that filter off. A tick past the API's cap does nothing,
-    /// since sending it would fail the whole search.</remarks>
+    /// <remarks>A group chosen everywhere is one filter, so unticking any placement takes it off.
+    /// A tick past the API's cap does nothing, since sending it would fail the whole search.</remarks>
     private Task TogglePlacementAsync(Guid id, Guid owner)
     {
         if (IsGruppeChosen(id))
@@ -1050,12 +923,8 @@ public partial class VariableSearch
 
     /// <summary>One helsefaglig kodeverk, by the short name the catalogue keys it on.</summary>
     /// <remarks>
-    /// Unmarked, on the terms <see cref="Texts.Named"/> already sets for a short name: this is the
-    /// catalogue's key rather than its prose — the slot a kilde's own short name occupies, which
-    /// that reading reports as not Norwegian — and the set is whatever V-HK holds. DÅR and HKR are
-    /// Norwegian abbreviations, ICD-10 and NCMP-NCSP-NCRP are international tokens, and nothing
-    /// here can tell which a given key is. <c>FullName</c> is the Norwegian half, and the panel
-    /// does not draw it.
+    /// Unmarked, like a kilde's short name in <see cref="Texts.Named"/>: the keys mix Norwegian
+    /// abbreviations and international tokens, and nothing here can tell which a key is.
     /// </remarks>
     private FacetValue HelsefagligKodeverkValue(HelsefagligKodeverkFacet kodeverk) =>
         new($"hk:{kodeverk.ShortName}",
@@ -1128,34 +997,10 @@ public partial class VariableSearch
             ],
             NameInChips: true);
 
-    /// <summary>
-    /// Turn a flat list of parented nodes into the tree the panel draws.
-    /// </summary>
+    /// <summary>Turn a flat list of parented nodes into the tree the panel draws.</summary>
     /// <remarks>
-    /// <para>
-    /// A node whose parent is not in the list is treated as a root rather than dropped. That is not
-    /// a defensive flourish: the API cross-filters each facet, so a parent with no matching
-    /// variables of its own is genuinely absent from a payload its children are in, and a child
-    /// hung off a missing parent would be a filter the reader can neither see nor clear.
-    /// </para>
-    /// <para>
-    /// A parent chain that loops back on itself — a self-parented node, or two nodes naming each
-    /// other, neither of which the catalogue should ever produce — has no root to be reached from,
-    /// so the walk seeds itself with whatever the first pass did not reach. Without that second
-    /// pass a cycle and everything hanging off it vanishes from the panel silently, which is the
-    /// same failure the orphan rule above exists to prevent, arriving by the other door. The walk
-    /// remembers what it has already placed, so entering a cycle stops at the repeat rather than
-    /// recursing until the stack runs out.
-    /// </para>
-    /// <para>
-    /// An id the payload names more than once is <see cref="FilterHierarchy.OnePerId">collapsed to one node</see>
-    /// before any of that, so where the value sits is the payload's meaning rather than its order.
-    /// </para>
-    /// <para>
-    /// <c>toggle</c> answering null makes a node a container rather than a checkbox, the way
-    /// <see cref="FacetValue.Toggle"/> already reads it — for a row the payload returned to nest
-    /// something else under rather than to offer.
-    /// </para>
+    /// A missing parent makes its child a root, since cross-filtering drops parents; a cycle is seeded
+    /// from what the first pass missed. A null <c>toggle</c> makes a container rather than a checkbox.
     /// </remarks>
     private static IReadOnlyList<FacetValue> Tree(
         IEnumerable<TreeNode> nodes,
@@ -1228,23 +1073,15 @@ public partial class VariableSearch
 
     /// <summary>Bumped per press, and part of every disclosure's key, so the press rebuilds them.</summary>
     /// <remarks>
-    /// A <c>&lt;details&gt;</c> holds its own open state in the DOM, so a facet the reader folded by
-    /// hand no longer matches the <c>open</c> we rendered — and an unchanged value is never patched,
-    /// which is exactly the press that has to land. A new key rebuilds instead of diffing.
-    /// <para>
-    /// NO TEST COVERS THIS, and none can: bUnit re-serialises the markup from the render tree, so a
-    /// disclosure's <c>open</c> always equals what was last rendered and the divergence this defeats
-    /// cannot be staged. Deleting it leaves the suite green and breaks a second press in a browser.
-    /// Verified by hand on both sample hosts instead. (Fhi.Metadata-wcbxi)
-    /// </para>
+    /// A <c>&lt;details&gt;</c> folded by hand no longer matches the <c>open</c> we rendered, and an
+    /// unchanged value is never patched. bUnit cannot stage this; verified by hand. (Fhi.Metadata-wcbxi)
     /// </remarks>
     private int _foldGeneration;
 
     /// <summary>A disclosure's key: its facet, and the fold press it was last rebuilt for.</summary>
     /// <remarks>
-    /// The facet half is what stops a facet the API drops from handing its open state to whichever
-    /// facet takes its place. The generation is unchanged between presses, so a filter change still
-    /// leaves open whatever the reader opened.
+    /// The facet half stops a dropped facet handing its open state to its successor; between presses
+    /// a filter change leaves open whatever the reader opened.
     /// </remarks>
     private string FacetKey(FacetGroup group) => $"{group.Key}#{_foldGeneration}";
 
@@ -1288,9 +1125,8 @@ public partial class VariableSearch
 
     /// <summary>Open every facet and every branch of every facet tree at once, or fold them all.</summary>
     /// <remarks>
-    /// The rebuild costs the dataperiode's date fields whatever was typed into them but not yet
-    /// committed — they bind on change, so a half-typed date lives only in the DOM. Accepted: the
-    /// alternative is keying that one facet apart, and a press that skips a facet is worse.
+    /// The rebuild loses a half-typed date, which lives only in the DOM; keying that facet apart would
+    /// make the press skip it, which is worse.
     /// </remarks>
     private void FoldAll(bool open)
     {
@@ -1308,20 +1144,10 @@ public partial class VariableSearch
     /// </remarks>
     private bool _levelLines;
 
-    /// <summary>
-    /// The panel's marker for the level lines, or null — an omitted attribute — while they are off.
-    /// </summary>
+    /// <summary>The panel's marker for the level lines, or null (no attribute) while they are off.</summary>
     /// <remarks>
-    /// A data attribute rather than a class name of this package's own. Not because a class would
-    /// render badly — an unstyled class on the <c>&lt;ul&gt;</c> that is already there renders as it
-    /// does today — but because a name is inventory: the README contract, the sample stylesheets and
-    /// <c>assert-sample-css-in-step.sh</c> all have to carry it. A state marker owes nothing.
-    /// (Fhi.Metadata-wcbxi)
-    /// <para>
-    /// This draws the lines; it says nothing about the control. What a screen reader hears is the
-    /// switch's own <c>aria-checked</c>, always spelled out where this is omitted when off — two
-    /// carriers for two audiences, one <c>_levelLines</c> behind both. (Fhi.Metadata-l9l2n.87)
-    /// </para>
+    /// A data attribute because a class name is inventory to carry (Fhi.Metadata-wcbxi); a screen reader
+    /// hears the switch's own <c>aria-checked</c> instead. (Fhi.Metadata-l9l2n.87)
     /// </remarks>
     private string? LevelLinesMarker => _levelLines ? "true" : null;
 
@@ -1350,8 +1176,7 @@ public partial class VariableSearch
 
     /// <summary>The words for the glyphs the tree draws: one row per datakategori.</summary>
     /// <remarks>
-    /// The whole vocabulary, never the rows on screen: a legend that grew and shrank as the facets
-    /// narrowed would read as a second facet rather than as the key to the pictures.
+    /// The whole vocabulary, never the rows on screen, or the legend would read as a second facet.
     /// (Fhi.Metadata-zllxt)
     /// </remarks>
     private RenderFragment IconLegendList => builder =>
@@ -1384,21 +1209,14 @@ public partial class VariableSearch
     };
 
     /// <summary>A facet's own label, saying how many of its values are chosen.</summary>
-    /// <remarks>
-    /// On the summary line, so a collapsed facet still says that something inside it is narrowing
-    /// the list. Without it the only sign of a filter chosen three disclosures down is the number of
-    /// results changing.
-    /// </remarks>
+    /// <remarks>So a collapsed facet still says something inside it is narrowing the list.</remarks>
     private static string GroupLabel(FacetGroup group) =>
         group.SelectedCount == 0 ? group.Label : $"{group.Label} ({group.SelectedCount})";
 
-    /// <summary>
-    /// Which facets the reader has asked to see the whole of, and how long each was when they asked.
-    /// </summary>
+    /// <summary>Which facets the reader has asked to see the whole of, and how long each was then.</summary>
     /// <remarks>
-    /// Keyed on the facet rather than on its disclosure: folding a facet away is not a decision to
-    /// hide its values again. The length because the keys outlive the values behind them — this
-    /// panel's facets are rebuilt per answer. See <see cref="FacetLimits.StillExpanded"/>.
+    /// Keyed on the facet, since folding is not re-hiding; the length because keys outlive the values.
+    /// See <see cref="FacetLimits.StillExpanded"/>.
     /// </remarks>
     private readonly Dictionary<string, int> _expandedFacets = new(StringComparer.Ordinal);
 
@@ -1457,17 +1275,15 @@ public partial class VariableSearch
 
     /// <summary>Whether a facet's own search box is narrowing it right now.</summary>
     /// <remarks>
-    /// The kilde facet is the only searchable one, and its values arrive already narrowed — see
-    /// <see cref="VisibleKilder"/> — so this is what tells a short facet from one a term has cut
-    /// down to a few. Capping the second would hide a value the reader typed the name of.
+    /// The kilde facet's values arrive already narrowed, and capping them would hide a value the reader
+    /// typed the name of.
     /// </remarks>
     private bool IsFacetSearched(FacetGroup group) => group.Searchable && KildeSearchTerm is not null;
 
     /// <summary>The top-level values a facet draws, and how many its cap is holding back.</summary>
     /// <remarks>
-    /// <see cref="FacetLimits"/>'s predicate, so "long" means one thing here and the same in
-    /// Kelda's. The cap is the top level only: a branch is shut at rest, so a kilde's datasamlinger
-    /// sit behind a press already. List and remainder come back together, per <see cref="CappedValues{T}"/>.
+    /// <see cref="FacetLimits"/>'s predicate, so "long" means the same as in Kelda's. Top level only:
+    /// a branch is shut at rest already.
     /// </remarks>
     private CappedValues<FacetValue> VisibleValues(FacetGroup group) =>
         IsFacetSearched(group)
@@ -1484,9 +1300,8 @@ public partial class VariableSearch
 
     /// <summary>Whether the facet draws the control that reveals what the cap is holding back.</summary>
     /// <remarks>
-    /// Not while the facet's own search is running: a term draws every value it matches, so a
-    /// control offering more would offer nothing. An expanded facet keeps it, that being the only
-    /// way back. <paramref name="hidden"/> is the render's own count, never a second sum of it.
+    /// Not while a search draws every match; an expanded facet keeps it as the only way back.
+    /// <paramref name="hidden"/> is the render's own count, never a second sum.
     /// </remarks>
     private bool ShowsRestControl(FacetGroup group, int hidden) =>
         !IsFacetSearched(group)
@@ -1500,25 +1315,10 @@ public partial class VariableSearch
     /// <summary>The id joining a facet's value list to the control that reveals the rest of it.</summary>
     private string FacetOptionsId(string key) => $"munin-explorer-facet-options-{_instance}-{key}";
 
-    /// <summary>A facet's values as a nested list of checkboxes.</summary>
+    /// <summary>A facet's values as a nested list of checkboxes, keyed so a reorder never moves a box.</summary>
     /// <remarks>
-    /// Only the count carries a class, <c>munin-explorer-filters__count</c>, and it sits inside the
-    /// label — see KildeSearch.Filters.cs. Keyed because counts reorder the values between
-    /// renders, and an unkeyed patch would move the box under the reader's finger. (Fhi.Metadata-j0a2h)
-    /// <para>
-    /// <c>lang</c> goes on the element holding just the words — the <c>&lt;label&gt;</c>, or the
-    /// <c>&lt;span&gt;</c> a container gets in place of one — and never on the <c>&lt;li&gt;</c>,
-    /// which also holds the values nested under this one: <c>lang</c> inherits, so a kilde's
-    /// Norwegian would reach a child whose own
-    /// <see cref="FacetValue.Language"/> is null and meant it. The kildeutforsker's panel marks
-    /// its labels the same way, and a name marked in its chip but not on the checkbox that chip
-    /// stands for would name one kilde two ways on one page.
-    /// </para>
-    /// <para>
-    /// A value with children is a branch, and its children are drawn only while it is open — not
-    /// hidden, absent, so nothing inside a shut branch can be tabbed into whatever a host's
-    /// stylesheet does to <c>[hidden]</c>. (Fhi.Metadata-adog5)
-    /// </para>
+    /// <c>lang</c> sits on the label, never the <c>&lt;li&gt;</c>, which would pass it to children. A shut
+    /// branch's children are absent, not hidden, so none is tabbable. (Fhi.Metadata-j0a2h, Fhi.Metadata-adog5)
     /// </remarks>
     private RenderFragment FacetList(IReadOnlyList<FacetValue> values, string? id = null) => builder =>
     {
@@ -1666,14 +1466,8 @@ public partial class VariableSearch
 
     /// <summary>The control that opens and shuts one branch of a facet tree.</summary>
     /// <remarks>
-    /// A <c>&lt;button aria-expanded&gt;</c> beside the checkbox and never around it: expanding a
-    /// kilde narrows nothing, and a reader who wants its datasamlinger must not have to filter on
-    /// the kilde to see them. A <c>&lt;summary&gt;</c> holding the checkbox would be the same
-    /// control twice over, which is what the kildetype groups were before this.
-    /// <para>
-    /// <c>aria-controls</c> only while the list is drawn: a shut branch renders no children at all,
-    /// and a reference to an id nothing carries is an ARIA error rather than a relationship.
-    /// </para>
+    /// Beside the checkbox, never around it, since expanding must not filter. <c>aria-controls</c> only
+    /// while the list is drawn: a shut branch renders no children for it to name.
     /// </remarks>
     private void Disclosure(RenderTreeBuilder builder, FacetValue value, bool open)
     {
@@ -1728,18 +1522,13 @@ public partial class VariableSearch
     private bool IsBranchOpen(string key) => _expandedBranches.Contains(key);
 
     /// <summary>The id of the list one branch discloses, unique to this mount and to that branch.</summary>
-    /// <remarks>
-    /// Every segment is one a CSS selector can hold: the prefix is a literal, <see cref="IdPart"/>
-    /// escapes the key, and the mount's own segment is eight hex digits of a Guid — so a test, or a
-    /// host, can write <c>#id</c> and have it parse.
-    /// </remarks>
+    /// <remarks>Every segment is valid in a CSS selector, so a test or a host can write <c>#id</c>.</remarks>
     private string BranchId(string key) => $"munin-explorer-branch-{_instance}-{IdPart(key)}";
 
     /// <summary>One facet value key as an id can spell it, and no two keys alike.</summary>
     /// <remarks>
-    /// A kildetype group's key ends in whatever the API spells that kildetype with, so a space in
-    /// one would make <c>aria-controls</c> name two ids and find neither. Escaped rather than
-    /// replaced: replacing folds two keys differing only in punctuation onto one id.
+    /// A space in an API kildetype would split <c>aria-controls</c> into two ids. Escaped, not replaced,
+    /// so keys differing only in punctuation stay apart.
     /// </remarks>
     private static string IdPart(string key)
     {
@@ -1762,11 +1551,8 @@ public partial class VariableSearch
 
     /// <summary>Open or shut one branch, and nothing else.</summary>
     /// <remarks>
-    /// Touches neither <see cref="_filter"/> nor the API: a press here changes what is drawn, so a
-    /// value ticked inside a branch is still ticked when it is reopened. The guard reads the two
-    /// gestures that stand still — a double-click and a shift-click — and not the drag, which needs
-    /// a press this panel keeps none of; a click reporting no count at all is the keyboard's and
-    /// goes through. (Fhi.Metadata-zel47)
+    /// Leaves <see cref="_filter"/> alone, so ticks inside survive a reopen. Double- and shift-clicks are
+    /// ignored; a click with no count is the keyboard's and goes through. (Fhi.Metadata-zel47)
     /// </remarks>
     private void ToggleBranchFromControl(string key, MouseEventArgs released)
     {
@@ -1819,9 +1605,7 @@ public partial class VariableSearch
 
     /// <summary>Open the branches standing between a kilde the search kept and the name that matched.</summary>
     /// <remarks>
-    /// The term is matched over everything under a kilde and every branch starts shut, so without
-    /// this a deep match keeps a row whose matching name is nowhere on the page. Written where a
-    /// press writes, so Skjul alle still shuts what a search opened. (Fhi.Metadata-adog5)
+    /// Written where a press writes, so Skjul alle still shuts what a search opened. (Fhi.Metadata-adog5)
     /// </remarks>
     private void OpenBranchesToMatches()
     {
@@ -1837,11 +1621,7 @@ public partial class VariableSearch
     /// Whether anything at or under <paramref name="values"/> holds <paramref name="term"/>, opening
     /// every branch that has a match below it on the way back up.
     /// </summary>
-    /// <remarks>
-    /// A branch whose own label matched is left alone: the reader typed a name this row already
-    /// shows them, and opening it would unfold a kilde they can see on the strength of its own name.
-    /// <paramref name="walked"/> guards the descent the way <see cref="OpenBranches"/> does.
-    /// </remarks>
+    /// <remarks>A branch whose own label matched stays shut: its name is already on screen.</remarks>
     private bool OpenMatchedBranches(IReadOnlyList<FacetValue> values, string term, HashSet<string> walked)
     {
         var matched = false;
@@ -1862,11 +1642,7 @@ public partial class VariableSearch
     }
 
     /// <summary>Add or remove one value from a facet, and fetch what that leaves.</summary>
-    /// <remarks>
-    /// The type parameter is <c>TItem</c> and not <c>T</c>, which is the component's own
-    /// translations accessor: a <c>T</c> here would shadow it, and the first string this body ever
-    /// needs would fail to compile with an error pointing at the type parameter instead.
-    /// </remarks>
+    /// <remarks><c>TItem</c>, not <c>T</c>, which would shadow the component's translations accessor.</remarks>
     private Task ToggleAsync<TItem>(
         IReadOnlyList<TItem> selected, TItem value, Func<IReadOnlyList<TItem>, VariableFilter> apply)
     {
@@ -1879,13 +1655,10 @@ public partial class VariableSearch
         return ApplyFilterAsync(apply([.. selected, value]));
     }
 
-    /// <summary>
-    /// Choose a kildetype, or clear it by choosing the one already chosen.
-    /// </summary>
+    /// <summary>Choose a kildetype, or clear it by choosing the one already chosen.</summary>
     /// <remarks>
-    /// One at a time, because the API takes one, so ticking a second value unticks the first.
-    /// Unticking the chosen one clears the facet — which a checkbox promises and a radio group
-    /// denies, there being no "any kildetype" value to go back to.
+    /// One at a time because the API takes one; a checkbox rather than a radio, since there is no
+    /// "any kildetype" value to go back to.
     /// </remarks>
     private Task SetKildeTypeAsync(string value)
     {
@@ -1894,13 +1667,9 @@ public partial class VariableSearch
         return ApplyFilterAsync(_filter with { KildeType = chosen ? null : value });
     }
 
-    /// <summary>
-    /// Keep only variables that have a kildekodeverk link, or stop filtering on it.
-    /// </summary>
+    /// <summary>Keep only variables that have a kildekodeverk link, or stop filtering on it.</summary>
     /// <remarks>
-    /// Two states, not three. The API's <c>false</c> — only variables *without* one — is a question
-    /// nobody asked of a catalogue browser, and offering it from one button would make a single
-    /// press mean "yes", "no" or "either depending on where you are in the cycle".
+    /// Two states, not three: the API's <c>false</c> is a question nobody asks of a catalogue browser.
     /// </remarks>
     private Task ToggleKildekodeverkAsync() =>
         ApplyFilterAsync(_filter with { HasKildekodeverk = _filter.HasKildekodeverk == true ? null : true });
@@ -1910,13 +1679,8 @@ public partial class VariableSearch
 
     /// <summary>The chosen values as the row over the results draws them, in the panel's own order.</summary>
     /// <remarks>
-    /// A projection of the facets and never a second collection beside them — see
-    /// <see cref="ActiveFilters"/>. Every facet is walked rather than a known few named, so one
-    /// added later draws chips unasked: a row covering some filters reads as covering all of them.
-    /// A hierarchy value no facet named is spliced in where its own facet stands rather than
-    /// appended after the walk, or one level would read as two filters at opposite ends of the row
-    /// depending on which values the payload happened to name — see
-    /// <see cref="UnfacetedHierarchyChips"/> for why such a value has a chip at all.
+    /// Every facet is walked, so one added later draws chips unasked. An unfaceted hierarchy value is
+    /// spliced in where its facet stands, not appended — see <see cref="UnfacetedHierarchyChips"/>.
     /// </remarks>
     private IReadOnlyList<ActiveFilters.Chip> ActiveFilterChips
     {
@@ -1959,34 +1723,10 @@ public partial class VariableSearch
         }
     }
 
-    /// <summary>
-    /// Chips for the chosen kilder, delkilder, datasamlinger and variabelgrupper that the facets
-    /// drew none for, at the levels <paramref name="drawnHere"/> admits.
-    /// </summary>
+    /// <summary>Chips for chosen values no facet drew, at levels <paramref name="drawnHere"/> admits.</summary>
     /// <remarks>
-    /// <para>
-    /// The facets are cross-filtered, so a value the reader chose can be absent from the payload
-    /// describing what that selection leaves — the same gap <see cref="KildeName"/> has a fallback
-    /// label for — and before the first answer, or after one that failed, there is no payload at
-    /// all while a host may have mounted with <see cref="Filter"/> already set. Such a value
-    /// narrows the results and had no chip, so with the trail's own × gone the only control left
-    /// was "Fjern alle filtre", which drops the datatype and the dates with it. (Fhi.Metadata-oj286)
-    /// </para>
-    /// <para>
-    /// Keyed off what the walk above actually drew rather than off the payload a second time, so
-    /// the two can never disagree about which values already have a control: <c>removable</c> holds
-    /// the <see cref="FacetValue.Key"/> of every chip, and every such key comes from
-    /// <see cref="FacetName"/> — through <see cref="FacetValueKey"/> here and as
-    /// <see cref="Tree"/>'s prefix there. The levels themselves are <see cref="HierarchyLevels"/>,
-    /// the list the trail is drawn from, so neither reading can grow a level the other has not.
-    /// </para>
-    /// <para>
-    /// Values one level cannot name at all collapse into a single chip carrying their count, the
-    /// way a trail step does it: two chips reading "Datasamling" are two controls a screen reader
-    /// cannot tell apart, and removing one would leave one named identically behind, so pressing
-    /// it would read as having done nothing. Such a press takes all of them off, and never a value
-    /// the row has already named on its own.
-    /// </para>
+    /// Cross-filtering can leave a chosen value out of the payload, and without a chip only "Fjern alle
+    /// filtre" removes it (Fhi.Metadata-oj286). Values a level cannot name share one counted chip.
     /// </remarks>
     private IReadOnlyList<ActiveFilters.Chip> UnfacetedHierarchyChips(
         IReadOnlySet<string> removable, Func<HierarchyLevel, bool> drawnHere)
@@ -2034,12 +1774,8 @@ public partial class VariableSearch
 
     /// <summary>How one chosen value reads in the chip row, and what language those words are in.</summary>
     /// <remarks>
-    /// Both halves in one reading, because <c>NameInChips</c> settles both: a facet whose heading
-    /// goes into the chip composes this package's prose around the value, and what comes out is
-    /// this package's own words in the reader's language whatever the value alone was written in —
-    /// the same reading <see cref="DateValue"/> applies to the text it composes for itself. Decided
-    /// beside the composition rather than as an override of <see cref="FacetValue.Language"/>, so a
-    /// facet cannot be given one half and left with the other.
+    /// Both from <c>NameInChips</c>: a chip composed around the facet's heading is this package's prose
+    /// in the reader's language, so a facet cannot get one half without the other.
     /// </remarks>
     private (string Text, string? Language) ChipReading(FacetGroup group, FacetValue value) =>
         group.NameInChips
@@ -2048,9 +1784,8 @@ public partial class VariableSearch
 
     /// <summary>Untick one value from the chip row, through the state its own checkbox writes.</summary>
     /// <remarks>
-    /// Focus first: the pressed control leaves as it acts, and the last chip takes the whole row
-    /// with it, so focus would otherwise fall to <c>&lt;body&gt;</c>. The search field is the one
-    /// control above the row that is there whether a filter is left or not. (Fhi.Metadata-ag4n7)
+    /// Focus first, to the search field: the chip leaves as it acts, and focus would fall to
+    /// <c>&lt;body&gt;</c>. (Fhi.Metadata-ag4n7)
     /// </remarks>
     private async Task RemoveFilterAsync(Func<Task> toggle)
     {
@@ -2061,9 +1796,7 @@ public partial class VariableSearch
 
     /// <summary>Drop every filter and fetch the whole search again.</summary>
     /// <remarks>
-    /// The one control that offers this, and it stands in the chip row rather than at the foot of
-    /// the panel — so it is gone the moment it lands, and focus moves ahead of it for the reason
-    /// <see cref="RemoveFilterAsync"/> gives. (Fhi.Metadata-l9l2n.68)
+    /// Focus moves first, for the reason <see cref="RemoveFilterAsync"/> gives. (Fhi.Metadata-l9l2n.68)
     /// </remarks>
     private async Task ClearFiltersAsync()
     {
@@ -2072,13 +1805,9 @@ public partial class VariableSearch
         await ApplyFilterAsync(VariableFilter.None);
     }
 
-    /// <summary>
-    /// Apply <paramref name="next"/>: fetch what it leaves, and refresh the counts beside it.
-    /// </summary>
+    /// <summary>Apply <paramref name="next"/>: fetch what it leaves, and refresh the counts beside it.</summary>
     /// <remarks>
-    /// The one way the filter ever changes, so the rules that go with changing it — back to page
-    /// one, roll back a fetch that failed, tell the host what is actually in force — are written
-    /// once rather than once per facet.
+    /// The one way the filter changes, so page reset, rollback and host notification are written once.
     /// </remarks>
     private async Task ApplyFilterAsync(VariableFilter next)
     {
@@ -2123,10 +1852,8 @@ public partial class VariableSearch
         }
         else
         {
-            // The rows on screen are still the old ones, so the buttons have to say so — the same
-            // invariant the sort rollback protects. The page with them: those rows are page 7 of the
-            // old selection, and leaving _page at 1 would report a page the reader is not on and
-            // take it out of the host's URL over a narrowing that never happened.
+            // The rows on screen are still page 7 of the old selection, so filter and page roll back together,
+            // or the buttons and the host's URL would describe a narrowing that never happened.
             _filter = previous;
             _page = previousPage;
             _keepPager = previousKeepPager;
@@ -2140,19 +1867,10 @@ public partial class VariableSearch
         await NotifyPageChangedAsync();
     }
 
-    /// <summary>
-    /// The catalogue's own words for the EHDS tokens the datakategori facet is made of.
-    /// </summary>
+    /// <summary>The catalogue's own words for the EHDS tokens the datakategori facet is made of.</summary>
     /// <remarks>
-    /// <see cref="DataCategoryFacet"/> carries a CURIE and a count and no label, so without this the
-    /// facet would read <c>ehds-cat:population-health-surveys</c> down the panel. Transcribing the
-    /// vocabulary into <see cref="Texts"/> is the other way to get words, and is the one the note
-    /// above <c>Texts.FacetCategory</c> forbids: a table copied here is right on the day it is
-    /// written and drifts from then on. Kelda resolves the same vocabulary the same way.
-    /// <para>
-    /// Empty until the fetch lands, and empty for good if it fails — which costs the choices their
-    /// words and nothing else, exactly as it does in Kelda. The facet still filters.
-    /// </para>
+    /// Fetched rather than transcribed into <see cref="Texts"/>, which would drift. Empty until it
+    /// lands, and for good if it fails, which costs the choices their words and nothing else.
     /// </remarks>
     private IReadOnlyDictionary<string, PropertyMetadataEntry> _vocabulary =
         new Dictionary<string, PropertyMetadataEntry>(StringComparer.OrdinalIgnoreCase);
@@ -2163,15 +1881,10 @@ public partial class VariableSearch
     /// <summary>The property key the datakategori tokens are defined under.</summary>
     private const string DataCategoryKey = "healthCategory";
 
-    /// <summary>
-    /// Fetch the vocabulary once, and only for a panel that has datakategorier to name.
-    /// </summary>
+    /// <summary>Fetch the vocabulary once, and only for a panel that has datakategorier to name.</summary>
     /// <remarks>
-    /// Lazy rather than fetched on mount: an API that predates the facet returns no datakategorier
-    /// at all (see <see cref="FilterOptions.DataCategories"/>), and a request whose answer nothing
-    /// on screen could use is one more call against a rate limit this component already shares with
-    /// the search beside it. Asked at most once per component, failure included — a vocabulary that
-    /// could not be had will not be had by asking again on every keystroke.
+    /// An older API sends no datakategorier, and the call shares the search's rate limit. Asked at most
+    /// once, failure included, rather than again on every keystroke.
     /// </remarks>
     private async Task EnsureCategoryWordsAsync()
     {
@@ -2214,13 +1927,9 @@ public partial class VariableSearch
         && facets.HelsefagligKodeverk.Count == 0 && facets.AdministrativtKodeverk.Count == 0
         && facets.Instruments.Count == 0 && facets.DataCategories.Count == 0;
 
-    /// <summary>
-    /// The answer to draw the panel from: the fresh one, unless it would leave the reader stranded.
-    /// </summary>
+    /// <summary>The answer to draw the panel from: the fresh one, unless it would leave the reader stranded.</summary>
     /// <remarks>
-    /// A selection matching nothing makes the API report nothing for every facet, chosen values
-    /// included, so storing it would remove the only way to undo the choice that emptied the list.
-    /// (Fhi.Metadata-v2bgr)
+    /// A selection matching nothing empties every facet, removing the way to undo it. (Fhi.Metadata-v2bgr)
     /// </remarks>
     private async Task<FilterOptions> RetainedAsync(FilterOptions fresh, string? language)
     {
@@ -2256,18 +1965,10 @@ public partial class VariableSearch
         }
     }
 
-    /// <summary>
-    /// Refresh the facets and their counts for the current search and filter.
-    /// </summary>
+    /// <summary>Refresh the facets and their counts for the current search and filter.</summary>
     /// <remarks>
-    /// Its own request, and its own failure. The counts are cross-filtered against the whole
-    /// selection, so they move whenever the search or the filter does — but not when the page or
-    /// the ordering does, which is why turning a page does not re-ask for them.
-    /// <para>
-    /// A failure keeps the facets already on screen rather than clearing them. They are the controls
-    /// the reader is using, and the numbers being briefly stale is a far smaller problem than the
-    /// panel emptying under a press.
-    /// </para>
+    /// Its own request: counts move with search and filter, not page or order. A failure keeps the
+    /// facets on screen, since stale numbers beat the panel emptying under a press.
     /// </remarks>
     private async Task FetchFacetsAsync()
     {
@@ -2276,12 +1977,8 @@ public partial class VariableSearch
 
         try
         {
-            // The API's own spelling of the resolved language rather than the host's raw token or
-            // the tag we render with. A host sending "en-GB" gets English words everywhere else,
-            // and a facet panel that asked the API for a tag it does not know would be the one
-            // Norwegian block on an otherwise English page. Norwegian goes out as "nb" and not our
-            // "no" for the same reason in reverse: "no" has no parent culture the API's request
-            // localization can fall back from, so it would silently take the API's default.
+            // The API's own spelling of the resolved language, so a host's "en-GB" still gets English facets.
+            // Norwegian goes as "nb", not "no": "no" has no parent culture for the API to fall back from.
             var language = ReaderLanguage.ForApi(Language);
 
             _facets = await RetainedAsync(
@@ -2303,10 +2000,7 @@ public partial class VariableSearch
         {
             Log?.LogWarning(ex, "the rate limiter refused the facet counts");
 
-            // This refresh goes out alongside every search, so a throttled reader meets this panel
-            // and the result list in the same render. "The counts may be out of date" beside "you
-            // have made too many requests" would have the two regions disagree about what happened,
-            // and only one of them would be telling the reader what to do about it.
+            // Sent beside every search, so a throttle shows in both regions at once and they must agree.
             _facetError = T.RateLimitError;
 
             // Offered no more here than beside the rows, and for the same reason: waiting is the
@@ -2329,13 +2023,8 @@ public partial class VariableSearch
 
     /// <summary>Ask for the counts again after a refresh that failed.</summary>
     /// <remarks>
-    /// Refreshes the counts and nothing else. The rows are the right rows — that is exactly what
-    /// makes this a failure of its own — so a handler shared with the row retry would re-fetch a
-    /// list nobody said was wrong, and clear this message with the answer to a different question.
-    /// <para>
-    /// No arguments to capture, unlike <see cref="RetryRowsAsync"/>: the counts describe whatever
-    /// is on screen, and <c>_executedSearch</c> and <c>_filter</c> are still describing it.
-    /// </para>
+    /// Counts only: the rows are right, and re-fetching them would answer a different question. No
+    /// arguments to capture, unlike <see cref="RetryRowsAsync"/>: the state still describes the screen.
     /// </remarks>
     private async Task RetryFacetsAsync()
     {
