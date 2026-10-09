@@ -129,7 +129,8 @@ public class ContractCoverageTest
                     {
                       "kildeId": "c368f9fb-2fbc-43c2-b0ba-c6db2b1d2f68",
                       "delkildeId": null,
-                      "datasamlingId": "25acaea1-6ba9-4417-b514-e014e4b53011"
+                      "datasamlingId": "25acaea1-6ba9-4417-b514-e014e4b53011",
+                      "count": 1
                     }
                   ]
                 }
@@ -146,7 +147,8 @@ public class ContractCoverageTest
                     {
                       "kildeId": "c368f9fb-2fbc-43c2-b0ba-c6db2b1d2f68",
                       "delkildeId": "c1cc6266-ac04-4e7c-8b33-427dbb9d6871",
-                      "datasamlingId": "f9262831-e1a9-405f-8599-0d0eb6e9b8ed"
+                      "datasamlingId": "f9262831-e1a9-405f-8599-0d0eb6e9b8ed",
+                      "count": 1
                     }
                   ]
                 }
