@@ -62,15 +62,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </remarks>
 public sealed partial class KildeSearch
 {
-    /// <summary>
-    /// How much of a facet label is drawn before it is cut short.
-    /// </summary>
+    /// <summary>How much of a facet label is drawn before it is cut short.</summary>
     /// <remarks>
-    /// A hard cap in C# rather than an ellipsis in CSS, because the package ships no CSS and a host
-    /// that supplies no rule of its own would otherwise get the whole 200-character databehandler
-    /// sentence laid out inside a 384-pixel column. The full value is on the <c>title</c>, so
-    /// nothing is lost — and the cut is only ever cosmetic: the value the checkbox filters on is the
-    /// one the catalogue sent, whole.
+    /// Cut in C# because the package ships no CSS, and a host with no rule would lay out a whole 200-character
+    /// databehandler. Cosmetic only: the full value is on the <c>title</c>, and the checkbox filters on it whole.
     /// </remarks>
     private const int FacetLabelLimit = 60;
 
@@ -80,24 +75,13 @@ public sealed partial class KildeSearch
     /// <summary>The key of the additional property holding a kilde's access-rights token.</summary>
     private const string AccessRightsKey = "accessRights";
 
-    /// <summary>What a facet is, before it has been counted: where its values come from and what they are called.</summary>
     /// <param name="Key">Stable across renders, so a selection belongs to one facet and to no other.</param>
     /// <param name="Heading">The facet's own heading, in the reader's language.</param>
-    /// <param name="Values">
-    /// A kilde's values for this facet — none, one, or several. Several is the honest shape for
-    /// kategori, which is a list per kilde; a facet that flattened it to the first would drop
-    /// kilder out of a filter they belong in.
-    /// </param>
+    /// <param name="Values">None, one or several: kategori is a list, and keeping its first drops kilder from filters.</param>
     /// <param name="Label">
-    /// A value as a word, where the catalogue's token is not one — and which language those words
-    /// turned out to be in, because that is not a property of the facet. Three of the four look
-    /// their values up — kildetype, kategori and tilgangsnivå — and every one of those can miss:
-    /// kildetype falls back to text in the catalogue's own language, while kategori and
-    /// tilgangsnivå fall back to an EHDS or EU CURIE, which is English-authored and prose in no
-    /// language at all. A <c>lang="no"</c> over one of those hands it to a screen reader as
-    /// Norwegian, which is WCAG 3.1.2 — so a label says which of the two it is rather than leaving
-    /// <see cref="Option"/> to guess. The fourth, databehandler, looks nothing up and cannot miss:
-    /// its value is already the catalogue's own words.
+    /// A value as a word, with its language, which depends on whether the lookup missed: kildetype falls back to
+    /// catalogue text, kategori and tilgangsnivå to a CURIE in no language, which <c>lang="no"</c> would misread
+    /// (WCAG 3.1.2). Databehandler looks nothing up, so its words are always the catalogue's.
     /// </param>
     private sealed record FacetDefinition(
         string Key,
@@ -108,40 +92,26 @@ public sealed partial class KildeSearch
     /// <summary>What a choice is called, and the language those words are in.</summary>
     /// <param name="Text">The value as a reader should see it.</param>
     /// <param name="Language">
-    /// The language <paramref name="Text"/> is written in, or null where it is already the reader's
-    /// own or is an identifier belonging to no language. Null means "do not mark this", which is
-    /// not the same as "mark it as the page's language".
+    /// Null where <paramref name="Text"/> is the reader's own language or an identifier in none. Null means
+    /// "do not mark this", which is not the same as "mark it as the page's language".
     /// </param>
     private readonly record struct FacetLabel(string Text, string? Language);
 
     /// <summary>A facet as the panel draws it: a disclosure holding a heading and the choices under it.</summary>
     /// <remarks>
-    /// <c>OpenByDefault</c> is the first facet only, and it is the same on every render, so it
-    /// seeds the disclosure and the fold is the reader's from there — until a fold press or a
-    /// drill-in rebuilds the elements. Every facet open is the length this fixes — databehandler
-    /// alone runs to 39 values — and every facet shut hides the affordance from a reader new to it.
+    /// Only the first is <c>OpenByDefault</c>; that seeds the disclosure, and the fold is the reader's until a fold press or
+    /// a drill-in rebuilds it. All open runs long (databehandler alone can run to dozens); all shut hides the affordance.
     /// </remarks>
     private sealed record Facet(
         string Key, string Heading, IReadOnlyList<FacetOption> Options, bool OpenByDefault = false);
 
-    /// <summary>
-    /// One choice inside a facet.
-    /// </summary>
-    /// <param name="Value">
-    /// The catalogue's own value, matched whole. Not the label: two access-rights tokens with
-    /// different prefixes are two values however alike their words are.
-    /// </param>
+    /// <param name="Value">The catalogue's value, matched whole: two prefixes over one token are two values.</param>
     /// <param name="Label">The value as a reader should see it, at whatever length the catalogue wrote it.</param>
-    /// <param name="Count">
-    /// How many kilder in the whole list carry this value — see the remarks on the class for why
-    /// that is not the same number Runa would show.
-    /// </param>
+    /// <param name="Count">Over the whole list, so not the cross-filtered number Runa shows; see the class remarks.</param>
     /// <param name="Language">
-    /// The catalogue's own language where <paramref name="Label"/> holds the catalogue's words, and
-    /// nothing at all where it does not — which is two cases rather than one, and both are marked
-    /// the same way on purpose: this package's own wording, already in the reader's language, and
-    /// the catalogue's own token, a CURIE belonging to no language at all. Null means "do not mark
-    /// this"; it does not mean "this package wrote it". See <see cref="Option"/> for which is which.
+    /// The catalogue's language where <paramref name="Label"/> is the catalogue's words. Null both for this package's
+    /// own wording and for a CURIE in no language: null means "do not mark this", not "this package wrote it". See
+    /// <see cref="Option"/>.
     /// </param>
     private sealed record FacetOption(string Value, string Label, int Count, string? Language)
     {
@@ -150,9 +120,8 @@ public sealed partial class KildeSearch
 
         /// <summary>The count as it is drawn: the number in parentheses, and no space.</summary>
         /// <remarks>
-        /// Holds "(1)" alone: the separating space is emitted beside this element, so a host rule
-        /// dressing the count dresses the number and not the gap. Browsers keep the space in the
-        /// accessible name either way. (Fhi.Metadata-cgk85, Fhi.Metadata-47lha)
+        /// The separating space is emitted beside this element, so a host rule dresses the number and not the gap;
+        /// browsers keep the space in the accessible name. (Fhi.Metadata-cgk85, Fhi.Metadata-47lha)
         /// </remarks>
         public string CountText => $"({Count})";
 
@@ -171,8 +140,7 @@ public sealed partial class KildeSearch
     /// one nothing is chosen in — which is no constraint rather than an impossible one.
     /// </summary>
     /// <remarks>
-    /// Ordinal, like everything else this component compares: a case-insensitive set would fold two
-    /// catalogue values into one and tick both boxes from one click.
+    /// Ordinal: a case-insensitive set would fold two catalogue values into one and tick both boxes from one click.
     /// </remarks>
     private readonly Dictionary<string, HashSet<string>> _chosen = new(StringComparer.Ordinal);
 
@@ -207,32 +175,24 @@ public sealed partial class KildeSearch
     private const string AccessLevelFacet = "tilgangsniva";
     private const string DataProcessorFacet = "databehandler";
 
-    /// <summary>
-    /// What has been typed into each facet's own value search, exactly as the reader typed it.
-    /// </summary>
+    /// <summary>What has been typed into each facet's own value search, exactly as the reader typed it.</summary>
     /// <remarks>
-    /// Separate from <see cref="_chosen"/> and never read by <see cref="MatchesFacets"/>: this
-    /// narrows what the panel draws, and a filter is what the panel already has checkboxes for.
-    /// Held raw so the field renders back what was typed; <see cref="FacetSearchTerm"/> is the one
-    /// place that decides a field of spaces is no search.
+    /// Separate from <see cref="_chosen"/> and never read by <see cref="MatchesFacets"/>: it narrows what the panel draws.
+    /// Held raw so the field renders back what was typed; <see cref="FacetSearchTerm"/> alone decides spaces are no search.
     /// </remarks>
     private readonly Dictionary<string, string> _facetSearch = new(StringComparer.Ordinal);
 
     /// <summary>Each facet's search field, so focus can be put back on it before its values are rewritten.</summary>
     /// <remarks>
-    /// Keyed like <see cref="_facetSearch"/> and written by <c>@ref</c> as the fields are drawn, so a
-    /// facet with no box has no entry, and one that lost its box keeps a stale reference nothing
-    /// reads: only that facet's own commit focuses it, and the field is still on screen then.
+    /// Written by <c>@ref</c>; a facet that lost its box keeps a stale reference nothing reads, since only that facet's
+    /// own commit focuses it, and the field is still on screen then.
     /// </remarks>
     private readonly Dictionary<string, ElementReference> _facetSearchFields = new(StringComparer.Ordinal);
 
-    /// <summary>
-    /// Which facets the reader has asked to see the whole of, and how long each was when they asked.
-    /// </summary>
+    /// <summary>Which facets the reader has asked to see the whole of, and how long each was when they asked.</summary>
     /// <remarks>
-    /// Keyed on the facet rather than on its disclosure: folding a facet away is not a decision to
-    /// hide the values inside it again. The length is what <see cref="FacetLimits.StillExpanded"/>
-    /// reads; this panel counts over a list fetched once and keeps it so all three answer alike.
+    /// Keyed on the facet, not its disclosure: folding a facet is not a decision to hide its values again. The length is
+    /// for <see cref="FacetLimits.StillExpanded"/>, kept although this list is fetched once, so all three panels answer alike.
     /// </remarks>
     private readonly Dictionary<string, int> _expandedFacets = new(StringComparer.Ordinal);
 
@@ -254,37 +214,20 @@ public sealed partial class KildeSearch
     /// </remarks>
     private string FacetSearchId(string key) => $"munin-explorer-facet-search-{_instance}-{key}";
 
-    /// <summary>
-    /// The panel heading's level: one below the component's own title, so the outline stays
-    /// unbroken however deep the host mounted us.
-    /// </summary>
+    /// <summary>The panel heading's level: one below the component's title, so the outline stays unbroken.</summary>
     /// <remarks>
-    /// The same level an open kilde's name gets, and not a clash: the panel is drawn in the list
-    /// branch and the kilde in the drilldown, so the two are never on screen together.
+    /// The same level an open kilde's name gets, and not a clash: the panel is drawn in the list branch and the kilde in
+    /// the drilldown, so the two are never on screen together.
     /// </remarks>
     private int FilterLevel => Math.Clamp(TitleLevel + 1, 1, 6);
 
     /// <summary>A facet heading's level: one below the panel's own heading.</summary>
     private int FacetLevel => Math.Clamp(FilterLevel + 1, 1, 6);
 
-    /// <summary>
-    /// The four facets, in Kelda's order, and where each of them reads its values.
-    /// </summary>
     /// <remarks>
-    /// Kildetype and databehandler are columns of the list itself. The other two are curated
-    /// properties, which the list endpoint carries as a bag of stored codes with no vocabulary
-    /// beside it, so their words come from the vocabulary this component fetches alongside the list
-    /// — the catalogue's own, the same editable master data the detail panel one click away reads.
-    /// See <see cref="Vocabulary"/>.
-    /// <para>
-    /// Held rather than rebuilt per read, which is the one place in this file where that is worth
-    /// doing: <see cref="Facets"/> reads it once per render, but <see cref="MatchesFacets"/> reads
-    /// it once per <em>kilde</em>, so a collection expression here would allocate an array and its
-    /// eight closures for every row the filter is asked about. Nothing in it goes stale between
-    /// renders — the label functions read <c>T</c> when they are called, not when they are built —
-    /// except the four headings, which are the strings they were when the list was made. So the
-    /// held list belongs to a reader, and a host that changes <see cref="Language"/> gets a new one.
-    /// </para>
+    /// Kategori and tilgangsnivå are worded by the vocabulary fetched beside the list; see <see cref="Vocabulary"/>. Held
+    /// because <see cref="MatchesFacets"/> reads it per kilde, and a rebuild allocates eight closures per row. Only the
+    /// headings go stale (labels read <c>T</c> when called), so a host changing <see cref="Language"/> gets a new list.
     /// </remarks>
     private IReadOnlyList<FacetDefinition> Definitions
     {
@@ -305,10 +248,8 @@ public sealed partial class KildeSearch
                 new(AccessLevelFacet, T.FacetAccessLevel,
                     kilde => One(Property(kilde, AccessRightsKey)), value => Vocabulary(AccessRightsKey, value)),
 
-                // No lookup of its own: databehandler is free text the catalogue stores as somebody
-                // typed it, so there is nothing to look it up in and the value is the word — the
-                // catalogue's own word, always, which is why it says so rather than asking whether
-                // some lookup missed.
+                // Free text, so there is nothing to look it up in: the value is the catalogue's own word, always,
+                // which is why it says so rather than asking whether some lookup missed.
                 new(DataProcessorFacet, T.FieldDataProcessor,
                     kilde => One(kilde.DataProcessor), value => new FacetLabel(value, "no"))
             ];
@@ -317,14 +258,8 @@ public sealed partial class KildeSearch
 
     /// <summary>The facets worth drawing, counted over the whole list.</summary>
     /// <remarks>
-    /// Built per render rather than cached, for the reason the variable explorer's are: a cached
-    /// facet and the rows beside it can describe two different moments. It is four passes over some
-    /// tens of records.
-    /// <para>
-    /// <c>OpenByDefault</c> is applied after the empty facets are dropped, so it names the first
-    /// facet <em>drawn</em> rather than the first defined: a catalogue whose kilder carry no
-    /// kildetype would otherwise render every facet folded.
-    /// </para>
+    /// Built per render, as the variable explorer's are, so a facet and the rows beside it cannot describe two moments.
+    /// <c>OpenByDefault</c> is set after empty facets drop, so a catalogue with no kildetype still draws one facet open.
     /// </remarks>
     private IReadOnlyList<Facet> Facets =>
     [
@@ -342,11 +277,8 @@ public sealed partial class KildeSearch
 
     /// <summary>One facet, counted.</summary>
     /// <remarks>
-    /// Distinct per kilde, so a kilde that lists one kategori twice is one kilde in that count
-    /// rather than two. Ordered by the label, in the catalogue's own collation — these are
-    /// Norwegian names whoever is reading, so æ, ø and å belong at the end of the alphabet — and
-    /// then by the value, because two values sharing a label would otherwise be left in whatever
-    /// order the dictionary happened to enumerate.
+    /// Distinct per kilde, so a kategori listed twice counts its kilde once. Ordered by label in catalogue collation
+    /// (Norwegian names whoever reads, so æ, ø and å sort last), then by value, so equal labels keep a stable order.
     /// </remarks>
     private Facet Build(FacetDefinition definition)
     {
@@ -369,20 +301,10 @@ public sealed partial class KildeSearch
         return new Facet(definition.Key, definition.Heading, options);
     }
 
-    /// <summary>One choice, with the language of the words it is drawn in.</summary>
     /// <remarks>
-    /// A label the catalogue wrote is marked as the catalogue's language, exactly as the same
-    /// string is in the table's cells: a Norwegian organisation's name inside an English page is
-    /// read out with English phonetics otherwise, which is WCAG 3.1.2. A label already in the
-    /// reader's language is not marked, because a <c>lang</c> that says what the page already says
-    /// is noise — and an identifier belonging to no language is not marked either, which is the
-    /// same failure inverted: <c>eu-access:OP_DATPRO</c> announced in a Norwegian voice.
-    /// <para>
-    /// Which of the three a label is, is <see cref="FacetDefinition.Label"/>'s answer to give — see
-    /// there for why the facet cannot be asked instead. This method only turns that answer into the
-    /// attribute, and <see cref="CatalogueProperties.Foreign(string, string)"/> is what drops it for a reader
-    /// already reading the language it names.
-    /// </para>
+    /// Catalogue words carry the catalogue's language, as the table's cells do, or a Norwegian name is read with English phonetics
+    /// (WCAG 3.1.2); a CURIE such as <c>eu-access:OP_DATPRO</c> stays unmarked. <see cref="FacetDefinition.Label"/> decides
+    /// which a label is; <see cref="CatalogueProperties.Foreign(string, string)"/> drops a lang the reader already reads.
     /// </remarks>
     private FacetOption Option(FacetDefinition definition, string value, int count)
     {
@@ -392,48 +314,18 @@ public sealed partial class KildeSearch
             value, label, count, language is null ? null : CatalogueProperties.Foreign(language, Reader));
     }
 
-    /// <summary>
-    /// A label this package translated, or the catalogue's own text where the translation missed.
-    /// </summary>
+    /// <summary>A label this package translated, or the catalogue's own text where the translation missed.</summary>
     /// <remarks>
-    /// The rule kildetype needs, and the reason it is asked of the answer rather than of the value:
-    /// a translation that came back as the value itself is the fallback, which for that facet is a
-    /// Munin enum member — <c>noeHeltNytt</c> — and reads as Norwegian.
+    /// Judged by the answer, not the value: a translation that came back as the value is the fallback, for kildetype a
+    /// Munin enum member such as <c>noeHeltNytt</c>, which reads as Norwegian.
     /// </remarks>
     private static FacetLabel Translated(string label, string value) =>
         new(label, string.Equals(label, value, StringComparison.Ordinal) ? "no" : null);
 
-    /// <summary>
-    /// A curated property's value as the catalogue's own vocabulary words it, or as the token it
-    /// arrived as where that vocabulary lists no such value.
-    /// </summary>
     /// <remarks>
-    /// The same source the detail panel one click away reads, and that is the whole point of it.
-    /// These two facets used to translate their CURIEs from a table transcribed into this package,
-    /// which was correct on the day it was written and drifted from then on: a category the
-    /// catalogue added afterwards showed as <c>ehds-cat:</c> in the panel while the kilde view
-    /// showed its Norwegian word. The vocabulary is editable master data, so the only copy that
-    /// cannot go stale is the one the API sends — see <see cref="KildeSearch.LoadVocabularyAsync"/>
-    /// for how it gets here and what happens when it does not.
-    /// <para>
-    /// A value the vocabulary does not list keeps its checkbox and shows its token, whole. Dropping
-    /// it would take kilder out of a panel that still lists them, silently; and the token is
-    /// unmarked rather than called Norwegian, because a CURIE is prose in no language. An option
-    /// the vocabulary lists but has curated no label for counts as not listed here, for the same
-    /// reason: what ends up on screen is the token either way, and only the marking would differ.
-    /// Which of the two it was comes from <see cref="CatalogueProperties.Option"/>, off the option
-    /// itself, rather than from comparing the label back against the value — that comparison had to
-    /// ignore case, because a label-less option hands back the vocabulary's spelling of the code and
-    /// an ordinal check would read the two spellings as a curated word and mark a bare CURIE
-    /// <c>lang="no"</c>.
-    /// </para>
-    /// <para>
-    /// The match is on the whole value — <see cref="CatalogueProperties.Option"/> — and not on the
-    /// part after the last colon, which is the second half of what the copied table got wrong:
-    /// prefix-blind, <c>annet-vokabular:biobanks</c> read as "Biobanker" in the facet while the
-    /// detail panel showed it raw. Two prefixes over one bare token are two values in the
-    /// catalogue, and the facet counts and filters them as two either way.
-    /// </para>
+    /// Worded by the API's vocabulary, as the detail panel is, since a copied table goes stale (Fhi.Metadata-tbpbr). A
+    /// token it curates no word for keeps its checkbox, whole and unmarked; dropping it would hide kilder silently. Matched
+    /// on the whole value, prefix and all; <c>Curated</c> decides, as a label-equals-value test misreads case (Fhi.Metadata-o49mx).
     /// </remarks>
     private FacetLabel Vocabulary(string key, string value) =>
         _vocabulary.TryGetValue(key, out var entry)
@@ -443,10 +335,7 @@ public sealed partial class KildeSearch
 
     /// <summary>Whether <paramref name="kilde"/> survives every facet the reader has chosen in.</summary>
     /// <remarks>
-    /// OR within a facet, AND across facets. Two values ticked in one facet leave the kilder
-    /// matching <em>either</em>, which is the whole reason the values are a set rather than a
-    /// single choice; a kilde has to satisfy every facet that has a choice in it, which is what
-    /// makes two facets narrow rather than widen.
+    /// OR within a facet, which is why its values are a set, and AND across facets, so two facets narrow rather than widen.
     /// </remarks>
     private bool MatchesFacets(KildeSummary kilde)
     {
@@ -501,9 +390,8 @@ public sealed partial class KildeSearch
 
     /// <summary>Untick one value from the chip row, through the state the checkbox writes.</summary>
     /// <remarks>
-    /// <see cref="Choose"/> and nothing beside it, which is the whole point of the row: a chip that
-    /// cleared its value by any other path would leave the panel's checkbox ticked over a list that
-    /// had stopped obeying it, and neither control would say which one the rows came from.
+    /// Only through <see cref="Choose"/>: a chip clearing its value any other way would leave the panel's checkbox ticked
+    /// over a list that had stopped obeying it.
     /// </remarks>
     private async Task RemoveFilterAsync(string key, string value)
     {
@@ -514,9 +402,8 @@ public sealed partial class KildeSearch
 
     /// <summary>Untick every value in every facet, in one write of that same state.</summary>
     /// <remarks>
-    /// Not through <see cref="Choose"/> and still the whole of what it does: that method writes
-    /// <see cref="_chosen"/> and nothing beside it, so emptying it is that same write for every
-    /// value at once — where a walk over the chips would leave what the row is not drawing ticked.
+    /// Emptying <see cref="_chosen"/> is the write <see cref="Choose"/> makes, for every value at once; a walk over the
+    /// chips would leave ticked whatever the row is not drawing.
     /// </remarks>
     private async Task ClearFacetsAsync()
     {
@@ -557,17 +444,15 @@ public sealed partial class KildeSearch
 
     /// <summary>Hand focus to the search field before the pressed control leaves the page.</summary>
     /// <remarks>
-    /// The pressed control leaves as it acts and the last chip takes the row with it, so focus would
-    /// land on <c>&lt;body&gt;</c>. The field rather than a neighbouring chip: it is the one control
-    /// above the row that is there whether a filter is left or not. (Fhi.Metadata-ag4n7)
+    /// The pressed control leaves as it acts, the last chip taking the row, so focus would land on <c>&lt;body&gt;</c>.
+    /// The field, not a neighbouring chip: it is the one control above the row that is always there. (Fhi.Metadata-ag4n7)
     /// </remarks>
     private ValueTask RescueFocusAsync() => _searchField.FocusAsync();
 
     /// <summary>The ticked values as the row over the results draws them, in the panel's own order.</summary>
     /// <remarks>
-    /// A projection of <see cref="_chosen"/> and never a second collection beside it — see
-    /// <see cref="ActiveFilters"/>. Facets in <see cref="Definitions"/>' order; values sorted on the
-    /// two keys the facet's own list is sorted on, so re-sorting the panel is visibly two edits.
+    /// A projection of <see cref="_chosen"/>, never a second collection (see <see cref="ActiveFilters"/>), sorted on the
+    /// facet list's own two keys, so re-sorting the panel is visibly two edits.
     /// </remarks>
     private IReadOnlyList<ActiveFilters.Chip> ActiveFilterChips
     {
@@ -619,10 +504,8 @@ public sealed partial class KildeSearch
 
     /// <summary>Bumped per press, and part of every disclosure's key, so the press rebuilds them.</summary>
     /// <remarks>
-    /// A <c>&lt;details&gt;</c> holds its own open state in the DOM, so a facet the reader folded by
-    /// hand no longer matches the <c>open</c> last rendered — and an unchanged value is never
-    /// patched, which is exactly the press that has to land. A new key rebuilds instead of diffing.
-    /// The same field on <see cref="VariableSearch"/> says why no test can stage that divergence.
+    /// A hand-folded <c>&lt;details&gt;</c> no longer matches the <c>open</c> last rendered, and an unchanged value is never
+    /// patched. No test can stage that divergence; the same field on <see cref="VariableSearch"/> says why.
     /// </remarks>
     private int _foldGeneration;
 
@@ -650,9 +533,8 @@ public sealed partial class KildeSearch
 
     /// <summary>Open every facet at once, or fold every facet at once.</summary>
     /// <remarks>
-    /// The rebuild costs each facet's search field whatever is typed into it but not yet committed —
-    /// the boxes commit on change, so a half-typed term lives only in the DOM. Committed terms are
-    /// this component's own and survive.
+    /// The rebuild loses a term typed into a facet's search field but not committed: the boxes commit on change, so a
+    /// half-typed term lives only in the DOM. Committed terms are this component's own and survive.
     /// </remarks>
     private void FoldAll(bool open)
     {
@@ -664,11 +546,8 @@ public sealed partial class KildeSearch
 
     /// <summary>Whether <paramref name="facet"/> is long enough to be given a search box — and a cap.</summary>
     /// <remarks>
-    /// One threshold decides both halves, so changing the search-box rule here changes which facets
-    /// are capped as well: see <see cref="FacetLimits"/>, whose predicate all three panels ask so
-    /// that "long" cannot mean two things. <see cref="Facet.Options"/> is counted over the whole
-    /// list, so the answer does not change as the reader ticks and neither control can come and go
-    /// under their hand.
+    /// One <see cref="FacetLimits"/> threshold decides both, in all three panels, so "long" cannot mean two things. It is
+    /// counted over the whole list, so neither control comes and goes under the reader's hand as they tick.
     /// </remarks>
     private static bool IsSearchable(Facet facet) => FacetLimits.IsLong(facet.Options.Count);
 
@@ -678,10 +557,8 @@ public sealed partial class KildeSearch
 
     /// <summary>The same, as it counts: null for a field that is empty or holds only spaces.</summary>
     /// <remarks>
-    /// One definition of "there is a search here", for the reason <c>SearchText</c> is one over the
-    /// list: two places deciding separately whether a field of spaces counts is how they come to
-    /// disagree. <see cref="RemovesDrawnOptions"/> asks the same of a term not yet committed, so
-    /// the deciding is in <see cref="AsTerm"/> and neither caller owns it.
+    /// One definition of "there is a search here", as <c>SearchText</c> is over the list, so no two places disagree about
+    /// spaces. <see cref="AsTerm"/> holds it, as <see cref="RemovesDrawnOptions"/> asks it of a term not yet committed.
     /// </remarks>
     private string? FacetSearchTerm(string key) => AsTerm(FacetSearchValue(key));
 
@@ -689,13 +566,10 @@ public sealed partial class KildeSearch
     private static string? AsTerm(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
-    /// <summary>Record what was typed into one facet's search field.</summary>
     /// <remarks>
-    /// Focus first and the state after, the order <see cref="ClearSearchAndRefocusAsync"/> follows,
-    /// and guarded as that one is: <c>onchange</c> fires <em>because</em> focus has left the box, so
-    /// a rescue is only ever right when the render behind it removes what the reader is now standing
-    /// on. Deliberately nothing else — no request, and no touching of <see cref="_chosen"/>:
-    /// unticking what the reader can no longer see would drop a filter they never released.
+    /// Focus first and state after, guarded as <see cref="ClearSearchAndRefocusAsync"/> is: <c>onchange</c> fires because
+    /// focus left the box, so rescue only when the render removes what the reader stands on. <see cref="_chosen"/> stays
+    /// untouched: unticking what the reader can no longer see would drop a filter they never released.
     /// </remarks>
     private async Task SearchFacetAsync(string key, string? text)
     {
@@ -709,10 +583,8 @@ public sealed partial class KildeSearch
 
     /// <summary>Whether committing <paramref name="text"/> takes an option the panel is drawing off the screen.</summary>
     /// <remarks>
-    /// The half of <see cref="ClearSearchAndRefocusAsync"/>'s bargain that says when there is
-    /// something to rescue focus from. A commit that widens the facet, or that leaves every drawn
-    /// option standing, removed nothing — and the reader who blurred the box by clicking into
-    /// another one is already typing there. (Fhi.Metadata-6we8a)
+    /// A commit that widens the facet, or leaves every drawn option standing, removed nothing, so there is no focus to
+    /// rescue: the reader who blurred the box by clicking into another is already typing there. (Fhi.Metadata-6we8a)
     /// </remarks>
     private bool RemovesDrawnOptions(string key, string? text)
     {
@@ -725,28 +597,10 @@ public sealed partial class KildeSearch
         return VisibleOptions(Build(definition)).Visible.Any(option => !Matches(option, term));
     }
 
-    /// <summary>The options of <paramref name="facet"/> the panel draws, and what its cap holds back.</summary>
     /// <remarks>
-    /// Matched over the whole label rather than over the text on screen, which is cut at
-    /// <see cref="FacetLabelLimit"/>: the 200-character databehandler is findable by any word in
-    /// it, and the <c>title</c> is where the reader reads back the part that matched.
-    /// <para>
-    /// <see cref="StringComparison.OrdinalIgnoreCase"/>, the same comparison the component's own
-    /// search over the list uses — one rule for "does this text contain that text" in one
-    /// component. What it deliberately does not do is fold anything together: every spelling of
-    /// Folkehelseinstituttet that matches stays a choice of its own with a count of its own, because
-    /// merging them is a claim about the catalogue and belongs there (<c>Fhi.Metadata-4kxfv</c>).
-    /// </para>
-    /// <para>
-    /// A term takes the cap off rather than being capped in turn: the two narrow the same list, so
-    /// a term that matched the twentieth value and a cap that hid it would leave the reader typing
-    /// a value they can see in the catalogue and getting nothing.
-    /// </para>
-    /// <para>
-    /// The drawn list and the remainder come back together, from one pass, and the render passes
-    /// both to the list, the control and its words — see <see cref="CappedValues{T}"/> for why they
-    /// must not each derive their own.
-    /// </para>
+    /// Matched on the whole label, not the cut text, case-blind as the list search is, and never folding spellings
+    /// together (Fhi.Metadata-4kxfv). A term lifts the cap, or a value it matched could stay hidden behind it. The drawn
+    /// list and the remainder come from one pass; <see cref="CappedValues{T}"/> says why no caller derives its own.
     /// </remarks>
     private CappedValues<FacetOption> VisibleOptions(Facet facet)
     {
@@ -816,9 +670,8 @@ public sealed partial class KildeSearch
 
     /// <summary>Whether the facet draws the control that reveals what the cap is holding back.</summary>
     /// <remarks>
-    /// Not while the facet's own search is running: a term draws every value it matches, so a
-    /// control offering more would offer nothing. An expanded facet keeps it, that being the only
-    /// way back. <paramref name="hidden"/> is the render's own count, never a second sum of it.
+    /// Not during the facet's own search, which draws every match; an expanded facet keeps it as the only way back.
+    /// <paramref name="hidden"/> is the render's own count, never a second sum of it.
     /// </remarks>
     private bool ShowsRestControl(Facet facet, int hidden) =>
         IsSearchable(facet)
@@ -840,34 +693,10 @@ public sealed partial class KildeSearch
     private static bool Matches(FacetOption option, string term) =>
         option.Label.Contains(term, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>A kilde's kategori tokens, out of the JSON array the catalogue stores them in.</summary>
+    /// <summary>A kilde's kategori tokens, out of the JSON array the catalogue stores as a string.</summary>
     /// <remarks>
-    /// Every value in the additional-properties bag is a string, including the ones that hold JSON:
-    /// kategori arrives as <c>["ehds-cat:registries-quality-of-healthcare"]</c> — see
-    /// <see cref="KildeSummary.AdditionalProperties"/>. So the array is read as one, and a value
-    /// that is not an array is taken as a single token rather than dropped: showing what the
-    /// catalogue holds beats showing nothing, and a facet quietly missing its values is exactly the
-    /// empty Kategori this component was written not to draw.
-    /// <para>
-    /// "Taken as a single token" means the value the catalogue holds, not the text it wrote it in,
-    /// and the two differ for exactly one shape. A bare <c>"ehds-cat:biobanks"</c> — one JSON
-    /// string where the array case proves the field usually holds several — parses without
-    /// throwing, so the raw text would come back through with its quote marks still on: a second
-    /// checkbox reading <c>"ehds-cat:biobanks"</c> beside the properly-labelled Biobanker, whose
-    /// label lookup misses on the trailing quote and which filters a disjoint set of kilder. It is
-    /// unwrapped instead, so one category is one choice however the catalogue wrote it. A JSON
-    /// <c>null</c> is the catalogue saying it has no kategori, and drawing a checkbox named "null"
-    /// would be this package inventing a value; everything else — an object, a number — has no
-    /// token inside it to prefer, so it falls through as written.
-    /// </para>
-    /// <para>
-    /// The tokens are what the facet groups and filters on, whole; what a reader sees is
-    /// <see cref="Vocabulary"/>'s answer, which is the catalogue's own word for the token where its
-    /// vocabulary has one and the token itself where it has not. The list endpoint sends the values
-    /// without that vocabulary, so it is fetched beside the list rather than copied into this
-    /// package — a reader of this catalogue is not expected to read EHDS, and a table transcribed
-    /// here would spell the seven categories of the day it was written and no more.
-    /// </para>
+    /// A value that is not an array is one token, not dropped: an empty Kategori is what this panel exists not to draw.
+    /// A bare JSON string is unwrapped, or its quotes make a second choice filtering other kilder; JSON null is no kategori.
     /// </remarks>
     private static IReadOnlyList<string> Categories(KildeSummary kilde)
     {
@@ -911,31 +740,24 @@ public sealed partial class KildeSearch
 
     /// <summary>One of the curated properties, or null where the kilde has not got it.</summary>
     /// <remarks>
-    /// Null-conditional although <see cref="KildeSummary.AdditionalProperties"/> is declared
-    /// non-nullable — see that declaration for how a null gets in, and
-    /// <c>NullAsEmptyCollections</c> for what stops it arriving from this package's own client. A
-    /// host can substitute that client, and this runs for every kilde on every render, from the
-    /// counting and from the filtering both, so one malformed entry in the list would otherwise
-    /// take the whole panel down at render time — where the try/catch around the fetch is long
-    /// since finished and cannot catch it.
+    /// Null-conditional although declared non-nullable: <c>NullAsEmptyCollections</c> covers only our client, which a host
+    /// can substitute, and this runs per kilde per render, past the fetch's try/catch, so one malformed entry would take the panel down.
     /// </remarks>
     private static string? Property(KildeSummary kilde, string key) =>
         kilde.AdditionalProperties?.TryGetValue(key, out var value) == true ? value : null;
 
     /// <summary>A single value as a facet's list of them, and nothing at all when it is blank.</summary>
     /// <remarks>
-    /// Blank is not a value. A kilde with no databehandler belongs in no databehandler choice — an
-    /// empty string as an option would draw a checkbox with no name, and "Ikke oppgitt" would be
-    /// this package inventing a catalogue value nobody can filter on anywhere else.
+    /// Blank is not a value: an empty option draws a checkbox with no name, and "Ikke oppgitt" would invent a catalogue
+    /// value nobody can filter on anywhere else.
     /// </remarks>
     private static IReadOnlyList<string> One(string? value) =>
         string.IsNullOrWhiteSpace(value) ? [] : [value.Trim()];
 
     /// <summary>A label cut to <see cref="FacetLabelLimit"/>, with an ellipsis to say so.</summary>
     /// <remarks>
-    /// The cut steps back off a lone high surrogate rather than splitting a pair, which would put
-    /// half a character on screen. Nothing in the catalogue needs it today; a free-text field
-    /// somebody pastes an emoji into is exactly the sort of thing that arrives without warning.
+    /// Steps back off a lone high surrogate rather than put half a character on screen: an emoji pasted into a free-text
+    /// field arrives without warning.
     /// </remarks>
     private static string Shorten(string label)
     {
@@ -951,13 +773,8 @@ public sealed partial class KildeSearch
 
     /// <summary>The panel's heading, at <see cref="FilterLevel"/>.</summary>
     /// <remarks>
-    /// Built by hand for the reason the component's title is: Razor has no syntax for a computed
-    /// element name, and the level follows the host's choice of <see cref="HeadingLevel"/>.
-    /// <para>
-    /// No count in it. The chip row and the count line are both outside the fold, so they say the
-    /// number while this panel is closed too — which is what <c>Fhi.Metadata-l9l2n.53</c> missed in
-    /// keeping it here. (Fhi.Metadata-l9l2n.83)
-    /// </para>
+    /// By hand, as the title is: Razor has no computed element name and the level follows <see cref="HeadingLevel"/>.
+    /// No count: the chip row and count line are outside the fold and say it while closed. (Fhi.Metadata-l9l2n.83)
     /// </remarks>
     private RenderFragment FiltersHeading => builder =>
     {
@@ -967,18 +784,10 @@ public sealed partial class KildeSearch
         builder.CloseElement();
     };
 
-    /// <summary>
-    /// One facet's summary line: its heading, at <see cref="FacetLevel"/>, how many values it has,
-    /// and how many of them are ticked.
-    /// </summary>
     /// <remarks>
-    /// <c>headline-xxs</c> is what <see cref="KildeView"/> gives a group of facts, so both read as
-    /// one vocabulary. The counts are in the summary, which a folded facet still draws, and beside
-    /// the heading rather than inside it: this panel is navigated by heading. (Fhi.Metadata-l9l2n.53)
-    /// <para>
-    /// The size is <c>Options.Count</c>, never what the cap or the facet search leaves drawn.
-    /// (Fhi.Metadata-35w0p.53)
-    /// </para>
+    /// <c>headline-xxs</c> is what <see cref="KildeView"/> gives a group of facts, so both read as one vocabulary. Counts
+    /// sit in the summary, drawn while folded, beside the heading: this panel is navigated by heading (Fhi.Metadata-l9l2n.53).
+    /// The size is <c>Options.Count</c>, never what the cap or the facet search leaves drawn. (Fhi.Metadata-35w0p.53)
     /// </remarks>
     private RenderFragment FacetSummary(Facet facet) => builder =>
     {
