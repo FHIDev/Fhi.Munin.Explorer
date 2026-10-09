@@ -510,7 +510,7 @@ public partial class VariableSearch
     }
 
     /// <summary>Whether committing <paramref name="text"/> takes a kilde the panel is drawing off the screen.</summary>
-    /// <remarks>Otherwise nothing was removed, and focus is left where the reader put it.</remarks>
+    /// <remarks>A widening commit, or one leaving every drawn kilde, removed nothing, so focus stays put.</remarks>
     private bool RemovesDrawnKilder(string? text)
     {
         if (string.IsNullOrWhiteSpace(text) || _facets is not { } facets)
@@ -755,8 +755,8 @@ public partial class VariableSearch
 
     /// <summary>The variabelgruppe facet, as a tree.</summary>
     /// <remarks>
-    /// Its empty state is a message: with no source chosen the API answers with a curated shortlist,
-    /// empty everywhere so far, and "pick a datakilde" stops that reading as broken.
+    /// Its empty state is a message: with no source chosen the API answers with a curated shortlist
+    /// that may be empty, and "pick a datakilde" stops that reading as broken.
     /// </remarks>
     private FacetGroup VariabelgruppeGroup(FilterOptions facets)
     {
@@ -1073,8 +1073,8 @@ public partial class VariableSearch
 
     /// <summary>Bumped per press, and part of every disclosure's key, so the press rebuilds them.</summary>
     /// <remarks>
-    /// A <c>&lt;details&gt;</c> folded by hand no longer matches the <c>open</c> we rendered, and an
-    /// unchanged value is never patched. bUnit cannot stage this; verified by hand. (Fhi.Metadata-wcbxi)
+    /// Hand-folded <c>&lt;details&gt;</c> no longer match the <c>open</c> we rendered, which is never re-patched.
+    /// No test covers this: deleting it stays green and breaks a second press. (Fhi.Metadata-wcbxi)
     /// </remarks>
     private int _foldGeneration;
 
@@ -1605,7 +1605,8 @@ public partial class VariableSearch
 
     /// <summary>Open the branches standing between a kilde the search kept and the name that matched.</summary>
     /// <remarks>
-    /// Written where a press writes, so Skjul alle still shuts what a search opened. (Fhi.Metadata-adog5)
+    /// Branches start shut, so a deep match would otherwise keep a row whose matching name is nowhere
+    /// on screen. Written where a press writes, so Skjul alle still shuts it. (Fhi.Metadata-adog5)
     /// </remarks>
     private void OpenBranchesToMatches()
     {
@@ -1852,7 +1853,7 @@ public partial class VariableSearch
         }
         else
         {
-            // The rows on screen are still page 7 of the old selection, so filter and page roll back together,
+            // The rows on screen are still the old selection's page, so filter and page roll back together,
             // or the buttons and the host's URL would describe a narrowing that never happened.
             _filter = previous;
             _page = previousPage;
