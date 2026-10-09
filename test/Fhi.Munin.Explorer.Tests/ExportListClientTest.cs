@@ -58,6 +58,55 @@ public class ExportListClientTest
             BaseAddress = new Uri("https://munin.example/")
         });
 
+    [Fact]
+    public async Task ExportVariablesAsync_GetsTheSearchAndFiltersAndKeepsTheApisFile()
+    {
+        var handler = new FileHandler("application/zip", "Variabler_2026-10-09.zip");
+        var filter = new VariableFilter { KildeIds = [One] };
+
+        var file = await Client(handler).ExportVariablesAsync("alder", filter, ExportFormat.Csv, includeKodeverk: true);
+
+        Assert.Equal(HttpMethod.Get, handler.LastMethod);
+        Assert.Equal("/api/explorer/variables/export", handler.LastUri!.AbsolutePath);
+        var query = handler.LastUri.Query;
+        Assert.Contains("search=alder", query);
+        Assert.Contains("format=csv", query);
+        Assert.Contains("includeKodeverk=true", query);
+        Assert.Contains($"kildeIds={One}", query);
+        Assert.Null(handler.LastBody);
+        Assert.Equal("application/zip", file.ContentType);
+        Assert.Equal("Variabler_2026-10-09.zip", file.FileName);
+    }
+
+    [Fact]
+    public async Task ExportVariablesAsync_WithoutCodebooks_SendsNoIncludeKodeverk()
+    {
+        var handler = new FileHandler("text/csv", "Variabler_2026-10-09.csv");
+
+        await Client(handler).ExportVariablesAsync(null, null, ExportFormat.Xlsx);
+
+        Assert.DoesNotContain("includeKodeverk", handler.LastUri!.Query);
+        Assert.Contains("format=xlsx", handler.LastUri.Query);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.BadRequest)]
+    public async Task ExportVariablesAsync_WhenTheApiRefuses_Throws(HttpStatusCode status)
+    {
+        var handler = new FileHandler("text/plain", "x") { Status = status };
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => Client(handler).ExportVariablesAsync(null, null));
+    }
+
+    [Fact]
+    public async Task ExportVariablesAsync_WhenRateLimited_ThrowsTheRateLimitException()
+    {
+        var handler = new FileHandler("text/plain", "x") { Status = HttpStatusCode.TooManyRequests };
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => Client(handler).ExportVariablesAsync(null, null));
+    }
+
     // -----------------------------------------------------------------------
 
     [Fact]

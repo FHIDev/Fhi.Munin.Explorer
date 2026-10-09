@@ -2126,6 +2126,10 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-header__actions",         // ours, Stiler components/munin-explorer/
             "munin-explorer__dropdown",               // ours, Stiler (the z-index)
             "munin-explorer-header__actions-button",  // ours, Stiler components/munin-explorer/
+            // «Last ned utvalg» folds open the way the variable list's «Last ned» does, under the same
+            // two names, so Stiler already styles it. (Fhi.Metadata-idusm)
+            "munin-explorer-list-menu",
+            "munin-explorer-list-menu__panel",
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
         ], invented);
@@ -15394,6 +15398,8 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-header__actions",        // column picker in, and the ghost button
             "munin-explorer__dropdown",              // that opens it. All four came from variables.css.
             "munin-explorer-header__actions-button",
+            "munin-explorer-list-menu",              // «Last ned utvalg», the list's own fold
+            "munin-explorer-list-menu__panel",
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             "munin-explorer-detail",     // ours, a handle

@@ -923,6 +923,33 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <inheritdoc />
+    public async Task<ExportedList> ExportVariablesAsync(
+        string? search,
+        VariableFilter? filter,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default)
+    {
+        var url = WithFilter(
+            "api/explorer/variables/export" + Query(
+                ("search", search),
+                ("format", WireName(format)),
+                ("includeKodeverk", includeKodeverk ? "true" : null)),
+            filter);
+
+        using var response = await SendAsync(HttpMethod.Get, url, null, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "Variabler";
+
+        return new ExportedList(bytes, contentType, fileName);
+    }
+
+    /// <inheritdoc />
     public async Task<ExportedList?> ExportMyListAsync(
         Guid id,
         ExportFormat format = ExportFormat.Xlsx,

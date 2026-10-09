@@ -424,6 +424,9 @@ internal sealed record Texts(
     string DownloadCsv,
     string IncludeKodeverk,
     string DownloadError,
+    // Nedlasting av hele søkeresultatet, ikke en liste. Advarselen teller treff, som summen over gjør.
+    string DownloadSelection,
+    Func<int, string> DownloadSelectionLarge,
     string HeadingKodeverk,
 
     // The version history in the whole-variable view.
@@ -1360,6 +1363,8 @@ internal sealed record Texts(
         DownloadCsv: "Last ned som CSV",
         IncludeKodeverk: "Ta med kodeverk",
         DownloadError: "Kunne ikke laste ned nå. Prøv igjen om litt.",
+        DownloadSelection: "Last ned utvalg",
+        DownloadSelectionLarge: count => $"Utvalget har {count} treff. Nedlastingen kan ta litt tid.",
         HeadingKodeverk: "Kodeverk",
         HeadingVersionHistory: "Versjonshistorikk",
         VersionUnnamed: "Versjon uten navn",
@@ -1877,6 +1882,8 @@ internal sealed record Texts(
         DownloadCsv: "Download as CSV",
         IncludeKodeverk: "Include codebooks",
         DownloadError: "Could not download just now. Try again shortly.",
+        DownloadSelection: "Download selection",
+        DownloadSelectionLarge: count => $"The selection has {count} hits. The download may take a while.",
         HeadingKodeverk: "Code lists",
         HeadingVersionHistory: "Version history",
         VersionUnnamed: "Version without a name",
