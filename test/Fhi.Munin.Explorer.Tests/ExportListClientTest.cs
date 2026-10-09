@@ -7,6 +7,9 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
+// The ExportListAsync tests below call the obsolete member on purpose; they stay until 3.0.0 removes it.
+#pragma warning disable CS0618
+
 /// <summary>
 /// The export call. Its answer is a file rather than a payload, so what matters is that the name
 /// and the type come back from the API rather than being composed here — asking for CSV with
@@ -167,6 +170,8 @@ public class ExportListClientTest
 
         Assert.False(string.IsNullOrWhiteSpace(file.FileName));
     }
+
+#pragma warning restore CS0618
 
     // ---- ExportMyListAsync (Fhi.Metadata-fiht4): the saved list's own export, which carries "Ønskede data" ----
 

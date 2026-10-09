@@ -4,6 +4,9 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
+// Every call here is to the obsolete RedeemIdentityLinkAsync; the tests stay until 3.0.0 removes it.
+#pragma warning disable CS0618
+
 /// <summary>
 /// Redeeming an account-linking code, against a stubbed transport: the right verb at the right
 /// route with the host's token on it, and each refusal the API distinguishes mapped to its own
@@ -209,3 +212,4 @@ public class IdentityLinkClientTest
         Assert.Equal("""{"code":"abc1-23de"}""", handler.LastBody);
     }
 }
+#pragma warning restore CS0618
