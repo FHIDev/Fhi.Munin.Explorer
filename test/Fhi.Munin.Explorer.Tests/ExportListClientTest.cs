@@ -7,6 +7,9 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
+// Every call here is to the obsolete ExportListAsync; the tests stay until the member is removed.
+#pragma warning disable CS0618
+
 /// <summary>
 /// The export call. Its answer is a file rather than a payload, so what matters is that the name
 /// and the type come back from the API rather than being composed here — asking for CSV with
@@ -240,3 +243,4 @@ public class ExportListClientTest
         }
     }
 }
+#pragma warning restore CS0618
