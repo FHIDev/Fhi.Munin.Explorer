@@ -458,8 +458,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>
     /// The remove button's name: its own word, then the row's, so forty "Fjern" buttons say which row
-    /// (WCAG 4.1.2). Two elements keep each in its own language (3.1.2), the word first for speech
-    /// input (2.5.3). An orphan borrows its cell's sentence; two alike pass, as 4.1.2 asks no uniqueness.
+    /// (WCAG 4.1.2); two elements keep each its language (3.1.2), the word first for speech input (2.5.3).
+    /// An orphan borrows its cell's sentence, not a GUID; two then share a name, as 4.1.2 and 2.4.6 allow.
     /// </summary>
     private string RemoveLabelledBy(VariableListItem item) =>
         $"{RemoveButtonId(item)} {RowNameId(item)}";
