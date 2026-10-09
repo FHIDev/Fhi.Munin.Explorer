@@ -888,9 +888,9 @@ public sealed partial class KildeSearch : ComponentBase
     }
 
     /// <summary>
-    /// The catalogue's words for coded properties, so the facets and kilde view agree; a failure
-    /// costs labels, not the list. Grouping stops one repeated key emptying it all; the blank-key
-    /// filter is tidiness no test sees. Pass a cancellation token and the catch must let it out.
+    /// The catalogue's words for coded properties, so facets and kilde view agree; a failure costs
+    /// labels, not the list. Grouping stops a repeated key emptying it all; blank keys are tidiness.
+    /// No token is held, so a timeout is caught as a failure; thread one in and it must escape the catch.
     /// </summary>
     private async Task LoadVocabularyAsync()
     {
