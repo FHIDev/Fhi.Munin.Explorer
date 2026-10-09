@@ -229,22 +229,28 @@ internal static class FilterHierarchy
                     && datasamlinger.TryGetValue(datasamlingId, out var datasamling)
                     && datasamling.KildeId == owner.KildeId)
                 {
-                    byDatasamling.Add((datasamlingId, variabelgruppe));
+                    byDatasamling.Add((datasamlingId, CountedAt(variabelgruppe, owner, exact: true)));
                 }
                 else if (owner.DelkildeId is { } delkildeId
                          && delkilder.TryGetValue(delkildeId, out var delkilde)
                          && delkilde.KildeId == owner.KildeId)
                 {
-                    byDelkilde.Add((delkildeId, variabelgruppe));
+                    byDelkilde.Add((delkildeId, CountedAt(variabelgruppe, owner, exact: owner.DatasamlingId is null)));
                 }
                 else
                 {
-                    byKilde.Add((owner.KildeId, variabelgruppe));
+                    byKilde.Add((owner.KildeId, CountedAt(variabelgruppe, owner,
+                        exact: owner.DelkildeId is null && owner.DatasamlingId is null)));
                 }
             }
         }
 
         return new VariabelgruppePlacements(Lookup(byKilde), Lookup(byDelkilde), Lookup(byDatasamling));
+
+        // The placement's own count only where the node is that placement; one drawn higher because
+        // its level dropped out keeps the group's count. (Fhi.Metadata-i1rbm)
+        static VariabelgruppeFacet CountedAt(VariabelgruppeFacet variabelgruppe, VariabelgruppeOwner owner, bool exact) =>
+            exact && owner.Count is { } count ? variabelgruppe with { Count = count } : variabelgruppe;
 
         static ILookup<Guid, VariabelgruppeFacet> Lookup(
             IEnumerable<(Guid Owner, VariabelgruppeFacet Variabelgruppe)> placed) =>

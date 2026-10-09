@@ -142,6 +142,66 @@ public class FilterHierarchyTest
     }
 
     [Fact]
+    public void Build_WhenEachPlacementCarriesItsOwnCount_ThenEachNodeShowsThatCount()
+    {
+        // The group's count spans both datasamlinger; under each one the node counts only what
+        // ticking it there returns. (Fhi.Metadata-i1rbm)
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Datasamlinger = [Datasamling(Registrering, Mfr), Datasamling(Oppfolging, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn",
+                               [.. Under(Mfr, datasamling: Registrering, count: 55), .. Under(Mfr, datasamling: Oppfolging, count: 54)],
+                               count: 109)
+            ]
+        };
+
+        var counts = Assert.Single(FilterHierarchy.Build(facets))
+            .Children
+            .Select(datasamling => Assert.Single(datasamling.Children).Count)
+            .Order()
+            .ToList();
+
+        Assert.Equal([54, 55], counts);
+    }
+
+    [Fact]
+    public void Build_WhenTheApiSendsNoPlacementCount_ThenTheNodeShowsTheGroupCount()
+    {
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Datasamlinger = [Datasamling(Registrering, Mfr)],
+            HierarchyVariabelgrupper = [Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering), count: 109)]
+        };
+
+        var datasamling = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+        Assert.Equal(109, Assert.Single(datasamling.Children).Count);
+    }
+
+    [Fact]
+    public void Build_WhenAPlacementFallsBackAboveItsDatasamling_ThenTheNodeKeepsTheGroupCount()
+    {
+        // The placement's count is for a datasamling the answer dropped; the kilde node it lands
+        // under is not that placement.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: NotInThePayload, count: 3), count: 109)
+            ]
+        };
+
+        var kilde = Assert.Single(FilterHierarchy.Build(facets));
+
+        Assert.Equal(109, Assert.Single(kilde.Children).Count);
+    }
+
+    [Fact]
     public void Build_WhenTheOwningDatasamlingIsNotInTheAnswer_ThenTheGroupFallsBackToItsKilde()
     {
         // The facets are cross-filtered, so a datasamling with no matching variables of its own is
@@ -695,8 +755,8 @@ public class FilterHierarchyTest
 
     /// <summary>One placement, named the way the payload names it: a kilde, and how far down it reaches.</summary>
     private static IReadOnlyList<VariabelgruppeOwner> Under(
-        Guid kilde, Guid? delkilde = null, Guid? datasamling = null) =>
-        [new() { KildeId = kilde, DelkildeId = delkilde, DatasamlingId = datasamling }];
+        Guid kilde, Guid? delkilde = null, Guid? datasamling = null, int? count = null) =>
+        [new() { KildeId = kilde, DelkildeId = delkilde, DatasamlingId = datasamling, Count = count }];
 
     /// <summary>An answer the size of a real one, every level of it populated.</summary>
     private static FilterOptions Catalogue(
