@@ -63,16 +63,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private Texts T => Texts.For(Language);
 
     /// <summary>
-    /// Per-mount discriminator for every id this component renders: the create form's name field,
-    /// and per row the name cell and the remove button that is named from it. The shape the
-    /// explorer's own ids use — see <c>VariableExplorer.razor.cs</c>, where the convention lives.
+    /// Per-mount discriminator for every id this component renders, in the shape the explorer's ids use
+    /// (<c>VariableExplorer.razor.cs</c>). A host can mount this twice, and shared ids point both labels
+    /// at the first field, which only shows with two mounts; the guard for it renders two.
     /// </summary>
-    /// <remarks>
-    /// The host decides where this component goes and can mount it twice on one page. Two fields
-    /// sharing one id would leave both labels pointing at the first, so the second field is
-    /// unnamed again — the very defect the label was added to fix, and invisible in a page with
-    /// one mount, which is why the guard for it renders two.
-    /// </remarks>
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
     /// <summary>
@@ -110,15 +104,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         $"munin-explorer-list-desired-data-label-{_instance}-{ItemSuffix(item)}";
 
     /// <summary>
-    /// The annotation field's accessible name, as two elements: the column's word, then the row's
-    /// name.
+    /// The annotation field's name: the column's word, then the row's, so forty fields do not all just
+    /// say "Ønskede data" (WCAG 4.1.2). Two elements rather than one <c>aria-label</c>, so our word and
+    /// Munin's Norwegian name keep their own languages (WCAG 3.1.2).
     /// </summary>
-    /// <remarks>
-    /// The rule the remove button beside it follows, and for the same reasons: forty fields all
-    /// announcing "Ønskede data" say nothing about which variable the reader is annotating (WCAG
-    /// 4.1.2), and one <c>aria-label</c> would hand our word and Munin's Norwegian name to a single
-    /// voice (WCAG 3.1.2). The column's word first, so the field opens with what it is.
-    /// </remarks>
     private string DesiredDataLabelledBy(VariableListItem item) =>
         $"{DesiredDataLabelId(item)} {RowNameId(item)}";
 
@@ -168,24 +157,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private ListActionFailure _createFailure;
 
     /// <summary>
-    /// What the reader has typed against each variable, keyed by variable id.
+    /// What the reader has typed, per row. The fields render from here rather than from <c>_page</c>,
+    /// so a refusal does not empty the field they were just told is too long. Reseeded on every page
+    /// read, since only the API knows what was actually saved.
     /// </summary>
-    /// <remarks>
-    /// The fields render from here rather than from <c>_page</c>, because a refusal must not revert
-    /// the text under the reader: re-rendering the item's stored value would empty the field they
-    /// have just been told is too long, and they would have to type all 500-odd characters again.
-    /// Reseeded from the API on every page read, which is the only thing that knows what was
-    /// actually saved.
-    /// </remarks>
     private readonly Dictionary<VariableDatasamlingKey, string> _desiredData = [];
 
     private DesiredDataFailure _desiredDataFailure;
 
     /// <summary>How many writes each row has had, so an older answer can be told from the newest.</summary>
     /// <remarks>
-    /// Blur is what saves, so two writes to one row overlap whenever a reader corrects a note and
-    /// leaves before the first answer is back. Ordered by arrival, the first answer wins and marks
-    /// a text that was accepted — with nothing after it to take the mark away again.
+    /// Blur saves, so a corrected note overlaps the first write. Ordered by arrival, the first write's
+    /// answer could land last and mark an accepted text, with nothing after it to take the mark away.
     /// </remarks>
     private readonly Dictionary<VariableDatasamlingKey, int> _desiredDataWrites = [];
 
@@ -198,11 +181,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>The row the API refused for length, the list it was refused in, and the ceiling.</summary>
     /// <remarks>
-    /// Held apart from the failures the alert region shares, and outside what
-    /// <see cref="ForgetFailures"/> drops: this one is a claim about a text still on screen and
-    /// still unsaved, so it stands until that row is written again or leaves the list. The list is
-    /// carried with it because a variable can sit in two of them, and a mark left over from one
-    /// would land on the same row in the other.
+    /// Outside <see cref="ForgetFailures"/>: it stands until its unsaved row is written again or leaves
+    /// the list. The list is kept because a variable can sit in two, and the mark must not follow it.
     /// </remarks>
     private DesiredDataRefusal? _desiredDataRefusal;
 
@@ -271,10 +251,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     /// <summary>How the last annotation write ended, when it ended badly.</summary>
     /// <remarks>
-    /// A length refusal is its own state rather than a failure like the others, because it is the
-    /// only one the reader can act on: the API names the ceiling and the sentence repeats it, so
-    /// they are told what to shorten to instead of being asked to try again at a length that will
-    /// be refused identically.
+    /// A length refusal is its own state rather than one of these: it is the only one the reader can act
+    /// on, so they are told the ceiling instead of retrying a length that will be refused again.
     /// </remarks>
     private enum DesiredDataFailure
     {
@@ -297,14 +275,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     };
 
     /// <summary>
-    /// The sentence naming the ceiling, or <see langword="null"/> while no row stands refused.
+    /// The sentence naming the ceiling, or <see langword="null"/> while no row stands refused. Its own
+    /// region, not the shared one a later failure would take over, leaving a field marked invalid with
+    /// nothing saying why (WCAG 3.3.1). The field points at this region, so the two are read together.
     /// </summary>
-    /// <remarks>
-    /// Its own region rather than a sixth claimant on the shared one: a refused row keeps its
-    /// <c>aria-invalid</c> until it is written again, and a download or a rename failing meanwhile
-    /// would take the sentence away and leave a field marked wrong with nothing saying why —
-    /// WCAG 3.3.1. The field points at this region, so the two are read together.
-    /// </remarks>
     private string? DesiredDataRefusalMessage =>
         _desiredDataRefusal is { } refusal ? T.DesiredDataTooLong(refusal.MaxLength) : null;
 
@@ -325,45 +299,31 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private string? ShownListEyebrow => ShownList?.Name is { Length: > 0 } ? T.MyListsHeading : null;
 
     /// <summary>
-    /// The years a variable has data for, written the way the result rows and the detail panel
-    /// write it — the same helper, so a variable does not read differently here than where it was
-    /// saved from. Only the words: the explorer draws a coverage bar beside them, this is a cell.
+    /// The years a variable has data for, through the helper the result rows and detail panel use, so a
+    /// variable reads alike here. Null for neither date: the cell writes "Ikke oppgitt" itself, as it
+    /// does for every column the catalogue has no value for.
     /// </summary>
-    /// <remarks>
-    /// Null for neither date rather than "Ikke oppgitt": the cell writes that itself, the way it
-    /// does for every other column the catalogue has no value for.
-    /// </remarks>
     private string? Period(VariableListItem item) =>
         CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T, DateWidth.Narrow);
 
     /// <summary>
-    /// What the row calls its variable — its name, or the sentence shown in place of one that is
-    /// no longer in the catalogue.
+    /// The name column's text: the variable's name, or the sentence shown for one no longer in the
+    /// catalogue. The remove button is named from the rendered cell rather than from a second call to
+    /// this, so the two cannot drift.
     /// </summary>
-    /// <remarks>
-    /// The name column's own text, so there is one place that decides what an orphaned row reads
-    /// as. It used to be decided twice, inline in the markup and here. The remove button is named
-    /// from the rendered cell rather than from a second call to this, so the two cannot drift.
-    /// </remarks>
     private string RowName(VariableListItem item) =>
         string.IsNullOrWhiteSpace(item.VariableName) ? T.VariableNoLongerAvailable : item.VariableName;
 
     /// <summary>
-    /// The columns of one row, drawn by the same helper the search results use.
+    /// The columns of one row, drawn by the helper the search results use. A fragment gets its own
+    /// sequence-number region, so these numbers, spaced <see cref="RowCell.Slots"/> apart, stand clear
+    /// of the surrounding markup's, as the helper's note about rising numbers requires.
     /// </summary>
-    /// <remarks>
-    /// A fragment rather than markup because Blazor gives one its own sequence-number region, so
-    /// these numbers stand clear of the surrounding markup's — spaced <see cref="RowCell.Slots"/>
-    /// apart, which is what the helper's own note about rising numbers requires.
-    /// </remarks>
     private RenderFragment Cells(VariableListItem item) => builder =>
     {
-        // tableCell: these are real <td>s under real <th scope="col">s, so the helper leaves out
-        // the per-cell field name the explorer's <div>s need and the flex column class a table
-        // cell cannot wear.
-        // Trimmed rather than `??`: a kortnavn the API leaves out arrives as null or as "", and
-        // `??` only catches the first — RowCell then draws the "" as "Ikke oppgitt" over a name
-        // it is holding.
+        // tableCell: real <td>s under <th scope="col">s take neither the explorer's per-cell field name
+        // nor its flex column class. Trimmed rather than `??`: a missing kortnavn is null or "", and
+        // RowCell would draw the "" as "Ikke oppgitt" over a name it is holding.
         if (Shown(ListColumn.Source))
         {
             RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(item.KildeShortName) ?? item.KildeName, "source", T.NotSpecified, tooltip: item.KildeName, tableCell: true);
@@ -497,35 +457,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         $"munin-explorer-list-remove-{_instance}-{ItemSuffix(item)}";
 
     /// <summary>
-    /// The remove button's accessible name, as two elements: its own word, then the row's name.
+    /// The remove button's name: its own word, then the row's, so forty "Fjern" buttons say which row
+    /// (WCAG 4.1.2). Two elements keep each in its own language (3.1.2), the word first for speech
+    /// input (2.5.3). An orphan borrows its cell's sentence; two alike pass, as 4.1.2 asks no uniqueness.
     /// </summary>
-    /// <remarks>
-    /// Every one of these buttons says the single word "Fjern", so a list of forty is forty
-    /// controls announcing the same thing with nothing to say which row the reader is on (WCAG
-    /// 4.1.2). Pointing at two elements rather than writing one <c>aria-label</c> is the rule the
-    /// explorer's save button follows and for the same reason: "Fjern" is ours and follows
-    /// <see cref="Language"/>, the variable's name is Munin's and is marked <c>lang="no"</c> in
-    /// the cell, and a single string would hand both to one voice (WCAG 3.1.2). The button first,
-    /// so the visible word opens the name and speech input still reaches it (WCAG 2.5.3).
-    /// <para>
-    /// An orphaned row has no name, and borrows the sentence its cell shows instead — so the
-    /// button still says what it removes, and says it without spelling out a GUID the row does not
-    /// display anywhere. Two orphans then announce alike, which is a duplicate name and not a
-    /// failure: 4.1.2 asks for a name and 2.4.6 asks that it describe, neither that it be unique.
-    /// </para>
-    /// </remarks>
     private string RemoveLabelledBy(VariableListItem item) =>
         $"{RemoveButtonId(item)} {RowNameId(item)}";
 
     /// <summary>
-    /// <c>"no"</c> for a value the catalogue wrote, and nothing at all for our own fallback.
+    /// <c>"no"</c> for a value the catalogue wrote, which is Norwegian whatever the page's language,
+    /// and nothing for our NotSpecified fallback: it is in the reader's language, and an English "Not
+    /// specified" marked Norwegian is mispronounced by a screen reader (WCAG 3.1.2).
     /// </summary>
-    /// <remarks>
-    /// Catalogue text is Norwegian whatever language the page is in, which is why these cells carry
-    /// lang="no" at all. NotSpecified is not catalogue text - it is ours, in the reader's language -
-    /// and marking an English "Not specified" as Norwegian makes a screen reader pronounce it as
-    /// Norwegian. WCAG 3.1.2. A null here leaves the attribute off entirely.
-    /// </remarks>
     private static string? CatalogueLang(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : "no";
 
@@ -652,10 +595,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return null;
         }
 
-        // Never while the reader has moved on to a form of their own. For a create or a rename only a
-        // form opened during that call counts, against its own record, as the two can overlap.
-        // A fold opened and shut during a rename leaves no open state, so its moves count too. Not for a
-        // create: it switches to the new list, which closes the folds and may draw no «Last ned» to stay on.
+        // Never while the reader has moved on to a form of their own; for a create or rename, only forms
+        // opened during that call count, as the two can overlap. A rename counts fold moves too (a shut
+        // fold leaves no open state); a create does not: it closes the folds and may draw no «Last ned».
         var since = afterCreate ? _formsOpenAtCreate : afterRename ? _formsOpenAtRename : 0;
         var movesSince = afterRename ? _movesAtRename : _readerMoves;
         var movedOn = (OpenForms() & ~since) != 0 || _readerMoves != movesSince;
@@ -704,15 +646,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
         State.SetAuthenticated(IsAuthenticated);
 
-        // Caught here, like the save button's own read in VariableExplorer.Lists.cs:38. An exception
-        // out of a lifecycle method takes the whole circuit down with it, which in helsedata's
-        // legacy host means the entire CMS page — and the mount fires this read alongside the search
-        // and the facet refresh, which is exactly the burst the per-address limiter counts. A 429
-        // here is an ordinary event, not a rare one.
-        //
-        // Said on screen rather than swallowed: unlike the save button, this component has nothing
-        // to show if the read failed, so silence would be an empty list that looks like an empty
-        // list.
+        // Caught: an exception out of a lifecycle method takes the circuit, in helsedata's legacy host the
+        // whole CMS page. The mount fires this read with the search and facet refresh, the burst the
+        // limiter counts, so a 429 is ordinary. Said on screen, since silence would pass for an empty list.
         try
         {
             // Mounting is opening the tab, a reader asking; a later parameter set is only a render.
@@ -744,19 +680,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         await LoadDataTypeNamesAsync();
     }
 
-    /// <summary>The datatype display names, read once per mount.</summary>
-    /// <remarks>
-    /// <para>
-    /// Asked for without a search or a filter, unlike the facet refresh in the explorer beside this
-    /// view. That call is scoped to what the reader is looking at, so a search matching no integers
-    /// comes back with no entry for the integer code - and this view has to name codes the reader
-    /// saved at some other time, under some other search.
-    /// </para>
-    /// <para>
-    /// Failure leaves the map empty, and an empty map falls back to the code itself. A list showing
-    /// codes is worse than one showing names; losing the whole view over a label would be worse still.
-    /// </para>
-    /// </remarks>
+    /// <summary>
+    /// The datatype display names, read once per mount and with no search or filter: a scoped read omits
+    /// codes the search matched none of, and saved rows carry codes from any search. Failure leaves the
+    /// map empty and falls back to the code, rather than losing the whole view over a label.
+    /// </summary>
     private async Task LoadDataTypeNamesAsync()
     {
         // Nothing is asked for a reader who is not signed in. This view renders nothing for them, and
@@ -803,12 +731,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
     }
 
-    /// <summary>The readable name for a datatype code, from the names read on mount.</summary>
-    /// <remarks>
-    /// List items carry the code alone, and a shared snapshot keeps whatever spelling was stored
-    /// when it was taken, so the value is canonicalised before the lookup and the code is the
-    /// fallback. AGENTS.md, "The API names a datatype, not this package".
-    /// </remarks>
+    /// <summary>
+    /// The readable name for a datatype code. A shared snapshot keeps whatever spelling was stored, so
+    /// the value is canonicalised before the lookup and the code is the fallback. AGENTS.md, "The API
+    /// names a datatype, not this package".
+    /// </summary>
     private string? DataTypeName(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -824,10 +751,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
 
     /// <summary>
-    /// Another surface changed a list. Re-read the page rather than only re-rendering: the rows
-    /// come from <c>_page</c>, which the holder does not own, so a save button that removed a
-    /// variable would otherwise leave it on screen here — the very thing this subscription exists
-    /// to prevent.
+    /// Another surface changed a list. Re-read the page rather than only re-render: the rows come from
+    /// <c>_page</c>, which the holder does not own, so a variable a save button removed would stay here.
     /// </summary>
     private void OnStateChanged(VariableListState.ListChange? change)
     {
@@ -886,10 +811,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
-        // What this read is for, taken before the await: several run at once, because the holder
-        // raises Changed while a create is still going and each notification starts one. The
-        // narrowing is part of what it is for — a tick raises Changed too, so an answer can land
-        // for kilder the reader has already unticked.
+        // What this read is for, taken before the await: several run at once, since the holder raises
+        // Changed mid-create and each notification starts one. The narrowing is included because a tick
+        // raises Changed too, so an answer can land for kilder the reader has already unticked.
         var readList = _shownList.Value;
         var readPage = _pageNumber;
         var readKilder = State.KildeFilter;
@@ -927,11 +851,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             failed = true;
         }
 
-        // An answer for a list, a page or a narrowing the view has since left is dropped, _loading
-        // included. Creating repoints _shownList while reads for the previous list are still out,
-        // and the later answer won — old rows under the new name, as though create had copied
-        // them. A tick is the same race: rows for a kilde no longer ticked, under boxes that say
-        // otherwise.
+        // An answer for a list, page or narrowing the view has since left is dropped, _loading included.
+        // Create repoints _shownList while reads for the old list are out, so a late answer draws old rows
+        // under the new name; a tick races the same way, drawing rows for kilder no longer ticked.
         if (_shownList != readList || _pageNumber != readPage || State.KildeFilterVersion != readFilter)
         {
             return;
@@ -951,15 +873,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     }
 
     /// <summary>
-    /// Fills the annotation fields from what the API just answered with.
+    /// Fills the annotation fields from the API's answer, emptied first so a draft cannot be sent later
+    /// to a list it was not typed into. The refused row's text outlives every reload, as nothing else
+    /// holds it while the notice is up; the mark goes when the row leaves the list or the page.
     /// </summary>
-    /// <remarks>
-    /// Emptied first, so a draft against a row that has left the page cannot be sent back later
-    /// against a list it was never typed into. The refused row is the exception: its text outlives
-    /// every reload, including the one with no page behind it, because the notice to shorten it is
-    /// still on screen and nowhere else holds those 500-odd characters. The mark goes when the row
-    /// does — off the list, or off the page — since neither leaves a field to mark.
-    /// </remarks>
     private void SeedDesiredData()
     {
         _desiredDataSeeds++;
@@ -1027,26 +944,18 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _desiredDataRefusal?.VariableId == VariableDatasamlingKey.Of(item) ? "true" : null;
 
     /// <summary>
-    /// The refusal sentence's id for the one refused field, and nothing at all for the rest.
+    /// The refusal sentence's id for the one refused field, so <c>aria-invalid</c> comes with its reason
+    /// (WCAG 3.3.1). Absent elsewhere, or every field would point at a region describing another row's
+    /// text.
     /// </summary>
-    /// <remarks>
-    /// What ties <c>aria-invalid</c> to the reason for it: the sentence sits above forty rows, and
-    /// a field that only announces "invalid" leaves the reader to guess what is wrong with it
-    /// (WCAG 3.3.1). Absent elsewhere, or every field would point at a region describing another
-    /// row's text.
-    /// </remarks>
     private string? DesiredDataDescribedBy(VariableListItem item) =>
         _desiredDataRefusal?.VariableId == VariableDatasamlingKey.Of(item) ? DesiredDataRefusalId : null;
 
     /// <summary>
-    /// Writes one row's annotation, or clears it, and says so when the API will not have it.
+    /// Writes one row's annotation, or clears it, and says so when the API will not have it. The text is
+    /// kept before the call and left alone after a refusal, so the reader reads why their words were not
+    /// saved while still looking at them; an emptied field is the one thing they cannot recover from.
     /// </summary>
-    /// <remarks>
-    /// The text is kept here before the call and left alone after a refusal, so the reader is
-    /// looking at their own words while they read why those words were not saved. Re-rendering the
-    /// stored value instead would empty the field, which is the one thing a reader who has just
-    /// typed 500 characters cannot recover from.
-    /// </remarks>
     private async Task SaveDesiredDataAsync(VariableListItem item, string? text)
     {
         var variableId = VariableDatasamlingKey.Of(item);
@@ -1211,14 +1120,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     }
 
     /// <summary>
-    /// Empties the alert region — the one place that does. Five conditions share it, so a handler
-    /// clearing only its own leaves an older one answering for what the reader just did.
+    /// Empties the alert region — the one place that does. Five conditions share it, so a handler clearing
+    /// only its own leaves an older one answering for what the reader just did. A refused annotation has
+    /// its own region and stays: its text is still too long and still unsaved.
     /// </summary>
-    /// <remarks>
-    /// A refused annotation is not among them: it has its own region because it outlives the
-    /// action after it, and clearing it here would unmark a field whose text is still too long and
-    /// still unsaved.
-    /// </remarks>
     private void ForgetFailures()
     {
         _failed = false;
@@ -1577,13 +1482,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     }
 
     /// <summary>
-    /// Steps back when the page being looked at no longer exists.
+    /// Steps back when the page being looked at no longer exists. Emptying the last page (page three,
+    /// say) puts the empty state in place of the pager, so the reader is told the list is empty and has
+    /// no control left to reach the pages that still have rows.
     /// </summary>
-    /// <remarks>
-    /// Taking the last row off page three leaves a page three with nothing on it, and the empty
-    /// state replaces the pager along with the rows — so the reader is told the list is empty and
-    /// has no control left to reach the two pages that still have things on them.
-    /// </remarks>
     private async Task RetreatFromEmptyPageAsync()
     {
         while (_pageNumber > 1 && _page is not null && _page.Items.Count == 0)
@@ -1594,13 +1496,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     }
 
     /// <summary>
-    /// Fetches the whole list from the API and hands it to the browser.
+    /// Fetches the whole list from the API and hands it to the browser. Every id, not the page on screen:
+    /// a download quietly holding only the rows in view would go unnoticed until the file was opened.
     /// </summary>
-    /// <remarks>
-    /// Every id, not the page on screen: the reader asked for their list, and a download that
-    /// quietly contained only the 25 rows they happened to be looking at would be wrong in a way
-    /// nobody would notice until they opened the file.
-    /// </remarks>
     private async Task DownloadAsync(ExportFormat format)
     {
         if (_shownList is null || _downloading)
