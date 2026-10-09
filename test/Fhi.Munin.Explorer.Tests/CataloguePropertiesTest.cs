@@ -1086,4 +1086,29 @@ public class CataloguePropertiesTest
         Assert.False(CatalogueProperties.Placed(metadata, values, "no", Key));
         Assert.True(CatalogueProperties.Placed(metadata, values, "no", "Databehandler"));
     }
+
+    [Theory]
+    [InlineData("Helseregisterloven, https://lovdata.no/lov/2014-06-20-43", true)]
+    [InlineData("https://lovdata.no/lov/2014-06-20-43", true)]
+    [InlineData("Helseregisterloven § 11", false)]
+    public void Rows_WhenAPlacedLovverkCarriesAnAddress_ThenItsAddressesAreLinked(string value, bool linked)
+    {
+        // Fhi.Metadata-jd5jl: a placed Lovverk of any type, not only a Url or a ;-joined list.
+        var row = Assert.Single(CatalogueProperties.Rows(
+            [Entry(CatalogueColumns.LegalBasis, 10, "Om registeret")],
+            new Dictionary<string, string?> { [CatalogueColumns.LegalBasis] = value }, "no"));
+
+        Assert.Equal(linked, row.InlineLinks);
+        Assert.Null(row.Href);
+    }
+
+    [Fact]
+    public void Rows_WhenAnotherTextPropertyCarriesAnAddress_ThenItIsNotLinked()
+    {
+        var row = Assert.Single(CatalogueProperties.Rows(
+            [Entry("Merknad", 10, "Om registeret")],
+            new Dictionary<string, string?> { ["Merknad"] = "Se https://lovdata.no/lov/2014-06-20-43" }, "no"));
+
+        Assert.False(row.InlineLinks);
+    }
 }
