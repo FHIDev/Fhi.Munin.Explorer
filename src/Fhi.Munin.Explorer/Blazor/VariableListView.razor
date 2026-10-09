@@ -191,6 +191,46 @@ else if (State?.IsAuthenticated == true)
             {
                 <p>@EmptyMessage</p>
             }
+            else if (SourceShown)
+            {
+                @* In place of the table, as the search puts it in place of its results: the list
+                   was never torn down, so the way back finds the row still open. *@
+                <div class="munin-explorer-drilldown"
+                     id="@SourceRegionId"
+                     @ref="_sourceRegion"
+                     tabindex="-1"
+                     role="region"
+                     aria-labelledby="@SourceHeadingId"
+                     aria-busy="@Expanded(_sourceLoading)">
+                    <button class="hd-button-square button-square--ghost-blue margin-right margin-bottom"
+                            type="button"
+                            @onclick="CloseSource">@T.BackToVariables</button>
+
+                    @if (_kilde is null && _datasamling is null)
+                    {
+                        @DetailBlocks.Heading(RowPanelLevel, OwnerButtonText(_sourceKind!.Value),
+                                              "headline headline-s margin--bottom", SourceHeadingId)
+                    }
+
+                    <p class="@SourceStatusClass" role="status" aria-live="polite" aria-atomic="true">@SourceStatus</p>
+
+                    @if (_kilde is { } kilde)
+                    {
+                        <KildeView Kilde="kilde"
+                                   Language="@Language"
+                                   HeadingLevel="@RowPanelLevel"
+                                   HeadingId="@SourceHeadingId" />
+                    }
+                    else if (_datasamling is { } datasamling)
+                    {
+                        <DatasamlingView Datasamling="datasamling"
+                                         Language="@Language"
+                                         HeadingLevel="@RowPanelLevel"
+                                         ShowKilde="ShowDatasamlingKildeAsync"
+                                         HeadingId="@SourceHeadingId" />
+                    }
+                </div>
+            }
             else if (_page is not null)
             {
                 @* A real <table>, which the explorer's own list cannot be: munin-explorer-dataitem-main
@@ -741,14 +781,34 @@ else if (State?.IsAuthenticated == true)
                     <dd class="munin-explorer-breadcrumb">@RowPanelTrail(detail)</dd>
                 </div>
 
-                @if (RowPanelVariabelgrupper(detail) is { } groups)
+                @if (KildeTrailBlock.NamedVariabelgrupper(detail) is { Count: > 0 } groups)
                 {
                     <div>
                         <dt class="headline headline-xxs margin--none">@T.FieldVariableGroup</dt>
-                        <dd lang="no">@groups</dd>
+                        <dd>@RowPanelVariabelgrupper(groups)</dd>
                     </div>
                 }
             </dl>
+
+            @* The search panel's own pair, opening the same two views in place of the list. *@
+            <div style="@OwnerButtonGrid">
+                @if (VariableOwners.IdOf(detail, SourceKind.Kilde) is not null)
+                {
+                    <button class="hd-button-square button-square--ghost"
+                            style="@OwnerButtonCell"
+                            type="button"
+                            @ref="_kildeButton"
+                            @onclick="e => OpenSourceFromControlAsync(SourceKind.Kilde, e)">@OwnerButtonText(SourceKind.Kilde)</button>
+                }
+                @if (VariableOwners.IdOf(detail, SourceKind.Datasamling) is not null)
+                {
+                    <button class="hd-button-square button-square--ghost"
+                            style="@OwnerButtonCell"
+                            type="button"
+                            @ref="_datasamlingButton"
+                            @onclick="e => OpenSourceFromControlAsync(SourceKind.Datasamling, e)">@OwnerButtonText(SourceKind.Datasamling)</button>
+                }
+            </div>
 
             @RowPanelTabs(item, detail)
         }

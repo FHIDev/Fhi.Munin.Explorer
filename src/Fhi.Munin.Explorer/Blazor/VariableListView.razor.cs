@@ -618,11 +618,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Both taken, so a flag neither acts on does not linger to move focus on a later render.
+        // All taken, so a flag none acts on does not linger to move focus on a later render.
+        var fromSource = TakeSourceFocusTarget();
         var fromMenu = TakeMenuFocusTarget();
         var fromWrite = TakeFocusTarget();
 
-        if ((fromMenu ?? fromWrite) is not { } target)
+        if ((fromSource ?? fromMenu ?? fromWrite) is not { } target)
         {
             return;
         }
@@ -874,6 +875,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             || !Lists.Any(l => l.Id == _shownList))
         {
             _page = null;
+
+            // The open row went with its list, and with it anything opened from that row.
+            CloseRow();
 
             // Cleared here as well now that a superseded read returns without touching it: this
             // branch is the one place a read in flight can be abandoned by a caller.

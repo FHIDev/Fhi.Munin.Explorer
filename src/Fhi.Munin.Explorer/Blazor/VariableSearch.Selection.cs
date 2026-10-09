@@ -344,7 +344,7 @@ public partial class VariableSearch
             return;
         }
 
-        if (_detail is not { } detail || SourceIdOf(detail, kind) is not { } id)
+        if (_detail is not { } detail || VariableOwners.IdOf(detail, kind) is not { } id)
         {
             return;
         }
@@ -447,6 +447,12 @@ public partial class VariableSearch
         if (!_loading && Sort != _sortParameter)
         {
             await FollowSortParameterAsync();
+            StateHasChanged();
+        }
+
+        if (!_loading && _pendingVariabelgruppe is not null)
+        {
+            await ApplyPendingVariabelgruppeAsync();
             StateHasChanged();
         }
 
