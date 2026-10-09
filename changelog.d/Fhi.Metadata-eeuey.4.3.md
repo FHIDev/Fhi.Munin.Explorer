@@ -1,2 +1,0 @@
-category: Changed
-- **The address bar's query is read through one bounded splitter.** `ExplorerUrlState.Parse`, `VariableFilter.Parse` and the explorers' address-bar mirror now share a single query-string splitter and decoder, and the mirror reads at most 2000 pairs of the incoming address — owned or a host's own — where it used to read every pair a link carried. A real address is never near that bound; a host parameter past it is no longer written back into the explorer's links. (Fhi.Metadata-eeuey.4.3)
