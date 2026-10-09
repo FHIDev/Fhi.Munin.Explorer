@@ -136,7 +136,7 @@ public sealed partial class VariableView : ComponentBase
             ? CatalogueColumns.Values(variable)
             : ReadOnlyDictionary<string, string?>.Empty;
 
-    /// <summary>Keys this view renders itself, so the metadata does not repeat them.</summary>
+    /// <summary>Keys this view renders itself, so the metadata does not repeat them; the panel's Detaljer tab skips them too.</summary>
     /// <remarks>
     /// DataType earns its place twice over: it is the only filled-in key in its group on a typical
     /// variable, so dropping it drops the group and leaves the five Runa shows. Beskrivelse is the

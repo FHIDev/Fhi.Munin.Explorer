@@ -185,7 +185,6 @@ internal sealed class VariablePanelTabs : ComponentBase
         builder.CloseElement();
     };
 
-
     private static RenderFragment Fact(string label, RenderFragment value, string? valueLang = null) => builder =>
     {
         builder.OpenElement(0, "div");
