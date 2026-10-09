@@ -29,6 +29,33 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.0.0 — 2026-10-09
+
+### Added
+
+- **Contracts for rows per datasamling.** `VariableSummary.RowKey` (null from an older API), `DatasamlingReference.DataFrom`/`DataTo` (sent for a detail asked for from one datasamling), and on `VariableListItem` the `ItemId`, `DatasamlingId`, `DatasamlingCode` and `CandidateDatasamlinger` (`DatasamlingCandidate`). `VariableDatasamlingKey` names one (variable, datasamling) pair, and `VariableRowSet` is what `GET /api/explorer/variables/rows` answers. (Fhi.Metadata-d07al.1)
+- **`IMuninExplorerClient` gains the members rows per datasamling need, each with a default body for a host implementing the interface itself.** `GetVariableRowsAsync` (the default throws `NotSupportedException`; an API older than the route answers 404, thrown as `HttpRequestException`), a `GetVariableAsync(id, includeHistorical, datasamlingId)` overload (the default ignores the datasamling), `AddItemsToMyListAsync` and `RemoveItemsFromMyListAsync` (the defaults go by variable through the older calls), and `SetMyListItemDesiredDataAsync` and `SetMyListItemNotesAsync`, which write by `VariableListItem.ItemId` (the defaults refuse). (Fhi.Metadata-d07al.1)
+- **`VariableSearch.SelectedDatasamlingId` and `SelectedDatasamlingIdChanged`, and `ExplorerUrlState.SelectedDatasamlingId`, written as `datasamlingId` beside `variabelId`.** A deep link names the row; a link with only `variabelId` opens that variable's first row on the page and then reports its datasamling. `datasamlingId` joins `ExplorerUrlState.ScalarQueryKeys`, and declining `variabelId` drops it too. `VariableListState` gains `IsSaved(VariableDatasamlingKey)`, `ToggleSavedAsync(VariableDatasamlingKey, …)`, `AddItemsAsync`, `RemoveItemsAsync` and `SaveAllItemsAsync`; the by-variable members stay and keep working against the older list routes. (Fhi.Metadata-d07al.1)
+
+### Changed
+
+- **BREAKING for hosts: the variable explorer lists one row per variable and datasamling, and a saved list holds the variable as delivered from one datasamling.** A variable in three datasamlinger is three rows sharing one `VariableSummary.Id`, each with that datasamling's own period, and opening one shows that datasamling's statistics on the Data tab. The count line counts rows in the same words ("Viser 1–20 av 564 variabler funnet"). The Datasamling column is always shown, since it is what tells a variable's rows apart: «Kolonner» lists it ticked and locked, and says why. «Lagre i liste» saves the row's (variable, datasamling) pair, so saving the Lungekreft row leaves the Livmorhals row unsaved, and «Lagre disse variablene» saves every row. A saved list shows one row per item, and its notes and Ønskede data belong to that item. `MuninExplorerClient` asks for the new rows by sending `rader=datasamling` on `GET /api/explorer/variables` and `/filters`, so a host calling `SearchVariablesAsync` itself gets several rows with one id where it got one; key a row on `VariableSummary.RowKey`. Needs Munin with the opt-in rows, `GET /api/explorer/variables/rows` and lists keyed by datasamling (FHIDev/Munin#6516 and #6514); an older API still works, with one row per variable and lists saved by variable as before. (Fhi.Metadata-d07al.1)
+- **A list item saved before lists named a datasamling, whose variable is in several, reads «Datasamling ikke valgt» and offers a picker in its opened row.** Choosing one or more datasamlinger adds an item for each, copies the item's Ønskede data and notes to them, and only then removes the old item, so a failed step leaves the reader's words where they were. Copying a list and saving a shared list as your own keep each item's datasamling. A shared list's snapshot carries `datasamlingId` per item; one shared before it reads as no datasamling chosen. (Fhi.Metadata-d07al.1)
+- **Copying a list, or saving a shared list as your own, keeps an item whose datasamling is not chosen yet unresolved.** The item goes as one naming no datasamling, and the copy offers to resolve it as the source did. Before, it went by variable: the API saved the variable's single open datasamling, so the copy resolved an item the source had not, and it refused a variable in several datasamlinger, so the copy ended "incomplete". Needs a Munin API with Fhi.Metadata-d07al.2 (Munin #6519); an older one refuses such an item. (Fhi.Metadata-d07al.2)
+- **The address bar's query is read through one bounded splitter.** `ExplorerUrlState.Parse`, `VariableFilter.Parse` and the explorers' address-bar mirror now share a single query-string splitter and decoder, and the mirror reads at most 2000 pairs of the incoming address — owned or a host's own — where it used to read every pair a link carried. A real address is never near that bound; a host parameter past it is no longer written back into the explorer's links. (Fhi.Metadata-eeuey.4.3)
+
+### Fixed
+
+- **A new release's JavaScript is no longer served stale by a CDN in front of the host.** The explorer now imports `_content/Fhi.Munin.Explorer/explorer-interop.js?v=<package version>`, so each release has its own URL. Before, helsedata's Cloudflare kept serving the previous release's module for up to four hours after 1.2.0 deployed (the half-tick's `markMixed` was missing until it expired). The file and its path are unchanged; a host whose content-security-policy allows the path allows the query too.
+
+### Deprecated
+
+- **`IMuninExplorerClient.ExportListAsync` and `RedeemIdentityLinkAsync` are obsolete and will be removed in 3.0.0.** Both are marked `[Obsolete]` on the interface and on `MuninExplorerClient`. `ExportListAsync` was replaced by `ExportMyListAsync`, which exports the reader's own list with its "Ønskede data"; `RedeemIdentityLinkAsync` has no caller in the package or in helsedata. A host calling either now gets warning CS0618, which fails the build under `TreatWarningsAsErrors`; a host that implements the interface itself can drop both members once they are removed.
+
+### Notes for hosts
+
+- **Run `Fhi.Helsedata.Stiler` 0.1.162 or later for the half-checked box in the filter tree.** Since 1.2.0 a kilde or datasamling above a chosen variabelgruppe is half-checked: `indeterminate` once the module runs, and `data-mixed="true"` in the server render before that. Stiler 0.1.162 draws it as a grey square on a white box, as helsedata.no prod does, and keeps the native box under forced colours. Without the rule the browser's own half-checked mark shows, which in Chrome is a blue «−».
+
 ## 1.2.0 — 2026-10-08
 
 ### Changed

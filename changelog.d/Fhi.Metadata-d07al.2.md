@@ -1,2 +1,0 @@
-category: Changed
-- **Copying a list, or saving a shared list as your own, keeps an item whose datasamling is not chosen yet unresolved.** The item goes as one naming no datasamling, and the copy offers to resolve it as the source did. Before, it went by variable: the API saved the variable's single open datasamling, so the copy resolved an item the source had not, and it refused a variable in several datasamlinger, so the copy ended "incomplete". Needs a Munin API with Fhi.Metadata-d07al.2 (Munin #6519); an older one refuses such an item. (Fhi.Metadata-d07al.2)
