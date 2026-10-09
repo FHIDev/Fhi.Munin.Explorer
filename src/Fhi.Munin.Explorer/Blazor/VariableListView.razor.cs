@@ -618,7 +618,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Both taken, so a flag neither acts on does not linger to move focus on a later render.
+        // All taken, so a flag none acts on does not linger to move focus on a later render.
         var fromSource = TakeSourceFocusTarget();
         var fromMenu = TakeMenuFocusTarget();
         var fromWrite = TakeFocusTarget();

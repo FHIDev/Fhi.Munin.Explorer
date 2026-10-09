@@ -34,14 +34,25 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
     // group, and whatever the reader last searched for would quietly narrow it.
     private async Task ShowVariabelgruppeFromListAsync(Guid id)
     {
-        if (_loading)
+        ClearSelection();
+        await RaiseSelectionAsync();
+        await ShowSearchFromListAsync();
+
+        // A fetch in flight would drop the narrowing, so it waits for that fetch to land instead.
+        _pendingVariabelgruppe = id;
+        await ApplyPendingVariabelgruppeAsync();
+    }
+
+    private Guid? _pendingVariabelgruppe;
+
+    private async Task ApplyPendingVariabelgruppeAsync()
+    {
+        if (_loading || _pendingVariabelgruppe is not { } id)
         {
             return;
         }
 
-        ClearSelection();
-        await RaiseSelectionAsync();
-        await ShowSearchFromListAsync();
+        _pendingVariabelgruppe = null;
         await ApplyFilterAsync(VariableFilter.None with { VariabelgruppeIds = [id] }, clearSearch: true);
     }
 

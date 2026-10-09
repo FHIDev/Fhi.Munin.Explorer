@@ -221,12 +221,19 @@ public sealed partial class VariableListView
                 builder.AddAttribute(3, "aria-label", T.ShowVariabelgruppeVariables(group.Name));
                 builder.AddAttribute(4, "onclick",
                     EventCallback.Factory.Create(this, () => search.ShowVariabelgruppeAsync(group.Id)));
-                builder.AddContent(5, group.Name);
+                builder.OpenElement(5, "span");
+                builder.AddAttribute(6, "lang", CatalogueLang(group.Name));
+                builder.AddContent(7, group.Name);
+                builder.CloseElement();
                 builder.CloseElement();
             }
             else
             {
-                builder.AddContent(6, i == 0 ? group.Name : $", {group.Name}");
+                builder.AddContent(8, i == 0 ? "" : ", ");
+                builder.OpenElement(9, "span");
+                builder.AddAttribute(10, "lang", CatalogueLang(group.Name));
+                builder.AddContent(11, group.Name);
+                builder.CloseElement();
             }
         }
     };

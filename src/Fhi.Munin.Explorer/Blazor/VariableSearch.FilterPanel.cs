@@ -2096,6 +2096,12 @@ public partial class VariableSearch
 
         if (next == _filter && search == _executedSearch)
         {
+            // Text typed but never submitted goes too, or the box would contradict the rows.
+            if (clearSearch)
+            {
+                _search = null;
+            }
+
             return;
         }
 

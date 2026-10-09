@@ -21,6 +21,7 @@ public sealed partial class VariableListView
     private ElementReference _datasamlingButton;
     private bool _focusSourceRegion;
     private SourceKind? _focusOwnerButton;
+    private SourceKind? _openedFrom;
 
     private string SourceRegionId => $"munin-explorer-list-source-{_instance}";
 
@@ -48,6 +49,7 @@ public sealed partial class VariableListView
         }
 
         _sourceKind = kind;
+        _openedFrom = kind;
         _focusSourceRegion = true;
         await LoadSourceAsync(kind, id);
     }
@@ -65,10 +67,10 @@ public sealed partial class VariableListView
         await LoadSourceAsync(SourceKind.Kilde, id);
     }
 
-    // Back to the row it was opened from, whose button the reader pressed to leave it.
+    // Back to the button the reader pressed, even after the datasamling view led on to its kilde.
     private void CloseSource()
     {
-        _focusOwnerButton = _sourceKind;
+        _focusOwnerButton = _openedFrom;
         ClearSource();
     }
 
@@ -79,6 +81,7 @@ public sealed partial class VariableListView
         _datasamling = null;
         _sourceError = null;
         _sourceLoading = false;
+        _openedFrom = null;
 
         // Disowns a fetch still in flight, which would otherwise land in a view that has gone.
         _sourceGeneration++;

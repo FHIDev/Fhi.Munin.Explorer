@@ -14,6 +14,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
     private static readonly Guid KildeId = new("cccccccc-0000-0000-0000-000000000001");
     private static readonly Guid DatasamlingId = new("dddddddd-0000-0000-0000-000000000001");
     private static readonly Guid GroupId = new("eeeeeeee-0000-0000-0000-000000000001");
+    private static readonly Guid OtherListId = new("22222222-2222-2222-2222-222222222222");
 
     private static readonly VariableListItem Age = new()
     {
@@ -32,8 +33,19 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
 
         public List<(string? Search, VariableFilter? Filter)> Searches { get; } = [];
 
+        public bool TwoLists { get; init; }
+
+        /// <summary>Holds the kilde answer until the test releases it.</summary>
+        public TaskCompletionSource? KildeGate { get; init; }
+
+        /// <summary>Holds the first search until the test releases it, as the explorer's opening fetch.</summary>
+        public TaskCompletionSource? FirstSearchGate { get; init; }
+
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<VariableList>>([new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = 1 }]);
+            Task.FromResult<IReadOnlyList<VariableList>>(TwoLists
+                ? [new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = 1 },
+                   new VariableList { Id = OtherListId, Name = "Kopien", VariableCount = 1 }]
+                : [new VariableList { Id = ListId, Name = "Hjertelista", VariableCount = 1 }]);
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
@@ -58,10 +70,16 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
                 AllVariabelgrupper = [new VariabelgruppeReference { Id = GroupId, Name = "Demografi" }],
             });
 
-        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
+        public override async Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
         {
             KilderAskedFor.Add(id);
-            return Task.FromResult<KildeDetail?>(new KildeDetail { Id = id, Code = "K_HKR", PreferredTerm = "Hjerte- og karregisteret" });
+
+            if (KildeGate is { } gate)
+            {
+                await gate.Task;
+            }
+
+            return new KildeDetail { Id = id, Code = "K_HKR", PreferredTerm = "Hjerte- og karregisteret" };
         }
 
         public override Task<DatasamlingDetail?> GetDatasamlingAsync(Guid id, CancellationToken cancellationToken = default)
@@ -79,7 +97,11 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             Searches.Add((search, filter));
-            return Task.FromResult(new Page<VariableSummary> { Items = [], TotalCount = 0, PageNumber = 1, Size = pageSize, TotalPages = 0 });
+            var empty = new Page<VariableSummary> { Items = [], TotalCount = 0, PageNumber = 1, Size = pageSize, TotalPages = 0 };
+
+            return Searches.Count == 1 && FirstSearchGate is { } gate
+                ? gate.Task.ContinueWith(_ => empty, TaskScheduler.Default)
+                : Task.FromResult(empty);
         }
     }
 
@@ -180,6 +202,122 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
             Assert.Equal(VariableFilter.None with { VariabelgruppeIds = [GroupId] }, filter);
             Assert.Equal("true", cut.FindAll("[role=tab]")
                 .Single(t => t.TextContent.Trim() == "Søkeresultat").GetAttribute("aria-selected"));
+        });
+    }
+    [Fact]
+    public async Task SwitchingToAnotherListHoldingTheVariable_TakesTheViewAway()
+    {
+        var cut = OpenRow(new OwnersClient { TwoLists = true });
+        Press(cut, "Vis datakilde");
+        cut.WaitForElement("[id^='munin-explorer-list-source-']");
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[id^='munin-explorer-list-source-']")));
+
+        // And back: the row the view came from is that list's again, but the view is not.
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Empty(cut.FindAll("[id^='munin-explorer-list-source-']"));
+            Assert.NotEmpty(cut.FindAll("th[scope=row]"));
+        });
+    }
+
+    [Fact]
+    public void TheWayBack_AfterTheDatasamlingLedOnToItsKilde_FocusesTheButtonThatWasPressed()
+    {
+        var cut = OpenRow(new OwnersClient());
+
+        Press(cut, "Vis datasamling");
+        cut.WaitForAssertion(() => Press(cut, "Vis datakilden"));
+        cut.WaitForAssertion(() => Assert.Contains("Hjerte- og karregisteret", cut.Find("[id^='munin-explorer-list-source-']").TextContent));
+        Press(cut, "← Tilbake til variabler");
+
+        cut.WaitForAssertion(() =>
+            LastFocus().ShouldBeElementReferenceTo(cut.FindAll("button").Single(b => b.TextContent.Trim() == "Vis datasamling")));
+    }
+
+    [Fact]
+    public async Task AKildeThatArrivesLate_DoesNotTakeOverTheDatasamlingOpenedSince()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new OwnersClient { KildeGate = gate };
+        var cut = OpenRow(client);
+
+        Press(cut, "Vis datakilde");
+        Press(cut, "← Tilbake til variabler");
+        Press(cut, "Vis datasamling");
+        cut.WaitForAssertion(() => Assert.Equal([DatasamlingId], client.DatasamlingerAskedFor));
+
+        await cut.InvokeAsync(gate.SetResult);
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Vis datakilden", cut.Find("[id^='munin-explorer-list-source-']").TextContent));
+    }
+
+    [Fact]
+    public async Task InTheExplorer_AGroupPressedWhileTheSearchIsStillLoading_IsAppliedOnceItLands()
+    {
+        var gate = new TaskCompletionSource();
+        var client = new OwnersClient { FirstSearchGate = gate };
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        this.SetRendererInfo(new RendererInfo("Server", true));
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/variabler?search=hjerte");
+
+        var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
+        cut.WaitForElement("th[scope=row] button").Click();
+        cut.WaitForElement("button[aria-label='Vis variablene i variabelgruppen Demografi']").Click();
+
+        await cut.InvokeAsync(gate.SetResult);
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal(VariableFilter.None with { VariabelgruppeIds = [GroupId] }, client.Searches[^1].Filter));
+    }
+    [Fact]
+    public void InTheExplorer_AGroupPressedAgain_EmptiesTextTypedButNeverSearched()
+    {
+        var client = new OwnersClient();
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        this.SetRendererInfo(new RendererInfo("Server", true));
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/variabler");
+
+        var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
+        void PressGroup()
+        {
+            cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
+            if (!cut.FindAll("[role=region][id^='munin-explorer-list-panel-']").Any())
+            {
+                cut.WaitForElement("th[scope=row] button").Click();
+            }
+
+            cut.WaitForElement("button[aria-label='Vis variablene i variabelgruppen Demografi']").Click();
+        }
+
+        PressGroup();
+        cut.WaitForAssertion(() => Assert.Equal([GroupId], client.Searches[^1].Filter!.VariabelgruppeIds));
+        cut.Find("input.searchbox__freetext").Change("halvskrevet");
+
+        PressGroup();
+
+        cut.WaitForAssertion(() => Assert.Equal("", cut.Find("input.searchbox__freetext").GetAttribute("value") ?? ""));
+    }
+    [Fact]
+    public void SigningOutAndBackIn_DoesNotBringTheViewBack()
+    {
+        var cut = OpenRow(new OwnersClient());
+        Press(cut, "Vis datakilde");
+        cut.WaitForElement("[id^='munin-explorer-list-source-']");
+
+        cut.Render(p => p.Add(c => c.IsAuthenticated, false));
+        cut.Render(p => p.Add(c => c.IsAuthenticated, true));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Empty(cut.FindAll("[id^='munin-explorer-list-source-']"));
+            Assert.NotEmpty(cut.FindAll("th[scope=row]"));
         });
     }
 }

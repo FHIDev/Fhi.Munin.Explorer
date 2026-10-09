@@ -450,6 +450,12 @@ public partial class VariableSearch
             StateHasChanged();
         }
 
+        if (!_loading && _pendingVariabelgruppe is not null)
+        {
+            await ApplyPendingVariabelgruppeAsync();
+            StateHasChanged();
+        }
+
         await MarkMixedAsync();
     }
 
