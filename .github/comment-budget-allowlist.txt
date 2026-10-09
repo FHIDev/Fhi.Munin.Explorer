@@ -1,0 +1,3 @@
+# Comment blocks allowed past the three-line ceiling (AGENTS.md, "Comments").
+# Format: <path> | <text that appears in the block> | <knowledge the code cannot show>
+# A human approves every line added here. Thoroughness is not a reason.

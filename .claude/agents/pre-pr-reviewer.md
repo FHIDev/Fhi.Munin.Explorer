@@ -156,21 +156,14 @@ workaround for behaviour outside this repository — not by thoroughness.
 Mechanical screen for the lines this branch wrote (the same one `prove-it` runs):
 
 ```bash
-git diff --name-only main...HEAD | while read -r f; do
-  case "$f" in
-    *.cs|*.razor) [ -f "$f" ] || continue
-      awk -v f="$f" '
-        /^[[:space:]]*\/\// && !/^[[:space:]]*\/\/\// { if (n++ == 0) s = FNR; next }
-        { if (n > 3) print f ":" s "  " n " comment lines"; n = 0 }
-        END { if (n > 3) print f ":" s "  " n " comment lines" }' "$f" ;;
-  esac
-done
+python3 scripts/comment-budget.py   # diffs against origin/main; CI runs the same script
 ```
 
-It skips `///`, so read the doc comments yourself. A hit is where you stop and ask whether the
-block carries unrecoverable knowledge — not automatically a defect. Do not flag pre-existing
-blocks the branch did not touch: the ceiling arrived after most of this code did, and cleaning
-those up is its own bead.
+It exempts `///` on the public surface, so read those doc comments yourself; it counts lines,
+not padding, so a three-line comment can still be filler. A warning is where you stop and ask
+whether the block carries unrecoverable knowledge — not automatically a defect. Do not flag
+pre-existing blocks the branch did not touch: the ceiling arrived after most of this code did,
+and cleaning those up is its own bead.
 
 ---
 

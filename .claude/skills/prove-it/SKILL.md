@@ -100,19 +100,11 @@ not ask for one.
 ## 5. Comment budget
 
 The ceiling is in `AGENTS.md` under "Comments" and is three lines. This is the mechanical screen
-for the lines *you* wrote — a run of four or more non-doc comment lines is where you stop and
-justify it, not automatically a defect:
+for the lines *you* wrote, and the `comment budget` CI job runs it too — an error there is a red
+check, and a warning is where you stop and justify the block:
 
 ```bash
-git diff --name-only main...HEAD | while read -r f; do
-  case "$f" in
-    *.cs|*.razor) [ -f "$f" ] || continue
-      awk -v f="$f" '
-        /^[[:space:]]*\/\// && !/^[[:space:]]*\/\/\// { if (n++ == 0) s = FNR; next }
-        { if (n > 3) print f ":" s "  " n " comment lines"; n = 0 }
-        END { if (n > 3) print f ":" s "  " n " comment lines" }' "$f" ;;
-  esac
-done
+python3 scripts/comment-budget.py   # diffs against origin/main; CI runs the same script
 ```
 
 For each hit, the question is whether the block carries knowledge a reader cannot recover from
@@ -120,12 +112,12 @@ the code — a race, a non-obvious invariant, a workaround for behaviour outside
 If it is incident history, it belongs in the bead and the block becomes a bead id. If it is
 something everyone needs rather than everyone touching this file, it belongs in `AGENTS.md`.
 
-Two things this screen deliberately does not do. It skips `///`, because the public XML docs of
-`src/Fhi.Munin.Explorer` are the standing exception — their reader has only the package. And it is
-scoped to the diff on purpose: **a repo-wide run returns dozens of pre-existing blocks.** The
-ceiling arrived after most of this code did, and cleaning up files you did not otherwise touch is
-a separate piece of work with its own bead, not something to smuggle into an unrelated pull
-request.
+Two things this screen deliberately does not do. It exempts `///` on the package's public types
+and members, the standing exception — their reader has only the package — so read those yourself
+for padding. And it is scoped to the diff on purpose: **the repository holds hundreds of
+pre-existing blocks over the ceiling.** The ceiling arrived after most of this code did, and
+cleaning up files you did not otherwise touch is a separate piece of work with its own bead, not
+something to smuggle into an unrelated pull request.
 
 ## 6. Scope
 

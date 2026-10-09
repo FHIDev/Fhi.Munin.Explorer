@@ -301,6 +301,26 @@ jobs:
       - name: Assert every class name a fragment names is noted for hosts
         run: ./scripts/assert-fragment-names-noted-for-hosts.sh
 
+  # The three-line comment ceiling in AGENTS.md, for the blocks a pull request adds: src/ fails,
+  # test/ only warns, and the package's public XML docs are exempt. Existing blocks are trimmed
+  # opportunistically, so the diff is the window (Fhi.Metadata-eeuey.4.5).
+  comment-budget:
+    name: comment budget
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The PR merge commit plus its first parent, which is the base.
+          fetch-depth: 2
+
+      - name: Self-test
+        run: python3 -m unittest scripts/test_comment_budget.py
+
+      - name: Check added comment blocks
+        run: python3 scripts/comment-budget.py --base HEAD^1
+
   # BannedSymbols.txt is the only thing keeping host-specific types out of a component that has to
   # render in two hosts, and it is wired up by a condition on the RCL's project name. That
   # condition was stale for the whole time the merged project had a different name than it named:
@@ -625,7 +645,7 @@ jobs:
     # the half that remains. Renaming the id would have been the tidier edit and a worse one: this
     # `needs:` list and the table below are the two places that would then have to agree, and the
     # required check in the ruleset is `ci summary`, not this job, so the id is invisible to it.
-    needs: [build, changelog, changelog-assembly, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, accessibility, component-state, hostile-layout]
+    needs: [build, changelog, changelog-assembly, comment-budget, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, accessibility, component-state, hostile-layout]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -661,6 +681,7 @@ jobs:
           build + test|${{ needs.build.result }}
           changelog fragment|${{ needs.changelog.result }}
           changelog assembles|${{ needs['changelog-assembly'].result }}
+          comment budget|${{ needs['comment-budget'].result }}
           sample stylesheets in step|${{ needs['sample-css'].result }}
           host notes for new names|${{ needs['host-notes'].result }}
           class names listed in the README|${{ needs['class-names'].result }}

@@ -86,6 +86,7 @@ dotnet pack -c Release -o artifacts && ./scripts/assert-package-contents.sh arti
 ./scripts/assert-sample-css-matches-stiler.sh   # same trigger; needs Stiler restored, see below
 bash scripts/test-sample-css-declarations.sh    # only if you touched the comparison engine
 ./scripts/assert-portability-guard-armed.sh     # only if you touched Directory.Build.props
+python3 scripts/comment-budget.py               # comment blocks this branch added, against origin/main
 ```
 
 The Stiler comparison needs the package on disk, which means credentials for helsedata's Azure
@@ -102,6 +103,7 @@ like bugs and can be tidied away without a single other check going red.
   bead; the package's public XML docs are the exception, because their reader has only the
   package. Full rule in `AGENTS.md` under "Comments". Prose that outgrows the ceiling belongs in
   the bead, the PR description, or `AGENTS.md` — not in a file people reopen on every visit.
+  The `comment budget` CI job enforces it on what a PR adds; see `AGENTS.md`.
 - `dotnet format` on a Windows checkout reports pre-existing whitespace noise from CRLF. Compare
   the count against untouched `main` before believing it is yours; `.gitattributes` normalises to
   LF, so CI sees clean files.
