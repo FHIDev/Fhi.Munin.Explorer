@@ -99,7 +99,7 @@ public sealed partial class KildeSearch
 
     /// <summary>A facet as the panel draws it: a disclosure holding a heading and the choices under it.</summary>
     /// <remarks>
-    /// Only the first is <c>OpenByDefault</c>, which seeds the disclosure; the fold is the reader's until a rebuild.
+    /// Only the first is <c>OpenByDefault</c>; the fold is then the reader's until a fold press or a drill-in, not a render.
     /// All open runs long (databehandler alone can run to dozens); all shut hides that there is anything inside.
     /// </remarks>
     private sealed record Facet(
@@ -322,7 +322,7 @@ public sealed partial class KildeSearch
     private static FacetLabel Translated(string label, string value) =>
         new(label, string.Equals(label, value, StringComparison.Ordinal) ? "no" : null);
 
-    /// <summary>A token in the words of the API's vocabulary, as the detail panel words it.</summary>
+    /// <summary>A token worded by the API, as the detail panel is: a copied table goes stale (Fhi.Metadata-tbpbr).</summary>
     /// <remarks>
     /// A token with no curated word keeps its checkbox, whole and unmarked: dropping it would hide kilder silently.
     /// <c>Curated</c> decides, not a label-equals-value test, which misreads case (Fhi.Metadata-o49mx).
@@ -566,9 +566,9 @@ public sealed partial class KildeSearch
     private static string? AsTerm(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
-    /// <summary>Commit a facet's search term, rescuing focus only when the render removes what it stands on.</summary>
+    /// <summary>Commit a facet search: focus first, state after, guarded as <see cref="ClearSearchAndRefocusAsync"/> is.</summary>
     /// <remarks>
-    /// Focus first and state after, guarded as <see cref="ClearSearchAndRefocusAsync"/> is: <c>onchange</c> is a blur.
+    /// <c>onchange</c> fires as focus leaves, so focus is rescued only when the render removes the reader's footing.
     /// <see cref="_chosen"/> is untouched: unticking a value out of sight would drop a filter never released.
     /// </remarks>
     private async Task SearchFacetAsync(string key, string? text)
