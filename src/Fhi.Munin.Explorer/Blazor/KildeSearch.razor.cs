@@ -1129,8 +1129,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>The address of the open kilde without the datasamling, for the way back out of one.</summary>
     /// <remarks>
-    /// <see cref="KildeDetailHref"/> of the parent kilde if there is one, else <see cref="DatasamlingHref"/>
-    /// of null. Null when no href applies, and the drill-in keeps its button back to the list.
+    /// Null when no href applies, and the drill-in keeps its button back to the list: a control with
+    /// nowhere to go is worse than the coarser one.
     /// </remarks>
     private string? KildeHref => _datasamling is { ParentKildeId: var id } && id != Guid.Empty
         && KildeDetailHref is not null ? KildeDetailHref(id) : DatasamlingHref?.Invoke(null);
