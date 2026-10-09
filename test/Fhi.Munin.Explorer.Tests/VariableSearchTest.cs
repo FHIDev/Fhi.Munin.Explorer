@@ -6051,10 +6051,9 @@ public class VariableSearchTest : ExplorerTestContext
     [InlineData("31.02.2020")]
     [InlineData("2020")]
     [InlineData("abc")]
-    public void DateField_WhenWhatIsTypedIsNotADay_ThenNothingIsSearchedAndTheFieldSaysWhy(string typed)
+    public void DateField_WhenTheChangePayloadIsNotADay_ThenNothingIsSearchedAndTheFieldSaysWhy(string typed)
     {
-        // A refusal that only kept the search from running would leave the reader looking at their
-        // entry with no sign it did nothing, which is WCAG 3.3.1's failure.
+        // Malformed event payloads are a defensive check; state-assertions.mjs covers native badInput.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
         var cut = RenderWith(client);
         var searches = client.SearchCalls;
@@ -6107,6 +6106,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void DateField_WhenAnAppliedDateIsEmptied_ThenTheBoundIsRemoved()
     {
+        StubDateInput(new("", false));
         // Emptying the field is how a reader drops a bound without going to its chip.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
         var cut = RenderWith(client);
@@ -6121,6 +6121,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void DateField_WhenARefusedEntryIsEmptied_ThenTheRefusalClears()
     {
+        StubDateInput(new("", false));
         // No bound was ever applied, so set(null) changes no filter and ApplyFilterAsync returns
         // early; the refusal has to go before it is asked.
         var cut = RenderWith(
@@ -6279,6 +6280,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void DateField_WhenBothEndsAreCleared_ThenTheFilterAndNativeConstraintsAreRemoved()
     {
+        StubDateInput(new("", false));
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
         var cut = RenderWith(client, b => b.Add(c => c.Filter, new VariableFilter
         {
@@ -6318,6 +6320,77 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(searches + 1, client.SearchCalls);
         Assert.Equal(new DateOnly(1940, 1, 2), client.SearchFilter!.DataFrom);
         Assert.Equal("1940-01-02", DateInputs(cut)[0].GetAttribute("value"));
+    }
+
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(0, false)]
+    public void DateField_WhenTheBrowserReportsBadInput_ThenBlurPreservesTheAppliedFilter(int field, bool changed)
+    {
+        StubDateInput(new("", true));
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var filter = new VariableFilter { DataFrom = new DateOnly(1940, 1, 1), DataTo = new DateOnly(2026, 10, 14) };
+        var cut = RenderWith(client, b => b.Add(c => c.Filter, filter));
+        var searches = client.SearchCalls;
+
+        if (changed)
+        {
+            DateInputs(cut)[field].Change("");
+        }
+
+        DateInputs(cut)[field].Blur();
+
+        Assert.Equal(searches, client.SearchCalls);
+        Assert.Equal(filter, client.SearchFilter);
+        Assert.Equal("true", DateInputs(cut)[field].GetAttribute("aria-invalid"));
+        Assert.NotEmpty(DateError(cut, field).TextContent);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("1950-01-01")]
+    public void DateField_WhenTheBrowserCannotConfirmAnEmptyControl_ThenTheBoundIsPreserved(string? current)
+    {
+        if (current is not null)
+        {
+            StubDateInput(new(current, false));
+        }
+
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var filter = new VariableFilter { DataFrom = new DateOnly(1940, 1, 1) };
+        var cut = RenderWith(client, b => b.Add(c => c.Filter, filter));
+        var searches = client.SearchCalls;
+
+        ChangeDate(cut, 0, "");
+
+        Assert.Equal(searches, client.SearchCalls);
+        Assert.Equal(filter, client.SearchFilter);
+        Assert.Equal("true", DateInputs(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public void DateField_WhenAnIncompleteEntryIsClearedWithoutAChangeEvent_ThenTheBoundIsRemovedOnBlur()
+    {
+        var read = StubDateInput(new("", true));
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var cut = RenderWith(client, b => b.Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(1940, 1, 1) }));
+        ChangeDate(cut, 0, "");
+        read.SetResult(new("", false));
+
+        DateInputs(cut)[0].Blur();
+
+        Assert.Null(client.SearchFilter!.DataFrom);
+        Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Empty(DateError(cut, 0).TextContent);
+    }
+
+    private JSRuntimeInvocationHandler<DateInputState> StubDateInput(DateInputState state)
+    {
+        var read = JSInterop.SetupModule(ExplorerInterop.ModulePath)
+            .Setup<DateInputState>("readDateInput", _ => true);
+        read.SetResult(state);
+        return read;
     }
 
     private static void ChangeDate(IRenderedComponent<VariableSearch> cut, int field, string typed)

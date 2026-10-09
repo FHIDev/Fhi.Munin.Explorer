@@ -1286,6 +1286,9 @@ The browser determines the displayed format; input values and `dataFrom`/`dataTo
 remain ISO dates (`yyyy-MM-dd`). Both ends are inclusive, and From must be on or before To. The search matches overlapping data periods,
 so dates outside the catalogue's reported range are valid: for example, a search from 1940 to
 2026 can include data starting in 1991. The reported range does not limit either input.
+Incomplete or invalid manual input shows a validation error and preserves the applied bound.
+Clearing a field removes its bound only after the browser confirms the control is empty; if the
+interop module is unavailable, the bound can still be removed using its filter chip.
 
 `?instrumentId=` is the newest of the keys it owns, and the only one that opens a page rather than
 restoring part of a search. It names the instrument — the questionnaire or scale a variable was

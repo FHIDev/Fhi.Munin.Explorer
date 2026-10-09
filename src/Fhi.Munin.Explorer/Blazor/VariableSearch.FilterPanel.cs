@@ -310,26 +310,48 @@ public partial class VariableSearch
         builder.CloseElement();
     }
 
-    private Task CommitDateAsync(string id, DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
+    private async Task CommitDateAsync(string id, DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
     {
+        var browser = _interop is { } interop ? await interop.ReadDateInputAsync(id) : null;
+        if (browser?.BadInput == true)
+        {
+            _editedDates.Remove(id);
+            _refusedDates[id] = "";
+            return;
+        }
+
         if (!_editedDates.Remove(id, out var raw))
         {
-            return Task.CompletedTask;
+            // Clearing an incomplete native entry can leave value empty without another change event.
+            if (browser is null || !_refusedDates.ContainsKey(id))
+            {
+                return;
+            }
+
+            raw = browser.Value;
         }
 
         if (string.IsNullOrWhiteSpace(raw))
         {
-            return set(null);
+            if (browser is null || browser.Value.Length != 0)
+            {
+                _refusedDates[id] = raw;
+                return;
+            }
+
+            _refusedDates.Remove(id);
+            await set(null);
+            return;
         }
 
         if (DateInput.TryParse(raw, Language, out var typed) && Within(typed, min, max))
         {
-            return set(typed);
+            _refusedDates.Remove(id);
+            await set(typed);
+            return;
         }
 
         _refusedDates[id] = raw;
-
-        return Task.CompletedTask;
     }
 
     private static bool Within(DateOnly? value, DateOnly? min, DateOnly? max) =>

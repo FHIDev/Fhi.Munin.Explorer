@@ -10,6 +10,14 @@
 /** The class Fhi.Helsedata.Stiler draws a shown bar with. */
 const SHOWN = 'munin-explorer-page__stuckbar--on';
 
+// Native dates expose an empty value for both a cleared control and an incomplete manual entry.
+export function readDateInput(id) {
+  const input = document.getElementById(id);
+  return input instanceof HTMLInputElement && input.type === 'date'
+    ? { value: input.value, badInput: input.validity.badInput }
+    : null;
+}
+
 // One observer per mounted detail page, keyed by its own bar's id. Two explorers on one host page
 // each have an entry of their own, so neither can drive or disconnect the other's bar.
 const observers = new Map();

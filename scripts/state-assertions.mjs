@@ -1516,6 +1516,9 @@ export const assertions = [
       await leaveDateField(page, field);
       await page.waitForFunction(id => document.getElementById(id)?.getAttribute('aria-invalid') === 'true',
         await field.getAttribute('id'));
+      await field.fill('');
+      await leaveDateField(page, field);
+      await page.waitForFunction(id => document.getElementById(id)?.min === '', await to.getAttribute('id'));
       await field.fill(DATE_WRITTEN);
       await leaveDateField(page, field);
 
@@ -1557,6 +1560,63 @@ export const assertions = [
     async control(page) {
       await page.locator(PANEL).getByLabel(DATE_FROM, { exact: true })
         .evaluate((input, typed) => { input.value = typed; }, DATE_REVERSED);
+    },
+  },
+  {
+    name: 'an incomplete native dataperiode preserves the applied bounds and announces the error',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    async stage(page) {
+      const panel = page.locator(PANEL);
+      await panel.getByRole('button', { name: 'Utvid alle', exact: true }).first().click();
+      const from = panel.getByLabel(DATE_FROM, { exact: true });
+      const to = panel.getByLabel(DATE_TO, { exact: true });
+      await from.fill(DATE_WRITTEN);
+      await leaveDateField(page, from);
+      await page.waitForFunction(id => document.getElementById(id)?.min === '1940-01-01', await to.getAttribute('id'));
+      await to.fill(DATE_END);
+      await leaveDateField(page, to);
+      await page.waitForFunction(id => document.getElementById(id)?.max === '2026-10-14', await from.getAttribute('id'));
+
+      for (const field of [from, to]) {
+        await field.focus();
+        for (let i = 0; i < 3; i++) await field.press('ArrowLeft');
+        await field.press('Backspace');
+        if (!await field.evaluate(input => input.value === '' && input.validity.badInput)) {
+          throw new Error('deleting one native date segment did not produce badInput');
+        }
+        await leaveDateField(page, field);
+        await field.evaluate((input, ms) => new Promise(resolve => {
+          const deadline = Date.now() + ms;
+          const poll = () => input.hasAttribute('aria-invalid') || Date.now() > deadline
+            ? resolve() : setTimeout(poll, 50);
+          poll();
+        }), REFUSAL_MS);
+      }
+      return {};
+    },
+
+    async measure(page) {
+      const panel = page.locator(PANEL);
+      const from = panel.getByLabel(DATE_FROM, { exact: true });
+      const to = panel.getByLabel(DATE_TO, { exact: true });
+      if (await from.getAttribute('max') !== DATE_END || await to.getAttribute('min') !== DATE_WRITTEN) {
+        return 'an incomplete date cleared an applied bound';
+      }
+      for (const field of [from, to]) {
+        if (await field.getAttribute('aria-invalid') !== 'true') return 'an incomplete date has no validation error';
+        const error = await field.getAttribute('aria-describedby');
+        if (!error || !await page.locator(`#${error}[role="alert"]`).textContent()) {
+          return 'the invalid native date has no associated live error';
+        }
+      }
+      return null;
+    },
+
+    async control(page) {
+      await page.locator(PANEL).getByLabel(DATE_FROM, { exact: true })
+        .evaluate(input => input.removeAttribute('aria-invalid'));
     },
   },
   {
