@@ -11903,7 +11903,8 @@ public class VariableSearchTest : ExplorerTestContext
         {
             AdditionalProperties = new Dictionary<string, string?>
             {
-                ["Beskrivelse"] = Detail(TaleId).Description, ["PreferredTerm"] = "1. Tale",
+                ["Beskrivelse"] = Detail(TaleId).Description,
+                ["PreferredTerm"] = "1. Tale",
             },
             PropertyMetadata =
             [
