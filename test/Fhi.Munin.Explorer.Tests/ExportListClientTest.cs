@@ -31,10 +31,12 @@ public class ExportListClientTest
         public Uri? LastUri { get; private set; }
         public HttpMethod? LastMethod { get; private set; }
         public HttpStatusCode Status { get; init; } = HttpStatusCode.OK;
+        public TimeSpan? LastLimit { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            LastLimit = request.Options.TryGetValue(RequestTimeoutHandler.Limit, out var limit) ? limit : null;
             LastUri = request.RequestUri;
             LastMethod = request.Method;
             LastBody = request.Content is null
@@ -57,6 +59,75 @@ public class ExportListClientTest
         {
             BaseAddress = new Uri("https://munin.example/")
         });
+
+    [Fact]
+    public async Task ExportVariablesAsync_WhenAsked_ThenItGetsTheSearchAndFiltersAndKeepsTheApisFile()
+    {
+        var handler = new FileHandler("application/zip", "Variabler_2026-10-09.zip");
+        var filter = new VariableFilter { KildeIds = [One] };
+
+        var file = await Client(handler).ExportVariablesAsync("alder", filter, ExportFormat.Csv, includeKodeverk: true);
+
+        Assert.Equal(HttpMethod.Get, handler.LastMethod);
+        Assert.Equal("/api/explorer/variables/export", handler.LastUri!.AbsolutePath);
+        var query = handler.LastUri.Query;
+        Assert.Contains("search=alder", query);
+        Assert.Contains("format=csv", query);
+        Assert.Contains("includeKodeverk=true", query);
+        Assert.Contains($"kildeIds={One}", query);
+        Assert.Null(handler.LastBody);
+        Assert.Equal("application/zip", file.ContentType);
+        Assert.Equal("Variabler_2026-10-09.zip", file.FileName);
+    }
+
+    [Fact]
+    public async Task ExportVariablesAsync_WhenSent_ThenItAsksForLongerThanTheThirtySecondsOtherCallsGet()
+    {
+        var handler = new FileHandler("text/csv", "Variabler_2026-10-09.csv");
+
+        await Client(handler).ExportVariablesAsync(null, null);
+
+        Assert.Equal(TimeSpan.FromSeconds(150), handler.LastLimit);
+    }
+
+    [Fact]
+    public async Task ExportMyListAsync_WhenSent_ThenItKeepsTheOrdinaryLimit()
+    {
+        var handler = new FileHandler("text/csv", "liste.csv");
+
+        await Client(handler).ExportMyListAsync(One);
+
+        Assert.Null(handler.LastLimit);
+    }
+
+    [Fact]
+    public async Task ExportVariablesAsync_WhenCodebooksAreNotAskedFor_ThenNoIncludeKodeverkIsSent()
+    {
+        var handler = new FileHandler("text/csv", "Variabler_2026-10-09.csv");
+
+        await Client(handler).ExportVariablesAsync(null, null, ExportFormat.Xlsx);
+
+        Assert.DoesNotContain("includeKodeverk", handler.LastUri!.Query);
+        Assert.Contains("format=xlsx", handler.LastUri.Query);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.BadRequest)]
+    public async Task ExportVariablesAsync_WhenTheApiRefuses_ThenItThrows(HttpStatusCode status)
+    {
+        var handler = new FileHandler("text/plain", "x") { Status = status };
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => Client(handler).ExportVariablesAsync(null, null));
+    }
+
+    [Fact]
+    public async Task ExportVariablesAsync_WhenRateLimited_ThenItThrowsTheRateLimitException()
+    {
+        var handler = new FileHandler("text/plain", "x") { Status = HttpStatusCode.TooManyRequests };
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => Client(handler).ExportVariablesAsync(null, null));
+    }
 
     // -----------------------------------------------------------------------
 

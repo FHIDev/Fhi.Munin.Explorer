@@ -259,7 +259,7 @@ public class ExceptionLoggingTest : ExplorerTestContext
         Assert.Empty(recorder.Entries);
 
         // The negative control, and the reason a blanket OperationCanceledException filter would be
-        // wrong: the very same type on the call still on screen is HttpClient's own 30-second
+        // wrong: the very same type on the call still on screen is the client's own 30-second
         // timeout, which is a fault and is logged.
         await cut.InvokeAsync(() => client.Fail(1, new TaskCanceledException()));
 

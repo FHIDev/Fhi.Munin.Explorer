@@ -103,6 +103,9 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     // which a deployed older package keys on (Fhi.Metadata-d07al.1).
     private const string RowsPerDatasamling = "rader=datasamling";
 
+    /// <summary>The whole-search download's limit: past a cold code-list fetch, under Munin's 300-second ingress.</summary>
+    internal static readonly TimeSpan ExportTimeout = TimeSpan.FromSeconds(150);
+
     private static readonly (string, string?) Rader = ("rader", "datasamling");
 
     public async Task<FilterOptions> GetFiltersAsync(
@@ -650,9 +653,15 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         HttpMethod method,
         string url,
         object? body,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        TimeSpan? timeout = null)
     {
         using var request = new HttpRequestMessage(method, url);
+
+        if (timeout is { } limit)
+        {
+            request.Options.Set(RequestTimeoutHandler.Limit, limit);
+        }
 
         if (body is not null)
         {
@@ -918,6 +927,33 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
             ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
             ?? "variabelliste";
+
+        return new ExportedList(bytes, contentType, fileName);
+    }
+
+    /// <inheritdoc />
+    public async Task<ExportedList> ExportVariablesAsync(
+        string? search,
+        VariableFilter? filter,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default)
+    {
+        var url = WithFilter(
+            "api/explorer/variables/export" + Query(
+                ("search", search),
+                ("format", WireName(format)),
+                ("includeKodeverk", includeKodeverk ? "true" : null)),
+            filter);
+
+        using var response = await SendAsync(HttpMethod.Get, url, null, cancellationToken, ExportTimeout);
+        response.EnsureSuccessStatusCode();
+
+        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+            ?? "Variabler";
 
         return new ExportedList(bytes, contentType, fileName);
     }

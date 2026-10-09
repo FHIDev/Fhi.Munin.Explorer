@@ -24,7 +24,7 @@ internal sealed class TransientRetryHandler : DelegatingHandler
         }
         catch (HttpRequestException ex) when (IsDeadConnection(ex) && IsSafeToRepeat(request))
         {
-            // Not on a cancelled token: the reader navigated away, or HttpClient.Timeout fired,
+            // Not on a cancelled token: the reader navigated away, or the call's timeout fired,
             // and a retry would spend the same wait again on a request nobody is waiting for.
             cancellationToken.ThrowIfCancellationRequested();
 
