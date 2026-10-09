@@ -2123,11 +2123,14 @@ public partial class VariableSearch
         // _executedSearch, not _search: a click blurs the search field first, so the box's contents
         // have already been written to _search — text the reader may never have submitted. Same
         // reason the sort buttons fetch with it.
+        var searchCleared = false;
+
         if (await FetchAsync(search))
         {
             if (clearSearch)
             {
                 _search = null;
+                searchCleared = true;
             }
 
             // Only on success. The counts describe a selection, and after a rollback the selection
@@ -2148,7 +2151,8 @@ public partial class VariableSearch
         // _filter and not next: what the host is told is what is in force, rolled back or not.
         await RaiseAsync(FilterChanged, _filter, Log);
 
-        if (clearSearch)
+        // Only once it has gone: after a rollback the box may hold text that was never searched.
+        if (searchCleared)
         {
             await NotifySearchChangedAsync();
         }

@@ -227,10 +227,18 @@ public sealed partial class VariableListView
                 builder.AddAttribute(1, "class", "hd-button-square button-square--ghost");
                 builder.AddAttribute(2, "style", OwnerButtonCell);
                 builder.AddAttribute(3, "type", "button");
-                builder.AddAttribute(4, "aria-label", T.ShowVariabelgruppeVariables(group.Name));
                 builder.AddAttribute(5, "onclick",
                     EventCallback.Factory.Create(this, () => search.ShowVariabelgruppeAsync(group.Id)));
-                builder.AddContent(6, group.Name);
+
+                // Spoken, not shown, and kept out of aria-label so the name keeps its own lang.
+                builder.OpenElement(14, "span");
+                builder.AddAttribute(15, "class", "screenreader-only");
+                builder.AddContent(16, T.ShowVariabelgruppeVariables + " ");
+                builder.CloseElement();
+                builder.OpenElement(17, "span");
+                builder.AddAttribute(18, "lang", CatalogueLang(group.Name));
+                builder.AddContent(19, group.Name);
+                builder.CloseElement();
                 builder.CloseElement();
             }
             else

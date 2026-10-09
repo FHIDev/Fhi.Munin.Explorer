@@ -43,6 +43,8 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         /// <summary>Holds the first search until the test releases it, as the explorer's opening fetch.</summary>
         public TaskCompletionSource? FirstSearchGate { get; init; }
 
+        public bool GroupSearchFails { get; init; }
+
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>(ShownListDeleted
                 ? [new VariableList { Id = OtherListId, Name = "Kopien", VariableCount = 1 }]
@@ -56,7 +58,11 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
             CancellationToken cancellationToken = default) =>
             Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
-                Items = [Age], TotalCount = 1, PageNumber = 1, Size = pageSize, TotalPages = 1,
+                Items = [Age],
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = pageSize,
+                TotalPages = 1,
             });
 
         public override Task<VariableDetail?> GetVariableAsync(
@@ -91,7 +97,10 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
             DatasamlingerAskedFor.Add(id);
             return Task.FromResult<DatasamlingDetail?>(new DatasamlingDetail
             {
-                Id = id, Code = "D_HKR", PreferredTerm = "Alle variabler", ParentKildeId = KildeId,
+                Id = id,
+                Code = "D_HKR",
+                PreferredTerm = "Alle variabler",
+                ParentKildeId = KildeId,
             });
         }
 
@@ -101,6 +110,11 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             Searches.Add((search, filter));
+
+            if (GroupSearchFails && filter?.VariabelgruppeIds.Count > 0)
+            {
+                throw new HttpRequestException("nede");
+            }
             var empty = new Page<VariableSummary> { Items = [], TotalCount = 0, PageNumber = 1, Size = pageSize, TotalPages = 0 };
 
             return Searches.Count == 1 && FirstSearchGate is { } gate
@@ -121,6 +135,18 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         return cut;
     }
 
+    private static AngleSharp.Dom.IElement GroupButton(IRenderedComponent<VariableExplorer> cut)
+    {
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("button"), IsDemografi));
+        return cut.FindAll("button").Single(IsDemografi);
+    }
+
+    // The accessible name: the hidden "Vis variablene i variabelgruppen" and the group's own name.
+    private static bool IsDemografi(AngleSharp.Dom.IElement b) =>
+        b.TextContent.Trim() == "Vis variablene i variabelgruppen Demografi"
+        && b.QuerySelector(".screenreader-only") is not null
+        && b.QuerySelector("span[lang], span:not(.screenreader-only)")?.TextContent == "Demografi";
+
     private static void Press(IRenderedComponent<VariableListView> cut, string text) =>
         cut.FindAll("button").Single(b => b.TextContent.Trim() == text).Click();
 
@@ -139,7 +165,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
     }
 
     [Fact]
-    public void VisDatakilde_OpensTheKildeInPlaceOfTheList_AndTheWayBackFindsTheRowStillOpen()
+    public void ShowingTheKilde_PutsItInPlaceOfTheList_AndTheWayBackFindsTheRowStillOpen()
     {
         var client = new OwnersClient();
         var cut = OpenRow(client);
@@ -167,7 +193,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
     private object? LastFocus() => JSInterop.Invocations["Blazor._internal.domWrapper.focus"][^1].Arguments[0];
 
     [Fact]
-    public void VisDatasamling_OpensTheDatasamling_AndItsKildeFromThere()
+    public void ShowingTheDatasamling_OpensIt_AndItsKildeFromThere()
     {
         var client = new OwnersClient();
         var cut = OpenRow(client);
@@ -194,7 +220,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
     {
         var cut = OpenRow(new OwnersClient());
 
-        Assert.Empty(cut.FindAll("button[aria-label^='Vis variablene i variabelgruppen']"));
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Contains("variabelgruppen", StringComparison.Ordinal));
         Assert.Contains("Demografi", cut.Find("[role=region][id^='munin-explorer-list-panel-']").TextContent);
     }
 
@@ -211,7 +237,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
         cut.WaitForElement("th[scope=row] button").Click();
 
-        cut.WaitForElement("button[aria-label='Vis variablene i variabelgruppen Demografi']").Click();
+        GroupButton(cut).Click();
 
         cut.WaitForAssertion(() =>
         {
@@ -299,7 +325,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
         cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
         cut.WaitForElement("th[scope=row] button").Click();
-        cut.WaitForElement("button[aria-label='Vis variablene i variabelgruppen Demografi']").Click();
+        GroupButton(cut).Click();
 
         await cut.InvokeAsync(gate.SetResult);
 
@@ -328,7 +354,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
                 cut.WaitForElement("th[scope=row] button").Click();
             }
 
-            cut.WaitForElement("button[aria-label='Vis variablene i variabelgruppen Demografi']").Click();
+            GroupButton(cut).Click();
         }
 
         PressGroup();
@@ -351,5 +377,30 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         cut.Render(p => p.Add(c => c.IsAuthenticated, true));
 
         AssertNoViewEvenWhenTheRowIsReopened(cut);
+    }
+    [Fact]
+    public void InTheExplorer_AGroupWhoseSearchFails_LeavesUnsubmittedTextOutOfTheAddress()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new OwnersClient { GroupSearchFails = true });
+        Services.AddScoped<VariableListState>();
+        this.SetRendererInfo(new RendererInfo("Server", true));
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/variabler?search=hjerte");
+
+        var cut = Render<VariableExplorer>(p => p.Add(c => c.IsAuthenticated, true));
+        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Variabelliste").Click();
+        cut.WaitForElement("th[scope=row] button").Click();
+
+        // Typed once the opening search has landed, so the address's own term cannot overwrite it.
+        GroupButton(cut);
+        cut.Find("input.searchbox__freetext").Change("halvskrevet");
+        GroupButton(cut).Click();
+
+        // The explorer writes its address with history.replaceState, after each render.
+        cut.WaitForAssertion(() =>
+        {
+            var written = (string)JSInterop.Invocations["history.replaceState"][^1].Arguments[2]!;
+            Assert.Contains("search=hjerte", written);
+            Assert.DoesNotContain("halvskrevet", written);
+        });
     }
 }
