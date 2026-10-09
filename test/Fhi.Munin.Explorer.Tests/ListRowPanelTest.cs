@@ -42,6 +42,8 @@ public class ListRowPanelTest : ExplorerTestContext
 
         public List<Guid> DetailsAskedFor { get; } = [];
 
+        public bool WithExtraFields { get; init; }
+
         public List<bool> HistoricalAskedFor { get; } = [];
 
         public List<(Guid Variable, string? Text)> NotesWritten { get; } = [];
@@ -213,7 +215,7 @@ public class ListRowPanelTest : ExplorerTestContext
 
             var item = all.Single(i => i.VariableId == id);
 
-            return new VariableDetail
+            var detail = new VariableDetail
             {
                 Id = id,
                 Code = item.VariableCode ?? "",
@@ -235,6 +237,8 @@ public class ListRowPanelTest : ExplorerTestContext
                     _ => [],
                 },
             };
+
+            return WithExtraFields ? ExtraFields.On(detail) : detail;
         }
     }
 
@@ -313,6 +317,23 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Panel_WhenMuninHasOtherFields_ThenDetaljerShowsTheValuedOnesOnly()
+    {
+        var cut = RenderView(new PanelClient(DatabaseVersion) { WithExtraFields = true });
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=tablist]");
+        cut.FindAll("[role=tab]")[1].Click();
+
+        var labels = ExtraFields.Labels(cut.Find("[role=tabpanel]"));
+        Assert.Contains("Måleenhet", labels);
+        Assert.Contains("kilo", cut.Find("[role=tabpanel]").TextContent);
+        Assert.DoesNotContain("Presisjon", labels);
+        Assert.DoesNotContain("Kommentar på engelsk", labels);
+        Assert.Single(labels, l => l == "Datatype");
+    }
+
+    [Fact]
     public void Panel_WhenOpened_ThenItHasTheExplorersTwoTabsAndNotesAndTheSecondDoesNotRepeatTheDescription()
     {
         var cut = RenderView(new PanelClient(DatabaseVersion));
@@ -320,7 +341,7 @@ public class ListRowPanelTest : ExplorerTestContext
         NameButton(cut, "Databaseversjon").Click();
         cut.WaitForElement("[role=tablist]");
 
-        Assert.Equal(["Data", "Om variabelen", "Mine notater"], cut.FindAll("[role=tab]").Select(t => t.TextContent.Trim()));
+        Assert.Equal(["Data", "Detaljer", "Mine notater"], cut.FindAll("[role=tab]").Select(t => t.TextContent.Trim()));
         Assert.Equal("true", cut.FindAll("[role=tab]")[0].GetAttribute("aria-selected"));
 
         cut.FindAll("[role=tab]")[1].Click();

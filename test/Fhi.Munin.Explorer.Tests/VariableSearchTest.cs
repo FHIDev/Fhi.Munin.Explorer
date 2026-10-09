@@ -11562,7 +11562,7 @@ public class VariableSearchTest : ExplorerTestContext
 
     /// <summary>The panel's values, in the order the definition list draws them.</summary>
     // ---------------------------------------------------------------------------------
-    // The panel's tabs. Data first, then Om variabelen trimmed to what a reader choosing a
+    // The panel's tabs. Data first, then Detaljer trimmed to what a reader choosing a
     // variable needs (Fhi.Metadata-l9l2n.101). What has to hold is that the split is announced
     // correctly and reachable from a keyboard, because a tablist that costs one tab stop is
     // unusable without arrow keys.
@@ -11574,20 +11574,20 @@ public class VariableSearchTest : ExplorerTestContext
     private static AngleSharp.Dom.IElement TabButton(IRenderedComponent<VariableSearch> cut, string label) =>
         TabButtons(cut).Single(b => b.TextContent == label);
 
-    // What Om variabelen says, for a test that only needs to know the detail arrived.
+    // What Detaljer says, for a test that only needs to know the detail arrived.
     private static string AboutText(IRenderedComponent<VariableSearch> cut) => ShowAbout(cut).TextContent;
 
-    // The Data tab opens first, so a test about Om variabelen has to ask for it.
+    // The Data tab opens first, so a test about Detaljer has to ask for it.
     private static AngleSharp.Dom.IElement ShowAbout(IRenderedComponent<VariableSearch> cut)
     {
-        TabButton(cut, "Om variabelen").Click();
+        TabButton(cut, "Detaljer").Click();
 
         return cut.Find(".munin-explorer-detail [role=tabpanel]");
     }
 
     [Theory]
-    [InlineData("no", "Om variabelen")]
-    [InlineData("en", "About the variable")]
+    [InlineData("no", "Detaljer")]
+    [InlineData("en", "Details")]
     public void Panel_WhenOpened_ThenDataIsTheFirstTabAndSelected(string language, string about)
     {
         var cut = RenderWith(TwoRows(), b => b.Add(c => c.Language, language));
@@ -11612,8 +11612,8 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(panel.Id, TabButtons(cut)[0].GetAttribute("aria-controls"));
     }
 
-    // Named after one of its own tabs, the tablist announces "Om variabelen" before a reader
-    // reaches the Data tab that is selected — the old pair got away with it because Detaljer led.
+    // Named after one of its own tabs, the tablist would announce "Detaljer" before a reader
+    // reaches the Data tab that is selected.
     [Fact]
     public void Panel_WhenOpened_ThenTheTablistIsNamedAfterTheVariableAndNotATab()
     {
@@ -11634,7 +11634,7 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Panel_WhenOpened_ThenTheDataTabShowsTheKodeverkAndOmVariabelenTheDescription()
+    public void Panel_WhenOpened_ThenTheDataTabShowsTheKodeverkAndDetaljerTheDescription()
     {
         var cut = RenderWith(TwoRows());
 
@@ -11654,11 +11654,11 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void About_WhenTheDetailIsRich_ThenItShowsTheDescriptionCodeDatatypeAndDatasamlingerAndNothingElse()
+    public void About_WhenTheDetailIsRich_ThenItShowsTheDescriptionCodeDatatypeDatasamlingerAndValuedFieldsAndNothingElse()
     {
-        // THE TRAP: relabelling the old Details tab leaves the kilde trail, the instruments, the
-        // period and the properties in, and passes every other test here. The payload carries all
-        // of them so each has the chance to leak; the datasamlinger alone belong (Fhi.Metadata-35w0p.85).
+        // THE TRAP: relabelling the old Details tab leaves the kilde trail, the instruments and the
+        // period in, and passes every other test here (Fhi.Metadata-35w0p.85). Munin's valued fields
+        // belong since ADO 121586, but bare, without the whole view's group headings.
         var id = Guid.NewGuid();
         var detail = Detail(id) with
         {
@@ -11694,14 +11694,15 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("DL", about.Children[1].TagName);
         Assert.Equal(2, about.Children.Length);
 
-        Assert.Equal(["Kode", "Datatype", "Datasamlinger"], about.QuerySelectorAll("dt").Select(t => t.TextContent));
+        Assert.Equal(["Kode", "Datatype", "Datasamlinger", "Opprinnelse"], about.QuerySelectorAll("dt").Select(t => t.TextContent));
         Assert.Equal(detail.Code, about.QuerySelectorAll("dd")[0].TextContent);
         Assert.NotEqual("Ikke oppgitt", about.QuerySelectorAll("dd")[1].TextContent);
+        Assert.Equal("Registrert i skjema", about.QuerySelectorAll("dd").Last().TextContent);
 
         foreach (var absent in new[]
                  {
                      "Als registeret", "Nasjonalt medisinsk kvalitetsregister",
-                     "Funksjonsscore", "RAND-36", "Registrert i skjema", "Opprinnelse", "2010", "2025",
+                     "Funksjonsscore", "RAND-36", "2010", "2025",
                      "Kildesti", "Variabelgruppe", "Instrumenter", "Dataperiode",
                      "Identifikasjon", "Plassering", "Egenskaper",
                  })
@@ -11778,6 +11779,23 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void About_WhenMuninHasOtherFields_ThenDetaljerShowsTheValuedOnesOnly()
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderWith(new DetailClient(OnePage(Row(id, "1. Tale"))).Knows(ExtraFields.On(Detail(id))));
+
+        Toggles(cut)[0].Click();
+
+        var about = ShowAbout(cut);
+        var labels = ExtraFields.Labels(about);
+        Assert.Contains("Måleenhet", labels);
+        Assert.Contains("kilo", about.TextContent);
+        Assert.DoesNotContain("Presisjon", labels);
+        Assert.DoesNotContain("Kommentar på engelsk", labels);
+        Assert.Single(labels, l => l == "Datatype");
+    }
+
+    [Fact]
     public void About_WhenTheVariableIsInNoDatasamling_ThenNothingIsDrawnForThem()
     {
         var id = Guid.NewGuid();
@@ -11811,10 +11829,10 @@ public class VariableSearchTest : ExplorerTestContext
                 : [],
         };
 
-    /// <summary>The value under Om variabelen's Datatype label.</summary>
+    /// <summary>The value under Detaljer's Datatype label.</summary>
     private static AngleSharp.Dom.IElement AboutDataType(IRenderedComponent<VariableSearch> cut, string language = "no")
     {
-        var (tab, field) = language == "en" ? ("About the variable", "Data type") : ("Om variabelen", "Datatype");
+        var (tab, field) = language == "en" ? ("Details", "Data type") : ("Detaljer", "Datatype");
         TabButton(cut, tab).Click();
         var about = cut.Find(".munin-explorer-detail [role=tabpanel]");
         var label = about.QuerySelectorAll("dt").Single(t => t.TextContent == field);
@@ -11877,12 +11895,17 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void About_WhenBeskrivelseGainsAPlacement_ThenTheDescriptionIsStillDrawnOnlyOnce()
+    public void About_WhenBeskrivelseAndPreferredTermAreAmongTheFields_ThenNeitherIsDrawnAgain()
     {
-        // A catalogue placement for Beskrivelse must not bring a second copy in through the
-        // property list the tab used to carry (Fhi.Metadata-bct95).
+        // The description and the name are drawn by the panel itself, so Munin's field list must not
+        // bring a second copy of either (Fhi.Metadata-bct95, Fhi.Metadata-chx2i).
         var placed = Detail(TaleId) with
         {
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Beskrivelse"] = Detail(TaleId).Description,
+                ["PreferredTerm"] = "1. Tale",
+            },
             PropertyMetadata =
             [
                 new()
@@ -11892,6 +11915,13 @@ public class VariableSearchTest : ExplorerTestContext
                     Type = "Text",
                     DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Beskrivelse" },
                     GroupTranslations = new Dictionary<string, string> { ["no"] = "Om variabelen" },
+                },
+                new()
+                {
+                    Key = "PreferredTerm",
+                    SortOrder = 40,
+                    Type = "String",
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Foretrukken term" },
                 },
             ],
         };
@@ -11906,6 +11936,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(text.IndexOf(description, StringComparison.Ordinal),
                      text.LastIndexOf(description, StringComparison.Ordinal));
         Assert.NotEqual(-1, text.IndexOf(description, StringComparison.Ordinal));
+        Assert.DoesNotContain("Foretrukken term", text, StringComparison.Ordinal);
     }
 
     private static Statistic YearSet(string? year) => new()
@@ -12326,7 +12357,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void DataTab_WhenAYearlyVariableHasSeveralStatistics_ThenTheNewestWithNumbersIsDrawn()
     {
-        // The drawer draws one statistic, the year its Om variabelen tab names; the whole variable
+        // The drawer draws one statistic, the year its Detaljer tab names; the whole variable
         // keeps every year. A newer year with nothing in it is not drawn over an older one that has.
         Statistic Year(string year, string? minimum) => DataTabStatistic(minimum is null
             ? new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = year }
@@ -12346,7 +12377,7 @@ public class VariableSearchTest : ExplorerTestContext
     public void DataTab_WhenTheNewestYearSetHasNoNumbers_ThenTheDrawerSaysWhichYearItsNumbersAreFrom(
         string language, string wording)
     {
-        // Om variabelen names 2024, which holds nothing; unlabelled, 2023's numbers read as 2024's.
+        // Detaljer names 2024, which holds nothing; unlabelled, 2023's numbers read as 2024's.
         var tab = DataTab(
             [
                 DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2023", ["MIN"] = "5" }),
@@ -12484,7 +12515,7 @@ public class VariableSearchTest : ExplorerTestContext
     {
         // The APG tabs pattern. Without it a keyboard user reaches the tablist and cannot leave the
         // first tab: the others carry tabindex="-1", so Tab does not reach them. From Data, since
-        // Tabs is read off the enum and reordering only the markup would send Home to Om variabelen.
+        // Tabs is read off the enum and reordering only the markup would send Home to Detaljer.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
@@ -12493,8 +12524,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
 
-        Assert.Equal("true", TabButton(cut, "Om variabelen").GetAttribute("aria-selected"));
-        Assert.Equal("0", TabButton(cut, "Om variabelen").GetAttribute("tabindex"));
+        Assert.Equal("true", TabButton(cut, "Detaljer").GetAttribute("aria-selected"));
+        Assert.Equal("0", TabButton(cut, "Detaljer").GetAttribute("tabindex"));
         Assert.Equal("-1", TabButton(cut, "Data").GetAttribute("tabindex"));
 
         cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
@@ -12504,30 +12535,30 @@ public class VariableSearchTest : ExplorerTestContext
 
         cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "End" });
 
-        Assert.Equal("true", TabButton(cut, "Om variabelen").GetAttribute("aria-selected"));
+        Assert.Equal("true", TabButton(cut, "Detaljer").GetAttribute("aria-selected"));
         Assert.Equal("true", TabButtons(cut)[^1].GetAttribute("aria-selected"));
 
         cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "Home" });
 
         Assert.Equal("true", TabButton(cut, "Data").GetAttribute("aria-selected"));
         Assert.Equal("0", TabButton(cut, "Data").GetAttribute("tabindex"));
-        Assert.Equal("-1", TabButton(cut, "Om variabelen").GetAttribute("tabindex"));
+        Assert.Equal("-1", TabButton(cut, "Detaljer").GetAttribute("tabindex"));
 
         cut.Find(".munin-explorer-meta__tabs").KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
 
-        Assert.Equal("true", TabButton(cut, "Om variabelen").GetAttribute("aria-selected"));
+        Assert.Equal("true", TabButton(cut, "Detaljer").GetAttribute("aria-selected"));
     }
 
     [Fact]
     public void Panel_WhenAnotherRowIsOpened_ThenItStartsOnDataAgain()
     {
-        // A reader who was on Om variabelen for one variable has not asked to be there for the next.
+        // A reader who was on Detaljer for one variable has not asked to be there for the next.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
         ShowAbout(cut);
 
-        Assert.Equal("true", TabButton(cut, "Om variabelen").GetAttribute("aria-selected"));
+        Assert.Equal("true", TabButton(cut, "Detaljer").GetAttribute("aria-selected"));
 
         Toggles(cut)[1].Click();
 
@@ -12897,7 +12928,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = OpenData(client);
         client.StallCodes = true;
         CodeToggles(cut)[0].Click();
-        TabButton(cut, "Om variabelen").Click();
+        TabButton(cut, "Detaljer").Click();
         TabButton(cut, "Data").Click();
         Assert.Equal("Henter koder …", Panel(cut).QuerySelector(".munin-explorer-codes p")!.TextContent);
 
@@ -15319,7 +15350,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("Show details for 1. Tale", AccessibleName.Of(Toggles(cut)[0]));
 
         Toggles(cut)[0].Click();
-        TabButton(cut, "About the variable").Click();
+        TabButton(cut, "Details").Click();
 
         Assert.Equal(["Code", "Data type", "Data collections"], Panel(cut).QuerySelectorAll("dl dt").Select(t => t.TextContent));
         Assert.Equal("no", Values(cut)[0].QuerySelector("span")!.GetAttribute("lang"));
@@ -15414,7 +15445,7 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-kodeverk__reference",
         ], invented);
 
-        // The definition list lives in Om variabelen.
+        // The definition list lives in Detaljer.
         var panel = ShowAbout(cut);
 
         // The definition list stays a definition list — it is labels and the values they name, and

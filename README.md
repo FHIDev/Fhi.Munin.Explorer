@@ -606,8 +606,8 @@ These are not style preferences — each one is a host that breaks otherwise.
     than one. Both used to be the drill-in panel's own `munin-explorer-meta__grid` and
     `munin-explorer-meta__language`, borrowed by the detail pages since they were built, which is
     why `_trail.scss` already carried an override forcing the panel's two lanes back to one on a
-    detail page. The panel keeps `munin-explorer-meta__grid`; it has emitted no language marker
-    since its Om variabelen tab stopped listing properties (`Fhi.Metadata-l9l2n.101`). Handles, both: a definition
+    detail page. The panel keeps `munin-explorer-meta__grid`, and since its Detaljer tab lists
+    properties again (`Fhi.Metadata-chx2i`) it draws `munin-explorer-page__language` there too. Handles, both: a definition
     list is a definition list undrawn, and the language name is a `<p>` so it keeps its own line
     whatever a host declares. Stiler's rules are written — the same
     `components/munin-explorer/_page.scss`, merged as PR 39301 — and the fact list's copied the

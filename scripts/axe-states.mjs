@@ -468,10 +468,10 @@ export const states = {
 
     await page.keyboard.press('ArrowRight');
 
-    const about = page.getByRole('tab', { name: 'Om variabelen', exact: true }).first();
-    await page.locator('[role=tab][aria-selected="true"]', { hasText: 'Om variabelen' })
+    const about = page.getByRole('tab', { name: 'Detaljer', exact: true }).first();
+    await page.locator('[role=tab][aria-selected="true"]', { hasText: 'Detaljer' })
       .first().waitFor({ state: 'visible', timeout: findTimeout });
-    const panel = page.getByRole('tabpanel', { name: 'Om variabelen', exact: true }).first();
+    const panel = page.getByRole('tabpanel', { name: 'Detaljer', exact: true }).first();
     await panel.waitFor({ state: 'visible', timeout: findTimeout });
 
     if (await about.getAttribute('tabindex') !== '0' || await data.getAttribute('tabindex') !== '-1') {
