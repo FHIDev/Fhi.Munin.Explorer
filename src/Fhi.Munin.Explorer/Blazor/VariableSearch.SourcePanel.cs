@@ -1,4 +1,3 @@
-using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The drill-in view for the kilde or datasamling a variable belongs to.</summary>
