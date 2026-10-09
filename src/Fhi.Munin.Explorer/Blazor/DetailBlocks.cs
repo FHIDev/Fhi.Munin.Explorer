@@ -446,7 +446,7 @@ internal static class DetailBlocks
     /// Shared by the plain group and the complete record so the two cannot drift into two shapes of
     /// row; the list around them is each caller's, since they wear different class names.
     /// </remarks>
-    private static int Rows(RenderTreeBuilder builder, int seq, IReadOnlyList<PropertyRow> rows,
+    internal static int Rows(RenderTreeBuilder builder, int seq, IReadOnlyList<PropertyRow> rows,
                             string reader, Texts text, string? heading = null)
     {
         foreach (var row in rows)

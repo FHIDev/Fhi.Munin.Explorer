@@ -82,15 +82,14 @@ internal sealed record Texts(
     Func<int, string> DatasamlingCountCrumb,
 
     string TabData,
-    // The drawer's second tab. Not the curated property group the catalogue also calls
-    // "Om variabelen": this is our label for a tab, and that is Munin's master data.
-    string TabAbout,
+    // The drawer's second tab, «Detaljer» as ADO 121586 names it.
+    string TabDetails,
     // The newest SisteOppdaterteAarssett across the variable's statistics rows.
     string FieldLatestYearSet,
 
     // The page's own two tabs, worded as Runa words them (explorer.tabs.search_results,
     // explorer.tabs.variable_list). Spelled out rather than reusing Title, because the panel's
-    // TabData/TabAbout above are on screen at the same time and the two pairs must read apart.
+    // TabData/TabDetails above are on screen at the same time and the two pairs must read apart.
     string TabSearchResults,
     string TabVariableList,
     string GroupPlacement,
@@ -1125,7 +1124,7 @@ internal sealed record Texts(
         FieldDataPeriod: "Dataperiode",
         DatasamlingCountCrumb: count => count == 1 ? "1 datasamling" : $"{count} datasamlinger",
         TabData: "Data",
-        TabAbout: "Om variabelen",
+        TabDetails: "Detaljer",
         FieldLatestYearSet: "Siste \u00e5rssett",
         TabSearchResults: "Søkeresultat",
         TabVariableList: "Variabelliste",
@@ -1644,7 +1643,7 @@ internal sealed record Texts(
         FieldDataPeriod: "Data period",
         DatasamlingCountCrumb: count => count == 1 ? "1 data collection" : $"{count} data collections",
         TabData: "Data",
-        TabAbout: "About the variable",
+        TabDetails: "Details",
         FieldLatestYearSet: "Latest year set",
         TabSearchResults: "Search results",
         TabVariableList: "Variable list",

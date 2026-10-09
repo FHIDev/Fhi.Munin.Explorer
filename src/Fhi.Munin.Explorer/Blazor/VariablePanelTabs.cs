@@ -177,8 +177,16 @@ internal sealed class VariablePanelTabs : ComponentBase
             }));
         }
 
+        // Munin's other fields, where they have a value, as the whole-variable view draws them (ADO 121586).
+        builder.OpenRegion(8);
+        DetailBlocks.Rows(builder, 0, CatalogueProperties.Rows(Detail.PropertyMetadata, Detail.AdditionalProperties, Reader, ShownAbove), Reader, T);
+        builder.CloseRegion();
+
         builder.CloseElement();
     };
+
+    /// <summary>Munin sends DataType among its other fields, and this tab already draws it above them.</summary>
+    private static readonly IReadOnlySet<string> ShownAbove = new HashSet<string>(StringComparer.Ordinal) { CatalogueProperties.DataTypeKey };
 
     private static RenderFragment Fact(string label, RenderFragment value, string? valueLang = null) => builder =>
     {
@@ -200,7 +208,7 @@ internal sealed class VariablePanelTabs : ComponentBase
     private string TabLabel(PanelTab tab) => tab switch
     {
         PanelTab.Data => T.TabData,
-        PanelTab.About => T.TabAbout,
+        PanelTab.About => T.TabDetails,
         PanelTab.Notes => T.TabNotes,
         _ => throw new ArgumentOutOfRangeException(nameof(tab), tab, "No label for this tab."),
     };
