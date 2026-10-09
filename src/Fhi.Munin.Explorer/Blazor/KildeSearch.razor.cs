@@ -356,9 +356,8 @@ public sealed partial class KildeSearch : ComponentBase
     private string? _error;
 
     // The live contents of the search box. @bind writes it on change rather than on input, so it
-    // holds a finished word rather than a prefix — see the remarks on the class and the comment on
-    // the element itself. The filtering is done straight off it: with no request behind it there is
-    // nothing for a separate "executed search" to be truer about.
+    // holds a finished word rather than a prefix. The filtering is done straight off it: with no
+    // request behind it there is nothing for a separate "executed search" to be truer about.
     private string? _search;
 
     // Held so the clear control can hand focus back to the field it emptied. The control is drawn
@@ -380,9 +379,8 @@ public sealed partial class KildeSearch : ComponentBase
     private DatasamlingDetail? _datasamling;
 
     // Bumped by every open and every close, so a detail fetch can tell whether the view it is
-    // about to write into is still the one it was started for. The id alone cannot say that: it
-    // names the kilde, not the call, and closing a kilde and opening the same one again is two
-    // calls carrying one id.
+    // about to write into is still its own. The id cannot say that: closing a kilde and opening the
+    // same one again is two calls carrying one id.
     private int _detailGeneration;
 
     // Which rows are open, keyed by the kilde's own id and never by position: the list re-renders
@@ -552,9 +550,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>Open every row holding a mark, and fetch what those rows draw.</summary>
     /// <remarks>
-    /// One call per row rather than one per mark, and none at all for a row already in hand — the
-    /// address can name several marks under one kilde. Which rows those are, and how few of them
-    /// an untrusted query may open, is <see cref="MarkedRowsToOpen"/>'s to say.
+    /// One call per row, not per mark (the address can name several under one kilde), and none for a
+    /// row in hand. <see cref="MarkedRowsToOpen"/> says which rows, and caps an untrusted query.
     /// </remarks>
     private async Task OpenMarkedRowsAsync()
     {
@@ -722,34 +719,10 @@ public sealed partial class KildeSearch : ComponentBase
     private string DetailBusy => _detailLoading ? "true" : "false";
 
     /// <summary>
-    /// The kilder the search and the facets leave, in the order the reader asked for.
+    /// The kilder both the search and the facets leave, sorted after both so a sort orders every
+    /// survivor, with no pager taking a subset first. The search is a substring of name, code or
+    /// short name, as Kelda's, and ordinal: a circuit runs in the host's culture, not the reader's.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// Name, code and short name, which is the same three fields Munin's own Kelda matches on.
-    /// Case-insensitive and by substring, so "als" finds both <c>K_ALS</c> and "Als registeret",
-    /// and a reader who knows only the short name finds the row without knowing the long one.
-    /// </para>
-    /// <para>
-    /// Ordinal rather than culture-aware comparison, deliberately: the culture a Blazor Server
-    /// circuit runs under is the host's and not the reader's, so a culture-sensitive match would
-    /// answer differently on two machines serving the same page. Every letter in these three
-    /// fields is Latin, including æ, ø and å, which ordinal case folding handles.
-    /// </para>
-    /// <para>
-    /// The facets narrow the same list, after the search and by the same client-side reading of it
-    /// — see <c>KildeSearch.Filters.cs</c> for what they are and why none of them is a request.
-    /// Search and facets are AND: a reader who has typed a word and ticked a box is asking for
-    /// kilder that answer both.
-    /// </para>
-    /// <para>
-    /// The order comes last, over whatever the two of them left, so sorting a narrowed list sorts
-    /// every row that survived rather than the first screenful of them — there is no pager here to
-    /// take a subset before it. Until the reader chooses otherwise that order is the one the API
-    /// sent, which is what the list has always shown; see <see cref="KildeSortOrder"/> for the
-    /// rest, including where a kilde with no value to order by goes.
-    /// </para>
-    /// </remarks>
     private IReadOnlyList<KildeSummary> Visible
     {
         get
@@ -767,9 +740,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>The kilder the search leaves, before the facets have had their turn.</summary>
     /// <remarks>
-    /// It takes <see cref="SearchText"/> rather than trimming <c>_search</c> itself, so there is
-    /// one definition of the search as it counts: a field holding only spaces is no search, and two
-    /// places deciding that separately is how they come to disagree.
+    /// Takes <see cref="SearchText"/> rather than trimming <c>_search</c> itself, so a field of only
+    /// spaces is decided to be no search in one place, and two readings cannot disagree.
     /// </remarks>
     private IReadOnlyList<KildeSummary> Searched(string? term) =>
         string.IsNullOrEmpty(term) ? _kilder : [.. _kilder.Where(kilde => Matches(kilde, term))];
@@ -781,34 +753,10 @@ public sealed partial class KildeSearch : ComponentBase
         value is not null && value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// One sentence describing the visible result — "56 kilder av 66, avgrenset av 2 filtre,
-    /// sortert etter Variabler, synkende" — used both as the live announcement and as the table's
-    /// accessible name, so the two cannot drift apart.
+    /// The live announcement and the table's accessible name, so they cannot drift; it names a chosen
+    /// order (the catalogue's own goes unsaid). It counts the list it is handed, not <see cref="Visible"/>,
+    /// and shares <see cref="ChosenCount"/> with the empty state, so it cannot disagree with either.
     /// </summary>
-    /// <remarks>
-    /// A count against the catalogue it was narrowed out of, the ordering, and how many facet
-    /// values are ticked; no row range, because the variable explorer names one for its pager and
-    /// this list is never paged. The ordering is here because the status line is polite and atomic,
-    /// so it is what tells a reader who cannot see the rows move that they moved at all — a sort
-    /// control whose effect is never announced is a control only some readers have.
-    /// <para>
-    /// The denominator and the filter clause are absent rather than zeroed on an untouched list:
-    /// "66 kilder av 66, avgrenset av 0 filtre" is more words saying less than "66 kilder". Which
-    /// clauses appear is the text's own decision, so the two languages can disagree about it.
-    /// </para>
-    /// <para>
-    /// The catalogue's own order is left unsaid rather than named, so the sentence a reader who has
-    /// touched nothing hears is the one this list has always shown — and since the headings replaced
-    /// the select it is the only order the sentence never says, because nothing in the page returns
-    /// to it. The direction is passed whatever the order is and drawn only beside a named one.
-    /// </para>
-    /// <para>
-    /// It takes the list rather than reading <see cref="Visible"/> itself, so that the sentence and
-    /// the rows underneath it are counted off one read of the filter — see the capture at the top
-    /// of the markup's list branch. <see cref="ChosenCount"/> is the same number the empty state
-    /// reports, so a narrowed list and a list narrowed to nothing cannot name different filters.
-    /// </para>
-    /// </remarks>
     private string Summary(IReadOnlyList<KildeSummary> visible) =>
         T.KildeCount(
             visible.Count,
@@ -821,32 +769,10 @@ public sealed partial class KildeSearch : ComponentBase
     private string? SearchText => string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
 
     /// <summary>
-    /// Everything the view is initialised from: the list, the vocabulary its coded properties are
-    /// read with, and — when the host mounts with a kilde already chosen — that kilde as well.
+    /// Starts the vocabulary first and awaits it last, since it only costs two facets their words.
+    /// The renders in between are required: ComponentBase draws only at the first yield and at the
+    /// end, so the list and an open kilde would wait up to 100s on it. (Fhi.Metadata-8uwtd)
     /// </summary>
-    /// <remarks>
-    /// Three round trips, and the order they are started, awaited and drawn in is the whole of what
-    /// the reader spends waiting. Two of them are what somebody is here for: the list is what the
-    /// component is for, and an open kilde's detail is why a deep link was followed at all. The
-    /// third is not: the vocabulary only decides whether two facets read as words or as CURIEs, and
-    /// it fails silently into the second of those. So it is started first, awaited last, and
-    /// nothing above that await waits on it.
-    /// <para>
-    /// The renders in between are not optional, and each one is a state somebody would otherwise
-    /// sit in front of. This component asks for its own renders nowhere else, and
-    /// <see cref="ComponentBase"/> draws when this method first yields and again when it returns
-    /// and nothing in between — so without them the finished list sits behind
-    /// <c>Laster kilder …</c>, and a landed kilde behind <c>Henter datakilden …</c>, until the
-    /// vocabulary's round trip ends, up to <c>HttpClient</c>'s hundred-second default.
-    /// </para>
-    /// <para>
-    /// Both halves of that have been wrong here, in the same way and one after the other: first the
-    /// list was awaited before the vocabulary but drawn after it, and then the deep-linked kilde's
-    /// fetch was not merely left undrawn but never issued at all until the vocabulary landed,
-    /// because the await sat inside <see cref="LoadAsync"/> and this method could not reach
-    /// <see cref="LoadKildeAsync"/> until it returned.
-    /// </para>
-    /// </remarks>
     protected override async Task OnInitializedAsync()
     {
         _search = Search;
@@ -862,17 +788,14 @@ public sealed partial class KildeSearch : ComponentBase
         _order = Order;
         _direction = Direction;
 
-        // Raised here rather than in LoadKildeAsync, which cannot start until the list has
-        // answered. The drilldown is on screen from the first render, and ComponentBase draws it
-        // as soon as the await below yields — so without this the reader arrives at a view whose
-        // aria-busy says false, whose status line is empty and whose heading reports a finished,
-        // empty fetch that has not been made.
+        // Raised here, not in LoadKildeAsync, which waits for the list: the drilldown is drawn at
+        // the first yield below, and without this it says aria-busy false, with an empty status
+        // line and a heading reporting a finished, empty fetch that has not been made.
         _detailLoading = _selectedId is not null;
 
-        // Started here and awaited at the bottom, so its round trip overlaps the two below rather
-        // than queueing with them. Starting it cannot throw where the list's call can — it catches
-        // its own, and an implementation that throws from the call rather than the await is caught
-        // there too — which is why there is no try around this line and there is one around that.
+        // Started here and awaited at the bottom, so its round trip overlaps the two below. No try
+        // around it, unlike the list's call: it catches its own failures, a throw from the client's
+        // call rather than its await included.
         var vocabulary = LoadVocabularyAsync();
 
         await LoadAsync();
@@ -920,32 +843,17 @@ public sealed partial class KildeSearch : ComponentBase
         // after the render that needed it, with nothing to redraw the panel it labels.
         await vocabulary;
 
-        // And the render that labels the panel. This is the last statement of the method, so
-        // ComponentBase's own post-initialisation render draws the same thing today and deleting
-        // this line breaks no test. It is kept because what the words depend on is the vocabulary
-        // arriving, not this method ending: anything awaited below it — a second fetch, a callback
-        // raised at the host — would take them off the panel again with nothing on screen saying
-        // so. A render nobody needed costs a diff over some tens of rows.
+        // The last statement, so ComponentBase's own render draws the same and deleting this
+        // breaks no test. Kept because the words depend on the vocabulary arriving, not on this
+        // method ending: anything awaited below it would hold them off the panel, unannounced.
         StateHasChanged();
     }
 
     /// <summary>
-    /// The whole list, unfiltered.
+    /// The whole list, with no search or kildetype though the endpoint takes both: narrowing is
+    /// client-side, and a narrower fetch would count facets over rows the reader cannot get back.
+    /// Never await the vocabulary here: a deep-linked kilde would wait on it. (Fhi.Metadata-8uwtd)
     /// </summary>
-    /// <remarks>
-    /// No search parameter and no kildetype, though the endpoint takes both. Everything the reader
-    /// narrows with is applied to the list already in hand — see the remarks on the class — so
-    /// sending either would fetch a second, smaller list that the client-side filter would then
-    /// filter again, and the counts beside the facets would be counted over a set the reader cannot
-    /// get back to without another request.
-    /// <para>
-    /// The list and nothing else: the vocabulary its coded properties are read with is fetched
-    /// beside it rather than in it, and neither the render that draws the list nor the one that
-    /// draws an opened kilde belongs to this method. Both of those are orderings between the three
-    /// calls rather than steps of any one of them — see <see cref="OnInitializedAsync"/>, where
-    /// they are, and where they can be read in one place.
-    /// </para>
-    /// </remarks>
     private async Task LoadAsync()
     {
         _loading = true;
@@ -980,43 +888,10 @@ public sealed partial class KildeSearch : ComponentBase
     }
 
     /// <summary>
-    /// The catalogue's own vocabulary for the curated properties the list sends as bare codes.
+    /// The catalogue's words for coded properties, so facets and kilde view agree; a failure costs
+    /// labels, not the list. Grouping stops a repeated key emptying it all; blank keys are tidiness.
+    /// No token is held, so a timeout is caught as a failure; thread one in and it must escape the catch.
     /// </summary>
-    /// <remarks>
-    /// A sibling of the list rather than part of it, because the vocabulary is one definition per
-    /// property and not one per kilde — see <see cref="IMuninExplorerClient.GetKildePropertyMetadataAsync"/>.
-    /// It is fetched at all so that the facets and the kilde view a click away cannot disagree
-    /// about what a token is called: both read the words the catalogue holds now, rather than one
-    /// of them reading a table transcribed into this package on some earlier day.
-    /// <para>
-    /// A failure costs labels, not the list, so it is caught here rather than reported: the facets
-    /// fall back to showing the catalogue's own tokens, which is what they show for a value the
-    /// vocabulary does not list either way. A sentence about a vocabulary is not something a reader
-    /// of a kilde list can act on, and it would sit beside a panel that is still usable.
-    /// </para>
-    /// <para>
-    /// One entry per key is what the endpoint promises; the grouping is what keeps a second entry
-    /// for one key from throwing at the reader instead of losing a label. It matters more than the
-    /// usual defensive line because of the catch below: a throw here is swallowed whole and leaves
-    /// the vocabulary empty, so one repeated key would cost every facet its words rather than one.
-    /// The blank-key filter is not that guard by another route, and reading it as one overstates
-    /// it: the grouping runs first and collapses two blank keys as readily as two real ones, so
-    /// nothing there can throw whether the filter is present or not. What it does is keep a key
-    /// that is not a key out of the dictionary at all — every lookup here is by a property name, so
-    /// such an entry could only ever sit unread. Tidiness, and no test can tell it apart from its
-    /// own absence.
-    /// </para>
-    /// <para>
-    /// No cancellation token, and the omission is deliberate rather than overlooked: this component
-    /// holds none to pass — it is not disposable and opens no token source — so like every other
-    /// call it makes, the fetch runs to completion and its result is dropped when the reader has
-    /// already left. That is one abandoned request per abandoned circuit, for a call made once per
-    /// component. It follows that the catch below never sees a disposal cancellation; what it can
-    /// see is the client's own timeout, which arrives as a cancellation and is a vocabulary
-    /// that did not answer, which is exactly how it is treated. Should a token ever be threaded
-    /// through here, the two stop being the same thing and the cancellation has to be let out.
-    /// </para>
-    /// </remarks>
     private async Task LoadVocabularyAsync()
     {
         try
@@ -1037,17 +912,10 @@ public sealed partial class KildeSearch : ComponentBase
     }
 
     /// <summary>
-    /// What submitting the search form does, which is nothing.
+    /// Deliberately empty: the field's <c>onchange</c> has searched by the time Enter submits. The
+    /// form exists for that Enter, and without this handler's <c>preventDefault</c> the browser
+    /// would reload the host's whole page.
     /// </summary>
-    /// <remarks>
-    /// Deliberately empty, and deliberately here rather than left off the element. The list is
-    /// already in hand and the field's own <c>onchange</c> is what applies the search — pressing
-    /// Enter, or clicking Søk from inside the field, fires it before the submit arrives. What the
-    /// form is for is that Enter keystroke: without it the reader has to blur the field to search,
-    /// and without the handler and its <c>preventDefault</c> the browser would reload the host's
-    /// whole page instead. A named method rather than an inline lambda so the emptiness reads as a
-    /// decision.
-    /// </remarks>
     private static void Submit()
     {
     }
@@ -1069,12 +937,11 @@ public sealed partial class KildeSearch : ComponentBase
     /// <summary>Tell the host the search the list is now narrowed by.</summary>
     private Task SearchCommittedAsync() => RaiseAsync(SearchChanged, SearchText, Log);
 
-    /// <summary>Take focus off the control about to vanish, then clear the search.</summary>
-    /// <remarks>
-    /// Focus moves first, the same order the variable explorer's follows and for the same reason:
-    /// the render that removes the control must not happen while the reader's focus is still on
-    /// it. Nothing is fetched here, so the window is smaller — not absent. (Fhi.Metadata-ag4n7)
-    /// </remarks>
+    /// <summary>
+    /// Move focus off the control about to vanish, then clear: the render removing it must not run
+    /// with focus still on it. Nothing is fetched, so the window is smaller than in the variable
+    /// explorer, not absent. (Fhi.Metadata-ag4n7)
+    /// </summary>
     private async Task ClearSearchAndRefocusAsync()
     {
         if (SearchText is not null)
@@ -1198,12 +1065,11 @@ public sealed partial class KildeSearch : ComponentBase
         }
     }
 
-    /// <summary>Fetch the datasamling the drill-in is showing in place of its kilde.</summary>
-    /// <remarks>
-    /// The same generation counter <see cref="LoadKildeAsync"/> uses, because the two write into
-    /// the same view and only one of them is ever in flight: a fetch the reader has navigated away
-    /// from must not paint its answer over the one they are waiting for.
-    /// </remarks>
+    /// <summary>
+    /// Fetch the datasamling the drill-in shows in place of its kilde. It shares
+    /// <see cref="LoadKildeAsync"/>'s generation counter because both write one view: a fetch the
+    /// reader navigated away from must not paint over the one they are waiting for.
+    /// </summary>
     private async Task LoadDatasamlingAsync(Guid id)
     {
         var generation = ++_detailGeneration;
@@ -1261,35 +1127,26 @@ public sealed partial class KildeSearch : ComponentBase
         ? (_selectedDatasamlingId is null ? T.KildeLoading : T.DatasamlingLoading)
         : _detailError;
 
-    /// <summary>
-    /// The address of the open kilde without the datasamling, for the way back out of one.
-    /// </summary>
+    /// <summary>The address of the open kilde without the datasamling, for the way back out of one.</summary>
     /// <remarks>
-    /// Uses the collection's parent id when KildeDetailHref is supplied, otherwise the open kilde.
-    /// Null when neither host target is supplied, and then the drill-in keeps the
-    /// button back to the list it has always had: a control with nowhere to go is worse than the
-    /// coarser one.
+    /// Null when no href applies, and the drill-in keeps its button back to the list: a control with
+    /// nowhere to go is worse than the coarser one.
     /// </remarks>
     private string? KildeHref => _datasamling is { ParentKildeId: var id } && id != Guid.Empty
         && KildeDetailHref is not null ? KildeDetailHref(id) : DatasamlingHref?.Invoke(null);
 
-    /// <summary>
-    /// The steps above an open kilde: the list it was opened from, and nothing else. Empty when no
-    /// <see cref="KilderHref"/> was wired, and then no trail is drawn at all.
-    /// </summary>
+    /// <summary>The steps above an open kilde: its list, if <see cref="KilderHref"/> is set.</summary>
     /// <remarks>
-    /// Rebuilt per render rather than held, unlike the delegates beside it: what it holds is an
-    /// address that moves with the order the reader chose, and a held one would send them back to
-    /// the list re-sorted.
+    /// Rebuilt per render rather than held: the address moves with the order the reader chose, and a
+    /// held one would send them back to the list re-sorted.
     /// </remarks>
     private IReadOnlyList<DetailTrailStep> KildeTrail =>
         KilderHref is { } list ? [new DetailTrailStep(T.KildeTitle, list())] : [];
 
     /// <summary>The same, plus the kilde an open datasamling hangs off.</summary>
     /// <remarks>
-    /// <c>parentKildeNavn</c> is on the datasamling's own payload for exactly this, so the trail
-    /// costs no second request; it is the catalogue's Norwegian with no code to fall back to, which
-    /// is why the <c>lang</c> is a literal here where the views compute one. No address, no step.
+    /// <c>parentKildeNavn</c> on the payload saves a second request; it is the catalogue's Norwegian
+    /// with no code to fall back to, which is why the <c>lang</c> is a literal here.
     /// </remarks>
     private IReadOnlyList<DetailTrailStep> DatasamlingTrail(DatasamlingDetail datasamling) =>
         KildeHref is { } kilde && !string.IsNullOrWhiteSpace(datasamling.ParentKildeName)
@@ -1326,14 +1183,10 @@ public sealed partial class KildeSearch : ComponentBase
     private string DetailStatusClass =>
         !_detailLoading && _detailError is not null ? "infobox infobox--bg-yellow" : "caption";
 
-    /// <summary>
-    /// The title, at the level the host asked for. Razor has no syntax for a computed element
-    /// name, so this is built by hand.
-    /// </summary>
+    /// <summary>The title at the host's level, by hand: Razor cannot compute an element name.</summary>
     /// <remarks>
-    /// The visual size is pinned with Stiler's <c>headline-3</c> rather than left to the element,
-    /// because the element is the host's choice: without it, mounting the explorer one level
-    /// deeper would silently shrink its title.
+    /// Sized by Stiler's <c>headline-3</c> rather than by the element, which is the host's choice, so
+    /// mounting the explorer a level deeper does not silently shrink its title.
     /// </remarks>
     private RenderFragment Heading => builder =>
     {
@@ -1348,43 +1201,17 @@ public sealed partial class KildeSearch : ComponentBase
     /// The name the drill-in can be labelled by before its own view arrives, or null for none.
     /// </summary>
     /// <remarks>
-    /// Only the kilde has one: the list the reader came from knew it. Nothing here knows a
-    /// datasamling's name before the fetch answers — the tree that links to it belongs to the view
-    /// the drill-in has just replaced — so that heading follows the status line instead.
+    /// Only a kilde has one, known from the list. A datasamling's name is unknown until its fetch
+    /// answers, so that heading follows the status line instead.
     /// </remarks>
     private (string Text, bool Norwegian)? DrilldownName =>
         _selectedDatasamlingId is null ? _selectedName : null;
 
     /// <summary>
-    /// The open view's own heading, drawn only until <see cref="KildeView"/> arrives with one of
-    /// its own.
+    /// The open view's heading until <see cref="KildeView"/> brings its own: the region is labelled
+    /// by this id, so it must exist from the first render. Unnamed, it reuses the status line's
+    /// sentence so the two cannot contradict; the last fallback is defensive. (Fhi.Metadata-2fomm.1)
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The region points at this id, and a landmark whose label does not exist yet is worse than a
-    /// plain one — so something has to carry it from the first render. The list already knew the
-    /// kilde's name, so the reader is told which kilde they opened while it loads rather than
-    /// after.
-    /// </para>
-    /// <para>
-    /// When it did not, the heading follows the load state instead of standing on "Henter
-    /// datakilden …" forever: the list cannot name a kilde whose id the catalogue does not publish,
-    /// nor any kilde at all when the list itself failed to load, and both are states this heading
-    /// outlives. It falls back to the status line's own sentence rather than a second wording of
-    /// it, so the landmark's name cannot contradict the status underneath it — which is exactly
-    /// what a permanent "loading" over a finished, failed fetch did.
-    /// </para>
-    /// <para>
-    /// The third fallback is defensive only, and its wording is chosen for that:
-    /// <see cref="DetailStatus"/> is null exactly when nothing is loading and nothing went wrong,
-    /// which for an open view means the detail arrived — and then <see cref="KildeView"/> owns the
-    /// heading and this fragment is not drawn at all. The one state that did reach it was the very
-    /// first render of a host-named kilde, before the list had answered and the detail fetch had
-    /// begun, where it announced "no details found" for a fetch nobody had made yet;
-    /// <see cref="OnInitializedAsync"/> raises the loading flag there instead, so the status line
-    /// now carries the same sentence this would.
-    /// </para>
-    /// </remarks>
     private RenderFragment DrilldownHeading => builder =>
     {
         builder.OpenElement(0, $"h{KildeLevel}");
@@ -1425,16 +1252,9 @@ public sealed partial class KildeSearch : ComponentBase
     };
 
     /// <summary>
-    /// The catalogue's own language for a value that really is the catalogue's, and nothing at all
-    /// for one this package supplied.
+    /// The catalogue's language for a value that is the catalogue's, and none for one this package
+    /// supplied: a <c>lang</c> the text is not in switches a screen reader's voice (WCAG 3.1.2).
     /// </summary>
-    /// <remarks>
-    /// A <c>lang</c> the content is not in is worse than none: it switches a screen reader to a
-    /// Norwegian voice for an English sentence, which is WCAG 3.1.2. So the empty values — where
-    /// what is on screen is <see cref="Texts.NotSpecified"/>, in the reader's language — are
-    /// marked as nothing, and <see cref="CatalogueProperties.Foreign(string, string)"/> answers
-    /// null for a reader already reading Norwegian.
-    /// </remarks>
     private string? CatalogueLang(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : CatalogueProperties.Foreign("no", Reader);
 
@@ -1443,9 +1263,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>The classes for a cell holding a count, marked when the count is nought, and its bar.</summary>
     /// <remarks>
-    /// A modifier and not a replacement value: nought is a measurement here — a register with no
-    /// datasamlinger — and the reader has to be able to tell it from the "Ikke oppgitt" that means
-    /// nobody filled the field in, so the digit stays and only its weight changes.
+    /// Nought is a measurement, a register with no datasamlinger, and must stay tellable from
+    /// "Ikke oppgitt", so the digit stays and only its weight changes.
     /// </remarks>
     /// <param name="count">A zero gets no bar, which also keeps a zero <paramref name="largest"/> from dividing.</param>
     /// <param name="largest">The largest count among the drawn rows, or 0 for a column with no bar.</param>
@@ -1466,28 +1285,17 @@ public sealed partial class KildeSearch : ComponentBase
     /// <summary>A count cell's classes, and the inline width of its bar's fill when it has one.</summary>
     private readonly record struct CountCell(string Class, string? BarWidth);
 
-    /// <summary>The year the kilde was founded, as the import file states it.</summary>
+    /// <summary>The founding year as the import file states it, verbatim.</summary>
     /// <remarks>
-    /// Not <see cref="KildeSummary.Created"/>, which is when Munin's own row was written — Kelda
-    /// draws that as Importert and keeps it off by default. Handed on verbatim because the source
-    /// holds "2916", "1900" and "0", and a formatter asked to read those hides a fault at source.
-    /// <para>
-    /// The lookup is ordinal, so the key's spelling is the whole contract: get it wrong and every
-    /// row reads "Ikke oppgitt" with nothing failing. It is pinned to a captured payload rather
-    /// than to a test's own bag — see <c>Testdata/kilder.json</c> and the test named for it.
-    /// </para>
+    /// Not <see cref="KildeSummary.Created"/>. Unformatted: a formatter would hide a source fault
+    /// such as "2916". A misspelt key reads "Ikke oppgitt" silently; <c>Testdata/kilder.json</c> pins it.
     /// </remarks>
     private static string? Established(KildeSummary kilde) => Property(kilde, "Opprettet");
 
-    /// <summary>
-    /// Invoke a host callback without letting the host's own exception out.
-    /// </summary>
+    /// <summary>Invoke a host callback without letting the host's own exception out.</summary>
     /// <remarks>
-    /// The reasoning is spelled out once, on <c>VariableSearch.RaiseAsync</c>: a handler that
-    /// navigates throws <see cref="NavigationException"/> during static SSR and the framework needs
-    /// it, while anything else escaping here would tear down the circuit for the whole CMS page
-    /// rather than for this component. The logger is a parameter rather than a read of <c>Log</c>,
-    /// so the helper stays <see langword="static"/> and free of component state.
+    /// Static SSR needs a navigating handler's <see cref="NavigationException"/>; anything else would
+    /// tear down the CMS page's circuit. The logger is passed, not read off <c>Log</c>, to stay static.
     /// </remarks>
     private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value, ILogger? log)
     {
