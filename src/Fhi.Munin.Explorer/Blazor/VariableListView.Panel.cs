@@ -233,8 +233,9 @@ public sealed partial class VariableListView
                 // Spoken, not shown, and kept out of aria-label so the name keeps its own lang.
                 builder.OpenElement(14, "span");
                 builder.AddAttribute(15, "class", "screenreader-only");
-                builder.AddContent(16, T.ShowVariabelgruppeVariables + " ");
+                builder.AddContent(16, T.ShowVariabelgruppeVariables);
                 builder.CloseElement();
+                builder.AddContent(20, " ");
                 builder.OpenElement(17, "span");
                 builder.AddAttribute(18, "lang", CatalogueLang(group.Name));
                 builder.AddContent(19, group.Name);
