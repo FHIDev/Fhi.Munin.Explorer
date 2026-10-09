@@ -346,12 +346,10 @@ public partial class VariableSearch
         await NotifyPageChangedAsync();
     }
 
-    /// <summary>
-    /// Step back once to a page that has rows, rather than leave "Ingen variabler passet søket" over a search that matched.
-    /// </summary>
+    /// <summary>Step back once to a page with rows rather than show "Ingen variabler passet søket".</summary>
     /// <remarks>
-    /// The clamp trusts the previous answer's count, so a shrunk index or an out-of-range 404 (an empty
-    /// page, not a throw) gets past it. A failed retreat restores the starting page, its rows and its panel.
+    /// The clamp trusts the previous count, so a shrunk index or an out-of-range 404 (an empty page,
+    /// not a throw) gets past it. A failed retreat restores the starting page, its rows and its panel.
     /// </remarks>
     private async Task RetreatFromEmptyPageAsync(
         int previous, Page<VariableSummary>? previousResult, PanelState previousPanel)
@@ -481,6 +479,7 @@ public partial class VariableSearch
         }
     }
 
+    /// <summary>Tell the host what was searched for, so it can reflect it in its own URL.</summary>
     /// <remarks>
     /// Raised whether or not the fetch succeeded: a host URL keeping the previous query after a failed
     /// search would hand out a link that reloads into a different search than the box is showing.
@@ -491,8 +490,8 @@ public partial class VariableSearch
     /// Move to the last real page when a restored link asks for one past the end.
     /// </summary>
     /// <remarks>
-    /// The API does not clamp: page 99999 of 734 is an empty list with nothing to press. A page turn's
-    /// emptied page is <see cref="RetreatFromEmptyPageAsync"/>'s, which has rollback state to unwind. (Fhi.Metadata-eujqw)
+    /// The API does not clamp: page 99999 of 734 is empty, with nothing to press (Fhi.Metadata-eujqw).
+    /// A page turn's emptied page is <see cref="RetreatFromEmptyPageAsync"/>'s, which can roll back.
     /// </remarks>
     private async Task LandOnRealPageAsync()
     {
@@ -674,10 +673,12 @@ public partial class VariableSearch
         VariableFilter Filter,
         bool KeepPager);
 
-    /// <summary>Send the row request that failed once more, unchanged: not <see cref="SearchAsync"/>, whose box may have changed.</summary>
+    /// <summary>
+    /// Resend the failed row request unchanged; <see cref="SearchAsync"/> would read a box since edited.
+    /// </summary>
     /// <remarks>
-    /// The counts are re-asked only after a search or filter change, which they are cross-filtered against;
-    /// the host is told only what moved, since a URL rewritten per callback would gain needless history.
+    /// Counts are re-asked only after a search or filter change, which they are cross-filtered against;
+    /// the host is told only what moved, since a URL rewritten per callback gains needless history.
     /// </remarks>
     private async Task RetryRowsAsync()
     {
