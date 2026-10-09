@@ -1656,6 +1656,11 @@ table.munin-explorer-data-list :is(th, td):not(.munin-explorer-dataitem-main__co
   white-space: inherit;
 }
 
+/* An own list's name sits in the row's button, not in the cell, so the rule above misses it (Fhi.Metadata-rms90). */
+table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .munin-explorer-dataitem-main__column__text {
+  white-space: normal;
+}
+
 .munin-explorer-list-code {
   color: var(--grey60);
   display: block;
