@@ -555,6 +555,19 @@ public partial class ExplorerInteropTest
         await interop.DisconnectContentsAsync("contents");
     }
 
+    [Theory]
+    [InlineData(typeof(JSDisconnectedException))]
+    [InlineData(typeof(JSException))]
+    [InlineData(typeof(InvalidOperationException))]
+    [InlineData(typeof(OperationCanceledException))]
+    public async Task ReadDateInputAsync_WhenTheBrowserIsOutOfReach_ThenValidityIsUnknown(Type thrown)
+    {
+        var interop = new ExplorerInterop(new LendingJsRuntime(new RefusingModule(Raise(thrown))));
+        Assert.True(await interop.TryLoadAsync());
+
+        Assert.Null(await interop.ReadDateInputAsync("date-from"));
+    }
+
     // -----------------------------------------------------------------------
     // Reading the source
 

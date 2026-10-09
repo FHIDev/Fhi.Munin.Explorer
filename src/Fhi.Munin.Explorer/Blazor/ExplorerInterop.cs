@@ -189,6 +189,25 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
+    // Null means unknown, so callers must not mistake an unreachable control for a cleared date.
+    internal async Task<DateInputState?> ReadDateInputAsync(string id)
+    {
+        if (_module is not { } module)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await Tolerated(() => module.InvokeAsync<DateInputState>("readDateInput", id))
+                .ConfigureAwait(false);
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
@@ -323,3 +342,5 @@ internal sealed class ExplorerInterop : IAsyncDisposable
             return null!;
         });
 }
+
+internal sealed record DateInputState(string Value, bool BadInput);

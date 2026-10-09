@@ -178,11 +178,7 @@ public partial class VariableSearch
             ? (word.Label, Foreign(word.Language))
             : (value, null);
 
-    /// <summary>The dataperiode facet — two date fields rather than a list of values.</summary>
-    /// <remarks>
-    /// Without a reported range it is drawn only while a date is set, so the control that applied a
-    /// filter cannot vanish under it. (Fhi.Metadata-yxhv1)
-    /// </remarks>
+    // Keep active dates editable even when their search returns no date range. (Fhi.Metadata-yxhv1)
     private FacetGroup? DataPeriodGroup(FilterOptions facets)
     {
         // One per bound the reader has set, so a folded dataperiode says it is narrowing the way
@@ -201,7 +197,7 @@ public partial class VariableSearch
         }
 
         return new FacetGroup("dataperiode", T.FieldDataPeriod, OpenByDefault: false, [],
-                              Body: DateFields(range ?? new DateInterval()), Chosen: chosen);
+                              Body: DateFields(), Chosen: chosen);
     }
 
     /// <summary>The bounds the reader has set, one value apiece.</summary>
@@ -242,35 +238,27 @@ public partial class VariableSearch
             clear,
             []);
 
-    /// <summary>The from and to fields, each bounded by the range and by the other.</summary>
-    /// <remarks>
-    /// Two text inputs rather than a range control, because Stiler has no date-range widget.
-    /// Every class name here is borrowed and already used elsewhere in this component.
-    /// </remarks>
-    private RenderFragment DateFields(DateInterval range) => builder =>
+    // The API matches overlapping periods, so catalogue dates must not constrain the search interval.
+    private RenderFragment DateFields() => builder =>
     {
         DateField(builder, 0, DateFromId, T.FacetDateFrom, _filter.DataFrom,
-                  Bound(range.Min), _filter.DataTo ?? Bound(range.Max),
+                  null, _filter.DataTo,
                   value => ApplyFilterAsync(_filter with { DataFrom = value }));
 
         DateField(builder, 100, DateToId, T.FacetDateTo, _filter.DataTo,
-                  _filter.DataFrom ?? Bound(range.Min), Bound(range.Max),
+                  _filter.DataFrom, null,
                   value => ApplyFilterAsync(_filter with { DataTo = value }));
     };
 
-    /// <summary>One date field: label, format hint, text input, and a sentence when an entry is refused.</summary>
-    /// <remarks>
-    /// Text rather than <c>type="date"</c>, whose format follows the browser's locale, not the page's
-    /// language. A refused entry is kept so the reader sees it beside the reason.
-    /// </remarks>
+    // Native controls display the browser's local format but exchange ISO dates with Blazor.
     private void DateField(
         RenderTreeBuilder builder, int seq, string id, string label, DateOnly? value,
         DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
     {
-        var hintId = $"{id}-hint";
         var errorId = $"{id}-error";
         var refused = _refusedDates.TryGetValue(id, out var typedText);
-        var shown = refused ? typedText! : DateInput.Format(value, Language);
+        var shown = _editedDates.TryGetValue(id, out var edited) ? edited
+            : refused ? typedText! : value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "";
 
         builder.OpenElement(seq, "label");
         builder.AddAttribute(seq + 1, "class", "form-element__label");
@@ -278,64 +266,42 @@ public partial class VariableSearch
         builder.AddContent(seq + 3, label);
         builder.CloseElement();
 
-        builder.OpenElement(seq + 5, "p");
-        builder.AddAttribute(seq + 6, "id", hintId);
-        builder.AddAttribute(seq + 7, "class", "caption");
-        builder.AddContent(seq + 8, T.FacetDateFormat);
-        builder.CloseElement();
-
         builder.OpenElement(seq + 10, "input");
         builder.AddAttribute(seq + 11, "id", id);
-        builder.AddAttribute(seq + 12, "type", "text");
+        builder.AddAttribute(seq + 12, "type", "date");
         builder.AddAttribute(seq + 13, "autocomplete", "off");
-        builder.AddAttribute(seq + 14, "placeholder", T.FacetDateFormat);
-        builder.AddAttribute(seq + 15, "value", shown);
-        builder.AddAttribute(seq + 16, "aria-invalid", refused ? "true" : null);
-        builder.AddAttribute(seq + 17, "aria-describedby", refused ? $"{hintId} {errorId}" : hintId);
+        builder.AddAttribute(seq + 14, "min", min?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        builder.AddAttribute(seq + 15, "max", max?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        builder.AddAttribute(seq + 16, "value", shown);
+        builder.AddAttribute(seq + 17, "aria-invalid", refused ? "true" : null);
+        builder.AddAttribute(seq + 18, "aria-describedby", refused ? errorId : null);
 
-        // onchange, not oninput: a partly typed date is not a date. The awaiting binder overload, so a
-        // failed fetch reaches the panel's alert region rather than surfacing as an unobserved task.
-        builder.AddAttribute(seq + 18, "onchange",
+        // Native date controls fire change for each year digit; searching then can interrupt typing.
+        builder.AddAttribute(seq + 19, "onchange",
             EventCallback.Factory.CreateBinder<string?>(this, raw =>
             {
-                if (string.IsNullOrWhiteSpace(raw))
-                {
-                    _refusedDates.Remove(id);
-
-                    return set(null);
-                }
-
-                if (DateInput.TryParse(raw, Language, out var typed) && Within(typed, min, max))
-                {
-                    _refusedDates.Remove(id);
-
-                    return set(typed);
-                }
-
-                _refusedDates[id] = raw;
-
-                return Task.CompletedTask;
+                _editedDates[id] = raw ?? "";
+                _refusedDates.Remove(id);
             }, shown));
-
-        // The field rewrites what was typed — 5.3.2020 becomes 05.03.2020 — and when that is the
-        // value already rendered, the diff alone would leave the reader's spelling in the box.
         builder.SetUpdatesAttributeName("value");
+        builder.AddAttribute(seq + 20, "onblur",
+            EventCallback.Factory.Create<FocusEventArgs>(this, _ => CommitDateAsync(id, min, max, set)));
         builder.CloseElement();
 
-        // Always rendered and empty until needed: change fires as focus leaves, so the reader is
+        // Always rendered and empty until needed: validation runs as focus leaves, so the reader is
         // elsewhere by then, and a role="alert" inserted and filled in one update is announced
         // unreliably. The infobox is inside, so an unrefused field draws no empty box.
-        builder.OpenElement(seq + 20, "div");
-        builder.AddAttribute(seq + 21, "id", errorId);
-        builder.AddAttribute(seq + 22, "role", "alert");
-        builder.AddAttribute(seq + 23, "aria-live", "assertive");
-        builder.AddAttribute(seq + 24, "aria-atomic", "true");
+        builder.OpenElement(seq + 30, "div");
+        builder.AddAttribute(seq + 31, "id", errorId);
+        builder.AddAttribute(seq + 32, "role", "alert");
+        builder.AddAttribute(seq + 33, "aria-live", "assertive");
+        builder.AddAttribute(seq + 34, "aria-atomic", "true");
 
         if (refused)
         {
-            builder.OpenElement(seq + 25, "p");
-            builder.AddAttribute(seq + 26, "class", "infobox infobox--bg-yellow");
-            builder.AddContent(seq + 27, T.FacetDateInvalid(
+            builder.OpenElement(seq + 35, "p");
+            builder.AddAttribute(seq + 36, "class", "infobox infobox--bg-yellow");
+            builder.AddContent(seq + 37, T.FacetDateInvalid(
                 min is { } lo ? DateInput.Format(lo, Language) : null,
                 max is { } hi ? DateInput.Format(hi, Language) : null));
             builder.CloseElement();
@@ -344,11 +310,50 @@ public partial class VariableSearch
         builder.CloseElement();
     }
 
-    /// <summary>Whether a typed date is inside the bounds the field itself advertises.</summary>
-    /// <remarks>
-    /// Any four digits make a year, so 0002 is a date the API would search and would empty the list
-    /// with. (Fhi.Metadata-yxhv1)
-    /// </remarks>
+    private async Task CommitDateAsync(string id, DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
+    {
+        var browser = _interop is { } interop ? await interop.ReadDateInputAsync(id) : null;
+        if (browser?.BadInput == true)
+        {
+            _editedDates.Remove(id);
+            _refusedDates[id] = "";
+            return;
+        }
+
+        if (!_editedDates.Remove(id, out var raw))
+        {
+            // Clearing an incomplete native entry can leave value empty without another change event.
+            if (browser is null || !_refusedDates.ContainsKey(id))
+            {
+                return;
+            }
+
+            raw = browser.Value;
+        }
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            if (browser is null || browser.Value.Length != 0)
+            {
+                _refusedDates[id] = raw;
+                return;
+            }
+
+            _refusedDates.Remove(id);
+            await set(null);
+            return;
+        }
+
+        if (DateInput.TryParse(raw, Language, out var typed) && Within(typed, min, max))
+        {
+            _refusedDates.Remove(id);
+            await set(typed);
+            return;
+        }
+
+        _refusedDates[id] = raw;
+    }
+
     private static bool Within(DateOnly? value, DateOnly? min, DateOnly? max) =>
         value is not { } date || ((min is not { } lo || date >= lo) && (max is not { } hi || date <= hi));
 
@@ -359,13 +364,7 @@ public partial class VariableSearch
     /// <summary>What the reader typed into a date field that was refused, by the field's id.</summary>
     private readonly Dictionary<string, string> _refusedDates = [];
 
-    /// <summary>A reported bound as the date it names, without asking what time zone anyone is in.</summary>
-    /// <remarks>
-    /// <see cref="DateTimeOffset.Date"/> keeps <c>2020-01-01T00:00:00+02:00</c> on 1 January; UTC would
-    /// make it 31 December. The same conversion <see cref="VariableFilter.DataFrom"/> prescribes.
-    /// </remarks>
-    private static DateOnly? Bound(DateTimeOffset? instant) =>
-        instant is { } value ? DateOnly.FromDateTime(value.Date) : null;
+    private readonly Dictionary<string, string> _editedDates = [];
 
     /// <summary>The kildetype facet — one value each, and only one of them can be chosen.</summary>
     /// <remarks>
@@ -1844,6 +1843,7 @@ public partial class VariableSearch
         // A refused date entry stops standing in for its field once any filter is applied, so
         // both fields show what the results are actually narrowed by.
         _refusedDates.Clear();
+        _editedDates.Clear();
         _scopeLimitRefused = false;
 
         // Narrowing renumbers every page, so the page the reader is on is no longer the same rows.
