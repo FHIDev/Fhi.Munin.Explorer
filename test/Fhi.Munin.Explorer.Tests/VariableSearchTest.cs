@@ -11562,7 +11562,7 @@ public class VariableSearchTest : ExplorerTestContext
 
     /// <summary>The panel's values, in the order the definition list draws them.</summary>
     // ---------------------------------------------------------------------------------
-    // The panel's tabs. Data first, then Om variabelen trimmed to what a reader choosing a
+    // The panel's tabs. Data first, then Detaljer trimmed to what a reader choosing a
     // variable needs (Fhi.Metadata-l9l2n.101). What has to hold is that the split is announced
     // correctly and reachable from a keyboard, because a tablist that costs one tab stop is
     // unusable without arrow keys.
@@ -11574,10 +11574,10 @@ public class VariableSearchTest : ExplorerTestContext
     private static AngleSharp.Dom.IElement TabButton(IRenderedComponent<VariableSearch> cut, string label) =>
         TabButtons(cut).Single(b => b.TextContent == label);
 
-    // What Om variabelen says, for a test that only needs to know the detail arrived.
+    // What Detaljer says, for a test that only needs to know the detail arrived.
     private static string AboutText(IRenderedComponent<VariableSearch> cut) => ShowAbout(cut).TextContent;
 
-    // The Data tab opens first, so a test about Om variabelen has to ask for it.
+    // The Data tab opens first, so a test about Detaljer has to ask for it.
     private static AngleSharp.Dom.IElement ShowAbout(IRenderedComponent<VariableSearch> cut)
     {
         TabButton(cut, "Detaljer").Click();
@@ -11634,7 +11634,7 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Panel_WhenOpened_ThenTheDataTabShowsTheKodeverkAndOmVariabelenTheDescription()
+    public void Panel_WhenOpened_ThenTheDataTabShowsTheKodeverkAndDetaljerTheDescription()
     {
         var cut = RenderWith(TwoRows());
 
@@ -11829,7 +11829,7 @@ public class VariableSearchTest : ExplorerTestContext
                 : [],
         };
 
-    /// <summary>The value under Om variabelen's Datatype label.</summary>
+    /// <summary>The value under Detaljer's Datatype label.</summary>
     private static AngleSharp.Dom.IElement AboutDataType(IRenderedComponent<VariableSearch> cut, string language = "no")
     {
         var (tab, field) = language == "en" ? ("Details", "Data type") : ("Detaljer", "Datatype");
@@ -11895,12 +11895,16 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void About_WhenBeskrivelseGainsAPlacement_ThenTheDescriptionIsStillDrawnOnlyOnce()
+    public void About_WhenBeskrivelseAndPreferredTermAreAmongTheFields_ThenNeitherIsDrawnAgain()
     {
-        // A catalogue placement for Beskrivelse must not bring a second copy in through the
-        // property list the tab used to carry (Fhi.Metadata-bct95).
+        // The description and the name are drawn by the panel itself, so Munin's field list must not
+        // bring a second copy of either (Fhi.Metadata-bct95, Fhi.Metadata-chx2i).
         var placed = Detail(TaleId) with
         {
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Beskrivelse"] = Detail(TaleId).Description, ["PreferredTerm"] = "1. Tale",
+            },
             PropertyMetadata =
             [
                 new()
@@ -11910,6 +11914,13 @@ public class VariableSearchTest : ExplorerTestContext
                     Type = "Text",
                     DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Beskrivelse" },
                     GroupTranslations = new Dictionary<string, string> { ["no"] = "Om variabelen" },
+                },
+                new()
+                {
+                    Key = "PreferredTerm",
+                    SortOrder = 40,
+                    Type = "String",
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Foretrukken term" },
                 },
             ],
         };
@@ -11924,6 +11935,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(text.IndexOf(description, StringComparison.Ordinal),
                      text.LastIndexOf(description, StringComparison.Ordinal));
         Assert.NotEqual(-1, text.IndexOf(description, StringComparison.Ordinal));
+        Assert.DoesNotContain("Foretrukken term", text, StringComparison.Ordinal);
     }
 
     private static Statistic YearSet(string? year) => new()
@@ -12344,7 +12356,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void DataTab_WhenAYearlyVariableHasSeveralStatistics_ThenTheNewestWithNumbersIsDrawn()
     {
-        // The drawer draws one statistic, the year its Om variabelen tab names; the whole variable
+        // The drawer draws one statistic, the year its Detaljer tab names; the whole variable
         // keeps every year. A newer year with nothing in it is not drawn over an older one that has.
         Statistic Year(string year, string? minimum) => DataTabStatistic(minimum is null
             ? new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = year }
@@ -12364,7 +12376,7 @@ public class VariableSearchTest : ExplorerTestContext
     public void DataTab_WhenTheNewestYearSetHasNoNumbers_ThenTheDrawerSaysWhichYearItsNumbersAreFrom(
         string language, string wording)
     {
-        // Om variabelen names 2024, which holds nothing; unlabelled, 2023's numbers read as 2024's.
+        // Detaljer names 2024, which holds nothing; unlabelled, 2023's numbers read as 2024's.
         var tab = DataTab(
             [
                 DataTabStatistic(new Dictionary<string, string?> { ["SisteOppdaterteAarssett"] = "2023", ["MIN"] = "5" }),
@@ -12502,7 +12514,7 @@ public class VariableSearchTest : ExplorerTestContext
     {
         // The APG tabs pattern. Without it a keyboard user reaches the tablist and cannot leave the
         // first tab: the others carry tabindex="-1", so Tab does not reach them. From Data, since
-        // Tabs is read off the enum and reordering only the markup would send Home to Om variabelen.
+        // Tabs is read off the enum and reordering only the markup would send Home to Detaljer.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
@@ -12539,7 +12551,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Panel_WhenAnotherRowIsOpened_ThenItStartsOnDataAgain()
     {
-        // A reader who was on Om variabelen for one variable has not asked to be there for the next.
+        // A reader who was on Detaljer for one variable has not asked to be there for the next.
         var cut = RenderWith(TwoRows());
 
         Toggles(cut)[0].Click();
@@ -15432,7 +15444,7 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-kodeverk__reference",
         ], invented);
 
-        // The definition list lives in Om variabelen.
+        // The definition list lives in Detaljer.
         var panel = ShowAbout(cut);
 
         // The definition list stays a definition list — it is labels and the values they name, and

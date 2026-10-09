@@ -144,7 +144,7 @@ public sealed partial class VariableView : ComponentBase
     /// same call <see cref="KildeView"/> makes for the same field (Fhi.Metadata-bct95). PreferredTerm
     /// is the page title (Fhi.Metadata-zg89n).
     /// </remarks>
-    private static readonly IReadOnlySet<string> DrawnElsewhere =
+    internal static readonly IReadOnlySet<string> DrawnElsewhere =
         new HashSet<string>(StringComparer.Ordinal)
         {
             CatalogueProperties.DataTypeKey, CatalogueColumns.Description, CatalogueColumns.PreferredTerm,

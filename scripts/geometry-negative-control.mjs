@@ -62,7 +62,7 @@ const cases = [
     defect: 'a value with no break point at 320px, the 2026-09-15 defect',
     path: '/', state: 'variable-detail-about', width: 320,
     // The drawer opens on Data since #433, which draws none of these selectors; the stub's long
-    // Kode is on Om variabelen (Fhi.Metadata-r0w7c).
+    // Kode is on Detaljer (Fhi.Metadata-r0w7c).
     apply: noBreak,
   },
   {
