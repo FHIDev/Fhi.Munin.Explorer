@@ -246,6 +246,26 @@ public class FilterHierarchyTest
     }
 
     [Fact]
+    public void Build_WhenAFallenBackAndAnExactGroupShareANode_ThenTheyKeepThePayloadOrder()
+    {
+        // Choosing the exact copy of one group must not move an unrelated sibling ahead of it.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder = [Delkilde(Fodsel, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel, datasamling: NotInThePayload, count: 3), count: 9),
+                Variabelgruppe(Levekaar, "Levekaar", Under(Mfr, delkilde: Fodsel, count: 5), count: 8)
+            ]
+        };
+
+        var delkilde = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+        Assert.Equal([Bakgrunn, Levekaar], delkilde.Children.Select(node => node.Id));
+    }
+
+    [Fact]
     public void Build_WhenAPlacementFallsBackAboveItsDatasamling_ThenTheNodeKeepsTheGroupCount()
     {
         // The placement's count is for a datasamling the answer dropped; the kilde node it lands

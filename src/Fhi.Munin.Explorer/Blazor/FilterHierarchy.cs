@@ -255,11 +255,13 @@ internal static class FilterHierarchy
                 ? (node, variabelgruppe with { Count = count }, true)
                 : (node, variabelgruppe, false);
 
-        // Exact copies first, so where two placements land on one node OnePerId keeps the count
-        // that is that node's, not whichever owner the payload listed first.
+        // Where two placements of one group land on one node, the exact copy's count wins, in the
+        // position the group was first listed; siblings keep the payload's order.
         static ILookup<Guid, VariabelgruppeFacet> Lookup(
             IEnumerable<(Guid Owner, VariabelgruppeFacet Variabelgruppe, bool Exact)> placed) =>
-            placed.OrderByDescending(entry => entry.Exact).ToLookup(entry => entry.Owner, entry => entry.Variabelgruppe);
+            placed.GroupBy(entry => (entry.Owner, entry.Variabelgruppe.Id))
+                  .Select(copies => copies.OrderByDescending(entry => entry.Exact).First())
+                  .ToLookup(entry => entry.Owner, entry => entry.Variabelgruppe);
     }
 
     /// <summary>Nest one level by the parent id its entries carry. A parent the cross-filtering
