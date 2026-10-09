@@ -18,7 +18,8 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
 
     // The list tab's way to the search, the only place a variable is added to a list. Internal, so
     // the 1.0 contract is unchanged; a host page showing the list alone simply has none.
-    private ShowSearchTab ShowSearch => _showSearch ??= new ShowSearchTab(ShowSearchFromListAsync);
+    private ShowSearchTab ShowSearch =>
+        _showSearch ??= new ShowSearchTab(ShowSearchFromListAsync, ShowVariabelgruppeFromListAsync);
 
     private async Task ShowSearchFromListAsync()
     {
@@ -27,6 +28,21 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
 
         // The pressed button leaves with the list tab; the search field is where its reader goes next.
         await _searchField.FocusAsync();
+    }
+
+    // The whole filter and the search term go, as with InstrumentVariablesHref: the press names one
+    // group, and whatever the reader last searched for would quietly narrow it.
+    private async Task ShowVariabelgruppeFromListAsync(Guid id)
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        ClearSelection();
+        await RaiseSelectionAsync();
+        await ShowSearchFromListAsync();
+        await ApplyFilterAsync(VariableFilter.None with { VariabelgruppeIds = [id] }, clearSearch: true);
     }
 
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;

@@ -839,7 +839,7 @@ else
                                        for the reason the disclosure above it is not: pressing it
                                        again is how the panel closes, and disabling the element
                                        that has focus drops focus to <body>. *@
-                                    @foreach (var kind in SourceTargets(detail))
+                                    @foreach (var kind in VariableOwners.Targets(detail))
                                     {
                                         <button class="hd-button-square button-square--ghost margin-right margin-bottom"
                                                 type="button"

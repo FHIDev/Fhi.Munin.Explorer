@@ -344,7 +344,7 @@ public partial class VariableSearch
             return;
         }
 
-        if (_detail is not { } detail || SourceIdOf(detail, kind) is not { } id)
+        if (_detail is not { } detail || VariableOwners.IdOf(detail, kind) is not { } id)
         {
             return;
         }

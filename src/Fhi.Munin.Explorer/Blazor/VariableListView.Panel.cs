@@ -119,6 +119,7 @@ public sealed partial class VariableListView
         _openLoading = false;
         _openCodes = null;
         ForgetLinkStatus();
+        ClearSource();
 
         // Disowns a fetch still in flight for the row that was open.
         _openGeneration++;
@@ -205,10 +206,30 @@ public sealed partial class VariableListView
     private RenderFragment RowPanelTrail(VariableDetail detail) =>
         KildeTrailBlock.Write(KildeTrailBlock.Steps(detail, T, kildeTypeApiName: null), T);
 
-    private string? RowPanelVariabelgrupper(VariableDetail detail) =>
-        KildeTrailBlock.NamedVariabelgrupper(detail) is { Count: > 0 } groups
-            ? string.Join(", ", groups.Select(group => group.Name))
-            : null;
+    // Each group opens the search narrowed to it; words only where no search tab is there to open.
+    private RenderFragment RowPanelVariabelgrupper(IReadOnlyList<VariabelgruppeReference> groups) => builder =>
+    {
+        for (var i = 0; i < groups.Count; i++)
+        {
+            var group = groups[i];
+
+            if (ShowSearch is { } search && group.Id != Guid.Empty)
+            {
+                builder.OpenElement(0, "button");
+                builder.AddAttribute(1, "class", "hd-button-square button-square--ghost margin-right margin-bottom");
+                builder.AddAttribute(2, "type", "button");
+                builder.AddAttribute(3, "aria-label", T.ShowVariabelgruppeVariables(group.Name));
+                builder.AddAttribute(4, "onclick",
+                    EventCallback.Factory.Create(this, () => search.ShowVariabelgruppeAsync(group.Id)));
+                builder.AddContent(5, group.Name);
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.AddContent(6, i == 0 ? group.Name : $", {group.Name}");
+            }
+        }
+    };
 
     // One source for both ends, so a period is never half the detail's and half the list's.
     private string RowPanelPeriod(VariableListItem item, VariableDetail detail) =>
