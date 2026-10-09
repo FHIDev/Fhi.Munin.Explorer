@@ -24,6 +24,10 @@
        they had 0.1.68, which lacks the branch disclosure rules and the 320px step's long-value breaks
        (Fhi.Metadata-adog5, Fhi.Metadata-ofg1h).
 
+       0.1.163 fixes a søknad form's organisation lookup; nothing Munin draws.
+       0.1.162 draws the filter tree's half-checked box grey, as prod does (Fhi.Metadata-cjezd).
+       0.1.156-0.1.161 add søknad/skjema styles and move Stiler's `.is-tabbing` focus rules to
+       :focus-visible; nothing Munin draws.
        0.1.155 draws the saved list's table as cards below 1280px, the code under the name and the
        growing Ønskede data field (Fhi.Metadata-exfp4).
        0.1.154 adds helsedata's søknad styles; nothing Munin draws.
@@ -63,7 +67,7 @@
        0.1.103 brought the drawer's checkbox column and nested detail anchor clearance
        (Fhi.Metadata-h6dx7, Fhi.Metadata-17k34). -->
   <ItemGroup Condition="'$(UseLocalStiler)' != 'true'">
-    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.155" />
+    <PackageReference Include="Fhi.Helsedata.Stiler" Version="0.1.163" />
   </ItemGroup>
 
   <!-- The opt-in dev loop, the same flag and the same shape helsedata's own consumers use
