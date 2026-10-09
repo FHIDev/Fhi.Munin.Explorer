@@ -506,7 +506,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
    indentation that makes a delkilde look like it sits under its kilde. Scoped to the panel so none
    of it can reach the results list, which is our own munin-explorer-data-list. */
 
-.munin-explorer-filters { margin-bottom: 24px; }
+.munin-explorer-filters { margin-bottom: 24px; padding: 8px; }
 
 /* The panel's toolbar: own container, spaced by `gap` so nothing trails the last button. It wraps
    since Ikoner made four: only the buttons shrink, a switch keeps its intrinsic width, and 291px of
@@ -573,9 +573,10 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   align-items: center;
   display: flex;
   gap: 8px;
+  padding: 4px 8px;
 }
 .munin-explorer-filters summary .form-element__label { margin-top: 0; cursor: pointer; }
-.munin-explorer-filters summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.munin-explorer-filters summary:focus-visible { box-shadow: inset 0 0 0 2px rgb(66, 139, 255); outline: none; }
 
 .munin-explorer-filters ul {
   margin: 8px 0 0;
@@ -658,15 +659,22 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   cursor: pointer;
 }
 
-.munin-explorer-filters__disclosure:hover,
-.munin-explorer-filters__disclosure:focus-visible {
+.munin-explorer-filters__disclosure:hover {
   background-color: var(--grey60);
   color: #fff;
 }
 
 .munin-explorer-filters__disclosure:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  box-shadow: inset 0 0 0 2px rgb(66, 139, 255);
+  outline: none;
+  background: none;
+  color: rgb(81, 84, 123);
+}
+
+.munin-explorer .munin-explorer-filters .hd-button-square:focus-visible,
+.munin-explorer .munin-explorer-filters .munin-explorer-switch:focus-visible {
+  box-shadow: inset 0 0 0 2px rgb(66, 139, 255);
+  outline: none;
 }
 
 /* Nivålinjer: one guide line per level of the tree, drawn from first paint — the toggle takes them
@@ -3524,7 +3532,8 @@ table.munin-explorer-data-list tbody th {
   font-size: 0.875rem;
   height: auto;
   min-height: 1.5rem;
-  padding: 0;
+  padding: 4px 8px;
+  border-radius: 0;
   text-decoration: underline;
 }
 
@@ -3646,7 +3655,8 @@ table.munin-explorer-data-list tbody th {
   font-size: 0.875rem;
   height: auto;
   min-height: 1.5rem;
-  padding: 0;
+  padding: 4px 8px;
+  border-radius: 0;
   text-decoration: underline;
 }
 
