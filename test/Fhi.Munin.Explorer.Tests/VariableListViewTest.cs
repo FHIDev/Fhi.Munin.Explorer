@@ -445,7 +445,7 @@ public partial class VariableListViewTest : ExplorerTestContext
                 : Task.FromResult<ExportedList?>(new ExportedList([1, 2, 3], "text/csv", "variabelliste.csv"));
         }
 
-        [Obsolete("Mirrors IMuninExplorerClient.ExportListAsync.")]
+        [Obsolete("Mirrors IMuninExplorerClient.ExportListAsync, removed in 3.0.0.")]
         public override Task<ExportedList> ExportListAsync(
             IReadOnlyCollection<Guid> variableIds,
             ExportFormat format = ExportFormat.Xlsx,

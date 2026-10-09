@@ -879,7 +879,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <inheritdoc />
-    [Obsolete("Use ExportMyListAsync, which exports the reader's own list with its \"Ønskede data\". ExportListAsync is removed in the next minor release after 2.0.0.")]
+    [Obsolete("Use ExportMyListAsync, which exports the reader's own list with its \"Ønskede data\". ExportListAsync is removed in 3.0.0.")]
     public async Task<ExportedList> ExportListAsync(
         IReadOnlyCollection<Guid> variableIds,
         ExportFormat format = ExportFormat.Xlsx,
@@ -957,7 +957,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <inheritdoc />
-    [Obsolete("RedeemIdentityLinkAsync has no caller in this package or its hosts. It is removed in the next minor release after 2.0.0.")]
+    [Obsolete("RedeemIdentityLinkAsync has no caller in this package or its hosts. It is removed in 3.0.0.")]
     public async Task<IdentityLinkOutcome> RedeemIdentityLinkAsync(
         string? code,
         CancellationToken cancellationToken = default)

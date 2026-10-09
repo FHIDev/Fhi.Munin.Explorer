@@ -4,7 +4,7 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-// Every call here is to the obsolete RedeemIdentityLinkAsync; the tests stay until the member is removed.
+// Every call here is to the obsolete RedeemIdentityLinkAsync; the tests stay until 3.0.0 removes it.
 #pragma warning disable CS0618
 
 /// <summary>

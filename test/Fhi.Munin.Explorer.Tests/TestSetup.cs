@@ -21,7 +21,7 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
     /// Refuses, like the interface's own default. A fake that answered with an empty file would
     /// let a test pass while the reader got nothing openable.
     /// </summary>
-    [Obsolete("Mirrors IMuninExplorerClient.ExportListAsync.")]
+    [Obsolete("Mirrors IMuninExplorerClient.ExportListAsync, removed in 3.0.0.")]
     public virtual Task<ExportedList> ExportListAsync(
         IReadOnlyCollection<Guid> variableIds,
         ExportFormat format = ExportFormat.Xlsx,
@@ -43,7 +43,7 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
     /// Refuses, like the interface's own default. A fake that answered <c>Linked</c> would let a
     /// test pass while the reader's two accounts stayed apart.
     /// </summary>
-    [Obsolete("Mirrors IMuninExplorerClient.RedeemIdentityLinkAsync.")]
+    [Obsolete("Mirrors IMuninExplorerClient.RedeemIdentityLinkAsync, removed in 3.0.0.")]
     public virtual Task<IdentityLinkOutcome> RedeemIdentityLinkAsync(
         string? code,
         CancellationToken cancellationToken = default) =>

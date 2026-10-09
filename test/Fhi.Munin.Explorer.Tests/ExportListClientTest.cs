@@ -7,7 +7,7 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-// Every call here is to the obsolete ExportListAsync; the tests stay until the member is removed.
+// The ExportListAsync tests below call the obsolete member on purpose; they stay until 3.0.0 removes it.
 #pragma warning disable CS0618
 
 /// <summary>
@@ -171,6 +171,8 @@ public class ExportListClientTest
         Assert.False(string.IsNullOrWhiteSpace(file.FileName));
     }
 
+#pragma warning restore CS0618
+
     // ---- ExportMyListAsync (Fhi.Metadata-fiht4): the saved list's own export, which carries "Ønskede data" ----
 
     private static readonly Guid MyListId = new("5f0c2e7a-91b4-4d3e-8a6f-2c7d1b9e4a30");
@@ -243,4 +245,3 @@ public class ExportListClientTest
         }
     }
 }
-#pragma warning restore CS0618

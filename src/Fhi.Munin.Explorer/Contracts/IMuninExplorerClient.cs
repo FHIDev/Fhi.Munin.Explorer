@@ -593,7 +593,7 @@ public interface IMuninExplorerClient
     /// <param name="includeKodeverk">Whether to include the codebooks alongside the variables.</param>
     /// <param name="kildeIdFilter">Optional: only the variables belonging to one kilde.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
-    [Obsolete("Use ExportMyListAsync, which exports the reader's own list with its \"Ønskede data\". ExportListAsync is removed in the next minor release after 2.0.0.")]
+    [Obsolete("Use ExportMyListAsync, which exports the reader's own list with its \"Ønskede data\". ExportListAsync is removed in 3.0.0.")]
     Task<ExportedList> ExportListAsync(
         IReadOnlyCollection<Guid> variableIds,
         ExportFormat format = ExportFormat.Xlsx,
@@ -659,7 +659,7 @@ public interface IMuninExplorerClient
     /// here — two normalisers that disagree refuse codes the server would have taken.
     /// </param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
-    [Obsolete("RedeemIdentityLinkAsync has no caller in this package or its hosts. It is removed in the next minor release after 2.0.0.")]
+    [Obsolete("RedeemIdentityLinkAsync has no caller in this package or its hosts. It is removed in 3.0.0.")]
     Task<IdentityLinkOutcome> RedeemIdentityLinkAsync(
         string? code,
         CancellationToken cancellationToken = default) =>
