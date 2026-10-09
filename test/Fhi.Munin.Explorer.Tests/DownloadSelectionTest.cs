@@ -96,7 +96,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Download_IsOfferedSignedInOrNot(bool signedIn)
+    public void Download_WhenResultsAreShown_ThenItIsOfferedSignedInOrNot(bool signedIn)
     {
         var cut = Render(new Client(80), signedIn);
 
@@ -106,7 +106,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Download_WithNoResults_IsNotOffered()
+    public void Download_WhenThereAreNoResults_ThenItIsNotOffered()
     {
         var cut = Render(new Client(0));
 
@@ -115,7 +115,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Download_ExcelWithCodebooks_ExportsTheExecutedSearchAndOffersTheFile()
+    public void Download_WhenExcelWithCodebooksIsPressed_ThenTheExecutedSearchIsExportedAndOffered()
     {
         var client = new Client(80);
         var cut = Render(client);
@@ -136,7 +136,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Download_Csv_AsksForCsvWithoutCodebooksByDefault()
+    public void Download_WhenCsvIsPressed_ThenCsvWithoutCodebooksIsAskedFor()
     {
         var client = new Client(80);
         var cut = Render(client);
@@ -153,7 +153,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     [Theory]
     [InlineData(VariableSearch.WarnDownloadFrom + 1, true)]
     [InlineData(VariableSearch.WarnDownloadFrom, false)]
-    public void Download_WarnsOnlyPastTheThreshold(int hits, bool warns)
+    public void Download_WhenTheHitsPassTheThreshold_ThenItWarns(int hits, bool warns)
     {
         var cut = Render(new Client(hits));
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
@@ -166,7 +166,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Download_WhileASearchIsBeingFetched_DoesNothing()
+    public void Download_WhenASearchIsBeingFetched_ThenThePressDoesNothing()
     {
         var client = new Client(80) { HoldSearches = new TaskCompletionSource() };
         var cut = Render(client);
@@ -185,7 +185,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Download_AFailure_IsNotShownUnderTheNextSearch(bool newText)
+    public void Download_WhenTheSearchChangesAfterAFailure_ThenTheFailureIsNotShown(bool newText)
     {
         var client = new Client(80) { Refuse = new HttpRequestException("503") };
         var cut = Render(client);
@@ -207,7 +207,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Download_WhenTheApiFails_SaysSo()
+    public void Download_WhenTheApiFails_ThenItSaysSo()
     {
         var client = new Client(80) { Refuse = new HttpRequestException("503") };
         var cut = Render(client);
@@ -220,7 +220,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Download_WhenRateLimited_SaysWhy()
+    public void Download_WhenRateLimited_ThenItSaysWhy()
     {
         var client = new Client(80) { Refuse = new MuninExplorerRateLimitedException() };
         var cut = Render(client);
@@ -234,7 +234,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Download_EscapeClosesThePanelAndReturnsFocusToTheButton()
+    public void Download_WhenEscapeIsPressed_ThenThePanelClosesAndFocusReturnsToTheButton()
     {
         var cut = Render(new Client(80));
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));

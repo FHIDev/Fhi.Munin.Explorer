@@ -28,8 +28,20 @@ public class HttpClientRegistrationTest
         using var provider = Provider();
 
         var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(ClientName);
+        var ours = new List<HttpMessageHandler>();
+        for (var h = provider.GetRequiredService<IHttpMessageHandlerFactory>().CreateHandler(ClientName);
+             h is DelegatingHandler d; h = d.InnerHandler)
+        {
+            if (h.GetType().Namespace == typeof(RequestTimeoutHandler).Namespace)
+            {
+                ours.Add(h);
+            }
+        }
 
-        Assert.Equal(TimeSpan.FromSeconds(30), client.Timeout);
+        // The ceiling is the whole-search download's; the handler, first of ours, holds every other call to thirty.
+        Assert.Equal(TimeSpan.FromSeconds(150), client.Timeout);
+        Assert.IsType<RequestTimeoutHandler>(ours[0]);
+        Assert.Equal(TimeSpan.FromSeconds(30), RequestTimeoutHandler.Default);
     }
 
     [Fact]

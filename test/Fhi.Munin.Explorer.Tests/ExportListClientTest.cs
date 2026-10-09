@@ -31,10 +31,12 @@ public class ExportListClientTest
         public Uri? LastUri { get; private set; }
         public HttpMethod? LastMethod { get; private set; }
         public HttpStatusCode Status { get; init; } = HttpStatusCode.OK;
+        public TimeSpan? LastLimit { get; private set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            LastLimit = request.Options.TryGetValue(RequestTimeoutHandler.Limit, out var limit) ? limit : null;
             LastUri = request.RequestUri;
             LastMethod = request.Method;
             LastBody = request.Content is null
@@ -59,7 +61,7 @@ public class ExportListClientTest
         });
 
     [Fact]
-    public async Task ExportVariablesAsync_GetsTheSearchAndFiltersAndKeepsTheApisFile()
+    public async Task ExportVariablesAsync_WhenAsked_ThenItGetsTheSearchAndFiltersAndKeepsTheApisFile()
     {
         var handler = new FileHandler("application/zip", "Variabler_2026-10-09.zip");
         var filter = new VariableFilter { KildeIds = [One] };
@@ -79,7 +81,27 @@ public class ExportListClientTest
     }
 
     [Fact]
-    public async Task ExportVariablesAsync_WithoutCodebooks_SendsNoIncludeKodeverk()
+    public async Task ExportVariablesAsync_WhenSent_ThenItAsksForLongerThanTheThirtySecondsOtherCallsGet()
+    {
+        var handler = new FileHandler("text/csv", "Variabler_2026-10-09.csv");
+
+        await Client(handler).ExportVariablesAsync(null, null);
+
+        Assert.Equal(TimeSpan.FromSeconds(150), handler.LastLimit);
+    }
+
+    [Fact]
+    public async Task ExportMyListAsync_WhenSent_ThenItKeepsTheOrdinaryLimit()
+    {
+        var handler = new FileHandler("text/csv", "liste.csv");
+
+        await Client(handler).ExportMyListAsync(One);
+
+        Assert.Null(handler.LastLimit);
+    }
+
+    [Fact]
+    public async Task ExportVariablesAsync_WhenCodebooksAreNotAskedFor_ThenNoIncludeKodeverkIsSent()
     {
         var handler = new FileHandler("text/csv", "Variabler_2026-10-09.csv");
 
@@ -92,7 +114,7 @@ public class ExportListClientTest
     [Theory]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.BadRequest)]
-    public async Task ExportVariablesAsync_WhenTheApiRefuses_Throws(HttpStatusCode status)
+    public async Task ExportVariablesAsync_WhenTheApiRefuses_ThenItThrows(HttpStatusCode status)
     {
         var handler = new FileHandler("text/plain", "x") { Status = status };
 
@@ -100,7 +122,7 @@ public class ExportListClientTest
     }
 
     [Fact]
-    public async Task ExportVariablesAsync_WhenRateLimited_ThrowsTheRateLimitException()
+    public async Task ExportVariablesAsync_WhenRateLimited_ThenItThrowsTheRateLimitException()
     {
         var handler = new FileHandler("text/plain", "x") { Status = HttpStatusCode.TooManyRequests };
 
