@@ -49,7 +49,7 @@ internal static partial class CatalogueMarkdown
     private static partial Regex BrTag();
 
     /// <summary>An http(s) address in running text, without the sentence punctuation after it.</summary>
-    [GeneratedRegex(@"(?<![\w/])https?://[^\s<>""';]+?(?=[.,;:!?)\]'""]*(?:[\s;]|$))", RegexOptions.IgnoreCase, 250)]
+    [GeneratedRegex(@"(?<![\w/])https?://(?:[^\s<>""';]|;(?!https?://))+?(?=[.,;:!?)\]'""]*(?:\s|;(?=https?://)|$))", RegexOptions.IgnoreCase, 250)]
     private static partial Regex WebAddress();
 
     /// <summary>The schemes a link is allowed to carry; anything else renders as text.</summary>
@@ -149,7 +149,7 @@ internal static partial class CatalogueMarkdown
     internal static bool HasWebAddress(string? raw) =>
         raw is not null && LinkList(raw) is null && Addresses(raw).Count > 0;
 
-    /// <summary>Each address as start and length; a ")" closing a "(" inside it is kept.</summary>
+    /// <summary>Each address as start and length; the ")"s closing "("s inside it are kept.</summary>
     private static List<(int Index, int Length)> Addresses(string raw)
     {
         try
@@ -158,9 +158,15 @@ internal static partial class CatalogueMarkdown
                 .Where(match => AllowedScheme(match.Value))
                 .Select(match =>
                 {
-                    var end = match.Index + match.Length;
-                    var unbalanced = match.Value.Count(c => c == '(') > match.Value.Count(c => c == ')');
-                    return (match.Index, unbalanced && end < raw.Length && raw[end] == ')' ? match.Length + 1 : match.Length);
+                    var length = match.Length;
+                    var open = match.Value.Count(c => c == '(') - match.Value.Count(c => c == ')');
+                    while (open > 0 && match.Index + length < raw.Length && raw[match.Index + length] == ')')
+                    {
+                        length++;
+                        open--;
+                    }
+
+                    return (match.Index, length);
                 })
                 .ToList();
         }

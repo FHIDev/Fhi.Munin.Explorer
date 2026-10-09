@@ -368,6 +368,8 @@ public class CatalogueMarkdownTest : ExplorerTestContext
     [Theory]
     [InlineData("Se https://no.wikipedia.org/wiki/Lov_(jus) for det.", "https://no.wikipedia.org/wiki/Lov_(jus)")]
     [InlineData("Se 'https://lovdata.no/x' her", "https://lovdata.no/x")]
+    [InlineData("Se https://example.no/wiki/A_(B_(C)) her.", "https://example.no/wiki/A_(B_(C))")]
+    [InlineData("Se https://x.example/p?a=1;b=2 her", "https://x.example/p?a=1;b=2")]
     public void Linked_WhenAnAddressEndsInParenthesesOrQuotes_ThenTheAnchorTakesOnlyTheAddress(string raw, string href)
     {
         Assert.Equal(href, Render(CatalogueMarkdown.Linked(raw)).Find("a").GetAttribute("href"));
@@ -386,5 +388,13 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         Assert.Empty(cut.FindAll("a"));
         Assert.Empty(cut.FindAll("b"));
         Assert.False(CatalogueMarkdown.HasWebAddress(raw));
+    }
+
+    [Fact]
+    public void Linked_WhenProseJoinsTwoAddressesWithASemicolon_ThenEachIsItsOwnAnchor()
+    {
+        var anchors = Render(CatalogueMarkdown.Linked("Se https://lovdata.no/a;https://lovdata.no/b her")).FindAll("a");
+
+        Assert.Equal(["https://lovdata.no/a", "https://lovdata.no/b"], anchors.Select(a => a.GetAttribute("href")));
     }
 }
