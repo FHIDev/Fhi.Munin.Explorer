@@ -1,4 +1,5 @@
 using System.Text;
+using Fhi.Munin.Explorer.Parsing;
 
 namespace Fhi.Munin.Explorer.Contracts;
 
@@ -126,7 +127,7 @@ public sealed record ExplorerUrlState
     /// Bounds the parse itself and not only what it keeps, the same reasoning as
     /// <see cref="VariableFilter"/>'s own cap. Well above the eight keys here plus a host's own.
     /// </remarks>
-    private const int MaxParameters = 200;
+    internal const int MaxParameters = 200;
 
     /// <summary>
     /// This state as an escaped query string with no leading <c>?</c>, empty when nothing is set.
@@ -199,26 +200,8 @@ public sealed record ExplorerUrlState
             return state;
         }
 
-        // Split by hand, the way VariableFilter does and for its reasons: the package cannot take a
-        // dependency on Microsoft.AspNetCore.WebUtilities, which a host gets for free and an RCL
-        // does not. The parameter cap bounds the parse itself, not only what it keeps.
-        var read = 0;
-        foreach (var pair in queryString.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var (_, name, value) in QueryPairs.Split(queryString, MaxParameters))
         {
-            if (++read > MaxParameters)
-            {
-                break;
-            }
-
-            var separator = pair.IndexOf('=', StringComparison.Ordinal);
-            if (separator <= 0)
-            {
-                continue;
-            }
-
-            var name = Decode(pair[..separator]);
-            var value = Decode(pair[(separator + 1)..]);
-
             if (string.IsNullOrWhiteSpace(value))
             {
                 continue;
@@ -301,9 +284,6 @@ public sealed record ExplorerUrlState
 
     private static bool Is(string name, string expected) =>
         string.Equals(name, expected, StringComparison.OrdinalIgnoreCase);
-
-    private static string Decode(string value) =>
-        Uri.UnescapeDataString(value.Replace('+', ' '));
 
     /// <summary>The keys this type reads and writes itself, beside the filter's own.</summary>
     /// <remarks>

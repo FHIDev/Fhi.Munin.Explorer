@@ -1,4 +1,6 @@
 using System.Text;
+using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Parsing;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -45,20 +47,17 @@ internal sealed class UrlMirror
 
         var carried = new StringBuilder();
 
-        foreach (var pair in address.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var (raw, name, value) in QueryPairs.Split(address.Query, MaxPairs))
         {
-            var separator = pair.IndexOf('=', StringComparison.Ordinal);
-            var name = Decode(separator <= 0 ? pair : pair[..separator]);
-
             if (owns(name))
             {
-                _owned.Add((name, separator <= 0 ? "" : Decode(pair[(separator + 1)..])));
+                _owned.Add((name, value ?? ""));
             }
             else
             {
                 // Re-emitted exactly as it arrived, escaping and all: re-encoding somebody else's
                 // parameter is a way to change it.
-                carried.Append(carried.Length == 0 ? "" : "&").Append(pair);
+                carried.Append(carried.Length == 0 ? "" : "&").Append(raw);
             }
         }
 
@@ -96,6 +95,13 @@ internal sealed class UrlMirror
 
     /// <summary>The most values <see cref="Values"/> reads for one key; above any kilde catalogue.</summary>
     public const int MaxValuesPerKey = 500;
+
+    /// <summary>
+    /// How many pairs of the incoming query are read at all, owned or carried; the rest are dropped.
+    /// The same bound as <see cref="VariableFilter.MaxParameters"/>, so the mirror never truncates
+    /// a query the filter would have read whole.
+    /// </summary>
+    public const int MaxPairs = VariableFilter.MaxParameters;
 
     /// <summary>
     /// This page's address carrying <paramref name="query"/> as the owned keys, for an
@@ -183,8 +189,4 @@ internal sealed class UrlMirror
 
     private static string Join(string left, string right) =>
         left.Length == 0 ? right : right.Length == 0 ? left : left + "&" + right;
-
-    // The + before the unescape, for VariableFilter.Decode's reasons: a host's query may have been
-    // written by an HTML GET form, which spells a space +, and unescaping first turns %2B into one.
-    private static string Decode(string token) => Uri.UnescapeDataString(token.Replace('+', ' '));
 }
