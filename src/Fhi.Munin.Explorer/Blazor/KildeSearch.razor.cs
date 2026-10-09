@@ -719,9 +719,9 @@ public sealed partial class KildeSearch : ComponentBase
     private string DetailBusy => _detailLoading ? "true" : "false";
 
     /// <summary>
-    /// The kilder the search and the facets both leave, sorted last. The search matches name, code
-    /// and short name, as Kelda does, ordinally: a circuit runs in the host's culture, not the
-    /// reader's, so a culture-aware match could answer differently on two servers.
+    /// The kilder both the search and the facets leave, sorted after both so a sort orders every
+    /// survivor, with no pager taking a subset first. The search is a substring of name, code or
+    /// short name, as Kelda's, and ordinal: a circuit runs in the host's culture, not the reader's.
     /// </summary>
     private IReadOnlyList<KildeSummary> Visible
     {
@@ -753,9 +753,9 @@ public sealed partial class KildeSearch : ComponentBase
         value is not null && value.Contains(term, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// The live announcement and the table's accessible name in one sentence, so they cannot drift;
-    /// it names the order, or a sort would go unannounced. Takes the list rather than reading
-    /// <see cref="Visible"/>, so the sentence and the rows are counted off one read of the filter.
+    /// The live announcement and the table's accessible name, so they cannot drift; it names the
+    /// order, or a sort goes unannounced. It counts the list it is handed, not <see cref="Visible"/>,
+    /// and <see cref="ChosenCount"/>, so it cannot disagree with the rows or with the empty state.
     /// </summary>
     private string Summary(IReadOnlyList<KildeSummary> visible) =>
         T.KildeCount(
@@ -771,7 +771,7 @@ public sealed partial class KildeSearch : ComponentBase
     /// <summary>
     /// Starts the vocabulary first and awaits it last, since it only costs two facets their words.
     /// The renders in between are required: ComponentBase draws only at the first yield and at the
-    /// end, so the list and an open kilde would wait up to 100s on it. (Fhi.Metadata-tbpbr)
+    /// end, so the list and an open kilde would wait up to 100s on it. (Fhi.Metadata-8uwtd)
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
@@ -851,8 +851,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>
     /// The whole list, with no search or kildetype though the endpoint takes both: narrowing is
-    /// client-side, and a narrower fetch would count the facets over rows the reader cannot get
-    /// back. Drawing it belongs to <see cref="OnInitializedAsync"/>, which orders the three calls.
+    /// client-side, and a narrower fetch would count facets over rows the reader cannot get back.
+    /// Never await the vocabulary here: a deep-linked kilde would wait on it. (Fhi.Metadata-8uwtd)
     /// </summary>
     private async Task LoadAsync()
     {
@@ -1296,8 +1296,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>Invoke a host callback without letting the host's own exception out.</summary>
     /// <remarks>
-    /// Reasoned on <c>VariableSearch.RaiseAsync</c>: static SSR needs a navigating handler's
-    /// <see cref="NavigationException"/>, and anything else would tear down the CMS page's circuit.
+    /// Static SSR needs a navigating handler's <see cref="NavigationException"/>; anything else would
+    /// tear down the CMS page's circuit. The logger is passed, not read off <c>Log</c>, to stay static.
     /// </remarks>
     private static async Task RaiseAsync<TValue>(EventCallback<TValue> callback, TValue value, ILogger? log)
     {
