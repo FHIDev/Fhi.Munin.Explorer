@@ -182,8 +182,10 @@ public class DownloadSelectionTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Null(Button(cut, "Last ned som Excel").GetAttribute("aria-disabled")));
     }
 
-    [Fact]
-    public void Download_AFailure_IsNotShownUnderTheNextSearch()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Download_AFailure_IsNotShownUnderTheNextSearch(bool newText)
     {
         var client = new Client(80) { Refuse = new HttpRequestException("503") };
         var cut = Render(client);
@@ -192,7 +194,14 @@ public class DownloadSelectionTest : ExplorerTestContext
         Button(cut, "Last ned som Excel").Click();
         cut.WaitForAssertion(() => Assert.NotEqual("", Alert(cut)));
 
-        Search(cut, "høyde");
+        if (newText)
+        {
+            Search(cut, "høyde");
+        }
+        else
+        {
+            cut.FindAll("input[type=checkbox]").Single(i => i.ParentElement!.TextContent.Contains("Vis historiske", StringComparison.Ordinal)).Change(true);
+        }
 
         cut.WaitForAssertion(() => Assert.Equal("", Alert(cut)));
     }

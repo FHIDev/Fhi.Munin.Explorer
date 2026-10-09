@@ -89,7 +89,7 @@ public partial class VariableSearch
         builder.AddContent(28, T.IncludeKodeverk);
         builder.CloseElement();
 
-        // aria-disabled while a download is out, not disabled: disabling the pressed button drops focus to <body>.
+        // aria-disabled while a download or a search is out, not disabled: disabling the pressed button drops focus to <body>.
         AddDownloadButton(builder, 29, ExportFormat.Xlsx, T.DownloadXlsx);
         AddDownloadButton(builder, 36, ExportFormat.Csv, T.DownloadCsv);
 
