@@ -13,15 +13,14 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// and class stay the caller's, as they are for <see cref="StatisticsBlock"/>: the same block sits
 /// at three different depths.
 /// <para>
-/// <see cref="Values"/> alone is shared with the result row's drill-in panel, which is a
-/// different surface wearing a different prefix — hence the class it takes.
+/// <see cref="Rows"/>, and through it <see cref="Values"/>, is shared with the drill-in panel's
+/// Detaljer tab (Fhi.Metadata-chx2i), so a change to the row markup changes that panel too.
 /// </para>
 /// </remarks>
 internal static class DetailBlocks
 {
-    // The chassis's own fact list, not the drill-in panel's: Values is the one piece both
-    // surfaces draw, so its class comes from the caller and only a detail page asks for these.
-    // (Fhi.Metadata-35w0p.11)
+    // The chassis's own fact list (Fhi.Metadata-35w0p.11). The language name goes into the
+    // drill-in panel too, through Rows.
     private const string PageFields = "munin-explorer-page__fields";
     private const string PageLanguage = "munin-explorer-page__language";
 
