@@ -601,6 +601,26 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 .munin-explorer-filters li > label input[type=checkbox] { margin-top: 4px; flex: none; }
 
+/* The half-checked parent is a grey square, as on helsedata.no prod (Stiler PR 39963, Fhi.Metadata-cjezd).
+   `data-mixed` is in the server render before the module sets `indeterminate`; forced colours keep the native box. */
+.munin-explorer-filters li > label input[type=checkbox]:indeterminate,
+.munin-explorer-filters li > label input[type=checkbox][data-mixed=true]:not(:checked) {
+  appearance: none;
+  box-sizing: border-box;
+  width: 13px;
+  height: 13px;
+  border: 1px solid rgb(114, 113, 150);
+  border-radius: 2px;
+  background: rgb(255, 255, 255) linear-gradient(#8382a3, #8382a3) center/7px 7px no-repeat;
+}
+
+@media (forced-colors: active) {
+  .munin-explorer-filters li > label input[type=checkbox]:indeterminate,
+  .munin-explorer-filters li > label input[type=checkbox][data-mixed=true]:not(:checked) {
+    appearance: auto;
+  }
+}
+
 /* Disclosure and selection stay beside each other; children take their own line.
    A filled focus state survives the host reset that removes button outlines. (Fhi.Metadata-cs3pt) */
 .munin-explorer-filters__branch {

@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **Run `Fhi.Helsedata.Stiler` 0.1.162 or later for the half-checked box in the filter tree.** Since 1.2.0 a kilde or datasamling above a chosen variabelgruppe is half-checked: `indeterminate` once the module runs, and `data-mixed="true"` in the server render before that. Stiler 0.1.162 draws it as a grey square on a white box, as helsedata.no prod does, and keeps the native box under forced colours. Without the rule the browser's own half-checked mark shows, which in Chrome is a blue «−».
