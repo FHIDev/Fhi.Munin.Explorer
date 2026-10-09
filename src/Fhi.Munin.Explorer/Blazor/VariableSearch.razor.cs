@@ -38,64 +38,30 @@ internal enum PanelTab
 /// </summary>
 /// <remarks>
 /// <para>
-/// This package ships no CSS, so the host stylesheet owns everything visual. The class names
-/// the markup emits are therefore not ours to invent: they are the ones
-/// <c>Fhi.Helsedata.Stiler</c> already defines, so that on helsedata.no the component is
-/// styled by the site it is embedded in rather than by whatever we guessed. The families used
-/// are <c>form-element__label</c>, <c>form-fieldset</c>, <c>searchbox__freetext*</c>,
-/// <c>hd-button-square</c> with <c>button-square--primary</c>, <c>button-square--secondary</c>,
-/// <c>button-square--ghost</c>, <c>button-square--ghost-blue</c>, <c>hd-button-reset</c>,
-/// <c>margin-right</c>, <c>margin-bottom</c>,
-/// <c>margin--bottom</c> and <c>margin--none</c>, <c>headline</c> with <c>headline-3</c>,
-/// <c>headline-s</c> and <c>headline-xxs</c>, <c>caption</c>, <c>ingress</c>, <c>tag</c>,
+/// This package ships no CSS, so the host stylesheet owns everything visual. Page furniture wears
+/// <c>Fhi.Helsedata.Stiler</c>'s own names: <c>form-element__label</c>, <c>form-fieldset</c>,
+/// <c>searchbox__freetext*</c>, <c>hd-button-square</c> with <c>button-square--primary</c>,
+/// <c>button-square--secondary</c>, <c>button-square--ghost</c>, <c>button-square--ghost-blue</c>,
+/// <c>hd-button-reset</c>, <c>margin-right</c>, <c>margin-bottom</c>, <c>margin--bottom</c> and
+/// <c>margin--none</c>, <c>headline</c> with <c>headline-3</c>, <c>headline-s</c> and
+/// <c>headline-xxs</c>, <c>caption</c>, <c>ingress</c>, <c>tag</c>,
 /// <c>dot</c>, <c>infobox</c> with <c>infobox--bg-yellow</c>, and <c>screenreader-only</c>.
 /// </para>
 /// <para>
-/// That list used to include <c>datasourcecard*</c>, the card list helsedata's own
-/// datakildeutforsker renders its results with. Since <c>Fhi.Metadata-zs56s</c> the results are
-/// their variable page's own rows instead — see the paragraph on <c>variables.css</c> below — and
-/// the markup emits no <c>datasourcecard</c> name at all.
+/// Everything else is under the <c>munin-explorer</c> prefix, whose rules ship in
+/// <c>Fhi.Helsedata.Stiler</c> under <c>components/munin-explorer/</c>: the rows
+/// (<c>munin-explorer-data-list*</c>, <c>munin-explorer-dataitem-*</c>), the list they sit in
+/// (<c>munin-explorer-container</c>, <c>munin-explorer-results</c>), the opened panel
+/// (<c>munin-explorer-meta*</c>), the pager (<c>munin-explorer-pagination</c>,
+/// <c>munin-explorer-pagination-content</c>) and its skip link,
+/// <c>munin-explorer-skiplink-pagination</c>, whose rule has to hide it until it is focused and
+/// must not be scoped under <c>munin-explorer-header</c>, which the link sits outside. The pager's
+/// and the skip link's rules arrived in Stiler 0.1.14; on 0.1.13 the skip link stays visible.
+/// <c>README.md</c> has the full inventory.
 /// </para>
 /// <para>
-/// The result vocabulary is not Stiler's at all, and that is a dependency rather than an oversight.
-/// Since <c>Fhi.Metadata-zs56s</c> the component renders helsedata's own variable page rather than
-/// a shape of its own, so the rows (<c>munin-explorer-data-list*</c>, <c>munin-explorer-dataitem-*</c>), the
-/// list they sit in (<c>munin-explorer-container</c>, <c>munin-explorer-results</c>), the
-/// opened panel (<c>munin-explorer-meta*</c>), the column picker's names listed below and the pager
-/// (<c>munin-explorer-pagination</c>, <c>munin-explorer-pagination-content</c>) were read off the
-/// page-specific <c>variables.css</c> that page carries rather than off the site-wide stylesheet.
-/// The shape is still theirs; the names are not. The pager was the last of them to be renamed,
-/// under <c>Fhi.Metadata-hyyxl</c>: Stiler defines no pagination rule of its own — its compiled
-/// stylesheet has no <c>pagination</c>, <c>pager</c>, <c>paging</c>, <c>page-link</c> or
-/// <c>page-item</c> — while <c>variables.css</c> does, and despite its name that stylesheet is
-/// served on every page of helsedata.no, so borrowing cost nothing inside their estate and left
-/// every host outside it drawing a pager at browser defaults. The rules for the whole prefix,
-/// pager included, ship in <c>Fhi.Helsedata.Stiler</c> under <c>components/munin-explorer/</c> —
-/// the pager's from 0.1.14, which is also where the skip link into it landed under
-/// <c>Fhi.Metadata-ja2qu</c>, so on 0.1.13 the pager and nothing else renders at browser defaults.
-/// The skip link was the last borrowed name of all, helsedata's <c>skiplink-pagination</c>, and it
-/// failed backwards from every other missing rule: what was missing was the rule that HIDES the
-/// link until it is focused, so a Stiler-only host drew a permanently visible "Hopp til
-/// paginering" over every multi-page result list rather than an unstyled anything. It is
-/// <c>munin-explorer-skiplink-pagination</c> now, and its Stiler rule is deliberately unscoped, so
-/// it matches this anchor wherever the markup puts it — a rule scoped under
-/// <c>munin-explorer-header</c> would not, since that header opens and closes entirely inside
-/// <c>ColumnPicker()</c> while this anchor is rendered beside the result list. The gap survived
-/// as long as it did because nothing here could see it: the two guards in this repository ask
-/// whether a name has a rule in the capture of helsedata's live page or in the sample stylesheet,
-/// and helsedata's <c>variables.css</c> styled the borrowed name while both samples styled it
-/// themselves. Neither guard reads Stiler, so neither had anything to say about the one host that
-/// has only Stiler. <c>README.md</c> has the full split.
-/// </para>
-/// <para>
-/// Two parts of helsedata's own pager were deliberately not carried across when its shape was read
-/// off <c>variables.css</c>, and the prefix has no equivalent of either.
-/// <c>variables-pagination-mobile</c> is a second copy of the controls that their media queries
-/// swap in; rendering it too would put two "Neste" buttons for one list in the tab order and in the
-/// accessibility tree, so this renders the one pager at every width. The <c>__expired</c> modifiers
-/// describe a state this component does not have — it never lists expired variables — and a
-/// modifier whose meaning cannot be read back off the stylesheet is exactly the guess this package
-/// exists to avoid.
+/// One pager is drawn at every width: a second, mobile copy would put two "Neste" buttons for one
+/// list in the tab order and the accessibility tree.
 /// </para>
 /// <para>
 /// The filter panel takes no class name from helsedata's stylesheets: a <c>&lt;details&gt;</c> per facet, a nested <c>&lt;ul&gt;</c> for the kilde/delkilde hierarchy and a checkbox per value,
@@ -109,77 +75,49 @@ internal enum PanelTab
 /// for the trail and <c>munin-explorer-crumb</c> for its steps. It is an <c>&lt;ol&gt;</c> of
 /// <c>&lt;button&gt;</c>s whose steps narrow the filter rather than navigate, so Stiler's
 /// <c>.breadcrumbs</c> names, worn by the detail pages' trail (<see cref="DetailTrail"/>), do not
-/// apply. The chevrons are a host's to
-/// draw, and a host that draws nothing gets a numbered list that still reads correctly, in order,
-/// with the right names.
+/// apply. The chevrons are a host's to draw, and a host that draws nothing gets a numbered list
+/// that still reads correctly, in order, with the right names.
 /// </para>
 /// <para>
-/// The column picker adds eight names, all of them helsedata's own and none of them ours. They
-/// come from the same <c>variables.css</c> as the rest of the result vocabulary.
-/// <c>munin-explorer-header</c> with its <c>__actions</c> and <c>__actions-button</c> place
-/// the control above the list; <c>dropdown-choicepicker</c> with its
-/// <c>--right</c> and <c>__item</c> draw the open list, positioned against an inline
-/// <c>position: relative</c> exactly as their own markup does it; and the disclosure wears both
-/// <c>munin-explorer__dropdown</c>, which is the z-index, and the bare <c>dropdown</c>, which is
-/// the width their own actions row gives a trigger
-/// (<c>.munin-explorer-header__actions .dropdown { width: 100% }</c>). Each toggle's label is
-/// the button's own text rather than a span wearing a name, which is one name fewer to have to
-/// find in a stylesheet. A host that has none of them still
-/// gets a working disclosure — the shape is <c>&lt;details&gt;</c>, a <c>&lt;ul&gt;</c> and the
-/// square button in two states, the same three elements the filter panel leans on — it is drawn
-/// in the flow rather than over the list. What it must supply either way is
-/// <c>screenreader-only</c>, or the sentence explaining why the last column will not turn off is
-/// on screen for everyone — and two rules that take the browser's disclosure marker off the
-/// <c>&lt;summary&gt;</c>, which is <c>display: list-item</c> by default and would otherwise draw
-/// a triangle beside a button that has none. helsedata's own trigger is a <c>&lt;button&gt;</c>,
-/// so their stylesheet has no reason to carry those two.
+/// The column picker sits in <c>munin-explorer-header</c> with its <c>__actions</c> and
+/// <c>__actions-button</c>; its open list is Stiler's <c>dropdown-choicepicker</c> with
+/// <c>--right</c> and <c>__item</c>, positioned against an inline <c>position: relative</c>, and
+/// the disclosure wears <c>munin-explorer__dropdown</c> and <c>dropdown</c>. A host that has none
+/// of them still gets a working <c>&lt;details&gt;</c>, drawn in the flow rather than over the
+/// list. What it must supply either way is <c>screenreader-only</c>, or the sentence explaining
+/// why the last column will not turn off is on screen for everyone — and rules taking the
+/// browser's disclosure marker off the <c>&lt;summary&gt;</c>, which would otherwise draw a
+/// triangle beside the button.
 /// </para>
 /// <para>
-/// The detail panel adds no class name either, and for the same reason. It is a
-/// <c>&lt;dl&gt;</c> of labels and values under Om variabelen and a <c>&lt;ul&gt;</c> for the
-/// kodeverk under Data, wearing Stiler's <c>form-element__label</c>, <c>caption</c>,
-/// <c>infobox</c> and the ghost square button for the disclosure that opens it. Stiler has no
-/// definition list and no key/value block that can be read back off its compiled stylesheet, so
-/// what a host supplies is base styling for those two elements — a host that supplies none still
-/// gets a panel that reads correctly, just an unindented one.
-/// <c>munin-explorer-detail</c> is a handle that Stiler also dresses, in
-/// <c>components/munin-explorer/_detail.scss</c>.
+/// The detail panel adds no style name. It is a <c>&lt;dl&gt;</c> of labels and values under Om
+/// variabelen and a <c>&lt;ul&gt;</c> for the kodeverk under Data, wearing Stiler's
+/// <c>form-element__label</c>, <c>caption</c>, <c>infobox</c> and the ghost square button, so a
+/// host supplies base styling for those two elements; one that supplies none still gets a panel
+/// that reads correctly, just an unindented one. <c>munin-explorer-detail</c> is a handle that
+/// Stiler also dresses, in <c>components/munin-explorer/_detail.scss</c>.
 /// </para>
 /// <para>
 /// The kilde and datasamling do not open inside that panel: they take over the component's own
-/// area as a drill-in, wearing the handle <c>munin-explorer-drilldown</c> and again no style
-/// name. What it holds is a heading in Stiler's <c>headline headline-s</c> and a
-/// <c>&lt;dl&gt;</c>, or — for a kilde — the whole of <c>KildeView</c>, whose fact lists wear the
-/// detail chassis's <c>munin-explorer-page__fields</c> rather than this panel's own grid.
-/// <c>munin-explorer-source</c> is not a class: it is the prefix of the element id that names
-/// the region (<c>munin-explorer-source-{instance}</c>), so a host or a test reaching for
-/// <c>.munin-explorer-source</c> finds nothing. It was a class, back when the kilde opened
-/// inside the variable's panel, and stopped being one when that panel became this drill-in.
+/// area as a drill-in, wearing the handle <c>munin-explorer-drilldown</c>. What it holds is a
+/// heading in Stiler's <c>headline headline-s</c> and a <c>&lt;dl&gt;</c>, or — for a kilde — the
+/// whole of <c>KildeView</c>. <c>munin-explorer-source</c> is not a class: it is the prefix of the
+/// element id that names the region (<c>munin-explorer-source-{instance}</c>), so
+/// <c>.munin-explorer-source</c> selects nothing.
 /// </para>
 /// <para>
-/// <c>KildeView</c> adds handles of its own — <c>munin-explorer-kilde</c> with its <c>__header</c>,
-/// <c>__identifiers</c>, <c>__kildetype</c>, <c>__description</c>, <c>__body</c>, <c>__main</c>,
-/// <c>__datasamlinger</c> and delkilde-tree parts — and no style name, because
-/// neither stylesheet has a kilde record to borrow one from. <c>VariableView</c> and
-/// <c>DatasamlingView</c> add the same shape under <c>munin-explorer-whole*</c> and
-/// <c>munin-explorer-datasamling*</c>. Every element wearing them also wears a Stiler class or is
-/// dressed by its own browser default, so a host that defines none of them loses no information.
-/// The README's inventory table is the full list; a count here would go stale the next time one is
-/// added, which is how the old one did.
+/// <c>KildeView</c>, <c>VariableView</c> and <c>DatasamlingView</c> add handles of their own under
+/// <c>munin-explorer-kilde*</c>, <c>munin-explorer-whole*</c> and <c>munin-explorer-datasamling*</c>.
+/// Every element wearing them also wears a Stiler class or is dressed by its own browser default,
+/// so a host that defines none of them loses no information. The README's inventory table is the
+/// full list.
 /// </para>
 /// <para>
-/// The panel's Data tab adds handles of its own — <c>munin-explorer-kodeverk</c> with its
-/// <c>__item</c>, <c>__name</c> and <c>__reference</c> parts, and <c>munin-explorer-codes</c>
-/// with its <c>__table</c> — and no style name, because neither Stiler nor helsedata's own
-/// variable page has a kodeverk section to borrow one from. What is worth spelling out is the
-/// <c>&lt;table&gt;</c> inside it, one of the two this package emits — the other is the
-/// datasamlinger list in <c>KildeView</c>. The results list is not one of them: it is helsedata's
-/// own <c>munin-explorer-data-list</c>, a <c>&lt;ul&gt;</c> with a header row of <c>&lt;div&gt;</c>s,
-/// because that is the shape their stylesheet dresses. Four columns of code values have no such
-/// alternative shape. The rule that keeps it safe is the one the <c>&lt;dl&gt;</c>, the
-/// <c>&lt;ol&gt;</c> and the <c>&lt;details&gt;</c> already rely on:
-/// an element degrades to its own browser default, which for a table is aligned columns, where a
-/// class name Stiler has never heard of degrades to nothing at all.
+/// The panel's Data tab adds handles too — <c>munin-explorer-kodeverk</c> with its <c>__item</c>,
+/// <c>__name</c> and <c>__reference</c> parts, and <c>munin-explorer-codes</c> with its
+/// <c>__table</c>. The code list is a real <c>&lt;table&gt;</c>, because an element degrades to its
+/// own browser default, which for a table is aligned columns, where a class name Stiler has never
+/// heard of degrades to nothing at all.
 /// </para>
 /// <para>
 /// A host outside helsedata's estate has to provide equivalents for those names, and two
@@ -194,17 +132,7 @@ internal enum PanelTab
 /// Text and non-text contrast, WCAG 1.4.3 and 1.4.11.
 /// </description></item>
 /// </list>
-/// <para>
-/// There is deliberately no visually-hidden helper in that list. Stiler has no global
-/// screen-reader-only rule, so nothing here depends on one: the results list is named with
-/// <c>aria-label</c> rather than a clipped <c>&lt;caption&gt;</c>, and a missing value is
-/// written out as "Ikke oppgitt" for everyone rather than shown as an em dash and whispered to
-/// assistive technology.
-/// </para>
 /// </remarks>
-// Sealed for the reason VariableListView is: it unsubscribes from VariableListState.Changed in
-// Dispose, and CA1063 asks an unsealed disposable for a virtual pattern a component has no use
-// for. Nothing in the package, the samples or helsedata's host derives from it.
 public sealed partial class VariableSearch : ComponentBase
 {
     /// <summary>
@@ -673,12 +601,9 @@ public sealed partial class VariableSearch : ComponentBase
     // "no narrowing" — so nothing downstream has to spell that case out twice.
     private VariableFilter _filter = VariableFilter.None;
 
-    // The facets and their counts, as the API last reported them for _executedSearch and _filter.
-    // Null only until the first answer arrives, and never set back to null: the filter controls are
-    // rendered from it, and taking them off the page after a failed refresh would remove the
-    // control the reader just pressed — the same rule the pager and the Søk button follow. A
-    // refresh that fails therefore leaves the previous counts on screen, and says so through
-    // _facetError rather than by emptying the panel.
+    // The facets and counts as last reported for _executedSearch and _filter. Never set back to null:
+    // the filter controls render from it, so a failed refresh keeps the old counts and says so
+    // through _facetError rather than removing the control the reader just pressed.
     private FilterOptions? _facets;
 
     // Set when the facets could not be refreshed, which is a different failure from the search
@@ -703,38 +628,24 @@ public sealed partial class VariableSearch : ComponentBase
     private VariableDetail? _detail;
     private bool _detailLoading;
 
-    // Bumped by every open and every close, so a detail fetch can tell whether the panel it is
-    // about to write into is still the one it was started for. The id alone cannot say that: it
-    // names the variable, not the call, and closing a row and opening the same row again is two
-    // calls carrying one id — the abandoned first would otherwise be read as the answer to the
-    // second and report its failure into a panel that is still waiting.
+    // Bumped by every open and close, so a detail fetch can tell whether its panel is still the one
+    // it was started for: closing and reopening one row is two calls carrying one id.
     private int _detailGeneration;
 
-    // Set when the detail could not be fetched, or when the API says there is no such published
-    // variable. Its own field rather than _error, because the rows on screen are unaffected: what
-    // failed is one panel inside one card, and reporting it in the component's own alert region
-    // would say the whole list was stale.
+    // Set when the detail could not be fetched or is not published. Not _error: the rows on screen
+    // are unaffected, and what failed is one panel.
     private string? _detailError;
 
-    // Which of the two owners the open variable's panel is currently disclosing, and what has been
-    // fetched for it. Null is "neither", which is where every variable's panel starts: the owners
-    // are a second fetch each, and asking for them before the reader has said they want them would
-    // put three requests behind one press on a public page.
-    //
-    // One at a time, and only ever under an open variable panel — the kilde and the datasamling are
-    // reached *through* a variable, which is what the bead asks for, so there is no state here that
-    // can outlive the panel it hangs in. LoadDetailAsync and ClearSelection both clear it for that
-    // reason.
+    // Which owner the open variable's panel discloses, and what was fetched for it; null until the
+    // reader asks, so one press does not cost three requests. It lives only under an open variable
+    // panel, which is why LoadDetailAsync and ClearSelection both clear it.
     private SourceKind? _sourceKind;
     private KildeDetail? _kilde;
     private DatasamlingDetail? _datasamling;
     private bool _sourceLoading;
 
-    // Its own generation, for the reason the detail panel has one: closing an owner and opening it
-    // again is two calls carrying one id, and the abandoned first must not report itself into the
-    // second one's panel. Separate from _detailGeneration because the two fetches are independent —
-    // an owner opened over a variable panel that is still on screen has not been abandoned by
-    // anything.
+    // Its own generation, as _detailGeneration: closing and reopening an owner is two calls with one
+    // id. Separate, because an owner opened over a panel still on screen abandons nothing.
     private int _sourceGeneration;
 
     // Set when the owner could not be fetched, or when the API publishes no such kilde or
@@ -759,23 +670,16 @@ public sealed partial class VariableSearch : ComponentBase
     private int _page = 1;
     private int _pageSize = 20;
 
-    // Whether the pager has been pressed since the last search or reordering, which is the one
-    // thing "there is more than one page" cannot tell the markup on its own. A retreat can land on
-    // a result that legitimately has a single page — the index shrank to one page's worth between
-    // two requests — and dropping the pager in that render would take Neste out of the document
-    // under the finger that pressed it, which is the failure the retreat exists to avoid rather
-    // than a new one to introduce. Reset by a search and by a sort, neither of which is started
-    // from a pager button, so a single-page result reached that way still costs no furniture.
+    // Whether the pager has been pressed since the last search or sort. A retreat can land on a
+    // single-page result, and dropping the pager then would take Neste out from under focus.
     private bool _keepPager;
 
     // Whether the fetch running is the one the rows' retry button started, which nothing else can
     // report: _loading is raised by the facets too, and _failedRows outlives its own answer.
     private bool _retryingRows;
 
-    // The search text the visible result actually came from, which is not the same as the
-    // text in the box: @bind writes _search on blur, so the box can hold an unsubmitted query
-    // while the table below still shows the previous one. The announcement has to describe
-    // what is on screen.
+    // The search text the visible result came from. @bind writes _search on blur, so the box can
+    // hold an unsubmitted query while the rows still show the previous one.
     private string? _executedSearch;
 
     // The term the last rows read asked for, trimmed as an answered one is, whether or not it was answered.
@@ -822,12 +726,8 @@ public sealed partial class VariableSearch : ComponentBase
     // The shared lock, as before: the panel is busy for any request out, its own counts or the rows.
     private string FiltersBusy => _loading ? "true" : "false";
 
-    /// <summary>Whether the rows' failure box is showing a retry in progress rather than a failure.</summary>
-    /// <remarks>
-    /// Set by the retry itself rather than derived from <c>_loading</c>. Two fetches are
-    /// indistinguishable from that flag: the facets refresh raises it too, and the offer outlives
-    /// its own answer as a focus anchor, so an ordinary page turn afterwards looks the same.
-    /// </remarks>
+    /// <summary>Whether the rows' failure box shows a retry in progress. Set by the retry itself:
+    /// <c>_loading</c> is raised by the facets refresh too, and the offer outlives its answer.</summary>
     private bool RetryingRows => _retryingRows;
 
     /// <summary>What that box says: the failure, or that the offer beside it is being answered.</summary>
@@ -836,35 +736,22 @@ public sealed partial class VariableSearch : ComponentBase
     /// <summary>The sizes the reader chooses between, which are Runa's own.</summary>
     private static readonly int[] PageSizeOptions = [10, 20, 50];
 
-    /// <summary>The sizes the control offers: the three, and the host's own if it is not one.</summary>
-    /// <remarks>
-    /// A host is free to set 30, and a select with no option for the size in force falls back to
-    /// the first — a control reporting 10 rows a page over rows built at 30. The three buttons this
-    /// replaced could say "none of us" by leaving every one unpressed; a select has no such state.
-    /// </remarks>
+    /// <summary>The sizes the control offers: the three, and the host's own if it is not one, since a
+    /// select with no option for the size in force shows the first.</summary>
     private IEnumerable<int> OfferedPageSizes =>
         PageSizeOptions.Contains(ClampedPageSize)
             ? PageSizeOptions
             : PageSizeOptions.Append(ClampedPageSize).Order();
 
-    /// <summary>Bumped whenever a change is refused, to key the control below.</summary>
-    /// <remarks>
-    /// A browser moves a select's own selection before <c>onchange</c> runs, so a refused change
-    /// leaves it showing a size the rows were not built with — and re-rendering does not move it
-    /// back, because the tree is unchanged and Blazor patches nothing. A new key discards it.
-    /// </remarks>
+    /// <summary>Bumped whenever a change is refused, to key the control below: the browser has already
+    /// moved the select, and a render tree that did not change would not move it back.</summary>
     private int _sizeRefusals;
 
-    /// <summary>Reads the size off the <c>&lt;select&gt;</c> and applies it.</summary>
-    /// <remarks>
-    /// A value the control does not offer is dropped rather than clamped: the only way to send one
-    /// is to have edited the markup, and a paging nobody chose is worse than the one on screen.
-    /// </remarks>
+    /// <summary>Reads the size off the <c>&lt;select&gt;</c> and applies it. A value the control does
+    /// not offer is dropped rather than clamped: only edited markup can send one.</summary>
     private async Task OnPageSizeChangedAsync(ChangeEventArgs args)
     {
-        // Refused, and the select has already moved itself, so it has to be put back — see
-        // _sizeRefusals. The three buttons this replaced needed none of this: a press that was
-        // dropped changed nothing on screen, because their state was drawn from ours.
+        // Refused, and the select has already moved itself, so it has to be put back — see _sizeRefusals.
         if (_loading
             || !int.TryParse(args.Value?.ToString(), out var size)
             || !OfferedPageSizes.Contains(size))
@@ -888,18 +775,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// <summary>How many variables the search matched, not how many are on screen.</summary>
     private int TotalCount => _result?.TotalCount ?? 0;
 
-    /// <summary>
-    /// How many pages the result has. At least 1, so "Side 1 av 0" can never be written.
-    /// </summary>
+    /// <summary>How many pages the result has; at least 1, so "Side 1 av 0" is never written.</summary>
     /// <remarks>
-    /// The server's own count is preferred over arithmetic here, because the server is the one that
-    /// clamps the page size: counting the pages ourselves from a size it quietly changed would put
-    /// a Neste button on screen for a page that does not exist. The arithmetic is kept as a fallback
-    /// for a substituted <see cref="IMuninExplorerClient"/> that leaves the field at zero — claiming
-    /// one page over three hundred rows would strand the reader on the first twenty-five of them.
-    /// It divides by <see cref="ResultPageSize"/> and not by <see cref="ClampedPageSize"/> for the
-    /// same reason: counting the pages against a size the rows were not built with would put the
-    /// page count and the row range on screen describing two different pagings of one result.
+    /// The server's count first, since the server clamps the page size. A client that leaves it at
+    /// zero falls back to dividing by <see cref="ResultPageSize"/>, the size the rows were built with.
     /// </remarks>
     private int TotalPages
     {
@@ -920,32 +799,22 @@ public sealed partial class VariableSearch : ComponentBase
 
     private bool CanGoNext => _page < TotalPages;
 
-    /// <summary>Whether the pager belongs on screen at all.</summary>
+    /// <summary>Whether the pager belongs on screen: more than one page, or a reader already on it.</summary>
     /// <remarks>
-    /// More than one page, or a pager the reader is already standing on. "Side 1 av 1" between two
-    /// buttons that can never do anything is furniture and is left out — but only when the reader
-    /// did not arrive at that single page by pressing one of those two buttons, because taking the
-    /// pressed control out of the document drops focus to <c>&lt;body&gt;</c>. See
-    /// <see cref="_keepPager"/> for the path that reaches a single page from a pager button.
+    /// Removing the pressed control drops focus to <c>&lt;body&gt;</c> — see <see cref="_keepPager"/>.
     /// </remarks>
     private bool ShowPager => _result is not null && (TotalPages > 1 || _keepPager);
 
     /// <summary>The 1-based position of the first row on screen, or 0 when there are no rows.</summary>
     /// <remarks>
-    /// Guarded on the rows rather than on <see cref="TotalCount"/>, so that it agrees with
-    /// <see cref="LastItemOnPage"/> without either of them relying on the markup to keep the pair
-    /// off screen: a page with no rows on a non-zero total would otherwise read "Viser 26–0 av 312".
+    /// Guarded on the rows, as <see cref="LastItemOnPage"/> is, or an empty page reads "Viser 26–0 av 312".
     /// </remarks>
     private int FirstItemOnPage =>
         _result is null || _result.Items.Count == 0 ? 0 : ((ResultPage - 1) * ResultPageSize) + 1;
 
-    /// <summary>
-    /// The 1-based position of the last row on screen, counted from the rows actually delivered.
-    /// </summary>
+    /// <summary>The 1-based position of the last row on screen, counted from the rows delivered.</summary>
     /// <remarks>
-    /// Counted rather than calculated as <c>page × size</c>, so the last page says 312 and not 325,
-    /// and so a server that returned a different page size than it was asked for still describes
-    /// itself truthfully.
+    /// Counted rather than <c>page × size</c>, so the last page says 312 and not 325.
     /// </remarks>
     private int LastItemOnPage =>
         _result is null || _result.Items.Count == 0 ? 0 : FirstItemOnPage + _result.Items.Count - 1;
@@ -956,72 +825,34 @@ public sealed partial class VariableSearch : ComponentBase
     /// </summary>
     private int ResultPageSize => _result is { Size: > 0 } page ? page.Size : ClampedPageSize;
 
-    /// <summary>
-    /// The page the visible result actually is, which is the server's answer when it gave one and
-    /// the page we asked for otherwise.
-    /// </summary>
+    /// <summary>The page the visible result is: the server's answer when it gave one, else the page asked for.</summary>
     /// <remarks>
-    /// The same treatment <see cref="ResultPageSize"/> gives the size, for the same reason. An API
-    /// that clamps an out-of-range page — answering page 8 of 8 to a request for page 12 — would
-    /// otherwise have the row range counted from the number that was asked for, so the status line
-    /// would offer "Viser 276–300 av 200" over rows the reader is not looking at.
+    /// An API that clamps an out-of-range page would otherwise have the row range counted from the
+    /// number asked for — "Viser 276–300 av 200".
     /// </remarks>
     private int ResultPage => _result is { PageNumber: > 0 } page ? page.PageNumber : _page;
 
-    /// <summary>
-    /// <c>"true"</c> on a pager button that would do nothing, and nothing at all on one that works.
-    /// </summary>
+    /// <summary><c>"true"</c> on a pager button that would do nothing, and nothing on one that works.</summary>
     /// <remarks>
-    /// <para>
-    /// <c>aria-disabled</c> rather than the <c>disabled</c> attribute, for the same reason the Søk
-    /// button is never disabled: disabling the element that currently has focus drops focus to
-    /// <c>&lt;body&gt;</c>. Pressing Neste until the last page, or Forrige back to the first, is the
-    /// ordinary way to use a pager, and both end with the pressed button becoming unavailable — so
-    /// with a real <c>disabled</c> attribute the reward for reaching the end of the list is to start
-    /// tabbing from the top of the host's page again.
-    /// </para>
-    /// <para>
-    /// The button is genuinely inert either way: <see cref="GoToPageAsync"/> clamps, so a click at
-    /// the boundary asks for the page it is already on and returns without a request. This is the
-    /// ARIA Authoring Practices' own recommendation for a control that must stay focusable.
-    /// </para>
+    /// Not <c>disabled</c>: pressing Neste to the last page would then drop focus to <c>&lt;body&gt;</c>.
+    /// The button is inert either way, since <see cref="GoToPageAsync"/> clamps.
     /// </remarks>
     private static string? AriaDisabled(bool enabled) => enabled ? null : "true";
 
     /// <summary>The component's own heading level, clamped into the range that is a heading.</summary>
     private int TitleLevel => Math.Clamp(HeadingLevel, 1, 6);
 
-    /// <summary>
-    /// The heading level for a result card: one step below the component's own title, so the
-    /// outline stays unbroken however deep the host mounted us.
-    /// </summary>
+    /// <summary>The heading level for a result card: one below the component's own title.</summary>
     /// <remarks>
-    /// With the title already at <c>h6</c> there is no level below, so the cards sit at
-    /// <c>h6</c> alongside it. That flattens the outline rather than breaking it, which is the
-    /// better of the two available answers — HTML has no <c>h7</c>, and dropping the headings
-    /// altogether would cost the heading rotor these cards were given for.
+    /// Under an <c>h6</c> title the cards sit at <c>h6</c> too: HTML has no <c>h7</c>, and a flat
+    /// outline beats dropping the headings.
     /// </remarks>
     private int RowLevel => Math.Clamp(TitleLevel + 1, 1, 6);
 
-    /// <summary>
-    /// One sentence describing the visible result, used both as the live announcement and
-    /// as the list's accessible name so the two can never drift apart.
-    /// </summary>
+    /// <summary>The visible result in one sentence: the live announcement and the list's name.</summary>
     /// <remarks>
-    /// <para>
-    /// It names the ordering as well as the count. Without column headers there is no
-    /// <c>aria-sort</c> to carry that, so it rides along on the status line the component already
-    /// has: pressing a sort button changes this sentence, and the polite, atomic live region reads
-    /// the whole of it back. The sentence is assembled inside <see cref="Texts"/> rather than
-    /// glued together here, so a language that has to state the ordering first can say it that way.
-    /// </para>
-    /// <para>
-    /// It names <em>which</em> rows are on screen — "Viser 26–50 av 312" — rather than only how
-    /// many, and that is also what announces a page change: turning a page rewrites this sentence,
-    /// and the live region reads it. The range is not repeated inside the pager, where Munin's own
-    /// explorer puts it, because saying it twice on one screen is the duplication the empty state
-    /// already avoids, and because only one of the two copies would be announced.
-    /// </para>
+    /// It names the ordering and which rows are showing, so a sort or a page turn is announced by
+    /// rewriting it. Assembled in <see cref="Texts"/> so a language can order the clauses its own way.
     /// </remarks>
     private string Summary => _result is null
         ? ""
@@ -1035,14 +866,9 @@ public sealed partial class VariableSearch : ComponentBase
     /// </remarks>
     private string? AriaCurrent(SortField sort) => sort == _sort ? "true" : null;
 
-    /// <summary>
-    /// The title, at the level the host asked for. Razor has no syntax for a computed
-    /// element name, so this is built by hand.
-    /// </summary>
+    /// <summary>The title, at the level the host asked for; Razor cannot compute an element name.</summary>
     /// <remarks>
-    /// The visual size is pinned with Stiler's <c>headline-3</c> rather than left to the
-    /// element, because the element is the host's choice: without it, mounting the explorer
-    /// one level deeper would silently shrink its title.
+    /// Stiler's <c>headline-3</c> pins the size, so mounting one level deeper does not shrink it.
     /// </remarks>
     private RenderFragment Heading => builder =>
     {
@@ -1062,16 +888,10 @@ public sealed partial class VariableSearch : ComponentBase
         return IsSelected(v) ? T.CollapseVariableDetail(name) : T.ExpandVariableDetail(name);
     }
 
-    /// <summary>
-    /// The first column: the variable's name, which is the row's disclosure and its one Tab stop.
-    /// </summary>
+    /// <summary>The first column: the variable's name, the row's disclosure and its one Tab stop.</summary>
     /// <remarks>
-    /// Helsedata's own row model: Enter, Space and a click open the panel in place, and the panel
-    /// is where the whole variable and the save action are reached (Fhi.Metadata-35w0p.78).
-    /// <para>
     /// No heading element: <c>munin-explorer-dataitem-main__name</c> sizes the flex item, and a
-    /// heading in between would become the item and pull the column out of line with its header.
-    /// </para>
+    /// heading between would pull the column out of line (Fhi.Metadata-35w0p.78).
     /// </remarks>
     private RenderFragment RowHeading(VariableSummary v) => builder =>
     {
@@ -1130,42 +950,15 @@ public sealed partial class VariableSearch : ComponentBase
         builder.CloseElement();
     };
 
-    /// <summary>
-    /// The column header row, in helsedata's own shape: a row wearing the <c>--header</c> modifier,
-    /// with one <c>sortable-header</c> cell per column.
-    /// </summary>
+    /// <summary>The column header row, in helsedata's shape: one <c>sortable-header</c> cell per column.</summary>
     /// <remarks>
-    /// This replaces the "Sorter etter" fieldset. The fieldset existed because there was no header
-    /// to put the ordering in; now there is, and leaving both would give the same choice two
-    /// controls.
-    /// <para>
-    /// Every column maps to a real <see cref="SortField"/>. The variable column maps to
-    /// <see cref="SortField.Name"/>, a real name sort; <see cref="SortField.Default"/>, the curated
-    /// order a list opens in, has no header, so no column claims it (Fhi.Metadata-bgvdh). What each
-    /// column actually orders BY is the API's, and is on the <see cref="SortField"/> members —
-    /// Dataperiode in particular, which orders by the period's start and not by the range this
-    /// cell draws (Fhi.Metadata-35w0p.37).
-    /// </para>
-    /// <para>
-    /// aria-current, not aria-pressed, for the same reason the old buttons used it: a pressed
-    /// toggle promises that pressing again releases it, and this one flips the direction instead.
-    /// </para>
-    /// <para>
-    /// Every cell but the first is drawn only while its column is on screen — see
-    /// <see cref="ColumnVisible"/>. The header and the rows read the same predicate, because a
-    /// header cell without the values under it puts every row out of line with its own column.
-    /// That is also why a sorted column does not keep its header when it is hidden: leaving the
-    /// cell behind for its <c>aria-sort</c> would be the misalignment this rule exists to prevent.
-    /// The ordering itself survives, deliberately and announced — see <see cref="ToggleColumn"/>.
-    /// </para>
+    /// aria-current, not aria-pressed: pressing again flips the direction. Cells follow
+    /// <see cref="ColumnVisible"/> as the rows do, so a hidden sorted column loses its header too.
     /// </remarks>
     private RenderFragment ResultHeader() => builder =>
     {
-        // The table's header rowgroup — what a <thead> is. The row itself is two elements further
-        // down, on the flex container that actually holds the cells; the box in between is
-        // helsedata's row wrapper and lays nothing out that the tree needs to hear about, so it
-        // steps aside with role="none". A row owns nothing but cells, and an anonymous group
-        // sitting between a row and its columns is what breaks that.
+        // The header rowgroup, the <thead>. The row is the flex container two elements down; the
+        // wrapper between is role="none", since a row may own nothing but cells.
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "munin-explorer-data-list__header");
         builder.AddAttribute(2, "role", "rowgroup");
@@ -1237,10 +1030,8 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(seq + 1, "class",
             key is null ? "sortable-header" : $"sortable-header munin-explorer-dataitem-header__{key}");
 
-        // columnheader, which is the role aria-sort below is only allowed on — and, more to the
-        // point, the role that gives the cells under this one a column to belong to. Without it
-        // the whole header resolved to a run of anonymous nodes and a reader had no way to hear
-        // "kolonne 3 av 7, Kilde" (WCAG 1.3.1).
+        // columnheader gives the cells below a column to belong to — "kolonne 3 av 7, Kilde" — and
+        // is the role aria-sort is allowed on (WCAG 1.3.1).
         builder.AddAttribute(seq + 2, "role", "columnheader");
 
         if (sort is not { } field)
@@ -1266,10 +1057,7 @@ public sealed partial class VariableSearch : ComponentBase
         builder.AddAttribute(seq + 9, "aria-current", AriaCurrent(field));
         builder.AddAttribute(seq + 10, "onclick", EventCallback.Factory.Create(this, () => SortAsync(field)));
 
-        // The button says what the COLUMN is, not what the ordering is. It used to render the sort
-        // field's own label, so the first column read "Standard (stigende)" where it should read
-        // "Navn" — the name of the thing in the column. The ordering is shown by the arrow beside
-        // it and announced by aria-sort above, which is how a column header carries both.
+        // The column's name, not the ordering's: the arrow and aria-sort carry the ordering.
         Label(builder, seq + 11, label);
 
         if (IsActiveSort(field))
@@ -1297,18 +1085,7 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>The reader's language as a tag, and the marker for text that is not in it.</summary>
     /// <remarks>
-    /// <c>Reader</c> rather than <c>ReaderLanguage</c>: the type that resolves it is
-    /// <see cref="ReaderLanguage"/>, and a member of that name shadows the type inside every
-    /// <c>VariableSearch</c> partial, so <c>ReaderLanguage.Of(...)</c> would not compile in any
-    /// of them. <see cref="VariableView"/> and <see cref="KildeView"/> already call it
-    /// <c>Reader</c>; all three agree now.
-    /// <para>
-    /// The marking and the property resolution below delegate to
-    /// <see cref="CatalogueProperties"/>, which is where the catalogue's own properties are
-    /// resolved for every explorer in this package rather than once per component. The
-    /// kildeutforsker draws properties the same way, and a second copy of this would drift from
-    /// the first the moment either was edited.
-    /// </para>
+    /// Not <c>ReaderLanguage</c>: a member of that name would shadow the type in every partial.
     /// </remarks>
     private string Reader => ReaderLanguage.Of(Language);
 
@@ -1316,18 +1093,15 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>Which tab of the open panel is showing.</summary>
     /// <remarks>
-    /// Two: the data behind the variable, first, and what the variable is. Reset to Data whenever a
-    /// different row is opened — arriving on a tab you did not choose is disorienting.
-    /// (Fhi.Metadata-l9l2n.101)
+    /// Reset to Data whenever a different row opens, so nobody lands on a tab they did not choose
+    /// (Fhi.Metadata-l9l2n.101).
     /// </remarks>
     private PanelTab _tab = PanelTab.Data;
 
     /// <summary>A datatype code as its name, from the facets the filter panel has already loaded.</summary>
     /// <remarks>
-    /// Not the row's own <c>dataTypeDisplayName</c>: the search is fetched without a language, so
-    /// that name is in the API's default one, while the facets follow the reader's. With no facet
-    /// the code itself is shown, once the facets have answered. AGENTS.md, "The API names a
-    /// datatype, not this package".
+    /// Not the row's <c>dataTypeDisplayName</c>, which is in the API's default language. AGENTS.md,
+    /// "The API names a datatype, not this package".
     /// </remarks>
     private string? DataTypeName(string? code)
     {
@@ -1348,14 +1122,10 @@ public sealed partial class VariableSearch : ComponentBase
         return string.IsNullOrWhiteSpace(named) ? canonical : named;
     }
 
-    /// <summary>
-    /// <see cref="Texts.KildeTypeNameFromApi"/> for a site holding a token and no facet of its
-    /// own — the kilde facet's group headings.
-    /// </summary>
+    /// <summary><see cref="Texts.KildeTypeNameFromApi"/> for the kilde facet's group headings.</summary>
     /// <remarks>
-    /// One reading for every site, because falling back apart is what drew prose on the facet
-    /// button and the bare token on the heading directly beneath it. The payload is a parameter
-    /// rather than the field, so a heading resolves out of the very object its button did.
+    /// Takes the payload rather than the field, so a heading resolves out of the very object its
+    /// facet button did and the two cannot fall back apart (Fhi.Metadata-1b0ag).
     /// </remarks>
     private string KildeTypeNameFromApi(FilterOptions? facets, string? value) =>
         T.KildeTypeNameFromApi(value, FacetKildeTypeName(facets, value));
@@ -1366,16 +1136,10 @@ public sealed partial class VariableSearch : ComponentBase
             .FirstOrDefault(type => string.Equals(type.Value, value, StringComparison.OrdinalIgnoreCase))
             ?.DisplayName;
 
-    /// <summary>
-    /// The heading of the drill-in view while it is still empty, named after which of the two the
-    /// reader opened.
-    /// </summary>
+    /// <summary>The drill-in view's heading while it is still empty, named for what was opened.</summary>
     /// <remarks>
-    /// Only ever the placeholder. This is drawn exactly while both payloads are null, because a
-    /// payload that has arrived brings its own view and that view owns the heading — so a branch
-    /// naming the kilde or the datasamling here could not be reached (Fhi.Metadata-jgfum). It still
-    /// carries the id the region is labelled by: a landmark whose label does not exist yet is worse
-    /// than a plain one.
+    /// Only the placeholder: an arrived payload brings its own heading (Fhi.Metadata-jgfum). It keeps
+    /// the id the region is labelled by.
     /// </remarks>
     private RenderFragment DrilldownHeading => builder =>
     {
@@ -1419,18 +1183,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// <summary>Whether the current ordering runs ascending.</summary>
     private bool Ascending => _direction == SortDirection.Ascending;
 
-    /// <summary>
-    /// Whether the Status column is worth drawing — that is, whether a row could say anything
-    /// other than "Active".
-    /// </summary>
+    /// <summary>Whether the Status column shows by default: whether a row could say other than "Active".</summary>
     /// <remarks>
-    /// The API computes VersjonStatus from GyldigTil and filters expired versions out unless
-    /// IncludeHistorical is asked for, so in the default view the column is a constant.
-    /// <para>
-    /// This is the column's default rather than the last word on it. The picker can turn Status on
-    /// against this and off with it, and once it has been pressed the reader's choice is what
-    /// counts — see <see cref="_statusColumnChosen"/>.
-    /// </para>
+    /// The API filters expired versions out unless IncludeHistorical is set. Once pressed, the
+    /// picker overrides this — see <see cref="_statusColumnChosen"/>.
     /// </remarks>
     private bool ShowStatusColumn => _filter.IncludeHistorical;
 
@@ -1440,51 +1196,22 @@ public sealed partial class VariableSearch : ComponentBase
         + (IsSelected(v) ? " munin-explorer-data-list__item--expanded" : "")
         + (ShowsSavedNotice(v) ? " munin-explorer-data-list__item--saved" : "");
 
-    /// <summary>
-    /// The row's metadata line: code, source, data collection and period, in helsedata's own
-    /// <c>munin-explorer-dataitem-main__column</c> shape.
-    /// </summary>
+    /// <summary>The row's metadata cells, in helsedata's <c>munin-explorer-dataitem-main__column</c> shape.</summary>
     /// <remarks>
-    /// Each value is labelled. helsedata's datakildeutforsker runs its values together
-    /// unlabelled because there are only two of them and they are self-evident; ours are up to
-    /// seven, and a reader who has turned half of them off has no header for the ones that are
-    /// left to line up against, so "Inklusjon" on its own would say nothing about which field it is.
+    /// Each value is labelled: with columns turned off there may be no header to line up against.
     /// </remarks>
     private RenderFragment InfoLine(VariableSummary v) => builder =>
     {
-        // One div per column, each holding a span, which is exactly helsedata's shape. Their grid
-        // is on .munin-explorer-dataitem-main, so the columns line up only if they are its direct
-        // children — the row's own layout comes from CSS we do not own.
-        // Runa's columns, in Runa's order. Runa is what this replaces helsedata's variable page
-        // WITH, so it decides what a row says; helsedata decides what a row looks like. Taking the
-        // column set from the page being retired would be copying the thing we are replacing.
-        //
-        // Four of the eight modifiers exist in helsedata's stylesheet today. __code, __dataType,
-        // __status and __period do not, and they are emitted anyway — deliberately. The arrangement
-        // with helsedata is that we supply class names and they write the rules, so these four ARE
-        // the request, and the sample host carries the widths they should be given. A column with
-        // no width rule sizes by content, which is what put Kode on two lines: a variable code is
-        // one unbreakable token and cannot give way, so everything else must. Their header row is
-        // further along: `variable-dataitem-header__period` is already in helsedata's variables.css, because
-        // their own variable page has had a period column all along — it is only the cell modifier
-        // that is missing, since theirs draws a bar sized inline rather than a column of text.
-        //
-        // Each one is drawn only while its column is on screen. What decides that is the reader,
-        // through the column picker above the list — see ColumnVisible — except for Status, which
-        // follows the filter until they say otherwise.
-        //
-        // Kode is the other column that starts off, and unlike Status nothing puts it back on its
-        // own: it is the widest of the eight and buys the least, since a code identifies a variable
-        // rather than helping anyone pick one. The open panel carries it either way.
+        // Runa's columns in Runa's order, in helsedata's shape: one div per column, direct children of
+        // .munin-explorer-dataitem-main, whose grid lines them up. Each is drawn only while
+        // ColumnVisible says so; Kode starts off, as the widest column that buys the least.
         if (ColumnVisible(ResultColumn.Code))
         {
             RowCell.Write(builder, 100, T.FieldCode, v.Code, "code", T.NotSpecified);
         }
 
-        // The short name, which is what Runa shows — "ALS" rather than "Als registeret" — with the
-        // full name on hover, also as Runa does. A kilde name is long and repeats down every row of
-        // a single register's variables, so the short form is what makes the column readable. Trimmed
-        // rather than `??`: an omitted kortnavn is null or "", and `??` only catches the first.
+        // Runa's short name, with the full name on hover. Trimmed rather than `??`, since an omitted
+        // kortnavn is null or "".
         if (ColumnVisible(ResultColumn.Kilde))
         {
             RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(v.KildeShortName) ?? v.KildeName, "source", T.NotSpecified, tooltip: v.KildeName);
@@ -1506,13 +1233,8 @@ public sealed partial class VariableSearch : ComponentBase
             RowCell.Write(builder, 500, T.FieldDataType, DataTypeName(v.DataType), "dataType", T.NotSpecified, catalogue: false);
         }
 
-        // Status starts hidden unless historical variables can be in the list at all. The API
-        // computes it from GyldigTil — Active unless the version has expired — and excludes
-        // expired versions unless IncludeHistorical is set. In the default view every row is
-        // therefore Active, and a column that says the same word on every row is not a column,
-        // it is furniture. Verified against the live API: 100 rows sampled across five pages of
-        // the catalogue, all Active. That is now a default rather than the whole rule: a reader
-        // who wants the column anyway can press it in the picker, and their choice sticks.
+        // Hidden by default unless historical variables can be listed, since otherwise every row
+        // reads Active. A reader can still turn it on in the picker.
         if (ColumnVisible(ResultColumn.Status))
         {
             // Translated through the same map the variable page uses, and unmarked for that
@@ -1533,9 +1255,7 @@ public sealed partial class VariableSearch : ComponentBase
 
     /// <summary>The dataperiode in one line, or null where the catalogue has neither date.</summary>
     /// <remarks>
-    /// The one helper every surface joins a period with, so the column and the variable's own
-    /// page cannot word one period two ways (Fhi.Metadata-msax9). Null rather
-    /// than a dash for neither date: the cell writes "Ikke oppgitt" itself, as every column does.
+    /// The one helper every surface joins a period with (Fhi.Metadata-msax9).
     /// </remarks>
     private string? PeriodText(DateTimeOffset? from, DateTimeOffset? to) =>
         CatalogueDate.Period(from, to, Language, T, DateWidth.Narrow);
