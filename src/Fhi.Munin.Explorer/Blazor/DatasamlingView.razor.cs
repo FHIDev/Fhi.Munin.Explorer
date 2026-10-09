@@ -641,7 +641,7 @@ public sealed partial class DatasamlingView : ComponentBase
 
             var content = facts.Count == 0
                 ? body
-                : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language));
+                : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language, linkedLabel: T.FieldLegalBasis));
 
             groups.Add(new(group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
                            CatalogueProperties.Foreign(group.NameLanguage, Reader),
@@ -768,7 +768,7 @@ public sealed partial class DatasamlingView : ComponentBase
         {
             blocks.Add(new(SectionKeys.SourceInformation, DetailSectionIds.Source,
                            T.HeadingSourceInformation, null,
-                           DetailBlocks.LinkedFacts(sourceFacts, Language)));
+                           DetailBlocks.LinkedFacts(sourceFacts, Language, linkedLabel: T.FieldLegalBasis)));
         }
 
         if (!statisticsDrawn && AnyStatistics)

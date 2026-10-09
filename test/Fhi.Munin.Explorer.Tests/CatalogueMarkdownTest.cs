@@ -330,4 +330,61 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         Assert.False(CatalogueMarkdown.Prose(value));
         Assert.Equal(value, CatalogueMarkdown.Words(value));
     }
+
+    [Fact]
+    public void Linked_WhenProseCarriesAddresses_ThenEachIsAGuardedAnchorAndTheRestStaysText()
+    {
+        var cut = Render(CatalogueMarkdown.Linked(
+            "Helseregisterloven, https://lovdata.no/lov/2014-06-20-43. Se også (https://lovdata.no/msis)."));
+
+        var anchors = cut.FindAll("a");
+        Assert.Equal(["https://lovdata.no/lov/2014-06-20-43", "https://lovdata.no/msis"],
+                     anchors.Select(a => a.GetAttribute("href")));
+        Assert.All(anchors, a => Assert.Equal("noopener noreferrer", a.GetAttribute("rel")));
+        Assert.Equal("Helseregisterloven, https://lovdata.no/lov/2014-06-20-43. Se også (https://lovdata.no/msis).",
+                     string.Concat(cut.Nodes.Select(node => node.TextContent)));
+    }
+
+    [Theory]
+    [InlineData("[Helseregisterloven](https://lovdata.no/lov/2014-06-20-43)", "Helseregisterloven")]
+    [InlineData("https://lovdata.no/lov/2014-06-20-43", "https://lovdata.no/lov/2014-06-20-43")]
+    public void Linked_WhenTheWholeValueIsOneLink_ThenItIsThatAnchor(string raw, string label)
+    {
+        var anchor = Render(CatalogueMarkdown.Linked(raw)).Find("a");
+
+        Assert.Equal("https://lovdata.no/lov/2014-06-20-43", anchor.GetAttribute("href"));
+        Assert.Equal(label, anchor.TextContent);
+    }
+
+    [Fact]
+    public void Linked_WhenTheWholeValueIsAMailtoLink_ThenItIsThatAnchorNotItsMarkdown()
+    {
+        var cut = Render(CatalogueMarkdown.Linked("[Kontakt registeret](mailto:post@example.no)"));
+
+        Assert.Equal("mailto:post@example.no", cut.Find("a").GetAttribute("href"));
+        Assert.DoesNotContain("](", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Se https://no.wikipedia.org/wiki/Lov_(jus) for det.", "https://no.wikipedia.org/wiki/Lov_(jus)")]
+    [InlineData("Se 'https://lovdata.no/x' her", "https://lovdata.no/x")]
+    public void Linked_WhenAnAddressEndsInParenthesesOrQuotes_ThenTheAnchorTakesOnlyTheAddress(string raw, string href)
+    {
+        Assert.Equal(href, Render(CatalogueMarkdown.Linked(raw)).Find("a").GetAttribute("href"));
+    }
+
+    [Theory]
+    [InlineData("Forskrift om medisinske kvalitetsregistre § 2-3.")]
+    [InlineData("Se javascript:alert(1) og ftp://lovdata.no/x")]
+    [InlineData("<b>https</b> er ikke en adresse")]
+    [InlineData("data:text/html;base64,PHNjcmlwdD4=")]
+    [InlineData("nothttps://lovdata.no")]
+    public void Linked_WhenThereIsNoHttpAddress_ThenNothingIsAnAnchorOrMarkup(string raw)
+    {
+        var cut = Render(CatalogueMarkdown.Linked(raw));
+
+        Assert.Empty(cut.FindAll("a"));
+        Assert.Empty(cut.FindAll("b"));
+        Assert.False(CatalogueMarkdown.HasWebAddress(raw));
+    }
 }

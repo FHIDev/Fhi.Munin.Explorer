@@ -50,4 +50,10 @@ public sealed record DetailFact(
     /// independent of <see cref="Lang"/>, which marks only the value.
     /// </summary>
     public string? LabelLang { get; init; }
+
+    /// <summary>
+    /// Draw the value's http(s) addresses as links, through <see cref="CatalogueMarkdown.Linked"/>.
+    /// <see cref="Value"/> is then the catalogue's raw text, markdown link included.
+    /// </summary>
+    public bool Linked { get; init; }
 }

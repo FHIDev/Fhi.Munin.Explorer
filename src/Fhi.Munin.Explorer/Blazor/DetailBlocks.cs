@@ -85,7 +85,7 @@ internal static class DetailBlocks
     /// </remarks>
     internal static RenderFragment LinkedFacts(
         IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> facts, string? language,
-        bool authored = false) => builder =>
+        bool authored = false, string? linkedLabel = null) => builder =>
     {
         if (Shown(facts).Count == 0)
         {
@@ -134,6 +134,10 @@ internal static class DetailBlocks
             else if (authored)
             {
                 builder.AddContent(seq + 11, CatalogueMarkdown.Render(value));
+            }
+            else if (label == linkedLabel && CatalogueMarkdown.HasWebAddress(value))
+            {
+                builder.AddContent(seq + 14, CatalogueMarkdown.Linked(value));
             }
             else
             {
@@ -249,6 +253,10 @@ internal static class DetailBlocks
             if (row.Authored)
             {
                 builder.AddContent(seq + 5, CatalogueMarkdown.Render(value));
+            }
+            else if (row.InlineLinks)
+            {
+                builder.AddContent(seq + 5, CatalogueMarkdown.Linked(value));
             }
             else
             {

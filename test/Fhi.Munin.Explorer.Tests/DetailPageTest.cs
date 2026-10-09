@@ -1255,4 +1255,25 @@ public class DetailPageTest : ExplorerTestContext
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
     }
+
+    [Fact]
+    public void Render_WhenAStickyFactIsLinked_ThenTheStickyLineLinksItsAddress()
+    {
+        // Fhi.Metadata-jd5jl: the sticky line draws a Linked fact as the hero row does.
+        DetailFact[] facts =
+        [
+            new("Lovverk", "Helseregisterloven, https://lovdata.no/lov/2014-06-20-43") { Linked = true },
+        ];
+
+        var cut = Render<DetailPage>(parameters => parameters
+            .Add(p => p.ViewRoot, "munin-explorer-kilde")
+            .Add(p => p.ViewMain, "munin-explorer-kilde__main")
+            .Add(p => p.Facts, facts)
+            .Add(p => p.StickyName, "Kilde"));
+
+        var anchor = cut.Find(".munin-explorer-page__stuckbar dd a");
+        Assert.Equal("https://lovdata.no/lov/2014-06-20-43", anchor.GetAttribute("href"));
+        Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
+        Assert.Null(anchor.GetAttribute("target"));
+    }
 }

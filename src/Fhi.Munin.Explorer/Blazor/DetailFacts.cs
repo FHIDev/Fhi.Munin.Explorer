@@ -78,7 +78,7 @@ public sealed class DetailFacts : ComponentBase
             builder.CloseElement();
 
             builder.OpenElement(seq + 4, "dd");
-            Words(builder, seq + 5, fact.Value, fact.Lang);
+            Words(builder, seq + 5, fact.Value, fact.Lang, fact.Linked);
 
             if (!string.IsNullOrWhiteSpace(fact.Note))
             {
@@ -114,17 +114,29 @@ public sealed class DetailFacts : ComponentBase
     /// use: both the value and the note's value share a <c>dd</c> with words in the reader's own
     /// language, so a mark on a parent would switch the voice for those too.
     /// </remarks>
-    private static void Words(RenderTreeBuilder builder, int seq, string? value, string? language)
+    private static void Words(RenderTreeBuilder builder, int seq, string? value, string? language, bool linked = false)
     {
         if (language is null)
         {
-            builder.AddContent(seq, value);
+            Content(builder, seq, value, linked);
             return;
         }
 
         builder.OpenElement(seq + 1, "span");
         builder.AddAttribute(seq + 2, "lang", language);
-        builder.AddContent(seq + 3, value);
+        Content(builder, seq + 3, value, linked);
         builder.CloseElement();
+    }
+
+    private static void Content(RenderTreeBuilder builder, int seq, string? value, bool linked)
+    {
+        if (linked)
+        {
+            builder.AddContent(seq, CatalogueMarkdown.Linked(value));
+        }
+        else
+        {
+            builder.AddContent(seq, value);
+        }
     }
 }

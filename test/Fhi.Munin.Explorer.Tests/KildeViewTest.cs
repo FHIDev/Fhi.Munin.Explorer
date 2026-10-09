@@ -2782,4 +2782,43 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal(3, tables.Count);
         Assert.All(tables, ColumnLabels.AssertEveryCellNamesItsColumn);
     }
+
+    [Theory]
+    [InlineData("https://lovdata.no/dokument/NL/lov/2014-06-20-43")]
+    [InlineData("Helseregisterloven, https://lovdata.no/dokument/NL/lov/2014-06-20-43.")]
+    public void Render_WhenLovverkCarriesAnAddress_ThenTheHeroFactAndTheSourceRowLinkToIt(string legalBasis)
+    {
+        // Fhi.Metadata-jd5jl (#6563): Kelda links Lovverk; the hero fact and the free-text form never did.
+        var cut = Render(Kilde() with { LegalBasis = legalBasis });
+
+        var hero = LegalBasisValue(cut.Find("dl.munin-explorer-page__facts"));
+        Assert.Equal("https://lovdata.no/dokument/NL/lov/2014-06-20-43", hero.QuerySelector("a")?.GetAttribute("href"));
+
+        var linked = cut.FindAll("a[href='https://lovdata.no/dokument/NL/lov/2014-06-20-43']");
+        Assert.True(linked.Count >= 2, $"expected the hero fact and the source row, found {linked.Count}");
+        Assert.All(linked, a => Assert.Equal("noopener noreferrer", a.GetAttribute("rel")));
+    }
+
+    [Fact]
+    public void Render_WhenLovverkIsProseWithoutAnAddress_ThenItStaysText()
+    {
+        var cut = Render(Kilde());
+
+        var hero = LegalBasisValue(cut.Find("dl.munin-explorer-page__facts"));
+        Assert.Null(hero.QuerySelector("a"));
+        Assert.Equal("Forskrift om medisinske kvalitetsregistre § 2-3.", hero.TextContent.Trim());
+    }
+
+    [Fact]
+    public void Render_WhenAnotherSourceRowCarriesAnAddress_ThenOnlyLovverkIsLinked()
+    {
+        var cut = Render(Kilde() with { DataController = "St. Olavs hospital HF, https://stolav.no" });
+
+        Assert.Empty(cut.FindAll("a[href='https://stolav.no']"));
+    }
+
+    private static IElement LegalBasisValue(IElement facts) =>
+        facts.QuerySelectorAll(":scope > div")
+             .Single(row => row.QuerySelector("dt")?.TextContent.Trim() == "Lovverk")
+             .QuerySelector("dd")!;
 }
