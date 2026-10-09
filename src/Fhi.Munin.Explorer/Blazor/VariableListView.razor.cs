@@ -876,6 +876,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         {
             _page = null;
 
+            // The open row went with its list, and with it anything opened from that row.
+            CloseRow();
+
             // Cleared here as well now that a superseded read returns without touching it: this
             // branch is the one place a read in flight can be abandoned by a caller.
             _loading = false;

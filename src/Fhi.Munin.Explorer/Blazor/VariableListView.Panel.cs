@@ -221,10 +221,7 @@ public sealed partial class VariableListView
                 builder.AddAttribute(3, "aria-label", T.ShowVariabelgruppeVariables(group.Name));
                 builder.AddAttribute(4, "onclick",
                     EventCallback.Factory.Create(this, () => search.ShowVariabelgruppeAsync(group.Id)));
-                builder.OpenElement(5, "span");
-                builder.AddAttribute(6, "lang", CatalogueLang(group.Name));
-                builder.AddContent(7, group.Name);
-                builder.CloseElement();
+                builder.AddContent(5, group.Name);
                 builder.CloseElement();
             }
             else
