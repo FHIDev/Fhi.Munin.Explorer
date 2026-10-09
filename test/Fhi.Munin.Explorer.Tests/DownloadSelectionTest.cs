@@ -120,6 +120,9 @@ public class DownloadSelectionTest : ExplorerTestContext
         var client = new Client(80);
         var cut = Render(client);
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Search(cut, "alder");
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        cut.Find(".searchbox__freetext").Change("høyde");
 
         Toggle(cut)!.Click();
         Assert.False(Panel(cut).HasAttribute("hidden"));
@@ -128,6 +131,7 @@ public class DownloadSelectionTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Single(client.Exports));
         var export = client.Exports[0];
+        Assert.Equal("alder", export.Search);
         Assert.Equal(ExportFormat.Xlsx, export.Format);
         Assert.True(export.IncludeKodeverk);
         Assert.NotNull(export.Filter);
