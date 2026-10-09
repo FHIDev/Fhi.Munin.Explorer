@@ -211,9 +211,9 @@ internal static class FilterHierarchy
         var datasamlinger = ById(facets.Datasamlinger, datasamling => datasamling.Id);
         var delkilder = ById(facets.Delkilder, delkilde => delkilde.Id);
 
-        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe)> byKilde = [];
-        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe)> byDelkilde = [];
-        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe)> byDatasamling = [];
+        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe, bool Exact)> byKilde = [];
+        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe, bool Exact)> byDelkilde = [];
+        List<(Guid Owner, VariabelgruppeFacet Variabelgruppe, bool Exact)> byDatasamling = [];
 
         foreach (var variabelgruppe in variabelgrupper)
         {
@@ -229,18 +229,18 @@ internal static class FilterHierarchy
                     && datasamlinger.TryGetValue(datasamlingId, out var datasamling)
                     && datasamling.KildeId == owner.KildeId)
                 {
-                    byDatasamling.Add((datasamlingId, CountedAt(variabelgruppe, owner, exact: true)));
+                    byDatasamling.Add(CountedAt(datasamlingId, variabelgruppe, owner, exact: true));
                 }
                 else if (owner.DelkildeId is { } delkildeId
                          && delkilder.TryGetValue(delkildeId, out var delkilde)
                          && delkilde.KildeId == owner.KildeId)
                 {
-                    byDelkilde.Add((delkildeId, CountedAt(variabelgruppe, owner, exact: owner.DatasamlingId is null)));
+                    byDelkilde.Add(CountedAt(delkildeId, variabelgruppe, owner, exact: owner.DatasamlingId is null));
                 }
                 else
                 {
-                    byKilde.Add((owner.KildeId, CountedAt(variabelgruppe, owner,
-                        exact: owner.DelkildeId is null && owner.DatasamlingId is null)));
+                    byKilde.Add(CountedAt(owner.KildeId, variabelgruppe, owner,
+                        exact: owner.DelkildeId is null && owner.DatasamlingId is null));
                 }
             }
         }
@@ -249,12 +249,17 @@ internal static class FilterHierarchy
 
         // The placement's own count only where the node is that placement; one drawn higher because
         // its level dropped out keeps the group's count. (Fhi.Metadata-i1rbm)
-        static VariabelgruppeFacet CountedAt(VariabelgruppeFacet variabelgruppe, VariabelgruppeOwner owner, bool exact) =>
-            exact && owner.Count is { } count ? variabelgruppe with { Count = count } : variabelgruppe;
+        static (Guid, VariabelgruppeFacet, bool) CountedAt(
+            Guid node, VariabelgruppeFacet variabelgruppe, VariabelgruppeOwner owner, bool exact) =>
+            exact && owner.Count is { } count
+                ? (node, variabelgruppe with { Count = count }, true)
+                : (node, variabelgruppe, false);
 
+        // Exact copies first, so where two placements land on one node OnePerId keeps the count
+        // that is that node's, not whichever owner the payload listed first.
         static ILookup<Guid, VariabelgruppeFacet> Lookup(
-            IEnumerable<(Guid Owner, VariabelgruppeFacet Variabelgruppe)> placed) =>
-            placed.ToLookup(entry => entry.Owner, entry => entry.Variabelgruppe);
+            IEnumerable<(Guid Owner, VariabelgruppeFacet Variabelgruppe, bool Exact)> placed) =>
+            placed.OrderByDescending(entry => entry.Exact).ToLookup(entry => entry.Owner, entry => entry.Variabelgruppe);
     }
 
     /// <summary>Nest one level by the parent id its entries carry. A parent the cross-filtering

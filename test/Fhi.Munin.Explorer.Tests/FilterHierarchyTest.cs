@@ -183,6 +183,69 @@ public class FilterHierarchyTest
     }
 
     [Fact]
+    public void Build_WhenTheOwnerIsADelkildeOrAKilde_ThenThoseNodesShowItsCount()
+    {
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr), Kilde(Npr)],
+            Delkilder = [Delkilde(Fodsel, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn",
+                               [.. Under(Mfr, delkilde: Fodsel, count: 4), .. Under(Npr, count: 7)],
+                               count: 109)
+            ]
+        };
+
+        var kilder = FilterHierarchy.Build(facets);
+
+        var delkilde = Assert.Single(kilder.Single(kilde => kilde.Id == Mfr).Children);
+        Assert.Equal(4, Assert.Single(delkilde.Children).Count);
+        Assert.Equal(7, Assert.Single(kilder.Single(kilde => kilde.Id == Npr).Children).Count);
+    }
+
+    [Fact]
+    public void Build_WhenADelkildePlacementsDatasamlingDropsOut_ThenTheDelkildeNodeKeepsTheGroupCount()
+    {
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder = [Delkilde(Fodsel, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel, datasamling: NotInThePayload, count: 3), count: 109)
+            ]
+        };
+
+        var delkilde = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+        Assert.Equal(109, Assert.Single(delkilde.Children).Count);
+    }
+
+    [Fact]
+    public void Build_WhenAnExactAndAFallenBackPlacementShareANode_ThenTheExactCountWinsInEitherOrder()
+    {
+        // Under Fodsel: one owner IS the delkilde placement, the other fell back from a datasamling
+        // the answer dropped. The node is the first one's, whichever the payload lists first.
+        VariabelgruppeOwner[] exact = [.. Under(Mfr, delkilde: Fodsel, count: 5)];
+        VariabelgruppeOwner[] fallenBack = [.. Under(Mfr, delkilde: Fodsel, datasamling: NotInThePayload, count: 3)];
+
+        foreach (var owners in new[] { exact.Concat(fallenBack), fallenBack.Concat(exact) })
+        {
+            var facets = Answer() with
+            {
+                Kilder = [Kilde(Mfr)],
+                Delkilder = [Delkilde(Fodsel, Mfr)],
+                HierarchyVariabelgrupper = [Variabelgruppe(Bakgrunn, "Bakgrunn", [.. owners], count: 109)]
+            };
+
+            var delkilde = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+            Assert.Equal(5, Assert.Single(delkilde.Children).Count);
+        }
+    }
+
+    [Fact]
     public void Build_WhenAPlacementFallsBackAboveItsDatasamling_ThenTheNodeKeepsTheGroupCount()
     {
         // The placement's count is for a datasamling the answer dropped; the kilde node it lands
