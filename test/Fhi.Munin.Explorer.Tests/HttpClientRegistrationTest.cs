@@ -39,7 +39,7 @@ public class HttpClientRegistrationTest
         }
 
         // The ceiling is the whole-search download's; the handler, first of ours, holds every other call to thirty.
-        Assert.Equal(TimeSpan.FromSeconds(150), client.Timeout);
+        Assert.Equal(TimeSpan.FromSeconds(160), client.Timeout);
         Assert.IsType<RequestTimeoutHandler>(ours[0]);
         Assert.Equal(TimeSpan.FromSeconds(30), RequestTimeoutHandler.Default);
     }

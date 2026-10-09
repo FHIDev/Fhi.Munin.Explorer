@@ -25,8 +25,8 @@ public sealed class MuninExplorerOptions
 /// <summary>The one call a host makes to use the explorer components.</summary>
 public static class ServiceCollectionExtensions
 {
-    /// <summary>The longest any call may take; each is held to less by <see cref="RequestTimeoutHandler"/>.</summary>
-    private static readonly TimeSpan RequestCeiling = MuninExplorerClient.ExportTimeout;
+    /// <summary>A backstop past the longest limit a call asks <see cref="RequestTimeoutHandler"/> for, so the handler's fires.</summary>
+    private static readonly TimeSpan RequestCeiling = MuninExplorerClient.ExportTimeout + TimeSpan.FromSeconds(10);
 
     /// <summary>How long to spend reaching the host before giving up on it.</summary>
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);

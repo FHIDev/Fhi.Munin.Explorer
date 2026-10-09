@@ -1012,7 +1012,7 @@ public sealed partial class KildeSearch : ComponentBase
     /// call it makes, the fetch runs to completion and its result is dropped when the reader has
     /// already left. That is one abandoned request per abandoned circuit, for a call made once per
     /// component. It follows that the catch below never sees a disposal cancellation; what it can
-    /// see is <c>HttpClient</c>'s own timeout, which arrives as a cancellation and is a vocabulary
+    /// see is the client's own timeout, which arrives as a cancellation and is a vocabulary
     /// that did not answer, which is exactly how it is treated. Should a token ever be threaded
     /// through here, the two stop being the same thing and the cancellation has to be let out.
     /// </para>

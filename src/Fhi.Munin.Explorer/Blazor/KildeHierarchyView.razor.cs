@@ -148,7 +148,7 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            // The same guard, and for the same reason: HttpClient's own 30-second timeout is a
+            // The same guard, and for the same reason: the client's 30-second timeout is a
             // TaskCanceledException worth logging, and this component's own Cancel is not, so the
             // question asked is who cancelled rather than which type arrived.
             if (!_disposed && !request.IsCancellationRequested)
