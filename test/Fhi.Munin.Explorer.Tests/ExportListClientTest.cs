@@ -178,7 +178,7 @@ public class ExportListClientTest
     private static readonly Guid MyListId = new("5f0c2e7a-91b4-4d3e-8a6f-2c7d1b9e4a30");
 
     [Fact]
-    public async Task ExportMyListAsync_WithHostPage_ThenTheRequestCarriesItsEnvironmentAndPath()
+    public async Task ExportMyListAsync_WhenGivenAHostPage_ThenTheRequestCarriesItsEnvironmentAndPath()
     {
         var handler = new FileHandler("text/csv", "list.csv");
         var page = new Uri("https://test.example:8443/portal/en/variables/?theme=contrast");
