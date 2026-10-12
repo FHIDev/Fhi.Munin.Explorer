@@ -35,15 +35,13 @@
        Backslashes on purpose: from the second build the SDK's own glob has the file as wwwroot\version.json
        on Windows, and Remove compares the spelling. With a forward slash it did not match there, the file
        was included twice and the build failed on "two assets targeting the same path". MSBuild converts
-       the backslash on Linux. The Error below says so in plain words if it ever happens again. -->
+       the backslash on Linux (measured on Windows, SDK 10.0.401, Fhi.Metadata-l9l2n.123). -->
   <Target Name="WriteVersionFile" BeforeTargets="AssignTargetPaths;ResolveProjectStaticWebAssets">
     <WriteLinesToFile File="$(MSBuildProjectDirectory)\wwwroot\version.json" Lines="{&quot;package&quot;:&quot;$(PackageId)&quot;,&quot;version&quot;:&quot;$(PackageVersion)&quot;}" Overwrite="true" WriteOnlyWhenDifferent="true" />
     <ItemGroup>
       <Content Remove="wwwroot\version.json" />
       <Content Include="wwwroot\version.json" />
-      <_VersionFileItem Include="@(Content)" Condition="'%(Filename)%(Extension)' == 'version.json'" />
     </ItemGroup>
-    <Error Condition="'@(_VersionFileItem->Count())' != '1'" Text="wwwroot/version.json is in Content @(_VersionFileItem->Count()) times, expected once: @(_VersionFileItem). See the comment on WriteVersionFile." />
   </Target>
 
 </Project>
