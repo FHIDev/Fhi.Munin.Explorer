@@ -29,6 +29,26 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.2.0 — 2026-10-12
+
+### Changed
+
+- **The data-period filters now offer the browser's native date picker.** Readers can choose or type a date in the browser's format, with the filter applied when they leave the field so typing a year is uninterrupted; shared links still use ISO dates. Valid dates outside the catalogue's reported range are accepted for overlap searches, while reversed intervals are rejected. Incomplete manual input preserves the applied bound and shows an error; only a genuinely empty control clears it. Labels and validation messages remain; duplicate format instructions and placeholders have been removed.
+
+### Fixed
+
+- **A saved list row's Kopier lenke and Send via e-post are now one width.** They use the same
+  fixed 12rem grid as Vis datakilde and Vis datasamling above them, rather than each being as
+  wide as its own text, which looked uneven when they stacked at 320px.
+- **Saved-list exports link back to the host's variable explorer.** VariableExplorer sends its page address to Munin so exported links use the current host, language path and environment. Standalone VariableListView hosts can set ExplorerPageUrl. Links open the variable's Data tab and code list overview; they do not expand a particular code list. Requires the matching Munin API update; older APIs and client implementations keep their existing export behavior.
+
+### Notes for hosts
+
+- **A host now answers `_content/Fhi.Munin.Explorer/version.json` with the package version it serves.** The build writes
+  `{"package":"Fhi.Munin.Explorer","version":"…"}` from the package's own version, as a second static
+  web asset beside `explorer-interop.js`. No host code is needed, and nothing rendered depends on it;
+  it exists so the version a site actually runs can be read from outside.
+
 ## 2.1.0 — 2026-10-12
 
 ### Added

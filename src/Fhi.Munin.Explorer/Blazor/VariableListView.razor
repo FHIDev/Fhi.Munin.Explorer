@@ -15,7 +15,8 @@ else if (State?.IsAuthenticated == true)
        third. (Fhi.Metadata-sqbei) *@
     <DetailPage ViewRoot="" ViewMain=""
                 Eyebrow="@ShownListEyebrow"
-                data-munin-explorer-version="@ExplorerVersion.Current">
+                data-munin-explorer-version="@ExplorerVersion.Current"
+                lang="@Reader">
         <Header>
             @* One row: the name first, the actions beside it. Above the name, the primary button
                read as belonging to whichever list happened to be open (Fhi.Metadata-fc7ie). *@
@@ -442,7 +443,8 @@ else if (State?.IsAuthenticated == true)
     private RenderFragment SharedListView => @<text>
         <DetailPage ViewRoot="" ViewMain=""
                     Eyebrow="@(_sharedList is null ? null : T.SharedListEyebrow)"
-                    data-munin-explorer-version="@ExplorerVersion.Current">
+                    data-munin-explorer-version="@ExplorerVersion.Current"
+                    lang="@Reader">
             <Header>
                 <div class="munin-explorer-page__header">
                     @DetailBlocks.Heading(TitleLevel, SharedListName, "headline headline-s margin--bottom",

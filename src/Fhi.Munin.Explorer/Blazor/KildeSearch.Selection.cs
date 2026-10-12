@@ -264,30 +264,32 @@ public sealed partial class KildeSearch
         }
     }
 
-    /// <summary>How many marked rows the address may open — and so fetch — by itself.</summary>
+    /// <summary>How many rows the address may open — and so fetch — by itself, marks and open rows together.</summary>
     /// <remarks>
     /// Each one is a request charged to the window helsedata's whole cluster shares, and the query
     /// is whatever a stranger typed — <see cref="UrlMirror.MaxValuesPerKey"/> of them at once. Past
     /// this the marks are still held, still counted and still travel. (Fhi.Metadata-75yov)
     /// </remarks>
-    private const int MaxMarkedRowsOpened = 20;
+    private const int MaxRowsOpenedByAddress = 20;
 
-    /// <summary>The rows a seeded mark opens: in this list, holding something, and bounded.</summary>
+    /// <summary>The rows the address opens: those holding a mark, then those it names as open.</summary>
     /// <remarks>
     /// Filtered through <see cref="_kilder"/> for <see cref="TickedNeedingDatasamlinger"/>'s reason
     /// — an id this catalogue does not have, or one the row already says holds no datasamling,
-    /// costs a round trip against the rate limit to learn what is known without asking.
+    /// costs a round trip against the rate limit to learn what is known without asking. Marks
+    /// come first: a mark the reader cannot see is a selection they cannot undo.
     /// </remarks>
-    private IReadOnlyList<Guid> MarkedRowsToOpen()
+    private IReadOnlyList<Guid> RowsToOpen()
     {
-        HashSet<Guid> holding = [.. _kilder.Where(kilde => kilde.DatasamlingCount > 0).Select(kilde => kilde.Id)];
+        HashSet<Guid> holding = [.. _kilder.Where(CanExpand).Select(kilde => kilde.Id)];
 
         return
         [
             .. _marked.Select(mark => mark.Kilde)
+                      .Concat(_seededExpanded)
                       .Distinct()
                       .Where(holding.Contains)
-                      .Take(MaxMarkedRowsOpened)
+                      .Take(MaxRowsOpenedByAddress)
         ];
     }
 

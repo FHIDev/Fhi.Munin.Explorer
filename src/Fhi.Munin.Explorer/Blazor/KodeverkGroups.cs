@@ -313,9 +313,10 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
             builder.AddContent(seq + 2, code.Value);
             builder.CloseElement();
 
+            var name = DisplayText.Trimmed(code.Name);
             builder.OpenElement(seq + 3, "td");
-            builder.AddAttribute(seq + 4, "lang", "no");
-            builder.AddContent(seq + 5, DisplayText.Trimmed(code.Name) ?? T.NotSpecified);
+            builder.AddAttribute(seq + 4, "lang", name is null ? null : "no");
+            builder.AddContent(seq + 5, name ?? T.NotSpecified);
             builder.CloseElement();
 
             builder.OpenElement(seq + 6, "td");

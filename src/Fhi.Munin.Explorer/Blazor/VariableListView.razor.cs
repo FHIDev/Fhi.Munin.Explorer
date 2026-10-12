@@ -62,6 +62,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private Texts T => Texts.For(Language);
 
+    private string Reader => ReaderLanguage.Of(Language);
+
     /// <summary>
     /// Per-mount discriminator for every id this component renders, in the shape the explorer's ids use
     /// (<c>VariableExplorer.razor.cs</c>). A host can mount this twice, and shared ids point both labels

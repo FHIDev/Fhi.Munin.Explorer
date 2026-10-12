@@ -99,15 +99,47 @@ try {
     }
 
     const results = await new AxeBuilder({ page }).withTags(tags).analyze();
+
+    // The host's <html lang> need not follow the reader — helsedata's /en/ pages say "no" — so
+    // the explorer root states its own, and axe's language rules must have judged it (Fhi.Metadata-nh7z2).
+    const roots = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-munin-explorer-version]')].map((root) => ({
+        lang: root.getAttribute('lang'),
+        norwegian: root.querySelectorAll('[lang="no"], [lang="nb"]').length,
+      })));
+    const judged = [...results.passes, ...results.violations].map((r) => r.id);
+    const unjudged = ['html-has-lang', 'valid-lang'].filter((id) => !judged.includes(id));
+
     await page.close();
     await context.close();
 
-    if (results.violations.length === 0) {
+    if (unjudged.length > 0) {
+      console.error(`axe never evaluated ${unjudged.join(', ')} on ${label} - TOOLING failure.`);
+      await browser.close();
+      process.exit(2);
+    }
+
+    if (roots.length === 0) {
+      console.error(`no explorer root on ${label} to check the lang of - TOOLING failure.`);
+      await browser.close();
+      process.exit(2);
+    }
+
+    let pageViolations = results.violations.length;
+    for (const root of roots) {
+      console.log(`    explorer root lang="${root.lang ?? ''}", ${root.norwegian} element(s) marked Norwegian inside it`);
+      if (root.lang !== 'no' && root.lang !== 'en') {
+        pageViolations += 1;
+        console.log(`\n  [serious] explorer-root-lang — the explorer root carries lang="${root.lang ?? ''}", not "no" or "en"`);
+      }
+    }
+
+    violationCount += pageViolations;
+    if (pageViolations === 0) {
       console.log('    no violations');
       continue;
     }
 
-    violationCount += results.violations.length;
     for (const v of results.violations) {
       console.log(`\n  [${v.impact ?? 'unknown'}] ${v.id} — ${v.help}`);
       console.log(`  ${v.helpUrl}`);

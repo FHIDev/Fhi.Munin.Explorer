@@ -3,7 +3,7 @@
 @* The kildeutforsker whole: the kilde list, the drill-in, and the open kilde in the host's address
    bar. (Fhi.Metadata-zrcf4, Fhi.Metadata-8uwtd)
 
-   The list's search, facets, columns, ticks and datasamling marks are bound here beside the order,
+   The list's search, facets, columns, ticks, marks and open rows are bound here beside the order,
    so every link this component builds carries them and a round trip away from the list comes back
    to it as it was left (Fhi.Metadata-nvf2w, -75yov). Everything this component does not own is
    left in the address.
@@ -39,6 +39,7 @@
                  @bind-FacetChoices="_facets"
                  @bind-TickedKildeIds="_ticked"
                  @bind-MarkedDatasamlinger="_marked"
+                 @bind-ExpandedKildeIds="_expanded"
                  @bind-VisibleColumns="_columns"
                  ExploreVariablesRequested="@Handover"
                  ExploreDatasamlingerRequested="@DatasamlingHandover"
