@@ -1,6 +1,13 @@
 @using Fhi.Munin.Explorer.Blazor
 @{
     ViewData["Title"] = "Utforskeren i helsedatas stiler";
+
+    // TEMPORARY, for the look on the rig: ?nyliste=omriss draws the new-list button outlined and short,
+    // ?nyliste=prod (the default) as helsedata's own. Goes with the losing variant (Fhi.Metadata-fc7ie).
+    if (Context.Request.Query.TryGetValue("nyliste", out var nyliste))
+    {
+        AppContext.SetSwitch("Fhi.Munin.Explorer.Rig.NewListOutlined", nyliste == "omriss");
+    }
 }
 
 @* `container` is the wrapper helsedata's own MuninUtforsker.cshtml puts around the mount, and

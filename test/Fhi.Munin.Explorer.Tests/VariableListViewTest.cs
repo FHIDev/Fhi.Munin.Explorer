@@ -1193,8 +1193,9 @@ public partial class VariableListViewTest : ExplorerTestContext
         await PressAsync(cut, "Legg til ny liste");
         await cut.InvokeAsync(client.AnswerNoLists);
 
+        // One move, the reader's own: the form they opened took focus into its field. The retry adds none.
         cut.WaitForAssertion(() => Assert.Null(RetryButton(cut)));
-        Assert.DoesNotContain(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
+        Assert.Single(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
     }
 
     [Fact]
@@ -2079,7 +2080,9 @@ public partial class VariableListViewTest : ExplorerTestContext
         Assert.Empty(cut.FindAll("input[id^='munin-explorer-new-list-']"));
         Assert.Equal("false",
                      cut.Find("button[id^='munin-explorer-create-toggle-']").GetAttribute("aria-expanded"));
-        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus")
+        // The last move: opening the form put focus in its field first (Fhi.Metadata-fc7ie).
+        cut.WaitForAssertion(() => JSInterop.Invocations
+            .Last(i => i.Identifier == "Blazor._internal.domWrapper.focus")
             .Arguments[0].ShouldBeElementReferenceTo(cut.Find("select")));
     }
 
@@ -2121,6 +2124,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var create = cut.FindAll("button").First(b => b.TextContent.Trim() == "Opprett liste");
 
         Assert.Contains("input__field", field.ClassList);
+        Assert.Contains("munin-explorer-list-create__field", field.ClassList);
         Assert.Contains("button-square--secondary", create.ClassList);
         Assert.DoesNotContain("button-square--ghost-blue", create.ClassList);
     }

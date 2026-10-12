@@ -147,8 +147,21 @@ public class SaveToListTest : ExplorerTestContext
             });
         }
 
-        public override Task<bool> AddVariablesToMyListAsync(
+        /// <summary>Holds the write open until released, the window a second press lands in.</summary>
+        public TaskCompletionSource? HoldAdd { get; init; }
+
+        public override async Task<bool> AddVariablesToMyListAsync(
             Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default)
+        {
+            if (HoldAdd is not null)
+            {
+                await HoldAdd.Task;
+            }
+
+            return await AddAsync(variableIds);
+        }
+
+        private Task<bool> AddAsync(IReadOnlyCollection<Guid> variableIds)
         {
             AddCalls++;
 
@@ -866,5 +879,31 @@ public class SaveToListTest : ExplorerTestContext
         SaveButton(cut).Click();
 
         Assert.Equal([], HostClassNames.Orphans(HostClassNames.Of(cut.FindAll("[class]"))));
+    }
+
+    [Fact]
+    public void SaveButton_WhileTheSaveIsOut_ThenItSaysSoAndASecondPressDoesNothing()
+    {
+        // Fhi.Metadata-aetys: nothing changed on screen until the API answered.
+        var client = new ListClient(OnePage(Variable("Alder ved diagnose", "V_BDR.ALDER")))
+        {
+            HoldAdd = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)
+        };
+
+        var cut = RenderSignedIn(client);
+
+        SaveButton(cut).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Lagrer …", SaveButton(cut).TextContent.Trim()));
+        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-busy"));
+        Assert.Equal("true", SaveButton(cut).GetAttribute("aria-disabled"));
+
+        SaveButton(cut).Click();
+        client.HoldAdd.SetResult();
+
+        cut.WaitForAssertion(() => Assert.Equal("Fjern fra liste", SaveButton(cut).TextContent.Trim()));
+        Assert.Equal(1, client.AddCalls);
+        Assert.Null(SaveButton(cut).GetAttribute("aria-busy"));
+        Assert.Null(SaveButton(cut).GetAttribute("aria-disabled"));
     }
 }

@@ -357,6 +357,25 @@ public class SaveAllTest : ExplorerTestContext
     }
 
     [Fact]
+    public void SaveAll_WhileTheSaveIsOut_ThenTheButtonSaysSo()
+    {
+        var rows = new[] { Variable("Vekt") };
+        var client = new Client(rows, 1, [rows[0].Id]) { HoldIds = new TaskCompletionSource() };
+        var cut = Render(client);
+
+        SaveAll(cut)!.Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Lagrer variablene …", SaveAll(cut)!.TextContent.Trim()));
+        Assert.Equal("true", SaveAll(cut)!.GetAttribute("aria-busy"));
+        Assert.Equal("true", SaveAll(cut)!.GetAttribute("aria-disabled"));
+
+        client.HoldIds.SetResult();
+
+        cut.WaitForAssertion(() => Assert.Equal("✓ Lagret", SaveAll(cut)!.TextContent.Trim()));
+        Assert.Null(SaveAll(cut)!.GetAttribute("aria-busy"));
+    }
+
+    [Fact]
     public void SaveAll_WhenAnotherReaderSignsInDuringTheFetch_ThenTheirListIsNotWritten()
     {
         var rows = new[] { Variable("Vekt") };

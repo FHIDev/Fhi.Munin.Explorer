@@ -59,6 +59,17 @@ public partial class VariableSearch
     /// </remarks>
     private readonly Dictionary<VariableDatasamlingKey, SaveFailure> _saveError = [];
 
+    // Rows with a write out, and which way it goes: the button says so and a second press does nothing.
+    private readonly Dictionary<VariableDatasamlingKey, bool> _savingRows = [];
+
+    private string SaveButtonText(VariableSummary v, bool saved) =>
+        _savingRows.TryGetValue(VariableDatasamlingKey.Of(v), out var removing)
+            ? (removing ? T.RemovingFromList : T.SavingToList)
+            : (saved ? T.RemoveFromList : T.SaveToList);
+
+    private string? SaveBusy(VariableSummary v) =>
+        _savingRows.ContainsKey(VariableDatasamlingKey.Of(v)) ? "true" : null;
+
     // In the open panel, as on helsedata's own list: a collapsed row keeps one Tab stop (35w0p.78).
     // Drawn from the row's summary, so it is there while the detail loads and after it fails (35w0p.83).
     private RenderFragment PanelSaveButton(VariableSummary v) => builder =>
@@ -86,7 +97,10 @@ public partial class VariableSearch
 
         builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => ToggleSavedAsync(v)));
 
-        builder.AddContent(7, saved ? T.RemoveFromList : T.SaveToList);
+        // aria-disabled, never disabled: the pressed button holds focus while its write is out.
+        builder.AddAttribute(7, "aria-busy", SaveBusy(v));
+        builder.AddAttribute(8, "aria-disabled", SaveBusy(v));
+        builder.AddContent(9, SaveButtonText(v, saved));
         builder.CloseElement();
     };
 
@@ -118,7 +132,9 @@ public partial class VariableSearch
 
         // Saving is not a request to read the variable, so the row around it must not open the panel.
         builder.AddEventStopPropagationAttribute(11, "onclick", true);
-        builder.AddContent(12, saved ? T.RemoveFromList : T.SaveToList);
+        builder.AddAttribute(12, "aria-busy", SaveBusy(v));
+        builder.AddAttribute(13, "aria-disabled", SaveBusy(v));
+        builder.AddContent(14, SaveButtonText(v, saved));
         builder.CloseElement();
 
         // In the same cell, so the row has as many cells as the header has columns. An open row says
@@ -196,6 +212,11 @@ public partial class VariableSearch
         // failed save than a line of text beside the button.
         var row = VariableDatasamlingKey.Of(v);
 
+        if (!_savingRows.TryAdd(row, IsRowSaved(v)))
+        {
+            return;
+        }
+
         try
         {
             _saveError.Remove(row);
@@ -226,6 +247,10 @@ public partial class VariableSearch
             Log?.LogError(ex, "could not save variable {VariableId}", v.Id);
 
             _saveError[row] = SaveFailure.Failed;
+        }
+        finally
+        {
+            _savingRows.Remove(row);
         }
 
         StateHasChanged();

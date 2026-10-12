@@ -15,21 +15,26 @@ else if (State?.IsAuthenticated == true)
        third. (Fhi.Metadata-sqbei) *@
     <DetailPage ViewRoot="" ViewMain=""
                 Eyebrow="@ShownListEyebrow"
-                Actions="@ActionRow"
                 data-munin-explorer-version="@ExplorerVersion.Current">
         <Header>
-            @* The chassis's own header name: the other three wear a prefixed one beside it and this
-               view has none to wear. *@
-            <div class="munin-explorer-page__header">
-                @DetailBlocks.Heading(TitleLevel, ShownListName, "headline headline-s margin--bottom",
-                                      ListHeadingId)
+            @* One row: the name first, the actions beside it. Above the name, the primary button
+               read as belonging to whichever list happened to be open (Fhi.Metadata-fc7ie). *@
+            <div class="munin-explorer-list-head">
+                @* The chassis's own header name: the other three wear a prefixed one beside it and
+                   this view has none to wear. *@
+                <div class="munin-explorer-page__header">
+                    @DetailBlocks.Heading(TitleLevel, ShownListName, "headline headline-s margin--bottom",
+                                          ListHeadingId)
 
-                @* The count off the same field the picker's options read, beside the day the
-                   list last changed — see the remarks on ListMeta. *@
-                @if (ListMeta is { } meta)
-                {
-                    <p class="caption">@meta</p>
-                }
+                    @* The count off the same field the picker's options read, beside the day the
+                       list last changed — see the remarks on ListMeta. *@
+                    @if (ListMeta is { } meta)
+                    {
+                        <p class="caption">@meta</p>
+                    }
+                </div>
+
+                <div class="munin-explorer-page__actions">@ActionRow</div>
             </div>
         </Header>
         <ChildContent>
@@ -74,28 +79,51 @@ else if (State?.IsAuthenticated == true)
                rather than letting the fold drop it to <body>. *@
             @if (_creating)
             {
-                <div>
+                <div class="munin-explorer-list-create" @onkeydown="CloseCreatingOnEscape">
                     @* A real label, never a placeholder: no accessible name, and gone the moment the
                        reader types (WCAG 4.1.2, 3.3.2). The id is per-mount, or two mounts name one
                        field twice. onchange, never oninput — a round trip per keystroke on a circuit. *@
-                    <div class="input__container">
-                        <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
+                    <label class="form-element__label" for="@NewListNameId">@T.NewListName</label>
+
+                    <div class="munin-explorer-list-create__row">
+                        @* readonly while the create is out, never disabled: the field may hold focus. *@
                         <input type="text"
-                               class="input__field input__field--small"
+                               class="input__field munin-explorer-list-create__field"
                                id="@NewListNameId"
+                               @ref="_newNameField"
+                               readonly="@_createInFlight"
+                               maxlength="@MaxListNameLength"
+                               placeholder="@T.NewListNamePlaceholder"
                                @bind="_newName"
                                @bind:event="onchange" />
-                    </div>
 
-                    @* aria-disabled rather than disabled: it becomes unavailable the moment a
-                       successful create clears the name, and disabling the element that has focus
-                       drops focus to <body>. CreateListAsync already refuses an empty name, so the
-                       press is inert. *@
-                    @* Solid, so it reads as the form's action; primary is "Legg til ny liste" above it. *@
-                    <button class="hd-button-square button-square--secondary margin-top"
-                            type="button"
-                            aria-disabled="@AriaDisabled(_newName.Trim().Length > 0)"
-                            @onclick="CreateListAsync">@T.CreateList</button>
+                        @* aria-disabled rather than disabled: it becomes unavailable the moment a
+                           successful create clears the name, and disabling the element that has focus
+                           drops focus to <body>. CreateListAsync refuses an empty name and a second
+                           press while one is out, so the press is inert. *@
+                        @* Solid, so it reads as the form's action; the one primary is the button that opened it. *@
+                        <button class="hd-button-square @(RigNewListOutlined ? "button-square--primary" : "button-square--secondary")"
+                                type="button"
+                                aria-disabled="@AriaDisabled(_newName.Trim().Length > 0 && !_createInFlight)"
+                                aria-busy="@(_createInFlight ? "true" : null)"
+                                @onclick="CreateListAsync">@(_createInFlight ? T.CreatingList : T.CreateList)</button>
+
+                        <button class="hd-button-square button-square--ghost-blue"
+                                type="button"
+                                aria-disabled="@AriaDisabled(!_createInFlight)"
+                                @onclick="CancelCreating">@T.CancelNewList</button>
+                    </div>
+                </div>
+            }
+
+            @* In the DOM from the moment the form opens, so the sentence is announced when it arrives. *@
+            @if (_creating || _listCreatedSaid)
+            {
+                <div role="status">
+                    @if (_listCreatedSaid)
+                    {
+                        <p class="caption">@T.ListCreated</p>
+                    }
                 </div>
             }
 
@@ -178,6 +206,18 @@ else if (State?.IsAuthenticated == true)
             @if (ListsPending)
             {
                 <p class="caption" role="status">@T.ListsLoading</p>
+            }
+            else if (RowsPending)
+            {
+                @* The name and the count above are already known, so they stand; only the rows
+                   wait. Never the empty sentence before the answer (Fhi.Metadata-aetys). *@
+                <p class="caption" role="status">@T.ListRowsLoading</p>
+                <ul class="munin-explorer-list-placeholder" aria-hidden="true">
+                    @for (var row = 0; row < PlaceholderRows; row++)
+                    {
+                        <li></li>
+                    }
+                </ul>
             }
             else if (ListsAnswered && Lists.Count == 0)
             {
@@ -545,13 +585,6 @@ else if (State?.IsAuthenticated == true)
             </label>
         }
 
-        <button class="hd-button-square button-square--primary"
-                type="button"
-                id="@CreateToggleId"
-                aria-expanded="@Expanded(_creating)"
-                @ref="_createToggle"
-                @onclick="ToggleCreatingFromControl">@T.AddNewList</button>
-
         @* Only when there is something to download. A button that exports an empty list would
            produce a file with a header row and nothing under it. *@
         @if (_page is not null && _page.TotalCount > 0)
@@ -694,6 +727,21 @@ else if (State?.IsAuthenticated == true)
                         @onclick="ChooseOpeningSharedFromMenu">@T.OpenSharedList</button>
             </div>
         </div>
+
+        @* Last in the row, as helsedata's own «Min oversikt» has it: the name to the left, this to
+           the right. Above the name it read as the open list's own button (Fhi.Metadata-fc7ie). *@
+        <button class="hd-button-square @(RigNewListOutlined ? "button-square--tertiary" : "button-square--primary")"
+                type="button"
+                id="@CreateToggleId"
+                aria-expanded="@Expanded(_creating)"
+                @ref="_createToggle"
+                @onclick="ToggleCreatingFromControl">
+            @if (!RigNewListOutlined)
+            {
+                <span class="icon icon-plus--white" aria-hidden="true"></span>
+            }
+            @(RigNewListOutlined ? T.AddNewListOutlined : T.AddNewList)
+        </button>
     </text>;
 }
 

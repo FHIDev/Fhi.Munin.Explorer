@@ -676,6 +676,14 @@ These are not style preferences — each one is a host that breaks otherwise.
     column went (`Fhi.Metadata-b2w2z`). Undrawn, it runs on after the name at the name's size, so
     a host owes it `display: block`; Stiler also sets it small and grey, and lets it break in the
     cards, where a code too long for the card would otherwise be cut off.
+    `munin-explorer-list-head` is the saved-list view's top row: the name block and the action row,
+    side by side (`Fhi.Metadata-fc7ie`). Undrawn, the actions stand under the name, which reads
+    well enough; a host owes it a wrapping flex row and one rule line under the pair.
+    `munin-explorer-list-create`, `munin-explorer-list-create__row` and
+    `munin-explorer-list-create__field` are the new-list form, its one line of field and two
+    buttons, and the field. `munin-explorer-list-placeholder` is the rows' stand-in while a list
+    is read (`Fhi.Metadata-aetys`): an `aria-hidden` list of empty items, which undrawn shows as
+    bullets, so a host owes it `list-style: none` and a row's height.
     `munin-explorer-list-menu`, `munin-explorer-list-menu__panel` and `munin-explorer-list-menu--end`
     are the saved-list view's «Last ned» and «Flere valg» folds (`Fhi.Metadata-x47p0`). The panel
     is drawn `hidden` while its fold is closed, so the one rule a host cannot do without is
@@ -1020,9 +1028,14 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kodeverk__reference` | handle |
   | `munin-explorer-lead` | handle |
   | `munin-explorer-list-code` | meaning |
+  | `munin-explorer-list-create` | meaning |
+  | `munin-explorer-list-create__field` | meaning |
+  | `munin-explorer-list-create__row` | meaning |
+  | `munin-explorer-list-head` | meaning |
   | `munin-explorer-list-menu` | meaning |
   | `munin-explorer-list-menu--end` | meaning |
   | `munin-explorer-list-menu__panel` | meaning |
+  | `munin-explorer-list-placeholder` | meaning |
   | `munin-explorer-list-scroll` | meaning |
   | `munin-explorer-meta` | handle |
   | `munin-explorer-meta__grid` | handle |

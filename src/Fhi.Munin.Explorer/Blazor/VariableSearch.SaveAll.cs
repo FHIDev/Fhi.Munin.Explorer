@@ -89,6 +89,7 @@ public partial class VariableSearch
         builder.AddAttribute(9, "aria-disabled", done || !SaveAllReady ? "true" : null);
         builder.AddAttribute(10, "aria-expanded", SaveAllWouldAsk && !done ? (confirming ? "true" : "false") : null);
         builder.AddAttribute(11, "aria-describedby", confirming ? ConfirmSaveAllId : null);
+        builder.AddAttribute(19, "aria-busy", _savingAll ? "true" : null);
         builder.AddAttribute(12, "onclick", EventCallback.Factory.Create(this, PressSaveAllAsync));
         builder.AddElementReferenceCapture(13, element => _saveAllButton = element);
 
@@ -102,7 +103,7 @@ public partial class VariableSearch
         }
         else
         {
-            builder.AddContent(18, confirming ? T.ConfirmSaveAllNo : T.SaveAllResults);
+            builder.AddContent(18, _savingAll ? T.SavingAllResults : confirming ? T.ConfirmSaveAllNo : T.SaveAllResults);
         }
 
         builder.CloseElement();

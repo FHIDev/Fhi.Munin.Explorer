@@ -13,6 +13,7 @@
 //
 // Usage:  node scripts/axe-stub-api.mjs <port>
 import { createServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -344,7 +345,61 @@ const added = new Map();
 const removedKeys = new Set();
 const removedVariables = new Set();
 
+// Looking-at-it mode, set by a person and never by a check: every my-lists call waits this long, so
+// the waiting states can be seen, and «Opprett liste» makes a list that the next read still has.
+//   STUB_MY_LISTS_DELAY_MS=3000 node scripts/axe-stub-api.mjs 5099
+const rigDelay = process.env.STUB_MY_LISTS_DELAY_MS === undefined
+  ? null
+  : Math.max(0, Number(process.env.STUB_MY_LISTS_DELAY_MS) || 0);
+const rigLists = [];
+
+function rig(url, request, response) {
+  const json = (status, body) => response.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(body));
+  const [, listId, variablesAsked] = url.pathname.match(/^\/api\/explorer\/my\/lists\/([^/]+)(\/variables)?$/) ?? [];
+  const made = rigLists.findIndex(list => list.id === listId);
+
+  if (url.pathname === '/api/explorer/my/lists' && request.method === 'POST') {
+    let sent = '';
+    request.on('data', chunk => { sent += chunk; });
+    request.on('end', () => {
+      const now = new Date().toISOString();
+      let name = '';
+      try { name = String(JSON.parse(sent || '{}').name ?? '').trim(); } catch { name = ''; }
+      if (name.length === 0) { json(400, { error: 'Navn er påkrevd.' }); return; }
+      const list = { id: randomUUID(), name, createdAt: now, updatedAt: now, variableCount: 0 };
+      rigLists.push(list);
+      json(201, list);
+    });
+    return;
+  }
+  if (url.pathname === '/api/explorer/my/lists' && request.method === 'GET') {
+    const kept = JSON.parse(bodies.get(routes.find(([, source]) => source === 'my-lists.json')[0]))
+      .slice(0, Number(process.env.STUB_MY_LISTS_KEEP) || undefined);
+    json(200, [...kept, ...rigLists]);
+    return;
+  }
+  if (made >= 0 && variablesAsked && request.method === 'GET') {
+    json(200, { items: [], totalCount: 0, page: 1, size: 100, totalPages: 1 });
+    return;
+  }
+  if (made >= 0 && !variablesAsked && request.method === 'DELETE') {
+    rigLists.splice(made, 1);
+    response.writeHead(204).end();
+    return;
+  }
+  handle(request, response);
+}
+
 const server = createServer((request, response) => {
+  const url = new URL(request.url, 'http://localhost');
+  if (rigDelay !== null && url.pathname.startsWith('/api/explorer/my/')) {
+    setTimeout(() => rig(url, request, response), rigDelay);
+    return;
+  }
+  handle(request, response);
+});
+
+function handle(request, response) {
   const url = new URL(request.url, 'http://localhost');
   if ((request.method === 'POST' || request.method === 'DELETE') && listVariables.test(url.pathname)) {
     let raw = '';
@@ -383,6 +438,6 @@ const server = createServer((request, response) => {
   // listening server is what keeps it alive meanwhile, and DELETE is what answers the client.
   one.timer = setTimeout(() => answerNow(one), ms);
   one.timer.unref();
-});
+}
 
 server.listen(port, '127.0.0.1', () => console.log(`stub: serving the Testdata fixtures on ${port}`));
