@@ -39,8 +39,8 @@
   <Target Name="WriteVersionFile" BeforeTargets="AssignTargetPaths;ResolveProjectStaticWebAssets">
     <WriteLinesToFile File="$(MSBuildProjectDirectory)\wwwroot\version.json" Lines="{&quot;package&quot;:&quot;$(PackageId)&quot;,&quot;version&quot;:&quot;$(PackageVersion)&quot;}" Overwrite="true" WriteOnlyWhenDifferent="true" />
     <ItemGroup>
-      <Content Remove="wwwroot\version.json" />
-      <Content Include="wwwroot\version.json" />
+      <Content Remove="wwwroot/version.json" />
+      <Content Include="wwwroot/version.json" />
     </ItemGroup>
   </Target>
 
