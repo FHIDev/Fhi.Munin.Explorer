@@ -12,10 +12,6 @@ namespace Fhi.Munin.Explorer.Tests;
 /// Which language a reader's screen reader speaks the component's own words in, when the host
 /// page's <c>&lt;html lang&gt;</c> says something else (WCAG 3.1.1 and 3.1.2).
 /// </summary>
-/// <remarks>
-/// helsedata's /en/ pages ship <c>&lt;html lang="no"&gt;</c>, so every word left unmarked was
-/// announced in a Norwegian voice whatever <c>Language</c> said (Fhi.Metadata-nh7z2).
-/// </remarks>
 public class LanguageOfPartsTest : ExplorerTestContext
 {
     private const string VariableName = "Alder ved diagnose";
@@ -139,8 +135,7 @@ public class LanguageOfPartsTest : ExplorerTestContext
     [Fact]
     public void Language_WhenTheReaderIsEnglish_ThenOnlyTheCataloguesOwnValuesAreMarkedNorwegian()
     {
-        // The count half of the bead: 128 marks on helsedata's /en/ page, and the question is
-        // which of them wrap our words. Every mark must hold one catalogue value and nothing else.
+        // A mark around anything but one catalogue value puts our own English words in a Norwegian voice.
         Prepare();
 
         var cut = Render<VariableSearch>(p => p.Add(c => c.Language, "en"));
@@ -167,5 +162,51 @@ public class LanguageOfPartsTest : ExplorerTestContext
 
         Assert.Equal("no", root.GetAttribute("lang"));
         Assert.Empty(root.QuerySelectorAll("[lang='en']"));
+    }
+
+    [Fact]
+    public void CodeName_WhenACodeHasNoName_ThenItsFallbackIsNotMarkedNorwegian()
+    {
+        // The fallback is our own copy in the reader's language; only the catalogue's name is Norwegian.
+        var client = new CodesClient();
+        var detail = new VariableDetail
+        {
+            Id = Guid.NewGuid(),
+            KodeverkLinks =
+            [
+                new KodeverkLink
+                {
+                    KodeverkType = "AdministrativtKodeverk",
+                    KodeverkReference = "2.16.578.1.12.4.1.1.3401",
+                    DisplayName = "Kjønn",
+                    HasCodeValues = true,
+                }
+            ],
+        };
+
+        var cut = Render<KodeverkGroups>(p => p
+            .Add(c => c.Detail, detail)
+            .Add(c => c.Lists, new KodeverkCodeLists(detail.Id, client, null))
+            .Add(c => c.Language, "en"));
+
+        cut.Find("button[aria-expanded]").Click();
+        var cells = cut.FindAll(".munin-explorer-codes__table tbody td:nth-child(2)");
+
+        Assert.Equal(2, cells.Count);
+        Assert.Equal("no", cells[0].GetAttribute("lang"));
+        Assert.Equal("Mann", cells[0].TextContent);
+        Assert.Null(cells[1].GetAttribute("lang"));
+        Assert.Equal(Texts.For("en").NotSpecified, cells[1].TextContent);
+    }
+
+    private sealed class CodesClient : EmptyMuninExplorerClient
+    {
+        public override Task<KodeverkCodes?> GetKodeverkCodesAsync(
+            Guid variableId, string kodeverkType, string kodeverkReference,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<KodeverkCodes?>(new KodeverkCodes
+            {
+                Codes = [new KodeverkCode { Value = "1", Name = "Mann" }, new KodeverkCode { Value = "9", Name = " " }],
+            });
     }
 }
