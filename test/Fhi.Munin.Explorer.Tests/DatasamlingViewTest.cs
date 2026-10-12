@@ -2701,7 +2701,8 @@ public class DatasamlingViewTest : ExplorerTestContext
         // Its own reference only: nothing is inherited from the kilde (Fhi.Metadata-ot99a).
         var cut = Render(Datasamling() with
         {
-            VariableCount = 0, AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging")
+            VariableCount = 0,
+            AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging")
         });
 
         var link = cut.Find("a[href='https://eksempel.no/variabler/oppfolging']");
@@ -2715,7 +2716,8 @@ public class DatasamlingViewTest : ExplorerTestContext
     {
         var cut = Render(Datasamling() with
         {
-            VariableCount = 12, AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging")
+            VariableCount = 12,
+            AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging")
         });
 
         var link = cut.Find("a[href='https://eksempel.no/variabler/oppfolging']");
@@ -2728,7 +2730,8 @@ public class DatasamlingViewTest : ExplorerTestContext
     {
         var cut = Render(Datasamling() with
         {
-            VariableCount = 0, AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging")
+            VariableCount = 0,
+            AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging")
         }, language: "en");
 
         var link = cut.Find("a[href='https://eksempel.no/variabler/oppfolging']");
@@ -2739,4 +2742,18 @@ public class DatasamlingViewTest : ExplorerTestContext
     [Fact]
     public void Variables_WhenTheDatasamlingHasNoReference_ThenNoSentenceIsDrawn() =>
         Assert.DoesNotContain("beskrevet her", Render(Datasamling()).Markup, StringComparison.Ordinal);
+
+    [Fact]
+    public void Variables_WhenACuratedVariablesGroupAlreadyDrawsRows_ThenTheReferenceJoinsItRatherThanASecondSection()
+    {
+        // No count, so no statistics of its own; the catalogue's "variabler" group still has rows.
+        var cut = Render(Placed() with
+        {
+            VariableCount = 0,
+            AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging"),
+        });
+
+        Assert.Single(BlockHeadings(cut), heading => heading == "Variabler");
+        Assert.Single(cut.FindAll("a[href='https://eksempel.no/variabler/oppfolging']"));
+    }
 }

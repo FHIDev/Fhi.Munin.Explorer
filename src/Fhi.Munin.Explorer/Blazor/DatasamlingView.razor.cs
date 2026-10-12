@@ -649,6 +649,14 @@ public sealed partial class DatasamlingView : ComponentBase
                 ? body
                 : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language, linkedLabel: T.FieldLegalBasis));
 
+            // A curated Variables group with no numbers still takes the reference, rather than a second section.
+            if (!AnyStatistics && VariableReferenceLine is { } line
+                && string.Equals(group.Key, variablesSection?.Key, StringComparison.Ordinal))
+            {
+                content = DetailBlocks.Both(content, line);
+                statisticsDrawn = true;
+            }
+
             groups.Add(new(group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
                            CatalogueProperties.Foreign(group.NameLanguage, Reader),
                            group.Key == statistics ? DetailBlocks.Both(content, VariablesNavigation) : content));

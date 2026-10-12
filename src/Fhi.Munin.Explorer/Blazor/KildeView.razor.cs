@@ -206,7 +206,8 @@ public sealed partial class KildeView : ComponentBase
     /// </remarks>
     private void Resolve()
     {
-        if (_resolved && ReferenceEquals(_resolvedKilde, Kilde) && _resolvedLanguage == Language)
+        if (_resolved && ReferenceEquals(_resolvedKilde, Kilde) && _resolvedLanguage == Language
+            && _resolvedReferenceLinked == ReferenceLinked)
         {
             return;
         }
@@ -214,6 +215,7 @@ public sealed partial class KildeView : ComponentBase
         _resolved = true;
         _resolvedKilde = Kilde;
         _resolvedLanguage = Language;
+        _resolvedReferenceLinked = ReferenceLinked;
 
         if (Kilde is not { } kilde)
         {
@@ -278,8 +280,8 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("Formaal");
         }
 
-        // Drawn as the Variables section's sentence.
-        if (VariableReference.Of(kilde.AdditionalProperties) is not null)
+        // Drawn as the Variables section's sentence, where a caller passes that section.
+        if (ReferenceLinked)
         {
             keys.Add(VariableReference.Key);
         }
@@ -350,9 +352,17 @@ public sealed partial class KildeView : ComponentBase
     /// is a kilde that names where its variables are described instead (<see cref="VariableReference"/>).
     /// </remarks>
     private string? TotalVariables =>
-        Kilde is { TotalVariables: 0 } described && VariableReference.Of(described.AdditionalProperties) is not null
+        Kilde is { TotalVariables: 0 } && ReferenceLinked
             ? T.VariablesDescribedElsewhere
             : Kilde?.TotalVariables.ToString();
+
+    // The page gives the address only in a caller's Variables section. Without one, the count and
+    // the raw property stay as they were: "described elsewhere" with no address helps nobody.
+    private bool ReferenceLinked =>
+        VariableReference.Of(Kilde?.AdditionalProperties) is not null
+        && NamedSections?.Any(section => section.Id == DetailSectionIds.Variables) is true;
+
+    private bool _resolvedReferenceLinked;
 
     /// <summary>
     /// The facts every source has, which is why they are typed fields rather than curated properties.

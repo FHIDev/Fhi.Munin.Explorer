@@ -763,7 +763,9 @@ public class KildeSectionsTest : ExplorerTestContext
     {
         var kilde = Tromso() with
         {
-            Datasamlinger = [], TotalVariables = 0, AdditionalProperties = Reference("https://eksempel.no/variabler")
+            Datasamlinger = [],
+            TotalVariables = 0,
+            AdditionalProperties = Reference("https://eksempel.no/variabler")
         };
 
         var cut = OpenInKelda(kilde);

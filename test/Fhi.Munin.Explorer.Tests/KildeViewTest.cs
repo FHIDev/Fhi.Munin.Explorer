@@ -2843,4 +2843,19 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Single(cut.FindAll("a[href='https://eksempel.no/v']"));
         Assert.DoesNotContain("Variabelreferanse", cut.Markup, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Variables_WhenNoCallerPassesTheSection_ThenTheCountAndTheRawPropertyStay()
+    {
+        // A mount that draws no link must not say "described elsewhere" and hide the only address.
+        var cut = Render(Kilde() with
+        {
+            TotalVariables = 0,
+            AdditionalProperties = new Dictionary<string, string?> { ["Variabelreferanse"] = "https://eksempel.no/v" },
+            PropertyMetadata = [Entry("Variabelreferanse", 10, "Annet")],
+        });
+
+        Assert.DoesNotContain("Beskrevet utenfor helsedata.no", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("https://eksempel.no/v", cut.Markup, StringComparison.Ordinal);
+    }
 }
