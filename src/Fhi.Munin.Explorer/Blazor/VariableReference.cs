@@ -47,7 +47,9 @@ internal static class VariableReference
         builder.OpenElement(3, "a");
         builder.AddAttribute(4, "href", address);
         builder.AddAttribute(5, "rel", "noopener noreferrer");
-        builder.AddContent(6, address);
+        // An address has no spaces to break at; unwrapped it widens the page at 320 px.
+        builder.AddAttribute(6, "style", "overflow-wrap:anywhere");
+        builder.AddContent(7, address);
         builder.CloseElement();
         builder.CloseElement();
     };

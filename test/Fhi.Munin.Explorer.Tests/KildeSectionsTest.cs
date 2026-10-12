@@ -774,6 +774,7 @@ public class KildeSectionsTest : ExplorerTestContext
         Assert.Equal("https://eksempel.no/variabler", link.GetAttribute("href"));
         Assert.Equal("noopener noreferrer", link.GetAttribute("rel"));
         Assert.Null(link.GetAttribute("target"));
+        Assert.Equal("overflow-wrap:anywhere", link.GetAttribute("style"));
 
         var view = cut.Find(".munin-explorer-kilde").TextContent;
         Assert.DoesNotContain("0 publiserte variabler", view, StringComparison.Ordinal);
