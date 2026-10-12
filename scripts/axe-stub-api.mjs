@@ -348,7 +348,7 @@ const removedVariables = new Set();
 // Looking-at-it mode, set by a person and never by a check: every my-lists call waits this long, so
 // the waiting states can be seen, and «Opprett liste» makes a list that the next read still has.
 //   STUB_MY_LISTS_DELAY_MS=3000 node scripts/axe-stub-api.mjs 5099
-const rigDelay = process.env.STUB_MY_LISTS_DELAY_MS === undefined
+const rigDelay = (process.env.STUB_MY_LISTS_DELAY_MS ?? '') === ''
   ? null
   : Math.max(0, Number(process.env.STUB_MY_LISTS_DELAY_MS) || 0);
 const rigLists = [];

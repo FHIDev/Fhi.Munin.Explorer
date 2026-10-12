@@ -36,10 +36,13 @@ public partial class VariableListViewTest
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
 
         CreateField(cut).Change("Hjerte og kar");
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_newNameField"), FocusedId()));
+
         Press(cut, "Avbryt");
 
         Assert.Empty(cut.FindAll(CreateForm));
         Assert.Equal("false", cut.Find(NewListToggle).GetAttribute("aria-expanded"));
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_createToggle"), FocusedId()));
     }
 
     [Fact]
@@ -51,6 +54,7 @@ public partial class VariableListViewTest
         cut.Find(CreateForm).KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
         Assert.Empty(cut.FindAll(CreateForm));
+        cut.WaitForAssertion(() => Assert.Equal(Held(cut, "_createToggle"), FocusedId()));
     }
 
     [Fact]
@@ -79,9 +83,10 @@ public partial class VariableListViewTest
         Assert.Equal("true", Submit(cut)!.GetAttribute("aria-disabled"));
         Assert.True(cut.Find("input[id^='munin-explorer-new-list-']").HasAttribute("readonly"));
 
-        // The double press, and a cancel under a create that is still out.
+        // The double press, a cancel and the toggle itself, all under a create that is still out.
         await cut.InvokeAsync(() => Submit(cut)!.Click());
         await PressAsync(cut, "Avbryt");
+        await cut.InvokeAsync(() => cut.Find(NewListToggle).Click());
 
         Assert.Equal(1, client.CreateCalls);
         Assert.Single(cut.FindAll(CreateForm));
@@ -132,6 +137,34 @@ public partial class VariableListViewTest
         await cut.WaitForAssertionAsync(() => Assert.Contains("Alder ved diagnose", cut.Markup));
         Assert.Empty(cut.FindAll(Placeholder));
         Assert.DoesNotContain("Henter variablene i listen", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Rows_WhenTheListHasGoneElsewhere_ThenNoPlaceholderIsLeftStanding()
+    {
+        // A read that answers "no such list" leaves no page and no failure. Nothing is coming.
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { VariablesAreUnreadable = true };
+        var cut = RenderView(client);
+
+        await cut.WaitForAssertionAsync(() => Assert.True(client.VariablesAnswered > 0));
+        await cut.InvokeAsync(() => { });
+
+        Assert.Empty(cut.FindAll(Placeholder));
+        Assert.DoesNotContain("Henter variablene i listen", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Created_WhenTheFormIsOpenedAgain_ThenTheLastCreationIsNoLongerAnnounced()
+    {
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+
+        CreateField(cut).Change("Kreft og svulster");
+        await PressAsync(cut, "Opprett liste");
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Listen er opprettet.", cut.Markup));
+
+        CreateField(cut);
+
+        Assert.DoesNotContain("Listen er opprettet.", cut.Markup);
     }
 
     [Fact]

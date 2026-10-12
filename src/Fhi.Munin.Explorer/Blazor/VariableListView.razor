@@ -80,6 +80,7 @@ else if (State?.IsAuthenticated == true)
                rather than letting the fold drop it to <body>. *@
             @if (_creating)
             {
+                @* Esc is heard here, which costs a message per key typed in the field: a list's name is short. *@
                 <div class="munin-explorer-list-create" @onkeydown="CloseCreatingOnEscape">
                     @* A real label, never a placeholder: no accessible name, and gone the moment the
                        reader types (WCAG 4.1.2, 3.3.2). The id is per-mount, or two mounts name one

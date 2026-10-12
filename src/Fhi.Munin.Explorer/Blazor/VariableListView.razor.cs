@@ -154,6 +154,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private bool _createInFlight;
 
     private bool _listCreatedSaid;
+
+    // The mount is asking which list is the reader's active one; its rows are asked for next.
+    private bool _findingList;
     private ElementReference _newNameField;
     private bool _focusNewNameField;
     private bool _focusCreateToggle;
@@ -446,9 +449,21 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // The form opens under the row, where an open fold's panel would cover it.
     private void ToggleCreatingFromControl(MouseEventArgs released)
     {
+        // Inert while a create is out: folding the form would take its answer's region with it.
+        if (_createInFlight)
+        {
+            return;
+        }
+
+        var wasOpen = _creating;
         Toggle(released, ref _creating);
         CloseFolds();
-        _focusNewNameField = _creating;
+
+        if (_creating && !wasOpen)
+        {
+            _focusNewNameField = true;
+            _listCreatedSaid = false;
+        }
     }
 
     // Refused while a create is out: the form folding under it would hide the answer.
@@ -524,9 +539,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private bool EmptyRowsShown => _page is { Items.Count: 0 } && !_loading;
 
-    /// <summary>The reader has lists and the shown one's rows have not answered yet, failed or not asked.</summary>
+    /// <summary>The shown list's rows are on their way: a read is out, or the mount is still finding the list.</summary>
+    /// <remarks>Never on `_page is null` alone: a list deleted elsewhere leaves that too, with nothing coming.</remarks>
     private bool RowsPending =>
-        State is { IsAuthenticated: true, ListsReadFailed: false } && !_failed && _page is null && Lists.Count > 0;
+        State is { IsAuthenticated: true, ListsReadFailed: false } && !_failed && _page is null && Lists.Count > 0
+        && (_loading || _findingList);
 
     // As many as the list says it holds, so the page does not jump when the rows land; never a tall stack.
     private int PlaceholderRows =>
@@ -706,7 +723,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // Spent before the await, so a refusal does not leave every later render asking too.
             var asking = !_askedOnMount;
             _askedOnMount = true;
+            _findingList = true;
             await State.EnsureActiveListAsync(readerAsked: asking);
+            _findingList = false;
             await ShowActiveListAsync();
         }
         catch (Exception ex)
@@ -723,6 +742,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 Log?.LogError(ex, "could not read the reader's lists on mount");
             }
 
+            _findingList = false;
             _page = null;
             _failed = true;
         }
