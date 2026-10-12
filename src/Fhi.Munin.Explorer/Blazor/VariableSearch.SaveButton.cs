@@ -141,7 +141,7 @@ public partial class VariableSearch
         // it in the panel instead; two alerts for one failure would be announced twice.
         if (!IsSelected(v))
         {
-            builder.AddContent(13, PanelSaveStatus(v));
+            builder.AddContent(15, PanelSaveStatus(v));
         }
 
         builder.CloseElement();

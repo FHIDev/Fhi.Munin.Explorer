@@ -735,6 +735,7 @@ else if (State?.IsAuthenticated == true)
                 type="button"
                 id="@CreateToggleId"
                 aria-expanded="@Expanded(_creating)"
+                aria-disabled="@(_createInFlight ? "true" : null)"
                 @ref="_createToggle"
                 @onclick="ToggleCreatingFromControl">
             <span class="icon icon-plus--white" aria-hidden="true"></span>

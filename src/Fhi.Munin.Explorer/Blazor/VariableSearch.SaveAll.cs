@@ -89,21 +89,21 @@ public partial class VariableSearch
         builder.AddAttribute(9, "aria-disabled", done || !SaveAllReady ? "true" : null);
         builder.AddAttribute(10, "aria-expanded", SaveAllWouldAsk && !done ? (confirming ? "true" : "false") : null);
         builder.AddAttribute(11, "aria-describedby", confirming ? ConfirmSaveAllId : null);
-        builder.AddAttribute(19, "aria-busy", _savingAll ? "true" : null);
-        builder.AddAttribute(12, "onclick", EventCallback.Factory.Create(this, PressSaveAllAsync));
-        builder.AddElementReferenceCapture(13, element => _saveAllButton = element);
+        builder.AddAttribute(12, "aria-busy", _savingAll ? "true" : null);
+        builder.AddAttribute(13, "onclick", EventCallback.Factory.Create(this, PressSaveAllAsync));
+        builder.AddElementReferenceCapture(14, element => _saveAllButton = element);
 
         if (done)
         {
-            builder.OpenElement(14, "span");
-            builder.AddAttribute(15, "aria-hidden", "true");
-            builder.AddContent(16, "✓ ");
+            builder.OpenElement(15, "span");
+            builder.AddAttribute(16, "aria-hidden", "true");
+            builder.AddContent(17, "✓ ");
             builder.CloseElement();
-            builder.AddContent(17, T.SavedAllResults);
+            builder.AddContent(18, T.SavedAllResults);
         }
         else
         {
-            builder.AddContent(18, _savingAll ? T.SavingAllResults : confirming ? T.ConfirmSaveAllNo : T.SaveAllResults);
+            builder.AddContent(19, _savingAll ? T.SavingAllResults : confirming ? T.ConfirmSaveAllNo : T.SaveAllResults);
         }
 
         builder.CloseElement();

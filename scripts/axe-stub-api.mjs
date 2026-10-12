@@ -374,7 +374,7 @@ function rig(url, request, response) {
   }
   if (url.pathname === '/api/explorer/my/lists' && request.method === 'GET') {
     const kept = JSON.parse(bodies.get(routes.find(([, source]) => source === 'my-lists.json')[0]))
-      .slice(0, Number(process.env.STUB_MY_LISTS_KEEP) || undefined);
+      .slice(0, (process.env.STUB_MY_LISTS_KEEP ?? '') === '' ? undefined : Math.max(0, Number(process.env.STUB_MY_LISTS_KEEP) || 0));
     json(200, [...kept, ...rigLists]);
     return;
   }

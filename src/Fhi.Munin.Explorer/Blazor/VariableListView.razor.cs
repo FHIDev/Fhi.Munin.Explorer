@@ -542,8 +542,11 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The shown list's rows are on their way: a read is out, or the mount is still finding the list.</summary>
     /// <remarks>Never on `_page is null` alone: a list deleted elsewhere leaves that too, with nothing coming.</remarks>
     private bool RowsPending =>
-        State is { IsAuthenticated: true, ListsReadFailed: false } && !_failed && _page is null && Lists.Count > 0
-        && (_loading || _findingList);
+        State is { IsAuthenticated: true, ListsReadFailed: false } && !_failed && Lists.Count > 0
+        && (_page is null ? _loading || _findingList : _pageOf != _shownList);
+
+    // The list the page on screen was read for: after a switch the old rows would stand under the new name.
+    private Guid? _pageOf;
 
     // As many as the list says it holds, so the page does not jump when the rows land; never a tall stack.
     private int PlaceholderRows =>
@@ -933,6 +936,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _loading = false;
         _failed = failed;
         _page = failed ? null : read;
+        _pageOf = _page is null ? null : readList;
 
         // Removed elsewhere, or paged away from: an open panel must not come back with stale detail.
         if (_openId is { } open && _page?.Items.Any(item => VariableDatasamlingKey.Of(item) == open) != true)

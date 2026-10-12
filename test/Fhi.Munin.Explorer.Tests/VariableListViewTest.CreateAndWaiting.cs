@@ -81,6 +81,7 @@ public partial class VariableListViewTest
         await cut.WaitForAssertionAsync(() => Assert.Equal("Oppretter …", Submit(cut)!.TextContent.Trim()));
         Assert.Equal("true", Submit(cut)!.GetAttribute("aria-busy"));
         Assert.Equal("true", Submit(cut)!.GetAttribute("aria-disabled"));
+        Assert.Equal("true", cut.Find(NewListToggle).GetAttribute("aria-disabled"));
         Assert.True(cut.Find("input[id^='munin-explorer-new-list-']").HasAttribute("readonly"));
 
         // The double press, a cancel and the toggle itself, all under a create that is still out.
@@ -165,6 +166,26 @@ public partial class VariableListViewTest
         CreateField(cut);
 
         Assert.DoesNotContain("Listen er opprettet.", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Rows_WhenTheReaderSwitchesList_ThenTheOldRowsDoNotStandUnderTheNewName()
+    {
+        var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { ListCount = 2 };
+        var cut = RenderView(client);
+        await cut.WaitForAssertionAsync(() => Assert.Contains("Alder ved diagnose", cut.Markup));
+
+        client.StallVariablesFor = ListClient.SecondListId;
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+
+        await cut.WaitForAssertionAsync(() => Assert.Single(cut.FindAll(Placeholder)));
+        Assert.DoesNotContain("Alder ved diagnose", cut.Markup);
+        Assert.Contains("Henter variablene i listen …", cut.Markup);
+
+        client.StallVariablesFor = null;
+        client.ReleaseVariables();
+
+        await cut.WaitForAssertionAsync(() => Assert.Empty(cut.FindAll(Placeholder)));
     }
 
     [Fact]
