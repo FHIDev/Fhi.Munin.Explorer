@@ -320,7 +320,7 @@ export function markMixed(rootId) {
 
 // Per tab, keyed by the address, so Back finds the position its own entry was left at. Not the
 // browser's own restoration: that runs before the circuit has drawn the rows (Fhi.Metadata-95j8b).
-const scrollKey = () => `munin-explorer-scroll:${location.pathname}${location.search}`;
+const scrollKey = () => `Fhi.Munin.Explorer:scroll:${location.pathname}${location.search}`;
 
 // One undo per kilde list, keyed by its title's id.
 const remembered = new Map();
