@@ -62,7 +62,7 @@ public class ContractCoverageTest
     [Fact]
     public void DetailFromADatasamling_WhenEachDatasamlingCarriesItsPeriod_ThenItIsCovered()
     {
-        // ?datasamlingId= adds dataFrom/dataTo to every alleDatasamlinger entry; the capture is the default shape.
+        // Inline for the open end: the capture's one alleDatasamlinger entry has both dataFrom and dataTo.
         var detail = JsonSerializer.Deserialize<VariableDetail>(
             """
             {

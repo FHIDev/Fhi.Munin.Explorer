@@ -211,6 +211,7 @@ internal sealed record Texts(
     string CompleteRecordLeadVariable,
     string CompleteRecordSummary,
     string HeadingDataCollections,
+    string DataCollectionsPeriodCaption,
     string FieldName,
     string VariableCountSuffix,
 
@@ -1209,6 +1210,7 @@ internal sealed record Texts(
             + "slik de er registrert – bortsett fra felt som holder strukturerte data.",
         CompleteRecordSummary: "Alle felt fra Munin, slik de er registrert",
         HeadingDataCollections: "Datasamlinger",
+        DataCollectionsPeriodCaption: "Dataperiode: perioden variabelen har data for i hver datasamling.",
         FieldName: "Navn",
         VariableCountSuffix: "variabler",
         FieldKildeName: "Kildenavn",
@@ -1728,6 +1730,7 @@ internal sealed record Texts(
             + "variable, as they are recorded – apart from fields that hold structured data.",
         CompleteRecordSummary: "All fields from Munin, as they are recorded",
         HeadingDataCollections: "Data collections",
+        DataCollectionsPeriodCaption: "Data period: the period this variable has data for in each data collection.",
         FieldName: "Name",
         VariableCountSuffix: "variables",
         FieldKildeName: "Source name",
