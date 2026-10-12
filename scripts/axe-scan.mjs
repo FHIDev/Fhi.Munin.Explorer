@@ -119,20 +119,27 @@ try {
       process.exit(2);
     }
 
+    if (roots.length === 0) {
+      console.error(`no explorer root on ${label} to check the lang of - TOOLING failure.`);
+      await browser.close();
+      process.exit(2);
+    }
+
+    let pageViolations = results.violations.length;
     for (const root of roots) {
       console.log(`    explorer root lang="${root.lang ?? ''}", ${root.norwegian} element(s) marked Norwegian inside it`);
       if (root.lang !== 'no' && root.lang !== 'en') {
-        violationCount += 1;
+        pageViolations += 1;
         console.log(`\n  [serious] explorer-root-lang — the explorer root carries lang="${root.lang ?? ''}", not "no" or "en"`);
       }
     }
 
-    if (results.violations.length === 0) {
+    violationCount += pageViolations;
+    if (pageViolations === 0) {
       console.log('    no violations');
       continue;
     }
 
-    violationCount += results.violations.length;
     for (const v of results.violations) {
       console.log(`\n  [${v.impact ?? 'unknown'}] ${v.id} — ${v.help}`);
       console.log(`  ${v.helpUrl}`);

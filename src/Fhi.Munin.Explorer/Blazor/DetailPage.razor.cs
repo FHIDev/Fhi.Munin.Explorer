@@ -260,6 +260,8 @@ public sealed partial class DetailPage : ComponentBase, IAsyncDisposable
     /// <remarks>
     /// <c>data-munin-explorer-version</c> is what this is for: a view mounted on its own is a mount
     /// point a host reads the package version off, and the root is the element it is read from.
+    /// <c>lang</c> rides here too, and must stay on the root: a view mounted on its own states the
+    /// reader's language there, since the host page's need not match it (WCAG 3.1.2).
     /// A <c>class</c> written here does <em>not</em> displace the root's class list: the splat is
     /// written before <c>class</c> on the element, so <c>munin-explorer-page</c> and
     /// <see cref="ViewRoot"/> stay on the root and a caller's own name is dropped. Pass a view's

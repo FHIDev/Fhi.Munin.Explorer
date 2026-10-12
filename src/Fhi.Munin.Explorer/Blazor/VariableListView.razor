@@ -17,7 +17,7 @@ else if (State?.IsAuthenticated == true)
                 Eyebrow="@ShownListEyebrow"
                 Actions="@ActionRow"
                 data-munin-explorer-version="@ExplorerVersion.Current"
-                lang="@ReaderLanguage.Of(Language)">
+                lang="@Reader">
         <Header>
             @* The chassis's own header name: the other three wear a prefixed one beside it and this
                view has none to wear. *@
@@ -406,7 +406,7 @@ else if (State?.IsAuthenticated == true)
         <DetailPage ViewRoot="" ViewMain=""
                     Eyebrow="@(_sharedList is null ? null : T.SharedListEyebrow)"
                     data-munin-explorer-version="@ExplorerVersion.Current"
-                    lang="@ReaderLanguage.Of(Language)">
+                    lang="@Reader">
             <Header>
                 <div class="munin-explorer-page__header">
                     @DetailBlocks.Heading(TitleLevel, SharedListName, "headline headline-s margin--bottom",
