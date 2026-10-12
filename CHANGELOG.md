@@ -29,6 +29,27 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.1.0 — 2026-10-12
+
+### Added
+
+- **A variable opened in a variabelliste leads on to its datakilde, datasamling and variabelgrupper.** The panel under the row gains the search panel's "Vis datakilde" and "Vis datasamling", which show the same kilde and datasamling views in place of the list, with "← Tilbake til variabler" back to the row. Each variabelgruppe becomes a button that opens the search narrowed to that group alone, with no search term and no other filter; where the list stands on a host page without the search, the groups stay words. (Fhi.Metadata-ckpyo, ADO 121586)
+- **The search result has a «Last ned utvalg» button, for readers signed in or not.** It downloads everything the search and its filters match, in the file helsedata.no's variable search gives today: an Excel workbook, with one sheet per code list when «Ta med kodeverk» is ticked, or a CSV (a zip of two CSV files with code lists). Above 2000 hits it warns that the download may take a while, but does not refuse. It folds open like the variable list's «Last ned», with the same class names, so it needs no new Stiler rules. `IMuninExplorerClient` gains `ExportVariablesAsync`, with a default body for hosts that implement the interface themselves. It calls Munin's `GET api/explorer/variables/export`, added in Munin after 1.34.0; against an older API the reader sees the download error message. (Fhi.Metadata-idusm)
+
+### Changed
+
+- **An opened variable's second tab is «Detaljer» (English: «Details») and lists Munin's other fields that have a value.** The tab was called «Om variabelen» / «About the variable»; ADO 121586 names it «Detaljer». Below Kode, Datatype and Datasamlinger it now lists every other field Munin holds a value for — Måleenhet, Ledetekst, Identifiseringsgrad and the rest — labelled and worded as the whole-variable view labels them, and leaves out fields with no value. Applies to both the search result's panel and a variabelliste row's. No new class names. (Fhi.Metadata-chx2i)
+- **`VariableSearch`'s IntelliSense remarks are shorter, with no change in behaviour.** The class remarks keep the class names a host styles and the two WCAG requirements a host must meet, and drop the history of how those names were chosen. Parameter documentation is unchanged. (Fhi.Metadata-eeuey.4.23.1)
+
+### Fixed
+
+- **A variabelgruppe under a datasamling in the filter tree shows that datasamling's count.** It showed the group's total across every datasamling, so ticking it returned fewer rows than it promised. Against a Munin API without per-placement counts the tree shows the total as before. (Fhi.Metadata-i1rbm)
+- **Lovverk with a web address is a link on kilde and datasamling details.** A Lovverk that is one address, or text with addresses in it, now links them in the facts row, the sticky line, the source information and a placed Lovverk property. Only http and https addresses in the text are linked, and a list of addresses joined by `;` stays text as before. (Fhi.Metadata-jd5jl)
+
+### Notes for hosts
+
+- **The explorer's `HttpClient.Timeout` is now 160 seconds; ordinary calls are still cut off at 30.** The whole-search download can take over a minute to build when code lists are included, and `HttpClient.Timeout` cannot be raised for a single call, so the 30-second limit moved into a handler `AddMuninExplorer` installs and the client's own timeout became a backstop just past the download's 150. A host that reads `HttpClient.Timeout` off the registered client to learn the explorer's limit now sees 160; a call that runs out still fails with a `TaskCanceledException` wrapping a `TimeoutException`, as before. (Fhi.Metadata-idusm)
+
 ## 2.0.0 — 2026-10-09
 
 ### Added
