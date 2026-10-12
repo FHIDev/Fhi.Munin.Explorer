@@ -317,3 +317,73 @@ export function markMixed(rootId) {
     box.indeterminate = box.hasAttribute('data-mixed');
   }
 }
+
+// Per tab, keyed by the address, so Back finds the position its own entry was left at. Not the
+// browser's own restoration: that runs before the circuit has drawn the rows (Fhi.Metadata-95j8b).
+const scrollKey = () => `munin-explorer-scroll:${location.pathname}${location.search}`;
+
+// One undo per kilde list, keyed by its title's id.
+const remembered = new Map();
+
+/**
+ * Writes the page's scroll position down whenever the reader leaves the list under `anchorId`'s
+ * section: a link pressed inside it, which a host's router may intercept, or the page going away.
+ */
+export function rememberScroll(anchorId) {
+  const root = document.getElementById(anchorId)?.closest('section');
+
+  if (!root || remembered.has(anchorId)) {
+    return;
+  }
+
+  const forget = () => {
+    window.removeEventListener('pagehide', save);
+    root.removeEventListener('click', click, true);
+    remembered.delete(anchorId);
+  };
+  function save() {
+    if (!root.isConnected) {
+      forget();
+      return;
+    }
+    try {
+      sessionStorage.setItem(scrollKey(), String(Math.round(window.scrollY)));
+    } catch {
+      // Storage refused (private mode, quota): the position is simply not kept.
+    }
+  }
+  // Captured, so it runs before a router's own document-level handler moves the address.
+  function click(event) {
+    if (event.target.closest?.('a[href]')) {
+      save();
+    }
+  }
+
+  window.addEventListener('pagehide', save);
+  root.addEventListener('click', click, true);
+  remembered.set(anchorId, forget);
+}
+
+/**
+ * Scrolls back to the position `rememberScroll` wrote down for this address, once, and otherwise
+ * brings the row whose open panel is `panelId` into view — the shared link nobody has scrolled.
+ */
+export function restoreScroll(panelId) {
+  let saved = null;
+  try {
+    saved = sessionStorage.getItem(scrollKey());
+    sessionStorage.removeItem(scrollKey());
+  } catch {
+    // Storage refused: fall through to the row.
+  }
+
+  const y = saved === null ? NaN : Number(saved);
+
+  if (Number.isFinite(y)) {
+    window.scrollTo(0, y);
+    return;
+  }
+
+  const panel = panelId ? document.getElementById(panelId) : null;
+  (panel?.closest('tr')?.previousElementSibling ?? panel)?.scrollIntoView({ block: 'center' });
+}

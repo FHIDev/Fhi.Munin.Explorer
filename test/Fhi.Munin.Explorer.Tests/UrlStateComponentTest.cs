@@ -1897,8 +1897,8 @@ public class UrlStateComponentTest : ExplorerTestContext
     // Datasamling marks in the address: ?selectedDatasamling=<kildeId>:<datasamlingId>, repeated
     // (Fhi.Metadata-75yov, innmeldt sak #6098).
     //
-    // The address IS the session here. There is no Web Storage anywhere in this package, and a
-    // mark that outlived the link would be a selection the reader could not see they still had.
+    // The address IS the session here. No selection is kept in Web Storage, and a mark that
+    // outlived the link would be a selection the reader could not see they still had.
 
     private static readonly Guid MarkKildeOne = new("aaaaaaaa-0000-0000-0000-000000000001");
     private static readonly Guid MarkKildeTwo = new("aaaaaaaa-0000-0000-0000-000000000002");
@@ -1995,7 +1995,7 @@ public class UrlStateComponentTest : ExplorerTestContext
                 ("selectedDatasamling", $"{MarkKildeOne}:{MarkOneA}"),
                 ("selectedDatasamling", $"{MarkKildeTwo}:{MarkTwoA}"),
             ],
-            MirroredPairs());
+            MirroredPairs().Where(pair => pair.Key == "selectedDatasamling"));
 
         Handover(cut).Click();
 
@@ -2084,5 +2084,72 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         Assert.Equal([("selectedDatasamling", $"{MarkKildeOne}:{MarkOneA}")], MirroredPairs());
         Assert.True(DrawerBox(cut, MarkKildeOne, "Inklusjon").HasAttribute("checked"));
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Open rows in the address: ?expanded=<kildeId>, repeated (Fhi.Metadata-95j8b). Back from the
+    // variable explorer reloads the last address the mirror wrote, so a row kept only in the
+    // component came back shut, its link to the variables gone with it.
+
+    [Fact]
+    public void Kilder_WhenTheReaderOpensARow_ThenTheAddressCarriesItAndBackReopensIt()
+    {
+        var cut = RenderDrawers("http://localhost/kilder");
+
+        OpenDrawer(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal([("expanded", MarkKildeTwo.ToString())], MirroredPairs());
+
+        var restored = MountDrawers();
+
+        var panel = Assert.Single(restored.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.EndsWith(MarkKildeTwo.ToString(), panel.Id, StringComparison.Ordinal);
+        Assert.Equal("Vis alle variabler i Dødsårsaksregisteret",
+                     panel.QuerySelector("a.button-square--ghost-blue")!.TextContent.Trim());
+        Assert.Equal("true", DrawerRow(restored, "Dødsårsaksregisteret")
+            .QuerySelector(".munin-explorer-kilder__expand-toggle")!.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderClosesARow_ThenItsIdLeavesTheAddress()
+    {
+        var cut = RenderDrawers($"http://localhost/kilder?expanded={MarkKildeOne}&expanded={MarkKildeTwo}");
+
+        Assert.Equal(2, cut.FindAll(".munin-explorer-kilder__expanded").Count);
+
+        OpenDrawer(cut, "Als registeret");
+
+        Assert.Equal([("expanded", MarkKildeTwo.ToString())], MirroredPairs());
+
+        OpenDrawer(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkNamesRowsTheListDoesNotHave_ThenTheyAreDroppedQuietly()
+    {
+        var cut = RenderDrawers($"http://localhost/kilder?expanded=not-a-guid&expanded={Guid.NewGuid()}&expanded={MarkKildeOne}");
+
+        var panel = Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.EndsWith(MarkKildeOne.ToString(), panel.Id, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Kilder_WhenTheSameLinkIsOpenedInEitherLanguage_ThenTheSameRowIsOpen(string language)
+    {
+        // Ids and not names, so a link sent from the Norwegian page opens the row on the English one.
+        Services.AddSingleton<IMuninExplorerClient>(new TwoDrawersClient());
+        Prepare();
+        Navigation.NavigateTo($"http://localhost/kilder?expanded={MarkKildeOne}");
+
+        var cut = Render<KildeExplorer>(b => b.Add(c => c.Language, language)
+                                              .Add(c => c.VariableExplorerPath, "/variabler"));
+
+        var panel = Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.EndsWith(MarkKildeOne.ToString(), panel.Id, StringComparison.Ordinal);
+        Assert.Equal($"http://localhost/variabler?kildeIds={MarkKildeOne}", panel.QuerySelector("a.button-square--ghost-blue")!.GetAttribute("href"));
     }
 }

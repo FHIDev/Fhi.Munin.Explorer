@@ -146,6 +146,14 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// </remarks>
     public const string MarkedQueryKey = "selectedDatasamling";
 
+    /// <summary>The open rows key: one kilde id per row whose datasamlinger are open, repeated.</summary>
+    /// <remarks>
+    /// Ids rather than names, so one link opens the same rows in either language, and written with
+    /// <c>history.replaceState</c> like every other key, so opening a row adds no step to Back. An
+    /// id that does not parse is dropped on read. (Fhi.Metadata-95j8b)
+    /// </remarks>
+    public const string ExpandedQueryKey = "expanded";
+
     /// <summary>The longest search or facet value a link may carry: the search field's own <c>maxlength</c>.</summary>
     private const int MaxSearchLength = 200;
 
@@ -223,6 +231,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     private IReadOnlyList<string>? _marked;
 
+    private IReadOnlyList<Guid>? _expanded;
+
     private IReadOnlyList<string>? _columns;
 
     private UrlMirror _mirror = default!;
@@ -278,7 +288,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         _mirror = new UrlMirror(Navigation, JS, Owns);
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = Read(_mirror);
-        (_search, _facets, _ticked, _marked, _columns) = ReadList(_mirror);
+        (_search, _facets, _ticked, _marked, _expanded, _columns) = ReadList(_mirror);
 
         Navigation.LocationChanged += Moved;
     }
@@ -330,8 +340,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             .Where(facet => facet.Values.Count > 0)
             .ToDictionary(facet => facet.Key, facet => (IReadOnlyList<string>)facet.Values, StringComparer.Ordinal);
 
-        IReadOnlyList<Guid> ticked =
-            [.. mirror.Values(TickedQueryKey).Select(value => Guid.TryParse(value, out var id) ? id : (Guid?)null).OfType<Guid>().Distinct()];
+        IReadOnlyList<Guid> ticked = Ids(mirror, TickedQueryKey);
+        IReadOnlyList<Guid> expanded = Ids(mirror, ExpandedQueryKey);
 
         IReadOnlyList<string> marked =
             [.. mirror.Values(MarkedQueryKey)
@@ -345,8 +355,11 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             ? null
             : [.. KildeSearch.ColumnKeys.Where(key => named.Contains(key, StringComparer.OrdinalIgnoreCase))];
 
-        return new(search, facets, ticked, marked, Defaulted(columns));
+        return new(search, facets, ticked, marked, expanded, Defaulted(columns));
     }
+
+    private static IReadOnlyList<Guid> Ids(UrlMirror mirror, string key) =>
+        [.. mirror.Values(key).Select(value => Guid.TryParse(value, out var id) ? id : (Guid?)null).OfType<Guid>().Distinct()];
 
     /// <summary>Null for the default column set, however it was spelled, so it is never written.</summary>
     private static IReadOnlyList<string>? Defaulted(IReadOnlyList<string>? columns) =>
@@ -354,12 +367,13 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             ? null
             : columns;
 
-    /// <summary>The list's state as the address carries it: search, facets, columns and ticks.</summary>
+    /// <summary>The list's state as the address carries it: search, facets, columns, ticks and open rows.</summary>
     private readonly record struct ListState(
         string? Search,
         IReadOnlyDictionary<string, IReadOnlyList<string>>? Facets,
         IReadOnlyList<Guid>? Ticked,
         IReadOnlyList<string>? Marked,
+        IReadOnlyList<Guid>? Expanded,
         IReadOnlyList<string>? Columns)
     {
         /// <summary>These keys as a query string, omitting what is at its default.</summary>
@@ -387,6 +401,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
             pairs.AddRange((Ticked ?? []).Select(id => Pair(TickedQueryKey, id.ToString())));
             pairs.AddRange((Marked ?? []).Select(mark => Pair(MarkedQueryKey, mark)));
+            pairs.AddRange((Expanded ?? []).Select(id => Pair(ExpandedQueryKey, id.ToString())));
 
             return string.Join("&", pairs);
         }
@@ -394,7 +409,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         private static string Pair(string key, string value) => key + "=" + Uri.EscapeDataString(value);
     }
 
-    private ListState List => new(_search, _facets, _ticked, _marked, _columns);
+    private ListState List => new(_search, _facets, _ticked, _marked, _expanded, _columns);
 
     /// <summary>
     /// Read the address again when something moved the page under a standing circuit, and draw
@@ -453,7 +468,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         }
 
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = arrived;
-        (_search, _facets, _ticked, _marked, _columns) = list;
+        (_search, _facets, _ticked, _marked, _expanded, _columns) = list;
         _arrival++;
 
         StateHasChanged();
@@ -470,6 +485,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         || string.Equals(key, ColumnsQueryKey, StringComparison.OrdinalIgnoreCase)
         || string.Equals(key, TickedQueryKey, StringComparison.OrdinalIgnoreCase)
         || string.Equals(key, MarkedQueryKey, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(key, ExpandedQueryKey, StringComparison.OrdinalIgnoreCase)
         || KildeSearch.FacetKeys.Contains(key, StringComparer.OrdinalIgnoreCase);
 
     protected override Task OnAfterRenderAsync(bool firstRender) =>

@@ -513,8 +513,11 @@ public sealed partial class KildeSearch : ComponentBase
         if (!_expanded.Add(kilde.Id))
         {
             _expanded.Remove(kilde.Id);
+            await RaiseExpandedAsync();
             return;
         }
+
+        await RaiseExpandedAsync();
 
         // A fetch already in flight counts as cached. Without the second clause, collapsing and
         // re-expanding before the first answer lands starts a second request for the same kilde -
@@ -779,6 +782,7 @@ public sealed partial class KildeSearch : ComponentBase
         SeedFacetChoices();
         SeedTicks();
         SeedMarks();
+        SeedExpanded();
         SeedColumns();
         _selectedId = SelectedKildeId;
 
@@ -816,6 +820,7 @@ public sealed partial class KildeSearch : ComponentBase
         // A row the address marked opens itself, because a mark the reader cannot see is a
         // selection they cannot undo. Nothing at all without marks. (Fhi.Metadata-75yov)
         await OpenMarkedRowsAsync();
+        await OpenExpandedRowsAsync();
 
         // Ticks and marks arrive together from the address whenever a reader shares a link or
         // navigates back, and every later mark and tick tops the union up but none of these did —

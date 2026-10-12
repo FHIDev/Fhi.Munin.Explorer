@@ -1331,6 +1331,13 @@ component state that goes away on refresh. `?sort=` is omitted while the list is
 catalogue sent, so a link made before the list could be sorted still means what it did, and
 `?sortDir=` is omitted with it and wherever the sorted column runs ascending.
 
+A row opened on its datasamlinger is in the address too, as `?expanded=<kilde id>`, once per open
+row, so a link opens the same rows in either language and Back from the variable explorer comes
+back to them. Opening or closing a row replaces the history entry rather than adding one. Where the
+host serves the package's browser module, the list also returns to the scroll position the reader
+left it at — kept per tab in `sessionStorage`, keyed by the address — or, for a link nobody has
+scrolled, brings the first open row into view.
+
 `?datasamling=` is read beside `?kilde=` and never instead of it: a datasamling opens in place of
 the kilde it belongs to, and the kilde is the way back out, so one named on its own is dropped on
 the first render. Each datasamling in the hierarchy carries a link of its own —
@@ -1393,8 +1400,8 @@ Four things are worth knowing before mounting one.
 - **Your own parameters are safe.** Each component reads and rewrites only the keys it owns —
   `ExplorerUrlState.QueryKeys` for the variable explorer, `?kilde=`, `?datasamling=`, `?sort=`,
   `?sortDir=`, `?search=`, the four facet keys (`?kildetype=`, `?kategori=`, `?tilgangsniva=`,
-  `?databehandler=`), `?columns=`, `?selected=` and `?selectedDatasamling=` for the
-  kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
+  `?databehandler=`), `?columns=`, `?selected=`, `?selectedDatasamling=` and `?expanded=` for
+  the kildeutforsker — and carries everything else through untouched. `DeclinedKeys` keeps one of ours as well, for a page
   that already means something else by `?page=`; a declined key is left where it is rather than
   overwritten.
 - **`KildeExplorer` needs `VariableExplorerPath`** to offer navigation to the variable
