@@ -385,6 +385,35 @@ jobs:
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/assert-host-needs-no-glue.sh
 
+  # The one job on Windows, and it runs one script. The package's build writes wwwroot/version.json,
+  # and from the SECOND build the SDK's glob spells that file wwwroot\version.json on Windows. A
+  # Content Remove written with a forward slash did not match it there, the file was included twice,
+  # and every build and pack after the first failed for every developer on Windows, while all the
+  # Linux jobs above stayed green (Fhi.Metadata-l9l2n.123). Nothing else is checked here.
+  windows-rebuild:
+    name: second build on Windows packs one version file
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Build twice without cleaning, then pack
+        run: ./scripts/assert-rebuild-packs-one-version-file.sh
+
   # WCAG 2.1 AA applies to this package by law, and this job keeps AGENTS.md's accessibility
   # section - the gate's blind spots included - from being a sentence nobody checks. Its own job,
   # required on main since 2026-08-28, for the guards' reasons above.
@@ -649,7 +678,7 @@ jobs:
     # the half that remains. Renaming the id would have been the tidier edit and a worse one: this
     # `needs:` list and the table below are the two places that would then have to agree, and the
     # required check in the ruleset is `ci summary`, not this job, so the id is invisible to it.
-    needs: [build, changelog, changelog-assembly, comment-budget, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, accessibility, component-state, hostile-layout]
+    needs: [build, changelog, changelog-assembly, comment-budget, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, windows-rebuild, accessibility, component-state, hostile-layout]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -692,6 +721,7 @@ jobs:
           fragment names noted for hosts|${{ needs['fragment-host-notes'].result }}
           portability guard armed|${{ needs['portability-guard'].result }}
           a host needs no glue|${{ needs.consumer.result }}
+          second build on Windows packs one version file|${{ needs['windows-rebuild'].result }}
           accessibility|${{ needs.accessibility.result }}
           state after a refused press|${{ needs['component-state'].result }}
           declarations match helsedata's stylesheet|${{ needs['hostile-layout'].result }}
