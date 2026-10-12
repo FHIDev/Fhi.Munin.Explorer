@@ -217,7 +217,7 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
 
     // Sized to their own text the two share buttons were 129px and 152px, stacked at 320px (Fhi.Metadata-gdl6m).
     [Fact]
-    public void TheShareButtons_SitInTheSameFixedTracksAsTheOwnerButtons()
+    public void ShareButtons_WhenTheHostGivesAnAddress_ThenTheySitInTheOwnerButtonsFixedTracks()
     {
         Services.AddSingleton<IMuninExplorerClient>(new OwnersClient());
         Services.AddScoped<VariableListState>();

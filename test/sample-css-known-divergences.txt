@@ -296,7 +296,6 @@ missing-selector||.munin-explorer-meta__tab--active button|
 missing-selector||.munin-explorer-meta__tab-content h4|
 missing-selector||.munin-explorer-meta__tab-content select option|
 missing-selector||.munin-explorer-meta__tab-content|
-missing-selector||.munin-explorer-meta__tab|
 missing-selector||.munin-explorer-pagination-pages .hd-button-reset:hover|
 missing-selector||.munin-explorer-retry[aria-disabled=true]:focus|
 
