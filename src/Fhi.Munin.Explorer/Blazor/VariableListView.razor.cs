@@ -150,6 +150,17 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // inside the block, so TakeFocusTarget moves focus on rather than letting the fold drop it.
     private bool _creating;
 
+    // A create is out: the button says so, the field is locked and a second press does nothing.
+    private bool _createInFlight;
+
+    private bool _listCreatedSaid;
+
+    // The mount is asking which list is the reader's active one; its rows are asked for next.
+    private bool _findingList;
+    private ElementReference _newNameField;
+    private bool _focusNewNameField;
+    private bool _focusCreateToggle;
+
     private bool _renaming;
     private bool _confirmingDelete;
     private ListActionFailure _actionFailure;
@@ -438,8 +449,42 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // The form opens under the row, where an open fold's panel would cover it.
     private void ToggleCreatingFromControl(MouseEventArgs released)
     {
+        // Inert while a create is out: folding the form would take its answer's region with it.
+        if (_createInFlight)
+        {
+            return;
+        }
+
+        var wasOpen = _creating;
         Toggle(released, ref _creating);
         CloseFolds();
+
+        if (_creating && !wasOpen)
+        {
+            _focusNewNameField = true;
+            _listCreatedSaid = false;
+        }
+    }
+
+    // Refused while a create is out: the form folding under it would hide the answer.
+    private void CancelCreating()
+    {
+        if (!_creating || _createInFlight)
+        {
+            return;
+        }
+
+        _creating = false;
+        _readerMoves++;
+        _focusCreateToggle = true;
+    }
+
+    private void CloseCreatingOnEscape(KeyboardEventArgs pressed)
+    {
+        if (pressed.Key == "Escape")
+        {
+            CancelCreating();
+        }
     }
 
     private void ToggleRenamingFromControl(MouseEventArgs released) => Toggle(released, ref _renaming);
@@ -493,6 +538,19 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         State?.KildeFilter.Count > 0 ? T.NoVariablesForTheseKilder : T.EmptyList;
 
     private bool EmptyRowsShown => _page is { Items.Count: 0 } && !_loading;
+
+    /// <summary>The shown list's rows are on their way: a read is out, or the mount is still finding the list.</summary>
+    /// <remarks>Never on `_page is null` alone: a list deleted elsewhere leaves that too, with nothing coming.</remarks>
+    private bool RowsPending =>
+        State is { IsAuthenticated: true, ListsReadFailed: false } && !_failed && Lists.Count > 0
+        && (_page is null ? _loading || _findingList : _pageOf != _shownList);
+
+    // The list the page on screen was read for: after a switch the old rows would stand under the new name.
+    private Guid? _pageOf;
+
+    // As many as the list says it holds, so the page does not jump when the rows land; never a tall stack.
+    private int PlaceholderRows =>
+        Math.Clamp(Lists.FirstOrDefault(l => l.Id == _shownList)?.VariableCount ?? 3, 1, 5);
 
     // With a kilde ticked the sentence says none come from those kilder, which is not why the buttons are refused.
     private bool ListEmptySaidBelow => EmptyRowsShown && EmptyMessage == T.EmptyList;
@@ -567,8 +625,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         var fromSource = TakeSourceFocusTarget();
         var fromMenu = TakeMenuFocusTarget();
         var fromWrite = TakeFocusTarget();
+        var fromCreateForm = TakeCreateFormFocusTarget();
 
-        if ((fromSource ?? fromMenu ?? fromWrite) is not { } target)
+        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite) is not { } target)
         {
             return;
         }
@@ -582,6 +641,16 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // A focus nicety must not take the circuit down with it.
             Log?.LogWarning(ex, "could not move focus after the reader's action");
         }
+    }
+
+    // Into the name field when the form opens, back to its button when the reader shuts it.
+    private ElementReference? TakeCreateFormFocusTarget()
+    {
+        var toField = _focusNewNameField && _creating;
+        var toToggle = _focusCreateToggle && !_creating;
+        _focusNewNameField = _focusCreateToggle = false;
+
+        return toField ? _newNameField : toToggle ? _createToggle : null;
     }
 
     /// <summary>Where focus goes once the control that held it has left, or null to leave it be.</summary>
@@ -657,7 +726,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // Spent before the await, so a refusal does not leave every later render asking too.
             var asking = !_askedOnMount;
             _askedOnMount = true;
+            _findingList = true;
             await State.EnsureActiveListAsync(readerAsked: asking);
+            _findingList = false;
             await ShowActiveListAsync();
         }
         catch (Exception ex)
@@ -674,6 +745,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 Log?.LogError(ex, "could not read the reader's lists on mount");
             }
 
+            _findingList = false;
             _page = null;
             _failed = true;
         }
@@ -864,6 +936,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _loading = false;
         _failed = failed;
         _page = failed ? null : read;
+        _pageOf = _page is null ? null : readList;
 
         // Removed elsewhere, or paged away from: an open panel must not come back with stale detail.
         if (_openId is { } open && _page?.Items.Any(item => VariableDatasamlingKey.Of(item) == open) != true)
@@ -1129,6 +1202,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private void ForgetFailures()
     {
         _failed = false;
+        _listCreatedSaid = false;
         _createFailure = ListActionFailure.None;
         _actionFailure = ListActionFailure.None;
         _downloadFailure = DownloadFailure.None;
@@ -1194,6 +1268,25 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     }
 
     private async Task CreateListAsync()
+    {
+        if (_createInFlight || State is null || _newName.Trim().Length == 0)
+        {
+            return;
+        }
+
+        _createInFlight = true;
+
+        try
+        {
+            await CreateListCoreAsync();
+        }
+        finally
+        {
+            _createInFlight = false;
+        }
+    }
+
+    private async Task CreateListCoreAsync()
     {
         var name = _newName.Trim();
 
@@ -1291,6 +1384,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         // Folded once the list exists, as Skuld has no standing form; focus goes to what names it.
         _creating = false;
         _focusAfterCreate = true;
+        _listCreatedSaid = true;
     }
 
     /// <summary>

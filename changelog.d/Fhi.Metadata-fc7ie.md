@@ -1,0 +1,2 @@
+category: Changed
+- **The saved list's name and its actions share one row, with «Legg til ny liste» at the end of it.** The button stood directly on top of the open list's name and read as that list's own; it is now where helsedata's own «Min oversikt» has it, with the same plus icon. The new-list form is one line (field, «Opprett liste», «Avbryt»), takes focus when it opens, and Esc or «Avbryt» folds it with focus back on the button. With several lists the picker joins the row, which then wraps under the name.

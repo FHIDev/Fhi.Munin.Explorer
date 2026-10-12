@@ -57,7 +57,7 @@ public partial class VariableListViewTest
         var loose = cut.FindAll($"{ActionRow} button")
                        .Where(b => b.Closest(DownloadPanel) is null && b.Closest(MenuPanel) is null);
 
-        Assert.Equal(["Legg til ny liste", "Last ned", "Flere valg"], Words(loose));
+        Assert.Equal(["Last ned", "Flere valg", "Legg til ny liste"], Words(loose));
         Assert.Empty(cut.FindAll($"{ActionRow} ~ * button[id^='munin-explorer-rename-toggle-']"));
     }
 

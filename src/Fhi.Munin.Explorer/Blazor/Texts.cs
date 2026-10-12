@@ -270,6 +270,9 @@ internal sealed record Texts(
     // what pressing it does, not what the variable currently is.
     string SaveToList,
     string RemoveFromList,
+    string SavingToList,
+    string RemovingFromList,
+    string SavingAllResults,
     // The list made for a reader who saves before they have made one themselves.
     string FirstListName,
     // Said in the row, beside the button that failed - the rest of the results are unaffected.
@@ -304,6 +307,11 @@ internal sealed record Texts(
     // its own. The act rather than the field it reveals: "Navn på ny liste" is the label inside,
     // and a button repeating it would name the same field twice.
     string AddNewList,
+    string NewListNamePlaceholder,
+    string CreatingList,
+    string CancelNewList,
+    string ListCreated,
+    string ListRowsLoading,
     // The saved-list tab's own filter panel, where the search facets are hidden. Only the empty
     // case earns a string of its own: the panel's title and the Kilde heading are FiltersTitle and
     // FieldSource, the same words for the same things the search panel uses.
@@ -1258,6 +1266,9 @@ internal sealed record Texts(
         ColumnActions: "Valg",
         SaveToList: "Lagre i liste",
         RemoveFromList: "Fjern fra liste",
+        SavingToList: "Lagrer …",
+        RemovingFromList: "Fjerner …",
+        SavingAllResults: "Lagrer variablene …",
         FirstListName: "Min variabelliste",
         SaveError: "Kunne ikke lagre nå. Prøv igjen om litt.",
         SignInRequiredError: "Du er ikke logget inn. Logg inn for å lagre i listen.",
@@ -1287,6 +1298,11 @@ internal sealed record Texts(
         RemoveFromThisList: "Fjern",
         ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
         AddNewList: "Legg til ny liste",
+        NewListNamePlaceholder: "F.eks: Prosjekt ABC",
+        CreatingList: "Oppretter …",
+        CancelNewList: "Avbryt",
+        ListCreated: "Listen er opprettet.",
+        ListRowsLoading: "Henter variablene i listen …",
         NoKilderInList: "Ingen kilder i listen ennå.",
         NoVariablesForTheseKilder: "Ingen variabler fra de valgte kildene.",
         ListVariableCount: count => count == 1 ? "1 variabel" : $"{count} variabler",
@@ -1778,6 +1794,9 @@ internal sealed record Texts(
         ColumnActions: "Actions",
         SaveToList: "Save to list",
         RemoveFromList: "Remove from list",
+        SavingToList: "Saving …",
+        RemovingFromList: "Removing …",
+        SavingAllResults: "Saving the variables …",
         FirstListName: "My variable list",
         SaveError: "Could not save just now. Try again shortly.",
         SignInRequiredError: "You are not signed in. Sign in to save to the list.",
@@ -1807,6 +1826,11 @@ internal sealed record Texts(
         RemoveFromThisList: "Remove",
         ListLoadError: "Could not fetch the list just now. Try again shortly.",
         AddNewList: "Add new list",
+        NewListNamePlaceholder: "E.g. Project ABC",
+        CreatingList: "Creating …",
+        CancelNewList: "Cancel",
+        ListCreated: "The list has been created.",
+        ListRowsLoading: "Loading the variables in the list …",
         NoKilderInList: "No sources in the list yet.",
         NoVariablesForTheseKilder: "No variables from the selected sources.",
         ListVariableCount: count => count == 1 ? "1 variable" : $"{count} variables",
