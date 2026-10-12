@@ -96,13 +96,15 @@ for pkg in "${PACKAGES[@]}"; do
   # The staticwebassets/ entry and the five props files came in together and only together: the
   # SDK writes the props for any RCL with a wwwroot, and without them the module is in the .nupkg
   # and a 404 in the browser. Named one by one so this stays an exact set — a second module, or a
-  # stylesheet beside it, still fails.
+  # stylesheet beside it, still fails. version.json is the one data file: the build writes it from
+  # the package version (Fhi.Metadata-l9l2n.123), and its content is checked further down.
   expected=$(printf '%s\n' \
     "$pkg.nuspec" \
     "README.md" \
     "lib/$TFM/$pkg.dll" \
     "lib/$TFM/$pkg.xml" \
     "staticwebassets/explorer-interop.js" \
+    "staticwebassets/version.json" \
     "build/$pkg.props" \
     "build/Microsoft.AspNetCore.StaticWebAssetEndpoints.props" \
     "build/Microsoft.AspNetCore.StaticWebAssets.props" \
@@ -155,8 +157,19 @@ for pkg in "${PACKAGES[@]}"; do
   grep -q '<readme>README.md</readme>' <<< "$flat" \
     || bad "README not declared in the nuspec — the package page would render empty"
 
+  version=$(echo "$flat" | grep -o '<version>[^<]*</version>' | head -1 | sed 's/<[^>]*>//g' || true)
+
+  # The file a host serves to say which version it runs. Compared whole, against the nuspec of this
+  # same package: a hand-written or left-over file with another version is the failure to catch.
+  served=$(unzip -p "$nupkg" staticwebassets/version.json 2>/dev/null | tr -d '\r\n' || true)
+  wanted="{\"package\":\"$pkg\",\"version\":\"$version\"}"
+  if [ "$served" = "$wanted" ]; then
+    note "version.json says $version"
+  else
+    bad "staticwebassets/version.json is '$served' but the package is $wanted"
+  fi
+
   if [ -n "$EXPECTED_VERSION" ]; then
-    version=$(echo "$flat" | grep -o '<version>[^<]*</version>' | head -1 | sed 's/<[^>]*>//g' || true)
     if [ "$version" = "$EXPECTED_VERSION" ]; then
       note "version $version"
     else

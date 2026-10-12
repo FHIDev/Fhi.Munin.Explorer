@@ -86,12 +86,15 @@ These are not style preferences — each one is a host that breaks otherwise.
 - **No `@rendermode`.** The host decides, at the mount site. This is what lets one package serve
   both a legacy and a modern host.
 - **No CSS, no `.razor.css`.** Styling comes from the host. The `wwwroot` the package does have
-  holds one JavaScript module and nothing else — `explorer-interop.js`, served at
+  holds one JavaScript module — `explorer-interop.js`, served at
   `_content/Fhi.Munin.Explorer/` and imported after the first render, the shape
   `Fhi.Helsedata.Soknader` already ships on this same host. Nothing rendered depends on it, so a
   host that does not serve it draws the same page, and `scripts/assert-package-contents.sh` names
   every packed entry one by one — a stylesheet parked beside the module still fails the build
   (Fhi.Metadata-35w0p.14).
+  The build also writes `version.json` there, so a host answers
+  `_content/Fhi.Munin.Explorer/version.json` with `{"package":"Fhi.Munin.Explorer","version":"…"}`:
+  the version it actually serves. No host code is needed for it.
   The names the markup emits split in two, and the difference matters to whoever is writing the
   rules:
   - **Borrowed.** Where a part of the component is ordinary page furniture, it wears

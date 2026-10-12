@@ -30,4 +30,15 @@
     <InternalsVisibleTo Include="Fhi.Munin.Explorer.Tests" />
   </ItemGroup>
 
+  <!-- Which version a host actually serves, at _content/Fhi.Munin.Explorer/version.json. Written by the
+       build from the package's own version, never by hand: a stale file would be worse than none.
+       Removed and re-added so a file left by an earlier build is not included twice. -->
+  <Target Name="WriteVersionFile" BeforeTargets="AssignTargetPaths;ResolveProjectStaticWebAssets">
+    <WriteLinesToFile File="$(MSBuildProjectDirectory)/wwwroot/version.json" Lines="{&quot;package&quot;:&quot;$(PackageId)&quot;,&quot;version&quot;:&quot;$(PackageVersion)&quot;}" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Content Remove="wwwroot/version.json" />
+      <Content Include="wwwroot/version.json" />
+    </ItemGroup>
+  </Target>
+
 </Project>
