@@ -1701,6 +1701,8 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
 .munin-explorer-list-head > .munin-explorer-page__actions {
   align-items: flex-end;
   margin-top: 0;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .munin-explorer-list-head > .munin-explorer-page__actions > label {
