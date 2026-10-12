@@ -2692,4 +2692,51 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
         Assert.Contains("Registerforskriften, ", anchor.ParentElement!.TextContent, StringComparison.Ordinal);
     }
+
+    private static Dictionary<string, string?> Reference(string address) => new() { ["Variabelreferanse"] = address };
+
+    [Fact]
+    public void Variables_WhenTheDatasamlingHasNoneInMuninButAReference_ThenThePageSaysWhereTheyAreDescribed()
+    {
+        // Its own reference only: nothing is inherited from the kilde (Fhi.Metadata-ot99a).
+        var cut = Render(Datasamling() with
+        {
+            VariableCount = 0, AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging")
+        });
+
+        var link = cut.Find("a[href='https://eksempel.no/variabler/oppfolging']");
+        Assert.Equal("Variablene er beskrevet her: https://eksempel.no/variabler/oppfolging",
+                     link.ParentElement!.TextContent.Trim());
+        Assert.Equal("noopener noreferrer", link.GetAttribute("rel"));
+    }
+
+    [Fact]
+    public void Variables_WhenTheDatasamlingHasVariablesAndAReference_ThenTheLinkSaysAlso()
+    {
+        var cut = Render(Datasamling() with
+        {
+            VariableCount = 12, AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging")
+        });
+
+        var link = cut.Find("a[href='https://eksempel.no/variabler/oppfolging']");
+        Assert.StartsWith("Variablene er også beskrevet her:", link.ParentElement!.TextContent.Trim(),
+                          StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Variables_WhenThePageIsEnglish_ThenTheSentenceIsEnglish()
+    {
+        var cut = Render(Datasamling() with
+        {
+            VariableCount = 0, AdditionalProperties = Reference("https://eksempel.no/variabler/oppfolging")
+        }, language: "en");
+
+        var link = cut.Find("a[href='https://eksempel.no/variabler/oppfolging']");
+        Assert.StartsWith("The variables are described here:", link.ParentElement!.TextContent.Trim(),
+                          StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Variables_WhenTheDatasamlingHasNoReference_ThenNoSentenceIsDrawn() =>
+        Assert.DoesNotContain("beskrevet her", Render(Datasamling()).Markup, StringComparison.Ordinal);
 }

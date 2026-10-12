@@ -812,7 +812,15 @@ else
                                 @* The bar is decoration under the digits, which stay the cell's text.
                                    Variabler only: the mockup draws it on no other count. *@
                                 var variables = CountClass(kilde.TotalVariables, largestVariables);
+                                @* None counted here, but described somewhere else: a nought would say there are none. *@
+                                @if (kilde.TotalVariables == 0 && VariableReference.Of(kilde.AdditionalProperties) is not null)
+                                {
+                                    <td class="@variables.Class"><span aria-hidden="true">–</span><span class="screenreader-only">@T.VariablesDescribedElsewhere</span></td>
+                                }
+                                else
+                                {
                                 <td class="@variables.Class">@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}</td>
+                                }
                             }
                             @if (ColumnVisible(KildeColumn.KodeverkShare))
                             {

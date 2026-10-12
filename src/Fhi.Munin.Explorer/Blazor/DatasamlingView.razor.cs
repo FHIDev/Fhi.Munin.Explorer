@@ -777,6 +777,11 @@ public sealed partial class DatasamlingView : ComponentBase
                            HasVariablesNavigation ? T.HeadingVariables : StatisticsHeading, null,
                            DetailBlocks.Both(DetailBlocks.Facts(Statistics, Language), VariablesNavigation)));
         }
+        else if (!statisticsDrawn && VariableReferenceLine is { } reference)
+        {
+            // No numbers to hang it under, and the reference is then all there is to say about the variables.
+            blocks.Add(new(SectionKeys.Statistics, DetailSectionIds.Statistics, T.HeadingVariables, null, reference));
+        }
 
         return blocks;
     }

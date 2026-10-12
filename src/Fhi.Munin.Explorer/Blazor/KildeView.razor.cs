@@ -343,7 +343,10 @@ public sealed partial class KildeView : ComponentBase
     /// count class both read nought off this non-nullable int as a count of none, and KildeSearch
     /// prints it in words a section below this one.
     /// </remarks>
-    private string? TotalVariables => Kilde?.TotalVariables.ToString();
+    private string? TotalVariables =>
+        Kilde is { TotalVariables: 0 } described && VariableReference.Of(described.AdditionalProperties) is not null
+            ? T.VariablesDescribedElsewhere
+            : Kilde?.TotalVariables.ToString();
 
     /// <summary>
     /// The facts every source has, which is why they are typed fields rather than curated properties.

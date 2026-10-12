@@ -752,6 +752,11 @@ internal sealed record Texts(
     // (count) — the variable section's one line. Assembled here rather than at the call site for the
     // reason KildeCount is: the singular is this language's business and not C#'s.
     Func<int, string> KildeVariableCount,
+    // The lead of the sentence that ends in a Variabelreferanse link; "also" when Munin has variables too.
+    string VariablesDescribedHere,
+    string VariablesAlsoDescribedHere,
+    // In place of a count of none, where the variables are documented somewhere else.
+    string VariablesDescribedElsewhere,
     // (shown, total, filters, order, direction) — the kilde list's own "56 kilder av 66, avgrenset
     // av 2 filtre, sortert etter Variabler, synkende", assembled here for ResultSummary's reason:
     // where each clause sits is this language's grammar, and so is the plural. The filter clause
@@ -1598,6 +1603,9 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 publisert variabel i denne kilden."
             : $"{count} publiserte variabler i denne kilden.",
+        VariablesDescribedHere: "Variablene er beskrevet her:",
+        VariablesAlsoDescribedHere: "Variablene er også beskrevet her:",
+        VariablesDescribedElsewhere: "Beskrevet utenfor helsedata.no",
         KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 kilde" : $"{shown} kilder")
             + (shown == total ? "" : $" av {total}")
@@ -2121,6 +2129,9 @@ internal sealed record Texts(
         KildeVariableCount: count => count == 1
             ? "1 published variable in this source."
             : $"{count} published variables in this source.",
+        VariablesDescribedHere: "The variables are described here:",
+        VariablesAlsoDescribedHere: "The variables are also described here:",
+        VariablesDescribedElsewhere: "Described outside helsedata.no",
         KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 source" : $"{shown} sources")
             + (shown == total ? "" : $" of {total}")

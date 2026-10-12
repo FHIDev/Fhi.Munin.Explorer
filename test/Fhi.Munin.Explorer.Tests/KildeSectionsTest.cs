@@ -755,4 +755,55 @@ public class KildeSectionsTest : ExplorerTestContext
             Assert.DoesNotContain(word, code, StringComparison.Ordinal);
         }
     }
+
+    private static Dictionary<string, string?> Reference(string address) => new() { ["Variabelreferanse"] = address };
+
+    [Fact]
+    public void Variables_WhenTheKildeHasNoneInMuninButAReference_ThenTheSectionIsTheSentenceWithTheLink()
+    {
+        var kilde = Tromso() with
+        {
+            Datasamlinger = [], TotalVariables = 0, AdditionalProperties = Reference("https://eksempel.no/variabler")
+        };
+
+        var cut = OpenInKelda(kilde);
+
+        Assert.Equal("Variablene er beskrevet her: https://eksempel.no/variabler", BodyUnder(cut, "Variabler"));
+
+        var link = cut.Find("#munin-explorer-variables a");
+        Assert.Equal("https://eksempel.no/variabler", link.GetAttribute("href"));
+        Assert.Equal("noopener noreferrer", link.GetAttribute("rel"));
+        Assert.Null(link.GetAttribute("target"));
+
+        var view = cut.Find(".munin-explorer-kilde").TextContent;
+        Assert.DoesNotContain("0 publiserte variabler", view, StringComparison.Ordinal);
+        Assert.Contains("Beskrevet utenfor helsedata.no", view, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Variables_WhenTheKildeHasVariablesAndAReference_ThenTheCountStandsAndTheLinkSaysAlso()
+    {
+        var kilde = Tromso() with { TotalVariables = 5752, AdditionalProperties = Reference("https://eksempel.no/variabler") };
+
+        var cut = OpenInKelda(kilde);
+
+        Assert.Equal("5752 publiserte variabler i denne kilden.", BodyUnder(cut, "Variabler"));
+        var section = cut.Find("#munin-explorer-variables");
+        Assert.Contains("Variablene er også beskrevet her: https://eksempel.no/variabler", section.TextContent,
+                        StringComparison.Ordinal);
+        Assert.Single(section.QuerySelectorAll("a[href='https://eksempel.no/variabler']"));
+        Assert.DoesNotContain("Beskrevet utenfor helsedata.no", cut.Find(".munin-explorer-kilde").TextContent,
+                              StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Variables_WhenTheReferenceIsNotAWebAddress_ThenNothingChanges()
+    {
+        var kilde = Tromso() with { Datasamlinger = [], TotalVariables = 0, AdditionalProperties = Reference("se nettsiden") };
+
+        var cut = OpenInKelda(kilde);
+
+        Assert.Equal("0 publiserte variabler i denne kilden.", BodyUnder(cut, "Variabler"));
+        Assert.Empty(cut.FindAll("#munin-explorer-variables a"));
+    }
 }
