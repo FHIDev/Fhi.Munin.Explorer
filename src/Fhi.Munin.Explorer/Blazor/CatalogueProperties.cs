@@ -20,13 +20,15 @@ internal readonly record struct LocalisedText(string Text, string Language);
 /// <param name="Href">Where the value should link, for the properties the catalogue types as a URL.</param>
 /// <param name="Hrefs">One target per address, where the value is a <c>;</c>-joined list of them.</param>
 /// <param name="Authored">Drawn through <see cref="CatalogueMarkdown"/>; see <see cref="CatalogueProperties.AuthoredKeys"/>.</param>
+/// <param name="InlineLinks">Drawn through <see cref="CatalogueMarkdown.Linked"/>: Lovverk with an address in it.</param>
 internal readonly record struct PropertyRow(
     string Label,
     string LabelLanguage,
     IReadOnlyList<LocalisedText> Values,
     string? Href = null,
     IReadOnlyList<string>? Hrefs = null,
-    bool Authored = false);
+    bool Authored = false,
+    bool InlineLinks = false);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
 /// <remarks>
@@ -282,7 +284,12 @@ internal static class CatalogueProperties
                 continue;
             }
 
-            rows.Add(new PropertyRow(label, labelLanguage, resolved, Authored: AuthoredKeys.Contains(entry.Key)));
+            var authored = AuthoredKeys.Contains(entry.Key);
+            var inlineLinks = !authored
+                              && string.Equals(entry.Key, CatalogueColumns.LegalBasis, StringComparison.Ordinal)
+                              && resolved is [{ Text: var words }] && words == raw
+                              && (CatalogueMarkdown.HasWebAddress(raw) || CatalogueMarkdown.Link(raw) is not null);
+            rows.Add(new PropertyRow(label, labelLanguage, resolved, Authored: authored, InlineLinks: inlineLinks));
         }
 
         return rows;

@@ -65,6 +65,7 @@ internal sealed record Texts(
     // and two buttons that both only name a destination read as the same button twice.
     string ShowKildeVariables,
     string ShowDatasamlingVariables,
+    string ShowVariabelgruppeVariables,
     string ViewDatasamlingKilde,
     string ViewVariables,
     string Ongoing,
@@ -81,15 +82,14 @@ internal sealed record Texts(
     Func<int, string> DatasamlingCountCrumb,
 
     string TabData,
-    // The drawer's second tab. Not the curated property group the catalogue also calls
-    // "Om variabelen": this is our label for a tab, and that is Munin's master data.
-    string TabAbout,
+    // The drawer's second tab, «Detaljer» as ADO 121586 names it.
+    string TabDetails,
     // The newest SisteOppdaterteAarssett across the variable's statistics rows.
     string FieldLatestYearSet,
 
     // The page's own two tabs, worded as Runa words them (explorer.tabs.search_results,
     // explorer.tabs.variable_list). Spelled out rather than reusing Title, because the panel's
-    // TabData/TabAbout above are on screen at the same time and the two pairs must read apart.
+    // TabData/TabDetails above are on screen at the same time and the two pairs must read apart.
     string TabSearchResults,
     string TabVariableList,
     string GroupPlacement,
@@ -423,6 +423,9 @@ internal sealed record Texts(
     string DownloadCsv,
     string IncludeKodeverk,
     string DownloadError,
+    // Nedlasting av hele søkeresultatet, ikke en liste. Advarselen teller treff, som summen over gjør.
+    string DownloadSelection,
+    Func<int, string> DownloadSelectionLarge,
     string HeadingKodeverk,
 
     // The version history in the whole-variable view.
@@ -1113,6 +1116,7 @@ internal sealed record Texts(
         BackToVariables: "← Tilbake til variabler",
         ShowKildeVariables: "Vis bare variabler fra denne datakilden",
         ShowDatasamlingVariables: "Vis bare variabler fra denne datasamlingen",
+        ShowVariabelgruppeVariables: "Vis variablene i variabelgruppen",
         ViewDatasamlingKilde: "Vis datakilden",
         ViewVariables: "Vis variablene",
         Ongoing: "Pågående",
@@ -1120,7 +1124,7 @@ internal sealed record Texts(
         FieldDataPeriod: "Dataperiode",
         DatasamlingCountCrumb: count => count == 1 ? "1 datasamling" : $"{count} datasamlinger",
         TabData: "Data",
-        TabAbout: "Om variabelen",
+        TabDetails: "Detaljer",
         FieldLatestYearSet: "Siste \u00e5rssett",
         TabSearchResults: "Søkeresultat",
         TabVariableList: "Variabelliste",
@@ -1358,6 +1362,8 @@ internal sealed record Texts(
         DownloadCsv: "Last ned som CSV",
         IncludeKodeverk: "Ta med kodeverk",
         DownloadError: "Kunne ikke laste ned nå. Prøv igjen om litt.",
+        DownloadSelection: "Last ned utvalg",
+        DownloadSelectionLarge: count => $"Utvalget har {count} treff. Nedlastingen kan ta litt tid.",
         HeadingKodeverk: "Kodeverk",
         HeadingVersionHistory: "Versjonshistorikk",
         VersionUnnamed: "Versjon uten navn",
@@ -1629,6 +1635,7 @@ internal sealed record Texts(
         BackToVariables: "← Back to variables",
         ShowKildeVariables: "Show only variables from this data source",
         ShowDatasamlingVariables: "Show only variables from this data collection",
+        ShowVariabelgruppeVariables: "Show the variables in the variable group",
         ViewDatasamlingKilde: "View the data source",
         ViewVariables: "View variables",
         Ongoing: "Ongoing",
@@ -1636,7 +1643,7 @@ internal sealed record Texts(
         FieldDataPeriod: "Data period",
         DatasamlingCountCrumb: count => count == 1 ? "1 data collection" : $"{count} data collections",
         TabData: "Data",
-        TabAbout: "About the variable",
+        TabDetails: "Details",
         FieldLatestYearSet: "Latest year set",
         TabSearchResults: "Search results",
         TabVariableList: "Variable list",
@@ -1874,6 +1881,8 @@ internal sealed record Texts(
         DownloadCsv: "Download as CSV",
         IncludeKodeverk: "Include codebooks",
         DownloadError: "Could not download just now. Try again shortly.",
+        DownloadSelection: "Download selection",
+        DownloadSelectionLarge: count => $"The selection has {count} hits. The download may take a while.",
         HeadingKodeverk: "Code lists",
         HeadingVersionHistory: "Version history",
         VersionUnnamed: "Version without a name",

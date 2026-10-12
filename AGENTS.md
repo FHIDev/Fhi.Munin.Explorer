@@ -435,7 +435,7 @@ Log?.LogError(ex, "could not load kilde {KildeId}", id);
 - **Log where the failure is, not where the method is.** `KildeHierarchyView` cancels its own
   calls on every new `KildeId`, and a superseded one arrives as a `TaskCanceledException` that
   nothing failed: log inside the `IsCancellationRequested` guard rather than above it. A blanket
-  `OperationCanceledException` filter would be wrong — `HttpClient`'s own timeout is that type too,
+  `OperationCanceledException` filter would be wrong — the client's own timeout is that type too,
   and it is a fault.
 - **Nothing a log must not carry.** No request URI, no query string, no response body, no bearer
   token, no text the reader typed — a kilde, variable or list id and a page number say which call

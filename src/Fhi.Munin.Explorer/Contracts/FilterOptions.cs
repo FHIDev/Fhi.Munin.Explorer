@@ -260,6 +260,12 @@ public sealed record VariabelgruppeOwner
     /// variable, so a group is not drawn twice.
     /// </summary>
     [JsonPropertyName("datasamlingId")] public Guid? DatasamlingId { get; init; }
+
+    /// <summary>
+    /// The group's variables in this placement alone, where the group's own count spans every
+    /// placement. Null from an API that predates it. (Fhi.Metadata-i1rbm)
+    /// </summary>
+    [JsonPropertyName("count")] public int? Count { get; init; }
 }
 
 /// <summary>A saved-filter facet. See the note on <see cref="FilterOptions.Filters"/>.</summary>

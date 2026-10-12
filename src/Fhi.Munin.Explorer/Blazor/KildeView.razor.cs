@@ -429,8 +429,11 @@ public sealed partial class KildeView : ComponentBase
                                Note: DataCollections.Count > 0
                                    ? T.DatasamlingCountCrumb(DataCollections.Count)
                                    : null),
-                new DetailFact(T.FieldLegalBasis, CatalogueMarkdown.Words(kilde.LegalBasis),
-                               CatalogueMarkdown.Prose(kilde.LegalBasis) ? CatalogueProperties.Foreign("no", Reader) : null),
+                new DetailFact(T.FieldLegalBasis, kilde.LegalBasis,
+                               CatalogueMarkdown.Prose(kilde.LegalBasis) ? CatalogueProperties.Foreign("no", Reader) : null)
+                {
+                    Linked = true,
+                },
             ];
 
     /// <summary>The contents nav, one entry per section this view drew, in that order.</summary>
@@ -509,7 +512,7 @@ public sealed partial class KildeView : ComponentBase
         if (DetailBlocks.AnyLinkedFacts(SourceInformation))
         {
             blocks.Add(new(SectionKeys.SourceInformation, DetailSectionIds.Source, T.HeadingSourceInformation,
-                           null, DetailBlocks.LinkedFacts(SourceInformation, Language)));
+                           null, DetailBlocks.LinkedFacts(SourceInformation, Language, linkedLabel: T.FieldLegalBasis)));
         }
 
         if (DetailBlocks.AnyFacts(Statistics))

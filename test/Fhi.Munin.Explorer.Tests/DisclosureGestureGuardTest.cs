@@ -368,26 +368,26 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableSearch_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Five: Vis filtre, the row's name button, and three that exist only once a row is open —
-        // "Vis datakilde", "Vis datasamling" and, on the Data tab, "Vis koder".
+        // Six: Vis filtre, «Last ned utvalg», the row's name button, and three that exist only once a
+        // row is open — "Vis datakilde", "Vis datasamling" and, on the Data tab, "Vis koder".
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         Services.AddScoped<VariableListState>();
 
         // Four native: the Variabelgruppe and Andre filtre folds, the legend, and the column picker.
-        AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 5, native: 4);
+        AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 6, native: 4);
     }
 
     [Fact]
     public void VariableSearchFilterTree_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Four, and two of them are the facet tree's own: the scene above answers the filters
+        // Five, «Last ned utvalg» among them, and two are the facet tree's own: the scene above answers the filters
         // endpoint with nothing, so its panel draws no tree at all and the branch disclosures added
         // by Fhi.Metadata-adog5 were swept by neither half of this guard.
         Services.AddSingleton<IMuninExplorerClient>(new FacetTreeClient());
         Services.AddScoped<VariableListState>();
 
         // Six native: the four of the scene above, plus the tree's own Type datakilde and Kilde.
-        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 4, native: 6);
+        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 5, native: 6);
     }
 
     [Fact]
@@ -406,14 +406,14 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableSearchLongFacet_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // Three: Vis filtre, the row's chevron, and the cap's "Vis N til" on the kilde facet. The
+        // Four: Vis filtre, «Last ned utvalg», the row's chevron, and the cap's "Vis N til". The
         // kilder have nothing under them, so no branch disclosure joins the count.
         Services.AddSingleton<IMuninExplorerClient>(new LongKildeFacetClient());
         Services.AddScoped<VariableListState>();
 
         // Six native, the same six as the filter-tree scene: the kilde facet draws its Type datakilde
         // and Kilde folds whether or not the cap is past the threshold.
-        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 3, native: 6);
+        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 4, native: 6);
     }
 
     [Fact]

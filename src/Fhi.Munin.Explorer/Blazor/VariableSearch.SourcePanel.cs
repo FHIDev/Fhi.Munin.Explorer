@@ -1,53 +1,11 @@
-using Fhi.Munin.Explorer.Contracts;
 namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>The drill-in view for the kilde or datasamling a variable belongs to.</summary>
 public partial class VariableSearch
 {
 
-    /// <summary>Which of a variable's two owners a panel is showing.</summary>
-    /// <remarks>
-    /// The two are one control each and one payload each, but one panel: they answer the same
-    /// question about the same variable at two widths, and a reader comparing them side by side is
-    /// not what the card has room for. One enum rather than two booleans, so "both open at once" is
-    /// a state that cannot be written down.
-    /// </remarks>
-    private enum SourceKind
-    {
-        /// <summary>The kilde the variable's datasamling belongs to.</summary>
-        Kilde,
-
-        /// <summary>The datasamling the variable is pinned into.</summary>
-        Datasamling
-    }
-
     /// <summary>Whether <paramref name="kind"/> is the owner the panel is currently showing.</summary>
     private bool SourceOpen(SourceKind kind) => _sourceKind == kind;
-
-    /// <summary>
-    /// The id to fetch for an owner, or null when the variable does not name one.
-    /// </summary>
-    /// <remarks>
-    /// <see cref="VariableDetail.KildeId"/> is a bare <c>Guid</c> rather than a nullable one, so
-    /// "no kilde" arrives as <see cref="Guid.Empty"/> — a value the endpoint would answer 404 for.
-    /// It is treated as absent here, which is what keeps a button off the screen that could only
-    /// ever report "not found".
-    /// </remarks>
-    private static Guid? SourceIdOf(VariableDetail detail, SourceKind kind)
-    {
-        var id = kind == SourceKind.Kilde ? detail.KildeId : detail.DatasamlingId;
-
-        return id is { } value && value != Guid.Empty ? value : null;
-    }
-
-    /// <summary>The owners this variable can actually be opened out into, in trail order.</summary>
-    /// <remarks>
-    /// Widest first, matching the kilde trail directly above the buttons: a reader following the
-    /// path from kildetype to datasamling meets the two controls in the same order the trail names
-    /// the two things.
-    /// </remarks>
-    private static IReadOnlyList<SourceKind> SourceTargets(VariableDetail detail) =>
-        [.. new[] { SourceKind.Kilde, SourceKind.Datasamling }.Where(kind => SourceIdOf(detail, kind) is not null)];
 
     private string SourceBusy => _sourceLoading ? "true" : "false";
 

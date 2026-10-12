@@ -152,7 +152,7 @@ public partial class VariableSearch
         _selected = VariableDatasamlingKey.Of(v);
         _selectionNeedsRow = false;
 
-        // Back to the first tab for the newly opened row. A reader who was on Om variabelen for one
+        // Back to the first tab for the newly opened row. A reader who was on Detaljer for one
         // variable has not asked to be there for the next, and arriving on a tab you did not choose —
         // with different content under it — reads as the panel having lost your place.
         _tab = PanelTab.Data;
@@ -344,7 +344,7 @@ public partial class VariableSearch
             return;
         }
 
-        if (_detail is not { } detail || SourceIdOf(detail, kind) is not { } id)
+        if (_detail is not { } detail || VariableOwners.IdOf(detail, kind) is not { } id)
         {
             return;
         }
@@ -447,6 +447,12 @@ public partial class VariableSearch
         if (!_loading && Sort != _sortParameter)
         {
             await FollowSortParameterAsync();
+            StateHasChanged();
+        }
+
+        if (!_loading && _pendingVariabelgruppe is not null)
+        {
+            await ApplyPendingVariabelgruppeAsync();
             StateHasChanged();
         }
 

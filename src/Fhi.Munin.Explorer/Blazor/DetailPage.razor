@@ -29,7 +29,14 @@
                     {
                         <div>
                             <dt lang="@fact.LabelLang">@fact.Label</dt>
-                            <dd><span lang="@fact.Lang">@fact.Value</span></dd>
+                            <dd><span lang="@fact.Lang">@if (fact.Linked)
+                            {
+                                @CatalogueMarkdown.Linked(fact.Value)
+                            }
+                            else
+                            {
+                                @fact.Value
+                            }</span></dd>
                         </div>
                     }
                 </dl>

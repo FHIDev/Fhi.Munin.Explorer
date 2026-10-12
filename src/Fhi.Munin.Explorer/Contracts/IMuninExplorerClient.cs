@@ -631,6 +631,34 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
+    /// Everything a search matches, as the file helsedata.no's variable search downloads: an xlsx workbook,
+    /// a csv, or a zip of two csv files when codebooks come too.
+    /// </summary>
+    /// <remarks>
+    /// Anonymous, like the search itself, and with no 2000 ceiling: the API reads the search and
+    /// <paramref name="filter"/> itself rather than a list of ids, and answers 400 only past 100 000
+    /// variables. It answers 503 when the codebooks cannot be fetched, rather than leaving them out of the
+    /// file. Carries a default body for hosts that implement this interface themselves.
+    /// </remarks>
+    /// <param name="search">The search text, as passed to <see cref="SearchVariablesAsync"/>.</param>
+    /// <param name="filter">The filters, as passed to <see cref="SearchVariablesAsync"/>.</param>
+    /// <param name="format">Xlsx or Csv. Csv with codebooks answers with a zip.</param>
+    /// <param name="includeKodeverk">Whether to include the codebooks alongside the variables.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away.</param>
+    /// <returns>The file, named and typed by the API.</returns>
+    /// <exception cref="MuninExplorerRateLimitedException">The API's rate limiter refused the request.</exception>
+    /// <exception cref="HttpRequestException">The API refused or failed the export.</exception>
+    Task<ExportedList> ExportVariablesAsync(
+        string? search,
+        VariableFilter? filter,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportVariablesAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
     /// Redeem a code minted on the reader's other login, so both logins become one person and the
     /// lists saved under either are visible from both.
     /// </summary>

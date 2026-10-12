@@ -142,6 +142,149 @@ public class FilterHierarchyTest
     }
 
     [Fact]
+    public void Build_WhenEachPlacementCarriesItsOwnCount_ThenEachNodeShowsThatCount()
+    {
+        // The group's count spans both datasamlinger; under each one the node counts only what
+        // ticking it there returns. (Fhi.Metadata-i1rbm)
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Datasamlinger = [Datasamling(Registrering, Mfr), Datasamling(Oppfolging, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn",
+                               [.. Under(Mfr, datasamling: Registrering, count: 55), .. Under(Mfr, datasamling: Oppfolging, count: 54)],
+                               count: 109)
+            ]
+        };
+
+        var counts = Assert.Single(FilterHierarchy.Build(facets))
+            .Children
+            .Select(datasamling => Assert.Single(datasamling.Children).Count)
+            .Order()
+            .ToList();
+
+        Assert.Equal([54, 55], counts);
+    }
+
+    [Fact]
+    public void Build_WhenTheApiSendsNoPlacementCount_ThenTheNodeShowsTheGroupCount()
+    {
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Datasamlinger = [Datasamling(Registrering, Mfr)],
+            HierarchyVariabelgrupper = [Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: Registrering), count: 109)]
+        };
+
+        var datasamling = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+        Assert.Equal(109, Assert.Single(datasamling.Children).Count);
+    }
+
+    [Fact]
+    public void Build_WhenTheOwnerIsADelkildeOrAKilde_ThenThoseNodesShowItsCount()
+    {
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr), Kilde(Npr)],
+            Delkilder = [Delkilde(Fodsel, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn",
+                               [.. Under(Mfr, delkilde: Fodsel, count: 4), .. Under(Npr, count: 7)],
+                               count: 109)
+            ]
+        };
+
+        var kilder = FilterHierarchy.Build(facets);
+
+        var delkilde = Assert.Single(kilder.Single(kilde => kilde.Id == Mfr).Children);
+        Assert.Equal(4, Assert.Single(delkilde.Children).Count);
+        Assert.Equal(7, Assert.Single(kilder.Single(kilde => kilde.Id == Npr).Children).Count);
+    }
+
+    [Fact]
+    public void Build_WhenADelkildePlacementsDatasamlingDropsOut_ThenTheDelkildeNodeKeepsTheGroupCount()
+    {
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder = [Delkilde(Fodsel, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel, datasamling: NotInThePayload, count: 3), count: 109)
+            ]
+        };
+
+        var delkilde = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+        Assert.Equal(109, Assert.Single(delkilde.Children).Count);
+    }
+
+    [Fact]
+    public void Build_WhenAnExactAndAFallenBackPlacementShareANode_ThenTheExactCountWinsInEitherOrder()
+    {
+        // Under Fodsel: one owner IS the delkilde placement, the other fell back from a datasamling
+        // the answer dropped. The node is the first one's, whichever the payload lists first.
+        VariabelgruppeOwner[] exact = [.. Under(Mfr, delkilde: Fodsel, count: 5)];
+        VariabelgruppeOwner[] fallenBack = [.. Under(Mfr, delkilde: Fodsel, datasamling: NotInThePayload, count: 3)];
+
+        foreach (var owners in new[] { exact.Concat(fallenBack), fallenBack.Concat(exact) })
+        {
+            var facets = Answer() with
+            {
+                Kilder = [Kilde(Mfr)],
+                Delkilder = [Delkilde(Fodsel, Mfr)],
+                HierarchyVariabelgrupper = [Variabelgruppe(Bakgrunn, "Bakgrunn", [.. owners], count: 109)]
+            };
+
+            var delkilde = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+            Assert.Equal(5, Assert.Single(delkilde.Children).Count);
+        }
+    }
+
+    [Fact]
+    public void Build_WhenAFallenBackAndAnExactGroupShareANode_ThenTheyKeepThePayloadOrder()
+    {
+        // Choosing the exact copy of one group must not move an unrelated sibling ahead of it.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            Delkilder = [Delkilde(Fodsel, Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, delkilde: Fodsel, datasamling: NotInThePayload, count: 3), count: 9),
+                Variabelgruppe(Levekaar, "Levekaar", Under(Mfr, delkilde: Fodsel, count: 5), count: 8)
+            ]
+        };
+
+        var delkilde = Assert.Single(Assert.Single(FilterHierarchy.Build(facets)).Children);
+
+        Assert.Equal([Bakgrunn, Levekaar], delkilde.Children.Select(node => node.Id));
+    }
+
+    [Fact]
+    public void Build_WhenAPlacementFallsBackAboveItsDatasamling_ThenTheNodeKeepsTheGroupCount()
+    {
+        // The placement's count is for a datasamling the answer dropped; the kilde node it lands
+        // under is not that placement.
+        var facets = Answer() with
+        {
+            Kilder = [Kilde(Mfr)],
+            HierarchyVariabelgrupper =
+            [
+                Variabelgruppe(Bakgrunn, "Bakgrunn", Under(Mfr, datasamling: NotInThePayload, count: 3), count: 109)
+            ]
+        };
+
+        var kilde = Assert.Single(FilterHierarchy.Build(facets));
+
+        Assert.Equal(109, Assert.Single(kilde.Children).Count);
+    }
+
+    [Fact]
     public void Build_WhenTheOwningDatasamlingIsNotInTheAnswer_ThenTheGroupFallsBackToItsKilde()
     {
         // The facets are cross-filtered, so a datasamling with no matching variables of its own is
@@ -695,8 +838,8 @@ public class FilterHierarchyTest
 
     /// <summary>One placement, named the way the payload names it: a kilde, and how far down it reaches.</summary>
     private static IReadOnlyList<VariabelgruppeOwner> Under(
-        Guid kilde, Guid? delkilde = null, Guid? datasamling = null) =>
-        [new() { KildeId = kilde, DelkildeId = delkilde, DatasamlingId = datasamling }];
+        Guid kilde, Guid? delkilde = null, Guid? datasamling = null, int? count = null) =>
+        [new() { KildeId = kilde, DelkildeId = delkilde, DatasamlingId = datasamling, Count = count }];
 
     /// <summary>An answer the size of a real one, every level of it populated.</summary>
     private static FilterOptions Catalogue(

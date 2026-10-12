@@ -2681,4 +2681,15 @@ public class DatasamlingViewTest : ExplorerTestContext
 
     private static AngleSharp.Dom.IElement FrequencyValue(AngleSharp.Dom.IElement section, string text) =>
         section.QuerySelectorAll("dd").Single(dd => dd.TextContent.Trim() == text);
+
+    [Fact]
+    public void Render_WhenLovverkIsProseWithAnAddress_ThenTheSourceRowLinksIt()
+    {
+        // Fhi.Metadata-jd5jl: a datasamling's Lovverk reaches the reader through its source row only.
+        var cut = Render(Datasamling() with { EffectiveLegalBasis = "Registerforskriften, https://lovdata.no/forskrift/2007-06-29-851." });
+
+        var anchor = cut.Find("a[href='https://lovdata.no/forskrift/2007-06-29-851']");
+        Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
+        Assert.Contains("Registerforskriften, ", anchor.ParentElement!.TextContent, StringComparison.Ordinal);
+    }
 }
