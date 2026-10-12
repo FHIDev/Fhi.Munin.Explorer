@@ -1897,8 +1897,8 @@ public class UrlStateComponentTest : ExplorerTestContext
     // Datasamling marks in the address: ?selectedDatasamling=<kildeId>:<datasamlingId>, repeated
     // (Fhi.Metadata-75yov, innmeldt sak #6098).
     //
-    // The address IS the session here. There is no Web Storage anywhere in this package, and a
-    // mark that outlived the link would be a selection the reader could not see they still had.
+    // The address IS the session here. No selection is kept in Web Storage, and a mark that
+    // outlived the link would be a selection the reader could not see they still had.
 
     private static readonly Guid MarkKildeOne = new("aaaaaaaa-0000-0000-0000-000000000001");
     private static readonly Guid MarkKildeTwo = new("aaaaaaaa-0000-0000-0000-000000000002");
@@ -1995,7 +1995,7 @@ public class UrlStateComponentTest : ExplorerTestContext
                 ("selectedDatasamling", $"{MarkKildeOne}:{MarkOneA}"),
                 ("selectedDatasamling", $"{MarkKildeTwo}:{MarkTwoA}"),
             ],
-            MirroredPairs());
+            MirroredPairs().Where(pair => pair.Key == "selectedDatasamling"));
 
         Handover(cut).Click();
 
@@ -2084,5 +2084,187 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         Assert.Equal([("selectedDatasamling", $"{MarkKildeOne}:{MarkOneA}")], MirroredPairs());
         Assert.True(DrawerBox(cut, MarkKildeOne, "Inklusjon").HasAttribute("checked"));
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // Open rows in the address: ?expanded=<kildeId>, repeated (Fhi.Metadata-95j8b). Back reloads
+    // the last address the mirror wrote, so a row kept only in the component came back shut.
+
+    [Fact]
+    public void Kilder_WhenTheReaderOpensARow_ThenTheAddressCarriesItAndBackReopensIt()
+    {
+        var cut = RenderDrawers("http://localhost/kilder");
+
+        OpenDrawer(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal([("expanded", MarkKildeTwo.ToString())], MirroredPairs());
+
+        var restored = MountDrawers();
+
+        var panel = Assert.Single(restored.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.EndsWith(MarkKildeTwo.ToString(), panel.Id, StringComparison.Ordinal);
+        Assert.Equal("Vis alle variabler i Dødsårsaksregisteret",
+                     panel.QuerySelector("a.button-square--ghost-blue")!.TextContent.Trim());
+        Assert.Equal("true", DrawerRow(restored, "Dødsårsaksregisteret")
+            .QuerySelector(".munin-explorer-kilder__expand-toggle")!.GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Kilder_WhenTheReaderClosesARow_ThenItsIdLeavesTheAddress()
+    {
+        var cut = RenderDrawers($"http://localhost/kilder?expanded={MarkKildeOne}&expanded={MarkKildeTwo}");
+
+        Assert.Equal(2, cut.FindAll(".munin-explorer-kilder__expanded").Count);
+
+        OpenDrawer(cut, "Als registeret");
+
+        Assert.Equal([("expanded", MarkKildeTwo.ToString())], MirroredPairs());
+
+        OpenDrawer(cut, "Dødsårsaksregisteret");
+
+        Assert.Equal("/kilder", Mirrored());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkNamesRowsTheListDoesNotHave_ThenTheyAreDroppedQuietly()
+    {
+        var cut = RenderDrawers($"http://localhost/kilder?expanded=not-a-guid&expanded={Guid.NewGuid()}&expanded={MarkKildeOne}");
+
+        var panel = Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.EndsWith(MarkKildeOne.ToString(), panel.Id, StringComparison.Ordinal);
+
+        // Out of the address as well: an id that opened nothing would ride along in every later link.
+        Assert.Equal([("expanded", MarkKildeOne.ToString())], MirroredPairs());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkMarksAndOpensMoreRowsThanTheCap_ThenTwentyOpenBetweenThemAndTheScrollWaitsForAll()
+    {
+        // Every row the address opens is a fetch against the shared rate limit, and marks and open
+        // rows are one budget: twelve marked and twenty named open is twenty fetches, not thirty-two.
+        var client = new ManyDrawersClient(30);
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Prepare();
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+
+        var marks = client.Ids.Take(12).Select(id => $"selectedDatasamling={id}%3A{Guid.NewGuid()}");
+        var open = client.Ids.Skip(10).Select(id => $"expanded={id}");
+        Navigation.NavigateTo("http://localhost/kilder?" + string.Join("&", marks.Concat(open)));
+
+        var cut = Render<KildeExplorer>(b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+
+        cut.WaitForAssertion(() => Assert.Equal(1, client.Waiting));
+        Assert.Empty(module.Invocations["restoreScroll"]);
+
+        client.Release();
+
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["restoreScroll"]));
+        Assert.Equal(20, client.Fetched);
+        Assert.Equal(20, cut.FindAll(".munin-explorer-kilder__expanded").Count);
+        Assert.Equal(
+            [.. client.Ids.Take(20).Select(id => id.ToString())],
+            MirroredPairs().Where(pair => pair.Key == "expanded").Select(pair => pair.Value));
+    }
+
+    /// <summary>A catalogue of <c>count</c> openable rows whose fetches wait until released.</summary>
+    private sealed class ManyDrawersClient(int count) : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _fetched;
+        private int _waiting;
+
+        public IReadOnlyList<Guid> Ids { get; } =
+            [.. Enumerable.Range(1, count).Select(at => new Guid($"cccccccc-0000-0000-0000-{at:D12}"))];
+
+        public int Fetched => Volatile.Read(ref _fetched);
+
+        public int Waiting => Volatile.Read(ref _waiting);
+
+        public void Release() => _release.SetResult();
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+            [
+                .. Ids.Select((id, at) => new KildeSummary
+                {
+                    Id = id, Name = $"Kilde {at + 1:D2}", Code = "K", IsActive = true, DatasamlingCount = 1,
+                }),
+            ]);
+
+        public override async Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _fetched);
+            Interlocked.Increment(ref _waiting);
+            await _release.Task;
+            Interlocked.Decrement(ref _waiting);
+
+            return new KildeDetail
+            {
+                Id = id,
+                PreferredTerm = id.ToString(),
+                Datasamlinger = [new() { Id = Guid.NewGuid(), Name = "Datasamling", VariableCount = 1 }],
+            };
+        }
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Kilder_WhenTheSameLinkIsOpenedInEitherLanguage_ThenTheSameRowIsOpen(string language)
+    {
+        // Ids and not names, so a link sent from the Norwegian page opens the row on the English one.
+        Services.AddSingleton<IMuninExplorerClient>(new TwoDrawersClient());
+        Prepare();
+        Navigation.NavigateTo($"http://localhost/kilder?expanded={MarkKildeOne}");
+
+        var cut = Render<KildeExplorer>(b => b.Add(c => c.Language, language)
+                                              .Add(c => c.VariableExplorerPath, "/variabler"));
+
+        var panel = Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
+        Assert.EndsWith(MarkKildeOne.ToString(), panel.Id, StringComparison.Ordinal);
+        Assert.Equal($"http://localhost/variabler?kildeIds={MarkKildeOne}", panel.QuerySelector("a.button-square--ghost-blue")!.GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkOpensRows_ThenTheScrollIsPutBackOnceOverTheFirstOpenRow()
+    {
+        // Back lands here with the rows reopened from the address; without the restore call the
+        // page sits wherever the browser left it, thousands of pixels above the row followed.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var cut = RenderDrawers($"http://localhost/kilder?expanded={MarkKildeTwo}&expanded={MarkKildeOne}");
+
+        var first = cut.FindAll(".munin-explorer-kilder__expanded")
+                       .Single(panel => panel.Id?.EndsWith(MarkKildeOne.ToString(), StringComparison.Ordinal) == true);
+        var title = cut.Find("[id^='munin-explorer-title-']").Id;
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            [first.Id],
+            module.Invocations["restoreScroll"].Select(call => call.Arguments[0] as string)));
+        Assert.Equal([title], module.Invocations["rememberScroll"].Select(call => call.Arguments[0] as string));
+
+        OpenDrawer(cut, "Dødsårsaksregisteret");
+
+        Assert.Single(module.Invocations["restoreScroll"]);
+        Assert.Single(module.Invocations["rememberScroll"]);
+    }
+
+    [Fact]
+    public void Kilder_WhenNoRowIsOpen_ThenNothingTouchesTheScrollUntilTheReaderOpensOne()
+    {
+        // A list opened fresh is the browser's to scroll; keeping a position starts with the first
+        // open row, since that is the only state Back has to come back to.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var cut = RenderDrawers("http://localhost/kilder");
+
+        Assert.Empty(module.Invocations["rememberScroll"]);
+
+        OpenDrawer(cut, "Als registeret");
+
+        var title = cut.Find("[id^='munin-explorer-title-']").Id;
+        cut.WaitForAssertion(() => Assert.Equal(
+            [title],
+            module.Invocations["rememberScroll"].Select(call => call.Arguments[0] as string)));
+        Assert.Empty(module.Invocations["restoreScroll"]);
     }
 }

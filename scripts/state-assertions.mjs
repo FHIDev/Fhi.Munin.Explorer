@@ -541,6 +541,49 @@ function stillShowing(state, name, where) {
 }
 
 /**
+ * Follows the open kilde row's variables link with the link at the foot of the viewport, goes
+ * Back, and says whether the row came back open where it was left.
+ */
+async function roundTrip(page, kilde) {
+  const link = () => page.locator(`.munin-explorer-kilder__expanded[id$="${kilde}"] a.button-square--ghost-blue`);
+  await link().waitFor({ state: 'visible', timeout: findTimeout });
+
+  // The link at the foot of the viewport: a fresh link centres the row, which would not land here.
+  const left = await link().evaluate(a => {
+    window.__muninFromCache = false;
+    window.addEventListener('pageshow', event => { window.__muninFromCache ||= event.persisted; });
+    window.scrollTo(0, window.scrollY + a.getBoundingClientRect().bottom - window.innerHeight + 40);
+    return Math.round(window.scrollY);
+  });
+  if (left <= 0) throw new Error('the kilde list is too short to scroll at this height');
+
+  const list = page.url();
+  await link().click();
+  await page.waitForURL(url => url.toString() !== list, { timeout: findTimeout });
+  // The address moves before an enhanced navigation has drawn anything; Back then leaves nothing.
+  await link().waitFor({ state: 'detached', timeout: findTimeout });
+  await page.waitForLoadState('networkidle');
+  await page.goBack({ waitUntil: 'networkidle' });
+
+  const reopened = await link().waitFor({ state: 'visible', timeout: findTimeout }).then(() => true, () => false);
+  if (!reopened) return `Back to ${page.url()} did not reopen the row the link was followed from`;
+  // The browser's own restore, not ours, and it would pass under the control as well.
+  if (await page.evaluate(() => window.__muninFromCache === true)) {
+    throw new Error('Back came from the back/forward cache, which restores the scroll itself');
+  }
+
+  // Read back means taken out: a position still kept would be spent by the next round instead.
+  const spent = await page.waitForFunction(
+    () => !Object.keys(sessionStorage).some(key => key.startsWith('Fhi.Munin.Explorer:scroll:')),
+    null, { timeout: findTimeout }).then(() => true, () => false);
+  if (!spent) return 'the position kept for this address was never read back';
+
+  await page.waitForTimeout(PRESS_SETTLE_MS);
+  const back = await page.evaluate(() => Math.round(window.scrollY));
+  return Math.abs(back - left) <= 2 ? null : `left at scrollY ${left}, Back returned to ${back}`;
+}
+
+/**
  * The row disclosures whose GLYPH is their state, one per surface. The picture is a cascade (base
  * icon rules at rest, hover rules over them; Fhi.Metadata-trfs0) that no test in test/ resolves.
  */
@@ -2028,6 +2071,36 @@ export const assertions = [
           (current ?? fresh.querySelector('a')).setAttribute('aria-current', 'location');
         }, { capture: true, passive: true });
       }, TOC);
+    },
+  },
+  {
+    // Back from "Vis alle variabler" comes back to the row followed, open, where it was left. The
+    // save has to beat the router's own click handler, which bUnit's mocked module cannot see.
+    // (Fhi.Metadata-95j8b)
+    name: "Back from a kilde row's variables link reopens the row where the reader left it",
+    kind: 'invariant',
+    states: ['kilder-list'],
+
+    async stage(page) {
+      // Short, so the list scrolls; a row well down it, so the position Back owes is not the top.
+      await page.setViewportSize({ width: 1280, height: 400 });
+      const toggles = page.locator('.munin-explorer-kilder__expand-toggle');
+      const toggle = toggles.nth(Math.min(7, await toggles.count() - 1));
+      await toggle.scrollIntoViewIfNeeded();
+      await toggle.click();
+      await toggle.and(page.locator('[aria-expanded="true"]')).waitFor({ timeout: findTimeout });
+      const panelId = await toggle.getAttribute('aria-controls');
+      await page.locator(`#${panelId} a.button-square--ghost-blue`).waitFor({ state: 'visible', timeout: findTimeout });
+      return { kilde: panelId.split('-').slice(-5).join('-') };
+    },
+
+    measure: (page, { kilde }) => roundTrip(page, kilde),
+
+    // The position never written down, by a storage that refuses quietly as a private tab's can.
+    async control(page) {
+      const refuse = () => { Storage.prototype.setItem = () => {}; };
+      await page.addInitScript(refuse);
+      await page.evaluate(refuse);
     },
   },
   ...chevronAssertions,

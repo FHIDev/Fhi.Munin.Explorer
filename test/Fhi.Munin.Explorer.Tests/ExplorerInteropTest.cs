@@ -415,6 +415,24 @@ public partial class ExplorerInteropTest
     }
 
     [Fact]
+    public async Task RememberAndRestoreScrollAsync_WhenTheModuleIsThere_ThenTheIdsReachTheExports()
+    {
+        // The title scopes the listener to one list and the panel names the row a fresh link scrolls
+        // to; a call carrying either wrong scrolls nothing, and only Back would show it.
+        var module = new RecordingModule();
+        var interop = new ExplorerInterop(new LendingJsRuntime(module));
+
+        Assert.True(await interop.TryLoadAsync());
+
+        await interop.RememberScrollAsync("title-a1b2c3d4");
+        await interop.RestoreScrollAsync("panel-a1b2c3d4");
+
+        Assert.Equal(["rememberScroll", "restoreScroll"], module.Calls.Select(call => call.Identifier));
+        Assert.Equal(["title-a1b2c3d4"], module.Calls[0].Arguments.Select(argument => argument as string));
+        Assert.Equal(["panel-a1b2c3d4"], module.Calls[1].Arguments.Select(argument => argument as string));
+    }
+
+    [Fact]
     public async Task ObserveHeroFactsAsync_WhenTheHostServesNoModule_ThenItDoesNothingAtAll()
     {
         // The designer's own note: uten JS dukker den bare aldri opp - ingenting går tapt. This is

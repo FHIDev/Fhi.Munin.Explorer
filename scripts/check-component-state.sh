@@ -44,6 +44,9 @@
 # A whole-variable contents jump at 320px must clear the wrapped bar and keep its entry current;
 # disconnecting the contents observer must reproduce the covered heading (Fhi.Metadata-r0qd6).
 #
+# And it follows a kilde row's "Vis alle variabler" link and goes Back, asking that the row comes
+# back open at the scroll position it was left at — a save racing the router (Fhi.Metadata-95j8b).
+#
 # WHAT IT DOES NOT SEE, so nobody reads a green run as more than it is:
 #   - the assertions in state-assertions.mjs and tree-assertions.mjs are the whole of it;
 #     the clicks each one needs to reach its

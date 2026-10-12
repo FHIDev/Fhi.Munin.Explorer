@@ -11,7 +11,8 @@
    so @rendermode on the component tag would not be enough. (Fhi.Metadata-5ghur)
 
    It also owns the address bar by hand, which is what this page is here to show: ?kilde= and
-   ?datasamling= are read, written and re-read on every navigation, and @key is what remounts a
+   ?datasamling= are read, written and re-read on every navigation, ?expanded= is kept for the
+   rows open on the list, and @key is what remounts a
    component that reads its query at initialisation. KildeExplorer does all of this for a host that
    would rather not. (Fhi.Metadata-l9l2n.107) *@
 
@@ -21,6 +22,8 @@
              SelectedKildeId="@_kilde"
              SelectedKildeIdChanged="Opened"
              SelectedDatasamlingId="@_datasamling"
+             ExpandedKildeIds="@_expanded"
+             ExpandedKildeIdsChanged="Expanded"
              DatasamlingHref="@_address"
              KilderHref="@_list"
              KildeVariablesHref="@_variables"
@@ -34,6 +37,7 @@
 
     private Guid? _kilde;
     private Guid? _datasamling;
+    private IReadOnlyList<Guid> _expanded = [];
 
     /// <summary>How many addresses have arrived under this circuit, which KildeSearch is keyed on.</summary>
     private int _arrival;
@@ -74,6 +78,9 @@
         // would hand out links the component it wraps cannot read back.
         _kilde = Value(query, KildeExplorer.QueryKey);
         _datasamling = _kilde is null ? null : Value(query, KildeExplorer.DatasamlingQueryKey);
+        _expanded = query.TryGetValue(KildeExplorer.ExpandedQueryKey, out var open)
+            ? [.. open.Select(value => Guid.TryParse(value, out var id) ? id : (Guid?)null).OfType<Guid>()]
+            : [];
     }
 
     private static Guid? Value(IReadOnlyDictionary<string, StringValues> query, string key) =>
@@ -101,6 +108,18 @@
     /// is not a step the reader asked to be able to go back to, but it is the step Back has to land
     /// on after a datasamling.
     /// </remarks>
+    // Replaced rather than pushed, so Back from the variable explorer lands on the rows left open.
+    private void Expanded(IReadOnlyList<Guid> kilder)
+    {
+        _expanded = kilder;
+
+        Nav.NavigateTo(
+            kilder.Count == 0
+                ? "/kilder"
+                : "/kilder?" + string.Join("&", kilder.Select(id => $"{KildeExplorer.ExpandedQueryKey}={id}")),
+            replace: true);
+    }
+
     private void Opened(Guid? kilde)
     {
         _kilde = kilde;
