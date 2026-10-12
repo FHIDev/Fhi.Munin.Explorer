@@ -806,4 +806,16 @@ public class KildeSectionsTest : ExplorerTestContext
         Assert.Equal("0 publiserte variabler i denne kilden.", BodyUnder(cut, "Variabler"));
         Assert.Empty(cut.FindAll("#munin-explorer-variables a"));
     }
+
+    [Fact]
+    public void Variables_WhenThePageIsEnglish_ThenTheReferenceSentencesAreEnglish()
+    {
+        var none = OpenInKelda(
+            Tromso() with { Datasamlinger = [], TotalVariables = 0, AdditionalProperties = Reference("https://eksempel.no/v") },
+            language: "en");
+
+        Assert.Equal("The variables are described here: https://eksempel.no/v", BodyUnder(none, "Variables"));
+        Assert.Contains("Described outside helsedata.no", none.Find(".munin-explorer-kilde").TextContent,
+                        StringComparison.Ordinal);
+    }
 }

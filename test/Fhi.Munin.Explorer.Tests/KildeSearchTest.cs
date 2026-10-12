@@ -7275,6 +7275,9 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Contains("munin-explorer-kilder__count--zero", described.ClassList);
         Assert.Empty(described.QuerySelectorAll("a"));
 
+        // The hidden words are absolutely positioned; unanchored they leave the scroll box and widen the page.
+        Assert.Equal("position:relative", described.GetAttribute("style"));
+
         Assert.Equal("0", cells["Brannskaderegisteret"].TextContent.Trim());
         Assert.StartsWith("204", cells["Hodepineregisteret"].TextContent.Trim(), StringComparison.Ordinal);
     }

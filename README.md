@@ -1432,7 +1432,7 @@ Four things are worth knowing before mounting one.
 - **A datasamling's Variables section contains facts and navigation.** It uses the detail payload's
   count and statistics without fetching or drawing a variable table. A positive count also keeps
   the declared `variabler` section visible when all three statistics fields are missing. Existing
-  absence rules remain: an entirely empty legacy block stays hidden and zero variables offers no
+  absence rules remain: a datasamling with a «Variabelreferanse» of its own gets the sentence with that link even with nothing else to show, an entirely empty legacy block otherwise stays hidden and zero variables offers no
   "view all" link. `DatasamlingView.VariablesHref` supplies the target for standalone mounts;
   `KildeSearch.DatasamlingVariablesHref` resolves it by collection id. Null or blank means no link.
   Inside `VariableExplorer`, `VariableSearch.DatasamlingVariablesHref` uses the current search URL,

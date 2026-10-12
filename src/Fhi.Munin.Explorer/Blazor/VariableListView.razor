@@ -259,7 +259,8 @@ else if (State?.IsAuthenticated == true)
                         <KildeView Kilde="kilde"
                                    Language="@Language"
                                    HeadingLevel="@RowPanelLevel"
-                                   HeadingId="@SourceHeadingId" />
+                                   HeadingId="@SourceHeadingId"
+                                   NamedSections="@VariableReference.Section(T, kilde)" />
                     }
                     else if (_datasamling is { } datasamling)
                     {

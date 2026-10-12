@@ -28,6 +28,16 @@ internal static class VariableReference
             : null;
     }
 
+    /// <summary>A Variables section holding only the link, for a kilde page that draws no other; null without a reference.</summary>
+    public static IReadOnlyList<DetailNamedSection>? Section(Texts texts, Contracts.KildeDetail kilde) =>
+        Of(kilde.AdditionalProperties) is not { } address
+            ? null
+            :
+            [
+                new(DetailSectionIds.Variables, texts.HeadingVariables,
+                    Sentence(kilde.TotalVariables == 0 ? texts.VariablesDescribedHere : texts.VariablesAlsoDescribedHere, address)),
+            ];
+
     /// <summary>One sentence ending in the address as a link, the way Lovverk shows its own.</summary>
     public static RenderFragment Sentence(string lead, string address) => builder =>
     {

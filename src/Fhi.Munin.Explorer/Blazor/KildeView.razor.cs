@@ -278,6 +278,12 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("Formaal");
         }
 
+        // Drawn as the Variables section's sentence.
+        if (VariableReference.Of(kilde.AdditionalProperties) is not null)
+        {
+            keys.Add(VariableReference.Key);
+        }
+
         return keys;
     }
 
@@ -340,8 +346,8 @@ public sealed partial class KildeView : ComponentBase
     /// <inheritdoc cref="KildetypeLabel"/>
     /// <remarks>
     /// A zero is drawn, not dropped: <see cref="KildeSortOrder"/> and KildeSearch's zero-weight
-    /// count class both read nought off this non-nullable int as a count of none, and KildeSearch
-    /// prints it in words a section below this one.
+    /// count class both read nought off this non-nullable int as a count of none. The one exception
+    /// is a kilde that names where its variables are described instead (<see cref="VariableReference"/>).
     /// </remarks>
     private string? TotalVariables =>
         Kilde is { TotalVariables: 0 } described && VariableReference.Of(described.AdditionalProperties) is not null

@@ -298,6 +298,12 @@ public sealed partial class DatasamlingView : ComponentBase
                 keys.Add(CatalogueColumns.Description);
             }
 
+            // Drawn as the Variables section's sentence.
+            if (VariableReferenceLine is not null)
+            {
+                keys.Add(VariableReference.Key);
+            }
+
             return keys;
         }
     }
@@ -656,6 +662,16 @@ public sealed partial class DatasamlingView : ComponentBase
                            string.IsNullOrWhiteSpace(heading) ? T.HeadingVariables : heading,
                            CatalogueProperties.Foreign(language, Reader),
                            DetailBlocks.Both(DetailBlocks.Facts(Statistics, Language), VariablesNavigation)));
+            statisticsDrawn = true;
+        }
+
+        // No numbers, but a reference: it goes under the curated Variables heading where there is one.
+        if (!statisticsDrawn && !AnyStatistics && variablesSection is not null && VariableReferenceLine is { } reference)
+        {
+            var (heading, language) = CatalogueProperties.Localised(variablesSection.Translations, Reader);
+            groups.Add(new(variablesSection.Key, DetailSectionIds.ReserveGroupId(variablesSection.Key, ids),
+                           string.IsNullOrWhiteSpace(heading) ? T.HeadingVariables : heading,
+                           CatalogueProperties.Foreign(language, Reader), reference));
             statisticsDrawn = true;
         }
 

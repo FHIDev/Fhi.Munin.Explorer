@@ -815,7 +815,8 @@ else
                                 @* None counted here, but described somewhere else: a nought would say there are none. *@
                                 @if (kilde.TotalVariables == 0 && VariableReference.Of(kilde.AdditionalProperties) is not null)
                                 {
-                                    <td class="@variables.Class"><span aria-hidden="true">–</span><span class="screenreader-only">@T.VariablesDescribedElsewhere</span></td>
+                                    @* position:relative for the reason UnmeasuredShare gives: the hidden words must stay in the cell. *@
+                                    <td class="@variables.Class" style="position:relative"><span aria-hidden="true">–</span><span class="screenreader-only">@T.VariablesDescribedElsewhere</span></td>
                                 }
                                 else
                                 {
