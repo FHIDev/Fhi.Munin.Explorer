@@ -30,4 +30,18 @@
     <InternalsVisibleTo Include="Fhi.Munin.Explorer.Tests" />
   </ItemGroup>
 
+  <!-- Which version a host actually serves, at _content/Fhi.Munin.Explorer/version.json. Written by the
+       build from the package's own version, never by hand: a stale file would be worse than none.
+       Backslashes on purpose: from the second build the SDK's own glob has the file as wwwroot\version.json
+       on Windows, and Remove compares the spelling. With a forward slash it did not match there, the file
+       was included twice and the build failed on "two assets targeting the same path". MSBuild converts
+       the backslash on Linux (measured on Windows, SDK 10.0.401, Fhi.Metadata-l9l2n.123). -->
+  <Target Name="WriteVersionFile" BeforeTargets="AssignTargetPaths;ResolveProjectStaticWebAssets">
+    <WriteLinesToFile File="$(MSBuildProjectDirectory)\wwwroot\version.json" Lines="{&quot;package&quot;:&quot;$(PackageId)&quot;,&quot;version&quot;:&quot;$(PackageVersion)&quot;}" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Content Remove="wwwroot\version.json" />
+      <Content Include="wwwroot\version.json" />
+    </ItemGroup>
+  </Target>
+
 </Project>

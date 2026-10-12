@@ -450,3 +450,6 @@ src/Fhi.Munin.Explorer/PortabilityGuardProbe.g.cs
 # it has to live in this repository rather than being borrowed from the Munin checkout next door.
 # Per-developer settings are the one part that is not shared, same as in Munin.
 .claude/settings.local.json
+
+# Written by the build from the package version (Fhi.Metadata-l9l2n.123); never committed.
+src/Fhi.Munin.Explorer/wwwroot/version.json

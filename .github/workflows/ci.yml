@@ -90,6 +90,10 @@ jobs:
           # there it is the difference between a correct package and a permanent one. Finding
           # out on the PR that added the stray file is the cheap end of that.
           ./scripts/assert-package-contents.sh artifacts
+          # A second build with the generated version.json already on disk, then a pack. On this Linux
+          # runner it proves a rebuild still packs one correct file. It does NOT prove the Windows case
+          # (see the script's header): that one needs a Windows build.
+          ./scripts/assert-rebuild-packs-one-version-file.sh
           echo "PACK_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
 
       - name: Summary

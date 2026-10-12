@@ -10,12 +10,13 @@
 # The rule is "exactly this set", not "at least this set". A missing file and an unexpected one
 # are both packaging bugs, and the unexpected one is the more dangerous of the two:
 #
-#   * A staticwebassets/ entry other than the one .js module named below would mean the component
-#     started shipping something it does not — a stylesheet above all, which would silently
-#     compete with helsedata's own. The RCL emits their class names so Stiler styles it, and the
-#     rule that it ships no CSS is unchanged: what it ships is one JavaScript module, listed by
-#     name, and the five props files the SDK writes to make the browser able to fetch it
-#     (Fhi.Metadata-35w0p.14).
+#   * A staticwebassets/ entry other than the two named below would mean the component started
+#     shipping something it does not — a stylesheet above all, which would silently compete with
+#     helsedata's own. The RCL emits their class names so Stiler styles it, and the rule that it
+#     ships no CSS is unchanged: what it ships is one JavaScript module (Fhi.Metadata-35w0p.14),
+#     the build-written version.json that says which version a host serves
+#     (Fhi.Metadata-l9l2n.123), both listed by name, and the five props files the SDK writes to
+#     make the browser able to fetch them.
 #   * A second lib/<tfm>/ directory would mean the target framework moved without anyone saying
 #     so, which changes who can install the package at all.
 #   * A .pdb or content file means something got included that we never decided to support, and
@@ -96,13 +97,15 @@ for pkg in "${PACKAGES[@]}"; do
   # The staticwebassets/ entry and the five props files came in together and only together: the
   # SDK writes the props for any RCL with a wwwroot, and without them the module is in the .nupkg
   # and a 404 in the browser. Named one by one so this stays an exact set — a second module, or a
-  # stylesheet beside it, still fails.
+  # stylesheet beside it, still fails. version.json is the one data file: the build writes it from
+  # the package version (Fhi.Metadata-l9l2n.123), and its content is checked further down.
   expected=$(printf '%s\n' \
     "$pkg.nuspec" \
     "README.md" \
     "lib/$TFM/$pkg.dll" \
     "lib/$TFM/$pkg.xml" \
     "staticwebassets/explorer-interop.js" \
+    "staticwebassets/version.json" \
     "build/$pkg.props" \
     "build/Microsoft.AspNetCore.StaticWebAssetEndpoints.props" \
     "build/Microsoft.AspNetCore.StaticWebAssets.props" \
@@ -155,8 +158,19 @@ for pkg in "${PACKAGES[@]}"; do
   grep -q '<readme>README.md</readme>' <<< "$flat" \
     || bad "README not declared in the nuspec — the package page would render empty"
 
+  version=$(echo "$flat" | grep -o '<version>[^<]*</version>' | head -1 | sed 's/<[^>]*>//g' || true)
+
+  # The file a host serves to say which version it runs. Compared whole, against the nuspec of this
+  # same package: a hand-written or left-over file with another version is the failure to catch.
+  served=$(unzip -p "$nupkg" staticwebassets/version.json 2>/dev/null | tr -d '\r\n' || true)
+  wanted="{\"package\":\"$pkg\",\"version\":\"$version\"}"
+  if [ "$served" = "$wanted" ]; then
+    note "version.json says $version"
+  else
+    bad "staticwebassets/version.json is '$served' but the package is $wanted"
+  fi
+
   if [ -n "$EXPECTED_VERSION" ]; then
-    version=$(echo "$flat" | grep -o '<version>[^<]*</version>' | head -1 | sed 's/<[^>]*>//g' || true)
     if [ "$version" = "$EXPECTED_VERSION" ]; then
       note "version $version"
     else

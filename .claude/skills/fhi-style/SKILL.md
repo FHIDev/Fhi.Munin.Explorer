@@ -120,7 +120,7 @@ stay byte-identical. Edit one, copy it over the other, run
 
 ## The package ships no CSS and nothing host-specific
 
-No `.razor.css`, and nothing in `wwwroot` but the one JavaScript module `explorer-interop.js`
+No `.razor.css`, and nothing in `wwwroot` but the one JavaScript module `explorer-interop.js` and the build-written `version.json`
 (Fhi.Metadata-35w0p.14) — the samples carry styling because they have no Stiler; the package must
 not. `scripts/assert-package-contents.sh` enforces it by naming every packed entry, so a second
 module fails there exactly as a stylesheet does: adding a file under `wwwroot` and adding its
