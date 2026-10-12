@@ -211,7 +211,6 @@ internal sealed record Texts(
     string CompleteRecordLeadVariable,
     string CompleteRecordSummary,
     string HeadingDataCollections,
-    // Says what the dates beside each datasamling on the variable detail are.
     string DataCollectionsPeriodCaption,
     string FieldName,
     string VariableCountSuffix,
