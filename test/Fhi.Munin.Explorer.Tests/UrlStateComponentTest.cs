@@ -2087,9 +2087,8 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     // -----------------------------------------------------------------------------------------
-    // Open rows in the address: ?expanded=<kildeId>, repeated (Fhi.Metadata-95j8b). Back from the
-    // variable explorer reloads the last address the mirror wrote, so a row kept only in the
-    // component came back shut, its link to the variables gone with it.
+    // Open rows in the address: ?expanded=<kildeId>, repeated (Fhi.Metadata-95j8b). Back reloads
+    // the last address the mirror wrote, so a row kept only in the component came back shut.
 
     [Fact]
     public void Kilder_WhenTheReaderOpensARow_ThenTheAddressCarriesItAndBackReopensIt()
@@ -2151,5 +2150,47 @@ public class UrlStateComponentTest : ExplorerTestContext
         var panel = Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
         Assert.EndsWith(MarkKildeOne.ToString(), panel.Id, StringComparison.Ordinal);
         Assert.Equal($"http://localhost/variabler?kildeIds={MarkKildeOne}", panel.QuerySelector("a.button-square--ghost-blue")!.GetAttribute("href"));
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkOpensRows_ThenTheScrollIsPutBackOnceOverTheFirstOpenRow()
+    {
+        // Back lands here with the rows reopened from the address; without the restore call the
+        // page sits wherever the browser left it, thousands of pixels above the row followed.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var cut = RenderDrawers($"http://localhost/kilder?expanded={MarkKildeTwo}&expanded={MarkKildeOne}");
+
+        var first = cut.FindAll(".munin-explorer-kilder__expanded")
+                       .Single(panel => panel.Id?.EndsWith(MarkKildeOne.ToString(), StringComparison.Ordinal) == true);
+        var title = cut.Find("[id^='munin-explorer-title-']").Id;
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            [first.Id],
+            module.Invocations["restoreScroll"].Select(call => call.Arguments[0] as string)));
+        Assert.Equal([title], module.Invocations["rememberScroll"].Select(call => call.Arguments[0] as string));
+
+        OpenDrawer(cut, "Dødsårsaksregisteret");
+
+        Assert.Single(module.Invocations["restoreScroll"]);
+        Assert.Single(module.Invocations["rememberScroll"]);
+    }
+
+    [Fact]
+    public void Kilder_WhenNoRowIsOpen_ThenNothingTouchesTheScrollUntilTheReaderOpensOne()
+    {
+        // A list opened fresh is the browser's to scroll; keeping a position starts with the first
+        // open row, since that is the only state Back has to come back to.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var cut = RenderDrawers("http://localhost/kilder");
+
+        Assert.Empty(module.Invocations["rememberScroll"]);
+
+        OpenDrawer(cut, "Als registeret");
+
+        var title = cut.Find("[id^='munin-explorer-title-']").Id;
+        cut.WaitForAssertion(() => Assert.Equal(
+            [title],
+            module.Invocations["rememberScroll"].Select(call => call.Arguments[0] as string)));
+        Assert.Empty(module.Invocations["restoreScroll"]);
     }
 }
