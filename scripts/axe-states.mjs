@@ -794,8 +794,10 @@ export const states = {
     await tab.waitFor({ state: 'visible', timeout: findTimeout });
     await tab.click();
 
+    // The saved list's own box, not `.munin-explorer-data-list`: the results panel has one of
+    // those too, and it is still the visible panel until the server has answered the press.
     await page
-      .locator('[role=tabpanel]:not([hidden]) .munin-explorer-data-list')
+      .locator('[role=tabpanel]:not([hidden]) .munin-explorer-list-scroll')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
