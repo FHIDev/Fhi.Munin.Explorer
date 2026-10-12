@@ -2056,6 +2056,84 @@ public class VariableViewTest : ExplorerTestContext
         Assert.Equal(["Abortregisteret Utlevering"], DatasamlingList(cut));
     }
 
+    private static readonly DateTimeOffset Registered = new(2026, 5, 14, 0, 0, 0, TimeSpan.Zero);
+
+    private static DateTimeOffset Year(int year) => new(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+    /// <summary>What stands after each name in the Datasamlinger section; "" where nothing does.</summary>
+    private static IReadOnlyList<string> DatasamlingPeriods(IRenderedComponent<VariableView> cut) =>
+        [.. cut.FindAll($"#{DetailSectionIds.DataCollections} ul > li")
+               .Select(item => item.QuerySelector(".caption")?.TextContent.Trim() ?? "")];
+
+    private static string? DatasamlingCaption(IRenderedComponent<VariableView> cut) =>
+        cut.FindAll($"#{DetailSectionIds.DataCollections} p.caption").FirstOrDefault()?.TextContent;
+
+    [Fact]
+    public void DataCollections_WhenEachDatasamlingHasItsOwnPeriod_ThenThatIsDrawnAndNotTheRegistrationDates()
+    {
+        // Innmeldt #6515: every row read "(14. mai 2026 – Pågående)", the day the variable was
+        // registered in the datasamling, where a reader takes the dates for the data's period.
+        var cut = Render(Placed() with
+        {
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "Lungekreft", ValidFrom = Registered, DataFrom = Year(2013), DataTo = new DateTimeOffset(2025, 12, 31, 0, 0, 0, TimeSpan.Zero) },
+                new() { Id = Guid.NewGuid(), Name = "Barnekreft", ValidFrom = Registered, ValidTo = Year(2027), DataFrom = Year(2007) },
+            ],
+        });
+
+        Assert.Equal(["(1. jan. 2013 – 31. des. 2025)", "(1. jan. 2007 – Pågående)"], DatasamlingPeriods(cut));
+        Assert.DoesNotContain("2026", cut.Find($"#{DetailSectionIds.DataCollections}").TextContent, StringComparison.Ordinal);
+        Assert.Equal("Dataperiode: perioden variabelen har data for i hver datasamling.", DatasamlingCaption(cut));
+    }
+
+    [Fact]
+    public void DataCollections_WhenTheReaderIsEnglish_ThenTheCaptionAndTheOpenEndAreEnglish()
+    {
+        var cut = Render(Placed() with
+        {
+            AllDatasamlinger = [new() { Id = Guid.NewGuid(), Name = "Livmorhals", ValidFrom = Registered, DataFrom = Year(2019) }],
+        }, "en");
+
+        Assert.Equal(["(1 Jan 2019 – Ongoing)"], DatasamlingPeriods(cut));
+        Assert.Equal("Data period: the period this variable has data for in each data collection.", DatasamlingCaption(cut));
+    }
+
+    [Fact]
+    public void DataCollections_WhenAnOlderApiSendsNoDataPeriod_ThenNeitherDatesNorCaptionAreDrawn()
+    {
+        // The fallback that must not come back: registration dates under a "Dataperiode" caption
+        // are the reported defect with a label on it.
+        var cut = Render(Placed() with
+        {
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "Lungekreft", ValidFrom = Registered },
+                new() { Id = Guid.NewGuid(), Name = "Barnekreft", ValidFrom = Registered, ValidTo = Year(2027) },
+            ],
+        });
+
+        Assert.Equal(["Lungekreft", "Barnekreft"], DatasamlingList(cut));
+        Assert.Equal(["", ""], DatasamlingPeriods(cut));
+        Assert.Null(DatasamlingCaption(cut));
+    }
+
+    [Fact]
+    public void DataCollections_WhenOnlyOneDatasamlingHasAPeriod_ThenTheOtherRowStandsWithoutOne()
+    {
+        var cut = Render(Placed() with
+        {
+            AllDatasamlinger =
+            [
+                new() { Id = Guid.NewGuid(), Name = "Lungekreft", ValidFrom = Registered, DataFrom = Year(2013) },
+                new() { Id = Guid.NewGuid(), Name = "Prostata", ValidFrom = Registered },
+            ],
+        });
+
+        Assert.Equal(["(1. jan. 2013 – Pågående)", ""], DatasamlingPeriods(cut));
+        Assert.NotNull(DatasamlingCaption(cut));
+    }
+
     [Fact]
     public void Placement_WhenTheVariableIsReplacedAfterTheFirstRender_ThenEveryCachedListIsTheNewVariablesOwn()
     {

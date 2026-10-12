@@ -147,6 +147,12 @@
             {
                 <DetailSection Id="@DetailSectionIds.DataCollections">
                     @DetailBlocks.Heading(BlockLevel, T.HeadingDataCollections, "headline headline-s")
+                    @* An API older than dataFrom/dataTo sends neither: no caption then, rather
+                       than one over a list with no periods in it (Fhi.Metadata-9lenf). *@
+                    @if (Datasamlinger.Any(d => CatalogueDate.Period(d.DataFrom, d.DataTo, Language, T, Dates) is not null))
+                    {
+                        <p class="caption">@T.DataCollectionsPeriodCaption</p>
+                    }
                     <ul class="munin-explorer-whole__list">
                         @* KildeTrailBlock.NamedDatasamlinger, which is also what the Plassering
                            step above counts: two derivations of "which datasamlinger" put a count
@@ -155,9 +161,9 @@
                         {
                             <li>
                                 <span lang="@CatalogueProperties.Foreign("no", Reader)">@datasamling.Name</span>
-                                @if (CatalogueDate.Period(datasamling.ValidFrom, datasamling.ValidTo, Language, T, Dates) is { } validity)
+                                @if (CatalogueDate.Period(datasamling.DataFrom, datasamling.DataTo, Language, T, Dates) is { } period)
                                 {
-                                    <span class="caption"> (@validity)</span>
+                                    <span class="caption"> (@period)</span>
                                 }
                             </li>
                         }

@@ -326,7 +326,7 @@ public sealed record DatasamlingReference
 
     /// <summary>
     /// When the variable entered this datasamling. Note this is a catalogue timestamp on the
-    /// membership, not the data period — that is <see cref="VariableDetail.DataFrom"/>.
+    /// membership, not the data period — that is <see cref="DataFrom"/>.
     /// </summary>
     [JsonPropertyName("validFrom")] public DateTimeOffset? ValidFrom { get; init; }
 
@@ -334,8 +334,8 @@ public sealed record DatasamlingReference
     [JsonPropertyName("validTo")] public DateTimeOffset? ValidTo { get; init; }
 
     /// <summary>
-    /// Start of the period this datasamling's data covers. Sent only for a detail fetched for one
-    /// datasamling; null otherwise, and from an API older than the field.
+    /// Start of the variable's data in this datasamling. Null where Munin has no period for it,
+    /// and from an API that fills it only for a detail fetched for one datasamling, or not at all.
     /// </summary>
     [JsonPropertyName("dataFrom")] public DateTimeOffset? DataFrom { get; init; }
 
