@@ -139,9 +139,10 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// can open that row and count its marks without fetching anything first. A value that is not
     /// a pair of ids is dropped on read.
     /// <para>
-    /// The address is the whole of the session: nothing is kept in <c>sessionStorage</c> or
+    /// The address is the whole of the session: no selection is kept in <c>sessionStorage</c> or
     /// <c>localStorage</c>, so a bare address opens an unmarked list and the marks last exactly as
-    /// long as the link that carries them. (Fhi.Metadata-75yov)
+    /// long as the link that carries them. Only the list's scroll position is kept, per tab, as
+    /// <see cref="KildeSearch.ExpandedKildeIds"/> says. (Fhi.Metadata-75yov)
     /// </para>
     /// </remarks>
     public const string MarkedQueryKey = "selectedDatasamling";
@@ -340,8 +341,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             .Where(facet => facet.Values.Count > 0)
             .ToDictionary(facet => facet.Key, facet => (IReadOnlyList<string>)facet.Values, StringComparer.Ordinal);
 
-        IReadOnlyList<Guid> ticked = Ids(mirror, TickedQueryKey);
-        IReadOnlyList<Guid> expanded = Ids(mirror, ExpandedQueryKey);
+        var ticked = Ids(mirror, TickedQueryKey);
+        var expanded = Ids(mirror, ExpandedQueryKey);
 
         IReadOnlyList<string> marked =
             [.. mirror.Values(MarkedQueryKey)

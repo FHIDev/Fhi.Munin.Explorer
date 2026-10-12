@@ -1335,8 +1335,9 @@ A row opened on its datasamlinger is in the address too, as `?expanded=<kilde id
 row, so a link opens the same rows in either language and Back from the variable explorer comes
 back to them. Opening or closing a row replaces the history entry rather than adding one. Where the
 host serves the package's browser module, the list also returns to the scroll position the reader
-left it at — kept per tab in `sessionStorage`, keyed by the address — or, for a link nobody has
-scrolled, brings the first open row into view.
+left it at — kept per tab in `sessionStorage`, keyed by the address, the one thing the package
+writes to Web Storage — or, for a link nobody has scrolled, brings the first open row into view.
+A link opens at most twenty rows by itself, the rows its marks open counted among them.
 
 `?datasamling=` is read beside `?kilde=` and never instead of it: a datasamling opens in place of
 the kilde it belongs to, and the kilde is the way back out, so one named on its own is dropped on

@@ -18,11 +18,18 @@ public sealed partial class KildeSearch : IAsyncDisposable
     /// </summary>
     /// <remarks>
     /// Read once, on initialisation, as <see cref="TickedKildeIds"/> is. An id the list does not
-    /// hold, or one with no datasamlinger to open, is dropped without a word. Each row opened this
-    /// way is a fetch, so at most twenty open by themselves. Once the rows have loaded the page is
-    /// scrolled back to where it was when the reader left it, where the browser kept that, and to
-    /// the first open row otherwise — which needs the package's browser module; without it the rows
-    /// open and the page stays where the browser put it.
+    /// hold, or one with no datasamlinger to open, is dropped without a word, and
+    /// <see cref="ExpandedKildeIdsChanged"/> is raised without it. Each row opened this way is a
+    /// fetch, so at most twenty open by themselves, the rows <see cref="MarkedDatasamlinger"/>
+    /// opens counted among them. Once the rows have loaded the page is scrolled back to where it
+    /// was when the reader left it, and to the first open row otherwise — which needs the package's
+    /// browser module; without it the rows open and the page stays where the browser put it.
+    /// <para>
+    /// That position is the one thing the package writes to Web Storage: the page's vertical
+    /// offset, per tab in <c>sessionStorage</c> under <c>Fhi.Munin.Explorer:scroll:</c> followed
+    /// by the page's path and query, written when the reader follows a link out of the list or
+    /// leaves the page and removed when it is read back. Nothing about the reader is in it.
+    /// </para>
     /// </remarks>
     [Parameter] public IReadOnlyList<Guid>? ExpandedKildeIds { get; set; }
 
@@ -48,15 +55,14 @@ public sealed partial class KildeSearch : IAsyncDisposable
         _scrollPending = _seededExpanded.Count > 0;
     }
 
-    /// <summary>Open the rows the host named, and fetch what they draw.</summary>
-    private async Task OpenExpandedRowsAsync()
+    /// <summary>Open every row the address marked or named open, and fetch what those rows draw.</summary>
+    /// <remarks>
+    /// One call per row, not per mark (the address can name several under one kilde), and none for a
+    /// row in hand. <see cref="RowsToOpen"/> says which rows, and caps an untrusted query.
+    /// </remarks>
+    private async Task OpenSeededRowsAsync()
     {
-        HashSet<Guid> named = [.. _seededExpanded];
-
-        var rows = _kilder.Where(kilde => named.Contains(kilde.Id) && CanExpand(kilde))
-                          .Select(kilde => kilde.Id)
-                          .Take(MaxMarkedRowsOpened)
-                          .ToList();
+        var rows = RowsToOpen();
 
         foreach (var kilde in rows)
         {
@@ -69,9 +75,15 @@ public sealed partial class KildeSearch : IAsyncDisposable
         }
 
         _expandedSeeded = true;
-        _scrollPending &= rows.Count > 0;
+        _scrollPending &= rows.Any(_seededExpanded.Contains);
 
-        if (_scrollPending)
+        // An id that opened nothing would otherwise be written back into every later link.
+        if (!_seededExpanded.All(_expanded.Contains))
+        {
+            await RaiseExpandedAsync();
+        }
+
+        if (_marked.Count > 0 || _scrollPending)
         {
             StateHasChanged();
         }
@@ -93,10 +105,9 @@ public sealed partial class KildeSearch : IAsyncDisposable
             return;
         }
 
-        if (restore)
-        {
-            _scrollPending = false;
-        }
+        // Both before the first await: renders overlap here, and each would otherwise ask again.
+        _scrollPending &= !restore;
+        _scrollRemembered |= remember;
 
         var interop = _interop ??= new ExplorerInterop(Services.GetRequiredService<IJSRuntime>());
 
@@ -106,7 +117,6 @@ public sealed partial class KildeSearch : IAsyncDisposable
             {
                 if (remember)
                 {
-                    _scrollRemembered = true;
                     await interop.RememberScrollAsync(TitleId);
                 }
 
@@ -123,19 +133,45 @@ public sealed partial class KildeSearch : IAsyncDisposable
                 Log?.LogWarning(ex, "could not keep the kilde list's scroll position");
             }
         }
+        else
+        {
+            // Not there yet, perhaps: a later render asks again, as TryLoadAsync wants.
+            _scrollRemembered &= !remember;
+        }
 
         // Disposal can land during the awaits above, which the renderer does not wait for.
         if (_disposed)
         {
-            await interop.DisposeAsync();
+            await ReleaseAsync(interop);
         }
     }
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _disposed = true;
 
-        return _interop?.DisposeAsync() ?? ValueTask.CompletedTask;
+        if (_interop is { } interop)
+        {
+            await ReleaseAsync(interop);
+        }
+    }
+
+    // The module keeps a listener on the window, and through it this list's whole table.
+    private async Task ReleaseAsync(ExplorerInterop interop)
+    {
+        try
+        {
+            if (_scrollRemembered)
+            {
+                await interop.ForgetScrollAsync(TitleId);
+            }
+        }
+        catch (JSException ex)
+        {
+            Log?.LogWarning(ex, "could not let go of the kilde list's scroll position");
+        }
+
+        await interop.DisposeAsync();
     }
 }

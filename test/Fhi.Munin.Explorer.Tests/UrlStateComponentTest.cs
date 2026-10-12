@@ -2132,6 +2132,80 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         var panel = Assert.Single(cut.FindAll(".munin-explorer-kilder__expanded"));
         Assert.EndsWith(MarkKildeOne.ToString(), panel.Id, StringComparison.Ordinal);
+
+        // Out of the address as well: an id that opened nothing would ride along in every later link.
+        Assert.Equal([("expanded", MarkKildeOne.ToString())], MirroredPairs());
+    }
+
+    [Fact]
+    public void Kilder_WhenALinkMarksAndOpensMoreRowsThanTheCap_ThenTwentyOpenBetweenThemAndTheScrollWaitsForAll()
+    {
+        // Every row the address opens is a fetch against the shared rate limit, and marks and open
+        // rows are one budget: twelve marked and twenty named open is twenty fetches, not thirty-two.
+        var client = new ManyDrawersClient(30);
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Prepare();
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+
+        var marks = client.Ids.Take(12).Select(id => $"selectedDatasamling={id}%3A{Guid.NewGuid()}");
+        var open = client.Ids.Skip(10).Select(id => $"expanded={id}");
+        Navigation.NavigateTo("http://localhost/kilder?" + string.Join("&", marks.Concat(open)));
+
+        var cut = Render<KildeExplorer>(b => b.Add(c => c.VariableExplorerPath, "/variabler"));
+
+        cut.WaitForAssertion(() => Assert.Equal(1, client.Waiting));
+        Assert.Empty(module.Invocations["restoreScroll"]);
+
+        client.Release();
+
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["restoreScroll"]));
+        Assert.Equal(20, client.Fetched);
+        Assert.Equal(20, cut.FindAll(".munin-explorer-kilder__expanded").Count);
+        Assert.Equal(
+            [.. client.Ids.Take(20).Select(id => id.ToString())],
+            MirroredPairs().Where(pair => pair.Key == "expanded").Select(pair => pair.Value));
+    }
+
+    /// <summary>A catalogue of <c>count</c> openable rows whose fetches wait until released.</summary>
+    private sealed class ManyDrawersClient(int count) : EmptyMuninExplorerClient
+    {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _fetched;
+        private int _waiting;
+
+        public IReadOnlyList<Guid> Ids { get; } =
+            [.. Enumerable.Range(1, count).Select(at => new Guid($"cccccccc-0000-0000-0000-{at:D12}"))];
+
+        public int Fetched => Volatile.Read(ref _fetched);
+
+        public int Waiting => Volatile.Read(ref _waiting);
+
+        public void Release() => _release.SetResult();
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+            [
+                .. Ids.Select((id, at) => new KildeSummary
+                {
+                    Id = id, Name = $"Kilde {at + 1:D2}", Code = "K", IsActive = true, DatasamlingCount = 1,
+                }),
+            ]);
+
+        public override async Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _fetched);
+            Interlocked.Increment(ref _waiting);
+            await _release.Task;
+            Interlocked.Decrement(ref _waiting);
+
+            return new KildeDetail
+            {
+                Id = id,
+                PreferredTerm = id.ToString(),
+                Datasamlinger = [new() { Id = Guid.NewGuid(), Name = "Datasamling", VariableCount = 1 }],
+            };
+        }
     }
 
     [Theory]

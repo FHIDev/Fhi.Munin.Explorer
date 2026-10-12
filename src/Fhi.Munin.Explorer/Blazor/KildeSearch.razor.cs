@@ -551,29 +551,6 @@ public sealed partial class KildeSearch : ComponentBase
             ? Task.CompletedTask
             : ToggleDatasamlingerAsync(kilde);
 
-    /// <summary>Open every row holding a mark, and fetch what those rows draw.</summary>
-    /// <remarks>
-    /// One call per row, not per mark (the address can name several under one kilde), and none for a
-    /// row in hand. <see cref="MarkedRowsToOpen"/> says which rows, and caps an untrusted query.
-    /// </remarks>
-    private async Task OpenMarkedRowsAsync()
-    {
-        foreach (var kilde in MarkedRowsToOpen())
-        {
-            _expanded.Add(kilde);
-
-            if (!_datasamlinger.ContainsKey(kilde) && !_datasamlingerLoading.Contains(kilde))
-            {
-                await LoadDatasamlingerAsync(kilde);
-            }
-        }
-
-        if (_marked.Count > 0)
-        {
-            StateHasChanged();
-        }
-    }
-
     private async Task LoadDatasamlingerAsync(Guid id)
     {
         var generation = _datasamlingerGeneration[id] =
@@ -817,10 +794,9 @@ public sealed partial class KildeSearch : ComponentBase
         // has replaced it.
         StateHasChanged();
 
-        // A row the address marked opens itself, because a mark the reader cannot see is a
-        // selection they cannot undo. Nothing at all without marks. (Fhi.Metadata-75yov)
-        await OpenMarkedRowsAsync();
-        await OpenExpandedRowsAsync();
+        // A row the address marked or named open opens itself, because a mark the reader cannot see
+        // is a selection they cannot undo. Nothing at all without either. (Fhi.Metadata-75yov)
+        await OpenSeededRowsAsync();
 
         // Ticks and marks arrive together from the address whenever a reader shares a link or
         // navigates back, and every later mark and tick tops the union up but none of these did —

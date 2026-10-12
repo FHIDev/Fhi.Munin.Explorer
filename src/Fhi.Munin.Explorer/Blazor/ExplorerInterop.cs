@@ -201,6 +201,18 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         await Tolerated(() => module.InvokeVoidAsync("rememberScroll", anchorId)).ConfigureAwait(false);
     }
 
+    /// <summary>Lets go of what <see cref="RememberScrollAsync"/> holds for the list going away.</summary>
+    /// <remarks>On <see cref="ObserveHeroFactsAsync"/>'s terms, a <see cref="JSException"/> included.</remarks>
+    internal async Task ForgetScrollAsync(string anchorId)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        await Tolerated(() => module.InvokeVoidAsync("forgetScroll", anchorId)).ConfigureAwait(false);
+    }
+
     /// <summary>Puts the kept position back, or brings the row open on <paramref name="panelId"/> into view.</summary>
     /// <remarks>On <see cref="ObserveHeroFactsAsync"/>'s terms, a <see cref="JSException"/> included.</remarks>
     internal async Task RestoreScrollAsync(string? panelId)

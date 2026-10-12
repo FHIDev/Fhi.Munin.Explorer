@@ -330,6 +330,13 @@ const remembered = new Map();
  * section: a link pressed inside it, which a host's router may intercept, or the page going away.
  */
 export function rememberScroll(anchorId) {
+  // A list torn down without forgetScroll, a dropped circuit's, would otherwise hold its table.
+  for (const [id, entry] of remembered) {
+    if (!entry.root.isConnected) {
+      entry.forget();
+    }
+  }
+
   const root = document.getElementById(anchorId)?.closest('section');
 
   if (!root || remembered.has(anchorId)) {
@@ -338,6 +345,7 @@ export function rememberScroll(anchorId) {
 
   const forget = () => {
     window.removeEventListener('pagehide', save);
+    window.removeEventListener('pageshow', shown);
     root.removeEventListener('click', click, true);
     remembered.delete(anchorId);
   };
@@ -352,6 +360,16 @@ export function rememberScroll(anchorId) {
       // Storage refused (private mode, quota): the position is simply not kept.
     }
   }
+  // Back from the cache restores the page and its scroll whole, and nothing reads the position.
+  function shown(event) {
+    if (event.persisted) {
+      try {
+        sessionStorage.removeItem(scrollKey());
+      } catch {
+        // Storage refused: nothing was kept.
+      }
+    }
+  }
   // Captured, so it runs before a router's own document-level handler moves the address.
   function click(event) {
     if (event.target.closest?.('a[href]')) {
@@ -360,8 +378,14 @@ export function rememberScroll(anchorId) {
   }
 
   window.addEventListener('pagehide', save);
+  window.addEventListener('pageshow', shown);
   root.addEventListener('click', click, true);
-  remembered.set(anchorId, forget);
+  remembered.set(anchorId, { root, forget });
+}
+
+/** Stops keeping the position for the list under `anchorId`, which is going away. */
+export function forgetScroll(anchorId) {
+  remembered.get(anchorId)?.forget();
 }
 
 /**
