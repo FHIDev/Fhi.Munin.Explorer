@@ -24,6 +24,20 @@ behind Runa's two tabs, with the view in the address bar. `VariableSearch` and `
 are the two halves, public for a host that wants to lay them out itself — see
 [What a host mounts](#what-a-host-mounts).
 
+## Links in saved-list downloads
+
+`VariableExplorer` supplies the current page's absolute address when downloading a saved list.
+The address keeps the host's path and its own query parameters, and drops Explorer search state
+and fragments. With the matching Munin API update, `Url` opens the exported variable's Data tab,
+including its saved data collection and historical status. `Kodeverk for variabel` uses the same
+link when the variable has code lists; it does not select or expand an individual code list.
+
+Hosts mounting `VariableListView` separately can set `ExplorerPageUrl` to their `VariableExplorer`
+page (an absolute HTTP(S) URI without Explorer search state, credentials or a fragment). Without
+it, link columns remain empty. The `ExportMyListAsync` overload accepting this URI preserves the
+existing overload; custom client implementations can keep their current export behavior or
+implement the new overload to forward the address. An older API ignores the optional field.
+
 ## Layout
 
 | Project | What it is |

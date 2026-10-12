@@ -1,0 +1,2 @@
+category: Fixed
+- **Saved-list exports link back to the host's variable explorer.** VariableExplorer sends its page address to Munin so exported links use the current host, language path and environment. Standalone VariableListView hosts can set ExplorerPageUrl. Links open the variable's Data tab and code list overview; they do not expand a particular code list. Requires the matching Munin API update; older APIs and client implementations keep their existing export behavior.
