@@ -1806,6 +1806,16 @@ table.munin-explorer-data-list tbody th {
   color: var(--dark);
 }
 
+@media (max-width: 400px) {
+  .munin-explorer-meta__tabs {
+    padding-right: 0;
+  }
+
+  .munin-explorer-meta__tab {
+    padding: 0 8px;
+  }
+}
+
 /* The panel is focusable (tabindex=0) so a keyboard reader can move into the tab's content
    directly rather than tabbing through it from the tablist. Nothing moves focus there
    programmatically — choosing a tab leaves focus on the tab — so this is the style for when the

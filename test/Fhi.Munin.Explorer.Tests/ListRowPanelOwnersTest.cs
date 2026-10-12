@@ -215,6 +215,28 @@ public class ListRowPanelOwnersTest : ExplorerTestContext
         Assert.DoesNotContain("Vis datasamling", labels);
     }
 
+    // Sized to their own text the two share buttons were 129px and 152px, stacked at 320px (Fhi.Metadata-gdl6m).
+    [Fact]
+    public void TheShareButtons_SitInTheSameFixedTracksAsTheOwnerButtons()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new OwnersClient());
+        Services.AddScoped<VariableListState>();
+        var cut = Render<VariableListView>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.VariableHref, item => $"https://helsedata.example/variabler?variabelId={item.VariableId}"));
+        cut.WaitForElement("th[scope=row] button").Click();
+        cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+
+        var owner = cut.FindAll("button").Single(b => b.TextContent.Trim() == "Vis datakilde");
+        var copy = cut.FindAll("button").Single(b => b.TextContent.Trim() == "Kopier lenke");
+        var mail = cut.FindAll("a").Single(a => a.TextContent.Trim() == "Send via e-post");
+
+        Assert.Same(copy.ParentElement, mail.ParentElement);
+        Assert.Equal(owner.ParentElement!.GetAttribute("style"), copy.ParentElement!.GetAttribute("style"));
+        Assert.Equal(owner.GetAttribute("style"), copy.GetAttribute("style"));
+        Assert.Equal(owner.GetAttribute("style"), mail.GetAttribute("style"));
+    }
+
     [Fact]
     public void AListStandingAlone_NamesItsGroupsAsWords()
     {

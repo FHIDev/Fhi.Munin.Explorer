@@ -34,7 +34,7 @@ public sealed partial class VariableListView
 
     private string SourceStatusClass => _sourceError is null ? "caption" : "infobox infobox--bg-yellow";
 
-    // Inline because Stiler has no rule for it: fixed tracks, so the group buttons and these two
+    // Inline because Stiler has no rule for it: fixed tracks, so the group, owner and share buttons
     // line up in the same columns whatever the names, and a long name wraps inside its button.
     private const string OwnerButtonGrid =
         "display:grid;grid-template-columns:repeat(auto-fill,12rem);gap:0.5rem 1rem;margin-bottom:1rem";

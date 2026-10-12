@@ -305,6 +305,27 @@ export const assertions = [
   },
 
   {
+    name: 'every tab fits inside its tablist',
+    kind: 'invariant',
+    // A clipped tab is still reachable by arrow keys and still in the accessibility tree, so axe
+    // and the page-overflow check both pass while its label is cut (Fhi.Metadata-gdl6m).
+    body: ({ mount: mountSel }) => {
+      const mount = document.querySelector(mountSel);
+      if (!mount) return `no ${mountSel} on the page — nothing was measured`;
+      for (const list of mount.querySelectorAll('[role=tablist]')) {
+        if (list.closest('[hidden]') || list.clientWidth === 0) continue;
+        if (list.scrollWidth <= list.clientWidth) continue;
+        const tabs = [...list.querySelectorAll('[role=tab]')].map(tab => {
+          const box = tab.getBoundingClientRect();
+          return `${tab.textContent.trim()} ${Math.round(box.left)}..${Math.round(box.right)}`;
+        });
+        return `${list.className || 'tablist'} needs ${list.scrollWidth}px of ${list.clientWidth}: ${tabs.join(' | ')}`;
+      }
+      return null;
+    },
+  },
+
+  {
     name: 'exactly one tab panel has content',
     kind: 'pin',
     states: ['explorer-tabs', 'explorer-list-tab'],

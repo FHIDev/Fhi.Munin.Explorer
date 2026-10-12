@@ -214,6 +214,12 @@ const cases = [
     apply: css('[role=tablist] { position: fixed; top: 0; left: 0; }'),
   },
   {
+    assertion: 'every tab fits inside its tablist',
+    defect: "the row panel's tabs back at 20px padding at 320px (Fhi.Metadata-gdl6m)",
+    path: '/', state: 'list-row-panel', width: 320,
+    apply: dropMediaRules('.munin-explorer-meta__tab'),
+  },
+  {
     assertion: 'exactly one tab panel has content',
     defect: 'both panels rendering at once',
     path: '/', state: 'explorer-tabs', width: 1440,

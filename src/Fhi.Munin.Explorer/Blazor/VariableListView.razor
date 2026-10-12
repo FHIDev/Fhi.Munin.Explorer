@@ -817,11 +817,15 @@ else if (State?.IsAuthenticated == true)
         {
             <div role="group" aria-labelledby="@RowShareHeadingId(item)">
                 <p class="headline headline-xxs margin--none" id="@RowShareHeadingId(item)">@T.ShareVariable</p>
-                <button class="hd-button-square button-square--ghost margin-right margin-bottom"
-                        type="button"
-                        @onclick="() => CopyVariableLinkAsync(link)">@T.CopyVariableLink</button>
-                <a class="hd-button-square button-square--ghost margin-right margin-bottom"
-                   href="@VariableMailTo(item, link)">@T.SendVariableByEmail</a>
+                <div style="@OwnerButtonGrid">
+                    <button class="hd-button-square button-square--ghost"
+                            style="@OwnerButtonCell"
+                            type="button"
+                            @onclick="() => CopyVariableLinkAsync(link)">@T.CopyVariableLink</button>
+                    <a class="hd-button-square button-square--ghost"
+                       style="@OwnerButtonCell"
+                       href="@VariableMailTo(item, link)">@T.SendVariableByEmail</a>
+                </div>
                 <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_linkStatus</p>
 
                 @if (_linkNotCopied)
