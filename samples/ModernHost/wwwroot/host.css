@@ -1790,8 +1790,12 @@ table.munin-explorer-data-list tbody th {
   border-bottom: 1px solid var(--grey30);
 }
 
+.munin-explorer-meta__tab {
+  padding: 0 20px;
+}
+
 .munin-explorer-meta__tab > .hd-button-reset {
-  padding: 8px 16px;
+  padding: 8px 0;
   color: var(--grey60);
   border-bottom: 2px solid transparent;
 }
@@ -1804,6 +1808,16 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-meta__tab > .hd-button-reset:hover {
   color: var(--dark);
+}
+
+@media (max-width: 400px) {
+  .munin-explorer-meta__tabs {
+    padding-right: 0;
+  }
+
+  .munin-explorer-meta__tab {
+    padding: 0 8px;
+  }
 }
 
 /* The panel is focusable (tabindex=0) so a keyboard reader can move into the tab's content
