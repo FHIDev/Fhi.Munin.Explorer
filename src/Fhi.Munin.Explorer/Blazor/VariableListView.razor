@@ -97,11 +97,9 @@ else if (State?.IsAuthenticated == true)
                                @bind="_newName"
                                @bind:event="onchange" />
 
-                        @* aria-disabled rather than disabled: it becomes unavailable the moment a
-                           successful create clears the name, and disabling the element that has focus
-                           drops focus to <body>. CreateListAsync refuses an empty name and a second
-                           press while one is out, so the press is inert. *@
-                        @* Solid, so it reads as the form's action; the one primary is the button that opened it. *@
+                        @* aria-disabled, never disabled: disabling the focused element drops focus to <body>.
+                           CreateListAsync refuses an empty name and a second press, so the press is inert.
+                           Solid, as the form's action; the one primary is the button that opened it. *@
                         <button class="hd-button-square @(RigNewListOutlined ? "button-square--primary" : "button-square--secondary")"
                                 type="button"
                                 aria-disabled="@AriaDisabled(_newName.Trim().Length > 0 && !_createInFlight)"
