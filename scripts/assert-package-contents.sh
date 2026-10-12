@@ -10,12 +10,13 @@
 # The rule is "exactly this set", not "at least this set". A missing file and an unexpected one
 # are both packaging bugs, and the unexpected one is the more dangerous of the two:
 #
-#   * A staticwebassets/ entry other than the one .js module named below would mean the component
-#     started shipping something it does not — a stylesheet above all, which would silently
-#     compete with helsedata's own. The RCL emits their class names so Stiler styles it, and the
-#     rule that it ships no CSS is unchanged: what it ships is one JavaScript module, listed by
-#     name, and the five props files the SDK writes to make the browser able to fetch it
-#     (Fhi.Metadata-35w0p.14).
+#   * A staticwebassets/ entry other than the two named below would mean the component started
+#     shipping something it does not — a stylesheet above all, which would silently compete with
+#     helsedata's own. The RCL emits their class names so Stiler styles it, and the rule that it
+#     ships no CSS is unchanged: what it ships is one JavaScript module (Fhi.Metadata-35w0p.14),
+#     the build-written version.json that says which version a host serves
+#     (Fhi.Metadata-l9l2n.123), both listed by name, and the five props files the SDK writes to
+#     make the browser able to fetch them.
 #   * A second lib/<tfm>/ directory would mean the target framework moved without anyone saying
 #     so, which changes who can install the package at all.
 #   * A .pdb or content file means something got included that we never decided to support, and

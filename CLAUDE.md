@@ -49,7 +49,8 @@ behaviour found later by someone else.
    a name you invent is a separate bead of its own — see "Finishing".
 
 3. **The package ships no CSS.** No `.razor.css`, and nothing in `wwwroot` but the one JavaScript
-   module `explorer-interop.js` (Fhi.Metadata-35w0p.14). Sample hosts carry their own styling
+   module `explorer-interop.js` (Fhi.Metadata-35w0p.14) and `version.json`, which the build writes
+   from the package version and git ignores (Fhi.Metadata-l9l2n.123). Sample hosts carry their own styling
    because they have no Stiler; the package must not.
    `scripts/assert-package-contents.sh` enforces it and runs in CI on every PR — by naming every
    packed entry, so a second module fails there exactly as a stylesheet does. Adding a file to
