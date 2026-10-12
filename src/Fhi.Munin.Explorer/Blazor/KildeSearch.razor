@@ -48,8 +48,11 @@
 @* data-munin-explorer-version is not a class and no stylesheet can have a rule for it. It is the
    only way to read which version of this package is serving a host's page: the RCL renders through
    the host's circuit and ships no versioned static asset to fingerprint. (Fhi.Metadata-sqbei) *@
+@* lang, because the host's <html lang> need not follow the reader: helsedata's /en/ pages say "no",
+   and everything unmarked in here inherits it (WCAG 3.1.2, Fhi.Metadata-nh7z2). *@
 <section class="munin-explorer"
          data-munin-explorer-version="@ExplorerVersion.Current"
+         lang="@Reader"
          aria-labelledby="@TitleId">
     @* Rendered from HeadingLevel rather than hard-coded to h2: the level that keeps the document
        outline unbroken is only knowable at the mount site. *@
