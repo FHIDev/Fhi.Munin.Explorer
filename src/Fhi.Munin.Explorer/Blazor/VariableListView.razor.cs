@@ -148,11 +148,6 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     // inside the block, so TakeFocusTarget moves focus on rather than letting the fold drop it.
     private bool _creating;
 
-    // TEMPORARY, for the look on the rig only: the outlined «Ny liste» beside helsedata's own
-    // wording and weight. Removed with the losing variant before the PR (Fhi.Metadata-fc7ie).
-    private static bool RigNewListOutlined =>
-        AppContext.TryGetSwitch("Fhi.Munin.Explorer.Rig.NewListOutlined", out var on) && on;
-
     // A create is out: the button says so, the field is locked and a second press does nothing.
     private bool _createInFlight;
 

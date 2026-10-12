@@ -100,7 +100,7 @@ else if (State?.IsAuthenticated == true)
                         @* aria-disabled, never disabled: disabling the focused element drops focus to <body>.
                            CreateListAsync refuses an empty name and a second press, so the press is inert.
                            Solid, as the form's action; the one primary is the button that opened it. *@
-                        <button class="hd-button-square @(RigNewListOutlined ? "button-square--primary" : "button-square--secondary")"
+                        <button class="hd-button-square button-square--secondary"
                                 type="button"
                                 aria-disabled="@AriaDisabled(_newName.Trim().Length > 0 && !_createInFlight)"
                                 aria-busy="@(_createInFlight ? "true" : null)"
@@ -728,17 +728,14 @@ else if (State?.IsAuthenticated == true)
 
         @* Last in the row, as helsedata's own «Min oversikt» has it: the name to the left, this to
            the right. Above the name it read as the open list's own button (Fhi.Metadata-fc7ie). *@
-        <button class="hd-button-square @(RigNewListOutlined ? "button-square--tertiary" : "button-square--primary")"
+        <button class="hd-button-square button-square--primary"
                 type="button"
                 id="@CreateToggleId"
                 aria-expanded="@Expanded(_creating)"
                 @ref="_createToggle"
                 @onclick="ToggleCreatingFromControl">
-            @if (!RigNewListOutlined)
-            {
-                <span class="icon icon-plus--white" aria-hidden="true"></span>
-            }
-            @(RigNewListOutlined ? T.AddNewListOutlined : T.AddNewList)
+            <span class="icon icon-plus--white" aria-hidden="true"></span>
+            @T.AddNewList
         </button>
     </text>;
 }

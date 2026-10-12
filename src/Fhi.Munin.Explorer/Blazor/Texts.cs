@@ -306,7 +306,6 @@ internal sealed record Texts(
     // its own. The act rather than the field it reveals: "Navn på ny liste" is the label inside,
     // and a button repeating it would name the same field twice.
     string AddNewList,
-    string AddNewListOutlined,
     string NewListNamePlaceholder,
     string CreatingList,
     string CancelNewList,
@@ -1297,7 +1296,6 @@ internal sealed record Texts(
         RemoveFromThisList: "Fjern",
         ListLoadError: "Kunne ikke hente listen nå. Prøv igjen om litt.",
         AddNewList: "Legg til ny liste",
-        AddNewListOutlined: "Ny liste",
         NewListNamePlaceholder: "F.eks: Prosjekt ABC",
         CreatingList: "Oppretter …",
         CancelNewList: "Avbryt",
@@ -1825,7 +1823,6 @@ internal sealed record Texts(
         RemoveFromThisList: "Remove",
         ListLoadError: "Could not fetch the list just now. Try again shortly.",
         AddNewList: "Add new list",
-        AddNewListOutlined: "New list",
         NewListNamePlaceholder: "E.g. Project ABC",
         CreatingList: "Creating …",
         CancelNewList: "Cancel",
