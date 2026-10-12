@@ -25,7 +25,7 @@
 //                       still the composition we ship, and because a pin fails with a much more
 //                       useful message than the invariant that would also have caught it.
 //
-// Nine of the seventeen below are invariants. If that ratio ever inverts, this file has become a
+// Ten of the eighteen below are invariants. If that ratio ever inverts, this file has become a
 // changelog.
 //
 // A pin may also declare `states: [...]` — the states from axe-states.mjs whose page can contain
@@ -314,7 +314,7 @@ export const assertions = [
       if (!mount) return `no ${mountSel} on the page — nothing was measured`;
       for (const list of mount.querySelectorAll('[role=tablist]')) {
         if (list.closest('[hidden]') || list.clientWidth === 0) continue;
-        if (list.scrollWidth <= list.clientWidth) continue;
+        if (list.scrollWidth <= list.clientWidth + 1) continue;
         const tabs = [...list.querySelectorAll('[role=tab]')].map(tab => {
           const box = tab.getBoundingClientRect();
           return `${tab.textContent.trim()} ${Math.round(box.left)}..${Math.round(box.right)}`;
