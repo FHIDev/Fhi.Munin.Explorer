@@ -48,6 +48,10 @@ internal static partial class CatalogueMarkdown
     [GeneratedRegex(@"<br\s*/?>", RegexOptions.IgnoreCase)]
     private static partial Regex BrTag();
 
+    /// <summary>An http(s) address in running text, without the sentence punctuation after it.</summary>
+    [GeneratedRegex(@"(?<![\w/])https?://(?:[^\s<>""';]|;(?!https?://))+?(?=[.,;:!?)\]'""]*(?:\s|;(?=https?://)|$))", RegexOptions.IgnoreCase, 250)]
+    private static partial Regex WebAddress();
+
     /// <summary>The schemes a link is allowed to carry; anything else renders as text.</summary>
     internal static bool AllowedScheme(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri)
@@ -140,6 +144,76 @@ internal static partial class CatalogueMarkdown
 
     /// <summary>A value's words: the label where the whole value is one allowed link, else the value.</summary>
     internal static string? Words(string? raw) => Link(raw)?.Label ?? raw;
+
+    // A ;-joined list of addresses stays text here; only a URL-typed property links each (Fhi.Metadata-61s28).
+    internal static bool HasWebAddress(string? raw) =>
+        raw is not null && LinkList(raw) is null && Addresses(raw).Count > 0;
+
+    /// <summary>Each address as start and length; the ")"s closing "("s inside it are kept.</summary>
+    private static List<(int Index, int Length)> Addresses(string raw)
+    {
+        try
+        {
+            return WebAddress().Matches(raw)
+                .Where(match => AllowedScheme(match.Value))
+                .Select(match =>
+                {
+                    var length = match.Length;
+                    var open = match.Value.Count(c => c == '(') - match.Value.Count(c => c == ')');
+                    while (open > 0 && match.Index + length < raw.Length && raw[match.Index + length] == ')')
+                    {
+                        length++;
+                        open--;
+                    }
+
+                    return (match.Index, length);
+                })
+                .ToList();
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// A value whose http(s) addresses are anchors and the rest text, or its one anchor where the
+    /// whole value is a link. No markdown and no HTML: the text around an address stays text.
+    /// </summary>
+    internal static RenderFragment Linked(string? raw) => builder =>
+    {
+        if (string.IsNullOrWhiteSpace(raw) || LinkList(raw) is not null)
+        {
+            builder.AddContent(6, raw);
+            return;
+        }
+
+        if (Link(raw) is { } whole)
+        {
+            WebAnchor(builder, whole.Href, whole.Label);
+            return;
+        }
+
+        var at = 0;
+        foreach (var (index, length) in Addresses(raw))
+        {
+            var address = raw.Substring(index, length);
+            builder.AddContent(0, raw[at..index]);
+            WebAnchor(builder, address, address);
+            at = index + length;
+        }
+
+        builder.AddContent(5, raw[at..]);
+    };
+
+    private static void WebAnchor(RenderTreeBuilder builder, string href, string label)
+    {
+        builder.OpenElement(1, "a");
+        builder.AddAttribute(2, "href", href);
+        builder.AddAttribute(3, "rel", "noopener noreferrer");
+        builder.AddContent(4, label);
+        builder.CloseElement();
+    }
 
     /// <summary>Whether a link's label is only its own address, which is prose in no language (WCAG 3.1.2).</summary>
     internal static bool IsAddress((string Label, string Href) link) =>

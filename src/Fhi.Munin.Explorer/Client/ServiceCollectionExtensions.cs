@@ -25,8 +25,8 @@ public sealed class MuninExplorerOptions
 /// <summary>The one call a host makes to use the explorer components.</summary>
 public static class ServiceCollectionExtensions
 {
-    /// <summary>How long a call may take in total before the reader is told it failed.</summary>
-    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
+    /// <summary>A backstop past the longest limit a call asks <see cref="RequestTimeoutHandler"/> for, so the handler's fires.</summary>
+    private static readonly TimeSpan RequestCeiling = MuninExplorerClient.ExportTimeout + TimeSpan.FromSeconds(10);
 
     /// <summary>How long to spend reaching the host before giving up on it.</summary>
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
@@ -92,6 +92,7 @@ public static class ServiceCollectionExtensions
         // scope and reused across callers, so nothing scoped may be captured in it.
         services.TryAddSingleton<IMuninExplorerTokenProvider, AnonymousTokenProvider>();
 
+        services.AddTransient(_ => new RequestTimeoutHandler(TimeProvider.System));
         services.AddTransient<ClientHeaderHandler>();
         services.AddTransient<TransientRetryHandler>();
         services.AddTransient<BearerTokenHandler>();
@@ -106,12 +107,13 @@ public static class ServiceCollectionExtensions
             // base address instead of replacing its last segment.
             client.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
 
-            // Not the 100-second default, which is a number chosen for a background job and not
-            // for someone waiting at a page. A healthy variable search answers in well under a
-            // second; anything still running at thirty is not going to be read. (Fhi.Metadata-phgeg)
-            client.Timeout = RequestTimeout;
+            // A backstop only: RequestTimeoutHandler holds each call to thirty seconds unless it asks
+            // for longer, since a search still running at thirty is not going to be read. (Fhi.Metadata-phgeg)
+            client.Timeout = RequestCeiling;
         })
         .ConfigurePrimaryHttpMessageHandler(PrimaryHandler)
+        // Outermost, so the limit covers the token fetch and a retry as well as the call.
+        .AddHttpMessageHandler<RequestTimeoutHandler>()
         // Identifies this component to Munin's observability — see ClientHeaderHandler.
         .AddHttpMessageHandler<ClientHeaderHandler>()
         // Attaches the host's user token when it supplies one. With no provider

@@ -290,6 +290,14 @@ function serve(url, request, response) {
       }));
     return;
   }
+  // Before the route table too: «Last ned utvalg» downloads a file, not a variable's detail.
+  if (path === '/api/explorer/variables/export') {
+    response.writeHead(200, {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': 'attachment; filename=Variabler_2026-01-01.csv',
+    }).end('Url,Variabel Id\n');
+    return;
+  }
   // Before the route table, whose variables/{id} would answer it with a variable's detail.
   if (path === '/api/explorer/variables/ids') {
     response.writeHead(200, { 'content-type': 'application/json' })

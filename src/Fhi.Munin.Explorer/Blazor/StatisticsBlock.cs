@@ -391,7 +391,7 @@ internal static class StatisticsBlock
     {
         var properties = statistic.AdditionalProperties ?? ReadOnlyDictionary<string, string?>.Empty;
 
-        // Om variabelen names the newest year set even when it holds no statistics, so statistics
+        // Detaljer names the newest year set even when it holds no statistics, so statistics
         // drawn from an older one say which, or a reader takes them for the year named there.
         if (Raw(properties, "SisteOppdaterteAarssett")?.Trim() is { } year
             && latestYearSet is not null

@@ -1810,7 +1810,7 @@ public partial class VariableSearch
     /// <remarks>
     /// The one way the filter changes, so page reset, rollback and host notification are written once.
     /// </remarks>
-    private async Task ApplyFilterAsync(VariableFilter next)
+    private async Task ApplyFilterAsync(VariableFilter next, bool clearSearch = false)
     {
         // Dropped rather than queued while a fetch is in flight, the same as a second submit, a
         // sort click and a page turn.
@@ -1822,8 +1822,16 @@ public partial class VariableSearch
         // A press that asks for the filter already in force costs no request — clearing an empty
         // selection, say. VariableFilter compares by what it narrows, not by the identity of its
         // lists; see the note on it.
-        if (next == _filter)
+        var search = clearSearch ? null : _executedSearch;
+
+        if (next == _filter && search == _executedSearch)
         {
+            // Text typed but never submitted goes too, or the box would contradict the rows.
+            if (clearSearch)
+            {
+                _search = null;
+            }
+
             return;
         }
 
@@ -1845,8 +1853,16 @@ public partial class VariableSearch
         // _executedSearch, not _search: a click blurs the search field first, so the box's contents
         // have already been written to _search — text the reader may never have submitted. Same
         // reason the sort buttons fetch with it.
-        if (await FetchAsync(_executedSearch))
+        var searchCleared = false;
+
+        if (await FetchAsync(search))
         {
+            if (clearSearch)
+            {
+                _search = null;
+                searchCleared = true;
+            }
+
             // Only on success. The counts describe a selection, and after a rollback the selection
             // they already describe is the one back in force.
             await FetchFacetsAsync();
@@ -1862,6 +1878,12 @@ public partial class VariableSearch
 
         // _filter and not next: what the host is told is what is in force, rolled back or not.
         await RaiseAsync(FilterChanged, _filter, Log);
+
+        // Only once it has gone: after a rollback the box may hold text that was never searched.
+        if (searchCleared)
+        {
+            await NotifySearchChangedAsync();
+        }
 
         // Narrowing renumbers the pages, so a host mirroring this into a URL has to drop the page
         // it was holding. Same rule as the filter: whatever is in force, rolled back or not.
