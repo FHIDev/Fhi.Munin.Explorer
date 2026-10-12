@@ -7250,4 +7250,35 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Empty(cut.FindComponents<KildeView>());
         Assert.Empty(cut.FindAll(".munin-explorer-datasamling"));
     }
+
+    private static KildeSummary WithReference(KildeSummary kilde, string address) =>
+        kilde with { AdditionalProperties = new Dictionary<string, string?> { ["Variabelreferanse"] = address } };
+
+    [Fact]
+    public void Variables_WhenAKildeCountsNoneButNamesWhereTheyAreDescribed_ThenTheCellIsADashThatSaysSo()
+    {
+        // Fhi.Metadata-ot99a: a nought would say the kilde has no variables. One without a reference still says 0.
+        var cut = RenderWith(new FakeClient(
+            WithReference(Kilde("Førtiåringsundersøkelsene", "K_40", datasamlinger: 0, variables: 0),
+                          "https://eksempel.no/variabler"),
+            Kilde("Brannskaderegisteret", "K_BRANN", datasamlinger: 0, variables: 0),
+            WithReference(Kilde("Hodepineregisteret", "K_HDPINE", datasamlinger: 4, variables: 204),
+                          "https://eksempel.no/hodepine")));
+
+        var cells = cut.FindAll(".munin-explorer-kilder tbody tr")
+                       .ToDictionary(row => row.QuerySelector("th button")!.TextContent.Trim(),
+                                     row => row.QuerySelectorAll("td.munin-explorer-kilder__count").Last());
+
+        var described = cells["Førtiåringsundersøkelsene"];
+        Assert.Equal("–", described.QuerySelector("[aria-hidden='true']")!.TextContent);
+        Assert.Equal("Beskrevet utenfor helsedata.no", described.QuerySelector(".screenreader-only")!.TextContent);
+        Assert.Contains("munin-explorer-kilder__count--zero", described.ClassList);
+        Assert.Empty(described.QuerySelectorAll("a"));
+
+        // The hidden words are absolutely positioned; unanchored they leave the scroll box and widen the page.
+        Assert.Equal("position:relative", described.GetAttribute("style"));
+
+        Assert.Equal("0", cells["Brannskaderegisteret"].TextContent.Trim());
+        Assert.StartsWith("204", cells["Hodepineregisteret"].TextContent.Trim(), StringComparison.Ordinal);
+    }
 }

@@ -120,5 +120,13 @@
                            @onclick="ShowVariablesAsync">@T.ShowDatasamlingVariables</button></p>
             }
         }
+        @VariableReferenceLine
     </text>;
+
+    // The datasamling's own reference only: its kilde's is not inherited.
+    private RenderFragment? VariableReferenceLine =>
+        VariableReference.Of(Datasamling?.AdditionalProperties) is not { } address
+            ? null
+            : VariableReference.Sentence(
+                Datasamling is { VariableCount: > 0 } ? T.VariablesAlsoDescribedHere : T.VariablesDescribedHere, address);
 }

@@ -71,6 +71,21 @@ bodies.set(listRoute, JSON.stringify([
     datasamlingCount: countCollections(study), delkildeCount: study.delkilder.length },
 ]));
 
+// No captured kilde or datasamling carries a «Variabelreferanse», so no scan would draw its dash
+// cell or its sentence. One list row with no variables gets one, and so do the two detail captures;
+// the address is long on purpose, for the narrow widths (Fhi.Metadata-ot99a.2).
+const VARIABLE_REFERENCE = 'https://eksempel.no/dokumentasjon/variabler/en-lang-adresse-som-maa-brytes-ved-smal-bredde';
+const referenced = body => ({ ...body, additionalProperties: { ...body.additionalProperties, Variabelreferanse: VARIABLE_REFERENCE } });
+const listed = JSON.parse(bodies.get(listRoute));
+bodies.set(listRoute, JSON.stringify([...listed, referenced({
+  ...listed[0], id: '8dee8189-0e2d-4e6d-9362-e0bf8ede8d95', navn: 'Variabler beskrevet utenfor', code: 'K_UTENFOR',
+  kortNavn: 'UTENFOR', totalVariables: 0, datasamlingCount: 0, delkildeCount: 0, harVariabelbeskrivelse: false,
+})]));
+for (const source of ['kilde.json', 'datasamling.json']) {
+  const route = routes.find(([, one]) => one === source)[0];
+  bodies.set(route, JSON.stringify(referenced(JSON.parse(bodies.get(route)))));
+}
+
 // No kilde in the captured catalogue carries biobank, the one kildetype the Kilde facet draws a
 // badge for, so a verbatim payload renders that markup nowhere and a scan reports no violations in
 // what is not there - the finding this whole stub exists for. One row is retyped, its facet with it.

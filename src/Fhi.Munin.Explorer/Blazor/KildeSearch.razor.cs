@@ -1210,7 +1210,7 @@ public sealed partial class KildeSearch : ComponentBase
     {
         List<DetailNamedSection> sections =
         [
-            new(DetailSectionIds.Variables, T.HeadingVariables, Caption(T.KildeVariableCount(kilde.TotalVariables))),
+            new(DetailSectionIds.Variables, T.HeadingVariables, VariablesBody(kilde)),
         ];
 
         if (ShowAccessAndPrices)
@@ -1220,6 +1220,21 @@ public sealed partial class KildeSearch : ComponentBase
         }
 
         return sections;
+    }
+
+    // The count; with a Variabelreferanse the link too, and in place of a count of none.
+    private RenderFragment VariablesBody(KildeDetail kilde)
+    {
+        var count = Caption(T.KildeVariableCount(kilde.TotalVariables));
+
+        if (VariableReference.Of(kilde.AdditionalProperties) is not { } address)
+        {
+            return count;
+        }
+
+        return kilde.TotalVariables == 0
+            ? VariableReference.Sentence(T.VariablesDescribedHere, address)
+            : DetailBlocks.Both(count, VariableReference.Sentence(T.VariablesAlsoDescribedHere, address));
     }
 
     // A classless <p> picks no size at all, so on a host carrying Stiler and nothing else it would
