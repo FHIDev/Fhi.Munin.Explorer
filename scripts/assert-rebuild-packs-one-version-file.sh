@@ -2,12 +2,12 @@
 # Fails if building the package a second time, with wwwroot/version.json left by the first build,
 # no longer packs exactly one correct version file.
 #
-# What this does NOT prove: the failure it was written after only happens on Windows. There the
-# SDK's glob spells the existing file wwwroot\version.json, a forward-slash Content Remove did not
-# match it, and from the second build on the file was included twice and every build and pack
-# failed (Fhi.Metadata-l9l2n.123). On Linux both spellings are the same path, so this script
-# passed even with that bug. It guards the rebuild path in general; the Windows case is covered
-# only by building twice on Windows.
+# The failure it was written after only happens on Windows. There the SDK's glob spells the
+# existing file wwwroot\version.json, a forward-slash Content Remove did not match it, and from
+# the second build on the file was included twice and every build and pack failed
+# (Fhi.Metadata-l9l2n.123). On Linux both spellings are the same path, so in the build job this
+# script passed even with that bug: there it only guards the rebuild path in general. The
+# `windows-rebuild` job in ci.yml runs it on Windows, and that run is the guard.
 #
 # Usage: scripts/assert-rebuild-packs-one-version-file.sh
 # Exit 0 clean, 1 the rebuild or its package is wrong, 2 the check could not run.
