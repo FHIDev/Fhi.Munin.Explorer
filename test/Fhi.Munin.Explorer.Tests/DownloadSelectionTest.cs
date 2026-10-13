@@ -14,7 +14,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     private static VariableSummary Variable(string name) =>
         new() { Id = Guid.NewGuid(), Code = name.ToUpperInvariant(), PreferredTerm = name, KildeName = "Abortregisteret" };
 
-    private sealed class Client(int totalCount) : EmptyMuninExplorerClient
+    private sealed class Client(int totalCount) : EmptyMuninExplorerClient, IMuninExplorerClient
     {
         public readonly List<(string? Search, VariableFilter? Filter, ExportFormat Format, bool IncludeKodeverk)> Exports = [];
         public Exception? Refuse { get; init; }
@@ -45,6 +45,16 @@ public class DownloadSelectionTest : ExplorerTestContext
                 Size = 25,
                 TotalPages = Math.Max(1, (totalCount + 24) / 25)
             };
+        }
+
+        public List<Uri?> ExportPages { get; } = [];
+
+        Task<ExportedList> IMuninExplorerClient.ExportVariablesAsync(
+            string? search, VariableFilter? filter, Uri? explorerPageUrl, ExportFormat format,
+            bool includeKodeverk, CancellationToken cancellationToken)
+        {
+            ExportPages.Add(explorerPageUrl);
+            return ExportVariablesAsync(search, filter, format, includeKodeverk, cancellationToken);
         }
 
         public override Task<ExportedList> ExportVariablesAsync(
@@ -366,6 +376,86 @@ public class DownloadSelectionTest : ExplorerTestContext
         Search(cut, "alder");
 
         cut.WaitForAssertion(() => Assert.Equal("", Status(cut)));
+    }
+
+    [Fact]
+    public void Download_WhenTheHostPageIsKnown_ThenTheFileIsAskedForWithIt()
+    {
+        // Fhi.Metadata-ffcwb: without the address the file's Url and codebook link columns are empty.
+        var client = new Client(80);
+        var page = new Uri("https://helsedata.example/variabelutforsker/?theme=contrast");
+        var cut = Render(client);
+        cut.Render(p => p.Add(c => c.ExplorerPageUrl, page));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        Button(cut, "Last ned som Excel").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        Assert.Equal([page], client.ExportPages);
+    }
+
+    /// <summary>A host's own client from before the address existed: it implements the old overload only.</summary>
+    private sealed class ClientWithoutTheAddress : EmptyMuninExplorerClient
+    {
+        public int Exports { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [Variable("Alder")],
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = 25,
+                TotalPages = 1
+            });
+
+        public override Task<ExportedList> ExportVariablesAsync(
+            string? search, VariableFilter? filter, ExportFormat format = ExportFormat.Xlsx,
+            bool includeKodeverk = false, CancellationToken cancellationToken = default)
+        {
+            Exports++;
+            return Task.FromResult(new ExportedList([1, 2, 3], "text/csv", "Variabler.csv"));
+        }
+    }
+
+    [Fact]
+    public void Download_WhenTheHostsClientKnowsOnlyTheOldOverload_ThenItIsStillAskedAndTheFileComes()
+    {
+        // The interface's default forwards to the old overload; a host that wrote its own client is not broken.
+        var client = new ClientWithoutTheAddress();
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        JSInterop.AddInvocationHandler(new ObjectHandler("Blob", "InvokeConstructorAsync", new RecordingJsObject()));
+        JSInterop.Setup<string>("URL.createObjectURL", _ => true).SetResult("blob:test");
+        JSInterop.AddInvocationHandler(new ObjectHandler("document.createElement", "InvokeAsync", new RecordingJsObject()));
+        var cut = Render<VariableSearch>(p => p.Add(c => c.ExplorerPageUrl, new Uri("https://helsedata.example/variabler/")));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        Button(cut, "Last ned som CSV").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        Assert.Equal(1, client.Exports);
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
+    }
+
+    [Fact]
+    public void Download_WhenTheHostHasNoUsableAddress_ThenNoneIsSentAndTheFileStillComes()
+    {
+        var client = new Client(80);
+        var cut = Render(client);
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        Button(cut, "Last ned som CSV").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        Assert.Equal([null], client.ExportPages);
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
     }
 
     [Fact]

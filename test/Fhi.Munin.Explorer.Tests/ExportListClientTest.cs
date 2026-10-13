@@ -81,6 +81,87 @@ public class ExportListClientTest
     }
 
     [Fact]
+    public async Task ExportVariablesAsync_WhenTheHostPageIsGiven_ThenItIsSentWholeAndEscaped()
+    {
+        // Fhi.Metadata-ffcwb: the file's links are built on this address, so its own query and its æøå must arrive intact.
+        var handler = new FileHandler("text/csv", "Variabler.csv");
+        var page = new Uri("https://test.example:8443/portal/nb/variabelsøk/?theme=contrast&lang=nb");
+
+        await Client(handler).ExportVariablesAsync("alder", null, page, ExportFormat.Csv);
+
+        var sent = handler.LastUri!.Query.TrimStart('?').Split('&').Single(p => p.StartsWith("explorerPageUrl=", StringComparison.Ordinal));
+        Assert.DoesNotContain("?", sent);
+        Assert.DoesNotContain("/", sent);
+        Assert.Equal(page.AbsoluteUri, Uri.UnescapeDataString(sent["explorerPageUrl=".Length..]));
+        Assert.Contains("variabels%C3%B8k", page.AbsoluteUri);
+        Assert.Contains("search=alder", handler.LastUri.Query);
+        Assert.Contains("format=csv", handler.LastUri.Query);
+    }
+
+    public static TheoryData<Uri> AddressesTheApiRefuses =>
+    [
+        new Uri("/portal/variabler/", UriKind.Relative),
+        new Uri("ftp://helsedata.example/variabler/"),
+        new Uri("https://bruker:hemmelig@helsedata.example/variabler/"),
+        new Uri("https://helsedata.example/variabler/#treff"),
+        new Uri("https://helsedata.example/variabler/?x=" + new string('a', 4096)),
+    ];
+
+    [Theory]
+    [MemberData(nameof(AddressesTheApiRefuses))]
+    public async Task ExportVariablesAsync_WhenTheApiWouldRefuseTheAddress_ThenTheFileIsAskedForWithoutIt(Uri page)
+    {
+        // The API answers 400 to these; a file without links is better than no file (Fhi.Metadata-ffcwb).
+        var handler = new FileHandler("text/csv", "Variabler.csv");
+
+        var file = await Client(handler).ExportVariablesAsync("alder", null, page, ExportFormat.Csv);
+
+        Assert.Equal("/api/explorer/variables/export", handler.LastUri!.AbsolutePath);
+        Assert.DoesNotContain("explorerPageUrl", handler.LastUri.Query);
+        Assert.Contains("search=alder", handler.LastUri.Query);
+        Assert.Equal("Variabler.csv", file.FileName);
+    }
+
+    [Theory]
+    [MemberData(nameof(AddressesTheApiRefuses))]
+    public async Task ExportMyListAsync_WhenTheApiWouldRefuseTheAddress_ThenTheFileIsAskedForWithoutIt(Uri page)
+    {
+        var handler = new FileHandler("text/csv", "list.csv");
+
+        var file = await Client(handler).ExportMyListAsync(MyListId, page, ExportFormat.Csv);
+
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal(JsonValueKind.Null, sent.RootElement.GetProperty("explorerPageUrl").ValueKind);
+        Assert.Equal("csv", sent.RootElement.GetProperty("format").GetString());
+        Assert.NotNull(file);
+    }
+
+    [Fact]
+    public async Task ExportVariablesAsync_WhenTheAddressIsExactlyAsLongAsTheApiAllows_ThenItIsSent()
+    {
+        var handler = new FileHandler("text/csv", "Variabler.csv");
+        var stem = "https://helsedata.example/variabler/?x=";
+        var page = new Uri(stem + new string('a', 4096 - stem.Length));
+
+        await Client(handler).ExportVariablesAsync("alder", null, page, ExportFormat.Csv);
+
+        Assert.Equal(4096, page.AbsoluteUri.Length);
+        Assert.Contains("explorerPageUrl=", handler.LastUri!.Query);
+    }
+
+    [Fact]
+    public async Task ExportVariablesAsync_WhenNoHostPageIsGiven_ThenNoneIsSent()
+    {
+        var handler = new FileHandler("text/csv", "Variabler.csv");
+
+        await Client(handler).ExportVariablesAsync("alder", null, null, ExportFormat.Csv);
+        Assert.DoesNotContain("explorerPageUrl", handler.LastUri!.Query);
+
+        await Client(handler).ExportVariablesAsync("alder", null, ExportFormat.Csv);
+        Assert.DoesNotContain("explorerPageUrl", handler.LastUri!.Query);
+    }
+
+    [Fact]
     public async Task ExportVariablesAsync_WhenSent_ThenItAsksForLongerThanTheThirtySecondsOtherCallsGet()
     {
         var handler = new FileHandler("text/csv", "Variabler_2026-10-09.csv");

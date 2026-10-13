@@ -932,10 +932,28 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         return new ExportedList(bytes, contentType, fileName);
     }
 
+    // The API's own rule (absolute http or https, no credentials, no fragment, at most 4096 characters). It
+    // answers 400 to anything else, so an address it would refuse is left out: the file comes without links.
+    private static Uri? UsablePageUrl(Uri? page) =>
+        page is { IsAbsoluteUri: true, UserInfo.Length: 0, Fragment.Length: 0, AbsoluteUri.Length: <= 4096 }
+        && (page.Scheme == Uri.UriSchemeHttp || page.Scheme == Uri.UriSchemeHttps)
+            ? page
+            : null;
+
+    /// <inheritdoc />
+    public Task<ExportedList> ExportVariablesAsync(
+        string? search,
+        VariableFilter? filter,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default) =>
+        ExportVariablesAsync(search, filter, null, format, includeKodeverk, cancellationToken);
+
     /// <inheritdoc />
     public async Task<ExportedList> ExportVariablesAsync(
         string? search,
         VariableFilter? filter,
+        Uri? explorerPageUrl,
         ExportFormat format = ExportFormat.Xlsx,
         bool includeKodeverk = false,
         CancellationToken cancellationToken = default)
@@ -944,7 +962,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             "api/explorer/variables/export" + Query(
                 ("search", search),
                 ("format", WireName(format)),
-                ("includeKodeverk", includeKodeverk ? "true" : null)),
+                ("includeKodeverk", includeKodeverk ? "true" : null),
+                ("explorerPageUrl", UsablePageUrl(explorerPageUrl)?.AbsoluteUri)),
             filter);
 
         using var response = await SendAsync(HttpMethod.Get, url, null, cancellationToken, ExportTimeout);
@@ -978,7 +997,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         CancellationToken cancellationToken = default)
     {
         var body = new ExportMyListBody(WireName(format), includeKodeverk, kildeIds is { Count: > 0 } ? kildeIds : null,
-            explorerPageUrl);
+            UsablePageUrl(explorerPageUrl));
 
         using var response = await SendAsync(HttpMethod.Post, MyListExport(id), body, cancellationToken);
 
