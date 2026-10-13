@@ -54,7 +54,8 @@ public partial class VariableListViewTest
         Assert.True(DownloadGroup(cut).QuerySelector("input[type=checkbox]")!.HasAttribute("disabled"));
         Assert.Equal(working, DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());
 
-        await cut.InvokeAsync(() => idle.Click(new MouseEventArgs { Detail = 0 }));
+        await cut.InvokeAsync(() => KeyboardPress(cut, working));
+        await cut.InvokeAsync(() => KeyboardPress(cut, other));
         Assert.Equal(1, client.ExportCalls);
 
         held.SetResult(new ExportedList([1, 2, 3], "text/csv", "variabelliste.csv"));
@@ -64,6 +65,11 @@ public partial class VariableListViewTest
         Assert.Equal("Nedlastingen er klar.", DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());
         Assert.False(DownloadGroup(cut).QuerySelector("input[type=checkbox]")!.HasAttribute("disabled"));
         Assert.DoesNotContain("Kunne ikke laste ned", cut.Markup);
+
+        await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
+        Assert.Null(DownloadGroup(cut).QuerySelector("[role=status]"));
+        await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
+        Assert.Equal("", DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());
     }
 
     [Fact]

@@ -848,6 +848,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             if (State is { KildeFilterVersion: var version } && version != _seenKildeFilter)
             {
                 _seenKildeFilter = version;
+                _downloadDone = false;
                 _pageNumber = 1;
             }
 

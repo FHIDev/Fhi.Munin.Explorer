@@ -355,6 +355,20 @@ public class DownloadSelectionTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Download_WhenAnotherSearchIsRunWithThePanelOpen_ThenTheReadyMessageIsGone()
+    {
+        var cut = Render(new Client(80));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Button(cut, "Last ned som CSV").Click();
+        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+
+        Search(cut, "alder");
+
+        cut.WaitForAssertion(() => Assert.Equal("", Status(cut)));
+    }
+
+    [Fact]
     public void Download_WhenThePageIsEnglish_ThenTheWaitingIsEnglish()
     {
         var held = new TaskCompletionSource<ExportedList>();

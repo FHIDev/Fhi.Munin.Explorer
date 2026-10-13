@@ -24,7 +24,7 @@ public partial class VariableSearch
     private bool _includeKodeverk;
     private bool _downloading;
     private ExportFormat? _downloadingFormat;
-    private bool _downloadDone;
+    private SaveAllQuery? _downloadDoneFor;
     private (SaveAllQuery Query, DownloadFailure Failure)? _downloadFailedFor;
     private ElementReference _downloadToggle;
 
@@ -42,14 +42,13 @@ public partial class VariableSearch
 
     private bool ShowDownload => _result is { Items.Count: > 0 } && _resultsTab == ExplorerTab.Search;
 
-    // A large selection takes many seconds (11 s for 48 000 hits on test), and until this said so the
-    // press looked as if it had done nothing.
+    // A large selection takes many seconds. The ready text is for the search it was made from, as the failure is.
     private string? DownloadStatus =>
         _downloadingFormat switch
         {
             ExportFormat.Xlsx => T.DownloadingXlsx,
             ExportFormat.Csv => T.DownloadingCsv,
-            _ => _downloadDone ? T.DownloadDone : null
+            _ => _downloadDoneFor == CurrentQuery ? T.DownloadDone : null
         };
 
     // The list's «Last ned» fold, so the explorer has one way of offering a file and Stiler already styles it.
@@ -157,7 +156,7 @@ public partial class VariableSearch
         if (!RowPress.WasSelectionStandingStill(released))
         {
             _downloadOpen = !_downloadOpen;
-            _downloadDone = false;
+            _downloadDoneFor = null;
         }
     }
 
@@ -183,14 +182,14 @@ public partial class VariableSearch
         var query = CurrentQuery;
         _downloading = true;
         _downloadingFormat = format;
-        _downloadDone = false;
+        _downloadDoneFor = null;
         _downloadFailedFor = null;
 
         try
         {
             var file = await Client.ExportVariablesAsync(query.Search, query.Filter, format, _includeKodeverk);
             await BrowserDownload.OfferAsync(ServiceProvider.GetRequiredService<IJSRuntime>(), file);
-            _downloadDone = true;
+            _downloadDoneFor = query;
         }
         catch (MuninExplorerRateLimitedException ex)
         {
