@@ -172,13 +172,34 @@ public class ExportListClientTest
     }
 
     [Fact]
-    public async Task ExportMyListAsync_WhenSent_ThenItKeepsTheOrdinaryLimit()
+    public async Task ExportMyListAsync_WhenSent_ThenItAsksForTheDownloadLimit()
     {
+        // Fhi.Metadata-jnqyd: a list with code lists fetches one per variable, and thirty seconds cut it short.
         var handler = new FileHandler("text/csv", "liste.csv");
 
         await Client(handler).ExportMyListAsync(One);
 
-        Assert.Null(handler.LastLimit);
+        Assert.Equal(TimeSpan.FromSeconds(150), handler.LastLimit);
+    }
+
+    [Fact]
+    public async Task ExportMyListAsync_WhenSentWithAPageAddress_ThenItAsksForTheDownloadLimit()
+    {
+        var handler = new FileHandler("text/csv", "liste.csv");
+
+        await Client(handler).ExportMyListAsync(One, new Uri("https://helsedata.example/variabler/"), ExportFormat.Csv, includeKodeverk: true);
+
+        Assert.Equal(TimeSpan.FromSeconds(150), handler.LastLimit);
+    }
+
+    [Fact]
+    public async Task ExportListAsync_WhenSent_ThenItAsksForTheDownloadLimit()
+    {
+        var handler = new FileHandler("text/csv", "liste.csv");
+
+        await Client(handler).ExportListAsync([One, Two], ExportFormat.Csv, includeKodeverk: true);
+
+        Assert.Equal(TimeSpan.FromSeconds(150), handler.LastLimit);
     }
 
     [Fact]

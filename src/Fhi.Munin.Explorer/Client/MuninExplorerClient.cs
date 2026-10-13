@@ -103,7 +103,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     // which a deployed older package keys on (Fhi.Metadata-d07al.1).
     private const string RowsPerDatasamling = "rader=datasamling";
 
-    /// <summary>The whole-search download's limit: past a cold code-list fetch, under Munin's 300-second ingress.</summary>
+    /// <summary>Every download's limit: past a cold code-list fetch, under Munin's 300-second ingress.</summary>
     internal static readonly TimeSpan ExportTimeout = TimeSpan.FromSeconds(150);
 
     private static readonly (string, string?) Rader = ("rader", "datasamling");
@@ -914,7 +914,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         // 429 the way the my/lists writes do. Sending its own request was what left a throttled
         // download indistinguishable from a 500.
         using var response = await SendAsync(
-            HttpMethod.Post, "api/explorer/lists/export", body, cancellationToken);
+            HttpMethod.Post, "api/explorer/lists/export", body, cancellationToken, ExportTimeout);
 
         // Not mapped to null the way a missing variable is: a failed export is a failure, and a
         // caller that showed "nothing to download" for a 500 would be lying about why.
@@ -999,7 +999,7 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
         var body = new ExportMyListBody(WireName(format), includeKodeverk, kildeIds is { Count: > 0 } ? kildeIds : null,
             UsablePageUrl(explorerPageUrl));
 
-        using var response = await SendAsync(HttpMethod.Post, MyListExport(id), body, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Post, MyListExport(id), body, cancellationToken, ExportTimeout);
 
         // Another tab deleted the list, or it was never this reader's: the API answers both alike.
         if (response.StatusCode == HttpStatusCode.NotFound)

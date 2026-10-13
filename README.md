@@ -39,6 +39,10 @@ it, link columns remain empty. The `ExportMyListAsync` and `ExportVariablesAsync
 existing overloads; custom client implementations can keep their current export behavior or
 implement the new overloads to forward the address. An older API ignores the optional field.
 
+Every download, of a search's hits or of a list, waits up to 150 seconds for the API; other calls
+wait 30. Munin's ingress ends a request at 300 seconds, so the Explorer gives up first and says the
+download failed.
+
 ## Layout
 
 | Project | What it is |
