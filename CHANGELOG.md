@@ -29,6 +29,34 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.3.0 — 2026-10-12
+
+### Added
+
+- **A kilde or datasamling whose variables are documented somewhere else says where.** When the catalogue holds a «Variabelreferanse» for it, the Variables section reads «Variablene er beskrevet her:» with the address as a link, or «Variablene er også beskrevet her:» under the count when Munin has variables for it too. A kilde with no variables in Munin and a reference shows «–» in the list's Variabler column (read out as «Beskrevet utenfor helsedata.no») and those words in place of 0 among its facts; one without a reference still shows 0. Only http and https addresses become links, and a datasamling does not inherit its kilde's reference. Needs a Munin API that returns the property.
+
+### Changed
+
+- **The saved list's name and its actions share one row, with «Legg til ny liste» at the end of it.** The button stood directly on top of the open list's name and read as that list's own; it is now where helsedata's own «Min oversikt» has it, with the same plus icon. The new-list form is one line (field, «Opprett liste», «Avbryt»), takes focus when it opens, and Esc or «Avbryt» folds it with focus back on the button. With several lists the picker joins the row, which then wraps under the name.
+
+### Fixed
+
+- **Back from the variable explorer reopens the kilde row the reader left and returns to where they were on the page.** An open row in the kildeutforsker is now part of the address, as `?expanded=<kilde id>` repeated per open row, so a shared link opens the same rows in Norwegian and English and Back from "Vis alle variabler i …" shows that row open with its link again, instead of a collapsed list near the top. Opening or closing a row replaces the history entry rather than adding one. Where the package's browser module is served, the page scrolls back to the position it was left at, kept per tab in `sessionStorage` under `Fhi.Munin.Explorer:scroll:<path><query>` — the one thing the package writes to Web Storage, and no preference or selection of the reader's — or brings the first open row into view on a link opened fresh. A link opens at most twenty rows by itself, marked rows and open rows together. `KildeSearch` gains `ExpandedKildeIds` and `ExpandedKildeIdsChanged` for a host composing it itself. (Fhi.Metadata-95j8b)
+- **The variable page shows each datasamling's data period, not the day the variable was registered in it.**
+  The dates after every name under "Datasamlinger" were the membership's `validFrom`/`validTo`, so
+  every row read alike ("14. mai 2026 – Pågående"). They are now `dataFrom`/`dataTo` — the period
+  the variable has data for in that datasamling — under a caption that says so. The periods appear
+  once the Munin API fills those two members on every entry (FHIDev/Munin#6599); against an API
+  that does not, the rows carry no dates and no caption rather than the registration dates. No new
+  class name and no host change. (Fhi.Metadata-9lenf)
+- **Creating a list, saving a variable and opening a list say that they are working.** «Opprett liste» reads «Oppretter …», a row's «Lagre i liste» reads «Lagrer …» and the saved list shows «Henter variablene i listen …» over placeholder rows until its rows arrive; a second press while a call is out does nothing, and the empty-list sentence is never shown before the answer.
+- **The explorer states its own language instead of inheriting the host page's.** The root of `VariableSearch`, `KildeSearch` and `VariableListView` now carries `lang="en"` or `lang="no"` from `Language`, so on a page whose `<html lang>` says something else, the component's own labels, buttons and headings are announced in the reader's language. Catalogue values that exist only in Norwegian keep their `lang="no"` mark. A kodeverk code with no name no longer marks the "Not specified" in its place as Norwegian. (Fhi.Metadata-nh7z2)
+
+### Notes for hosts
+
+- **The saved-list view gains five class names a host should style, and its action row moves.** The names are `munin-explorer-list-head`, `munin-explorer-list-create`, `munin-explorer-list-create__row`, `munin-explorer-list-create__field` and `munin-explorer-list-placeholder`. The view's `munin-explorer-page__actions` row now sits inside `munin-explorer-list-head`, after the header, instead of above it as a child of the page root. «Legg til ny liste» carries an `icon icon-plus--white` span, helsedata's own plus icon; a host without that rule and its svg draws the button without the icon. A host that styles none of the new names still gets a working view; the README says what each one owes.
+- **A host needs Fhi.Helsedata.Stiler 0.1.177 or later before it takes this version.** The saved list's new heading row is laid out by rules that first shipped in Stiler 0.1.176, and under 0.1.176 a reader with two or more lists gets a page that scrolls sideways at 320 px: the «Velg liste» select makes the action row stick 24 px out. 0.1.177 lets the row shrink. Bump Stiler first, or in the same commit as this package; never this package first.
+
 ## 2.2.0 — 2026-10-12
 
 ### Changed

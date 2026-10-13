@@ -1,2 +1,0 @@
-category: Fixed
-- **The explorer states its own language instead of inheriting the host page's.** The root of `VariableSearch`, `KildeSearch` and `VariableListView` now carries `lang="en"` or `lang="no"` from `Language`, so on a page whose `<html lang>` says something else, the component's own labels, buttons and headings are announced in the reader's language. Catalogue values that exist only in Norwegian keep their `lang="no"` mark. A kodeverk code with no name no longer marks the "Not specified" in its place as Norwegian. (Fhi.Metadata-nh7z2)

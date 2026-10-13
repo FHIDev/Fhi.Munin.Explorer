@@ -1,2 +1,0 @@
-category: Notes for hosts
-- **A host needs Fhi.Helsedata.Stiler 0.1.177 or later before it takes this version.** The saved list's new heading row is laid out by rules that first shipped in Stiler 0.1.176, and under 0.1.176 a reader with two or more lists gets a page that scrolls sideways at 320 px: the «Velg liste» select makes the action row stick 24 px out. 0.1.177 lets the row shrink. Bump Stiler first, or in the same commit as this package; never this package first.
