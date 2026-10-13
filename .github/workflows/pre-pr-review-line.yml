@@ -1,0 +1,74 @@
+# Shows red when a session's PR lacks its "Pre-PR review:" line (DevInfra-9w1.40). The line and its four forms are
+# in AGENTS.md or CLAUDE.md. Applies only to PRs whose description has the sessions' footer line; any other PR passes untouched.
+# It proves the line is there, not that the review ran. Not a required check: making it one is a ruleset change.
+name: Pre-PR review line
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+concurrency:
+  group: pre-pr-review-line-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  line:
+    name: Pre-PR review line
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: The description says what the pre-PR review found
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Carriage returns and trailing blanks go first: GitHub stores CRLF, and editors leave spaces.
+          body=$(printf '%s' "$BODY" | tr -d '\r' | sed -E 's/[[:space:]]+$//')
+          if ! printf '%s\n' "$body" | grep -Eq '^🤖 Generated with AI$'; then
+            echo "Not a session's PR (the description has no footer line): nothing to check."
+            exit 0
+          fi
+          lines=$(printf '%s\n' "$body" | grep -E '^Pre-PR review:' || true)
+          if [ -z "$lines" ]; then
+            hint=''
+            if printf '%s\n' "$body" | grep -q 'Pre-PR review:'; then hint=" The text is there, but not at the start of a line: no bold, list or quote marker in front of it."; fi
+            echo "::error::The description has no line that starts with 'Pre-PR review:'. Add one of the four forms (they are in AGENTS.md or CLAUDE.md), on a line of its own.$hint"
+            exit 1
+          fi
+          if [ "$(printf '%s\n' "$lines" | wc -l)" -ne 1 ]; then
+            echo "::error::The description has more than one 'Pre-PR review:' line; keep one."
+            exit 1
+          fi
+          left='^Pre-PR review: ran, ([0-9]{1,6}) (findings?), ([0-9]{1,6}) fixed, ([0-9]{1,6}) left: .+$'
+          allfixed='^Pre-PR review: ran, ([0-9]{1,6}) (findings?), fixed$'
+          other='^Pre-PR review: (ran, no findings|skipped, .+)$'
+          found=''; noun=''
+          if [[ $lines =~ $left ]]; then
+            found=${BASH_REMATCH[1]}; noun=${BASH_REMATCH[2]}; fixed=${BASH_REMATCH[3]}; rest=${BASH_REMATCH[4]}
+            if [ "$(( 10#$fixed + 10#$rest ))" -ne "$(( 10#$found ))" ]; then
+              echo "::error::$fixed fixed and $rest left do not add up to $found findings."
+              exit 1
+            fi
+          elif [[ $lines =~ $allfixed ]]; then
+            found=${BASH_REMATCH[1]}; noun=${BASH_REMATCH[2]}
+          elif [[ ! $lines =~ $other ]]; then
+            echo "::error::'$lines' is not one of the four forms: 'ran, no findings' | 'ran, N findings, fixed' | 'ran, N findings, X fixed, Y left: why' | 'skipped, reason'."
+            exit 1
+          fi
+          if [ -n "$found" ]; then
+            want=findings; [ "$(( 10#$found ))" -ne 1 ] || want=finding
+            if [ "$(( 10#$found ))" -eq 0 ]; then
+              echo "::error::With nothing found the form is 'Pre-PR review: ran, no findings'."
+              exit 1
+            fi
+            if [ "$noun" != "$want" ]; then
+              echo "::error::Write '$(( 10#$found )) $want', not '$found $noun'."
+              exit 1
+            fi
+          fi
+          if [[ $lines =~ \<(N|X|Y|why|reason)\> ]]; then
+            echo "::error::The line still holds a placeholder from the template: '$lines'."
+            exit 1
+          fi
+          echo "$lines"
