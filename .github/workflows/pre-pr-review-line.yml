@@ -40,17 +40,32 @@ jobs:
             echo "::error::The description has more than one 'Pre-PR review:' line; keep one."
             exit 1
           fi
-          left='^Pre-PR review: ran, ([0-9]{1,6}) findings?, ([0-9]{1,6}) fixed, ([0-9]{1,6}) left: .+$'
-          other='^Pre-PR review: (ran, (no findings|[0-9]{1,6} findings?, fixed)|skipped, .+)$'
+          left='^Pre-PR review: ran, ([0-9]{1,6}) (findings?), ([0-9]{1,6}) fixed, ([0-9]{1,6}) left: .+$'
+          allfixed='^Pre-PR review: ran, ([0-9]{1,6}) (findings?), fixed$'
+          other='^Pre-PR review: (ran, no findings|skipped, .+)$'
+          found=''; noun=''
           if [[ $lines =~ $left ]]; then
-            found=${BASH_REMATCH[1]}; fixed=${BASH_REMATCH[2]}; rest=${BASH_REMATCH[3]}
+            found=${BASH_REMATCH[1]}; noun=${BASH_REMATCH[2]}; fixed=${BASH_REMATCH[3]}; rest=${BASH_REMATCH[4]}
             if [ "$(( 10#$fixed + 10#$rest ))" -ne "$(( 10#$found ))" ]; then
               echo "::error::$fixed fixed and $rest left do not add up to $found findings."
               exit 1
             fi
+          elif [[ $lines =~ $allfixed ]]; then
+            found=${BASH_REMATCH[1]}; noun=${BASH_REMATCH[2]}
           elif [[ ! $lines =~ $other ]]; then
             echo "::error::'$lines' is not one of the four forms: 'ran, no findings' | 'ran, N findings, fixed' | 'ran, N findings, X fixed, Y left: why' | 'skipped, reason'."
             exit 1
+          fi
+          if [ -n "$found" ]; then
+            want=findings; [ "$(( 10#$found ))" -ne 1 ] || want=finding
+            if [ "$(( 10#$found ))" -eq 0 ]; then
+              echo "::error::With nothing found the form is 'Pre-PR review: ran, no findings'."
+              exit 1
+            fi
+            if [ "$noun" != "$want" ]; then
+              echo "::error::Write '$(( 10#$found )) $want', not '$found $noun'."
+              exit 1
+            fi
           fi
           if [[ $lines =~ \<(N|X|Y|why|reason)\> ]]; then
             echo "::error::The line still holds a placeholder from the template: '$lines'."
