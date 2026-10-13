@@ -48,16 +48,6 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This fake does not export.");
 
-    /// <summary>The page address is dropped, as the interface's own default drops it.</summary>
-    public virtual Task<ExportedList> ExportVariablesAsync(
-        string? search,
-        VariableFilter? filter,
-        Uri? explorerPageUrl,
-        ExportFormat format = ExportFormat.Xlsx,
-        bool includeKodeverk = false,
-        CancellationToken cancellationToken = default) =>
-        ExportVariablesAsync(search, filter, format, includeKodeverk, cancellationToken);
-
     /// <summary>
     /// Refuses, like the interface's own default. A fake that answered <c>Linked</c> would let a
     /// test pass while the reader's two accounts stayed apart.

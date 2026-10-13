@@ -14,7 +14,7 @@ public class DownloadSelectionTest : ExplorerTestContext
     private static VariableSummary Variable(string name) =>
         new() { Id = Guid.NewGuid(), Code = name.ToUpperInvariant(), PreferredTerm = name, KildeName = "Abortregisteret" };
 
-    private sealed class Client(int totalCount) : EmptyMuninExplorerClient
+    private sealed class Client(int totalCount) : EmptyMuninExplorerClient, IMuninExplorerClient
     {
         public readonly List<(string? Search, VariableFilter? Filter, ExportFormat Format, bool IncludeKodeverk)> Exports = [];
         public Exception? Refuse { get; init; }
@@ -49,9 +49,9 @@ public class DownloadSelectionTest : ExplorerTestContext
 
         public List<Uri?> ExportPages { get; } = [];
 
-        public override Task<ExportedList> ExportVariablesAsync(
-            string? search, VariableFilter? filter, Uri? explorerPageUrl, ExportFormat format = ExportFormat.Xlsx,
-            bool includeKodeverk = false, CancellationToken cancellationToken = default)
+        Task<ExportedList> IMuninExplorerClient.ExportVariablesAsync(
+            string? search, VariableFilter? filter, Uri? explorerPageUrl, ExportFormat format,
+            bool includeKodeverk, CancellationToken cancellationToken)
         {
             ExportPages.Add(explorerPageUrl);
             return ExportVariablesAsync(search, filter, format, includeKodeverk, cancellationToken);
@@ -393,6 +393,54 @@ public class DownloadSelectionTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
         Assert.Equal([page], client.ExportPages);
+    }
+
+    /// <summary>A host's own client from before the address existed: it implements the old overload only.</summary>
+    private sealed class ClientWithoutTheAddress : EmptyMuninExplorerClient
+    {
+        public int Exports { get; private set; }
+
+        public override Task<Page<VariableSummary>> SearchVariablesAsync(
+            string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
+            SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new Page<VariableSummary>
+            {
+                Items = [Variable("Alder")],
+                TotalCount = 1,
+                PageNumber = 1,
+                Size = 25,
+                TotalPages = 1
+            });
+
+        public override Task<ExportedList> ExportVariablesAsync(
+            string? search, VariableFilter? filter, ExportFormat format = ExportFormat.Xlsx,
+            bool includeKodeverk = false, CancellationToken cancellationToken = default)
+        {
+            Exports++;
+            return Task.FromResult(new ExportedList([1, 2, 3], "text/csv", "Variabler.csv"));
+        }
+    }
+
+    [Fact]
+    public void Download_WhenTheHostsClientKnowsOnlyTheOldOverload_ThenItIsStillAskedAndTheFileComes()
+    {
+        // The interface's default forwards to the old overload; a host that wrote its own client is not broken.
+        var client = new ClientWithoutTheAddress();
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        JSInterop.AddInvocationHandler(new ObjectHandler("Blob", "InvokeConstructorAsync", new RecordingJsObject()));
+        JSInterop.Setup<string>("URL.createObjectURL", _ => true).SetResult("blob:test");
+        JSInterop.AddInvocationHandler(new ObjectHandler("document.createElement", "InvokeAsync", new RecordingJsObject()));
+        var cut = Render<VariableSearch>(p => p.Add(c => c.ExplorerPageUrl, new Uri("https://helsedata.example/variabler/")));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        Button(cut, "Last ned som CSV").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        Assert.Equal(1, client.Exports);
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
     }
 
     [Fact]

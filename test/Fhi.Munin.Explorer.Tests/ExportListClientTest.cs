@@ -137,7 +137,7 @@ public class ExportListClientTest
     }
 
     [Fact]
-    public async Task ExportPageAddress_WhenItIsExactlyAsLongAsTheApiAllows_ThenItIsSent()
+    public async Task ExportVariablesAsync_WhenTheAddressIsExactlyAsLongAsTheApiAllows_ThenItIsSent()
     {
         var handler = new FileHandler("text/csv", "Variabler.csv");
         var stem = "https://helsedata.example/variabler/?x=";
