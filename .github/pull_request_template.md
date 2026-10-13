@@ -13,6 +13,13 @@
 
 <!-- Closes-Bead: Fhi.Metadata-xxxxx -->
 
+## Pre-PR review
+
+<!-- For a PR opened by one of our sessions: one line, on a line of its own, that starts with "Pre-PR review:"
+     and goes on in one of four forms: "ran, no findings" / "ran, 3 findings, fixed" /
+     "ran, 2 findings, 1 fixed, 1 left: why" / "skipped, reason". See the prove-it skill, section 8.
+     A person may leave the section empty. -->
+
 ## Changelog
 
 <!-- Anything that touches src/ needs a fragment: changelog.d/<slug>.md, one line saying what
