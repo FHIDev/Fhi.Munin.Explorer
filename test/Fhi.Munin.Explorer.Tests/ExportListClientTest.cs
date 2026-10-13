@@ -98,6 +98,57 @@ public class ExportListClientTest
         Assert.Contains("format=csv", handler.LastUri.Query);
     }
 
+    public static TheoryData<Uri> AddressesTheApiRefuses =>
+    [
+        new Uri("/portal/variabler/", UriKind.Relative),
+        new Uri("ftp://helsedata.example/variabler/"),
+        new Uri("https://bruker:hemmelig@helsedata.example/variabler/"),
+        new Uri("https://helsedata.example/variabler/#treff"),
+        new Uri("https://helsedata.example/variabler/?x=" + new string('a', 4096)),
+    ];
+
+    [Theory]
+    [MemberData(nameof(AddressesTheApiRefuses))]
+    public async Task ExportVariablesAsync_WhenTheApiWouldRefuseTheAddress_ThenTheFileIsAskedForWithoutIt(Uri page)
+    {
+        // The API answers 400 to these; a file without links is better than no file (Fhi.Metadata-ffcwb).
+        var handler = new FileHandler("text/csv", "Variabler.csv");
+
+        var file = await Client(handler).ExportVariablesAsync("alder", null, page, ExportFormat.Csv);
+
+        Assert.Equal("/api/explorer/variables/export", handler.LastUri!.AbsolutePath);
+        Assert.DoesNotContain("explorerPageUrl", handler.LastUri.Query);
+        Assert.Contains("search=alder", handler.LastUri.Query);
+        Assert.Equal("Variabler.csv", file.FileName);
+    }
+
+    [Theory]
+    [MemberData(nameof(AddressesTheApiRefuses))]
+    public async Task ExportMyListAsync_WhenTheApiWouldRefuseTheAddress_ThenTheFileIsAskedForWithoutIt(Uri page)
+    {
+        var handler = new FileHandler("text/csv", "list.csv");
+
+        var file = await Client(handler).ExportMyListAsync(MyListId, page, ExportFormat.Csv);
+
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal(JsonValueKind.Null, sent.RootElement.GetProperty("explorerPageUrl").ValueKind);
+        Assert.Equal("csv", sent.RootElement.GetProperty("format").GetString());
+        Assert.NotNull(file);
+    }
+
+    [Fact]
+    public async Task ExportPageAddress_WhenItIsExactlyAsLongAsTheApiAllows_ThenItIsSent()
+    {
+        var handler = new FileHandler("text/csv", "Variabler.csv");
+        var stem = "https://helsedata.example/variabler/?x=";
+        var page = new Uri(stem + new string('a', 4096 - stem.Length));
+
+        await Client(handler).ExportVariablesAsync("alder", null, page, ExportFormat.Csv);
+
+        Assert.Equal(4096, page.AbsoluteUri.Length);
+        Assert.Contains("explorerPageUrl=", handler.LastUri!.Query);
+    }
+
     [Fact]
     public async Task ExportVariablesAsync_WhenNoHostPageIsGiven_ThenNoneIsSent()
     {
