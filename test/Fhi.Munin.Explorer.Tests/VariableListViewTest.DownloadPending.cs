@@ -1,6 +1,8 @@
 using Bunit;
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
@@ -70,6 +72,32 @@ public partial class VariableListViewTest
         Assert.Null(DownloadGroup(cut).QuerySelector("[role=status]"));
         await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
         Assert.Equal("", DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task Download_WhenTheKildeFilterChangesWhileTheFileIsMade_ThenTheFileIsNotCalledReadyBesideOtherRows()
+    {
+        // The ticked kilde keeps its row on screen, so the download control is still there to say something.
+        var kilde = Guid.NewGuid();
+        var held = new TaskCompletionSource<ExportedList?>();
+        var client = new ListClient(
+            Item("Alder ved diagnose", "V_BDR.ALDER") with { KildeId = kilde },
+            Item("Kjønn", "V_BDR.KJONN") with { KildeId = Guid.NewGuid() })
+        { HoldExport = held };
+        OfferFilesToTheBrowser();
+        var cut = RenderView(client);
+        await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
+        await cut.InvokeAsync(() => KeyboardPress(cut, "Last ned som CSV"));
+        cut.WaitForAssertion(() => Assert.Equal("Laster ned …", cut.Find(DownloadToggle).TextContent.Trim()));
+
+        var state = Services.GetRequiredService<VariableListState>();
+        await cut.InvokeAsync(() => state.ToggleKildeFilter(kilde));
+        held.SetResult(new ExportedList([1, 2, 3], "text/csv", "variabelliste.csv"));
+
+        cut.WaitForAssertion(() => Assert.Equal("Last ned", cut.Find(DownloadToggle).TextContent.Trim()));
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
+        Assert.Equal("", DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());
+        Assert.DoesNotContain("Kunne ikke laste ned", cut.Markup);
     }
 
     [Fact]

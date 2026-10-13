@@ -1617,6 +1617,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         _downloadingFormat = format;
         _downloadDone = false;
         ForgetFailures();
+        var madeFor = (_shownList, State?.KildeFilterVersion);
 
         try
         {
@@ -1631,7 +1632,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             }
 
             await BrowserDownload.OfferAsync(Js, file);
-            _downloadDone = true;
+
+            // The file holds the rows of the filter it was asked with; beside other rows it is not called ready.
+            _downloadDone = madeFor == (_shownList, State?.KildeFilterVersion);
         }
         catch (MuninExplorerRateLimitedException ex)
         {
