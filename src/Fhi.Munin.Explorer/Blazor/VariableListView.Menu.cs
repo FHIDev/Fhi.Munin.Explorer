@@ -58,6 +58,7 @@ public sealed partial class VariableListView
     private void ToggleDownloadFromControl(MouseEventArgs released)
     {
         Toggle(released, ref _downloadOpen);
+        _downloadDone = false;
 
         if (_downloadOpen)
         {
