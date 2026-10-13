@@ -933,9 +933,19 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
     }
 
     /// <inheritdoc />
+    public Task<ExportedList> ExportVariablesAsync(
+        string? search,
+        VariableFilter? filter,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default) =>
+        ExportVariablesAsync(search, filter, null, format, includeKodeverk, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<ExportedList> ExportVariablesAsync(
         string? search,
         VariableFilter? filter,
+        Uri? explorerPageUrl,
         ExportFormat format = ExportFormat.Xlsx,
         bool includeKodeverk = false,
         CancellationToken cancellationToken = default)
@@ -944,7 +954,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             "api/explorer/variables/export" + Query(
                 ("search", search),
                 ("format", WireName(format)),
-                ("includeKodeverk", includeKodeverk ? "true" : null)),
+                ("includeKodeverk", includeKodeverk ? "true" : null),
+                ("explorerPageUrl", explorerPageUrl?.AbsoluteUri)),
             filter);
 
         using var response = await SendAsync(HttpMethod.Get, url, null, cancellationToken, ExportTimeout);

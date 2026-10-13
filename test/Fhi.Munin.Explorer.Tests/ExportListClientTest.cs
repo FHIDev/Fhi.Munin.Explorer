@@ -81,6 +81,36 @@ public class ExportListClientTest
     }
 
     [Fact]
+    public async Task ExportVariablesAsync_WhenTheHostPageIsGiven_ThenItIsSentWholeAndEscaped()
+    {
+        // Fhi.Metadata-ffcwb: the file's links are built on this address, so its own query and its æøå must arrive intact.
+        var handler = new FileHandler("text/csv", "Variabler.csv");
+        var page = new Uri("https://test.example:8443/portal/nb/variabelsøk/?theme=contrast&lang=nb");
+
+        await Client(handler).ExportVariablesAsync("alder", null, page, ExportFormat.Csv);
+
+        var sent = handler.LastUri!.Query.TrimStart('?').Split('&').Single(p => p.StartsWith("explorerPageUrl=", StringComparison.Ordinal));
+        Assert.DoesNotContain("?", sent);
+        Assert.DoesNotContain("/", sent);
+        Assert.Equal(page.AbsoluteUri, Uri.UnescapeDataString(sent["explorerPageUrl=".Length..]));
+        Assert.Contains("variabels%C3%B8k", page.AbsoluteUri);
+        Assert.Contains("search=alder", handler.LastUri.Query);
+        Assert.Contains("format=csv", handler.LastUri.Query);
+    }
+
+    [Fact]
+    public async Task ExportVariablesAsync_WhenNoHostPageIsGiven_ThenNoneIsSent()
+    {
+        var handler = new FileHandler("text/csv", "Variabler.csv");
+
+        await Client(handler).ExportVariablesAsync("alder", null, null, ExportFormat.Csv);
+        Assert.DoesNotContain("explorerPageUrl", handler.LastUri!.Query);
+
+        await Client(handler).ExportVariablesAsync("alder", null, ExportFormat.Csv);
+        Assert.DoesNotContain("explorerPageUrl", handler.LastUri!.Query);
+    }
+
+    [Fact]
     public async Task ExportVariablesAsync_WhenSent_ThenItAsksForLongerThanTheThirtySecondsOtherCallsGet()
     {
         var handler = new FileHandler("text/csv", "Variabler_2026-10-09.csv");

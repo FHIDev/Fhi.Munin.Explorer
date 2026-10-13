@@ -47,6 +47,16 @@ public class DownloadSelectionTest : ExplorerTestContext
             };
         }
 
+        public List<Uri?> ExportPages { get; } = [];
+
+        public override Task<ExportedList> ExportVariablesAsync(
+            string? search, VariableFilter? filter, Uri? explorerPageUrl, ExportFormat format = ExportFormat.Xlsx,
+            bool includeKodeverk = false, CancellationToken cancellationToken = default)
+        {
+            ExportPages.Add(explorerPageUrl);
+            return ExportVariablesAsync(search, filter, format, includeKodeverk, cancellationToken);
+        }
+
         public override Task<ExportedList> ExportVariablesAsync(
             string? search, VariableFilter? filter, ExportFormat format = ExportFormat.Xlsx,
             bool includeKodeverk = false, CancellationToken cancellationToken = default)
@@ -366,6 +376,38 @@ public class DownloadSelectionTest : ExplorerTestContext
         Search(cut, "alder");
 
         cut.WaitForAssertion(() => Assert.Equal("", Status(cut)));
+    }
+
+    [Fact]
+    public void Download_WhenTheHostPageIsKnown_ThenTheFileIsAskedForWithIt()
+    {
+        // Fhi.Metadata-ffcwb: without the address the file's Url and codebook link columns are empty.
+        var client = new Client(80);
+        var page = new Uri("https://helsedata.example/variabelutforsker/?theme=contrast");
+        var cut = Render(client);
+        cut.Render(p => p.Add(c => c.ExplorerPageUrl, page));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        Button(cut, "Last ned som Excel").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        Assert.Equal([page], client.ExportPages);
+    }
+
+    [Fact]
+    public void Download_WhenTheHostHasNoUsableAddress_ThenNoneIsSentAndTheFileStillComes()
+    {
+        var client = new Client(80);
+        var cut = Render(client);
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        Button(cut, "Last ned som CSV").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        Assert.Equal([null], client.ExportPages);
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
     }
 
     [Fact]

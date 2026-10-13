@@ -13,6 +13,12 @@ public partial class VariableSearch
     /// <summary>Past this many hits the download is warned about, as Inge asked: it is slower, not refused.</summary>
     internal const int WarnDownloadFrom = 2000;
 
+    /// <summary>
+    /// Absolute address of the host's VariableExplorer page, without Explorer query state or a fragment.
+    /// Null leaves the downloaded file's link columns empty. VariableExplorer supplies its own address automatically.
+    /// </summary>
+    [Parameter] public Uri? ExplorerPageUrl { get; set; }
+
     private enum DownloadFailure
     {
         None,
@@ -187,7 +193,7 @@ public partial class VariableSearch
 
         try
         {
-            var file = await Client.ExportVariablesAsync(query.Search, query.Filter, format, _includeKodeverk);
+            var file = await Client.ExportVariablesAsync(query.Search, query.Filter, ExplorerPageUrl, format, _includeKodeverk);
             await BrowserDownload.OfferAsync(ServiceProvider.GetRequiredService<IJSRuntime>(), file);
             _downloadDoneFor = query;
         }

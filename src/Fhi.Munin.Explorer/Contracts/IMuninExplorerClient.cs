@@ -669,6 +669,17 @@ public interface IMuninExplorerClient
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ExportVariablesAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
 
+    /// <summary>Exports with links to the host's Explorer page, without its search state or fragment.</summary>
+    /// <remarks>Existing client implementations retain their export behavior through the default overload.</remarks>
+    Task<ExportedList> ExportVariablesAsync(
+        string? search,
+        VariableFilter? filter,
+        Uri? explorerPageUrl,
+        ExportFormat format = ExportFormat.Xlsx,
+        bool includeKodeverk = false,
+        CancellationToken cancellationToken = default) =>
+        ExportVariablesAsync(search, filter, format, includeKodeverk, cancellationToken);
+
     /// <summary>
     /// Redeem a code minted on the reader's other login, so both logins become one person and the
     /// lists saved under either are visible from both.

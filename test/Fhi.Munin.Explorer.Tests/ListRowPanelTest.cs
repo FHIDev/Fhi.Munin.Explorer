@@ -1317,6 +1317,8 @@ public class ListRowPanelTest : ExplorerTestContext
 
         Assert.Equal("http://localhost/portal/en/variables/?theme=contrast",
             cut.FindComponent<VariableListView>().Instance.ExplorerPageUrl?.AbsoluteUri);
+        Assert.Equal("http://localhost/portal/en/variables/?theme=contrast",
+            cut.FindComponent<VariableSearch>().Instance.ExplorerPageUrl?.AbsoluteUri);
     }
 
     [Theory]
@@ -1327,6 +1329,7 @@ public class ListRowPanelTest : ExplorerTestContext
     {
         var cut = OpenInExplorer(new PanelClient(DatabaseVersion), declined: [declined]);
         Assert.Null(cut.FindComponent<VariableListView>().Instance.ExplorerPageUrl);
+        Assert.Null(cut.FindComponent<VariableSearch>().Instance.ExplorerPageUrl);
     }
 
     [Fact]
