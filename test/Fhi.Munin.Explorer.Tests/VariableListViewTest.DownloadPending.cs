@@ -1,6 +1,7 @@
 using Bunit;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -10,6 +11,21 @@ public partial class VariableListViewTest
     private static AngleSharp.Dom.IElement DownloadGroup(IRenderedComponent<Fhi.Munin.Explorer.Blazor.VariableListView> cut) =>
         cut.Find($"{ActionRow} [role=group]");
 
+    /// <summary>bUnit refuses <c>Setup&lt;IJSObjectReference&gt;</c>; the blob and the anchor are not modules.</summary>
+    private sealed class JsObjectHandler : JSRuntimeInvocationHandler<IJSObjectReference>
+    {
+        public JsObjectHandler(string identifier, string method)
+            : base(i => i.Identifier == identifier && i.InvocationMethodName == method, isCatchAllHandler: false) =>
+            SetResult(new RecordingJsObject());
+    }
+
+    private void OfferFilesToTheBrowser()
+    {
+        JSInterop.AddInvocationHandler(new JsObjectHandler("Blob", "InvokeConstructorAsync"));
+        JSInterop.Setup<string>("URL.createObjectURL", _ => true).SetResult("blob:test");
+        JSInterop.AddInvocationHandler(new JsObjectHandler("document.createElement", "InvokeAsync"));
+    }
+
     [Theory]
     [InlineData("Last ned som Excel", "Laster ned Excel …", "Last ned som CSV")]
     [InlineData("Last ned som CSV", "Laster ned CSV …", "Last ned som Excel")]
@@ -18,6 +34,7 @@ public partial class VariableListViewTest
     {
         var held = new TaskCompletionSource<ExportedList?>();
         var client = new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldExport = held };
+        OfferFilesToTheBrowser();
         var cut = RenderView(client);
         await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
         Assert.Equal("", DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());

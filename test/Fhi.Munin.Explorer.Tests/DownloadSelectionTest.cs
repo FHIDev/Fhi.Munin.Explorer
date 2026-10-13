@@ -88,7 +88,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         cut.FindAll("button").FirstOrDefault(b => b.TextContent.Trim() == "Last ned utvalg");
 
     private static IElement Panel(IRenderedComponent<VariableSearch> cut) =>
-        cut.Find($"#{Toggle(cut)!.GetAttribute("aria-controls")}");
+        FoldPanel(cut);
 
     private static IElement Button(IRenderedComponent<VariableSearch> cut, string text) =>
         Panel(cut).QuerySelectorAll("button").Single(b => b.TextContent.Trim() == text);
@@ -302,8 +302,8 @@ public class DownloadSelectionTest : ExplorerTestContext
         Assert.Equal(working, Status(cut));
         Assert.Equal("", Alert(cut));
 
-        busy.Click();
-        idle.Click();
+        Button(cut, working).Click();
+        Button(cut, other).Click();
         Assert.Single(client.Exports);
 
         held.SetResult(new ExportedList([1, 2, 3], "application/zip", "Variabler_2026-10-13.zip"));
@@ -345,6 +345,9 @@ public class DownloadSelectionTest : ExplorerTestContext
         Toggle(cut)!.Click();
         Button(cut, "Last ned som CSV").Click();
         cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+
+        Fold(cut).Click();
+        Assert.Null(FoldPanel(cut).QuerySelector("[role=status]"));
 
         Fold(cut).Click();
 

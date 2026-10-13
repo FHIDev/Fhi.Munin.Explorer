@@ -630,8 +630,11 @@ else if (State?.IsAuthenticated == true)
                             aria-busy="@(_downloadingFormat == ExportFormat.Csv ? "true" : null)"
                             @onclick="() => DownloadAsync(ExportFormat.Csv)">@(_downloadingFormat == ExportFormat.Csv ? T.DownloadingCsv : T.DownloadCsv)</button>
 
-                    @* In the panel, which stays open while the file is made; always present, empty when idle. *@
-                    <div class="caption" role="status" aria-live="polite" aria-atomic="true">@DownloadStatus</div>
+                    @* Only while the panel is open, and empty then, so a closed panel adds no status region to the page. *@
+                    @if (_downloadOpen)
+                    {
+                        <div class="caption" role="status" aria-live="polite" aria-atomic="true">@DownloadStatus</div>
+                    }
                 </div>
             </div>
         }

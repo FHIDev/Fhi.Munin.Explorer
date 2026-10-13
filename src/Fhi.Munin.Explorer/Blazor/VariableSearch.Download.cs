@@ -107,14 +107,17 @@ public partial class VariableSearch
         AddDownloadButton(builder, 290, ExportFormat.Xlsx, T.DownloadXlsx);
         AddDownloadButton(builder, 360, ExportFormat.Csv, T.DownloadCsv);
 
-        // In the panel, which stays open while the file is made; always present, for the reason the alert below gives.
-        builder.OpenElement(440, "div");
-        builder.AddAttribute(450, "class", "caption");
-        builder.AddAttribute(460, "role", "status");
-        builder.AddAttribute(470, "aria-live", "polite");
-        builder.AddAttribute(480, "aria-atomic", "true");
-        builder.AddContent(490, DownloadStatus);
-        builder.CloseElement();
+        // Only while the panel is open, and empty then: the result count stays the page's one resting status region.
+        if (_downloadOpen)
+        {
+            builder.OpenElement(440, "div");
+            builder.AddAttribute(450, "class", "caption");
+            builder.AddAttribute(460, "role", "status");
+            builder.AddAttribute(470, "aria-live", "polite");
+            builder.AddAttribute(480, "aria-atomic", "true");
+            builder.AddContent(490, DownloadStatus);
+            builder.CloseElement();
+        }
 
         builder.CloseElement();
 
