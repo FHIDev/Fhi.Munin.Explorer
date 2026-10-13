@@ -166,6 +166,16 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private ListActionFailure _actionFailure;
     private bool _includeKodeverk;
     private bool _downloading;
+    private ExportFormat? _downloadingFormat;
+    private bool _downloadDone;
+
+    private string? DownloadStatus =>
+        _downloadingFormat switch
+        {
+            ExportFormat.Xlsx => T.DownloadingXlsx,
+            ExportFormat.Csv => T.DownloadingCsv,
+            _ => _downloadDone ? T.DownloadDone : null
+        };
     private DownloadFailure _downloadFailure;
     private ListActionFailure _createFailure;
 
@@ -1603,6 +1613,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         _downloading = true;
+        _downloadingFormat = format;
+        _downloadDone = false;
         ForgetFailures();
 
         try
@@ -1618,6 +1630,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             }
 
             await BrowserDownload.OfferAsync(Js, file);
+            _downloadDone = true;
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -1655,6 +1668,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         finally
         {
             _downloading = false;
+            _downloadingFormat = null;
         }
     }
 

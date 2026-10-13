@@ -416,6 +416,11 @@ public partial class VariableListViewTest : ExplorerTestContext
         /// <summary>Answer the export with null: the list was deleted in another tab, or is not the reader's.</summary>
         public bool ExportListGone { get; init; }
 
+        /// <summary>The export answers when this does, so a test can look at the page while the file is being made.</summary>
+        public TaskCompletionSource<ExportedList?>? HoldExport { get; init; }
+
+        public int ExportCalls { get; private set; }
+
         public override Task<ExportedList?> ExportMyListAsync(
             Guid id,
             ExportFormat format = ExportFormat.Xlsx,
@@ -429,6 +434,12 @@ public partial class VariableListViewTest : ExplorerTestContext
                 .Select(i => i.VariableId)];
             LastExportFormat = format;
             LastIncludeKodeverk = includeKodeverk;
+            ExportCalls++;
+
+            if (HoldExport is { } held)
+            {
+                return held.Task;
+            }
 
             if (ExportThrottles)
             {

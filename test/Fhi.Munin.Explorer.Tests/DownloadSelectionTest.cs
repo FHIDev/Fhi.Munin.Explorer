@@ -19,6 +19,9 @@ public class DownloadSelectionTest : ExplorerTestContext
         public readonly List<(string? Search, VariableFilter? Filter, ExportFormat Format, bool IncludeKodeverk)> Exports = [];
         public Exception? Refuse { get; init; }
 
+        /// <summary>The export answers when this does, so a test can look at the page while the file is being made.</summary>
+        public TaskCompletionSource<ExportedList>? HoldExport { get; init; }
+
         /// <summary>Searches after the first wait on this while it is set, so a test can press mid-fetch.</summary>
         public TaskCompletionSource? HoldSearches { get; init; }
 
@@ -49,6 +52,12 @@ public class DownloadSelectionTest : ExplorerTestContext
             bool includeKodeverk = false, CancellationToken cancellationToken = default)
         {
             Exports.Add((search, filter, format, includeKodeverk));
+
+            if (HoldExport is { } held)
+            {
+                return held.Task;
+            }
+
             return Refuse is { } refusal
                 ? Task.FromException<ExportedList>(refusal)
                 : Task.FromResult(new ExportedList([1, 2, 3], "application/zip", "Variabler_2026-10-09.zip"));
@@ -248,5 +257,113 @@ public class DownloadSelectionTest : ExplorerTestContext
 
         Assert.True(Panel(cut).HasAttribute("hidden"));
         cut.WaitForAssertion(() => JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus"));
+    }
+
+    // By id, not by its words: while a file is being made the fold's button says «Laster ned …».
+    private static IElement Fold(IRenderedComponent<VariableSearch> cut) =>
+        cut.Find("button[aria-controls^='munin-explorer-download-panel-']");
+
+    private static IElement FoldPanel(IRenderedComponent<VariableSearch> cut) =>
+        cut.Find($"#{Fold(cut).GetAttribute("aria-controls")}");
+
+    private static string Status(IRenderedComponent<VariableSearch> cut) =>
+        FoldPanel(cut).QuerySelector("[role=status]")!.TextContent.Trim();
+
+    [Theory]
+    [InlineData("Last ned som Excel", "Laster ned Excel …", "Last ned som CSV")]
+    [InlineData("Last ned som CSV", "Laster ned CSV …", "Last ned som Excel")]
+    public void Download_WhileTheFileIsBeingMade_ThenThePageSaysSoAndASecondPressDoesNothing(
+        string pressed, string working, string other)
+    {
+        // Fhi.Metadata-ht2gj: 11 seconds for 48 000 hits on test, with nothing on the page but two dimmed buttons.
+        var held = new TaskCompletionSource<ExportedList>();
+        var client = new Client(80) { HoldExport = held };
+        var cut = Render(client);
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Assert.Equal("", Status(cut));
+
+        Button(cut, pressed).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Laster ned …", Fold(cut).TextContent.Trim()));
+        Assert.Equal("true", Fold(cut).GetAttribute("aria-busy"));
+        Assert.Equal("true", Fold(cut).GetAttribute("aria-expanded"));
+
+        var buttons = FoldPanel(cut).QuerySelectorAll("button");
+        var busy = buttons.Single(b => b.TextContent.Trim() == working);
+        Assert.Equal("true", busy.GetAttribute("aria-busy"));
+        Assert.Equal("true", busy.GetAttribute("aria-disabled"));
+
+        var idle = buttons.Single(b => b.TextContent.Trim() == other);
+        Assert.Null(idle.GetAttribute("aria-busy"));
+        Assert.Equal("true", idle.GetAttribute("aria-disabled"));
+
+        Assert.True(FoldPanel(cut).QuerySelector("input[type=checkbox]")!.HasAttribute("disabled"));
+        Assert.Equal(working, Status(cut));
+        Assert.Equal("", Alert(cut));
+
+        busy.Click();
+        idle.Click();
+        Assert.Single(client.Exports);
+
+        held.SetResult(new ExportedList([1, 2, 3], "application/zip", "Variabler_2026-10-13.zip"));
+
+        cut.WaitForAssertion(() => Assert.Equal("Last ned utvalg", Fold(cut).TextContent.Trim()));
+        Assert.Null(Fold(cut).GetAttribute("aria-busy"));
+        Assert.Equal("Nedlastingen er klar.", Status(cut));
+        Assert.Null(Button(cut, pressed).GetAttribute("aria-busy"));
+        Assert.Null(Button(cut, pressed).GetAttribute("aria-disabled"));
+        Assert.Null(Button(cut, other).GetAttribute("aria-disabled"));
+        Assert.False(FoldPanel(cut).QuerySelector("input[type=checkbox]")!.HasAttribute("disabled"));
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
+    }
+
+    [Fact]
+    public void Download_WhenTheFileCannotBeMade_ThenTheWaitingEndsAndTheFailureIsSaid()
+    {
+        var held = new TaskCompletionSource<ExportedList>();
+        var cut = Render(new Client(80) { HoldExport = held });
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Button(cut, "Last ned som Excel").Click();
+        cut.WaitForAssertion(() => Assert.Equal("Laster ned Excel …", Status(cut)));
+
+        held.SetException(new InvalidOperationException("the API answered 500"));
+
+        cut.WaitForAssertion(() => Assert.Contains("Kunne ikke laste ned", Alert(cut), StringComparison.Ordinal));
+        Assert.Equal("Last ned utvalg", Fold(cut).TextContent.Trim());
+        Assert.Null(Fold(cut).GetAttribute("aria-busy"));
+        Assert.Equal("", Status(cut));
+        Assert.Null(Button(cut, "Last ned som Excel").GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void Download_WhenTheFoldIsPressedAgainAfterAFile_ThenTheReadyMessageIsGone()
+    {
+        var cut = Render(new Client(80));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Button(cut, "Last ned som CSV").Click();
+        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+
+        Fold(cut).Click();
+
+        Assert.Equal("", Status(cut));
+    }
+
+    [Fact]
+    public void Download_WhenThePageIsEnglish_ThenTheWaitingIsEnglish()
+    {
+        var held = new TaskCompletionSource<ExportedList>();
+        Services.AddSingleton<IMuninExplorerClient>(new Client(80) { HoldExport = held });
+        Services.AddScoped<VariableListState>();
+        var cut = Render<VariableSearch>(p => p.Add(c => c.Language, "en"));
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("button[aria-controls^='munin-explorer-download-panel-']")));
+        Fold(cut).Click();
+
+        FoldPanel(cut).QuerySelectorAll("button").Single(b => b.TextContent.Trim() == "Download as Excel").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Downloading …", Fold(cut).TextContent.Trim()));
+        Assert.Equal("Downloading Excel …", Status(cut));
     }
 }
