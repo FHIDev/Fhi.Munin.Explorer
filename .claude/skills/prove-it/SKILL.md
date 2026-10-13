@@ -152,6 +152,29 @@ Then:
 bd preflight --check
 ```
 
+## 8. The pre-PR review
+
+Run the `pre-pr-reviewer` agent (`.claude/agents/pre-pr-reviewer.md`) on the committed branch before
+`gh pr create`: tell it to read `git diff origin/main...HEAD`, so that new files are in what it reviews.
+Every session does, on every PR; the Forge has a review step of its own and is not covered by this.
+
+- Brief it with what the change is for and what to try to break. Fix what it finds, or say in the PR why a
+  finding stands.
+- It is the review of the diff the PR is opened with: if the fixes changed the code in more than a trivial way,
+  run it again.
+- The PR body carries one line, on a line of its own, in one of four forms:
+
+```
+Pre-PR review: ran, no findings
+Pre-PR review: ran, 3 findings, fixed
+Pre-PR review: ran, 2 findings, 1 fixed, 1 left: <why>
+Pre-PR review: skipped, <reason>
+```
+
+Write the form that is true, with the real count and a real reason: the words in angle brackets are not text to
+keep. "Skipped" is for a change with nothing in it to review: a version pin, a generated file, a typo in prose.
+"Small" is not a reason; small PRs skip Copilot here, not this. A PR without the line reads as "did not run".
+
 ## Output format
 
 Report what ran, not what you believe:
@@ -168,6 +191,7 @@ Report what ran, not what you believe:
 ✓ Comments:     no block over three lines in the diff
 ✓ Scope:        5 files, all related
 ✓ PR reference: Closes-Bead: Fhi.Metadata-abc12
+✓ Pre-PR review: ran, 2 findings, fixed
 ```
 
 Or, when something fails, say which and what you are doing about it:

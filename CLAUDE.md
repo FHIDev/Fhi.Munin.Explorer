@@ -90,6 +90,11 @@ bash scripts/test-sample-css-declarations.sh    # only if you touched the compar
 python3 scripts/comment-budget.py               # comment blocks this branch added, against origin/main
 ```
 
+Then, on every PR a session opens: the pre-PR review (the `pre-pr-reviewer` agent on `git diff origin/main...HEAD`),
+and one line in the PR body that says it ran, e.g. `Pre-PR review: ran, 3 findings, fixed` or
+`Pre-PR review: ran, no findings`. The four forms, and what `skipped, <reason>` is for, are in the `prove-it`
+skill, section 8.
+
 The Stiler comparison needs the package on disk, which means credentials for helsedata's Azure
 Artifacts feed and `dotnet restore samples/HostileHost/HostileHost.csproj` first — see
 `nuget.config`. Without them it exits 2 saying so rather than passing having read nothing; CI runs
