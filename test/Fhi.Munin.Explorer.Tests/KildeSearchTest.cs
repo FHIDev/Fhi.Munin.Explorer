@@ -1173,7 +1173,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.All(bars, bar => Assert.Equal("true", bar.GetAttribute("aria-hidden")));
 
-        Assert.Equal("0", VariablesCell(cut, "K_HKR").TextContent.Trim());
+        Assert.Equal("–Ingen variabler i Munin", VariablesCell(cut, "K_HKR").TextContent.Trim());
         Assert.Equal("23", VariablesCell(cut, "K_ALS").TextContent.Trim());
         Assert.Equal("2506", VariablesCell(cut, "K_DAR").TextContent.Trim());
     }
