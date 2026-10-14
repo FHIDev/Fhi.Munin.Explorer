@@ -557,4 +557,23 @@ public class DownloadSelectionTest : ExplorerTestContext
 
         Assert.Single(JSInterop.Invocations, call => call.Identifier == "watchFolds");
     }
+
+    [Fact]
+    public void Download_WhenTheMenuWasClosedWhileTheFileWasMade_ThenFocusIsLeftWhereTheReaderWent()
+    {
+        var held = new TaskCompletionSource<ExportedList>();
+        var cut = Render(new Client(80) { HoldExport = held });
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Button(cut, "Excel").Click();
+        Fold(cut).Click(); // closed by the reader (or a press outside) during the export
+
+        held.SetResult(new ExportedList([1, 2, 3], "application/zip", "Variabler_2026-10-14.zip"));
+
+        cut.WaitForAssertion(() => Assert.Null(Fold(cut).GetAttribute("aria-busy")));
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
+        Assert.Equal("false", Fold(cut).GetAttribute("aria-expanded"));
+        Assert.DoesNotContain(JSInterop.Invocations, call => call.Identifier == "Blazor._internal.domWrapper.focus");
+    }
 }
+

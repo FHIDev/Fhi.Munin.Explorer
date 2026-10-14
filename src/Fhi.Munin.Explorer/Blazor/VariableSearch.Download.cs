@@ -220,12 +220,6 @@ public partial class VariableSearch
             var file = await Client.ExportVariablesAsync(query.Search, query.Filter, ExplorerPageUrl, format, _includeKodeverk);
             await BrowserDownload.OfferAsync(ServiceProvider.GetRequiredService<IJSRuntime>(), file);
             _downloadDoneFor = query;
-
-            if (DownloadPanel.ClosesOnDelivery)
-            {
-                _downloadOpen = false;
-                await _downloadToggle.FocusAsync();
-            }
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -242,6 +236,21 @@ public partial class VariableSearch
         {
             _downloading = false;
             _downloadingFormat = null;
+        }
+
+        // Outside the try: a focus that fails must not report a delivered file as failed. Only while the menu is
+        // still open, so a reader who closed it during a long export keeps the place they moved on to.
+        if (DownloadPanel.ClosesOnDelivery && _downloadOpen && _downloadDoneFor == query)
+        {
+            _downloadOpen = false;
+            try
+            {
+                await _downloadToggle.FocusAsync();
+            }
+            catch (Exception ex)
+            {
+                Log?.LogWarning(ex, "could not give focus back to «Last ned utvalg» after the file was delivered");
+            }
         }
     }
 }
