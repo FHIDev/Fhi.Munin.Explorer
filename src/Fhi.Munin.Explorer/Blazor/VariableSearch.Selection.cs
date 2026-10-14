@@ -477,11 +477,10 @@ public partial class VariableSearch
         {
             await interop.MarkMixedAsync(FacetsId);
 
-            // Here rather than in the list view, which is only ever drawn inside this one's tab.
+            // The list view asks too, for a host that mounts it alone.
             if (!_foldsWatched)
             {
-                await interop.WatchFoldsAsync();
-                _foldsWatched = true;
+                _foldsWatched = await interop.WatchFoldsAsync();
             }
         }
 

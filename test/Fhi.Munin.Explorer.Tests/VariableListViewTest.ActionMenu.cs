@@ -2,6 +2,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -48,6 +49,38 @@ public partial class VariableListViewTest
 
     private static Task ChooseAsync(IRenderedComponent<VariableListView> cut, string word) =>
         cut.InvokeAsync(() => cut.FindAll($"{MenuPanel} button").First(b => AccessibleName.Of(b) == word).Click());
+
+    [Fact]
+    public void Folds_WhenTheListIsMountedAlone_ThenItInstallsThePressOutsideWatcherItself()
+    {
+        // A host may mount the list without VariableSearch; its menus must still close on a press outside.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.SetupVoid("watchFolds").SetVoidResult();
+
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        OpenMenu(cut);
+
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["watchFolds"]));
+    }
+
+    [Fact]
+    public void Folds_WhenTheWatcherCallIsInterrupted_ThenALaterRenderAsksAgain()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var first = module.SetupVoid("watchFolds");
+
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        first.SetException(new JSDisconnectedException("reconnecting"));
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["watchFolds"]));
+
+        module.SetupVoid("watchFolds").SetVoidResult();
+        OpenMenu(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal(2, module.Invocations["watchFolds"].Count));
+        OpenMenu(cut);
+        Menu(cut).Click();
+        Assert.Equal(2, module.Invocations["watchFolds"].Count);
+    }
 
     [Fact]
     public void ActionRow_WhenAListIsShown_ThenOnlyCreateAndTheTwoFoldsStandOutsideThem()

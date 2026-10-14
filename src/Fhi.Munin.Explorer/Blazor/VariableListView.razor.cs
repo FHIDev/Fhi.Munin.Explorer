@@ -123,6 +123,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// <summary>The holder's filter version as of the last change this view acted on.</summary>
     private int _seenKildeFilter;
     private bool _loading;
+    private bool _foldsWatched;
     private bool _failed;
     private bool _askedOnMount;
     private bool _retryingLists;
@@ -637,19 +638,23 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         var fromWrite = TakeFocusTarget();
         var fromCreateForm = TakeCreateFormFocusTarget();
 
-        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite) is not { } target)
+        if ((fromCreateForm ?? fromSource ?? fromMenu ?? fromWrite) is { } target)
         {
-            return;
+            try
+            {
+                await target.FocusAsync();
+            }
+            catch (Exception ex)
+            {
+                // A focus nicety must not take the circuit down with it.
+                Log?.LogWarning(ex, "could not move focus after the reader's action");
+            }
         }
 
-        try
+        // Its own menus close on a press outside them also when a host mounts the list without the search.
+        if (!_foldsWatched)
         {
-            await target.FocusAsync();
-        }
-        catch (Exception ex)
-        {
-            // A focus nicety must not take the circuit down with it.
-            Log?.LogWarning(ex, "could not move focus after the reader's action");
+            _foldsWatched = await ExplorerInterop.WatchFoldsAsync(Js);
         }
     }
 
