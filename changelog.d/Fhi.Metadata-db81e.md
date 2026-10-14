@@ -1,0 +1,2 @@
+category: Changed
+- **The kildeutforsker's Variabler column shows «–» for every kilde with no variables in Munin.** A kilde with no variables and no «Variabelreferanse» used to show 0 beside the «–» of one with a reference, which read as two different facts. Both now show «–», announced as "Ingen variabler i Munin" / "No variables in Munin"; a kilde with variables keeps its count, and the kilde's own page is unchanged. (Fhi.Metadata-db81e)

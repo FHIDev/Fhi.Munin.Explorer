@@ -812,11 +812,12 @@ else
                                 @* The bar is decoration under the digits, which stay the cell's text.
                                    Variabler only: the mockup draws it on no other count. *@
                                 var variables = CountClass(kilde.TotalVariables, largestVariables);
-                                @* None counted here, but described somewhere else: a nought would say there are none. *@
-                                @if (kilde.TotalVariables == 0 && VariableReference.Of(kilde.AdditionalProperties) is not null)
+                                @* «–» for every kilde Munin holds no variables for, with or without a Variabelreferanse:
+                                   a 0 beside a «–» read as two different facts (Fhi.Metadata-db81e). *@
+                                @if (kilde.TotalVariables == 0)
                                 {
                                     @* position:relative for the reason UnmeasuredShare gives: the hidden words must stay in the cell. *@
-                                    <td class="@variables.Class" style="position:relative"><span aria-hidden="true">–</span><span class="screenreader-only">@T.VariablesDescribedElsewhere</span></td>
+                                    <td class="@variables.Class" style="position:relative"><span aria-hidden="true">–</span><span class="screenreader-only">@T.NoVariablesInMunin</span></td>
                                 }
                                 else
                                 {
