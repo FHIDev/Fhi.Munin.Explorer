@@ -1,5 +1,5 @@
 # Shows red when a session's PR lacks its "Pre-PR review:" line (DevInfra-9w1.40). The line and its four forms are
-# in AGENTS.md or CLAUDE.md. Applies only to PRs whose description has the sessions' footer line; any other PR passes untouched.
+# in the pull request template. Applies only to PRs whose description has the sessions' footer line; any other PR passes untouched.
 # It proves the line is there, not that the review ran. Not a required check: making it one is a ruleset change.
 name: Pre-PR review line
 
@@ -33,7 +33,7 @@ jobs:
           if [ -z "$lines" ]; then
             hint=''
             if printf '%s\n' "$body" | grep -q 'Pre-PR review:'; then hint=" The text is there, but not at the start of a line: no bold, list or quote marker in front of it."; fi
-            echo "::error::The description has no line that starts with 'Pre-PR review:'. Add one of the four forms (they are in AGENTS.md or CLAUDE.md), on a line of its own.$hint"
+            echo "::error::The description has no line that starts with 'Pre-PR review:'. Add one of the four forms (they are in the pull request template), on a line of its own.$hint"
             exit 1
           fi
           if [ "$(printf '%s\n' "$lines" | wc -l)" -ne 1 ]; then
@@ -48,6 +48,10 @@ jobs:
             found=${BASH_REMATCH[1]}; noun=${BASH_REMATCH[2]}; fixed=${BASH_REMATCH[3]}; rest=${BASH_REMATCH[4]}
             if [ "$(( 10#$fixed + 10#$rest ))" -ne "$(( 10#$found ))" ]; then
               echo "::error::$fixed fixed and $rest left do not add up to $found findings."
+              exit 1
+            fi
+            if [ "$(( 10#$rest ))" -eq 0 ]; then
+              echo "::error::With nothing left the form is 'Pre-PR review: ran, $found $noun, fixed'."
               exit 1
             fi
           elif [[ $lines =~ $allfixed ]]; then
