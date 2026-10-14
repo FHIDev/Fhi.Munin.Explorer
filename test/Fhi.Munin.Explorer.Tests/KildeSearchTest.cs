@@ -1002,15 +1002,14 @@ public class KildeSearchTest : ExplorerTestContext
         foreach (var cell in cells)
         {
             Assert.Equal(
-                cell.TextContent.Trim() == "0",
+                cell.TextContent.Trim() is "0" or "–Ingen variabler i Munin",
                 cell.ClassList.Contains("munin-explorer-kilder__count--zero"));
         }
 
-        // The nought is still a nought on screen. A dash or an empty cell would say "nobody filled
-        // this in", which is what "Ikke oppgitt" says in the columns beside these — and a register
-        // that holds no datasamlinger is a measurement, not a gap.
+        // A datasamlinger nought stays a nought, because a register holding none is a measurement and
+        // not a gap; Variabler says «–» for none in Munin. Both are dimmed (Fhi.Metadata-db81e).
         Assert.Equal(
-            ["0", "0", "23", "23", "2506", "2506"],
+            ["0", "23", "23", "2506", "2506", "–Ingen variabler i Munin"],
             cells.Select(cell => cell.TextContent.Trim()).Order(StringComparer.Ordinal));
     }
 
@@ -1125,7 +1124,7 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Bar_WhenTheVariableCountIsZero_ThenTheCellHasNoBarAndStillReadsADimmedZero()
+    public void Bar_WhenTheVariableCountIsZero_ThenTheCellHasNoBarAndReadsADimmedDash()
     {
         var cut = RenderWith(BarKilder());
 
@@ -1136,7 +1135,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         // Absent rather than an empty track: a grey track with nothing in it reads as a measurement.
         Assert.Null(cell.QuerySelector(".munin-explorer-kilder__bar"));
-        Assert.Equal("0", cell.TextContent);
+        Assert.Equal("–", cell.QuerySelector("[aria-hidden='true']")!.TextContent);
         Assert.Contains("munin-explorer-kilder__count--zero", cell.ClassList);
     }
 
@@ -1174,7 +1173,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.All(bars, bar => Assert.Equal("true", bar.GetAttribute("aria-hidden")));
 
-        Assert.Equal("0", VariablesCell(cut, "K_HKR").TextContent.Trim());
+        Assert.Equal("–Ingen variabler i Munin", VariablesCell(cut, "K_HKR").TextContent.Trim());
         Assert.Equal("23", VariablesCell(cut, "K_ALS").TextContent.Trim());
         Assert.Equal("2506", VariablesCell(cut, "K_DAR").TextContent.Trim());
     }
@@ -7254,31 +7253,38 @@ public class KildeSearchTest : ExplorerTestContext
     private static KildeSummary WithReference(KildeSummary kilde, string address) =>
         kilde with { AdditionalProperties = new Dictionary<string, string?> { ["Variabelreferanse"] = address } };
 
-    [Fact]
-    public void Variables_WhenAKildeCountsNoneButNamesWhereTheyAreDescribed_ThenTheCellIsADashThatSaysSo()
+    [Theory]
+    [InlineData("no", "Ingen variabler i Munin")]
+    [InlineData("en", "No variables in Munin")]
+    public void Variables_WhenAKildeCountsNone_ThenTheCellIsADashWithOrWithoutAReference(string language, string words)
     {
-        // Fhi.Metadata-ot99a: a nought would say the kilde has no variables. One without a reference still says 0.
+        // Pins that a reference plays no part in the mark: drop the count check for the reference
+        // check and Brannskaderegisteret reads 0 beside Førtiåringsundersøkelsene's «–» (Fhi.Metadata-db81e).
         var cut = RenderWith(new FakeClient(
             WithReference(Kilde("Førtiåringsundersøkelsene", "K_40", datasamlinger: 0, variables: 0),
                           "https://eksempel.no/variabler"),
             Kilde("Brannskaderegisteret", "K_BRANN", datasamlinger: 0, variables: 0),
             WithReference(Kilde("Hodepineregisteret", "K_HDPINE", datasamlinger: 4, variables: 204),
-                          "https://eksempel.no/hodepine")));
+                          "https://eksempel.no/hodepine")), p => p.Add(c => c.Language, language));
 
         var cells = cut.FindAll(".munin-explorer-kilder tbody tr")
                        .ToDictionary(row => row.QuerySelector("th button")!.TextContent.Trim(),
                                      row => row.QuerySelectorAll("td.munin-explorer-kilder__count").Last());
 
-        var described = cells["Førtiåringsundersøkelsene"];
-        Assert.Equal("–", described.QuerySelector("[aria-hidden='true']")!.TextContent);
-        Assert.Equal("Beskrevet utenfor helsedata.no", described.QuerySelector(".screenreader-only")!.TextContent);
-        Assert.Contains("munin-explorer-kilder__count--zero", described.ClassList);
-        Assert.Empty(described.QuerySelectorAll("a"));
+        foreach (var name in (string[])["Førtiåringsundersøkelsene", "Brannskaderegisteret"])
+        {
+            var none = cells[name];
+            Assert.Equal("–", none.QuerySelector("[aria-hidden='true']")!.TextContent);
+            Assert.Equal(words, none.QuerySelector(".screenreader-only")!.TextContent);
+            Assert.DoesNotContain("0", none.TextContent, StringComparison.Ordinal);
+            Assert.Contains("munin-explorer-kilder__count--zero", none.ClassList);
+            Assert.Empty(none.QuerySelectorAll("a"));
 
-        // The hidden words are absolutely positioned; unanchored they leave the scroll box and widen the page.
-        Assert.Equal("position:relative", described.GetAttribute("style"));
+            // The hidden words are absolutely positioned; unanchored they leave the scroll box and widen the page.
+            Assert.Equal("position:relative", none.GetAttribute("style"));
+        }
 
-        Assert.Equal("0", cells["Brannskaderegisteret"].TextContent.Trim());
         Assert.StartsWith("204", cells["Hodepineregisteret"].TextContent.Trim(), StringComparison.Ordinal);
+        Assert.Null(cells["Hodepineregisteret"].QuerySelector(".screenreader-only"));
     }
 }

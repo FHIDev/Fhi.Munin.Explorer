@@ -762,6 +762,8 @@ internal sealed record Texts(
     string VariablesAlsoDescribedHere,
     // In place of a count of none, where the variables are documented somewhere else.
     string VariablesDescribedElsewhere,
+    // The kilde list's «–» for a kilde Munin holds no variables for, link or not.
+    string NoVariablesInMunin,
     // (shown, total, filters, order, direction) — the kilde list's own "56 kilder av 66, avgrenset
     // av 2 filtre, sortert etter Variabler, synkende", assembled here for ResultSummary's reason:
     // where each clause sits is this language's grammar, and so is the plural. The filter clause
@@ -1615,6 +1617,7 @@ internal sealed record Texts(
         VariablesDescribedHere: "Variablene er beskrevet her:",
         VariablesAlsoDescribedHere: "Variablene er også beskrevet her:",
         VariablesDescribedElsewhere: "Beskrevet utenfor helsedata.no",
+        NoVariablesInMunin: "Ingen variabler i Munin",
         KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 kilde" : $"{shown} kilder")
             + (shown == total ? "" : $" av {total}")
@@ -2145,6 +2148,7 @@ internal sealed record Texts(
         VariablesDescribedHere: "The variables are described here:",
         VariablesAlsoDescribedHere: "The variables are also described here:",
         VariablesDescribedElsewhere: "Described outside helsedata.no",
+        NoVariablesInMunin: "No variables in Munin",
         KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 source" : $"{shown} sources")
             + (shown == total ? "" : $" of {total}")
