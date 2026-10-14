@@ -107,6 +107,7 @@ TARGETS=(
   "/utforsker::list-actions-menu"
   "/utforsker::list-actions-and-columns"
   "/utforsker::list-download-and-columns"
+  "/::search-download-open"
   "/utforsker::explorer-save-all-confirm"
   "/utforsker::explorer-save-all-too-many"
   "/utforsker::explorer-saved-all"

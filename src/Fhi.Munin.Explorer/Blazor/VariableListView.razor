@@ -603,12 +603,12 @@ else if (State?.IsAuthenticated == true)
                         @ref="_downloadToggle"
                         @onclick="ToggleDownloadFromControl">@(_downloading ? T.Downloading : T.DownloadList)</button>
 
-                <div class="munin-explorer-list-menu__panel"
+                <div class="munin-explorer-list-menu__panel munin-explorer-list-menu__panel--rows"
                      id="@DownloadPanelId"
                      role="group"
                      aria-label="@T.DownloadList"
                      hidden="@(!_downloadOpen)">
-                    <label>
+                    <label class="munin-explorer-list-menu__check">
                         <input type="checkbox"
                                checked="@_includeKodeverk"
                                disabled="@_downloading"
@@ -618,29 +618,48 @@ else if (State?.IsAuthenticated == true)
 
                     @* aria-disabled while a download is in flight rather than disabled, for the reason
                        the pager gives: disabling the element that has focus drops focus to <body>. *@
-                    <button class="hd-button-square button-square--ghost-blue"
+                    <button class="munin-explorer-list-menu__item"
                             type="button"
                             aria-disabled="@AriaDisabled(!_downloading)"
                             aria-busy="@(_downloadingFormat == ExportFormat.Xlsx ? "true" : null)"
-                            @onclick="() => DownloadAsync(ExportFormat.Xlsx)">@(_downloadingFormat == ExportFormat.Xlsx ? T.DownloadingXlsx : T.DownloadXlsx)</button>
+                            @onclick="() => DownloadAsync(ExportFormat.Xlsx)">
+                        @if (_downloadingFormat == ExportFormat.Xlsx)
+                        {
+                            @T.DownloadingXlsx
+                        }
+                        else
+                        {
+                            @T.DownloadXlsx<span class="munin-explorer-list-menu__hint" aria-hidden="true">@T.DownloadXlsxHint</span>
+                        }
+                    </button>
 
-                    <button class="hd-button-square button-square--ghost-blue"
+                    <button class="munin-explorer-list-menu__item"
                             type="button"
                             aria-disabled="@AriaDisabled(!_downloading)"
                             aria-busy="@(_downloadingFormat == ExportFormat.Csv ? "true" : null)"
-                            @onclick="() => DownloadAsync(ExportFormat.Csv)">@(_downloadingFormat == ExportFormat.Csv ? T.DownloadingCsv : T.DownloadCsv)</button>
+                            @onclick="() => DownloadAsync(ExportFormat.Csv)">
+                        @if (_downloadingFormat == ExportFormat.Csv)
+                        {
+                            @T.DownloadingCsv
+                        }
+                        else
+                        {
+                            @T.DownloadCsv<span class="munin-explorer-list-menu__hint" aria-hidden="true">@T.DownloadCsvHint</span>
+                        }
+                    </button>
 
                     @* Only while the panel is open, and empty then, so a closed panel adds no status region to the page. *@
                     @if (_downloadOpen)
                     {
-                        <div class="caption" role="status" aria-live="polite" aria-atomic="true">@DownloadStatus</div>
+                        <p class="munin-explorer-list-menu__note" role="status" aria-live="polite" aria-atomic="true">@DownloadStatus</p>
                     }
                 </div>
             </div>
         }
 
         @* Everything but creating and downloading, so the row is one line at 1280 and the extras
-           stop standing five rows deep at 320. Items stay in the DOM so their ids still describe. *@
+           stop standing five rows deep at 320. Items stay in the DOM so their ids still describe.
+           helsedata's own menu order: what changes or shares the list, then what removes something, behind a rule. *@
         <div class="munin-explorer-list-menu munin-explorer-list-menu--end" @onkeydown="CloseMenuOnEscape">
             <button class="hd-button-square button-square--ghost-blue"
                     type="button"
@@ -650,51 +669,57 @@ else if (State?.IsAuthenticated == true)
                     @ref="_menuToggle"
                     @onclick="ToggleMenuFromControl">@T.MoreActions</button>
 
-            <div class="munin-explorer-list-menu__panel" id="@MenuPanelId" hidden="@(!_menuOpen)">
+            <div class="munin-explorer-list-menu__panel munin-explorer-list-menu__panel--rows" id="@MenuPanelId" hidden="@(!_menuOpen)">
                 @* These act on the list on screen, so none is drawn when there is none. *@
                 @if (_shownList is not null)
                 {
-                    <button class="hd-button-square button-square--ghost-blue"
+                    <button class="munin-explorer-list-menu__item"
                             type="button"
                             id="@RenameToggleId"
                             aria-expanded="@Expanded(_renaming)"
                             @onclick="ChooseRenamingFromMenu">@T.RenameList</button>
 
-                    @* The reason is visible and wired by aria-describedby rather than a title
-                       tooltip, which a keyboard reader never sees. aria-disabled for the reason the
-                       create button gives; ToggleSharingFromControl refuses the press. *@
-                    <button class="hd-button-square button-square--ghost-blue"
+                    @* The reason is visible on the row and wired by aria-describedby rather than a title
+                       tooltip, which a keyboard reader never sees; the row's own copy is hidden from the
+                       accessibility tree so it is not said twice. ToggleSharingFromControl refuses the press. *@
+                    <button class="munin-explorer-list-menu__item"
                             type="button"
                             id="@ShareToggleId"
                             aria-expanded="@Expanded(_sharingList)"
                             aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
                             aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
-                            @onclick="ChooseSharingFromMenu">@T.ShareList</button>
+                            @onclick="ChooseSharingFromMenu">@T.ShareList@EmptyHint()</button>
 
-                    @* Refused on an empty list the way sharing is, and described by the same reason. *@
-                    <button class="hd-button-square button-square--ghost-blue"
+                    <button class="munin-explorer-list-menu__item"
                             type="button"
                             id="@CopyToggleId"
                             aria-expanded="@Expanded(_copying)"
                             aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
                             aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
-                            @onclick="ChooseCopyingFromMenu">@T.CopyList</button>
+                            @onclick="ChooseCopyingFromMenu">@T.CopyList@EmptyHint()</button>
+                }
 
-                    @* The delete control's shape, for the rows rather than the list. *@
-                    <button class="hd-button-square button-square--ghost"
+                @* Never disabled: it acts on no list, so an empty one does not stand in its way. *@
+                <button class="munin-explorer-list-menu__item"
+                        type="button"
+                        id="@OpenSharedToggleId"
+                        aria-expanded="@Expanded(_openingShared)"
+                        @onclick="ChooseOpeningSharedFromMenu">@T.OpenSharedList</button>
+
+                @if (_shownList is not null)
+                {
+                    <button class="munin-explorer-list-menu__item munin-explorer-list-menu__item--apart"
                             type="button"
                             id="@EmptyButtonId"
                             aria-expanded="@Expanded(_confirmingEmpty)"
                             aria-disabled="@AriaDisabled(!ShownListIsEmpty)"
                             aria-describedby="@(ShownListIsEmpty ? ListEmptyReasonId : null)"
-                            @onclick="ToggleConfirmingEmptyFromControl">
-                        @(_confirmingEmpty ? T.ConfirmEmptyNo : T.EmptyListAction)
-                    </button>
+                            @onclick="ToggleConfirmingEmptyFromControl">@(_confirmingEmpty ? T.ConfirmEmptyNo : T.EmptyListAction)@EmptyHint()</button>
 
                     @if (_confirmingEmpty)
                     {
-                        <span id="@ConfirmEmptyId">@T.ConfirmEmptyList</span>
-                        <button class="hd-button-square button-square--ghost"
+                        <p class="munin-explorer-list-menu__note" id="@ConfirmEmptyId">@T.ConfirmEmptyList</p>
+                        <button class="munin-explorer-list-menu__item"
                                 type="button"
                                 aria-describedby="@ConfirmEmptyId"
                                 @onclick="ConfirmEmptyFromMenuAsync">@T.ConfirmEmptyYes</button>
@@ -702,41 +727,31 @@ else if (State?.IsAuthenticated == true)
 
                     @* Two steps because the API offers no undo, and in the page rather than a JS
                        confirm a host's CSP may suppress. One control, so neither step removes the
-                       element under the reader's focus. Ghost, not ghost-blue: it destroys something. *@
-                    <button class="hd-button-square button-square--ghost"
+                       element under the reader's focus. *@
+                    <button class="munin-explorer-list-menu__item"
                             type="button"
                             id="@DeleteButtonId"
                             aria-expanded="@Expanded(_confirmingDelete)"
-                            @onclick="ToggleConfirmingDeleteFromControl">
-                        @(_confirmingDelete ? T.ConfirmDeleteNo : T.DeleteList)
-                    </button>
+                            @onclick="ToggleConfirmingDeleteFromControl">@(_confirmingDelete ? T.ConfirmDeleteNo : T.DeleteList)</button>
 
                     @if (_confirmingDelete)
                     {
                         @* The question describes the button that acts on it rather than being announced
                            on its own: a role="alert" inserted and filled in one update is announced
                            unreliably, which the alert region below is already shaped around. *@
-                        <span id="@ConfirmDeleteId">@T.ConfirmDeleteList</span>
-                        <button class="hd-button-square button-square--ghost"
+                        <p class="munin-explorer-list-menu__note" id="@ConfirmDeleteId">@T.ConfirmDeleteList</p>
+                        <button class="munin-explorer-list-menu__item"
                                 type="button"
                                 aria-describedby="@ConfirmDeleteId"
                                 @onclick="ConfirmDeleteFromMenuAsync">@T.ConfirmDeleteYes</button>
                     }
 
-                    @* The refused buttons' reason. Hidden to sight, not removed, while the sentence below
-                       says the same, so it is said once and the buttons still describe themselves. *@
+                    @* The refused rows' reason for assistive tech; the rows show it themselves. *@
                     @if (ShownListIsEmpty)
                     {
-                        <span id="@ListEmptyReasonId" class="@(ListEmptySaidBelow ? "screenreader-only" : null)">@T.ListIsEmpty</span>
+                        <span id="@ListEmptyReasonId" class="screenreader-only">@T.ListIsEmpty</span>
                     }
                 }
-
-                @* Never disabled: it acts on no list, so an empty one does not stand in its way. *@
-                <button class="hd-button-square button-square--ghost-blue"
-                        type="button"
-                        id="@OpenSharedToggleId"
-                        aria-expanded="@Expanded(_openingShared)"
-                        @onclick="ChooseOpeningSharedFromMenu">@T.OpenSharedList</button>
             </div>
         </div>
 

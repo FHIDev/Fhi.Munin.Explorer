@@ -225,6 +225,41 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         await Tolerated(() => module.InvokeVoidAsync("restoreScroll", panelId)).ConfigureAwait(false);
     }
 
+    /// <summary>Closes an open download or «Flere valg» menu when the reader presses outside it, page-wide and once.</summary>
+    /// <remarks>
+    /// False when it did not get through (no module yet, or an interrupted call), so a later render asks again; the
+    /// script installs one listener however often it is asked. Escape still closes a menu without it.
+    /// </remarks>
+    internal async Task<bool> WatchFoldsAsync()
+    {
+        if (_module is not { } module)
+        {
+            return false;
+        }
+
+        try
+        {
+            return await Tolerated<object>(async () =>
+            {
+                await module.InvokeVoidAsync("watchFolds").ConfigureAwait(false);
+
+                return true;
+            }).ConfigureAwait(false) is not null;
+        }
+        catch (JSException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The same, for a component that holds no module of its own.</summary>
+    internal static async Task<bool> WatchFoldsAsync(IJSRuntime js)
+    {
+        await using var interop = new ExplorerInterop(js);
+
+        return await interop.TryLoadAsync().ConfigureAwait(false) && await interop.WatchFoldsAsync().ConfigureAwait(false);
+    }
+
     // Null means unknown, so callers must not mistake an unreachable control for a cleared date.
     internal async Task<DateInputState?> ReadDateInputAsync(string id)
     {

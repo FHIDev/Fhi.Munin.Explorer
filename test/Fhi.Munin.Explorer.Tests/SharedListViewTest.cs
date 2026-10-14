@@ -238,10 +238,10 @@ public class SharedListViewTest : ExplorerTestContext
     }
 
     private static IElement Button<T>(IRenderedComponent<T> cut, string text) where T : IComponent =>
-        cut.FindAll("button").Single(b => b.TextContent.Trim() == text);
+        cut.FindAll("button").Single(b => AccessibleName.Of(b) == text);
 
     private static bool HasButton<T>(IRenderedComponent<T> cut, string text) where T : IComponent =>
-        cut.FindAll("button").Any(b => b.TextContent.Trim() == text);
+        cut.FindAll("button").Any(b => AccessibleName.Of(b) == text);
 
     private static IElement Labelled<T>(IRenderedComponent<T> cut, string label) where T : IComponent
     {

@@ -2,6 +2,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -34,7 +35,7 @@ public partial class VariableListViewTest
     }
 
     private static string[] Words(IEnumerable<AngleSharp.Dom.IElement> buttons) =>
-        [.. buttons.Select(b => b.TextContent.Trim())];
+        [.. buttons.Select(AccessibleName.Of)];
 
     private static AngleSharp.Dom.IElement Menu(IRenderedComponent<VariableListView> cut) => cut.Find(MenuToggle);
 
@@ -47,7 +48,39 @@ public partial class VariableListViewTest
     }
 
     private static Task ChooseAsync(IRenderedComponent<VariableListView> cut, string word) =>
-        cut.InvokeAsync(() => cut.FindAll($"{MenuPanel} button").First(b => b.TextContent.Trim() == word).Click());
+        cut.InvokeAsync(() => cut.FindAll($"{MenuPanel} button").First(b => AccessibleName.Of(b) == word).Click());
+
+    [Fact]
+    public void Folds_WhenTheListIsMountedAlone_ThenItInstallsThePressOutsideWatcherItself()
+    {
+        // A host may mount the list without VariableSearch; its menus must still close on a press outside.
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.SetupVoid("watchFolds").SetVoidResult();
+
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        OpenMenu(cut);
+
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["watchFolds"]));
+    }
+
+    [Fact]
+    public void Folds_WhenTheWatcherCallIsInterrupted_ThenALaterRenderAsksAgain()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var first = module.SetupVoid("watchFolds");
+
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        first.SetException(new JSDisconnectedException("reconnecting"));
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["watchFolds"]));
+
+        module.SetupVoid("watchFolds").SetVoidResult();
+        OpenMenu(cut);
+
+        cut.WaitForAssertion(() => Assert.Equal(2, module.Invocations["watchFolds"].Count));
+        OpenMenu(cut);
+        Menu(cut).Click();
+        Assert.Equal(2, module.Invocations["watchFolds"].Count);
+    }
 
     [Fact]
     public void ActionRow_WhenAListIsShown_ThenOnlyCreateAndTheTwoFoldsStandOutsideThem()
@@ -62,13 +95,17 @@ public partial class VariableListViewTest
     }
 
     [Fact]
-    public void Menu_WhenAListIsShown_ThenItHoldsTheListsActionsAndOpeningASharedOneLast()
+    public void Menu_WhenAListIsShown_ThenWhatRemovesSomethingComesLastBehindARule()
     {
+        // helsedata's own menu order, as «Logg ut» stands last in their profile menu (Fhi.Metadata-ht2gj).
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        var rows = cut.FindAll($"{MenuPanel} button");
 
         Assert.Equal(
-            ["Gi nytt navn", "Del liste", "Kopier liste", "Tøm liste", "Slett listen", "Åpne delt liste"],
-            Words(cut.FindAll($"{MenuPanel} button")));
+            ["Gi nytt navn", "Del liste", "Kopier liste", "Åpne delt liste", "Tøm liste", "Slett listen"],
+            Words(rows));
+        Assert.All(rows, row => Assert.Contains("munin-explorer-list-menu__item", row.ClassList));
+        Assert.Equal(["Tøm liste"], Words(rows.Where(row => row.ClassList.Contains("munin-explorer-list-menu__item--apart"))));
     }
 
     [Fact]

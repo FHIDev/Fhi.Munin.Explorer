@@ -1858,7 +1858,9 @@ public class VariableSearchTest : ExplorerTestContext
 
         var picker = cut.Find(".munin-explorer-header");
 
+        // «Last ned utvalg» shares the row and has its own guard: the inventory below. (Fhi.Metadata-ht2gj)
         var names = picker.QuerySelectorAll("[class]")
+            .Where(e => e.Closest(".munin-explorer-list-menu") is null)
             .Prepend(picker)
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             .Where(k => !HostClassNames.IsOwnStructureName(k))
@@ -2124,12 +2126,16 @@ public class VariableSearchTest : ExplorerTestContext
             // 1280px, so a picker wearing it would be invisible on every desktop.
             "munin-explorer-header",                  // ours, Stiler components/munin-explorer/
             "munin-explorer-header__actions",         // ours, Stiler components/munin-explorer/
-            "munin-explorer__dropdown",               // ours, Stiler (the z-index)
-            "munin-explorer-header__actions-button",  // ours, Stiler components/munin-explorer/
-            // «Last ned utvalg» folds open the way the variable list's «Last ned» does, under the same
-            // two names, so Stiler already styles it. (Fhi.Metadata-idusm)
+            // «Last ned utvalg», in the picker's row ahead of it, with the menu rows Stiler 0.1.178 styles
+            // after helsedata's own top menu. (Fhi.Metadata-idusm, Fhi.Metadata-ht2gj)
             "munin-explorer-list-menu",
             "munin-explorer-list-menu__panel",
+            "munin-explorer-list-menu__panel--rows",
+            "munin-explorer-list-menu__check",
+            "munin-explorer-list-menu__item",
+            "munin-explorer-list-menu__hint",
+            "munin-explorer__dropdown",               // ours, Stiler (the z-index)
+            "munin-explorer-header__actions-button",  // ours, Stiler components/munin-explorer/
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
         ], invented);
@@ -15566,10 +15572,14 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-results__toolbar",
             "munin-explorer-header",     // ours now; their own variable page hangs the
             "munin-explorer-header__actions",        // column picker in, and the ghost button
+            "munin-explorer-list-menu",              // «Last ned utvalg», ahead of the picker in its row
+            "munin-explorer-list-menu__panel",
+            "munin-explorer-list-menu__panel--rows",
+            "munin-explorer-list-menu__check",
+            "munin-explorer-list-menu__item",
+            "munin-explorer-list-menu__hint",
             "munin-explorer__dropdown",              // that opens it. All four came from variables.css.
             "munin-explorer-header__actions-button",
-            "munin-explorer-list-menu",              // «Last ned utvalg», the list's own fold
-            "munin-explorer-list-menu__panel",
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
             "munin-explorer-detail",     // ours, a handle

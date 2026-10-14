@@ -1071,13 +1071,14 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         Assert.Contains("screenreader-only", reason.ClassList);
         Assert.Equal("Listen er tom", reason.TextContent.Trim());
-        Assert.Equal(reason.Id, cut.FindAll("button").First(b => b.TextContent.Trim() == "Kopier liste").GetAttribute("aria-describedby"));
+        Assert.Equal(reason.Id, cut.FindAll("button").First(b => AccessibleName.Of(b) == "Kopier liste").GetAttribute("aria-describedby"));
     }
 
     [Fact]
-    public async Task EmptyList_WithAKildeTicked_ThenTheReasonByTheButtonsStaysVisible()
+    public async Task EmptyList_WithAKildeTicked_ThenEachRefusedRowStillShowsItsReason()
     {
-        // The sentence below then says no variables from those kilder, which reads as the rest still having some.
+        // The sentence below then says no variables from those kilder, which reads as the rest still having some;
+        // the refused rows say why themselves (Fhi.Metadata-ht2gj).
         var client = new ListClient();
         var cut = RenderView(client);
         cut.WaitForAssertion(() => Assert.Contains("Denne listen er tom.", cut.Markup, StringComparison.Ordinal));
@@ -1086,17 +1087,30 @@ public partial class VariableListViewTest : ExplorerTestContext
         await cut.InvokeAsync(() => state.ToggleKildeFilter(Guid.NewGuid()));
 
         cut.WaitForAssertion(() => Assert.Contains("Ingen variabler fra de valgte kildene.", cut.Markup, StringComparison.Ordinal));
-        Assert.DoesNotContain("screenreader-only", EmptyReason(cut).ClassList);
+        AssertRefusedRowsShowWhy(cut);
+    }
+
+    // Each refused row of «Flere valg» carries the reason at its end, for the eye only: its aria-describedby says it.
+    private static void AssertRefusedRowsShowWhy(IRenderedComponent<VariableListView> cut)
+    {
+        var refused = cut.FindAll("[id^=munin-explorer-list-menu-] button[aria-disabled=true]");
+        Assert.Equal(["Del liste", "Kopier liste", "Tøm liste"], refused.Select(AccessibleName.Of));
+        Assert.All(refused, row =>
+        {
+            var hint = row.QuerySelector(".munin-explorer-list-menu__hint")!;
+            Assert.Equal("Listen er tom", hint.TextContent.Trim());
+            Assert.Equal("true", hint.GetAttribute("aria-hidden"));
+        });
     }
 
     [Fact]
-    public void EmptyList_WhileItsRowsAreStillBeingRead_ThenTheReasonByTheButtonsIsVisible()
+    public void EmptyList_WhileItsRowsAreStillBeingRead_ThenEachRefusedRowShowsItsReason()
     {
-        // Until the sentence below is drawn, this is the only visible reason the buttons are refused.
+        // Until the sentence below is drawn, the rows are the only visible reason the actions are refused.
         var client = new ListClient { StallPageReads = true };
         var cut = RenderView(client);
 
-        cut.WaitForAssertion(() => Assert.DoesNotContain("screenreader-only", EmptyReason(cut).ClassList));
+        cut.WaitForAssertion(() => AssertRefusedRowsShowWhy(cut));
         Assert.DoesNotContain("Denne listen er tom.", cut.Markup, StringComparison.Ordinal);
         client.ReleaseVariables();
     }
@@ -2180,12 +2194,12 @@ public partial class VariableListViewTest : ExplorerTestContext
         Assert.Equal("Legg til ny liste", primary.TextContent.Trim());
         Assert.Contains("hd-button-square", primary.ClassList);
 
-        // Deleting stays a plain ghost: it is the one control here that destroys something, and
-        // the same blue as "gi nytt navn" would say the two cost the same to press.
+        // Deleting is a row of «Flere valg» like the others, set apart below a rule with emptying
+        // rather than coloured differently, as «Logg ut» is in helsedata's profile menu (Fhi.Metadata-ht2gj).
         var destructive = cut.Find("button[id^='munin-explorer-delete-list-']");
 
-        Assert.Contains("button-square--ghost", destructive.ClassList);
-        Assert.DoesNotContain("button-square--ghost-blue", destructive.ClassList);
+        Assert.Contains("munin-explorer-list-menu__item", destructive.ClassList);
+        Assert.DoesNotContain("hd-button-square", destructive.ClassList);
     }
 
     [Fact]
@@ -4248,7 +4262,7 @@ public partial class VariableListViewTest : ExplorerTestContext
     // against. Scoped to the row, so it cannot find a button of that name that never moved in.
     private static void KeyboardPress(IRenderedComponent<VariableListView> cut, string word) =>
         cut.FindAll($"{ActionRow} button")
-           .First(b => b.TextContent.Trim() == word)
+           .First(b => AccessibleName.Of(b) == word)
            .Click(new MouseEventArgs { Detail = 0 });
 
     [Fact]
@@ -4271,13 +4285,13 @@ public partial class VariableListViewTest : ExplorerTestContext
 
         await cut.InvokeAsync(() =>
             cut.Find($"{ActionRow} [role=group] input[type=checkbox]").Change(true));
-        await cut.InvokeAsync(() => KeyboardPress(cut, "Last ned som Excel"));
+        await cut.InvokeAsync(() => KeyboardPress(cut, "Excel"));
 
         Assert.Equal(ExportFormat.Xlsx, client.LastExportFormat);
         Assert.Equal(true, client.LastIncludeKodeverk);
         Assert.Single(client.ExportedIds!);
 
-        await cut.InvokeAsync(() => KeyboardPress(cut, "Last ned som CSV"));
+        await cut.InvokeAsync(() => KeyboardPress(cut, "CSV"));
 
         // The format is the half a shared handler would get wrong, and the tick has to survive it.
         Assert.Equal(ExportFormat.Csv, client.LastExportFormat);

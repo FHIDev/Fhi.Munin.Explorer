@@ -29,8 +29,8 @@ public partial class VariableListViewTest
     }
 
     [Theory]
-    [InlineData("Last ned som Excel", "Laster ned Excel …", "Last ned som CSV")]
-    [InlineData("Last ned som CSV", "Laster ned CSV …", "Last ned som Excel")]
+    [InlineData("Excel", "Laster ned Excel …", "CSV")]
+    [InlineData("CSV", "Laster ned CSV …", "Excel")]
     public async Task Download_WhileTheListIsBeingExported_ThenThePageSaysSoAndASecondPressDoesNothing(
         string pressed, string working, string other)
     {
@@ -50,7 +50,7 @@ public partial class VariableListViewTest
         var busy = buttons.Single(b => b.TextContent.Trim() == working);
         Assert.Equal("true", busy.GetAttribute("aria-busy"));
         Assert.Equal("true", busy.GetAttribute("aria-disabled"));
-        var idle = buttons.Single(b => b.TextContent.Trim() == other);
+        var idle = buttons.Single(b => AccessibleName.Of(b) == other);
         Assert.Null(idle.GetAttribute("aria-busy"));
         Assert.Equal("true", idle.GetAttribute("aria-disabled"));
         Assert.True(DownloadGroup(cut).QuerySelector("input[type=checkbox]")!.HasAttribute("disabled"));
@@ -64,12 +64,12 @@ public partial class VariableListViewTest
 
         cut.WaitForAssertion(() => Assert.Equal("Last ned", cut.Find(DownloadToggle).TextContent.Trim()));
         Assert.Null(cut.Find(DownloadToggle).GetAttribute("aria-busy"));
-        Assert.Equal("Nedlastingen er klar.", DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());
+        // Handed over, the menu closes (Robin's choice, Fhi.Metadata-ht2gj item f) and opens again without a stale status.
+        Assert.Equal("false", cut.Find(DownloadToggle).GetAttribute("aria-expanded"));
+        Assert.Null(DownloadGroup(cut).QuerySelector("[role=status]"));
         Assert.False(DownloadGroup(cut).QuerySelector("input[type=checkbox]")!.HasAttribute("disabled"));
         Assert.DoesNotContain("Kunne ikke laste ned", cut.Markup);
 
-        await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
-        Assert.Null(DownloadGroup(cut).QuerySelector("[role=status]"));
         await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
         Assert.Equal("", DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());
     }
@@ -87,7 +87,7 @@ public partial class VariableListViewTest
         OfferFilesToTheBrowser();
         var cut = RenderView(client);
         await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
-        await cut.InvokeAsync(() => KeyboardPress(cut, "Last ned som CSV"));
+        await cut.InvokeAsync(() => KeyboardPress(cut, "CSV"));
         cut.WaitForAssertion(() => Assert.Equal("Laster ned …", cut.Find(DownloadToggle).TextContent.Trim()));
 
         var state = Services.GetRequiredService<VariableListState>();
@@ -96,6 +96,8 @@ public partial class VariableListViewTest
 
         cut.WaitForAssertion(() => Assert.Equal("Last ned", cut.Find(DownloadToggle).TextContent.Trim()));
         cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
+        Assert.Equal("false", cut.Find(DownloadToggle).GetAttribute("aria-expanded"));
+        await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
         Assert.Equal("", DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());
         Assert.DoesNotContain("Kunne ikke laste ned", cut.Markup);
     }
@@ -106,7 +108,7 @@ public partial class VariableListViewTest
         var held = new TaskCompletionSource<ExportedList?>();
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")) { HoldExport = held });
         await cut.InvokeAsync(() => cut.Find(DownloadToggle).Click(new MouseEventArgs { Detail = 0 }));
-        await cut.InvokeAsync(() => KeyboardPress(cut, "Last ned som Excel"));
+        await cut.InvokeAsync(() => KeyboardPress(cut, "Excel"));
         cut.WaitForAssertion(() => Assert.Equal("Laster ned …", cut.Find(DownloadToggle).TextContent.Trim()));
 
         held.SetException(new InvalidOperationException("the API answered 500"));
@@ -116,4 +118,24 @@ public partial class VariableListViewTest
         Assert.Null(cut.Find(DownloadToggle).GetAttribute("aria-busy"));
         Assert.Equal("", DownloadGroup(cut).QuerySelector("[role=status]")!.TextContent.Trim());
     }
+
+    [Fact]
+    public async Task Download_WhenOpen_ThenItsChoicesAreMenuRowsNamedByTheFormatAsInTheSearch()
+    {
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        await cut.InvokeAsync(() => KeyboardPress(cut, "Last ned"));
+
+        var group = DownloadGroup(cut);
+        Assert.Contains("munin-explorer-list-menu__panel--rows", group.ClassList);
+        Assert.Contains("munin-explorer-list-menu__check", group.QuerySelector("label")!.ClassList);
+        foreach (var (name, fileType) in new[] { ("Excel", ".xlsx"), ("CSV", ".csv") })
+        {
+            var row = group.QuerySelectorAll("button").Single(b => AccessibleName.Of(b) == name);
+            Assert.Equal(["munin-explorer-list-menu__item"], row.ClassList);
+            Assert.Equal(fileType, row.QuerySelector(".munin-explorer-list-menu__hint[aria-hidden=true]")!.TextContent.Trim());
+        }
+
+        Assert.Contains("munin-explorer-list-menu__note", group.QuerySelector("[role=status]")!.ClassList);
+    }
 }
+

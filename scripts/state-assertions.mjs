@@ -724,6 +724,47 @@ const chevronAssertions = CHEVRONS.map(chevron => ({
 
 export const assertions = [
   {
+    // helsedata's own menus close on a press outside them and stay open when focus Tabs out (their
+    // language selector, read on test-1-opt 2026-10-14). The explorer's download menu must do both;
+    // the press is caught by explorer-interop.js, which no render tree runs. (Fhi.Metadata-ht2gj)
+    name: 'a press outside «Last ned utvalg» closes it, and Tabbing out of it does not',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    async stage(page) {
+      const toggle = page.locator('.munin-explorer-header__actions > .munin-explorer-list-menu > button').first();
+      await toggle.waitFor({ state: 'visible', timeout: findTimeout });
+      return {};
+    },
+
+    async measure(page) {
+      const menu = page.locator('.munin-explorer-header__actions > .munin-explorer-list-menu').first();
+      const toggle = menu.locator(':scope > button');
+      const expanded = () => toggle.getAttribute('aria-expanded');
+      await toggle.click();
+      await page.waitForFunction(el => el.getAttribute('aria-expanded') === 'true', await toggle.elementHandle());
+
+      // Tab from the last row until focus is outside the menu: it must stay open.
+      await menu.locator('.munin-explorer-list-menu__item').last().focus();
+      for (let i = 0; i < 3 && await menu.evaluate(el => el.contains(document.activeElement)); i++) {
+        await page.keyboard.press('Tab');
+      }
+      if (await menu.evaluate(el => el.contains(document.activeElement))) return 'Tab never took focus out of the menu';
+      await page.waitForTimeout(PRESS_SETTLE_MS);
+      if (await expanded() !== 'true') return 'the menu closed when focus Tabbed out of it, which helsedata\'s own do not';
+
+      // A press on the result count, outside the menu: it must close.
+      await page.locator('.munin-explorer-results__toolbar .caption').first().click();
+      await page.waitForTimeout(PRESS_SETTLE_MS);
+      return await expanded() === 'false' ? null : 'a press outside the open menu left it open';
+    },
+
+    async control(page) {
+      // As if explorer-interop.js had no watch: the press never reaches the document's listener.
+      await page.evaluate(() => window.addEventListener('pointerdown', event => event.stopPropagation(), true));
+    },
+  },
+  {
     name: 'a contents jump leaves its heading below a wrapped sticky bar',
     kind: 'invariant',
     states: ['variable-whole'],

@@ -101,7 +101,11 @@ public class DownloadSelectionTest : ExplorerTestContext
         FoldPanel(cut);
 
     private static IElement Button(IRenderedComponent<VariableSearch> cut, string text) =>
-        Panel(cut).QuerySelectorAll("button").Single(b => b.TextContent.Trim() == text);
+        Panel(cut).QuerySelectorAll("button").Single(b => AccessibleName.Of(b) == text);
+
+    // Robin's choice (Fhi.Metadata-ht2gj, f): the menu closes once the file is handed over, so that is the sign it was.
+    private static void WaitForDelivery(IRenderedComponent<VariableSearch> cut) =>
+        cut.WaitForAssertion(() => Assert.Equal("false", Toggle(cut)!.GetAttribute("aria-expanded")));
 
     private static string Alert(IRenderedComponent<VariableSearch> cut) =>
         Panel(cut).ParentElement!.QuerySelector("[role=alert]")!.TextContent.Trim();
@@ -146,7 +150,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         Toggle(cut)!.Click();
         Assert.False(Panel(cut).HasAttribute("hidden"));
         Panel(cut).QuerySelector("input[type=checkbox]")!.Change(true);
-        Button(cut, "Last ned som Excel").Click();
+        Button(cut, "Excel").Click();
 
         cut.WaitForAssertion(() => Assert.Single(client.Exports));
         var export = client.Exports[0];
@@ -166,7 +170,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
 
         Toggle(cut)!.Click();
-        Button(cut, "Last ned som CSV").Click();
+        Button(cut, "CSV").Click();
 
         cut.WaitForAssertion(() => Assert.Single(client.Exports));
         Assert.Equal(ExportFormat.Csv, client.Exports[0].Format);
@@ -184,7 +188,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         Toggle(cut)!.Click();
 
         Assert.Equal(warns, Panel(cut).TextContent.Contains($"Utvalget har {hits} treff", StringComparison.Ordinal));
-        var describedBy = Button(cut, "Last ned som Excel").GetAttribute("aria-describedby");
+        var describedBy = Button(cut, "Excel").GetAttribute("aria-describedby");
         Assert.Equal(warns, describedBy is not null && cut.Find($"#{describedBy}").TextContent.Contains($"{hits} treff", StringComparison.Ordinal));
     }
 
@@ -197,12 +201,12 @@ public class DownloadSelectionTest : ExplorerTestContext
         Toggle(cut)!.Click();
 
         Search(cut, "høyde");
-        Assert.Equal("true", Button(cut, "Last ned som Excel").GetAttribute("aria-disabled"));
-        Button(cut, "Last ned som Excel").Click();
+        Assert.Equal("true", Button(cut, "Excel").GetAttribute("aria-disabled"));
+        Button(cut, "Excel").Click();
 
         Assert.Empty(client.Exports);
         client.HoldSearches!.SetResult();
-        cut.WaitForAssertion(() => Assert.Null(Button(cut, "Last ned som Excel").GetAttribute("aria-disabled")));
+        cut.WaitForAssertion(() => Assert.Null(Button(cut, "Excel").GetAttribute("aria-disabled")));
     }
 
     [Theory]
@@ -214,7 +218,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         var cut = Render(client);
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
         Toggle(cut)!.Click();
-        Button(cut, "Last ned som Excel").Click();
+        Button(cut, "Excel").Click();
         cut.WaitForAssertion(() => Assert.NotEqual("", Alert(cut)));
 
         if (newText)
@@ -237,7 +241,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
 
         Toggle(cut)!.Click();
-        Button(cut, "Last ned som Excel").Click();
+        Button(cut, "Excel").Click();
 
         cut.WaitForAssertion(() => Assert.Equal("Kunne ikke laste ned nå. Prøv igjen om litt.", Alert(cut)));
     }
@@ -250,7 +254,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
 
         Toggle(cut)!.Click();
-        Button(cut, "Last ned som Excel").Click();
+        Button(cut, "Excel").Click();
 
         cut.WaitForAssertion(() => Assert.NotEqual("Kunne ikke laste ned nå. Prøv igjen om litt.", Alert(cut)));
         Assert.NotEqual("", Alert(cut));
@@ -280,8 +284,8 @@ public class DownloadSelectionTest : ExplorerTestContext
         FoldPanel(cut).QuerySelector("[role=status]")!.TextContent.Trim();
 
     [Theory]
-    [InlineData("Last ned som Excel", "Laster ned Excel …", "Last ned som CSV")]
-    [InlineData("Last ned som CSV", "Laster ned CSV …", "Last ned som Excel")]
+    [InlineData("Excel", "Laster ned Excel …", "CSV")]
+    [InlineData("CSV", "Laster ned CSV …", "Excel")]
     public void Download_WhileTheFileIsBeingMade_ThenThePageSaysSoAndASecondPressDoesNothing(
         string pressed, string working, string other)
     {
@@ -304,7 +308,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         Assert.Equal("true", busy.GetAttribute("aria-busy"));
         Assert.Equal("true", busy.GetAttribute("aria-disabled"));
 
-        var idle = buttons.Single(b => b.TextContent.Trim() == other);
+        var idle = buttons.Single(b => AccessibleName.Of(b) == other);
         Assert.Null(idle.GetAttribute("aria-busy"));
         Assert.Equal("true", idle.GetAttribute("aria-disabled"));
 
@@ -320,7 +324,7 @@ public class DownloadSelectionTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal("Last ned utvalg", Fold(cut).TextContent.Trim()));
         Assert.Null(Fold(cut).GetAttribute("aria-busy"));
-        Assert.Equal("Nedlastingen er klar.", Status(cut));
+        WaitForDelivery(cut);
         Assert.Null(Button(cut, pressed).GetAttribute("aria-busy"));
         Assert.Null(Button(cut, pressed).GetAttribute("aria-disabled"));
         Assert.Null(Button(cut, other).GetAttribute("aria-disabled"));
@@ -335,7 +339,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         var cut = Render(new Client(80) { HoldExport = held });
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
         Toggle(cut)!.Click();
-        Button(cut, "Last ned som Excel").Click();
+        Button(cut, "Excel").Click();
         cut.WaitForAssertion(() => Assert.Equal("Laster ned Excel …", Status(cut)));
 
         held.SetException(new InvalidOperationException("the API answered 500"));
@@ -344,7 +348,7 @@ public class DownloadSelectionTest : ExplorerTestContext
         Assert.Equal("Last ned utvalg", Fold(cut).TextContent.Trim());
         Assert.Null(Fold(cut).GetAttribute("aria-busy"));
         Assert.Equal("", Status(cut));
-        Assert.Null(Button(cut, "Last ned som Excel").GetAttribute("aria-disabled"));
+        Assert.Null(Button(cut, "Excel").GetAttribute("aria-disabled"));
     }
 
     [Fact]
@@ -353,10 +357,8 @@ public class DownloadSelectionTest : ExplorerTestContext
         var cut = Render(new Client(80));
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
         Toggle(cut)!.Click();
-        Button(cut, "Last ned som CSV").Click();
-        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
-
-        Fold(cut).Click();
+        Button(cut, "CSV").Click();
+        WaitForDelivery(cut);
         Assert.Null(FoldPanel(cut).QuerySelector("[role=status]"));
 
         Fold(cut).Click();
@@ -370,8 +372,9 @@ public class DownloadSelectionTest : ExplorerTestContext
         var cut = Render(new Client(80));
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
         Toggle(cut)!.Click();
-        Button(cut, "Last ned som CSV").Click();
-        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        Button(cut, "CSV").Click();
+        WaitForDelivery(cut);
+        Fold(cut).Click();
 
         Search(cut, "alder");
 
@@ -389,9 +392,9 @@ public class DownloadSelectionTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
         Toggle(cut)!.Click();
 
-        Button(cut, "Last ned som Excel").Click();
+        Button(cut, "Excel").Click();
 
-        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        WaitForDelivery(cut);
         Assert.Equal([page], client.ExportPages);
     }
 
@@ -436,9 +439,9 @@ public class DownloadSelectionTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
         Toggle(cut)!.Click();
 
-        Button(cut, "Last ned som CSV").Click();
+        Button(cut, "CSV").Click();
 
-        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        WaitForDelivery(cut);
         Assert.Equal(1, client.Exports);
         cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
     }
@@ -451,9 +454,9 @@ public class DownloadSelectionTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
         Toggle(cut)!.Click();
 
-        Button(cut, "Last ned som CSV").Click();
+        Button(cut, "CSV").Click();
 
-        cut.WaitForAssertion(() => Assert.Equal("Nedlastingen er klar.", Status(cut)));
+        WaitForDelivery(cut);
         Assert.Equal([null], client.ExportPages);
         cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
     }
@@ -468,9 +471,109 @@ public class DownloadSelectionTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("button[aria-controls^='munin-explorer-download-panel-']")));
         Fold(cut).Click();
 
-        FoldPanel(cut).QuerySelectorAll("button").Single(b => b.TextContent.Trim() == "Download as Excel").Click();
+        FoldPanel(cut).QuerySelectorAll("button").Single(b => AccessibleName.Of(b) == "Excel").Click();
 
         cut.WaitForAssertion(() => Assert.Equal("Downloading …", Fold(cut).TextContent.Trim()));
         Assert.Equal("Downloading Excel …", Status(cut));
     }
+
+    // -----------------------------------------------------------------------
+    // Fhi.Metadata-ht2gj: the menu as helsedata's own, through Stiler 0.1.178's names
+
+    [Fact]
+    public void Download_WhenDrawn_ThenItStandsBesideKolonnerDressedAsItIs()
+    {
+        var cut = Render(new Client(80));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+
+        // In the picker's row, ahead of it: the row Stiler's narrow-width rule for this menu is written for.
+        var menu = Toggle(cut)!.ParentElement!;
+        Assert.Contains("munin-explorer-list-menu", menu.ClassList);
+        Assert.Contains("munin-explorer-header__actions", menu.ParentElement!.ClassList);
+        Assert.Equal("DETAILS", menu.NextElementSibling!.TagName);
+
+        Assert.Equal(["hd-button-square", "button-square--ghost"], Toggle(cut)!.ClassList);
+        Assert.Equal("true", Toggle(cut)!.QuerySelector(".icon.icon-download")!.GetAttribute("aria-hidden"));
+        Assert.Equal("Last ned utvalg", AccessibleName.Of(Toggle(cut)!));
+
+        // One chevron, helsedata's, for the state the component holds; Stiler then drops its own masked arrow.
+        Assert.Equal(["icon-keyboard-arrow-down"], Chevrons(cut));
+        Toggle(cut)!.Click();
+        Assert.Equal(["icon-keyboard-arrow-up"], Chevrons(cut));
+    }
+
+    private static string[] Chevrons(IRenderedComponent<VariableSearch> cut) =>
+        [.. Toggle(cut)!.QuerySelectorAll(".icon--right").SelectMany(icon => icon.ClassList.Where(name => name.StartsWith("icon-keyboard-arrow-", StringComparison.Ordinal)))];
+
+    [Fact]
+    public void Download_WhenOpen_ThenItsChoicesAreMenuRowsNamedByTheFormat()
+    {
+        var cut = Render(new Client(2001));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        Assert.Contains("munin-explorer-list-menu__panel--rows", Panel(cut).ClassList);
+        Assert.Contains("munin-explorer-list-menu__check", Panel(cut).QuerySelector("label")!.ClassList);
+        Assert.Contains("munin-explorer-list-menu__note", Panel(cut).QuerySelector($"#{Button(cut, "Excel").GetAttribute("aria-describedby")}")!.ClassList);
+
+        // The format is the row's name; the file type stands small at its end, for the eye only.
+        foreach (var (name, fileType) in new[] { ("Excel", ".xlsx"), ("CSV", ".csv") })
+        {
+            var row = Button(cut, name);
+            Assert.Equal(["munin-explorer-list-menu__item"], row.ClassList);
+            var hint = row.QuerySelector(".munin-explorer-list-menu__hint")!;
+            Assert.Equal(fileType, hint.TextContent.Trim());
+            Assert.Equal("true", hint.GetAttribute("aria-hidden"));
+        }
+
+        var status = Panel(cut).QuerySelector("[role=status]")!;
+        Assert.Equal("P", status.TagName);
+        Assert.Contains("munin-explorer-list-menu__note", status.ClassList);
+    }
+
+    [Fact]
+    public void Download_WhenTheFileIsDelivered_ThenTheMenuClosesAndFocusReturnsToItsButton()
+    {
+        // Robin's choice, item (f) of the bead, as helsedata's boards draw it; DownloadPanel.ClosesOnDelivery is the switch.
+        var cut = Render(new Client(80));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+
+        Button(cut, "Excel").Click();
+
+        WaitForDelivery(cut);
+        Assert.True(FoldPanel(cut).HasAttribute("hidden"));
+        cut.WaitForAssertion(() => Assert.Contains(JSInterop.Invocations, call => call.Identifier == "Blazor._internal.domWrapper.focus"));
+    }
+
+    [Fact]
+    public void Download_WhenRenderedAgainAndAgain_ThenThePressOutsideWatchIsAskedForOnce()
+    {
+        var cut = Render(new Client(80));
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+
+        Toggle(cut)!.Click();
+        Toggle(cut)!.Click();
+
+        Assert.Single(JSInterop.Invocations, call => call.Identifier == "watchFolds");
+    }
+
+    [Fact]
+    public void Download_WhenTheMenuWasClosedWhileTheFileWasMade_ThenFocusIsLeftWhereTheReaderWent()
+    {
+        var held = new TaskCompletionSource<ExportedList>();
+        var cut = Render(new Client(80) { HoldExport = held });
+        cut.WaitForAssertion(() => Assert.NotNull(Toggle(cut)));
+        Toggle(cut)!.Click();
+        Button(cut, "Excel").Click();
+        Fold(cut).Click(); // closed by the reader (or a press outside) during the export
+
+        held.SetResult(new ExportedList([1, 2, 3], "application/zip", "Variabler_2026-10-14.zip"));
+
+        cut.WaitForAssertion(() => Assert.Null(Fold(cut).GetAttribute("aria-busy")));
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("URL.createObjectURL"));
+        Assert.Equal("false", Fold(cut).GetAttribute("aria-expanded"));
+        Assert.DoesNotContain(JSInterop.Invocations, call => call.Identifier == "Blazor._internal.domWrapper.focus");
+    }
 }
+
