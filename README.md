@@ -45,6 +45,13 @@ Every download, of a search's hits or of a list, waits up to 150 seconds for the
 wait 30. That is under the 300 seconds Munin's own ingress allows a request, so it is the Explorer
 that gives up first, and says the download failed.
 
+## What a large download holds
+
+The limits are the API's, so they come with the Munin version a host runs against. A download of
+more than 5,000 rows has its `Url` and `Kodeverk for variabel` addresses as plain text, not as
+links. With code lists, the workbook has one sheet per variable up to 2,000 sheets and 50,000 code
+rows in all; a larger one has one sheet per code list, which variables that share a list share.
+
 ## Layout
 
 | Project | What it is |
