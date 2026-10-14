@@ -29,6 +29,14 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.4.0 — 2026-10-14
+
+### Fixed
+
+- **«Last ned utvalg» gets its links.** The file downloaded from a search now has each variable's address on the host's page and the link to its codebook, as the saved list's file has. A page address the API would refuse is left out of both downloads, so the file still comes, without links.
+- **A download says that it is working.** «Last ned utvalg» in the search results and «Last ned» for a saved list now read «Laster ned …» until the file is ready, and then say so. Until now the page showed nothing while a large file was made.
+- **A large saved list downloads without timing out.** «Last ned» for a saved list gave up after 30 seconds, which a large list with code lists can pass. It now waits 150 seconds, as «Last ned utvalg» does.
+
 ## 2.3.0 — 2026-10-12
 
 ### Added
