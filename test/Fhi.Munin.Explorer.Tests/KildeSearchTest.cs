@@ -1006,8 +1006,8 @@ public class KildeSearchTest : ExplorerTestContext
                 cell.ClassList.Contains("munin-explorer-kilder__count--zero"));
         }
 
-        // The datasamlinger nought is still a nought on screen: a register that holds none is a
-        // measurement, not a gap. Variabler alone says «–» for none in Munin (Fhi.Metadata-db81e).
+        // A datasamlinger nought stays a nought, because a register holding none is a measurement and
+        // not a gap; Variabler says «–» for none in Munin. Both are dimmed (Fhi.Metadata-db81e).
         Assert.Equal(
             ["0", "23", "23", "2506", "2506", "–Ingen variabler i Munin"],
             cells.Select(cell => cell.TextContent.Trim()).Order(StringComparer.Ordinal));
@@ -7258,8 +7258,8 @@ public class KildeSearchTest : ExplorerTestContext
     [InlineData("en", "No variables in Munin")]
     public void Variables_WhenAKildeCountsNone_ThenTheCellIsADashWithOrWithoutAReference(string language, string words)
     {
-        // Fhi.Metadata-db81e: a 0 beside the «–» of a kilde with a Variabelreferanse read as two
-        // different facts, so every kilde Munin holds no variables for says «–», link or not.
+        // Pins that a reference plays no part in the mark: drop the count check for the reference
+        // check and Brannskaderegisteret reads 0 beside Førtiåringsundersøkelsene's «–» (Fhi.Metadata-db81e).
         var cut = RenderWith(new FakeClient(
             WithReference(Kilde("Førtiåringsundersøkelsene", "K_40", datasamlinger: 0, variables: 0),
                           "https://eksempel.no/variabler"),
