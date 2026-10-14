@@ -50,7 +50,7 @@ jobs:
               echo "::error::$fixed fixed and $rest left do not add up to $found findings."
               exit 1
             fi
-            if [ "$(( 10#$rest ))" -eq 0 ]; then
+            if [ "$(( 10#$rest ))" -eq 0 ] && [ "$(( 10#$found ))" -ne 0 ]; then
               echo "::error::With nothing left the form is 'Pre-PR review: ran, $found $noun, fixed'."
               exit 1
             fi
