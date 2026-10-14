@@ -411,3 +411,17 @@ export function restoreScroll(panelId) {
   const panel = panelId ? document.getElementById(panelId) : null;
   (panel?.closest('tr')?.previousElementSibling ?? panel)?.scrollIntoView({ block: 'center' });
 }
+
+// A press outside an open menu closes it, as helsedata's own menus do; Tab out does not, nor does theirs
+// (Fhi.Metadata-ht2gj). It presses the menu's own toggle, so the component closes it the way it always does.
+let foldsWatched = false;
+export function watchFolds() {
+  if (foldsWatched) return;
+  foldsWatched = true;
+  document.addEventListener('pointerdown', event => {
+    for (const menu of document.querySelectorAll('.munin-explorer-list-menu')) {
+      const toggle = menu.querySelector(':scope > button[aria-expanded="true"]');
+      if (toggle && !menu.contains(event.target)) toggle.click();
+    }
+  }, true);
+}

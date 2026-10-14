@@ -705,6 +705,15 @@ These are not style preferences — each one is a host that breaks otherwise.
     `display`: without it the fold stands open. Undrawn otherwise, a panel is an in-flow block
     under its button whose buttons sit side by side and wrap, pushing the rows below it down
     rather than hanging over them, and «Flere valg» is not pushed to the end of its line.
+    Since `Fhi.Metadata-ht2gj` the panels are menus after helsedata's own top menu:
+    `munin-explorer-list-menu__panel--rows` takes the panel's own padding off, each choice is a
+    `munin-explorer-list-menu__item` row (`--apart` puts a rule above the first of the ones that
+    remove something), `munin-explorer-list-menu__hint` is the small text at a row's end (the file
+    type, or why the row is refused), `munin-explorer-list-menu__note` a line of text in the panel
+    (the size warning, the status, a confirmation's question) and `munin-explorer-list-menu__check`
+    the «Ta med kodeverk» row. Undrawn, the rows are bare buttons stacked in the panel and the hint
+    runs on after the button's word. «Last ned utvalg» stands in the column picker's row, ahead of
+    «Kolonner», and a press outside an open menu closes it (the package's own script).
     `munin-explorer-pagination-pages` joined this list under `Fhi.Metadata-ejcbi`, and it is worth
     saying why it moved out of the handles: the numbered pages wear helsedata's own
     `hd-button-reset`, which strips the button chrome, so unlike every other control here nothing
@@ -1048,7 +1057,13 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-list-head` | meaning |
   | `munin-explorer-list-menu` | meaning |
   | `munin-explorer-list-menu--end` | meaning |
+  | `munin-explorer-list-menu__check` | meaning |
+  | `munin-explorer-list-menu__hint` | meaning |
+  | `munin-explorer-list-menu__item` | meaning |
+  | `munin-explorer-list-menu__item--apart` | meaning |
+  | `munin-explorer-list-menu__note` | meaning |
   | `munin-explorer-list-menu__panel` | meaning |
+  | `munin-explorer-list-menu__panel--rows` | meaning |
   | `munin-explorer-list-placeholder` | meaning |
   | `munin-explorer-list-scroll` | meaning |
   | `munin-explorer-meta` | handle |

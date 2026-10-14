@@ -258,5 +258,6 @@ public partial class VariableSearch
 
                     return Task.CompletedTask;
                 }))],
-            (ColumnsHintId, T.DatasamlingColumnHint));
+            (ColumnsHintId, T.DatasamlingColumnHint),
+            DownloadControl());
 }

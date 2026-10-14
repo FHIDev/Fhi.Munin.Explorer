@@ -428,8 +428,11 @@ internal sealed record Texts(
     // Nedlasting av listen. Formatvalget er to knapper, ikke en nedtrekksliste: det er to
     // valg, og en liste med to elementer er et klikk mer for det samme.
     string DownloadList,
+    // A menu row reads the format; the file type stands small at its end, as helsedata's own rows carry a detail.
     string DownloadXlsx,
     string DownloadCsv,
+    string DownloadXlsxHint,
+    string DownloadCsvHint,
     string IncludeKodeverk,
     string DownloadError,
     // While a file is being made: on the fold's own button, on the pressed format, and when it has been handed over.
@@ -1388,8 +1391,10 @@ internal sealed record Texts(
         ConfirmEmptyNo: "Nei",
         VariableNoLongerAvailable: "Variabelen er ikke tilgjengelig lenger",
         DownloadList: "Last ned",
-        DownloadXlsx: "Last ned som Excel",
-        DownloadCsv: "Last ned som CSV",
+        DownloadXlsx: "Excel",
+        DownloadCsv: "CSV",
+        DownloadXlsxHint: ".xlsx",
+        DownloadCsvHint: ".csv",
         IncludeKodeverk: "Ta med kodeverk",
         DownloadError: "Kunne ikke laste ned nå. Prøv igjen om litt.",
         Downloading: "Laster ned …",
@@ -1924,8 +1929,10 @@ internal sealed record Texts(
         ConfirmEmptyNo: "No",
         VariableNoLongerAvailable: "The variable is no longer available",
         DownloadList: "Download",
-        DownloadXlsx: "Download as Excel",
-        DownloadCsv: "Download as CSV",
+        DownloadXlsx: "Excel",
+        DownloadCsv: "CSV",
+        DownloadXlsxHint: ".xlsx",
+        DownloadCsvHint: ".csv",
         IncludeKodeverk: "Include codebooks",
         DownloadError: "Could not download just now. Try again shortly.",
         Downloading: "Downloading …",

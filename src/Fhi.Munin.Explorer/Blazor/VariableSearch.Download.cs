@@ -69,8 +69,9 @@ public partial class VariableSearch
         builder.AddAttribute(10, "class", "munin-explorer-list-menu");
         builder.AddAttribute(20, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, CloseDownloadOnEscapeAsync));
 
+        // Dressed as «Kolonner» beside it: their ghost square, an icon, and their chevron for the state we hold.
         builder.OpenElement(30, "button");
-        builder.AddAttribute(40, "class", "hd-button-square button-square--ghost-blue");
+        builder.AddAttribute(40, "class", "hd-button-square button-square--ghost");
         builder.AddAttribute(50, "type", "button");
         builder.AddAttribute(60, "id", DownloadToggleId);
         builder.AddAttribute(70, "aria-expanded", _downloadOpen ? "true" : "false");
@@ -78,11 +79,19 @@ public partial class VariableSearch
         builder.AddAttribute(85, "aria-busy", _downloading ? "true" : null);
         builder.AddAttribute(90, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, ToggleDownload));
         builder.AddElementReferenceCapture(100, element => _downloadToggle = element);
+        builder.OpenElement(102, "span");
+        builder.AddAttribute(103, "class", "icon icon-download");
+        builder.AddAttribute(104, "aria-hidden", "true");
+        builder.CloseElement();
         builder.AddContent(110, _downloading ? T.Downloading : T.DownloadSelection);
+        builder.OpenElement(112, "span");
+        builder.AddAttribute(113, "class", _downloadOpen ? "icon icon--right icon-keyboard-arrow-up" : "icon icon--right icon-keyboard-arrow-down");
+        builder.AddAttribute(114, "aria-hidden", "true");
+        builder.CloseElement();
         builder.CloseElement();
 
         builder.OpenElement(120, "div");
-        builder.AddAttribute(130, "class", "munin-explorer-list-menu__panel");
+        builder.AddAttribute(130, "class", "munin-explorer-list-menu__panel munin-explorer-list-menu__panel--rows");
         builder.AddAttribute(140, "id", DownloadPanelId);
         builder.AddAttribute(150, "role", "group");
         builder.AddAttribute(160, "aria-label", T.DownloadSelection);
@@ -91,13 +100,14 @@ public partial class VariableSearch
         if (WarnDownload)
         {
             builder.OpenElement(180, "p");
-            builder.AddAttribute(190, "class", "caption");
+            builder.AddAttribute(190, "class", "munin-explorer-list-menu__note");
             builder.AddAttribute(200, "id", DownloadWarningId);
             builder.AddContent(210, T.DownloadSelectionLarge(TotalCount));
             builder.CloseElement();
         }
 
         builder.OpenElement(220, "label");
+        builder.AddAttribute(225, "class", "munin-explorer-list-menu__check");
         builder.OpenElement(230, "input");
         builder.AddAttribute(240, "type", "checkbox");
         builder.AddAttribute(250, "checked", _includeKodeverk);
@@ -109,14 +119,14 @@ public partial class VariableSearch
         builder.CloseElement();
 
         // aria-disabled while a download or a search is out, not disabled: disabling the pressed button drops focus to <body>.
-        AddDownloadButton(builder, 290, ExportFormat.Xlsx, T.DownloadXlsx);
-        AddDownloadButton(builder, 360, ExportFormat.Csv, T.DownloadCsv);
+        AddDownloadButton(builder, 290, ExportFormat.Xlsx, T.DownloadXlsx, T.DownloadXlsxHint);
+        AddDownloadButton(builder, 360, ExportFormat.Csv, T.DownloadCsv, T.DownloadCsvHint);
 
         // Only while the panel is open, and empty then: the result count stays the page's one resting status region.
         if (_downloadOpen)
         {
-            builder.OpenElement(440, "div");
-            builder.AddAttribute(450, "class", "caption");
+            builder.OpenElement(440, "p");
+            builder.AddAttribute(450, "class", "munin-explorer-list-menu__note");
             builder.AddAttribute(460, "role", "status");
             builder.AddAttribute(470, "aria-live", "polite");
             builder.AddAttribute(480, "aria-atomic", "true");
@@ -143,16 +153,30 @@ public partial class VariableSearch
         builder.CloseElement();
     };
 
-    private void AddDownloadButton(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, int sequence, ExportFormat format, string text)
+    private void AddDownloadButton(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, int sequence, ExportFormat format, string text, string fileType)
     {
         builder.OpenElement(sequence, "button");
-        builder.AddAttribute(sequence + 1, "class", "hd-button-square button-square--ghost-blue");
+        builder.AddAttribute(sequence + 1, "class", "munin-explorer-list-menu__item");
         builder.AddAttribute(sequence + 2, "type", "button");
         builder.AddAttribute(sequence + 3, "aria-disabled", DownloadReady ? null : "true");
         builder.AddAttribute(sequence + 4, "aria-busy", _downloadingFormat == format ? "true" : null);
         builder.AddAttribute(sequence + 5, "aria-describedby", WarnDownload ? DownloadWarningId : null);
         builder.AddAttribute(sequence + 6, "onclick", EventCallback.Factory.Create(this, () => DownloadSelectionAsync(format)));
-        builder.AddContent(sequence + 7, _downloadingFormat == format ? DownloadStatus : text);
+        if (_downloadingFormat == format)
+        {
+            builder.AddContent(sequence + 7, DownloadStatus);
+        }
+        else
+        {
+            builder.AddContent(sequence + 8, text);
+            builder.OpenElement(sequence + 9, "span");
+            builder.AddAttribute(sequence + 10, "class", "munin-explorer-list-menu__hint");
+            // The format is the row's name; the file type is a detail for the eye, not a second word to hear.
+            builder.AddAttribute(sequence + 11, "aria-hidden", "true");
+            builder.AddContent(sequence + 12, fileType);
+            builder.CloseElement();
+        }
+
         builder.CloseElement();
     }
 
@@ -196,6 +220,12 @@ public partial class VariableSearch
             var file = await Client.ExportVariablesAsync(query.Search, query.Filter, ExplorerPageUrl, format, _includeKodeverk);
             await BrowserDownload.OfferAsync(ServiceProvider.GetRequiredService<IJSRuntime>(), file);
             _downloadDoneFor = query;
+
+            if (DownloadPanel.ClosesOnDelivery)
+            {
+                _downloadOpen = false;
+                await _downloadToggle.FocusAsync();
+            }
         }
         catch (MuninExplorerRateLimitedException ex)
         {

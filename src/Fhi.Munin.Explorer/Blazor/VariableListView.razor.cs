@@ -1635,6 +1635,12 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
             // The file holds the rows of the filter it was asked with; beside other rows it is not called ready.
             _downloadDone = madeFor == (_shownList, State?.KildeFilterVersion);
+
+            if (DownloadPanel.ClosesOnDelivery && _downloadOpen)
+            {
+                _downloadOpen = false;
+                _menuFocus = MenuFocus.DownloadToggle;
+            }
         }
         catch (MuninExplorerRateLimitedException ex)
         {

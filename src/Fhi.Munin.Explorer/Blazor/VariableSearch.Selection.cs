@@ -460,6 +460,7 @@ public partial class VariableSearch
     }
 
     private ExplorerInterop? _interop;
+    private bool _foldsWatched;
 
     // After every render: the half-ticks follow the filter, and markup alone cannot set them. Only from
     // OnAfterRenderAsync, which prerender never reaches, so there is a browser to ask. (Fhi.Metadata-cjezd)
@@ -475,6 +476,13 @@ public partial class VariableSearch
         if (await interop.TryLoadAsync())
         {
             await interop.MarkMixedAsync(FacetsId);
+
+            // Here rather than in the list view, which is only ever drawn inside this one's tab.
+            if (!_foldsWatched)
+            {
+                await interop.WatchFoldsAsync();
+                _foldsWatched = true;
+            }
         }
 
         // Disposal can land during the awaits above, which the renderer does not wait for.

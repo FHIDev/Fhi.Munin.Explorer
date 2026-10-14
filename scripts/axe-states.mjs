@@ -875,11 +875,19 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // «Last ned utvalg» open beside «Kolonner»: menu rows, their hints and the check row (Fhi.Metadata-ht2gj).
+  'search-download-open': async page => {
+    await rowsArePresent(page, 'button.munin-explorer-dataitem-main__name');
+    await page.locator('.munin-explorer-header__actions > .munin-explorer-list-menu > button').first().click();
+    await page.getByRole('button', { name: 'Excel', exact: true })
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+
   'list-download-and-columns': async page => {
     await states['explorer-list-tab'](page);
     await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer__dropdown > summary').click();
     await press(page, 'Last ned');
-    await page.getByRole('button', { name: 'Last ned som Excel', exact: true })
+    await page.getByRole('button', { name: 'Excel', exact: true })
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 

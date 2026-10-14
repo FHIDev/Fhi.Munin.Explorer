@@ -162,6 +162,16 @@ public sealed partial class VariableListView
         return EmptyListAsync();
     }
 
+    // Why a refused row refuses, at its end. aria-hidden: the row's aria-describedby already says it once.
+    private RenderFragment? EmptyHint() => !ShownListIsEmpty ? null : builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", "munin-explorer-list-menu__hint");
+        builder.AddAttribute(2, "aria-hidden", "true");
+        builder.AddContent(3, T.ListIsEmpty);
+        builder.CloseElement();
+    };
+
     private ElementReference? TakeMenuFocusTarget()
     {
         var focus = _menuFocus;

@@ -48,7 +48,7 @@ export const assertions = [
   {
     name: 'saved-list menu controls receive pointer input',
     kind: 'pin',
-    states: ['list-actions-menu', 'list-actions-and-columns', 'list-download-and-columns'],
+    states: ['list-actions-menu', 'list-actions-and-columns', 'list-download-and-columns', 'search-download-open'],
     body: () => {
       const panels = [...document.querySelectorAll('.munin-explorer-list-menu__panel:not([hidden])')]
         .filter(panel => panel.getBoundingClientRect().width > 0);
