@@ -29,6 +29,24 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.5.0 — 2026-10-15
+
+### Changed
+
+- **The kildeutforsker's Variabler column shows «–» for every kilde with no variables in Munin.** A kilde with no variables and no «Variabelreferanse» used to show 0 beside the «–» of one with a reference, which read as two different facts. Both now show «–», announced as "Ingen variabler i Munin" / "No variables in Munin"; a kilde with variables keeps its count, and the kilde's own page is unchanged. (Fhi.Metadata-db81e)
+- **The download and «Flere valg» menus look and behave like helsedata's own menus.** «Last ned utvalg» moves into the column picker's row, beside «Kolonner», dressed as it is: their ghost square button, a download icon and their chevron for open and closed. Its choices are menu rows that read «Excel» and «CSV», with the file type small at the end. The saved list's «Last ned» has the same rows.
+- **«Flere valg» lists what changes or shares the list first, then what removes something, behind a rule.** The order is Gi nytt navn, Del liste, Kopier liste, Åpne delt liste, then Tøm liste and Slett listen, as «Logg ut» stands last in helsedata's profile menu. A refused row is dimmed and says why at its end («Listen er tom»). The two-step confirmations stay inside the menu.
+- **A press outside an open menu closes it, and a delivered file closes the download menu.** This is what helsedata's own menus do; Tabbing out of a menu leaves it open, as theirs does, and Escape still closes it. When the file has been handed to the browser, the download menu closes and focus returns to its button.
+
+### Fixed
+
+- **Variable codes are no longer marked as Norwegian.** The code column in the variable search and the code under a variable's name in a saved list carried `lang="no"`, so a screen reader read an identifier such as V_BDR.ALDER with a Norwegian voice. Codes are now unmarked, as `CatalogueProperties.Foreign` already said they should be; names, kilder, datasamlinger and themes stay marked Norwegian. (Fhi.Metadata-e1qeo)
+
+### Notes for hosts
+
+- **The menus wear six new names, styled by Fhi.Helsedata.Stiler 0.1.178.** `munin-explorer-list-menu__panel--rows` takes the panel's own padding off. Each choice is a `munin-explorer-list-menu__item` row, and `munin-explorer-list-menu__item--apart` puts a rule above the first row that removes something. `munin-explorer-list-menu__hint` is the small text at a row's end. `munin-explorer-list-menu__note` is a line of text in the panel (the size warning, the status, a confirmation's question). `munin-explorer-list-menu__check` is the «Ta med kodeverk» row. A host on Stiler 0.1.178 or later needs nothing more; on an older Stiler the rows are bare buttons stacked in the panel, and the hint runs on after the row's word.
+- **«Last ned utvalg» now sits inside `.munin-explorer-header__actions`, ahead of the column picker's `<details>`.** A host that styles that row positions this menu with it. The press-outside behaviour is in the package's own `explorer-interop.js` and needs nothing from the host.
+
 ## 2.4.0 — 2026-10-14
 
 ### Fixed
