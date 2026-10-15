@@ -713,6 +713,19 @@ internal static class CatalogueProperties
         return slots.Count == 0 ? null : slots;
     }
 
+    /// <summary>Every text a language-tagged list holds, whatever its language; empty where the value is not one.</summary>
+    internal static IReadOnlyList<string> TaggedTexts(string? raw)
+    {
+        using var document = raw is null ? null : Structured(raw);
+
+        return document?.RootElement.ValueKind is JsonValueKind.Array
+            ? [.. document.RootElement.EnumerateArray()
+                  .Select(element => Entry(element).Text)
+                  .Where(text => !string.IsNullOrWhiteSpace(text))
+                  .Select(text => text!)]
+            : [];
+    }
+
     /// <summary>One entry of a language-tagged list, as its text and the language it claims.</summary>
     private static (string? Text, string Language) Entry(JsonElement element) => element.ValueKind switch
     {

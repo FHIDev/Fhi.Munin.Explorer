@@ -132,9 +132,9 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
            .First(button => button.TextContent.Contains(name, StringComparison.Ordinal))
            .Click();
 
-    /// <summary>The way out of a kilde view, which is a button and moves no address of its own.</summary>
-    private static void CloseTheDrillIn(IRenderedComponent<KildeExplorer> cut) =>
-        cut.Find(".munin-explorer-drilldown > button").Click();
+    /// <summary>The way out of a kilde view: the trail's step back to the list (Fhi.Metadata-esf2i).</summary>
+    private void CloseTheDrillIn(IRenderedComponent<KildeExplorer> cut) =>
+        Navigation.NavigateTo(cut.Find("nav.breadcrumbs a").GetAttribute("href")!);
 
     [Fact]
     public void Mirror_WhenTheReaderJumpsToASectionOfTheOpenKilde_ThenTheAddressStillNamesIt()
@@ -179,8 +179,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}#{DetailSectionIds.Metadata}", Mirrored()));
 
-        // Back to the list is a button, not a link: this component's own state moves and no
-        // navigation builds a fresh mirror, so it is the press the drop rule exists for.
+        // Back to the list by the trail, a navigation to the list's own address.
         CloseTheDrillIn(cut);
 
         cut.WaitForAssertion(() => Assert.Equal("/kilder", Mirrored()));

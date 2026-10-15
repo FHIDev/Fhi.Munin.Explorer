@@ -814,9 +814,7 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         var cut = RenderKilder(id, $"http://localhost/optimizely/kilder?kilde={id}");
 
-        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
-
-        Assert.Equal("/optimizely/kilder", Mirrored());
+        Assert.Equal("/optimizely/kilder", TrailBack(cut));
     }
 
     [Fact]
@@ -828,9 +826,7 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         var cut = RenderKilder(id, $"http://localhost/kilder?search=als&kilde={id}");
 
-        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
-
-        Assert.Equal("/kilder?search=als", Mirrored());
+        Assert.Equal("/kilder?search=als", TrailBack(cut));
     }
 
     /// <summary>Sort the list the way a reader does: press the column's own heading.</summary>
@@ -1076,9 +1072,7 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}&sort=Variables");
 
-        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
-
-        Assert.Equal("/kilder?sort=Variables", Mirrored());
+        Assert.Equal("/kilder?sort=Variables", TrailBack(cut));
     }
 
     [Theory]
@@ -1150,6 +1144,10 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// standing, exactly as it is on helsedata once the circuit is up.
     /// </remarks>
     private void Move(string url) => Navigation.NavigateTo(url);
+
+    // Out of an open kilde by the trail: KildeExplorer draws no button beside it (Fhi.Metadata-esf2i).
+    private static string TrailBack<T>(IRenderedComponent<T> cut) where T : IComponent =>
+        cut.Find("nav.breadcrumbs a").GetAttribute("href")!;
 
     /// <summary>Every navigation this test's browser has made, so one nobody asked for is visible.</summary>
     private int Moves => ((BunitNavigationManager)Navigation).History.Count;
@@ -1306,9 +1304,7 @@ public class UrlStateComponentTest : ExplorerTestContext
             cut.Find("a.munin-explorer-hierarchy__open").GetAttribute("href"));
 
         // And the next owned change writes the host's new value back rather than erasing it.
-        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
-
-        Assert.Equal("/kilder?utm_source=b", Mirrored());
+        Assert.Equal("/kilder?utm_source=b", TrailBack(cut));
     }
 
     [Fact]
@@ -1395,7 +1391,7 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-hierarchy")));
 
-        cut.FindAll("button").First(button => button.TextContent.Contains("Tilbake", StringComparison.Ordinal)).Click();
+        Move(TrailBack(cut));
 
         cut.FindAll(".munin-explorer-kilder__name")[1].Click();
 
