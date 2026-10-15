@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import { isFirstShard, ownsItem, parseShard } from './scan-shard.mjs';
 
 test('unset takes every item, so a local run is unchanged', () => {
-  assert.deepEqual(parseShard(undefined), { index: 1, count: 1 });
+  // '' and not undefined: an explicit undefined takes the default, which is CI's own SCAN_SHARD.
   assert.deepEqual(parseShard(''), { index: 1, count: 1 });
-  assert.ok([0, 1, 2, 3].every(i => ownsItem(i, parseShard(undefined))));
+  assert.ok([0, 1, 2, 3].every(i => ownsItem(i, parseShard(''))));
 });
 
 test('three shards take every item exactly once between them', () => {
@@ -24,5 +24,5 @@ test('a malformed value is refused rather than read as all or none', () => {
 });
 
 test('only shard 1 is the first, which prints the n/a lines and measures the reflow', () => {
-  assert.deepEqual([undefined, '1/3', '2/3', '3/3'].map(raw => isFirstShard(parseShard(raw))), [true, true, false, false]);
+  assert.deepEqual(['', '1/3', '2/3', '3/3'].map(raw => isFirstShard(parseShard(raw))), [true, true, false, false]);
 });
