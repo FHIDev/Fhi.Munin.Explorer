@@ -27,12 +27,32 @@ internal sealed class KildeTypeVocabulary
         return fetch;
     }
 
+    /// <summary>
+    /// Takes the caller's own filters request for <paramref name="language"/> while it is still in flight, so a view
+    /// it mounts awaits that one instead of asking again. The language is the request's, not the reader's current one.
+    /// </summary>
+    internal void Share(string? language, Task<FilterOptions> request) =>
+        _byLanguage[ReaderLanguage.ForApi(language)] = KildeTyperOf(request);
+
     /// <summary>Takes a payload the caller already holds, so a view it mounts names the kildetype from the same one.</summary>
     internal void Seed(string? language, FilterOptions? facets)
     {
         if (facets is not null)
         {
             _byLanguage[ReaderLanguage.ForApi(language)] = Task.FromResult(facets.KildeTyper ?? []);
+        }
+    }
+
+    private static async Task<IReadOnlyList<KildetypeFacet>> KildeTyperOf(Task<FilterOptions> request)
+    {
+        try
+        {
+            return (await request).KildeTyper ?? [];
+        }
+        catch
+        {
+            // The caller that owns the request logs its failure; here it only means the shipped table answers.
+            return [];
         }
     }
 

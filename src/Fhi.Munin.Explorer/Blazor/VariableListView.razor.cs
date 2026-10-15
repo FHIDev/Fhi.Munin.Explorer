@@ -796,13 +796,22 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             return;
         }
 
+        // The request's language, captured before the await: the host may switch Language while it is in flight.
+        var language = Language;
+
         try
         {
             // Search and filter left at their defaults on purpose - see the remarks above.
-            var facets = await Client.GetFiltersAsync(
-                language: ReaderLanguage.ForApi(Language));
+            var request = Client.GetFiltersAsync(language: ReaderLanguage.ForApi(language));
 
-            _kildeTypes.Seed(Language, facets);
+            _kildeTypes.Share(language, request);
+
+            var facets = await request;
+
+            if (!string.Equals(language, Language, StringComparison.Ordinal))
+            {
+                return;
+            }
 
             _dataTypeNames = facets.DataTypes
                 .Where(d => !string.IsNullOrWhiteSpace(d.Value)
@@ -810,7 +819,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 .GroupBy(d => d.Value!, StringComparer.Ordinal)
                 .ToDictionary(g => g.Key, g => g.First().DisplayName!, StringComparer.Ordinal);
 
-            _dataTypeNamesLanguage = Language;
+            _dataTypeNamesLanguage = language;
             StateHasChanged();
         }
         catch (Exception ex)
@@ -818,10 +827,10 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // Warning, not Error: the reader sees the raw codes rather than nothing. Recorded as
             // attempted for this language, so a failing endpoint is asked once rather than on
             // every parameter change.
-            Log?.LogWarning(ex, "could not load the datatype names for {Language}", Language);
+            Log?.LogWarning(ex, "could not load the datatype names for {Language}", language);
 
             _dataTypeNames = new Dictionary<string, string>(StringComparer.Ordinal);
-            _dataTypeNamesLanguage = Language;
+            _dataTypeNamesLanguage = language;
         }
     }
 

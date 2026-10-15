@@ -280,4 +280,58 @@ public class KildeTypeFromApiTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Contains(ApiEnglish, cut.Markup));
         Assert.Equal(["nb", "en"], client.Languages);
     }
+
+    private static FilterOptions Answer(string name) =>
+        new() { KildeTyper = [new KildetypeFacet { Value = Token, DisplayName = name }] };
+
+    // Copilot on #575: a Norwegian answer that arrives after the switch to English must stay under Norwegian.
+    [Fact]
+    public void Vocabulary_WhenTwoLanguagesAnswerOutOfOrder_ThenEachKeepsItsOwnWord()
+    {
+        var vocabulary = new KildeTypeVocabulary();
+        var norwegian = new TaskCompletionSource<FilterOptions>();
+        var english = new TaskCompletionSource<FilterOptions>();
+
+        vocabulary.Share("no", norwegian.Task);
+        vocabulary.Share("en", english.Task);
+        english.SetResult(Answer(ApiEnglish));
+        norwegian.SetResult(Answer(ApiNorwegian));
+
+        Assert.Equal(ApiEnglish, vocabulary.ApiName("en", Token));
+        Assert.Equal(ApiNorwegian, vocabulary.ApiName("no", Token));
+    }
+
+    // Copilot on #575: a child view mounted while the parent's request is in flight awaits that request.
+    [Fact]
+    public void Vocabulary_WhenTheParentsRequestIsInFlight_ThenAChildsLoadAwaitsItInsteadOfAskingAgain()
+    {
+        var vocabulary = new KildeTypeVocabulary();
+        var client = new FiltersClient();
+        var parents = new TaskCompletionSource<FilterOptions>();
+
+        vocabulary.Share("en", parents.Task);
+        var loading = vocabulary.Load(client, "en", log: null);
+
+        Assert.NotNull(loading);
+        Assert.Empty(client.Languages);
+
+        parents.SetResult(Answer(ApiEnglish));
+
+        Assert.Null(vocabulary.Load(client, "en", log: null));
+        Assert.Equal(ApiEnglish, vocabulary.ApiName("en", Token));
+        Assert.Empty(client.Languages);
+    }
+
+    [Fact]
+    public void Vocabulary_WhenTheParentsRequestFails_ThenTheShippedWordAnswers()
+    {
+        var vocabulary = new KildeTypeVocabulary();
+        var parents = new TaskCompletionSource<FilterOptions>();
+
+        vocabulary.Share("en", parents.Task);
+        parents.SetException(new HttpRequestException("down"));
+
+        Assert.Null(vocabulary.ApiName("en", Token));
+        Assert.Null(vocabulary.Load(new FiltersClient(), "en", log: null));
+    }
 }
