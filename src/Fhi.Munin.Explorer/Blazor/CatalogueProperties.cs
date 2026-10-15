@@ -542,14 +542,14 @@ internal static class CatalogueProperties
     private const string MultilingualTextType = "MultilingualText";
     private const string UrlType = "Url";
     private const string LangTaggedListType = "LangTaggedList";
-
-    private const string SourceSystemDayKey = "SistOppdatert";
     private const string MultiSelectType = "MultiSelect";
     private const string ObjectType = "Object";
 
     // The shape the view already draws the catalogue's own semicolon lists in, so unwrapping a
     // list into a row does not introduce a second way of showing one.
     private const string Separator = "; ";
+
+    private const string SourceSystemDayKey = "SistOppdatert";
 
     private static bool Typed(PropertyMetadataEntry entry, string type)
         => string.Equals(entry.Type, type, StringComparison.OrdinalIgnoreCase);

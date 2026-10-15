@@ -203,7 +203,7 @@ public partial class VariableSearch
     /// <summary>The bounds the reader has set, one value apiece.</summary>
     /// <remarks>
     /// Each names its own field rather than standing as a bare date: the two ends are drawn as one
-    /// facet, so "1. jan. 2020" alone does not say which of them it is.
+    /// facet, so "01.01.2020" alone does not say which of them it is.
     /// </remarks>
     private IReadOnlyList<FacetValue> ChosenDates()
     {
@@ -226,8 +226,7 @@ public partial class VariableSearch
 
     /// <summary>One bound, written the way the reader's own language writes a day.</summary>
     /// <remarks>
-    /// Unmarked, since the field's name and the date are both in the reader's language; narrow, so a
-    /// chip reads like the results.
+    /// Unmarked, since the field's name and the date are both in the reader's language.
     /// </remarks>
     private FacetValue DateValue(string key, string field, DateOnly date, Func<Task> clear) =>
         new(key,
