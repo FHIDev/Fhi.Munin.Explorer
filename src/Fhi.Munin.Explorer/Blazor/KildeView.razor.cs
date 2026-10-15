@@ -292,6 +292,19 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("Formaal");
         }
 
+        // The ingress already says it word for word: K_BIV on test, in both keys (Fhi.Metadata-esf2i).
+        if (Filled(kilde, "Formaal") && SameText(kilde.AdditionalProperties["Formaal"], kilde.Description))
+        {
+            keys.Add("Formaal");
+        }
+
+        if (Filled(kilde, "FormaalFlerspraklig")
+            && CatalogueProperties.TaggedTexts(kilde.AdditionalProperties["FormaalFlerspraklig"]) is { Count: > 0 } purposes
+            && purposes.All(purpose => SameText(purpose, kilde.Description)))
+        {
+            keys.Add("FormaalFlerspraklig");
+        }
+
         // Drawn as the Variables section's sentence, where a caller passes that section.
         if (ReferenceLinked)
         {
@@ -300,6 +313,13 @@ public sealed partial class KildeView : ComponentBase
 
         return keys;
     }
+
+    // Nothing on either side is nothing to compare, not the same text.
+    private static bool SameText(string? a, string? b) =>
+        Plain(a) is { Length: > 0 } plain && string.Equals(plain, Plain(b), StringComparison.OrdinalIgnoreCase);
+
+    private static string Plain(string? text) =>
+        string.Join(' ', (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
 
     // AdditionalProperties is declared non-nullable but System.Text.Json writes an explicit JSON
     // null straight over it (see Rows_WhenTheBagIsNull_ThenThereAreNoRowsRatherThanAThrow), so a

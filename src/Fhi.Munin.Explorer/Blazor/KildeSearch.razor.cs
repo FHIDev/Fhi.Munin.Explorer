@@ -679,6 +679,8 @@ public sealed partial class KildeSearch : ComponentBase
     // WCAG 4.1.1 failure as well as breaking label association.
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
+    private bool _backFocused;
+
     private string TitleId => $"munin-explorer-title-{_instance}";
     private string SearchId => $"munin-explorer-search-{_instance}";
     private string DetailId => $"munin-explorer-detail-{_instance}";
@@ -991,6 +993,7 @@ public sealed partial class KildeSearch : ComponentBase
     /// </remarks>
     private async Task CloseAsync()
     {
+        _backFocused = false;
         _detailGeneration++;
         _selectedId = null;
         _selectedName = null;
@@ -1007,6 +1010,7 @@ public sealed partial class KildeSearch : ComponentBase
     {
         var generation = ++_detailGeneration;
 
+        _backFocused = false;
         _kilde = null;
         _detailError = null;
         _detailLoading = true;
@@ -1188,7 +1192,8 @@ public sealed partial class KildeSearch : ComponentBase
     private RenderFragment Heading => builder =>
     {
         builder.OpenElement(0, $"h{TitleLevel}");
-        builder.AddAttribute(1, "class", "headline headline-3");
+        // Kept for the landmark's name over an open kilde, where the page already reads as the kilde's.
+        builder.AddAttribute(1, "class", _selectedId is null ? "headline headline-3" : "headline headline-3 screenreader-only");
         builder.AddAttribute(2, "id", TitleId);
         builder.AddContent(3, T.KildeTitle);
         builder.CloseElement();
