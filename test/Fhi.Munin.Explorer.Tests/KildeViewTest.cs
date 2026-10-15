@@ -200,16 +200,42 @@ public class KildeViewTest : ExplorerTestContext
         });
 
     [Fact]
-    public void Eyebrow_Always_ThenItNamesTheKindOfPageAndIsNotAHeading()
+    public void Eyebrow_Never_ThenTheNameIsTheFirstThingUnderTheTrail()
     {
-        // The eyebrow is above the title and is a <p>: rendered as an <h*> it would be a second
-        // title in the outline, naming a category rather than the thing on screen. Both languages,
-        // because a word that only translates in one of them reads as the component's own noise.
-        var eyebrow = Render(Kilde()).Find(".munin-explorer-page__eyebrow");
+        // «Datakilde» over every kilde's name said what the trail and the page already did (Fhi.Metadata-esf2i).
+        Assert.Empty(Render(Kilde()).FindAll(".munin-explorer-page__eyebrow"));
+        Assert.Empty(Render(Kilde(), language: "en").FindAll(".munin-explorer-page__eyebrow"));
+    }
 
-        Assert.Equal("P", eyebrow.TagName);
-        Assert.Equal("Datakilde", eyebrow.TextContent.Trim());
-        Assert.Equal("Data source", Render(Kilde(), language: "en").Find(".munin-explorer-page__eyebrow").TextContent.Trim());
+    // K_BIV on test: Beskrivelse and Formaal are the same paragraph, so it was read twice (Fhi.Metadata-esf2i).
+    [Theory]
+    [InlineData("Kvalitetssikring av behandlingen.")]
+    [InlineData("  Kvalitetssikring   av\nbehandlingen ")]
+    [InlineData("kvalitetssikring av behandlingen")]
+    public void Formaal_WhenItSaysWhatTheIngressSays_ThenTheTextIsDrawnOnce(string formaal)
+    {
+        var kilde = Kilde() with
+        {
+            Description = "Kvalitetssikring av behandlingen.",
+            AdditionalProperties = new Dictionary<string, string?> { ["Formaal"] = formaal },
+        };
+
+        var markup = Render(kilde).Markup;
+
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(markup, "(?i)kvalitetssikring"));
+        Assert.DoesNotContain("Formål med registeret", markup);
+    }
+
+    [Fact]
+    public void Formaal_WhenItSaysMoreThanTheIngress_ThenBothAreDrawn()
+    {
+        var kilde = Kilde() with { Description = "Norsk register for ALS." };
+
+        var markup = Render(kilde).Markup;
+
+        Assert.Contains("Norsk register for ALS.", markup);
+        Assert.Contains("Kvalitetssikring av behandlingen.", markup);
+        Assert.Contains("Formål med registeret", markup);
     }
 
     [Fact]
@@ -433,7 +459,6 @@ public class KildeViewTest : ExplorerTestContext
             "munin-explorer-page__body",
             // The word above the name block saying what kind of thing this page is about. A <p>,
             // so the outline a screen reader navigates by is the one the view already had.
-            "munin-explorer-page__eyebrow",
             // The hero row under the name block. Always drawn on a source: two of its six facts
             // fall back to Texts.NotSpecified rather than to nothing, so there is no source thin
             // enough to leave the list out.

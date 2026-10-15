@@ -16683,9 +16683,7 @@ public class VariableSearchTest : ExplorerTestContext
                 "munin-explorer-page__stuckbar",
                 "munin-explorer-page__stuckbar-inner",
                 "munin-explorer-page__stuckbar-name",
-                // The chassis's eyebrow, above the name block: this view draws one on every
-                // detail page, the drill-in panel's included.
-                "munin-explorer-page__eyebrow",
+                // No eyebrow: a kilde's page names no category above its name (Fhi.Metadata-esf2i).
                 "munin-explorer-kilde__header",
                 "munin-explorer-kilde__identifiers",
                 "munin-explorer-kilde__description",

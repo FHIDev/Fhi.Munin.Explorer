@@ -292,6 +292,12 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("Formaal");
         }
 
+        // The ingress already says it word for word: K_BIV on test (Fhi.Metadata-esf2i).
+        if (Filled(kilde, "Formaal") && SameText(kilde.AdditionalProperties["Formaal"], kilde.Description))
+        {
+            keys.Add("Formaal");
+        }
+
         // Drawn as the Variables section's sentence, where a caller passes that section.
         if (ReferenceLinked)
         {
@@ -304,6 +310,12 @@ public sealed partial class KildeView : ComponentBase
     // AdditionalProperties is declared non-nullable but System.Text.Json writes an explicit JSON
     // null straight over it (see Rows_WhenTheBagIsNull_ThenThereAreNoRowsRatherThanAThrow), so a
     // host substituting its own client can still hand this a null dictionary.
+    private static bool SameText(string? a, string? b) =>
+        string.Equals(Plain(a), Plain(b), StringComparison.OrdinalIgnoreCase);
+
+    private static string Plain(string? text) =>
+        string.Join(' ', (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
+
     private static bool Filled(KildeDetail kilde, string key) =>
         kilde.AdditionalProperties?.TryGetValue(key, out var value) is true && !string.IsNullOrWhiteSpace(value);
 

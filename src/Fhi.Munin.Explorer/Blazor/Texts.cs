@@ -173,7 +173,6 @@ internal sealed record Texts(
     // The eyebrow over a detail page's title, naming what kind of thing the page is about. Their
     // own strings rather than a reuse of FieldDataCollection, whose identical Norwegian word is a
     // fact list's label and free to be reworded without the page's kind changing.
-    string EyebrowKilde,
     string EyebrowDatasamling,
     string EyebrowVariable,
     string EyebrowInstrument,
@@ -1205,7 +1204,6 @@ internal sealed record Texts(
         FieldVariableCount: "Antall variabler",
         FieldDataCollections: "Antall datasamlinger",
         HeadingContents: "Innhold",
-        EyebrowKilde: "Datakilde",
         EyebrowDatasamling: "Datasamling",
         EyebrowVariable: "Variabel",
         EyebrowInstrument: "Instrument",
@@ -1743,7 +1741,6 @@ internal sealed record Texts(
         FieldVariableCount: "Number of variables",
         FieldDataCollections: "Number of data collections",
         HeadingContents: "Contents",
-        EyebrowKilde: "Data source",
         EyebrowDatasamling: "Data collection",
         EyebrowVariable: "Variable",
         EyebrowInstrument: "Instrument",

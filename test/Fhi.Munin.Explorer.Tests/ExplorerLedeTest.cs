@@ -138,4 +138,29 @@ public class ExplorerLedeTest : ExplorerTestContext
         Assert.Equal("<b>fet</b>", lede.TextContent);
         Assert.Empty(lede.Children);
     }
+
+    // An open kilde is the kilde's page: the list's title and introduction sat above its details (Fhi.Metadata-esf2i).
+    [Fact]
+    public void Lede_WhenAKildeIsOpen_ThenNeitherItNorAVisibleTitleIsDrawnAndBothComeBackOnTheList()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient());
+        Services.AddScoped<VariableListState>();
+        SetRendererInfo(new RendererInfo("Server", true));
+
+        var cut = Render<KildeSearch>(b => b.Add(c => c.Language, "no").Add(c => c.Lede, Lede));
+
+        cut.WaitForElement(".munin-explorer-kilder tbody th button").Click();
+
+        var section = cut.Find("section.munin-explorer");
+        var title = cut.Find($"#{section.GetAttribute("aria-labelledby")}");
+
+        Assert.Empty(cut.FindAll(".munin-explorer__lede"));
+        Assert.Contains("screenreader-only", title.ClassList);
+        Assert.Equal("Kildeutforsker", title.TextContent.Trim());
+
+        cut.Find(".munin-explorer-drilldown > button").Click();
+
+        Assert.Equal(Lede, cut.Find(".munin-explorer__lede").TextContent.Trim());
+        Assert.DoesNotContain("screenreader-only", cut.Find($"#{section.GetAttribute("aria-labelledby")}").ClassList);
+    }
 }

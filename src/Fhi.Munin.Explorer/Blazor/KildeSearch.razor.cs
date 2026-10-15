@@ -1188,7 +1188,8 @@ public sealed partial class KildeSearch : ComponentBase
     private RenderFragment Heading => builder =>
     {
         builder.OpenElement(0, $"h{TitleLevel}");
-        builder.AddAttribute(1, "class", "headline headline-3");
+        // Kept for the landmark's name over an open kilde, where the page already reads as the kilde's.
+        builder.AddAttribute(1, "class", _selectedId is null ? "headline headline-3" : "headline headline-3 screenreader-only");
         builder.AddAttribute(2, "id", TitleId);
         builder.AddContent(3, T.KildeTitle);
         builder.CloseElement();

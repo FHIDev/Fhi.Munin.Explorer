@@ -58,8 +58,9 @@
        outline unbroken is only knowable at the mount site. *@
     @Heading
     @* Nothing at all without text: Stiler opens the lede's grid row on :has(> .munin-explorer__lede),
-       so an empty element would still push the filters and results down. (Fhi.Metadata-35w0p.32) *@
-    @if (!string.IsNullOrWhiteSpace(Lede))
+       so an empty element would still push the filters and results down. (Fhi.Metadata-35w0p.32)
+       Not over an open kilde either: the list's introduction sat above its details (Fhi.Metadata-esf2i). *@
+    @if (_selectedId is null && !string.IsNullOrWhiteSpace(Lede))
     {
         <p class="munin-explorer__lede">@Lede</p>
     }
@@ -92,8 +93,9 @@
             <a class="hd-button-square button-square--ghost-blue margin-bottom"
                href="@kildeHref">@T.BackToKilde</a>
         }
-        else
+        else if (KildeTrail.Count == 0)
         {
+            @* Only without a trail: its first step is the same way back, kept in the address. *@
             <button class="hd-button-square button-square--ghost-blue margin-bottom"
                     type="button"
                     @onclick="CloseAsync">@T.BackToKilder</button>
