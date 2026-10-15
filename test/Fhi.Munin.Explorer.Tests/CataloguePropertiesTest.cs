@@ -506,6 +506,31 @@ public class CataloguePropertiesTest
         Assert.Equal(expected, row.Label);
     }
 
+    // «Sist oppdatert (kildesystem) 20200302» on 68 of 98 kilder and their datasamlinger on test (Fhi.Metadata-49ahq).
+    [Theory]
+    [InlineData("20200302", "no", "2. mars 2020")]
+    [InlineData(" 20200302 ", "en", "2 March 2020")]
+    [InlineData("20260231", "no", "20260231")]
+    [InlineData("mars 2020", "no", "mars 2020")]
+    public void Rows_WhenSistOppdatertHoldsASourceSystemDay_ThenItReadsAsTheReadersDate(string raw, string reader, string expected)
+    {
+        Dictionary<string, string?> values = new() { ["SistOppdatert"] = raw };
+
+        var row = Assert.Single(CatalogueProperties.Rows([Entry("SistOppdatert", 10, "Alle metadatafelt", type: "String")], values, reader));
+
+        Assert.Equal(expected, Assert.Single(row.Values).Text.Trim());
+    }
+
+    [Fact]
+    public void Rows_WhenAnotherKeyHoldsEightDigits_ThenTheyAreLeftAsGiven()
+    {
+        Dictionary<string, string?> values = new() { ["Orgnr"] = "20200302" };
+
+        var row = Assert.Single(CatalogueProperties.Rows([Entry("Orgnr", 10, "Alle metadatafelt", type: "String")], values, "no"));
+
+        Assert.Equal("20200302", Assert.Single(row.Values).Text);
+    }
+
     [Fact]
     public void Groups_WhenTheGroupNameCarriesTheCataloguesStorageQualifier_ThenItIsStrippedToo()
     {

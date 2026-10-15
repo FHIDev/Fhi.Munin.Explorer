@@ -542,6 +542,8 @@ internal static class CatalogueProperties
     private const string MultilingualTextType = "MultilingualText";
     private const string UrlType = "Url";
     private const string LangTaggedListType = "LangTaggedList";
+
+    private const string SourceSystemDayKey = "SistOppdatert";
     private const string MultiSelectType = "MultiSelect";
     private const string ObjectType = "Object";
 
@@ -566,6 +568,13 @@ internal static class CatalogueProperties
         if (Typed(entry, ObjectType))
         {
             return null;
+        }
+
+        // Typed String, written yyyyMMdd; the kilde list's column already reads it so (Fhi.Metadata-49ahq).
+        if (string.Equals(entry.Key, SourceSystemDayKey, StringComparison.Ordinal)
+            && CatalogueDate.SourceSystemDay(raw, reader) is { } day && day != raw.Trim())
+        {
+            return [new LocalisedText(day, reader)];
         }
 
         var bag =
