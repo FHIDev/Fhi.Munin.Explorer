@@ -1585,8 +1585,8 @@ public partial class VariableListViewTest : ExplorerTestContext
             Assert.NotNull(Cell(key).QuerySelector("span[lang='no']"));
         }
 
-        // The code stands under the name now, and keeps the marking it had as a cell.
-        Assert.Equal("no", cut.Find("tbody th[scope=row] .munin-explorer-list-code").GetAttribute("lang"));
+        // The code stands under the name, unmarked: an identifier, not Norwegian (Fhi.Metadata-e1qeo).
+        Assert.Null(cut.Find("tbody th[scope=row] .munin-explorer-list-code").GetAttribute("lang"));
     }
 
     [Fact]

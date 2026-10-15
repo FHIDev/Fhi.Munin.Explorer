@@ -1,0 +1,2 @@
+category: Fixed
+- **Variable codes are no longer marked as Norwegian.** The code column in the variable search and the code under a variable's name in a saved list carried `lang="no"`, so a screen reader read an identifier such as V_BDR.ALDER with a Norwegian voice. Codes are now unmarked, as `CatalogueProperties.Foreign` already said they should be; names, kilder, datasamlinger and themes stay marked Norwegian. (Fhi.Metadata-e1qeo)

@@ -1240,10 +1240,13 @@ public class VariableSearchTest : ExplorerTestContext
     /// <summary>The columns whose values are the catalogue's Norwegian keep their marking.</summary>
     private static void AssertCatalogueCellsMarkedNorwegian(IRenderedComponent<VariableSearch> cut)
     {
-        foreach (var key in new[] { "code", "source", "dataCollection", "theme" })
+        foreach (var key in new[] { "source", "dataCollection", "theme" })
         {
             Assert.NotNull(Cell(cut, key).QuerySelector("span[lang='no']"));
         }
+
+        // A code is an identifier, not Norwegian to pronounce (CatalogueProperties.Foreign, Fhi.Metadata-e1qeo).
+        Assert.Empty(Cell(cut, "code").QuerySelectorAll("[lang]"));
     }
 
     [Fact]
