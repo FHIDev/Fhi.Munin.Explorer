@@ -117,28 +117,30 @@
 
            Neither arm is the third state, and that is deliberate: a datasamling that was asked for
            and did not arrive draws no view at all, and the status line above is what says why. *@
-        @if (_datasamling is { } datasamling)
-        {
-            <DatasamlingView Datasamling="datasamling"
-                             Language="@Language"
-                             HeadingLevel="@KildeLevel"
-                             HeadingId="@DetailHeadingId"
-                             KildeHref="@ParentKildeHref"
-                             VariablesHref="@DatasamlingVariablesHref?.Invoke(datasamling.Id)"
-                             Trail="@DatasamlingTrail(datasamling)" />
-        }
-        else if (_selectedDatasamlingId is null && _kilde is { } kilde)
-        {
-            @* Only the additional sections belong to this explorer; KildeView owns the hierarchy. *@
-            <KildeView Kilde="kilde"
-                       Language="@Language"
-                       HeadingLevel="@KildeLevel"
-                       HeadingId="@DetailHeadingId"
-                       Trail="@KildeTrail"
-                       DatasamlingHref="@NodeHref"
-                       NamedSections="@OwnSections(kilde)"
-                       Sections="@Sections" />
-        }
+        <CascadingValue Value="_kildeTypes" IsFixed="true">
+            @if (_datasamling is { } datasamling)
+            {
+                <DatasamlingView Datasamling="datasamling"
+                                 Language="@Language"
+                                 HeadingLevel="@KildeLevel"
+                                 HeadingId="@DetailHeadingId"
+                                 KildeHref="@ParentKildeHref"
+                                 VariablesHref="@DatasamlingVariablesHref?.Invoke(datasamling.Id)"
+                                 Trail="@DatasamlingTrail(datasamling)" />
+            }
+            else if (_selectedDatasamlingId is null && _kilde is { } kilde)
+            {
+                @* Only the additional sections belong to this explorer; KildeView owns the hierarchy. *@
+                <KildeView Kilde="kilde"
+                           Language="@Language"
+                           HeadingLevel="@KildeLevel"
+                           HeadingId="@DetailHeadingId"
+                           Trail="@KildeTrail"
+                           DatasamlingHref="@NodeHref"
+                           NamedSections="@OwnSections(kilde)"
+                           Sections="@Sections" />
+            }
+        </CascadingValue>
     </div>
 }
 else
@@ -774,7 +776,7 @@ else
                             }
                             @if (ColumnVisible(KildeColumn.Kildetype))
                             {
-                                <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
+                                <td>@KildeTypeName(kilde.Kildetype)</td>
                             }
                             <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
                             @* CatalogueLang and not Foreign: both are free text the catalogue wrote in Norwegian,

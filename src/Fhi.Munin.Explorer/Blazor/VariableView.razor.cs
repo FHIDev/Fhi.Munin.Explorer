@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -77,6 +79,16 @@ public sealed partial class VariableView : ComponentBase
 
     private Texts T => Texts.For(Language);
 
+    /// <summary>Optional, so a host that mounts this view without a client loses no more than the API's kildetype word.</summary>
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+
+    private readonly KildeTypeVocabulary _kildeTypes = new();
+
+    /// <summary>The explorer's own, when one mounted this view, so the view and its explorer say one word.</summary>
+    [CascadingParameter] private KildeTypeVocabulary? SharedKildeTypes { get; set; }
+
+    private KildeTypeVocabulary KildeTypes => SharedKildeTypes ?? _kildeTypes;
+
     private string Reader => ReaderLanguage.Of(Language);
 
     /// <summary>
@@ -152,9 +164,7 @@ public sealed partial class VariableView : ComponentBase
 
     /// <summary>Where the variable sits in the catalogue, as the open row's panel draws it.</summary>
     /// <remarks>
-    /// Derived once in <see cref="OnParametersSet"/> and held, because the contents nav asks the
-    /// same question as the block: the entry and the section it points at have to be answered by
-    /// one value rather than by two builds of it.
+    /// Held from <see cref="Rebuild"/>, because the contents nav and the block must answer from one value.
     /// </remarks>
     private IReadOnlyList<KildeTrailBlock.Crumb> Placement { get; set; } = [];
 
@@ -196,7 +206,7 @@ public sealed partial class VariableView : ComponentBase
                 (T.FacetKildeType,
                  string.IsNullOrWhiteSpace(variable.KildeType)
                      ? null
-                     : T.KildeTypeLabel(variable.KildeType, variable.KildeType),
+                     : KildeTypes.Name(T, Language, variable.KildeType),
                  false),
             ];
 
@@ -329,14 +339,27 @@ public sealed partial class VariableView : ComponentBase
     private IReadOnlySet<string> DrawnIds { get; set; } = new HashSet<string>();
 
     /// <inheritdoc />
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
+    {
+        Rebuild();
+
+        // Rebuilt once the word arrives, because the trail holds the step that carries it.
+        if (KildeTypes.Load(Services.GetService<IMuninExplorerClient>(), Language,
+                ExplorerLog.For<VariableView>(Services)) is { } loading)
+        {
+            await loading;
+            Rebuild();
+        }
+    }
+
+    private void Rebuild()
     {
         var variable = Variable;
 
-        // The kildetype is passed no facet name, and that is this view's answer rather than an
-        // omission: it holds no facet payload, so the trail falls back to the shipped table — the
-        // reading Kildeinformasjon below already uses, so the page cannot name one kildetype twice.
-        Placement = variable is null ? [] : KildeTrailBlock.Steps(variable, T, kildeTypeApiName: null);
+        // The same word Kildeinformasjon below reads, so the page cannot name one kildetype twice.
+        Placement = variable is null
+            ? []
+            : KildeTrailBlock.Steps(variable, T, KildeTypes.ApiName(Language, variable.KildeType));
         Datasamlinger = variable is null ? [] : KildeTrailBlock.NamedDatasamlinger(variable);
         Variabelgrupper = variable is null ? [] : KildeTrailBlock.NamedVariabelgrupper(variable);
 

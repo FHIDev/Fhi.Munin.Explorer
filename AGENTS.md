@@ -159,12 +159,19 @@ changed no visible text; what it bought is an edit to the master data reaching t
 first kildetype Munin adds reading the same on the facet button and the heading beneath it
 (`Fhi.Metadata-1b0ag`).
 
-The components a host mounts on their own — `KildeView`, `VariableView`, `DatasamlingView` — and
-the kildeutforsker's own facets are outside this: none of them fetches the filters endpoint, so
-`Texts.KildeTypeLabel` by value is all they have. Handing them a vocabulary is a public API change
-— a parameter each host must fill, or a filters call a mounting host did not ask to pay for — so it
-is filed as `Fhi.Metadata-vcxoc` rather than left as a sentence here, and it waits on whatever
-`Fhi.Metadata-6qy6l` settles for datatyper.
+The components a host mounts on their own — `KildeView`, `VariableView`, `DatasamlingView` — and the
+kildeutforsker's `KildeSearch` hold no filters payload, so each fetches the filters itself: once per
+mounted component and language, through `KildeTypeVocabulary`, and names the kildetype with
+`Texts.KildeTypeNameFromApi` from what came back. That is the decision of `Fhi.Metadata-vcxoc`,
+chosen over a parameter every host would have to fill. Mounted inside `VariableSearch`,
+`VariableListView` or `KildeSearch`, a view takes the explorer's vocabulary as a private cascading
+parameter instead — seeded from the facets the explorer already holds where it has them — so opening
+a row asks nothing more and the view says the word its explorer says. The three views resolve the
+client with `IServiceProvider.GetService` rather than a required `[Inject]`, because `VariableView`
+and `DatasamlingView` needed none before; with no client, a failed call, no `kildeTyper` or a blank
+or echoed `displayName`, every surface falls back to the shipped table through
+`Texts.KildeTypeLabel`. A failed call is not retried until the language changes or the component is
+mounted again: the fallback is the shipped word, not an error.
 
 ## Comments
 
