@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **The saved list's filter panel uses the search panel's fold names.** `VariableListFilters` now draws `munin-explorer-filters__toggle` («Vis filtre») and wraps its content in `munin-explorer-filters__facets`, hidden until the toggle is pressed, as `VariableSearch` and `KildeSearch` do. A host that already styles the search panel's fold (Fhi.Helsedata.Stiler does) needs nothing more; a host that does not shows the button and folds the panel at every width.

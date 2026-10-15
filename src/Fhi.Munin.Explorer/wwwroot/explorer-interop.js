@@ -424,4 +424,14 @@ export function watchFolds() {
       if (toggle && !menu.contains(event.target)) toggle.click();
     }
   }, true);
+
+  // A menu opened near the bottom edge put its panel below the fold on a phone, where the reader saw
+  // nothing happen (Fhi.Metadata-qlo45). Brought into view as it opens; 'nearest' leaves one already on screen be.
+  new MutationObserver(records => {
+    for (const { target } of records) {
+      if (target.matches?.('.munin-explorer-list-menu > .munin-explorer-list-menu__panel') && !target.hidden) {
+        requestAnimationFrame(() => target.scrollIntoView({ block: 'nearest' }));
+      }
+    }
+  }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
 }
