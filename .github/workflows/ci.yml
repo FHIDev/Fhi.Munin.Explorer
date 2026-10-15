@@ -430,19 +430,19 @@ jobs:
   # section - the gate's blind spots included - from being a sentence nobody checks. Its own job,
   # required on main since 2026-08-28, for the guards' reasons above.
   #
-  # Split three ways (SCAN_SHARD, scripts/scan-shard.mjs): one job scanning every page state in a row set the PR's
-  # wall clock. Each shard scans every third state; the 320px reflow runs in shard 1. The
+  # Split four ways (SCAN_SHARD, scripts/scan-shard.mjs): one job scanning every page state in a row set the PR's
+  # wall clock. Each shard scans every fourth state; the 320px reflow runs in shard 1. The
   # required check keeps its name: the "accessibility" job below passes only when every shard did. (Fhi.Metadata-ln1s6)
   accessibility-shard:
-    name: accessibility ${{ matrix.shard }}/3
+    name: accessibility ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     env:
-      SCAN_SHARD: ${{ matrix.shard }}/3
+      SCAN_SHARD: ${{ matrix.shard }}/4
     steps:
       - uses: actions/checkout@v7
 
@@ -489,18 +489,18 @@ jobs:
   # left 1477 unit tests green, because bUnit renders a render tree and the browser's own flip of a
   # checkbox never happens in one. (Fhi.Metadata-1s7z1)
   #
-  # Split three ways like accessibility: each shard runs every third (page, assertion) pair, each with its own
+  # Split four ways like accessibility: each shard runs every fourth (page, assertion) pair, each with its own
   # host and stub, so a hold one pair stages never meets another's. (Fhi.Metadata-ln1s6)
   component-state-shard:
-    name: state after a refused press ${{ matrix.shard }}/3
+    name: state after a refused press ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     env:
-      SCAN_SHARD: ${{ matrix.shard }}/3
+      SCAN_SHARD: ${{ matrix.shard }}/4
     steps:
       - uses: actions/checkout@v7
 
