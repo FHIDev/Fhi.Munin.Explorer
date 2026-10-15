@@ -9,7 +9,7 @@
 # alone on purpose — read that before adding a state, and before quoting this one either.
 #
 # Usage:  ./scripts/check-accessibility.sh   (SCAN_SHARD=k/n runs the k-th of n slices of the axe states, as
-#         CI does with 3, and the 320px reflow in slice 1 only; unset runs everything)
+#         CI does with 4, and the 320px reflow in slice 1 only; unset runs everything)
 # Needs:  dotnet, node (for npx), and a Chrome/Chromium on PATH.
 
 set -euo pipefail
