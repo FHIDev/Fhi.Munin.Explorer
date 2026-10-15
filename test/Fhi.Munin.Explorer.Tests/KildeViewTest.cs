@@ -226,6 +226,32 @@ public class KildeViewTest : ExplorerTestContext
         Assert.DoesNotContain("Formål med registeret", markup);
     }
 
+    // The shape every kilde on test has: Formaal AND its language-tagged mirror, so the mirror is what is drawn.
+    [Theory]
+    [InlineData("[{\"value\":\"Kvalitetssikring av behandlingen.\",\"language\":\"nb\"}]", 1)]
+    [InlineData("[{\"value\":\"Kvalitetssikring av behandlingen.\",\"language\":\"nb\"},{\"value\":\"Quality assurance.\",\"language\":\"en\"}]", 2)]
+    public void FormaalFlerspraklig_WhenEveryLanguageRepeatsTheIngress_ThenItIsNotDrawnAgain(string mirror, int expected)
+    {
+        var kilde = Kilde() with
+        {
+            Description = "Kvalitetssikring av behandlingen.",
+            PropertyMetadata =
+            [
+                Entry("Formaal", 10, "Formål", "Formål med registeret"),
+                Entry("FormaalFlerspraklig", 11, "Formål", "Formål (språkmerket)") with { Type = "LangTaggedList" },
+            ],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Formaal"] = "Kvalitetssikring av behandlingen.",
+                ["FormaalFlerspraklig"] = mirror,
+            },
+        };
+
+        var markup = Render(kilde).Markup;
+
+        Assert.Equal(expected, System.Text.RegularExpressions.Regex.Matches(markup, "Kvalitetssikring av behandlingen").Count);
+    }
+
     [Theory]
     [InlineData(null, "Noe")]
     [InlineData(null, ".")]

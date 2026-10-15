@@ -292,10 +292,17 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("Formaal");
         }
 
-        // The ingress already says it word for word: K_BIV on test (Fhi.Metadata-esf2i).
+        // The ingress already says it word for word: K_BIV on test, in both keys (Fhi.Metadata-esf2i).
         if (Filled(kilde, "Formaal") && SameText(kilde.AdditionalProperties["Formaal"], kilde.Description))
         {
             keys.Add("Formaal");
+        }
+
+        if (Filled(kilde, "FormaalFlerspraklig")
+            && CatalogueProperties.TaggedTexts(kilde.AdditionalProperties["FormaalFlerspraklig"]) is { Count: > 0 } purposes
+            && purposes.All(purpose => SameText(purpose, kilde.Description)))
+        {
+            keys.Add("FormaalFlerspraklig");
         }
 
         // Drawn as the Variables section's sentence, where a caller passes that section.
