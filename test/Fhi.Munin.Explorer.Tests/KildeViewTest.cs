@@ -226,6 +226,21 @@ public class KildeViewTest : ExplorerTestContext
         Assert.DoesNotContain("Formål med registeret", markup);
     }
 
+    [Theory]
+    [InlineData(null, "Noe")]
+    [InlineData(null, ".")]
+    [InlineData("", "...")]
+    public void Formaal_WhenThereIsNoIngressToRepeat_ThenItIsDrawn(string? description, string formaal)
+    {
+        var kilde = Kilde() with
+        {
+            Description = description,
+            AdditionalProperties = new Dictionary<string, string?> { ["Formaal"] = formaal },
+        };
+
+        Assert.Contains("Formål med registeret", Render(kilde).Markup);
+    }
+
     [Fact]
     public void Formaal_WhenItSaysMoreThanTheIngress_ThenBothAreDrawn()
     {
@@ -457,8 +472,6 @@ public class KildeViewTest : ExplorerTestContext
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
             "munin-explorer-page__body",
-            // The word above the name block saying what kind of thing this page is about. A <p>,
-            // so the outline a screen reader navigates by is the one the view already had.
             // The hero row under the name block. Always drawn on a source: two of its six facts
             // fall back to Texts.NotSpecified rather than to nothing, so there is no source thin
             // enough to leave the list out.

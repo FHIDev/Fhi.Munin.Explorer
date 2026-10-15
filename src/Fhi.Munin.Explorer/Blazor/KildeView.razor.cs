@@ -307,15 +307,16 @@ public sealed partial class KildeView : ComponentBase
         return keys;
     }
 
-    // AdditionalProperties is declared non-nullable but System.Text.Json writes an explicit JSON
-    // null straight over it (see Rows_WhenTheBagIsNull_ThenThereAreNoRowsRatherThanAThrow), so a
-    // host substituting its own client can still hand this a null dictionary.
+    // Nothing on either side is nothing to compare, not the same text.
     private static bool SameText(string? a, string? b) =>
-        string.Equals(Plain(a), Plain(b), StringComparison.OrdinalIgnoreCase);
+        Plain(a) is { Length: > 0 } plain && string.Equals(plain, Plain(b), StringComparison.OrdinalIgnoreCase);
 
     private static string Plain(string? text) =>
         string.Join(' ', (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
 
+    // AdditionalProperties is declared non-nullable but System.Text.Json writes an explicit JSON
+    // null straight over it (see Rows_WhenTheBagIsNull_ThenThereAreNoRowsRatherThanAThrow), so a
+    // host substituting its own client can still hand this a null dictionary.
     private static bool Filled(KildeDetail kilde, string key) =>
         kilde.AdditionalProperties?.TryGetValue(key, out var value) is true && !string.IsNullOrWhiteSpace(value);
 

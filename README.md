@@ -568,8 +568,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     The chassis adds two chrome names above the name block, `munin-explorer-page__eyebrow` and
     `munin-explorer-page__actions`, and the chrome's third piece — the breadcrumb — adds none at
     all, because it wears helsedata's own `breadcrumbs*` names listed further up. The eyebrow is
-    the word naming what kind of thing the page is about, `Datakilde` / `Datasamling` /
-    `Variabel`, and it is a `<p>` and never an `<h*>`: a heading there would put a second title in
+    the word naming what kind of thing the page is about, `Datasamling` / `Variabel`, and it is a `<p>` and never an `<h*>`: a heading there would put a second title in
     the outline a screen reader navigates by. The action row holds page-level controls and is
     emitted only when a caller fills it. Datasamling actions sit after the title, code and source
     trail, before the hero facts, using `DetailPage.ActionsAfterHeader`; other views retain the
@@ -578,8 +577,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     lost either way. `Fhi.Helsedata.Stiler` 0.1.178 — the pin `samples/HostileHost` restores —
     carries a rule for each, as every release since 0.1.75 has, in the same
     `components/munin-explorer/_page.scss`, and both sample stylesheets stand in at its
-    declarations. Four of the five surfaces set the eyebrow — the kilde,
-    datasamling, variable and instrument views, each naming its own kind. `VariableListView` sets no
+    declarations. Three of the five surfaces set the eyebrow — the
+    datasamling, variable and instrument views, each naming its own kind; the kilde view sets none,
+    its trail and name already saying it (`Fhi.Metadata-esf2i`). `VariableListView` sets no
     chrome at all: the saved-list view's own is a bead of its own.
     Under the name block those four add `munin-explorer-page__facts`, the hero row: one `<dl>`
     holding a `<div>` per fact, each a `<dt>` label over a `<dd>` value with an optional `<small>`
@@ -1490,7 +1490,9 @@ Four things are worth knowing before mounting one.
   the contents nav, which lists the two blocks exactly when they are drawn.
 - **A sentence under the title saying what the page is for is yours to write.** `Lede` — declared
   on `KildeSearch`, `VariableSearch`, `KildeExplorer` and `VariableExplorer` — is drawn as plain
-  text in a `<p class="munin-explorer__lede">` directly after the explorer's title. The package
+  text in a `<p class="munin-explorer__lede">` directly after the explorer's title. While a kilde
+  is open, `KildeSearch` draws no lede and keeps its title for screen readers only
+  (`screenreader-only`), so the kilde's page starts at the kilde. The package
   ships no default and translates nothing: pass the text in the page's own language, and change it
   without waiting for a release. Leave it null or blank and no element is drawn at all, because
   Stiler gives the lede a grid row of its own only when the element is there.

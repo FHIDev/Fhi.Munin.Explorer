@@ -2785,6 +2785,33 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.DoesNotContain("button-square--ghost", classes);
     }
 
+    // The trail is the way back where it is on screen; where the view that draws it is not, the button stays (Fhi.Metadata-esf2i).
+    [Fact]
+    public void Select_WhenTheHostGivesAListAddressAndTheKildeArrives_ThenTheTrailIsTheOnlyWayBack()
+    {
+        var als = Kilde("Als registeret", "K_ALS");
+
+        var cut = RenderWith(new FakeClient(als).Publishing(als), b => b.Add(c => c.KilderHref, () => "/kilder"));
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        Assert.Equal("/kilder", cut.Find("nav.breadcrumbs a").GetAttribute("href"));
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown > button"));
+    }
+
+    [Fact]
+    public void Select_WhenTheHostGivesAListAddressAndTheKildeIsNotPublished_ThenTheButtonIsStillThere()
+    {
+        var als = Kilde("Als registeret", "K_ALS");
+
+        var cut = RenderWith(new FakeClient(als), b => b.Add(c => c.KilderHref, () => "/kilder"));
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        Assert.Empty(cut.FindAll("nav.breadcrumbs"));
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown > button"));
+    }
+
     [Fact]
     public void Select_WhenTheReaderGoesBack_ThenTheListIsThereAsTheyLeftIt()
     {
