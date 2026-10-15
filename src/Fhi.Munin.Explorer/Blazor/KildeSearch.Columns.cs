@@ -204,7 +204,7 @@ public sealed partial class KildeSearch
     /// kilde's validity two ways (Fhi.Metadata-msax9).
     /// </remarks>
     private string ValidityPeriod(KildeSummary kilde) =>
-        Value(CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T, DateWidth.Narrow));
+        Value(CatalogueDate.Period(kilde.ValidFrom, kilde.ValidTo, Language, T));
 
     /// <summary>When Munin imported the kilde — its own row, not the catalogue's founding year.</summary>
     /// <remarks>
@@ -214,7 +214,7 @@ public sealed partial class KildeSearch
     /// problem alone — the kilde and datasamling views draw the same field (Fhi.Metadata-6r6rf).
     /// </remarks>
     private string Imported(KildeSummary kilde) =>
-        Value(CatalogueDate.DayOrNothing(kilde.Created, Language, DateWidth.Narrow));
+        Value(CatalogueDate.DayOrNothing(kilde.Created, Language));
 
     /// <summary>When the source system last changed the kilde, as the catalogue writes it down.</summary>
     /// <remarks>
@@ -223,5 +223,5 @@ public sealed partial class KildeSearch
     /// different question and already has a home in the kilde view.
     /// </remarks>
     private string SourceUpdated(KildeSummary kilde) =>
-        Value(CatalogueDate.SourceSystemDay(Property(kilde, "SistOppdatert"), Language, DateWidth.Narrow));
+        Value(CatalogueDate.SourceSystemDay(Property(kilde, "SistOppdatert"), Language));
 }

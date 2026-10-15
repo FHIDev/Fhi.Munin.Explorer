@@ -331,7 +331,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// does for every column the catalogue has no value for.
     /// </summary>
     private string? Period(VariableListItem item) =>
-        CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T, DateWidth.Narrow);
+        CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T);
 
     /// <summary>
     /// The name column's text: the variable's name, or the sentence shown for one no longer in the
@@ -431,7 +431,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 parts.Add(T.ListKildeCount(state.KilderInList.Count));
             }
 
-            if (CatalogueDate.DayOrNothing(shown.UpdatedAt, Language, DateWidth.Narrow) is { } day)
+            if (CatalogueDate.DayOrNothing(shown.UpdatedAt, Language) is { } day)
             {
                 parts.Add(T.ListLastModified(day));
             }

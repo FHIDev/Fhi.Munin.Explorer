@@ -1263,7 +1263,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// The one helper every surface joins a period with (Fhi.Metadata-msax9).
     /// </remarks>
     private string? PeriodText(DateTimeOffset? from, DateTimeOffset? to) =>
-        CatalogueDate.Period(from, to, Language, T, DateWidth.Narrow);
+        CatalogueDate.Period(from, to, Language, T);
 
     /// <summary>The two tabs, in the order they are drawn.</summary>
     private static readonly ExplorerTab[] ResultTabs = Enum.GetValues<ExplorerTab>();

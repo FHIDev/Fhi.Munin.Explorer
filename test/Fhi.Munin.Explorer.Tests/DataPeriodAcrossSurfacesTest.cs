@@ -14,7 +14,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <remarks>
 /// Cross-surface on purpose. Each surface's own tests can be green while they disagree, which
 /// is what a helsedata tester reported against Abortregisteret Utlevering: a result row saying
-/// "jan 1979 – des 2024" over a variable page saying "1. jan. 1979 – 31. des. 2024", from the same
+/// "jan 1979 – des 2024" over a variable page saying "01.01.1979 – 31.12.2024", from the same
 /// two contract fields. The format was settled first (Fhi.Metadata-ufmop), the join after it: an
 /// unknown start reads "?", and neither way of carrying no date draws year 1 (Fhi.Metadata-msax9).
 /// There were four until the row drawer stopped drawing the period (Fhi.Metadata-l9l2n.101).
@@ -70,9 +70,9 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
             return null;
         }
 
-        var start = Known(from) is { } f ? CatalogueDate.Day(f, language, DateWidth.Narrow) : "?";
+        var start = Known(from) is { } f ? CatalogueDate.Day(f, language) : "?";
         var end = Known(to) is { } t
-            ? CatalogueDate.Day(t, language, DateWidth.Narrow)
+            ? CatalogueDate.Day(t, language)
             : Texts.For(language).Ongoing;
 
         return $"{start} – {end}";

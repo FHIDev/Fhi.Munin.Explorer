@@ -231,7 +231,7 @@ public partial class VariableSearch
     /// </remarks>
     private FacetValue DateValue(string key, string field, DateOnly date, Func<Task> clear) =>
         new(key,
-            T.FilterInFacet(field, CatalogueDate.Day(date, Language, DateWidth.Narrow)),
+            T.FilterInFacet(field, CatalogueDate.Day(date, Language)),
             Language: null,
             null,
             Selected: true,

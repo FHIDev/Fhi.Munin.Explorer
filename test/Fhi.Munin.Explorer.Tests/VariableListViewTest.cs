@@ -1558,7 +1558,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var cut = RenderView(new ListClient(item));
         ShowEveryColumn(cut);
 
-        Assert.Contains(CatalogueDate.Day(from, "no", DateWidth.Narrow), cut.Markup, StringComparison.Ordinal);
+        Assert.Contains(CatalogueDate.Day(from, "no"), cut.Markup, StringComparison.Ordinal);
         Assert.Contains("Pågående", cut.Markup);
         Assert.DoesNotContain("2021–<", cut.Markup);
     }
@@ -2220,7 +2220,7 @@ public partial class VariableListViewTest : ExplorerTestContext
         var meta = cut.Find("p.caption").TextContent;
 
         Assert.Contains("2 variabler", meta, StringComparison.Ordinal);
-        Assert.Contains("Sist endret: 7. sep. 2026", meta, StringComparison.Ordinal);
+        Assert.Contains("Sist endret: 07.09.2026", meta, StringComparison.Ordinal);
     }
 
     [Fact]

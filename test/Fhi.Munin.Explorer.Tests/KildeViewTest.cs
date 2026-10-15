@@ -1409,7 +1409,7 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal("row", name.GetAttribute("scope"));
         Assert.Equal("Inklusjon (INK)", name.TextContent);
 
-        Assert.Equal(["Alle pasienter ved inklusjon.", "1. januar 2010 – Pågående", "12 variabler"],
+        Assert.Equal(["Alle pasienter ved inklusjon.", "01.01.2010 – Pågående", "12 variabler"],
                      cut.FindAll("table.munin-explorer-kilde__datasamlinger tbody td").Select(e => e.TextContent));
     }
 
@@ -1429,7 +1429,7 @@ public class KildeViewTest : ExplorerTestContext
         };
 
         // The whole row rather than one cell of it, so the assertion says which column it is reading.
-        Assert.Equal(["Alle pasienter ved inklusjon.", "1. januar 2010 – 30. september 2019", "12 variabler"],
+        Assert.Equal(["Alle pasienter ved inklusjon.", "01.01.2010 – 30.09.2019", "12 variabler"],
                      Render(kilde).FindAll("table.munin-explorer-kilde__datasamlinger tbody td")
                                   .Select(e => e.TextContent));
     }
@@ -2063,7 +2063,7 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal("Hemit HF", Value(facts, "Databehandler"));
 
         Assert.Equal("Indirekte identifiserbar", Value(facts, "Grad av personidentifikasjon"));
-        Assert.Equal("4. mars 2026", Value(facts, "Sist oppdatert i Munin"));
+        Assert.Equal("04.03.2026", Value(facts, "Sist oppdatert i Munin"));
     }
 
     [Fact]
@@ -2101,7 +2101,7 @@ public class KildeViewTest : ExplorerTestContext
             ValidTo = new DateTimeOffset(2020, 5, 5, 0, 0, 0, TimeSpan.Zero),
         };
 
-        Assert.Equal("? – 5. mai 2020", Value(SourceInformation(Render(kilde)), "Gyldighet"));
+        Assert.Equal("? – 05.05.2020", Value(SourceInformation(Render(kilde)), "Gyldighet"));
     }
 
     [Fact]
@@ -2136,7 +2136,7 @@ public class KildeViewTest : ExplorerTestContext
         // would swallow a real date rather than an absent one.
         var kilde = Kilde() with { LastUpdated = new DateTimeOffset(1995, 6, 2, 0, 0, 0, TimeSpan.Zero) };
 
-        Assert.Equal("2. juni 1995", Value(SourceInformation(Render(kilde)), "Sist oppdatert i Munin"));
+        Assert.Equal("02.06.1995", Value(SourceInformation(Render(kilde)), "Sist oppdatert i Munin"));
     }
 
     [Fact]
@@ -2172,7 +2172,7 @@ public class KildeViewTest : ExplorerTestContext
     {
         // An open end is the normal case for a register that is still collecting. A blank half reads
         // as a missing value, and a guessed date would be a claim the catalogue never made.
-        Assert.Equal("1. januar 2023 – Pågående",
+        Assert.Equal("01.01.2023 – Pågående",
                      Value(SourceInformation(Render(Kilde())), "Gyldighet"));
     }
 
@@ -2190,13 +2190,13 @@ public class KildeViewTest : ExplorerTestContext
 
         var norwegian = Render(closed);
 
-        Assert.Equal("1. januar 2023 – 31. desember 2024", Value(SourceInformation(norwegian), "Gyldighet"));
-        Assert.Equal("1. januar 2010 – 30. juni 2024", Value(Statistics(norwegian), "Dataperiode"));
+        Assert.Equal("01.01.2023 – 31.12.2024", Value(SourceInformation(norwegian), "Gyldighet"));
+        Assert.Equal("01.01.2010 – 30.06.2024", Value(Statistics(norwegian), "Dataperiode"));
 
         var english = Render(closed, language: "en");
 
-        Assert.Equal("1 January 2023 – 31 December 2024", Value(SourceInformation(english), "Validity"));
-        Assert.Equal("1 January 2010 – 30 June 2024", Value(Statistics(english), "Data period"));
+        Assert.Equal("2023-01-01 – 2024-12-31", Value(SourceInformation(english), "Validity"));
+        Assert.Equal("2010-01-01 – 2024-06-30", Value(Statistics(english), "Data period"));
     }
 
     [Fact]
@@ -2211,7 +2211,7 @@ public class KildeViewTest : ExplorerTestContext
             ValidTo = new DateTimeOffset(2024, 12, 31, 0, 0, 0, TimeSpan.Zero),
         };
 
-        Assert.Equal("? – 31. desember 2024", Value(SourceInformation(Render(kilde)), "Gyldighet"));
+        Assert.Equal("? – 31.12.2024", Value(SourceInformation(Render(kilde)), "Gyldighet"));
     }
 
     // ---------------------------------------------------------------------------------
@@ -2279,12 +2279,11 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Dates_WhenTheReaderIsEnglish_ThenTheyAreWrittenTheWayEnglishWritesThem()
+    public void Dates_WhenTheReaderIsEnglish_ThenTheyAreIso()
     {
-        // The dot after the day is not punctuation, it is what makes the number an ordinal in
-        // Norwegian. English does not use it, so an English page carrying the Norwegian skeleton
-        // with English month names — "1. January 2023" — is neither language.
-        Assert.Equal("1 January 2023 – Ongoing",
+        // ISO, as the date field takes an English reader's input; dd.MM.yyyy would read day-first
+        // or month-first depending on who reads it (Fhi.Metadata-49ahq).
+        Assert.Equal("2023-01-01 – Ongoing",
                      Value(SourceInformation(Render(Kilde(), language: "en")), "Validity"));
     }
 

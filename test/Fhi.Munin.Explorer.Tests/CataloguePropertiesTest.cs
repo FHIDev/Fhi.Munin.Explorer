@@ -508,8 +508,8 @@ public class CataloguePropertiesTest
 
     // «Sist oppdatert (kildesystem) 20200302» on 68 of 98 kilder and their datasamlinger on test (Fhi.Metadata-49ahq).
     [Theory]
-    [InlineData("20200302", "no", "2. mars 2020")]
-    [InlineData(" 20200302 ", "en", "2 March 2020")]
+    [InlineData("20200302", "no", "02.03.2020")]
+    [InlineData(" 20200302 ", "en", "2020-03-02")]
     [InlineData("20260231", "no", "20260231")]
     [InlineData("mars 2020", "no", "mars 2020")]
     public void Rows_WhenSistOppdatertHoldsASourceSystemDay_ThenItReadsAsTheReadersDate(string raw, string reader, string expected)

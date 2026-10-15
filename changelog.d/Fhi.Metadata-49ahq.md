@@ -1,2 +1,3 @@
-category: Fixed
-- **«Sist oppdatert (kildesystem)» reads as a date on the kilde and datasamling pages.** The catalogue stores it as text in `yyyyMMdd`, and the detail views drew it raw (`20200302`); it now reads «2. mars 2020» / «2 March 2020», as the kilde list's column already did. A value that is not a real day is still shown as given.
+category: Changed
+- **Every date the explorers show is written dd.mm.yyyy, as on the rest of helsedata.** Kilde and datasamling facts, the variable panel and page, the saved lists, the kilde list's date columns, period ranges and the filter chips now read «02.03.2020» instead of «2. mars 2020» / «2. mar. 2020». English pages read ISO («2020-03-02»), as the period filter's own date field already takes an English reader's input; both come from one rule (`DateInput`). Dates inside text the catalogue holds as prose are unchanged.
+- **«Sist oppdatert (kildesystem)» reads as a date on the kilde and datasamling pages.** The catalogue stores it as text in `yyyyMMdd`, and the detail views drew it raw (`20200302`); a value that is not a real day is still shown as given.
