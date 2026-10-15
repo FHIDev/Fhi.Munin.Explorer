@@ -247,7 +247,7 @@ else
 fi
 
 echo "==> checking browser state preparation"
-node --test "$ROOT/scripts/test-axe-states.mjs" || {
+node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.mjs" || {
   echo "the state-preparation tests failed - TOOLING failure, so nothing was scanned." >&2
   exit 2
 }
@@ -279,16 +279,23 @@ fi
 # state, and neither of those is driven at 320; the two 320px card checks never ran here. Which and why: AGENTS.md, "And
 # check-accessibility.sh measures one width axe never looks at".
 echo
-echo "==> measuring the reflow width WCAG 1.4.10 names"
-set +e
-GEOMETRY_WIDTHS=320 \
-GEOMETRY_EXCEPT= \
-GEOMETRY_ASSERTIONS='no horizontal overflow,hidden means hidden,text a reader is meant to see has a box to see it in' \
-  node "$ROOT/scripts/geometry-scan.mjs" \
-    "${BASE}${REFLOW_TARGET}" "${BASE}${REFLOW_TICKED_TARGET}" "${BASE}${REFLOW_EXPLORER_TARGET}" \
-    "${BASE}${REFLOW_FACETS_TARGET}" "${BASE}${REFLOW_WIDEST_TARGET}"
-reflow_status=$?
-set -e
+# A CI shard (SCAN_SHARD=k/n, scripts/scan-shard.mjs) splits the axe states above; the five reflow pages run in
+# shard 1 only, so each is measured once per run.
+if [ -z "${SCAN_SHARD:-}" ] || [ "${SCAN_SHARD%%/*}" = 1 ]; then
+  echo "==> measuring the reflow width WCAG 1.4.10 names"
+  set +e
+  GEOMETRY_WIDTHS=320 \
+  GEOMETRY_EXCEPT= \
+  GEOMETRY_ASSERTIONS='no horizontal overflow,hidden means hidden,text a reader is meant to see has a box to see it in' \
+    node "$ROOT/scripts/geometry-scan.mjs" \
+      "${BASE}${REFLOW_TARGET}" "${BASE}${REFLOW_TICKED_TARGET}" "${BASE}${REFLOW_EXPLORER_TARGET}" \
+      "${BASE}${REFLOW_FACETS_TARGET}" "${BASE}${REFLOW_WIDEST_TARGET}"
+  reflow_status=$?
+  set -e
+else
+  echo "==> reflow width: measured in shard 1/${SCAN_SHARD#*/}, not this one (${SCAN_SHARD})"
+  reflow_status=0
+fi
 
 # Anything non-zero is a finding, except the one code that means the step never ran.
 findings=0

@@ -10,6 +10,7 @@ import { chromium } from 'playwright';
 import { launchOptions } from './browser-launch.mjs';
 import AxeBuilder from '@axe-core/playwright';
 import { states } from './axe-states.mjs';
+import { describeShard, ownsItem, parseShard } from './scan-shard.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
@@ -51,6 +52,22 @@ for (const target of targets) {
   plan.push({ url, state, label: state === null ? url : `${url} [${state}]` });
 }
 
+// A CI shard scans every n-th page state; unset, all of them.
+let shard;
+try {
+  shard = parseShard();
+} catch (err) {
+  console.error(`${err.message} - TOOLING failure.`);
+  process.exit(2);
+}
+const owned = plan.filter((_, i) => ownsItem(i, shard));
+if (owned.length === 0) {
+  console.error('this shard has no page state to scan - TOOLING failure: fewer states than shards.');
+  process.exit(2);
+}
+const shardNote = describeShard(owned.length, plan.length, shard);
+if (shardNote) console.log(`${shardNote} page states.`);
+
 let browser;
 try {
   browser = await chromium.launch(launchOptions());
@@ -63,7 +80,7 @@ try {
 let violationCount = 0;
 
 try {
-  for (const { url, state, label } of plan) {
+  for (const { url, state, label } of owned) {
     console.log(`\n==> axe ${label}`);
     // Stiler fades the sticky fact bar in over 0.15s; scanned mid-fade its text measures as low
     // contrast. Reduced motion drops the fade, so the bar is either there or not (Fhi.Metadata-hiz1k).

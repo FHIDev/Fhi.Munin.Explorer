@@ -21,6 +21,7 @@ import { chromium } from 'playwright';
 import { states } from './axe-states.mjs';
 import { assertions } from './state-assertions.mjs';
 import { launchOptions } from './browser-launch.mjs';
+import { describeShard, isFirstShard, ownsItem, parseShard } from './scan-shard.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
@@ -108,6 +109,20 @@ try {
   process.exit(2);
 }
 
+let shard;
+try {
+  shard = parseShard();
+} catch (err) {
+  console.error(`${err.message} - TOOLING failure.`);
+  process.exit(2);
+}
+
+// Each applicable (page, assertion) pair is one unit of work; a CI shard takes every n-th one.
+const pairCount = plan.reduce((sum, { state }) =>
+  sum + assertions.filter(a => a.states === undefined || a.states.includes(state)).length, 0);
+let pairIndex = -1;
+let owned = 0;
+
 let browser;
 try {
   browser = await chromium.launch(launchOptions());
@@ -134,6 +149,8 @@ try {
       // Printed, never skipped silently. An assertion whose press cannot be staged here is not a
       // pass, and a run that reported it as one is what this file exists to prevent.
       if (appliesTo !== undefined && !appliesTo.includes(state)) {
+        // Printed by one shard only, so the n/a lines read once across the jobs.
+        if (!isFirstShard(shard)) continue;
         inapplicable += 1;
         console.log(`\n==> state ${label}`);
         console.log(`    n/a  [${kind}] ${name}`);
@@ -141,6 +158,10 @@ try {
           `this is ${state === null ? 'no state' : state}`);
         continue;
       }
+
+      pairIndex += 1;
+      if (!ownsItem(pairIndex, shard)) continue;
+      owned += 1;
 
       console.log(`\n==> state ${label}: ${name}`);
 
@@ -248,6 +269,12 @@ if (leftover.length > 0) {
 }
 
 console.log('');
+const shardNote = describeShard(owned, pairCount, shard);
+if (shardNote) console.log(`${shardNote} state assertion runs.`);
+if (owned === 0 && pairCount > 0) {
+  console.error('this shard ran no assertion - TOOLING failure: fewer pairs than shards, or the split is wrong.');
+  process.exit(2);
+}
 const notRun = inapplicable === 0 ? '' : `, and ${inapplicable} did not apply`;
 if (failures > 0) {
   console.log(`${failures} state assertion(s) failed${notRun}.`);
