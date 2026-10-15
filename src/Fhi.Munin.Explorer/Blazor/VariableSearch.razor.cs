@@ -1208,7 +1208,8 @@ public sealed partial class VariableSearch : ComponentBase
         // ColumnVisible says so; Kode starts off, as the widest column that buys the least.
         if (ColumnVisible(ResultColumn.Code))
         {
-            RowCell.Write(builder, 100, T.FieldCode, v.Code, "code", T.NotSpecified);
+            // A code is an identifier, not Norwegian to pronounce: not marked (CatalogueProperties.Foreign, Fhi.Metadata-e1qeo).
+            RowCell.Write(builder, 100, T.FieldCode, v.Code, "code", T.NotSpecified, catalogue: false);
         }
 
         // Runa's short name, with the full name on hover. Trimmed rather than `??`, since an omitted

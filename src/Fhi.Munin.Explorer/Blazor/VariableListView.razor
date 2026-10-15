@@ -776,7 +776,8 @@ else if (State?.IsAuthenticated == true)
     {
         if (!string.IsNullOrWhiteSpace(item.VariableCode))
         {
-            <span class="munin-explorer-list-code" lang="no">@item.VariableCode</span>
+            @* Not lang="no": a code is an identifier, not Norwegian to pronounce (Fhi.Metadata-e1qeo). *@
+            <span class="munin-explorer-list-code">@item.VariableCode</span>
         }
     };
 
