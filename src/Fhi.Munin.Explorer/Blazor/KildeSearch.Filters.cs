@@ -243,7 +243,7 @@ public sealed partial class KildeSearch
             return _definitions =
             [
                 new(KildetypeFacet, T.ColumnKildetype,
-                    kilde => One(kilde.Kildetype), value => Translated(T.KildeTypeLabel(value, value), value)),
+                    kilde => One(kilde.Kildetype), value => Translated(KildeTypeName(value), value)),
                 new(CategoryFacet, T.FacetCategory, Categories, value => Vocabulary(CategoryKey, value)),
                 new(AccessLevelFacet, T.FacetAccessLevel,
                     kilde => One(Property(kilde, AccessRightsKey)), value => Vocabulary(AccessRightsKey, value)),

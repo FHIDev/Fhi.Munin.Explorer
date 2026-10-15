@@ -334,6 +334,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     [Inject] private IServiceProvider Services { get; set; } = null!;
 
+    private readonly KildeTypeVocabulary _kildeTypes = new();
+
     private ILogger? _log;
 
     /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
@@ -778,6 +780,7 @@ public sealed partial class KildeSearch : ComponentBase
         // around it, unlike the list's call: it catches its own failures, a throw from the client's
         // call rather than its await included.
         var vocabulary = LoadVocabularyAsync();
+        var kildeTypes = _kildeTypes.Load(Client, Language, Log) ?? Task.CompletedTask;
 
         await LoadAsync();
 
@@ -823,6 +826,7 @@ public sealed partial class KildeSearch : ComponentBase
         // Awaited here and not left running: a task nobody awaits would write the vocabulary in
         // after the render that needed it, with nothing to redraw the panel it labels.
         await vocabulary;
+        await kildeTypes;
 
         // The last statement, so ComponentBase's own render draws the same and deleting this
         // breaks no test. Kept because the words depend on the vocabulary arriving, not on this
@@ -867,6 +871,18 @@ public sealed partial class KildeSearch : ComponentBase
             _loaded = true;
         }
     }
+
+    /// <summary>A later <see cref="Language"/> asks for its own kildetype words; the first is asked above.</summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_kildeTypes.Load(Client, Language, Log) is { } loading)
+        {
+            await loading;
+        }
+    }
+
+    /// <summary>The kildetype's word, the same on the facet and in the table's column.</summary>
+    private string KildeTypeName(string? value) => _kildeTypes.Name(T, Language, value);
 
     /// <summary>
     /// The catalogue's words for coded properties, so facets and kilde view agree; a failure costs

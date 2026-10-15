@@ -774,7 +774,7 @@ else
                             }
                             @if (ColumnVisible(KildeColumn.Kildetype))
                             {
-                                <td>@T.KildeTypeLabel(kilde.Kildetype, kilde.Kildetype)</td>
+                                <td>@KildeTypeName(kilde.Kildetype)</td>
                             }
                             <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
                             @* CatalogueLang and not Foreign: both are free text the catalogue wrote in Norwegian,

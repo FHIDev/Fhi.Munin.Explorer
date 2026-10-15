@@ -2,6 +2,7 @@ using System.Text.Json;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -32,6 +33,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 public sealed partial class DatasamlingView : ComponentBase
 {
     [Inject] private IServiceProvider Services { get; set; } = null!;
+
+    private readonly KildeTypeVocabulary _kildeTypes = new();
 
     private ILogger? _log;
     private ILogger? Log => _log ??= ExplorerLog.For<DatasamlingView>(Services);
@@ -382,7 +385,7 @@ public sealed partial class DatasamlingView : ComponentBase
     private string? KildetypeLabel =>
         Datasamling is { } datasamling
             && !string.IsNullOrWhiteSpace(datasamling.EffectiveKildetype)
-                ? T.KildeTypeLabel(datasamling.EffectiveKildetype, datasamling.EffectiveKildetype)
+                ? _kildeTypes.Name(T, Language, datasamling.EffectiveKildetype)
                 : null;
 
     /// <inheritdoc cref="KildetypeLabel"/>
@@ -579,10 +582,18 @@ public sealed partial class DatasamlingView : ComponentBase
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];
 
     /// <inheritdoc />
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         Layout = BuildLayout();
         Toc = BuildToc(Layout);
+
+        // Rebuilt once the word arrives, because the layout holds the facts that carry it.
+        if (_kildeTypes.Load(Services.GetService<IMuninExplorerClient>(), Language, Log) is { } loading)
+        {
+            await loading;
+            Layout = BuildLayout();
+            Toc = BuildToc(Layout);
+        }
     }
 
     /// <summary>

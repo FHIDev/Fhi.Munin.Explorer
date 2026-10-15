@@ -1,6 +1,8 @@
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -112,6 +114,11 @@ public sealed partial class KildeView : ComponentBase
     private Texts T => Texts.For(Language);
 
     private string Reader => ReaderLanguage.Of(Language);
+
+    /// <summary>Optional, so a host that mounts this view without a client loses no more than the API's kildetype word.</summary>
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+
+    private readonly KildeTypeVocabulary _kildeTypes = new();
 
     /// <summary>
     /// The name the page's heading carries, resolved through the member the heading reads so the
@@ -304,7 +311,7 @@ public sealed partial class KildeView : ComponentBase
     /// one page under two different words.
     /// </remarks>
     private string? KildetypeLabel =>
-        Kilde is { Kildetype: { } type } && !string.IsNullOrWhiteSpace(type) ? T.KildeTypeLabel(type, type) : null;
+        Kilde is { Kildetype: { } type } && !string.IsNullOrWhiteSpace(type) ? _kildeTypes.Name(T, Language, type) : null;
 
     /// <inheritdoc cref="KildetypeLabel"/>
     /// <remarks>
@@ -462,10 +469,19 @@ public sealed partial class KildeView : ComponentBase
     private IReadOnlyList<DetailLayoutSection> Layout { get; set; } = [];
 
     /// <inheritdoc />
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         Layout = BuildLayout();
         Toc = BuildToc(Layout);
+
+        // Rebuilt once the word arrives, because the layout holds the facts that carry it.
+        if (_kildeTypes.Load(Services.GetService<IMuninExplorerClient>(), Language,
+                ExplorerLog.For<KildeView>(Services)) is { } loading)
+        {
+            await loading;
+            Layout = BuildLayout();
+            Toc = BuildToc(Layout);
+        }
     }
 
     /// <summary>
