@@ -93,12 +93,15 @@
             <a class="hd-button-square button-square--ghost-blue margin-bottom"
                href="@kildeHref">@T.BackToKilde</a>
         }
-        else if (KildeTrail.Count == 0 || _kilde is null)
+        else if (KildeTrail.Count == 0 || _kilde is null || _backFocused)
         {
             @* Not beside a trail, whose first step is the same way back; KildeView draws that trail,
-               so while it loads, fails or is not published the button is the only way out. *@
+               so while it loads, fails or is not published the button is the only way out. Kept
+               while it holds focus, so the trail arriving does not drop a keyboard reader's place. *@
             <button class="hd-button-square button-square--ghost-blue margin-bottom"
                     type="button"
+                    @onfocus="() => _backFocused = true"
+                    @onblur="() => _backFocused = false"
                     @onclick="CloseAsync">@T.BackToKilder</button>
         }
 

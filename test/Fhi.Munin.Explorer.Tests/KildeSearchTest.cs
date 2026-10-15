@@ -2799,6 +2799,28 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Empty(cut.FindAll(".munin-explorer-drilldown > button"));
     }
 
+    // Copilot on #576: the trail arriving must not take the focused control from under a keyboard reader.
+    [Fact]
+    public void Select_WhenTheBackButtonHasFocusAsTheKildeArrives_ThenItStaysUntilFocusLeavesIt()
+    {
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als) { StallDetail = true };
+
+        var cut = RenderWith(client, b => b.Add(c => c.KilderHref, () => "/kilder"));
+
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+        cut.Find(".munin-explorer-drilldown > button").Focus();
+
+        client.AnswerStalled(new KildeDetail { Id = als.Id, Code = "K_ALS", PreferredTerm = "Als registeret" });
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("nav.breadcrumbs a")));
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown > button"));
+
+        cut.Find(".munin-explorer-drilldown > button").Blur();
+
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown > button"));
+    }
+
     [Fact]
     public void Select_WhenTheHostGivesAListAddressAndTheKildeIsNotPublished_ThenTheButtonIsStillThere()
     {
