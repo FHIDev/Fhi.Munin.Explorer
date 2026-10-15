@@ -11,6 +11,16 @@
     <div class="munin-explorer-filters">
         @((MarkupString)$"<h{TitleLevel} class=\"form-element__label\">{T.FiltersTitle}</h{TitleLevel}>")
 
+        @* The same fold as the search tab's and Kelda's: behind Vis filtre on a narrow screen, where the
+           panel otherwise stood over the list and pushed its menus below the fold. Stiler hides the
+           button and shows the facets regardless once there is room for a sidebar. (Fhi.Metadata-4mmj8) *@
+        <button class="hd-button-square button-square--ghost margin-bottom munin-explorer-filters__toggle"
+                type="button"
+                aria-expanded="@(_filtersOpen ? "true" : "false")"
+                aria-controls="@FacetsId"
+                @onclick="ToggleFiltersFromControl">@(_filtersOpen ? T.HideFilters : T.ShowFilters)</button>
+
+        <div class="munin-explorer-filters__facets" id="@FacetsId" hidden="@(!_filtersOpen)">
         @* Only when there is something to clear. A button that unticks nothing says the reader has
            narrowed something when they have not. Ghost, like the search panel's own presses. *@
         @if (Chosen.Count > 0)
@@ -69,6 +79,7 @@
             {
                 <p>@T.NoKilderInList</p>
             }
+        </div>
         </div>
     </div>
 }

@@ -122,6 +122,20 @@ public sealed partial class VariableListFilters : ComponentBase, IDisposable
     /// <summary>The id joining the kilde list to the control that reveals the rest of it.</summary>
     private string KildeOptionsId => $"munin-explorer-list-kilde-options-{_instance}";
 
+    /// <summary>Whether the panel is unfolded on a narrow screen; a host with room for a sidebar shows it regardless.</summary>
+    private bool _filtersOpen;
+
+    private string FacetsId => $"munin-explorer-list-filters-{_instance}";
+
+    // A double-click's second click would fold straight back what the first unfolded (Fhi.Metadata-zel47).
+    private void ToggleFiltersFromControl(MouseEventArgs released)
+    {
+        if (!RowPress.WasSelectionStandingStill(released))
+        {
+            _filtersOpen = !_filtersOpen;
+        }
+    }
+
     /// <summary>Show the rest of the kilder, or take them back behind the cap.</summary>
     /// <remarks>
     /// The standing-gesture clause every other disclosure in this package carries: the second click
