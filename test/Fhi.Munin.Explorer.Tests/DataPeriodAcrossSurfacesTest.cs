@@ -80,10 +80,9 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
 
     /// <summary>The markup a reader is shown, with the ids and the wiring between them taken out.</summary>
     /// <remarks>
-    /// Every component here stamps its ids with eight random hex digits, which spell "0001" about
-    /// once in thirteen thousand renders, flaking the assertion below that reads the whole page.
-    /// The list is every idref the markup writes, plus bUnit's own <c>blazor:</c> attributes: an
-    /// element reference is a random GUID (Fhi.Metadata-zz1mb). An <c>aria-label</c> may hold a date, so it stays.
+    /// Ids carry eight random hex digits and bUnit's <c>blazor:elementReference</c> a random GUID, and
+    /// either can spell "0001", flaking the assertion below that reads the whole page (Fhi.Metadata-zz1mb).
+    /// So every idref and every <c>blazor:</c> attribute goes; an <c>aria-label</c> may hold a date, so it stays.
     /// </remarks>
     internal static string Shown(string markup) =>
         Regex.Replace(
@@ -94,8 +93,8 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     [Fact]
     public void Shown_WhenAnElementReferenceHoldsTheDigits_ThenOnlyWhatAReaderSeesIsChecked()
     {
-        // The markup that failed on Fhi.Munin.Explorer #572: a button whose element reference was "...b0001".
-        var reference = Shown("""<button id="x" blazor:elementReference="11111111-46c4-822b-b748e65b0001">Save</button>""");
+        // The shape that flaked: a button whose element reference ended in "0001".
+        var reference = Shown("""<button id="x" blazor:elementReference="11111111-46c4-822b-b748e65b0001" blazor:onclick="0001">Save</button>""");
         var title = Shown("""<span title="0001-01-01">period</span>""");
         var text = Shown("""<td>01.01.0001</td>""");
 
