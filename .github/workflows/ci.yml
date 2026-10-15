@@ -67,17 +67,6 @@ jobs:
             --logger 'console;verbosity=minimal'
           echo "TEST_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
 
-      - name: Format
-        id: format
-        continue-on-error: true
-        run: |
-          S=$SECONDS
-          # .editorconfig is Munin's, so the two codebases read the same way.
-          # .gitattributes forces LF in the working tree, which keeps this agreeing
-          # between a Linux runner and a Windows checkout.
-          dotnet format --verify-no-changes
-          echo "FORMAT_DUR=$((SECONDS-S))s" >> "$GITHUB_ENV"
-
       - name: Pack
         id: pack
         continue-on-error: true
@@ -104,18 +93,16 @@ jobs:
 
           R='${{ steps.restore.outcome }}'; B='${{ steps.build.outcome }}'
           T='${{ steps.test.outcome }}';    P='${{ steps.pack.outcome }}'
-          F='${{ steps.format.outcome }}'
 
           FILE=pr-summary.md
           {
-            echo "### Status: Build $(badge "$B") · Test $(badge "$T") · Format $(badge "$F") · Pack $(badge "$P")"
+            echo "### Status: Build $(badge "$B") · Test $(badge "$T") · Pack $(badge "$P")"
             echo ""
             echo "| Step    | Outcome | Duration |"
             echo "|---------|---------|----------|"
             echo "| restore | $(to_emoji "$R") $R | ${RESTORE_DUR:-—} |"
             echo "| build   | $(to_emoji "$B") $B | ${BUILD_DUR:-—} |"
             echo "| test    | $(to_emoji "$T") $T | ${TEST_DUR:-—} |"
-            echo "| format  | $(to_emoji "$F") $F | ${FORMAT_DUR:-—} |"
             echo "| pack    | $(to_emoji "$P") $P | ${PACK_DUR:-—} |"
             echo ""
             if compgen -G "artifacts/*.nupkg" > /dev/null; then
@@ -154,11 +141,36 @@ jobs:
         run: |
           fail=0
           for s in '${{ steps.restore.outcome }}' '${{ steps.build.outcome }}' \
-                   '${{ steps.test.outcome }}' '${{ steps.format.outcome }}' \
-                   '${{ steps.pack.outcome }}'; do
+                   '${{ steps.test.outcome }}' '${{ steps.pack.outcome }}'; do
             [ "$s" = "success" ] || fail=1
           done
           [ "$fail" = "0" ] || { echo "::error::One or more build phases failed — see the summary table."; exit 1; }
+
+  # dotnet format loads the whole workspace, which made "build + test" the longest job after the browser ones, so it
+  # runs beside it: the same check on every PR, gated through "ci summary" like every other job. (Fhi.Metadata-ln1s6)
+  format:
+    name: format
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Format
+        # .editorconfig is Munin's, so the two codebases read the same way.
+        # .gitattributes forces LF in the working tree, which keeps this agreeing
+        # between a Linux runner and a Windows checkout.
+        run: dotnet format --verify-no-changes
 
   # Changelog fragments. CHANGELOG.md is a single file every branch wants to edit on the same
   # few lines — the most reliable merge conflict there is — so changes are recorded one file
@@ -417,10 +429,20 @@ jobs:
   # WCAG 2.1 AA applies to this package by law, and this job keeps AGENTS.md's accessibility
   # section - the gate's blind spots included - from being a sentence nobody checks. Its own job,
   # required on main since 2026-08-28, for the guards' reasons above.
-  accessibility:
-    name: accessibility
+  #
+  # Split four ways (SCAN_SHARD, scripts/scan-shard.mjs): one job scanning every page state in a row set the PR's
+  # wall clock. Each shard scans every fourth state; the 320px reflow runs in shard 1. The
+  # required check keeps its name: the "accessibility" job below passes only when every shard did. (Fhi.Metadata-ln1s6)
+  accessibility-shard:
+    name: accessibility ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      SCAN_SHARD: ${{ matrix.shard }}/4
     steps:
       - uses: actions/checkout@v7
 
@@ -446,8 +468,19 @@ jobs:
       - name: Scan the sample host with axe, and measure it at 320px
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce. The 320px measurement is
-        # WCAG 1.4.10 Reflow's own width, and this is the only job that visits it.
+        # WCAG 1.4.10 Reflow's own width, and only shard 1 visits it.
         run: ./scripts/check-accessibility.sh
+
+  accessibility:
+    name: accessibility
+    needs: accessibility-shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every shard passed
+        run: |
+          [ '${{ needs.accessibility-shard.result }}' = success ] || { echo "::error::an accessibility shard did not pass: ${{ needs.accessibility-shard.result }}"; exit 1; }
 
   # Whether the DOM and the component still agree after a press the component REFUSED. Its own job
   # rather than a step in the accessibility one above: axe judges the accessibility tree and this
@@ -455,10 +488,19 @@ jobs:
   # not take a WCAG result with it. Removing SetUpdatesAttributeName("checked") from the facet panel
   # left 1477 unit tests green, because bUnit renders a render tree and the browser's own flip of a
   # checkbox never happens in one. (Fhi.Metadata-1s7z1)
-  component-state:
-    name: state after a refused press
+  #
+  # Split four ways like accessibility: each shard runs every fourth (page, assertion) pair, each with its own
+  # host and stub, so a hold one pair stages never meets another's. (Fhi.Metadata-ln1s6)
+  component-state-shard:
+    name: state after a refused press ${{ matrix.shard }}/4
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      SCAN_SHARD: ${{ matrix.shard }}/4
     steps:
       - uses: actions/checkout@v7
 
@@ -486,6 +528,17 @@ jobs:
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce.
         run: ./scripts/check-component-state.sh
+
+  component-state:
+    name: state after a refused press
+    needs: component-state-shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every shard passed
+        run: |
+          [ '${{ needs.component-state-shard.result }}' = success ] || { echo "::error::a component-state shard did not pass: ${{ needs.component-state-shard.result }}"; exit 1; }
 
   # The same component inside helsedata's REAL stylesheet, with their header positioned over the
   # top of document flow, measured with getBoundingClientRect. The accessibility job above scans
@@ -678,7 +731,7 @@ jobs:
     # the half that remains. Renaming the id would have been the tidier edit and a worse one: this
     # `needs:` list and the table below are the two places that would then have to agree, and the
     # required check in the ruleset is `ci summary`, not this job, so the id is invisible to it.
-    needs: [build, changelog, changelog-assembly, comment-budget, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, windows-rebuild, accessibility, component-state, hostile-layout]
+    needs: [build, format, changelog, changelog-assembly, comment-budget, sample-css, host-notes, class-names, fragment-host-notes, portability-guard, consumer, windows-rebuild, accessibility, component-state, hostile-layout]
     # It exists to report failed and skipped jobs, so it must not be skipped by one.
     if: always()
     runs-on: ubuntu-latest
@@ -712,6 +765,7 @@ jobs:
             rows="$rows| $name | $(to_emoji "$result") $result |"$'\n'
           done <<EOF
           build + test|${{ needs.build.result }}
+          format|${{ needs.format.result }}
           changelog fragment|${{ needs.changelog.result }}
           changelog assembles|${{ needs['changelog-assembly'].result }}
           comment budget|${{ needs['comment-budget'].result }}

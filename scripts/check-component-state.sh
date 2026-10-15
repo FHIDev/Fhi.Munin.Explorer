@@ -63,7 +63,8 @@
 #   - whether the refusal is the RIGHT rule. It asks the picker and the header to say the same
 #     thing, not whether the last column should be the one that cannot be turned off.
 #
-# Usage:  ./scripts/check-component-state.sh
+# Usage:  ./scripts/check-component-state.sh   (SCAN_SHARD=k/n runs the k-th of n slices of the (page,
+#         assertion) pairs, as CI does with 4; unset runs everything)
 # Needs:  dotnet, node (for npx), and a Chrome/Chromium on PATH. No feed credentials: a control's
 #         own state does not depend on a stylesheet. PLAYWRIGHT_BROWSER_CHANNEL=msedge runs an
 #         installed browser where `playwright install chromium` cannot complete, which on Node 26 is
