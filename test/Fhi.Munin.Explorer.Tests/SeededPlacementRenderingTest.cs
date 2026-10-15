@@ -192,8 +192,8 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
         [CatalogueColumns.LegalBasis] = "Forskrift om medisinske kvalitetsregistre § 2-3.",
         [CatalogueColumns.DataController] = "St. Olavs hospital HF",
         [CatalogueColumns.DataProcessor] = "Hemit HF",
-        [CatalogueColumns.ValidFrom] = "3. februar 2023",
-        [CatalogueColumns.ValidTo] = "5. april 2024",
+        [CatalogueColumns.ValidFrom] = "03.02.2023",
+        [CatalogueColumns.ValidTo] = "05.04.2024",
     };
 
     /// <inheritdoc cref="KildeFacts"/>
@@ -287,8 +287,8 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
             // word can be drawn.
             [CatalogueColumns.PersonIdentification] = "Indirekte identifiserbar",
             // Two dates as one period, which is the only shape a fact box has for them.
-            [CatalogueColumns.ValidFrom] = "3. februar 2023 – 5. april 2024",
-            [CatalogueColumns.ValidTo] = "3. februar 2023 – 5. april 2024",
+            [CatalogueColumns.ValidFrom] = "03.02.2023 – 05.04.2024",
+            [CatalogueColumns.ValidTo] = "03.02.2023 – 05.04.2024",
         });
     }
 
@@ -335,8 +335,8 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
         var facts = new Dictionary<string, string>(DatasamlingFacts)
         {
             [CatalogueColumns.PersonIdentification] = "Indirekte identifiserbar",
-            [CatalogueColumns.ValidFrom] = "3. februar 2023 – 5. april 2024",
-            [CatalogueColumns.ValidTo] = "3. februar 2023 – 5. april 2024",
+            [CatalogueColumns.ValidFrom] = "03.02.2023 – 05.04.2024",
+            [CatalogueColumns.ValidTo] = "03.02.2023 – 05.04.2024",
             // This package's word rather than the vocabulary's, as for the identification level.
             // Statistikktype is left out of the count entirely: the heading, the nav entry and the
             // row all read it off one field, so exactly-once is the wrong question.
@@ -484,7 +484,7 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
            .Select(row => (page, row.QuerySelector("dt")!.TextContent, row.QuerySelector("dd")!.TextContent))
            .Where(row => row.Item2 is "Gyldighet" or "Gyldig fra" or "Gyldig til");
 
-    private const string Period = "3. februar 2023 – 5. april 2024";
+    private const string Period = "03.02.2023 – 05.04.2024";
 
     [Fact]
     public void Validity_WhenTheStartIsHeldOnlyInTheCuratedValues_ThenTheOpenEndStillReadsOngoing()
@@ -516,8 +516,8 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
     {
         // The section has taken the opening date, so the box keeps the one it has not — under the
         // closing label, which is a label this box never used before the placements existed.
-        Assert.Equal([("kilde", "Gyldig til", "5. april 2024"),
-                      ("datasamling", "Gyldig til", "5. april 2024")],
+        Assert.Equal([("kilde", "Gyldig til", "05.04.2024"),
+                      ("datasamling", "Gyldig til", "05.04.2024")],
                      ValidityRows(from: true, to: false));
     }
 
@@ -527,8 +527,8 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
         // The mirror of it, and the branch a swap would leave rendering plausible-looking output:
         // the period beside a placed closing end reads as ongoing, and the wrong end repeats a date
         // the section is already drawing.
-        Assert.Equal([("kilde", "Gyldig fra", "3. februar 2023"),
-                      ("datasamling", "Gyldig fra", "3. februar 2023")],
+        Assert.Equal([("kilde", "Gyldig fra", "03.02.2023"),
+                      ("datasamling", "Gyldig fra", "03.02.2023")],
                      ValidityRows(from: false, to: true));
     }
 

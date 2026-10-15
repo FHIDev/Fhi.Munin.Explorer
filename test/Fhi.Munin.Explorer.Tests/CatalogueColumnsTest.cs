@@ -120,7 +120,7 @@ public class CatalogueColumnsTest
             ValidFrom = new DateTimeOffset(2023, 2, 3, 0, 0, 0, TimeSpan.Zero),
         };
 
-        Assert.Equal(("3. februar 2023", "3 February 2023"),
+        Assert.Equal(("03.02.2023", "2023-02-03"),
                      (CatalogueColumns.Values(kilde, "no")[CatalogueColumns.ValidFrom],
                       CatalogueColumns.Values(kilde, "en")[CatalogueColumns.ValidFrom]));
     }

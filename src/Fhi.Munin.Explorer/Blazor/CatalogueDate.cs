@@ -1,51 +1,28 @@
 namespace Fhi.Munin.Explorer.Blazor;
 
-/// <summary>How much room a date is allowed to take.</summary>
-/// <remarks>
-/// The caller's, because the room is the caller's: a spelled-out month wraps in a narrow column and
-/// does not in a wide one. It never decides the ordinal dot, which follows the reader.
-/// </remarks>
-internal enum DateWidth
-{
-    /// <summary>The month spelled out: <c>1. januar 2026</c>, <c>1 January 2026</c>.</summary>
-    Full,
-
-    /// <summary>The month abbreviated, for a column too narrow for the spelled-out one.</summary>
-    Narrow,
-}
-
 /// <summary>
 /// A catalogue date as a reader reads it: one day, or a period with an open end shown as ongoing.
 /// </summary>
 /// <remarks>
 /// Shared by the detail views, three of which had private copies that had already drifted apart.
-/// Two decisions live here and only one is the caller's: the ordinal dot follows the reader, the
-/// month's width follows the column (Fhi.Metadata-n39ea).
+/// One format, numeric, so no column needs a narrower one (Fhi.Metadata-n39ea, Fhi.Metadata-49ahq).
 /// </remarks>
 internal static class CatalogueDate
 {
-    /// <summary>A date as the day it fell on, in the reader's language.</summary>
+    /// <summary>A date as the day it fell on, written the way the date field takes one.</summary>
     /// <remarks>
-    /// The dot is what makes the number an ordinal in Norwegian; English writes the same date with
-    /// none, so the pattern follows the reader rather than the culture merely supplying month names
-    /// to a Norwegian skeleton. The culture's own long pattern leads with the weekday in English.
+    /// One rule for the page and the filter, <see cref="DateInput.Format(DateOnly, string?)"/>'s:
+    /// <c>dd.MM.yyyy</c> for a Norwegian reader, as helsedata writes dates, ISO for an English one (Fhi.Metadata-49ahq).
     /// </remarks>
-    internal static string Day(DateTimeOffset value, string? language, DateWidth width = DateWidth.Full)
-    {
-        var month = width == DateWidth.Narrow ? "MMM" : "MMMM";
-        var pattern = ReaderLanguage.IsEnglish(language) ? $"d {month} yyyy" : $"d. {month} yyyy";
-
-        return value.ToString(pattern, CatalogueProperties.Culture(language));
-    }
+    internal static string Day(DateTimeOffset value, string? language) =>
+        DateInput.Format(DateOnly.FromDateTime(value.DateTime), language);
 
     /// <summary>A day a reader chose rather than one the catalogue recorded.</summary>
     /// <remarks>
-    /// A <see cref="DateOnly"/> is a calendar day with no instant to reinterpret, so it is lifted at
-    /// UTC and reaches the same pattern as every other day on the page — which is the whole point:
-    /// the filter's chosen bound sits beside values that came through here (Fhi.Metadata-ufmop).
+    /// The filter's chosen bound sits beside values that came through here, so it is written by the
+    /// same rule (Fhi.Metadata-ufmop).
     /// </remarks>
-    internal static string Day(DateOnly value, string? language, DateWidth width = DateWidth.Full) =>
-        Day(new DateTimeOffset(value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero), language, width);
+    internal static string Day(DateOnly value, string? language) => DateInput.Format(value, language);
 
     /// <summary>A day the payload may not have carried at all, and null where it did not.</summary>
     /// <remarks>
@@ -53,9 +30,8 @@ internal static class CatalogueDate
     /// <see cref="Period"/> with no ends. Both absences reach here: Munin omitting the key, which the
     /// contracts read as null since Fhi.Metadata-se0by, and a <c>default</c> from any other source.
     /// </remarks>
-    internal static string? DayOrNothing(DateTimeOffset? value, string? language,
-                                         DateWidth width = DateWidth.Full) =>
-        Written(value) is { } day ? Day(day, language, width) : null;
+    internal static string? DayOrNothing(DateTimeOffset? value, string? language) =>
+        Written(value) is { } day ? Day(day, language) : null;
 
     /// <summary>The value, or null where it is one of the two ways of carrying no date.</summary>
     /// <remarks>
@@ -75,8 +51,7 @@ internal static class CatalogueDate
     /// carries a round-trip check against calendar roll-over that this does not need — its parse is
     /// JavaScript's, which turns that same string into 2 March, and <c>TryParseExact</c> refuses it.
     /// </remarks>
-    internal static string? SourceSystemDay(string? value, string? language,
-                                            DateWidth width = DateWidth.Full)
+    internal static string? SourceSystemDay(string? value, string? language)
     {
         var raw = value?.Trim();
 
@@ -87,7 +62,7 @@ internal static class CatalogueDate
 
         return DateTime.TryParseExact(raw, "yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture,
                                       System.Globalization.DateTimeStyles.None, out var day)
-            ? Day(new DateTimeOffset(day, TimeSpan.Zero), language, width)
+            ? Day(new DateTimeOffset(day, TimeSpan.Zero), language)
             : raw;
     }
 
@@ -101,7 +76,7 @@ internal static class CatalogueDate
     /// <see cref="DayOrNothing"/> (Fhi.Metadata-msax9).
     /// </remarks>
     internal static string? Period(DateTimeOffset? from, DateTimeOffset? to, string? language,
-                                   Texts texts, DateWidth width = DateWidth.Full)
+                                   Texts texts)
     {
         from = Written(from);
         to = Written(to);
@@ -111,8 +86,8 @@ internal static class CatalogueDate
             return null;
         }
 
-        var start = from is { } f ? Day(f, language, width) : "?";
-        var end = to is { } t ? Day(t, language, width) : texts.Ongoing;
+        var start = from is { } f ? Day(f, language) : "?";
+        var end = to is { } t ? Day(t, language) : texts.Ongoing;
 
         return $"{start} – {end}";
     }

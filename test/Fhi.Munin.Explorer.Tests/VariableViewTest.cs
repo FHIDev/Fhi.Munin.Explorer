@@ -892,7 +892,7 @@ public class VariableViewTest : ExplorerTestContext
         Assert.Equal(2, values[0].QuerySelectorAll("br").Length);
 
         // The dates share the flag and parse too; Norwegian dates open like an ordered list.
-        Assert.Equal(["1. jan. 2020", "Pågående"], values.Skip(1).Select(v => v.InnerHtml));
+        Assert.Equal(["01.01.2020", "Pågående"], values.Skip(1).Select(v => v.InnerHtml));
     }
 
     [Fact]
@@ -1078,21 +1078,17 @@ public class VariableViewTest : ExplorerTestContext
         cut.Find($"#{DetailSectionIds.DataPeriod} p.margin--none").TextContent;
 
     [Fact]
-    public void Dates_Always_ThenTheMonthIsAbbreviated()
+    public void Dates_Always_ThenTheyAreWrittenAsTheDateFieldTakesThem()
     {
-        // The short form the 320px rail this block used to sit in needed, kept now the block reads
-        // full width. Untested until the date helpers became shared, which is exactly when a
-        // spelled-out month could arrive here without anything failing.
-        Assert.Equal("20. sep. 2022 – 9. nov. 2022", DataPeriod(Render(WithDataPeriod())));
+        // dd.MM.yyyy, the way helsedata writes dates and the filter's own field reads them (Fhi.Metadata-49ahq).
+        Assert.Equal("20.09.2022 – 09.11.2022", DataPeriod(Render(WithDataPeriod())));
     }
 
     [Fact]
-    public void Dates_WhenTheReaderIsEnglish_ThenTheAbbreviatedMonthCarriesNoNorwegianOrdinalDot()
+    public void Dates_WhenTheReaderIsEnglish_ThenTheyAreIso()
     {
-        // This view wrote "20. Sep 2022" to an English reader: the dot is what makes the number an
-        // ordinal in Norwegian, and English uses none. The kilde view's own dates have followed the
-        // reader all along — this one never did, because nothing here read them.
-        Assert.Equal("20 Sep 2022 – 9 Nov 2022", DataPeriod(Render(WithDataPeriod(), "en")));
+        // ISO, as the date field already takes an English reader's input (Fhi.Metadata-49ahq).
+        Assert.Equal("2022-09-20 – 2022-11-09", DataPeriod(Render(WithDataPeriod(), "en")));
     }
 
     [Fact]
@@ -2071,7 +2067,7 @@ public class VariableViewTest : ExplorerTestContext
     [Fact]
     public void DataCollections_WhenEachDatasamlingHasItsOwnPeriod_ThenThatIsDrawnAndNotTheRegistrationDates()
     {
-        // Innmeldt #6515: every row read "(14. mai 2026 – Pågående)", the day the variable was
+        // Innmeldt #6515: every row read "(14.05.2026 – Pågående)", the day the variable was
         // registered in the datasamling, where a reader takes the dates for the data's period.
         var cut = Render(Placed() with
         {
@@ -2082,7 +2078,7 @@ public class VariableViewTest : ExplorerTestContext
             ],
         });
 
-        Assert.Equal(["(1. jan. 2013 – 31. des. 2025)", "(1. jan. 2007 – Pågående)"], DatasamlingPeriods(cut));
+        Assert.Equal(["(01.01.2013 – 31.12.2025)", "(01.01.2007 – Pågående)"], DatasamlingPeriods(cut));
         Assert.DoesNotContain("2026", cut.Find($"#{DetailSectionIds.DataCollections}").TextContent, StringComparison.Ordinal);
         Assert.Equal("Dataperiode: perioden variabelen har data for i hver datasamling.", DatasamlingCaption(cut));
     }
@@ -2095,7 +2091,7 @@ public class VariableViewTest : ExplorerTestContext
             AllDatasamlinger = [new() { Id = Guid.NewGuid(), Name = "Livmorhals", ValidFrom = Registered, DataFrom = Year(2019) }],
         }, "en");
 
-        Assert.Equal(["(1 Jan 2019 – Ongoing)"], DatasamlingPeriods(cut));
+        Assert.Equal(["(2019-01-01 – Ongoing)"], DatasamlingPeriods(cut));
         Assert.Equal("Data period: the period this variable has data for in each data collection.", DatasamlingCaption(cut));
     }
 
@@ -2130,7 +2126,7 @@ public class VariableViewTest : ExplorerTestContext
             ],
         });
 
-        Assert.Equal(["(1. jan. 2013 – Pågående)", ""], DatasamlingPeriods(cut));
+        Assert.Equal(["(01.01.2013 – Pågående)", ""], DatasamlingPeriods(cut));
         Assert.NotNull(DatasamlingCaption(cut));
     }
 

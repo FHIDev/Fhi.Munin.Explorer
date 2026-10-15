@@ -113,14 +113,6 @@ public sealed partial class VariableView : ComponentBase
 
     private int GroupLevel => Math.Min(HeadingLevel + 2, 6);
 
-    /// <summary>The month this view abbreviates, because the version list's date columns are narrow.</summary>
-    /// <remarks>
-    /// One width for both places a date is written, and the version list is the one that needs it:
-    /// two dates as two columns beside a name and a badge. The data period was narrowed for the
-    /// 320px rail it used to sit in and keeps the form (Fhi.Metadata-n39ea).
-    /// </remarks>
-    private const DateWidth Dates = DateWidth.Narrow;
-
     /// <summary>
     /// The catalogue's metadata about this variable, grouped as the catalogue groups it.
     /// </summary>
@@ -217,7 +209,7 @@ public sealed partial class VariableView : ComponentBase
     /// </remarks>
     private string? DataPeriod =>
         Variable is { } variable
-            ? CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T, Dates)
+            ? CatalogueDate.Period(variable.DataFrom, variable.DataTo, Language, T)
             : null;
 
     /// <summary>This variable's data type as the API names it, or null when the catalogue names none.</summary>

@@ -267,8 +267,8 @@ public sealed partial class VariableListView
     // One source for both ends, so a period is never half the detail's and half the list's.
     private string RowPanelPeriod(VariableListItem item, VariableDetail detail) =>
         (detail.DataFrom is null && detail.DataTo is null
-            ? CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T, DateWidth.Narrow)
-            : CatalogueDate.Period(detail.DataFrom, detail.DataTo, Language, T, DateWidth.Narrow))
+            ? CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T)
+            : CatalogueDate.Period(detail.DataFrom, detail.DataTo, Language, T))
         ?? T.NotSpecified;
 
     private string VariableMailTo(VariableListItem item, string link)

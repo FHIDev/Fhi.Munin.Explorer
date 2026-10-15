@@ -10055,9 +10055,8 @@ public class VariableSearchTest : ExplorerTestContext
     public void ActiveFilters_WhenADateBoundIsSet_ThenTheChipWritesTheDayTheHouseWay(
         string? language, string field)
     {
-        // Half of ADO 121131: this chip wrote the culture's all-numeric short date — "01.01.2020" —
-        // beside results whose dates are spelled out, so one page held two shapes for one kind of
-        // value. The reader's own DateOnly bound reaches the same helper as the catalogue's dates.
+        // ADO 121131 (Anne): one date shape on the page, dd.mm.yyyy. The reader's own DateOnly bound
+        // reaches the same helper as the catalogue's dates, so the chip and the results agree.
         var bound = new DateOnly(2020, 1, 1);
         var cut = RenderWith(
             new FilteringClient(
@@ -10073,9 +10072,9 @@ public class VariableSearchTest : ExplorerTestContext
 
         var chip = Assert.Single(Chips(cut));
 
-        Assert.Equal($"{field}: {CatalogueDate.Day(bound, language, DateWidth.Narrow)}", chip);
-        Assert.DoesNotContain(bound.ToString("d", CatalogueProperties.Culture(language)), chip,
-                              StringComparison.Ordinal);
+        // Exact, so a culture's short date (mm/dd/yyyy in English) cannot pass for it (Fhi.Metadata-49ahq).
+        Assert.Equal($"{field}: {CatalogueDate.Day(bound, language)}", chip);
+        Assert.Equal($"{field}: {(language == "en" ? "2020-01-01" : "01.01.2020")}", chip);
     }
 
     [Fact]
@@ -13343,7 +13342,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         // The two validity columns are pinned by the theory below, which owns the format; here it
         // is only that the second row's end date is drawn at all.
-        Assert.Equal(CatalogueDate.Day(ValidTo2336, null, DateWidth.Narrow), second[3]);
+        Assert.Equal(CatalogueDate.Day(ValidTo2336, null), second[3]);
     }
 
     [Theory]
@@ -13352,9 +13351,9 @@ public class VariableSearchTest : ExplorerTestContext
     public void Codes_WhenAValidityDateIsShown_ThenItIsTheHouseDayFormatAndNotTheCulturesShortDate(
         string? language)
     {
-        // ADO 121131: this cell wrote "01.01.2010" while the fact value one tab away wrote the same
-        // date spelled out. Sameness with the helper AND absence of the short date, because either
-        // alone passes on the bug — the helper returning the short date satisfies the first.
+        // ADO 121131 (Anne): this cell and the fact value one tab away must write a date the same way,
+        // dd.mm.yyyy. Sameness with the helper AND the exact value, because the helper alone would
+        // pass with any shape.
         var cut = OpenData(KodeverkRows(), p => p.Add(c => c.Language, language));
 
         CodeToggles(cut)[0].Click();
@@ -13362,8 +13361,9 @@ public class VariableSearchTest : ExplorerTestContext
         var cells = Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")
             .Select(td => td.TextContent).ToArray();
 
-        Assert.Equal(CatalogueDate.Day(ValidFrom2336, language, DateWidth.Narrow), cells[2]);
-        Assert.NotEqual(ValidFrom2336.ToString("d", CatalogueProperties.Culture(language)), cells[2]);
+        // English is ISO, the date field's rule, rather than the culture's short date (Fhi.Metadata-49ahq).
+        Assert.Equal(CatalogueDate.Day(ValidFrom2336, language), cells[2]);
+        Assert.Equal(DateInput.Format(DateOnly.FromDateTime(ValidFrom2336.DateTime), language), cells[2]);
     }
 
     [Fact]
@@ -13384,7 +13384,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         // The end date carries a time of day on the wire — the import ran at 13:13:41 — and the
         // cell shows the day alone, because the import's clock is not when Halden stopped existing.
-        Assert.Equal(CatalogueDate.Day(ValidTo3402, null, DateWidth.Narrow), cells[3]);
+        Assert.Equal(CatalogueDate.Day(ValidTo3402, null), cells[3]);
         Assert.DoesNotContain("13:13", cells[3], StringComparison.Ordinal);
     }
 
@@ -13408,7 +13408,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cells = Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")
             .Select(td => td.TextContent).ToArray();
 
-        Assert.Equal(CatalogueDate.Day(default(DateTimeOffset), null, DateWidth.Narrow), cells[2]);
+        Assert.Equal(CatalogueDate.Day(default(DateTimeOffset), null), cells[2]);
         Assert.NotEqual("Ikke oppgitt", cells[2]);
     }
 
@@ -14274,7 +14274,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         // The date follows the page too. The format itself is pinned by
         // Codes_WhenAValidityDateIsShown_ThenItIsTheHouseDayFormatAndNotTheCulturesShortDate.
-        Assert.Equal(CatalogueDate.Day(ValidFrom2336, "en", DateWidth.Narrow),
+        Assert.Equal(CatalogueDate.Day(ValidFrom2336, "en"),
                      Panel(cut).QuerySelectorAll(".munin-explorer-codes tbody td")[2].TextContent);
     }
 
@@ -15806,8 +15806,8 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData(null, "1. januar 2023")]
-    [InlineData("en", "1 January 2023")]
+    [InlineData(null, "01.01.2023")]
+    [InlineData("en", "2023-01-01")]
     public void Source_WhenADateIsShown_ThenItIsWrittenTheWayTheReadersLanguageWritesDates(
         string? language,
         string expected)
@@ -15920,7 +15920,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("Als registeret", values[0]);
         Assert.Equal("St. Olavs hospital HF", values[3]);
         Assert.Equal("Indirekte identifiserbar", values[5]);
-        Assert.Equal("1. januar 2010 – Pågående", values[6]);
+        Assert.Equal("01.01.2010 – Pågående", values[6]);
         Assert.Equal("Årsbasert", values[9]);
         Assert.Equal("Fortløpende", values[10]);
         Assert.Equal("99", values[12]);

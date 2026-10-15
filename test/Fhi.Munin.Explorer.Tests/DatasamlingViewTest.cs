@@ -470,11 +470,11 @@ public class DatasamlingViewTest : ExplorerTestContext
 
     [Theory]
     [InlineData(null, null, null)]
-    [InlineData("2020-01-01", null, "1 January 2020 – Ongoing")]
+    [InlineData("2020-01-01", null, "2020-01-01 – Ongoing")]
     // An unknown start is written "?" rather than left blank or let stand as the end alone, which
     // would read as a start date the catalogue never gave (Fhi.Metadata-msax9).
-    [InlineData(null, "2024-12-31", "? – 31 December 2024")]
-    [InlineData("2020-01-01", "2024-12-31", "1 January 2020 – 31 December 2024")]
+    [InlineData(null, "2024-12-31", "? – 2024-12-31")]
+    [InlineData("2020-01-01", "2024-12-31", "2020-01-01 – 2024-12-31")]
     public void HeroFacts_WhenValidityIsOpenEnded_ThenTheHeroAndCompactBarAgree(
         string? start, string? end, string? expected)
     {
@@ -2170,7 +2170,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal("Indirekte identifiserbar", Value(facts, "Grad av personidentifikasjon"));
 
         // An open end says so rather than sitting blank or guessing a date.
-        Assert.Equal("1. januar 2010 – Pågående", Value(facts, "Gyldighet"));
+        Assert.Equal("01.01.2010 – Pågående", Value(facts, "Gyldighet"));
     }
 
     [Fact]
@@ -2244,8 +2244,8 @@ public class DatasamlingViewTest : ExplorerTestContext
         // been confused before. The twin of Sist oppdatert i Munin, formatted the same way.
         var facts = SourceInformation(Render(Datasamling()));
 
-        Assert.Equal("19. mai 2026", Value(facts, "Opprettet i Munin"));
-        Assert.Equal("19 May 2026",
+        Assert.Equal("19.05.2026", Value(facts, "Opprettet i Munin"));
+        Assert.Equal("2026-05-19",
                      Value(SourceInformation(Render(Datasamling(), language: "en")), "Created in Munin"));
     }
 
@@ -2253,7 +2253,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     public void SourceInformation_WhenThePayloadCarriesNoCreatedTimestamp_ThenTheRowSaysSoRatherThanYearOne()
     {
         // The same fallback sistOppdatert has, and worth its own test because the two are read off
-        // different contract fields: an absent opprettet drew "1. januar 0001" before
+        // different contract fields: an absent opprettet drew "01.01.0001" before
         // Fhi.Metadata-se0by, and a blank row reads as a value that failed to draw.
         AssertAbsent(SourceInformation(Render(Datasamling() with { Created = null })), "Opprettet i Munin");
     }
@@ -2261,7 +2261,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     [Fact]
     public void SourceInformation_WhenThePayloadCarriesNoTimestamp_ThenTheRowSaysNoneRatherThanYearOne()
     {
-        // An absent sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "1. januar 0001"
+        // An absent sistOppdatert reads as null (Fhi.Metadata-se0by) and drew "01.01.0001"
         // before that. The kilde view had the same line, and the kilder table's Importert column
         // the same shape. (Fhi.Metadata-6r6rf)
         var cut = Render(Datasamling() with { LastUpdated = default, Created = default });
@@ -2480,7 +2480,7 @@ public class DatasamlingViewTest : ExplorerTestContext
             Labels(facts));
 
         Assert.Equal("National medical quality registry", Value(facts, "Type of data source"));
-        Assert.Equal("1 January 2010 – Ongoing", Value(facts, "Validity"));
+        Assert.Equal("2010-01-01 – Ongoing", Value(facts, "Validity"));
 
         Assert.Equal("no", cut.Find(".munin-explorer-datasamling__description").GetAttribute("lang"));
         Assert.Equal("no", cut.Find(".munin-explorer-datasamling__criteria").GetAttribute("lang"));

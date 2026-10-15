@@ -549,6 +549,8 @@ internal static class CatalogueProperties
     // list into a row does not introduce a second way of showing one.
     private const string Separator = "; ";
 
+    private const string SourceSystemDayKey = "SistOppdatert";
+
     private static bool Typed(PropertyMetadataEntry entry, string type)
         => string.Equals(entry.Type, type, StringComparison.OrdinalIgnoreCase);
 
@@ -566,6 +568,13 @@ internal static class CatalogueProperties
         if (Typed(entry, ObjectType))
         {
             return null;
+        }
+
+        // Typed String, written yyyyMMdd; the kilde list's column already reads it so (Fhi.Metadata-49ahq).
+        if (string.Equals(entry.Key, SourceSystemDayKey, StringComparison.Ordinal)
+            && CatalogueDate.SourceSystemDay(raw, reader) is { } day && day != raw.Trim())
+        {
+            return [new LocalisedText(day, reader)];
         }
 
         var bag =

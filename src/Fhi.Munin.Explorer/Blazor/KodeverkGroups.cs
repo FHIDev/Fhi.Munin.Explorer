@@ -338,5 +338,5 @@ internal sealed class KodeverkGroups : ComponentBase, IDisposable
 
     // The day only: these arrive as midnight UTC or an import's instant, neither a fact about the code.
     private string ValidityDate(DateTimeOffset? date) =>
-        date is { } value ? CatalogueDate.Day(value, Language, DateWidth.Narrow) : T.NotSpecified;
+        date is { } value ? CatalogueDate.Day(value, Language) : T.NotSpecified;
 }
