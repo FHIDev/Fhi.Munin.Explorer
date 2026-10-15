@@ -82,13 +82,27 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
     /// <remarks>
     /// Every component here stamps its ids with eight random hex digits, which spell "0001" about
     /// once in thirteen thousand renders, flaking the assertion below that reads the whole page.
-    /// The list is every idref the markup writes; an <c>aria-label</c> may hold a date, so it stays.
+    /// The list is every idref the markup writes, plus bUnit's own <c>blazor:</c> attributes: an
+    /// element reference is a random GUID (Fhi.Metadata-zz1mb). An <c>aria-label</c> may hold a date, so it stays.
     /// </remarks>
-    private static string Shown(string markup) =>
+    internal static string Shown(string markup) =>
         Regex.Replace(
             markup,
-            "\\s(id|for|name|href|aria-(labelledby|describedby|controls))=\"[^\"]*\"",
+            "\\s(id|for|name|href|aria-(labelledby|describedby|controls)|blazor:[A-Za-z]+)=\"[^\"]*\"",
             " ");
+
+    [Fact]
+    public void Shown_WhenAnElementReferenceHoldsTheDigits_ThenOnlyWhatAReaderSeesIsChecked()
+    {
+        // The markup that failed on Fhi.Munin.Explorer #572: a button whose element reference was "...b0001".
+        var reference = Shown("""<button id="x" blazor:elementReference="11111111-46c4-822b-b748e65b0001">Save</button>""");
+        var title = Shown("""<span title="0001-01-01">period</span>""");
+        var text = Shown("""<td>01.01.0001</td>""");
+
+        Assert.DoesNotContain("0001", reference, StringComparison.Ordinal);
+        Assert.Contains("0001", title, StringComparison.Ordinal);
+        Assert.Contains("0001", text, StringComparison.Ordinal);
+    }
 
     private static VariableSummary Row(string? from, string? to) => new()
     {
