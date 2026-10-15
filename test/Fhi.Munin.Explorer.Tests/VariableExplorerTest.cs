@@ -417,7 +417,12 @@ public class VariableExplorerTest : ExplorerTestContext
 
         Tab(cut, "Variabelliste").Click();
 
-        Assert.Empty(cut.FindAll(".munin-explorer-filters__toggle"));
+        // The list tab's Vis filtre folds the list's own panel, never the search facets it left
+        // behind (Fhi.Metadata-4mmj8).
+        var listToggle = Assert.Single(cut.FindAll(".munin-explorer-filters__toggle"));
+        var listFolded = cut.Find($"#{listToggle.GetAttribute("aria-controls")}");
+        Assert.NotEqual("FIELDSET", listFolded.TagName);
+        Assert.True(listFolded.HasAttribute("hidden"));
 
         Tab(cut, "Søkeresultat").Click();
 

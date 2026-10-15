@@ -331,10 +331,10 @@ public class VariableListFiltersTest : ExplorerTestContext
     /// <summary>The panel's "Vis N til", or null where it is hiding nothing.</summary>
     /// <remarks>
     /// Found by the attribute rather than by a class: the control wears Stiler's own ghost square
-    /// and invents no name of ours, and it is the only disclosure this panel draws.
+    /// and invents no name of ours, and it is the only disclosure inside the folded facets.
     /// </remarks>
     private static AngleSharp.Dom.IElement? RestControl(IRenderedComponent<VariableListFilters> cut) =>
-        cut.FindAll(".munin-explorer-filters button[aria-expanded]").SingleOrDefault();
+        cut.FindAll(".munin-explorer-filters__facets button[aria-expanded]").SingleOrDefault();
 
     /// <summary>
     /// The activation a native <c>&lt;button&gt;</c> reports for Enter and for Space: a click
@@ -946,16 +946,39 @@ public class VariableListFiltersTest : ExplorerTestContext
     }
 
     [Fact]
+    public void FiltersToggle_WhenTheListTabIsDrawn_ThenThePanelFoldsBehindVisFiltreLikeTheSearchTabs()
+    {
+        // At 320 the panel stood open over the list and pushed Flere valg below the fold; the search
+        // tab folds its facets behind the same button, and Stiler shows both at desktop width. (Fhi.Metadata-4mmj8)
+        var cut = RenderBoth(new ListClient(List((Kreftregisteret, 3))));
+
+        var toggle = cut.Filters.Find(".munin-explorer-filters > .munin-explorer-filters__toggle");
+        var folded = cut.Filters.Find($"#{toggle.GetAttribute("aria-controls")}");
+
+        Assert.Equal("Vis filtre", toggle.TextContent.Trim());
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Contains("munin-explorer-filters__facets", folded.ClassList);
+        Assert.True(folded.HasAttribute("hidden"));
+        Assert.NotEmpty(folded.QuerySelectorAll("input[type=checkbox]"));
+
+        toggle.Click();
+
+        toggle = cut.Filters.Find(".munin-explorer-filters__toggle");
+        Assert.Equal("true", toggle.GetAttribute("aria-expanded"));
+        Assert.False(cut.Filters.Find(".munin-explorer-filters__facets").HasAttribute("hidden"));
+    }
+
+    [Fact]
     public void ClearAll_WhenNothingIsTicked_ThenThereIsNoButtonToPress()
     {
         // A control that unticks nothing tells the reader they have narrowed something.
         var cut = RenderBoth(new ListClient(List((Kreftregisteret, 3))));
 
-        Assert.Empty(cut.Filters.FindAll(".munin-explorer-filters button"));
+        Assert.Empty(cut.Filters.FindAll(".munin-explorer-filters__facets button"));
 
         Boxes(cut.Filters)[0].Change(true);
 
-        Assert.Single(cut.Filters.FindAll(".munin-explorer-filters button"));
+        Assert.Single(cut.Filters.FindAll(".munin-explorer-filters__facets button"));
     }
 
     [Fact]
@@ -966,7 +989,7 @@ public class VariableListFiltersTest : ExplorerTestContext
         var cut = RenderBoth(client, pageSize: 100);
 
         Boxes(cut.Filters)[1].Change(true);
-        cut.Filters.Find(".munin-explorer-filters button").Click();
+        cut.Filters.Find(".munin-explorer-filters__facets button").Click();
 
         Assert.Equal(55, RowCount(cut.View));
         Assert.DoesNotContain(Boxes(cut.Filters), b => b.HasAttribute("checked"));

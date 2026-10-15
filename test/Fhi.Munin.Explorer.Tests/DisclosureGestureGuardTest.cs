@@ -419,8 +419,8 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableListFilters_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // One: the cap's "Vis N til". It is the only disclosure this panel has ever drawn, which is
-        // why the panel joins the sweep with the cap rather than before it.
+        // Two: the cap's "Vis N til", and Vis filtre, the narrow-screen fold the panel shares with the
+        // search tab's (Fhi.Metadata-4mmj8).
         Services.AddSingleton<IMuninExplorerClient>(new LongListClient());
         Services.AddScoped<VariableListState>();
 
@@ -428,7 +428,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         // the column picker belongs to the table it sits beside rather than to the panel.
         AssertStandingGesturesAreRefused(
             () => Render<VariableListFilters>(b => b.Add(c => c.IsAuthenticated, true)),
-            expected: 1,
+            expected: 2,
             native: 0);
     }
 
