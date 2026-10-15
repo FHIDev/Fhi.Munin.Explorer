@@ -21,65 +21,65 @@
                 @onclick="ToggleFiltersFromControl">@(_filtersOpen ? T.HideFilters : T.ShowFilters)</button>
 
         <div class="munin-explorer-filters__facets" id="@FacetsId" hidden="@(!_filtersOpen)">
-        @* Only when there is something to clear. A button that unticks nothing says the reader has
-           narrowed something when they have not. Ghost, like the search panel's own presses. *@
-        @if (Chosen.Count > 0)
-        {
-            <button class="hd-button-square button-square--ghost margin-bottom"
-                    type="button"
-                    @onclick="ClearAll">@T.ClearFilters</button>
-        }
-
-        @* role="group" named by the heading rather than a fieldset and a legend: a reader moves
-           through a filter panel by heading, and a legend is not one. One facet only, so it is not
-           a disclosure the way Kelda's four and the variable explorer's are. *@
-        <div role="group" aria-labelledby="@KildeHeadingId">
-            @((MarkupString)$"<h{SubTitleLevel} class=\"form-element__label\" id=\"{KildeHeadingId}\">{T.FieldSource}</h{SubTitleLevel}>")
-
-            @* Three states, not two. The sentence is only true once the whole list has been read —
-               said while the walk is still running, or after one that was refused, it would report
-               an empty list for one we never managed to look at. *@
-            @if (Kilder.Count > 0)
+            @* Only when there is something to clear. A button that unticks nothing says the reader has
+               narrowed something when they have not. Ghost, like the search panel's own presses. *@
+            @if (Chosen.Count > 0)
             {
-                var drawn = DrawnKilder();
+                <button class="hd-button-square button-square--ghost margin-bottom"
+                        type="button"
+                        @onclick="ClearAll">@T.ClearFilters</button>
+            }
 
-                <ul id="@KildeOptionsId">
-                    @foreach (var kilde in drawn.Visible)
-                    {
-                        @* Keyed on the kilde: the tally is built off the unfiltered walk so the
-                           options never move under a tick, and the key is what keeps a checkbox
-                           with its own kilde if they ever do. *@
-                        <li @key="kilde.Id">
-                            @* lang, because these are the catalogue's own Norwegian names and this
-                               package's words around them may be English — the same marking the
-                               table's kilde cells carry. *@
-                            <label lang="@CatalogueLang(kilde.Name)">
-                                <input type="checkbox"
-                                       checked="@IsChosen(kilde.Id)"
-                                       @onchange="() => Toggle(kilde.Id)" />
-                                @Label(kilde)@(" ")<span class="munin-explorer-filters__count">@Count(kilde.Count)</span>
-                            </label>
-                        </li>
-                    }
-                </ul>
+            @* role="group" named by the heading rather than a fieldset and a legend: a reader moves
+               through a filter panel by heading, and a legend is not one. One facet only, so it is not
+               a disclosure the way Kelda's four and the variable explorer's are. *@
+            <div role="group" aria-labelledby="@KildeHeadingId">
+                @((MarkupString)$"<h{SubTitleLevel} class=\"form-element__label\" id=\"{KildeHeadingId}\">{T.FieldSource}</h{SubTitleLevel}>")
 
-                @* The rest of a long list, behind a real button so Enter and Space work without a
-                   handler of our own; list and words both off `drawn`, computed once above. Stiler
-                   scopes the ghost pair `:not([aria-pressed])`, and this carries aria-expanded. *@
-                @if (ShowsRestControl(drawn.Hidden))
+                @* Three states, not two. The sentence is only true once the whole list has been read —
+                   said while the walk is still running, or after one that was refused, it would report
+                   an empty list for one we never managed to look at. *@
+                @if (Kilder.Count > 0)
                 {
-                    <button class="hd-button-square button-square--ghost"
-                            type="button"
-                            aria-expanded="@(KilderExpanded ? "true" : "false")"
-                            aria-controls="@KildeOptionsId"
-                            @onclick="ToggleKilderExpandedFromControl">@RestControlText(drawn.Hidden)@(" ")<span class="screenreader-only">@T.FieldSource</span></button>
+                    var drawn = DrawnKilder();
+
+                    <ul id="@KildeOptionsId">
+                        @foreach (var kilde in drawn.Visible)
+                        {
+                            @* Keyed on the kilde: the tally is built off the unfiltered walk so the
+                               options never move under a tick, and the key is what keeps a checkbox
+                               with its own kilde if they ever do. *@
+                            <li @key="kilde.Id">
+                                @* lang, because these are the catalogue's own Norwegian names and this
+                                   package's words around them may be English — the same marking the
+                                   table's kilde cells carry. *@
+                                <label lang="@CatalogueLang(kilde.Name)">
+                                    <input type="checkbox"
+                                           checked="@IsChosen(kilde.Id)"
+                                           @onchange="() => Toggle(kilde.Id)" />
+                                    @Label(kilde)@(" ")<span class="munin-explorer-filters__count">@Count(kilde.Count)</span>
+                                </label>
+                            </li>
+                        }
+                    </ul>
+
+                    @* The rest of a long list, behind a real button so Enter and Space work without a
+                       handler of our own; list and words both off `drawn`, computed once above. Stiler
+                       scopes the ghost pair `:not([aria-pressed])`, and this carries aria-expanded. *@
+                    @if (ShowsRestControl(drawn.Hidden))
+                    {
+                        <button class="hd-button-square button-square--ghost"
+                                type="button"
+                                aria-expanded="@(KilderExpanded ? "true" : "false")"
+                                aria-controls="@KildeOptionsId"
+                                @onclick="ToggleKilderExpandedFromControl">@RestControlText(drawn.Hidden)@(" ")<span class="screenreader-only">@T.FieldSource</span></button>
+                    }
                 }
-            }
-            else if (Known)
-            {
-                <p>@T.NoKilderInList</p>
-            }
-        </div>
+                else if (Known)
+                {
+                    <p>@T.NoKilderInList</p>
+                }
+            </div>
         </div>
     </div>
 }

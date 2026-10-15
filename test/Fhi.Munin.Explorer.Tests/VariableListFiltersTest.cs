@@ -331,7 +331,7 @@ public class VariableListFiltersTest : ExplorerTestContext
     /// <summary>The panel's "Vis N til", or null where it is hiding nothing.</summary>
     /// <remarks>
     /// Found by the attribute rather than by a class: the control wears Stiler's own ghost square
-    /// and invents no name of ours, and it is the only disclosure this panel draws.
+    /// and invents no name of ours, and it is the only disclosure inside the folded facets.
     /// </remarks>
     private static AngleSharp.Dom.IElement? RestControl(IRenderedComponent<VariableListFilters> cut) =>
         cut.FindAll(".munin-explorer-filters__facets button[aria-expanded]").SingleOrDefault();

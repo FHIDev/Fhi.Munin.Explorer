@@ -1,3 +1,3 @@
 category: Fixed
 - **On a phone the saved list's filters fold behind «Vis filtre», as the search results' do.** At 320 and 390 px the Variabelliste tab showed its filter panel open above the list, which pushed «Flere valg» and «Last ned» to the bottom edge. The panel now starts folded with the same button the Søkeresultat tab has; on a screen wide enough for a sidebar it is shown as before.
-- **A menu that opens near the bottom of the screen scrolls into view.** «Flere valg» and «Last ned» on the saved list, and «Last ned utvalg», bring their open panel onto the screen instead of opening below the fold; a panel already on screen stays where it is.
+- **A menu that opens near the bottom of the screen scrolls into view.** «Flere valg» and «Last ned» on the saved list, and «Last ned utvalg» on the search results, bring their open panel onto the screen instead of opening below the fold; a panel already on screen stays where it is.
