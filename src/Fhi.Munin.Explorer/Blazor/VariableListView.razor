@@ -254,22 +254,24 @@ else if (State?.IsAuthenticated == true)
 
                     <p class="@SourceStatusClass" role="status" aria-live="polite" aria-atomic="true">@SourceStatus</p>
 
-                    @if (_kilde is { } kilde)
-                    {
-                        <KildeView Kilde="kilde"
-                                   Language="@Language"
-                                   HeadingLevel="@RowPanelLevel"
-                                   HeadingId="@SourceHeadingId"
-                                   NamedSections="@VariableReference.Section(T, kilde)" />
-                    }
-                    else if (_datasamling is { } datasamling)
-                    {
-                        <DatasamlingView Datasamling="datasamling"
-                                         Language="@Language"
-                                         HeadingLevel="@RowPanelLevel"
-                                         ShowKilde="ShowDatasamlingKildeAsync"
-                                         HeadingId="@SourceHeadingId" />
-                    }
+                    <CascadingValue Value="_kildeTypes" IsFixed="true">
+                        @if (_kilde is { } kilde)
+                        {
+                            <KildeView Kilde="kilde"
+                                       Language="@Language"
+                                       HeadingLevel="@RowPanelLevel"
+                                       HeadingId="@SourceHeadingId"
+                                       NamedSections="@VariableReference.Section(T, kilde)" />
+                        }
+                        else if (_datasamling is { } datasamling)
+                        {
+                            <DatasamlingView Datasamling="datasamling"
+                                             Language="@Language"
+                                             HeadingLevel="@RowPanelLevel"
+                                             ShowKilde="ShowDatasamlingKildeAsync"
+                                             HeadingId="@SourceHeadingId" />
+                        }
+                    </CascadingValue>
                 </div>
             }
             else if (_page is not null)

@@ -120,6 +120,11 @@ public sealed partial class KildeView : ComponentBase
 
     private readonly KildeTypeVocabulary _kildeTypes = new();
 
+    /// <summary>The explorer's own, when one mounted this view, so the view and its explorer say one word.</summary>
+    [CascadingParameter] private KildeTypeVocabulary? SharedKildeTypes { get; set; }
+
+    private KildeTypeVocabulary KildeTypes => SharedKildeTypes ?? _kildeTypes;
+
     /// <summary>
     /// The name the page's heading carries, resolved through the member the heading reads so the
     /// sticky bar and the name block cannot say it in different words.
@@ -311,7 +316,7 @@ public sealed partial class KildeView : ComponentBase
     /// one page under two different words.
     /// </remarks>
     private string? KildetypeLabel =>
-        Kilde is { Kildetype: { } type } && !string.IsNullOrWhiteSpace(type) ? _kildeTypes.Name(T, Language, type) : null;
+        Kilde is { Kildetype: { } type } && !string.IsNullOrWhiteSpace(type) ? KildeTypes.Name(T, Language, type) : null;
 
     /// <inheritdoc cref="KildetypeLabel"/>
     /// <remarks>
@@ -475,7 +480,7 @@ public sealed partial class KildeView : ComponentBase
         Toc = BuildToc(Layout);
 
         // Rebuilt once the word arrives, because the layout holds the facts that carry it.
-        if (_kildeTypes.Load(Services.GetService<IMuninExplorerClient>(), Language,
+        if (KildeTypes.Load(Services.GetService<IMuninExplorerClient>(), Language,
                 ExplorerLog.For<KildeView>(Services)) is { } loading)
         {
             await loading;

@@ -84,6 +84,11 @@ public sealed partial class VariableView : ComponentBase
 
     private readonly KildeTypeVocabulary _kildeTypes = new();
 
+    /// <summary>The explorer's own, when one mounted this view, so the view and its explorer say one word.</summary>
+    [CascadingParameter] private KildeTypeVocabulary? SharedKildeTypes { get; set; }
+
+    private KildeTypeVocabulary KildeTypes => SharedKildeTypes ?? _kildeTypes;
+
     private string Reader => ReaderLanguage.Of(Language);
 
     /// <summary>
@@ -201,7 +206,7 @@ public sealed partial class VariableView : ComponentBase
                 (T.FacetKildeType,
                  string.IsNullOrWhiteSpace(variable.KildeType)
                      ? null
-                     : _kildeTypes.Name(T, Language, variable.KildeType),
+                     : KildeTypes.Name(T, Language, variable.KildeType),
                  false),
             ];
 
@@ -339,7 +344,7 @@ public sealed partial class VariableView : ComponentBase
         Rebuild();
 
         // Rebuilt once the word arrives, because the trail holds the step that carries it.
-        if (_kildeTypes.Load(Services.GetService<IMuninExplorerClient>(), Language,
+        if (KildeTypes.Load(Services.GetService<IMuninExplorerClient>(), Language,
                 ExplorerLog.For<VariableView>(Services)) is { } loading)
         {
             await loading;
@@ -354,7 +359,7 @@ public sealed partial class VariableView : ComponentBase
         // The same word Kildeinformasjon below reads, so the page cannot name one kildetype twice.
         Placement = variable is null
             ? []
-            : KildeTrailBlock.Steps(variable, T, _kildeTypes.ApiName(Language, variable.KildeType));
+            : KildeTrailBlock.Steps(variable, T, KildeTypes.ApiName(Language, variable.KildeType));
         Datasamlinger = variable is null ? [] : KildeTrailBlock.NamedDatasamlinger(variable);
         Variabelgrupper = variable is null ? [] : KildeTrailBlock.NamedVariabelgrupper(variable);
 

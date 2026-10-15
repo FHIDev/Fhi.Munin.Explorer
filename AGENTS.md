@@ -163,11 +163,15 @@ The components a host mounts on their own — `KildeView`, `VariableView`, `Data
 kildeutforsker's `KildeSearch` hold no filters payload, so each fetches the filters itself: once per
 mounted component and language, through `KildeTypeVocabulary`, and names the kildetype with
 `Texts.KildeTypeNameFromApi` from what came back. That is the decision of `Fhi.Metadata-vcxoc`,
-chosen over a parameter every host would have to fill. The three views resolve the client with
-`IServiceProvider.GetService` rather than a required `[Inject]`, because `VariableView` and
-`DatasamlingView` needed none before; with no client, a failed call, no `kildeTyper` or a blank or
-echoed `displayName`, every surface falls back to the shipped table through `Texts.KildeTypeLabel`.
-In `KildeSearch` the facet and the table's column read the same helper, so the two cannot disagree.
+chosen over a parameter every host would have to fill. Mounted inside `VariableSearch`,
+`VariableListView` or `KildeSearch`, a view takes the explorer's vocabulary as a private cascading
+parameter instead — seeded from the facets the explorer already holds where it has them — so opening
+a row asks nothing more and the view says the word its explorer says. The three views resolve the
+client with `IServiceProvider.GetService` rather than a required `[Inject]`, because `VariableView`
+and `DatasamlingView` needed none before; with no client, a failed call, no `kildeTyper` or a blank
+or echoed `displayName`, every surface falls back to the shipped table through
+`Texts.KildeTypeLabel`. A failed call is not retried until the language changes or the component is
+mounted again: the fallback is the shipped word, not an error.
 
 ## Comments
 

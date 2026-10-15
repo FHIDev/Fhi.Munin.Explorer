@@ -2006,6 +2006,7 @@ public partial class VariableSearch
 
             _facets = await RetainedAsync(
                 await Client.GetFiltersAsync(_executedSearch, _filter, language), language);
+            _kildeTypes.Seed(language, _facets);
 
             // The one place a new answer arrives, so the one place the tree built from the old one
             // has to go: identity alone would hold it were the previous instance ever handed back.

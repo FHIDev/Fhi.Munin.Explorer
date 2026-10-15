@@ -54,11 +54,16 @@ public class KildeTypeFromApiTest : ExplorerTestContext
             });
         }
 
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult<KildeDetail?>(Kilde() with { Id = id });
+
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<KildeSummary>>(
-                [new KildeSummary { Id = Guid.NewGuid(), Code = "K_DAR", Name = "Dødsårsaksregisteret", Kildetype = Token }]);
+                [new KildeSummary { Id = KildeId, Code = "K_DAR", Name = "Dødsårsaksregisteret", Kildetype = Token }]);
     }
+
+    private static readonly Guid KildeId = Guid.NewGuid();
 
     private static KildeDetail Kilde() =>
         new() { Id = Guid.NewGuid(), Code = "K_DAR", PreferredTerm = "Dødsårsaksregisteret", Kildetype = Token };
@@ -245,5 +250,34 @@ public class KildeTypeFromApiTest : ExplorerTestContext
             Assert.Contains(cut.FindAll(".munin-explorer-kilder tbody td"),
                             cell => cell.TextContent.Trim() == ShippedEnglish);
         });
+    }
+
+    [Fact]
+    public void KildeSearch_WhenAKildeIsOpen_ThenItsViewNamesTheKildetypeFromTheSearchsOwnAnswer()
+    {
+        var client = new FiltersClient();
+        Services.AddSingleton<IMuninExplorerClient>(client);
+
+        var cut = Render<KildeSearch>(b => b.Add(c => c.Language, "en").Add(c => c.SelectedKildeId, KildeId));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<KildeView>()));
+        Assert.Contains(ApiEnglish, cut.FindComponent<KildeView>().Markup);
+        Assert.Equal(["en"], client.Languages);
+    }
+
+    [Fact]
+    public void KildeSearch_WhenTheLanguageChanges_ThenItAsksOnceForTheNewOne()
+    {
+        var client = new FiltersClient();
+        Services.AddSingleton<IMuninExplorerClient>(client);
+
+        var cut = Render<KildeSearch>(b => b.Add(c => c.Language, "no"));
+        cut.WaitForAssertion(() => Assert.Contains(ApiNorwegian, cut.Markup));
+
+        cut.Render(b => b.Add(c => c.Language, "en"));
+        cut.Render(b => b.Add(c => c.Language, "en"));
+
+        cut.WaitForAssertion(() => Assert.Contains(ApiEnglish, cut.Markup));
+        Assert.Equal(["nb", "en"], client.Languages);
     }
 }

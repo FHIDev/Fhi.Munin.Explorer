@@ -36,6 +36,11 @@ public sealed partial class DatasamlingView : ComponentBase
 
     private readonly KildeTypeVocabulary _kildeTypes = new();
 
+    /// <summary>The explorer's own, when one mounted this view, so the view and its explorer say one word.</summary>
+    [CascadingParameter] private KildeTypeVocabulary? SharedKildeTypes { get; set; }
+
+    private KildeTypeVocabulary KildeTypes => SharedKildeTypes ?? _kildeTypes;
+
     private ILogger? _log;
     private ILogger? Log => _log ??= ExplorerLog.For<DatasamlingView>(Services);
 
@@ -385,7 +390,7 @@ public sealed partial class DatasamlingView : ComponentBase
     private string? KildetypeLabel =>
         Datasamling is { } datasamling
             && !string.IsNullOrWhiteSpace(datasamling.EffectiveKildetype)
-                ? _kildeTypes.Name(T, Language, datasamling.EffectiveKildetype)
+                ? KildeTypes.Name(T, Language, datasamling.EffectiveKildetype)
                 : null;
 
     /// <inheritdoc cref="KildetypeLabel"/>
@@ -588,7 +593,7 @@ public sealed partial class DatasamlingView : ComponentBase
         Toc = BuildToc(Layout);
 
         // Rebuilt once the word arrives, because the layout holds the facts that carry it.
-        if (_kildeTypes.Load(Services.GetService<IMuninExplorerClient>(), Language, Log) is { } loading)
+        if (KildeTypes.Load(Services.GetService<IMuninExplorerClient>(), Language, Log) is { } loading)
         {
             await loading;
             Layout = BuildLayout();

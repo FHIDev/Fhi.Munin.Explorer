@@ -134,12 +134,14 @@ else if (_wholeVariable)
 
         @if (_detail is { } whole)
         {
-            <VariableView Variable="whole"
-                          Language="@Language"
-                          HeadingLevel="@RowLevel"
-                          HeadingId="@WholeVariableHeadingId"
-                          InstrumentHref="@InstrumentHref"
-                          NamedSections="@KodeverkSections(whole)" />
+            <CascadingValue Value="_kildeTypes" IsFixed="true">
+                <VariableView Variable="whole"
+                              Language="@Language"
+                              HeadingLevel="@RowLevel"
+                              HeadingId="@WholeVariableHeadingId"
+                              InstrumentHref="@InstrumentHref"
+                              NamedSections="@KodeverkSections(whole)" />
+            </CascadingValue>
         }
         else
         {
@@ -194,27 +196,29 @@ else if (_sourceKind is not null)
            aria-live="polite"
            aria-atomic="true">@SourceStatus</p>
 
-        @if (_kilde is { } kilde)
-        {
-            @* The reader's own Ikoner choice follows them into the drill-in: the tree in here is
-               the same hierarchy the facet panel draws, so one press has to decide both. *@
-            <KildeView Kilde="kilde"
-                       Language="@Language"
-                       HeadingLevel="@RowLevel"
-                       HeadingId="@SourceHeadingId"
-                       NamedSections="@VariableReference.Section(T, kilde)"
-                       ShowNodeIcons="@_showNodeIcons" />
-        }
-        else if (_datasamling is { } datasamling)
-        {
-            <DatasamlingView Datasamling="datasamling"
-                             Language="@Language"
-                             HeadingLevel="@RowLevel"
-                             ShowVariables="ShowSourceVariablesAsync"
-                             ShowKilde="ShowDatasamlingKildeAsync"
-                             VariablesHref="@DatasamlingVariablesHref?.Invoke(datasamling.Id)"
-                             HeadingId="@SourceHeadingId" />
-        }
+        <CascadingValue Value="_kildeTypes" IsFixed="true">
+            @if (_kilde is { } kilde)
+            {
+                @* The reader's own Ikoner choice follows them into the drill-in: the tree in here is
+                   the same hierarchy the facet panel draws, so one press has to decide both. *@
+                <KildeView Kilde="kilde"
+                           Language="@Language"
+                           HeadingLevel="@RowLevel"
+                           HeadingId="@SourceHeadingId"
+                           NamedSections="@VariableReference.Section(T, kilde)"
+                           ShowNodeIcons="@_showNodeIcons" />
+            }
+            else if (_datasamling is { } datasamling)
+            {
+                <DatasamlingView Datasamling="datasamling"
+                                 Language="@Language"
+                                 HeadingLevel="@RowLevel"
+                                 ShowVariables="ShowSourceVariablesAsync"
+                                 ShowKilde="ShowDatasamlingKildeAsync"
+                                 VariablesHref="@DatasamlingVariablesHref?.Invoke(datasamling.Id)"
+                                 HeadingId="@SourceHeadingId" />
+            }
+        </CascadingValue>
     </div>
 }
 else

@@ -1123,6 +1123,9 @@ public sealed partial class VariableSearch : ComponentBase
         return string.IsNullOrWhiteSpace(named) ? canonical : named;
     }
 
+    /// <summary>The facets' kildetype words, cascaded so an opened view names the kildetype as the panel does.</summary>
+    private readonly KildeTypeVocabulary _kildeTypes = new();
+
     /// <summary><see cref="Texts.KildeTypeNameFromApi"/> for the kilde facet's group headings.</summary>
     /// <remarks>
     /// Takes the payload rather than the field, so a heading resolves out of the very object its

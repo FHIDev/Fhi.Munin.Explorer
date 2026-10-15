@@ -10,14 +10,14 @@ internal sealed class KildeTypeVocabulary
     private readonly Dictionary<string, Task<IReadOnlyList<KildetypeFacet>>> _byLanguage =
         new(StringComparer.Ordinal);
 
-    /// <summary>The fetch for this language, or null when one was already started.</summary>
+    /// <summary>The fetch for this language still to be awaited, or null when its answer is already here.</summary>
     internal Task? Load(IMuninExplorerClient? client, string? language, ILogger? log)
     {
         var apiLanguage = ReaderLanguage.ForApi(language);
 
-        if (_byLanguage.ContainsKey(apiLanguage))
+        if (_byLanguage.TryGetValue(apiLanguage, out var started))
         {
-            return null;
+            return started.IsCompleted ? null : started;
         }
 
         var fetch = FetchAsync(client, apiLanguage, log);
@@ -25,6 +25,15 @@ internal sealed class KildeTypeVocabulary
         _byLanguage[apiLanguage] = fetch;
 
         return fetch;
+    }
+
+    /// <summary>Takes a payload the caller already holds, so a view it mounts names the kildetype from the same one.</summary>
+    internal void Seed(string? language, FilterOptions? facets)
+    {
+        if (facets is not null)
+        {
+            _byLanguage[ReaderLanguage.ForApi(language)] = Task.FromResult(facets.KildeTyper ?? []);
+        }
     }
 
     /// <summary><see cref="Texts.KildeTypeNameFromApi"/> over whatever this language has fetched so far.</summary>

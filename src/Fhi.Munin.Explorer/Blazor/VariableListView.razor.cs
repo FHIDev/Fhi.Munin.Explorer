@@ -35,6 +35,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
 
     private ILogger? _log;
 
+    /// <summary>Seeded from the datatype read's own payload and cascaded, so an opened view asks for nothing more.</summary>
+    private readonly KildeTypeVocabulary _kildeTypes = new();
+
     /// <summary>The host's logger, or none — see <see cref="ExplorerLog"/>.</summary>
     private ILogger? Log => _log ??= ExplorerLog.For<VariableListView>(ServiceProvider);
 
@@ -798,6 +801,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
             // Search and filter left at their defaults on purpose - see the remarks above.
             var facets = await Client.GetFiltersAsync(
                 language: ReaderLanguage.ForApi(Language));
+
+            _kildeTypes.Seed(Language, facets);
 
             _dataTypeNames = facets.DataTypes
                 .Where(d => !string.IsNullOrWhiteSpace(d.Value)
