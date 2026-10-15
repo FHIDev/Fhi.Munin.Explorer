@@ -96,7 +96,7 @@ jobs:
 
           FILE=pr-summary.md
           {
-            echo "### Status: Build $(badge "$B") · Test $(badge "$T") · Pack $(badge "$P") (format: its own job)"
+            echo "### Status: Build $(badge "$B") · Test $(badge "$T") · Pack $(badge "$P")"
             echo ""
             echo "| Step    | Outcome | Duration |"
             echo "|---------|---------|----------|"
@@ -146,8 +146,8 @@ jobs:
           done
           [ "$fail" = "0" ] || { echo "::error::One or more build phases failed — see the summary table."; exit 1; }
 
-  # dotnet format loads the whole workspace and took ~64 s inside "build + test", the longest job then, so it runs
-  # beside it: the same check on every PR, gated through "ci summary" like every other job. (Fhi.Metadata-ln1s6)
+  # dotnet format loads the whole workspace, which made "build + test" the longest job after the browser ones, so it
+  # runs beside it: the same check on every PR, gated through "ci summary" like every other job. (Fhi.Metadata-ln1s6)
   format:
     name: format
     runs-on: ubuntu-latest
@@ -430,8 +430,8 @@ jobs:
   # section - the gate's blind spots included - from being a sentence nobody checks. Its own job,
   # required on main since 2026-08-28, for the guards' reasons above.
   #
-  # Split three ways (SCAN_SHARD, scripts/scan-shard.mjs): one job ran ~40 page states in a row at ~7 s each,
-  # which set the PR's wall clock. Each shard scans every third state; the 320px reflow runs in shard 1. The
+  # Split three ways (SCAN_SHARD, scripts/scan-shard.mjs): one job scanning every page state in a row set the PR's
+  # wall clock. Each shard scans every third state; the 320px reflow runs in shard 1. The
   # required check keeps its name: the "accessibility" job below passes only when every shard did. (Fhi.Metadata-ln1s6)
   accessibility-shard:
     name: accessibility ${{ matrix.shard }}/3
@@ -468,7 +468,7 @@ jobs:
       - name: Scan the sample host with axe, and measure it at 320px
         # The same script developers can run locally before pushing, so a red check here is
         # never a surprise that only CI knows how to reproduce. The 320px measurement is
-        # WCAG 1.4.10 Reflow's own width, and this is the only job that visits it.
+        # WCAG 1.4.10 Reflow's own width, and only shard 1 visits it.
         run: ./scripts/check-accessibility.sh
 
   accessibility:

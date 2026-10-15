@@ -288,6 +288,7 @@ never lands there (`Fhi.Metadata-w8sms`).
 **And `check-accessibility.sh` measures one width axe never looks at.** WCAG 1.4.10 Reflow is
 stated at 320px, and nothing in this repository measured any page there: `scripts/geometry-scan.mjs`
 drives six widths and the narrowest is 843. The script now ends by measuring ModernHost's `/kilder`
+(in CI, in the first of the accessibility job's three shards only: `SCAN_SHARD`, `scripts/scan-shard.mjs`)
 at 320 in three states — `kilder-list`; `kilder-ticked`, which ticks a row so the selection ribbon
 carries its longest label with the reset beside it; and `kilder-every-column`, the widest table the
 picker can draw, which has to scroll inside its box rather than widen the page. That is the rendered form of a gap unit tests

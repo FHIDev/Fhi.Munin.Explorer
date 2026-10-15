@@ -4,7 +4,7 @@
 
 export function parseShard(raw = process.env.SCAN_SHARD) {
   if (raw === undefined || raw === '') return { index: 1, count: 1 };
-  const match = /^(\d+)\/(\d+)$/.exec(raw);
+  const match = /^([1-9]\d*)\/([1-9]\d*)$/.exec(raw);
   const index = match ? Number(match[1]) : NaN;
   const count = match ? Number(match[2]) : NaN;
   if (!(count >= 1 && index >= 1 && index <= count)) {
