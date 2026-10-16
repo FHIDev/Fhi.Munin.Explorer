@@ -2164,6 +2164,14 @@ table.munin-explorer-data-list tbody th {
   outline-offset: 2px;
 }
 
+/* Skuld's two jump links under the description, side by side and wrapping on a phone (Fhi.Metadata-4ggs9). */
+.munin-explorer-kilde__jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-top: 12px;
+}
+
 /* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
    The datasamlinger table has four columns of Norwegian names in it and would widen the track past
    the page rather than shrink. Same trap the filter panel meets, same fix. */

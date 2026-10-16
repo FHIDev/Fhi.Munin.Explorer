@@ -224,7 +224,7 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
         var page = (IElement)cut.Find(".munin-explorer-page").Clone(true);
 
         foreach (var hero in page
-                     .QuerySelectorAll("dl.munin-explorer-page__facts, .munin-explorer-page__stuckbar")
+                     .QuerySelectorAll("dl.munin-explorer-page__facts, .munin-explorer-page__stuckbar, .munin-explorer-page__eyebrow")
                      .ToList())
         {
             hero.Remove();

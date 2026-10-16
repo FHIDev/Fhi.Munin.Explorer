@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,7 +33,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Descriptions and validity tables remain available in a separate metadata disclosure.
 /// </para>
 /// </remarks>
-public sealed partial class KildeView : ComponentBase
+public sealed partial class KildeView : ComponentBase, IDisposable
 {
     /// <summary>The source to show. Nothing renders until this is set.</summary>
     [Parameter, EditorRequired]
@@ -140,6 +141,49 @@ public sealed partial class KildeView : ComponentBase
     /// block, the sticky bar and <see cref="DrawnElsewhere"/> all read this one answer.
     /// </remarks>
     private string? IdentifierLine => StickyNamed.Norwegian ? Identifiers : null;
+
+    /// <summary>«K_BDR · BDR · sist oppdatert i katalogen 24.08.2026», each part only where it has a value.</summary>
+    private string? CodeLine =>
+        Kilde is not { } kilde
+            ? null
+            : string.Join(" · ", new[]
+              {
+                  StickyNamed.Norwegian ? kilde.Code : null,
+                  kilde.ShortName,
+                  CatalogueDate.DayOrNothing(kilde.LastUpdated, Language) is { } day ? T.CodeLineUpdated(day) : null,
+              }.Where(part => !string.IsNullOrWhiteSpace(part))) is { Length: > 0 } line ? line : null;
+
+    /// <summary>
+    /// Where «Vis N variabler» goes: the variable explorer narrowed to this kilde. Kelda passes it;
+    /// without it there is no link, since no section on this page lists the variables.
+    /// </summary>
+    [Parameter]
+    public string? VariablesHref { get; set; }
+
+    private string? JumpToVariables =>
+        Kilde is { TotalVariables: > 0 } kilde && !string.IsNullOrWhiteSpace(VariablesHref)
+            ? T.JumpToVariables(kilde.TotalVariables)
+            : null;
+
+    [CascadingParameter(Name = DetailToc.PageAddressName)]
+    private string? PageAddress { get; set; }
+
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    // A bare host may rewrite the query under a standing view, so the hrefs follow it as DetailToc's do.
+    protected override void OnInitialized() => Navigation.LocationChanged += Moved;
+
+    /// <inheritdoc />
+    public void Dispose() => Navigation.LocationChanged -= Moved;
+
+    private void Moved(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>The page's own path and query before the <c>#</c>, as <see cref="DetailToc"/> builds it and for its reason.</summary>
+    private string JumpHref(string id) =>
+        $"{(PageAddress is { Length: > 0 } given ? given : new Uri(Navigation.Uri).PathAndQuery)}#{id}";
+
+    private string? JumpToDataCollections =>
+        DataCollections.Count > 0 ? T.JumpToDataCollections(DataCollections.Count) : null;
 
     /// <summary>The identifiers beside the bar's name, on the name block's own terms.</summary>
     private string? StickyCode => IdentifierLine;
@@ -290,8 +334,8 @@ public sealed partial class KildeView : ComponentBase
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>
     /// Beskrivelse duplicates the ingress where there is one (Fhi.Metadata-8yqoz). Formaal is safely dropped
-    /// when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis are not, since their
-    /// EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
+    /// when FormaalFlerspraklig also holds a value; Tittel is not, and hasLegalBasis only where it says
+    /// what Lovverk says, since the EHDS mirrors can hold content the two lack (Fhi.Metadata-43jrq).
     /// </remarks>
     private IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
     {
@@ -308,8 +352,8 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("BeskrivelseFlerspraklig");
         }
 
-        // KortNavn is only drawn where the identifier line under the name is.
-        if (IdentifierLine is not null)
+        // KortNavn stands in the code line under the name whenever there is one (Fhi.Metadata-4ggs9).
+        if (!string.IsNullOrWhiteSpace(kilde.ShortName))
         {
             keys.Add(CatalogueColumns.ShortName);
         }
@@ -332,6 +376,17 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("FormaalFlerspraklig");
         }
 
+        // Its EHDS mirror repeats Lovverk on most kilder on test, as plain text and at times with a space
+        // lost after a «;» (K_BDR), so spacing is ignored here (Fhi.Metadata-gpxp6).
+        if (Filled(kilde, "hasLegalBasis")
+            && kilde.AdditionalProperties["hasLegalBasis"] is { } mirror
+            && (CatalogueProperties.TaggedTexts(mirror) is { Count: > 0 } bases ? bases : [mirror])
+                .All(basis => SameText(Unspaced(basis), Unspaced(kilde.LegalBasis))
+                              && SameText(Unspaced(basis), Unspaced(PlacedLegalBasis(kilde)))))
+        {
+            keys.Add("hasLegalBasis");
+        }
+
         // Drawn as the Variables section's sentence, where a caller passes that section.
         if (ReferenceLinked)
         {
@@ -344,6 +399,13 @@ public sealed partial class KildeView : ComponentBase
     // Nothing on either side is nothing to compare, not the same text.
     private static bool SameText(string? a, string? b) =>
         Plain(a) is { Length: > 0 } plain && string.Equals(plain, Plain(b), StringComparison.OrdinalIgnoreCase);
+
+    // What a placed Lovverk row shows: the bag's own value where it holds one (CatalogueColumns.Merge).
+    // The mirror is dropped only when it equals both this and the typed column, so neither is hidden.
+    private static string? PlacedLegalBasis(KildeDetail kilde) =>
+        Filled(kilde, CatalogueColumns.LegalBasis) ? kilde.AdditionalProperties[CatalogueColumns.LegalBasis] : kilde.LegalBasis;
+
+    private static string Unspaced(string? text) => string.Concat((text ?? "").Where(c => !char.IsWhiteSpace(c)));
 
     private static string Plain(string? text) =>
         string.Join(' ', (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');
@@ -475,7 +537,7 @@ public sealed partial class KildeView : ComponentBase
             ];
 
     /// <summary>
-    /// The six facts a source leads with, in the order the mockup puts them.
+    /// The five facts a source leads with, in the order the mockup puts them.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -487,10 +549,8 @@ public sealed partial class KildeView : ComponentBase
     /// register and is meant to repeat. Kildetype is there for Kildeinformasjon's row.
     /// </para>
     /// <para>
-    /// The mockup's sixth is Tilgang, and Munin's catalogue holds no access field for a source, so
-    /// Lovverk stands in it — the nearest thing a reader deciding whether they can have the data
-    /// actually has. The mockup's note under Dataansvarlig is a contact role the payload does not
-    /// carry either, and a note with nothing behind it is left off rather than invented.
+    /// No Lovverk, which is free text up to a thousand characters (Fhi.Metadata-gpxp6), and no note under
+    /// Dataansvarlig: the payload carries no contact role, so it is left off rather than invented.
     /// </para>
     /// </remarks>
     private IReadOnlyList<DetailFact> HeroFacts =>
@@ -507,11 +567,6 @@ public sealed partial class KildeView : ComponentBase
                                Note: DataCollections.Count > 0
                                    ? T.DatasamlingCountCrumb(DataCollections.Count)
                                    : null),
-                new DetailFact(T.FieldLegalBasis, kilde.LegalBasis,
-                               CatalogueMarkdown.Prose(kilde.LegalBasis) ? CatalogueProperties.Foreign("no", Reader) : null)
-                {
-                    Linked = true,
-                },
             ];
 
     /// <summary>The contents nav, one entry per section this view drew, in that order.</summary>

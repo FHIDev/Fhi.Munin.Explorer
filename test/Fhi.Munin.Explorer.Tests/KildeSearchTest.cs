@@ -3220,6 +3220,21 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Render_WhenAVariablesAddressIsWired_ThenTheOpenKildesJumpGoesThere()
+    {
+        // «Vis N variabler →» on the kilde page goes where the drawer's «Vis alle variabler» does,
+        // since the page's own Variabler section is only a count (Fhi.Metadata-4ggs9, Copilot on #589).
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new FakeClient(als).Publishing(als);
+
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SelectedKildeId, als.Id)
+            .Add(c => c.KildeVariablesHref, id => $"/variabler?kilde={id}"));
+
+        Assert.Equal($"/variabler?kilde={als.Id}", cut.FindComponent<KildeView>().Instance.VariablesHref);
+    }
+
+    [Fact]
     public void Select_WhenTheKildeIsOpen_ThenTheRegionIsNamedByTheHeadingInsideIt()
     {
         // A landmark is only useful if a screen reader can say which kilde it just entered, and the

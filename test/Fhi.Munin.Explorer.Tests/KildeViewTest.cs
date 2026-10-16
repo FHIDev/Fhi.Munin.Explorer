@@ -199,12 +199,103 @@ public class KildeViewTest : ExplorerTestContext
             }
         });
 
+    private const string VariablesAddress = "/?kilde=a887eb3b";
+
+    private IRenderedComponent<KildeView> RenderWithVariablesSection(KildeDetail kilde) =>
+        Render<KildeView>(b => b
+            .Add(c => c.Kilde, kilde)
+            .Add(c => c.VariablesHref, VariablesAddress));
+
     [Fact]
-    public void Eyebrow_Never_ThenTheNameIsTheFirstThingUnderTheTrail()
+    public void Jumps_WhenBothSectionsAreThere_ThenEachLinksToItsSectionWithItsCount()
     {
-        // «Datakilde» over every kilde's name said what the trail and the page already did (Fhi.Metadata-esf2i).
-        Assert.Empty(Render(Kilde()).FindAll(".munin-explorer-page__eyebrow"));
-        Assert.Empty(Render(Kilde(), language: "en").FindAll(".munin-explorer-page__eyebrow"));
+        // Skuld's top: «Vis N variabler →» and «Se de N datasamlingene →» (Fhi.Metadata-4ggs9).
+        var links = RenderWithVariablesSection(Kilde() with { Datasamlinger = [Collection("A"), Collection("B")] })
+            .FindAll(".munin-explorer-kilde__jumps a");
+
+        Assert.Equal(["Vis 312 variabler →", "Se de 2 datasamlingene →"], links.Select(a => a.TextContent));
+        // The page's own path before the #, as the contents nav: helsedata's <base href="/"> sends a bare #id to the root.
+        // The variables go to the variable explorer narrowed to this kilde, which Kelda builds (Copilot on #589).
+        Assert.Equal([VariablesAddress, "/#" + DetailSectionIds.DataCollections], links.Select(a => a.GetAttribute("href")));
+        Assert.All(links, a => Assert.Equal("true", a.QuerySelector("span")!.GetAttribute("aria-hidden")));
+    }
+
+    [Fact]
+    public void Jumps_WhenTheWrapperGivesThePageAddress_ThenTheLinksKeepItsPathAndQuery()
+    {
+        var links = Render<CascadingValue<string>>(b => b
+                .Add(c => c.Name, DetailToc.PageAddressName)
+                .Add(c => c.Value, "/MuninKelda/?kilde=abc")
+                .AddChildContent<KildeView>(v => v.Add(c => c.Kilde, Kilde())))
+            .FindAll(".munin-explorer-kilde__jumps a");
+
+        Assert.Equal(["/MuninKelda/?kilde=abc#" + DetailSectionIds.DataCollections], links.Select(a => a.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void Jumps_WhenTheHostGivesNoVariablesAddress_ThenThereIsNoVariablesLink()
+    {
+        // Runa, or a bare mount: no section on the page lists the variables, so the count would promise a list.
+        var cut = Render<KildeView>(b => b
+            .Add(c => c.Kilde, Kilde())
+            .Add(c => c.NamedSections, [new DetailNamedSection(DetailSectionIds.Variables, "Variabler", _ => { })]));
+
+        Assert.DoesNotContain(cut.FindAll(".munin-explorer-kilde__jumps a"),
+                              a => a.TextContent.StartsWith("Vis ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Jumps_WhenTheHostRewritesTheQueryUnderAStandingView_ThenTheHrefsFollow()
+    {
+        // The same reason DetailToc subscribes to LocationChanged (Copilot on #589).
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("http://localhost/kilder?kilde=one");
+        var cut = Render(Kilde());
+
+        Assert.Equal("/kilder?kilde=one#" + DetailSectionIds.DataCollections, cut.Find(".munin-explorer-kilde__jumps a").GetAttribute("href"));
+
+        navigation.NavigateTo("http://localhost/kilder?kilde=two");
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "/kilder?kilde=two#" + DetailSectionIds.DataCollections, cut.Find(".munin-explorer-kilde__jumps a").GetAttribute("href")));
+    }
+
+    [Fact]
+    public void Jumps_WhenThereIsOneOfEach_ThenTheyAreSingular()
+    {
+        var links = RenderWithVariablesSection(Kilde() with { TotalVariables = 1 }).FindAll(".munin-explorer-kilde__jumps a");
+
+        Assert.Equal(["Vis 1 variabel →", "Se datasamlingen →"], links.Select(a => a.TextContent));
+    }
+
+    [Fact]
+    public void Jumps_WhenThereIsNothingToJumpTo_ThenNoLinkOrLineIsDrawn()
+    {
+        // No Variables section passed, or nothing counted: no link that leads nowhere.
+        Assert.Equal(["Se datasamlingen →"], Render(Kilde()).FindAll(".munin-explorer-kilde__jumps a").Select(a => a.TextContent));
+        Assert.Empty(RenderWithVariablesSection(Kilde() with { TotalVariables = 0, Datasamlinger = [], Delkilder = [] })
+            .FindAll(".munin-explorer-kilde__jumps"));
+    }
+
+    [Fact]
+    public void Jumps_WhenTheReaderIsEnglish_ThenTheyAreInEnglish()
+    {
+        var links = Render<KildeView>(b => b
+                .Add(c => c.Kilde, Kilde() with { Datasamlinger = [Collection("A"), Collection("B")] })
+                .Add(c => c.Language, "en")
+                .Add(c => c.VariablesHref, VariablesAddress))
+            .FindAll(".munin-explorer-kilde__jumps a");
+
+        Assert.Equal(["Show 312 variables →", "See the 2 data collections →"], links.Select(a => a.TextContent));
+    }
+
+    [Fact]
+    public void Eyebrow_Always_ThenItIsTheKildetypeAboveTheName()
+    {
+        // Skuld's top: the type over the name, where «Datakilde» once said nothing (Fhi.Metadata-esf2i, 4ggs9).
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister",
+                     Render(Kilde()).Find(".munin-explorer-page__eyebrow").TextContent);
+        Assert.Empty(Render(Kilde() with { Kildetype = null }).FindAll(".munin-explorer-page__eyebrow"));
     }
 
     // K_BIV on test: Beskrivelse and Formaal are the same paragraph, so it was read twice (Fhi.Metadata-esf2i).
@@ -494,11 +585,13 @@ public class KildeViewTest : ExplorerTestContext
             "munin-explorer-kilde__description",
             "munin-explorer-kilde__header",
             "munin-explorer-kilde__identifiers",
+            "munin-explorer-kilde__jumps",
             "munin-explorer-kilde__main",
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
             "munin-explorer-page__body",
-            // The hero row under the name block. Always drawn on a source: two of its six facts
+            "munin-explorer-page__eyebrow",           // the kildetype over the name (Fhi.Metadata-4ggs9)
+            // The hero row under the name block. Always drawn on a source: two of its five facts
             // fall back to Texts.NotSpecified rather than to nothing, so there is no source thin
             // enough to leave the list out.
             "munin-explorer-page__facts",
@@ -557,9 +650,10 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Identifiers_WhenTheKildeHasAShortName_ThenItSitsBesideTheCode()
+    public void Identifiers_WhenTheKildeHasAShortName_ThenTheLineIsCodeShortNameAndDate()
     {
-        Assert.Equal("K_ALS (ALS)", Render(Kilde()).Find(".munin-explorer-kilde__identifiers").TextContent);
+        Assert.Equal("K_ALS · ALS · sist oppdatert i katalogen 04.03.2026",
+                     Render(Kilde()).Find(".munin-explorer-kilde__identifiers").TextContent);
     }
 
     [Fact]
@@ -567,25 +661,24 @@ public class KildeViewTest : ExplorerTestContext
     {
         var cut = Render(Kilde() with { ShortName = "" });
 
-        Assert.Equal("K_ALS", cut.Find(".munin-explorer-kilde__identifiers").TextContent);
+        Assert.Equal("K_ALS · sist oppdatert i katalogen 04.03.2026", cut.Find(".munin-explorer-kilde__identifiers").TextContent);
     }
 
     [Fact]
-    public void Identifiers_WhenTheKildeHasNoCode_ThenNoEmptyLineIsDrawnUnderTheName()
+    public void Identifiers_WhenTheKildeHasNoCode_ThenTheLineHoldsWhatIsLeft()
     {
-        // A line holding only " (ALS)" is worse than no line: it reads as a rendering fault rather
-        // than as a catalogue that has not been given a code.
+        // No leading separator where the code is missing: the parts that exist, joined (Fhi.Metadata-4ggs9).
         var cut = Render(Kilde() with { Code = "" });
 
-        Assert.Empty(cut.FindAll(".munin-explorer-kilde__identifiers"));
+        Assert.Equal("ALS · sist oppdatert i katalogen 04.03.2026", cut.Find(".munin-explorer-kilde__identifiers").TextContent);
+        Assert.Empty(Render(Kilde() with { Code = "", ShortName = "", LastUpdated = null }).FindAll(".munin-explorer-kilde__identifiers"));
     }
 
     [Fact]
     public void Kildetype_WhenTheKildeHasOne_ThenTheNameBlockDrawsNoBadgeRepeatingTheHeroRow()
     {
-        // The hero row's first fact is Type, ten pixels below where the badge stood, resolved
-        // through the same member — so the badge was the same words twice inside the chrome rather
-        // than a summary of the page. (Fhi.Metadata-pnn4w)
+        // Inside the name block there is still no badge (Fhi.Metadata-pnn4w). The type over the name is
+        // now the chassis eyebrow, outside this block, by Robin's choice of Skuld's top (Fhi.Metadata-4ggs9).
         var cut = Render(Kilde());
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilde__kildetype"));
@@ -1112,15 +1205,15 @@ public class KildeViewTest : ExplorerTestContext
     [Theory]
     [InlineData("no", "Rettslig grunnlag")]
     [InlineData("en", "Legal basis")]
-    public void Metadata_WhenHasLegalBasisRepeatsLovverkOnThisSource_ThenBothStillShow(
+    public void Metadata_WhenHasLegalBasisRepeatsLovverkOnThisSource_ThenItIsDrawnOnce(
         string language, string label)
     {
-        // hasLegalBasis happens to repeat the source information's Lovverk fact word for word on
-        // this source. It is not dropped: the test below shows the two fields can genuinely differ,
-        // so a value-blind exclusion here would risk deleting real content (Fhi.Metadata-43jrq).
+        // hasLegalBasis repeats Lovverk here but for one space after a «;», so only one is drawn; the
+        // test below keeps a mirror that says more (Fhi.Metadata-43jrq, Fhi.Metadata-gpxp6).
         var cut = Render(Barnediabetes(), language);
 
-        Assert.Contains(label, NamedSectionCells(cut, "dt"));
+        Assert.DoesNotContain(label, NamedSectionCells(cut, "dt"));
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "gjeldende tematiske konsesjon"));
     }
 
     [Fact]
@@ -1908,7 +2001,7 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     // ---------------------------------------------------------------------------------
-    // The hero row: the six facts a source leads with, under the name block.
+    // The hero row: the five facts a source leads with, under the name block.
     // ---------------------------------------------------------------------------------
 
     /// <summary>The hero row, which a source always has: its variable count never resolves to nothing.</summary>
@@ -1929,12 +2022,10 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void LegalBasis_WhenTheColumnIsOneMarkdownLink_ThenTheHeroShowsItsWordsAndTheBoxLinksIt()
+    public void LegalBasis_WhenTheColumnIsOneMarkdownLink_ThenTheBoxLinksIt()
     {
-        // K_MSIS's Lovverk column. Unplaced in this fixture, so the box draws it beside the hero.
+        // K_MSIS's Lovverk column. Unplaced in this fixture, so the box draws it.
         var cut = Render(Kilde() with { LegalBasis = "[Helseregisterloven § 11](https://lovdata.no/lov/2014-06-20-43)" });
-
-        Assert.Equal("Helseregisterloven § 11", HeroValue(Hero(cut), "Lovverk").Trim());
 
         var link = Assert.Single(SourceInformation(cut).QuerySelectorAll("a"));
 
@@ -1944,12 +2035,11 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void LegalBasis_WhenTheColumnIsABareAddress_ThenNeitherTheHeroNorTheBoxMarksItNorwegian()
+    public void LegalBasis_WhenTheColumnIsABareAddress_ThenTheBoxDoesNotMarkItNorwegian()
     {
         // An address is prose in no language (WCAG 3.1.2); English, since Norwegian marks nothing.
         var cut = Render(Kilde() with { LegalBasis = "https://lovdata.no/lov/2014-06-20-43" }, language: "en");
 
-        Assert.Empty(Fact(Hero(cut), "Legal basis").QuerySelectorAll("[lang]"));
         Assert.Null(Fact(SourceInformation(cut), "Legal basis").GetAttribute("lang"));
     }
 
@@ -1960,26 +2050,86 @@ public class KildeViewTest : ExplorerTestContext
         const string laws = "https://lovdata.no/lov/2014-06-20-43;https://lovdata.no/lov/2001-05-18-24";
         var cut = Render(Kilde() with { LegalBasis = laws }, language: "en");
 
-        foreach (var fact in new[] { Fact(Hero(cut), "Legal basis"), Fact(SourceInformation(cut), "Legal basis") })
-        {
-            Assert.Empty(fact.QuerySelectorAll("a"));
-            Assert.Empty(fact.QuerySelectorAll("[lang]"));
-            Assert.Null(fact.GetAttribute("lang"));
-            Assert.Contains(laws, fact.TextContent, StringComparison.Ordinal);
-        }
+        var fact = Fact(SourceInformation(cut), "Legal basis");
+
+        Assert.Empty(fact.QuerySelectorAll("a"));
+        Assert.Empty(fact.QuerySelectorAll("[lang]"));
+        Assert.Null(fact.GetAttribute("lang"));
+        Assert.Contains(laws, fact.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void HeroFacts_Always_ThenTheyAreTheSixTheMockupLeadsWith()
+    public void HeroFacts_Always_ThenTheyAreTheFiveTheMockupLeadsWith()
     {
-        // The mockup's sixth is Tilgang, and the catalogue has no access field for a source — so
-        // Lovverk stands in it, which is the nearest thing a reader deciding whether they can have
-        // the data actually has. Six exactly: Stiler lays the row out as six equal tracks, so five
-        // leaves a hole and seven wraps to a row of one.
+        // The mockup's sixth is Tilgang, which the catalogue does not hold. Lovverk stood in it until
+        // the meeting of 16.10 took it out: free text up to a thousand characters (Fhi.Metadata-gpxp6).
         Assert.Equal(
             ["Type datakilde", "Dataansvarlig", "Grad av personidentifikasjon", "Dataperiode",
-             "Totalt antall variabler", "Lovverk"],
+             "Totalt antall variabler"],
             Labels(Hero(Render(Kilde()))));
+    }
+
+    /// <summary>How often <paramref name="text"/> shows on the page outside the collapsed complete record.</summary>
+    private static int ShownOutsideTheRecord(IRenderedComponent<KildeView> cut, string text)
+    {
+        var main = cut.Find(".munin-explorer-kilde__main");
+        var shown = main.QuerySelectorAll("details").Aggregate(main.TextContent,
+            (all, record) => all.Replace(record.TextContent, "", StringComparison.Ordinal));
+
+        return System.Text.RegularExpressions.Regex.Matches(shown, System.Text.RegularExpressions.Regex.Escape(text)).Count;
+    }
+
+    [Theory]
+    [InlineData("Forskrift om medisinske kvalitetsregistre § 2-3.")]
+    [InlineData("forskrift om medisinske kvalitetsregistre § 2-3")]
+    [InlineData("[\"Forskrift om medisinske kvalitetsregistre § 2-3.\"]")]
+    public void LegalBasis_WhenTheEhdsMirrorSaysWhatLovverkSays_ThenTheSectionDrawsItOnce(string mirror)
+    {
+        // hasLegalBasis repeats Lovverk on 40 of 54 kilder on test, as plain text (Fhi.Metadata-gpxp6).
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("hasLegalBasis", 10, "Rettslig grunnlag", "Rettslig grunnlag")],
+            AdditionalProperties = new Dictionary<string, string?> { ["hasLegalBasis"] = mirror },
+        };
+
+        Assert.Equal(1, ShownOutsideTheRecord(Render(kilde), "edisinske kvalitetsregistre § 2-3"));
+    }
+
+    [Fact]
+    public void LegalBasis_WhenThePlacedLovverkDiffersFromTheColumn_ThenTheMirrorMatchingTheColumnStays()
+    {
+        // The section shows the bag's Lovverk; a mirror equal only to the typed column would be lost (Copilot on #588).
+        var kilde = Kilde() with
+        {
+            PropertyMetadata =
+            [
+                Entry("Lovverk", 10, "Rettslig grunnlag", "Lovverk"),
+                Entry("hasLegalBasis", 11, "Rettslig grunnlag", "Rettslig grunnlag"),
+            ],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Lovverk"] = "Helseregisterloven § 11",
+                ["hasLegalBasis"] = "Forskrift om medisinske kvalitetsregistre § 2-3.",
+            },
+        };
+        var cut = Render(kilde);
+
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "Helseregisterloven § 11"));
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "edisinske kvalitetsregistre § 2-3"));
+    }
+
+    [Fact]
+    public void LegalBasis_WhenTheEhdsMirrorSaysSomethingElse_ThenBothAreDrawn()
+    {
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("hasLegalBasis", 10, "Rettslig grunnlag", "Rettslig grunnlag")],
+            AdditionalProperties = new Dictionary<string, string?> { ["hasLegalBasis"] = "Helseregisterloven § 11" },
+        };
+        var cut = Render(kilde);
+
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "Helseregisterloven § 11"));
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "edisinske kvalitetsregistre § 2-3"));
     }
 
     [Fact]
@@ -1990,7 +2140,7 @@ public class KildeViewTest : ExplorerTestContext
         // leading with a word that says nothing. (Fhi.Metadata-35w0p.24)
         var hero = Hero(Render(Kilde() with { Kildetype = null, PersonIdentificationLevel = null }));
 
-        Assert.Equal(["Dataansvarlig", "Dataperiode", "Totalt antall variabler", "Lovverk"], Labels(hero));
+        Assert.Equal(["Dataansvarlig", "Dataperiode", "Totalt antall variabler"], Labels(hero));
         Assert.DoesNotContain("Ikke oppgitt", hero.TextContent, StringComparison.Ordinal);
     }
 
@@ -2044,7 +2194,6 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal(Value(source, "Dataansvarlig"), HeroValue(hero, "Dataansvarlig"));
         Assert.Equal(Value(source, "Grad av personidentifikasjon"),
                      HeroValue(hero, "Grad av personidentifikasjon"));
-        Assert.Equal(Value(source, "Lovverk"), HeroValue(hero, "Lovverk"));
         Assert.Equal(Value(statistics, "Dataperiode"), HeroValue(hero, "Dataperiode"));
         Assert.Equal(Value(statistics, "Totalt antall variabler"),
                      HeroValue(hero, "Totalt antall variabler"));
@@ -2058,7 +2207,7 @@ public class KildeViewTest : ExplorerTestContext
     [Fact]
     public void HeroFacts_Always_ThenNothingIsTakenOutOfTheSectionsBelow()
     {
-        // A summary, not a relocation. The hero draws six of these fields and both boxes still draw
+        // A summary, not a relocation. The hero draws five of these fields and both boxes still draw
         // all nine, because none of them joins DrawnElsewhere — that set is for the same fact drawn
         // twice in the body under two labels, and a hero row is a different register. This source's
         // payload places none of its column-backed keys, which is what keeps every box row here;
@@ -2079,14 +2228,13 @@ public class KildeViewTest : ExplorerTestContext
     [Fact]
     public void HeroFacts_WhenAFactHasNothingToQualify_ThenNoEmptySmallIsDrawn()
     {
-        // Two of this source's six carry a note and four do not, so both halves are rendered here:
+        // Two of this source's five carry a note and three do not, so both halves are rendered here:
         // an omitted element, not an empty one.
         var hero = Hero(Render(Kilde()));
 
         Assert.Null(Fact(hero, "Type datakilde").QuerySelector("small"));
         Assert.Null(Fact(hero, "Dataansvarlig").QuerySelector("small"));
         Assert.Null(Fact(hero, "Grad av personidentifikasjon").QuerySelector("small"));
-        Assert.Null(Fact(hero, "Lovverk").QuerySelector("small"));
 
         // The count's own qualifier, which is what makes it honest: 312 variabler in how many
         // collections is a different claim from 312 variabler.
@@ -2142,12 +2290,11 @@ public class KildeViewTest : ExplorerTestContext
     public void HeroFacts_WhenTheReaderIsEnglish_ThenTheCataloguesOwnWordsAreMarkedAndOursAreNot()
     {
         // The row is mixed the way the fact box below it is: the kildetype and the identification
-        // level are vocabularies this package translates, the controller and the legal basis are
-        // stored once in Norwegian however the reader is reading.
+        // level are vocabularies this package translates, the controller is stored once in Norwegian
+        // however the reader is reading.
         var hero = Hero(Render(Kilde(), language: "en"));
 
         Assert.Equal("no", Fact(hero, "Data controller").QuerySelector("span")!.GetAttribute("lang"));
-        Assert.Equal("no", Fact(hero, "Legal basis").QuerySelector("span")!.GetAttribute("lang"));
         Assert.Empty(Fact(hero, "Type of data source").QuerySelectorAll("span"));
         Assert.Empty(Fact(hero, "Level of personal identification").QuerySelectorAll("span"));
     }
@@ -2692,7 +2839,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal("ALS", Kilde().ShortName);
         Assert.Equal("K_ALS", cut.Find("h2").TextContent.Trim());
-        Assert.Empty(cut.FindAll("p.munin-explorer-kilde__identifiers"));
+        Assert.DoesNotContain("K_ALS", cut.Find("p.munin-explorer-kilde__identifiers").TextContent, StringComparison.Ordinal);
 
         // The sticky bar repeats this name block and has its own copy of the rule, so the code
         // lands twice there for exactly the same reason it would have here. The name is asserted
@@ -2715,10 +2862,10 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal(heading.TextContent.Trim(), name.TextContent.Trim());
         Assert.Equal(heading.GetAttribute("lang"), name.GetAttribute("lang"));
 
-        // And the identifiers beside it, which is the half the fallback case above drops.
-        Assert.Equal(
-            cut.Find("p.munin-explorer-kilde__identifiers").TextContent.Trim(),
-            cut.Find(".munin-explorer-page__stuckbar small").TextContent.Trim());
+        // And the identifiers beside it, which is the half the fallback case above drops: the bar keeps
+        // «K_ALS (ALS)», the code line spells the same two with the date (Fhi.Metadata-4ggs9).
+        Assert.Equal("K_ALS (ALS)", cut.Find(".munin-explorer-page__stuckbar small").TextContent.Trim());
+        Assert.StartsWith("K_ALS · ALS · ", cut.Find("p.munin-explorer-kilde__identifiers").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -2872,10 +3019,10 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Metadata_WhenTheNameIsEmpty_ThenAPlacedKortNavnIsTheSectionsToDraw()
+    public void Metadata_WhenTheNameIsEmpty_ThenAPlacedKortNavnIsNotRepeated()
     {
-        // The identifier line only shows under a name, so without one the short name is on no other
-        // line of the page and suppressing it would drop it.
+        // The code line carries the short name even where the heading fell back to the code, so the
+        // placed row would say it a second time (Fhi.Metadata-4ggs9, Copilot on #589).
         var cut = Render(Kilde() with
         {
             PreferredTerm = "",
@@ -2883,7 +3030,8 @@ public class KildeViewTest : ExplorerTestContext
             Sections = [Section("om-registeret", "Om registeret", 1000)],
         });
 
-        Assert.Equal(["Kortnavn"], Labels(cut.Find("section#munin-explorer-section-om-registeret dl.munin-explorer-page__fields")));
+        Assert.StartsWith("ALS · ", cut.Find("p.munin-explorer-kilde__identifiers").TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll("section#munin-explorer-section-om-registeret"));
     }
 
     [Fact]
@@ -2900,16 +3048,16 @@ public class KildeViewTest : ExplorerTestContext
     [Theory]
     [InlineData("https://lovdata.no/dokument/NL/lov/2014-06-20-43")]
     [InlineData("Helseregisterloven, https://lovdata.no/dokument/NL/lov/2014-06-20-43.")]
-    public void Render_WhenLovverkCarriesAnAddress_ThenTheHeroFactAndTheSourceRowLinkToIt(string legalBasis)
+    public void Render_WhenLovverkCarriesAnAddress_ThenTheSourceRowLinksToIt(string legalBasis)
     {
-        // Fhi.Metadata-jd5jl (#6563): Kelda links Lovverk; the hero fact and the free-text form never did.
+        // Fhi.Metadata-jd5jl (#6563): Kelda links Lovverk; the free-text form never did.
         var cut = Render(Kilde() with { LegalBasis = legalBasis });
 
-        var hero = LegalBasisValue(cut.Find("dl.munin-explorer-page__facts"));
-        Assert.Equal("https://lovdata.no/dokument/NL/lov/2014-06-20-43", hero.QuerySelector("a")?.GetAttribute("href"));
+        var row = Fact(SourceInformation(cut), "Lovverk");
+        Assert.Equal("https://lovdata.no/dokument/NL/lov/2014-06-20-43", row.QuerySelector("a")?.GetAttribute("href"));
 
         var linked = cut.FindAll("a[href='https://lovdata.no/dokument/NL/lov/2014-06-20-43']");
-        Assert.True(linked.Count >= 2, $"expected the hero fact and the source row, found {linked.Count}");
+        Assert.NotEmpty(linked);
         Assert.All(linked, a => Assert.Equal("noopener noreferrer", a.GetAttribute("rel")));
     }
 
@@ -2918,9 +3066,9 @@ public class KildeViewTest : ExplorerTestContext
     {
         var cut = Render(Kilde());
 
-        var hero = LegalBasisValue(cut.Find("dl.munin-explorer-page__facts"));
-        Assert.Null(hero.QuerySelector("a"));
-        Assert.Equal("Forskrift om medisinske kvalitetsregistre § 2-3.", hero.TextContent.Trim());
+        var row = Fact(SourceInformation(cut), "Lovverk");
+        Assert.Null(row.QuerySelector("a"));
+        Assert.Equal("Forskrift om medisinske kvalitetsregistre § 2-3.", row.TextContent.Trim());
     }
 
     [Fact]
@@ -2930,11 +3078,6 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll("a[href='https://stolav.no']"));
     }
-
-    private static IElement LegalBasisValue(IElement facts) =>
-        facts.QuerySelectorAll(":scope > div")
-             .Single(row => row.QuerySelector("dt")?.TextContent.Trim() == "Lovverk")
-             .QuerySelector("dd")!;
 
     [Fact]
     public void Variables_WhenTheVariableExplorersSectionIsPassed_ThenTheLinkIsDrawnOnce()
