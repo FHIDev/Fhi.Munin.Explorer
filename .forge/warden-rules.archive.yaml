@@ -159,3 +159,340 @@ rules:
       last_seen: 2026-09-29T00:00:00Z
       archived_at: 2026-09-29T00:00:00Z
       archive_reason: duplicate
+    - id: shared-set-across-independent-pools
+      category: correctness
+      pattern: >-
+        A single shared set/collection is used to track membership or 'placed' state across two logically independent pools or namespaces that can have colliding keys
+      check: >-
+        Verify that when two pools are split for placement/lookup purposes, each pool tracks its own placed/seen keys separately rather than sharing one collection, so a colliding key in one pool cannot cause an item to be incorrectly filtered from the other
+      source: copilot:PR#359
+      added: "2026-09-21"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: collision-free-dom-ids-from-open-keys
+      category: other
+      pattern: >-
+        An open-ended or user/curator-supplied key (e.g. a catalogue/config key) is used directly as an HTML element id or anchor target
+      check: >-
+        Verify the key can't collide with reserved or pre-existing ids (e.g. other static section ids) — either namespace the generated id (prefix/scope it) or reject reserved keys before using them as ids, since duplicate ids make anchors/links resolve to the wrong element
+      source: copilot:PR#359
+      added: "2026-09-21"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: prose-claim-matches-implementation
+      category: other
+      pattern: >-
+        A change advertises a general behavior (via changelog, doc comment, or PR description) but the implementation only handles a narrower subset — e.g. some code paths still read state from a source that a stated rename/refactor was supposed to replace
+      check: >-
+        For every code path covered by the stated claim, confirm the implementation actually reads/applies the new source (not just local defaults or a subset of parameters); if it doesn't, require either fixing the gap or narrowing the published claim to match what the code actually does
+      source: copilot:PR#359
+      added: "2026-09-21"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: count-only-fixture-assertion
+      category: testing
+      pattern: >-
+        A test asserts equality of aggregate counts (e.g. row/element totals) before and after a change to fixture or rendered data, especially when the new fixture path adds duplicate or catch-all entries that can pad the count
+      check: >-
+        Verify the test compares the actual set of facts (labels/values as a multiset or per-key assertions), not just totals — a count match can hide a dropped property masked by duplicated or catch-all rows
+      source: copilot:PR#359
+      added: "2026-09-21"
+      paths:
+        - test/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: comment-ceiling-nontrivial-fact
+      category: style
+      pattern: >-
+        A comment on an internal type/member exceeds the three-line ceiling by narrating history, rationale for rejected alternatives, or other background alongside the actual invariant
+      check: >-
+        Trim the comment to only the non-obvious invariant a future reader needs (e.g. ordering/fallback rules); move historical context, rejected alternatives, or incident narrative out of the code into the bead or PR description
+      source: copilot:PR#359
+      added: "2026-09-21"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: comment-doc-exceeds-ceiling
+      category: style
+      pattern: >-
+        A private/internal method or member has an XML doc or comment block that exceeds the three-line ceiling, often including bead/incident history or restating logic recoverable from the implementation
+      check: >-
+        Verify the comment is three lines or fewer, keeps only non-obvious invariants (e.g. fallback behavior) that aren't derivable from reading the code, and moves any bead history, rationale, or explanation into the bead or PR description instead
+      source: copilot:PR#359
+      added: "2026-09-21"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: conditional-section-fixture-mismatch
+      category: testing
+      pattern: >-
+        A test fixture/seed is updated to add a field that triggers a conditional branch (e.g., a value that should create its own dedicated section/group), but the fixture still nests that field inside an existing group instead of its own
+      check: >-
+        When a task adds a conditional placement rule (field X gets its own section once present), verify the fixture/seed data actually exercises that condition by placing the field in its own dedicated group, and that the corresponding assertion (e.g., heading count/order) covers the resulting section rather than silently passing with fewer sections than intended
+      source: copilot:PR#360
+      added: "2026-09-21"
+      paths:
+        - test/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: comment-budget-internal-docs
+      category: style
+      pattern: >-
+        An added or expanded XML doc / comment on an internal helper, record, or type explaining identity, localization, or placement semantics
+      check: >-
+        Verify the comment does not exceed the repository's three-line comment budget; fold multi-point explanations (identity, invariants, localization, placement distinctions) into a single compact statement of the stable invariant rather than a narrative explanation
+      source: copilot:PR#360
+      added: "2026-09-21"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: toc-entry-drops-language-attribute
+      category: ui
+      pattern: >-
+        A value carries a language/locale marker (e.g. `HeadingLanguage`) that is rendered with `lang="..."` in one place (like a section heading), but the same text is also surfaced elsewhere (e.g. a TOC/nav entry, summary, or duplicate label) via a separate model/struct that doesn't carry that marker through
+      check: >-
+        Verify that every place the same fallback-translated text is rendered carries its language attribute consistently — trace the value from its source through all downstream DTOs/records (e.g. `DetailTocEntry`) to confirm the language field is propagated and applied to the link/label text, not just the primary heading.
+      source: copilot:PR#360
+      added: "2026-09-21"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: internal-doc-scope-creep
+      category: style
+      pattern: >-
+        XML doc or comment on an internal/private method narrates implementation steps or history instead of stating the invariant it guarantees
+      check: >-
+        Confirm internal method documentation is condensed to the invariant or contract the method upholds, with implementation narrative and incident history left out of the source (they belong in the bead/PR description)
+      source: copilot:PR#360
+      added: "2026-09-21"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: docs-match-actual-id-derivation
+      category: other
+      pattern: >-
+        Public XML doc or comment describes an id/key/fragment as directly being some source value (e.g. 'the catalogue section key') when the implementation actually transforms it (prefixing, slugifying, numbering) before use
+      check: >-
+        Verify the doc comment describes what the value actually is after transformation, not the pre-transform source it was derived from, so consumers relying on the documented contract (e.g. URL fragments) aren't misled
+      source: copilot:PR#360
+      added: "2026-09-21"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: test-comment-budget
+      category: style
+      pattern: >-
+        A comment block above a test class or test method describes mechanics already exercised by the test body, exceeding the repository's three-line comment ceiling
+      check: >-
+        Verify the comment states only the invariant being tested (the why), fits within three lines, and does not restate mechanics already visible in the test code
+      source: copilot:PR#360
+      added: "2026-09-21"
+      paths:
+        - test/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: fixture-comment-budget
+      category: testing
+      pattern: >-
+        A test fixture or handwritten test-data file carries an XML/doc comment that narrates rationale, history, or context beyond the three-line comment ceiling
+      check: >-
+        Verify comments on test fixtures state only the observed source and the reason the fixture is handwritten (e.g. stale capture, manual trap), and trim any narrative that exceeds the repository's comment budget
+      source: copilot:PR#360
+      added: "2026-09-21"
+      paths:
+        - test/**/*.cs
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: norwegian-outside-approved-domain-list
+      category: style
+      pattern: >-
+        New or edited C# identifiers (class, property, local, method, etc.) or changelog.d/*.md fragment titles/bodies added or edited by the diff use a Norwegian word or abbreviation that is not one of the repository's approved closed-list domain terms from AGENTS.md under "Norwegian stays where it is read, not called"
+      check: >-
+        Read the canonical list in AGENTS.md before flagging anything — it can drift from any restatement here. The approved terms are kilde, datasamling, delkilde, variabelgruppe, kildetype, kodeverk and its kinds (helsefagligKodeverk, administrativtKodeverk, kildekodeverk), plus the Norwegian plurals the API/collections use — kilder, delkilder, datasamlinger, variabelgrupper, kildetyper — each with casing appropriate to context. Also treat kildeutforsker and variabelutforsker as approved even though AGENTS.md's list doesn't name them, since they're this repository's own view names and ship throughout CHANGELOG.md, AGENTS.md and CLAUDE.md. For changelog fragments, only check the title/body of changelog.d/*.md files the diff adds or edits — standing untouched fragments are out of scope, and terms already shipping in CHANGELOG.md must not be flagged. Everything else — new identifiers of any kind, and changelog prose — must be English; abbreviations or partial forms of an approved term (e.g. gruppe for variabelgruppe) are not themselves approved.
+      source: [copilot:PR#302, copilot:PR#312]
+      added: "2026-09-15"
+      paths:
+        - changelog.d/**/*.md
+        - src/**/*.cs
+        - src/**/*.razor
+        - test/**/*.cs
+        - test/**/*.razor
+      merged_at: "2026-09-22"
+      last_seen: 2026-09-23T14:30:48Z
+      archived_at: 2026-09-23T14:30:48Z
+      archive_reason: lost-in-force-push
+    - id: restored-sort-visibility-flag-conflated-with-filter-flag
+      category: other
+      pattern: >-
+        Restoring a sort/state on a hidden or filtered UI element by setting the same boolean flag that a separate filter or reader-choice control also reads to decide visibility
+      check: >-
+        Verify that a flag set to reveal an element for one reason (e.g. a restored sort) is distinct from the flag that a filter or user choice later uses to hide it, so toggling the filter still hides the element even after the sort-triggered reveal
+      source: copilot:PR#413
+      added: "2026-09-23"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: rollback-notify-all-changed-props
+      category: concurrency
+      pattern: >-
+        A stale-response guard rolls back multiple related fields (e.g. Sort and Direction) that changed together in a single request, but only raises a changed-notification for one of them
+      check: >-
+        When rolling back a superseded async request, verify every field that could have changed relative to the rolled-back value fires its own changed-notification/callback, not just the first or most obvious one
+      source: copilot:PR#413
+      added: "2026-09-23"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: test-identifier-uses-wire-name-not-english
+      category: testing
+      pattern: >-
+        A test identifier (method name, variable, local) borrows a JSON wire-name spelling (e.g. a Norwegian field name from the payload) instead of the model's English property name
+      check: >-
+        Confirm test identifiers use the model's English name and reserve the wire spelling for the JSON payload literal itself, consistent with the repository's English-identifiers convention (Norwegian reserved for user-facing strings and established domain terms)
+      source: copilot:PR#415
+      added: "2026-09-23"
+      paths:
+        - test/**/*.cs
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: activate-shared-state-before-write-completes
+      category: concurrency
+      pattern: >-
+        Async operation switches a shared/observable state (e.g. active list, selected item) to a new target before the writes that populate that target have completed, while other components read/write through the same shared state
+      check: >-
+        Verify shared state is only pointed at the new target after all its writes finish, so concurrent readers/writers cannot observe or mutate a partially-populated target during the intervening awaits
+      source: copilot:PR#424
+      added: "2026-09-23"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: distinguish-missing-vs-empty-result
+      category: error-handling
+      pattern: >-
+        A downstream call collapses a semantically distinct 'not found'/'missing' response (e.g. null) into a generic empty collection/page before the caller uses it for a mutating operation (create/copy/write)
+      check: >-
+        Verify the caller can still distinguish 'source no longer exists' from 'source exists but is legitimately empty' at the point of the mutating call, especially when time has passed (e.g. another read) since the last validation — don't let an intermediate conversion silently normalize a missing/deleted result into a valid empty one
+      source: copilot:PR#424
+      added: "2026-09-23"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: batch-partial-failure-test-coverage
+      category: testing
+      pattern: >-
+        A test asserts partial-failure/partial-success behavior for batched or chunked operations (e.g. 'earlier batches succeed, a later batch fails')
+      check: >-
+        Verify the test data actually spans multiple batches — enough items to force at least two chunks, with the fake/mock configured to succeed on an earlier chunk and fail on a later one — rather than having a single chunk fail on its first and only call, which never exercises the partial-completion path the assertion claims to cover.
+      source: copilot:PR#424
+      added: "2026-09-23"
+      paths:
+        - test/**/*.cs
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: no-oversized-private-doc-comments
+      category: style
+      pattern: >-
+        A private/internal method's doc comment exceeds the repository's three-line ceiling (only public package API XML docs are exempt)
+      check: >-
+        Confirm internal comments are at most 3 lines and state only the operation and any non-obvious invariant, with historical rationale moved to the bead instead of the code
+      source: copilot:PR#424
+      added: "2026-09-23"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: bilingual-text-catalogue-language-mismatch
+      category: style
+      pattern: >-
+        A new or edited entry in the English half of a bilingual text catalogue (e.g. Texts.cs) uses a Norwegian word or label instead of its English equivalent
+      check: >-
+        Verify the English-side value is actually English, matches the terminology already used by sibling English labels in the same catalogue, and that any test asserting the bilingual heading/label pair is updated to match
+      source: copilot:PR#427
+      added: "2026-09-23"
+      paths:
+        - src/**/*.cs
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: browser-geometry-covers-new-state-combo
+      category: testing
+      pattern: >-
+        A browser-driven layout/geometry test (e.g. check-hostile-host.sh style viewport/overflow assertions) exercises a fixed set of toggle states, and new toggleable columns/fields/features are added that combine with existing state but aren't included in the states the browser test turns on
+      check: >-
+        Confirm the browser-driven geometry/layout test includes a state that enables the new feature(s) together with the other widest/worst-case toggles (not just bUnit render-tree coverage), so the actual worst-case viewport/overflow scenario is measured rather than assumed
+      source: copilot:PR#427
+      added: "2026-09-23"
+      paths:
+        - src/**/*.razor
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: norwegian-term-outside-domain-list
+      category: style
+      pattern: >-
+        Diff-added or diff-edited text — a C# identifier (class, property, local, method, etc.) or a changelog.d/*.md fragment's title/body — uses a Norwegian word or abbreviation that is not one of the repository's approved domain terms from AGENTS.md under "Norwegian stays where it is read, not called"
+      check: >-
+        Read the canonical list in AGENTS.md before flagging anything — it can drift from any restatement here. Keep kilde, datasamling, delkilde, variabelgruppe, kildetype, kodeverk and its kinds (helsefagligKodeverk, administrativtKodeverk, kildekodeverk), plus the Norwegian collection plurals (kilder/Kilder, delkilder/Delkilder, datasamlinger/Datasamlinger, variabelgrupper/Variabelgrupper, kildetyper/KildeTyper), casing appropriate to context, and — for changelog fragments only — kildeutforsker and variabelutforsker. Everything else must be English; abbreviations such as gruppe for variabelgruppe don't count as approved terms. Only check changelog.d/*.md fragments the diff adds or edits, not standing fragments, and don't flag terms that already ship untouched in CHANGELOG.md.
+      source: [copilot:PR#302, copilot:PR#312]
+      added: "2026-09-15"
+      paths:
+        - changelog.d/**/*.md
+        - src/**/*.cs
+        - src/**/*.razor
+        - test/**/*.cs
+        - test/**/*.razor
+      merged_at: "2026-09-23"
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
+    - id: pr-body-closes-bead-marker-2
+      category: other
+      pattern: >-
+        PR body references a bead's completion via `Bead: <id>`, a GitHub issue reference (`Closes <owner>/<repo>#N`), or some other non-literal form, instead of the exact `Closes-Bead: <bead-id>` line — or uses `Closes-Bead:` when the work only partially satisfies the bead
+      check: >-
+        Verify the PR body's bead line matches the actual completion state and format the bead closer requires: a literal, standalone `Closes-Bead: <bead-id>` line only when the diff fully satisfies the bead's acceptance criteria (implementation plus changelog fragment present), and `Bead: <bead-id>` alone for partial work. A GitHub `Closes #N`/`Closes <owner>/<repo>#N` reference does not close a bead (beads aren't GitHub issues), and `Bead:` alone does not close one either — the bead closer matches only on the exact `Closes-Bead:` marker.
+      source: [copilot:PR#343, copilot:PR#424]
+      added: "2026-09-23"
+      paths:
+        - changelog.d/**
+        - changelog.d/**/*.md
+      merged_at: "2026-09-23"
+      last_seen: 2026-09-26T14:32:14Z
+      archived_at: 2026-09-26T14:32:14Z
+      archive_reason: lost-in-force-push
