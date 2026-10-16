@@ -332,12 +332,12 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("FormaalFlerspraklig");
         }
 
-        // Its EHDS mirror repeats Lovverk word for word on 39 of 54 kilder on test, stored as plain text
-        // there rather than a tagged list (Fhi.Metadata-gpxp6).
+        // Its EHDS mirror repeats Lovverk on most kilder on test, as plain text and at times with a space
+        // lost after a «;» (K_BDR), so spacing is ignored here (Fhi.Metadata-gpxp6).
         if (Filled(kilde, "hasLegalBasis")
             && kilde.AdditionalProperties["hasLegalBasis"] is { } mirror
             && (CatalogueProperties.TaggedTexts(mirror) is { Count: > 0 } bases ? bases : [mirror])
-                .All(basis => SameText(basis, kilde.LegalBasis)))
+                .All(basis => SameText(Unspaced(basis), Unspaced(kilde.LegalBasis))))
         {
             keys.Add("hasLegalBasis");
         }
@@ -354,6 +354,8 @@ public sealed partial class KildeView : ComponentBase
     // Nothing on either side is nothing to compare, not the same text.
     private static bool SameText(string? a, string? b) =>
         Plain(a) is { Length: > 0 } plain && string.Equals(plain, Plain(b), StringComparison.OrdinalIgnoreCase);
+
+    private static string Unspaced(string? text) => string.Concat((text ?? "").Where(c => !char.IsWhiteSpace(c)));
 
     private static string Plain(string? text) =>
         string.Join(' ', (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).TrimEnd('.');

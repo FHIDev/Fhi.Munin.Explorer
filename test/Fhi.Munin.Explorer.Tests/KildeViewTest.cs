@@ -498,7 +498,7 @@ public class KildeViewTest : ExplorerTestContext
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
             "munin-explorer-page__body",
-            // The hero row under the name block. Always drawn on a source: two of its six facts
+            // The hero row under the name block. Always drawn on a source: two of its five facts
             // fall back to Texts.NotSpecified rather than to nothing, so there is no source thin
             // enough to leave the list out.
             "munin-explorer-page__facts",
@@ -1112,15 +1112,15 @@ public class KildeViewTest : ExplorerTestContext
     [Theory]
     [InlineData("no", "Rettslig grunnlag")]
     [InlineData("en", "Legal basis")]
-    public void Metadata_WhenHasLegalBasisRepeatsLovverkOnThisSource_ThenBothStillShow(
+    public void Metadata_WhenHasLegalBasisRepeatsLovverkOnThisSource_ThenItIsDrawnOnce(
         string language, string label)
     {
-        // hasLegalBasis happens to repeat the source information's Lovverk fact word for word on
-        // this source. It is not dropped: the test below shows the two fields can genuinely differ,
-        // so a value-blind exclusion here would risk deleting real content (Fhi.Metadata-43jrq).
+        // hasLegalBasis repeats Lovverk here but for one space after a «;», so only one is drawn; the
+        // test below keeps a mirror that says more (Fhi.Metadata-43jrq, Fhi.Metadata-gpxp6).
         var cut = Render(Barnediabetes(), language);
 
-        Assert.Contains(label, NamedSectionCells(cut, "dt"));
+        Assert.DoesNotContain(label, NamedSectionCells(cut, "dt"));
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "gjeldende tematiske konsesjon"));
     }
 
     [Fact]
@@ -1992,7 +1992,7 @@ public class KildeViewTest : ExplorerTestContext
     [InlineData("[\"Forskrift om medisinske kvalitetsregistre § 2-3.\"]")]
     public void LegalBasis_WhenTheEhdsMirrorSaysWhatLovverkSays_ThenTheSectionDrawsItOnce(string mirror)
     {
-        // hasLegalBasis repeats Lovverk word for word on 39 of 54 kilder on test, as plain text (Fhi.Metadata-gpxp6).
+        // hasLegalBasis repeats Lovverk on 40 of 54 kilder on test, as plain text (Fhi.Metadata-gpxp6).
         var kilde = Kilde() with
         {
             PropertyMetadata = [Entry("hasLegalBasis", 10, "Rettslig grunnlag", "Rettslig grunnlag")],
