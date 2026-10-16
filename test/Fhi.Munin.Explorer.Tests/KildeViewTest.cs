@@ -212,7 +212,7 @@ public class KildeViewTest : ExplorerTestContext
     [InlineData("Kvalitetssikring av behandlingen.")]
     [InlineData("  Kvalitetssikring   av\nbehandlingen ")]
     [InlineData("kvalitetssikring av behandlingen")]
-    public void Formaal_WhenItSaysWhatTheIngressSays_ThenTheTextIsDrawnOnce(string formaal)
+    public void Formaal_WhenItSaysWhatTheDescriptionSays_ThenTheTextIsDrawnOnce(string formaal)
     {
         var kilde = Kilde() with
         {
@@ -230,7 +230,7 @@ public class KildeViewTest : ExplorerTestContext
     [Theory]
     [InlineData("[{\"value\":\"Kvalitetssikring av behandlingen.\",\"language\":\"nb\"}]", 1)]
     [InlineData("[{\"value\":\"Kvalitetssikring av behandlingen.\",\"language\":\"nb\"},{\"value\":\"Quality assurance.\",\"language\":\"en\"}]", 2)]
-    public void FormaalFlerspraklig_WhenEveryLanguageRepeatsTheIngress_ThenItIsNotDrawnAgain(string mirror, int expected)
+    public void FormaalFlerspraklig_WhenEveryLanguageRepeatsTheDescription_ThenItIsNotDrawnAgain(string mirror, int expected)
     {
         var kilde = Kilde() with
         {
@@ -256,7 +256,7 @@ public class KildeViewTest : ExplorerTestContext
     [InlineData(null, "Noe")]
     [InlineData(null, ".")]
     [InlineData("", "...")]
-    public void Formaal_WhenThereIsNoIngressToRepeat_ThenItIsDrawn(string? description, string formaal)
+    public void Formaal_WhenThereIsNoDescriptionToRepeat_ThenItIsDrawn(string? description, string formaal)
     {
         var kilde = Kilde() with
         {
@@ -268,7 +268,7 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Formaal_WhenItSaysMoreThanTheIngress_ThenBothAreDrawn()
+    public void Formaal_WhenItSaysMoreThanTheDescription_ThenBothAreDrawn()
     {
         var kilde = Kilde() with { Description = "Norsk register for ALS." };
 
@@ -491,7 +491,6 @@ public class KildeViewTest : ExplorerTestContext
             "munin-explorer-kilde__delkilde-description",
             "munin-explorer-kilde__delkilde-name",
             "munin-explorer-kilde__delkilder",
-            "munin-explorer-kilde__description",
             "munin-explorer-kilde__header",
             "munin-explorer-kilde__identifiers",
             "munin-explorer-kilde__main",
@@ -609,9 +608,25 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Description_WhenTheKildeHasNone_ThenNoEmptyIngressIsDrawn()
+    public void Description_WhenTheKildeHasNone_ThenTheFirstSectionOpensWithNoEmptyParagraph()
     {
-        Assert.Empty(Render(Kilde() with { Description = null }).FindAll(".munin-explorer-kilde__description"));
+        var first = FirstSection(Render(Kilde() with { Description = null }));
+
+        Assert.DoesNotContain(first.Children, child => child.LocalName == "p");
+    }
+
+    /// <summary>The first section under the name block, which a description placed nowhere opens.</summary>
+    private static IElement FirstSection(IRenderedComponent<KildeView> cut) =>
+        cut.FindAll("section.munin-explorer-page__section")[0];
+
+    /// <summary>The paragraph straight under the first section's heading, where it opens with one.</summary>
+    private static IElement FirstSectionLead(IRenderedComponent<KildeView> cut)
+    {
+        var lead = FirstSection(cut).Children[1];
+
+        Assert.Equal("p", lead.LocalName);
+
+        return lead;
     }
 
     // ---------------------------------------------------------------------------------
@@ -875,8 +890,8 @@ public class KildeViewTest : ExplorerTestContext
         var kilde = DescribedTwice();
         var cut = Render(kilde, language);
 
-        // Line by line since Fhi.Metadata-5bcr7: the ingress renders the description's own line
-        // breaks as elements, so the raw string no longer appears contiguously anywhere.
+        // Line by line since Fhi.Metadata-5bcr7: the description's own line breaks render as
+        // elements, so the raw string no longer appears contiguously anywhere.
         var lines = kilde.Description!.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         Assert.Equal(2, lines.Length);
@@ -886,32 +901,120 @@ public class KildeViewTest : ExplorerTestContext
             Assert.Equal(1, Occurrences(cut.Markup, line));
         }
 
-        // And it is the ingress that kept it, not the field.
-        Assert.Contains(lines[0], cut.Find(".munin-explorer-kilde__description").TextContent,
+        // And it is Beskrivelse's own section that kept it, not the multilingual mirror.
+        Assert.Contains(lines[0], cut.Find("section#munin-explorer-section-beskrivelse").TextContent,
                         StringComparison.Ordinal);
     }
 
     [Theory]
     [InlineData("no")]
     [InlineData("en")]
-    public void Metadata_WhenTheDescriptionIsExcluded_ThenItsSectionKeepsTheRestOfItsFields(string language)
+    public void Metadata_WhenTheMirrorIsExcluded_ThenItsSectionKeepsTheRestOfItsFields(string language)
     {
         // THE TRAP: Groups drops a group whose every key is unset, so an exclusion can take the
         // group with it. Om registeret keeps two other fields, so it must still draw them; the
-        // Beskrivelse section held only the description, so it must not draw a hollow heading.
+        // Beskrivelse section holds the description itself since Fhi.Metadata-9zlm5, so it draws.
         var cut = Render(DescribedTwice(), language);
 
         var rows = cut.Find("section#munin-explorer-section-om-registeret dl.munin-explorer-page__fields");
 
         Assert.Equal(["Formål", "Anbefalte bruksområder"], Labels(rows));
         Assert.Contains("Om registeret", BlockHeadings(cut));
-        Assert.DoesNotContain("Beskrivelse", BlockHeadings(cut));
+        Assert.Contains("Beskrivelse", BlockHeadings(cut));
+    }
+
+    /// <summary>Munin's own shape: Beskrivelse first in om-registeret, Formål beside it.</summary>
+    private static KildeDetail PlacedDescription() => Kilde() with
+    {
+        PropertyMetadata =
+        [
+            Placed(CatalogueColumns.Description, 10, "om-registeret", "Om registeret", "Beskrivelse"),
+            Placed("Formaal", 20, "om-registeret", "Om registeret", "Formål"),
+        ],
+        Sections = [Section("om-registeret", "Om registeret", 1000)],
+    };
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Description_WhenTheCataloguePlacesIt_ThenItIsDrawnOnceInThatSectionAndNotAboveTheBody(string language)
+    {
+        var kilde = PlacedDescription();
+        var cut = Render(kilde, language);
+
+        Assert.Empty(cut.FindAll(".munin-explorer-kilde__description"));
+        Assert.DoesNotContain(kilde.Description!, cut.Find(".munin-explorer-kilde__header").TextContent,
+                              StringComparison.Ordinal);
+        Assert.Equal(1, Occurrences(cut.Markup, kilde.Description!));
+        Assert.Equal(kilde.Description, Value(cut.Find("section#munin-explorer-section-om-registeret"), "Beskrivelse"));
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Description_WhenNothingPlacesIt_ThenItOpensTheFirstSectionOnce(string language)
+    {
+        // Kilde() places Formål, Kommentar and Datakvalitet, and never Beskrivelse.
+        var kilde = Kilde();
+        var cut = Render(kilde, language);
+
+        Assert.Equal(kilde.Description, FirstSectionLead(cut).TextContent);
+        Assert.Equal(1, Occurrences(cut.Markup, kilde.Description!));
+    }
+
+    [Fact]
+    public void Description_WhenOnlyTheCompleteRecordPlacesIt_ThenItStillOpensTheFirstSection()
+    {
+        // The complete record is collapsed and repeats everything, so it is no home for the description.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata =
+            [
+                Placed(CatalogueColumns.Description, 10, CatalogueProperties.CatchAllGroupKey, "Alle metadatafelt", "Beskrivelse"),
+                Placed("Formaal", 20, "om-registeret", "Om registeret", "Formål"),
+            ],
+            Sections = [Section("om-registeret", "Om registeret", 1000)],
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Equal(kilde.Description, FirstSectionLead(cut).TextContent);
+        Assert.DoesNotContain(kilde.Description!, cut.Find("section#munin-explorer-section-om-registeret dl").TextContent,
+                              StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("[{\"value\":\"Kvalitetssikring av behandlingen.\",\"language\":\"nb\"}]")]
+    [InlineData("[{\"value\":\"Kvalitetssikring av behandlingen.\",\"language\":\"nb\"},{\"value\":\"kvalitetssikring av behandlingen\",\"language\":\"en\"}]")]
+    public void Formaal_WhenEveryKeyRepeatsThePlacedDescription_ThenTheTextIsDrawnOnceAsBeskrivelse(string mirror)
+    {
+        var kilde = PlacedDescription() with
+        {
+            Description = "Kvalitetssikring av behandlingen.",
+            PropertyMetadata =
+            [
+                .. PlacedDescription().PropertyMetadata,
+                Placed("FormaalFlerspraklig", 30, "om-registeret", "Om registeret", "Formål (språkmerket)")
+                    with { Type = "LangTaggedList" },
+            ],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Formaal"] = "Kvalitetssikring av behandlingen.",
+                ["FormaalFlerspraklig"] = mirror,
+            },
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(cut.Markup, "(?i)kvalitetssikring"));
+        Assert.Equal(["Beskrivelse"],
+                     Labels(cut.Find("section#munin-explorer-section-om-registeret dl.munin-explorer-page__fields")));
     }
 
     [Fact]
     public void Metadata_WhenTheCatalogueHoldsAnEnglishDescription_ThenItIsNotExcludedWithTheNorwegian()
     {
-        // THE SECOND TRAP, in the direction that deletes rather than duplicates: the ingress is the
+        // THE SECOND TRAP, in the direction that deletes rather than duplicates: the page draws the
         // Norwegian description whatever the reader's language, so the English text appears nowhere
         // else and excluding it would remove it from the panel rather than de-duplicate it.
         var kilde = Kilde() with
@@ -2315,7 +2418,7 @@ public class KildeViewTest : ExplorerTestContext
         var cut = Render(kilde, language: "en");
 
         Assert.Equal("no", cut.Find(".munin-explorer-kilde__header .headline-s").GetAttribute("lang"));
-        Assert.Equal("no", cut.Find(".munin-explorer-kilde__description").GetAttribute("lang"));
+        Assert.Equal("no", FirstSectionLead(cut).GetAttribute("lang"));
         Assert.Equal("no", cut.Find("table.munin-explorer-kilde__datasamlinger tbody th").GetAttribute("lang"));
 
         // Ours: the hero row's kildetype is this package's translation of an enum, not the
@@ -2455,7 +2558,7 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Description_WhenTheCatalogueAuthoredMarkdown_ThenTheIngressRendersItAsElements()
+    public void Description_WhenTheCatalogueAuthoredMarkdown_ThenItIsRenderedAsElements()
     {
         // The Tromsø study's beskrivelse carries <br> tags and markdown links, which the ingress
         // used to print as source text (FHIDev/Munin#5385).
@@ -2464,13 +2567,13 @@ public class KildeViewTest : ExplorerTestContext
             Description = "Befolkningsundersøkelse.<br>Se [UiT](https://uit.no/research/tromsostudy).",
         };
 
-        var ingress = Render(kilde).Find(".munin-explorer-kilde__description");
+        var description = FirstSectionLead(Render(kilde));
 
-        Assert.Single(ingress.QuerySelectorAll("br"));
-        var anchor = Assert.Single(ingress.QuerySelectorAll("a"));
+        Assert.Single(description.QuerySelectorAll("br"));
+        var anchor = Assert.Single(description.QuerySelectorAll("a"));
         Assert.Equal("https://uit.no/research/tromsostudy", anchor.GetAttribute("href"));
         Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
-        Assert.DoesNotContain("&lt;br&gt;", ingress.InnerHtml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("&lt;br&gt;", description.InnerHtml, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
