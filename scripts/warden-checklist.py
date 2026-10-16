@@ -89,18 +89,18 @@ def _read_rules_minimal(text):
         block = None
 
     for raw in lines:
-        if raw.strip() == "" and block is not None:
-            block.append("")
-            continue
-        if raw.lstrip().startswith("#") or raw.strip() == "":
-            continue
         indent = len(raw) - len(raw.lstrip(" "))
         line = raw.strip()
         if block is not None:
+            if line == "":
+                block.append("")
+                continue
             if indent > key_indent:
                 block.append(raw if style.startswith("|") else line)
                 continue
             finish_block()
+        if line == "" or line.startswith("#"):
+            continue
         if indent == 0:
             if line in ("rules: []", "rules: [ ]"):
                 return []
@@ -423,7 +423,9 @@ def git(*args):
 def branch_diff(base):
     rc, diff = git("diff", "HEAD")
     if rc != 0:
-        _, diff = git("diff")
+        rc, diff = git("diff")
+        if rc != 0:
+            sys.exit("warden-checklist: git diff failed; no checklist was produced")
     rc, log = git("log", "--oneline", f"{base}..HEAD")
     if rc == 0 and log.strip():
         rc, d = git("diff", f"{base}...HEAD")
