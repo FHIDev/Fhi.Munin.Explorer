@@ -66,14 +66,26 @@ def _fold(lines):
     return "\n".join(out).strip("\n")
 
 
+def _literal(lines):
+    body = list(lines)
+    while body and body[-1] == "":
+        body.pop()
+    indents = [len(x) - len(x.lstrip(" ")) for x in body if x.strip()]
+    cut = min(indents) if indents else 0
+    return "\n".join(x[cut:] for x in body)
+
+
 def _read_rules_minimal(text):
-    rules, cur, key, block, list_key = [], None, None, None, None
+    rules, cur, key, block, list_key, style = [], None, None, None, None, None
     lines = text.splitlines()
 
     def finish_block():
         nonlocal block, key
         if block is not None and cur is not None:
-            cur[key] = _fold(block)
+            if style.startswith("|"):
+                cur[key] = _literal(block) + ("" if style == "|-" else "\n")
+            else:
+                cur[key] = _fold([x.strip() for x in block])
         block = None
 
     for raw in lines:
@@ -86,10 +98,12 @@ def _read_rules_minimal(text):
         line = raw.strip()
         if block is not None:
             if indent > key_indent:
-                block.append(line)
+                block.append(raw if style.startswith("|") else line)
                 continue
             finish_block()
         if indent == 0:
+            if line in ("rules: []", "rules: [ ]"):
+                return []
             if line != "rules:":
                 raise ValueError(f"unexpected top-level line: {line!r}")
             continue
@@ -110,9 +124,7 @@ def _read_rules_minimal(text):
             cur[key] = []
             list_key = key
         elif value in (">-", ">", "|", "|-"):
-            if value.startswith("|"):
-                raise ValueError("literal block scalars are not supported without PyYAML")
-            block = []
+            block, style = [], value
         else:
             cur[key] = _scalar(value)
     finish_block()
@@ -208,11 +220,37 @@ def _glob_body(pattern):
     return out
 
 
+def _expand_braces(pattern):
+    i, depth, start = 0, 0, -1
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "\\":
+            i += 2
+            continue
+        if c == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif c == "}" and depth:
+            depth -= 1
+            if depth == 0:
+                head, tail = pattern[:start], pattern[i + 1:]
+                out = []
+                for alt in _split_alternatives(pattern[start + 1:i]):
+                    out.extend(_expand_braces(head + alt + tail))
+                return out
+        i += 1
+    if depth:
+        raise ValueError("bad glob")
+    return [pattern]
+
+
 def glob_match(pattern, path):
     rx = _glob_cache.get(pattern)
     if rx is None:
         try:
-            rx = re.compile(_glob_body(pattern) + r"\Z", re.S)
+            alts = _expand_braces(pattern)
+            rx = re.compile("(?:" + "|".join(_glob_body(a) for a in alts) + r")\Z", re.S)
         except (ValueError, re.error):
             rx = False
         _glob_cache[pattern] = rx
