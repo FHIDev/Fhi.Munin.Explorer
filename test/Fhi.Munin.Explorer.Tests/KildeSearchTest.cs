@@ -1187,6 +1187,10 @@ public class KildeSearchTest : ExplorerTestContext
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: " NasjonaltMedisinskKvalitetsregister ", variables: 2506)));
 
         Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
+        // The padded token is named as the group is keyed, not shown raw (Copilot on #579).
+        Assert.Equal(
+            "2506 variabler, flest av typen Nasjonalt medisinsk kvalitetsregister i lista",
+            VariablesCell(cut, "K_DAR").GetAttribute("title"));
     }
 
     [Fact]

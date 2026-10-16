@@ -1311,7 +1311,8 @@ public sealed partial class KildeSearch : ComponentBase
     /// <summary>What the bar shows, in words after the count: the screen reader's text, and with the count the hover text.</summary>
     private string BarWords(KildeSummary kilde, KildeSummary largest)
     {
-        var type = KildetypeKey(kilde) is "" ? T.NotSpecified : KildeTypeName(kilde.Kildetype);
+        var key = KildetypeKey(kilde);
+        var type = key is "" ? T.NotSpecified : KildeTypeName(key);
 
         if (largest.Id == kilde.Id || largest.TotalVariables <= kilde.TotalVariables)
         {
