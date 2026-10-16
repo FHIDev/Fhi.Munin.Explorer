@@ -2155,7 +2155,7 @@ internal sealed record Texts(
         VariablesAlsoDescribedHere: "The variables are also described here:",
         VariablesDescribedElsewhere: "Described outside helsedata.no",
         NoVariablesInMunin: "No variables in Munin",
-        NoDatasamlingerInMunin: "No datasets in Munin",
+        NoDatasamlingerInMunin: "No data collections in Munin",
         KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 source" : $"{shown} sources")
             + (shown == total ? "" : $" of {total}")

@@ -89,8 +89,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>munin-explorer-kilder</c> for the result table,
 /// <c>munin-explorer-kilder__name</c> for the control that opens a kilde,
 /// <c>munin-explorer-kilder__count</c> for the three columns that hold a number, joined by
-/// <c>munin-explorer-kilder__count--zero</c> on a cell whose count is nought — the digit is still
-/// drawn, so a host's rule for it dims rather than hides,
+/// <c>munin-explorer-kilder__count--zero</c> on a cell whose count is nought or that draws «–» for none
+/// in Munin, so a host's rule for it dims rather than hides,
 /// <c>munin-explorer-kilder__bar</c> and <c>munin-explorer-kilder__bar-fill</c> for the
 /// proportion bar under a non-zero variable count, its width inline,
 /// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
@@ -1280,8 +1280,8 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>The classes for a cell holding a count, marked when the count is nought, and its bar.</summary>
     /// <remarks>
-    /// Nought is a measurement, a register with no datasamlinger, and must stay tellable from
-    /// "Ikke oppgitt", so the digit stays and only its weight changes.
+    /// A nought delkilde count is a measurement and keeps its digit, dimmed; Variabler and Datasamlinger
+    /// draw «–» for none in Munin and wear the same dimmed class (Fhi.Metadata-bzqtu).
     /// </remarks>
     /// <param name="count">A zero gets no bar, which also keeps a zero <paramref name="largest"/> from dividing.</param>
     /// <param name="largest">The largest count among the drawn rows, or 0 for a column with no bar.</param>

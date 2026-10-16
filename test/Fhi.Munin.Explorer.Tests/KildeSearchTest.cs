@@ -7305,7 +7305,7 @@ public class KildeSearchTest : ExplorerTestContext
     // Inge on #6509: «–» rather than «0» for a kilde with no datasamling in Munin, as Variabler (Fhi.Metadata-bzqtu).
     [Theory]
     [InlineData("no", "Ingen datasamlinger i Munin")]
-    [InlineData("en", "No datasets in Munin")]
+    [InlineData("en", "No data collections in Munin")]
     public void Datasamlinger_WhenAKildeHasNone_ThenTheCellIsADashReadOutInWords(string language, string words)
     {
         var cut = RenderWith(new FakeClient(
