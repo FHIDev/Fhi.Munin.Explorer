@@ -12,11 +12,17 @@ internal static partial class DescriptionLead
     internal const int Limit = 560;
 
     /// <summary>
-    /// Whole paragraphs while they fit within <see cref="Limit"/>; where the first alone does not, it
-    /// up to its last whole sentence that does. <c>Folded</c> is null where nothing is held back.
+    /// Whole paragraphs while they fit within <see cref="Limit"/>; where the first alone is longer, that
+    /// paragraph up to its last whole sentence that fits. <c>Folded</c> is null where nothing is held back.
     /// </summary>
     internal static (string Lead, string? Folded) Split(string text)
     {
+        // Past the cap Render draws plain lines; split halves would each fall under it and parse.
+        if (text.Length > CatalogueMarkdown.MaxParsedLength)
+        {
+            return (text, null);
+        }
+
         var paragraphs = ParagraphBreak().Split(BrTag().Replace(text.Replace("\r\n", "\n"), "\n").Trim())
             .Where(paragraph => !string.IsNullOrWhiteSpace(paragraph))
             .ToList();
@@ -41,7 +47,12 @@ internal static partial class DescriptionLead
         // A first paragraph longer than the limit: cut after a sentence, never inside one, and after
         // the first sentence where even that is longer than the limit.
         var first = paragraphs[0];
-        var ends = SentenceEnd().Matches(first).Select(match => match.Index + 1).ToList();
+        var links = InlineLink().Matches(first).ToList();
+        var ends = SentenceEnd().Matches(first)
+            .Where(match => !Abbreviated(first, match.Index)
+                            && !links.Any(link => match.Index >= link.Index && match.Index < link.Index + link.Length))
+            .Select(match => match.Index + 1)
+            .ToList();
         var cut = ends.LastOrDefault(end => Visible(first[..end]) <= Limit);
 
         if (cut == 0)
@@ -59,6 +70,21 @@ internal static partial class DescriptionLead
 
     /// <summary>The characters a reader sees: a markdown link counts by its label, not its address.</summary>
     private static int Visible(string paragraph) => InlineLink().Replace(paragraph, "$1").Trim().Length;
+
+    /// <summary>Whether the full stop at <paramref name="stop"/> closes an abbreviation or an initial.</summary>
+    private static bool Abbreviated(string text, int stop)
+    {
+        var start = text.LastIndexOfAny([' ', '\n', '\t', '(', '«'], Math.Max(stop - 1, 0)) + 1;
+        var word = text[start..stop].ToLowerInvariant();
+
+        return word.Length == 1 || Abbreviations.Contains(word);
+    }
+
+    private static readonly HashSet<string> Abbreviations =
+    [
+        "bl.a", "ca", "dr", "evt", "ev", "f.eks", "f.o.m", "ifm", "inkl", "jf", "jfr", "kap", "m.fl", "mfl",
+        "m.m", "mv", "m.v", "nr", "osv", "pkt", "prof", "st", "t.o.m", "vedr",
+    ];
 
     private static string Join(IEnumerable<string> paragraphs) => string.Join("\n\n", paragraphs);
 

@@ -51,4 +51,43 @@ public class DescriptionLeadTest
 
         Assert.Equal((text, null), DescriptionLead.Split(text));
     }
+
+    [Theory]
+    [InlineData("bl.a. Statistisk")]
+    [InlineData("jf. Lov")]
+    [InlineData("Dr. Hansen")]
+    [InlineData("O. Hansen")]
+    public void Split_WhenAnAbbreviationIsFollowedByACapital_ThenItIsNotASentenceEnd(string abbreviated)
+    {
+        var (lead, _) = DescriptionLead.Split(
+            Sentence('a', 300) + " Mer tekst " + abbreviated + " " + new string('b', 300) + ". Siste.");
+
+        Assert.Equal(Sentence('a', 300), lead);
+    }
+
+    [Fact]
+    public void Split_WhenALinkLabelHoldsASentenceEnd_ThenTheCutIsNotInsideTheLink()
+    {
+        var link = "[Se Lov. Om helse](https://example.org)";
+        var (lead, folded) = DescriptionLead.Split(Sentence('a', 300) + " B" + new string('b', 200) + " " + link + " " + new string('c', 200) + ". Slutt.");
+
+        Assert.Equal(Sentence('a', 300), lead);
+        Assert.Contains(link, folded, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Split_WhenTheFirstParagraphHasNoSentenceEnd_ThenNothingIsFolded()
+    {
+        var text = new string('a', 900);
+
+        Assert.Equal((text, null), DescriptionLead.Split(text));
+    }
+
+    [Fact]
+    public void Split_WhenTheTextIsPastTheParseCap_ThenItIsLeftWhole()
+    {
+        var text = string.Concat(Enumerable.Repeat(Sentence('a', 100) + "\n\n", 250));
+
+        Assert.Equal((text, null), DescriptionLead.Split(text));
+    }
 }

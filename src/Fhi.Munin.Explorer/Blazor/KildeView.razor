@@ -38,11 +38,12 @@
                     @DetailBlocks.Prose(description.Lead, "ingress munin-explorer-kilde__description",
                                         CatalogueProperties.Foreign("no", Reader))
 
-                    @* In the DOM while folded, so the page holds the whole text; Folded is null where it fits. *@
+                    @* In the DOM while folded, so the page holds the whole text; Folded is null where it fits.
+                       The inline display is because Stiler's `div { display: block }` outranks [hidden]. *@
                     @if (description.Folded is { } folded)
                     {
                         <div id="@DescriptionRestId" class="munin-explorer-kilde__description-rest"
-                             hidden="@(!_descriptionOpen)">
+                             hidden="@(!_descriptionOpen)" style="@(_descriptionOpen ? null : "display:none")">
                             @DetailBlocks.Prose(folded, "ingress munin-explorer-kilde__description",
                                                 CatalogueProperties.Foreign("no", Reader))
                         </div>
