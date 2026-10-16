@@ -612,7 +612,7 @@ public class KildeViewTest : ExplorerTestContext
     {
         var first = FirstSection(Render(Kilde() with { Description = null }));
 
-        Assert.NotEqual("p", first.Children[1].LocalName);
+        Assert.DoesNotContain(first.Children, child => child.LocalName == "p");
     }
 
     /// <summary>The first section under the name block, which a description placed nowhere opens.</summary>
@@ -960,6 +960,27 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal(kilde.Description, FirstSectionLead(cut).TextContent);
         Assert.Equal(1, Occurrences(cut.Markup, kilde.Description!));
+    }
+
+    [Fact]
+    public void Description_WhenOnlyTheCompleteRecordPlacesIt_ThenItStillOpensTheFirstSection()
+    {
+        // The complete record is collapsed and repeats everything, so it is no home for the description.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata =
+            [
+                Placed(CatalogueColumns.Description, 10, CatalogueProperties.CatchAllGroupKey, "Alle metadatafelt", "Beskrivelse"),
+                Placed("Formaal", 20, "om-registeret", "Om registeret", "Formål"),
+            ],
+            Sections = [Section("om-registeret", "Om registeret", 1000)],
+        };
+
+        var cut = Render(kilde);
+
+        Assert.Equal(kilde.Description, FirstSectionLead(cut).TextContent);
+        Assert.DoesNotContain(kilde.Description!, cut.Find("section#munin-explorer-section-om-registeret dl").TextContent,
+                              StringComparison.Ordinal);
     }
 
     [Theory]

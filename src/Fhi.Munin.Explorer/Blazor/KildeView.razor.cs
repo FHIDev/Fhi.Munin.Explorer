@@ -547,11 +547,20 @@ public sealed partial class KildeView : ComponentBase
 
         var layout = DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
 
-        // Placed nowhere, the description opens the page's first section rather than being lost.
-        return !string.IsNullOrWhiteSpace(kilde.Description) && !Placement.Placed(CatalogueColumns.Description)
+        // Placed nowhere but the collapsed complete record, the description opens the first section.
+        return !string.IsNullOrWhiteSpace(kilde.Description) && !DescriptionPlaced(kilde)
                && layout is [var first, ..]
             ? [first with { Body = DetailBlocks.Both(Description(kilde), first.Body) }, .. layout.Skip(1)]
             : layout;
+    }
+
+    private bool DescriptionPlaced(KildeDetail kilde)
+    {
+        var placement = Placement;
+
+        return CatalogueProperties.Placed(
+            kilde.PropertyMetadata.Where(entry => entry.GroupKey != CatalogueProperties.CatchAllGroupKey),
+            placement.Values, placement.Reader, CatalogueColumns.Description, placement.DrawnElsewhere);
     }
 
     /// <summary>Norwegian whatever the reader's language: the catalogue stores one description.</summary>
