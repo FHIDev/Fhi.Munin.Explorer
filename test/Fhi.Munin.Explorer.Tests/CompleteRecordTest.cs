@@ -329,7 +329,7 @@ public class CompleteRecordTest : ExplorerTestContext
     [Fact]
     public void CompleteRecord_WhenTheDescriptionsCarryLinks_ThenItsRowsRenderThemRatherThanTheSource()
     {
-        // The one section meant to repeat the descriptions, so it must draw them as the ingress does.
+        // The one section meant to repeat the descriptions, so it must draw them as their own rows do.
         var tromso = Tromso();
         var values = new Dictionary<string, string?>(tromso.AdditionalProperties)
         {

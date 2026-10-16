@@ -2138,7 +2138,6 @@ table.munin-explorer-data-list tbody th {
 
 /* No colour of ours. The host styles `ingress` only inside particular page types and none of those
    rules set one, so the ingress inherits the body colour the rest of the page reads in. */
-.munin-explorer-kilde__description,
 .munin-explorer-datasamling__description,
 .munin-explorer-whole__description {
   margin: 12px 0 0;
