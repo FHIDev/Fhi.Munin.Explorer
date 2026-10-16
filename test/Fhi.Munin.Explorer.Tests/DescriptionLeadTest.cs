@@ -76,6 +76,26 @@ public class DescriptionLeadTest
     }
 
     [Fact]
+    public void Split_WhenANestedLinkLabelHoldsASentenceEnd_ThenTheCutIsNotInsideIt()
+    {
+        var link = "[Se [1]. Om helse](https://example.org)";
+        var (lead, folded) = DescriptionLead.Split(Sentence('a', 300) + " B" + new string('b', 200) + " " + link + " " + new string('c', 200) + ". Slutt.");
+
+        Assert.Equal(Sentence('a', 300), lead);
+        Assert.Contains(link, folded, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Split_WhenTheFirstParagraphIsOneSentenceTooLong_ThenTheOtherParagraphsAreFolded()
+    {
+        var first = new string('a', 700);
+        var (lead, folded) = DescriptionLead.Split(first + "\n\nNeste avsnitt.");
+
+        Assert.Equal(first, lead);
+        Assert.Equal("Neste avsnitt.", folded);
+    }
+
+    [Fact]
     public void Split_WhenTheFirstParagraphHasNoSentenceEnd_ThenNothingIsFolded()
     {
         var text = new string('a', 900);

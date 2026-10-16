@@ -614,6 +614,22 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Empty(Render(Kilde() with { Description = null }).FindAll(".munin-explorer-kilde__description"));
     }
 
+    [Theory]
+    [InlineData("Beskrivelse")]
+    [InlineData("BeskrivelseFlerspraklig")]
+    public void Description_WhenOnlyTheMetadataHoldsIt_ThenItsSectionDrawsIt(string key)
+    {
+        // With no description under the name, a placed one is the only copy (Copilot on #584).
+        var kilde = Kilde() with
+        {
+            Description = null,
+            PropertyMetadata = [Entry(key, 10, "Om kilden", "Beskrivelse")],
+            AdditionalProperties = new Dictionary<string, string?> { [key] = "Bare i metadataene." },
+        };
+
+        Assert.Contains("Bare i metadataene.", Render(kilde).Markup, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Description_WhenItFitsTheLimit_ThenItIsDrawnWholeWithNoToggle()
     {

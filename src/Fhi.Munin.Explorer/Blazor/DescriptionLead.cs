@@ -50,6 +50,7 @@ internal static partial class DescriptionLead
         var links = InlineLink().Matches(first).ToList();
         var ends = SentenceEnd().Matches(first)
             .Where(match => !Abbreviated(first, match.Index)
+                            && !InsideBrackets(first, match.Index)
                             && !links.Any(link => match.Index >= link.Index && match.Index < link.Index + link.Length))
             .Select(match => match.Index + 1)
             .ToList();
@@ -60,9 +61,10 @@ internal static partial class DescriptionLead
             cut = ends.FirstOrDefault();
         }
 
+        // One sentence too long to cut: the first paragraph whole, and the rest at the paragraph break.
         if (cut == 0)
         {
-            return (text, null);
+            return paragraphs.Count > 1 ? (first, Join(paragraphs.Skip(1))) : (text, null);
         }
 
         return (first[..cut].TrimEnd(), Join(paragraphs.Skip(1).Prepend(first[cut..].TrimStart())));
@@ -78,6 +80,19 @@ internal static partial class DescriptionLead
         var word = text[start..stop].ToLowerInvariant();
 
         return word.Length == 1 || Abbreviations.Contains(word);
+    }
+
+    /// <summary>Whether <paramref name="index"/> is inside an unclosed <c>[</c>, nested link labels included.</summary>
+    private static bool InsideBrackets(string text, int index)
+    {
+        var depth = 0;
+
+        foreach (var c in text.AsSpan(0, index))
+        {
+            depth = c switch { '[' => depth + 1, ']' => Math.Max(depth - 1, 0), _ => depth };
+        }
+
+        return depth > 0;
     }
 
     private static readonly HashSet<string> Abbreviations =

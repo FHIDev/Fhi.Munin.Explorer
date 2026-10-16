@@ -289,7 +289,7 @@ public sealed partial class KildeView : ComponentBase
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>
-    /// Beskrivelse always duplicates the ingress (Fhi.Metadata-8yqoz). Formaal is safely dropped
+    /// Beskrivelse duplicates the ingress where there is one (Fhi.Metadata-8yqoz). Formaal is safely dropped
     /// when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis are not, since their
     /// EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
     /// </remarks>
@@ -297,10 +297,16 @@ public sealed partial class KildeView : ComponentBase
     {
         var keys = new HashSet<string>(StringComparer.Ordinal)
         {
-            CatalogueColumns.Description, "BeskrivelseFlerspraklig",
             // The name block, and Kildeinformasjon's row in this package's words (Fhi.Metadata-zg89n).
             CatalogueColumns.PreferredTerm, CatalogueColumns.Code, CatalogueColumns.Kildetype,
         };
+
+        // Only while the name block draws a description; without one, a placed Beskrivelse is the only copy.
+        if (!string.IsNullOrWhiteSpace(kilde.Description))
+        {
+            keys.Add(CatalogueColumns.Description);
+            keys.Add("BeskrivelseFlerspraklig");
+        }
 
         // KortNavn is only drawn where the identifier line under the name is.
         if (IdentifierLine is not null)
