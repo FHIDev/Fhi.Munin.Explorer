@@ -212,8 +212,34 @@ public class KildeViewTest : ExplorerTestContext
             .FindAll(".munin-explorer-kilde__jumps a");
 
         Assert.Equal(["Vis 312 variabler →", "Se de 2 datasamlingene →"], links.Select(a => a.TextContent));
-        Assert.Equal(["#" + DetailSectionIds.Variables, "#" + DetailSectionIds.DataCollections], links.Select(a => a.GetAttribute("href")));
+        // The page's own path before the #, as the contents nav: helsedata's <base href="/"> sends a bare #id to the root.
+        Assert.Equal(["/#" + DetailSectionIds.Variables, "/#" + DetailSectionIds.DataCollections], links.Select(a => a.GetAttribute("href")));
         Assert.All(links, a => Assert.Equal("true", a.QuerySelector("span")!.GetAttribute("aria-hidden")));
+    }
+
+    [Fact]
+    public void Jumps_WhenTheWrapperGivesThePageAddress_ThenTheLinksKeepItsPathAndQuery()
+    {
+        var links = Render<CascadingValue<string>>(b => b
+                .Add(c => c.Name, DetailToc.PageAddressName)
+                .Add(c => c.Value, "/MuninKelda/?kilde=abc")
+                .AddChildContent<KildeView>(v => v.Add(c => c.Kilde, Kilde())))
+            .FindAll(".munin-explorer-kilde__jumps a");
+
+        Assert.Equal(["/MuninKelda/?kilde=abc#" + DetailSectionIds.DataCollections], links.Select(a => a.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void Jumps_WhenTheVariablesSectionIsOnlyAReference_ThenThereIsNoVariablesLink()
+    {
+        // Runa passes the Variabelreferanse sentence as its Variables section; a count would promise a list.
+        var kilde = Kilde() with
+        {
+            AdditionalProperties = new Dictionary<string, string?> { [VariableReference.Key] = "https://example.org/variabler" },
+        };
+
+        Assert.DoesNotContain(RenderWithVariablesSection(kilde).FindAll(".munin-explorer-kilde__jumps a"),
+                              a => a.TextContent.StartsWith("Vis ", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -633,9 +659,8 @@ public class KildeViewTest : ExplorerTestContext
     [Fact]
     public void Kildetype_WhenTheKildeHasOne_ThenTheNameBlockDrawsNoBadgeRepeatingTheHeroRow()
     {
-        // The hero row's first fact is Type, ten pixels below where the badge stood, resolved
-        // through the same member — so the badge was the same words twice inside the chrome rather
-        // than a summary of the page. (Fhi.Metadata-pnn4w)
+        // Inside the name block there is still no badge (Fhi.Metadata-pnn4w). The type over the name is
+        // now the chassis eyebrow, outside this block, by Robin's choice of Skuld's top (Fhi.Metadata-4ggs9).
         var cut = Render(Kilde());
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilde__kildetype"));

@@ -153,11 +153,22 @@ public sealed partial class KildeView : ComponentBase
               }.Where(part => !string.IsNullOrWhiteSpace(part))) is { Length: > 0 } line ? line : null;
 
     /// <summary>The jump to the Variables section a caller passes; none where it passes none or there are no variables.</summary>
+    /// <remarks>Not to a Variabelreferanse sentence (Runa's only Variables section): the count would promise a list.</remarks>
     private string? JumpToVariables =>
         Kilde is { TotalVariables: > 0 } kilde
         && NamedSections?.Any(section => section.Id == DetailSectionIds.Variables) is true
+        && VariableReference.Of(kilde.AdditionalProperties) is null
             ? T.JumpToVariables(kilde.TotalVariables)
             : null;
+
+    [CascadingParameter(Name = DetailToc.PageAddressName)]
+    private string? PageAddress { get; set; }
+
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    /// <summary>The page's own path and query before the <c>#</c>, as <see cref="DetailToc"/> builds it and for its reason.</summary>
+    private string JumpHref(string id) =>
+        $"{(PageAddress is { Length: > 0 } given ? given : new Uri(Navigation.Uri).PathAndQuery)}#{id}";
 
     private string? JumpToDataCollections =>
         DataCollections.Count > 0 ? T.JumpToDataCollections(DataCollections.Count) : null;
