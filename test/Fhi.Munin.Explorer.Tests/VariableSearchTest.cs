@@ -11385,6 +11385,8 @@ public class VariableSearchTest : ExplorerTestContext
         public Page<VariableSummary> Answer { get; set; } = answer;
 
         public int SearchCalls { get; private set; }
+        public string? LastSearch { get; private set; }
+        public VariableFilter? LastFilter { get; private set; }
 
         /// <summary>How many detail fetches have been left hanging.</summary>
         public int Stalls => _stalls.Count;
@@ -11442,6 +11444,8 @@ public class VariableSearchTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             SearchCalls++;
+            LastSearch = search;
+            LastFilter = filter;
 
             if (SearchGates.TryGetValue(SearchCalls, out var gate))
             {
@@ -15099,6 +15103,49 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(0, client.DetailCalls);
         Assert.Null(reported);
+    }
+
+    [Fact]
+    public void Detail_WhenALinkSuppliesASearchAndFilterWithTheSelection_ThenTheRowStaysOpen()
+    {
+        // A shared variable link searches its code within its kilde (Fhi.Metadata-igb8z). The fixture
+        // assumes the API ranks the exact code first, as Munin #6716 makes it; page one then holds it.
+        var exactId = Guid.NewGuid();
+        var client = CodeSearchClient(exactId);
+        var reported = new List<Guid?>();
+
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "ALDER")
+                                           .Add(c => c.Filter, new VariableFilter { KildeIds = [AlsId] })
+                                           .Add(c => c.SelectedVariableId, (Guid?)exactId)
+                                           .Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        Assert.Equal("ALDER", client.LastSearch);
+        Assert.Equal([AlsId], client.LastFilter?.KildeIds);
+        Assert.Equal(exactId, client.LastDetailId);
+        Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.DoesNotContain(null, reported);
+    }
+
+    /// <summary>Page one of 26 codes containing ALDER, ranked exact code first; by name it would sort last.</summary>
+    private static DetailClient CodeSearchClient(Guid exactId)
+    {
+        var others = Enumerable.Range(1, 25)
+            .Select(i => Row(Guid.NewGuid(), $"{i:D2}. Alder") with { Code = $"ALDER_{i:D2}" });
+        var ranked = others.Prepend(Row(exactId, "Ø alder") with { Code = "ALDER" }).ToArray();
+        const int pageSize = 20;
+        var page = new Page<VariableSummary>
+        {
+            Items = ranked.Take(pageSize).ToArray(),
+            TotalCount = ranked.Length,
+            PageNumber = 1,
+            Size = pageSize,
+            TotalPages = (ranked.Length + pageSize - 1) / pageSize,
+        };
+
+        return new DetailClient(page)
+            .Knows(Detail(exactId, "Ø alder") with { Code = "ALDER" })
+            .Knows(Kilde())
+            .Knows(Datasamling());
     }
 
     [Fact]
