@@ -372,10 +372,10 @@ public class SeededPlacementRenderingTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Description_WhenItsPlacementArrives_ThenEachPageStillDrawsItOnce()
+    public void Description_WhenItsPlacementArrives_ThenTheIngressIsStillTheOnlyPlaceEachPageDrawsIt()
     {
-        // The datasamling and variable views draw Beskrivelse in their name block, so it joins
-        // drawnElsewhere there; the kilde view draws it in its section (Fhi.Metadata-9zlm5).
+        // Beskrivelse is the one key of the ten that three different views already draw in their
+        // name block, so it is the one that joins drawnElsewhere rather than leaving a box.
         Assert.Equal(1, Occurrences(Body(RenderKilde(Kilde(Section))),
                                     KildeFacts[CatalogueColumns.Description]));
         Assert.Equal(1, Occurrences(Body(RenderDatasamling(Datasamling(Section))),

@@ -11385,6 +11385,8 @@ public class VariableSearchTest : ExplorerTestContext
         public Page<VariableSummary> Answer { get; set; } = answer;
 
         public int SearchCalls { get; private set; }
+        public string? LastSearch { get; private set; }
+        public VariableFilter? LastFilter { get; private set; }
 
         /// <summary>How many detail fetches have been left hanging.</summary>
         public int Stalls => _stalls.Count;
@@ -11442,6 +11444,8 @@ public class VariableSearchTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             SearchCalls++;
+            LastSearch = search;
+            LastFilter = filter;
 
             if (SearchGates.TryGetValue(SearchCalls, out var gate))
             {
@@ -15102,6 +15106,49 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Detail_WhenALinkSuppliesASearchAndFilterWithTheSelection_ThenTheRowStaysOpen()
+    {
+        // A shared variable link searches its code within its kilde (Fhi.Metadata-igb8z). The fixture
+        // assumes the API ranks the exact code first, as Munin #6716 makes it; page one then holds it.
+        var exactId = Guid.NewGuid();
+        var client = CodeSearchClient(exactId);
+        var reported = new List<Guid?>();
+
+        var cut = RenderWith(client, b => b.Add(c => c.Search, "ALDER")
+                                           .Add(c => c.Filter, new VariableFilter { KildeIds = [AlsId] })
+                                           .Add(c => c.SelectedVariableId, (Guid?)exactId)
+                                           .Add(c => c.SelectedVariableIdChanged, id => reported.Add(id)));
+
+        Assert.Equal("ALDER", client.LastSearch);
+        Assert.Equal([AlsId], client.LastFilter?.KildeIds);
+        Assert.Equal(exactId, client.LastDetailId);
+        Assert.Equal("true", Toggles(cut)[0].GetAttribute("aria-expanded"));
+        Assert.DoesNotContain(null, reported);
+    }
+
+    /// <summary>Page one of 26 codes containing ALDER, ranked exact code first; by name it would sort last.</summary>
+    private static DetailClient CodeSearchClient(Guid exactId)
+    {
+        var others = Enumerable.Range(1, 25)
+            .Select(i => Row(Guid.NewGuid(), $"{i:D2}. Alder") with { Code = $"ALDER_{i:D2}" });
+        var ranked = others.Prepend(Row(exactId, "Ø alder") with { Code = "ALDER" }).ToArray();
+        const int pageSize = 20;
+        var page = new Page<VariableSummary>
+        {
+            Items = ranked.Take(pageSize).ToArray(),
+            TotalCount = ranked.Length,
+            PageNumber = 1,
+            Size = pageSize,
+            TotalPages = (ranked.Length + pageSize - 1) / pageSize,
+        };
+
+        return new DetailClient(page)
+            .Knows(Detail(exactId, "Ø alder") with { Code = "ALDER" })
+            .Knows(Kilde())
+            .Knows(Datasamling());
+    }
+
+    [Fact]
     public void Detail_WhenANewSearchLeavesTheOpenRowBehind_ThenThePanelClosesAndTheHostIsTold()
     {
         // Otherwise the selection is state the reader can neither see nor get rid of, and the
@@ -15744,16 +15791,6 @@ public class VariableSearchTest : ExplorerTestContext
     private static AngleSharp.Dom.IElement SourcePanel(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-drilldown");
 
-    /// <summary>The paragraph straight under the drill-in's first section heading.</summary>
-    private static AngleSharp.Dom.IElement SourceLead(IRenderedComponent<VariableSearch> cut)
-    {
-        var lead = SourcePanel(cut).QuerySelector("section.munin-explorer-page__section")!.Children[1];
-
-        Assert.Equal("p", lead.LocalName);
-
-        return lead;
-    }
-
     // The fact lists alone, not every dl in the drill-in: the chassis's hero row is a dl too, and
     // it repeats six of these fields above the body — so an unscoped selector reads the summary
     // back and reports the sections as having moved. (Fhi.Metadata-35w0p.26)
@@ -15792,8 +15829,10 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(AlsId, client.LastSourceId);
         Assert.Equal(before, navigation.Uri);
 
-        // Runa's order. Beskrivelse, placed nowhere here, opens the first section (Fhi.Metadata-9zlm5);
-        // the variable count is under Statistikk, and the datasamling count is the table.
+        // The source information, in Runa's order. Beskrivelse is not in it any more: it moved up
+        // to the ingress under the name, where a description belongs and where Runa puts it. The two
+        // counts left too — the variable count is under Statistikk, and the datasamling count is
+        // the table rather than a number.
         Assert.Equal(
             ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
              "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen",
@@ -15807,10 +15846,10 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("Indirekte identifiserbar", values[4]);
         Assert.Equal("312", values[7]);
 
-        // The description reads as prose opening the body, not as a row in a record.
+        // The description reads as prose above the metadata, not as a row in a record.
         Assert.Equal(
             "Norsk register for ALS og andre motonevronsykdommer.",
-            SourceLead(cut).TextContent.Trim());
+            SourcePanel(cut).QuerySelector(".munin-explorer-kilde__description")!.TextContent.Trim());
     }
 
     [Theory]
@@ -16629,7 +16668,7 @@ public class VariableSearchTest : ExplorerTestContext
         // The catalogue holds one name and one description, both Norwegian. On this page they are
         // the only Norwegian left, and both say so.
         var heading = SourcePanel(cut).QuerySelector(".headline-s")!;
-        var description = SourceLead(cut);
+        var description = SourcePanel(cut).QuerySelector(".munin-explorer-kilde__description")!;
 
         Assert.Equal("Als registeret", heading.TextContent);
         Assert.Equal("no", heading.GetAttribute("lang"));
@@ -16694,6 +16733,7 @@ public class VariableSearchTest : ExplorerTestContext
                 // No eyebrow: a kilde's page names no category above its name (Fhi.Metadata-esf2i).
                 "munin-explorer-kilde__header",
                 "munin-explorer-kilde__identifiers",
+                "munin-explorer-kilde__description",
                 // The hero row, between the name block and the body. Always drawn on a source:
                 // two of its six facts fall back to Texts.NotSpecified rather than to nothing.
                 "munin-explorer-page__facts",

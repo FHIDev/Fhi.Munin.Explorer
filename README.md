@@ -1028,6 +1028,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilde__delkilde-description` | handle |
   | `munin-explorer-kilde__delkilde-name` | handle |
   | `munin-explorer-kilde__delkilder` | handle |
+  | `munin-explorer-kilde__description` | handle |
+  | `munin-explorer-kilde__description-rest` | handle |
+  | `munin-explorer-kilde__description-toggle` | meaning |
   | `munin-explorer-kilde__header` | handle |
   | `munin-explorer-kilde__identifiers` | handle |
   | `munin-explorer-kilde__main` | handle |

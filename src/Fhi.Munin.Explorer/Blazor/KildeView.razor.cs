@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -171,6 +172,26 @@ public sealed partial class KildeView : ComponentBase
         : string.IsNullOrWhiteSpace(shortName) ? code
         : $"{code} ({shortName})";
 
+    /// <summary>The description as the name block draws it, or null where the catalogue holds none.</summary>
+    private (string Lead, string? Folded)? Description =>
+        string.IsNullOrWhiteSpace(Kilde?.Description) ? null : DescriptionLead.Split(Kilde.Description);
+
+    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+
+    private string DescriptionRestId => $"munin-explorer-kilde-description-{_instance}";
+
+    private bool _descriptionOpen;
+    private Guid? _descriptionKilde;
+
+    /// <summary>A double-click or shift-click on the toggle is taking text, not asking for more.</summary>
+    private void ToggleDescription(MouseEventArgs clicked)
+    {
+        if (!RowPress.WasSelectionStandingStill(clicked))
+        {
+            _descriptionOpen = !_descriptionOpen;
+        }
+    }
+
     private bool _resolved;
     private KildeDetail? _resolvedKilde;
     private string? _resolvedLanguage;
@@ -268,8 +289,9 @@ public sealed partial class KildeView : ComponentBase
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>
-    /// Formaal is safely dropped when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis
-    /// are not, since their EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
+    /// Beskrivelse duplicates the ingress where there is one (Fhi.Metadata-8yqoz). Formaal is safely dropped
+    /// when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis are not, since their
+    /// EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
     /// </remarks>
     private IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
     {
@@ -279,9 +301,10 @@ public sealed partial class KildeView : ComponentBase
             CatalogueColumns.PreferredTerm, CatalogueColumns.Code, CatalogueColumns.Kildetype,
         };
 
-        // Its Norwegian slot is the description the page already draws, placed or not (Fhi.Metadata-8yqoz).
+        // Only while the name block draws a description; without one, a placed Beskrivelse is the only copy.
         if (!string.IsNullOrWhiteSpace(kilde.Description))
         {
+            keys.Add(CatalogueColumns.Description);
             keys.Add("BeskrivelseFlerspraklig");
         }
 
@@ -296,7 +319,7 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("Formaal");
         }
 
-        // Beskrivelse already says it word for word: K_BIV on test, in both keys (Fhi.Metadata-esf2i).
+        // The ingress already says it word for word: K_BIV on test, in both keys (Fhi.Metadata-esf2i).
         if (Filled(kilde, "Formaal") && SameText(kilde.AdditionalProperties["Formaal"], kilde.Description))
         {
             keys.Add("Formaal");
@@ -500,6 +523,13 @@ public sealed partial class KildeView : ComponentBase
     /// <inheritdoc />
     protected override async Task OnParametersSetAsync()
     {
+        // Another kilde in the same view starts folded again.
+        if (_descriptionKilde != Kilde?.Id)
+        {
+            _descriptionKilde = Kilde?.Id;
+            _descriptionOpen = false;
+        }
+
         Layout = BuildLayout();
         Toc = BuildToc(Layout);
 
@@ -545,27 +575,8 @@ public sealed partial class KildeView : ComponentBase
                          DetailBlocks.GroupBody(group, Language, CompleteRecordFacts))),
         ];
 
-        var layout = DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
-
-        // Placed nowhere but the collapsed complete record, the description opens the first section.
-        return !string.IsNullOrWhiteSpace(kilde.Description) && !DescriptionPlaced(kilde)
-               && layout is [var first, ..]
-            ? [first with { Body = DetailBlocks.Both(Description(kilde), first.Body) }, .. layout.Skip(1)]
-            : layout;
+        return DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
     }
-
-    private bool DescriptionPlaced(KildeDetail kilde)
-    {
-        var placement = Placement;
-
-        return CatalogueProperties.Placed(
-            kilde.PropertyMetadata.Where(entry => entry.GroupKey != CatalogueProperties.CatchAllGroupKey),
-            placement.Values, placement.Reader, CatalogueColumns.Description, placement.DrawnElsewhere);
-    }
-
-    /// <summary>Norwegian whatever the reader's language: the catalogue stores one description.</summary>
-    private RenderFragment Description(KildeDetail kilde) =>
-        DetailBlocks.Prose(kilde.Description, null, CatalogueProperties.Foreign("no", Reader));
 
     /// <summary>
     /// This view's own sections, each under the key a placement row moves it by, in the order the

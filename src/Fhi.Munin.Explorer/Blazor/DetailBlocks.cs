@@ -371,7 +371,7 @@ internal static class DetailBlocks
     /// Drawn through <see cref="CatalogueMarkdown"/> because these fields are authored with links
     /// and line breaks, and marked with the language the catalogue stores them in.
     /// </remarks>
-    internal static RenderFragment Prose(string? text, string? cssClass, string? language) => builder =>
+    internal static RenderFragment Prose(string? text, string cssClass, string? language) => builder =>
     {
         if (string.IsNullOrWhiteSpace(text))
         {

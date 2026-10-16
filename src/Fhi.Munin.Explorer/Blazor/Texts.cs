@@ -696,6 +696,10 @@ internal sealed record Texts(
     // it has. The number is the remainder the panel computes per render, never one written here.
     Func<int, string> ShowMoreFacetValues,
     string ShowFewerFacetValues,
+
+    // The kilde description's own toggle, under the name (Fhi.Metadata-nebok).
+    string DescriptionReadMore,
+    string DescriptionShowLess,
     // What a facet says in its own summary about how many of its values are ticked. It is drawn
     // only above zero, so no wording for none is needed — and none is wanted: "0 valgt" over a
     // facet nobody has touched is a filter reported where there is no filter.
@@ -1577,6 +1581,8 @@ internal sealed record Texts(
         ChosenBelow: count => $"({count} valgt under)",
         ShowMoreFacetValues: hidden => $"Vis {hidden} til",
         ShowFewerFacetValues: "Vis færre",
+        DescriptionReadMore: "Les mer",
+        DescriptionShowLess: "Vis mindre",
         FacetChosen: chosen => $"{chosen} valgt",
         FacetSize: size => size == 1 ? "1 verdi" : $"{size} verdier",
         ShowFilters: "Vis filtre",
@@ -2113,6 +2119,8 @@ internal sealed record Texts(
         ChosenBelow: count => $"({count} chosen below)",
         ShowMoreFacetValues: hidden => $"Show {hidden} more",
         ShowFewerFacetValues: "Show fewer",
+        DescriptionReadMore: "Read more",
+        DescriptionShowLess: "Show less",
         FacetChosen: chosen => $"{chosen} selected",
         FacetSize: size => size == 1 ? "1 value" : $"{size} values",
         ShowFilters: "Show filters",

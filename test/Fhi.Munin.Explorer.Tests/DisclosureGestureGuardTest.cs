@@ -574,6 +574,23 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     }
 
     [Fact]
+    public void KildeView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
+    {
+        // One: «Les mer» under a description too long to show whole (Fhi.Metadata-nebok).
+        Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
+        var kilde = new KildeDetail
+        {
+            Id = Guid.NewGuid(),
+            Code = "K_ALS",
+            PreferredTerm = "Als registeret",
+            Description = new string('a', 400) + ".\n\n" + new string('b', 400) + ".",
+        };
+
+        AssertStandingGesturesAreRefused(
+            () => Render<KildeView>(b => b.Add(c => c.Kilde, kilde)), expected: 1, native: 0);
+    }
+
+    [Fact]
     public void VariableListView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
         // Ten: create, open a shared list, rename, copy, the delete confirmation, the empty
@@ -599,6 +616,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     private static readonly Type[] Swept =
     [
         typeof(KildeSearch),
+        typeof(KildeView),
         typeof(KodeverkGroups),
         typeof(VariableListFilters),
         typeof(VariableListView),
