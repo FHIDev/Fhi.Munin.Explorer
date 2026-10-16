@@ -700,6 +700,11 @@ internal sealed record Texts(
     // The kilde description's own toggle, under the name (Fhi.Metadata-nebok).
     string DescriptionReadMore,
     string DescriptionShowLess,
+
+    // The kilde page's code line and its two jump links, as Skuld's top has them (Fhi.Metadata-4ggs9).
+    Func<string, string> CodeLineUpdated,
+    Func<int, string> JumpToVariables,
+    Func<int, string> JumpToDataCollections,
     // What a facet says in its own summary about how many of its values are ticked. It is drawn
     // only above zero, so no wording for none is needed — and none is wanted: "0 valgt" over a
     // facet nobody has touched is a filter reported where there is no filter.
@@ -1583,6 +1588,9 @@ internal sealed record Texts(
         ShowFewerFacetValues: "Vis færre",
         DescriptionReadMore: "Les mer",
         DescriptionShowLess: "Vis mindre",
+        CodeLineUpdated: day => $"sist oppdatert i katalogen {day}",
+        JumpToVariables: count => count == 1 ? "Vis 1 variabel" : $"Vis {count} variabler",
+        JumpToDataCollections: count => count == 1 ? "Se datasamlingen" : $"Se de {count} datasamlingene",
         FacetChosen: chosen => $"{chosen} valgt",
         FacetSize: size => size == 1 ? "1 verdi" : $"{size} verdier",
         ShowFilters: "Vis filtre",
@@ -2121,6 +2129,9 @@ internal sealed record Texts(
         ShowFewerFacetValues: "Show fewer",
         DescriptionReadMore: "Read more",
         DescriptionShowLess: "Show less",
+        CodeLineUpdated: day => $"last updated in the catalogue {day}",
+        JumpToVariables: count => count == 1 ? "Show 1 variable" : $"Show {count} variables",
+        JumpToDataCollections: count => count == 1 ? "See the data collection" : $"See the {count} data collections",
         FacetChosen: chosen => $"{chosen} selected",
         FacetSize: size => size == 1 ? "1 value" : $"{size} values",
         ShowFilters: "Show filters",

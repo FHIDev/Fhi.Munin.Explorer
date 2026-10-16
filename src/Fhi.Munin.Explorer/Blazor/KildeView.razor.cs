@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,7 +33,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// Descriptions and validity tables remain available in a separate metadata disclosure.
 /// </para>
 /// </remarks>
-public sealed partial class KildeView : ComponentBase
+public sealed partial class KildeView : ComponentBase, IDisposable
 {
     /// <summary>The source to show. Nothing renders until this is set.</summary>
     [Parameter, EditorRequired]
@@ -140,6 +141,49 @@ public sealed partial class KildeView : ComponentBase
     /// block, the sticky bar and <see cref="DrawnElsewhere"/> all read this one answer.
     /// </remarks>
     private string? IdentifierLine => StickyNamed.Norwegian ? Identifiers : null;
+
+    /// <summary>«K_BDR · BDR · sist oppdatert i katalogen 24.08.2026», each part only where it has a value.</summary>
+    private string? CodeLine =>
+        Kilde is not { } kilde
+            ? null
+            : string.Join(" · ", new[]
+              {
+                  StickyNamed.Norwegian ? kilde.Code : null,
+                  kilde.ShortName,
+                  CatalogueDate.DayOrNothing(kilde.LastUpdated, Language) is { } day ? T.CodeLineUpdated(day) : null,
+              }.Where(part => !string.IsNullOrWhiteSpace(part))) is { Length: > 0 } line ? line : null;
+
+    /// <summary>
+    /// Where «Vis N variabler» goes: the variable explorer narrowed to this kilde. Kelda passes it;
+    /// without it there is no link, since no section on this page lists the variables.
+    /// </summary>
+    [Parameter]
+    public string? VariablesHref { get; set; }
+
+    private string? JumpToVariables =>
+        Kilde is { TotalVariables: > 0 } kilde && !string.IsNullOrWhiteSpace(VariablesHref)
+            ? T.JumpToVariables(kilde.TotalVariables)
+            : null;
+
+    [CascadingParameter(Name = DetailToc.PageAddressName)]
+    private string? PageAddress { get; set; }
+
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    // A bare host may rewrite the query under a standing view, so the hrefs follow it as DetailToc's do.
+    protected override void OnInitialized() => Navigation.LocationChanged += Moved;
+
+    /// <inheritdoc />
+    public void Dispose() => Navigation.LocationChanged -= Moved;
+
+    private void Moved(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>The page's own path and query before the <c>#</c>, as <see cref="DetailToc"/> builds it and for its reason.</summary>
+    private string JumpHref(string id) =>
+        $"{(PageAddress is { Length: > 0 } given ? given : new Uri(Navigation.Uri).PathAndQuery)}#{id}";
+
+    private string? JumpToDataCollections =>
+        DataCollections.Count > 0 ? T.JumpToDataCollections(DataCollections.Count) : null;
 
     /// <summary>The identifiers beside the bar's name, on the name block's own terms.</summary>
     private string? StickyCode => IdentifierLine;
@@ -308,8 +352,8 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("BeskrivelseFlerspraklig");
         }
 
-        // KortNavn is only drawn where the identifier line under the name is.
-        if (IdentifierLine is not null)
+        // KortNavn stands in the code line under the name whenever there is one (Fhi.Metadata-4ggs9).
+        if (!string.IsNullOrWhiteSpace(kilde.ShortName))
         {
             keys.Add(CatalogueColumns.ShortName);
         }
