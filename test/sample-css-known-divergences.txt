@@ -423,6 +423,11 @@ invented-declaration||.munin-explorer-page__fields dd|margin
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
 
+# The kilde description's «Les mer» toggle and its held-back paragraphs (Fhi.Metadata-nebok). Stiler's
+# rules for both are owed by Fhi.Metadata-o0q03, which also widens the description to 70ch.
+unstyled-name||.munin-explorer-kilde__description-rest|
+unstyled-name||.munin-explorer-kilde__description-toggle|
+
 
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
 # only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.98.

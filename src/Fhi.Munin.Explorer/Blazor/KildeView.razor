@@ -33,8 +33,27 @@
                 }
 
                 @* Norwegian whatever the reader's language: the catalogue stores one description. *@
-                @DetailBlocks.Prose(kilde.Description, "ingress munin-explorer-kilde__description",
-                                    CatalogueProperties.Foreign("no", Reader))
+                @if (Description is { } description)
+                {
+                    @DetailBlocks.Prose(description.Lead, "ingress munin-explorer-kilde__description",
+                                        CatalogueProperties.Foreign("no", Reader))
+
+                    @* In the DOM while folded, so the page holds the whole text; Folded is null where it fits. *@
+                    @if (description.Folded is { } folded)
+                    {
+                        <div id="@DescriptionRestId" class="munin-explorer-kilde__description-rest"
+                             hidden="@(!_descriptionOpen)">
+                            @DetailBlocks.Prose(folded, "ingress munin-explorer-kilde__description",
+                                                CatalogueProperties.Foreign("no", Reader))
+                        </div>
+                        <button type="button" class="hd-button-reset munin-explorer-kilde__description-toggle"
+                                aria-expanded="@(_descriptionOpen ? "true" : "false")"
+                                aria-controls="@DescriptionRestId"
+                                @onclick="ToggleDescription">
+                            @(_descriptionOpen ? T.DescriptionShowLess : T.DescriptionReadMore)
+                        </button>
+                    }
+                }
             </div>
         </Header>
         <ChildContent>

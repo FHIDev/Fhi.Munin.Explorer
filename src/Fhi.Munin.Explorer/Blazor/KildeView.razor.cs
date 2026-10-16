@@ -2,6 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -170,6 +171,26 @@ public sealed partial class KildeView : ComponentBase
         string.IsNullOrWhiteSpace(code) ? null
         : string.IsNullOrWhiteSpace(shortName) ? code
         : $"{code} ({shortName})";
+
+    /// <summary>The description as the name block draws it, or null where the catalogue holds none.</summary>
+    private (string Lead, string? Folded)? Description =>
+        string.IsNullOrWhiteSpace(Kilde?.Description) ? null : DescriptionLead.Split(Kilde.Description);
+
+    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+
+    private string DescriptionRestId => $"munin-explorer-kilde-description-{_instance}";
+
+    private bool _descriptionOpen;
+    private Guid? _descriptionKilde;
+
+    /// <summary>A double-click or shift-click on the toggle is taking text, not asking for more.</summary>
+    private void ToggleDescription(MouseEventArgs clicked)
+    {
+        if (!RowPress.WasSelectionStandingStill(clicked))
+        {
+            _descriptionOpen = !_descriptionOpen;
+        }
+    }
 
     private bool _resolved;
     private KildeDetail? _resolvedKilde;
@@ -496,6 +517,13 @@ public sealed partial class KildeView : ComponentBase
     /// <inheritdoc />
     protected override async Task OnParametersSetAsync()
     {
+        // Another kilde in the same view starts folded again.
+        if (_descriptionKilde != Kilde?.Id)
+        {
+            _descriptionKilde = Kilde?.Id;
+            _descriptionOpen = false;
+        }
+
         Layout = BuildLayout();
         Toc = BuildToc(Layout);
 

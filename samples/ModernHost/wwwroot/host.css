@@ -2145,6 +2145,25 @@ table.munin-explorer-data-list tbody th {
   max-width: 45ch;   /* one measure for all prose, as Stiler 0.1.111 (Fhi.Metadata-35w0p.70) */
 }
 
+/* The description's held-back paragraphs and the button that shows them (Fhi.Metadata-nebok). The
+   button wears hd-button-reset, which leaves it reading as plain text, so it is dressed as a link. */
+.munin-explorer-kilde__description-rest {
+  margin: 0;
+}
+
+.munin-explorer-kilde__description-toggle {
+  color: rgb(50, 55, 141);
+  cursor: pointer;
+  margin: 8px 0 0;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.munin-explorer-kilde__description-toggle:focus-visible {
+  outline: 2px solid rgb(66, 139, 255);
+  outline-offset: 2px;
+}
+
 /* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
    The datasamlinger table has four columns of Norwegian names in it and would widen the track past
    the page rather than shrink. Same trap the filter panel meets, same fix. */

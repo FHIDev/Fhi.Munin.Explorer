@@ -614,6 +614,41 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Empty(Render(Kilde() with { Description = null }).FindAll(".munin-explorer-kilde__description"));
     }
 
+    [Fact]
+    public void Description_WhenItFitsTheLimit_ThenItIsDrawnWholeWithNoToggle()
+    {
+        var cut = Render(Kilde() with { Description = "Kort beskrivelse.\n\nEn til." });
+
+        Assert.Single(cut.FindAll(".munin-explorer-kilde__description"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilde__description-toggle"));
+    }
+
+    [Fact]
+    public void Description_WhenLongerThanTheLimit_ThenTheRestIsFoldedBehindARealButton()
+    {
+        // Fhi.Metadata-nebok: whole paragraphs at once, the rest in the DOM but hidden until asked for.
+        var first = new string('a', 300) + ".";
+        var second = new string('b', 300) + ".";
+        var cut = Render(Kilde() with { Description = $"{first}\n\n{second}" });
+
+        var paragraphs = cut.FindAll(".munin-explorer-kilde__description");
+        var rest = cut.Find(".munin-explorer-kilde__description-rest");
+        var toggle = cut.Find("button.munin-explorer-kilde__description-toggle");
+
+        Assert.Equal(first, paragraphs[0].TextContent.Trim());
+        Assert.Contains(second, rest.TextContent, StringComparison.Ordinal);
+        Assert.True(rest.HasAttribute("hidden"));
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Equal(rest.Id, toggle.GetAttribute("aria-controls"));
+        Assert.Equal("Les mer", toggle.TextContent.Trim());
+
+        toggle.Click();
+
+        Assert.False(cut.Find(".munin-explorer-kilde__description-rest").HasAttribute("hidden"));
+        Assert.Equal("true", cut.Find("button.munin-explorer-kilde__description-toggle").GetAttribute("aria-expanded"));
+        Assert.Equal("Vis mindre", cut.Find("button.munin-explorer-kilde__description-toggle").TextContent.Trim());
+    }
+
     // ---------------------------------------------------------------------------------
     // Heading level and the id a landmark is named by — the two things that let one view
     // sit both on a page of its own and inside a result the explorer opened.
