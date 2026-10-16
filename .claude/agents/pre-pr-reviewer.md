@@ -51,6 +51,18 @@ git diff main...HEAD
 Read the PR body too, if one is drafted — half of class 1 lives there. Report `✓` / `✗` per
 section with file and line, and finish with a verdict.
 
+### Step 0 — the warden checklist
+
+```bash
+python3 scripts/warden-checklist.py   # on Windows: py -3 scripts/warden-checklist.py
+```
+
+It prints the `.forge/warden-rules.yaml` rules that apply to this diff, picked exactly as the
+Forge's assay picks them (same filters, same ranking, cap 30); no Forge needed, Python 3.9+ with
+no packages. Check every numbered item against the diff and report it as `✓`, `✗` with file and
+line, or `–` when the diff doesn't do what the rule is about. If the funnel line shows more rules
+matched than emitted, run it again with `--max-rules 0` and check the rest.
+
 ---
 
 # Part 1 — The four classes
@@ -352,6 +364,7 @@ reversal — reviewers read the bead to decide what the change is supposed to co
 ```
 ## Pre-PR Review — <branch>
 
+✓ Warden checklist:       9 rules from step 0, all ✓ or –
 ✓ Claims match the code:  3 checked (2 XML docs, 1 PR paragraph)
 ✗ Internal consistency:   QueryKeys is ordinal, Parse matches OrdinalIgnoreCase
                           (Contracts/ExplorerUrlState.cs:236 vs :219)
