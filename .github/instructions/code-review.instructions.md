@@ -1,3 +1,8 @@
+---
+applyTo: "**"
+excludeAgent: "cloud-agent"
+---
+
 # Copilot Code Review Instructions
 
 ## Intentional Patterns (Do Not Flag)
