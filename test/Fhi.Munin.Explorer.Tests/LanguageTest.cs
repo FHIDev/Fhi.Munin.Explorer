@@ -158,6 +158,45 @@ public class LanguageTest : ExplorerTestContext
         Assert.Equal(expected, ReaderLanguage.ForApi(language));
     }
 
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void Texts_WhenAnyStringIsRead_ThenNoneSaysMunin(string language)
+    {
+        // ADO 122446: a reader sees «the catalogue», never the system's name. The delegates are
+        // called with one sample argument each, so a «Munin» on a branch they do not take escapes.
+        var texts = Texts.For(language);
+
+        foreach (var property in typeof(Texts).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var shown = property.GetValue(texts) switch
+            {
+                string text => new[] { text },
+                IReadOnlyDictionary<string, string> vocabulary => vocabulary.Values.ToArray(),
+                Delegate sentence => new[] { (string?)sentence.DynamicInvoke(sentence.Method.GetParameters()
+                    .Select(parameter => SampleArgument(property, parameter.ParameterType))
+                    .ToArray()) ?? "" },
+                var other => throw new InvalidOperationException(
+                    $"{property.Name} is a {other?.GetType().Name}, which no arm here reads."),
+            };
+
+            Assert.All(shown, text => Assert.DoesNotContain("Munin", text, StringComparison.Ordinal));
+        }
+    }
+
+    private static object SampleArgument(PropertyInfo property, Type type) =>
+        (Nullable.GetUnderlyingType(type) ?? type) switch
+        {
+            var t when t == typeof(string) => "x",
+            var t when t == typeof(int) => 2,
+            var t when t == typeof(long) => 2L,
+            var t when t == typeof(double) => 0.5,
+            var t when t == typeof(bool) => true,
+            { IsEnum: true } t => Enum.GetValues(t).GetValue(0)!,
+            var t => throw new InvalidOperationException(
+                $"{property.Name} takes a {t.Name}, which this test has no sample for."),
+        };
+
     [Fact]
     public void Render_WhenTheHostRegistersNoLocalisationServices_ThenTheComponentStillRenders()
     {

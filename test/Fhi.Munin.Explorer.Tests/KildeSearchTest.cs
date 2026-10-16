@@ -1006,8 +1006,8 @@ public class KildeSearchTest : ExplorerTestContext
                 cell.ClassList.Contains("munin-explorer-kilder__count--zero"));
         }
 
-        // Both say «–» for none in Munin and are dimmed: Variabler since Fhi.Metadata-db81e, Datasamlinger
-        // since Inge asked for the same on #6509 (Fhi.Metadata-bzqtu).
+        // Both say «–» for none recorded in Munin and are dimmed: Variabler since Fhi.Metadata-db81e,
+        // Datasamlinger since Inge asked for the same on #6509 (Fhi.Metadata-bzqtu).
         Assert.Equal(
             ["23", "23", "2506", "2506", "–Ingen datasamlinger registrert", "–Ingen variabler registrert"],
             cells.Select(cell => ShownText(cell)).Order(StringComparer.Ordinal));

@@ -588,11 +588,9 @@ internal sealed record Texts(
     // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column,
     // and FieldCreatedInMunin on a detail page.
     string ColumnEstablished,
-    // Three of the ten columns behind the kilde table's picker. The other seven wear names this
-    // record already holds. Both dates below are the ones ColumnEstablished warns about: Imported
-    // is KildeSummary.Created, Munin's own row, and SourceUpdated is the catalogue's own
-    // SistOppdatert — not KildeSummary.LastUpdated, which is Munin's and reads "Sist oppdatert i
-    // katalogen" in FieldLastUpdated. Kelda words them "Importert" and "Sist endret".
+    // The dates ColumnEstablished warns about: Imported is KildeSummary.Created, Munin's own row, and
+    // SourceUpdated the kilde's SistOppdatert from its import file — not KildeSummary.LastUpdated,
+    // the row timestamp FieldLastUpdated labels "i katalogen". Kelda: "Importert", "Sist endret".
     string ColumnDelkildeCount,
     string ColumnImported,
     string ColumnSourceUpdated,
@@ -764,7 +762,8 @@ internal sealed record Texts(
     string VariablesAlsoDescribedHere,
     // In place of a count of none, where the variables are documented somewhere else.
     string VariablesDescribedElsewhere,
-    // The kilde list's «–» for a kilde Munin holds no variables for, link or not.
+    // The kilde list's «–» for a kilde Munin holds no variables for, link or not. The names keep
+    // the old wording on purpose; the reader hears "registrert" (Fhi.Metadata-hvss1).
     string NoVariablesInMunin,
     string NoDatasamlingerInMunin,
 

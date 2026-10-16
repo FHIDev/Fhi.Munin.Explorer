@@ -2237,7 +2237,7 @@ public class DatasamlingViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void SourceInformation_WhenTheCatalogueRecordedWhenItWasCreated_ThenTheRowSaysSoInMuninsWords()
+    public void SourceInformation_WhenTheCatalogueRecordedWhenItWasCreated_ThenTheRowSaysSoInTheCataloguesWords()
     {
         // "Opprettet i katalogen" rather than "Opprettet": the bare word is already spent on the
         // founding year the import file states, which Kelda heads "Opprettet", and the two have
