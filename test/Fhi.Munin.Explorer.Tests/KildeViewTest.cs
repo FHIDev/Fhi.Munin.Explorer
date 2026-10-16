@@ -2003,6 +2003,29 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void LegalBasis_WhenThePlacedLovverkDiffersFromTheColumn_ThenTheMirrorMatchingTheColumnStays()
+    {
+        // The section shows the bag's Lovverk; a mirror equal only to the typed column would be lost (Copilot on #588).
+        var kilde = Kilde() with
+        {
+            PropertyMetadata =
+            [
+                Entry("Lovverk", 10, "Rettslig grunnlag", "Lovverk"),
+                Entry("hasLegalBasis", 11, "Rettslig grunnlag", "Rettslig grunnlag"),
+            ],
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                ["Lovverk"] = "Helseregisterloven § 11",
+                ["hasLegalBasis"] = "Forskrift om medisinske kvalitetsregistre § 2-3.",
+            },
+        };
+        var cut = Render(kilde);
+
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "Helseregisterloven § 11"));
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "edisinske kvalitetsregistre § 2-3"));
+    }
+
+    [Fact]
     public void LegalBasis_WhenTheEhdsMirrorSaysSomethingElse_ThenBothAreDrawn()
     {
         var kilde = Kilde() with

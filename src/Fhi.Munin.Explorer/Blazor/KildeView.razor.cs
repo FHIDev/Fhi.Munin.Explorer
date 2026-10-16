@@ -337,7 +337,8 @@ public sealed partial class KildeView : ComponentBase
         if (Filled(kilde, "hasLegalBasis")
             && kilde.AdditionalProperties["hasLegalBasis"] is { } mirror
             && (CatalogueProperties.TaggedTexts(mirror) is { Count: > 0 } bases ? bases : [mirror])
-                .All(basis => SameText(Unspaced(basis), Unspaced(kilde.LegalBasis))))
+                .All(basis => SameText(Unspaced(basis), Unspaced(kilde.LegalBasis))
+                              && SameText(Unspaced(basis), Unspaced(PlacedLegalBasis(kilde)))))
         {
             keys.Add("hasLegalBasis");
         }
@@ -354,6 +355,11 @@ public sealed partial class KildeView : ComponentBase
     // Nothing on either side is nothing to compare, not the same text.
     private static bool SameText(string? a, string? b) =>
         Plain(a) is { Length: > 0 } plain && string.Equals(plain, Plain(b), StringComparison.OrdinalIgnoreCase);
+
+    // What a placed Lovverk row shows: the bag's own value where it holds one (CatalogueColumns.Merge).
+    // The mirror is dropped only when it equals both this and the typed column, so neither is hidden.
+    private static string? PlacedLegalBasis(KildeDetail kilde) =>
+        Filled(kilde, CatalogueColumns.LegalBasis) ? kilde.AdditionalProperties[CatalogueColumns.LegalBasis] : kilde.LegalBasis;
 
     private static string Unspaced(string? text) => string.Concat((text ?? "").Where(c => !char.IsWhiteSpace(c)));
 
