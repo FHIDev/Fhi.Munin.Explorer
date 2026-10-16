@@ -268,22 +268,18 @@ public sealed partial class KildeView : ComponentBase
 
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>
-    /// Formaal is safely dropped when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis
-    /// are not, since their EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
+    /// Beskrivelse always duplicates the ingress (Fhi.Metadata-8yqoz). Formaal is safely dropped
+    /// when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis are not, since their
+    /// EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
     /// </remarks>
     private IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
     {
         var keys = new HashSet<string>(StringComparer.Ordinal)
         {
+            CatalogueColumns.Description, "BeskrivelseFlerspraklig",
             // The name block, and Kildeinformasjon's row in this package's words (Fhi.Metadata-zg89n).
             CatalogueColumns.PreferredTerm, CatalogueColumns.Code, CatalogueColumns.Kildetype,
         };
-
-        // Its Norwegian slot is the description the page already draws, placed or not (Fhi.Metadata-8yqoz).
-        if (!string.IsNullOrWhiteSpace(kilde.Description))
-        {
-            keys.Add("BeskrivelseFlerspraklig");
-        }
 
         // KortNavn is only drawn where the identifier line under the name is.
         if (IdentifierLine is not null)
@@ -296,7 +292,7 @@ public sealed partial class KildeView : ComponentBase
             keys.Add("Formaal");
         }
 
-        // Beskrivelse already says it word for word: K_BIV on test, in both keys (Fhi.Metadata-esf2i).
+        // The ingress already says it word for word: K_BIV on test, in both keys (Fhi.Metadata-esf2i).
         if (Filled(kilde, "Formaal") && SameText(kilde.AdditionalProperties["Formaal"], kilde.Description))
         {
             keys.Add("Formaal");
@@ -545,27 +541,8 @@ public sealed partial class KildeView : ComponentBase
                          DetailBlocks.GroupBody(group, Language, CompleteRecordFacts))),
         ];
 
-        var layout = DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
-
-        // Placed nowhere but the collapsed complete record, the description opens the first section.
-        return !string.IsNullOrWhiteSpace(kilde.Description) && !DescriptionPlaced(kilde)
-               && layout is [var first, ..]
-            ? [first with { Body = DetailBlocks.Both(Description(kilde), first.Body) }, .. layout.Skip(1)]
-            : layout;
+        return DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
     }
-
-    private bool DescriptionPlaced(KildeDetail kilde)
-    {
-        var placement = Placement;
-
-        return CatalogueProperties.Placed(
-            kilde.PropertyMetadata.Where(entry => entry.GroupKey != CatalogueProperties.CatchAllGroupKey),
-            placement.Values, placement.Reader, CatalogueColumns.Description, placement.DrawnElsewhere);
-    }
-
-    /// <summary>Norwegian whatever the reader's language: the catalogue stores one description.</summary>
-    private RenderFragment Description(KildeDetail kilde) =>
-        DetailBlocks.Prose(kilde.Description, null, CatalogueProperties.Foreign("no", Reader));
 
     /// <summary>
     /// This view's own sections, each under the key a placement row moves it by, in the order the

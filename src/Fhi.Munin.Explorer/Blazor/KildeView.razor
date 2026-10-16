@@ -31,6 +31,10 @@
                 {
                     <p class="caption margin--none munin-explorer-kilde__identifiers">@identifiers</p>
                 }
+
+                @* Norwegian whatever the reader's language: the catalogue stores one description. *@
+                @DetailBlocks.Prose(kilde.Description, "ingress munin-explorer-kilde__description",
+                                    CatalogueProperties.Foreign("no", Reader))
             </div>
         </Header>
         <ChildContent>
