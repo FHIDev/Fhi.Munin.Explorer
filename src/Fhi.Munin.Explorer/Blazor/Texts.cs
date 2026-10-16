@@ -199,7 +199,7 @@ internal sealed record Texts(
     string FieldLastUpdated,
     // Not ColumnEstablished, which is the founding year the import file states — see the note
     // there. This one is Munin's own row timestamp, the twin of FieldLastUpdated, and is worded
-    // "i Munin" for the same reason that one is.
+    // "i katalogen" for the same reason that one is.
     string FieldCreatedInMunin,
     string FieldTotalVariables,
     // The catch-all section's own prose. Its HEADING is not here: that one is the catalogue's, out
@@ -588,12 +588,10 @@ internal sealed record Texts(
     // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column,
     // and FieldCreatedInMunin on a detail page.
     string ColumnEstablished,
-    // Three of the ten columns behind the kilde table's picker. The other seven wear names this
-    // record already holds. Both dates below are the ones ColumnEstablished warns about: Imported
-    // is KildeSummary.Created, Munin's own row, and SourceUpdated is the catalogue's own
-    // SistOppdatert — not KildeSummary.LastUpdated, which is Munin's and reads "Sist oppdatert i
-    // Munin" in FieldLastUpdated. Kelda words them "Importert" and "Sist endret".
     string ColumnDelkildeCount,
+    // The dates ColumnEstablished warns about: Imported is KildeSummary.Created, Munin's own row, and
+    // SourceUpdated the kilde's SistOppdatert from its import file — not KildeSummary.LastUpdated,
+    // the row timestamp FieldLastUpdated labels "i katalogen". Kelda: "Importert", "Sist endret".
     string ColumnImported,
     string ColumnSourceUpdated,
     // The kilde table's two coverage columns; kodeverk stays Norwegian in English as the domain term
@@ -768,7 +766,8 @@ internal sealed record Texts(
     string VariablesAlsoDescribedHere,
     // In place of a count of none, where the variables are documented somewhere else.
     string VariablesDescribedElsewhere,
-    // The kilde list's «–» for a kilde Munin holds no variables for, link or not.
+    // The kilde list's «–» for a kilde Munin holds no variables for, link or not. The names keep
+    // the old wording on purpose; the reader hears "registrert" (Fhi.Metadata-hvss1).
     string NoVariablesInMunin,
     string NoDatasamlingerInMunin,
 
@@ -1227,19 +1226,19 @@ internal sealed record Texts(
         HeadingAboutDatasamling: "Om datasamlingen",
         HeadingSourceInformation: "Kildeinformasjon",
         HeadingStatistics: "Statistikk",
-        FieldLastUpdated: "Sist oppdatert i Munin",
-        FieldCreatedInMunin: "Opprettet i Munin",
+        FieldLastUpdated: "Sist oppdatert i katalogen",
+        FieldCreatedInMunin: "Opprettet i katalogen",
         FieldTotalVariables: "Totalt antall variabler",
         CompleteRecordLeadKilde:
-            "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne kilden, "
+            "Seksjonene over er et utvalg. Under ligger alle feltene katalogen har om denne kilden, "
             + "slik de er registrert – bortsett fra felt som holder strukturerte data.",
         CompleteRecordLeadDatasamling:
-            "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne "
+            "Seksjonene over er et utvalg. Under ligger alle feltene katalogen har om denne "
             + "datasamlingen, slik de er registrert – bortsett fra felt som holder strukturerte data.",
         CompleteRecordLeadVariable:
-            "Seksjonene over er et utvalg. Under ligger alle feltene Munin har om denne variabelen, "
+            "Seksjonene over er et utvalg. Under ligger alle feltene katalogen har om denne variabelen, "
             + "slik de er registrert – bortsett fra felt som holder strukturerte data.",
-        CompleteRecordSummary: "Alle felt fra Munin, slik de er registrert",
+        CompleteRecordSummary: "Alle felt, slik de er registrert",
         HeadingDataCollections: "Datasamlinger",
         DataCollectionsPeriodCaption: "Dataperiode: perioden variabelen har data for i hver datasamling.",
         FieldName: "Navn",
@@ -1632,8 +1631,8 @@ internal sealed record Texts(
         VariablesDescribedHere: "Variablene er beskrevet her:",
         VariablesAlsoDescribedHere: "Variablene er også beskrevet her:",
         VariablesDescribedElsewhere: "Beskrevet utenfor helsedata.no",
-        NoVariablesInMunin: "Ingen variabler i Munin",
-        NoDatasamlingerInMunin: "Ingen datasamlinger i Munin",
+        NoVariablesInMunin: "Ingen variabler registrert",
+        NoDatasamlingerInMunin: "Ingen datasamlinger registrert",
         VariablesBarOfLargest: (percent, largest, largestCount, type) =>
             $"variabler, {percent} % av {largest} ({largestCount}), som har flest variabler av typen {type} i lista",
         VariablesBarLargest: type => $"variabler, flest av typen {type} i lista",
@@ -1770,19 +1769,19 @@ internal sealed record Texts(
         HeadingAboutDatasamling: "About the data collection",
         HeadingSourceInformation: "Source information",
         HeadingStatistics: "Statistics",
-        FieldLastUpdated: "Last updated in Munin",
-        FieldCreatedInMunin: "Created in Munin",
+        FieldLastUpdated: "Last updated in the catalogue",
+        FieldCreatedInMunin: "Created in the catalogue",
         FieldTotalVariables: "Total number of variables",
         CompleteRecordLeadKilde:
-            "The sections above are a selection. Below are all the fields Munin holds about this "
+            "The sections above are a selection. Below are all the fields the catalogue holds about this "
             + "data source, as they are recorded – apart from fields that hold structured data.",
         CompleteRecordLeadDatasamling:
-            "The sections above are a selection. Below are all the fields Munin holds about this "
+            "The sections above are a selection. Below are all the fields the catalogue holds about this "
             + "data collection, as they are recorded – apart from fields that hold structured data.",
         CompleteRecordLeadVariable:
-            "The sections above are a selection. Below are all the fields Munin holds about this "
+            "The sections above are a selection. Below are all the fields the catalogue holds about this "
             + "variable, as they are recorded – apart from fields that hold structured data.",
-        CompleteRecordSummary: "All fields from Munin, as they are recorded",
+        CompleteRecordSummary: "All fields, as they are recorded",
         HeadingDataCollections: "Data collections",
         DataCollectionsPeriodCaption: "Data period: the period this variable has data for in each data collection.",
         FieldName: "Name",
@@ -2170,8 +2169,8 @@ internal sealed record Texts(
         VariablesDescribedHere: "The variables are described here:",
         VariablesAlsoDescribedHere: "The variables are also described here:",
         VariablesDescribedElsewhere: "Described outside helsedata.no",
-        NoVariablesInMunin: "No variables in Munin",
-        NoDatasamlingerInMunin: "No data collections in Munin",
+        NoVariablesInMunin: "No variables recorded",
+        NoDatasamlingerInMunin: "No data collections recorded",
         VariablesBarOfLargest: (percent, largest, largestCount, type) =>
             $"variables, {percent}% of {largest} ({largestCount}), which has the most variables of type {type} in the list",
         VariablesBarLargest: type => $"variables, the most of type {type} in the list",

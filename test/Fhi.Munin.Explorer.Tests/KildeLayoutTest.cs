@@ -231,7 +231,7 @@ public class KildeLayoutTest : ExplorerTestContext
 
         Assert.Equal("Kildeinformasjon", source.FirstElementChild!.TextContent.Trim());
         Assert.Contains("Type datakilde", source.TextContent, StringComparison.Ordinal);
-        Assert.Contains("Sist oppdatert i Munin", source.TextContent, StringComparison.Ordinal);
+        Assert.Contains("Sist oppdatert i katalogen", source.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
