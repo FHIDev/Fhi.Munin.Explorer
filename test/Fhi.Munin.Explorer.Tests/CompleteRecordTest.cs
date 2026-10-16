@@ -128,7 +128,7 @@ public class CompleteRecordTest : ExplorerTestContext
 
         Assert.Contains("bortsett fra felt som holder strukturerte data", cut.Find(Lead).TextContent, StringComparison.Ordinal);
         Assert.False(details.HasAttribute("open"));
-        Assert.Equal("Alle felt fra Munin, slik de er registrert",
+        Assert.Equal("Alle felt, slik de er registrert",
                      AccessibleName.Of(details.QuerySelector("summary")!));
     }
 
@@ -267,7 +267,7 @@ public class CompleteRecordTest : ExplorerTestContext
         var labels = RecordLabels(RenderKilde(Tromso()));
 
         Assert.Equal(
-            ["Totalt antall variabler", "Antall datasamlinger", "Dataperiode", "Sist oppdatert i Munin"],
+            ["Totalt antall variabler", "Antall datasamlinger", "Dataperiode", "Sist oppdatert i katalogen"],
             labels.Skip(labels.Count - 4));
     }
 

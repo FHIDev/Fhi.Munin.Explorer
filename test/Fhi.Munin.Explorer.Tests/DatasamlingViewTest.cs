@@ -391,8 +391,8 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
-             "Opprettet i Munin"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen",
+             "Opprettet i katalogen"],
             Labels(SourceInformation(cut)));
         Assert.Equal(["Statistikktype", "Frekvens", "Telleenhet", "Antall variabler"],
                      Labels(Box(cut, "Statistikk (årsbasert)")));
@@ -1652,7 +1652,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Dataansvarlig", "Databehandler", "Grad av personidentifikasjon", "Lovverk",
-             "Kilde", "Type datakilde", "Gyldig til", "Sist oppdatert i Munin", "Opprettet i Munin"],
+             "Kilde", "Type datakilde", "Gyldig til", "Sist oppdatert i katalogen", "Opprettet i katalogen"],
             labels);
     }
 
@@ -2160,8 +2160,8 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
-             "Opprettet i Munin"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen",
+             "Opprettet i katalogen"],
             Labels(facts));
 
         Assert.Equal("Als registeret", Value(facts, "Kilde"));
@@ -2191,7 +2191,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin", "Opprettet i Munin"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen", "Opprettet i katalogen"],
             Labels(box));
         Assert.All(["Lovverk", "Dataansvarlig", "Databehandler", "Gyldighet"], label => AssertAbsent(box, label));
         Assert.Equal("Nasjonalt medisinsk kvalitetsregister", Value(box, "Type datakilde"));
@@ -2239,14 +2239,14 @@ public class DatasamlingViewTest : ExplorerTestContext
     [Fact]
     public void SourceInformation_WhenTheCatalogueRecordedWhenItWasCreated_ThenTheRowSaysSoInMuninsWords()
     {
-        // "Opprettet i Munin" rather than "Opprettet": the bare word is already spent on the
+        // "Opprettet i katalogen" rather than "Opprettet": the bare word is already spent on the
         // founding year the import file states, which Kelda heads "Opprettet", and the two have
-        // been confused before. The twin of Sist oppdatert i Munin, formatted the same way.
+        // been confused before. The twin of Sist oppdatert i katalogen, formatted the same way.
         var facts = SourceInformation(Render(Datasamling()));
 
-        Assert.Equal("19.05.2026", Value(facts, "Opprettet i Munin"));
+        Assert.Equal("19.05.2026", Value(facts, "Opprettet i katalogen"));
         Assert.Equal("2026-05-19",
-                     Value(SourceInformation(Render(Datasamling(), language: "en")), "Created in Munin"));
+                     Value(SourceInformation(Render(Datasamling(), language: "en")), "Created in the catalogue"));
     }
 
     [Fact]
@@ -2255,7 +2255,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // The same fallback sistOppdatert has, and worth its own test because the two are read off
         // different contract fields: an absent opprettet drew "01.01.0001" before
         // Fhi.Metadata-se0by, and a blank row reads as a value that failed to draw.
-        AssertAbsent(SourceInformation(Render(Datasamling() with { Created = null })), "Opprettet i Munin");
+        AssertAbsent(SourceInformation(Render(Datasamling() with { Created = null })), "Opprettet i katalogen");
     }
 
     [Fact]
@@ -2271,10 +2271,10 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin", "Opprettet i Munin"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen", "Opprettet i katalogen"],
             Labels(box));
-        AssertAbsent(box, "Sist oppdatert i Munin");
-        AssertAbsent(box, "Opprettet i Munin");
+        AssertAbsent(box, "Sist oppdatert i katalogen");
+        AssertAbsent(box, "Opprettet i katalogen");
     }
 
     // ---------------------------------------------------------------------------------
@@ -2475,8 +2475,8 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Source", "Type of data source", "Legal basis", "Data controller", "Data processor",
-             "Level of personal identification", "Validity", "Last updated in Munin",
-             "Created in Munin"],
+             "Level of personal identification", "Validity", "Last updated in the catalogue",
+             "Created in the catalogue"],
             Labels(facts));
 
         Assert.Equal("National medical quality registry", Value(facts, "Type of data source"));

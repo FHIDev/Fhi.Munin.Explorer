@@ -2119,7 +2119,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen"],
             Labels(SourceInformation(cut)));
         Assert.Equal(["Totalt antall variabler", "Dataperiode"], Labels(Statistics(cut)));
 
@@ -2216,7 +2216,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen"],
             Labels(SourceInformation(cut)));
 
         var facts = SourceInformation(cut);
@@ -2230,7 +2230,7 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal("Hemit HF", Value(facts, "Databehandler"));
 
         Assert.Equal("Indirekte identifiserbar", Value(facts, "Grad av personidentifikasjon"));
-        Assert.Equal("04.03.2026", Value(facts, "Sist oppdatert i Munin"));
+        Assert.Equal("04.03.2026", Value(facts, "Sist oppdatert i katalogen"));
     }
 
     [Fact]
@@ -2251,7 +2251,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin"],
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen"],
             Labels(box));
         Assert.All(["Lovverk", "Dataansvarlig", "Databehandler", "Gyldighet"], label => AssertAbsent(box, label));
     }
@@ -2274,7 +2274,7 @@ public class KildeViewTest : ExplorerTestContext
     [Fact]
     public void SourceInformation_WhenAValidityEndIsTheDefaultDate_ThenItReadsAsOngoingRatherThanYearOne()
     {
-        // The row directly above Sist oppdatert i Munin, and the same theoretical host: a
+        // The row directly above Sist oppdatert i katalogen, and the same theoretical host: a
         // substituted client that hands over MinValue. Guarding one and not the other draws the
         // year 1 in the fact list anyway, one line up. (Fhi.Metadata-se0by)
         var kilde = Kilde() with { ValidTo = DateTimeOffset.MinValue };
@@ -2292,7 +2292,7 @@ public class KildeViewTest : ExplorerTestContext
         // options and hand over MinValue, which is the year 1 this bead removed. (Fhi.Metadata-se0by)
         var kilde = Kilde() with { LastUpdated = DateTimeOffset.MinValue };
 
-        AssertAbsent(SourceInformation(Render(kilde)), "Sist oppdatert i Munin");
+        AssertAbsent(SourceInformation(Render(kilde)), "Sist oppdatert i katalogen");
     }
 
     [Fact]
@@ -2303,7 +2303,7 @@ public class KildeViewTest : ExplorerTestContext
         // would swallow a real date rather than an absent one.
         var kilde = Kilde() with { LastUpdated = new DateTimeOffset(1995, 6, 2, 0, 0, 0, TimeSpan.Zero) };
 
-        Assert.Equal("02.06.1995", Value(SourceInformation(Render(kilde)), "Sist oppdatert i Munin"));
+        Assert.Equal("02.06.1995", Value(SourceInformation(Render(kilde)), "Sist oppdatert i katalogen"));
     }
 
     [Fact]
@@ -2314,7 +2314,7 @@ public class KildeViewTest : ExplorerTestContext
         // the field is an absence, and absence reads "Ingen". (Fhi.Metadata-6r6rf)
         var kilde = Kilde() with { LastUpdated = default };
 
-        AssertAbsent(SourceInformation(Render(kilde)), "Sist oppdatert i Munin");
+        AssertAbsent(SourceInformation(Render(kilde)), "Sist oppdatert i katalogen");
     }
 
     [Fact]

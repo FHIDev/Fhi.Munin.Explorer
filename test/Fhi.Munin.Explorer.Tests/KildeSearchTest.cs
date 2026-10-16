@@ -1002,14 +1002,14 @@ public class KildeSearchTest : ExplorerTestContext
         foreach (var cell in cells)
         {
             Assert.Equal(
-                ShownText(cell) is "–Ingen datasamlinger i Munin" or "–Ingen variabler i Munin",
+                ShownText(cell) is "–Ingen datasamlinger registrert" or "–Ingen variabler registrert",
                 cell.ClassList.Contains("munin-explorer-kilder__count--zero"));
         }
 
         // Both say «–» for none in Munin and are dimmed: Variabler since Fhi.Metadata-db81e, Datasamlinger
         // since Inge asked for the same on #6509 (Fhi.Metadata-bzqtu).
         Assert.Equal(
-            ["23", "23", "2506", "2506", "–Ingen datasamlinger i Munin", "–Ingen variabler i Munin"],
+            ["23", "23", "2506", "2506", "–Ingen datasamlinger registrert", "–Ingen variabler registrert"],
             cells.Select(cell => ShownText(cell)).Order(StringComparer.Ordinal));
     }
 
@@ -1243,7 +1243,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.All(bars, bar => Assert.Equal("true", bar.GetAttribute("aria-hidden")));
 
-        Assert.Equal("–Ingen variabler i Munin", VariablesCell(cut, "K_HKR").TextContent.Trim());
+        Assert.Equal("–Ingen variabler registrert", VariablesCell(cut, "K_HKR").TextContent.Trim());
         Assert.Equal("23", ShownText(VariablesCell(cut, "K_ALS")));
         Assert.Equal("2506", ShownText(VariablesCell(cut, "K_DAR")));
     }
@@ -7374,8 +7374,8 @@ public class KildeSearchTest : ExplorerTestContext
 
     // Inge on #6509: «–» rather than «0» for a kilde with no datasamling in Munin, as Variabler (Fhi.Metadata-bzqtu).
     [Theory]
-    [InlineData("no", "Ingen datasamlinger i Munin")]
-    [InlineData("en", "No data collections in Munin")]
+    [InlineData("no", "Ingen datasamlinger registrert")]
+    [InlineData("en", "No data collections recorded")]
     public void Datasamlinger_WhenAKildeHasNone_ThenTheCellIsADashReadOutInWords(string language, string words)
     {
         var cut = RenderWith(new FakeClient(
@@ -7396,8 +7396,8 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("no", "Ingen variabler i Munin")]
-    [InlineData("en", "No variables in Munin")]
+    [InlineData("no", "Ingen variabler registrert")]
+    [InlineData("en", "No variables recorded")]
     public void Variables_WhenAKildeCountsNone_ThenTheCellIsADashWithOrWithoutAReference(string language, string words)
     {
         // Pins that a reference plays no part in the mark: drop the count check for the reference

@@ -15796,7 +15796,7 @@ public class VariableSearchTest : ExplorerTestContext
         // the variable count is under Statistikk, and the datasamling count is the table.
         Assert.Equal(
             ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen",
              "Totalt antall variabler", "Dataperiode"],
             SourceLabels(cut));
 
@@ -15919,7 +15919,7 @@ public class VariableSearchTest : ExplorerTestContext
         // description and a page of inclusion criteria can be read (Fhi.Metadata-jgfum).
         Assert.Equal(
             ["Kilde", "Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
-             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin", "Opprettet i Munin",
+             "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i katalogen", "Opprettet i katalogen",
              "Statistikktype", "Frekvens", "Telleenhet", "Antall variabler"],
             SourceLabels(cut));
 
@@ -16615,7 +16615,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(
             ["Type of data source", "Legal basis", "Data controller", "Data processor",
-             "Level of personal identification", "Validity", "Last updated in Munin",
+             "Level of personal identification", "Validity", "Last updated in the catalogue",
              "Total number of variables", "Data period"],
             SourceLabels(cut));
 
