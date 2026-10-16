@@ -1908,7 +1908,7 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     // ---------------------------------------------------------------------------------
-    // The hero row: the six facts a source leads with, under the name block.
+    // The hero row: the five facts a source leads with, under the name block.
     // ---------------------------------------------------------------------------------
 
     /// <summary>The hero row, which a source always has: its variable count never resolves to nothing.</summary>
@@ -1929,12 +1929,10 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void LegalBasis_WhenTheColumnIsOneMarkdownLink_ThenTheHeroShowsItsWordsAndTheBoxLinksIt()
+    public void LegalBasis_WhenTheColumnIsOneMarkdownLink_ThenTheBoxLinksIt()
     {
-        // K_MSIS's Lovverk column. Unplaced in this fixture, so the box draws it beside the hero.
+        // K_MSIS's Lovverk column. Unplaced in this fixture, so the box draws it.
         var cut = Render(Kilde() with { LegalBasis = "[Helseregisterloven § 11](https://lovdata.no/lov/2014-06-20-43)" });
-
-        Assert.Equal("Helseregisterloven § 11", HeroValue(Hero(cut), "Lovverk").Trim());
 
         var link = Assert.Single(SourceInformation(cut).QuerySelectorAll("a"));
 
@@ -1944,12 +1942,11 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void LegalBasis_WhenTheColumnIsABareAddress_ThenNeitherTheHeroNorTheBoxMarksItNorwegian()
+    public void LegalBasis_WhenTheColumnIsABareAddress_ThenTheBoxDoesNotMarkItNorwegian()
     {
         // An address is prose in no language (WCAG 3.1.2); English, since Norwegian marks nothing.
         var cut = Render(Kilde() with { LegalBasis = "https://lovdata.no/lov/2014-06-20-43" }, language: "en");
 
-        Assert.Empty(Fact(Hero(cut), "Legal basis").QuerySelectorAll("[lang]"));
         Assert.Null(Fact(SourceInformation(cut), "Legal basis").GetAttribute("lang"));
     }
 
@@ -1960,26 +1957,63 @@ public class KildeViewTest : ExplorerTestContext
         const string laws = "https://lovdata.no/lov/2014-06-20-43;https://lovdata.no/lov/2001-05-18-24";
         var cut = Render(Kilde() with { LegalBasis = laws }, language: "en");
 
-        foreach (var fact in new[] { Fact(Hero(cut), "Legal basis"), Fact(SourceInformation(cut), "Legal basis") })
-        {
-            Assert.Empty(fact.QuerySelectorAll("a"));
-            Assert.Empty(fact.QuerySelectorAll("[lang]"));
-            Assert.Null(fact.GetAttribute("lang"));
-            Assert.Contains(laws, fact.TextContent, StringComparison.Ordinal);
-        }
+        var fact = Fact(SourceInformation(cut), "Legal basis");
+
+        Assert.Empty(fact.QuerySelectorAll("a"));
+        Assert.Empty(fact.QuerySelectorAll("[lang]"));
+        Assert.Null(fact.GetAttribute("lang"));
+        Assert.Contains(laws, fact.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void HeroFacts_Always_ThenTheyAreTheSixTheMockupLeadsWith()
+    public void HeroFacts_Always_ThenTheyAreTheFiveTheMockupLeadsWith()
     {
-        // The mockup's sixth is Tilgang, and the catalogue has no access field for a source — so
-        // Lovverk stands in it, which is the nearest thing a reader deciding whether they can have
-        // the data actually has. Six exactly: Stiler lays the row out as six equal tracks, so five
-        // leaves a hole and seven wraps to a row of one.
+        // The mockup's sixth is Tilgang, which the catalogue does not hold. Lovverk stood in it until
+        // the meeting of 16.10 took it out: free text up to a thousand characters (Fhi.Metadata-gpxp6).
         Assert.Equal(
             ["Type datakilde", "Dataansvarlig", "Grad av personidentifikasjon", "Dataperiode",
-             "Totalt antall variabler", "Lovverk"],
+             "Totalt antall variabler"],
             Labels(Hero(Render(Kilde()))));
+    }
+
+    /// <summary>How often <paramref name="text"/> shows on the page outside the collapsed complete record.</summary>
+    private static int ShownOutsideTheRecord(IRenderedComponent<KildeView> cut, string text)
+    {
+        var main = cut.Find(".munin-explorer-kilde__main");
+        var shown = main.QuerySelectorAll("details").Aggregate(main.TextContent,
+            (all, record) => all.Replace(record.TextContent, "", StringComparison.Ordinal));
+
+        return System.Text.RegularExpressions.Regex.Matches(shown, System.Text.RegularExpressions.Regex.Escape(text)).Count;
+    }
+
+    [Theory]
+    [InlineData("Forskrift om medisinske kvalitetsregistre § 2-3.")]
+    [InlineData("forskrift om medisinske kvalitetsregistre § 2-3")]
+    [InlineData("[\"Forskrift om medisinske kvalitetsregistre § 2-3.\"]")]
+    public void LegalBasis_WhenTheEhdsMirrorSaysWhatLovverkSays_ThenTheSectionDrawsItOnce(string mirror)
+    {
+        // hasLegalBasis repeats Lovverk word for word on 39 of 54 kilder on test, as plain text (Fhi.Metadata-gpxp6).
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("hasLegalBasis", 10, "Rettslig grunnlag", "Rettslig grunnlag")],
+            AdditionalProperties = new Dictionary<string, string?> { ["hasLegalBasis"] = mirror },
+        };
+
+        Assert.Equal(1, ShownOutsideTheRecord(Render(kilde), "edisinske kvalitetsregistre § 2-3"));
+    }
+
+    [Fact]
+    public void LegalBasis_WhenTheEhdsMirrorSaysSomethingElse_ThenBothAreDrawn()
+    {
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("hasLegalBasis", 10, "Rettslig grunnlag", "Rettslig grunnlag")],
+            AdditionalProperties = new Dictionary<string, string?> { ["hasLegalBasis"] = "Helseregisterloven § 11" },
+        };
+        var cut = Render(kilde);
+
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "Helseregisterloven § 11"));
+        Assert.Equal(1, ShownOutsideTheRecord(cut, "edisinske kvalitetsregistre § 2-3"));
     }
 
     [Fact]
@@ -1990,7 +2024,7 @@ public class KildeViewTest : ExplorerTestContext
         // leading with a word that says nothing. (Fhi.Metadata-35w0p.24)
         var hero = Hero(Render(Kilde() with { Kildetype = null, PersonIdentificationLevel = null }));
 
-        Assert.Equal(["Dataansvarlig", "Dataperiode", "Totalt antall variabler", "Lovverk"], Labels(hero));
+        Assert.Equal(["Dataansvarlig", "Dataperiode", "Totalt antall variabler"], Labels(hero));
         Assert.DoesNotContain("Ikke oppgitt", hero.TextContent, StringComparison.Ordinal);
     }
 
@@ -2044,7 +2078,6 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal(Value(source, "Dataansvarlig"), HeroValue(hero, "Dataansvarlig"));
         Assert.Equal(Value(source, "Grad av personidentifikasjon"),
                      HeroValue(hero, "Grad av personidentifikasjon"));
-        Assert.Equal(Value(source, "Lovverk"), HeroValue(hero, "Lovverk"));
         Assert.Equal(Value(statistics, "Dataperiode"), HeroValue(hero, "Dataperiode"));
         Assert.Equal(Value(statistics, "Totalt antall variabler"),
                      HeroValue(hero, "Totalt antall variabler"));
@@ -2058,7 +2091,7 @@ public class KildeViewTest : ExplorerTestContext
     [Fact]
     public void HeroFacts_Always_ThenNothingIsTakenOutOfTheSectionsBelow()
     {
-        // A summary, not a relocation. The hero draws six of these fields and both boxes still draw
+        // A summary, not a relocation. The hero draws five of these fields and both boxes still draw
         // all nine, because none of them joins DrawnElsewhere — that set is for the same fact drawn
         // twice in the body under two labels, and a hero row is a different register. This source's
         // payload places none of its column-backed keys, which is what keeps every box row here;
@@ -2079,14 +2112,13 @@ public class KildeViewTest : ExplorerTestContext
     [Fact]
     public void HeroFacts_WhenAFactHasNothingToQualify_ThenNoEmptySmallIsDrawn()
     {
-        // Two of this source's six carry a note and four do not, so both halves are rendered here:
+        // Two of this source's five carry a note and three do not, so both halves are rendered here:
         // an omitted element, not an empty one.
         var hero = Hero(Render(Kilde()));
 
         Assert.Null(Fact(hero, "Type datakilde").QuerySelector("small"));
         Assert.Null(Fact(hero, "Dataansvarlig").QuerySelector("small"));
         Assert.Null(Fact(hero, "Grad av personidentifikasjon").QuerySelector("small"));
-        Assert.Null(Fact(hero, "Lovverk").QuerySelector("small"));
 
         // The count's own qualifier, which is what makes it honest: 312 variabler in how many
         // collections is a different claim from 312 variabler.
@@ -2142,12 +2174,11 @@ public class KildeViewTest : ExplorerTestContext
     public void HeroFacts_WhenTheReaderIsEnglish_ThenTheCataloguesOwnWordsAreMarkedAndOursAreNot()
     {
         // The row is mixed the way the fact box below it is: the kildetype and the identification
-        // level are vocabularies this package translates, the controller and the legal basis are
-        // stored once in Norwegian however the reader is reading.
+        // level are vocabularies this package translates, the controller is stored once in Norwegian
+        // however the reader is reading.
         var hero = Hero(Render(Kilde(), language: "en"));
 
         Assert.Equal("no", Fact(hero, "Data controller").QuerySelector("span")!.GetAttribute("lang"));
-        Assert.Equal("no", Fact(hero, "Legal basis").QuerySelector("span")!.GetAttribute("lang"));
         Assert.Empty(Fact(hero, "Type of data source").QuerySelectorAll("span"));
         Assert.Empty(Fact(hero, "Level of personal identification").QuerySelectorAll("span"));
     }
@@ -2900,16 +2931,16 @@ public class KildeViewTest : ExplorerTestContext
     [Theory]
     [InlineData("https://lovdata.no/dokument/NL/lov/2014-06-20-43")]
     [InlineData("Helseregisterloven, https://lovdata.no/dokument/NL/lov/2014-06-20-43.")]
-    public void Render_WhenLovverkCarriesAnAddress_ThenTheHeroFactAndTheSourceRowLinkToIt(string legalBasis)
+    public void Render_WhenLovverkCarriesAnAddress_ThenTheSourceRowLinksToIt(string legalBasis)
     {
-        // Fhi.Metadata-jd5jl (#6563): Kelda links Lovverk; the hero fact and the free-text form never did.
+        // Fhi.Metadata-jd5jl (#6563): Kelda links Lovverk; the free-text form never did.
         var cut = Render(Kilde() with { LegalBasis = legalBasis });
 
-        var hero = LegalBasisValue(cut.Find("dl.munin-explorer-page__facts"));
-        Assert.Equal("https://lovdata.no/dokument/NL/lov/2014-06-20-43", hero.QuerySelector("a")?.GetAttribute("href"));
+        var row = Fact(SourceInformation(cut), "Lovverk");
+        Assert.Equal("https://lovdata.no/dokument/NL/lov/2014-06-20-43", row.QuerySelector("a")?.GetAttribute("href"));
 
         var linked = cut.FindAll("a[href='https://lovdata.no/dokument/NL/lov/2014-06-20-43']");
-        Assert.True(linked.Count >= 2, $"expected the hero fact and the source row, found {linked.Count}");
+        Assert.NotEmpty(linked);
         Assert.All(linked, a => Assert.Equal("noopener noreferrer", a.GetAttribute("rel")));
     }
 
@@ -2918,9 +2949,9 @@ public class KildeViewTest : ExplorerTestContext
     {
         var cut = Render(Kilde());
 
-        var hero = LegalBasisValue(cut.Find("dl.munin-explorer-page__facts"));
-        Assert.Null(hero.QuerySelector("a"));
-        Assert.Equal("Forskrift om medisinske kvalitetsregistre § 2-3.", hero.TextContent.Trim());
+        var row = Fact(SourceInformation(cut), "Lovverk");
+        Assert.Null(row.QuerySelector("a"));
+        Assert.Equal("Forskrift om medisinske kvalitetsregistre § 2-3.", row.TextContent.Trim());
     }
 
     [Fact]
@@ -2930,11 +2961,6 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Empty(cut.FindAll("a[href='https://stolav.no']"));
     }
-
-    private static IElement LegalBasisValue(IElement facts) =>
-        facts.QuerySelectorAll(":scope > div")
-             .Single(row => row.QuerySelector("dt")?.TextContent.Trim() == "Lovverk")
-             .QuerySelector("dd")!;
 
     [Fact]
     public void Variables_WhenTheVariableExplorersSectionIsPassed_ThenTheLinkIsDrawnOnce()

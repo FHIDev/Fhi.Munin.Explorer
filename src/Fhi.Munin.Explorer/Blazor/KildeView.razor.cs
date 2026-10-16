@@ -290,8 +290,8 @@ public sealed partial class KildeView : ComponentBase
     /// <summary>Keys whose value already appears elsewhere on the page, so the metadata does not repeat them.</summary>
     /// <remarks>
     /// Beskrivelse duplicates the ingress where there is one (Fhi.Metadata-8yqoz). Formaal is safely dropped
-    /// when FormaalFlerspraklig also holds a value; Tittel and hasLegalBasis are not, since their
-    /// EHDS mirrors can hold content PreferredTerm and Lovverk lack (Fhi.Metadata-43jrq).
+    /// when FormaalFlerspraklig also holds a value; Tittel is not, and hasLegalBasis only where it says
+    /// what Lovverk says, since the EHDS mirrors can hold content the two lack (Fhi.Metadata-43jrq).
     /// </remarks>
     private IReadOnlySet<string> DrawnElsewhere(KildeDetail kilde)
     {
@@ -330,6 +330,16 @@ public sealed partial class KildeView : ComponentBase
             && purposes.All(purpose => SameText(purpose, kilde.Description)))
         {
             keys.Add("FormaalFlerspraklig");
+        }
+
+        // Its EHDS mirror repeats Lovverk word for word on 39 of 54 kilder on test, stored as plain text
+        // there rather than a tagged list (Fhi.Metadata-gpxp6).
+        if (Filled(kilde, "hasLegalBasis")
+            && kilde.AdditionalProperties["hasLegalBasis"] is { } mirror
+            && (CatalogueProperties.TaggedTexts(mirror) is { Count: > 0 } bases ? bases : [mirror])
+                .All(basis => SameText(basis, kilde.LegalBasis)))
+        {
+            keys.Add("hasLegalBasis");
         }
 
         // Drawn as the Variables section's sentence, where a caller passes that section.
@@ -475,7 +485,7 @@ public sealed partial class KildeView : ComponentBase
             ];
 
     /// <summary>
-    /// The six facts a source leads with, in the order the mockup puts them.
+    /// The five facts a source leads with, in the order the mockup puts them.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -487,10 +497,8 @@ public sealed partial class KildeView : ComponentBase
     /// register and is meant to repeat. Kildetype is there for Kildeinformasjon's row.
     /// </para>
     /// <para>
-    /// The mockup's sixth is Tilgang, and Munin's catalogue holds no access field for a source, so
-    /// Lovverk stands in it — the nearest thing a reader deciding whether they can have the data
-    /// actually has. The mockup's note under Dataansvarlig is a contact role the payload does not
-    /// carry either, and a note with nothing behind it is left off rather than invented.
+    /// No Lovverk, which is free text up to a thousand characters (Fhi.Metadata-gpxp6), and no note under
+    /// Dataansvarlig: the payload carries no contact role, so it is left off rather than invented.
     /// </para>
     /// </remarks>
     private IReadOnlyList<DetailFact> HeroFacts =>
@@ -507,11 +515,6 @@ public sealed partial class KildeView : ComponentBase
                                Note: DataCollections.Count > 0
                                    ? T.DatasamlingCountCrumb(DataCollections.Count)
                                    : null),
-                new DetailFact(T.FieldLegalBasis, kilde.LegalBasis,
-                               CatalogueMarkdown.Prose(kilde.LegalBasis) ? CatalogueProperties.Foreign("no", Reader) : null)
-                {
-                    Linked = true,
-                },
             ];
 
     /// <summary>The contents nav, one entry per section this view drew, in that order.</summary>
