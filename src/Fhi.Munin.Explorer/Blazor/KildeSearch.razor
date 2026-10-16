@@ -143,6 +143,7 @@
                            HeadingId="@DetailHeadingId"
                            Trail="@KildeTrail"
                            DatasamlingHref="@NodeHref"
+                           VariablesHref="@(KildeVariablesHref?.Invoke(kilde.Id))"
                            NamedSections="@OwnSections(kilde)"
                            Sections="@Sections" />
             }

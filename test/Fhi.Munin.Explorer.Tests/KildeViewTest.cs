@@ -199,10 +199,12 @@ public class KildeViewTest : ExplorerTestContext
             }
         });
 
+    private const string VariablesAddress = "/?kilde=a887eb3b";
+
     private IRenderedComponent<KildeView> RenderWithVariablesSection(KildeDetail kilde) =>
         Render<KildeView>(b => b
             .Add(c => c.Kilde, kilde)
-            .Add(c => c.NamedSections, [new DetailNamedSection(DetailSectionIds.Variables, "Variabler", _ => { })]));
+            .Add(c => c.VariablesHref, VariablesAddress));
 
     [Fact]
     public void Jumps_WhenBothSectionsAreThere_ThenEachLinksToItsSectionWithItsCount()
@@ -213,7 +215,8 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal(["Vis 312 variabler →", "Se de 2 datasamlingene →"], links.Select(a => a.TextContent));
         // The page's own path before the #, as the contents nav: helsedata's <base href="/"> sends a bare #id to the root.
-        Assert.Equal(["/#" + DetailSectionIds.Variables, "/#" + DetailSectionIds.DataCollections], links.Select(a => a.GetAttribute("href")));
+        // The variables go to the variable explorer narrowed to this kilde, which Kelda builds (Copilot on #589).
+        Assert.Equal([VariablesAddress, "/#" + DetailSectionIds.DataCollections], links.Select(a => a.GetAttribute("href")));
         Assert.All(links, a => Assert.Equal("true", a.QuerySelector("span")!.GetAttribute("aria-hidden")));
     }
 
@@ -230,16 +233,31 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Jumps_WhenTheVariablesSectionIsOnlyAReference_ThenThereIsNoVariablesLink()
+    public void Jumps_WhenTheHostGivesNoVariablesAddress_ThenThereIsNoVariablesLink()
     {
-        // Runa passes the Variabelreferanse sentence as its Variables section; a count would promise a list.
-        var kilde = Kilde() with
-        {
-            AdditionalProperties = new Dictionary<string, string?> { [VariableReference.Key] = "https://example.org/variabler" },
-        };
+        // Runa, or a bare mount: no section on the page lists the variables, so the count would promise a list.
+        var cut = Render<KildeView>(b => b
+            .Add(c => c.Kilde, Kilde())
+            .Add(c => c.NamedSections, [new DetailNamedSection(DetailSectionIds.Variables, "Variabler", _ => { })]));
 
-        Assert.DoesNotContain(RenderWithVariablesSection(kilde).FindAll(".munin-explorer-kilde__jumps a"),
+        Assert.DoesNotContain(cut.FindAll(".munin-explorer-kilde__jumps a"),
                               a => a.TextContent.StartsWith("Vis ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Jumps_WhenTheHostRewritesTheQueryUnderAStandingView_ThenTheHrefsFollow()
+    {
+        // The same reason DetailToc subscribes to LocationChanged (Copilot on #589).
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("http://localhost/kilder?kilde=one");
+        var cut = Render(Kilde());
+
+        Assert.Equal("/kilder?kilde=one#" + DetailSectionIds.DataCollections, cut.Find(".munin-explorer-kilde__jumps a").GetAttribute("href"));
+
+        navigation.NavigateTo("http://localhost/kilder?kilde=two");
+
+        cut.WaitForAssertion(() => Assert.Equal(
+            "/kilder?kilde=two#" + DetailSectionIds.DataCollections, cut.Find(".munin-explorer-kilde__jumps a").GetAttribute("href")));
     }
 
     [Fact]
@@ -265,7 +283,7 @@ public class KildeViewTest : ExplorerTestContext
         var links = Render<KildeView>(b => b
                 .Add(c => c.Kilde, Kilde() with { Datasamlinger = [Collection("A"), Collection("B")] })
                 .Add(c => c.Language, "en")
-                .Add(c => c.NamedSections, [new DetailNamedSection(DetailSectionIds.Variables, "Variables", _ => { })]))
+                .Add(c => c.VariablesHref, VariablesAddress))
             .FindAll(".munin-explorer-kilde__jumps a");
 
         Assert.Equal(["Show 312 variables →", "See the 2 data collections →"], links.Select(a => a.TextContent));
@@ -3001,10 +3019,10 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Metadata_WhenTheNameIsEmpty_ThenAPlacedKortNavnIsTheSectionsToDraw()
+    public void Metadata_WhenTheNameIsEmpty_ThenAPlacedKortNavnIsNotRepeated()
     {
-        // The identifier line only shows under a name, so without one the short name is on no other
-        // line of the page and suppressing it would drop it.
+        // The code line carries the short name even where the heading fell back to the code, so the
+        // placed row would say it a second time (Fhi.Metadata-4ggs9, Copilot on #589).
         var cut = Render(Kilde() with
         {
             PreferredTerm = "",
@@ -3012,7 +3030,8 @@ public class KildeViewTest : ExplorerTestContext
             Sections = [Section("om-registeret", "Om registeret", 1000)],
         });
 
-        Assert.Equal(["Kortnavn"], Labels(cut.Find("section#munin-explorer-section-om-registeret dl.munin-explorer-page__fields")));
+        Assert.StartsWith("ALS · ", cut.Find("p.munin-explorer-kilde__identifiers").TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll("section#munin-explorer-section-om-registeret"));
     }
 
     [Fact]

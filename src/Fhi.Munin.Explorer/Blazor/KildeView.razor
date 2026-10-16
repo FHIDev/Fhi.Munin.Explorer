@@ -61,7 +61,7 @@
                     <p class="margin--none munin-explorer-kilde__jumps">
                         @if (JumpToVariables is { } variables)
                         {
-                            <a href="@JumpHref(DetailSectionIds.Variables)">@variables<span aria-hidden="true"> →</span></a>
+                            <a href="@VariablesHref">@variables<span aria-hidden="true"> →</span></a>
                         }
                         @if (JumpToDataCollections is { } collections)
                         {
