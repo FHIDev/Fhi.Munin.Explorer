@@ -768,10 +768,10 @@ internal sealed record Texts(
     string NoVariablesInMunin,
     string NoDatasamlingerInMunin,
 
-    // The variable bar's words: count, percent of the largest of the same kildetype, that kilde, its count, the type (Fhi.Metadata-r6ht3).
-    Func<int, int, string, int, string, string> VariablesBarOfLargest,
+    // The variable bar's words after the count: percent of the largest of the same kildetype, that kilde, its count, the type (Fhi.Metadata-r6ht3).
+    Func<int, string, int, string, string> VariablesBarOfLargest,
 
-    Func<int, string, string> VariablesBarLargest,
+    Func<string, string> VariablesBarLargest,
     // (shown, total, filters, order, direction) — the kilde list's own "56 kilder av 66, avgrenset
     // av 2 filtre, sortert etter Variabler, synkende", assembled here for ResultSummary's reason:
     // where each clause sits is this language's grammar, and so is the plural. The filter clause
@@ -1628,9 +1628,9 @@ internal sealed record Texts(
         VariablesDescribedElsewhere: "Beskrevet utenfor helsedata.no",
         NoVariablesInMunin: "Ingen variabler i Munin",
         NoDatasamlingerInMunin: "Ingen datasamlinger i Munin",
-        VariablesBarOfLargest: (count, percent, largest, largestCount, type) =>
-            $"{count} variabler, {percent} % av {largest} ({largestCount}), som har flest av kildetypen «{type}» i lista",
-        VariablesBarLargest: (count, type) => $"{count} variabler, flest av kildetypen «{type}» i lista",
+        VariablesBarOfLargest: (percent, largest, largestCount, type) =>
+            $"variabler, {percent} % av {largest} ({largestCount}), som har flest variabler av typen {type} i lista",
+        VariablesBarLargest: type => $"variabler, flest av typen {type} i lista",
         KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 kilde" : $"{shown} kilder")
             + (shown == total ? "" : $" av {total}")
@@ -2164,9 +2164,9 @@ internal sealed record Texts(
         VariablesDescribedElsewhere: "Described outside helsedata.no",
         NoVariablesInMunin: "No variables in Munin",
         NoDatasamlingerInMunin: "No data collections in Munin",
-        VariablesBarOfLargest: (count, percent, largest, largestCount, type) =>
-            $"{count} variables, {percent}% of {largest} ({largestCount}), the most of the source type «{type}» in the list",
-        VariablesBarLargest: (count, type) => $"{count} variables, the most of the source type «{type}» in the list",
+        VariablesBarOfLargest: (percent, largest, largestCount, type) =>
+            $"variables, {percent}% of {largest} ({largestCount}), which has the most variables of type {type} in the list",
+        VariablesBarLargest: type => $"variables, the most of type {type} in the list",
         KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 source" : $"{shown} sources")
             + (shown == total ? "" : $" of {total}")

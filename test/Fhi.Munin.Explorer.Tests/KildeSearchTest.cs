@@ -1150,21 +1150,43 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("no", "23 variabler, 1 % av Dødsårsaksregisteret (2506), som har flest av kildetypen «Nasjonalt medisinsk kvalitetsregister» i lista",
-                      "2506 variabler, flest av kildetypen «Nasjonalt medisinsk kvalitetsregister» i lista")]
-    [InlineData("en", "23 variables, 1% of Dødsårsaksregisteret (2506), the most of the source type «National medical quality registry» in the list",
-                      "2506 variables, the most of the source type «National medical quality registry» in the list")]
+    [InlineData("no", "variabler, 1 % av Dødsårsaksregisteret (2506), som har flest variabler av typen Nasjonalt medisinsk kvalitetsregister i lista",
+                      "variabler, flest av typen Nasjonalt medisinsk kvalitetsregister i lista")]
+    [InlineData("en", "variables, 1% of Dødsårsaksregisteret (2506), which has the most variables of type National medical quality registry in the list",
+                      "variables, the most of type National medical quality registry in the list")]
     public void Bar_WhenDrawn_ThenItsCellSaysInWordsWhatItComparesWith(string language, string als, string dar)
     {
         var cut = RenderWith(SameTypeBarKilder(), p => p.Add(c => c.Language, language));
 
-        foreach (var (code, words) in new[] { ("K_ALS", als), ("K_DAR", dar) })
+        foreach (var (code, count, words) in new[] { ("K_ALS", 23, als), ("K_DAR", 2506, dar) })
         {
             var cell = VariablesCell(cut, code);
-            Assert.Equal(words, cell.GetAttribute("title"));
-            Assert.Equal(words, cell.QuerySelector(":scope > .screenreader-only")!.TextContent);
+            // The hover text carries the count; the hidden words follow the visible digits, so they do not repeat it.
+            Assert.Equal($"{count} {words}", cell.GetAttribute("title"));
+            Assert.Equal($" {words}", cell.QuerySelector(":scope > .screenreader-only")!.TextContent);
             Assert.Equal("true", cell.QuerySelector(".munin-explorer-kilder__bar")!.GetAttribute("aria-hidden"));
         }
+    }
+
+    [Fact]
+    public void Bar_WhenOneVariableIsSetAgainstThousands_ThenTheWordsSayOnePercentAsTheBarDraws()
+    {
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister", variables: 1),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "nasjonaltMedisinskKvalitetsregister", variables: 2506)));
+
+        Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
+        Assert.Contains(" 1 % av Dødsårsaksregisteret", VariablesCell(cut, "K_ALS").GetAttribute("title"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Bar_WhenKildetypesDifferOnlyInCaseOrSpace_ThenTheyAreOneGroup()
+    {
+        var cut = RenderWith(new FakeClient(
+            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister", variables: 23),
+            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: " NasjonaltMedisinskKvalitetsregister ", variables: 2506)));
+
+        Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
     }
 
     [Fact]
