@@ -15744,16 +15744,6 @@ public class VariableSearchTest : ExplorerTestContext
     private static AngleSharp.Dom.IElement SourcePanel(IRenderedComponent<VariableSearch> cut) =>
         cut.Find(".munin-explorer-drilldown");
 
-    /// <summary>The paragraph straight under the drill-in's first section heading.</summary>
-    private static AngleSharp.Dom.IElement SourceLead(IRenderedComponent<VariableSearch> cut)
-    {
-        var lead = SourcePanel(cut).QuerySelector("section.munin-explorer-page__section")!.Children[1];
-
-        Assert.Equal("p", lead.LocalName);
-
-        return lead;
-    }
-
     // The fact lists alone, not every dl in the drill-in: the chassis's hero row is a dl too, and
     // it repeats six of these fields above the body — so an unscoped selector reads the summary
     // back and reports the sections as having moved. (Fhi.Metadata-35w0p.26)
@@ -15792,8 +15782,10 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(AlsId, client.LastSourceId);
         Assert.Equal(before, navigation.Uri);
 
-        // Runa's order. Beskrivelse, placed nowhere here, opens the first section (Fhi.Metadata-9zlm5);
-        // the variable count is under Statistikk, and the datasamling count is the table.
+        // The source information, in Runa's order. Beskrivelse is not in it any more: it moved up
+        // to the ingress under the name, where a description belongs and where Runa puts it. The two
+        // counts left too — the variable count is under Statistikk, and the datasamling count is
+        // the table rather than a number.
         Assert.Equal(
             ["Type datakilde", "Lovverk", "Dataansvarlig", "Databehandler",
              "Grad av personidentifikasjon", "Gyldighet", "Sist oppdatert i Munin",
@@ -15807,10 +15799,10 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("Indirekte identifiserbar", values[4]);
         Assert.Equal("312", values[7]);
 
-        // The description reads as prose opening the body, not as a row in a record.
+        // The description reads as prose above the metadata, not as a row in a record.
         Assert.Equal(
             "Norsk register for ALS og andre motonevronsykdommer.",
-            SourceLead(cut).TextContent.Trim());
+            SourcePanel(cut).QuerySelector(".munin-explorer-kilde__description")!.TextContent.Trim());
     }
 
     [Theory]
@@ -16629,7 +16621,7 @@ public class VariableSearchTest : ExplorerTestContext
         // The catalogue holds one name and one description, both Norwegian. On this page they are
         // the only Norwegian left, and both say so.
         var heading = SourcePanel(cut).QuerySelector(".headline-s")!;
-        var description = SourceLead(cut);
+        var description = SourcePanel(cut).QuerySelector(".munin-explorer-kilde__description")!;
 
         Assert.Equal("Als registeret", heading.TextContent);
         Assert.Equal("no", heading.GetAttribute("lang"));
@@ -16694,6 +16686,7 @@ public class VariableSearchTest : ExplorerTestContext
                 // No eyebrow: a kilde's page names no category above its name (Fhi.Metadata-esf2i).
                 "munin-explorer-kilde__header",
                 "munin-explorer-kilde__identifiers",
+                "munin-explorer-kilde__description",
                 // The hero row, between the name block and the body. Always drawn on a source:
                 // two of its six facts fall back to Texts.NotSpecified rather than to nothing.
                 "munin-explorer-page__facts",
