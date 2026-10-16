@@ -968,7 +968,7 @@ public class KildeSearchTest : ExplorerTestContext
         // and not one of the data columns this pins.
         var cells = row
             .QuerySelectorAll("th, td:not(.munin-explorer-kilder__expand)")
-            .Select(c => c.TextContent.Trim())
+            .Select(ShownText)
             .ToList();
 
         // The name alone: the code is an optional column, off by default (sak #6076).
@@ -1002,7 +1002,7 @@ public class KildeSearchTest : ExplorerTestContext
         foreach (var cell in cells)
         {
             Assert.Equal(
-                cell.TextContent.Trim() is "–Ingen datasamlinger i Munin" or "–Ingen variabler i Munin",
+                ShownText(cell) is "–Ingen datasamlinger i Munin" or "–Ingen variabler i Munin",
                 cell.ClassList.Contains("munin-explorer-kilder__count--zero"));
         }
 
@@ -1010,7 +1010,7 @@ public class KildeSearchTest : ExplorerTestContext
         // since Inge asked for the same on #6509 (Fhi.Metadata-bzqtu).
         Assert.Equal(
             ["23", "23", "2506", "2506", "–Ingen datasamlinger i Munin", "–Ingen variabler i Munin"],
-            cells.Select(cell => cell.TextContent.Trim()).Order(StringComparer.Ordinal));
+            cells.Select(cell => ShownText(cell)).Order(StringComparer.Ordinal));
     }
 
     // The three kilder the bar is specified against (Fhi.Metadata-35w0p.30): a zero, a small count
@@ -1021,6 +1021,21 @@ public class KildeSearchTest : ExplorerTestContext
         Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
             datasamlinger: 23, variables: 23),
         Kilde("Dødsårsaksregisteret", "K_DAR", datasamlinger: 2506, variables: 2506));
+
+    // DAR moved into ALS's kildetype, and under another data processor so a facet can take it away (Fhi.Metadata-r6ht3).
+    private static FakeClient SameTypeBarKilder() => new(
+        Kilde("Hjerte- og karregisteret", "K_HKR", kildetype: "nasjonaltMedisinskKvalitetsregister",
+            datasamlinger: 0, variables: 0),
+        Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
+            datasamlinger: 23, variables: 23),
+        Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "nasjonaltMedisinskKvalitetsregister",
+            dataProcessor: "Helse Bergen HF", datasamlinger: 2506, variables: 2506));
+
+    /// <summary>A count cell's text as it is drawn: the bar's words for a screen reader left out.</summary>
+    private static string ShownText(IElement cell) =>
+        cell.FirstChild?.NodeType == NodeType.Text && cell.QuerySelector(":scope > .screenreader-only") is { } words
+            ? cell.TextContent.Replace(words.TextContent, "", StringComparison.Ordinal).Trim()
+            : cell.TextContent.Trim();
 
     private static readonly Dictionary<string, string> BarNames = new(StringComparer.Ordinal)
     {
@@ -1036,7 +1051,7 @@ public class KildeSearchTest : ExplorerTestContext
         var name = BarNames[code];
         var column = cut.FindAll(".munin-explorer-kilder thead th")
             .ToList()
-            .FindIndex(th => th.TextContent.Contains("Variabler", StringComparison.Ordinal));
+            .FindIndex(th => th.TextContent.Contains("Variab", StringComparison.Ordinal));
         Assert.True(column >= 0, "No Variabler heading in the table.");
 
         var row = cut.FindAll(".munin-explorer-kilder tbody tr")
@@ -1063,22 +1078,23 @@ public class KildeSearchTest : ExplorerTestContext
             Assert.Single(bar.QuerySelectorAll("span.munin-explorer-kilder__bar-fill"));
             Assert.Single(bar.Children);
 
-            // After the digits: the text node comes first and the track is the cell's last child.
+            // After the digits: the text node comes first, the track next, and the words for a screen reader last.
             Assert.Equal(NodeType.Text, cell.FirstChild!.NodeType);
-            Assert.Same(bar, cell.LastChild);
+            Assert.Same(bar, cell.FirstChild!.NextSibling);
+            Assert.Contains("screenreader-only", ((IElement)cell.LastChild!).ClassList);
         }
     }
 
     [Theory]
     [InlineData("nb-NO")]
     [InlineData("en-US")]
-    public void Bar_WhenDrawn_ThenItsFillIsAWholePercentOfTheLargestCountInAnyCulture(string culture)
+    public void Bar_WhenDrawn_ThenItsFillIsAWholePercentOfTheLargestOfTheSameKildetypeInAnyCulture(string culture)
     {
         var previous = CultureInfo.CurrentCulture;
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
         try
         {
-            var cut = RenderWith(BarKilder());
+            var cut = RenderWith(SameTypeBarKilder());
 
             Assert.Equal("width:100%", FillWidth(cut, "K_DAR"));
             // 23 * 100 / 2506 is 0.92, rounded to 1.
@@ -1106,21 +1122,49 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Bar_WhenAFacetTakesTheLargestAway_ThenTheLargestDrawnRowIsTheWholeWidth()
+    public void Bar_WhenAFacetTakesTheLargestOfTheTypeAway_ThenTheNextLargestOfTheTypeIsTheWholeWidth()
     {
-        var cut = RenderWith(BarKilder());
+        var cut = RenderWith(SameTypeBarKilder());
 
-        Tick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+        Tick(cut, "Databehandler", "Folkehelseinstituttet");
 
         Assert.DoesNotContain(
             cut.FindAll(".munin-explorer-kilder tbody th"),
-            th => th.TextContent.Contains("K_DAR", StringComparison.Ordinal));
+            th => th.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal));
         Assert.Equal("width:100%", FillWidth(cut, "K_ALS"));
 
-        Untick(cut, "Kildetype", "Nasjonalt medisinsk kvalitetsregister");
+        Untick(cut, "Databehandler", "Folkehelseinstituttet");
 
         Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
         Assert.Equal("width:100%", FillWidth(cut, "K_DAR"));
+    }
+
+    // Robin 2026-10-16 (#6718): a register is not measured against a survey with ten times the variables.
+    [Fact]
+    public void Bar_WhenALargerKildeIsOfAnotherKildetype_ThenItDoesNotShrinkTheBar()
+    {
+        var cut = RenderWith(BarKilder());
+
+        Assert.Equal("width:100%", FillWidth(cut, "K_ALS"));
+        Assert.Equal("width:100%", FillWidth(cut, "K_DAR"));
+    }
+
+    [Theory]
+    [InlineData("no", "23 variabler, 1 % av Dødsårsaksregisteret (2506), som har flest av kildetypen «Nasjonalt medisinsk kvalitetsregister» i lista",
+                      "2506 variabler, flest av kildetypen «Nasjonalt medisinsk kvalitetsregister» i lista")]
+    [InlineData("en", "23 variables, 1% of Dødsårsaksregisteret (2506), the most of the source type «National medical quality registry» in the list",
+                      "2506 variables, the most of the source type «National medical quality registry» in the list")]
+    public void Bar_WhenDrawn_ThenItsCellSaysInWordsWhatItComparesWith(string language, string als, string dar)
+    {
+        var cut = RenderWith(SameTypeBarKilder(), p => p.Add(c => c.Language, language));
+
+        foreach (var (code, words) in new[] { ("K_ALS", als), ("K_DAR", dar) })
+        {
+            var cell = VariablesCell(cut, code);
+            Assert.Equal(words, cell.GetAttribute("title"));
+            Assert.Equal(words, cell.QuerySelector(":scope > .screenreader-only")!.TextContent);
+            Assert.Equal("true", cell.QuerySelector(".munin-explorer-kilder__bar")!.GetAttribute("aria-hidden"));
+        }
     }
 
     [Fact]
@@ -1174,8 +1218,8 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.All(bars, bar => Assert.Equal("true", bar.GetAttribute("aria-hidden")));
 
         Assert.Equal("–Ingen variabler i Munin", VariablesCell(cut, "K_HKR").TextContent.Trim());
-        Assert.Equal("23", VariablesCell(cut, "K_ALS").TextContent.Trim());
-        Assert.Equal("2506", VariablesCell(cut, "K_DAR").TextContent.Trim());
+        Assert.Equal("23", ShownText(VariablesCell(cut, "K_ALS")));
+        Assert.Equal("2506", ShownText(VariablesCell(cut, "K_DAR")));
     }
 
     [Fact]
@@ -6183,7 +6227,7 @@ public class KildeSearchTest : ExplorerTestContext
     // ---------------------------------------------------------------------------------
 
     private static IReadOnlyList<string> FirstRowCells(IRenderedComponent<KildeSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-kilder tbody tr:first-child > *").Select(c => c.TextContent.Trim())];
+        [.. cut.FindAll(".munin-explorer-kilder tbody tr:first-child > *").Select(ShownText)];
 
     /// <summary>
     /// One kilde carrying every field the thirteen optional columns read, each value distinct.
@@ -7356,7 +7400,7 @@ public class KildeSearchTest : ExplorerTestContext
             Assert.Equal("position:relative", none.GetAttribute("style"));
         }
 
-        Assert.StartsWith("204", cells["Hodepineregisteret"].TextContent.Trim(), StringComparison.Ordinal);
-        Assert.Null(cells["Hodepineregisteret"].QuerySelector(".screenreader-only"));
+        Assert.Equal("204", ShownText(cells["Hodepineregisteret"]));
+        Assert.DoesNotContain("Munin", cells["Hodepineregisteret"].TextContent, StringComparison.Ordinal);
     }
 }

@@ -1299,6 +1299,29 @@ public sealed partial class KildeSearch : ComponentBase
         FormattableString.Invariant(
             $"width:{Math.Clamp((int)Math.Round(count * 100m / largest, MidpointRounding.AwayFromZero), 1, 100)}%");
 
+    /// <summary>The kilde with the most variables per kildetype among <paramref name="visible"/>; a missing type is its own group.</summary>
+    private static Dictionary<string, KildeSummary> LargestByKildetype(IEnumerable<KildeSummary> visible) =>
+        visible
+            .GroupBy(KildetypeKey, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.MaxBy(k => k.TotalVariables)!, StringComparer.Ordinal);
+
+    private static string KildetypeKey(KildeSummary kilde) => kilde.Kildetype ?? "";
+
+    /// <summary>What the bar shows, in words: the hover text and what a screen reader hears after the digits.</summary>
+    private string BarText(KildeSummary kilde, KildeSummary largest)
+    {
+        var type = string.IsNullOrWhiteSpace(kilde.Kildetype) ? T.NotSpecified : KildeTypeName(kilde.Kildetype);
+
+        if (largest.Id == kilde.Id || largest.TotalVariables <= kilde.TotalVariables)
+        {
+            return T.VariablesBarLargest(kilde.TotalVariables, type);
+        }
+
+        var percent = (int)Math.Round(kilde.TotalVariables * 100m / largest.TotalVariables, MidpointRounding.AwayFromZero);
+        var name = string.IsNullOrWhiteSpace(largest.Name) ? largest.Code : largest.Name;
+        return T.VariablesBarOfLargest(kilde.TotalVariables, percent, name, largest.TotalVariables, type);
+    }
+
     /// <summary>A count cell's classes, and the inline width of its bar's fill when it has one.</summary>
     private readonly record struct CountCell(string Class, string? BarWidth);
 

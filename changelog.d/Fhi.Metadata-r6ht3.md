@@ -1,0 +1,2 @@
+category: Changed
+- **The bar under a kilde's «Variabler» count compares it only with kilder of the same kildetype, and says so.** A register is measured against the register with the most variables in the list, not against a health survey with ten times as many. Hovering the cell, or reading it with a screen reader, gives the comparison in words: «1 232 variabler, 46 % av Kreftregisteret (18 449), som har flest av kildetypen «Sentralt helseregister» i lista». Refs FHIDev/Munin#6718.
