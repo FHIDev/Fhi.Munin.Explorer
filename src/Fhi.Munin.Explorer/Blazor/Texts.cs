@@ -588,10 +588,10 @@ internal sealed record Texts(
     // KildeSummary.Created — Munin's own row timestamp, and Kelda's Importert, not this column,
     // and FieldCreatedInMunin on a detail page.
     string ColumnEstablished,
+    string ColumnDelkildeCount,
     // The dates ColumnEstablished warns about: Imported is KildeSummary.Created, Munin's own row, and
     // SourceUpdated the kilde's SistOppdatert from its import file — not KildeSummary.LastUpdated,
     // the row timestamp FieldLastUpdated labels "i katalogen". Kelda: "Importert", "Sist endret".
-    string ColumnDelkildeCount,
     string ColumnImported,
     string ColumnSourceUpdated,
     // The kilde table's two coverage columns; kodeverk stays Norwegian in English as the domain term

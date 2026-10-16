@@ -180,7 +180,8 @@ public class LanguageTest : ExplorerTestContext
                     $"{property.Name} is a {other?.GetType().Name}, which no arm here reads."),
             };
 
-            Assert.All(shown, text => Assert.DoesNotContain("Munin", text, StringComparison.Ordinal));
+            Assert.All(shown, text => Assert.False(
+                text.Contains("Munin", StringComparison.Ordinal), $"{property.Name} says Munin: {text}"));
         }
     }
 
