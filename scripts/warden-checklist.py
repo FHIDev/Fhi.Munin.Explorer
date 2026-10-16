@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Print the warden rules that apply to this branch's diff, as the Forge's assay picks them.
 
+Source of truth: Robin831/Forge internal/warden, RulesFile.FormatChecklistForDiffWithStats (rules.go),
+ported at commit 67459514506b6d9ce6c969fe973b6c582227d823. Identical copies live in FHIDev/Munin, Fhi.Munin.Explorer,
+Heimdall and Fhi.Munin.DevInfra; change all four together.
+
 Usage (on Windows use `py -3` instead of `python3`):
     python3 scripts/warden-checklist.py [--base origin/main] [--max-rules 30] [--all-rules]
 
