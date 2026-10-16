@@ -1002,14 +1002,14 @@ public class KildeSearchTest : ExplorerTestContext
         foreach (var cell in cells)
         {
             Assert.Equal(
-                cell.TextContent.Trim() is "0" or "–Ingen variabler i Munin",
+                cell.TextContent.Trim() is "–Ingen datasamlinger i Munin" or "–Ingen variabler i Munin",
                 cell.ClassList.Contains("munin-explorer-kilder__count--zero"));
         }
 
-        // A datasamlinger nought stays a nought, because a register holding none is a measurement and
-        // not a gap; Variabler says «–» for none in Munin. Both are dimmed (Fhi.Metadata-db81e).
+        // Both say «–» for none in Munin and are dimmed: Variabler since Fhi.Metadata-db81e, Datasamlinger
+        // since Inge asked for the same on #6509 (Fhi.Metadata-bzqtu).
         Assert.Equal(
-            ["0", "23", "23", "2506", "2506", "–Ingen variabler i Munin"],
+            ["23", "23", "2506", "2506", "–Ingen datasamlinger i Munin", "–Ingen variabler i Munin"],
             cells.Select(cell => cell.TextContent.Trim()).Order(StringComparer.Ordinal));
     }
 
@@ -7301,6 +7301,29 @@ public class KildeSearchTest : ExplorerTestContext
 
     private static KildeSummary WithReference(KildeSummary kilde, string address) =>
         kilde with { AdditionalProperties = new Dictionary<string, string?> { ["Variabelreferanse"] = address } };
+
+    // Inge on #6509: «–» rather than «0» for a kilde with no datasamling in Munin, as Variabler (Fhi.Metadata-bzqtu).
+    [Theory]
+    [InlineData("no", "Ingen datasamlinger i Munin")]
+    [InlineData("en", "No data collections in Munin")]
+    public void Datasamlinger_WhenAKildeHasNone_ThenTheCellIsADashReadOutInWords(string language, string words)
+    {
+        var cut = RenderWith(new FakeClient(
+            Kilde("Brannskaderegisteret", "K_BRANN", datasamlinger: 0, variables: 0),
+            Kilde("Hodepineregisteret", "K_HDPINE", datasamlinger: 4, variables: 204)), p => p.Add(c => c.Language, language));
+
+        var cells = cut.FindAll(".munin-explorer-kilder tbody tr")
+                       .ToDictionary(row => row.QuerySelector("th button")!.TextContent.Trim(),
+                                     row => row.QuerySelectorAll("td.munin-explorer-kilder__count").First());
+
+        var none = cells["Brannskaderegisteret"];
+        Assert.Equal("–", none.QuerySelector("[aria-hidden='true']")!.TextContent);
+        Assert.Equal(words, none.QuerySelector(".screenreader-only")!.TextContent);
+        Assert.DoesNotContain("0", none.TextContent, StringComparison.Ordinal);
+        Assert.Contains("munin-explorer-kilder__count--zero", none.ClassList);
+        Assert.Equal("position:relative", none.GetAttribute("style"));
+        Assert.Equal("4", cells["Hodepineregisteret"].TextContent.Trim());
+    }
 
     [Theory]
     [InlineData("no", "Ingen variabler i Munin")]

@@ -438,7 +438,7 @@ export const assertions = [
     // alignment fully gone. A Range over the cell's contents is the thing that moves.
     //
     // Two measurements, because agreement down a column can be vacuous. With the rule taken away
-    // the figures fall to the cell's left edge, and the fixture's Datasamlinger (9, 6, 1, 0, 11)
+    // the figures fall to the cell's left edge, and the fixture's Datasamlinger (9, 6, 1, –, 11)
     // and Variabler (240, 630, 23, –, 12728) then spread by the digits they differ in — while
     // Delkilder (0, 0, 0, 0, 4) still agrees exactly. Flush against the cell's own content edge is
     // what fails in that column, and it needs no second row to say so.
