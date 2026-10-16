@@ -16730,10 +16730,12 @@ public class VariableSearchTest : ExplorerTestContext
                 "munin-explorer-page__stuckbar",
                 "munin-explorer-page__stuckbar-inner",
                 "munin-explorer-page__stuckbar-name",
-                // No eyebrow: a kilde's page names no category above its name (Fhi.Metadata-esf2i).
+                // The kildetype over the name, as Skuld's top has it (Fhi.Metadata-4ggs9).
+                "munin-explorer-page__eyebrow",
                 "munin-explorer-kilde__header",
                 "munin-explorer-kilde__identifiers",
                 "munin-explorer-kilde__description",
+                "munin-explorer-kilde__jumps",
                 // The hero row, between the name block and the body. Always drawn on a source:
                 // two of its six facts fall back to Texts.NotSpecified rather than to nothing.
                 "munin-explorer-page__facts",

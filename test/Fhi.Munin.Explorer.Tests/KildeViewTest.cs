@@ -199,12 +199,59 @@ public class KildeViewTest : ExplorerTestContext
             }
         });
 
+    private IRenderedComponent<KildeView> RenderWithVariablesSection(KildeDetail kilde) =>
+        Render<KildeView>(b => b
+            .Add(c => c.Kilde, kilde)
+            .Add(c => c.NamedSections, [new DetailNamedSection(DetailSectionIds.Variables, "Variabler", _ => { })]));
+
     [Fact]
-    public void Eyebrow_Never_ThenTheNameIsTheFirstThingUnderTheTrail()
+    public void Jumps_WhenBothSectionsAreThere_ThenEachLinksToItsSectionWithItsCount()
     {
-        // «Datakilde» over every kilde's name said what the trail and the page already did (Fhi.Metadata-esf2i).
-        Assert.Empty(Render(Kilde()).FindAll(".munin-explorer-page__eyebrow"));
-        Assert.Empty(Render(Kilde(), language: "en").FindAll(".munin-explorer-page__eyebrow"));
+        // Skuld's top: «Vis N variabler →» and «Se de N datasamlingene →» (Fhi.Metadata-4ggs9).
+        var links = RenderWithVariablesSection(Kilde() with { Datasamlinger = [Collection("A"), Collection("B")] })
+            .FindAll(".munin-explorer-kilde__jumps a");
+
+        Assert.Equal(["Vis 312 variabler →", "Se de 2 datasamlingene →"], links.Select(a => a.TextContent));
+        Assert.Equal(["#" + DetailSectionIds.Variables, "#" + DetailSectionIds.DataCollections], links.Select(a => a.GetAttribute("href")));
+        Assert.All(links, a => Assert.Equal("true", a.QuerySelector("span")!.GetAttribute("aria-hidden")));
+    }
+
+    [Fact]
+    public void Jumps_WhenThereIsOneOfEach_ThenTheyAreSingular()
+    {
+        var links = RenderWithVariablesSection(Kilde() with { TotalVariables = 1 }).FindAll(".munin-explorer-kilde__jumps a");
+
+        Assert.Equal(["Vis 1 variabel →", "Se datasamlingen →"], links.Select(a => a.TextContent));
+    }
+
+    [Fact]
+    public void Jumps_WhenThereIsNothingToJumpTo_ThenNoLinkOrLineIsDrawn()
+    {
+        // No Variables section passed, or nothing counted: no link that leads nowhere.
+        Assert.Equal(["Se datasamlingen →"], Render(Kilde()).FindAll(".munin-explorer-kilde__jumps a").Select(a => a.TextContent));
+        Assert.Empty(RenderWithVariablesSection(Kilde() with { TotalVariables = 0, Datasamlinger = [], Delkilder = [] })
+            .FindAll(".munin-explorer-kilde__jumps"));
+    }
+
+    [Fact]
+    public void Jumps_WhenTheReaderIsEnglish_ThenTheyAreInEnglish()
+    {
+        var links = Render<KildeView>(b => b
+                .Add(c => c.Kilde, Kilde() with { Datasamlinger = [Collection("A"), Collection("B")] })
+                .Add(c => c.Language, "en")
+                .Add(c => c.NamedSections, [new DetailNamedSection(DetailSectionIds.Variables, "Variables", _ => { })]))
+            .FindAll(".munin-explorer-kilde__jumps a");
+
+        Assert.Equal(["Show 312 variables →", "See the 2 data collections →"], links.Select(a => a.TextContent));
+    }
+
+    [Fact]
+    public void Eyebrow_Always_ThenItIsTheKildetypeAboveTheName()
+    {
+        // Skuld's top: the type over the name, where «Datakilde» once said nothing (Fhi.Metadata-esf2i, 4ggs9).
+        Assert.Equal("Nasjonalt medisinsk kvalitetsregister",
+                     Render(Kilde()).Find(".munin-explorer-page__eyebrow").TextContent);
+        Assert.Empty(Render(Kilde() with { Kildetype = null }).FindAll(".munin-explorer-page__eyebrow"));
     }
 
     // K_BIV on test: Beskrivelse and Formaal are the same paragraph, so it was read twice (Fhi.Metadata-esf2i).
@@ -494,10 +541,12 @@ public class KildeViewTest : ExplorerTestContext
             "munin-explorer-kilde__description",
             "munin-explorer-kilde__header",
             "munin-explorer-kilde__identifiers",
+            "munin-explorer-kilde__jumps",
             "munin-explorer-kilde__main",
             // The chassis the three detail views share, worn beside this view's own names above.
             "munin-explorer-page",
             "munin-explorer-page__body",
+            "munin-explorer-page__eyebrow",           // the kildetype over the name (Fhi.Metadata-4ggs9)
             // The hero row under the name block. Always drawn on a source: two of its five facts
             // fall back to Texts.NotSpecified rather than to nothing, so there is no source thin
             // enough to leave the list out.
@@ -557,9 +606,10 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Identifiers_WhenTheKildeHasAShortName_ThenItSitsBesideTheCode()
+    public void Identifiers_WhenTheKildeHasAShortName_ThenTheLineIsCodeShortNameAndDate()
     {
-        Assert.Equal("K_ALS (ALS)", Render(Kilde()).Find(".munin-explorer-kilde__identifiers").TextContent);
+        Assert.Equal("K_ALS · ALS · sist oppdatert i katalogen 04.03.2026",
+                     Render(Kilde()).Find(".munin-explorer-kilde__identifiers").TextContent);
     }
 
     [Fact]
@@ -567,17 +617,17 @@ public class KildeViewTest : ExplorerTestContext
     {
         var cut = Render(Kilde() with { ShortName = "" });
 
-        Assert.Equal("K_ALS", cut.Find(".munin-explorer-kilde__identifiers").TextContent);
+        Assert.Equal("K_ALS · sist oppdatert i katalogen 04.03.2026", cut.Find(".munin-explorer-kilde__identifiers").TextContent);
     }
 
     [Fact]
-    public void Identifiers_WhenTheKildeHasNoCode_ThenNoEmptyLineIsDrawnUnderTheName()
+    public void Identifiers_WhenTheKildeHasNoCode_ThenTheLineHoldsWhatIsLeft()
     {
-        // A line holding only " (ALS)" is worse than no line: it reads as a rendering fault rather
-        // than as a catalogue that has not been given a code.
+        // No leading separator where the code is missing: the parts that exist, joined (Fhi.Metadata-4ggs9).
         var cut = Render(Kilde() with { Code = "" });
 
-        Assert.Empty(cut.FindAll(".munin-explorer-kilde__identifiers"));
+        Assert.Equal("ALS · sist oppdatert i katalogen 04.03.2026", cut.Find(".munin-explorer-kilde__identifiers").TextContent);
+        Assert.Empty(Render(Kilde() with { Code = "", ShortName = "", LastUpdated = null }).FindAll(".munin-explorer-kilde__identifiers"));
     }
 
     [Fact]
@@ -2746,7 +2796,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal("ALS", Kilde().ShortName);
         Assert.Equal("K_ALS", cut.Find("h2").TextContent.Trim());
-        Assert.Empty(cut.FindAll("p.munin-explorer-kilde__identifiers"));
+        Assert.DoesNotContain("K_ALS", cut.Find("p.munin-explorer-kilde__identifiers").TextContent, StringComparison.Ordinal);
 
         // The sticky bar repeats this name block and has its own copy of the rule, so the code
         // lands twice there for exactly the same reason it would have here. The name is asserted
@@ -2769,10 +2819,10 @@ public class KildeViewTest : ExplorerTestContext
         Assert.Equal(heading.TextContent.Trim(), name.TextContent.Trim());
         Assert.Equal(heading.GetAttribute("lang"), name.GetAttribute("lang"));
 
-        // And the identifiers beside it, which is the half the fallback case above drops.
-        Assert.Equal(
-            cut.Find("p.munin-explorer-kilde__identifiers").TextContent.Trim(),
-            cut.Find(".munin-explorer-page__stuckbar small").TextContent.Trim());
+        // And the identifiers beside it, which is the half the fallback case above drops: the bar keeps
+        // «K_ALS (ALS)», the code line spells the same two with the date (Fhi.Metadata-4ggs9).
+        Assert.Equal("K_ALS (ALS)", cut.Find(".munin-explorer-page__stuckbar small").TextContent.Trim());
+        Assert.StartsWith("K_ALS · ALS · ", cut.Find("p.munin-explorer-kilde__identifiers").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]

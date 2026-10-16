@@ -6,6 +6,7 @@
                 ViewMain="munin-explorer-kilde__main"
                 Trail="@PageTrail"
                 TrailLabel="@T.TrailLabel"
+                Eyebrow="@KildetypeLabel"
                 Actions="@Actions"
                 Facts="@HeroFacts"
                 StickyName="@StickyNamed.Text"
@@ -14,9 +15,8 @@
                 Contents="@DetailToc.Column(Toc, T.HeadingContents)">
         <Header>
 
-            @* The name block. Runa puts the identifiers under the name rather than beside it. The
-               kildetype is not here: the hero row below leads with it, and a badge ten pixels above
-               that fact said the same words twice. (Fhi.Metadata-pnn4w) *@
+            @* The name block, under the kildetype as Skuld's top has it (Fhi.Metadata-4ggs9, which
+               brings back what Fhi.Metadata-pnn4w took out). *@
             <div class="munin-explorer-kilde__header">
                 @{ var named = T.Named(kilde.PreferredTerm, kilde.Code); }
 
@@ -25,11 +25,11 @@
                 @DetailBlocks.Heading(HeadingLevel, named.Text, "headline headline-s margin--bottom",
                                       HeadingId, CatalogueProperties.Foreign(named.Norwegian, Reader))
 
-                @* Not when the heading above has already fallen back to it: the code twice, stacked, is
-                   what a naive fallback draws. (Fhi.Metadata-w13lk) *@
-                @if (IdentifierLine is { } identifiers)
+                @* The code is left out where the heading above has already fallen back to it: the code
+                   twice, stacked, is what a naive fallback draws. (Fhi.Metadata-w13lk) *@
+                @if (CodeLine is { } line)
                 {
-                    <p class="caption margin--none munin-explorer-kilde__identifiers">@identifiers</p>
+                    <p class="caption margin--none munin-explorer-kilde__identifiers">@line</p>
                 }
 
                 @* Norwegian whatever the reader's language: the catalogue stores one description. *@
@@ -54,6 +54,20 @@
                             @(_descriptionOpen ? T.DescriptionShowLess : T.DescriptionReadMore)
                         </button>
                     }
+                }
+
+                @if (JumpToVariables is not null || JumpToDataCollections is not null)
+                {
+                    <p class="margin--none munin-explorer-kilde__jumps">
+                        @if (JumpToVariables is { } variables)
+                        {
+                            <a href="#@DetailSectionIds.Variables">@variables<span aria-hidden="true"> →</span></a>
+                        }
+                        @if (JumpToDataCollections is { } collections)
+                        {
+                            <a href="#@DetailSectionIds.DataCollections">@collections<span aria-hidden="true"> →</span></a>
+                        }
+                    </p>
                 }
             </div>
         </Header>

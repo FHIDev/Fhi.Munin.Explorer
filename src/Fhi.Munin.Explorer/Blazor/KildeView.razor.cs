@@ -141,6 +141,27 @@ public sealed partial class KildeView : ComponentBase
     /// </remarks>
     private string? IdentifierLine => StickyNamed.Norwegian ? Identifiers : null;
 
+    /// <summary>«K_BDR · BDR · sist oppdatert i katalogen 24.08.2026», each part only where it has a value.</summary>
+    private string? CodeLine =>
+        Kilde is not { } kilde
+            ? null
+            : string.Join(" · ", new[]
+              {
+                  StickyNamed.Norwegian ? kilde.Code : null,
+                  kilde.ShortName,
+                  CatalogueDate.DayOrNothing(kilde.LastUpdated, Language) is { } day ? T.CodeLineUpdated(day) : null,
+              }.Where(part => !string.IsNullOrWhiteSpace(part))) is { Length: > 0 } line ? line : null;
+
+    /// <summary>The jump to the Variables section a caller passes; none where it passes none or there are no variables.</summary>
+    private string? JumpToVariables =>
+        Kilde is { TotalVariables: > 0 } kilde
+        && NamedSections?.Any(section => section.Id == DetailSectionIds.Variables) is true
+            ? T.JumpToVariables(kilde.TotalVariables)
+            : null;
+
+    private string? JumpToDataCollections =>
+        DataCollections.Count > 0 ? T.JumpToDataCollections(DataCollections.Count) : null;
+
     /// <summary>The identifiers beside the bar's name, on the name block's own terms.</summary>
     private string? StickyCode => IdentifierLine;
 

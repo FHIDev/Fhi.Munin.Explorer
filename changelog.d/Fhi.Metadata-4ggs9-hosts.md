@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **`KildeView` draws `munin-explorer-page__eyebrow` again (the kildetype) and a new `p.munin-explorer-kilde__jumps` holding two in-page links.** The eyebrow is the chassis class Fhi.Helsedata.Stiler already styles. The jumps paragraph needs a rule to sit its links side by side; the sample stylesheets show one, and Stiler owes it (Fhi.Metadata-a7oqn). `munin-explorer-kilde__identifiers` keeps its class but now reads «code · short name · sist oppdatert i katalogen <date>»; the sticky bar still shows «code (short name)».

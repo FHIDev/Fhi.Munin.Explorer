@@ -1,0 +1,2 @@
+category: Changed
+- **A kilde's page opens the way Skuld's top does: kildetype above the name, a dated code line, and two jump links.** The kildetype stands over the name again. The line under it reads «K_BDR · BDR · sist oppdatert i katalogen 24.08.2026» (en: «last updated in the catalogue»), each part only where it has a value. Under the description, «Vis 435 variabler →» and «Se de 5 datasamlingene →» jump to those sections (singular for one, left out at none, and the variables link only where the page has a Variabler section).
