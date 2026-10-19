@@ -18,7 +18,8 @@
                     <span lang="@StickyNameLang">@StickyName</span>
                     @if (!string.IsNullOrWhiteSpace(StickyCode))
                     {
-                        <small>@StickyCode</small>
+                        @* Razor trims whitespace at a code block's edge, so the space is written out. *@
+                        @(" ")<small>@StickyCode</small>
                     }
                 </span>
 
