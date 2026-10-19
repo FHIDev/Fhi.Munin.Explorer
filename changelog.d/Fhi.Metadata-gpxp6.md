@@ -1,3 +1,0 @@
-category: Changed
-- **The kilde page's fact row no longer shows Lovverk.** It is free text, up to a thousand characters, and stood the row up to 175 px tall; «Rettslig grunnlag» (or «Kildeinformasjon», where the catalogue places it nowhere) still shows it. The row now has five facts: type, data controller, identification level, data period and variable count.
-- **«Rettslig grunnlag» shows the legal basis once where the EHDS field repeats Lovverk.** When `hasLegalBasis` holds the same text as Lovverk (40 of 54 kilder on test, spacing ignored), only Lovverk is drawn; where it says something else, both are. «Alle metadatafelt» still lists every field.

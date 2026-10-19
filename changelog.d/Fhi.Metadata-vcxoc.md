@@ -1,2 +1,0 @@
-category: Changed
-- **`KildeView`, `VariableView`, `DatasamlingView` and `KildeSearch` name a kildetype in Munin's own word.** Each asks `/api/explorer/filters` once per language it is shown in and uses `kildeTyper[].displayName`, as `VariableSearch` already did, so an edit to Munin's master data now reaches the hero fact, the source information, the kilde trail, the kildeutforsker's Kildetype facet and its table column. Where the call fails, or the API sends no word of its own, the word shipped in this package is shown as before. No parameter was added or changed.
