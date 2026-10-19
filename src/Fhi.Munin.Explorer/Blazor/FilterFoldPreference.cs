@@ -10,13 +10,29 @@ internal sealed class FilterFoldPreference
 
     private bool _read;
     private int _presses;
+    private bool _unsaved;
 
     internal bool Collapsed { get; private set; }
 
     /// <summary>Reads the kept choice once the module is up; true when it changed what is drawn.</summary>
     internal async Task<bool> ReadOnceAsync(ExplorerInterop interop)
     {
-        if (_read || !interop.IsLoaded)
+        if (!interop.IsLoaded)
+        {
+            return false;
+        }
+
+        // A press made before the module was up is the newest choice: kept now, never read over.
+        if (_unsaved)
+        {
+            _unsaved = false;
+            _read = true;
+            await interop.WritePreferenceAsync(Key, Collapsed ? "1" : null);
+
+            return false;
+        }
+
+        if (_read)
         {
             return false;
         }
@@ -40,9 +56,17 @@ internal sealed class FilterFoldPreference
     internal Task ToggleAsync(ExplorerInterop? interop)
     {
         Collapsed = !Collapsed;
-        _read = true;
         _presses++;
 
-        return interop?.WritePreferenceAsync(Key, Collapsed ? "1" : null) ?? Task.CompletedTask;
+        if (interop is not { IsLoaded: true })
+        {
+            _unsaved = true;
+
+            return Task.CompletedTask;
+        }
+
+        _read = true;
+
+        return interop.WritePreferenceAsync(Key, Collapsed ? "1" : null);
     }
 }
