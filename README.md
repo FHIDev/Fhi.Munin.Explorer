@@ -978,7 +978,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-distribution__item` | handle |
   | `munin-explorer-distribution__label` | handle |
   | `munin-explorer-drilldown` | handle |
-  | `munin-explorer-drilldown__back` | handle |
   | `munin-explorer-figures` | handle |
   | `munin-explorer-figures__item` | handle |
   | `munin-explorer-figures__note` | handle |
@@ -1038,6 +1037,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilde__main` | handle |
   | `munin-explorer-kilder` | handle |
   | `munin-explorer-kilder-scroll` | meaning |
+  | `munin-explorer-kilder__back` | handle |
   | `munin-explorer-kilder__bar` | handle |
   | `munin-explorer-kilder__bar-fill` | handle |
   | `munin-explorer-kilder__count` | handle |

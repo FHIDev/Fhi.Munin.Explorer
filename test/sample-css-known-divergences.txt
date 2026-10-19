@@ -432,7 +432,7 @@ unstyled-name||.munin-explorer-kilde__description-toggle|
 unstyled-name||.munin-explorer-kilde__jumps|
 
 # The kilde back button, hidden from 768px where the trail shows (Fhi.Metadata-e4afs); Stiler rule owed by Fhi.Metadata-a7oqn.
-unstyled-name||.munin-explorer-drilldown__back|
+unstyled-name||.munin-explorer-kilder__back|
 
 
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector

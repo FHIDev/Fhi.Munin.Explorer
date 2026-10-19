@@ -2855,7 +2855,7 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.DoesNotContain("button-square--ghost", classes);
     }
 
-    // The trail is the way back where it is on screen; where the view that draws it is not, the button stays (Fhi.Metadata-esf2i).
+    // The button stays beside the trail; a host hides it where its trail shows (Fhi.Metadata-esf2i, e4afs).
     [Fact]
     public void Select_WhenTheHostGivesAListAddressAndTheKildeArrives_ThenTheBackButtonStaysBesideTheTrail()
     {
@@ -2869,11 +2869,10 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.Equal("/kilder", cut.Find("nav.breadcrumbs a").GetAttribute("href"));
         var back = Assert.Single(cut.FindAll(".munin-explorer-drilldown > button"));
-        Assert.Contains("munin-explorer-drilldown__back", back.ClassList);
+        Assert.Contains("munin-explorer-kilder__back", back.ClassList);
         Assert.Equal("Tilbake til kildeutforsker", back.TextContent.Trim().TrimStart('←', ' '));
     }
 
-    // Copilot on #576: the trail arriving must not take the focused control from under a keyboard reader.
     [Fact]
     public void Select_WhenTheKildeArrivesWhileLoading_ThenTheBackButtonIsThereBeforeAndAfter()
     {
@@ -2884,12 +2883,12 @@ public class KildeSearchTest : ExplorerTestContext
         var cut = RenderWith(client, b => b.Add(c => c.KilderHref, () => "/kilder"));
 
         cut.Find(".munin-explorer-kilder tbody th button").Click();
-        Assert.Single(cut.FindAll(".munin-explorer-drilldown > button.munin-explorer-drilldown__back"));
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown > button.munin-explorer-kilder__back"));
 
         client.AnswerStalled(new KildeDetail { Id = als.Id, Code = "K_ALS", PreferredTerm = "Als registeret" });
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("nav.breadcrumbs a")));
-        Assert.Single(cut.FindAll(".munin-explorer-drilldown > button.munin-explorer-drilldown__back"));
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown > button.munin-explorer-kilder__back"));
     }
 
     [Fact]
