@@ -1,2 +1,0 @@
-category: Added
-- **The filter panel can be folded away on a wide screen too, and the choice is remembered.** In Variabelutforsker and Kildeutforsker a «Skjul filtre / Vis filtre» button over the results folds the panel, and the list takes the whole width (about 400 px more at 1280 and above). The choice is kept in this browser and shared by both explorers; where storage is off it lasts for the page. On a phone the panel's own «Vis filtre» fold is unchanged.
