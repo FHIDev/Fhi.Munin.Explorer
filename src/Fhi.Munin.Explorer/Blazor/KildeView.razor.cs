@@ -309,7 +309,8 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
         _groups = CatalogueProperties.Groups(kilde.PropertyMetadata, _placement.Values, Reader,
                                              _placement.DrawnElsewhere,
-                                             CompleteRecord.Values(kilde, _placement.Values));
+                                             CompleteRecord.Values(kilde, _placement.Values),
+                                             RepeatedInRecord(kilde));
     }
 
     /// <summary>
@@ -378,11 +379,7 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
         // Its EHDS mirror repeats Lovverk on most kilder on test, as plain text and at times with a space
         // lost after a «;» (K_BDR), so spacing is ignored here (Fhi.Metadata-gpxp6).
-        if (Filled(kilde, "hasLegalBasis")
-            && kilde.AdditionalProperties["hasLegalBasis"] is { } mirror
-            && (CatalogueProperties.TaggedTexts(mirror) is { Count: > 0 } bases ? bases : [mirror])
-                .All(basis => SameText(Unspaced(basis), Unspaced(kilde.LegalBasis))
-                              && SameText(Unspaced(basis), Unspaced(PlacedLegalBasis(kilde)))))
+        if (LegalBasisMirrorRepeats(kilde))
         {
             keys.Add("hasLegalBasis");
         }
@@ -395,6 +392,45 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
         return keys;
     }
+
+    /// <summary>Keys the complete record leaves out because another of its rows already says the same.</summary>
+    /// <remarks>
+    /// Stripped of the storage qualifier, Formål and its tagged mirror read as one row twice (Fhi.Metadata-avypo).
+    /// A key goes only where its twin draws a labelled row, or the record would lose the text outright.
+    /// </remarks>
+    private IReadOnlySet<string> RepeatedInRecord(KildeDetail kilde)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+
+        if (Filled(kilde, "Formaal")
+            && Labelled(kilde, "FormaalFlerspraklig")
+            && Filled(kilde, "FormaalFlerspraklig")
+            && CatalogueProperties.TaggedTexts(kilde.AdditionalProperties["FormaalFlerspraklig"]) is { Count: > 0 } purposes
+            && purposes.All(purpose => SameText(purpose, kilde.AdditionalProperties["Formaal"])))
+        {
+            keys.Add("Formaal");
+        }
+
+        if (Labelled(kilde, CatalogueColumns.LegalBasis) && LegalBasisMirrorRepeats(kilde))
+        {
+            keys.Add("hasLegalBasis");
+        }
+
+        return keys;
+    }
+
+    private bool Labelled(KildeDetail kilde, string key) =>
+        kilde.PropertyMetadata.Any(entry =>
+            string.Equals(entry.Key, key, StringComparison.Ordinal)
+            && CatalogueProperties.Localised(entry.DisplayNameTranslations, Reader).Text is { } label
+            && !string.IsNullOrWhiteSpace(CatalogueProperties.WithoutStorageQualifier(label)));
+
+    private static bool LegalBasisMirrorRepeats(KildeDetail kilde) =>
+        Filled(kilde, "hasLegalBasis")
+        && kilde.AdditionalProperties["hasLegalBasis"] is { } mirror
+        && (CatalogueProperties.TaggedTexts(mirror) is { Count: > 0 } bases ? bases : [mirror])
+            .All(basis => SameText(Unspaced(basis), Unspaced(kilde.LegalBasis))
+                          && SameText(Unspaced(basis), Unspaced(PlacedLegalBasis(kilde))));
 
     // Nothing on either side is nothing to compare, not the same text.
     private static bool SameText(string? a, string? b) =>
