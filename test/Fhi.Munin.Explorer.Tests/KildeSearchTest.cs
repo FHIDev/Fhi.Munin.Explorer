@@ -385,6 +385,31 @@ public class KildeSearchTest : ExplorerTestContext
         public void AnswerDetail() => _detail.TrySetResult(Detail(kilder[0]));
     }
 
+    [Fact]
+    public async Task Trail_WhileTheOpenedKildeIsStillLoading_ThenItIsAlreadyDrawnAndOnlyOnceAfter()
+    {
+        // A host that hides the back button beside a trail flashed it while the kilde loaded,
+        // because the trail came with the kilde (Fhi.Metadata-l9l2n.127).
+        var als = Kilde("Als registeret", "K_ALS");
+        var client = new StagedClient(als);
+        var cut = RenderWith(client, b => b
+            .Add(c => c.SelectedKildeId, als.Id)
+            .Add(c => c.KilderHref, () => "/kilder"));
+
+        await cut.InvokeAsync(client.AnswerList);
+        await cut.InvokeAsync(client.AnswerVocabulary);
+
+        var loading = Assert.Single(cut.FindAll(".munin-explorer-drilldown .breadcrumbs"));
+        Assert.Equal(["Kildeutforsker", "Als registeret"],
+                     loading.QuerySelectorAll("li").Select(crumb => crumb.TextContent.Trim()));
+        Assert.Equal("true", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+
+        await cut.InvokeAsync(client.AnswerDetail);
+
+        cut.WaitForAssertion(() => Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy")));
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown .breadcrumbs"));
+    }
+
     /// <summary>Fails the list call, which is the API being down rather than the catalogue being empty.</summary>
     private sealed class FailingClient : EmptyMuninExplorerClient
     {
