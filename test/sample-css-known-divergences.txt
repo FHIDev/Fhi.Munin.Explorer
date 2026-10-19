@@ -558,3 +558,7 @@ invented-selector||.munin-explorer-meta__grid dd + dd|margin-top
 invented-selector||.munin-explorer-meta__grid dt|margin-bottom
 invented-selector||.munin-explorer-page__fields dd + dd|margin-top
 invented-selector||.munin-explorer-page__fields dt|margin-bottom
+
+# The wide screen's filter fold (Fhi.Metadata-amp8c); Stiler's rules are owed with it (Stiler patch to follow).
+unstyled-name||.munin-explorer-filters__collapse|
+unstyled-name||.munin-explorer-filters--collapsed|

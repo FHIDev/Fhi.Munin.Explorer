@@ -5526,3 +5526,34 @@ table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > th[scope=ro
   display: inline-flex;
   text-align: start;
 }
+
+/* The wide screen's filter fold (Fhi.Metadata-amp8c). Its button only where the panel is a sidebar; the
+   phone has «Vis filtre». Folded, the panel goes and the results take the whole width. */
+@media (max-width: 1023px) {
+  .munin-explorer-filters__collapse {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .munin-explorer > .munin-explorer-filters__collapse {
+    justify-self: start;
+  }
+
+  .munin-explorer:has(> .munin-explorer-filters--collapsed) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "head" "search" "results";
+  }
+
+  .munin-explorer:has(> .munin-explorer__lede):has(> .munin-explorer-filters--collapsed) {
+    grid-template-areas: "head" "lede" "search" "results";
+  }
+
+  .munin-explorer > .munin-explorer-filters--collapsed {
+    display: none;
+  }
+
+  .munin-explorer:has(> .munin-explorer-filters--collapsed) > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede) {
+    grid-column: 1 / -1;
+  }
+}
