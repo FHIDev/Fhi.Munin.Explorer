@@ -63,6 +63,11 @@
                         {
                             <a href="@VariablesHref">@variables<span aria-hidden="true"> →</span></a>
                         }
+                        @* A visible gap with any stylesheet: Stiler 0.1.182 sets the two links flush (Fhi.Metadata-47hlq). *@
+                        @if (JumpToVariables is not null && JumpToDataCollections is not null)
+                        {
+                            <span aria-hidden="true">&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+                        }
                         @if (JumpToDataCollections is { } collections)
                         {
                             <a href="@JumpHref(DetailSectionIds.DataCollections)">@collections<span aria-hidden="true"> →</span></a>
