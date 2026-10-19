@@ -18,7 +18,8 @@
                     <span lang="@StickyNameLang">@StickyName</span>
                     @if (!string.IsNullOrWhiteSpace(StickyCode))
                     {
-                        <small>@StickyCode</small>
+                        @* Blazor drops the whitespace between two tags, so the space is written out. *@
+                        @(" ")<small>@StickyCode</small>
                     }
                 </span>
 

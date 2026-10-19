@@ -511,6 +511,15 @@ public class DetailPageTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Stuckbar_WhenThereIsACode_ThenASpaceKeepsItApartFromTheName()
+    {
+        // «ALS RegisteretK_ALS (ALS)» on helsedata test (Fhi.Metadata-iecf0).
+        var name = RenderSticky(withActions: false).Find(".munin-explorer-page__stuckbar-name");
+
+        Assert.Contains("Tromsøundersøkelsen K_TR (Tromsø)", name.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Stuckbar_WhenTheCallerFilledTheActionRow_ThenTheBarRepeatsNoneOfIt()
     {
         // The fragment is the CALLER's. A second copy of it is a second tab stop for every control
