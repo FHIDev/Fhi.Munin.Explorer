@@ -432,7 +432,7 @@ public class ListRowPanelTest : ExplorerTestContext
         RemoveButton(cut, "Databaseversjon").Click();
 
         // The refusal's own alert, so the panel is checked after the removal was answered, not before it ran.
-        cut.WaitForAssertion(() => Assert.Contains("Kunne ikke endre listen nå.", cut.Markup, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke endre listen nå. Prøv igjen om litt.", PageAlert(cut)));
         Assert.Equal("true", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded"));
         Assert.NotNull(Panel(cut));
     }
@@ -517,9 +517,8 @@ public class ListRowPanelTest : ExplorerTestContext
         NameButton(cut, name).Click();
         cut.WaitForElement("[role=tablist]");
         cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Mine notater").Click();
-        IElement? label = null;
-        cut.WaitForAssertion(() => label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Egne notater"));
-        return cut.Find($"#{label!.GetAttribute("for")}");
+        cut.WaitForAssertion(() => OpenNotesField(cut));
+        return OpenNotesField(cut);
     }
 
     private static string NotesStatusText(IRenderedComponent<VariableListView> cut, IElement field) =>
