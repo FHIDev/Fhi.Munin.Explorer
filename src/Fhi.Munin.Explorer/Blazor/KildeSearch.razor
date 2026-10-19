@@ -795,9 +795,11 @@ else
                             {
                                 <td>@kilde.Code</td>
                             }
+                            @* Card: the cells a phone keeps under the name, with the counts' words in a
+                               `hidden` label only the host's narrow rule shows (Fhi.Metadata-ulkw3). *@
                             @if (ColumnVisible(KildeColumn.Kildetype))
                             {
-                                <td>@KildeTypeName(kilde.Kildetype)</td>
+                                <td class="munin-explorer-kilder__card">@KildeTypeName(kilde.Kildetype)</td>
                             }
                             <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
                             @* CatalogueLang and not Foreign: both are free text the catalogue wrote in Norwegian,
@@ -831,11 +833,11 @@ else
                                 @* «–» for none in Munin, as Variabler draws it (Fhi.Metadata-bzqtu). *@
                                 @if (kilde.DatasamlingCount == 0)
                                 {
-                                    <td class="@DimmedCountClass" style="position:relative"><span aria-hidden="true">–</span><span class="screenreader-only">@T.NoDatasamlingerInMunin</span></td>
+                                    <td class="@DimmedCountClass munin-explorer-kilder__card" style="position:relative">@CardLabel(T.HeadingDataCollections)<span aria-hidden="true">–</span><span class="screenreader-only">@T.NoDatasamlingerInMunin</span></td>
                                 }
                                 else
                                 {
-                                    <td class="@CountClass(kilde.DatasamlingCount).Class">@kilde.DatasamlingCount</td>
+                                    <td class="@CountClass(kilde.DatasamlingCount).Class munin-explorer-kilder__card">@CardLabel(T.HeadingDataCollections)@kilde.DatasamlingCount</td>
                                 }
                             }
                             @if (ColumnVisible(KildeColumn.Variables))
@@ -849,12 +851,12 @@ else
                                 @if (kilde.TotalVariables == 0)
                                 {
                                     @* position:relative for the reason UnmeasuredShare gives: the hidden words must stay in the cell. *@
-                                    <td class="@variables.Class" style="position:relative"><span aria-hidden="true">–</span><span class="screenreader-only">@T.NoVariablesInMunin</span></td>
+                                    <td class="@variables.Class munin-explorer-kilder__card" style="position:relative">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))<span aria-hidden="true">–</span><span class="screenreader-only">@T.NoVariablesInMunin</span></td>
                                 }
                                 else
                                 {
                                 var barWords = BarWords(kilde, largestOfType);
-                                <td class="@variables.Class" style="position:relative" title="@($"{kilde.TotalVariables} {barWords}")">@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}<span class="screenreader-only">@($" {barWords}")</span></td>
+                                <td class="@variables.Class munin-explorer-kilder__card" style="position:relative" title="@($"{kilde.TotalVariables} {barWords}")">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}<span class="screenreader-only">@($" {barWords}")</span></td>
                                 }
                             }
                             @if (ColumnVisible(KildeColumn.KodeverkShare))
@@ -929,6 +931,11 @@ else
 </CascadingValue>
 
 @code {
+    // The column's word for the card a phone draws; `hidden` until the host's narrow rule shows it,
+    // so a stylesheet without that rule draws the table exactly as before (Fhi.Metadata-ulkw3).
+    private static RenderFragment CardLabel(string words) =>
+        @<span class="munin-explorer-kilder__card-label" hidden>@($"{words} ")</span>;
+
     // Null is a kilde with no variables to measure and 0 is a measured none, so they must not read
     // alike: the dash is hidden and spoken as words, and both are dimmed as a nought count is. The
     // number is the API's own, already rounded, so nothing here rounds it again.

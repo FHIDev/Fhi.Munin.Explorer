@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **Two new names for the phone's kilde cards.** The kildetype, datasamlinger and variabler cells wear `munin-explorer-kilder__card`, and the two counts start with a `munin-explorer-kilder__card-label` that is `hidden` in the markup, so a stylesheet without a rule for them draws the table exactly as before. Stiler's rule under 768px turns the rows into cards and shows the labels; the samples carry a copy.

@@ -1,0 +1,2 @@
+category: Changed
+- **On a phone the kilde list is a list of cards, not a table to scroll sideways.** Under 768px each kilde shows its name, kildetype, the number of datasamlinger and the variable count with its bar, and the head stays as a sort line with Navn and Variabler. Wider screens are unchanged. The cards need the host's stylesheet (Fhi.Helsedata.Stiler); without it the table is drawn as before.
