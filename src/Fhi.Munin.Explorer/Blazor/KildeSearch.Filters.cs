@@ -488,6 +488,11 @@ public sealed partial class KildeSearch
         }
     }
 
+    private readonly FilterFoldPreference _filterFold = new();
+
+    private Task ToggleCollapseFromControl(MouseEventArgs released) =>
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : _filterFold.ToggleAsync(_interop);
+
     // The standing half of the question this component's own chevron asks, and all of it that
     // applies: the panel keeps no press, so RowPress's drag clause cannot be read here.
     // (Fhi.Metadata-zel47)

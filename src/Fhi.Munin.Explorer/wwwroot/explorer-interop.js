@@ -435,3 +435,25 @@ export function watchFolds() {
     }
   }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
 }
+
+// A reader's own setting, kept in this browser only (Fhi.Metadata-amp8c). Storage can be off, full or
+// private, so a failure reads as "no setting" and a write that fails is dropped.
+export function readPreference(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function writePreference(key, value) {
+  try {
+    if (value === null) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, value);
+    }
+  } catch {
+    // Not kept, and nothing else depends on it.
+  }
+}

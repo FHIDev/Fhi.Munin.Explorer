@@ -261,7 +261,7 @@ else
        this one follows the heading it belongs to. (Fhi.Metadata-l9l2n.53) *@
     @if (Facets is { Count: > 0 } facets)
     {
-        <div class="munin-explorer-filters">
+        <div class="munin-explorer-filters@(_filterFold.Collapsed ? " munin-explorer-filters--collapsed" : "")">
             @FiltersHeading
 
             @* aria-expanded describes the attribute below it and nothing else. On a screen wide
@@ -429,6 +429,14 @@ else
                 }
             </div>
         </div>
+
+        @* The wide screen's own fold, beside the panel so it stays when the panel is folded away;
+           apart from the phone's, which starts shut where this starts open. (Fhi.Metadata-amp8c) *@
+        <button class="hd-button-square button-square--ghost margin-bottom munin-explorer-filters__collapse"
+                type="button"
+                aria-expanded="@(_filterFold.Collapsed ? "false" : "true")"
+                aria-controls="@FacetsId"
+                @onclick="ToggleCollapseFromControl">@(_filterFold.Collapsed ? T.ShowFilters : T.HideFilters)</button>
     }
 
     @* Which filters are on, said over the results because the panel can be folded away or
