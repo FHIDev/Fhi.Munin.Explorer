@@ -15,7 +15,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <remarks>
 /// NOT the placement leftovers: the seeded catch-all holds 53 of the Tromsø payload's 73 definitions,
 /// so rows come from every entry with a value, duplicates included (Fhi.Metadata-35w0p.21), except
-/// a mirror whose text repeats its twin's (Fhi.Metadata-avypo).
+/// a field whose twin draws the same text in a row of its own (Fhi.Metadata-avypo).
 /// </remarks>
 public class CompleteRecordTest : ExplorerTestContext
 {
@@ -422,6 +422,24 @@ public class CompleteRecordTest : ExplorerTestContext
         var cut = RenderKilde(tromso with
         {
             PropertyMetadata = [.. tromso.PropertyMetadata.Where(entry => entry.Key != "FormaalFlerspraklig")],
+        });
+
+        Assert.Single(RecordLabels(cut), label => label == "Formål");
+    }
+
+    [Fact]
+    public void CompleteRecord_WhenTheTaggedPurposeIsLabelledOnlyByItsQualifier_ThenThePlainOneStays()
+    {
+        // «(språkmerket)» alone strips to nothing, so the mirror draws no row of its own.
+        var tromso = Tromso();
+        var cut = RenderKilde(tromso with
+        {
+            PropertyMetadata =
+            [
+                .. tromso.PropertyMetadata.Select(entry => entry.Key == "FormaalFlerspraklig"
+                    ? entry with { DisplayNameTranslations = new Dictionary<string, string> { ["no"] = " (språkmerket)" } }
+                    : entry),
+            ],
         });
 
         Assert.Single(RecordLabels(cut), label => label == "Formål");

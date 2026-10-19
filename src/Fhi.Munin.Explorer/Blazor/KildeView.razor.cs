@@ -395,9 +395,8 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
     /// <summary>Keys the complete record leaves out because another of its rows already says the same.</summary>
     /// <remarks>
-    /// Once the storage qualifier is stripped, Formål and its language-tagged mirror read as two identical
-    /// rows under one label, so only the mirror is kept, and only where it says the same (Fhi.Metadata-avypo).
-    /// A key goes only where its twin has a label of its own, or the record would lose the text outright.
+    /// Stripped of the storage qualifier, Formål and its tagged mirror read as one row twice (Fhi.Metadata-avypo).
+    /// A key goes only where its twin draws a labelled row, or the record would lose the text outright.
     /// </remarks>
     private IReadOnlySet<string> RepeatedInRecord(KildeDetail kilde)
     {
