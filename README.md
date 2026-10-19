@@ -901,10 +901,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     is of this kind today. It stays because `assert-class-names-listed.sh` and
     `assert-sample-css-in-step.sh` read comments too, so a comment that names a class still needs
     a row here and a rule in both samples.
-  - `attribute` — not a class and not an id: part of an attribute name.
-    `munin-explorer-version` is the whole of this kind, read out of
-    `data-munin-explorer-version` on every root element, so `.munin-explorer-version` selects
-    nothing and no stylesheet can have a rule for it.
+  - `attribute` — not a class and not an id: part of an attribute name, or a custom property.
+    `munin-explorer-version` is read out of `data-munin-explorer-version` on every root element,
+    and `munin-explorer-stuckbar-height` out of `--munin-explorer-stuckbar-height`, the shown
+    sticky bar's height the browser module sets on a detail page's root for Stiler's contents
+    list to clear. Neither selects anything, and no stylesheet can have a rule for either.
 
   <!-- class-names:start -->
   | Class name | Kind |
@@ -1113,6 +1114,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-skiplink-pagination` | handle |
   | `munin-explorer-source` | id |
   | `munin-explorer-statistics` | handle |
+  | `munin-explorer-stuckbar-height` | attribute |
   | `munin-explorer-switch` | handle |
   | `munin-explorer-switch__thumb` | meaning |
   | `munin-explorer-switch__track` | meaning |
