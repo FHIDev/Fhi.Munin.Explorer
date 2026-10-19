@@ -14,8 +14,8 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 /// <remarks>
 /// NOT the placement leftovers: the seeded catch-all holds 53 of the Tromsø payload's 73 definitions,
-/// so rows come from every entry with a value, duplicates included. That duplication is the
-/// requirement, so nothing here asserts a field appears once (Fhi.Metadata-35w0p.21).
+/// so rows come from every entry with a value, duplicates included (Fhi.Metadata-35w0p.21). The one
+/// exception is a language-tagged mirror that repeats its twin word for word (Fhi.Metadata-avypo).
 /// </remarks>
 public class CompleteRecordTest : ExplorerTestContext
 {
@@ -215,14 +215,15 @@ public class CompleteRecordTest : ExplorerTestContext
 
     /// <summary>
     /// What the section draws on the Tromsø payload: the 30 of its 73 definitions that have a
-    /// value, plus the four facts no property definition carries.
+    /// value, less the plain Formål its tagged mirror repeats, plus the four facts no property
+    /// definition carries.
     /// </summary>
     /// <remarks>
     /// Pinned rather than bounded. The two wrong answers this bead has been rewritten against are
     /// 53 — the placement leftovers — and the 8 this payload drew while the catch-all was an
     /// ordinary group, so a count that only said "more than a handful" would not tell them apart.
     /// </remarks>
-    private const int TromsoRecordRows = 34;
+    private const int TromsoRecordRows = 33;
 
     [Fact]
     public void CompleteRecord_OnTheCapturedPayload_ThenItListsEveryFieldThatHasAValue()
@@ -360,7 +361,73 @@ public class CompleteRecordTest : ExplorerTestContext
     }
 
     // -----------------------------------------------------------------------
+    // Fhi.Metadata-avypo — a language-tagged mirror that repeats its twin is listed once
+
+    [Fact]
+    public void Record_WhenTheTaggedPurposeRepeatsThePlainOne_ThenFormalIsListedOnce()
+    {
+        // Tromsø holds the same purpose in Formaal and in a one-entry FormaalFlerspraklig.
+        var cut = RenderKilde(Tromso());
+
+        Assert.Single(RecordLabels(cut), label => label == "Formål");
+    }
+
+    [Fact]
+    public void Record_WhenTheTaggedPurposeAlsoHoldsEnglish_ThenBothRowsStay()
+    {
+        var tromso = Tromso();
+        var purpose = tromso.AdditionalProperties["Formaal"] ?? "";
+        var cut = RenderKilde(tromso with
+        {
+            AdditionalProperties = With(tromso, ("FormaalFlerspraklig", JsonSerializer.Serialize(new[]
+            {
+                new { value = purpose, language = "nb" },
+                new { value = "Research on cardiovascular disease and other public health challenges.", language = "en" },
+            }))),
+        });
+
+        Assert.Equal(2, RecordLabels(cut).Count(label => label == "Formål"));
+    }
+
+    [Fact]
+    public void Record_WhenTheLegalBasisMirrorRepeatsLovverk_ThenOnlyLovverkIsListed()
+    {
+        const string basis = "Forskrift om befolkningsbaserte helseundersøkelser § 3.";
+        var tromso = Tromso();
+        var cut = RenderKilde(tromso with
+        {
+            LegalBasis = basis,
+            AdditionalProperties = With(tromso, ("Lovverk", basis), ("hasLegalBasis", basis)),
+        });
+
+        Assert.Contains("Lovverk", RecordLabels(cut));
+        Assert.DoesNotContain("Rettslig grunnlag", RecordLabels(cut));
+    }
+
+    [Fact]
+    public void Record_WhenTheLegalBasisMirrorSaysSomethingElse_ThenBothAreListed()
+    {
+        // Tromsø's Lovverk is a lovdata address and its hasLegalBasis a list of acts.
+        var labels = RecordLabels(RenderKilde(Tromso()));
+
+        Assert.Contains("Lovverk", labels);
+        Assert.Contains("Rettslig grunnlag", labels);
+    }
+
+    // -----------------------------------------------------------------------
     // Helpers
+
+    private static Dictionary<string, string?> With(KildeDetail kilde, params (string Key, string? Value)[] values)
+    {
+        var bag = new Dictionary<string, string?>(kilde.AdditionalProperties, StringComparer.Ordinal);
+
+        foreach (var (key, value) in values)
+        {
+            bag[key] = value;
+        }
+
+        return bag;
+    }
 
     /// <summary>The heading a curator's rename puts over the section in the two tests that use it.</summary>
     private const string Retitled = "Hele registreringen";

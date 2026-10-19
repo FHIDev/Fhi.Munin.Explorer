@@ -428,6 +428,7 @@ internal static class CatalogueProperties
     /// <paramref name="completeRecordValues"/> is the one section meant to repeat, so the
     /// <see cref="CatchAllGroupKey"/> group is built from the whole payload, not its own members.
     /// Null draws it as an ordinary group, which is what an API without the key sends.
+    /// <paramref name="repeatedInRecord"/> are keys whose text another row of that record already shows.
     /// </para>
     /// <para>
     /// <paramref name="values"/> is nullable for the reason <see cref="Rows"/> gives, and taken the
@@ -440,7 +441,8 @@ internal static class CatalogueProperties
         IReadOnlyDictionary<string, string?>? values,
         string reader,
         IReadOnlySet<string>? drawnElsewhere = null,
-        IReadOnlyDictionary<string, string?>? completeRecordValues = null)
+        IReadOnlyDictionary<string, string?>? completeRecordValues = null,
+        IReadOnlySet<string>? repeatedInRecord = null)
     {
         var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
         var groups = new List<Gathering>();
@@ -490,7 +492,7 @@ internal static class CatalogueProperties
                            && string.Equals(group.Key, CatchAllGroupKey, StringComparison.Ordinal);
 
             var rows = complete
-                ? Rows(metadata, completeRecordValues, reader)
+                ? Rows(metadata, completeRecordValues, reader, repeatedInRecord)
                 : Rows(group.Entries, present, reader);
 
             if (rows.Count == 0)
