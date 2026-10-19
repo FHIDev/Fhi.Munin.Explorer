@@ -823,7 +823,7 @@ internal sealed record Texts(
     string DatasamlingColumnHint,
     // Read after a link to another site, which opens in a new window (WCAG 3.2.5, G201).
     string OpensInNewWindow,
-    // The kilde's helsedata access levels in its fact row (M9, Fhi.Metadata-d7vf4).
+    // The kilde's helsedata.no access levels in its fact row (Fhi.Metadata-l9l2n.129).
     string FieldAccessLevels)
 {
     /// <summary>

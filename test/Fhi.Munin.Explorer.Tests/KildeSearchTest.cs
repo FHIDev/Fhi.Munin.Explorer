@@ -389,6 +389,20 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Facets_WhenALinkCarriesAnOldEuAccessValue_ThenItMatchesNoKildeAndOffersNoCheckbox()
+    {
+        // The facet read the EU accessRights token before Fhi.Metadata-l9l2n.129; a saved link still says so.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS", accessRights: "tilgang-krever-soknad")),
+            p => p.Add(c => c.FacetChoices, new Dictionary<string, IReadOnlyList<string>>
+            {
+                ["tilgangsniva"] = ["eu-access:NON_PUBLIC"],
+            }));
+
+        Assert.Empty(RowNames(cut));
+        Assert.DoesNotContain(Choices(Facet(cut, "Tilgangsnivå")), choice => choice.Contains("eu-access", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Facets_WhenAKildeHasSeveralAccessLevels_ThenTheFacetListsThemInHelsedatasOrderNotTheAlphabets()
     {
         // Robin 19.10 (M9): the facet is helsedata.no's own list, and it reads in helsedata.no's order.

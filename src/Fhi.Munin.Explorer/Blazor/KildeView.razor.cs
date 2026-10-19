@@ -573,7 +573,7 @@ public sealed partial class KildeView : ComponentBase, IDisposable
             ];
 
     /// <summary>
-    /// The five facts a source leads with, in the order the mockup puts them.
+    /// The six facts a source leads with, in the order the mockup puts them, the access levels last.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -607,7 +607,7 @@ public sealed partial class KildeView : ComponentBase, IDisposable
             ];
 
     /// <summary>
-    /// The kilde's helsedata access levels where Lovverk once stood, one per line (Robin, M6/M9); none drops the cell.
+    /// The kilde's helsedata.no access levels, one per line (Fhi.Metadata-l9l2n.129); none drops the cell.
     /// </summary>
     private DetailFact AccessFact(KildeDetail kilde)
     {

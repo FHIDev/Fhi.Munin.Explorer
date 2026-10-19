@@ -5,7 +5,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 
 /// <summary>
 /// A kilde's «Tilgangsnivå» on helsedata.no: Munin's kilde-scoped multi-select of four codes, curated apart from the
-/// EU access-rights token (M9, Fhi.Metadata-d7vf4).
+/// EU access-rights token (Fhi.Metadata-d7vf4).
 /// </summary>
 internal static class AccessLevels
 {
