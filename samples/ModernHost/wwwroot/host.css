@@ -5528,3 +5528,181 @@ table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > th[scope=ro
   display: inline-flex;
   text-align: start;
 }
+
+/* The wide screen's filter fold (Fhi.Metadata-amp8c). Its button only where the panel is a sidebar; the
+   phone has «Vis filtre». Folded, the panel goes and the results take the whole width. */
+@media (max-width: 1023px) {
+  .munin-explorer-filters__collapse {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .munin-explorer > .munin-explorer-filters__collapse {
+    justify-self: start;
+  }
+
+  .munin-explorer:has(> .munin-explorer-filters--collapsed) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "head" "search" "results";
+  }
+
+  .munin-explorer:has(> .munin-explorer__lede):has(> .munin-explorer-filters--collapsed) {
+    grid-template-areas: "head" "lede" "search" "results";
+  }
+
+  .munin-explorer > .munin-explorer-filters--collapsed {
+    display: none;
+  }
+
+  .munin-explorer:has(> .munin-explorer-filters--collapsed) > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---- Stiler base/_global: a link to another site ----
+
+   Stiler marks every `a[target="_blank"]` with its own new-window icon, and the catalogue's links
+   to another host now open that way (Fhi.Metadata-c8lgk). Read back off Stiler 0.1.178. */
+a[target=_blank]:not(.hd-button-square)::after {
+  content: "";
+  width: 1em;
+  height: 1em;
+  background-size: 1em;
+  display: inline-block;
+  vertical-align: text-bottom;
+  margin: 0 0 0 8px;
+  background-image: url(../img/icons/icon_link--primary-dark.svg);
+}
+
+a[target=_blank]:not(.hd-button-square):hover::after {
+  background-image: url(../img/icons/icon_link--primary.svg);
+}
+
+a[target=_blank]:not(.hd-button-square):focus::after {
+  text-decoration: none;
+  background-image: url(../img/icons/icon_link--primary.svg);
+}
+
+/* ---- Stiler, under components/munin-explorer: the kilde list as cards on a phone ----
+
+   Fhi.Metadata-ulkw3 (Robin, 2026-10-19). Under 768px each kilde is a card: name, kildetype, the
+   datasamlinger count and the variable bar; the other columns and the sideways scroll go. The head
+   stays as a sort line with Navn and Variabler. `__card-label` is `hidden` in the markup, so a
+   stylesheet without these rules draws the table as before. Read back off Stiler's patch for it. */
+@media all and (max-width: 767px) {
+  .munin-explorer-kilder,
+  .munin-explorer-kilder > thead,
+  .munin-explorer-kilder > tbody {
+    display: block;
+  }
+  /* The head sits in the cards' grid, so the box, Navn and Variabler stand over their columns. */
+  .munin-explorer-kilder > thead > tr,
+  .munin-explorer-kilder > tbody > tr {
+    display: grid;
+    grid-template-columns: 2rem auto minmax(0, 1fr) minmax(0, 1fr);
+    gap: 4px 16px;
+  }
+  .munin-explorer-kilder > thead > tr {
+    align-items: center;
+    border-bottom: 1px solid var(--grey30);
+  }
+  .munin-explorer-kilder > thead > tr > th {
+    display: none;
+  }
+  .munin-explorer-kilder > thead > tr > th:is(.munin-explorer-kilder-header__select, .munin-explorer-kilder-header__navn, .munin-explorer-kilder-header__variabler) {
+    display: block;
+    border-bottom: 0;
+    padding: 8px 0;
+  }
+  .munin-explorer-kilder > thead > tr > .munin-explorer-kilder-header__select {
+    grid-column: 2;
+  }
+  .munin-explorer-kilder > thead > tr > .munin-explorer-kilder-header__navn {
+    grid-column: 3;
+  }
+  .munin-explorer-kilder > thead > tr > .munin-explorer-kilder-header__variabler {
+    grid-column: 4;
+    text-align: left;
+  }
+  .munin-explorer-kilder > tbody > tr {
+    align-items: baseline;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--grey30);
+  }
+  /* The drawer row is the drawer alone: no padding or rule of its own between it and the card. */
+  .munin-explorer-kilder > tbody > tr:has(> .munin-explorer-kilder__expanded) {
+    padding: 0;
+    border-bottom: 0;
+  }
+  /* The hover goes on the whole card; on the cells it left grey patches with white gaps between. */
+  .munin-explorer-kilder > tbody > tr:is(:hover, :focus-within):not(:has(> .munin-explorer-kilder__expanded)) {
+    background: var(--grey20);
+  }
+  .munin-explorer-kilder > tbody > tr:hover > th,
+  .munin-explorer-kilder > tbody > tr:hover > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded),
+  .munin-explorer-kilder > tbody > tr:focus-within > th,
+  .munin-explorer-kilder > tbody > tr:focus-within > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded) {
+    background: transparent;
+  }
+  .munin-explorer-kilder > tbody > tr > :is(th, td) {
+    display: none;
+    border-bottom: 0;
+    padding: 0;
+  }
+  .munin-explorer-kilder > tbody > tr > :is(th[scope=row], .munin-explorer-kilder__expand, .munin-explorer-kilder__select, .munin-explorer-kilder__card, .munin-explorer-kilder__expanded) {
+    display: block;
+  }
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expand {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__select {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .munin-explorer-kilder > tbody > tr > th[scope=row] {
+    grid-column: 3/-1;
+    grid-row: 1;
+    min-width: 0;
+  }
+  /* «Skjermbildeundersøkelsene» is wider than the column at 320px. */
+  .munin-explorer-kilder > tbody > tr > th[scope=row] .munin-explorer-kilder__name {
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card:not(.munin-explorer-kilder__count) {
+    grid-column: 3/-1;
+    color: var(--grey60);
+  }
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__count {
+    grid-row: 3;
+    grid-column: 3;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__card--variabler {
+    grid-column: 4;
+  }
+  .munin-explorer-kilder .munin-explorer-kilder__card-label[hidden] {
+    display: inline;
+    color: var(--grey60);
+  }
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded {
+    grid-column: 1/-1;
+  }
+  /* «Vis alle variabler i …» in the drawer is wider than the card at 360px, so it wraps. */
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded .hd-button-square {
+    height: auto;
+    white-space: normal;
+  }
+}
+/* Up to 400px the two counts do not fit side by side (360 and 375 overflowed by 37 and 22px), so
+   they stack. */
+@media all and (max-width: 400px) {
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__count,
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__card--variabler {
+    grid-row: auto;
+    grid-column: 3/-1;
+  }
+}

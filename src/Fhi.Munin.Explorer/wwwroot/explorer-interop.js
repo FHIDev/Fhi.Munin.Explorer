@@ -10,6 +10,9 @@
 /** The class Fhi.Helsedata.Stiler draws a shown bar with. */
 const SHOWN = 'munin-explorer-page__stuckbar--on';
 
+/** The shown bar's height on the page root, which Stiler's sticky contents list clears. */
+const STUCK_HEIGHT = '--munin-explorer-stuckbar-height';
+
 // One observer per mounted detail page, keyed by its own bar's id. Two explorers on one host page
 // each have an entry of their own, so neither can drive or disconnect the other's bar.
 const observers = new Map();
@@ -29,6 +32,15 @@ export function observeHeroFacts(barId, factsId) {
   }
 
   disconnectHeroFacts(barId);
+
+  const page = bar.closest('.munin-explorer-page');
+  const inner = bar.querySelector('.munin-explorer-page__stuckbar-inner');
+
+  // Measured, not assumed: a long name wraps the bar from 77px to 126px at 1280, and a hidden bar
+  // measures 0, so the observer below follows showing and hiding too (Fhi.Metadata-l9l2n.125).
+  const publish = () => {
+    page?.style.setProperty(STUCK_HEIGHT, `${Math.ceil(inner.getBoundingClientRect().height)}px`);
+  };
 
   let above = false;
   const update = () => {
@@ -71,9 +83,17 @@ export function observeHeroFacts(barId, factsId) {
     update();
   });
 
+  const resized = new ResizeObserver(publish);
+
+  if (inner !== null) {
+    resized.observe(inner);
+  }
+
   observer.observe(facts);
   observers.set(barId, () => {
     observer.disconnect();
+    resized.disconnect();
+    page?.style.removeProperty(STUCK_HEIGHT);
     bar.removeEventListener('focusout', focusout);
     window.removeEventListener('hashchange', reread);
     document.removeEventListener('scrollend', reread, { capture: true });
@@ -426,4 +446,26 @@ export function watchFolds() {
       }
     }
   }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+}
+
+// A reader's own setting, kept in this browser only (Fhi.Metadata-amp8c). Storage can be off, full or
+// private, so a failure reads as "no setting" and a write that fails is dropped.
+export function readPreference(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function writePreference(key, value) {
+  try {
+    if (value === null) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, value);
+    }
+  } catch {
+    // Not kept, and nothing else depends on it.
+  }
 }

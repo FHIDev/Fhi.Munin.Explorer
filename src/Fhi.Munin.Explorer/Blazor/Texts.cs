@@ -820,7 +820,9 @@ internal sealed record Texts(
     string ChooseDatasamlingNone,
     string ChooseDatasamlingError,
     // Why the result list's Datasamling column cannot be turned off.
-    string DatasamlingColumnHint)
+    string DatasamlingColumnHint,
+    // Read after a link to another site, which opens in a new window (WCAG 3.2.5, G201).
+    string OpensInNewWindow)
 {
     /// <summary>
     /// The label for a sort order. Every one that names a field uses the same words the result
@@ -1682,7 +1684,8 @@ internal sealed record Texts(
         ChooseDatasamlingSave: "Lagre valget",
         ChooseDatasamlingNone: "Velg minst én datasamling.",
         ChooseDatasamlingError: "Kunne ikke lagre valget nå. Prøv igjen om litt.",
-        DatasamlingColumnHint: "Datasamling vises alltid, fordi den skiller radene for samme variabel.");
+        DatasamlingColumnHint: "Datasamling vises alltid, fordi den skiller radene for samme variabel.",
+        OpensInNewWindow: "(åpnes i nytt vindu)");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2223,7 +2226,8 @@ internal sealed record Texts(
         ChooseDatasamlingSave: "Save choice",
         ChooseDatasamlingNone: "Choose at least one datasamling.",
         ChooseDatasamlingError: "Could not save the choice right now. Try again shortly.",
-        DatasamlingColumnHint: "Datasamling is always shown, because it tells a variable's rows apart.");
+        DatasamlingColumnHint: "Datasamling is always shown, because it tells a variable's rows apart.",
+        OpensInNewWindow: "(opens in a new window)");
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>

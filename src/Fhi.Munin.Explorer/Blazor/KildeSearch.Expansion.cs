@@ -97,6 +97,8 @@ public sealed partial class KildeSearch : IAsyncDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await ReadFilterFoldAsync();
+
         var restore = _scrollPending && _expandedSeeded && _datasamlingerLoading.Count == 0;
         var remember = !_scrollRemembered && _expanded.Count > 0;
 
@@ -143,6 +145,22 @@ public sealed partial class KildeSearch : IAsyncDisposable
         if (_disposed)
         {
             await ReleaseAsync(interop);
+        }
+    }
+
+    // The wide screen's kept fold, read once the module is up (Fhi.Metadata-amp8c).
+    private async Task ReadFilterFoldAsync()
+    {
+        if (_disposed || Facets is not { Count: > 0 } || (_interop is null && Services.GetService<IJSRuntime>() is null))
+        {
+            return;
+        }
+
+        var interop = _interop ??= new ExplorerInterop(Services.GetRequiredService<IJSRuntime>());
+
+        if (await interop.TryLoadAsync() && await _filterFold.ReadOnceAsync(interop))
+        {
+            StateHasChanged();
         }
     }
 

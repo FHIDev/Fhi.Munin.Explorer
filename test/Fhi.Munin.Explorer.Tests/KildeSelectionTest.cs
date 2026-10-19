@@ -671,6 +671,7 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer",                    // shared with the variable explorer
             "munin-explorer-container",          // shared
             "munin-explorer-filters",            // shared
+            "munin-explorer-filters__collapse",  // the wide screen's fold (Fhi.Metadata-amp8c)
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__groupcount", // a facet's size (Fhi.Metadata-35w0p.53)
@@ -696,6 +697,9 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer-kilder-scroll--cols-8",
             "munin-explorer-kilder__bar",        // the proportion bar (Fhi.Metadata-35w0p.30)
             "munin-explorer-kilder__bar-fill",
+            "munin-explorer-kilder__card",       // the phone's card (Fhi.Metadata-ulkw3)
+            "munin-explorer-kilder__card--variabler",
+            "munin-explorer-kilder__card-label",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
             "munin-explorer-kilder__expand-icon",

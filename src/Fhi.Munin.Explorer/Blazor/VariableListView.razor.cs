@@ -127,6 +127,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     private int _seenKildeFilter;
     private bool _loading;
     private bool _foldsWatched;
+    private bool _watchingFolds;
+    private bool _foldsAskSkipped;
     private bool _failed;
     private bool _askedOnMount;
     private bool _retryingLists;
@@ -655,9 +657,31 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         }
 
         // Its own menus close on a press outside them also when a host mounts the list without the search.
-        if (!_foldsWatched)
+        // In flight counts as asked, since renders overlap here; a render skipped that way is owed
+        // one more ask if the call fails, or none may come (Fhi.Metadata-qpyrx).
+        if (_watchingFolds)
         {
-            _foldsWatched = await ExplorerInterop.WatchFoldsAsync(Js);
+            _foldsAskSkipped = true;
+        }
+        else if (!_foldsWatched)
+        {
+            _watchingFolds = true;
+            _foldsAskSkipped = false;
+
+            try
+            {
+                _foldsWatched = await ExplorerInterop.WatchFoldsAsync(Js);
+            }
+            finally
+            {
+                _watchingFolds = false;
+            }
+
+            if (!_foldsWatched && _foldsAskSkipped)
+            {
+                _foldsAskSkipped = false;
+                StateHasChanged();
+            }
         }
     }
 

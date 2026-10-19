@@ -58,6 +58,7 @@
    the host's circuit and ships no versioned static asset to fingerprint. (Fhi.Metadata-sqbei) *@
 @* lang, because the host's <html lang> need not follow the reader: helsedata's /en/ pages say "no",
    and everything unmarked in here inherits it (WCAG 3.1.2, Fhi.Metadata-nh7z2). *@
+<CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 <section class="munin-explorer"
          data-munin-explorer-version="@ExplorerVersion.Current"
          lang="@Reader"
@@ -339,11 +340,19 @@ else
                 aria-controls="@FacetsId"
                 @onclick="ToggleFiltersFromControl">@(_filtersOpen ? T.HideFilters : T.ShowFilters)</button>
 
+        @* The wide screen's own fold, kept apart from the phone's: there the panel starts open, here
+           shut, so one aria-expanded could not be true for both. (Fhi.Metadata-amp8c) *@
+        <button class="hd-button-square button-square--ghost margin-bottom munin-explorer-filters__collapse"
+                type="button"
+                aria-expanded="@(_filterFold.Collapsed ? "false" : "true")"
+                aria-controls="@FacetsId"
+                @onclick="ToggleCollapseFromControl">@(_filterFold.Collapsed ? T.ShowFilters : T.HideFilters)</button>
+
         @* `data-level-lines` rather than a class of our own. A class on the <ul> already there would
            render fine unstyled; what it would cost is inventory — the README contract, both sample
            stylesheets and the name guard. A host that ignores the marker loses lines, not
            information. (Fhi.Metadata-wcbxi) *@
-        <fieldset class="form-fieldset munin-explorer-filters munin-explorer-filters__facets"
+        <fieldset class="form-fieldset munin-explorer-filters munin-explorer-filters__facets@(_filterFold.Collapsed ? " munin-explorer-filters--collapsed" : "")"
                   id="@FacetsId"
                   hidden="@(!_filtersOpen)"
                   aria-busy="@FiltersBusy"
@@ -1012,6 +1021,7 @@ else
     }
 }
 </section>
+</CascadingValue>
 
 @code {
     @* One toolbar switch, the shape Nivålinjer and Ikoner are both drawn from. aria-checked is the

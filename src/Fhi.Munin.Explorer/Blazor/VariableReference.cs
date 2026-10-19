@@ -44,13 +44,12 @@ internal static class VariableReference
         builder.OpenElement(0, "p");
         builder.AddContent(1, lead);
         builder.AddContent(2, " ");
-        builder.OpenElement(3, "a");
-        builder.AddAttribute(4, "href", address);
-        builder.AddAttribute(5, "rel", "noopener noreferrer");
+        builder.OpenComponent<CatalogueLink>(3);
+        builder.AddComponentParameter(4, nameof(CatalogueLink.Href), address);
         // An address has no spaces to break at; unwrapped it widens the page at 320 px.
-        builder.AddAttribute(6, "style", "overflow-wrap:anywhere");
-        builder.AddContent(7, address);
-        builder.CloseElement();
+        builder.AddComponentParameter(6, nameof(CatalogueLink.Style), "overflow-wrap:anywhere");
+        builder.AddComponentParameter(7, nameof(CatalogueLink.ChildContent), (RenderFragment)(inner => inner.AddContent(0, address)));
+        builder.CloseComponent();
         builder.CloseElement();
     };
 }

@@ -4,6 +4,7 @@ using Bunit;
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -60,11 +61,12 @@ public class KildeMountTest : ExplorerTestContext
         Resolve(name) ?? throw new InvalidOperationException(
             $"'{name}' does not resolve, so a host naming it in a CMS field gets nothing.");
 
+    private HistoryRecorder? _history;
+
     /// <summary>The last URL the component mirrored, or null when it never wrote one.</summary>
+
     private string? Mirrored() =>
-        JSInterop.Invocations[ReplaceState] is { Count: > 0 } calls
-            ? calls[^1].Arguments[2] as string
-            : null;
+        _history?.Written.LastOrDefault();
 
     private NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
 
@@ -83,6 +85,7 @@ public class KildeMountTest : ExplorerTestContext
         var component = Mount(name);
 
         Services.AddSingleton<IMuninExplorerClient>(new OneKildeClient());
+        Services.AddSingleton<IJSRuntime>(_history = new HistoryRecorder(JSInterop.JSRuntime));
         SetRendererInfo(new RendererInfo("Server", true));
         JSInterop.Mode = JSRuntimeMode.Loose;
         Navigation.NavigateTo(url);

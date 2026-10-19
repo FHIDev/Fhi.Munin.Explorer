@@ -1,2 +1,0 @@
-category: Changed
-- **An open kilde's page starts closer to its details.** Over an open kilde, `KildeSearch` no longer draws the host's lede, and its «Kildeutforsker» title stays only for screen readers (`screenreader-only`), so the region keeps its name. Under `KildeExplorer`, the trail's «Kildeutforsker» step is the one way back; the «← Tilbake til kildeutforsker» button is drawn only when there is no trail. `KildeView` draws no «Datakilde» eyebrow, and the Formål field is not drawn again when it repeats the ingress word for word.
