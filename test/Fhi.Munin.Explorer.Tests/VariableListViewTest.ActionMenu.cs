@@ -76,10 +76,36 @@ public partial class VariableListViewTest
         module.SetupVoid("watchFolds").SetVoidResult();
         OpenMenu(cut);
 
-        cut.WaitForAssertion(() => Assert.Equal(2, module.Invocations["watchFolds"].Count));
+        WatchCallsReach(module, 2);
         OpenMenu(cut);
         Menu(cut).Click();
         Assert.Equal(2, module.Invocations["watchFolds"].Count);
+    }
+
+    // Polled, not WaitForAssertion: that re-checks only after a render, and the call is made in
+    // OnAfterRenderAsync, after the last render there is (Fhi.Metadata-qpyrx).
+    private static void WatchCallsReach(BunitJSModuleInterop module, int count) =>
+        Assert.True(SpinWait.SpinUntil(() => module.Invocations["watchFolds"].Count >= count, TimeSpan.FromSeconds(5)),
+                    $"watchFolds was called {module.Invocations["watchFolds"].Count} time(s), not {count}.");
+
+    [Fact]
+    public void Folds_WhenARenderComesWhileTheCallIsOutAndTheCallFails_ThenItIsAskedAgain()
+    {
+        // The skipped render is owed an ask: without one, nothing renders again and the menus never
+        // close on a press outside (Fhi.Metadata-qpyrx).
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var first = module.SetupVoid("watchFolds");
+
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["watchFolds"]));
+
+        OpenMenu(cut);
+        Assert.Single(module.Invocations["watchFolds"]);
+
+        module.SetupVoid("watchFolds").SetVoidResult();
+        first.SetException(new JSDisconnectedException("reconnecting"));
+
+        WatchCallsReach(module, 2);
     }
 
     [Fact]
