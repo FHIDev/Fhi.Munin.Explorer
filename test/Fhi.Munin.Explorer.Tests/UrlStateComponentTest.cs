@@ -126,9 +126,8 @@ public class UrlStateComponentTest : ExplorerTestContext
 
     /// <summary>The last URL the component wrote, or null when it never wrote one.</summary>
     private string? Mirrored() =>
-        JSInterop.Invocations[ReplaceState] is { Count: > 0 } calls
-            ? calls[^1].Arguments[2] as string
-            : null;
+        JSInterop.Invocations.Where(call => call.Identifier is ReplaceState or "history.pushState")
+            .Select(call => call.Arguments[2] as string).LastOrDefault();
 
     /// <summary>
     /// Registers the client, puts the browser at <paramref name="url"/>, and renders.
@@ -659,6 +658,90 @@ public class UrlStateComponentTest : ExplorerTestContext
         Navigation.NavigateTo(url);
 
         return Render<KildeExplorer>(b => parameters?.Invoke(b));
+    }
+
+    // Back and Forward (Fhi.Metadata-l9l2n.124): opening a kilde or a variable from the list is a
+    // history entry of its own; filters, order and paging still replace the one they are on.
+
+    private int Pushes() => JSInterop.Invocations["history.pushState"].Count;
+
+    private int Backs() => JSInterop.Invocations["history.back"].Count;
+
+    [Fact]
+    public void History_WhenAKildeIsOpenedFromTheList_ThenItIsANewEntryAndClosingItIsBack()
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderKilder(id, "http://localhost/kilder");
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+        Assert.Equal($"/kilder?kilde={id}", JSInterop.Invocations["history.pushState"][^1].Arguments[2]);
+
+        cut.Find(".munin-explorer-kilder__back").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(1, Backs()));
+        Assert.Equal(1, Pushes());
+    }
+
+    [Fact]
+    public void History_WhenAKildeArrivedInTheAddress_ThenClosingItReplacesRatherThanLeavingThePage()
+    {
+        // Nothing was pushed here, so the entry before it may be another site: Back would leave.
+        var id = Guid.NewGuid();
+        var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}");
+
+        cut.Find(".munin-explorer-kilder__back").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("/kilder", Mirrored()));
+        Assert.Equal(0, Backs());
+        Assert.Equal(0, Pushes());
+    }
+
+    [Fact]
+    public void History_WhenBackArrivesAtTheList_ThenTheKildeClosesAndForwardOpensItAgain()
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderKilder(id, "http://localhost/kilder");
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+
+        Navigation.NavigateTo("http://localhost/kilder");
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".munin-explorer-drilldown")));
+
+        Navigation.NavigateTo($"http://localhost/kilder?kilde={id}");
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown")));
+        Assert.Equal(1, Pushes());
+    }
+
+    [Fact]
+    public void History_WhenAVariableIsOpenedFromTheList_ThenItIsANewEntryAndCollapsingItIsBack()
+    {
+        var cut = RenderVariables("http://localhost/variabler");
+
+        Rows(cut)[0].Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+        Assert.Equal($"/variabler?variabelId={TwoVariableClient.SpeechId}", Mirrored());
+
+        Rows(cut)[0].Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(1, Backs()));
+    }
+
+    [Fact]
+    public void History_WhenBackArrivesAtTheVariableList_ThenTheRowIsClosedAgain()
+    {
+        // VariableSearch reads the open row once, so the explorer remounts it on the address (Fhi.Metadata-l9l2n.124).
+        var cut = RenderVariables("http://localhost/variabler");
+
+        Rows(cut)[0].Click();
+        cut.WaitForAssertion(() => Assert.Equal("true", Rows(cut)[0].GetAttribute("aria-expanded")));
+
+        Navigation.NavigateTo("http://localhost/variabler");
+
+        cut.WaitForAssertion(() => Assert.Equal("false", Rows(cut)[0].GetAttribute("aria-expanded")));
     }
 
     [Fact]

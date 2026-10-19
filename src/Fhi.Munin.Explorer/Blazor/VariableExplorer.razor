@@ -10,7 +10,8 @@
 @* The address the mirror last wrote, for the drill-in views' contents nav — see
    KildeExplorer.razor, where the same value is cascaded for the same reason. *@
 <CascadingValue Name="@DetailToc.PageAddressName" Value="@PageAddress">
-    <VariableSearch @bind-Search="_state.Search"
+    <VariableSearch @key="_arrival"
+                    @bind-Search="_state.Search"
                     @bind-Filter="_state.Filter"
                     @bind-Sort="_state.Sort"
                     @bind-Direction="_state.Direction"

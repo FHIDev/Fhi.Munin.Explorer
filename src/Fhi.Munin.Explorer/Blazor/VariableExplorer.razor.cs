@@ -1,5 +1,6 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -118,11 +119,38 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         _mirror = new UrlMirror(Navigation, JS, Owns);
         _state = Binding.From(ExplorerUrlState.Parse(_mirror.Owned));
+
+        Navigation.LocationChanged += Moved;
     }
+
+    // Whether a variable or an instrument was open when the address bar was last written, and whether
+    // its entry was pushed from the list, so Back returns to the list (Fhi.Metadata-l9l2n.124).
+    private bool? _mirroredOpen;
+    private bool _detailPushed;
+    private int _arrival;
+
+    private bool Open => _state.SelectedVariableId is not null || _state.SelectedInstrumentId is not null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await _mirror.MirrorAsync(Linkable(_state.ToState()).ToQueryString());
+        // The bookkeeping before each await: renders overlap here, and a second one reading the old
+        // values would push the same opening twice.
+        if (_mirroredOpen is true && !Open && _detailPushed)
+        {
+            // Closing what was opened from the list is the browser's own Back, so Forward reopens it.
+            _detailPushed = false;
+            _mirroredOpen = false;
+            await _mirror.BackAsync();
+        }
+        else
+        {
+            var push = _mirroredOpen is false && Open;
+
+            _detailPushed = push || (_detailPushed && Open);
+            _mirroredOpen = Open;
+
+            await _mirror.MirrorAsync(Linkable(_state.ToState()).ToQueryString(), push);
+        }
 
         if (!firstRender)
         {
@@ -146,10 +174,42 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         }
     }
 
+    /// <summary>Back or Forward, or a host's own navigation: the address is read again, as at load.</summary>
+    /// <remarks>
+    /// VariableSearch reads the open variable once, so a different state remounts it through
+    /// <c>@key</c>, as <see cref="KildeExplorer"/> remounts its search for the same reason.
+    /// </remarks>
+    private void Moved(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(() => Arrive(e.Location));
+
+    private void Arrive(string location)
+    {
+        var address = new Uri(location);
+
+        if (!string.Equals(address.AbsolutePath, _mirror.Path, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var mirror = new UrlMirror(address, JS, Owns);
+        var arrived = Binding.From(ExplorerUrlState.Parse(mirror.Owned));
+        _mirror = mirror;
+
+        if (Linkable(arrived.ToState()).ToQueryString() != Linkable(_state.ToState()).ToQueryString())
+        {
+            _state = arrived;
+            _arrival++;
+            _mirroredOpen = Open;
+            _detailPushed = Open;
+        }
+
+        StateHasChanged();
+    }
+
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _disposed = true;
+        Navigation.LocationChanged -= Moved;
 
         return _interop?.DisposeAsync() ?? ValueTask.CompletedTask;
     }

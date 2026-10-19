@@ -139,7 +139,11 @@ internal sealed class UrlMirror
     /// behind the section the incoming address named while that is still the view on screen.
     /// </summary>
     /// <param name="query">The owned keys as a query string with no leading <c>?</c>.</param>
-    public async ValueTask MirrorAsync(string query)
+    /// <param name="push">
+    /// A new history entry, for opening a kilde or a variable, so Back returns to the list
+    /// (Fhi.Metadata-l9l2n.124). Filters, order and paging replace the entry they are on.
+    /// </param>
+    public async ValueTask MirrorAsync(string query, bool push = false)
     {
         var fragment = TakeFragment(query);
         var url = Address(query) + fragment;
@@ -150,13 +154,16 @@ internal sealed class UrlMirror
             return;
         }
 
-        // replaceState, not pushState: opening and closing filters would otherwise fill the history
-        // with steps the reader has to walk back through one at a time instead of leaving the site.
-        await _js.InvokeVoidAsync("history.replaceState", null, "", url).ConfigureAwait(false);
+        // Replaced by default: opening and closing filters would otherwise fill the history with
+        // steps the reader has to walk back through one at a time instead of leaving the site.
+        await _js.InvokeVoidAsync(push ? "history.pushState" : "history.replaceState", null, "", url).ConfigureAwait(false);
 
         // After the call, not before: a write the browser refused must not read as one it has.
         _mirrored = url;
     }
+
+    /// <summary>One step back in the browser's history, as its own Back button takes.</summary>
+    public ValueTask BackAsync() => _js.InvokeVoidAsync("history.back");
 
     /// <summary>
     /// The incoming address's fragment while <paramref name="query"/> is still the state it arrived

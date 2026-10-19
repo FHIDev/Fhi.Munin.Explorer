@@ -62,9 +62,8 @@ public class KildeMountTest : ExplorerTestContext
 
     /// <summary>The last URL the component mirrored, or null when it never wrote one.</summary>
     private string? Mirrored() =>
-        JSInterop.Invocations[ReplaceState] is { Count: > 0 } calls
-            ? calls[^1].Arguments[2] as string
-            : null;
+        JSInterop.Invocations.Where(call => call.Identifier is ReplaceState or "history.pushState")
+            .Select(call => call.Arguments[2] as string).LastOrDefault();
 
     private NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
 

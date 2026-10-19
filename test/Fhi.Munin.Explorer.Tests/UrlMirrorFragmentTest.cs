@@ -95,9 +95,8 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
 
     /// <summary>The last URL a component mirrored, or null when none ever wrote one.</summary>
     private string? Mirrored() =>
-        JSInterop.Invocations[ReplaceState] is { Count: > 0 } calls
-            ? calls[^1].Arguments[2] as string
-            : null;
+        JSInterop.Invocations.Where(call => call.Identifier is ReplaceState or "history.pushState")
+            .Select(call => call.Arguments[2] as string).LastOrDefault();
 
     /// <remarks>
     /// The client is registered and the renderer info set before the navigation: bUnit seals its
