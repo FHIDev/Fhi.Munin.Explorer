@@ -1214,14 +1214,18 @@ public class ListRowPanelTest : ExplorerTestContext
         NameButton(cut, "Databaseversjon").Click();
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
 
+        // Waited on, not read at once: Click() returns before its handler runs whenever the renderer's
+        // dispatcher is still busy, and the status then still reads the last copy (Fhi.Metadata-39vmc).
         Copy(cut);
-        Assert.Equal("", LinkStatus(cut));
+        cut.WaitForAssertion(() => Assert.Equal("", LinkStatus(cut)));
         cut.InvokeAsync(() => copied.SetVoidResult());
         cut.WaitForAssertion(() => Assert.Equal("Lenken er kopiert.", LinkStatus(cut)));
 
-        JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
+        var again = JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
         Copy(cut);
-        Assert.Equal("", LinkStatus(cut));
+        cut.WaitForAssertion(() => Assert.Equal("", LinkStatus(cut)));
+        cut.InvokeAsync(() => again.SetVoidResult());
+        cut.WaitForAssertion(() => Assert.Equal("Lenken er kopiert.", LinkStatus(cut)));
     }
 
     private static void Copy(IRenderedComponent<VariableListView> cut) =>
