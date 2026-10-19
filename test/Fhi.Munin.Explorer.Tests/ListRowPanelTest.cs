@@ -1224,6 +1224,7 @@ public class ListRowPanelTest : ExplorerTestContext
         var again = JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
         Copy(cut);
         cut.WaitForAssertion(() => Assert.Equal("", LinkStatus(cut)));
+        Assert.Single(again.Invocations);
         cut.InvokeAsync(() => again.SetVoidResult());
         cut.WaitForAssertion(() => Assert.Equal("Lenken er kopiert.", LinkStatus(cut)));
     }
