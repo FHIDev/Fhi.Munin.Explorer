@@ -504,7 +504,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             _closeByBack = false;
             _detailPushed = false;
             _mirroredSelection = selection;
-            await _mirror.BackAsync();
+            await _mirror.BackAsync(Query(_selectedKildeId, _selectedDatasamlingId));
 
             return;
         }

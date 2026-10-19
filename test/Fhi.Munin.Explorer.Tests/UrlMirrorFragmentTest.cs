@@ -94,8 +94,9 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
 
     private NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
 
-    /// <summary>The last URL a component mirrored, or null when none ever wrote one.</summary>
     private HistoryRecorder? _history;
+
+    /// <summary>The last URL a component mirrored, or null when none ever wrote one.</summary>
 
     private string? Mirrored() =>
         _history?.Written.LastOrDefault();

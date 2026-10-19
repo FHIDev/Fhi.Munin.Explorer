@@ -148,7 +148,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             // Closing what was opened from the list is the browser's own Back, so Forward reopens it.
             _detailPushed = false;
             _mirroredOpen = false;
-            await _mirror.BackAsync();
+            await _mirror.BackAsync(Linkable(_state.ToState()).ToQueryString());
         }
         else
         {

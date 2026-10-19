@@ -169,8 +169,14 @@ internal sealed class UrlMirror
     /// </summary>
     public const string OpenedFromList = "Fhi.Munin.Explorer:opened-from-list";
 
-    /// <summary>One step back in the browser's history, as its own Back button takes.</summary>
-    public ValueTask BackAsync() => _js.InvokeVoidAsync("history.back");
+    /// <summary>One step back in the browser's history, onto the entry that shows <paramref name="query"/>.</summary>
+    /// <remarks>Recorded as written, so a render before the browser arrives does not replace the entry it is leaving.</remarks>
+    public async ValueTask BackAsync(string query)
+    {
+        await _js.InvokeVoidAsync("history.back").ConfigureAwait(false);
+
+        _mirrored = Address(query);
+    }
 
     /// <summary>
     /// The incoming address's fragment while <paramref name="query"/> is still the state it arrived

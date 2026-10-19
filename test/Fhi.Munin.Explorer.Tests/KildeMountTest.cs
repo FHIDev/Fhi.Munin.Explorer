@@ -61,8 +61,9 @@ public class KildeMountTest : ExplorerTestContext
         Resolve(name) ?? throw new InvalidOperationException(
             $"'{name}' does not resolve, so a host naming it in a CMS field gets nothing.");
 
-    /// <summary>The last URL the component mirrored, or null when it never wrote one.</summary>
     private HistoryRecorder? _history;
+
+    /// <summary>The last URL the component mirrored, or null when it never wrote one.</summary>
 
     private string? Mirrored() =>
         _history?.Written.LastOrDefault();

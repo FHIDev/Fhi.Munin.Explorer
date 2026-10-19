@@ -126,8 +126,9 @@ public class UrlStateComponentTest : ExplorerTestContext
         }
     }
 
-    /// <summary>The last URL the component wrote, or null when it never wrote one.</summary>
     private HistoryRecorder? _history;
+
+    /// <summary>The last URL the component wrote, or null when it never wrote one.</summary>
 
     private string? Mirrored() =>
         _history?.Written.LastOrDefault();
@@ -721,7 +722,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     [Fact]
     public void History_WhenALinkLeadsFromAnOpenedKildeToAnother_ThenClosingThatOneReplacesRatherThanGoingBack()
     {
-        // Back from the second kilde would land on the first one, not the list (pre-PR review).
+        // Back from the second kilde would land on the first one, not the list.
         var id = Guid.NewGuid();
         var cut = RenderKilder(id, "http://localhost/kilder");
 
@@ -785,7 +786,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     [Fact]
     public void History_WhenTheListIsSortedWhileAVariableIsOpen_ThenCollapsingKeepsTheSortRatherThanGoingBack()
     {
-        // Back would return to the entry pushed with the old order and undo the sort (pre-PR review).
+        // Back would return to the entry pushed with the old order and undo the sort.
         var cut = RenderVariables("http://localhost/variabler");
 
         Rows(cut)[0].Click();
