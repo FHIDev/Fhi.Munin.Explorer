@@ -1140,6 +1140,13 @@ public sealed partial class KildeSearch : ComponentBase
     private IReadOnlyList<DetailTrailStep> KildeTrail =>
         KilderHref is { } list ? [new DetailTrailStep(T.KildeTitle, list())] : [];
 
+    /// <summary>The kilde's trail while it loads, named from the list; null once the view draws its own.</summary>
+    private IReadOnlyList<DetailTrailStep>? LoadingTrail =>
+        _detailLoading && _kilde is null && _selectedDatasamlingId is null
+        && _kilder.FirstOrDefault(kilde => kilde.Id == _selectedId) is { } row
+            ? DetailTrail.Append(KildeTrail, RowName(row), Reader)
+            : null;
+
     /// <summary>The same, plus the kilde an open datasamling hangs off.</summary>
     /// <remarks>
     /// <c>parentKildeNavn</c> on the payload saves a second request; it is the catalogue's Norwegian

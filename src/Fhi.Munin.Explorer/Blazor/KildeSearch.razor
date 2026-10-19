@@ -103,6 +103,13 @@
                     @onclick="CloseAsync">@T.BackToKilder</button>
         }
 
+        @* The trail ahead of the kilde, from the list's name for it: a host that hides the back
+           button beside a trail would otherwise flash it while the kilde loads (Fhi.Metadata-l9l2n.127). *@
+        @if (LoadingTrail is { } loadingTrail)
+        {
+            <DetailTrail Steps="loadingTrail" Label="@T.TrailLabel" />
+        }
+
         @* Keep the landmark named while the shared detail heading is still loading. *@
         @if (_kilde is null && _datasamling is null)
         {
