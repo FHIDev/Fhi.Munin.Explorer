@@ -569,6 +569,17 @@ unstyled-name||.munin-explorer-kilder__card-label|
 unstyled-name||.munin-explorer-kilder-header__select|
 unstyled-name||.munin-explorer-kilder-header__variabler|
 # The same card rules, by declaration, until the HostileHost pin reaches the Stiler release that carries them.
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded .hd-button-square|height
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded .hd-button-square|white-space
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:focus-within > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded)|background
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:focus-within > th|background
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:has( > .munin-explorer-kilder__expanded)|border-bottom
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:has( > .munin-explorer-kilder__expanded)|padding
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:hover > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded)|background
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:hover > th|background
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:is(:hover, :focus-within):not(:has( > .munin-explorer-kilder__expanded))|background
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr > .munin-explorer-kilder-header__navn|grid-column
+invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|grid-template-columns
 invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded|grid-column
 invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expand|grid-column
 invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expand|grid-row
@@ -594,6 +605,5 @@ invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|a
 invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|border-bottom
 invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|display
 invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|gap
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|padding-left
 invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead|display
 invented-selector|@media (max-width:767px)|.munin-explorer-kilder|display

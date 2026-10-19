@@ -865,7 +865,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   That count is why the kilder table's header cells carry a third interpolated family, and every
   one of them is a `handle`. Each `<th>` in its `<thead>` wears `munin-explorer-kilder-header__`
   finished with its column's key, named like `munin-explorer-dataitem-header__` in the variable
-  explorer but, unlike that family, with no sample rule. The thirteen optional columns' keys are
+  explorer but, unlike that family, with sample rules for only three. The thirteen optional columns' keys are
   `KildeSearch.ColumnKeys`, built from the same switch, so the names are `munin-explorer-kilder-header__kode`, `__kildetype`, `__datasamlinger`,
   `__variabler`, `__delkilder`, `__dataansvarlig`, `__databehandler`, `__grad`,
   `__gyldighetsperiode`, `__importert`, `__sistEndret`, `__andelKodeverk` and `__andelStatistikk`.

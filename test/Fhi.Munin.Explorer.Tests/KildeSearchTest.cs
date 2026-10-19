@@ -1056,7 +1056,6 @@ public class KildeSearchTest : ExplorerTestContext
         Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "nasjonaltMedisinskKvalitetsregister",
             dataProcessor: "Helse Bergen HF", datasamlinger: 2506, variables: 2506));
 
-    /// <summary>A count cell's text as it is drawn: the bar's words for a screen reader left out.</summary>
     [Theory]
     [InlineData("no", "Datasamlinger ", "Variabler ")]
     [InlineData("en", "Data collections ", "Variables ")]
@@ -1091,6 +1090,7 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.All(counts, cell => Assert.NotNull(cell.QuerySelector(":scope > .munin-explorer-kilder__card-label[hidden]")));
     }
 
+    /// <summary>A count cell's text as it is drawn: the bar's words for a screen reader and the phone card's hidden label left out.</summary>
     private static string ShownText(IElement cell)
     {
         // The phone card's label is `hidden` here: no wide screen draws it (Fhi.Metadata-ulkw3).

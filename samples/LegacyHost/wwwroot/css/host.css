@@ -5594,11 +5594,15 @@ a[target=_blank]:not(.hd-button-square):focus::after {
   .munin-explorer-kilder > tbody {
     display: block;
   }
+  /* The head sits in the cards' grid, so the box, Navn and Variabler stand over their columns. */
+  .munin-explorer-kilder > thead > tr,
+  .munin-explorer-kilder > tbody > tr {
+    display: grid;
+    grid-template-columns: 2rem auto minmax(0, 1fr) minmax(0, 1fr);
+    gap: 4px 16px;
+  }
   .munin-explorer-kilder > thead > tr {
-    display: flex;
     align-items: center;
-    gap: 0 16px;
-    padding-left: calc(2rem + 16px);
     border-bottom: 1px solid var(--grey30);
   }
   .munin-explorer-kilder > thead > tr > th {
@@ -5607,14 +5611,37 @@ a[target=_blank]:not(.hd-button-square):focus::after {
   .munin-explorer-kilder > thead > tr > th:is(.munin-explorer-kilder-header__select, .munin-explorer-kilder-header__navn, .munin-explorer-kilder-header__variabler) {
     display: block;
     border-bottom: 0;
+    padding: 8px 0;
+  }
+  .munin-explorer-kilder > thead > tr > .munin-explorer-kilder-header__select {
+    grid-column: 2;
+  }
+  .munin-explorer-kilder > thead > tr > .munin-explorer-kilder-header__navn {
+    grid-column: 3;
+  }
+  .munin-explorer-kilder > thead > tr > .munin-explorer-kilder-header__variabler {
+    grid-column: 4;
+    text-align: left;
   }
   .munin-explorer-kilder > tbody > tr {
-    display: grid;
-    grid-template-columns: 2rem auto auto 1fr;
     align-items: baseline;
-    gap: 4px 16px;
     padding: 12px 0;
     border-bottom: 1px solid var(--grey30);
+  }
+  /* The drawer row is the drawer alone: no padding or rule of its own between it and the card. */
+  .munin-explorer-kilder > tbody > tr:has(> .munin-explorer-kilder__expanded) {
+    padding: 0;
+    border-bottom: 0;
+  }
+  /* The hover goes on the whole card; on the cells it left grey patches with white gaps between. */
+  .munin-explorer-kilder > tbody > tr:is(:hover, :focus-within):not(:has(> .munin-explorer-kilder__expanded)) {
+    background: var(--grey20);
+  }
+  .munin-explorer-kilder > tbody > tr:hover > th,
+  .munin-explorer-kilder > tbody > tr:hover > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded),
+  .munin-explorer-kilder > tbody > tr:focus-within > th,
+  .munin-explorer-kilder > tbody > tr:focus-within > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded) {
+    background: transparent;
   }
   .munin-explorer-kilder > tbody > tr > :is(th, td) {
     display: none;
@@ -5661,6 +5688,11 @@ a[target=_blank]:not(.hd-button-square):focus::after {
   }
   .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded {
     grid-column: 1/-1;
+  }
+  /* «Vis alle variabler i …» in the drawer is wider than the card at 360px, so it wraps. */
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded .hd-button-square {
+    height: auto;
+    white-space: normal;
   }
 }
 /* Up to 400px the two counts do not fit side by side (360 and 375 overflowed by 37 and 22px), so
