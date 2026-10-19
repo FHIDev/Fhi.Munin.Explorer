@@ -2165,6 +2165,13 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* Skuld's two jump links under the description, side by side and wrapping on a phone (Fhi.Metadata-4ggs9). */
+/* The kilde page's way back, only where the trail is hidden: helsedata hides it under 768px (Fhi.Metadata-e4afs). */
+@media (min-width: 768px) {
+  .munin-explorer-drilldown__back {
+    display: none;
+  }
+}
+
 .munin-explorer-kilde__jumps {
   display: flex;
   flex-wrap: wrap;

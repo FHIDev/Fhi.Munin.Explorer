@@ -2857,8 +2857,10 @@ public class KildeSearchTest : ExplorerTestContext
 
     // The trail is the way back where it is on screen; where the view that draws it is not, the button stays (Fhi.Metadata-esf2i).
     [Fact]
-    public void Select_WhenTheHostGivesAListAddressAndTheKildeArrives_ThenTheTrailIsTheOnlyWayBack()
+    public void Select_WhenTheHostGivesAListAddressAndTheKildeArrives_ThenTheBackButtonStaysBesideTheTrail()
     {
+        // helsedata hides the trail under 768px, so the button is drawn too and the host hides it
+        // where the trail shows (Fhi.Metadata-e4afs, which reverses part of esf2i).
         var als = Kilde("Als registeret", "K_ALS");
 
         var cut = RenderWith(new FakeClient(als).Publishing(als), b => b.Add(c => c.KilderHref, () => "/kilder"));
@@ -2866,29 +2868,28 @@ public class KildeSearchTest : ExplorerTestContext
         cut.Find(".munin-explorer-kilder tbody th button").Click();
 
         Assert.Equal("/kilder", cut.Find("nav.breadcrumbs a").GetAttribute("href"));
-        Assert.Empty(cut.FindAll(".munin-explorer-drilldown > button"));
+        var back = Assert.Single(cut.FindAll(".munin-explorer-drilldown > button"));
+        Assert.Contains("munin-explorer-drilldown__back", back.ClassList);
+        Assert.Equal("Tilbake til kildeutforsker", back.TextContent.Trim().TrimStart('←', ' '));
     }
 
     // Copilot on #576: the trail arriving must not take the focused control from under a keyboard reader.
     [Fact]
-    public void Select_WhenTheBackButtonHasFocusAsTheKildeArrives_ThenItStaysUntilFocusLeavesIt()
+    public void Select_WhenTheKildeArrivesWhileLoading_ThenTheBackButtonIsThereBeforeAndAfter()
     {
+        // Not taken away as the trail arrives, so a keyboard reader on it keeps their place (Fhi.Metadata-e4afs).
         var als = Kilde("Als registeret", "K_ALS");
         var client = new FakeClient(als) { StallDetail = true };
 
         var cut = RenderWith(client, b => b.Add(c => c.KilderHref, () => "/kilder"));
 
         cut.Find(".munin-explorer-kilder tbody th button").Click();
-        cut.Find(".munin-explorer-drilldown > button").Focus();
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown > button.munin-explorer-drilldown__back"));
 
         client.AnswerStalled(new KildeDetail { Id = als.Id, Code = "K_ALS", PreferredTerm = "Als registeret" });
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("nav.breadcrumbs a")));
-        Assert.Single(cut.FindAll(".munin-explorer-drilldown > button"));
-
-        cut.Find(".munin-explorer-drilldown > button").Blur();
-
-        Assert.Empty(cut.FindAll(".munin-explorer-drilldown > button"));
+        Assert.Single(cut.FindAll(".munin-explorer-drilldown > button.munin-explorer-drilldown__back"));
     }
 
     [Fact]

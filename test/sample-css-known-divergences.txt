@@ -431,6 +431,9 @@ unstyled-name||.munin-explorer-kilde__description-toggle|
 # Skuld's jump links under the kilde description (Fhi.Metadata-4ggs9); the Stiler rule is owed by Fhi.Metadata-a7oqn.
 unstyled-name||.munin-explorer-kilde__jumps|
 
+# The kilde back button, hidden from 768px where the trail shows (Fhi.Metadata-e4afs); Stiler rule owed by Fhi.Metadata-a7oqn.
+unstyled-name||.munin-explorer-drilldown__back|
+
 
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
 # only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.98.
