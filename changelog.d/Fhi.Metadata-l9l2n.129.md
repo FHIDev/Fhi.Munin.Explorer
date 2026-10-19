@@ -1,0 +1,2 @@
+category: Added
+- **Kildeutforsker filters on helsedata.no's access levels, and a kilde's page shows them.** The «Tilgangsnivå» filter lists helsedata.no's four levels — Statistikkbank, Tilgang krever søknad, Åpne data/statistikk tilgjengelig and Søknad via helsedata.no — in that order, and a kilde matches when it has any of the ticked ones. The kilde page's fact row ends in «Tilgang» / «Access», where Lovverk once stood, with the kilde's levels one per line in the reader's language; a kilde with none has no such cell.

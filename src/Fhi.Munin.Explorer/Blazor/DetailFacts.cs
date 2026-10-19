@@ -136,19 +136,19 @@ public sealed class DetailFacts : ComponentBase
         builder.CloseElement();
     }
 
-    /// <summary>Each line in turn with a break between, in a region of its own since their number varies.</summary>
+    /// <summary>Each line a block of its own, so a wrapped one stays inside it; the host's rule spaces them (Robin, 19.10).</summary>
+    /// <remarks>A div, not a span: block without any rule, so a host that has none still draws one per line.</remarks>
     private static void Lines(RenderTreeBuilder builder, int seq, IReadOnlyList<DetailFactLine> lines)
     {
         builder.OpenRegion(seq);
 
-        for (var index = 0; index < lines.Count; index++)
+        foreach (var line in lines)
         {
-            if (index > 0)
-            {
-                builder.AddMarkupContent(0, "<br>");
-            }
-
-            Words(builder, 1, lines[index].Text, lines[index].Lang);
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "munin-explorer-page__fact-line");
+            builder.AddAttribute(2, "lang", line.Lang);
+            builder.AddContent(3, line.Text);
+            builder.CloseElement();
         }
 
         builder.CloseRegion();

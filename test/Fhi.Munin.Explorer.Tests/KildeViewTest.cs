@@ -2043,7 +2043,9 @@ public class KildeViewTest : ExplorerTestContext
         var last = Hero(cut).QuerySelectorAll(":scope > div").Last();
         Assert.Equal("Tilgang", last.QuerySelector("dt")!.TextContent);
         var dd = last.QuerySelector("dd")!;
-        Assert.Equal("Statistikkbank<br>Søknad via helsedata.no", dd.InnerHtml);
+        Assert.Equal(["Statistikkbank", "Søknad via helsedata.no"],
+            dd.Children.Select(line => line.TextContent));
+        Assert.All(dd.Children, line => Assert.Equal("munin-explorer-page__fact-line", line.ClassName));
     }
 
     [Fact]

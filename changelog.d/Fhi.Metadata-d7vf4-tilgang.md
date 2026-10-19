@@ -1,2 +1,0 @@
-category: Added
-- **A kilde's page shows its access levels on helsedata.no.** The fact row under the name ends in «Tilgang» / «Access», where Lovverk once stood, with the kilde's levels from Munin's «Tilgangsnivå (helsedata)» one per line in helsedata.no's order and in the reader's language: Statistikkbank, Tilgang krever søknad, Åpne data/statistikk tilgjengelig and Søknad via helsedata.no. A kilde with none has no such cell.

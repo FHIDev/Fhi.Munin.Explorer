@@ -1091,6 +1091,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-page__actions` | handle |
   | `munin-explorer-page__body` | handle |
   | `munin-explorer-page__eyebrow` | handle |
+  | `munin-explorer-page__fact-line` | handle |
   | `munin-explorer-page__facts` | handle |
   | `munin-explorer-page__fields` | handle |
   | `munin-explorer-page__header` | handle |
