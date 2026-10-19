@@ -2,6 +2,7 @@
 @using Fhi.Munin.Explorer.Contracts
 
 @* A shared list takes the view, signed in or out, and is read-only — see SharedListView. *@
+<CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 @if (ShowsSharedList)
 {
     @SharedListView
@@ -426,6 +427,7 @@ else if (State?.IsAuthenticated == true)
         </ChildContent>
     </DetailPage>
 }
+</CascadingValue>
 
 @code {
     // helsedata's own empty state. The button only where the explorer can take the reader to its

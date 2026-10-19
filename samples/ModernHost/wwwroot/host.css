@@ -2172,6 +2172,14 @@ table.munin-explorer-data-list tbody th {
   margin-top: 12px;
 }
 
+/* The kilde page's way back is the trail where one shows; helsedata hides the trail under 768px, and
+   a kilde still loading or failing has none, so the button stays in both cases (Fhi.Metadata-e4afs). */
+@media (min-width: 768px) {
+  .munin-explorer-drilldown:has(.breadcrumbs) > .munin-explorer-kilder__back {
+    display: none;
+  }
+}
+
 /* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
    The datasamlinger table has four columns of Norwegian names in it and would widen the track past
    the page rather than shrink. Same trap the filter panel meets, same fix. */
@@ -5517,4 +5525,59 @@ table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > th[scope=ro
   column-gap: 8px;
   display: inline-flex;
   text-align: start;
+}
+
+/* The wide screen's filter fold (Fhi.Metadata-amp8c). Its button only where the panel is a sidebar; the
+   phone has «Vis filtre». Folded, the panel goes and the results take the whole width. */
+@media (max-width: 1023px) {
+  .munin-explorer-filters__collapse {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .munin-explorer > .munin-explorer-filters__collapse {
+    justify-self: start;
+  }
+
+  .munin-explorer:has(> .munin-explorer-filters--collapsed) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "head" "search" "results";
+  }
+
+  .munin-explorer:has(> .munin-explorer__lede):has(> .munin-explorer-filters--collapsed) {
+    grid-template-areas: "head" "lede" "search" "results";
+  }
+
+  .munin-explorer > .munin-explorer-filters--collapsed {
+    display: none;
+  }
+
+  .munin-explorer:has(> .munin-explorer-filters--collapsed) > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---- Stiler base/_global: a link to another site ----
+
+   Stiler marks every `a[target="_blank"]` with its own new-window icon, and the catalogue's links
+   to another host now open that way (Fhi.Metadata-c8lgk). Read back off Stiler 0.1.178. */
+a[target=_blank]:not(.hd-button-square)::after {
+  content: "";
+  width: 1em;
+  height: 1em;
+  background-size: 1em;
+  display: inline-block;
+  vertical-align: text-bottom;
+  margin: 0 0 0 8px;
+  background-image: url(../img/icons/icon_link--primary-dark.svg);
+}
+
+a[target=_blank]:not(.hd-button-square):hover::after {
+  background-image: url(../img/icons/icon_link--primary.svg);
+}
+
+a[target=_blank]:not(.hd-button-square):focus::after {
+  text-decoration: none;
+  background-image: url(../img/icons/icon_link--primary.svg);
 }

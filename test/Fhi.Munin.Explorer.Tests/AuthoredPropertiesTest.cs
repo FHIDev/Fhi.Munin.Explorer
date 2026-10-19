@@ -55,7 +55,7 @@ public class AuthoredPropertiesTest : ExplorerTestContext
         var link = Assert.Single(Cell(cut, "Kvalitetsnote").QuerySelectorAll("a"));
 
         Assert.Equal("https://doi.org/10.1093/ije/dyr049", link.GetAttribute("href"));
-        Assert.Equal("10.1093/ije/dyr049", link.TextContent);
+        Assert.Equal("10.1093/ije/dyr049", link.Label());
     }
 
     [Fact]

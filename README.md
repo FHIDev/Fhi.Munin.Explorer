@@ -901,10 +901,11 @@ These are not style preferences — each one is a host that breaks otherwise.
     is of this kind today. It stays because `assert-class-names-listed.sh` and
     `assert-sample-css-in-step.sh` read comments too, so a comment that names a class still needs
     a row here and a rule in both samples.
-  - `attribute` — not a class and not an id: part of an attribute name.
-    `munin-explorer-version` is the whole of this kind, read out of
-    `data-munin-explorer-version` on every root element, so `.munin-explorer-version` selects
-    nothing and no stylesheet can have a rule for it.
+  - `attribute` — not a class and not an id: part of an attribute name, or a custom property.
+    `munin-explorer-version` is read out of `data-munin-explorer-version` on every root element,
+    and `munin-explorer-stuckbar-height` out of `--munin-explorer-stuckbar-height`, the shown
+    sticky bar's height the browser module sets on a detail page's root for Stiler's contents
+    list to clear. Neither selects anything, and no stylesheet can have a rule for either.
 
   <!-- class-names:start -->
   | Class name | Kind |
@@ -985,12 +986,14 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-figures__term` | handle |
   | `munin-explorer-figures__value` | handle |
   | `munin-explorer-filters` | handle |
+  | `munin-explorer-filters--collapsed` | meaning |
   | `munin-explorer-filters__active` | handle |
   | `munin-explorer-filters__badge` | handle |
   | `munin-explorer-filters__branch` | handle |
   | `munin-explorer-filters__chip` | handle |
   | `munin-explorer-filters__chip-remove` | handle |
   | `munin-explorer-filters__chosen` | handle |
+  | `munin-explorer-filters__collapse` | meaning |
   | `munin-explorer-filters__count` | handle |
   | `munin-explorer-filters__disclosure` | handle |
   | `munin-explorer-filters__facets` | handle |
@@ -1037,6 +1040,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilde__main` | handle |
   | `munin-explorer-kilder` | handle |
   | `munin-explorer-kilder-scroll` | meaning |
+  | `munin-explorer-kilder__back` | handle |
   | `munin-explorer-kilder__bar` | handle |
   | `munin-explorer-kilder__bar-fill` | handle |
   | `munin-explorer-kilder__count` | handle |
@@ -1110,6 +1114,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-skiplink-pagination` | handle |
   | `munin-explorer-source` | id |
   | `munin-explorer-statistics` | handle |
+  | `munin-explorer-stuckbar-height` | attribute |
   | `munin-explorer-switch` | handle |
   | `munin-explorer-switch__thumb` | meaning |
   | `munin-explorer-switch__track` | meaning |
@@ -1511,7 +1516,8 @@ them but do need to be on one circuit. `ExplorerUrlState.QueryKeys`
 names every parameter it reads and writes, the filter's own included, so you can tell ours from
 yours. Do that and three details are yours to get right — the interactive render mode above, a path
 built from `PathBase + Path` rather than a literal (identical locally, wrong behind a reverse
-proxy), and `replaceState` rather than `pushState`.
+proxy), and `replaceState` rather than `pushState` for filters, order and paging, with `pushState` only
+for a kilde or variable opened from the list, so the browser's Back returns to it.
 
 ### Ordering a kilde's delkilder and datasamlinger
 

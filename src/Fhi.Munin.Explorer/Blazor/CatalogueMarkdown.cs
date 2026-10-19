@@ -208,11 +208,10 @@ internal static partial class CatalogueMarkdown
 
     private static void WebAnchor(RenderTreeBuilder builder, string href, string label)
     {
-        builder.OpenElement(1, "a");
-        builder.AddAttribute(2, "href", href);
-        builder.AddAttribute(3, "rel", "noopener noreferrer");
-        builder.AddContent(4, label);
-        builder.CloseElement();
+        builder.OpenComponent<CatalogueLink>(1);
+        builder.AddComponentParameter(2, nameof(CatalogueLink.Href), href);
+        builder.AddComponentParameter(3, nameof(CatalogueLink.ChildContent), (RenderFragment)(inner => inner.AddContent(0, label)));
+        builder.CloseComponent();
     }
 
     /// <summary>Whether a link's label is only its own address, which is prose in no language (WCAG 3.1.2).</summary>
@@ -414,20 +413,22 @@ internal static partial class CatalogueMarkdown
 
     private static void Anchor(RenderTreeBuilder builder, ref int seq, LinkInline link, string source)
     {
-        builder.OpenElement(seq++, "a");
-        builder.AddAttribute(seq++, "href", link.Url);
-        builder.AddAttribute(seq++, "rel", "noopener noreferrer");
-
-        if (link.FirstChild is null)
+        builder.OpenComponent<CatalogueLink>(seq++);
+        builder.AddComponentParameter(seq++, nameof(CatalogueLink.Href), link.Url ?? "");
+        builder.AddComponentParameter(seq++, nameof(CatalogueLink.ChildContent), (RenderFragment)(inner =>
         {
-            builder.AddContent(seq++, link.Url);
-        }
-        else
-        {
-            Inlines(builder, ref seq, link, source);
-        }
+            var at = 0;
 
-        builder.CloseElement();
+            if (link.FirstChild is null)
+            {
+                inner.AddContent(at, link.Url);
+            }
+            else
+            {
+                Inlines(inner, ref at, link, source);
+            }
+        }));
+        builder.CloseComponent();
     }
 
     private static void Break(RenderTreeBuilder builder, ref int seq)

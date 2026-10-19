@@ -279,6 +279,43 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
+    /// <summary>A setting the reader made in this browser, or null where there is none or storage is off.</summary>
+    internal async Task<string?> ReadPreferenceAsync(string key)
+    {
+        if (_module is not { } module)
+        {
+            return null;
+        }
+
+        try
+        {
+            return (await Tolerated(async () => new StoredPreference(await module.InvokeAsync<string?>("readPreference", key).ConfigureAwait(false)))
+                .ConfigureAwait(false))?.Value;
+        }
+        catch (JSException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Keeps <paramref name="value"/> under <paramref name="key"/> in this browser; null forgets it.</summary>
+    internal async Task WritePreferenceAsync(string key, string? value)
+    {
+        if (_module is not { } module)
+        {
+            return;
+        }
+
+        try
+        {
+            await Tolerated(() => module.InvokeVoidAsync("writePreference", key, value)).ConfigureAwait(false);
+        }
+        catch (JSException)
+        {
+            // Not kept; the reader's choice still holds for this page.
+        }
+    }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
@@ -415,3 +452,6 @@ internal sealed class ExplorerInterop : IAsyncDisposable
 }
 
 internal sealed record DateInputState(string Value, bool BadInput);
+
+/// <summary>A nullable string through <see cref="ExplorerInterop"/>'s class-only tolerance wrapper.</summary>
+internal sealed record StoredPreference(string? Value);
