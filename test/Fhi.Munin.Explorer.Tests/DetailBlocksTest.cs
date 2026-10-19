@@ -97,7 +97,7 @@ public class DetailBlocksTest : ExplorerTestContext
         var prose = Assert.Single(Cell(cut, "Beskrivelse").QuerySelectorAll("a"));
 
         Assert.Equal("https://skjema.example", prose.GetAttribute("href"));
-        Assert.Equal("Skjemaet", prose.TextContent);
+        Assert.Equal("Skjemaet", prose.Label());
     }
 
     [Theory]

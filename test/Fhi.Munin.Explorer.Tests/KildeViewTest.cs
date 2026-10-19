@@ -1103,7 +1103,7 @@ public class KildeViewTest : ExplorerTestContext
 
         var link = Assert.Single(cut.FindAll("dd a[href='https://doi.org/10.1093/ije/dyr049']"));
 
-        Assert.Equal("10.1093/ije/dyr049", link.TextContent);
+        Assert.Equal("10.1093/ije/dyr049", link.Label());
         Assert.DoesNotContain("](https://doi.org", cut.Markup, StringComparison.Ordinal);
     }
 
@@ -1401,7 +1401,7 @@ public class KildeViewTest : ExplorerTestContext
         var wave = cut.Find("ul.munin-explorer-kilde__delkilder > li");
         var description = wave.QuerySelector("p.munin-explorer-kilde__delkilde-description")!;
 
-        Assert.Equal("Fjerde runde av Tromsøundersøkelsen.", description.TextContent);
+        Assert.Equal("Fjerde runde av Tromsøundersøkelsen.", description.Label());
         Assert.Equal("https://uit.no/tromsoundersokelsen",
                      description.QuerySelector("a")?.GetAttribute("href"));
 
@@ -1446,7 +1446,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Fjerde runde av Tromsøundersøkelsen.", "Første besøksrunde."],
-            cut.FindAll("p.munin-explorer-kilde__delkilde-description").Select(e => e.TextContent));
+            cut.FindAll("p.munin-explorer-kilde__delkilde-description").Select(e => e.Label()));
     }
 
     /// <summary>The first delkilde's description paragraph, or null where none was drawn.</summary>
@@ -2043,7 +2043,7 @@ public class KildeViewTest : ExplorerTestContext
         var link = Assert.Single(SourceInformation(cut).QuerySelectorAll("a"));
 
         Assert.Equal("https://lovdata.no/lov/2014-06-20-43", link.GetAttribute("href"));
-        Assert.Equal("Helseregisterloven § 11", link.TextContent);
+        Assert.Equal("Helseregisterloven § 11", link.Label());
         Assert.DoesNotContain("](https://lovdata", cut.Markup, StringComparison.Ordinal);
     }
 
@@ -2702,7 +2702,7 @@ public class KildeViewTest : ExplorerTestContext
 
         var anchor = Assert.Single(cell.QuerySelectorAll("a"));
         Assert.Equal("https://uit.no/research/tromsostudy/project?pid=708230", anchor.GetAttribute("href"));
-        Assert.Equal("Tromsø1 - The First Tromsø Study", anchor.TextContent);
+        Assert.Equal("Tromsø1 - The First Tromsø Study", anchor.Label());
     }
 
     [Fact]
@@ -2726,7 +2726,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal("https://uit.no/research/tromsostudy", anchor.GetAttribute("href"));
         Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
-        Assert.Equal("https://uit.no/research/tromsostudy", anchor.TextContent);
+        Assert.Equal("https://uit.no/research/tromsostudy", anchor.Label());
 
         // A URL is prose in no language, so the cell must not claim Norwegian (WCAG 3.1.2).
         Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
@@ -2756,9 +2756,9 @@ public class KildeViewTest : ExplorerTestContext
             anchors.Select(a => a.GetAttribute("href")));
         Assert.All(anchors, a =>
         {
-            Assert.Equal(a.GetAttribute("href"), a.TextContent);
+            Assert.Equal(a.GetAttribute("href"), a.Label());
             Assert.Equal("noopener noreferrer", a.GetAttribute("rel"));
-            Assert.Null(a.GetAttribute("target"));
+            Assert.Equal("_blank", a.GetAttribute("target"));
         });
         Assert.Equal(3, cell.QuerySelectorAll("a").Length);
         Assert.Null(cell.GetAttribute("lang"));
@@ -2796,7 +2796,7 @@ public class KildeViewTest : ExplorerTestContext
         var anchor = Render(kilde).Find(".munin-explorer-page__fields dd a");
 
         Assert.Equal("https://www.barnediabetes.no", anchor.GetAttribute("href"));
-        Assert.Equal("www.barnediabetes.no", anchor.TextContent);
+        Assert.Equal("www.barnediabetes.no", anchor.Label());
         Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
     }
 

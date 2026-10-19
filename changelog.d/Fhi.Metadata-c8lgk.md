@@ -1,0 +1,2 @@
+category: Changed
+- **Links to another site open in a new window, and say so.** A catalogue link whose host is not the page's own — lovdata, a register's home page, the access body — now has `target="_blank"`, keeps `rel="noopener noreferrer"`, and ends in a hidden «(åpnes i nytt vindu)» / «(opens in a new window)» for screen readers. The page's own links, relative ones and buttons are unchanged (WCAG 3.2.5).

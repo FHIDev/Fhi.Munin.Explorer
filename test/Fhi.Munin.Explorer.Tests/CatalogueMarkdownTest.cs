@@ -29,7 +29,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
 
         Assert.Equal("https://uit.no/research/tromsostudy", anchor.GetAttribute("href"));
         Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
-        Assert.Equal("Tromsøundersøkelsen", anchor.TextContent);
+        Assert.Equal("Tromsøundersøkelsen", anchor.Label());
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         // The shape Hjemmeside actually arrives in: [https://uit.no/...](https://uit.no/...).
         var cut = Rendered("[https://uit.no/research/tromsostudy](https://uit.no/research/tromsostudy)");
 
-        Assert.Equal("https://uit.no/research/tromsostudy", cut.Find("a").TextContent);
+        Assert.Equal("https://uit.no/research/tromsostudy", cut.Find("a").Label());
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         var anchor = Assert.Single(cut.FindAll("a"));
 
         Assert.Equal("https://example.org/v", anchor.GetAttribute("href"));
-        Assert.Equal("veilederen", anchor.TextContent);
+        Assert.Equal("veilederen", anchor.Label());
         Assert.Contains("- Se ", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("<br />- Annet", cut.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("](https://", cut.Markup, StringComparison.Ordinal);
@@ -177,7 +177,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         var cut = Rendered("Se [MSIS-forskriften].\n\n[MSIS-forskriften]: https://lovdata.no/msis");
 
         Assert.Equal(
-            "Se <a href=\"https://lovdata.no/msis\" rel=\"noopener noreferrer\">MSIS-forskriften</a>.",
+            "Se <a href=\"https://lovdata.no/msis\" target=\"_blank\" rel=\"noopener noreferrer\">MSIS-forskriften<span class=\"screenreader-only\"> (åpnes i nytt vindu)</span></a>.",
             cut.Markup);
     }
 
@@ -220,7 +220,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
     [Fact]
     public void Render_WhenADefinitionComesBeforeItsLink_ThenTheLinkStillTakesItAndNothingElseIsDrawn()
     {
-        Assert.Equal("Se <a href=\"https://x.no\" rel=\"noopener noreferrer\">a</a>.",
+        Assert.Equal("Se <a href=\"https://x.no\" target=\"_blank\" rel=\"noopener noreferrer\">a<span class=\"screenreader-only\"> (åpnes i nytt vindu)</span></a>.",
                      Rendered("[a]: https://x.no\n\nSe [a].").Markup);
     }
 
@@ -341,8 +341,9 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         Assert.Equal(["https://lovdata.no/lov/2014-06-20-43", "https://lovdata.no/msis"],
                      anchors.Select(a => a.GetAttribute("href")));
         Assert.All(anchors, a => Assert.Equal("noopener noreferrer", a.GetAttribute("rel")));
-        Assert.Equal("Helseregisterloven, https://lovdata.no/lov/2014-06-20-43. Se også (https://lovdata.no/msis).",
-                     string.Concat(cut.Nodes.Select(node => node.TextContent)));
+        Assert.Equal(
+            "Helseregisterloven, https://lovdata.no/lov/2014-06-20-43 (åpnes i nytt vindu). Se også (https://lovdata.no/msis (åpnes i nytt vindu)).",
+            string.Concat(cut.Nodes.Select(node => node.TextContent)));
     }
 
     [Theory]
@@ -353,7 +354,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         var anchor = Render(CatalogueMarkdown.Linked(raw)).Find("a");
 
         Assert.Equal("https://lovdata.no/lov/2014-06-20-43", anchor.GetAttribute("href"));
-        Assert.Equal(label, anchor.TextContent);
+        Assert.Equal(label, anchor.Label());
     }
 
     [Fact]

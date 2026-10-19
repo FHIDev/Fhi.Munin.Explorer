@@ -625,7 +625,7 @@ public class KildeSectionsTest : ExplorerTestContext
 
         Assert.Equal("P", body.TagName);
 
-        return body.TextContent.Trim();
+        return body.Label().Trim();
     }
 
     [Theory]
@@ -775,7 +775,7 @@ public class KildeSectionsTest : ExplorerTestContext
         var link = cut.Find("#munin-explorer-variables a");
         Assert.Equal("https://eksempel.no/variabler", link.GetAttribute("href"));
         Assert.Equal("noopener noreferrer", link.GetAttribute("rel"));
-        Assert.Null(link.GetAttribute("target"));
+        Assert.Equal("_blank", link.GetAttribute("target"));
         Assert.Equal("overflow-wrap:anywhere", link.GetAttribute("style"));
 
         var view = cut.Find(".munin-explorer-kilde").TextContent;
@@ -818,6 +818,8 @@ public class KildeSectionsTest : ExplorerTestContext
             language: "en");
 
         Assert.Equal("The variables are described here: https://eksempel.no/v", BodyUnder(none, "Variables"));
+        Assert.Equal(" (opens in a new window)",
+                     none.Find("#munin-explorer-variables a .screenreader-only").TextContent);
         Assert.Contains("Described outside helsedata.no", none.Find(".munin-explorer-kilde").TextContent,
                         StringComparison.Ordinal);
     }

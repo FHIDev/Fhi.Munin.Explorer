@@ -987,7 +987,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal(label, section.QuerySelector("dt.screenreader-only")?.TextContent);
         Assert.Empty(section.QuerySelectorAll("dt:not(.screenreader-only)"));
         Assert.Equal("https://example.org/report", section.QuerySelector("dd a")?.GetAttribute("href"));
-        Assert.Equal("Se rapporten.", section.QuerySelector("dd")?.TextContent.Trim());
+        Assert.Equal("Se rapporten.", section.QuerySelector("dd")!.Label().Trim());
         Assert.Equal(language == "en" ? "no" : null, section.QuerySelector("dd")?.GetAttribute("lang"));
         Assert.Contains("#munin-explorer-section-om-datasamlingen", Targets(cut));
         Assert.DoesNotContain("#munin-explorer-section-kvalitetsnote", Targets(cut));
@@ -1880,7 +1880,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var link = Assert.Single(Row(SourceInformation(cut), "Lovverk").QuerySelectorAll("a"));
 
         Assert.Equal("https://lovdata.no/lov/2014-06-20-43", link.GetAttribute("href"));
-        Assert.Equal("Helseregisterloven § 11", link.TextContent);
+        Assert.Equal("Helseregisterloven § 11", link.Label());
     }
 
     [Fact]
@@ -2707,7 +2707,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         var link = cut.Find("a[href='https://eksempel.no/variabler/oppfolging']");
         Assert.Equal("Variablene er beskrevet her: https://eksempel.no/variabler/oppfolging",
-                     link.ParentElement!.TextContent.Trim());
+                     link.ParentElement!.Label().Trim());
         Assert.Equal("noopener noreferrer", link.GetAttribute("rel"));
     }
 

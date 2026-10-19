@@ -58,6 +58,7 @@
    the host's circuit and ships no versioned static asset to fingerprint. (Fhi.Metadata-sqbei) *@
 @* lang, because the host's <html lang> need not follow the reader: helsedata's /en/ pages say "no",
    and everything unmarked in here inherits it (WCAG 3.1.2, Fhi.Metadata-nh7z2). *@
+<CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 <section class="munin-explorer"
          data-munin-explorer-version="@ExplorerVersion.Current"
          lang="@Reader"
@@ -1020,6 +1021,7 @@ else
     }
 }
 </section>
+</CascadingValue>
 
 @code {
     @* One toolbar switch, the shape Nivålinjer and Ikoner are both drawn from. aria-checked is the
