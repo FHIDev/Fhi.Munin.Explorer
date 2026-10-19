@@ -985,12 +985,14 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-figures__term` | handle |
   | `munin-explorer-figures__value` | handle |
   | `munin-explorer-filters` | handle |
+  | `munin-explorer-filters--collapsed` | meaning |
   | `munin-explorer-filters__active` | handle |
   | `munin-explorer-filters__badge` | handle |
   | `munin-explorer-filters__branch` | handle |
   | `munin-explorer-filters__chip` | handle |
   | `munin-explorer-filters__chip-remove` | handle |
   | `munin-explorer-filters__chosen` | handle |
+  | `munin-explorer-filters__collapse` | meaning |
   | `munin-explorer-filters__count` | handle |
   | `munin-explorer-filters__disclosure` | handle |
   | `munin-explorer-filters__facets` | handle |
@@ -1512,7 +1514,8 @@ them but do need to be on one circuit. `ExplorerUrlState.QueryKeys`
 names every parameter it reads and writes, the filter's own included, so you can tell ours from
 yours. Do that and three details are yours to get right — the interactive render mode above, a path
 built from `PathBase + Path` rather than a literal (identical locally, wrong behind a reverse
-proxy), and `replaceState` rather than `pushState`.
+proxy), and `replaceState` rather than `pushState` for filters, order and paging, with `pushState` only
+for a kilde or variable opened from the list, so the browser's Back returns to it.
 
 ### Ordering a kilde's delkilder and datasamlinger
 

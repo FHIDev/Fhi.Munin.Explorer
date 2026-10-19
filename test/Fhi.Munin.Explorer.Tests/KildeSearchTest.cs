@@ -4160,6 +4160,68 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void FilterFold_WhenTheWideScreenFoldIsPressed_ThenThePanelIsMarkedFoldedAndTheChoiceIsKept()
+    {
+        // The wide screen's own fold, which starts open where the phone's starts shut (Fhi.Metadata-amp8c).
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<string?>("readPreference", FilterFoldPreference.Key).SetResult(null);
+        module.SetupVoid("writePreference", _ => true).SetVoidResult();
+
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+        var fold = cut.Find(".munin-explorer-filters__collapse");
+
+        Assert.Equal("Skjul filtre", fold.TextContent.Trim());
+        Assert.Equal("true", fold.GetAttribute("aria-expanded"));
+        Assert.Equal(cut.Find(".munin-explorer-filters__facets").Id, fold.GetAttribute("aria-controls"));
+        Assert.DoesNotContain("munin-explorer-filters--collapsed", cut.Find("div.munin-explorer-filters").ClassList);
+
+        fold.Click();
+
+        fold = cut.Find(".munin-explorer-filters__collapse");
+        Assert.Equal("Vis filtre", fold.TextContent.Trim());
+        Assert.Equal("false", fold.GetAttribute("aria-expanded"));
+        Assert.Contains("munin-explorer-filters--collapsed", cut.Find("div.munin-explorer-filters").ClassList);
+        cut.WaitForAssertion(() => Assert.Contains(module.Invocations["writePreference"],
+            call => Equals(call.Arguments[0], FilterFoldPreference.Key) && Equals(call.Arguments[1], "1")));
+    }
+
+    [Fact]
+    public async Task FilterFold_WhenTheReaderPressesWhileTheKeptChoiceIsStillBeingRead_ThenThePressWins()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var read = module.Setup<string?>("readPreference", FilterFoldPreference.Key);
+        module.SetupVoid("writePreference", _ => true).SetVoidResult();
+
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+        cut.WaitForAssertion(() => Assert.NotEmpty(module.Invocations["readPreference"]));
+
+        cut.Find(".munin-explorer-filters__collapse").Click();
+        read.SetResult(null);
+
+        // Through the renderer's queue, so the read's continuation has run before the assertions.
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("munin-explorer-filters--collapsed", cut.Find("div.munin-explorer-filters").ClassList);
+        Assert.Equal("false", cut.Find(".munin-explorer-filters__collapse").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void FilterFold_WhenThisBrowserKeptTheFold_ThenThePageOpensWithThePanelFolded()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<string?>("readPreference", FilterFoldPreference.Key).SetResult("1");
+
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("munin-explorer-filters--collapsed", cut.Find("div.munin-explorer-filters").ClassList));
+        Assert.Equal("false", cut.Find(".munin-explorer-filters__collapse").GetAttribute("aria-expanded"));
+
+        // The phone's fold is its own state and stays as it was.
+        Assert.Equal("false", cut.Find(".munin-explorer-filters__toggle").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
     public void Facets_WhenNothingIsTicked_ThenThePanelIsFoldedAwayAndSaysSo()
     {
         // The panel is folded on a narrow screen, and a host with room for a sidebar unfolds it in
@@ -6090,6 +6152,7 @@ public class KildeSearchTest : ExplorerTestContext
             "munin-explorer-filters__chip",
             "munin-explorer-filters__chip-remove",
             "munin-explorer-filters__chosen",
+            "munin-explorer-filters__collapse",  // the wide screen's fold (Fhi.Metadata-amp8c)
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             // A facet's size, on every drawn facet (Fhi.Metadata-35w0p.53).

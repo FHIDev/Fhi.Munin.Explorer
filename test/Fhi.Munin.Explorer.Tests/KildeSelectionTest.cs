@@ -671,6 +671,7 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer",                    // shared with the variable explorer
             "munin-explorer-container",          // shared
             "munin-explorer-filters",            // shared
+            "munin-explorer-filters__collapse",  // the wide screen's fold (Fhi.Metadata-amp8c)
             "munin-explorer-filters__count",     // shared with the variable explorer's facets
             "munin-explorer-filters__facets",
             "munin-explorer-filters__groupcount", // a facet's size (Fhi.Metadata-35w0p.53)

@@ -9,17 +9,21 @@
 
 @* The address the mirror last wrote, for the drill-in views' contents nav — see
    KildeExplorer.razor, where the same value is cascaded for the same reason. *@
+@* The bindings write the state this search was mounted with: one a remount replaced, finishing
+   a slow request after Back, writes into the old object rather than over the restored list. *@
+@{ var state = _state; }
 <CascadingValue Name="@DetailToc.PageAddressName" Value="@PageAddress">
-    <VariableSearch @bind-Search="_state.Search"
-                    @bind-Filter="_state.Filter"
-                    @bind-Sort="_state.Sort"
-                    @bind-Direction="_state.Direction"
-                    @bind-Page="_state.Page"
-                    @bind-PageSize="_state.PageSize"
-                    @bind-SelectedVariableId="_state.SelectedVariableId"
-                    @bind-SelectedDatasamlingId="_state.SelectedDatasamlingId"
-                    @bind-SelectedInstrumentId="_state.SelectedInstrumentId"
-                    ShareCode="@_state.ShareCode"
+    <VariableSearch @key="_arrival"
+                    @bind-Search="state.Search"
+                    @bind-Filter="state.Filter"
+                    @bind-Sort="state.Sort"
+                    @bind-Direction="state.Direction"
+                    @bind-Page="state.Page"
+                    @bind-PageSize="state.PageSize"
+                    @bind-SelectedVariableId="state.SelectedVariableId"
+                    @bind-SelectedDatasamlingId="state.SelectedDatasamlingId"
+                    @bind-SelectedInstrumentId="state.SelectedInstrumentId"
+                    ShareCode="@state.ShareCode"
                     IsAuthenticated="@IsAuthenticated"
                     HeadingLevel="@HeadingLevel"
                     Lede="@Lede"
