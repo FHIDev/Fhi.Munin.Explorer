@@ -78,7 +78,15 @@ public sealed class DetailFacts : ComponentBase
             builder.CloseElement();
 
             builder.OpenElement(seq + 4, "dd");
-            Words(builder, seq + 5, fact.Value, fact.Lang, fact.Linked);
+
+            if (fact.Lines is { Count: > 0 } lines)
+            {
+                Lines(builder, seq + 5, lines);
+            }
+            else
+            {
+                Words(builder, seq + 5, fact.Value, fact.Lang, fact.Linked);
+            }
 
             if (!string.IsNullOrWhiteSpace(fact.Note))
             {
@@ -126,6 +134,24 @@ public sealed class DetailFacts : ComponentBase
         builder.AddAttribute(seq + 2, "lang", language);
         Content(builder, seq + 3, value, linked);
         builder.CloseElement();
+    }
+
+    /// <summary>Each line in turn with a break between, in a region of its own since their number varies.</summary>
+    private static void Lines(RenderTreeBuilder builder, int seq, IReadOnlyList<DetailFactLine> lines)
+    {
+        builder.OpenRegion(seq);
+
+        for (var index = 0; index < lines.Count; index++)
+        {
+            if (index > 0)
+            {
+                builder.AddMarkupContent(0, "<br>");
+            }
+
+            Words(builder, 1, lines[index].Text, lines[index].Lang);
+        }
+
+        builder.CloseRegion();
     }
 
     private static void Content(RenderTreeBuilder builder, int seq, string? value, bool linked)

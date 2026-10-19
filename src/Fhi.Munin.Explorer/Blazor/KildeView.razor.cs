@@ -603,7 +603,26 @@ public sealed partial class KildeView : ComponentBase, IDisposable
                                Note: DataCollections.Count > 0
                                    ? T.DatasamlingCountCrumb(DataCollections.Count)
                                    : null),
+                AccessFact(kilde),
             ];
+
+    /// <summary>
+    /// The kilde's helsedata access levels where Lovverk once stood, one per line (Robin, M6/M9); none drops the cell.
+    /// </summary>
+    private DetailFact AccessFact(KildeDetail kilde)
+    {
+        var vocabulary = kilde.PropertyMetadata.FirstOrDefault(entry =>
+            string.Equals(entry.Key, AccessLevels.Key, StringComparison.OrdinalIgnoreCase));
+        var lines = AccessLevels.Labels(AccessLevels.Codes(kilde.AdditionalProperties), vocabulary, Reader)
+            .Select(level => new DetailFactLine(level.Label, level.Language))
+            .ToList();
+
+        return new DetailFact(T.FieldAccessLevels, lines.Count == 0 ? null : string.Join(", ", lines.Select(l => l.Text)),
+            lines.Select(l => l.Lang).Distinct().Count() == 1 ? lines[0].Lang : null)
+        {
+            Lines = lines,
+        };
+    }
 
     /// <summary>The contents nav, one entry per section this view drew, in that order.</summary>
     private IReadOnlyList<DetailTocEntry> Toc { get; set; } = [];

@@ -2017,6 +2017,53 @@ public class KildeViewTest : ExplorerTestContext
     // The hero row: the five facts a source leads with, under the name block.
     // ---------------------------------------------------------------------------------
 
+    private static KildeDetail WithAccessLevels(KildeDetail kilde, string codes) => kilde with
+    {
+        AdditionalProperties = new Dictionary<string, string?>(kilde.AdditionalProperties) { [AccessLevels.Key] = codes },
+        PropertyMetadata =
+        [
+            .. kilde.PropertyMetadata,
+            Entry(AccessLevels.Key, 90, "Tilgang og ansvar", "Tilgangsnivå (helsedata)") with
+            {
+                OptionsJson = """
+                    [{"value":"statistikkbank","label":"Statistikkbank","labelEn":"Statistics bank"},
+                     {"value":"tilgang-krever-soknad","label":"Tilgang krever søknad","labelEn":"Access requires an application"},
+                     {"value":"soknad-via-helsedata","label":"Søknad via helsedata.no","labelEn":"Application via helsedata.no"}]
+                    """,
+            },
+        ],
+    };
+
+    [Fact]
+    public void Hero_WhenTheKildeHasAccessLevels_ThenTilgangIsTheLastCellWithOneLevelPerLineInHelsedatasOrder()
+    {
+        // Robin 19.10: one level per line where Lovverk once stood (M6, M9, Fhi.Metadata-d7vf4).
+        var cut = Render(WithAccessLevels(Kilde(), """["soknad-via-helsedata","statistikkbank"]"""));
+
+        var last = Hero(cut).QuerySelectorAll(":scope > div").Last();
+        Assert.Equal("Tilgang", last.QuerySelector("dt")!.TextContent);
+        var dd = last.QuerySelector("dd")!;
+        Assert.Equal("Statistikkbank<br>Søknad via helsedata.no", dd.InnerHtml);
+    }
+
+    [Fact]
+    public void Hero_WhenTheReaderIsEnglish_ThenTheLevelsAreInEnglish()
+    {
+        var cut = Render(WithAccessLevels(Kilde(), """["tilgang-krever-soknad"]"""), language: "en");
+
+        var last = Hero(cut).QuerySelectorAll(":scope > div").Last();
+        Assert.Equal("Access", last.QuerySelector("dt")!.TextContent);
+        Assert.Equal("Access requires an application", last.QuerySelector("dd")!.TextContent);
+    }
+
+    [Fact]
+    public void Hero_WhenTheKildeHasNoAccessLevel_ThenThereIsNoTilgangCell()
+    {
+        var cut = Render(Kilde());
+
+        Assert.DoesNotContain(Hero(cut).QuerySelectorAll("dt"), dt => dt.TextContent == "Tilgang");
+    }
+
     /// <summary>The hero row, which a source always has: its variable count never resolves to nothing.</summary>
     private static IElement Hero(IRenderedComponent<KildeView> cut) =>
         cut.Find("dl.munin-explorer-page__facts");
