@@ -634,11 +634,13 @@ export const states = {
       await toggles.nth(i).evaluate(box => box.checked || box.click());
     }
 
+    // Attached, not visible: under 768px the head is the cards' sort line and shows neither
+    // heading (Fhi.Metadata-ulkw3), so at 320px this measures the cards with every column on.
     for (const heading of ['Kodeverk %', 'Statistikk %']) {
       await page
         .locator('.munin-explorer-kilder thead th', { hasText: heading })
         .first()
-        .waitFor({ state: 'visible', timeout: findTimeout });
+        .waitFor({ state: 'attached', timeout: findTimeout });
     }
 
     // Folded before anything is measured, for the reason kilder-counts gives.

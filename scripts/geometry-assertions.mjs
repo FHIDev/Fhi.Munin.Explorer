@@ -455,8 +455,17 @@ export const assertions = [
       const width = Math.round(window.innerWidth);
       const columns = new Map();
 
+      let cards = 0;
+
       for (const table of tables) {
         for (const cell of table.querySelectorAll('tbody td.munin-explorer-kilder__count')) {
+          // A phone's card is not a column; its counts are left-aligned on purpose and measured by
+          // the card assertion below (Fhi.Metadata-ulkw3).
+          if (getComputedStyle(cell.parentElement).display !== 'table-row') {
+            cards += 1;
+            continue;
+          }
+
           const column = heading(table, cell);
           const figure = (cell.textContent ?? '').trim();
 
@@ -486,7 +495,7 @@ export const assertions = [
       }
 
       if (columns.size === 0) {
-        return 'the kilder table drew no count cells — nothing was measured';
+        return cards > 0 ? null : 'the kilder table drew no count cells — nothing was measured';
       }
 
       for (const { column, measured } of columns.values()) {
@@ -505,6 +514,29 @@ export const assertions = [
         const th = table.tHead?.rows[0]?.cells[cell.cellIndex];
         return (th?.textContent ?? '').trim() || `column ${cell.cellIndex}`;
       }
+    },
+  },
+
+  {
+    name: "a phone's kilde card shows each count's word",
+    kind: 'pin',
+    states: ['kilder-list', 'kilder-counts'],
+    // Under 768px Stiler draws each row as a card, and the counts lose the column heading that said
+    // what they were; the `hidden` label in the cell has to come back for them (Fhi.Metadata-ulkw3).
+    // Rows still drawn as a table are not cards, and a page with none has nothing to measure here.
+    body: () => {
+      const width = Math.round(window.innerWidth);
+      const counts = [...document.querySelectorAll(
+        'table.munin-explorer-kilder > tbody > tr > td.munin-explorer-kilder__card.munin-explorer-kilder__count')]
+        .filter(cell => getComputedStyle(cell.parentElement).display !== 'table-row');
+      for (const cell of counts) {
+        const label = cell.querySelector(':scope > .munin-explorer-kilder__card-label');
+        const box = label?.getBoundingClientRect();
+        if (!box || box.width * box.height === 0) {
+          return `at ${width}px a card's count "${(cell.textContent ?? '').trim()}" shows no word for what it counts`;
+        }
+      }
+      return null;
     },
   },
 

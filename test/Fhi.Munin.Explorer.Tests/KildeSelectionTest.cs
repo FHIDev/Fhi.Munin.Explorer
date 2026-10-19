@@ -697,6 +697,9 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer-kilder-scroll--cols-8",
             "munin-explorer-kilder__bar",        // the proportion bar (Fhi.Metadata-35w0p.30)
             "munin-explorer-kilder__bar-fill",
+            "munin-explorer-kilder__card",       // the phone's card (Fhi.Metadata-ulkw3)
+            "munin-explorer-kilder__card--variabler",
+            "munin-explorer-kilder__card-label",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
             "munin-explorer-kilder__expand-icon",

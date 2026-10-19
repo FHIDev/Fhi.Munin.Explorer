@@ -249,6 +249,13 @@ const cases = [
       '{ text-align: left !important; }'),
   },
   {
+    assertion: "a phone's kilde card shows each count's word",
+    defect: 'the rule that shows the card labels gone, so a card says "3" and "42" with no word',
+    path: '/kilder', state: 'kilder-list', width: 375,
+    apply: css('.munin-explorer-kilder .munin-explorer-kilder__card-label[hidden] ' +
+      '{ display: none !important; }'),
+  },
+  {
     assertion: "the detail page's main column is the wider part of its body",
     defect: "the reading column placed in the contents rail's track",
     path: '/', state: 'variable-whole', width: 1440,

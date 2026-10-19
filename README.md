@@ -865,14 +865,15 @@ These are not style preferences — each one is a host that breaks otherwise.
   That count is why the kilder table's header cells carry a third interpolated family, and every
   one of them is a `handle`. Each `<th>` in its `<thead>` wears `munin-explorer-kilder-header__`
   finished with its column's key, named like `munin-explorer-dataitem-header__` in the variable
-  explorer but, unlike that family, with no sample rule. The thirteen optional columns' keys are
+  explorer but, unlike that family, with sample rules for only three. The thirteen optional columns' keys are
   `KildeSearch.ColumnKeys`, built from the same switch, so the names are `munin-explorer-kilder-header__kode`, `__kildetype`, `__datasamlinger`,
   `__variabler`, `__delkilder`, `__dataansvarlig`, `__databehandler`, `__grad`,
   `__gyldighetsperiode`, `__importert`, `__sistEndret`, `__andelKodeverk` and `__andelStatistikk`.
   The cells the picker cannot reach take `__navn`, `__status` and `__opprettet`, and the two control
   columns take `__expand` and `__select`, beside the `munin-explorer-kilder__expand` and `__select`
-  they already wore. Header cells only: no `<td>` wears one. **Undrawn they cost nothing.** No
-  sample carries a rule for them, and the orphan guard exempts exactly these eighteen. What they buy
+  they already wore. Header cells only: no `<td>` wears one. **Undrawn they cost nothing.** The
+  samples style only `__navn`, `__variabler` and `__select`, as the sort line the phone's card list
+  keeps (`Fhi.Metadata-ulkw3`), and the orphan guard exempts the other fifteen. What they buy
   is the question the count cannot answer: `--cols-8` is the default three columns (772px wide) or
   Kode, Dataansvarlig and Databehandler (998px). So a stylesheet can key the sticky head on the wide
   columns being present rather than on how many there are. Adding a column key adds a name here.
@@ -1043,6 +1044,9 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilder__back` | handle |
   | `munin-explorer-kilder__bar` | handle |
   | `munin-explorer-kilder__bar-fill` | handle |
+  | `munin-explorer-kilder__card` | handle |
+  | `munin-explorer-kilder__card-label` | handle |
+  | `munin-explorer-kilder__card--variabler` | handle |
   | `munin-explorer-kilder__count` | handle |
   | `munin-explorer-kilder__count--zero` | handle |
   | `munin-explorer-kilder__expand` | handle |

@@ -1056,11 +1056,57 @@ public class KildeSearchTest : ExplorerTestContext
         Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "nasjonaltMedisinskKvalitetsregister",
             dataProcessor: "Helse Bergen HF", datasamlinger: 2506, variables: 2506));
 
-    /// <summary>A count cell's text as it is drawn: the bar's words for a screen reader left out.</summary>
-    private static string ShownText(IElement cell) =>
-        cell.FirstChild?.NodeType == NodeType.Text && cell.QuerySelector(":scope > .screenreader-only") is { } words
+    [Theory]
+    [InlineData("no", "Datasamlinger ", "Variabler ")]
+    [InlineData("en", "Data collections ", "Variables ")]
+    public void Render_WhenARowIsDrawn_ThenItsCardCellsCarryTheirWordsHiddenForTheHostsNarrowRule(
+        string language, string datasamlinger, string variables)
+    {
+        // The phone's card (Fhi.Metadata-ulkw3): the kildetype and the two counts, each count with its
+        // column's word in a `hidden` label that only the host's rule under 768px shows.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS", datasamlinger: 3, variables: 42)),
+            p => p.Add(c => c.Language, language));
+
+        var card = cut.FindAll(".munin-explorer-kilder tbody tr:first-child > .munin-explorer-kilder__card");
+
+        Assert.Equal(3, card.Count);
+        Assert.DoesNotContain("munin-explorer-kilder__count", card[0].ClassList);
+        Assert.Empty(card[0].QuerySelectorAll(".munin-explorer-kilder__card-label"));
+
+        var labels = card.Skip(1).Select(cell => cell.QuerySelector(":scope > .munin-explorer-kilder__card-label")!).ToList();
+        Assert.All(labels, label => Assert.True(label.HasAttribute("hidden")));
+        Assert.Equal([datasamlinger, variables], labels.Select(label => label.TextContent));
+        Assert.Equal(["3", "42"], card.Skip(1).Select(ShownText));
+        Assert.DoesNotContain("munin-explorer-kilder__card--variabler", card[1].ClassList);
+        Assert.Contains("munin-explorer-kilder__card--variabler", card[2].ClassList);
+    }
+
+    [Fact]
+    public void Render_WhenAKildeCountsNone_ThenItsCardCellsStillCarryTheirWords()
+    {
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS", datasamlinger: 0, variables: 0)));
+
+        var counts = cut.FindAll(".munin-explorer-kilder tbody tr:first-child > .munin-explorer-kilder__card.munin-explorer-kilder__count");
+
+        Assert.Equal(2, counts.Count);
+        Assert.All(counts, cell => Assert.NotNull(cell.QuerySelector(":scope > .munin-explorer-kilder__card-label[hidden]")));
+    }
+
+    /// <summary>A count cell's text as it is drawn: the bar's words for a screen reader and the phone card's hidden label left out.</summary>
+    private static string ShownText(IElement cell)
+    {
+        // The phone card's label is `hidden` here: no wide screen draws it (Fhi.Metadata-ulkw3).
+        cell = (IElement)cell.Clone();
+
+        foreach (var label in cell.QuerySelectorAll(":scope > [hidden]").ToList())
+        {
+            label.Remove();
+        }
+
+        return cell.FirstChild?.NodeType == NodeType.Text && cell.QuerySelector(":scope > .screenreader-only") is { } words
             ? cell.TextContent.Replace(words.TextContent, "", StringComparison.Ordinal).Trim()
             : cell.TextContent.Trim();
+    }
 
     private static readonly Dictionary<string, string> BarNames = new(StringComparer.Ordinal)
     {
@@ -1103,9 +1149,12 @@ public class KildeSearchTest : ExplorerTestContext
             Assert.Single(bar.QuerySelectorAll("span.munin-explorer-kilder__bar-fill"));
             Assert.Single(bar.Children);
 
-            // After the digits: the text node comes first, the track next, and the words for a screen reader last.
-            Assert.Equal(NodeType.Text, cell.FirstChild!.NodeType);
-            Assert.Same(bar, cell.FirstChild!.NextSibling);
+            // After the digits: the phone card's hidden label, then the text node, the track next, and the
+            // words for a screen reader last.
+            var label = Assert.IsAssignableFrom<IElement>(cell.FirstChild);
+            Assert.True(label.HasAttribute("hidden"));
+            Assert.Equal(NodeType.Text, label.NextSibling!.NodeType);
+            Assert.Same(bar, label.NextSibling!.NextSibling);
             Assert.Contains("screenreader-only", ((IElement)cell.LastChild!).ClassList);
         }
     }
@@ -1268,7 +1317,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.All(bars, bar => Assert.Equal("true", bar.GetAttribute("aria-hidden")));
 
-        Assert.Equal("–Ingen variabler registrert", VariablesCell(cut, "K_HKR").TextContent.Trim());
+        Assert.Equal("–Ingen variabler registrert", ShownText(VariablesCell(cut, "K_HKR")));
         Assert.Equal("23", ShownText(VariablesCell(cut, "K_ALS")));
         Assert.Equal("2506", ShownText(VariablesCell(cut, "K_DAR")));
     }
@@ -6207,6 +6256,9 @@ public class KildeSearchTest : ExplorerTestContext
             // The proportion bar under a non-zero variable count (Fhi.Metadata-35w0p.30).
             "munin-explorer-kilder__bar",
             "munin-explorer-kilder__bar-fill",
+            "munin-explorer-kilder__card",       // the phone's card (Fhi.Metadata-ulkw3)
+            "munin-explorer-kilder__card--variabler",
+            "munin-explorer-kilder__card-label",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",
             "munin-explorer-kilder__expand-icon",
@@ -7495,7 +7547,7 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.DoesNotContain("0", none.TextContent, StringComparison.Ordinal);
         Assert.Contains("munin-explorer-kilder__count--zero", none.ClassList);
         Assert.Equal("position:relative", none.GetAttribute("style"));
-        Assert.Equal("4", cells["Hodepineregisteret"].TextContent.Trim());
+        Assert.Equal("4", ShownText(cells["Hodepineregisteret"]));
     }
 
     [Theory]
