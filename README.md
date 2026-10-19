@@ -985,12 +985,14 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-figures__term` | handle |
   | `munin-explorer-figures__value` | handle |
   | `munin-explorer-filters` | handle |
+  | `munin-explorer-filters--collapsed` | meaning |
   | `munin-explorer-filters__active` | handle |
   | `munin-explorer-filters__badge` | handle |
   | `munin-explorer-filters__branch` | handle |
   | `munin-explorer-filters__chip` | handle |
   | `munin-explorer-filters__chip-remove` | handle |
   | `munin-explorer-filters__chosen` | handle |
+  | `munin-explorer-filters__collapse` | meaning |
   | `munin-explorer-filters__count` | handle |
   | `munin-explorer-filters__disclosure` | handle |
   | `munin-explorer-filters__facets` | handle |

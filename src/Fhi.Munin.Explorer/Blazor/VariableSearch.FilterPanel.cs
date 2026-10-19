@@ -1113,6 +1113,11 @@ public partial class VariableSearch
 
     // A double-click's second click would fold straight back what the first unfolded, as it did on
     // Kelda's toggle (Fhi.Metadata-zel47).
+    private readonly FilterFoldPreference _filterFold = new();
+
+    private Task ToggleCollapseFromControl(MouseEventArgs released) =>
+        RowPress.WasSelectionStandingStill(released) ? Task.CompletedTask : _filterFold.ToggleAsync(_interop);
+
     private void ToggleFiltersFromControl(MouseEventArgs released)
     {
         if (!RowPress.WasSelectionStandingStill(released))
