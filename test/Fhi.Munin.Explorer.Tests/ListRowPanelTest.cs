@@ -700,7 +700,10 @@ public class ListRowPanelTest : ExplorerTestContext
         await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
         await cut.InvokeAsync(gate.SetResult);
 
-        cut.WaitForAssertion(() => Assert.Equal("", OpenNotes(cut).GetAttribute("value") ?? ""));
+        // Opened once, outside the wait: a retry would press the name again and close the panel.
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
+        OpenNotes(cut);
+        cut.WaitForAssertion(() => Assert.Equal("", OpenNotesField(cut).GetAttribute("value") ?? ""));
     }
 
     [Fact]
@@ -713,7 +716,9 @@ public class ListRowPanelTest : ExplorerTestContext
         await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
         await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
 
-        cut.WaitForAssertion(() => Assert.Equal("ikke lagret ennå", OpenNotes(cut).GetAttribute("value")));
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
+        OpenNotes(cut);
+        cut.WaitForAssertion(() => Assert.Equal("ikke lagret ennå", OpenNotesField(cut).GetAttribute("value")));
     }
 
     [Fact]
@@ -1049,7 +1054,9 @@ public class ListRowPanelTest : ExplorerTestContext
         await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
         await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
 
-        cut.WaitForAssertion(() => Assert.Equal("skrevet i en annen fane", OpenNotes(cut).GetAttribute("value")));
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
+        OpenNotes(cut);
+        cut.WaitForAssertion(() => Assert.Equal("skrevet i en annen fane", OpenNotesField(cut).GetAttribute("value")));
     }
 
     [Fact]
