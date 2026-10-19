@@ -131,11 +131,19 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
     private bool Open => _state.SelectedVariableId is not null || _state.SelectedInstrumentId is not null;
 
+    // The list as it was when the detail was pushed: closing is Back only while it is still the
+    // same, or a sort or page change made while the variable was open would be undone.
+    private string? _pushedListQuery;
+
+    private string ListQuery() =>
+        Linkable(_state.ToState() with { SelectedVariableId = null, SelectedDatasamlingId = null, SelectedInstrumentId = null })
+            .ToQueryString();
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         // The bookkeeping before each await: renders overlap here, and a second one reading the old
         // values would push the same opening twice.
-        if (_mirroredOpen is true && !Open && _detailPushed)
+        if (_mirroredOpen is true && !Open && _detailPushed && _pushedListQuery == ListQuery())
         {
             // Closing what was opened from the list is the browser's own Back, so Forward reopens it.
             _detailPushed = false;
@@ -147,9 +155,10 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             var push = _mirroredOpen is false && Open;
 
             _detailPushed = push || (_detailPushed && Open);
+            _pushedListQuery = push ? ListQuery() : _pushedListQuery;
             _mirroredOpen = Open;
 
-            await _mirror.MirrorAsync(Linkable(_state.ToState()).ToQueryString(), push);
+            await _mirror.MirrorAsync(Linkable(_state.ToState()).ToQueryString(), push, _detailPushed);
         }
 
         if (!firstRender)
@@ -179,10 +188,16 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     /// VariableSearch reads the open variable once, so a different state remounts it through
     /// <c>@key</c>, as <see cref="KildeExplorer"/> remounts its search for the same reason.
     /// </remarks>
-    private void Moved(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(() => Arrive(e.Location));
+    private void Moved(object? sender, LocationChangedEventArgs e) =>
+        _ = InvokeAsync(() => Arrive(e.Location, e.HistoryEntryState == UrlMirror.OpenedFromList));
 
-    private void Arrive(string location)
+    private void Arrive(string location, bool pushedFromList)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         var address = new Uri(location);
 
         if (!string.Equals(address.AbsolutePath, _mirror.Path, StringComparison.Ordinal))
@@ -199,7 +214,10 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
             _state = arrived;
             _arrival++;
             _mirroredOpen = Open;
-            _detailPushed = Open;
+
+            // An entry pushed from the list, reached by Back or Forward, has the list under it; a link's does not.
+            _detailPushed = pushedFromList && Open;
+            _pushedListQuery = _detailPushed ? ListQuery() : null;
         }
 
         StateHasChanged();

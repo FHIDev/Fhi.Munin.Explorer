@@ -1512,7 +1512,8 @@ them but do need to be on one circuit. `ExplorerUrlState.QueryKeys`
 names every parameter it reads and writes, the filter's own included, so you can tell ours from
 yours. Do that and three details are yours to get right — the interactive render mode above, a path
 built from `PathBase + Path` rather than a literal (identical locally, wrong behind a reverse
-proxy), and `replaceState` rather than `pushState`.
+proxy), and `replaceState` rather than `pushState` for filters, order and paging, with `pushState` only
+for a kilde or variable opened from the list, so the browser's Back returns to it.
 
 ### Ordering a kilde's delkilder and datasamlinger
 

@@ -6,6 +6,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -84,6 +85,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// </remarks>
     private void Prepare()
     {
+        Services.AddSingleton<IJSRuntime>(_history = new HistoryRecorder(JSInterop.JSRuntime));
         SetRendererInfo(new RendererInfo(_interactive ? "Server" : "Static", _interactive));
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
@@ -125,9 +127,10 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     /// <summary>The last URL the component wrote, or null when it never wrote one.</summary>
+    private HistoryRecorder? _history;
+
     private string? Mirrored() =>
-        JSInterop.Invocations.Where(call => call.Identifier is ReplaceState or "history.pushState")
-            .Select(call => call.Arguments[2] as string).LastOrDefault();
+        _history?.Written.LastOrDefault();
 
     /// <summary>
     /// Registers the client, puts the browser at <paramref name="url"/>, and renders.
@@ -716,6 +719,42 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void History_WhenALinkLeadsFromAnOpenedKildeToAnother_ThenClosingThatOneReplacesRatherThanGoingBack()
+    {
+        // Back from the second kilde would land on the first one, not the list (pre-PR review).
+        var id = Guid.NewGuid();
+        var cut = RenderKilder(id, "http://localhost/kilder");
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+
+        Navigation.NavigateTo($"http://localhost/kilder?kilde={Guid.NewGuid()}");
+        cut.WaitForAssertion(() => cut.Find(".munin-explorer-kilder__back").Click());
+
+        cut.WaitForAssertion(() => Assert.Equal("/kilder", Mirrored()));
+        Assert.Equal(0, Backs());
+    }
+
+    [Fact]
+    public void History_WhenForwardReturnsToAKildeOpenedFromTheList_ThenClosingItIsBackAgain()
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderKilder(id, "http://localhost/kilder");
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+
+        Navigation.NavigateTo("http://localhost/kilder");
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".munin-explorer-drilldown")));
+        Navigation.NavigateTo(
+            $"http://localhost/kilder?kilde={id}",
+            new NavigationOptions { HistoryEntryState = UrlMirror.OpenedFromList });
+        cut.WaitForAssertion(() => cut.Find(".munin-explorer-kilder__back").Click());
+
+        cut.WaitForAssertion(() => Assert.Equal(1, Backs()));
+    }
+
+    [Fact]
     public void History_WhenAVariableIsOpenedFromTheList_ThenItIsANewEntryAndCollapsingItIsBack()
     {
         var cut = RenderVariables("http://localhost/variabler");
@@ -728,6 +767,38 @@ public class UrlStateComponentTest : ExplorerTestContext
         Rows(cut)[0].Click();
 
         cut.WaitForAssertion(() => Assert.Equal(1, Backs()));
+    }
+
+    [Fact]
+    public void History_WhenAVariableArrivedInTheAddress_ThenCollapsingItReplacesRatherThanLeavingThePage()
+    {
+        var cut = RenderVariables($"http://localhost/variabler?variabelId={TwoVariableClient.SpeechId}");
+
+        cut.WaitForAssertion(() => Assert.Equal("true", Rows(cut)[0].GetAttribute("aria-expanded")));
+        Rows(cut)[0].Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("/variabler", Mirrored()));
+        Assert.Equal(0, Backs());
+        Assert.Equal(0, Pushes());
+    }
+
+    [Fact]
+    public void History_WhenTheListIsSortedWhileAVariableIsOpen_ThenCollapsingKeepsTheSortRatherThanGoingBack()
+    {
+        // Back would return to the entry pushed with the old order and undo the sort (pre-PR review).
+        var cut = RenderVariables("http://localhost/variabler");
+
+        Rows(cut)[0].Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+
+        cut.Find(".munin-explorer-dataitem-header__name .munin-explorer-dataitem-header__button").Click();
+        cut.WaitForAssertion(() => Assert.Contains("sort=", Mirrored(), StringComparison.Ordinal));
+
+        Rows(cut)[0].Click();
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("variabelId", Mirrored(), StringComparison.Ordinal));
+        Assert.Contains("sort=", Mirrored(), StringComparison.Ordinal);
+        Assert.Equal(0, Backs());
     }
 
     [Fact]

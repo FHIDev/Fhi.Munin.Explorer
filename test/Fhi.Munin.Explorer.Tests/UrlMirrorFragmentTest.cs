@@ -4,6 +4,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Tests;
 
@@ -94,9 +95,10 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
     private NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
 
     /// <summary>The last URL a component mirrored, or null when none ever wrote one.</summary>
+    private HistoryRecorder? _history;
+
     private string? Mirrored() =>
-        JSInterop.Invocations.Where(call => call.Identifier is ReplaceState or "history.pushState")
-            .Select(call => call.Arguments[2] as string).LastOrDefault();
+        _history?.Written.LastOrDefault();
 
     /// <remarks>
     /// The client is registered and the renderer info set before the navigation: bUnit seals its
@@ -107,6 +109,7 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
     {
         Services.AddSingleton(client);
         Services.AddScoped<VariableListState>();
+        Services.AddSingleton<IJSRuntime>(_history = new HistoryRecorder(JSInterop.JSRuntime));
         SetRendererInfo(new RendererInfo("Server", true));
         JSInterop.Mode = JSRuntimeMode.Loose;
         Navigation.NavigateTo(url);

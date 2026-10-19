@@ -2,6 +2,7 @@ using System.Text;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Parsing;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -10,7 +11,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// The address bar, for a component that owns some of the query string and none of the rest.
 /// </summary>
 /// <remarks>
-/// <c>history.replaceState</c> is a browser built-in reached through <see cref="IJSRuntime"/>, as
+/// <c>history.replaceState</c> and <c>pushState</c> are browser built-ins reached through <see cref="IJSRuntime"/>, as
 /// <see cref="BrowserDownload"/> reaches <c>Blob</c> — not an export of the package's own module,
 /// so the address bar follows the view whether or not a host serves that file.
 /// </remarks>
@@ -139,11 +140,9 @@ internal sealed class UrlMirror
     /// behind the section the incoming address named while that is still the view on screen.
     /// </summary>
     /// <param name="query">The owned keys as a query string with no leading <c>?</c>.</param>
-    /// <param name="push">
-    /// A new history entry, for opening a kilde or a variable, so Back returns to the list
-    /// (Fhi.Metadata-l9l2n.124). Filters, order and paging replace the entry they are on.
-    /// </param>
-    public async ValueTask MirrorAsync(string query, bool push = false)
+    /// <param name="push">A new history entry, for a kilde or variable opened from the list (Fhi.Metadata-l9l2n.124).</param>
+    /// <param name="openedFromList">The entry is such a detail; a replace keeps its <see cref="OpenedFromList"/> mark.</param>
+    public async ValueTask MirrorAsync(string query, bool push = false, bool openedFromList = false)
     {
         var fragment = TakeFragment(query);
         var url = Address(query) + fragment;
@@ -156,11 +155,19 @@ internal sealed class UrlMirror
 
         // Replaced by default: opening and closing filters would otherwise fill the history with
         // steps the reader has to walk back through one at a time instead of leaving the site.
-        await _js.InvokeVoidAsync(push ? "history.pushState" : "history.replaceState", null, "", url).ConfigureAwait(false);
+        var state = push || openedFromList ? new { userState = OpenedFromList } : null;
+
+        await _js.InvokeVoidAsync(push ? "history.pushState" : "history.replaceState", state, "", url).ConfigureAwait(false);
 
         // After the call, not before: a write the browser refused must not read as one it has.
         _mirrored = url;
     }
+
+    /// <summary>
+    /// What a pushed entry carries, read back as <see cref="LocationChangedEventArgs.HistoryEntryState"/>
+    /// on Back or Forward: Blazor reports those as intercepted, so this is what tells them from a link.
+    /// </summary>
+    public const string OpenedFromList = "Fhi.Munin.Explorer:opened-from-list";
 
     /// <summary>One step back in the browser's history, as its own Back button takes.</summary>
     public ValueTask BackAsync() => _js.InvokeVoidAsync("history.back");

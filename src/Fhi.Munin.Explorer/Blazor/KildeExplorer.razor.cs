@@ -472,9 +472,11 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         (_search, _facets, _ticked, _marked, _expanded, _columns) = list;
         _arrival++;
 
-        // Back or Forward through entries this circuit pushed: the address is already the one shown.
+        // An entry pushed from the list, reached by Back or Forward, has the list under it; one a
+        // link made has the kilde it came from.
         _mirroredSelection = (_selectedKildeId, _selectedDatasamlingId);
-        _detailPushed = _pushedAny && _selectedKildeId is not null;
+        _detailPushed = e.HistoryEntryState == UrlMirror.OpenedFromList && _selectedKildeId is not null;
+        _pushedListQuery = _detailPushed ? Query(null, null) : null;
 
         StateHasChanged();
     }
@@ -512,11 +514,11 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         var push = _mirroredSelection is { Kilde: null } && _selectedKildeId is not null;
 
         // Before the await: renders overlap here, and one reading the old values would push twice.
-        _pushedAny |= push;
         _detailPushed = push || (_detailPushed && _selectedKildeId is not null);
+        _pushedListQuery = push ? Query(null, null) : _pushedListQuery;
         _mirroredSelection = selection;
 
-        await _mirror.MirrorAsync(Query(_selectedKildeId, _selectedDatasamlingId), push);
+        await _mirror.MirrorAsync(Query(_selectedKildeId, _selectedDatasamlingId), push, _detailPushed);
     }
 
     /// <summary>The keys this component owns, as a query string, omitting what is at its default.</summary>
@@ -628,7 +630,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private void KildeChanged(Guid? kilde)
     {
         // Closing a kilde this circuit opened is the browser's own Back, so Forward opens it again.
-        _closeByBack = kilde is null && _selectedKildeId is not null && _detailPushed;
+        _closeByBack = kilde is null && _selectedKildeId is not null && _detailPushed
+                       && _pushedListQuery == Query(null, null);
         _selectedKildeId = kilde;
         _selectedDatasamlingId = null;
     }
@@ -637,8 +640,11 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     // kilde gets a history entry of its own and its close steps back over it (Fhi.Metadata-l9l2n.124).
     private (Guid? Kilde, Guid? Datasamling)? _mirroredSelection;
     private bool _detailPushed;
-    private bool _pushedAny;
     private bool _closeByBack;
+
+    // The list as it was when the kilde was pushed: Back returns to exactly that, so it is taken only
+    // while the list is still the same.
+    private string? _pushedListQuery;
 
     /// <summary>Turn the chosen kilder into the query the variable explorer reads, and go there.</summary>
     /// <remarks>

@@ -21,7 +21,7 @@
    it must be mounted interactively. No class names and no markup of its own. *@
 
 @* The address the mirror last wrote, for the detail views' contents nav. Only this component
-   knows it: the mirror moves the browser with history.replaceState, which leaves
+   knows it: the mirror moves the browser with history.replaceState or pushState, which leaves
    NavigationManager.Uri on the address the circuit loaded. (Fhi.Metadata-l9l2n.114) *@
 <CascadingValue Name="@DetailToc.PageAddressName" Value="@PageAddress">
     <KildeSearch @key="_arrival"
