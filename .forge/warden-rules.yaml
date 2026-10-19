@@ -85,6 +85,7 @@ rules:
       added: "2026-09-09"
       paths:
         - src/**/*.cs
+        - samples/**/*.css
     - id: target-size-from-measured-box-not-reset-class
       category: ui
       pattern: >-
@@ -302,7 +303,7 @@ rules:
     - id: comment-history-not-incident-history-2
       category: style
       pattern: >-
-        A comment — XML doc, or one on a test/source/Razor/script file — narrates past states (old counts, prior behavior, bead/PR/incident history, author attribution, or what the code used to do) instead of, or in addition to, stating the current invariant. Length alone is comment-three-line-ceiling's to flag, not this rule's
+        A comment — XML doc, or one on a test/source/Razor/script file — narrates past states (old counts, prior behavior, bead/PR/incident history, author attribution, or what the code used to do) instead of, or in addition to, stating the current invariant. Length alone is comment-three-line-ceiling's to flag, not this rule's This includes probe or verification history ("empty everywhere so far", "verified by hand", "checked on N hosts").
       check: >-
         Verify the comment states only the present-tense invariant the code enforces; confirm any incident history, author attribution, counts, or 'used to'/'previously' language is removed and belongs in the bead or PR description instead. The exception is public XML doc comments on the package's API, per AGENTS.md's 'Comments' section: their reader has only the package from the feed and its IntelliSense, so a migration note they cannot reconstruct from the signature may stay in the file. Internal types, tests, and scripts have no such reader and get no exception
       source: copilot:PR#302
@@ -323,3 +324,100 @@ rules:
       added: "2026-09-29"
       paths:
         - .forge/**/*.yaml
+    - id: render-tree-sequence-monotonic
+      category: other
+      pattern: >-
+        A RenderTreeBuilder method (BuildRenderTree, a RenderFragment, a partial Blazor component in .cs) adds or reorders frames, attributes or siblings with literal sequence numbers.
+      check: >-
+        Verify the sequence numbers are literals that strictly increase in source order across every branch, sibling and attribute of the same builder, with no number repeated or going backwards after the edit. Blazor diffs frames by sequence position, so a backwards or repeated sequence can patch the wrong element. Run the repository's sequence regression test.
+      source: [copilot:PR#552, copilot:PR#513]
+      added: "2026-10-19"
+      paths:
+        - src/**/*.cs
+        - src/**/*.razor
+    - id: capture-reader-generation-before-await
+      category: concurrency
+      pattern: >-
+        A Blazor handler or state method awaits a network call (save, share, rename, load) and then writes component or shared state, notices, focus or a language-keyed cache, while the reader, the Language, the filters or another request can change during the wait.
+      check: >-
+        Verify the handler captures what the result belongs to (reader, language, filter key, a request generation) before the await, and after the await drops the result if any of them changed or a newer request started. Writes that can overlap must not commit out of order, sign-out must clear per-reader notices, and focus must not move on a stale completion. Test the interleaving.
+      source: [copilot:PR#575, copilot:PR#509, copilot:PR#502, copilot:PR#500, copilot:PR#499]
+      added: "2026-10-19"
+      paths:
+        - src/**/*.cs
+        - src/**/*.razor
+    - id: test-name-method-when-then
+      category: style
+      pattern: >-
+        New or renamed test methods in test/**: a name that omits the method under test or does not follow `Method_WhenCondition_ThenOutcome` (AGENTS.md).
+      check: >-
+        Verify every test added or renamed in the diff is named `Method_WhenCondition_ThenOutcome`, where Method is the method actually called (not a page or concept name), so a failure names the behaviour and the expected result. Check every new test, not only the first one.
+      source: [copilot:PR#559, copilot:PR#547, copilot:PR#538, copilot:PR#536, copilot:PR#508]
+      added: "2026-10-19"
+      paths:
+        - test/**/*.cs
+    - id: language-dependent-load-keyed-by-language
+      category: other
+      pattern: >-
+        A component loads or caches content whose text depends on the UI language (API labels, kildetype names, vocabulary) but keys the load or cache only on filters or ids, not on `Language`.
+      check: >-
+        Verify the load is repeated, and the cache keyed, when `Language` changes, so a late response for the old language is not stored or shown under the new one.
+      source: shared-from:FHIDev/Munin:locale-dependent-fetch-missing-language-key
+      added: "2026-10-19"
+      paths:
+        - src/**/*.cs
+        - src/**/*.razor
+    - id: clear-stale-results-on-filter-change
+      category: other
+      pattern: >-
+        A component shows a result from an async action (search, export, run) and has filter or scope inputs that can change after the result is rendered.
+      check: >-
+        Verify changing any filter or scope input clears or invalidates the shown result, so a result from a different scope cannot be mistaken for the current one.
+      source: shared-from:FHIDev/Munin:clear-stale-results-on-filter-change
+      added: "2026-10-19"
+      paths:
+        - src/**/*.cs
+        - src/**/*.razor
+    - id: stale-cache-on-duplicate-load
+      category: concurrency
+      pattern: >-
+        A parent and a child component can both load the same resource (for example a shared vocabulary or filters), the child reading a shared cache only when it first renders.
+      check: >-
+        Verify concurrent loads of the same resource are shared, and that an already rendered child re-syncs its loading and error state when the shared cache is filled from another source, not only on first render.
+      source: shared-from:FHIDev/Munin:stale-cache-on-duplicate-fetch
+      added: "2026-10-19"
+      paths:
+        - src/**/*.cs
+        - src/**/*.razor
+    - id: breaking-api-version-bump
+      category: other
+      pattern: >-
+        A public member of the packaged library (a type, method signature, parameter list, `[Obsolete]` removal) changes in a breaking way.
+      check: >-
+        Verify `VersionPrefix` in Directory.Build.props gets the semantic-version bump a breaking change needs, and that the host notes say what hosts must change, so a host pinning the old version does not silently get an incompatible API.
+      source: shared-from:FHIDev/Munin:breaking-api-version-bump
+      added: "2026-10-19"
+      paths:
+        - src/**/*.cs
+        - Directory.Build.props
+    - id: no-blocking-wait-for-sync-state
+      category: other
+      pattern: >-
+        A test waits with `Thread.Sleep`, `Task.Delay` polling or `SpinWait.SpinUntil` for a condition the code under test produces synchronously.
+      check: >-
+        Verify whether the condition is already true right after the triggering call; if so, assert it directly instead of waiting, since the wait only adds wall-clock dependency and can tie up a test thread for the whole timeout.
+      source: shared-from:FHIDev/Munin:no-blocking-wait-for-sync-state
+      added: "2026-10-19"
+      paths:
+        - test/**/*.cs
+    - id: no-raw-user-input-in-validation-errors
+      category: security
+      pattern: >-
+        Validation output, a log line or an exception message that echoes a rejected value from the reader or the host, such as a URL, a query string, a token or another free-form input.
+      check: >-
+        Verify the message names only the property and the violated requirement, never the raw value: a URL can carry credentials or personal data in its user-info, path or query, and a logged message would disclose them. Tests should assert on the property and requirement, not the raw value.
+      source: shared-from:FHIDev/Munin:no-raw-user-input-in-validation-errors
+      added: "2026-10-19"
+      paths:
+        - src/**/*.cs
+        - src/**/*.razor
