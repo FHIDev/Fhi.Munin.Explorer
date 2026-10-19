@@ -513,7 +513,7 @@ public class DetailPageTest : ExplorerTestContext
     [Fact]
     public void Stuckbar_WhenThereIsACode_ThenASpaceKeepsItApartFromTheName()
     {
-        // «ALS RegisteretK_ALS (ALS)» on helsedata test (Fhi.Metadata-iecf0).
+        // The name and the code must not run together (Fhi.Metadata-iecf0).
         var name = RenderSticky(withActions: false).Find(".munin-explorer-page__stuckbar-name");
 
         Assert.Contains("Tromsøundersøkelsen K_TR (Tromsø)", name.TextContent, StringComparison.Ordinal);
