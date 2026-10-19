@@ -988,6 +988,8 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Empty(section.QuerySelectorAll("dt:not(.screenreader-only)"));
         Assert.Equal("https://example.org/report", section.QuerySelector("dd a")?.GetAttribute("href"));
         Assert.Equal("Se rapporten.", section.QuerySelector("dd")!.Label().Trim());
+        Assert.Equal(language == "en" ? "en" : "no",
+                     section.QuerySelector("dd a .screenreader-only")?.GetAttribute("lang"));
         Assert.Equal(language == "en" ? "no" : null, section.QuerySelector("dd")?.GetAttribute("lang"));
         Assert.Contains("#munin-explorer-section-om-datasamlingen", Targets(cut));
         Assert.DoesNotContain("#munin-explorer-section-kvalitetsnote", Targets(cut));

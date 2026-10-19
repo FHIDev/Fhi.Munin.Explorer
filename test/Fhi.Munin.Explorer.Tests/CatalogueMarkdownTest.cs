@@ -177,7 +177,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
         var cut = Rendered("Se [MSIS-forskriften].\n\n[MSIS-forskriften]: https://lovdata.no/msis");
 
         Assert.Equal(
-            "Se <a href=\"https://lovdata.no/msis\" target=\"_blank\" rel=\"noopener noreferrer\">MSIS-forskriften<span class=\"screenreader-only\"> (åpnes i nytt vindu)</span></a>.",
+            "Se <a href=\"https://lovdata.no/msis\" target=\"_blank\" rel=\"noopener noreferrer\">MSIS-forskriften<span class=\"screenreader-only\" lang=\"no\"> (åpnes i nytt vindu)</span></a>.",
             cut.Markup);
     }
 
@@ -220,7 +220,7 @@ public class CatalogueMarkdownTest : ExplorerTestContext
     [Fact]
     public void Render_WhenADefinitionComesBeforeItsLink_ThenTheLinkStillTakesItAndNothingElseIsDrawn()
     {
-        Assert.Equal("Se <a href=\"https://x.no\" target=\"_blank\" rel=\"noopener noreferrer\">a<span class=\"screenreader-only\"> (åpnes i nytt vindu)</span></a>.",
+        Assert.Equal("Se <a href=\"https://x.no\" target=\"_blank\" rel=\"noopener noreferrer\">a<span class=\"screenreader-only\" lang=\"no\"> (åpnes i nytt vindu)</span></a>.",
                      Rendered("[a]: https://x.no\n\nSe [a].").Markup);
     }
 

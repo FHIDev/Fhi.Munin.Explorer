@@ -54,5 +54,6 @@ public class CatalogueLinkTest : ExplorerTestContext
         var a = Link("https://lovdata.no/", reader: "en").Find("a");
 
         Assert.Equal("lenke (opens in a new window)", a.TextContent);
+        Assert.Equal("en", a.QuerySelector(".screenreader-only")?.GetAttribute("lang"));
     }
 }

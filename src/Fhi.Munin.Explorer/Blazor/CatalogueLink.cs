@@ -6,6 +6,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <summary>
 /// A link the catalogue supplied. One to another host opens in a new window and says so to a screen
 /// reader; the icon is the host's own rule for <c>a[target="_blank"]</c> (Fhi.Metadata-c8lgk, WCAG 3.2.5).
+/// It reads only the page's host off <see cref="NavigationManager"/> and never navigates.
 /// </summary>
 internal sealed class CatalogueLink : ComponentBase
 {
@@ -45,9 +46,11 @@ internal sealed class CatalogueLink : ComponentBase
 
         if (external)
         {
+            // Its own lang: the link may sit in a catalogue value marked as Norwegian on an English page.
             builder.OpenElement(6, "span");
             builder.AddAttribute(7, "class", "screenreader-only");
-            builder.AddContent(8, " " + Texts.For(Reader).OpensInNewWindow);
+            builder.AddAttribute(8, "lang", ReaderLanguage.Of(Reader));
+            builder.AddContent(9, " " + Texts.For(Reader).OpensInNewWindow);
             builder.CloseElement();
         }
 
