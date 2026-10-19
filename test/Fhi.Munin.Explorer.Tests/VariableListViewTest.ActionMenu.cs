@@ -92,7 +92,7 @@ public partial class VariableListViewTest
     public void Folds_WhenARenderComesWhileTheCallIsOutAndTheCallFails_ThenItIsAskedAgain()
     {
         // The skipped render is owed an ask: without one, nothing renders again and the menus never
-        // close on a press outside (Fhi.Metadata-qpyrx, seen on #592's CI).
+        // close on a press outside (Fhi.Metadata-qpyrx).
         var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
         var first = module.SetupVoid("watchFolds");
 
