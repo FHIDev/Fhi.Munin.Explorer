@@ -360,7 +360,7 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
         NameButton(cut, "Databaseversjon").Click();
 
-        Assert.Null(Panel(cut));
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
         Assert.Equal("false", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded"));
         Assert.Null(NameButton(cut, "Databaseversjon").GetAttribute("aria-controls"));
     }
@@ -431,6 +431,8 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
         RemoveButton(cut, "Databaseversjon").Click();
 
+        // The refusal's own alert, so the panel is checked after the removal was answered, not before it ran.
+        cut.WaitForAssertion(() => Assert.Contains("Kunne ikke endre listen nå.", cut.Markup, StringComparison.Ordinal));
         Assert.Equal("true", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded"));
         Assert.NotNull(Panel(cut));
     }
@@ -515,8 +517,9 @@ public class ListRowPanelTest : ExplorerTestContext
         NameButton(cut, name).Click();
         cut.WaitForElement("[role=tablist]");
         cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Mine notater").Click();
-        var label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Egne notater");
-        return cut.Find($"#{label.GetAttribute("for")}");
+        IElement? label = null;
+        cut.WaitForAssertion(() => label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Egne notater"));
+        return cut.Find($"#{label!.GetAttribute("for")}");
     }
 
     private static string NotesStatusText(IRenderedComponent<VariableListView> cut, IElement field) =>
@@ -562,9 +565,10 @@ public class ListRowPanelTest : ExplorerTestContext
 
         OpenNotes(cut).Change("  Spør om 2012  ");
 
-        Assert.Equal([(DatabaseVersion.VariableId, (string?)"Spør om 2012")], client.NotesWritten);
+        cut.WaitForAssertion(() => Assert.Equal([(DatabaseVersion.VariableId, (string?)"Spør om 2012")], client.NotesWritten));
 
         NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
         var reopened = OpenNotes(cut);
         Assert.Equal("Spør om 2012", reopened.GetAttribute("value"));
         Assert.Null(reopened.GetAttribute("aria-invalid"));
@@ -1178,9 +1182,9 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Kopier lenke").Click();
 
-        Assert.Equal(
+        cut.WaitForAssertion(() => Assert.Equal(
             $"https://helsedata.example/variabler?variabelId={DatabaseVersion.VariableId}",
-            copied.Invocations.Single().Arguments.Single());
+            copied.Invocations.Single().Arguments.Single()));
         cut.WaitForAssertion(() => Assert.Contains(
             cut.FindAll("[role=status]"), s => s.TextContent.Trim() == "Lenken er kopiert."));
     }
