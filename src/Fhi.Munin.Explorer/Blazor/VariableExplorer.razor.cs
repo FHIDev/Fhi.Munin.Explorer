@@ -1,5 +1,6 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -118,11 +119,50 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         _mirror = new UrlMirror(Navigation, JS, Owns);
         _state = Binding.From(ExplorerUrlState.Parse(_mirror.Owned));
+
+        Navigation.LocationChanged += Moved;
     }
+
+    // Whether a variable or an instrument was open when the address bar was last written, and whether
+    // its entry was pushed from the list, so Back returns to the list (Fhi.Metadata-l9l2n.124).
+    private bool? _mirroredOpen;
+    private bool _detailPushed;
+    private int _arrival;
+
+    private bool Open => _state.SelectedVariableId is not null || _state.SelectedInstrumentId is not null;
+
+    // The list as it was when the detail was pushed: closing is Back only while it is still the
+    // same, or a sort or page change made while the variable was open would be undone.
+    private string? _pushedListQuery;
+
+    private string ListQuery() =>
+        Linkable(_state.ToState() with { SelectedVariableId = null, SelectedDatasamlingId = null, SelectedInstrumentId = null })
+            .ToQueryString();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await _mirror.MirrorAsync(Linkable(_state.ToState()).ToQueryString());
+        // The bookkeeping before each await: renders overlap here, and a second one reading the old
+        // values would push the same opening twice.
+        if (_mirroredOpen is true && !Open && _detailPushed && _pushedListQuery == ListQuery())
+        {
+            // Closing what was opened from the list is the browser's own Back, so Forward reopens it.
+            _detailPushed = false;
+            _mirroredOpen = false;
+            await _mirror.BackAsync(Linkable(_state.ToState()).ToQueryString());
+        }
+        else
+        {
+            // Only an opening the address shows: a host declining the selection's key gets no entry.
+            // A list changed under the open row ends Back's claim, and the entry's mark with it.
+            var query = Linkable(_state.ToState()).ToQueryString();
+            var push = _mirroredOpen is false && Open && query != ListQuery();
+
+            _detailPushed = push || (_detailPushed && Open && _pushedListQuery == ListQuery());
+            _pushedListQuery = push ? ListQuery() : _pushedListQuery;
+            _mirroredOpen = Open;
+
+            await _mirror.MirrorAsync(query, push, _detailPushed);
+        }
 
         if (!firstRender)
         {
@@ -146,10 +186,52 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         }
     }
 
+    /// <summary>Back or Forward, or a host's own navigation: the address is read again, as at load.</summary>
+    /// <remarks>
+    /// VariableSearch reads the open variable once, so a different state remounts it through
+    /// <c>@key</c>, as <see cref="KildeExplorer"/> remounts its search for the same reason.
+    /// </remarks>
+    private void Moved(object? sender, LocationChangedEventArgs e) =>
+        _ = InvokeAsync(() => Arrive(e.Location, e.HistoryEntryState == UrlMirror.OpenedFromList));
+
+    private void Arrive(string location, bool pushedFromList)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        var address = new Uri(location);
+
+        if (!string.Equals(address.AbsolutePath, _mirror.Path, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var mirror = new UrlMirror(address, JS, Owns);
+        var arrived = Binding.From(ExplorerUrlState.Parse(mirror.Owned));
+        _mirror = mirror;
+
+        if (Linkable(arrived.ToState()).ToQueryString() != Linkable(_state.ToState()).ToQueryString())
+        {
+            _state = arrived;
+            _arrival++;
+        }
+
+        // On every arrival: an entry pushed from the list, reached by Back or Forward, has the list
+        // under it; one a link or a host parameter made does not.
+        _mirroredOpen = Open;
+        _detailPushed = pushedFromList && Open;
+        _pushedListQuery = _detailPushed ? ListQuery() : null;
+
+        StateHasChanged();
+    }
+
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _disposed = true;
+        Navigation.LocationChanged -= Moved;
 
         return _interop?.DisposeAsync() ?? ValueTask.CompletedTask;
     }

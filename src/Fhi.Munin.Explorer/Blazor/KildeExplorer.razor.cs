@@ -457,9 +457,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         // dropped and put them back into every later link and rewrite.
         _mirror = mirror;
 
+        // On every arrival, not only a changed one: an entry pushed from the list, reached by Back or
+        // Forward, has the list under it; one a link or a host parameter made has something else.
+        var pushedFromList = e.HistoryEntryState == UrlMirror.OpenedFromList && arrived.Item1 is not null;
+
         if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction)
             && list.Query() == List.Query())
         {
+            _detailPushed = pushedFromList;
+            _pushedListQuery = _detailPushed ? Query(null, null) : null;
+
             // Redrawn anyway, and not left to the host: every link is built from the mirror just
             // replaced, and a host with no Router — helsedata's CMS — raises this without
             // re-rendering us, leaving the hrefs naming host parameters the navigation dropped.
@@ -471,6 +478,10 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = arrived;
         (_search, _facets, _ticked, _marked, _expanded, _columns) = list;
         _arrival++;
+
+        _mirroredSelection = (_selectedKildeId, _selectedDatasamlingId);
+        _detailPushed = pushedFromList;
+        _pushedListQuery = _detailPushed ? Query(null, null) : null;
 
         StateHasChanged();
     }
@@ -489,8 +500,32 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         || string.Equals(key, ExpandedQueryKey, StringComparison.OrdinalIgnoreCase)
         || KildeSearch.FacetKeys.Contains(key, StringComparer.OrdinalIgnoreCase);
 
-    protected override Task OnAfterRenderAsync(bool firstRender) =>
-        _mirror.MirrorAsync(Query(_selectedKildeId, _selectedDatasamlingId)).AsTask();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var selection = (_selectedKildeId, _selectedDatasamlingId);
+
+        if (_closeByBack)
+        {
+            _closeByBack = false;
+            _detailPushed = false;
+            _mirroredSelection = selection;
+            await _mirror.BackAsync(Query(_selectedKildeId, _selectedDatasamlingId));
+
+            return;
+        }
+
+        // Only a kilde opened from the list, so the entry under a pushed one is always the list; a
+        // datasamling arrives by a link, and one kilde to another replaces.
+        var push = _mirroredSelection is { Kilde: null } && _selectedKildeId is not null;
+
+        // Before the await: renders overlap here, and one reading the old values would push twice.
+        // A list changed under an open kilde ends Back's claim, and the entry's mark with it.
+        _detailPushed = push || (_detailPushed && _selectedKildeId is not null && _pushedListQuery == Query(null, null));
+        _pushedListQuery = push ? Query(null, null) : _pushedListQuery;
+        _mirroredSelection = selection;
+
+        await _mirror.MirrorAsync(Query(_selectedKildeId, _selectedDatasamlingId), push, _detailPushed);
+    }
 
     /// <summary>The keys this component owns, as a query string, omitting what is at its default.</summary>
     /// <remarks>
@@ -600,9 +635,22 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// </remarks>
     private void KildeChanged(Guid? kilde)
     {
+        // Closing a kilde this circuit opened is the browser's own Back, so Forward opens it again.
+        _closeByBack = kilde is null && _selectedKildeId is not null && _detailPushed
+                       && _pushedListQuery == Query(null, null);
         _selectedKildeId = kilde;
         _selectedDatasamlingId = null;
     }
+
+    // Which kilde the address bar last showed, and whether its entry was pushed here, so an opened
+    // kilde gets a history entry of its own and its close steps back over it (Fhi.Metadata-l9l2n.124).
+    private (Guid? Kilde, Guid? Datasamling)? _mirroredSelection;
+    private bool _detailPushed;
+    private bool _closeByBack;
+
+    // The list as it was when the kilde was pushed: Back returns to exactly that, so it is taken only
+    // while the list is still the same.
+    private string? _pushedListQuery;
 
     /// <summary>Turn the chosen kilder into the query the variable explorer reads, and go there.</summary>
     /// <remarks>

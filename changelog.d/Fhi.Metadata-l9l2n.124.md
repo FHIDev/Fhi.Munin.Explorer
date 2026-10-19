@@ -1,0 +1,2 @@
+category: Fixed
+- **The browser's Back button returns from an opened kilde or variable to the list.** Opening a kilde in Kildeutforsker, or a variable in Variabelutforsker, from the list now makes a history entry of its own, so Back (button, mouse button or Alt+Left) shows the list as it was and Forward opens the detail again; before, Back left the explorer. Filters, order and paging still replace the entry they are on. «← Tilbake til kildeutforsker» and collapsing the open row step back the same way when the kilde or variable was opened from the list.
