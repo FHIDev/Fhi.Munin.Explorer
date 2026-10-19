@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **The kilde page's back button is drawn whatever the trail, with a new handle `munin-explorer-kilder__back`.** A host that shows the trail can hide the button where the trail is on screen; the sample stylesheets do it from 768 px with `.munin-explorer-drilldown:has(.breadcrumbs) > .munin-explorer-kilder__back`, so a kilde still loading or failing keeps its button, as Fhi.Helsedata.Stiler will (Fhi.Metadata-a7oqn). Without such a rule a wide screen shows both, as before #576.

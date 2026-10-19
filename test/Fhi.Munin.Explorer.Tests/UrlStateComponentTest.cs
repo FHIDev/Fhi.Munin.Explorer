@@ -1145,7 +1145,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// </remarks>
     private void Move(string url) => Navigation.NavigateTo(url);
 
-    // Out of an open kilde by the trail: KildeExplorer draws no button beside it (Fhi.Metadata-esf2i).
+    // Out of an open kilde by the trail, the way back on a wide screen (Fhi.Metadata-esf2i, e4afs).
     private static string TrailBack<T>(IRenderedComponent<T> cut) where T : IComponent =>
         cut.Find("nav.breadcrumbs a").GetAttribute("href")!;
 

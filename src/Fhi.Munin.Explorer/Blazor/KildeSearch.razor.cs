@@ -679,8 +679,6 @@ public sealed partial class KildeSearch : ComponentBase
     // WCAG 4.1.1 failure as well as breaking label association.
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
-    private bool _backFocused;
-
     private string TitleId => $"munin-explorer-title-{_instance}";
     private string SearchId => $"munin-explorer-search-{_instance}";
     private string DetailId => $"munin-explorer-detail-{_instance}";
@@ -993,7 +991,6 @@ public sealed partial class KildeSearch : ComponentBase
     /// </remarks>
     private async Task CloseAsync()
     {
-        _backFocused = false;
         _detailGeneration++;
         _selectedId = null;
         _selectedName = null;
@@ -1010,7 +1007,6 @@ public sealed partial class KildeSearch : ComponentBase
     {
         var generation = ++_detailGeneration;
 
-        _backFocused = false;
         _kilde = null;
         _detailError = null;
         _detailLoading = true;

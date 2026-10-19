@@ -2172,6 +2172,14 @@ table.munin-explorer-data-list tbody th {
   margin-top: 12px;
 }
 
+/* The kilde page's way back is the trail where one shows; helsedata hides the trail under 768px, and
+   a kilde still loading or failing has none, so the button stays in both cases (Fhi.Metadata-e4afs). */
+@media (min-width: 768px) {
+  .munin-explorer-drilldown:has(.breadcrumbs) > .munin-explorer-kilder__back {
+    display: none;
+  }
+}
+
 /* A grid track is `min-width: auto` by default, so the widest thing in the column sets the floor.
    The datasamlinger table has four columns of Norwegian names in it and would widen the track past
    the page rather than shrink. Same trap the filter panel meets, same fix. */
