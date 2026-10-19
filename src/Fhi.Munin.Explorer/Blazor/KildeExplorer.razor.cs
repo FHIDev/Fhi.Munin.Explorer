@@ -457,9 +457,16 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         // dropped and put them back into every later link and rewrite.
         _mirror = mirror;
 
+        // On every arrival, not only a changed one: an entry pushed from the list, reached by Back or
+        // Forward, has the list under it; one a link or a host parameter made has something else.
+        var pushedFromList = e.HistoryEntryState == UrlMirror.OpenedFromList && arrived.Item1 is not null;
+
         if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction)
             && list.Query() == List.Query())
         {
+            _detailPushed = pushedFromList;
+            _pushedListQuery = _detailPushed ? Query(null, null) : null;
+
             // Redrawn anyway, and not left to the host: every link is built from the mirror just
             // replaced, and a host with no Router — helsedata's CMS — raises this without
             // re-rendering us, leaving the hrefs naming host parameters the navigation dropped.
@@ -472,10 +479,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         (_search, _facets, _ticked, _marked, _expanded, _columns) = list;
         _arrival++;
 
-        // An entry pushed from the list, reached by Back or Forward, has the list under it; one a
-        // link made has the kilde it came from.
         _mirroredSelection = (_selectedKildeId, _selectedDatasamlingId);
-        _detailPushed = e.HistoryEntryState == UrlMirror.OpenedFromList && _selectedKildeId is not null;
+        _detailPushed = pushedFromList;
         _pushedListQuery = _detailPushed ? Query(null, null) : null;
 
         StateHasChanged();
@@ -514,7 +519,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         var push = _mirroredSelection is { Kilde: null } && _selectedKildeId is not null;
 
         // Before the await: renders overlap here, and one reading the old values would push twice.
-        _detailPushed = push || (_detailPushed && _selectedKildeId is not null);
+        // A list changed under an open kilde ends Back's claim, and the entry's mark with it.
+        _detailPushed = push || (_detailPushed && _selectedKildeId is not null && _pushedListQuery == Query(null, null));
         _pushedListQuery = push ? Query(null, null) : _pushedListQuery;
         _mirroredSelection = selection;
 

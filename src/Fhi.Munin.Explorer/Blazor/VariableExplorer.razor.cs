@@ -152,13 +152,16 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         }
         else
         {
-            var push = _mirroredOpen is false && Open;
+            // Only an opening the address shows: a host declining the selection's key gets no entry.
+            // A list changed under the open row ends Back's claim, and the entry's mark with it.
+            var query = Linkable(_state.ToState()).ToQueryString();
+            var push = _mirroredOpen is false && Open && query != ListQuery();
 
-            _detailPushed = push || (_detailPushed && Open);
+            _detailPushed = push || (_detailPushed && Open && _pushedListQuery == ListQuery());
             _pushedListQuery = push ? ListQuery() : _pushedListQuery;
             _mirroredOpen = Open;
 
-            await _mirror.MirrorAsync(Linkable(_state.ToState()).ToQueryString(), push, _detailPushed);
+            await _mirror.MirrorAsync(query, push, _detailPushed);
         }
 
         if (!firstRender)
@@ -213,12 +216,13 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
         {
             _state = arrived;
             _arrival++;
-            _mirroredOpen = Open;
-
-            // An entry pushed from the list, reached by Back or Forward, has the list under it; a link's does not.
-            _detailPushed = pushedFromList && Open;
-            _pushedListQuery = _detailPushed ? ListQuery() : null;
         }
+
+        // On every arrival: an entry pushed from the list, reached by Back or Forward, has the list
+        // under it; one a link or a host parameter made does not.
+        _mirroredOpen = Open;
+        _detailPushed = pushedFromList && Open;
+        _pushedListQuery = _detailPushed ? ListQuery() : null;
 
         StateHasChanged();
     }

@@ -304,7 +304,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     };
 
     /// <summary>One page of two variables, so there is a row to open and one to leave closed.</summary>
-    private sealed class TwoVariableClient : EmptyMuninExplorerClient
+    private sealed class TwoVariableClient(TaskCompletionSource? sorted = null) : EmptyMuninExplorerClient
     {
         public static readonly Guid SpeechId = Guid.NewGuid();
 
@@ -315,14 +315,18 @@ public class UrlStateComponentTest : ExplorerTestContext
             SortField sort = SortField.Default,
             SortDirection direction = SortDirection.Ascending,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(new Page<VariableSummary>
-            {
-                Items = [Variable(SpeechId, "1. Tale"), Variable(SalivaId, "2. Spyttsekresjon")],
-                TotalCount = 2,
-                PageNumber = 1,
-                Size = pageSize,
-                TotalPages = 1,
-            });
+            sort != SortField.Default && sorted is { } gate
+                ? gate.Task.ContinueWith(_ => Page(pageSize), TaskScheduler.Default)
+                : Task.FromResult(Page(pageSize));
+
+        private static Page<VariableSummary> Page(int pageSize) => new()
+        {
+            Items = [Variable(SpeechId, "1. Tale"), Variable(SalivaId, "2. Spyttsekresjon")],
+            TotalCount = 2,
+            PageNumber = 1,
+            Size = pageSize,
+            TotalPages = 1,
+        };
 
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default) =>
@@ -416,9 +420,10 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// <inheritdoc cref="RenderExplorer"/>
     private IRenderedComponent<VariableExplorer> RenderVariables(
         string url,
-        Action<ComponentParameterCollectionBuilder<VariableExplorer>>? parameters = null)
+        Action<ComponentParameterCollectionBuilder<VariableExplorer>>? parameters = null,
+        TwoVariableClient? client = null)
     {
-        Services.AddSingleton<IMuninExplorerClient>(new TwoVariableClient());
+        Services.AddSingleton<IMuninExplorerClient>(client ?? new TwoVariableClient());
         Services.AddScoped<VariableListState>();
         Prepare();
         Navigation.NavigateTo(url);
@@ -737,6 +742,21 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     [Fact]
+    public void History_WhenAHostParameterArrivesOnAnOpenKildeWithNoMark_ThenClosingReplacesRatherThanGoingBack()
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderKilder(id, "http://localhost/kilder");
+
+        cut.Find(".munin-explorer-kilder__name").Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+        Navigation.NavigateTo($"http://localhost/kilder?kilde={id}&utm_source=x");
+        cut.WaitForAssertion(() => cut.Find(".munin-explorer-kilder__back").Click());
+
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?utm_source=x", Mirrored()));
+        Assert.Equal(0, Backs());
+    }
+
+    [Fact]
     public void History_WhenForwardReturnsToAKildeOpenedFromTheList_ThenClosingItIsBackAgain()
     {
         var id = Guid.NewGuid();
@@ -800,6 +820,70 @@ public class UrlStateComponentTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.DoesNotContain("variabelId", Mirrored(), StringComparison.Ordinal));
         Assert.Contains("sort=", Mirrored(), StringComparison.Ordinal);
         Assert.Equal(0, Backs());
+    }
+
+    [Fact]
+    public void History_WhenTheHostDeclinesTheVariableKey_ThenOpeningPushesNothingAndCollapsingDoesNotGoBack()
+    {
+        var cut = RenderVariables("http://localhost/variabler", b => b.Add(c => c.DeclinedKeys, ["variabelId"]));
+
+        Rows(cut)[0].Click();
+        cut.WaitForAssertion(() => Assert.Equal("true", Rows(cut)[0].GetAttribute("aria-expanded")));
+        Rows(cut)[0].Click();
+        cut.WaitForAssertion(() => Assert.Equal("false", Rows(cut)[0].GetAttribute("aria-expanded")));
+
+        Assert.Equal(0, Pushes());
+        Assert.Equal(0, Backs());
+    }
+
+    [Fact]
+    public void History_WhenTheListIsSortedUnderAnOpenVariable_ThenTheEntryLosesItsMarkSoForwardCannotGoBackOverTheSort()
+    {
+        var cut = RenderVariables("http://localhost/variabler");
+
+        Rows(cut)[0].Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+        cut.Find(".munin-explorer-dataitem-header__name .munin-explorer-dataitem-header__button").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("sort=", Mirrored(), StringComparison.Ordinal));
+        Assert.Null(JSInterop.Invocations["history.replaceState"][^1].Arguments[0]);
+    }
+
+    [Fact]
+    public void History_WhenAHostParameterArrivesOnAnOpenVariableWithNoMark_ThenCollapsingReplacesRatherThanGoingBack()
+    {
+        var cut = RenderVariables("http://localhost/variabler");
+
+        Rows(cut)[0].Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+        Navigation.NavigateTo($"http://localhost/variabler?variabelId={TwoVariableClient.SpeechId}&utm_source=x");
+        cut.WaitForAssertion(() => Assert.Equal("true", Rows(cut)[0].GetAttribute("aria-expanded")));
+
+        Rows(cut)[0].Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("false", Rows(cut)[0].GetAttribute("aria-expanded")));
+        Assert.Equal(0, Backs());
+    }
+
+    [Fact]
+    public async Task History_WhenASortLeftRunningFinishesAfterBack_ThenItDoesNotWriteOverTheRestoredList()
+    {
+        // The search Back remounted still has the sort's request out; when it lands it must not
+        // reach the explorer's new state.
+        var sorted = new TaskCompletionSource();
+        var cut = RenderVariables("http://localhost/variabler", client: new TwoVariableClient(sorted));
+
+        Rows(cut)[0].Click();
+        cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
+        cut.Find(".munin-explorer-dataitem-header__name .munin-explorer-dataitem-header__button").Click();
+        Navigation.NavigateTo("http://localhost/variabler");
+        cut.WaitForAssertion(() => Assert.Equal("false", Rows(cut)[0].GetAttribute("aria-expanded")));
+
+        sorted.SetResult();
+        await cut.InvokeAsync(() => { });
+        cut.Render();
+
+        Assert.DoesNotContain("sort=", Mirrored() ?? "", StringComparison.Ordinal);
     }
 
     [Fact]
