@@ -261,6 +261,19 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Jumps_WhenBothAreDrawn_ThenAHiddenSeparatorKeepsThemApartWithAnyStylesheet()
+    {
+        // Stiler 0.1.182 has no rule for the row, so the links ran together (Fhi.Metadata-47hlq).
+        var row = RenderWithVariablesSection(Kilde()).Find(".munin-explorer-kilde__jumps");
+        var separator = Assert.Single(row.Children, child => child.LocalName == "span");
+
+        Assert.Equal("true", separator.GetAttribute("aria-hidden"));
+        Assert.Contains("·", separator.TextContent, StringComparison.Ordinal);
+        Assert.Same(separator, row.Children[1]);
+        Assert.DoesNotContain(Render(Kilde()).Find(".munin-explorer-kilde__jumps").Children, child => child.LocalName == "span");
+    }
+
+    [Fact]
     public void Jumps_WhenThereIsOneOfEach_ThenTheyAreSingular()
     {
         var links = RenderWithVariablesSection(Kilde() with { TotalVariables = 1 }).FindAll(".munin-explorer-kilde__jumps a");
