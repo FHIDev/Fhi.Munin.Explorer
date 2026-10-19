@@ -397,26 +397,34 @@ public sealed partial class KildeView : ComponentBase, IDisposable
     /// <remarks>
     /// Once the storage qualifier is stripped, Formål and its language-tagged mirror read as two identical
     /// rows under one label, so only the mirror is kept, and only where it says the same (Fhi.Metadata-avypo).
+    /// A key goes only where its twin has a label of its own, or the record would lose the text outright.
     /// </remarks>
-    private static IReadOnlySet<string> RepeatedInRecord(KildeDetail kilde)
+    private IReadOnlySet<string> RepeatedInRecord(KildeDetail kilde)
     {
         var keys = new HashSet<string>(StringComparer.Ordinal);
 
         if (Filled(kilde, "Formaal")
+            && Labelled(kilde, "FormaalFlerspraklig")
             && Filled(kilde, "FormaalFlerspraklig")
             && CatalogueProperties.TaggedTexts(kilde.AdditionalProperties["FormaalFlerspraklig"]) is { Count: > 0 } purposes
-            && purposes.All(purpose => SameText(Unspaced(purpose), Unspaced(kilde.AdditionalProperties["Formaal"]))))
+            && purposes.All(purpose => SameText(purpose, kilde.AdditionalProperties["Formaal"])))
         {
             keys.Add("Formaal");
         }
 
-        if (LegalBasisMirrorRepeats(kilde))
+        if (Labelled(kilde, CatalogueColumns.LegalBasis) && LegalBasisMirrorRepeats(kilde))
         {
             keys.Add("hasLegalBasis");
         }
 
         return keys;
     }
+
+    private bool Labelled(KildeDetail kilde, string key) =>
+        kilde.PropertyMetadata.Any(entry =>
+            string.Equals(entry.Key, key, StringComparison.Ordinal)
+            && CatalogueProperties.Localised(entry.DisplayNameTranslations, Reader).Text is { } label
+            && !string.IsNullOrWhiteSpace(CatalogueProperties.WithoutStorageQualifier(label)));
 
     private static bool LegalBasisMirrorRepeats(KildeDetail kilde) =>
         Filled(kilde, "hasLegalBasis")

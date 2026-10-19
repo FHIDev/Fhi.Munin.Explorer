@@ -14,8 +14,8 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 /// <remarks>
 /// NOT the placement leftovers: the seeded catch-all holds 53 of the Tromsø payload's 73 definitions,
-/// so rows come from every entry with a value, duplicates included (Fhi.Metadata-35w0p.21). The one
-/// exception is a language-tagged mirror that repeats its twin word for word (Fhi.Metadata-avypo).
+/// so rows come from every entry with a value, duplicates included (Fhi.Metadata-35w0p.21), except
+/// a mirror whose text repeats its twin's (Fhi.Metadata-avypo).
 /// </remarks>
 public class CompleteRecordTest : ExplorerTestContext
 {
@@ -226,7 +226,7 @@ public class CompleteRecordTest : ExplorerTestContext
     private const int TromsoRecordRows = 33;
 
     [Fact]
-    public void CompleteRecord_OnTheCapturedPayload_ThenItListsEveryFieldThatHasAValue()
+    public void CompleteRecord_OnTheCapturedPayload_ThenItListsEachFieldWithAValueOnce()
     {
         var cut = RenderKilde(Tromso());
 
@@ -364,7 +364,7 @@ public class CompleteRecordTest : ExplorerTestContext
     // Fhi.Metadata-avypo — a language-tagged mirror that repeats its twin is listed once
 
     [Fact]
-    public void Record_WhenTheTaggedPurposeRepeatsThePlainOne_ThenFormalIsListedOnce()
+    public void CompleteRecord_WhenTheTaggedPurposeRepeatsThePlainOne_ThenPurposeIsListedOnce()
     {
         // Tromsø holds the same purpose in Formaal and in a one-entry FormaalFlerspraklig.
         var cut = RenderKilde(Tromso());
@@ -373,7 +373,7 @@ public class CompleteRecordTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Record_WhenTheTaggedPurposeAlsoHoldsEnglish_ThenBothRowsStay()
+    public void CompleteRecord_WhenTheTaggedPurposeAlsoHoldsEnglish_ThenBothRowsStay()
     {
         var tromso = Tromso();
         var purpose = tromso.AdditionalProperties["Formaal"] ?? "";
@@ -390,7 +390,7 @@ public class CompleteRecordTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Record_WhenTheLegalBasisMirrorRepeatsLovverk_ThenOnlyLovverkIsListed()
+    public void CompleteRecord_WhenTheLegalBasisMirrorRepeatsLovverk_ThenOnlyLovverkIsListed()
     {
         const string basis = "Forskrift om befolkningsbaserte helseundersøkelser § 3.";
         var tromso = Tromso();
@@ -405,13 +405,41 @@ public class CompleteRecordTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Record_WhenTheLegalBasisMirrorSaysSomethingElse_ThenBothAreListed()
+    public void CompleteRecord_WhenTheLegalBasisMirrorSaysSomethingElse_ThenBothAreListed()
     {
         // Tromsø's Lovverk is a lovdata address and its hasLegalBasis a list of acts.
         var labels = RecordLabels(RenderKilde(Tromso()));
 
         Assert.Contains("Lovverk", labels);
         Assert.Contains("Rettslig grunnlag", labels);
+    }
+
+    [Fact]
+    public void CompleteRecord_WhenTheTaggedPurposeHasNoDefinition_ThenThePlainOneStays()
+    {
+        // A mirror with no definition draws no row, so dropping its twin would lose the purpose outright.
+        var tromso = Tromso();
+        var cut = RenderKilde(tromso with
+        {
+            PropertyMetadata = [.. tromso.PropertyMetadata.Where(entry => entry.Key != "FormaalFlerspraklig")],
+        });
+
+        Assert.Single(RecordLabels(cut), label => label == "Formål");
+    }
+
+    [Fact]
+    public void CompleteRecord_WhenLovverkHasNoDefinition_ThenTheLegalBasisMirrorStays()
+    {
+        const string basis = "Forskrift om befolkningsbaserte helseundersøkelser § 3.";
+        var tromso = Tromso();
+        var cut = RenderKilde(tromso with
+        {
+            LegalBasis = basis,
+            AdditionalProperties = With(tromso, ("Lovverk", basis), ("hasLegalBasis", basis)),
+            PropertyMetadata = [.. tromso.PropertyMetadata.Where(entry => entry.Key != "Lovverk")],
+        });
+
+        Assert.Contains("Rettslig grunnlag", RecordLabels(cut));
     }
 
     // -----------------------------------------------------------------------
