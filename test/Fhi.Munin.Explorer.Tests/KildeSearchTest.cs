@@ -4186,6 +4186,26 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task FilterFold_WhenTheReaderPressesWhileTheKeptChoiceIsStillBeingRead_ThenThePressWins()
+    {
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        var read = module.Setup<string?>("readPreference", FilterFoldPreference.Key);
+        module.SetupVoid("writePreference", _ => true).SetVoidResult();
+
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+        cut.WaitForAssertion(() => Assert.NotEmpty(module.Invocations["readPreference"]));
+
+        cut.Find(".munin-explorer-filters__collapse").Click();
+        read.SetResult(null);
+
+        // Through the renderer's queue, so the read's continuation has run before the assertions.
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("munin-explorer-filters--collapsed", cut.Find("div.munin-explorer-filters").ClassList);
+        Assert.Equal("false", cut.Find(".munin-explorer-filters__collapse").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
     public void FilterFold_WhenThisBrowserKeptTheFold_ThenThePageOpensWithThePanelFolded()
     {
         var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);

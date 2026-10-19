@@ -9,6 +9,7 @@ internal sealed class FilterFoldPreference
     internal const string Key = "munin-explorer.filters-collapsed";
 
     private bool _read;
+    private int _presses;
 
     internal bool Collapsed { get; private set; }
 
@@ -21,9 +22,11 @@ internal sealed class FilterFoldPreference
         }
 
         _read = true;
+        var presses = _presses;
         var collapsed = await interop.ReadPreferenceAsync(Key) == "1";
 
-        if (collapsed == Collapsed)
+        // A press while the read was out is the newer choice, and the stored one must not undo it.
+        if (presses != _presses || collapsed == Collapsed)
         {
             return false;
         }
@@ -38,6 +41,7 @@ internal sealed class FilterFoldPreference
     {
         Collapsed = !Collapsed;
         _read = true;
+        _presses++;
 
         return interop?.WritePreferenceAsync(Key, Collapsed ? "1" : null) ?? Task.CompletedTask;
     }

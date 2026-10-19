@@ -151,7 +151,7 @@ public sealed partial class KildeSearch : IAsyncDisposable
     // The wide screen's kept fold, read once the module is up (Fhi.Metadata-amp8c).
     private async Task ReadFilterFoldAsync()
     {
-        if (_disposed || (_interop is null && Services.GetService<IJSRuntime>() is null))
+        if (_disposed || Facets is not { Count: > 0 } || (_interop is null && Services.GetService<IJSRuntime>() is null))
         {
             return;
         }
