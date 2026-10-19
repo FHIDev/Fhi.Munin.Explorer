@@ -5557,3 +5557,27 @@ table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > th[scope=ro
     grid-column: 1 / -1;
   }
 }
+
+/* ---- Stiler base/_global: a link to another site ----
+
+   Stiler marks every `a[target="_blank"]` with its own new-window icon, and the catalogue's links
+   to another host now open that way (Fhi.Metadata-c8lgk). Read back off Stiler 0.1.178. */
+a[target=_blank]:not(.hd-button-square)::after {
+  content: "";
+  width: 1em;
+  height: 1em;
+  background-size: 1em;
+  display: inline-block;
+  vertical-align: text-bottom;
+  margin: 0 0 0 8px;
+  background-image: url(../img/icons/icon_link--primary-dark.svg);
+}
+
+a[target=_blank]:not(.hd-button-square):hover::after {
+  background-image: url(../img/icons/icon_link--primary.svg);
+}
+
+a[target=_blank]:not(.hd-button-square):focus::after {
+  text-decoration: none;
+  background-image: url(../img/icons/icon_link--primary.svg);
+}

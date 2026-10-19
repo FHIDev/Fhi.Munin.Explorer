@@ -1283,6 +1283,6 @@ public class DetailPageTest : ExplorerTestContext
         var anchor = cut.Find(".munin-explorer-page__stuckbar dd a");
         Assert.Equal("https://lovdata.no/lov/2014-06-20-43", anchor.GetAttribute("href"));
         Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
-        Assert.Null(anchor.GetAttribute("target"));
+        Assert.Equal("_blank", anchor.GetAttribute("target"));
     }
 }

@@ -1,5 +1,6 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
+<CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 @if (Instrument is { } instrument)
 {
     @* ViewRoot and ViewMain empty, as VariableListView passes them: this view is new enough to
@@ -72,3 +73,4 @@
         </ChildContent>
     </DetailPage>
 }
+</CascadingValue>

@@ -1,5 +1,6 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
+<CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 @if (Kilde is { } kilde)
 {
     <DetailPage ViewRoot="munin-explorer-kilde"
@@ -98,3 +99,4 @@
         </ChildContent>
     </DetailPage>
 }
+</CascadingValue>
