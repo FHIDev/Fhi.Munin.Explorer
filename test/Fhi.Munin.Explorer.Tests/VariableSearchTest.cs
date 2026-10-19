@@ -5830,16 +5830,12 @@ public class VariableSearchTest : ExplorerTestContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range));
         var cut = RenderWith(client);
 
-        ChangeDate(cut, 0, "1940-01-01");
-        ChangeDate(cut, 1, "2030-12-31");
+        ChangeDate(cut, 0, "01.01.1940");
+        ChangeDate(cut, 1, "31.12.2030");
 
         Assert.Equal(new DateOnly(1940, 1, 1), client.SearchFilter!.DataFrom);
         Assert.Equal(new DateOnly(2030, 12, 31), client.SearchFilter.DataTo);
         Assert.All(DateInputs(cut), input => Assert.Null(input.GetAttribute("aria-invalid")));
-        Assert.Null(DateInputs(cut)[0].GetAttribute("min"));
-        Assert.Null(DateInputs(cut)[1].GetAttribute("max"));
-        Assert.Equal("2030-12-31", DateInputs(cut)[0].GetAttribute("max"));
-        Assert.Equal("1940-01-01", DateInputs(cut)[1].GetAttribute("min"));
     }
 
     [Fact]
@@ -5861,7 +5857,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Contains("Dataperiode (1)", FacetHeadings(cut));
 
         // Both ends set counts as two, the same way two ticked values in any other facet do.
-        ChangeDate(cut, 1, "2020-12-31");
+        ChangeDate(cut, 1, "31.12.2020");
 
         Assert.Contains("Dataperiode (2)", FacetHeadings(cut));
     }
@@ -5883,7 +5879,7 @@ public class VariableSearchTest : ExplorerTestContext
             new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range)),
             b => b.Add(c => c.FilterChanged, filter => reported = filter));
 
-        ChangeDate(cut, 0, "2015-03-04");
+        ChangeDate(cut, 0, "04.03.2015");
 
         var query = new ExplorerUrlState { Filter = reported! }.ToQueryString();
 
@@ -5901,7 +5897,7 @@ public class VariableSearchTest : ExplorerTestContext
             b => b.Add(c => c.Filter, ExplorerUrlState.Parse(query).Filter));
 
         Assert.Equal(
-            "2015-03-04",
+            "04.03.2015",
             restored.FindAll(".munin-explorer-filters input[id^=munin-explorer-date-]")[0].GetAttribute("value"));
     }
 
@@ -5945,7 +5941,7 @@ public class VariableSearchTest : ExplorerTestContext
             DataTo = new DateOnly(2026, 10, 14)
         }));
 
-        ChangeDate(cut, 0, "1940-01-01");
+        ChangeDate(cut, 0, "01.01.1940");
 
         Assert.Equal(new DateOnly(1940, 1, 1), client.SearchFilter!.DataFrom);
         Assert.Equal(new DateOnly(2026, 10, 14), client.SearchFilter.DataTo);
@@ -5965,18 +5961,18 @@ public class VariableSearchTest : ExplorerTestContext
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: range));
         var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, f => reported = f));
 
-        ChangeDate(cut, 0, "2015-03-04");
+        ChangeDate(cut, 0, "04.03.2015");
 
         Assert.Equal(new DateOnly(2015, 3, 4), reported!.DataFrom);
         Assert.Equal(new DateOnly(2015, 3, 4), client.SearchFilter!.DataFrom);
     }
 
     [Theory]
-    [InlineData("0002-01-01")]
-    [InlineData("2010-06-01")]
+    [InlineData("01.01.0002")]
+    [InlineData("01.06.2010")]
     public void Filter_WhenATypedDateFallsOutsideTheFieldsOwnBounds_ThenItIsNotApplied(string typed)
     {
-        // Any four digits make a year, so 0002-01-01 parses. Applied, it empties the list and
+        // Any four digits make a year, so 01.01.0002 parses. Applied, it empties the list and
         // reaches the host's URL. The to-field's lower bound is the from-date. (Fhi.Metadata-uidue)
         var range = new DateInterval
         {
@@ -6009,7 +6005,7 @@ public class VariableSearchTest : ExplorerTestContext
         var inputs = DateInputs(cut);
 
         Assert.Equal(2, inputs.Count);
-        Assert.Equal("2017-01-01", inputs[1].GetAttribute("value"));
+        Assert.Equal("01.01.2017", inputs[1].GetAttribute("value"));
         Assert.Contains("Dataperiode (1)", FacetHeadings(cut));
     }
 
@@ -6019,37 +6015,67 @@ public class VariableSearchTest : ExplorerTestContext
         Max = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero)
     };
 
-    [Fact]
-    public void DateField_WhenNorwegianReaderChoosesADay_ThenItIsAppliedAndWrittenBackAsIso()
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void DateField_WhenADayIsTypedDayFirst_ThenItIsAppliedInEitherLanguage(string language)
     {
-        // The browser displays its own locale but always exchanges ISO values with the component.
+        // One order for every reader, whatever their machine says (Fhi.Metadata-d2fbu).
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
-        var cut = RenderWith(client);
+        var cut = RenderWith(client, b => b.Add(c => c.Language, language));
 
-        Assert.All(DateInputs(cut), input => Assert.Equal("date", input.GetAttribute("type")));
+        ChangeDate(cut, 0, "05.03.2024");
 
-        ChangeDate(cut, 0, "2020-03-05");
-
-        Assert.Equal(new DateOnly(2020, 3, 5), client.SearchFilter!.DataFrom);
-        Assert.Equal("2020-03-05", DateInputs(cut)[0].GetAttribute("value"));
-    }
-
-    [Fact]
-    public void DateField_WhenEnglishReaderTypesAnIsoDay_ThenItIsAppliedAndWrittenBackAsIso()
-    {
-        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
-        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
-
-        ChangeDate(cut, 0, "2020-03-05");
-
-        Assert.Equal(new DateOnly(2020, 3, 5), client.SearchFilter!.DataFrom);
-        Assert.Equal("2020-03-05", DateInputs(cut)[0].GetAttribute("value"));
+        Assert.Equal(new DateOnly(2024, 3, 5), client.SearchFilter!.DataFrom);
+        Assert.Equal("05.03.2024", DateInputs(cut)[0].GetAttribute("value"));
+        Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
     }
 
     [Theory]
-    [InlineData("no", "2020-03-05")]
-    [InlineData("en", "2020-03-05")]
-    public void DateField_WhenADateIsRestored_ThenTheNativeValueIsIsoInEitherLanguage(string language, string shown)
+    [InlineData("5.3.2024")]
+    [InlineData("05.3.2024")]
+    [InlineData("05032024")]
+    [InlineData(" 05.03.2024 ")]
+    [InlineData("2024-03-05")]
+    public void DateField_WhenADayIsTypedInALenientForm_ThenItIsAppliedAndWrittenBackInFull(string typed)
+    {
+        // Eight bare digits because an iPhone's numeric keypad has no full stop to type; ISO for a paste.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var cut = RenderWith(client);
+
+        ChangeDate(cut, 0, typed);
+
+        Assert.Equal(new DateOnly(2024, 3, 5), client.SearchFilter!.DataFrom);
+        Assert.Equal("05.03.2024", DateInputs(cut)[0].GetAttribute("value"));
+    }
+
+    [Theory]
+    [InlineData("no", "3/5/2024", "Skriv datoen som dd.mm.åååå, for eksempel 25.03.2024.")]
+    [InlineData("en", "3/5/2024", "Use the format dd.mm.yyyy, e.g. 25.03.2024.")]
+    [InlineData("en", "03/05/2024", "Use the format dd.mm.yyyy, e.g. 25.03.2024.")]
+    [InlineData("en", "03-05-2024", "Use the format dd.mm.yyyy, e.g. 25.03.2024.")]
+    [InlineData("no", "05.03.24", "Skriv datoen som dd.mm.åååå, for eksempel 25.03.2024.")]
+    [InlineData("no", "050324", "Skriv datoen som dd.mm.åååå, for eksempel 25.03.2024.")]
+    public void DateField_WhenTheDayIsNotWrittenDayFirstWithFourDigitYear_ThenItIsRefusedWithTheFormat(
+        string language, string typed, string sentence)
+    {
+        // 3/5/2024 is 5 March to an en-US reader; read day first it would silently become 3 May.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var cut = RenderWith(client, b => b.Add(c => c.Language, language));
+        var searches = client.SearchCalls;
+
+        ChangeDate(cut, 0, typed);
+
+        Assert.Equal(searches, client.SearchCalls);
+        Assert.Equal("true", DateInputs(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Equal(typed, DateInputs(cut)[0].GetAttribute("value"));
+        Assert.Equal(sentence, DateError(cut, 0).TextContent);
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void DateField_WhenADateIsRestored_ThenItIsWrittenDayFirstInEitherLanguage(string language)
     {
         var cut = RenderWith(
             new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)),
@@ -6057,7 +6083,7 @@ public class VariableSearchTest : ExplorerTestContext
                 .Add(c => c.Language, language)
                 .Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(2020, 3, 5) }));
 
-        Assert.Equal(shown, DateInputs(cut)[0].GetAttribute("value"));
+        Assert.Equal("05.03.2020", DateInputs(cut)[0].GetAttribute("value"));
     }
 
     [Theory]
@@ -6066,7 +6092,6 @@ public class VariableSearchTest : ExplorerTestContext
     [InlineData("abc")]
     public void DateField_WhenTheChangePayloadIsNotADay_ThenNothingIsSearchedAndTheFieldSaysWhy(string typed)
     {
-        // Malformed event payloads are a defensive check; state-assertions.mjs covers native badInput.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
         var cut = RenderWith(client);
         var searches = client.SearchCalls;
@@ -6082,9 +6107,7 @@ public class VariableSearchTest : ExplorerTestContext
         var describedBy = field.GetAttribute("aria-describedby")!.Split(' ');
         var sentence = describedBy.Select(id => cut.Find($"#{id}").TextContent).Last();
 
-        Assert.Contains("Velg en gyldig dato", sentence, StringComparison.Ordinal);
-        Assert.DoesNotContain("dd.mm.åååå", sentence, StringComparison.Ordinal);
-        Assert.Equal("Velg en gyldig dato.", sentence);
+        Assert.Equal("Skriv datoen som dd.mm.åååå, for eksempel 25.03.2024.", sentence);
 
         // And corrected, it is applied and stops claiming to be wrong.
         ChangeDate(cut, 0, "05.03.2020");
@@ -6106,7 +6129,7 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal("alert", region.GetAttribute("role"));
         Assert.Equal("assertive", region.GetAttribute("aria-live"));
         Assert.Equal("", region.TextContent);
-        Assert.Null(DateInputs(cut)[0].GetAttribute("aria-describedby"));
+        Assert.DoesNotContain(region.Id, DateInputs(cut)[0].GetAttribute("aria-describedby")!.Split(' '));
 
         ChangeDate(cut, 0, "abc");
 
@@ -6119,7 +6142,6 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void DateField_WhenAnAppliedDateIsEmptied_ThenTheBoundIsRemoved()
     {
-        StubDateInput(new("", false));
         // Emptying the field is how a reader drops a bound without going to its chip.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
         var cut = RenderWith(client);
@@ -6134,7 +6156,6 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void DateField_WhenARefusedEntryIsEmptied_ThenTheRefusalClears()
     {
-        StubDateInput(new("", false));
         // No bound was ever applied, so set(null) changes no filter and ApplyFilterAsync returns
         // early; the refusal has to go before it is asked.
         var cut = RenderWith(
@@ -6165,9 +6186,9 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("no", "Velg en gyldig dato fra og med 01.01.2015.")]
-    [InlineData("en", "Choose a valid date on or after 2015-01-01.")]
-    public void DateField_WhenAnEntryIsRefused_ThenTheSentenceWritesTheBoundsInTheReadersFormat(
+    [InlineData("no", "Skriv datoen som dd.mm.åååå, for eksempel 25.03.2024. Datoen må være fra og med 01.01.2015.")]
+    [InlineData("en", "Use the format dd.mm.yyyy, e.g. 25.03.2024. The date must be on or after 01.01.2015.")]
+    public void DateField_WhenAnEntryIsRefused_ThenTheSentenceWritesTheBoundsDayFirst(
         string language, string sentence)
     {
         var cut = RenderWith(
@@ -6181,8 +6202,8 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("no", "Velg en gyldig dato til og med 01.06.2025.")]
-    [InlineData("en", "Choose a valid date on or before 2025-06-01.")]
+    [InlineData("no", "Skriv datoen som dd.mm.åååå, for eksempel 25.03.2024. Datoen må være til og med 01.06.2025.")]
+    [InlineData("en", "Use the format dd.mm.yyyy, e.g. 25.03.2024. The date must be on or before 01.06.2025.")]
     public void DateField_WhenToIsSet_ThenTheFromErrorNamesTheSelectedUpperBound(
         string language, string sentence)
     {
@@ -6198,9 +6219,9 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Theory]
-    [InlineData("no", "Velg en gyldig dato.")]
-    [InlineData("en", "Choose a valid date.")]
-    public void DateField_WhenTheRangeHasNoEndsAtAll_ThenTheSentenceAsksForAValidDate(
+    [InlineData("no", "Skriv datoen som dd.mm.åååå, for eksempel 25.03.2024.")]
+    [InlineData("en", "Use the format dd.mm.yyyy, e.g. 25.03.2024.")]
+    public void DateField_WhenTheRangeHasNoEndsAtAll_ThenTheSentenceGivesOnlyTheFormat(
         string language, string sentence)
     {
         var cut = RenderWith(
@@ -6227,15 +6248,17 @@ public class VariableSearchTest : ExplorerTestContext
         ChangeDate(cut, 0, "1.1.2015");
 
         Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
-        Assert.Equal("2015-01-01", DateInputs(cut)[0].GetAttribute("value"));
+        Assert.Equal("01.01.2015", DateInputs(cut)[0].GetAttribute("value"));
     }
 
     [Theory]
-    [InlineData("no", "Fra og med", "Til og med")]
-    [InlineData("en", "From", "To")]
-    public void DateField_Always_ThenNativeInputsHaveLabelsWithoutCatalogueBoundsOrAFormatHint(
-        string language, string fromLabel, string toLabel)
+    [InlineData("no", "Fra og med", "Til og med", "dd.mm.åååå")]
+    [InlineData("en", "From", "To", "dd.mm.yyyy")]
+    public void DateField_Always_ThenTextInputsHaveLabelsAndATranslatedFormatHintButNoCatalogueBounds(
+        string language, string fromLabel, string toLabel, string hint)
     {
+        // Text, not type="date" and not type="number": a native control writes the machine's order,
+        // and "number" drops the full stops. inputmode brings up the digit keypad on a phone.
         var cut = RenderWith(
             new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)),
             b => b.Add(c => c.Language, language));
@@ -6244,20 +6267,21 @@ public class VariableSearchTest : ExplorerTestContext
         {
             var field = DateInputs(cut)[i];
 
-            Assert.Equal("date", field.GetAttribute("type"));
+            Assert.Equal("text", field.GetAttribute("type"));
+            Assert.Equal("numeric", field.GetAttribute("inputmode"));
             Assert.Null(field.GetAttribute("min"));
             Assert.Null(field.GetAttribute("max"));
-            Assert.Null(field.GetAttribute("placeholder"));
-            Assert.Null(field.GetAttribute("aria-describedby"));
-            Assert.Empty(cut.FindAll($"#{field.Id}-hint"));
+            Assert.Equal(hint, field.GetAttribute("placeholder"));
+            Assert.Equal($"{field.Id}-hint", field.GetAttribute("aria-describedby"));
+            Assert.Equal(hint, cut.Find($"#{field.Id}-hint").TextContent);
             Assert.Equal(i == 0 ? fromLabel : toLabel, AccessibleName.Of(field));
             Assert.Contains("form-element__label", cut.Find($"label[for='{field.Id}']").ClassList);
         }
     }
 
     [Theory]
-    [InlineData(0, "2027-01-01")]
-    [InlineData(1, "1939-12-31")]
+    [InlineData(0, "01.01.2027")]
+    [InlineData(1, "31.12.1939")]
     public void DateField_WhenAnEditReversesTheInterval_ThenTheAppliedFilterIsUnchanged(int field, string typed)
     {
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
@@ -6283,7 +6307,7 @@ public class VariableSearchTest : ExplorerTestContext
         var filter = field == 0 ? new VariableFilter { DataTo = day } : new VariableFilter { DataFrom = day };
         var cut = RenderWith(client, b => b.Add(c => c.Filter, filter));
 
-        ChangeDate(cut, field, "1940-01-01");
+        ChangeDate(cut, field, "01.01.1940");
 
         Assert.Equal(day, client.SearchFilter!.DataFrom);
         Assert.Equal(day, client.SearchFilter.DataTo);
@@ -6291,9 +6315,8 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void DateField_WhenBothEndsAreCleared_ThenTheFilterAndNativeConstraintsAreRemoved()
+    public void DateField_WhenBothEndsAreCleared_ThenTheFilterIsRemoved()
     {
-        StubDateInput(new("", false));
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
         var cut = RenderWith(client, b => b.Add(c => c.Filter, new VariableFilter
         {
@@ -6302,29 +6325,23 @@ public class VariableSearchTest : ExplorerTestContext
         }));
 
         ChangeDate(cut, 0, "");
-        Assert.Null(DateInputs(cut)[1].GetAttribute("min"));
         ChangeDate(cut, 1, "");
 
         Assert.Null(client.SearchFilter!.DataFrom);
         Assert.Null(client.SearchFilter.DataTo);
-        Assert.All(DateInputs(cut), input =>
-        {
-            Assert.Equal("", input.GetAttribute("value"));
-            Assert.Null(input.GetAttribute("min"));
-            Assert.Null(input.GetAttribute("max"));
-        });
+        Assert.All(DateInputs(cut), input => Assert.Equal("", input.GetAttribute("value")));
     }
 
     [Fact]
-    public void DateField_WhenAYearIsTypedDigitByDigit_ThenOnlyTheCompletedDateIsSearchedOnBlur()
+    public void DateField_WhenTheFieldChangesMoreThanOnceBeforeFocusLeaves_ThenOnlyTheLastIsSearched()
     {
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
         var cut = RenderWith(client);
         var searches = client.SearchCalls;
 
-        foreach (var year in new[] { "0001", "0019", "0194", "1940" })
+        foreach (var typed in new[] { "02.01.1", "02.01.19", "02.01.194", "02.01.1940" })
         {
-            DateInputs(cut)[0].Change($"{year}-01-02");
+            DateInputs(cut)[0].Change(typed);
             Assert.Equal(searches, client.SearchCalls);
         }
 
@@ -6332,78 +6349,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Assert.Equal(searches + 1, client.SearchCalls);
         Assert.Equal(new DateOnly(1940, 1, 2), client.SearchFilter!.DataFrom);
-        Assert.Equal("1940-01-02", DateInputs(cut)[0].GetAttribute("value"));
-    }
-
-    [Theory]
-    [InlineData(0, true)]
-    [InlineData(1, true)]
-    [InlineData(0, false)]
-    public void DateField_WhenTheBrowserReportsBadInput_ThenBlurPreservesTheAppliedFilter(int field, bool changed)
-    {
-        StubDateInput(new("", true));
-        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
-        var filter = new VariableFilter { DataFrom = new DateOnly(1940, 1, 1), DataTo = new DateOnly(2026, 10, 14) };
-        var cut = RenderWith(client, b => b.Add(c => c.Filter, filter));
-        var searches = client.SearchCalls;
-
-        if (changed)
-        {
-            DateInputs(cut)[field].Change("");
-        }
-
-        DateInputs(cut)[field].Blur();
-
-        Assert.Equal(searches, client.SearchCalls);
-        Assert.Equal(filter, client.SearchFilter);
-        Assert.Equal("true", DateInputs(cut)[field].GetAttribute("aria-invalid"));
-        Assert.NotEmpty(DateError(cut, field).TextContent);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("1950-01-01")]
-    public void DateField_WhenTheBrowserCannotConfirmAnEmptyControl_ThenTheBoundIsPreserved(string? current)
-    {
-        if (current is not null)
-        {
-            StubDateInput(new(current, false));
-        }
-
-        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
-        var filter = new VariableFilter { DataFrom = new DateOnly(1940, 1, 1) };
-        var cut = RenderWith(client, b => b.Add(c => c.Filter, filter));
-        var searches = client.SearchCalls;
-
-        ChangeDate(cut, 0, "");
-
-        Assert.Equal(searches, client.SearchCalls);
-        Assert.Equal(filter, client.SearchFilter);
-        Assert.Equal("true", DateInputs(cut)[0].GetAttribute("aria-invalid"));
-    }
-
-    [Fact]
-    public void DateField_WhenAnIncompleteEntryIsClearedWithoutAChangeEvent_ThenTheBoundIsRemovedOnBlur()
-    {
-        var read = StubDateInput(new("", true));
-        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
-        var cut = RenderWith(client, b => b.Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(1940, 1, 1) }));
-        ChangeDate(cut, 0, "");
-        read.SetResult(new("", false));
-
-        DateInputs(cut)[0].Blur();
-
-        Assert.Null(client.SearchFilter!.DataFrom);
-        Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
-        Assert.Empty(DateError(cut, 0).TextContent);
-    }
-
-    private JSRuntimeInvocationHandler<DateInputState> StubDateInput(DateInputState state)
-    {
-        var read = JSInterop.SetupModule(ExplorerInterop.ModulePath)
-            .Setup<DateInputState>("readDateInput", _ => true);
-        read.SetResult(state);
-        return read;
+        Assert.Equal("02.01.1940", DateInputs(cut)[0].GetAttribute("value"));
     }
 
     private static void ChangeDate(IRenderedComponent<VariableSearch> cut, int field, string typed)
@@ -6431,7 +6377,7 @@ public class VariableSearchTest : ExplorerTestContext
                 .Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(2015, 1, 1) })
                 .Add(c => c.FilterChanged, f => reported = f));
 
-        ChangeDate(cut, 1, "2017-01-01");
+        ChangeDate(cut, 1, "01.01.2017");
 
         Assert.Equal(new DateOnly(2017, 1, 1), reported!.DataTo);
     }
@@ -6465,10 +6411,8 @@ public class VariableSearchTest : ExplorerTestContext
 
         var inputs = DateInputs(cut);
 
-        Assert.Equal("2015-03-04", inputs[0].GetAttribute("value"));
-        Assert.Equal("2020-12-31", inputs[1].GetAttribute("value"));
-        Assert.Equal("2020-12-31", inputs[0].GetAttribute("max"));
-        Assert.Equal("2015-03-04", inputs[1].GetAttribute("min"));
+        Assert.Equal("04.03.2015", inputs[0].GetAttribute("value"));
+        Assert.Equal("31.12.2020", inputs[1].GetAttribute("value"));
         Assert.True(FacetChosen(cut, "Befolkningsundersøkelser"));
     }
 
@@ -10041,7 +9985,7 @@ public class VariableSearchTest : ExplorerTestContext
                 Max = new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero)
             })));
 
-        ChangeDate(cut, 0, "2020-01-01");
+        ChangeDate(cut, 0, "01.01.2020");
 
         var chip = Assert.Single(Chips(cut));
 
@@ -10068,7 +10012,7 @@ public class VariableSearchTest : ExplorerTestContext
                 })),
             b => b.Add(c => c.Language, language));
 
-        ChangeDate(cut, 0, bound.ToString("yyyy-MM-dd"));
+        ChangeDate(cut, 0, "01.01.2020");
 
         var chip = Assert.Single(Chips(cut));
 

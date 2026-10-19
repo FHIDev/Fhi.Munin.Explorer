@@ -1129,7 +1129,13 @@ internal sealed record Texts(
 
     // The date fields' format, once per language: the hint and every arm of the refusal name it.
     private const string DateFormatNo = "dd.mm.åååå";
-    private const string DateFormatEn = "yyyy-mm-dd";
+    private const string DateFormatEn = "dd.mm.yyyy";
+
+    // A day past 12, so no reader can take the example for month first.
+    private const string DateExample = "25.03.2024";
+
+    private const string DateFormatSentenceNo = $"Skriv datoen som {DateFormatNo}, for eksempel {DateExample}.";
+    private const string DateFormatSentenceEn = $"Use the format {DateFormatEn}, e.g. {DateExample}.";
 
     private static readonly Texts No = new(
         Title: "Variabelutforsker",
@@ -1572,10 +1578,10 @@ internal sealed record Texts(
         FacetDateFormat: DateFormatNo,
         FacetDateInvalid: (min, max) => (min, max) switch
         {
-            ({ } from, { } to) => $"Velg en gyldig dato fra og med {from} til og med {to}.",
-            ({ } from, null) => $"Velg en gyldig dato fra og med {from}.",
-            (null, { } to) => $"Velg en gyldig dato til og med {to}.",
-            _ => "Velg en gyldig dato."
+            ({ } from, { } to) => $"{DateFormatSentenceNo} Datoen må være fra og med {from} til og med {to}.",
+            ({ } from, null) => $"{DateFormatSentenceNo} Datoen må være fra og med {from}.",
+            (null, { } to) => $"{DateFormatSentenceNo} Datoen må være til og med {to}.",
+            _ => DateFormatSentenceNo
         },
         FacetAccessLevel: "Tilgangsnivå",
         FacetSearchLabel: heading => $"Søk i {heading}",
@@ -2113,10 +2119,10 @@ internal sealed record Texts(
         FacetDateFormat: DateFormatEn,
         FacetDateInvalid: (min, max) => (min, max) switch
         {
-            ({ } from, { } to) => $"Choose a valid date from {from} to {to}, inclusive.",
-            ({ } from, null) => $"Choose a valid date on or after {from}.",
-            (null, { } to) => $"Choose a valid date on or before {to}.",
-            _ => "Choose a valid date."
+            ({ } from, { } to) => $"{DateFormatSentenceEn} The date must be from {from} to {to}, inclusive.",
+            ({ } from, null) => $"{DateFormatSentenceEn} The date must be on or after {from}.",
+            (null, { } to) => $"{DateFormatSentenceEn} The date must be on or before {to}.",
+            _ => DateFormatSentenceEn
         },
         FacetAccessLevel: "Access level",
         FacetSearchLabel: heading => $"Search in {heading}",

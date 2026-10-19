@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **The dataperiode fields are `input[type="text"]` with `inputmode="numeric"`, no longer `input[type="date"]`.** A host stylesheet that styles `.munin-explorer-filters input[type="date"]` no longer reaches them; the general text-input rules apply instead. Each field also has a `p.caption` hint between its label and the input, named by its `aria-describedby`. The package's browser module no longer exports `readDateInput`.

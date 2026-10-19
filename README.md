@@ -1343,15 +1343,16 @@ no wrapper component, no query parsing, no `history.replaceState`. Which tab is 
 deliberately *not* in the link: a shared URL that opened on the sender's Variabelliste would be an
 empty page for everybody else.
 
-The data-period filters use native date inputs, as Helsedata's new application forms do. Readers can
-type a date or choose one in the browser's calendar; the filter updates when they leave the field.
-The browser determines the displayed format; input values and `dataFrom`/`dataTo` query parameters
-remain ISO dates (`yyyy-MM-dd`). Both ends are inclusive, and From must be on or before To. The search matches overlapping data periods,
-so dates outside the catalogue's reported range are valid: for example, a search from 1940 to
-2026 can include data starting in 1991. The reported range does not limit either input.
-Incomplete or invalid manual input shows a validation error and preserves the applied bound.
-Clearing a field removes its bound only after the browser confirms the control is empty; if the
-interop module is unavailable, the bound can still be removed using its filter chip.
+The data-period filters are text fields that take and show dates as `dd.mm.yyyy` (for example
+`25.03.2024`) in both languages, whatever the reader's browser or operating system is set to; only
+the hint under the label is translated. `d.m.yyyy`, eight bare digits (`25032024`, for a phone's
+numeric keypad) and ISO `yyyy-mm-dd` are accepted too. Other slash and dash forms and two-digit
+years are refused, because `03/05/2024` means 5 March to an en-US reader. The filter updates when the reader leaves the field;
+`dataFrom`/`dataTo` query parameters remain ISO dates (`yyyy-MM-dd`). Both ends are inclusive, and
+From must be on or before To. The search matches overlapping data periods, so dates outside the
+catalogue's reported range are valid: for example, a search from 1940 to 2026 can include data
+starting in 1991. The reported range does not limit either input. Invalid input shows a validation
+error and preserves the applied bound; emptying a field removes its bound.
 
 `?instrumentId=` is the newest of the keys it owns, and the only one that opens a page rather than
 restoring part of a search. It names the instrument — the questionnaire or scale a variable was

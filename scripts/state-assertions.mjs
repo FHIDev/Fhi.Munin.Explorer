@@ -246,14 +246,14 @@ const REFUSAL_MS = Number(process.env.STATE_REFUSAL_MS ?? 3000);
 // reader taken off the page — so this is a ceiling on a press that does neither, not a flat spend.
 const JUMP_MS = Number(process.env.STATE_JUMP_MS ?? 5000);
 
-/** Native controls exchange ISO dates, regardless of their displayed locale. */
+/** The fields are text and write dd.mm.yyyy whatever the browser's locale (Fhi.Metadata-d2fbu). */
 const DATE_FROM = 'Fra og med';
-const DATE_WRITTEN = '1940-01-01';
+const DATE_WRITTEN = '01.01.1940';
 const DATE_TO = 'Til og med';
-const DATE_END = '2026-10-14';
-const DATE_REVERSED = '2030-01-01';
+const DATE_END = '14.10.2026';
+const DATE_REVERSED = '01.01.2030';
 
-// Tab moves between native date segments before leaving the input itself.
+// Tab, as a reader leaves the field: the filter is applied as focus goes, not while typing.
 async function leaveDateField(page, field) {
   await field.focus();
   for (let i = 0; i < 5; i++) {
@@ -261,6 +261,15 @@ async function leaveDateField(page, field) {
     if (!await field.evaluate(input => input === document.activeElement)) return;
   }
   throw new Error('Tab did not leave the date field');
+}
+
+// Both edges of the refetch an applied bound starts, so the next entry meets a filter holding it.
+async function settleDateFilter(page) {
+  const panel = page.locator(PANEL);
+  await panel.and(page.locator('[aria-busy="true"]'))
+    .waitFor({ state: 'visible', timeout: BUSY_MS }).catch(() => {});
+  await panel.and(page.locator('[aria-busy="false"]'))
+    .waitFor({ state: 'visible', timeout: findTimeout });
 }
 
 /** Playwright's default is generous; a control that is not there is not coming. */
@@ -1561,12 +1570,12 @@ export const assertions = [
     },
   },
   {
-    name: 'a native dataperiode field accepts 1940 and recovers from a reversed interval',
+    name: 'a dataperiode field accepts 1940 and recovers from a reversed interval',
     kind: 'invariant',
     states: ['variables-list'],
 
-    // Real controls enforce native min/max as well as the component's validation. A catalogue
-    // bound would wrongly reject 1940; a reversed interval must still be refused and recoverable.
+    // A catalogue bound would wrongly reject 1940; a reversed interval must still be refused and
+    // recoverable.
     async stage(page) {
       const panel = page.locator(PANEL);
       await panel.waitFor({ state: 'visible', timeout: findTimeout });
@@ -1578,14 +1587,9 @@ export const assertions = [
       const field = panel.getByLabel(DATE_FROM, { exact: true });
       await field.waitFor({ state: 'visible', timeout: findTimeout });
 
-      // Applied first, both edges of the refetch waited out, so the second entry meets a filter
-      // that already holds the day.
       await field.fill(DATE_WRITTEN);
       await leaveDateField(page, field);
-      await panel.and(page.locator('[aria-busy="true"]'))
-        .waitFor({ state: 'visible', timeout: BUSY_MS }).catch(() => {});
-      await panel.and(page.locator('[aria-busy="false"]'))
-        .waitFor({ state: 'visible', timeout: findTimeout });
+      await settleDateFilter(page);
 
       if (await field.inputValue() !== DATE_WRITTEN) {
         throw new Error(`typing ${DATE_WRITTEN} into "${DATE_FROM}" did not leave ${DATE_WRITTEN} in it`);
@@ -1594,15 +1598,14 @@ export const assertions = [
       const to = panel.getByLabel(DATE_TO, { exact: true });
       await to.fill(DATE_END);
       await leaveDateField(page, to);
-      await page.waitForFunction(({ id, end }) => document.getElementById(id)?.max === end,
-        { id: await field.getAttribute('id'), end: DATE_END });
+      await settleDateFilter(page);
       await field.fill(DATE_REVERSED);
       await leaveDateField(page, field);
       await page.waitForFunction(id => document.getElementById(id)?.getAttribute('aria-invalid') === 'true',
         await field.getAttribute('id'));
       await field.fill('');
       await leaveDateField(page, field);
-      await page.waitForFunction(id => document.getElementById(id)?.min === '', await to.getAttribute('id'));
+      await settleDateFilter(page);
       await field.fill(DATE_WRITTEN);
       await leaveDateField(page, field);
 
@@ -1630,8 +1633,8 @@ export const assertions = [
         return `the field refused ${DATE_WRITTEN}, which overlaps the available data`;
       }
 
-      const valid = await field.evaluate(input => input.validity.valid && input.min === '');
-      if (!valid) return 'the native field still rejects the corrected date or carries a catalogue minimum';
+      const plain = await field.evaluate(input => input.type === 'text' && !input.hasAttribute('min'));
+      if (!plain) return 'the field is no longer a plain text field, or it carries a catalogue minimum';
       const shown = await field.inputValue();
 
       return shown === DATE_WRITTEN
@@ -1647,7 +1650,7 @@ export const assertions = [
     },
   },
   {
-    name: 'an incomplete native dataperiode preserves the applied bounds and announces the error',
+    name: 'an incomplete dataperiode entry preserves the applied bounds and announces the error',
     kind: 'invariant',
     states: ['variables-list'],
 
@@ -1658,18 +1661,14 @@ export const assertions = [
       const to = panel.getByLabel(DATE_TO, { exact: true });
       await from.fill(DATE_WRITTEN);
       await leaveDateField(page, from);
-      await page.waitForFunction(id => document.getElementById(id)?.min === '1940-01-01', await to.getAttribute('id'));
+      await settleDateFilter(page);
       await to.fill(DATE_END);
       await leaveDateField(page, to);
-      await page.waitForFunction(id => document.getElementById(id)?.max === '2026-10-14', await from.getAttribute('id'));
+      await settleDateFilter(page);
 
+      // Two-digit years are refused: read as 19xx or 20xx, a historical period lands a century off.
       for (const field of [from, to]) {
-        await field.focus();
-        for (let i = 0; i < 3; i++) await field.press('ArrowLeft');
-        await field.press('Backspace');
-        if (!await field.evaluate(input => input.value === '' && input.validity.badInput)) {
-          throw new Error('deleting one native date segment did not produce badInput');
-        }
+        await field.fill('01.01.19');
         await leaveDateField(page, field);
         await field.evaluate((input, ms) => new Promise(resolve => {
           const deadline = Date.now() + ms;
@@ -1683,16 +1682,15 @@ export const assertions = [
 
     async measure(page) {
       const panel = page.locator(PANEL);
-      const from = panel.getByLabel(DATE_FROM, { exact: true });
-      const to = panel.getByLabel(DATE_TO, { exact: true });
-      if (await from.getAttribute('max') !== DATE_END || await to.getAttribute('min') !== DATE_WRITTEN) {
-        return 'an incomplete date cleared an applied bound';
+      const chips = await page.locator('.munin-explorer-filters__chip').allTextContents();
+      for (const bound of [`${DATE_FROM}: ${DATE_WRITTEN}`, `${DATE_TO}: ${DATE_END}`]) {
+        if (!chips.some(chip => chip.includes(bound))) return `an incomplete date cleared the applied "${bound}"`;
       }
-      for (const field of [from, to]) {
+      for (const field of [panel.getByLabel(DATE_FROM, { exact: true }), panel.getByLabel(DATE_TO, { exact: true })]) {
         if (await field.getAttribute('aria-invalid') !== 'true') return 'an incomplete date has no validation error';
-        const error = await field.getAttribute('aria-describedby');
+        const error = (await field.getAttribute('aria-describedby') ?? '').split(' ').find(id => id.endsWith('-error'));
         if (!error || !await page.locator(`#${error}[role="alert"]`).textContent()) {
-          return 'the invalid native date has no associated live error';
+          return 'the refused date has no associated live error';
         }
       }
       return null;

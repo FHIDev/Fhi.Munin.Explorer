@@ -249,15 +249,17 @@ public partial class VariableSearch
                   value => ApplyFilterAsync(_filter with { DataTo = value }));
     };
 
-    // Native controls display the browser's local format but exchange ISO dates with Blazor.
+    // Text rather than type="date", whose order follows the reader's machine (Fhi.Metadata-d2fbu).
+    // A refused entry is kept so the reader sees it beside the reason.
     private void DateField(
         RenderTreeBuilder builder, int seq, string id, string label, DateOnly? value,
         DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
     {
+        var hintId = $"{id}-hint";
         var errorId = $"{id}-error";
         var refused = _refusedDates.TryGetValue(id, out var typedText);
         var shown = _editedDates.TryGetValue(id, out var edited) ? edited
-            : refused ? typedText! : value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "";
+            : refused ? typedText! : value is { } day ? DayFirstDate.Format(day) : "";
 
         builder.OpenElement(seq, "label");
         builder.AddAttribute(seq + 1, "class", "form-element__label");
@@ -265,23 +267,32 @@ public partial class VariableSearch
         builder.AddContent(seq + 3, label);
         builder.CloseElement();
 
+        builder.OpenElement(seq + 5, "p");
+        builder.AddAttribute(seq + 6, "id", hintId);
+        builder.AddAttribute(seq + 7, "class", "caption");
+        builder.AddContent(seq + 8, T.FacetDateFormat);
+        builder.CloseElement();
+
         builder.OpenElement(seq + 10, "input");
         builder.AddAttribute(seq + 11, "id", id);
-        builder.AddAttribute(seq + 12, "type", "date");
-        builder.AddAttribute(seq + 13, "autocomplete", "off");
-        builder.AddAttribute(seq + 14, "min", min?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-        builder.AddAttribute(seq + 15, "max", max?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        builder.AddAttribute(seq + 12, "type", "text");
+        builder.AddAttribute(seq + 13, "inputmode", "numeric");
+        builder.AddAttribute(seq + 14, "autocomplete", "off");
+        builder.AddAttribute(seq + 15, "placeholder", T.FacetDateFormat);
         builder.AddAttribute(seq + 16, "value", shown);
         builder.AddAttribute(seq + 17, "aria-invalid", refused ? "true" : null);
-        builder.AddAttribute(seq + 18, "aria-describedby", refused ? errorId : null);
+        builder.AddAttribute(seq + 18, "aria-describedby", refused ? $"{hintId} {errorId}" : hintId);
 
-        // Native date controls fire change for each year digit; searching then can interrupt typing.
+        // Held until focus leaves, so a search never lands while the reader is still typing.
         builder.AddAttribute(seq + 19, "onchange",
             EventCallback.Factory.CreateBinder<string?>(this, raw =>
             {
                 _editedDates[id] = raw ?? "";
                 _refusedDates.Remove(id);
             }, shown));
+
+        // The field rewrites what was typed (5.3.2020 becomes 05.03.2020), and when that is the
+        // value already rendered, the diff alone would leave the reader's spelling in the box.
         builder.SetUpdatesAttributeName("value");
         builder.AddAttribute(seq + 20, "onblur",
             EventCallback.Factory.Create<FocusEventArgs>(this, _ => CommitDateAsync(id, min, max, set)));
@@ -301,8 +312,8 @@ public partial class VariableSearch
             builder.OpenElement(seq + 35, "p");
             builder.AddAttribute(seq + 36, "class", "infobox infobox--bg-yellow");
             builder.AddContent(seq + 37, T.FacetDateInvalid(
-                min is { } lo ? DateInput.Format(lo, Language) : null,
-                max is { } hi ? DateInput.Format(hi, Language) : null));
+                min is { } lo ? DayFirstDate.Format(lo) : null,
+                max is { } hi ? DayFirstDate.Format(hi) : null));
             builder.CloseElement();
         }
 
@@ -311,39 +322,19 @@ public partial class VariableSearch
 
     private async Task CommitDateAsync(string id, DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
     {
-        var browser = _interop is { } interop ? await interop.ReadDateInputAsync(id) : null;
-        if (browser?.BadInput == true)
-        {
-            _editedDates.Remove(id);
-            _refusedDates[id] = "";
-            return;
-        }
-
         if (!_editedDates.Remove(id, out var raw))
         {
-            // Clearing an incomplete native entry can leave value empty without another change event.
-            if (browser is null || !_refusedDates.ContainsKey(id))
-            {
-                return;
-            }
-
-            raw = browser.Value;
+            return;
         }
 
         if (string.IsNullOrWhiteSpace(raw))
         {
-            if (browser is null || browser.Value.Length != 0)
-            {
-                _refusedDates[id] = raw;
-                return;
-            }
-
             _refusedDates.Remove(id);
             await set(null);
             return;
         }
 
-        if (DateInput.TryParse(raw, Language, out var typed) && Within(typed, min, max))
+        if (DayFirstDate.TryParse(raw, out var typed) && Within(typed, min, max))
         {
             _refusedDates.Remove(id);
             await set(typed);
