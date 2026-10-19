@@ -610,6 +610,10 @@ invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead|displa
 invented-selector|@media (max-width:767px)|.munin-explorer-kilder|display
 
 # The kilde drawer's datasamlinger as cards on a phone (Fhi.Metadata-l9l2n.128), until the pin reaches the Stiler release.
+invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody td:nth-child(n)|white-space
+invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody td:nth-child(n)|width
+invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(n)|white-space
+invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(n)|width
 invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody tr|border-bottom
 invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody tr|padding
 invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody|display
@@ -630,7 +634,6 @@ invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger 
 invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tr > :nth-child(n)|white-space
 invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tr > :nth-child(n)|width
 invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tr|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable .munin-explorer-kilde__datasamling-select|padding-left
 invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable .munin-explorer-kilde__datasamling-select|text-align
 invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(n)|white-space
 invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(n)|width

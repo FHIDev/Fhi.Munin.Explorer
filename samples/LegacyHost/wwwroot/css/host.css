@@ -2542,12 +2542,12 @@ table.munin-explorer-data-list tbody th {
 }
 
 @media all and (max-width: 767px) {
-  .munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(n) {
+  .munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(n),
+  .munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(n) {
     width: auto;
     white-space: normal;
   }
   .munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable .munin-explorer-kilde__datasamling-select {
-    padding-left: 0;
     text-align: left;
   }
 }
@@ -5448,6 +5448,10 @@ table.munin-explorer-data-list tbody th {
   .munin-explorer-kilde__datasamlinger tr > :nth-child(n) {
     border-bottom: 0;
     padding: 0 0 8px;
+    white-space: normal;
+    width: auto;
+  }
+  .munin-explorer-kilde__datasamlinger tbody td:nth-child(n) {
     white-space: normal;
     width: auto;
   }
