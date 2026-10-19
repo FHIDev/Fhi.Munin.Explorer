@@ -6271,7 +6271,7 @@ public class VariableSearchTest : ExplorerTestContext
             Assert.Equal("numeric", field.GetAttribute("inputmode"));
             Assert.Null(field.GetAttribute("min"));
             Assert.Null(field.GetAttribute("max"));
-            Assert.Equal(hint, field.GetAttribute("placeholder"));
+            Assert.Null(field.GetAttribute("placeholder"));
             Assert.Equal($"{field.Id}-hint", field.GetAttribute("aria-describedby"));
             Assert.Equal(hint, cut.Find($"#{field.Id}-hint").TextContent);
             Assert.Equal(i == 0 ? fromLabel : toLabel, AccessibleName.Of(field));

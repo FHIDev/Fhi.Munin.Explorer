@@ -263,8 +263,11 @@ async function leaveDateField(page, field) {
   throw new Error('Tab did not leave the date field');
 }
 
-// Both edges of the refetch an applied bound starts, so the next entry meets a filter holding it.
-async function settleDateFilter(page) {
+// The bound's chip drawn (or gone), then both edges of the refetch it starts, so the next entry
+// meets a filter that already holds it.
+async function settleDateFilter(page, chip, present = true) {
+  await page.locator('.munin-explorer-filters__chip', { hasText: chip }).first()
+    .waitFor({ state: present ? 'visible' : 'detached', timeout: findTimeout });
   const panel = page.locator(PANEL);
   await panel.and(page.locator('[aria-busy="true"]'))
     .waitFor({ state: 'visible', timeout: BUSY_MS }).catch(() => {});
@@ -1589,7 +1592,7 @@ export const assertions = [
 
       await field.fill(DATE_WRITTEN);
       await leaveDateField(page, field);
-      await settleDateFilter(page);
+      await settleDateFilter(page, `${DATE_FROM}: ${DATE_WRITTEN}`);
 
       if (await field.inputValue() !== DATE_WRITTEN) {
         throw new Error(`typing ${DATE_WRITTEN} into "${DATE_FROM}" did not leave ${DATE_WRITTEN} in it`);
@@ -1598,14 +1601,14 @@ export const assertions = [
       const to = panel.getByLabel(DATE_TO, { exact: true });
       await to.fill(DATE_END);
       await leaveDateField(page, to);
-      await settleDateFilter(page);
+      await settleDateFilter(page, `${DATE_TO}: ${DATE_END}`);
       await field.fill(DATE_REVERSED);
       await leaveDateField(page, field);
       await page.waitForFunction(id => document.getElementById(id)?.getAttribute('aria-invalid') === 'true',
         await field.getAttribute('id'));
       await field.fill('');
       await leaveDateField(page, field);
-      await settleDateFilter(page);
+      await settleDateFilter(page, `${DATE_FROM}: `, false);
       await field.fill(DATE_WRITTEN);
       await leaveDateField(page, field);
 
@@ -1661,10 +1664,10 @@ export const assertions = [
       const to = panel.getByLabel(DATE_TO, { exact: true });
       await from.fill(DATE_WRITTEN);
       await leaveDateField(page, from);
-      await settleDateFilter(page);
+      await settleDateFilter(page, `${DATE_FROM}: ${DATE_WRITTEN}`);
       await to.fill(DATE_END);
       await leaveDateField(page, to);
-      await settleDateFilter(page);
+      await settleDateFilter(page, `${DATE_TO}: ${DATE_END}`);
 
       // Two-digit years are refused: read as 19xx or 20xx, a historical period lands a century off.
       for (const field of [from, to]) {

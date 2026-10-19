@@ -278,7 +278,6 @@ public partial class VariableSearch
         builder.AddAttribute(seq + 12, "type", "text");
         builder.AddAttribute(seq + 13, "inputmode", "numeric");
         builder.AddAttribute(seq + 14, "autocomplete", "off");
-        builder.AddAttribute(seq + 15, "placeholder", T.FacetDateFormat);
         builder.AddAttribute(seq + 16, "value", shown);
         builder.AddAttribute(seq + 17, "aria-invalid", refused ? "true" : null);
         builder.AddAttribute(seq + 18, "aria-describedby", refused ? $"{hintId} {errorId}" : hintId);

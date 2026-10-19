@@ -671,7 +671,7 @@ internal sealed record Texts(
     string FacetDateFrom,
     string FacetDateTo,
 
-    // The format those fields take, shown under each label and as its placeholder, and the
+    // The format those fields take, shown under each label as their hint, and the
     // sentence a field points at when what was typed is not a day inside its range. The ends
     // arrive already written in that format; a null end is an open one.
     string FacetDateFormat,
