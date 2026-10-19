@@ -1077,6 +1077,8 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.All(labels, label => Assert.True(label.HasAttribute("hidden")));
         Assert.Equal([datasamlinger, variables], labels.Select(label => label.TextContent));
         Assert.Equal(["3", "42"], card.Skip(1).Select(ShownText));
+        Assert.DoesNotContain("munin-explorer-kilder__card--variabler", card[1].ClassList);
+        Assert.Contains("munin-explorer-kilder__card--variabler", card[2].ClassList);
     }
 
     [Fact]
@@ -6255,6 +6257,7 @@ public class KildeSearchTest : ExplorerTestContext
             "munin-explorer-kilder__bar",
             "munin-explorer-kilder__bar-fill",
             "munin-explorer-kilder__card",       // the phone's card (Fhi.Metadata-ulkw3)
+            "munin-explorer-kilder__card--variabler",
             "munin-explorer-kilder__card-label",
             "munin-explorer-kilder__count",
             "munin-explorer-kilder__expand",

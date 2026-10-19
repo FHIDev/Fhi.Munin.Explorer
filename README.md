@@ -1046,6 +1046,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilder__bar-fill` | handle |
   | `munin-explorer-kilder__card` | handle |
   | `munin-explorer-kilder__card-label` | handle |
+  | `munin-explorer-kilder__card--variabler` | handle |
   | `munin-explorer-kilder__count` | handle |
   | `munin-explorer-kilder__count--zero` | handle |
   | `munin-explorer-kilder__expand` | handle |

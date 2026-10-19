@@ -851,12 +851,12 @@ else
                                 @if (kilde.TotalVariables == 0)
                                 {
                                     @* position:relative for the reason UnmeasuredShare gives: the hidden words must stay in the cell. *@
-                                    <td class="@variables.Class munin-explorer-kilder__card" style="position:relative">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))<span aria-hidden="true">–</span><span class="screenreader-only">@T.NoVariablesInMunin</span></td>
+                                    <td class="@variables.Class munin-explorer-kilder__card munin-explorer-kilder__card--variabler" style="position:relative">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))<span aria-hidden="true">–</span><span class="screenreader-only">@T.NoVariablesInMunin</span></td>
                                 }
                                 else
                                 {
                                 var barWords = BarWords(kilde, largestOfType);
-                                <td class="@variables.Class munin-explorer-kilder__card" style="position:relative" title="@($"{kilde.TotalVariables} {barWords}")">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}<span class="screenreader-only">@($" {barWords}")</span></td>
+                                <td class="@variables.Class munin-explorer-kilder__card munin-explorer-kilder__card--variabler" style="position:relative" title="@($"{kilde.TotalVariables} {barWords}")">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}<span class="screenreader-only">@($" {barWords}")</span></td>
                                 }
                             }
                             @if (ColumnVisible(KildeColumn.KodeverkShare))

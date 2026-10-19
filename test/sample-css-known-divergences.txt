@@ -566,6 +566,7 @@ unstyled-name||.munin-explorer-filters--collapsed|
 # The kilde list as cards on a phone (Fhi.Metadata-ulkw3); Stiler's rules are owed with it (Stiler patch to follow).
 unstyled-name||.munin-explorer-kilder__card|
 unstyled-name||.munin-explorer-kilder__card-label|
+unstyled-name||.munin-explorer-kilder__card--variabler|
 unstyled-name||.munin-explorer-kilder-header__select|
 unstyled-name||.munin-explorer-kilder-header__variabler|
 # The same card rules, by declaration, until the HostileHost pin reaches the Stiler release that carries them.

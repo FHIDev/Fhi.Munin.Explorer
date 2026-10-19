@@ -5679,10 +5679,10 @@ a[target=_blank]:not(.hd-button-square):focus::after {
     text-align: left;
     white-space: nowrap;
   }
-  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__count ~ .munin-explorer-kilder__card.munin-explorer-kilder__count {
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__card--variabler {
     grid-column: 4;
   }
-  .munin-explorer-kilder .munin-explorer-kilder__card-label {
+  .munin-explorer-kilder .munin-explorer-kilder__card-label[hidden] {
     display: inline;
     color: var(--grey60);
   }
@@ -5699,7 +5699,7 @@ a[target=_blank]:not(.hd-button-square):focus::after {
    they stack. */
 @media all and (max-width: 400px) {
   .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__count,
-  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__count ~ .munin-explorer-kilder__card.munin-explorer-kilder__count {
+  .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__card--variabler {
     grid-row: auto;
     grid-column: 3/-1;
   }
