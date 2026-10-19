@@ -517,9 +517,14 @@ public class ListRowPanelTest : ExplorerTestContext
     private static IElement OpenNotes(IRenderedComponent<VariableListView> cut, string name = "Databaseversjon")
     {
         NameButton(cut, name).Click();
-        // This row's panel, not one still open for another: its tab would take the notes click.
-        cut.WaitForAssertion(() => Assert.Equal(name, cut.Find($"#{Panel(cut)!.GetAttribute("aria-labelledby")}").TextContent.Trim()));
-        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Mine notater").Click();
+        // This row's panel with its tabs: another row's panel would take the click, and the tabs wait for the detail.
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(name, cut.Find($"#{Panel(cut)!.GetAttribute("aria-labelledby")}").TextContent.Trim());
+            Assert.Contains(cut.FindAll("[role=tab]"), t => t.TextContent.Trim() == "Mine notater");
+        });
+        // Found and pressed on the dispatcher, behind the renders the code lists still owe, so the tab is not stale.
+        cut.InvokeAsync(() => cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Mine notater").Click()).GetAwaiter().GetResult();
         cut.WaitForAssertion(() => OpenNotesField(cut));
         return OpenNotesField(cut);
     }
