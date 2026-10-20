@@ -979,20 +979,14 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 .munin-explorer-drilldown > dl > dt { margin-top: 12px; }
 .munin-explorer-drilldown > dl > dd { margin: 0; }
 
-/* Stiler's base rule for the component root (_detail.scss:113), absent here until now: the
-   explorer is a <section> nothing above bounds, so without it the component runs past the 1488px
-   cap helsedata holds it to. This sample's own chrome adds to the 24px. (Fhi.Metadata-7e7de) */
+/* Stiler's base rule for the component root (_detail.scss:113): the explorer is a <section> nothing
+   above bounds. 1920px and 40px from Stiler 0.1.179-0.1.191; the detail pages keep 1488px and 24px, and the
+   phone gutters are mirrored at the end of this file. (Fhi.Metadata-7e7de, Fhi.Metadata-u7msf) */
 .munin-explorer {
-  max-width: 1488px;
+  max-width: 1920px;
   width: 100%;
-  padding: 0 24px;
+  padding: 0 40px;
   margin: 0 auto;
-}
-
-/* Stiler 0.1.133: Runa's search list, the section holding the filter fieldset, goes to 1760px;
-   Kelda and the whole-variable view keep 1488px (Fhi.Metadata-35w0p.62.1, Fhi.Metadata-i1kwv). */
-.munin-explorer:has(> fieldset.munin-explorer-filters) {
-  max-width: 1760px;
 }
 
 /* ---- not Stiler either: the two-column layout ----
@@ -1471,7 +1465,7 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
 /* Stiler's 420 rather than Runa's 210; below 1281px the rows stack and ignore it. */
 .munin-explorer-dataitem-main__name,
 .munin-explorer-dataitem-header__name {
-  flex: 420 1 0;
+  flex: 360 1 0;
 }
 
 .munin-explorer-dataitem-main__code,
@@ -1486,17 +1480,17 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
 
 .munin-explorer-dataitem-main__dataCollection,
 .munin-explorer-dataitem-header__dataCollection {
-  flex: 212 1 0;
+  flex: 250 1 0;
 }
 
 .munin-explorer-dataitem-main__theme,
 .munin-explorer-dataitem-header__theme {
-  flex: 160 1 0;
+  flex: 210 1 0;
 }
 
 .munin-explorer-dataitem-main__dataType,
 .munin-explorer-dataitem-header__dataType {
-  flex: 114 1 0;
+  flex: 130 1 0;
 }
 
 .munin-explorer-dataitem-main__status,
@@ -2122,6 +2116,13 @@ table.munin-explorer-data-list tbody th {
   border-bottom: 1px solid var(--grey30);
 }
 
+/* The kilde's own name block has no rule under it between Stiler 0.1.179 and 0.1.191 (Fhi.Metadata-u7msf). */
+.munin-explorer-kilde__header {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
 /* The identifiers are what a reader looks the kilde up by elsewhere, so they are set the way the
    kodeverk reference is: a run of digits reads as an identifier rather than as prose. */
 .munin-explorer-kilde__identifiers,
@@ -2143,6 +2144,10 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-whole__description {
   margin: 12px 0 0;
   max-width: 45ch;   /* one measure for all prose, as Stiler 0.1.111 (Fhi.Metadata-35w0p.70) */
+}
+
+.munin-explorer-kilde__description {
+  max-width: 70ch;
 }
 
 /* The description's held-back paragraphs and the button that shows them (Fhi.Metadata-nebok). The
@@ -2256,8 +2261,8 @@ table.munin-explorer-data-list tbody th {
      rather than a flourish: a max-height with nothing to scroll in only spills. */
   .munin-explorer-page__toc {
     position: sticky;
-    top: 20px;
-    max-height: calc(100vh - 40px);
+    top: calc(var(--munin-explorer-stuckbar-height, 0px) + 20px);
+    max-height: calc(100vh - 40px - var(--munin-explorer-stuckbar-height, 0px));
     overflow-y: auto;
   }
 }
@@ -3482,9 +3487,8 @@ table.munin-explorer-data-list tbody th {
 }
 .munin-explorer-pagination-size .caption { margin-right: 16px; }
 
-/* Element rather than class on purpose, and the reason there is no new name here: a `<select>`
-   draws itself at the browser's default where an unknown class name draws nothing, so the shape
-   is what carries the styling risk rather than a name Stiler may never have heard of. */
+/* Element rather than class on purpose: Stiler now styles every `select` in the explorer, mirrored at
+   the end of this file, which wins over this rule; this stays for the page-size control's spacing. */
 .munin-explorer-pagination-size select {
   padding: 8px 12px;
   border: 1px solid var(--grey40);
@@ -4027,8 +4031,8 @@ table.munin-explorer-data-list tbody th {
 @media (min-width:1025px) {
 .munin-explorer-page__toc {
   position: sticky;
-  top: 20px;
-  max-height: calc(100vh - 40px);
+  top: calc(var(--munin-explorer-stuckbar-height, 0px) + 20px);
+  max-height: calc(100vh - 40px - var(--munin-explorer-stuckbar-height, 0px));
   overflow-y: auto;
 }
 }
@@ -4454,7 +4458,7 @@ table.munin-explorer-data-list tbody th {
 
 @media (max-width:600px) {
 .munin-explorer-page__facts {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
   gap: 1.125rem;
 }
 }
@@ -5591,14 +5595,8 @@ table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > th[scope=ro
   text-align: start;
 }
 
-/* The wide screen's filter fold (Fhi.Metadata-amp8c). Its button only where the panel is a sidebar; the
-   phone has «Vis filtre». Folded, the panel goes and the results take the whole width. */
-@media (max-width: 1023px) {
-  .munin-explorer-filters__collapse {
-    display: none;
-  }
-}
-
+/* The wide screen's filter fold (Fhi.Metadata-amp8c): its button is hidden below 1024px by Stiler's rule,
+   mirrored at the end of this file. Folded, the panel goes and the results take the whole width. */
 @media (min-width: 1024px) {
   .munin-explorer > .munin-explorer-filters__collapse {
     justify-self: start;
@@ -5768,5 +5766,211 @@ a[target=_blank]:not(.hd-button-square):focus::after {
   .munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__card.munin-explorer-kilder__card--variabler {
     grid-row: auto;
     grid-column: 3/-1;
+  }
+}
+
+/* Mirrored from Fhi.Helsedata.Stiler 0.1.191, the rules 0.1.179-0.1.191 added under this package's
+   names (Fhi.Metadata-u7msf). In Stiler's own words; the crumb divider's icon is copied from the package into img/. */
+
+.munin-explorer .breadcrumbs__divider {
+  flex: none;
+  height: 1.5rem;
+  background: url(../img/icons/keyboard-arrow/icon_right--gray.svg) no-repeat center/1.5rem;
+}
+
+.munin-explorer .breadcrumbs__list-item a:hover {
+  color: rgb(82, 30, 255);
+  text-decoration: underline;
+}
+
+.munin-explorer .breadcrumbs__list-item a {
+  color: rgb(50, 55, 141);
+}
+
+.munin-explorer .breadcrumbs__list-item button:hover {
+  color: rgb(82, 30, 255);
+  text-decoration: underline;
+}
+
+.munin-explorer .breadcrumbs__list-item button {
+  color: rgb(50, 55, 141);
+}
+
+.munin-explorer .breadcrumbs {
+  margin-bottom: 16px;
+}
+
+.munin-explorer select:focus {
+  border: 1px solid rgb(66, 139, 255);
+  outline: none;
+  box-shadow: 0 0 0 1px rgb(66, 139, 255);
+}
+
+.munin-explorer select:hover:not([aria-disabled=true]) {
+  background-color: rgb(230, 230, 237);
+}
+
+.munin-explorer select[aria-disabled=true] {
+  border-color: rgb(187, 184, 201);
+  cursor: default;
+}
+
+.munin-explorer select {
+  appearance: none;
+  height: 2.75rem;
+  max-width: 100%;
+  padding: 0 2.5rem 0 1rem;
+  border: 1px solid rgb(81, 84, 123);
+  border-radius: 0.5rem;
+  background: transparent url(../img/icons/keyboard-arrow/icon_down.svg) no-repeat right 0.5rem center/1.5rem;
+  color: rgb(38, 32, 69);
+  font-family: "graphik-medium", Arial, Helvetica, sans-serif;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.munin-explorer-dataitem-main__column.munin-explorer-dataitem-main__dataCollection .munin-explorer-dataitem-main__column__text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.munin-explorer-dataitem-main__column.munin-explorer-dataitem-main__dataType .munin-explorer-dataitem-main__column__text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.munin-explorer-dataitem-main__column.munin-explorer-dataitem-main__source .munin-explorer-dataitem-main__column__text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.munin-explorer-dataitem-main__column.munin-explorer-dataitem-main__theme .munin-explorer-dataitem-main__column__text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+.munin-explorer-kilde .munin-explorer-page__fields dt {
+  color: rgb(81, 84, 123);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.munin-explorer-kilde__jumps > span {
+  display: none;
+}
+
+.munin-explorer-kilde__main > .munin-explorer-page__section > :is(h2, h3, h4, h5, h6):first-child {
+  font-size: 1.75rem;
+  margin-top: 32px;
+  padding-top: 16px;
+  padding-bottom: 0;
+  border-top: 1px solid rgb(230, 230, 237);
+  border-bottom: none;
+}
+
+.munin-explorer-kilde__main > .munin-explorer-page__section:first-child > :is(h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.munin-explorer:has(.munin-explorer-kilde, .munin-explorer-datasamling, .munin-explorer-whole) {
+  max-width: 1488px;
+  padding: 0 24px;
+}
+
+/* After the rule above, as in Stiler: the detail pages' phone gutter. */
+@media (max-width: 767px) {
+  .munin-explorer:has(.munin-explorer-kilde, .munin-explorer-datasamling, .munin-explorer-whole) {
+    padding: 0 16px;
+  }
+}
+
+/* The breakpoints after the rules they adjust, in Stiler's source order. */
+@media (max-width:1024px) {
+  .munin-explorer {
+    padding: 0 24px;
+  }
+}
+
+@media (max-width:767px) {
+  .munin-explorer-header__actions .dropdown {
+    width: 100%;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon--right {
+    margin-left: auto;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon {
+    margin-right: 0;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary {
+    column-gap: 8px;
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button > .icon--right {
+    margin-left: auto;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button > .icon {
+    margin-right: 0;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button[aria-busy=true]::before {
+    margin-right: 0;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button {
+    column-gap: 8px;
+    width: 100%;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) {
+    display: grid;
+    grid-template-columns: max-content;
+    justify-content: start;
+  }
+
+  .munin-explorer-kilde__main > .munin-explorer-page__section > :is(h2, h3, h4, h5, h6):first-child {
+    font-size: 1.5rem;
+  }
+
+  .munin-explorer-results__toolbar > .munin-explorer-header:has( > .munin-explorer-header__actions > .munin-explorer-list-menu) {
+    margin-right: auto;
+  }
+
+  .munin-explorer {
+    padding: 0 16px;
+  }
+}
+
+@media (min-width:1081px) {
+  .munin-explorer-kilde .munin-explorer-page__facts:not(:has( > :nth-child(6))) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media not all and (min-width:1024px) {
+  .munin-explorer-filters__collapse {
+    display: none;
   }
 }

@@ -258,9 +258,7 @@ missing-declaration||.munin-explorer-dataitem-header|text-transform
 missing-selector||.munin-explorer-data-list__result:has(.munin-explorer-dataitem__expand-cell) .munin-explorer-dataitem-header__name > .munin-explorer-dataitem-header__button|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions-button|
 missing-selector|@media (max-width:1439px)|.munin-explorer-header__actions|
-missing-selector|@media (max-width:2881px)|.munin-explorer-pagination-size select|
 missing-selector|@media (max-width:767px)|.munin-explorer-header|
-missing-selector|@media (max-width:767px)|.munin-explorer-pagination-size select|
 missing-selector|@media (max-width:767px)|.munin-explorer-skiplink-pagination|
 missing-selector|@media (min-width:1024px)|.munin-explorer > .munin-explorer-filters > .munin-explorer-filters__toolbar|
 missing-selector||.headline.munin-explorer-group|
@@ -273,7 +271,6 @@ missing-selector||.munin-explorer-dataitem-header > *|
 missing-selector||.munin-explorer-dataitem-header__button:focus|
 missing-selector||.munin-explorer-dataitem-header__button|
 missing-selector||.munin-explorer-frequency td:last-child|
-missing-selector||.munin-explorer-header__actions .dropdown|
 
 missing-selector||.munin-explorer-meta .munin-explorer-codes__table tbody tr|
 missing-selector||.munin-explorer-meta .munin-explorer-codes__table td|
@@ -423,18 +420,6 @@ invented-declaration||.munin-explorer-page__fields dd|margin
 # `.headline.margin--bottom` already holds the title at margin-top 0, so no Stiler bead is owed.
 unstyled-name||.munin-explorer-page|
 
-# The kilde description's «Les mer» toggle and its held-back paragraphs (Fhi.Metadata-nebok). Stiler's
-# rules for both are owed by Fhi.Metadata-o0q03, which also widens the description to 70ch.
-unstyled-name||.munin-explorer-kilde__description-rest|
-unstyled-name||.munin-explorer-kilde__description-toggle|
-
-# Skuld's jump links under the kilde description (Fhi.Metadata-4ggs9); the Stiler rule is owed by Fhi.Metadata-a7oqn.
-unstyled-name||.munin-explorer-kilde__jumps|
-
-# The kilde back button, hidden from 768px where the trail shows (Fhi.Metadata-e4afs); Stiler rule owed by Fhi.Metadata-a7oqn.
-unstyled-name||.munin-explorer-kilder__back|
-
-
 # INVENTED SELECTORS, the sixth kind (Fhi.Metadata-796cw): a declaration under a prefixed selector
 # only the sample spells, on names Stiler styles elsewhere. Measured against Stiler 0.1.98.
 
@@ -558,98 +543,3 @@ invented-selector||.munin-explorer-meta__grid dd + dd|margin-top
 invented-selector||.munin-explorer-meta__grid dt|margin-bottom
 invented-selector||.munin-explorer-page__fields dd + dd|margin-top
 invented-selector||.munin-explorer-page__fields dt|margin-bottom
-
-# The wide screen's filter fold (Fhi.Metadata-amp8c); Stiler's rules are owed with it (Stiler patch to follow).
-unstyled-name||.munin-explorer-filters__collapse|
-unstyled-name||.munin-explorer-filters--collapsed|
-
-# The kilde list as cards on a phone (Fhi.Metadata-ulkw3); Stiler's rules are owed with it (Stiler patch to follow).
-unstyled-name||.munin-explorer-kilder__card|
-unstyled-name||.munin-explorer-kilder__card-label|
-unstyled-name||.munin-explorer-kilder__card--variabler|
-unstyled-name||.munin-explorer-kilder-header__select|
-unstyled-name||.munin-explorer-kilder-header__variabler|
-# The same card rules, by declaration, until the HostileHost pin reaches the Stiler release that carries them.
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded .hd-button-square|height
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded .hd-button-square|white-space
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:focus-within > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded)|background
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:focus-within > th|background
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:has( > .munin-explorer-kilder__expanded)|border-bottom
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:has( > .munin-explorer-kilder__expanded)|padding
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:hover > td:not(.munin-explorer-kilder__expand):not(.munin-explorer-kilder__expanded)|background
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:hover > th|background
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr:is(:hover, :focus-within):not(:has( > .munin-explorer-kilder__expanded))|background
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr > .munin-explorer-kilder-header__navn|grid-column
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|grid-template-columns
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded|grid-column
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expand|grid-column
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expand|grid-row
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__select|grid-column
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__select|grid-row
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > :is(th, td)|border-bottom
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > :is(th, td)|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > :is(th, td)|padding
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > th[scope=row] .munin-explorer-kilder__name|hyphens
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > th[scope=row] .munin-explorer-kilder__name|overflow-wrap
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > th[scope=row]|grid-column
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > th[scope=row]|grid-row
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > th[scope=row]|min-width
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr|align-items
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr|border-bottom
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr|gap
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr|grid-template-columns
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr|padding
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr > th|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|align-items
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|border-bottom
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead > tr|gap
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > thead|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder|display
-
-# The kilde drawer's datasamlinger as cards on a phone (Fhi.Metadata-l9l2n.128), until the pin reaches the Stiler release.
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody td:nth-child(n)|white-space
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody td:nth-child(n)|width
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(n)|white-space
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(n)|width
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody tr|border-bottom
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody tr|padding
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tbody|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger td::before|color
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger td::before|content
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger td::before|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger td:empty|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger td|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger thead|clip-path
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger thead|height
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger thead|overflow
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger thead|position
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger thead|white-space
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger thead|width
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger th|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tr > :nth-child(n)|border-bottom
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tr > :nth-child(n)|padding
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tr > :nth-child(n)|white-space
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tr > :nth-child(n)|width
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger tr|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable .munin-explorer-kilde__datasamling-select|text-align
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(n)|white-space
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(n)|width
-invented-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger|display
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded .hd-button-square|overflow-wrap
-invented-selector|@media (max-width:767px)|.munin-explorer-kilder > tbody > tr > .munin-explorer-kilder__expanded|padding
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tbody tr|
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tbody|
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) td::before|
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) td:empty|
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) td|
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) thead|
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) th|
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tr > :nth-child(n)|
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tr|
-missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *)|
-
-# The contents list folded on a phone (Fhi.Metadata-v40sa); Stiler's rule is owed with it (Stiler patch to follow).
-unstyled-name||.munin-explorer-page__toc-toggle|

@@ -47,8 +47,20 @@ const cases = [
     assertion: 'saved-list menu controls receive pointer input',
     defect: 'the closed column picker raised to the open action menu layer (ADO 122180)',
     path: '/', state: 'list-actions-menu', width: 1440,
-    apply: css('.munin-explorer__dropdown { z-index: 99 !important; }\n' +
-      '.munin-explorer-list-menu__panel { z-index: 99 !important; }'),
+    // Laid over the open panel, one layer above it: since Stiler PR 40240 stacks the row the two no
+    // longer overlap where they stand. Absolute, so it scrolls with the panel.
+    apply: page => page.evaluate(() => {
+      const picker = document.querySelector('.munin-explorer__dropdown');
+      picker.style.position = 'absolute';
+      const origin = (picker.offsetParent ?? document.body).getBoundingClientRect();
+      const open = document.querySelector('.munin-explorer-list-menu__panel:not([hidden])');
+      const panel = open.getBoundingClientRect();
+      Object.assign(picker.style, {
+        left: `${panel.left - origin.left}px`, top: `${panel.top - origin.top}px`,
+        width: `${panel.width}px`, height: `${panel.height}px`,
+        zIndex: String((Number(getComputedStyle(open).zIndex) || 0) + 1),
+      });
+    }),
   },
   {
     assertion: 'no horizontal overflow',
@@ -315,7 +327,8 @@ const cases = [
     assertion: 'a table cell holding visible text is at least 4em wide',
     defect: "Stiler 0.1.139's kilde cards gone at 320: a letter or two per line",
     path: '/kilder', state: 'kilde-hierarchy-metadata', width: 320,
-    apply: dropMediaRules('.munin-explorer-kilde__datasamlinger:not('),
+    // The phone's card blocks; Stiler 0.1.188 dropped the :not() these were once matched by.
+    apply: dropMediaRules('.munin-explorer-kilde__datasamlinger'),
   },
   {
     assertion: 'the saved list fits its box at every width',
