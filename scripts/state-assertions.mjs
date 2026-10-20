@@ -638,12 +638,17 @@ async function contentsFold(page, { fresh }) {
     return `${fresh ? 'loaded at' : 'narrowed to'} 375px, the contents list stands open instead of folded`;
   }
 
+  // Each press is answered over the circuit, so its result is waited for rather than read at once.
+  const expanded = value => reached(page.locator(`${TOC_TOGGLE}[aria-expanded="${value}"]`).first(), 'attached');
   await toggle.click();
-  if (await toggle.getAttribute('aria-expanded') !== 'true' || !await reached(link, 'visible')) {
+  if (!await expanded('true') || !await reached(link, 'visible')) {
     return 'at 375px a tap on «Innhold» did not open the list';
   }
   if (fresh) return null;
   await toggle.click();
+  if (!await expanded('false') || !await reached(link, 'hidden')) {
+    return 'at 375px a second tap on «Innhold» did not fold the list again';
+  }
 
   await page.setViewportSize({ width: 1280, height: 900 });
   return await reached(link, 'visible')
