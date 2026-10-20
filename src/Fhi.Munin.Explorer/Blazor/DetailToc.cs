@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -10,8 +11,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Fragment links and no script of its own (the browser module folds the list on a phone, see
-/// <c>observeContents</c>), so the scrolling is the host's to do and
+/// Fragment links and no script of its own, so the scrolling is the host's to do and
 /// <c>scroll-margin-top</c> on <see cref="DetailSection"/>'s wrapper is what puts the heading clear
 /// of a sticky site header. Whether the jump carries keyboard FOCUS as well as the viewport depends
 /// on the host: a browser making the fragment jump itself moves focus to the target, and a Blazor
@@ -113,6 +113,27 @@ public sealed class DetailToc : ComponentBase, IDisposable
     /// <inheritdoc />
     public void Dispose() => Navigation.LocationChanged -= Moved;
 
+    private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+
+    /// <summary>Whether a reader on a phone has opened the list; a wide screen shows it whatever this says.</summary>
+    private bool _open;
+
+    private const string ListIdStem = "munin-explorer-toc-";
+
+    private string ListId => ListIdStem + _instance;
+
+    /// <summary>Whether <paramref name="id"/> is a contents list's, which carries a per-instance discriminator.</summary>
+    internal static bool IsListId(string id) => id.StartsWith(ListIdStem, StringComparison.Ordinal);
+
+    // The standing-gesture clause every disclosure here carries (Fhi.Metadata-zel47).
+    private void Toggle(MouseEventArgs released)
+    {
+        if (!RowPress.WasSelectionStandingStill(released))
+        {
+            _open = !_open;
+        }
+    }
+
     // A host that owns the query can rewrite it without anything above this component re-rendering,
     // and the hrefs would then keep naming the address the reader arrived on. InvokeAsync because a
     // LocationChanged raised off the renderer's dispatcher throws, which tears the circuit down.
@@ -129,23 +150,27 @@ public sealed class DetailToc : ComponentBase, IDisposable
         builder.OpenElement(0, "nav");
         builder.AddAttribute(1, "aria-label", Label);
 
-        // Drawn open, so a host without the browser module shows the whole list as before. The
-        // module shuts it on a phone, where it would otherwise fill the first screen (Fhi.Metadata-v40sa).
-        builder.OpenElement(2, "details");
-        builder.AddAttribute(3, "open", true);
-
-        builder.OpenElement(4, "summary");
-        builder.OpenElement(5, "h2");
-        builder.AddContent(6, Label);
-        builder.CloseElement();
-        builder.OpenElement(7, "span");
-        builder.AddAttribute(8, "class", "munin-explorer-page__toc-count");
-        builder.AddContent(9, $" ({Entries.Count})");
-        builder.CloseElement();
+        // Two headings, one per width, chosen by the host's stylesheet: the plain one on a wide screen,
+        // and on a phone the WAI-ARIA disclosure, folded from the first paint. Its press needs an
+        // interactive mount, as every other disclosure here does (Fhi.Metadata-v40sa).
+        builder.OpenElement(2, "h2");
+        builder.AddContent(3, Label);
         builder.CloseElement();
 
-        builder.OpenElement(10, "ul");
-        builder.AddAttribute(11, "class", "form-menu__list");
+        builder.OpenElement(4, "h2");
+        builder.AddAttribute(5, "class", "munin-explorer-page__toc-toggle");
+        builder.OpenElement(6, "button");
+        builder.AddAttribute(7, "type", "button");
+        builder.AddAttribute(8, "aria-expanded", _open ? "true" : "false");
+        builder.AddAttribute(9, "aria-controls", ListId);
+        builder.AddAttribute(10, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, Toggle));
+        builder.AddContent(11, $"{Label} ({Entries.Count})");
+        builder.CloseElement();
+        builder.CloseElement();
+
+        builder.OpenElement(12, "ul");
+        builder.AddAttribute(13, "id", ListId);
+        builder.AddAttribute(14, "class", "form-menu__list");
 
         // Rooted-absolute, the shape UrlMirror.Address writes, so the fallback and the cascade agree.
         // It carries the host's path base whatever the document's <base href> says, because a rooted
@@ -172,7 +197,6 @@ public sealed class DetailToc : ComponentBase, IDisposable
             seq += 10;
         }
 
-        builder.CloseElement();
         builder.CloseElement();
         builder.CloseElement();
     }

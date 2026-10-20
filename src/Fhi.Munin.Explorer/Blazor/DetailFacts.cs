@@ -78,15 +78,7 @@ public sealed class DetailFacts : ComponentBase
             builder.CloseElement();
 
             builder.OpenElement(seq + 4, "dd");
-
-            if (fact.Lines is { Count: > 0 } lines)
-            {
-                Lines(builder, seq + 5, lines);
-            }
-            else
-            {
-                Words(builder, seq + 5, fact.Value, fact.Lang, fact.Linked);
-            }
+            Words(builder, seq + 5, fact.Value, fact.Lang, fact.Linked);
 
             if (!string.IsNullOrWhiteSpace(fact.Note))
             {
@@ -134,24 +126,6 @@ public sealed class DetailFacts : ComponentBase
         builder.AddAttribute(seq + 2, "lang", language);
         Content(builder, seq + 3, value, linked);
         builder.CloseElement();
-    }
-
-    /// <summary>Each line a block of its own, so a wrapped one stays inside it; the host's rule spaces them.</summary>
-    /// <remarks>A div, not a span: block without any rule, so a host that has none still draws one per line.</remarks>
-    private static void Lines(RenderTreeBuilder builder, int seq, IReadOnlyList<DetailFactLine> lines)
-    {
-        builder.OpenRegion(seq);
-
-        foreach (var line in lines)
-        {
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "munin-explorer-page__fact-line");
-            builder.AddAttribute(2, "lang", line.Lang);
-            builder.AddContent(3, line.Text);
-            builder.CloseElement();
-        }
-
-        builder.CloseRegion();
     }
 
     private static void Content(RenderTreeBuilder builder, int seq, string? value, bool linked)

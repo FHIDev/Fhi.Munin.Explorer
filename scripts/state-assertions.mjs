@@ -619,57 +619,61 @@ async function backAndForward(page, { open, opened }) {
   return await sameDocument() ? null : 'Back and Forward reloaded the page instead of moving within it';
 }
 
+/** The phone's disclosure: a button inside the contents nav's second heading (Fhi.Metadata-v40sa). */
+const TOC_TOGGLE = `${TOC} .munin-explorer-page__toc-toggle > button`;
+
 /**
  * Narrows the window to 375px (or loads the page there, when `fresh`) and asks for the contents
- * list folded, opened by a tap, and open again at 1280px (Fhi.Metadata-v40sa).
+ * list folded behind its button, opened by a tap, and shown again at 1280px (Fhi.Metadata-v40sa).
  */
 async function contentsFold(page, { fresh }) {
-  const fold = page.locator(`${TOC} details`).first();
-  const summary = fold.locator(':scope > summary');
-  const open = () => fold.evaluate(details => details.open);
-  const reached = (selector, state = 'attached') => page.locator(selector).first()
-    .waitFor({ state, timeout: findTimeout }).then(() => true, () => false);
+  const toggle = page.locator(TOC_TOGGLE).first();
+  const link = page.locator(`${TOC} a`).first();
+  const reached = (locator, state) => locator.waitFor({ state, timeout: findTimeout }).then(() => true, () => false);
 
   await page.setViewportSize({ width: 375, height: 800 });
   if (fresh) await page.reload({ waitUntil: 'networkidle' });
-  if (!await reached(TOC)) throw new Error(`${page.url()} drew no contents column at 375px`);
-  if (!await reached(`${TOC} details:not([open])`)) {
+  if (!await reached(toggle, 'visible')) return `at 375px ${page.url()} draws no «Innhold» button`;
+  if (await toggle.getAttribute('aria-expanded') !== 'false' || await link.isVisible()) {
     return `${fresh ? 'loaded at' : 'narrowed to'} 375px, the contents list stands open instead of folded`;
   }
 
-  await summary.click();
-  if (!await open() || !await reached(`${TOC} a`, 'visible')) return 'at 375px a tap on «Innhold» did not open the list';
+  // Each press is answered over the circuit, so its result is waited for rather than read at once.
+  const expanded = value => reached(page.locator(`${TOC_TOGGLE}[aria-expanded="${value}"]`).first(), 'attached');
+  await toggle.click();
+  if (!await expanded('true') || !await reached(link, 'visible')) {
+    return 'at 375px a tap on «Innhold» did not open the list';
+  }
   if (fresh) return null;
-  await summary.click();
+  await toggle.click();
+  if (!await expanded('false') || !await reached(link, 'hidden')) {
+    return 'at 375px a second tap on «Innhold» did not fold the list again';
+  }
 
   await page.setViewportSize({ width: 1280, height: 900 });
-  return await reached(`${TOC} details[open]`)
+  return await reached(link, 'visible')
     ? null
-    : 'a list folded at 375px stayed folded once the window was 1280px wide';
+    : 'a list folded at 375px stayed hidden once the window was 1280px wide';
 }
 
-/** At 1280px the summary is the old heading: a press does not fold the list, and Tab skips it. */
-async function contentsHeadingInert(page) {
-  const summary = page.locator(`${TOC} details > summary`).first();
-  await summary.click();
-  await page.waitForTimeout(PRESS_SETTLE_MS);
-  if (!await page.locator(`${TOC} details`).first().evaluate(details => details.open)) {
-    return 'at 1280px a press on the heading folded the contents list';
+/** At 1280px the nav is the plain heading and its list: the phone's button is not drawn at all. */
+async function contentsHeadingPlain(page) {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  if (await page.locator(TOC_TOGGLE).first().isVisible()) return 'at 1280px the contents nav draws the phone\'s «Innhold» button';
+  if (!await page.locator(`${TOC} nav > h2:not(.munin-explorer-page__toc-toggle)`).first().isVisible()) {
+    return 'at 1280px the contents nav lost its plain heading';
   }
-  return await summary.getAttribute('tabindex') === '-1'
-    ? null
-    : 'at 1280px the summary is a tab stop, though there is nothing for it to fold';
+  return await page.locator(`${TOC} a`).first().isVisible() ? null : 'at 1280px the contents list is hidden';
 }
 
-/** A module that never folds: every write to `open` is dropped, on this page and on a reload. */
-async function dropEveryFold(page) {
-  const drop = () => Object.defineProperty(HTMLDetailsElement.prototype, 'open', {
-    configurable: true,
-    get() { return this.hasAttribute('open'); },
-    set() {},
-  });
-  await page.addInitScript(drop);
-  await page.evaluate(drop);
+/** A stylesheet rule laid over the host's, on this page and on any reload of it. */
+async function overrideStyle(page, css) {
+  const add = rule => {
+    const apply = () => document.head.append(Object.assign(document.createElement('style'), { textContent: rule }));
+    if (document.head) apply(); else document.addEventListener('DOMContentLoaded', apply);
+  };
+  await page.addInitScript(add, css);
+  await page.evaluate(add, css);
 }
 
 /**
@@ -872,8 +876,8 @@ export const assertions = [
     async stage(page) {
       await page.setViewportSize({ width: 320, height: 900 });
       await page.evaluate(() => document.fonts.ready);
-      // On a phone the list is folded behind its summary, and a reader opens it first (Fhi.Metadata-v40sa).
-      await page.locator(`${TOC} details:not([open]) > summary`).first().click();
+      // On a phone the list is folded behind its button, and a reader opens it first (Fhi.Metadata-v40sa).
+      await page.locator(`${TOC} .munin-explorer-page__toc-toggle > button[aria-expanded="false"]`).first().click();
       const column = page.locator('.munin-explorer-page__toc').first();
       const columnId = await column.getAttribute('id');
       const href = await column.locator('a[href*="#"]').first().getAttribute('href');
@@ -2266,42 +2270,31 @@ export const assertions = [
     control: replaceEveryPush,
   },
   {
-    // Drawn open and shut by the module, so only a browser sees which (Fhi.Metadata-v40sa).
-    name: 'the contents list folds as the window narrows to a phone, opens on a tap, and opens again on a wide screen',
+    // The fold is the host stylesheet's reading of aria-expanded, so only a browser sees it (Fhi.Metadata-v40sa).
+    name: 'the contents list folds as the window narrows to a phone, opens on a tap, and shows again on a wide screen',
     kind: 'invariant',
     states: ['variable-whole', 'kilde-hierarchy-collapsed'],
     stage: () => ({}),
     measure: page => contentsFold(page, { fresh: false }),
-    control: dropEveryFold,
+    // A stylesheet without the fold: the list shows whatever the button says.
+    control: page => overrideStyle(page, `${TOC} ul { display: block !important; }`),
   },
   {
-    name: 'on a wide screen the contents heading folds nothing and takes no Tab',
+    name: 'on a wide screen the contents nav is its plain heading and list, with no button',
     kind: 'invariant',
     states: ['variable-whole', 'kilde-hierarchy-collapsed'],
     stage: () => ({}),
-    measure: contentsHeadingInert,
-
-    // The module gone after the list was drawn: its press guard and its tabindex with it.
-    async control(page) {
-      await page.evaluate(async () => {
-        const loaded = performance.getEntriesByType('resource')
-          .map(e => e.name).find(n => new URL(n).pathname.endsWith('/_content/Fhi.Munin.Explorer/explorer-interop.js'));
-        if (!loaded) throw new Error('the page never loaded explorer-interop.js');
-        const column = document.querySelector('.munin-explorer-page__toc');
-        (await import(loaded)).disconnectContents(column.id);
-        column.querySelector('details').open = true;
-        column.querySelector('summary').removeAttribute('tabindex');
-      });
-    },
+    measure: contentsHeadingPlain,
+    control: page => overrideStyle(page, `${TOC} .munin-explorer-page__toc-toggle { display: block !important; }`),
   },
   {
-    // The first observe rather than the resize. Only the kilde page comes back as itself on a reload.
+    // A fresh load rather than the resize. Only the kilde page comes back as itself on a reload.
     name: 'a detail page loaded on a phone starts with its contents list folded',
     kind: 'invariant',
     states: ['kilde-hierarchy-collapsed'],
     stage: () => ({}),
     measure: page => contentsFold(page, { fresh: true }),
-    control: dropEveryFold,
+    control: page => overrideStyle(page, `${TOC} ul { display: block !important; }`),
   },
   ...chevronAssertions,
 ];

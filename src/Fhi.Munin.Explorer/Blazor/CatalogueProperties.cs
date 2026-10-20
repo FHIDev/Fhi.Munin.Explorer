@@ -21,6 +21,7 @@ internal readonly record struct LocalisedText(string Text, string Language);
 /// <param name="Hrefs">One target per address, where the value is a <c>;</c>-joined list of them.</param>
 /// <param name="Authored">Drawn through <see cref="CatalogueMarkdown"/>; see <see cref="CatalogueProperties.AuthoredKeys"/>.</param>
 /// <param name="InlineLinks">Drawn through <see cref="CatalogueMarkdown.Linked"/>: Lovverk with an address in it.</param>
+/// <param name="Items">A multi-select's several values, one per line in the vocabulary's order; <c>Values</c> joins them.</param>
 internal readonly record struct PropertyRow(
     string Label,
     string LabelLanguage,
@@ -28,7 +29,8 @@ internal readonly record struct PropertyRow(
     string? Href = null,
     IReadOnlyList<string>? Hrefs = null,
     bool Authored = false,
-    bool InlineLinks = false);
+    bool InlineLinks = false,
+    IReadOnlyList<LocalisedText>? Items = null);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
 /// <remarks>
@@ -289,7 +291,12 @@ internal static class CatalogueProperties
                               && string.Equals(entry.Key, CatalogueColumns.LegalBasis, StringComparison.Ordinal)
                               && resolved is [{ Text: var words }] && words == raw
                               && (CatalogueMarkdown.HasWebAddress(raw) || CatalogueMarkdown.Link(raw) is not null);
-            rows.Add(new PropertyRow(label, labelLanguage, resolved, Authored: authored, InlineLinks: inlineLinks));
+            // Several chosen values, such as a kilde's helsedata.no access levels, read one per line (Fhi.Metadata-l9l2n.129).
+            var items = Typed(entry, MultiSelectType) && ChosenWords(entry, raw, reader) is { Count: > 1 } chosen
+                ? chosen
+                : null;
+            rows.Add(new PropertyRow(label, labelLanguage, resolved, Authored: authored, InlineLinks: inlineLinks,
+                                     Items: items));
         }
 
         return rows;
@@ -760,6 +767,23 @@ internal static class CatalogueProperties
     /// </summary>
     private static (string Value, string Language)? Chosen(PropertyMetadataEntry entry, string raw, string reader)
     {
+        if (ChosenWords(entry, raw, reader) is not { } words)
+        {
+            return null;
+        }
+
+        // One lang covers the whole cell, so it is honest only where every part agrees; mixed, it
+        // falls to Norwegian with the rest of the catalogue's own text.
+        var languages = words.Select(word => word.Language).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        return (string.Join(Separator, words.Select(word => word.Text)), languages.Count == 1 ? languages[0] : "no");
+    }
+
+    /// <summary>
+    /// A multi-select's codes as words, in the vocabulary's order; a code it does not word comes last, as itself.
+    /// </summary>
+    private static List<LocalisedText>? ChosenWords(PropertyMetadataEntry entry, string raw, string reader)
+    {
         // Word matches on the whole stored value, so handed ["a","b"] it compares the array's own
         // text against the vocabulary and misses. Looked up one code at a time instead.
         using var document = Structured(raw);
@@ -769,32 +793,41 @@ internal static class CatalogueProperties
             return null;
         }
 
-        var labels = new List<string>();
-        var languages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var options = string.IsNullOrWhiteSpace(entry.OptionsJson) ? [] : Options(entry.OptionsJson, reader);
+        var words = new List<(int Rank, LocalisedText Word)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var element in document.RootElement.EnumerateArray())
         {
             if (element.ValueKind is not JsonValueKind.String
                 || element.GetString() is not { } code
-                || string.IsNullOrWhiteSpace(code))
+                || string.IsNullOrWhiteSpace(code)
+                || !seen.Add(code.Trim()))
             {
                 continue;
             }
 
-            var (label, language) = Word(entry, code, reader) ?? (code, "no");
+            var rank = Rank(options, code.Trim());
 
-            labels.Add(label);
-            languages.Add(language);
+            words.Add(rank < 0
+                ? (int.MaxValue, new LocalisedText(code.Trim(), "no"))
+                : (rank, new LocalisedText(options[rank].Label, options[rank].Language)));
         }
 
-        if (labels.Count == 0)
+        return words.Count == 0 ? null : [.. words.OrderBy(word => word.Rank).Select(word => word.Word)];
+    }
+
+    private static int Rank(IReadOnlyList<(string Value, string Label, string Language, bool Curated)> options, string code)
+    {
+        for (var i = 0; i < options.Count; i++)
         {
-            return null;
+            if (string.Equals(options[i].Value, code, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
         }
 
-        // One lang covers the whole cell, so it is honest only where every part agrees; mixed, it
-        // falls to Norwegian with the rest of the catalogue's own text.
-        return (string.Join(Separator, labels), languages.Count == 1 ? languages.First() : "no");
+        return -1;
     }
 
     /// <summary>

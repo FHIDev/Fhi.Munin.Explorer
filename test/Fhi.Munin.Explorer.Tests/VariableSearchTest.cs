@@ -16342,7 +16342,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Toggles(cut)[0].Click();
         SourceToggles(cut)[1].Click();
-        cut.Find(".munin-explorer-datasamling .munin-explorer-page__body button").Click();
+        cut.Find(".munin-explorer-datasamling .munin-explorer-page__main button").Click();
 
         Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
         Assert.Equal(new VariableFilter { DatasamlingIds = [InklusjonId], DataTypes = ["Integer"] }, reported);
@@ -16768,7 +16768,7 @@ public class VariableSearchTest : ExplorerTestContext
                 // The contents column, ahead of the main one: the nav fills it, and the nav's own
                 // list wears helsedata's form-menu names rather than anything in this prefix.
                 "munin-explorer-page__toc",
-                "munin-explorer-page__toc-count",
+                "munin-explorer-page__toc-toggle",
                 "munin-explorer-page__main",
                 "munin-explorer-kilde__main",
                 // The wrapper each block below the name sits in. First seen on the datasamlinger,
