@@ -524,7 +524,10 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         var label = language == "en" ? "Data category" : "Datakategori";
         Assert.Equal(expected, Value(Hero(cut), label));
-        Assert.Contains(expected, cut.Find(".munin-explorer-page__body").TextContent);
+
+        // The body lists them one per line instead (Fhi.Metadata-l9l2n.129).
+        var listed = cut.FindAll(".munin-explorer-page__body dd li").Select(li => li.TextContent).ToList();
+        Assert.All(expected.Split("; "), category => Assert.Contains(category, listed));
     }
 
     [Theory]

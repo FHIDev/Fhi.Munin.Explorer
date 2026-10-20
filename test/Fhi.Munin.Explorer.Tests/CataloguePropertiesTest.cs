@@ -1136,4 +1136,50 @@ public class CataloguePropertiesTest
 
         Assert.False(row.InlineLinks);
     }
+
+    private const string Levels = """
+        [{"value":"statistikkbank","label":"Statistikkbank","labelEn":"Statistics bank"},
+         {"value":"tilgang-krever-soknad","label":"Tilgang krever søknad"},
+         {"value":"soknad-via-helsedata","label":"Søknad via helsedata.no","labelEn":"Application via helsedata.no"}]
+        """;
+
+    private static PropertyRow MultiSelect(string? optionsJson, string stored, string reader = "no") =>
+        Assert.Single(CatalogueProperties.Rows(
+            [Entry("TilgangsnivaaHelsedata", 10, "Tilgang og ansvar", optionsJson, type: "MultiSelect")],
+            new Dictionary<string, string?> { ["TilgangsnivaaHelsedata"] = stored }, reader));
+
+    [Fact]
+    public void Rows_WhenAMultiSelectHoldsSeveral_ThenItemsFollowTheVocabularyAndTheJoinedTextToo()
+    {
+        var row = MultiSelect(Levels, """["soknad-via-helsedata","ny-kode","statistikkbank"]""");
+
+        Assert.Equal(["Statistikkbank", "Søknad via helsedata.no", "ny-kode"], row.Items!.Select(item => item.Text));
+        Assert.Equal("Statistikkbank; Søknad via helsedata.no; ny-kode", Assert.Single(row.Values).Text);
+    }
+
+    [Fact]
+    public void Rows_WhenThereIsNoVocabulary_ThenTheStoredOrderStands()
+    {
+        var row = MultiSelect(null, """["b","a"]""");
+
+        Assert.Equal(["b", "a"], row.Items!.Select(item => item.Text));
+    }
+
+    [Fact]
+    public void Rows_WhenACodeIsStoredTwice_ThenItIsOneValueAndPlainText()
+    {
+        var row = MultiSelect(Levels, """["statistikkbank","STATISTIKKBANK"]""");
+
+        Assert.Null(row.Items);
+        Assert.Equal("Statistikkbank", Assert.Single(row.Values).Text);
+    }
+
+    [Fact]
+    public void Rows_WhenOneLevelHasNoEnglish_ThenThatItemAloneIsNorwegian()
+    {
+        var row = MultiSelect(Levels, """["tilgang-krever-soknad","statistikkbank"]""", "en");
+
+        Assert.Equal([("Statistics bank", "en"), ("Tilgang krever søknad", "no")],
+            row.Items!.Select(item => (item.Text, item.Language)));
+    }
 }

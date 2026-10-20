@@ -42,31 +42,4 @@ public class AccessLevelsTest
     {
         Assert.Equal(["apne-data"], AccessLevels.Codes(new Dictionary<string, string?> { ["tilgangsnivaahelsedata"] = """["apne-data"]""" }));
     }
-
-    [Fact]
-    public void Labels_WhenTheReaderIsNorwegian_ThenTheVocabularysOrderAndWordsWithNoLang()
-    {
-        var labels = AccessLevels.Labels(["soknad-via-helsedata", "statistikkbank"], Vocabulary, "no");
-
-        Assert.Equal([("statistikkbank", "Statistikkbank", null), ("soknad-via-helsedata", "Søknad via helsedata.no", null)],
-            labels.Select(l => (l.Code, l.Label, l.Language)));
-    }
-
-    [Fact]
-    public void Labels_WhenTheReaderIsEnglish_ThenTheEnglishWords()
-    {
-        var labels = AccessLevels.Labels(["apne-data"], Vocabulary, "en");
-
-        Assert.Equal("Open data/statistics available", Assert.Single(labels).Label);
-        Assert.Null(labels[0].Language);
-    }
-
-    [Fact]
-    public void Labels_WhenACodeIsNotInTheVocabulary_ThenItComesLastAsItself()
-    {
-        var labels = AccessLevels.Labels(["ny-kode", "statistikkbank"], Vocabulary, "no");
-
-        Assert.Equal(["Statistikkbank", "ny-kode"], labels.Select(l => l.Label));
-        Assert.Null(labels[1].Language);
-    }
 }

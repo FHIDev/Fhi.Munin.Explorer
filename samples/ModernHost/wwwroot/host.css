@@ -4437,12 +4437,6 @@ table.munin-explorer-data-list tbody th {
   overflow-wrap: anywhere;
 }
 
-/* A fact with several values, the kilde's access levels, draws each as a block; 6px between them so a
-   wrapped one is not read as two (Fhi.Metadata-l9l2n.129). */
-.munin-explorer-page__fact-line + .munin-explorer-page__fact-line {
-  margin-top: 6px;
-}
-
 .munin-explorer-page__facts small {
   display: block;
   margin-top: 0.1875rem;

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -42,26 +41,6 @@ internal static class AccessLevels
             // A plain value where a list belongs is still the one the catalogue holds.
             return [.. Present([raw])];
         }
-    }
-
-    /// <summary>
-    /// The codes as words in the reader's language, in the vocabulary's order (helsedata.no's); a code the vocabulary
-    /// does not word comes last, as itself and in no language.
-    /// </summary>
-    internal static IReadOnlyList<(string Code, string Label, string? Language)> Labels(
-        IReadOnlyList<string> codes, PropertyMetadataEntry? vocabulary, string reader)
-    {
-        var options = vocabulary is { OptionsJson: { } json } ? CatalogueProperties.Options(json, reader) : [];
-        var known = options
-            .Where(option => codes.Contains(option.Value, StringComparer.OrdinalIgnoreCase))
-            .Select(option => option.Curated
-                ? (option.Value, option.Label, CatalogueProperties.Foreign(option.Language, reader))
-                : (option.Value, option.Value, null));
-        var unknown = codes
-            .Where(code => !options.Any(option => string.Equals(option.Value, code, StringComparison.OrdinalIgnoreCase)))
-            .Select(code => (code, code, (string?)null));
-
-        return [.. known, .. unknown];
     }
 
     private static IEnumerable<string> Present(IEnumerable<string?> values) =>
