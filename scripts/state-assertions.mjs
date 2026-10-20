@@ -613,7 +613,7 @@ async function backAndForward(page, { open, opened }) {
   if (page.url() !== detail) return `after Forward opened it, the address moved on to ${page.url()}`;
 
   await page.goBack({ waitUntil: 'networkidle' });
-  if (page.url() !== list || !await gone(opened) || !await shown(open)) {
+  if (page.url() !== list || !await gone(opened) || !await shown(open) || page.url() !== list) {
     return `a second Back from ${detail} did not return to the list at ${list}`;
   }
   return await sameDocument() ? null : 'Back and Forward reloaded the page instead of moving within it';
