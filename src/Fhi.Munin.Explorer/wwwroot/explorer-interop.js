@@ -68,15 +68,19 @@ export function observeHeroFacts(barId, factsId) {
   // own focus scroll, which knows nothing of the bar (Fhi.Metadata-mhqx0.4).
   const focusin = (event) => {
     const target = event.target;
-    if (!(target instanceof Element) || bar.hidden || bar.contains(target) || !page?.contains(target)) {
+    if (!(target instanceof Element) || bar.hidden || bar.contains(target) || !page?.contains(target)
+      || !target.matches(':focus-visible') || ownsItsPlace(target)) {
       return;
     }
 
     requestAnimationFrame(() => {
+      if (!bar.isConnected || bar.hidden) return;
       const bottom = inner?.getBoundingClientRect().bottom ?? 0;
+      // A bar over half the window leaves no room to clear; scrolling would push the control below it.
+      if (bottom > window.innerHeight / 2) return;
       const top = target.getBoundingClientRect().top;
-      if (!bar.hidden && top < bottom + FOCUS_CLEARANCE) {
-        document.scrollingElement?.scrollBy({ top: top - bottom - FOCUS_CLEARANCE, behavior: 'instant' });
+      if (top < bottom) {
+        scrollerOf(target).scrollBy({ top: top - bottom - FOCUS_CLEARANCE, behavior: 'instant' });
       }
     });
   };
@@ -128,6 +132,25 @@ export function observeHeroFacts(barId, factsId) {
     window.removeEventListener('hashchange', reread);
     document.removeEventListener('scrollend', reread, { capture: true });
   });
+}
+
+/** Whether `el` keeps its own place on screen: sticky or fixed, or a contents entry or section the jump logic places. */
+function ownsItsPlace(el) {
+  if (el.matches('[data-nav-section]') || el.closest('.munin-explorer-page__toc')) return true;
+  for (let e = el; e && e !== document.body; e = e.parentElement) {
+    const position = getComputedStyle(e).position;
+    if (position === 'sticky' || position === 'fixed') return true;
+  }
+  return false;
+}
+
+/** The element that scrolls `el` into view: its nearest scrolling ancestor, or the document. */
+function scrollerOf(el) {
+  for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+    const overflow = getComputedStyle(e).overflowY;
+    if ((overflow === 'auto' || overflow === 'scroll') && e.scrollHeight > e.clientHeight) return e;
+  }
+  return document.scrollingElement ?? document.documentElement;
 }
 
 /**

@@ -709,7 +709,19 @@ async function focusClearOfStuckBar(page) {
       if (hidden) return `at ${width}px ${key} left «${hidden}» wholly under the stuck name bar`;
     }
   }
-  return null;
+
+  // The sticky contents column clears the bar by itself, and Tab through it must not move the page.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await scrollPast(page, await page.locator(HERO).first().getAttribute('id'));
+  const links = page.locator(`${TOC} a`);
+  await links.first().focus();
+  const before = await page.evaluate(() => window.scrollY);
+  for (let i = 1; i < Math.min(await links.count(), 6); i++) {
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(80);
+  }
+  const after = await page.evaluate(() => window.scrollY);
+  return Math.abs(after - before) > 1 ? `Tab through the contents column moved the page ${after - before}px` : null;
 }
 
 /**
