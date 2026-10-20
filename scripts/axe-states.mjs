@@ -907,6 +907,7 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // The picker opened, then a menu: the press shuts the picker (Fhi.Metadata-mhqx0.6), so one popover is scanned.
   'list-actions-and-columns': async page => {
     await states['explorer-list-tab'](page);
     await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer__dropdown > summary').click();
