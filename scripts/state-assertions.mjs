@@ -28,8 +28,8 @@
 //     folding one over a ticked value leaves the value ticked, the toolbar's Ikoner switch,
 //     where what is asked is what the redraw left alone, and a native dataperiode field corrected after a
 //     refused reversed interval, where both browser validity and component state must agree;
-//   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
-//     visited at all;
+//   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is
+//     visited only for Back and Forward, which are history checks rather than presses;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this
 //     and deliberately left out: FetchRowsAsync renders once with the new filter before it asks, so
 //     the render after the rollback differs from the render before it and the DOM is corrected
@@ -581,6 +581,53 @@ async function roundTrip(page, kilde) {
   await page.waitForTimeout(PRESS_SETTLE_MS);
   const back = await page.evaluate(() => Math.round(window.scrollY));
   return Math.abs(back - left) <= 2 ? null : `left at scrollY ${left}, Back returned to ${back}`;
+}
+
+/**
+ * Opens the first row from the list, then goes Back to the list and Forward to the row again, and
+ * ends on the list so the run under the control starts where this one did (Fhi.Metadata-l9l2n.124).
+ */
+async function backAndForward(page, { open, opened }) {
+  const shown = selector => page.locator(selector).first()
+    .waitFor({ state: 'visible', timeout: findTimeout }).then(() => true, () => false);
+  const gone = selector => page.locator(selector).first()
+    .waitFor({ state: 'detached', timeout: findTimeout }).then(() => true, () => false);
+  // A Back or Forward between entries the page pushed stays in this document; a reload loses it.
+  const sameDocument = () => page.evaluate(() => window.__muninBackForward === true);
+
+  const list = page.url();
+  await page.evaluate(() => { window.__muninBackForward = true; });
+  await page.locator(open).first().click();
+  await page.waitForURL(url => url.toString() !== list, { timeout: findTimeout });
+  if (!await shown(opened)) throw new Error(`pressing ${open} on ${list} opened nothing`);
+  const detail = page.url();
+
+  await page.goBack({ waitUntil: 'networkidle' });
+  if (page.url() !== list) return `Back from ${detail} went to ${page.url()}, not to the list at ${list}`;
+  if (!await gone(opened) || !await shown(open)) return `Back reached ${list} but did not draw the list`;
+  if (page.url() !== list) return `after Back drew the list, the address moved on to ${page.url()}`;
+
+  await page.goForward({ waitUntil: 'networkidle' });
+  if (page.url() !== detail) return `Forward from the list went to ${page.url()}, not back to ${detail}`;
+  if (!await shown(opened)) return `Forward reached ${detail} but did not open it again`;
+  if (page.url() !== detail) return `after Forward opened it, the address moved on to ${page.url()}`;
+
+  await page.goBack({ waitUntil: 'networkidle' });
+  if (page.url() !== list || !await gone(opened) || !await shown(open) || page.url() !== list) {
+    return `a second Back from ${detail} did not return to the list at ${list}`;
+  }
+  return await sameDocument() ? null : 'Back and Forward reloaded the page instead of moving within it';
+}
+
+/**
+ * The defect of Fhi.Metadata-l9l2n.124: every write to the address bar replaces the entry. Set before
+ * a reload, because Blazor's interop keeps the function it resolved for `history.pushState` once.
+ */
+async function replaceEveryPush(page) {
+  await page.addInitScript(() => {
+    history.pushState = (state, title, url) => history.replaceState(state, title, url);
+  });
+  await page.reload({ waitUntil: 'networkidle' });
 }
 
 /**
@@ -2143,6 +2190,25 @@ export const assertions = [
       await page.addInitScript(refuse);
       await page.evaluate(refuse);
     },
+  },
+  {
+    name: 'Back from a kilde opened from the list returns to the list, and Forward opens it again',
+    kind: 'invariant',
+    states: ['kildeutforsker-list'],
+    stage: () => ({}),
+    measure: page => backAndForward(page, { open: 'button.munin-explorer-kilder__name', opened: '.munin-explorer-kilde' }),
+    control: replaceEveryPush,
+  },
+  {
+    name: 'Back from a variable opened from the list returns to the list, and Forward opens it again',
+    kind: 'invariant',
+    states: ['utforsker-list'],
+    stage: () => ({}),
+    measure: page => backAndForward(page, {
+      open: 'button.munin-explorer-dataitem-main__name',
+      opened: 'button.munin-explorer-dataitem-main__name[aria-expanded="true"]',
+    }),
+    control: replaceEveryPush,
   },
   ...chevronAssertions,
 ];

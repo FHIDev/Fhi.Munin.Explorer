@@ -104,9 +104,9 @@
     /// Put the opened kilde in the address, so the entry the drill-in leaves behind names it.
     /// </summary>
     /// <remarks>
-    /// Replacing rather than pushing, as <c>KildeExplorer</c> does: opening a kilde from the list
-    /// is not a step the reader asked to be able to go back to, but it is the step Back has to land
-    /// on after a datasamling.
+    /// Replacing rather than pushing. <c>KildeExplorer</c> pushes a kilde opened from the list
+    /// (Fhi.Metadata-l9l2n.124); this wrapper does not, and the entry it replaces is the step Back
+    /// has to land on after a datasamling.
     /// </remarks>
     // Replaced rather than pushed, so Back from the variable explorer lands on the rows left open.
     private void Expanded(IReadOnlyList<Guid> kilder)
