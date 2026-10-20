@@ -21,6 +21,7 @@ internal sealed class UrlMirror
     private readonly string _path;
     private readonly string _carried;
     private readonly string? _fragment;
+    private readonly string _arrived;
     private readonly List<(string Name, string Value)> _owned = [];
     private string? _mirrored;
     private string? _fragmentOwner;
@@ -45,6 +46,7 @@ internal sealed class UrlMirror
         // Kept with its '#', and null for "#" alone: an empty fragment names no section, and writing
         // one back would put a bare hash in the address bar for nothing.
         _fragment = address.Fragment is { Length: > 1 } fragment ? fragment : null;
+        _arrived = address.PathAndQuery + _fragment;
 
         var carried = new StringBuilder();
 
@@ -64,6 +66,13 @@ internal sealed class UrlMirror
 
         _carried = carried.ToString();
     }
+
+    /// <summary>The address this mirror was built from is the one the browser shows: writing it again is skipped.</summary>
+    /// <remarks>
+    /// For Back and Forward. The remount's own write lands late, and a reader already gone Forward
+    /// would have it overwrite the entry they reached with the one they left (Fhi.Metadata-l9l2n.124).
+    /// </remarks>
+    public void Arrived() => _mirrored = _arrived;
 
     /// <summary>The address's own path, so a caller can tell this page from another one.</summary>
     public string Path => _path;

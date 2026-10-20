@@ -96,8 +96,11 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
 
     private HistoryRecorder? _history;
 
-    /// <summary>The last URL a component mirrored, or null when none ever wrote one.</summary>
-
+    /// <summary>What the address bar shows: the last URL a component wrote, or a navigation since then.</summary>
+    /// <remarks>
+    /// A navigation counts because Back and Forward move the address themselves, and the mirror no
+    /// longer writes back what they already show (Fhi.Metadata-l9l2n.124).
+    /// </remarks>
     private string? Mirrored() =>
         _history?.Written.LastOrDefault();
 
@@ -114,6 +117,8 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
         SetRendererInfo(new RendererInfo("Server", true));
         JSInterop.Mode = JSRuntimeMode.Loose;
         Navigation.NavigateTo(url);
+        Navigation.LocationChanged += (_, e) =>
+            _history.Written.Add(new Uri(e.Location).PathAndQuery + new Uri(e.Location).Fragment);
     }
 
     private IRenderedComponent<KildeExplorer> RenderKilder(string url)

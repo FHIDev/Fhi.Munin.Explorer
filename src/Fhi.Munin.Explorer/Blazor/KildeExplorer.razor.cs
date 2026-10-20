@@ -475,6 +475,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             return;
         }
 
+        // A remount, whose late write would land on an entry a quick Forward has already reached.
+        mirror.Arrived();
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = arrived;
         (_search, _facets, _ticked, _marked, _expanded, _columns) = list;
         _arrival++;
