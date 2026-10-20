@@ -29,6 +29,26 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.7.0 — 2026-10-20
+
+### Changed
+
+- **Kildeutforsker filters on helsedata.no's access levels, and a kilde's page lists them one per line.** The «Tilgangsnivå» filter now lists helsedata.no's four levels — Statistikkbank, Tilgang krever søknad, Åpne data/statistikk tilgjengelig and Søknad via helsedata.no — in that order, instead of the EU access-rights value, and a kilde matches when it has any of the ticked ones; a saved link with an old EU value finds no kilde. On the kilde page, «Tilgangsnivå (helsedata)» is a metadata field like the others, in the section the catalogue places it in, and a field with several chosen values — these levels among them — lists one value per line in the vocabulary's order instead of joining them with «; ». Where such values are still joined, as in a datasamling's «Datakategori» fact, they follow the vocabulary's order too rather than the order they were stored in.
+- **Kildeutforsker's filters count against each other, as on helsedata.no.** Each filter's numbers now say how many kilder the search and every other ticked filter leave: a filter ignores only its own ticks, so its values stay beside the one ticked and say what ticking them as well would add. A value nothing is left to carry is hidden unless it is ticked, and a filter with nothing left says so rather than disappearing. With nothing ticked and no search, the counts are the catalogue's totals as before.
+- **On a phone the kilde list is a list of cards, not a table to scroll sideways.** Under 768px each kilde shows its name, kildetype, the number of datasamlinger and the variable count with its bar, and the head stays as a sort line for the name and the variable count; the other orders are still reachable by a link. Wider screens are unchanged. The cards need the host's stylesheet (Fhi.Helsedata.Stiler); without it the table is drawn as before.
+- **On a phone, a detail page's contents list starts folded.** Below 768px the «Innhold» list on a kilde, datasamling or variable page is one line, «Innhold (N)», a button that opens the list, instead of filling most of the first screen. From 768px it stands open as before, once the host has the Stiler release with the matching rule.
+
+### Fixed
+
+- **Forward right after Back no longer loses the opened kilde or variable.** Going Back from a kilde or variable opened from the list and then quickly Forward could leave the reader on the list: the list's own address arrived late and overwrote the entry Forward had just reached. The explorer no longer writes back an address the browser is already showing after Back or Forward.
+- **Opening a kilde no longer flashes «← Tilbake til kildeutforsker» on a wide screen.** The trail above a kilde used to arrive with the kilde, so for the moment it loaded a host that hides the back button beside the trail showed it. The trail is now drawn from the list's name for the kilde as soon as it is opened, in the place the page's own trail takes.
+
+### Notes for hosts
+
+- **A metadata field with several chosen values is a list, and the «Tilgangsnivå» filter reads a new property.** A `MultiSelect` field holding more than one value now draws its `<dd>` as a `<ul>` with one `<li>` per value, the markup a field of several addresses already has; one value stays plain text. No new class names. The Kildeutforsker's «Tilgangsnivå» filter now reads Munin's `TilgangsnivaaHelsedata` (helsedata.no's four levels) instead of the EU `accessRights` token, which is still shown among the kilde's metadata fields; a saved link carrying an old `eu-access:` value under `tilgangsniva` matches no kilde.
+- **Three new names for the phone's kilde cards.** The kildetype, datasamlinger and variabler cells wear `munin-explorer-kilder__card`, the variabler cell also `munin-explorer-kilder__card--variabler` so it keeps its column when Datasamlinger is turned off, and the two counts start with a `munin-explorer-kilder__card-label` that is `hidden` in the markup, so a stylesheet without a rule for them draws the table as before. Stiler's rule under 768px turns the rows into cards and shows the labels; the samples carry a copy. A host reset of the form `[hidden] { display: none !important }` keeps the labels hidden on the cards too.
+- **The contents nav has a second heading, and a new name, `munin-explorer-page__toc-toggle`.** After the nav's plain `<h2>` comes `<h2 class="munin-explorer-page__toc-toggle"><button type="button" aria-expanded aria-controls>Innhold (N)</button></h2>`, the WAI-ARIA disclosure, and the list now has an `id`. The button starts folded and is toggled by the component. A matching Stiler rule shows only the plain heading from 768px, and below it only the button, hiding the list while the button says `aria-expanded="false"`. Until a host has the Stiler release carrying that rule, both headings show, the second a button that changes nothing on screen, and the list stays open at every width. The press needs an interactive mount, as the explorer's other disclosures do: a detail view rendered statically on a phone shows the folded button and no list.
+
 ## 2.6.0 — 2026-10-19
 
 ### Added
