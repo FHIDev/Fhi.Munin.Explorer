@@ -39,8 +39,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// active kilder measured on 2026-08-25, against tens of thousands of variables — and the API
 /// returns it ordered by name. So the list is fetched <em>once</em>, on initialisation, with no
 /// search and no kildetype, and everything the reader does afterwards happens over the list
-/// already in hand. That is also why the facets are counted client-side and are not cross-filtered
-/// the way Runa's are — see <c>KildeSearch.Filters.cs</c>.
+/// already in hand. That is also why the facets are counted client-side, cross-filtered over that list
+/// rather than by the server as Runa's are — see <c>KildeSearch.Filters.cs</c>.
 /// </para>
 /// <para>
 /// Sorting is the same bargain and for the same reason. <see cref="Order"/> is applied here, over
@@ -714,7 +714,7 @@ public sealed partial class KildeSearch : ComponentBase
             return Sorted(
                 _chosen.Values.All(values => values.Count == 0)
                     ? searched
-                    : [.. searched.Where(MatchesFacets)],
+                    : [.. searched.Where(kilde => MatchesFacets(kilde))],
                 _order,
                 _direction);
         }

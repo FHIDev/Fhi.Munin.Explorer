@@ -1,0 +1,2 @@
+category: Changed
+- **Kildeutforsker's filters count against each other, as on helsedata.no.** Each filter's numbers now say how many kilder the search and every other ticked filter leave: a filter ignores only its own ticks, so its values stay beside the one ticked and say what ticking them as well would add. A value nothing is left to carry is hidden unless it is ticked, and a filter with nothing left says so rather than disappearing. With nothing ticked and no search, the counts are the catalogue's totals as before.
