@@ -414,11 +414,13 @@ def select(rules, diff, changed, max_rules, use_all):
         if c["added"] is None:
             c["rec"] = 0.5
         elif span <= 0:
-            c["rec"] = 1.0
+            c["rec"] = 0.5  # one shared date says nothing: neutral, as Forge #950 does
         else:
             c["rec"] = float(_ns(c["added"] - oldest)) / float(span)
-        c["total"] = (SPECIFICITY_WEIGHT * c["spec"] + PATTERN_WEIGHT * c["pat"] + RECENCY_WEIGHT * c["rec"]
-                      + SOURCES_WEIGHT * sources_score(c["rule"]))
+        # Recency and sources together are capped at recency's weight (Forge #950 secondaryScore), so sources
+        # settles near-ties but never lifts a broad rule past a scoped one.
+        secondary = min(RECENCY_WEIGHT * c["rec"] + SOURCES_WEIGHT * sources_score(c["rule"]), RECENCY_WEIGHT)
+        c["total"] = SPECIFICITY_WEIGHT * c["spec"] + PATTERN_WEIGHT * c["pat"] + secondary
 
     epoch = datetime.datetime(1, 1, 1)
     cands.sort(key=lambda c: (-c["total"], -_ns((c["added"] or epoch) - epoch), _tie_key(c["rule"])))
