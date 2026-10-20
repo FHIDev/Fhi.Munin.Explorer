@@ -16,13 +16,11 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// server-side kildetype would fetch a narrower list that the other three would then count over.
 /// </para>
 /// <para>
-/// The counts are therefore <em>not</em> cross-filtered, which is the same thing said from the
-/// other side: an option's number is how many kilder in the whole catalogue carry that value, not
-/// how many the current selection would leave. Runa's are cross-filtered because its facets come
-/// from an endpoint that recounts them per request; this list is fetched once and never refetched,
-/// so there is nothing to recount against. The options are built off <see cref="_kilder"/> rather
-/// than off the filtered list for a second reason as well: an option that vanished the moment it
-/// stopped matching would take the checkbox the reader is standing on out of the DOM with it.
+/// The counts are cross-filtered, as helsedata.no's and Runa's are (Fhi.Metadata-l9l2n.130): each facet is
+/// counted over the kilder the search and every OTHER facet leave, never its own choice, so its values stay
+/// beside the one ticked and say what ticking them as well would add. A value nothing is left to carry drops
+/// out, unless it is ticked; that one stays at nought, so a reader is never left a filter they cannot untick.
+/// The checkbox they are standing on cannot vanish: a press counts every facet but its own afresh.
 /// </para>
 /// <para>
 /// A facet with no options is not rendered at all — no heading, no container, nothing. Munin's
@@ -102,12 +100,12 @@ public sealed partial class KildeSearch
     /// All open runs long (databehandler alone can run to dozens); all shut hides that there is anything inside.
     /// </remarks>
     private sealed record Facet(
-        string Key, string Heading, IReadOnlyList<FacetOption> Options, bool OpenByDefault = false);
+        string Key, string Heading, IReadOnlyList<FacetOption> Options, bool OpenByDefault = false, int Size = 0);
 
     /// <summary>One choice in a facet: a value, its words, and how many kilder carry it.</summary>
     /// <param name="Value">The catalogue's value, matched whole: two prefixes over one token are two values.</param>
     /// <param name="Label">The value as a reader should see it, at whatever length the catalogue wrote it.</param>
-    /// <param name="Count">Over the whole list, so not cross-filtered as Runa's is; see the class remarks.</param>
+    /// <param name="Count">Over the kilder the search and every other facet leave, as Runa's are; see the class remarks.</param>
     /// <param name="Language">
     /// The catalogue's language where <paramref name="Label"/> is the catalogue's words. Null both for this package's
     /// wording and for a CURIE in no language: null means "do not mark this". See <see cref="Option"/>.
@@ -257,17 +255,18 @@ public sealed partial class KildeSearch
         }
     }
 
-    /// <summary>The facets worth drawing, counted over the whole list.</summary>
+    /// <summary>The facets worth drawing, each counted against every other facet's choice.</summary>
     /// <remarks>
     /// Built per render, as the variable explorer's are, so a facet and the rows beside it cannot describe two moments.
-    /// <c>OpenByDefault</c> is set after empty facets drop, so a catalogue with no kildetype still opens one.
+    /// <c>OpenByDefault</c> goes to the first facet the whole catalogue fills, so ticking elsewhere never moves it.
     /// </remarks>
     private IReadOnlyList<Facet> Facets =>
     [
         .. Definitions
             .Select(Build)
-            .Where(facet => facet.Options.Count > 0)
+            .Where(facet => facet.Size > 0)
             .Select((facet, index) => facet with { OpenByDefault = index == 0 })
+            .Where(facet => facet.Options.Count > 0)
     ];
 
     /// <summary>How many values are ticked across every facet — what the folded panel is hiding.</summary>
@@ -276,20 +275,40 @@ public sealed partial class KildeSearch
     /// <summary>How many values are ticked in one facet — what a folded facet is hiding.</summary>
     private int ChosenIn(string key) => _chosen.TryGetValue(key, out var values) ? values.Count : 0;
 
-    /// <summary>One facet, counted.</summary>
+    /// <summary>One facet, counted over what the search and the other facets leave (Fhi.Metadata-l9l2n.130).</summary>
     /// <remarks>
-    /// Distinct per kilde, so a kategori listed twice counts its kilde once. Ordered by label in catalogue collation
-    /// (Norwegian names whoever reads, so æ, ø and å sort last), then by value, so equal labels keep a stable order.
+    /// Distinct per kilde. A value nothing is left to carry drops out unless ticked, and then stays at nought.
+    /// Ordered by label in catalogue collation (æ, ø and å last), then by value, for a stable order.
     /// </remarks>
     private Facet Build(FacetDefinition definition)
     {
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        var size = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var kilde in _kilder)
         {
+            size.UnionWith(definition.Values(kilde));
+        }
+
+        foreach (var kilde in Searched(SearchText))
+        {
+            if (!MatchesFacets(kilde, definition.Key))
+            {
+                continue;
+            }
+
             foreach (var value in definition.Values(kilde).Distinct(StringComparer.Ordinal))
             {
                 counts[value] = counts.GetValueOrDefault(value) + 1;
+            }
+        }
+
+        if (_chosen.TryGetValue(definition.Key, out var ticked))
+        {
+            // Only a value some kilde carries: one none does, an old link's, is left to its chip.
+            foreach (var value in ticked.Where(size.Contains))
+            {
+                counts.TryAdd(value, 0);
             }
         }
 
@@ -300,7 +319,7 @@ public sealed partial class KildeSearch
             .ThenBy(option => option.Value, StringComparer.Ordinal)
             .ToList();
 
-        return new Facet(definition.Key, definition.Heading, options);
+        return new Facet(definition.Key, definition.Heading, options, Size: size.Count);
     }
 
     /// <summary>One value of a facet as a choice: its words, their language, and its count.</summary>
@@ -353,11 +372,13 @@ public sealed partial class KildeSearch
     /// <remarks>
     /// OR within a facet, hence a set of values, and AND across facets, so two facets narrow rather than widen.
     /// </remarks>
-    private bool MatchesFacets(KildeSummary kilde)
+    /// <param name="kilde">The kilde asked about.</param>
+    /// <param name="except">A facet to leave out, so the kilder that facet counts over are what it asks for.</param>
+    private bool MatchesFacets(KildeSummary kilde, string? except = null)
     {
         foreach (var definition in Definitions)
         {
-            if (!_chosen.TryGetValue(definition.Key, out var chosen) || chosen.Count == 0)
+            if (definition.Key == except || !_chosen.TryGetValue(definition.Key, out var chosen) || chosen.Count == 0)
             {
                 continue;
             }
@@ -568,9 +589,9 @@ public sealed partial class KildeSearch
     /// <summary>Whether <paramref name="facet"/> is long enough to be given a search box — and a cap.</summary>
     /// <remarks>
     /// One <see cref="FacetLimits"/> threshold decides both, in all three panels, so "long" cannot mean two things.
-    /// It is counted over the whole list, so neither control comes and goes under the reader's hand as they tick.
+    /// It is the facet's size over the whole list, so neither control comes and goes under the reader's hand as they tick.
     /// </remarks>
-    private static bool IsSearchable(Facet facet) => FacetLimits.IsLong(facet.Options.Count);
+    private static bool IsSearchable(Facet facet) => FacetLimits.IsLong(facet.Size);
 
     /// <summary>What is in one facet's search field, as the reader typed it.</summary>
     private string FacetSearchValue(string key) =>
@@ -654,7 +675,7 @@ public sealed partial class KildeSearch
         {
             // Only the facets the cap can apply to, asked through the same predicate every other
             // call site here asks, so the stored set holds no key a lifted cap could never honour.
-            if (FacetLimits.IsLong(facet.Options.Count))
+            if (IsSearchable(facet))
             {
                 _expandedFacets[facet.Key] = facet.Options.Count;
             }

@@ -3722,13 +3722,10 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Facets_WhenAValueIsTicked_ThenTheCountsStayWholeListAndNothingIsRefetched()
+    public void Facets_WhenAValueIsTicked_ThenTheOtherFacetsCountWhatIsLeftAndNothingIsRefetched()
     {
-        // Two claims that belong together, because they are the same decision seen from two sides:
-        // the list is fetched once and the facets are counted over it, so a ticked box narrows the
-        // rows and leaves every count where it was. Runa's counts cross-filter because its facets
-        // come from an endpoint that recounts them per request; this list has no such endpoint
-        // behind it, and a component that recounted anyway would have to ask the API again.
+        // helsedata.no's rule (Fhi.Metadata-l9l2n.130): the other facets count what the tick leaves, its own
+        // facet keeps every value at its whole count, and the list in hand is recounted without asking the API.
         var client = new FakeClient(
             Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
                 dataProcessor: "St. Olavs hospital HF"),
@@ -3740,10 +3737,73 @@ public class KildeSearchTest : ExplorerTestContext
         Tick(cut, "Kildetype", "Sentralt helseregister");
 
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
-        Assert.Equal(
-            ["Folkehelseinstituttet (1)", "St. Olavs hospital HF (1)"],
-            Choices(Facet(cut, "Databehandler")));
+        Assert.Equal(["Folkehelseinstituttet (1)"], Choices(Facet(cut, "Databehandler")));
+        Assert.Equal(2, Choices(Facet(cut, "Kildetype")).Count);
         Assert.Equal(1, client.Calls);
+    }
+
+    // Fhi.Metadata-l9l2n.130: each facet counted against every OTHER active filter, as on helsedata.no.
+    private static FakeClient CrossFilterCatalogue() => new(
+        Kilde("Als registeret", "K_ALS", kildetype: "biobank", dataProcessor: "Folkehelseinstituttet"),
+        Kilde("Barnediabetesregisteret", "K_BDR", kildetype: "biobank", dataProcessor: "Oslo universitetssykehus HF"),
+        Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister", dataProcessor: "Folkehelseinstituttet"),
+        Kilde("Kreftregisteret", "K_KREFT", kildetype: "sentraltHelseregister", dataProcessor: "Kreftregisteret"));
+
+    [Fact]
+    public void Facets_WhenNothingIsTicked_ThenEveryCountIsTheWholeCatalogues()
+    {
+        var cut = RenderWith(CrossFilterCatalogue());
+
+        Assert.Equal(["Biobank (2)", "Sentralt helseregister (2)"], Choices(Facet(cut, "Kildetype")));
+        Assert.Equal(["Folkehelseinstituttet (2)", "Kreftregisteret (1)", "Oslo universitetssykehus HF (1)"],
+            Choices(Facet(cut, "Databehandler")));
+    }
+
+    [Fact]
+    public void Facets_WhenOneValueIsTicked_ThenItsOwnFacetKeepsEveryValueAndTheOthersCountWhatIsLeft()
+    {
+        var cut = RenderWith(CrossFilterCatalogue());
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal(["Biobank (2)", "Sentralt helseregister (2)"], Choices(Facet(cut, "Kildetype")));
+        Assert.Equal(["Folkehelseinstituttet (1)", "Oslo universitetssykehus HF (1)"], Choices(Facet(cut, "Databehandler")));
+    }
+
+    [Fact]
+    public void Facets_WhenTwoFacetsAreTicked_ThenEachIsCountedAgainstTheOtherOnly()
+    {
+        var cut = RenderWith(CrossFilterCatalogue());
+
+        Tick(cut, "Kildetype", "Sentralt helseregister");
+        Tick(cut, "Databehandler", "Folkehelseinstituttet");
+
+        Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
+        // Kildetype over Folkehelseinstituttet's kilder, Databehandler over the central registers.
+        Assert.Equal(["Biobank (1)", "Sentralt helseregister (1)"], Choices(Facet(cut, "Kildetype")));
+        Assert.Equal(["Folkehelseinstituttet (1)", "Kreftregisteret (1)"], Choices(Facet(cut, "Databehandler")));
+    }
+
+    [Fact]
+    public void Facets_WhenATickedValueIsLeftWithNothing_ThenItStaysAtNoughtSoItCanBeUnticked()
+    {
+        var cut = RenderWith(CrossFilterCatalogue());
+
+        Tick(cut, "Databehandler", "Oslo universitetssykehus HF");
+        cut.Find(".searchbox__freetext").Change("kreft");
+
+        Assert.Contains("Oslo universitetssykehus HF (0)", Choices(Facet(cut, "Databehandler")));
+        Assert.DoesNotContain(Choices(Facet(cut, "Databehandler")), choice => choice.StartsWith("Folkehelse", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Facets_WhenTheListIsSearched_ThenTheCountsAreOverWhatTheSearchLeaves()
+    {
+        var cut = RenderWith(CrossFilterCatalogue());
+
+        cut.Find(".searchbox__freetext").Change("diabetes");
+
+        Assert.Equal(["Biobank (1)"], Choices(Facet(cut, "Kildetype")));
     }
 
     [Fact]
@@ -4472,17 +4532,18 @@ public class KildeSearchTest : ExplorerTestContext
         // Two ways of narrowing the list and one sentence about the result: a reader who has ticked
         // a box and typed a word is told both, or they go and edit the wrong one.
         //
-        // Two facets rather than one, because one facet can never empty the list — every choice it
-        // offers came from a kilde that has it. It takes two facets that no kilde satisfies at once,
-        // which is exactly the state a reader lands in and cannot explain.
+        // Two facets no kilde satisfies at once. Cross-filtered counts offer no such pair to tick by hand
+        // (Fhi.Metadata-l9l2n.130), so it arrives the way it still can: a saved link that holds both.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
                 kildetype: "nasjonaltMedisinskKvalitetsregister", dataProcessor: "St. Olavs hospital HF"),
             Kilde("Dødsårsaksregisteret", "K_DAR",
-                kildetype: "sentraltHelseregister", dataProcessor: "Folkehelseinstituttet")));
-
-        Tick(cut, "Kildetype", "Sentralt helseregister");
-        Tick(cut, "Databehandler", "St. Olavs hospital HF");
+                kildetype: "sentraltHelseregister", dataProcessor: "Folkehelseinstituttet")),
+            p => p.Add(c => c.FacetChoices, new Dictionary<string, IReadOnlyList<string>>
+            {
+                ["kildetype"] = ["sentraltHelseregister"],
+                ["databehandler"] = ["St. Olavs hospital HF"],
+            }));
 
         Assert.Empty(RowNames(cut));
         Assert.Contains("Ingen kilder samsvarer med filtrene som er valgt.", cut.Markup);
@@ -4837,7 +4898,7 @@ public class KildeSearchTest : ExplorerTestContext
         Tick(cut, "Kildetype", "Biobank");
 
         Assert.Equal("Kildetype 2 verdier 1 valgt", Summary(cut, "Kildetype"));
-        Assert.Equal("Databehandler 2 verdier", Summary(cut, "Databehandler"));
+        Assert.Equal("Databehandler 1 verdi", Summary(cut, "Databehandler"));
     }
 
     [Fact]
@@ -5533,6 +5594,19 @@ public class KildeSearchTest : ExplorerTestContext
                       kildetype: kildetyper[index % kildetyper.Length],
                       dataProcessor: processor))
         ]);
+    }
+
+    [Fact]
+    public void FacetSearch_WhenATickElsewhereLeavesTheLongFacetShort_ThenItsBoxStays()
+    {
+        // Cross-filtered counts shrink a facet as the reader ticks (Fhi.Metadata-l9l2n.130); the box is
+        // decided by the facet's size over the whole catalogue, so it does not vanish under their hand.
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Tick(cut, "Kildetype", "Biobank");
+
+        Assert.True(Choices(Facet(cut, "Databehandler")).Count <= SearchThreshold);
+        Assert.NotNull(FacetSearch(cut, "Databehandler"));
     }
 
     /// <summary>A catalogue whose databehandler facet has exactly <paramref name="values"/> values.</summary>
