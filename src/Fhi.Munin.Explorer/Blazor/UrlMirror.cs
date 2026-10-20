@@ -67,10 +67,10 @@ internal sealed class UrlMirror
         _carried = carried.ToString();
     }
 
-    /// <summary>The address this mirror was built from is the one the browser shows: writing it again is skipped.</summary>
+    /// <summary>Records the address this mirror was built from as already shown, so MirrorAsync skips writing it back.</summary>
     /// <remarks>
-    /// For Back and Forward. The remount's own write lands late, and a reader already gone Forward
-    /// would have it overwrite the entry they reached with the one they left (Fhi.Metadata-l9l2n.124).
+    /// For a remount after Back or Forward, whose late write would overwrite an entry a quick Forward reached
+    /// (Fhi.Metadata-l9l2n.124). Matched as spelled: an address the mirror would spell otherwise is still written.
     /// </remarks>
     public void Arrived() => _mirrored = _arrived;
 

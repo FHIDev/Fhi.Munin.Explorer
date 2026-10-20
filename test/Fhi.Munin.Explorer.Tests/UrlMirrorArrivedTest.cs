@@ -4,7 +4,7 @@ namespace Fhi.Munin.Explorer.Tests;
 
 /// <summary>
 /// Back or Forward lands the browser on an address the component then writes again, late: a reader
-/// already gone Forward had the entry they reached overwritten with the one they left (Fhi.Metadata-l9l2n.124).
+/// already gone Forward had the entry they reached overwritten with the one they left.
 /// </summary>
 public class UrlMirrorArrivedTest
 {

@@ -1558,8 +1558,8 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         Move($"/kilder?utm_source=b&kilde={kilde}&datasamling={datasamling}");
 
-        // The address the move named is already shown and not written again (Fhi.Metadata-l9l2n.124),
-        // so the claim is read off the next write: it carries the host's new value.
+        // The address the move named is already shown and not written again, so the claim is read
+        // off the next write: it carries the host's new value.
         cut.WaitForAssertion(() => Assert.Contains("datasamling", cut.Markup, StringComparison.Ordinal));
         Assert.StartsWith("/kilder?utm_source=b", TrailBack(cut));
     }
