@@ -2018,6 +2018,10 @@ public class KildeViewTest : ExplorerTestContext
     // The hero row: the five facts a source leads with, under the name block.
     // ---------------------------------------------------------------------------------
 
+    /// <summary>The hero row, which a source always has: its variable count never resolves to nothing.</summary>
+    private static IElement Hero(IRenderedComponent<KildeView> cut) =>
+        cut.Find("dl.munin-explorer-page__facts");
+
     private static KildeDetail WithAccessLevels(KildeDetail kilde, string codes) => kilde with
     {
         AdditionalProperties = new Dictionary<string, string?>(kilde.AdditionalProperties) { [AccessLevels.Key] = codes },
@@ -2026,6 +2030,7 @@ public class KildeViewTest : ExplorerTestContext
             .. kilde.PropertyMetadata,
             Entry(AccessLevels.Key, 90, "Tilgang og ansvar", "Tilgangsnivå (helsedata)") with
             {
+                Type = "MultiSelect",
                 OptionsJson = """
                     [{"value":"statistikkbank","label":"Statistikkbank","labelEn":"Statistics bank"},
                      {"value":"tilgang-krever-soknad","label":"Tilgang krever søknad","labelEn":"Access requires an application"},
@@ -2035,41 +2040,53 @@ public class KildeViewTest : ExplorerTestContext
         ],
     };
 
+    /// <summary>Every value cell drawn for the access levels: the section the catalogue placed them in, and the record.</summary>
+    private static List<IElement> AccessCells(IRenderedComponent<KildeView> cut) =>
+        [.. cut.FindAll("dt").Where(dt => dt.TextContent.Trim() == "Tilgangsnivå (helsedata)")
+            .Select(dt => dt.NextElementSibling!)];
+
     [Fact]
-    public void Hero_WhenTheKildeHasAccessLevels_ThenTilgangIsTheLastCellWithOneLevelPerLineInHelsedatasOrder()
+    public void Hero_WhenTheKildeHasAccessLevels_ThenTheRowHasNoTilgangCell()
     {
-        // Robin 19.10: one level per line where Lovverk once stood (M6, M9, Fhi.Metadata-d7vf4).
+        // Robin 20.10: the levels live in «Tilgang og ansvar», not in the fact row (Fhi.Metadata-l9l2n.129).
+        var cut = Render(WithAccessLevels(Kilde(), """["statistikkbank"]"""));
+
+        Assert.DoesNotContain(Hero(cut).QuerySelectorAll("dt"), dt => dt.TextContent is "Tilgang" or "Access");
+    }
+
+    [Fact]
+    public void AccessLevels_WhenThereAreSeveral_ThenEachIsALineInTheVocabularysOrder()
+    {
         var cut = Render(WithAccessLevels(Kilde(), """["soknad-via-helsedata","statistikkbank"]"""));
 
-        var last = Hero(cut).QuerySelectorAll(":scope > div").Last();
-        Assert.Equal("Tilgang", last.QuerySelector("dt")!.TextContent);
-        var dd = last.QuerySelector("dd")!;
-        Assert.Equal(["Statistikkbank", "Søknad via helsedata.no"],
-            dd.Children.Select(line => line.TextContent));
-        Assert.All(dd.Children, line => Assert.Equal("munin-explorer-page__fact-line", line.ClassName));
+        var cells = AccessCells(cut);
+        Assert.NotEmpty(cells);
+        Assert.All(cells, dd => Assert.Equal(["Statistikkbank", "Søknad via helsedata.no"],
+            dd.QuerySelectorAll("ul > li").Select(li => li.TextContent)));
     }
 
     [Fact]
-    public void Hero_WhenTheReaderIsEnglish_ThenTheLevelsAreInEnglish()
+    public void AccessLevels_WhenThereIsOne_ThenItIsPlainTextRatherThanAList()
     {
-        var cut = Render(WithAccessLevels(Kilde(), """["tilgang-krever-soknad"]"""), language: "en");
+        var cut = Render(WithAccessLevels(Kilde(), """["tilgang-krever-soknad"]"""));
 
-        var last = Hero(cut).QuerySelectorAll(":scope > div").Last();
-        Assert.Equal("Access", last.QuerySelector("dt")!.TextContent);
-        Assert.Equal("Access requires an application", last.QuerySelector("dd")!.TextContent);
+        Assert.All(AccessCells(cut), dd =>
+        {
+            Assert.Null(dd.QuerySelector("ul"));
+            Assert.Equal("Tilgang krever søknad", dd.TextContent.Trim());
+        });
     }
 
     [Fact]
-    public void Hero_WhenTheKildeHasNoAccessLevel_ThenThereIsNoTilgangCell()
+    public void AccessLevels_WhenTheReaderIsEnglish_ThenEachLineIsInEnglishAndUnmarked()
     {
-        var cut = Render(Kilde());
+        var cut = Render(WithAccessLevels(Kilde(), """["tilgang-krever-soknad","statistikkbank"]"""), language: "en");
 
-        Assert.DoesNotContain(Hero(cut).QuerySelectorAll("dt"), dt => dt.TextContent == "Tilgang");
+        var items = AccessCells(cut).SelectMany(dd => dd.QuerySelectorAll("li")).ToList();
+        Assert.NotEmpty(items);
+        Assert.Equal(["Statistics bank", "Access requires an application"], items.Take(2).Select(li => li.TextContent));
+        Assert.All(items, li => Assert.Null(li.GetAttribute("lang")));
     }
-
-    /// <summary>The hero row, which a source always has: its variable count never resolves to nothing.</summary>
-    private static IElement Hero(IRenderedComponent<KildeView> cut) =>
-        cut.Find("dl.munin-explorer-page__facts");
 
     /// <summary>One hero cell's value, without the note under it.</summary>
     /// <remarks>

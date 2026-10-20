@@ -196,7 +196,11 @@ internal static class DetailBlocks
         {
             builder.OpenElement(seq, "dd");
 
-            if (row.Values.Count == 1)
+            if (row.Values.Count == 1 && row.Items is { } items)
+            {
+                Items(builder, seq + 20, items, reader);
+            }
+            else if (row.Values.Count == 1)
             {
                 builder.AddAttribute(seq + 1, "lang", CatalogueProperties.Foreign(slot.Language, reader));
                 Text(builder, seq + 2, slot.Text, row);
@@ -267,6 +271,22 @@ internal static class DetailBlocks
         }
 
         Anchor(builder, seq + 1, href, value);
+    }
+
+    /// <summary>A multi-select's values as a list, the shape several addresses take, each with its own <c>lang</c>.</summary>
+    private static void Items(RenderTreeBuilder builder, int seq, IReadOnlyList<LocalisedText> items, string reader)
+    {
+        builder.OpenElement(seq, "ul");
+
+        foreach (var item in items)
+        {
+            builder.OpenElement(seq + 1, "li");
+            builder.AddAttribute(seq + 2, "lang", CatalogueProperties.Foreign(item.Language, reader));
+            builder.AddContent(seq + 3, item.Text);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
     }
 
     /// <summary>One catalogue link, the same whether it stands alone or in a list. Consumes four.</summary>
