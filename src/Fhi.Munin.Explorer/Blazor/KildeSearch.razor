@@ -386,7 +386,8 @@ else
                            secondary text, the class the list's own status line wears. *@
                         @if (facet.Options.Count == 0)
                         {
-                            <p class="caption">@T.FacetNoValuesLeft</p>
+                            @* The list's id on the line that stands in for it, so «Vis færre» still names something. *@
+                            <p class="caption" id="@FacetOptionsId(facet.Key)">@T.FacetNoValuesLeft</p>
                         }
                         else if (options.Count == 0)
                         {

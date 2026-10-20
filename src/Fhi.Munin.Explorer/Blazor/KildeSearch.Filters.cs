@@ -674,10 +674,11 @@ public sealed partial class KildeSearch
             return FacetLimits.Uncapped<FacetOption>([.. facet.Options.Where(option => Matches(option, term))]);
         }
 
+        // The value just pressed rides past the cap as a ticked one does, or an untick would hide the box in hand.
         return FacetLimits.Cap(
             facet.Options,
             IsFacetExpanded(facet),
-            option => IsChosen(facet.Key, option.Value));
+            option => IsChosen(facet.Key, option.Value) || _pressed == (facet.Key, option.Value));
     }
 
     /// <summary>Lift every facet's cap at once, or put all of them back.</summary>

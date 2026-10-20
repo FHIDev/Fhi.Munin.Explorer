@@ -5672,6 +5672,33 @@ public class KildeSearchTest : ExplorerTestContext
                 Kilde($"Kilde {index:00}", $"K_{index:00}", dataProcessor: $"Databehandler {index:00}"))
         ]);
 
+    [Fact]
+    public void Facets_WhenAValueBehindTheCapIsUntickedAtNought_ThenItStaysDrawnPastTheCap()
+    {
+        // Fhi.Metadata-l9l2n.130: the value just pressed rides past the cap, as a ticked one does.
+        var cut = RenderWith(CatalogueWithProcessors(12));
+
+        ShowRest(cut, "Databehandler");
+        Tick(cut, "Databehandler", "Databehandler 11");
+        ShowRest(cut, "Databehandler");
+        cut.Find(".searchbox__freetext").Change("Kilde 0");
+        Untick(cut, "Databehandler", "Databehandler 11");
+
+        Assert.Contains("Databehandler 11 (0)", Choices(Facet(cut, "Databehandler")));
+    }
+
+    [Fact]
+    public void Facets_WhenAnExpandedFacetIsLeftWithNothing_ThenItsRestControlStillNamesAnElement()
+    {
+        var cut = RenderWith(CatalogueWithProcessors(12));
+
+        ShowRest(cut, "Databehandler");
+        cut.Find(".searchbox__freetext").Change("finnes ikke");
+
+        var controls = RestControl(cut, "Databehandler")!.GetAttribute("aria-controls");
+        Assert.NotNull(cut.Find($"#{controls}"));
+    }
+
     /// <summary>One facet's own search field, or null for a facet the panel gave none.</summary>
     private static IElement? FacetSearch(IRenderedComponent<KildeSearch> cut, string heading) =>
         Facet(cut, heading).QuerySelector("input[type=text]");
