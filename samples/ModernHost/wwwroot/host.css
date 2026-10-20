@@ -834,7 +834,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 
 /* The dataperiode facet as it was before Fhi.Metadata-d2fbu: a label and a native date input per
    end. The fields are text inputs now, drawn by the input[type="text"] rule below; this rule and
-   its :focus twin stay only while Fhi.Helsedata.Stiler still declares them. No class name of our own —
+   its :focus twin stay only while Fhi.Helsedata.Stiler still declares them, and reach only the
+   calendar's hidden input, which screenreader-only's clip keeps out of sight. No class name of our own —
    Stiler has no date-range widget, and inventing one here would render as a raw browser default
    on a Stiler-only host, which is the failure this package exists to avoid. The input is an
    element every stylesheet already draws, the same argument the <details> and bare <ul> above

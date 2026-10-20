@@ -459,13 +459,18 @@ export function watchDatePickers() {
     const button = event.target instanceof Element ? event.target.closest('[data-munin-explorer-date-picker]') : null;
     const input = button && document.getElementById(button.getAttribute('data-munin-explorer-date-picker'));
     if (!(input instanceof HTMLInputElement) || typeof input.showPicker !== 'function') return;
-    // Back to the text field, which holds the day the pick wrote; the hidden input is aria-hidden.
-    const field = document.getElementById(input.id.replace(/-calendar$/, ''));
-    input.addEventListener('change', () => field?.focus(), { once: true });
     try {
       input.showPicker();
     } catch {
       // Without a picker (an older Safari, or no activation) the text field is the way in.
+    }
+  });
+  // Back to the text field, which holds the day the pick wrote; the hidden input is aria-hidden.
+  document.addEventListener('change', event => {
+    const input = event.target;
+    if (input instanceof HTMLInputElement && input.type === 'date' && input.id.endsWith('-calendar')
+        && document.querySelector(`[data-munin-explorer-date-picker="${CSS.escape(input.id)}"]`)) {
+      document.getElementById(input.id.slice(0, -'-calendar'.length))?.focus();
     }
   });
 }
