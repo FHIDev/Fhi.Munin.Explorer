@@ -57,4 +57,15 @@ public sealed record DetailFact(
     /// the catalogue's raw text, markdown link included.
     /// </summary>
     public bool Linked { get; init; }
+
+    /// <summary>
+    /// The value as separate lines in the hero row, each with its own <c>lang</c>; <see cref="Value"/> stays the same
+    /// words joined with «, », for the sticky bar's single line and for whether the fact is drawn at all.
+    /// </summary>
+    public IReadOnlyList<DetailFactLine>? Lines { get; init; }
 }
+
+/// <summary>One line of a <see cref="DetailFact"/> drawn over several, and the language its words are in.</summary>
+/// <param name="Text">The words.</param>
+/// <param name="Lang">A <c>lang</c> where the words are not in the reader's language; null inherits.</param>
+public sealed record DetailFactLine(string Text, string? Lang = null);

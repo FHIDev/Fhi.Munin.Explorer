@@ -72,22 +72,21 @@ public sealed partial class KildeSearch
     /// <summary>The key of the additional property holding a kilde's EHDS categories.</summary>
     private const string CategoryKey = "healthCategory";
 
-    /// <summary>The key of the additional property holding a kilde's access-rights token.</summary>
-    private const string AccessRightsKey = "accessRights";
-
     /// <summary>One facet as the panel defines it: where its values come from, and how each is worded.</summary>
     /// <param name="Key">Stable across renders, so a selection belongs to one facet and to no other.</param>
     /// <param name="Heading">The facet's own heading, in the reader's language.</param>
     /// <param name="Values">None, one or several: kategori is a list, and keeping only its first drops kilder.</param>
     /// <param name="Label">
-    /// A value as words, with their language: kildetype falls back to catalogue text, kategori and tilgangsnivå to a
-    /// CURIE in no language, which <c>lang="no"</c> would misread (WCAG 3.1.2). Databehandler's are the catalogue's.
+    /// A value as words, with their language: kildetype falls back to catalogue text, kategori to a CURIE and tilgangsnivå to its code,
+    /// both in no language, which <c>lang="no"</c> would misread (WCAG 3.1.2). Databehandler's are the catalogue's.
     /// </param>
+    /// <param name="Rank">Where a value sorts when the facet has an order of its own; null sorts by label.</param>
     private sealed record FacetDefinition(
         string Key,
         string Heading,
         Func<KildeSummary, IReadOnlyList<string>> Values,
-        Func<string, FacetLabel> Label);
+        Func<string, FacetLabel> Label,
+        Func<string, int>? Rank = null);
 
     /// <summary>What a choice is called, and the language those words are in.</summary>
     /// <param name="Text">The value as a reader should see it.</param>
@@ -245,8 +244,10 @@ public sealed partial class KildeSearch
                 new(KildetypeFacet, T.ColumnKildetype,
                     kilde => One(kilde.Kildetype), value => Translated(KildeTypeName(value), value)),
                 new(CategoryFacet, T.FacetCategory, Categories, value => Vocabulary(CategoryKey, value)),
+                // helsedata.no's own levels, in its order (Fhi.Metadata-l9l2n.129); Munin's EU accessRights is not filtered on.
                 new(AccessLevelFacet, T.FacetAccessLevel,
-                    kilde => One(Property(kilde, AccessRightsKey)), value => Vocabulary(AccessRightsKey, value)),
+                    kilde => AccessLevels.Codes(kilde.AdditionalProperties), value => Vocabulary(AccessLevels.Key, value),
+                    VocabularyRank(AccessLevels.Key)),
 
                 // Free text, so there is nothing to look it up in: the value is the catalogue's own word, always,
                 // which is why it says so rather than asking whether some lookup missed.
@@ -294,7 +295,8 @@ public sealed partial class KildeSearch
 
         var options = counts
             .Select(entry => Option(definition, entry.Key, entry.Value))
-            .OrderBy(option => option.Label, CatalogueProperties.CatalogueOrder)
+            .OrderBy(option => definition.Rank?.Invoke(option.Value) ?? 0)
+            .ThenBy(option => option.Label, CatalogueProperties.CatalogueOrder)
             .ThenBy(option => option.Value, StringComparer.Ordinal)
             .ToList();
 
@@ -304,7 +306,7 @@ public sealed partial class KildeSearch
     /// <summary>One value of a facet as a choice: its words, their language, and its count.</summary>
     /// <remarks>
     /// Catalogue words carry the catalogue's language, or a Norwegian name is read with English phonetics (WCAG 3.1.2).
-    /// A CURIE such as <c>eu-access:OP_DATPRO</c> stays unmarked, and a language the reader already reads is dropped.
+    /// A CURIE such as <c>ehds-cat:biobanks</c> or a code such as <c>apne-data</c> stays unmarked, and a language the reader already reads is dropped.
     /// </remarks>
     private FacetOption Option(FacetDefinition definition, string value, int count)
     {
@@ -321,6 +323,20 @@ public sealed partial class KildeSearch
     /// </remarks>
     private static FacetLabel Translated(string label, string value) =>
         new(label, string.Equals(label, value, StringComparison.Ordinal) ? "no" : null);
+
+    /// <summary>A value's place in its vocabulary's list, a value the vocabulary does not list after all of them.</summary>
+    private Func<string, int> VocabularyRank(string key) => value =>
+    {
+        if (!_vocabulary.TryGetValue(key, out var entry) || string.IsNullOrWhiteSpace(entry.OptionsJson))
+        {
+            return int.MaxValue;
+        }
+
+        var options = CatalogueProperties.Options(entry.OptionsJson, Reader);
+        var index = options.ToList().FindIndex(option => string.Equals(option.Value, value, StringComparison.OrdinalIgnoreCase));
+
+        return index < 0 ? int.MaxValue : index;
+    };
 
     /// <summary>A token worded by the API, as the detail panel is: a copied table goes stale (Fhi.Metadata-tbpbr).</summary>
     /// <remarks>

@@ -822,7 +822,9 @@ internal sealed record Texts(
     // Why the result list's Datasamling column cannot be turned off.
     string DatasamlingColumnHint,
     // Read after a link to another site, which opens in a new window (WCAG 3.2.5, G201).
-    string OpensInNewWindow)
+    string OpensInNewWindow,
+    // The kilde's helsedata.no access levels in its fact row (Fhi.Metadata-l9l2n.129).
+    string FieldAccessLevels)
 {
     /// <summary>
     /// The label for a sort order. Every one that names a field uses the same words the result
@@ -1679,7 +1681,8 @@ internal sealed record Texts(
         ChooseDatasamlingNone: "Velg minst én datasamling.",
         ChooseDatasamlingError: "Kunne ikke lagre valget nå. Prøv igjen om litt.",
         DatasamlingColumnHint: "Datasamling vises alltid, fordi den skiller radene for samme variabel.",
-        OpensInNewWindow: "(åpnes i nytt vindu)");
+        OpensInNewWindow: "(åpnes i nytt vindu)",
+        FieldAccessLevels: "Tilgang");
 
     private static readonly Texts En = new(
         Title: "Variable explorer",
@@ -2221,7 +2224,8 @@ internal sealed record Texts(
         ChooseDatasamlingNone: "Choose at least one datasamling.",
         ChooseDatasamlingError: "Could not save the choice right now. Try again shortly.",
         DatasamlingColumnHint: "Datasamling is always shown, because it tells a variable's rows apart.",
-        OpensInNewWindow: "(opens in a new window)");
+        OpensInNewWindow: "(opens in a new window)",
+        FieldAccessLevels: "Access");
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>

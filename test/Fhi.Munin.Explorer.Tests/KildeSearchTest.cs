@@ -97,7 +97,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         if (accessRights is not null)
         {
-            properties["accessRights"] = accessRights;
+            properties[Fhi.Munin.Explorer.Blazor.AccessLevels.Key] = JsonSerializer.Serialize(new[] { accessRights });
         }
 
         return properties;
@@ -124,12 +124,15 @@ public class KildeSearchTest : ExplorerTestContext
         ("ehds-cat:other", "Annet", "Other")
     ];
 
-    /// <summary>The access-rights values the same vocabulary lists. <inheritdoc cref="Categories"/></summary>
-    private static readonly (string Value, string Norwegian, string? English)[] AccessLevels =
+    /// <summary>
+    /// helsedata.no's access levels as Munin test served them on 2026-10-19 (Fhi.Metadata-d7vf4), less
+    /// <c>statistikkbank</c>, which the tests use as a level the vocabulary does not word.
+    /// </summary>
+    private static readonly (string Value, string Norwegian, string? English)[] AccessLevelOptions =
     [
-        ("eu-access:NON_PUBLIC", "Ikke-offentlig", "Non-public"),
-        ("eu-access:RESTRICTED", "Begrenset", "Restricted"),
-        ("eu-access:PUBLIC", "Offentlig", "Public")
+        ("tilgang-krever-soknad", "Tilgang krever søknad", "Access requires an application"),
+        ("apne-data", "Åpne data/statistikk tilgjengelig", "Open data/statistics available"),
+        ("soknad-via-helsedata", "Søknad via helsedata.no", "Application via helsedata.no")
     ];
 
     /// <summary>
@@ -152,7 +155,7 @@ public class KildeSearchTest : ExplorerTestContext
 
     /// <summary>The vocabulary the catalogue serves today, for both of the coded facets.</summary>
     private static IReadOnlyList<PropertyMetadataEntry> CatalogueVocabulary() =>
-        [Vocabulary("healthCategory", Categories), Vocabulary("accessRights", AccessLevels)];
+        [Vocabulary("healthCategory", Categories), Vocabulary(Fhi.Munin.Explorer.Blazor.AccessLevels.Key, AccessLevelOptions)];
 
     private static KildeDetail Detail(KildeSummary summary) =>
         new()
@@ -383,6 +386,37 @@ public class KildeSearchTest : ExplorerTestContext
 
         /// <summary>Land the detail for the first kilde, which is the one a deep link opens here.</summary>
         public void AnswerDetail() => _detail.TrySetResult(Detail(kilder[0]));
+    }
+
+    [Fact]
+    public void Facets_WhenALinkCarriesAnOldEuAccessValue_ThenItMatchesNoKildeAndOffersNoCheckbox()
+    {
+        // The facet read the EU accessRights token before Fhi.Metadata-l9l2n.129; a saved link still says so.
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS", accessRights: "tilgang-krever-soknad")),
+            p => p.Add(c => c.FacetChoices, new Dictionary<string, IReadOnlyList<string>>
+            {
+                ["tilgangsniva"] = ["eu-access:NON_PUBLIC"],
+            }));
+
+        Assert.Empty(RowNames(cut));
+        Assert.DoesNotContain(Choices(Facet(cut, "Tilgangsnivå")), choice => choice.Contains("eu-access", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Facets_WhenAKildeHasSeveralAccessLevels_ThenTheFacetListsThemInHelsedatasOrderNotTheAlphabets()
+    {
+        // Robin 19.10 (M9): the facet is helsedata.no's own list, and it reads in helsedata.no's order.
+        var kilde = Kilde("Als registeret", "K_ALS") with
+        {
+            AdditionalProperties = new Dictionary<string, string?>
+            {
+                [Fhi.Munin.Explorer.Blazor.AccessLevels.Key] = """["soknad-via-helsedata","tilgang-krever-soknad"]""",
+            },
+        };
+
+        var cut = RenderWith(new FakeClient(kilde));
+
+        Assert.Equal(["Tilgang krever søknad (1)", "Søknad via helsedata.no (1)"], Choices(Facet(cut, "Tilgangsnivå")));
     }
 
     [Fact]
@@ -3554,8 +3588,8 @@ public class KildeSearchTest : ExplorerTestContext
         // string: an empty disclosure with an empty heading in it is what a component that renders
         // every facet unconditionally produces, and it contains no text to search for.
         var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS", accessRights: "eu-access:NON_PUBLIC"),
-            Kilde("Dødsårsaksregisteret", "K_DAR", accessRights: "eu-access:NON_PUBLIC")));
+            Kilde("Als registeret", "K_ALS", accessRights: "tilgang-krever-soknad"),
+            Kilde("Dødsårsaksregisteret", "K_DAR", accessRights: "tilgang-krever-soknad")));
 
         Assert.Equal(["Kildetype", "Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
         Assert.Equal(3, Facets(cut).Count);
@@ -3563,7 +3597,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         // The other half, so "drop the empty one" cannot become "drop the one with a single value":
         // one choice is a choice, and it is the only thing telling the reader what these kilder are.
-        Assert.Equal(["Ikke-offentlig (2)"], Choices(Facet(cut, "Tilgangsnivå")));
+        Assert.Equal(["Tilgang krever søknad (2)"], Choices(Facet(cut, "Tilgangsnivå")));
     }
 
     [Fact]
@@ -3913,11 +3947,11 @@ public class KildeSearchTest : ExplorerTestContext
         var cut = RenderWith(
             new FakeClient(
                 Kilde("Als registeret", "K_ALS",
-                    accessRights: "eu-access:OP_DATPRO",
+                    accessRights: "statistikkbank",
                     category: """["ehds-cat:noeHeltNytt"]""")),
             b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal(["eu-access:OP_DATPRO (1)"], Choices(Facet(cut, "Access level")));
+        Assert.Equal(["statistikkbank (1)"], Choices(Facet(cut, "Access level")));
         Assert.Equal([null], Languages(Facet(cut, "Access level")));
 
         Assert.Equal(["ehds-cat:noeHeltNytt (1)"], Choices(Facet(cut, "Category")));
@@ -3928,13 +3962,13 @@ public class KildeSearchTest : ExplorerTestContext
     public void Facets_WhenAVocabularyKnowsTheTokenInBothFacets_ThenTheWordsAreLeftUnmarkedToo()
     {
         // The unremarkable side of the same branch, pinned so that a change to the fallback rule
-        // cannot start marking the words this package supplied: "Non-public" and "Biobanks" are
+        // cannot start marking the words this package supplied: "Access requires an application" and "Biobanks" are
         // English on an English page, and a lang="no" over either is the failure the CURIE case
         // describes, this time on prose a reader can actually hear the difference in.
         var cut = RenderWith(
             new FakeClient(
                 Kilde("Als registeret", "K_ALS",
-                    accessRights: "eu-access:NON_PUBLIC",
+                    accessRights: "tilgang-krever-soknad",
                     category: """["ehds-cat:biobanks"]""")),
             b => b.Add(c => c.Language, "en"));
 
@@ -3969,14 +4003,14 @@ public class KildeSearchTest : ExplorerTestContext
         // from a kilde view showing the Norwegian word for the very same token.
         var cut = RenderWith(new FakeClient(
                 Kilde("Als registeret", "K_ALS",
-                    accessRights: "eu-access:OP_DATPRO",
+                    accessRights: "statistikkbank",
                     category: """["ehds-cat:noe-helt-nytt"]"""))
             .Serving(
                 Vocabulary("healthCategory", [.. Categories, ("ehds-cat:noe-helt-nytt", "Noe helt nytt", "Something new")]),
-                Vocabulary("accessRights", [.. AccessLevels, ("eu-access:OP_DATPRO", "Databehandleravtale", "Data processing agreement")])));
+                Vocabulary(Fhi.Munin.Explorer.Blazor.AccessLevels.Key, [.. AccessLevelOptions, ("statistikkbank", "Statistikkbank", "Statistics bank")])));
 
         Assert.Equal(["Noe helt nytt (1)"], Choices(Facet(cut, "Kategori")));
-        Assert.Equal(["Databehandleravtale (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+        Assert.Equal(["Statistikkbank (1)"], Choices(Facet(cut, "Tilgangsnivå")));
 
         // And the token is still what it filters on, so a word arriving late changes nothing about
         // which kilder a checkbox reaches.
@@ -4051,7 +4085,7 @@ public class KildeSearchTest : ExplorerTestContext
         // error is claimed, and every checkbox still filters on the value the catalogue sent.
         var client = new FakeClient(
             Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""",
-                accessRights: "eu-access:NON_PUBLIC"))
+                accessRights: "tilgang-krever-soknad"))
         {
             FailVocabulary = true
         };
@@ -4062,7 +4096,7 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.DoesNotContain("Kunne ikke laste kilder", cut.Markup);
 
         Assert.Equal(["ehds-cat:biobanks (1)"], Choices(Facet(cut, "Kategori")));
-        Assert.Equal(["eu-access:NON_PUBLIC (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+        Assert.Equal(["tilgang-krever-soknad (1)"], Choices(Facet(cut, "Tilgangsnivå")));
 
         Tick(cut, "Kategori", "ehds-cat:biobanks");
 
@@ -4155,11 +4189,11 @@ public class KildeSearchTest : ExplorerTestContext
         // unharmed.
         var cut = RenderWith(new UnupgradedHostClient(
             Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""",
-                accessRights: "eu-access:NON_PUBLIC")));
+                accessRights: "tilgang-krever-soknad")));
 
         Assert.Equal(["Als registeret"], RowNames(cut));
         Assert.Equal(["ehds-cat:biobanks (1)"], Choices(Facet(cut, "Kategori")));
-        Assert.Equal(["eu-access:NON_PUBLIC (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+        Assert.Equal(["tilgang-krever-soknad (1)"], Choices(Facet(cut, "Tilgangsnivå")));
     }
 
     [Fact]
@@ -4179,16 +4213,16 @@ public class KildeSearchTest : ExplorerTestContext
         // drops it is there or not. Deleting that filter leaves this test green, and should.
         var cut = RenderWith(new FakeClient(
                 Kilde("Als registeret", "K_ALS", category: """["ehds-cat:biobanks"]""",
-                    accessRights: "eu-access:NON_PUBLIC"))
+                    accessRights: "tilgang-krever-soknad"))
             .Serving(
                 Vocabulary("", ("ehds-cat:biobanks", "Nøkkelløs", null)),
                 Vocabulary("   ", ("ehds-cat:biobanks", "Nøkkelløs igjen", null)),
                 Vocabulary("healthCategory", Categories),
                 Vocabulary("healthCategory", ("ehds-cat:biobanks", "Andre gangs oppslag", null)),
-                Vocabulary("accessRights", AccessLevels)));
+                Vocabulary(Fhi.Munin.Explorer.Blazor.AccessLevels.Key, AccessLevelOptions)));
 
         Assert.Equal(["Biobanker (1)"], Choices(Facet(cut, "Kategori")));
-        Assert.Equal(["Ikke-offentlig (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+        Assert.Equal(["Tilgang krever søknad (1)"], Choices(Facet(cut, "Tilgangsnivå")));
     }
 
     [Fact]
@@ -4212,13 +4246,13 @@ public class KildeSearchTest : ExplorerTestContext
     [Fact]
     public void Facets_WhenAnAccessRightsTokenIsKnown_ThenItIsDrawnAsAWordInTheReadersLanguage()
     {
-        // The catalogue writes eu-access:NON_PUBLIC; Kelda says "Ikke-offentlig". The token is what
+        // The catalogue writes tilgang-krever-soknad; Kelda says "Tilgang krever søknad". The token is what
         // the facet filters on either way — the word is only what the reader sees.
         var cut = RenderWith(
-            new FakeClient(Kilde("Als registeret", "K_ALS", accessRights: "eu-access:NON_PUBLIC")),
+            new FakeClient(Kilde("Als registeret", "K_ALS", accessRights: "tilgang-krever-soknad")),
             b => b.Add(c => c.Language, "en"));
 
-        Assert.Equal(["Non-public (1)"], Choices(Facet(cut, "Access level")));
+        Assert.Equal(["Access requires an application (1)"], Choices(Facet(cut, "Access level")));
     }
 
     [Fact]
@@ -4228,9 +4262,9 @@ public class KildeSearchTest : ExplorerTestContext
         // in the vocabulary is a catalogue change, not a bug here, and a facet that dropped it would
         // hide kilder the reader can see in the list.
         var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS", accessRights: "eu-access:OP_DATPRO")));
+            Kilde("Als registeret", "K_ALS", accessRights: "statistikkbank")));
 
-        Assert.Equal(["eu-access:OP_DATPRO (1)"], Choices(Facet(cut, "Tilgangsnivå")));
+        Assert.Equal(["statistikkbank (1)"], Choices(Facet(cut, "Tilgangsnivå")));
     }
 
     [Fact]
@@ -4477,7 +4511,7 @@ public class KildeSearchTest : ExplorerTestContext
     public void Facets_WhenTheReaderIsReadingEnglish_ThenTheHeadingsAndTheToggleAreEnglish()
     {
         var cut = RenderWith(
-            new FakeClient(Kilde("Als registeret", "K_ALS", accessRights: "eu-access:NON_PUBLIC")),
+            new FakeClient(Kilde("Als registeret", "K_ALS", accessRights: "tilgang-krever-soknad")),
             b => b.Add(c => c.Language, "en"));
 
         Assert.Equal(["Source type", "Access level", "Data processor"], FacetHeadings(cut));
@@ -4529,7 +4563,7 @@ public class KildeSearchTest : ExplorerTestContext
         // filtering affordance altogether from a reader who has never seen this panel.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
-                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  kildetype: "biobank", accessRights: "tilgang-krever-soknad",
                   dataProcessor: "Folkehelseinstituttet")));
 
         Assert.Equal(["Kildetype", "Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
@@ -4544,7 +4578,7 @@ public class KildeSearchTest : ExplorerTestContext
         // carry no kildetype opens nothing at all, which is the state the panel must never be in.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
-                  kildetype: "", accessRights: "eu-access:NON_PUBLIC",
+                  kildetype: "", accessRights: "tilgang-krever-soknad",
                   dataProcessor: "Folkehelseinstituttet")));
 
         Assert.Equal(["Tilgangsnivå", "Databehandler"], FacetHeadings(cut));
@@ -4663,9 +4697,9 @@ public class KildeSearchTest : ExplorerTestContext
         // it on the branch grid under __branch, which this is not. (Fhi.Metadata-35w0p.53)
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS", kildetype: "biobank",
-                  accessRights: "eu-access:NON_PUBLIC", category: "[\"ehds-cat:biobanks\"]"),
+                  accessRights: "tilgang-krever-soknad", category: "[\"ehds-cat:biobanks\"]"),
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister",
-                  accessRights: "eu-access:PUBLIC", dataProcessor: "Helsedirektoratet")));
+                  accessRights: "apne-data", dataProcessor: "Helsedirektoratet")));
 
         Assert.Equal(4, Facets(cut).Count);
 
@@ -4686,9 +4720,9 @@ public class KildeSearchTest : ExplorerTestContext
     public void Facets_WhenAFacetHasOneValueOrSeveral_ThenItsSizeIsWordedForThatInEitherLanguage()
     {
         var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS", kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC"),
+            Kilde("Als registeret", "K_ALS", kildetype: "biobank", accessRights: "tilgang-krever-soknad"),
             Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "sentraltHelseregister",
-                  accessRights: "eu-access:NON_PUBLIC")));
+                  accessRights: "tilgang-krever-soknad")));
 
         Assert.Equal("1 verdi", FacetSize(cut, "Tilgangsnivå"));
         Assert.Equal("2 verdier", FacetSize(cut, "Kildetype"));
@@ -4834,10 +4868,10 @@ public class KildeSearchTest : ExplorerTestContext
         // a value inside one.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
-                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  kildetype: "biobank", accessRights: "tilgang-krever-soknad",
                   dataProcessor: "Folkehelseinstituttet"),
             Kilde("Dødsårsaksregisteret", "K_DAR",
-                  kildetype: "sentraltHelseregister", accessRights: "eu-access:PUBLIC",
+                  kildetype: "sentraltHelseregister", accessRights: "apne-data",
                   dataProcessor: "Helsedirektoratet")));
 
         Tick(cut, "Databehandler", "Helsedirektoratet");
@@ -4855,12 +4889,12 @@ public class KildeSearchTest : ExplorerTestContext
         // with every filter still on — and still counted on the heading, which is what keeps a
         // folded facet from hiding one.
         var als = Kilde("Als registeret", "K_ALS",
-                        kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                        kildetype: "biobank", accessRights: "tilgang-krever-soknad",
                         dataProcessor: "Folkehelseinstituttet");
         var client = new FakeClient(
             als,
             Kilde("Dødsårsaksregisteret", "K_DAR",
-                  kildetype: "sentraltHelseregister", accessRights: "eu-access:PUBLIC",
+                  kildetype: "sentraltHelseregister", accessRights: "apne-data",
                   dataProcessor: "Helsedirektoratet")).Publishing(als);
 
         var cut = RenderWith(client);
@@ -4883,7 +4917,7 @@ public class KildeSearchTest : ExplorerTestContext
         // it all along. (Fhi.Metadata-l9l2n.60)
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
-                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  kildetype: "biobank", accessRights: "tilgang-krever-soknad",
                   dataProcessor: "Folkehelseinstituttet")));
 
         Assert.Equal([true, false, false], Facets(cut).Select(f => f.HasAttribute("open")).ToArray());
@@ -4914,10 +4948,10 @@ public class KildeSearchTest : ExplorerTestContext
         // the sibling panel's fold generation says no test covers it.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
-                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  kildetype: "biobank", accessRights: "tilgang-krever-soknad",
                   dataProcessor: "Folkehelseinstituttet"),
             Kilde("Dødsårsaksregisteret", "K_DAR",
-                  kildetype: "sentraltHelseregister", accessRights: "eu-access:PUBLIC",
+                  kildetype: "sentraltHelseregister", accessRights: "apne-data",
                   dataProcessor: "Helsedirektoratet")));
 
         FoldAll(cut, expand: false);
@@ -4942,7 +4976,7 @@ public class KildeSearchTest : ExplorerTestContext
         // speak on every mount.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
-                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  kildetype: "biobank", accessRights: "tilgang-krever-soknad",
                   dataProcessor: "Folkehelseinstituttet")));
 
         var region = cut.Find(".munin-explorer-filters > p[aria-live]");
@@ -4991,7 +5025,7 @@ public class KildeSearchTest : ExplorerTestContext
         // they come before the values they act on.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
-                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  kildetype: "biobank", accessRights: "tilgang-krever-soknad",
                   dataProcessor: "Folkehelseinstituttet")));
 
         var row = Assert.Single(cut.FindAll(".munin-explorer-filters > .munin-explorer-filters__toolbar"));
@@ -5023,7 +5057,7 @@ public class KildeSearchTest : ExplorerTestContext
         // shown or hidden in place of themselves.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS",
-                  kildetype: "biobank", accessRights: "eu-access:NON_PUBLIC",
+                  kildetype: "biobank", accessRights: "tilgang-krever-soknad",
                   dataProcessor: "Folkehelseinstituttet")));
 
         FoldAll(cut, expand: true);
@@ -5193,10 +5227,10 @@ public class KildeSearchTest : ExplorerTestContext
     private static FakeClient EveryFacet() => new(
         Kilde("Als registeret", "K_ALS",
             kildetype: "biobank", category: """["ehds-cat:biobanks"]""",
-            accessRights: "eu-access:NON_PUBLIC", dataProcessor: "Folkehelseinstituttet"),
+            accessRights: "tilgang-krever-soknad", dataProcessor: "Folkehelseinstituttet"),
         Kilde("Dødsårsaksregisteret", "K_DAR",
             kildetype: "sentraltHelseregister", category: """["ehds-cat:health-registries"]""",
-            accessRights: "eu-access:PUBLIC", dataProcessor: "Helsedirektoratet"));
+            accessRights: "apne-data", dataProcessor: "Helsedirektoratet"));
 
     /// <summary>How many values are ticked across the whole panel — what the row has to draw.</summary>
     private static int TickedValues(IRenderedComponent<KildeSearch> cut) => Ticks(cut).Count(ticked => ticked);
@@ -5213,7 +5247,7 @@ public class KildeSearchTest : ExplorerTestContext
         {
             ("Kildetype", "Biobank"),
             ("Kategori", "Biobanker"),
-            ("Tilgangsnivå", "Ikke-offentlig"),
+            ("Tilgangsnivå", "Tilgang krever søknad"),
             ("Databehandler", "Folkehelseinstituttet")
         })
         {
@@ -5236,10 +5270,10 @@ public class KildeSearchTest : ExplorerTestContext
 
         Tick(cut, "Kildetype", "Biobank");
         Tick(cut, "Kategori", "Biobanker");
-        Tick(cut, "Tilgangsnivå", "Ikke-offentlig");
+        Tick(cut, "Tilgangsnivå", "Tilgang krever søknad");
         Tick(cut, "Databehandler", "Folkehelseinstituttet");
 
-        foreach (var value in new[] { "Biobanker", "Biobank", "Ikke-offentlig", "Folkehelseinstituttet" })
+        foreach (var value in new[] { "Biobanker", "Biobank", "Tilgang krever søknad", "Folkehelseinstituttet" })
         {
             var before = Chips(cut).Count;
 
@@ -6283,8 +6317,8 @@ public class KildeSearchTest : ExplorerTestContext
         // nothing has rendered until something presses them.
         var cut = RenderWith(new FakeClient(
             Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
-                accessRights: "eu-access:NON_PUBLIC", category: """["ehds-cat:biobanks"]"""),
-            Kilde("Dødsårsaksregisteret", "K_DAR", accessRights: "eu-access:NON_PUBLIC")));
+                accessRights: "tilgang-krever-soknad", category: """["ehds-cat:biobanks"]"""),
+            Kilde("Dødsårsaksregisteret", "K_DAR", accessRights: "tilgang-krever-soknad")));
 
         cut.Find(".munin-explorer-filters__toggle").Click();
         Tick(cut, "Kildetype", "Sentralt helseregister");

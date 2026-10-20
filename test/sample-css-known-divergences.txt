@@ -650,3 +650,6 @@ missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:n
 missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tr > :nth-child(n)|
 missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *) tr|
 missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:not(.munin-explorer-kilder__expanded *)|
+
+# The access levels' lines in a hero fact (Fhi.Metadata-l9l2n.129); Stiler's rule is owed with it (Stiler patch to follow).
+unstyled-name||.munin-explorer-page__fact-line|
