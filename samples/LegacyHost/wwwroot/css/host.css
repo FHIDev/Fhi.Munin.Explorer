@@ -1739,7 +1739,7 @@ table.munin-explorer-data-list > tbody > :where(tr) > th[scope=row] > button > .
   width: 22.5rem;
 }
 
-@media (max-width: 767px) {
+@media all and (max-width: 767px) {
   .munin-explorer-list-create__row > .input__field.munin-explorer-list-create__field {
     width: 100%;
   }
@@ -2215,7 +2215,7 @@ table.munin-explorer-data-list tbody th {
   }
 }
 
-@media (max-width: 767px) {
+@media all and (max-width: 767px) {
   :is(.munin-explorer-kilde__header, .munin-explorer-whole__header, .munin-explorer-datasamling__header, .munin-explorer-instrument__header) > :is(h1, h2, h3, h4, h5, h6):first-child {
     font: normal 500 2rem/160% var(--font);
   }
@@ -2229,7 +2229,7 @@ table.munin-explorer-data-list tbody th {
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 767px) {
+@media all and (max-width: 767px) {
   .munin-explorer-page__main > .munin-explorer-page__section > :is(h2, h3, h4, h5, h6):first-child {
     font: normal 500 1.3125rem/160% var(--font);
   }
@@ -2541,7 +2541,7 @@ table.munin-explorer-data-list tbody th {
   white-space: nowrap;
 }
 
-@media (max-width: 767px) {
+@media all and (max-width: 767px) {
   .munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tr > :nth-child(n),
   .munin-explorer-kilde__datasamlinger.munin-explorer-kilde__datasamlinger--selectable tbody td:nth-child(n) {
     width: auto;
@@ -2973,7 +2973,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* Stiler 0.1.147: the code table scrolls sideways on phones (Fhi.Metadata-i6gkz). */
-@media (max-width: 767px) {
+@media all and (max-width: 767px) {
   .munin-explorer-codes__table {
     min-width: 100%;
     width: max-content;
@@ -5488,7 +5488,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 
-@media (max-width: 767px) {
+@media all and (max-width: 767px) {
   .munin-explorer-kilde__datasamlinger, .munin-explorer-kilde__datasamlinger tbody, .munin-explorer-kilde__datasamlinger tr, .munin-explorer-kilde__datasamlinger th, .munin-explorer-kilde__datasamlinger td {
     display: block;
   }
@@ -5658,7 +5658,7 @@ a[target=_blank]:not(.hd-button-square):focus::after {
    datasamlinger count and the variable bar; the other columns and the sideways scroll go. The head
    stays as a sort line with Navn and Variabler. `__card-label` is `hidden` in the markup, so a
    stylesheet without these rules draws the table as before. Read back off Stiler's patch for it. */
-@media (max-width: 767px) {
+@media all and (max-width: 767px) {
   .munin-explorer-kilder,
   .munin-explorer-kilder > thead,
   .munin-explorer-kilder > tbody {

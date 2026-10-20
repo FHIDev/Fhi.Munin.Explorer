@@ -117,8 +117,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   holds one JavaScript module — `explorer-interop.js`, served at
   `_content/Fhi.Munin.Explorer/` and imported after the first render, the shape
   `Fhi.Helsedata.Soknader` already ships on this same host. Nothing rendered depends on it, so a
-  host that does not serve it draws the same page, short of what the module moves afterwards (a
-  detail page's contents list, for one, then stays open on a phone), and `scripts/assert-package-contents.sh` names
+  host that does not serve it draws the same page, and `scripts/assert-package-contents.sh` names
   every packed entry one by one — a stylesheet parked beside the module still fails the build
   (Fhi.Metadata-35w0p.14).
   The build also writes `version.json` there, so a host answers

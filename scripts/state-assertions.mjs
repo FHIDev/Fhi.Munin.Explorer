@@ -871,7 +871,7 @@ export const assertions = [
     async stage(page) {
       await page.setViewportSize({ width: 320, height: 900 });
       await page.evaluate(() => document.fonts.ready);
-      // On a phone the list is folded behind its summary, and a reader opens it first (Fhi.Metadata-v40sa).
+      // On a phone the list is folded behind its button, and a reader opens it first (Fhi.Metadata-v40sa).
       await page.locator(`${TOC} .munin-explorer-page__toc-toggle > button[aria-expanded="false"]`).first().click();
       const column = page.locator('.munin-explorer-page__toc').first();
       const columnId = await column.getAttribute('id');

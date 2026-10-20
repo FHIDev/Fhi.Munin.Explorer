@@ -150,9 +150,9 @@ public sealed class DetailToc : ComponentBase, IDisposable
         builder.OpenElement(0, "nav");
         builder.AddAttribute(1, "aria-label", Label);
 
-        // Two headings, one per width, chosen by the host's stylesheet: the plain one on a wide
-        // screen, and on a phone the WAI-ARIA disclosure, a button inside the heading, folded until
-        // pressed so the list is shut from the first paint (Fhi.Metadata-v40sa).
+        // Two headings, one per width, chosen by the host's stylesheet: the plain one on a wide screen,
+        // and on a phone the WAI-ARIA disclosure, folded from the first paint. Its press needs an
+        // interactive mount, as every other disclosure here does (Fhi.Metadata-v40sa).
         builder.OpenElement(2, "h2");
         builder.AddContent(3, Label);
         builder.CloseElement();
