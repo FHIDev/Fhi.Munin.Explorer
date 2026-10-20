@@ -465,14 +465,17 @@ export function watchDatePickers() {
       // Without a picker (an older Safari, or no activation) the text field is the way in.
     }
   });
-  // Back to the text field, which holds the day the pick wrote; the hidden input is aria-hidden.
-  document.addEventListener('change', event => {
+  // Back to the text field after a pick, a cancel, or a close that left focus nowhere (Escape put it on
+  // body); the hidden input is aria-hidden. A close that moved focus to another control is left be.
+  const back = event => {
     const input = event.target;
     if (input instanceof HTMLInputElement && input.type === 'date' && input.id.endsWith('-calendar')
-        && document.querySelector(`[data-munin-explorer-date-picker="${CSS.escape(input.id)}"]`)) {
+        && document.querySelector(`[data-munin-explorer-date-picker="${CSS.escape(input.id)}"]`)
+        && !(event.type === 'focusout' && event.relatedTarget)) {
       document.getElementById(input.id.slice(0, -'-calendar'.length))?.focus();
     }
-  });
+  };
+  for (const type of ['change', 'cancel', 'focusout']) document.addEventListener(type, back, true);
 }
 
 // A reader's own setting, kept in this browser only (Fhi.Metadata-amp8c). Storage can be off, full or
