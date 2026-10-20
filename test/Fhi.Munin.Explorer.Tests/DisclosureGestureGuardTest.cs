@@ -35,7 +35,8 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     /// double-click toggles twice and ends where it began, from shut and from open alike, so the
     /// invariant above holds — but a shift-click toggles once and the disclosure DOES move. That is
     /// the summary's activation behaviour, identical on every <c>&lt;details&gt;</c> on the web, and
-    /// refusing it would take a <c>preventDefault</c> this package ships no script for.
+    /// refusing it would take a <c>preventDefault</c> this package ships no script for, except on the
+    /// contents fold at desktop widths, where the module refuses every press (Fhi.Metadata-v40sa).
     /// </para>
     /// <para>
     /// Measured in bUnit, gesturing one asserts nothing either way: a handler-free
@@ -562,7 +563,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     [Fact]
     public void VariableView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // One: a version row in the history. None native — a version row is a button.
+        // One: a version row in the history. One native: the contents list's fold (Fhi.Metadata-v40sa).
         var detail = Variable() with
         {
             VersionId = Guid.NewGuid(),
@@ -570,13 +571,14 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         };
 
         AssertStandingGesturesAreRefused(
-            () => Render<VariableView>(b => b.Add(c => c.Variable, detail)), expected: 1, native: 0);
+            () => Render<VariableView>(b => b.Add(c => c.Variable, detail)), expected: 1, native: 1);
     }
 
     [Fact]
     public void KildeView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
-        // One: «Les mer» under a description too long to show whole (Fhi.Metadata-nebok).
+        // One: «Les mer» under a description too long to show whole (Fhi.Metadata-nebok). One native:
+        // the contents list's fold.
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
         var kilde = new KildeDetail
         {
@@ -587,7 +589,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         };
 
         AssertStandingGesturesAreRefused(
-            () => Render<KildeView>(b => b.Add(c => c.Kilde, kilde)), expected: 1, native: 0);
+            () => Render<KildeView>(b => b.Add(c => c.Kilde, kilde)), expected: 1, native: 1);
     }
 
     [Fact]
@@ -750,7 +752,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     }
 
     /// <summary>How many <c>&lt;details&gt;</c> and <c>&lt;summary&gt;</c> elements <c>src/</c> draws.</summary>
-    private const int NativeDisclosuresDrawn = 14;
+    private const int NativeDisclosuresDrawn = 16;
 
     /// <summary>Whether what a native disclosure was opened with means the package drives it.</summary>
     /// <remarks>

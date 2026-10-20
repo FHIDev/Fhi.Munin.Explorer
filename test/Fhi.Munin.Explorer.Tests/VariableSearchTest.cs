@@ -16768,6 +16768,7 @@ public class VariableSearchTest : ExplorerTestContext
                 // The contents column, ahead of the main one: the nav fills it, and the nav's own
                 // list wears helsedata's form-menu names rather than anything in this prefix.
                 "munin-explorer-page__toc",
+                "munin-explorer-page__toc-count",
                 "munin-explorer-page__main",
                 "munin-explorer-kilde__main",
                 // The wrapper each block below the name sits in. First seen on the datasamlinger,

@@ -4041,6 +4041,40 @@ table.munin-explorer-data-list tbody th {
   margin: 0 0 10px;
 }
 
+/* The contents list folds on a phone (Fhi.Metadata-v40sa): Stiler's rule, mirrored. The RCL draws
+   an open <details> and its module shuts it below 768px; from 768px the summary is the old heading. */
+@media (max-width: 767px) {
+  .munin-explorer-page__toc summary {
+    padding: 8px 0;
+    cursor: pointer;
+    font: 0.6875rem/160% graphik-medium, Arial, Helvetica, sans-serif;
+    color: rgb(81, 84, 123);
+  }
+
+  .munin-explorer-page__toc summary h2 {
+    display: inline;
+    margin: 0;
+  }
+
+  .munin-explorer-page__toc-count {
+    letter-spacing: 0.09em;
+  }
+}
+
+@media (min-width: 768px) {
+  .munin-explorer-page__toc summary {
+    display: block;
+  }
+
+  .munin-explorer-page__toc summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .munin-explorer-page__toc-count {
+    display: none;
+  }
+}
+
 .munin-explorer-page__toc ul {
   list-style: none;
   margin: 0;

@@ -620,8 +620,9 @@ public class KildeViewTest : ExplorerTestContext
             "munin-explorer-page__stuckbar-inner",
             "munin-explorer-page__stuckbar-name",
             // The contents column, drawn now that the nav fills it. The nav inside wears
-            // helsedata's own form-menu names, which is why it adds none of ours.
+            // helsedata's own form-menu names; its one name of ours is the count in its summary.
             "munin-explorer-page__toc",
+            "munin-explorer-page__toc-count",
         ], invented);
     }
 
