@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **The browser module listens for focus on the document.** While a detail page's name bar is stuck, a capture `focusin` listener scrolls a control that keyboard focus (`:focus-visible`) lands on under the bar to just below it, in the control's nearest scrolling ancestor or the document. A mouse press, a sticky or fixed control, the contents column and a contents jump's target are left alone. A host with its own focus scrolling can see the two add up; without the module there is no stuck bar and nothing changes.

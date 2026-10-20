@@ -687,6 +687,46 @@ async function replaceEveryPush(page) {
   await page.reload({ waitUntil: 'networkidle' });
 }
 
+/** Tabs down and back through a page with its name bar stuck, at 1280 and 375; any control left wholly under the bar. */
+async function focusClearOfStuckBar(page) {
+  const bar = '.munin-explorer-page__stuckbar--on:not([hidden]) .munin-explorer-page__stuckbar-inner';
+  for (const width of [1280, 375]) {
+    await page.setViewportSize({ width, height: 800 });
+    // On a phone the contents list is in the flow, so its links are walked open too.
+    const fold = page.locator(`${TOC} .munin-explorer-page__toc-toggle > button[aria-expanded="false"]`).first();
+    if (await fold.isVisible().catch(() => false)) await fold.click();
+    await scrollPast(page, await page.locator(HERO).first().getAttribute('id'));
+    await page.locator(bar).first().waitFor({ state: 'visible', timeout: findTimeout });
+    for (const key of [...Array(40).fill('Tab'), ...Array(40).fill('Shift+Tab')]) {
+      await page.keyboard.press(key);
+      await page.waitForTimeout(80);
+      const hidden = await page.evaluate(selector => {
+        const shown = document.querySelector(selector);
+        const el = document.activeElement;
+        if (!shown || !el || el === document.body || shown.contains(el)) return null;
+        const box = el.getBoundingClientRect();
+        return box.height > 0 && box.bottom <= shown.getBoundingClientRect().bottom
+          ? (el.textContent || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 40)
+          : null;
+      }, bar);
+      if (hidden) return `at ${width}px ${key} left «${hidden}» wholly under the stuck name bar`;
+    }
+  }
+
+  // The sticky contents column clears the bar by itself, and Tab through it must not move the page.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await scrollPast(page, await page.locator(HERO).first().getAttribute('id'));
+  const links = page.locator(`${TOC} a`);
+  await links.first().focus();
+  const before = await page.evaluate(() => window.scrollY);
+  for (let i = 1; i < Math.min(await links.count(), 6); i++) {
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(80);
+  }
+  const after = await page.evaluate(() => window.scrollY);
+  return Math.abs(after - before) > 1 ? `Tab through the contents column moved the page ${after - before}px` : null;
+}
+
 /**
  * The row disclosures whose GLYPH is their state, one per surface. The picture is a cascade (base
  * icon rules at rest, hover rules over them; Fhi.Metadata-trfs0) that no test in test/ resolves.
@@ -2295,6 +2335,20 @@ export const assertions = [
     stage: () => ({}),
     measure: page => contentsFold(page, { fresh: true }),
     control: page => overrideStyle(page, `${TOC} ul { display: block !important; }`),
+  },
+  {
+    // WCAG 2.4.11: the browser's focus scroll knows nothing of the stuck bar, so Shift+Tab can park a
+    // control wholly under it; the module scrolls it clear (Fhi.Metadata-mhqx0.4). The kilde page only:
+    // the variable page's controls never land there in this walk, so its control could not fire.
+    name: 'Tab and Shift+Tab never leave the focused control wholly under the stuck name bar',
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+    stage: () => ({}),
+    measure: focusClearOfStuckBar,
+    // The module's focus handler never reached: the browser's own scroll is all that is left.
+    async control(page) {
+      await page.evaluate(() => window.addEventListener('focusin', event => event.stopPropagation(), true));
+    },
   },
   ...chevronAssertions,
 ];

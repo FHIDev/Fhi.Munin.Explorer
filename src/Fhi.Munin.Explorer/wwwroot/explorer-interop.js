@@ -13,6 +13,9 @@ const SHOWN = 'munin-explorer-page__stuckbar--on';
 /** The shown bar's height on the page root, which Stiler's sticky contents list clears. */
 const STUCK_HEIGHT = '--munin-explorer-stuckbar-height';
 
+// Room left between the stuck bar and a control focus brought out from under it.
+const FOCUS_CLEARANCE = 8;
+
 // Native dates expose an empty value for both a cleared control and an incomplete manual entry.
 export function readDateInput(id) {
   const input = document.getElementById(id);
@@ -61,6 +64,31 @@ export function observeHeroFacts(barId, factsId) {
   const focusout = () => queueMicrotask(update);
   bar.addEventListener('focusout', focusout);
 
+  // WCAG 2.4.11: what Tab lands on under the stuck bar is scrolled clear of it, after the browser's
+  // own focus scroll, which knows nothing of the bar (Fhi.Metadata-mhqx0.4).
+  const focusin = (event) => {
+    const target = event.target;
+    if (!(target instanceof Element) || bar.hidden || bar.contains(target) || !page?.contains(target)
+      || !target.matches(':focus-visible') || ownsItsPlace(target)) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      if (!bar.isConnected || bar.hidden) return;
+      const bottom = inner?.getBoundingClientRect().bottom ?? 0;
+      // A bar over half the window leaves no room to clear; scrolling would push the control below it.
+      if (bottom > window.innerHeight / 2) return;
+      // Outwards through the scrolling ancestors: an inner one already at its top cannot clear it alone.
+      const root = document.scrollingElement ?? document.documentElement;
+      for (let scroller = scrollerOf(target); scroller; scroller = scroller === root ? null : scrollerOf(scroller)) {
+        const top = target.getBoundingClientRect().top;
+        if (top >= bottom) break;
+        scroller.scrollBy({ top: top - bottom - FOCUS_CLEARANCE, behavior: 'instant' });
+      }
+    });
+  };
+  document.addEventListener('focusin', focusin, true);
+
   // An IntersectionObserver notifies on a CROSSING, and a jump straight past the row — an in-page
   // anchor press, or one window.scrollTo — leaves both frames non-intersecting, so nothing is
   // delivered and the bar reads stale (Fhi.Metadata-14j7i). The box itself always answers.
@@ -103,9 +131,29 @@ export function observeHeroFacts(barId, factsId) {
     resized.disconnect();
     page?.style.removeProperty(STUCK_HEIGHT);
     bar.removeEventListener('focusout', focusout);
+    document.removeEventListener('focusin', focusin, true);
     window.removeEventListener('hashchange', reread);
     document.removeEventListener('scrollend', reread, { capture: true });
   });
+}
+
+/** Whether `el` keeps its own place on screen: sticky or fixed, or a section the contents jump places. */
+function ownsItsPlace(el) {
+  if (el.matches('[data-nav-section]')) return true;
+  for (let e = el; e && e !== document.body; e = e.parentElement) {
+    const position = getComputedStyle(e).position;
+    if (position === 'sticky' || position === 'fixed') return true;
+  }
+  return false;
+}
+
+/** The element that scrolls `el` into view: its nearest scrolling ancestor, or the document. */
+function scrollerOf(el) {
+  for (let e = el.parentElement; e && e !== document.body; e = e.parentElement) {
+    const overflow = getComputedStyle(e).overflowY;
+    if ((overflow === 'auto' || overflow === 'scroll') && e.scrollHeight > e.clientHeight) return e;
+  }
+  return document.scrollingElement ?? document.documentElement;
 }
 
 /**
