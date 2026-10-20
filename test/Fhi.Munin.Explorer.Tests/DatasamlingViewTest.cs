@@ -524,7 +524,10 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         var label = language == "en" ? "Data category" : "Datakategori";
         Assert.Equal(expected, Value(Hero(cut), label));
-        Assert.Contains(expected, cut.Find(".munin-explorer-page__body").TextContent);
+
+        // The body lists them one per line instead (Fhi.Metadata-l9l2n.129).
+        var listed = cut.FindAll(".munin-explorer-page__body dd li").Select(li => li.TextContent).ToList();
+        Assert.All(expected.Split("; "), category => Assert.Contains(category, listed));
     }
 
     [Theory]
@@ -813,8 +816,9 @@ public class DatasamlingViewTest : ExplorerTestContext
             "munin-explorer-page__stuckbar-inner",
             "munin-explorer-page__stuckbar-name",
             // The contents column, drawn now that the nav fills it. The nav inside wears
-            // helsedata's own form-menu names, which is why it adds none of ours.
+            // helsedata's own form-menu names; its one name of ours is the phone's disclosure heading.
             "munin-explorer-page__toc",
+            "munin-explorer-page__toc-toggle",
         ], invented);
     }
 
@@ -987,7 +991,9 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Equal(label, section.QuerySelector("dt.screenreader-only")?.TextContent);
         Assert.Empty(section.QuerySelectorAll("dt:not(.screenreader-only)"));
         Assert.Equal("https://example.org/report", section.QuerySelector("dd a")?.GetAttribute("href"));
-        Assert.Equal("Se rapporten.", section.QuerySelector("dd")?.TextContent.Trim());
+        Assert.Equal("Se rapporten.", section.QuerySelector("dd")!.Label().Trim());
+        Assert.Equal(language == "en" ? "en" : "no",
+                     section.QuerySelector("dd a .screenreader-only")?.GetAttribute("lang"));
         Assert.Equal(language == "en" ? "no" : null, section.QuerySelector("dd")?.GetAttribute("lang"));
         Assert.Contains("#munin-explorer-section-om-datasamlingen", Targets(cut));
         Assert.DoesNotContain("#munin-explorer-section-kvalitetsnote", Targets(cut));
@@ -1880,7 +1886,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         var link = Assert.Single(Row(SourceInformation(cut), "Lovverk").QuerySelectorAll("a"));
 
         Assert.Equal("https://lovdata.no/lov/2014-06-20-43", link.GetAttribute("href"));
-        Assert.Equal("Helseregisterloven § 11", link.TextContent);
+        Assert.Equal("Helseregisterloven § 11", link.Label());
     }
 
     [Fact]
@@ -2421,7 +2427,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // finished with a fresh per-instance discriminator, which is what keeps two mounts on one
         // host page from sharing a sticky bar or a contents column.
         Assert.Equal(3, ids.Count(DetailPage.IsChassisId));
-        Assert.All(ids.Where(id => !DetailPage.IsChassisId(id)),
+        Assert.All(ids.Where(id => !DetailPage.IsChassisId(id) && !DetailToc.IsListId(id)),
                    id => Assert.Contains(id, DetailSectionIdsUnderTest));
     }
 
@@ -2707,7 +2713,7 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         var link = cut.Find("a[href='https://eksempel.no/variabler/oppfolging']");
         Assert.Equal("Variablene er beskrevet her: https://eksempel.no/variabler/oppfolging",
-                     link.ParentElement!.TextContent.Trim());
+                     link.ParentElement!.Label().Trim());
         Assert.Equal("noopener noreferrer", link.GetAttribute("rel"));
     }
 

@@ -159,16 +159,51 @@ public class DetailTocTest : ExplorerTestContext
         Assert.Equal("Innhold", nav.GetAttribute("aria-label"));
         Assert.Null(nav.GetAttribute("class"));
 
-        Assert.Equal(2, nav.Children.Length);
+        Assert.Equal(3, nav.Children.Length);
         Assert.Equal("h2", nav.Children[0].LocalName);
         Assert.Equal("Innhold", nav.Children[0].TextContent);
         Assert.Null(nav.Children[0].GetAttribute("class"));
 
-        Assert.Equal("form-menu__list", nav.Children[1].ClassName);
+        Assert.Equal("h2", nav.Children[1].LocalName);
+        Assert.Equal("munin-explorer-page__toc-toggle", nav.Children[1].ClassName);
+
+        Assert.Equal("form-menu__list", nav.Children[2].ClassName);
 
         // Exactly the base name on every item: --active and --active-child draw helsedata's
         // application-form panel, not the contents rail's mark.
         Assert.All(cut.FindAll("li"), item => Assert.Equal("form-menu__list__item", item.ClassName));
+    }
+
+    [Fact]
+    public void Render_Always_ThenThePhonesDisclosureStartsFoldedAndControlsTheList()
+    {
+        // The WAI-ARIA disclosure: a button inside the heading, naming the list it shows (Fhi.Metadata-v40sa).
+        var cut = RenderToc(Three);
+
+        var button = cut.Find("h2.munin-explorer-page__toc-toggle > button");
+        Assert.Equal("button", button.GetAttribute("type"));
+        Assert.Equal("false", button.GetAttribute("aria-expanded"));
+        Assert.Equal("Innhold (3)", button.TextContent);
+        Assert.Equal(cut.Find("ul").Id, button.GetAttribute("aria-controls"));
+        Assert.False(string.IsNullOrEmpty(cut.Find("ul").Id));
+    }
+
+    [Fact]
+    public void Toggle_WhenPressedTwice_ThenTheListOpensAndFoldsAgain()
+    {
+        var cut = RenderToc(Three);
+
+        cut.Find("h2.munin-explorer-page__toc-toggle > button").Click();
+        Assert.Equal("true", cut.Find("h2.munin-explorer-page__toc-toggle > button").GetAttribute("aria-expanded"));
+
+        cut.Find("h2.munin-explorer-page__toc-toggle > button").Click();
+        Assert.Equal("false", cut.Find("h2.munin-explorer-page__toc-toggle > button").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Render_TwoNavs_ThenTheirListsHaveDifferentIds()
+    {
+        Assert.NotEqual(RenderToc(Three).Find("ul").Id, RenderToc(Three).Find("ul").Id);
     }
 
     [Fact]

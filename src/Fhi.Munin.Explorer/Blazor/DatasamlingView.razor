@@ -1,5 +1,6 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
+<CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 @if (Datasamling is { } datasamling)
 {
     <DetailPage ViewRoot="munin-explorer-datasamling"
@@ -67,6 +68,7 @@
         </ChildContent>
     </DetailPage>
 }
+</CascadingValue>
 
 @code {
     private bool HasVariablesNavigation => !string.IsNullOrWhiteSpace(VariablesHref) || ShowVariables.HasDelegate;

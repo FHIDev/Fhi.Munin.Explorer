@@ -75,6 +75,19 @@ async function press(scope, name) {
   await button.click();
 }
 
+/** Press the wide screen's «Skjul filtre», once the list it sits beside has rows. */
+async function collapseFilters(page, row) {
+  await rowsArePresent(page, row);
+  const collapse = page.locator('.munin-explorer-filters__collapse').first();
+  await collapse.waitFor({ state: 'visible', timeout: findTimeout });
+  await collapse.click();
+  await page.locator('.munin-explorer-filters__collapse[aria-expanded="false"]').first()
+    .waitFor({ state: 'attached', timeout: findTimeout });
+}
+
+/** States scanned at the default width only: their fold is drawn from 1024px up, so a phone has none to scan. */
+export const wideOnlyStates = new Set(['variables-filters-collapsed', 'kilder-filters-collapsed']);
+
 export const states = {
   // The script guards inventory these literal names without launching a browser.
   'tree-collapsed': treeStates['tree-collapsed'],
@@ -163,6 +176,10 @@ export const states = {
   // how this gate read green against an unreachable API for as long as it has existed.
   'variables-list': page => rowsArePresent(page, 'button.munin-explorer-dataitem-main__name'),
   'kilder-list': page => rowsArePresent(page, 'button.munin-explorer-kilder__name'),
+  // The same two lists under KildeExplorer and VariableExplorer, the mounts that write their own
+  // history entries; named apart so only the Back and Forward assertions visit them.
+  'kildeutforsker-list': page => rowsArePresent(page, 'button.munin-explorer-kilder__name'),
+  'utforsker-list': page => rowsArePresent(page, 'button.munin-explorer-dataitem-main__name'),
 
   // The selection ribbon at its widest, which kilder-list above never reaches: ticking a row swaps
   // the handover's label for a longer one and puts the reset beside it. Measured at 320px, because
@@ -543,6 +560,26 @@ export const states = {
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
+  // The variable page's sticky name bar, stuck, as kilde-stuckbar is for a kilde (Fhi.Metadata-mhqx0.1).
+  'variable-stuckbar': async page => {
+    await states['variable-whole'](page);
+    const row = page.locator('.munin-explorer-whole .munin-explorer-page__facts').first();
+    await row.waitFor({ state: 'visible', timeout: findTimeout });
+    await scrollPast(page, await row.getAttribute('id'));
+    await page.locator('.munin-explorer-page__stuckbar--on .munin-explorer-page__stuckbar-inner')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+  // «Skjul filtre» pressed on a wide screen: the panel's own fold, apart from a phone's (Fhi.Metadata-mhqx0.1).
+  'variables-filters-collapsed': page => collapseFilters(page, 'button.munin-explorer-dataitem-main__name'),
+  'kilder-filters-collapsed': page => collapseFilters(page, 'button.munin-explorer-kilder__name'),
+  // A Kildeutforsker facet with a value ticked: its chip, the narrowed counts and the ticked box (Fhi.Metadata-mhqx0.1).
+  'kilde-facet-ticked': async page => {
+    await states['kilde-facets'](page);
+    const box = page.locator('.munin-explorer-filters__facets > details[open] input[type=checkbox]').first();
+    await box.check();
+    await page.locator('.munin-explorer-filters__chip').first().waitFor({ state: 'visible', timeout: findTimeout });
+  },
   // A kilde row opened on its datasamlinger. The panel only exists after a press, so everything
   // in it - the colspan cell, the nested tables, the headings and the live region - is invisible
   // to the kilder-list scan above (Fhi.Metadata-mq24y).
@@ -601,10 +638,11 @@ export const states = {
     await toggle.waitFor({ state: 'visible', timeout: findTimeout });
     await toggle.check();
 
+    // Attached, not visible: on a phone the table is cards and Stiler hides its header row (0.1.187).
     await page
       .locator('.munin-explorer-kilder thead th', { hasText: 'Delkilder' })
       .first()
-      .waitFor({ state: 'visible', timeout: findTimeout });
+      .waitFor({ state: 'attached', timeout: findTimeout });
 
     // Folded again before anything is measured: this state is here for the table, and every
     // geometry assertion would otherwise be measuring a dropdown hanging open over it.
@@ -634,11 +672,13 @@ export const states = {
       await toggles.nth(i).evaluate(box => box.checked || box.click());
     }
 
+    // Attached, not visible: under 768px the head is the cards' sort line and shows neither
+    // heading (Fhi.Metadata-ulkw3), so at 320px this measures the cards with every column on.
     for (const heading of ['Kodeverk %', 'Statistikk %']) {
       await page
         .locator('.munin-explorer-kilder thead th', { hasText: heading })
         .first()
-        .waitFor({ state: 'visible', timeout: findTimeout });
+        .waitFor({ state: 'attached', timeout: findTimeout });
     }
 
     // Folded before anything is measured, for the reason kilder-counts gives.

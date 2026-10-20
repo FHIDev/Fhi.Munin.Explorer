@@ -324,6 +324,7 @@ public class ListRowPanelTest : ExplorerTestContext
         NameButton(cut, "Databaseversjon").Click();
         cut.WaitForElement("[role=tablist]");
         cut.FindAll("[role=tab]")[1].Click();
+        cut.WaitForAssertion(() => Assert.Equal("true", cut.FindAll("[role=tab]")[1].GetAttribute("aria-selected")));
 
         var labels = ExtraFields.Labels(cut.Find("[role=tabpanel]"));
         Assert.Contains("Måleenhet", labels);
@@ -345,6 +346,7 @@ public class ListRowPanelTest : ExplorerTestContext
         Assert.Equal("true", cut.FindAll("[role=tab]")[0].GetAttribute("aria-selected"));
 
         cut.FindAll("[role=tab]")[1].Click();
+        cut.WaitForAssertion(() => Assert.Equal("true", cut.FindAll("[role=tab]")[1].GetAttribute("aria-selected")));
 
         var about = cut.Find("[role=tabpanel]");
         Assert.Contains("V_HKR.VERSJON_DATABASE", about.TextContent);
@@ -360,7 +362,7 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
         NameButton(cut, "Databaseversjon").Click();
 
-        Assert.Null(Panel(cut));
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
         Assert.Equal("false", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded"));
         Assert.Null(NameButton(cut, "Databaseversjon").GetAttribute("aria-controls"));
     }
@@ -431,6 +433,8 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
         RemoveButton(cut, "Databaseversjon").Click();
 
+        // The refusal's own alert, so the panel is checked after the removal was answered, not before it ran.
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke endre listen nå. Prøv igjen om litt.", PageAlert(cut)));
         Assert.Equal("true", NameButton(cut, "Databaseversjon").GetAttribute("aria-expanded"));
         Assert.NotNull(Panel(cut));
     }
@@ -513,10 +517,16 @@ public class ListRowPanelTest : ExplorerTestContext
     private static IElement OpenNotes(IRenderedComponent<VariableListView> cut, string name = "Databaseversjon")
     {
         NameButton(cut, name).Click();
-        cut.WaitForElement("[role=tablist]");
-        cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Mine notater").Click();
-        var label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Egne notater");
-        return cut.Find($"#{label.GetAttribute("for")}");
+        // This row's panel with its tabs: another row's panel would take the click, and the tabs wait for the detail.
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(name, cut.Find($"#{Panel(cut)!.GetAttribute("aria-labelledby")}").TextContent.Trim());
+            Assert.Contains(cut.FindAll("[role=tab]"), t => t.TextContent.Trim() == "Mine notater");
+        });
+        // Found and pressed on the dispatcher, behind the renders the code lists still owe, so the tab is not stale.
+        cut.InvokeAsync(() => cut.FindAll("[role=tab]").Single(t => t.TextContent.Trim() == "Mine notater").Click()).GetAwaiter().GetResult();
+        cut.WaitForAssertion(() => OpenNotesField(cut));
+        return OpenNotesField(cut);
     }
 
     private static string NotesStatusText(IRenderedComponent<VariableListView> cut, IElement field) =>
@@ -562,9 +572,10 @@ public class ListRowPanelTest : ExplorerTestContext
 
         OpenNotes(cut).Change("  Spør om 2012  ");
 
-        Assert.Equal([(DatabaseVersion.VariableId, (string?)"Spør om 2012")], client.NotesWritten);
+        cut.WaitForAssertion(() => Assert.Equal([(DatabaseVersion.VariableId, (string?)"Spør om 2012")], client.NotesWritten));
 
         NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
         var reopened = OpenNotes(cut);
         Assert.Equal("Spør om 2012", reopened.GetAttribute("value"));
         Assert.Null(reopened.GetAttribute("aria-invalid"));
@@ -579,8 +590,8 @@ public class ListRowPanelTest : ExplorerTestContext
 
         OpenNotes(cut).Change(new string('x', 1600));
 
+        cut.WaitForAssertion(() => Assert.Equal("true", OpenNotesField(cut).GetAttribute("aria-invalid")));
         var field = OpenNotesField(cut);
-        Assert.Equal("true", field.GetAttribute("aria-invalid"));
         Assert.Equal("Notatene kan ikke overstige 1500 tegn. Teksten er ikke lagret.", NotesStatusText(cut, field));
         Assert.Equal(1600, field.GetAttribute("value")!.Length);
     }
@@ -593,8 +604,9 @@ public class ListRowPanelTest : ExplorerTestContext
 
         OpenNotes(cut).Change("Spør om 2012");
 
+        cut.WaitForAssertion(() => Assert.Equal(
+            "Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, OpenNotesField(cut))));
         var field = OpenNotesField(cut);
-        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, field));
         Assert.Equal("", PageAlert(cut));
         Assert.Equal("Spør om 2012", field.GetAttribute("value"));
         Assert.Null(field.GetAttribute("aria-invalid"));
@@ -608,7 +620,7 @@ public class ListRowPanelTest : ExplorerTestContext
 
         OpenNotes(cut).Change("Spør om 2012");
 
-        Assert.StartsWith("Du har gjort for mange forespørsler", NotesStatusText(cut, OpenNotesField(cut)));
+        cut.WaitForAssertion(() => Assert.StartsWith("Du har gjort for mange forespørsler", NotesStatusText(cut, OpenNotesField(cut))));
         Assert.Equal("", PageAlert(cut));
     }
 
@@ -688,7 +700,10 @@ public class ListRowPanelTest : ExplorerTestContext
         await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
         await cut.InvokeAsync(gate.SetResult);
 
-        cut.WaitForAssertion(() => Assert.Equal("", OpenNotes(cut).GetAttribute("value") ?? ""));
+        // Opened once, outside the wait: a retry would press the name again and close the panel.
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
+        OpenNotes(cut);
+        cut.WaitForAssertion(() => Assert.Equal("", OpenNotesField(cut).GetAttribute("value") ?? ""));
     }
 
     [Fact]
@@ -701,7 +716,9 @@ public class ListRowPanelTest : ExplorerTestContext
         await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
         await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
 
-        cut.WaitForAssertion(() => Assert.Equal("ikke lagret ennå", OpenNotes(cut).GetAttribute("value")));
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
+        OpenNotes(cut);
+        cut.WaitForAssertion(() => Assert.Equal("ikke lagret ennå", OpenNotesField(cut).GetAttribute("value")));
     }
 
     [Fact]
@@ -719,7 +736,7 @@ public class ListRowPanelTest : ExplorerTestContext
 
         cut.Find("td.munin-explorer-dataitem-main__desiredData textarea").Change("C76");
 
-        Assert.Equal("", PageAlert(cut));
+        cut.WaitForAssertion(() => Assert.Equal("", PageAlert(cut)));
     }
 
     [Fact]
@@ -730,6 +747,12 @@ public class ListRowPanelTest : ExplorerTestContext
 
         OpenNotes(cut).Change("på vei");
 
+        // The write is out and its pending state drawn, so the empty status is that state's, not the untouched field's.
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Single(client.NotesWritten);
+            Assert.Equal("på vei", OpenNotesField(cut).GetAttribute("value"));
+        });
         Assert.Equal("", NotesStatusText(cut, OpenNotesField(cut)));
     }
 
@@ -955,9 +978,10 @@ public class ListRowPanelTest : ExplorerTestContext
         var field = OpenNotes(cut);
         field.Change("utløpt innlogging");
 
+        cut.WaitForAssertion(() => Assert.Equal(
+            "Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, OpenNotesField(cut))));
         var entry = Assert.Single(recorder.Entries, e => e.Exception is MuninExplorerUnauthorizedException);
         Assert.Equal(LogLevel.Warning, entry.Level);
-        Assert.Equal("Kunne ikke lagre notatene nå. Prøv igjen om litt.", NotesStatusText(cut, OpenNotesField(cut)));
     }
 
     [Fact]
@@ -1030,7 +1054,9 @@ public class ListRowPanelTest : ExplorerTestContext
         await cut.InvokeAsync(() => cut.Find("select").Change(OtherListId.ToString()));
         await cut.InvokeAsync(() => cut.Find("select").Change(ListId.ToString()));
 
-        cut.WaitForAssertion(() => Assert.Equal("skrevet i en annen fane", OpenNotes(cut).GetAttribute("value")));
+        cut.WaitForAssertion(() => Assert.Null(Panel(cut)));
+        OpenNotes(cut);
+        cut.WaitForAssertion(() => Assert.Equal("skrevet i en annen fane", OpenNotesField(cut).GetAttribute("value")));
     }
 
     [Fact]
@@ -1044,9 +1070,9 @@ public class ListRowPanelTest : ExplorerTestContext
         var label = cut.FindAll("[role=tabpanel] label").Single(l => l.TextContent.Trim() == "Ønskede data");
         cut.Find($"#{label.GetAttribute("for")}").Change("C76\r\n  C77 \n\nC78");
 
+        cut.WaitForAssertion(() => Assert.Equal(
+            "C76, C77, C78", cut.Find("td.munin-explorer-dataitem-main__desiredData textarea").GetAttribute("value")));
         Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76, C77, C78")], client.DesiredDataWritten);
-        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData textarea");
-        Assert.Equal("C76, C77, C78", column.GetAttribute("value"));
     }
 
     [Fact]
@@ -1067,9 +1093,9 @@ public class ListRowPanelTest : ExplorerTestContext
 
         field.Change("  C76 og C77  ");
 
+        cut.WaitForAssertion(() => Assert.Equal(
+            "C76 og C77", cut.Find("td.munin-explorer-dataitem-main__desiredData textarea").GetAttribute("value")));
         Assert.Equal([(DatabaseVersion.VariableId, (string?)"C76 og C77")], client.DesiredDataWritten);
-        var column = cut.Find("td.munin-explorer-dataitem-main__desiredData textarea");
-        Assert.Equal("C76 og C77", column.GetAttribute("value"));
     }
 
     [Fact]
@@ -1178,9 +1204,9 @@ public class ListRowPanelTest : ExplorerTestContext
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
         cut.FindAll("button").Single(b => b.TextContent.Trim() == "Kopier lenke").Click();
 
-        Assert.Equal(
+        cut.WaitForAssertion(() => Assert.Equal(
             $"https://helsedata.example/variabler?variabelId={DatabaseVersion.VariableId}",
-            copied.Invocations.Single().Arguments.Single());
+            copied.Invocations.Single().Arguments.Single()));
         cut.WaitForAssertion(() => Assert.Contains(
             cut.FindAll("[role=status]"), s => s.TextContent.Trim() == "Lenken er kopiert."));
     }
@@ -1214,14 +1240,19 @@ public class ListRowPanelTest : ExplorerTestContext
         NameButton(cut, "Databaseversjon").Click();
         cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
 
+        // Waited on, not read at once: Click() returns before its handler runs whenever the renderer's
+        // dispatcher is still busy, and the status then still reads the last copy (Fhi.Metadata-39vmc).
         Copy(cut);
-        Assert.Equal("", LinkStatus(cut));
+        cut.WaitForAssertion(() => Assert.Equal("", LinkStatus(cut)));
         cut.InvokeAsync(() => copied.SetVoidResult());
         cut.WaitForAssertion(() => Assert.Equal("Lenken er kopiert.", LinkStatus(cut)));
 
-        JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
+        var again = JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
         Copy(cut);
-        Assert.Equal("", LinkStatus(cut));
+        cut.WaitForAssertion(() => Assert.Equal("", LinkStatus(cut)));
+        Assert.Single(again.Invocations);
+        cut.InvokeAsync(() => again.SetVoidResult());
+        cut.WaitForAssertion(() => Assert.Equal("Lenken er kopiert.", LinkStatus(cut)));
     }
 
     private static void Copy(IRenderedComponent<VariableListView> cut) =>

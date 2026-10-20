@@ -620,8 +620,9 @@ public class KildeViewTest : ExplorerTestContext
             "munin-explorer-page__stuckbar-inner",
             "munin-explorer-page__stuckbar-name",
             // The contents column, drawn now that the nav fills it. The nav inside wears
-            // helsedata's own form-menu names, which is why it adds none of ours.
+            // helsedata's own form-menu names; its one name of ours is the phone's disclosure heading.
             "munin-explorer-page__toc",
+            "munin-explorer-page__toc-toggle",
         ], invented);
     }
 
@@ -841,7 +842,7 @@ public class KildeViewTest : ExplorerTestContext
         // finished with a fresh per-instance discriminator, which is what keeps two mounts on one
         // host page from sharing a sticky bar or a contents column.
         Assert.Equal(3, ids.Count(DetailPage.IsChassisId));
-        Assert.All(ids.Where(id => !DetailPage.IsChassisId(id)),
+        Assert.All(ids.Where(id => !DetailPage.IsChassisId(id) && !DetailToc.IsListId(id)),
                    id => Assert.Contains(id, DetailSectionIdsUnderTest));
     }
 
@@ -1103,7 +1104,7 @@ public class KildeViewTest : ExplorerTestContext
 
         var link = Assert.Single(cut.FindAll("dd a[href='https://doi.org/10.1093/ije/dyr049']"));
 
-        Assert.Equal("10.1093/ije/dyr049", link.TextContent);
+        Assert.Equal("10.1093/ije/dyr049", link.Label());
         Assert.DoesNotContain("](https://doi.org", cut.Markup, StringComparison.Ordinal);
     }
 
@@ -1401,7 +1402,7 @@ public class KildeViewTest : ExplorerTestContext
         var wave = cut.Find("ul.munin-explorer-kilde__delkilder > li");
         var description = wave.QuerySelector("p.munin-explorer-kilde__delkilde-description")!;
 
-        Assert.Equal("Fjerde runde av Tromsøundersøkelsen.", description.TextContent);
+        Assert.Equal("Fjerde runde av Tromsøundersøkelsen.", description.Label());
         Assert.Equal("https://uit.no/tromsoundersokelsen",
                      description.QuerySelector("a")?.GetAttribute("href"));
 
@@ -1446,7 +1447,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal(
             ["Fjerde runde av Tromsøundersøkelsen.", "Første besøksrunde."],
-            cut.FindAll("p.munin-explorer-kilde__delkilde-description").Select(e => e.TextContent));
+            cut.FindAll("p.munin-explorer-kilde__delkilde-description").Select(e => e.Label()));
     }
 
     /// <summary>The first delkilde's description paragraph, or null where none was drawn.</summary>
@@ -2021,6 +2022,72 @@ public class KildeViewTest : ExplorerTestContext
     private static IElement Hero(IRenderedComponent<KildeView> cut) =>
         cut.Find("dl.munin-explorer-page__facts");
 
+    private static KildeDetail WithAccessLevels(KildeDetail kilde, string codes) => kilde with
+    {
+        AdditionalProperties = new Dictionary<string, string?>(kilde.AdditionalProperties) { [AccessLevels.Key] = codes },
+        PropertyMetadata =
+        [
+            .. kilde.PropertyMetadata,
+            Entry(AccessLevels.Key, 90, "Tilgang og ansvar", "Tilgangsnivå (helsedata)") with
+            {
+                Type = "MultiSelect",
+                OptionsJson = """
+                    [{"value":"statistikkbank","label":"Statistikkbank","labelEn":"Statistics bank"},
+                     {"value":"tilgang-krever-soknad","label":"Tilgang krever søknad","labelEn":"Access requires an application"},
+                     {"value":"soknad-via-helsedata","label":"Søknad via helsedata.no","labelEn":"Application via helsedata.no"}]
+                    """,
+            },
+        ],
+    };
+
+    /// <summary>Every value cell drawn for the access levels: the section the catalogue placed them in, and the record.</summary>
+    private static List<IElement> AccessCells(IRenderedComponent<KildeView> cut) =>
+        [.. cut.FindAll("dt").Where(dt => dt.TextContent.Trim() == "Tilgangsnivå (helsedata)")
+            .Select(dt => dt.NextElementSibling!)];
+
+    [Fact]
+    public void Hero_WhenTheKildeHasAccessLevels_ThenTheRowHasNoTilgangCell()
+    {
+        // Robin 20.10: the levels live in «Tilgang og ansvar», not in the fact row (Fhi.Metadata-l9l2n.129).
+        var cut = Render(WithAccessLevels(Kilde(), """["statistikkbank"]"""));
+
+        Assert.DoesNotContain(Hero(cut).QuerySelectorAll("dt"), dt => dt.TextContent is "Tilgang" or "Access");
+    }
+
+    [Fact]
+    public void AccessLevels_WhenThereAreSeveral_ThenEachIsALineInTheVocabularysOrder()
+    {
+        var cut = Render(WithAccessLevels(Kilde(), """["soknad-via-helsedata","statistikkbank"]"""));
+
+        var cells = AccessCells(cut);
+        Assert.NotEmpty(cells);
+        Assert.All(cells, dd => Assert.Equal(["Statistikkbank", "Søknad via helsedata.no"],
+            dd.QuerySelectorAll("ul > li").Select(li => li.TextContent)));
+    }
+
+    [Fact]
+    public void AccessLevels_WhenThereIsOne_ThenItIsPlainTextRatherThanAList()
+    {
+        var cut = Render(WithAccessLevels(Kilde(), """["tilgang-krever-soknad"]"""));
+
+        Assert.All(AccessCells(cut), dd =>
+        {
+            Assert.Null(dd.QuerySelector("ul"));
+            Assert.Equal("Tilgang krever søknad", dd.TextContent.Trim());
+        });
+    }
+
+    [Fact]
+    public void AccessLevels_WhenTheReaderIsEnglish_ThenEachLineIsInEnglishAndUnmarked()
+    {
+        var cut = Render(WithAccessLevels(Kilde(), """["tilgang-krever-soknad","statistikkbank"]"""), language: "en");
+
+        var items = AccessCells(cut).SelectMany(dd => dd.QuerySelectorAll("li")).ToList();
+        Assert.NotEmpty(items);
+        Assert.Equal(["Statistics bank", "Access requires an application"], items.Take(2).Select(li => li.TextContent));
+        Assert.All(items, li => Assert.Null(li.GetAttribute("lang")));
+    }
+
     /// <summary>One hero cell's value, without the note under it.</summary>
     /// <remarks>
     /// Split off rather than read whole, because the same-words comparison below is against the
@@ -2043,7 +2110,7 @@ public class KildeViewTest : ExplorerTestContext
         var link = Assert.Single(SourceInformation(cut).QuerySelectorAll("a"));
 
         Assert.Equal("https://lovdata.no/lov/2014-06-20-43", link.GetAttribute("href"));
-        Assert.Equal("Helseregisterloven § 11", link.TextContent);
+        Assert.Equal("Helseregisterloven § 11", link.Label());
         Assert.DoesNotContain("](https://lovdata", cut.Markup, StringComparison.Ordinal);
     }
 
@@ -2702,7 +2769,7 @@ public class KildeViewTest : ExplorerTestContext
 
         var anchor = Assert.Single(cell.QuerySelectorAll("a"));
         Assert.Equal("https://uit.no/research/tromsostudy/project?pid=708230", anchor.GetAttribute("href"));
-        Assert.Equal("Tromsø1 - The First Tromsø Study", anchor.TextContent);
+        Assert.Equal("Tromsø1 - The First Tromsø Study", anchor.Label());
     }
 
     [Fact]
@@ -2726,7 +2793,7 @@ public class KildeViewTest : ExplorerTestContext
 
         Assert.Equal("https://uit.no/research/tromsostudy", anchor.GetAttribute("href"));
         Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
-        Assert.Equal("https://uit.no/research/tromsostudy", anchor.TextContent);
+        Assert.Equal("https://uit.no/research/tromsostudy", anchor.Label());
 
         // A URL is prose in no language, so the cell must not claim Norwegian (WCAG 3.1.2).
         Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
@@ -2756,9 +2823,9 @@ public class KildeViewTest : ExplorerTestContext
             anchors.Select(a => a.GetAttribute("href")));
         Assert.All(anchors, a =>
         {
-            Assert.Equal(a.GetAttribute("href"), a.TextContent);
+            Assert.Equal(a.GetAttribute("href"), a.Label());
             Assert.Equal("noopener noreferrer", a.GetAttribute("rel"));
-            Assert.Null(a.GetAttribute("target"));
+            Assert.Equal("_blank", a.GetAttribute("target"));
         });
         Assert.Equal(3, cell.QuerySelectorAll("a").Length);
         Assert.Null(cell.GetAttribute("lang"));
@@ -2796,7 +2863,7 @@ public class KildeViewTest : ExplorerTestContext
         var anchor = Render(kilde).Find(".munin-explorer-page__fields dd a");
 
         Assert.Equal("https://www.barnediabetes.no", anchor.GetAttribute("href"));
-        Assert.Equal("www.barnediabetes.no", anchor.TextContent);
+        Assert.Equal("www.barnediabetes.no", anchor.Label());
         Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
     }
 

@@ -97,6 +97,9 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 #
 # `/kilder` is entered twice: the hierarchy of one kilde for the nav, and the list of them all for
 # Kelda's row chevron, which is a control on the list page and gone by the time a kilde is open.
+#
+# The last two are for Back and Forward: VariableExplorer and KildeExplorer write their own history
+# entries, which the bare components on `/` and `/kilder` leave to the page (Fhi.Metadata-l9l2n.124).
 TARGETS=(
   "/::tree-collapsed"
   "/::tree-populated"
@@ -107,6 +110,8 @@ TARGETS=(
   "/utforsker::variable-whole"
   "/utforsker::variable-datasamling"
   "/utforsker::explorer-tabs"
+  "/utforsker::utforsker-list"
+  "/kildeutforsker::kildeutforsker-list"
 )
 
 host_pid=""

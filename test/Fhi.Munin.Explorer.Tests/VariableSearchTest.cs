@@ -2100,6 +2100,7 @@ public class VariableSearchTest : ExplorerTestContext
             // Vis filtre, beside the panel it folds on a narrow screen, as the kilde explorer's
             // does; the panel wears __facets for Stiler's [hidden] rules. (Fhi.Metadata-l9l2n.102)
             "munin-explorer-filters__toggle",
+            "munin-explorer-filters__collapse", // the wide screen's fold (Fhi.Metadata-amp8c)
             "munin-explorer-filters",    // ours, a handle
             "munin-explorer-filters__facets",
             // The toolbar row: a container of its own, because in inline flow the last button's
@@ -9180,6 +9181,29 @@ public class VariableSearchTest : ExplorerTestContext
         FiltersToggle(cut).Click(new MouseEventArgs { Detail = clicks });
 
     [Fact]
+    public void FilterFold_WhenThisBrowserKeptTheFold_ThenTheFieldsetOpensFoldedAndAPressUnfoldsIt()
+    {
+        // The wide screen's own fold, read from this browser and written back (Fhi.Metadata-amp8c).
+        var module = JSInterop.SetupModule(ExplorerInterop.ModulePath);
+        module.Setup<string?>("readPreference", FilterFoldPreference.Key).SetResult("1");
+        module.SetupVoid("writePreference", _ => true).SetVoidResult();
+
+        var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
+
+        cut.WaitForAssertion(() => Assert.Contains("munin-explorer-filters--collapsed", FoldedByToggle(cut).ClassList));
+        var fold = cut.Find(".munin-explorer-filters__collapse");
+        Assert.Equal("Vis filtre", AccessibleName.Of(fold));
+        Assert.Equal(FoldedByToggle(cut).Id, fold.GetAttribute("aria-controls"));
+
+        fold.Click();
+
+        Assert.DoesNotContain("munin-explorer-filters--collapsed", FoldedByToggle(cut).ClassList);
+        Assert.Equal("true", cut.Find(".munin-explorer-filters__collapse").GetAttribute("aria-expanded"));
+        cut.WaitForAssertion(() => Assert.Contains(module.Invocations["writePreference"],
+            call => Equals(call.Arguments[0], FilterFoldPreference.Key) && call.Arguments[1] is null));
+    }
+
+    [Fact]
     public void FiltersToggle_WhenTheSearchFirstRenders_ThenTheWholeFieldsetIsFoldedBehindANativeButton()
     {
         var cut = RenderWith(new FilteringClient(OnePage(Variable("1. Tale", "KODE"))));
@@ -15591,6 +15615,7 @@ public class VariableSearchTest : ExplorerTestContext
             // clear control is drawn only when there is something to clear. Render_Always is where
             // that name is pinned, because that one searches. (Fhi.Metadata-ag4n7)
             "munin-explorer-filters__toggle",
+            "munin-explorer-filters__collapse", // the wide screen's fold (Fhi.Metadata-amp8c)
             "munin-explorer-filters",    // ours, a handle
             "munin-explorer-filters__facets",
             // The toolbar row: a container of its own, because in inline flow the last button's
@@ -16317,7 +16342,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         Toggles(cut)[0].Click();
         SourceToggles(cut)[1].Click();
-        cut.Find(".munin-explorer-datasamling .munin-explorer-page__body button").Click();
+        cut.Find(".munin-explorer-datasamling .munin-explorer-page__main button").Click();
 
         Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
         Assert.Equal(new VariableFilter { DatasamlingIds = [InklusjonId], DataTypes = ["Integer"] }, reported);
@@ -16743,6 +16768,7 @@ public class VariableSearchTest : ExplorerTestContext
                 // The contents column, ahead of the main one: the nav fills it, and the nav's own
                 // list wears helsedata's form-menu names rather than anything in this prefix.
                 "munin-explorer-page__toc",
+                "munin-explorer-page__toc-toggle",
                 "munin-explorer-page__main",
                 "munin-explorer-kilde__main",
                 // The wrapper each block below the name sits in. First seen on the datasamlinger,

@@ -475,6 +475,11 @@ public partial class VariableSearch
         var interop = _interop ??= new ExplorerInterop(ServiceProvider.GetRequiredService<IJSRuntime>());
         if (await interop.TryLoadAsync())
         {
+            if (await _filterFold.ReadOnceAsync(interop))
+            {
+                StateHasChanged();
+            }
+
             await interop.MarkMixedAsync(FacetsId);
 
             // The list view asks too, for a host that mounts it alone.

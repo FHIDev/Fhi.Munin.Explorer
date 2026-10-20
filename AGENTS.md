@@ -249,7 +249,10 @@ own rule — but it is not evidence about the DOM, and it should not be written 
 
 This package ships into helsedata.no, a public-sector site. **WCAG 2.1 AA applies by law** —
 forskrift om universell utforming av IKT, enforced by Tilsynet for universell utforming. A defect
-we ship becomes theirs to answer for, on their domain, under their name.
+we ship becomes theirs to answer for, on their domain, under their name. The axe gate holds the
+explorer to **WCAG 2.2 AA**, the level helsedata's accessibility statement is written against
+(`Fhi.Metadata-mhqx0`), at 1280, 375 and 320px; a finding a bead owns is listed with that bead in
+`test/axe-known-violations.txt`, and a line that stops matching fails the run.
 
 That has two consequences worth stating, because neither is obvious from inside a component.
 
@@ -292,7 +295,7 @@ presses in `check-hostile-host.sh` and fails on a stop with no box or inside a `
 nothing un-hides on purpose; it plants one such stop and reports the walk unmeasured, exit 3, if it
 never lands there (`Fhi.Metadata-w8sms`).
 
-**And `check-accessibility.sh` measures one width axe never looks at.** WCAG 1.4.10 Reflow is
+**And `check-accessibility.sh` measures reflow at the one width WCAG names for it.** WCAG 1.4.10 Reflow is
 stated at 320px, and nothing in this repository measured any page there: `scripts/geometry-scan.mjs`
 drives six widths and the narrowest is 843. The script now ends by measuring ModernHost's `/kilder`
 (in CI, in the first of the accessibility job's four shards only: `SCAN_SHARD`, `scripts/scan-shard.mjs`)

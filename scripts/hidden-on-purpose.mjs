@@ -5,14 +5,14 @@
 // Serialised whole by addInitScript, so everything it uses is inside it.
 function install() {
   // The tell is the rule, not the element: a selector naming [hidden] was written about the
-  // attribute, where `div { display: block }` was not. The fold must be inert too, so a control
-  // pointing here that has a box of its own fails anyway. No class is named. (Fhi.Metadata-fih3y)
+  // attribute, where `div { display: block }` was not. A control on screen saying it is shut fails
+  // anyway; one saying it is open (the wide panel's own fold) agrees with the box. (Fhi.Metadata-fih3y)
   window.__muninUnhiddenOnPurpose = function unhiddenOnPurpose(el) {
     for (const control of document.querySelectorAll('[aria-controls]')) {
       const names = (control.getAttribute('aria-controls') ?? '').split(/\s+/);
       if (!el.id || !names.includes(el.id)) continue;
       const c = control.getBoundingClientRect();
-      if (c.width * c.height !== 0) return false;
+      if (c.width * c.height !== 0 && control.getAttribute('aria-expanded') !== 'true') return false;
     }
     for (const rule of applicableRules()) {
       const display = rule.style.getPropertyValue('display');

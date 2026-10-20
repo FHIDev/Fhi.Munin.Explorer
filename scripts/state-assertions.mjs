@@ -28,8 +28,8 @@
 //     folding one over a ticked value leaves the value ticked, the toolbar's Ikoner switch,
 //     where what is asked is what the redraw left alone, and a native dataperiode field corrected after a
 //     refused reversed interval, where both browser validity and component state must agree;
-//   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
-//     visited at all;
+//   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is
+//     visited only for Back and Forward, which are history checks rather than presses;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this
 //     and deliberately left out: FetchRowsAsync renders once with the new filter before it asks, so
 //     the render after the rollback differs from the render before it and the DOM is corrected
@@ -584,6 +584,150 @@ async function roundTrip(page, kilde) {
 }
 
 /**
+ * Opens the first row from the list, then goes Back to the list and Forward to the row again, and
+ * ends on the list so the run under the control starts where this one did (Fhi.Metadata-l9l2n.124).
+ */
+async function backAndForward(page, { open, opened }) {
+  const shown = selector => page.locator(selector).first()
+    .waitFor({ state: 'visible', timeout: findTimeout }).then(() => true, () => false);
+  const gone = selector => page.locator(selector).first()
+    .waitFor({ state: 'detached', timeout: findTimeout }).then(() => true, () => false);
+  // A Back or Forward between entries the page pushed stays in this document; a reload loses it.
+  const sameDocument = () => page.evaluate(() => window.__muninBackForward === true);
+
+  const list = page.url();
+  await page.evaluate(() => { window.__muninBackForward = true; });
+  await page.locator(open).first().click();
+  await page.waitForURL(url => url.toString() !== list, { timeout: findTimeout });
+  if (!await shown(opened)) throw new Error(`pressing ${open} on ${list} opened nothing`);
+  const detail = page.url();
+
+  await page.goBack({ waitUntil: 'networkidle' });
+  if (page.url() !== list) return `Back from ${detail} went to ${page.url()}, not to the list at ${list}`;
+  if (!await gone(opened) || !await shown(open)) return `Back reached ${list} but did not draw the list`;
+  if (page.url() !== list) return `after Back drew the list, the address moved on to ${page.url()}`;
+
+  await page.goForward({ waitUntil: 'networkidle' });
+  if (page.url() !== detail) return `Forward from the list went to ${page.url()}, not back to ${detail}`;
+  if (!await shown(opened)) return `Forward reached ${detail} but did not open it again`;
+  if (page.url() !== detail) return `after Forward opened it, the address moved on to ${page.url()}`;
+
+  await page.goBack({ waitUntil: 'networkidle' });
+  if (page.url() !== list || !await gone(opened) || !await shown(open) || page.url() !== list) {
+    return `a second Back from ${detail} did not return to the list at ${list}`;
+  }
+  return await sameDocument() ? null : 'Back and Forward reloaded the page instead of moving within it';
+}
+
+/** The phone's disclosure: a button inside the contents nav's second heading (Fhi.Metadata-v40sa). */
+const TOC_TOGGLE = `${TOC} .munin-explorer-page__toc-toggle > button`;
+
+/**
+ * Narrows the window to 375px (or loads the page there, when `fresh`) and asks for the contents
+ * list folded behind its button, opened by a tap, and shown again at 1280px (Fhi.Metadata-v40sa).
+ */
+async function contentsFold(page, { fresh }) {
+  const toggle = page.locator(TOC_TOGGLE).first();
+  const link = page.locator(`${TOC} a`).first();
+  const reached = (locator, state) => locator.waitFor({ state, timeout: findTimeout }).then(() => true, () => false);
+
+  await page.setViewportSize({ width: 375, height: 800 });
+  if (fresh) await page.reload({ waitUntil: 'networkidle' });
+  if (!await reached(toggle, 'visible')) return `at 375px ${page.url()} draws no «Innhold» button`;
+  if (await toggle.getAttribute('aria-expanded') !== 'false' || await link.isVisible()) {
+    return `${fresh ? 'loaded at' : 'narrowed to'} 375px, the contents list stands open instead of folded`;
+  }
+
+  // Each press is answered over the circuit, so its result is waited for rather than read at once.
+  const expanded = value => reached(page.locator(`${TOC_TOGGLE}[aria-expanded="${value}"]`).first(), 'attached');
+  await toggle.click();
+  if (!await expanded('true') || !await reached(link, 'visible')) {
+    return 'at 375px a tap on «Innhold» did not open the list';
+  }
+  if (fresh) return null;
+  await toggle.click();
+  if (!await expanded('false') || !await reached(link, 'hidden')) {
+    return 'at 375px a second tap on «Innhold» did not fold the list again';
+  }
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  return await reached(link, 'visible')
+    ? null
+    : 'a list folded at 375px stayed hidden once the window was 1280px wide';
+}
+
+/** At 1280px the nav is the plain heading and its list: the phone's button is not drawn at all. */
+async function contentsHeadingPlain(page) {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  if (await page.locator(TOC_TOGGLE).first().isVisible()) return 'at 1280px the contents nav draws the phone\'s «Innhold» button';
+  if (!await page.locator(`${TOC} nav > h2:not(.munin-explorer-page__toc-toggle)`).first().isVisible()) {
+    return 'at 1280px the contents nav lost its plain heading';
+  }
+  return await page.locator(`${TOC} a`).first().isVisible() ? null : 'at 1280px the contents list is hidden';
+}
+
+/** A stylesheet rule laid over the host's, on this page and on any reload of it. */
+async function overrideStyle(page, css) {
+  const add = rule => {
+    const apply = () => document.head.append(Object.assign(document.createElement('style'), { textContent: rule }));
+    if (document.head) apply(); else document.addEventListener('DOMContentLoaded', apply);
+  };
+  await page.addInitScript(add, css);
+  await page.evaluate(add, css);
+}
+
+/**
+ * The defect of Fhi.Metadata-l9l2n.124: every write to the address bar replaces the entry. Set before
+ * a reload, because Blazor's interop keeps the function it resolved for `history.pushState` once.
+ */
+async function replaceEveryPush(page) {
+  await page.addInitScript(() => {
+    history.pushState = (state, title, url) => history.replaceState(state, title, url);
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+}
+
+/** Tabs down and back through a page with its name bar stuck, at 1280 and 375; any control left wholly under the bar. */
+async function focusClearOfStuckBar(page) {
+  const bar = '.munin-explorer-page__stuckbar--on:not([hidden]) .munin-explorer-page__stuckbar-inner';
+  for (const width of [1280, 375]) {
+    await page.setViewportSize({ width, height: 800 });
+    // On a phone the contents list is in the flow, so its links are walked open too.
+    const fold = page.locator(`${TOC} .munin-explorer-page__toc-toggle > button[aria-expanded="false"]`).first();
+    if (await fold.isVisible().catch(() => false)) await fold.click();
+    await scrollPast(page, await page.locator(HERO).first().getAttribute('id'));
+    await page.locator(bar).first().waitFor({ state: 'visible', timeout: findTimeout });
+    for (const key of [...Array(40).fill('Tab'), ...Array(40).fill('Shift+Tab')]) {
+      await page.keyboard.press(key);
+      await page.waitForTimeout(80);
+      const hidden = await page.evaluate(selector => {
+        const shown = document.querySelector(selector);
+        const el = document.activeElement;
+        if (!shown || !el || el === document.body || shown.contains(el)) return null;
+        const box = el.getBoundingClientRect();
+        return box.height > 0 && box.bottom <= shown.getBoundingClientRect().bottom
+          ? (el.textContent || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 40)
+          : null;
+      }, bar);
+      if (hidden) return `at ${width}px ${key} left «${hidden}» wholly under the stuck name bar`;
+    }
+  }
+
+  // The sticky contents column clears the bar by itself, and Tab through it must not move the page.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await scrollPast(page, await page.locator(HERO).first().getAttribute('id'));
+  const links = page.locator(`${TOC} a`);
+  await links.first().focus();
+  const before = await page.evaluate(() => window.scrollY);
+  for (let i = 1; i < Math.min(await links.count(), 6); i++) {
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(80);
+  }
+  const after = await page.evaluate(() => window.scrollY);
+  return Math.abs(after - before) > 1 ? `Tab through the contents column moved the page ${after - before}px` : null;
+}
+
+/**
  * The row disclosures whose GLYPH is their state, one per surface. The picture is a cascade (base
  * icon rules at rest, hover rules over them; Fhi.Metadata-trfs0) that no test in test/ resolves.
  */
@@ -772,6 +916,8 @@ export const assertions = [
     async stage(page) {
       await page.setViewportSize({ width: 320, height: 900 });
       await page.evaluate(() => document.fonts.ready);
+      // On a phone the list is folded behind its button, and a reader opens it first (Fhi.Metadata-v40sa).
+      await page.locator(`${TOC} .munin-explorer-page__toc-toggle > button[aria-expanded="false"]`).first().click();
       const column = page.locator('.munin-explorer-page__toc').first();
       const columnId = await column.getAttribute('id');
       const href = await column.locator('a[href*="#"]').first().getAttribute('href');
@@ -2142,6 +2288,66 @@ export const assertions = [
       const refuse = () => { Storage.prototype.setItem = () => {}; };
       await page.addInitScript(refuse);
       await page.evaluate(refuse);
+    },
+  },
+  {
+    name: 'Back from a kilde opened from the list returns to the list, and Forward opens it again',
+    kind: 'invariant',
+    states: ['kildeutforsker-list'],
+    stage: () => ({}),
+    measure: page => backAndForward(page, { open: 'button.munin-explorer-kilder__name', opened: '.munin-explorer-kilde' }),
+    control: replaceEveryPush,
+  },
+  {
+    name: 'Back from a variable opened from the list returns to the list, and Forward opens it again',
+    kind: 'invariant',
+    states: ['utforsker-list'],
+    stage: () => ({}),
+    measure: page => backAndForward(page, {
+      open: 'button.munin-explorer-dataitem-main__name',
+      opened: 'button.munin-explorer-dataitem-main__name[aria-expanded="true"]',
+    }),
+    control: replaceEveryPush,
+  },
+  {
+    // The fold is the host stylesheet's reading of aria-expanded, so only a browser sees it (Fhi.Metadata-v40sa).
+    name: 'the contents list folds as the window narrows to a phone, opens on a tap, and shows again on a wide screen',
+    kind: 'invariant',
+    states: ['variable-whole', 'kilde-hierarchy-collapsed'],
+    stage: () => ({}),
+    measure: page => contentsFold(page, { fresh: false }),
+    // A stylesheet without the fold: the list shows whatever the button says.
+    control: page => overrideStyle(page, `${TOC} ul { display: block !important; }`),
+  },
+  {
+    name: 'on a wide screen the contents nav is its plain heading and list, with no button',
+    kind: 'invariant',
+    states: ['variable-whole', 'kilde-hierarchy-collapsed'],
+    stage: () => ({}),
+    measure: contentsHeadingPlain,
+    control: page => overrideStyle(page, `${TOC} .munin-explorer-page__toc-toggle { display: block !important; }`),
+  },
+  {
+    // A fresh load rather than the resize. Only the kilde page comes back as itself on a reload.
+    name: 'a detail page loaded on a phone starts with its contents list folded',
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+    stage: () => ({}),
+    measure: page => contentsFold(page, { fresh: true }),
+    control: page => overrideStyle(page, `${TOC} ul { display: block !important; }`),
+  },
+  {
+    // WCAG 2.4.11: the browser's focus scroll knows nothing of the stuck bar, so Shift+Tab can park a
+    // control wholly under it; the module scrolls it clear (Fhi.Metadata-mhqx0.4). The kilde page only:
+    // the variable page's controls never land there in this walk, so its control could not fire.
+    name: 'Tab and Shift+Tab never leave the focused control wholly under the stuck name bar',
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+    stage: () => ({}),
+    measure: focusClearOfStuckBar,
+    // The module's focus handler never reached: the browser's own scroll is all that is left.
+    async control(page) {
+      await page.evaluate(() => window.addEventListener('focusin', event => event.stopPropagation(), true));
     },
   },
   ...chevronAssertions,

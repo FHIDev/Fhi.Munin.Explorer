@@ -756,7 +756,7 @@ public class VariableViewTest : ExplorerTestContext
         var anchor = Assert.Single(ingress.QuerySelectorAll("a"));
         Assert.Equal("https://finnkode.helsedirektoratet.no/adm/collections", anchor.GetAttribute("href"));
         Assert.Equal("noopener noreferrer", anchor.GetAttribute("rel"));
-        Assert.Equal("FinnKode", anchor.TextContent);
+        Assert.Equal("FinnKode", anchor.Label());
         Assert.DoesNotContain("&lt;br", ingress.InnerHtml, StringComparison.OrdinalIgnoreCase);
     }
 

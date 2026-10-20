@@ -16,7 +16,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// the address bar: it never reads <c>?kilde=</c> when it opens and never writes it when the reader
 /// opens or closes one, so a link to this mount always lands on the list. Mounting it means owning
 /// that yourself — read the query, pass <see cref="SelectedKildeId"/>, handle
-/// <see cref="SelectedKildeIdChanged"/>, write back with <c>replaceState</c>.
+/// <see cref="SelectedKildeIdChanged"/>, write back with <c>replaceState</c> (<c>pushState</c> for an opened kilde).
 /// <see cref="KildeExplorer"/> is that work already done, and is what a host mounts unless it wants
 /// its own query string.
 /// </para>
@@ -39,8 +39,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// active kilder measured on 2026-08-25, against tens of thousands of variables — and the API
 /// returns it ordered by name. So the list is fetched <em>once</em>, on initialisation, with no
 /// search and no kildetype, and everything the reader does afterwards happens over the list
-/// already in hand. That is also why the facets are counted client-side and are not cross-filtered
-/// the way Runa's are — see <c>KildeSearch.Filters.cs</c>.
+/// already in hand. That is also why the facets are counted client-side, cross-filtered over that list
+/// rather than by the server as Runa's are — see <c>KildeSearch.Filters.cs</c>.
 /// </para>
 /// <para>
 /// Sorting is the same bargain and for the same reason. <see cref="Order"/> is applied here, over
@@ -714,7 +714,7 @@ public sealed partial class KildeSearch : ComponentBase
             return Sorted(
                 _chosen.Values.All(values => values.Count == 0)
                     ? searched
-                    : [.. searched.Where(MatchesFacets)],
+                    : [.. searched.Where(kilde => MatchesFacets(kilde))],
                 _order,
                 _direction);
         }
@@ -1139,6 +1139,13 @@ public sealed partial class KildeSearch : ComponentBase
     /// </remarks>
     private IReadOnlyList<DetailTrailStep> KildeTrail =>
         KilderHref is { } list ? [new DetailTrailStep(T.KildeTitle, list())] : [];
+
+    /// <summary>The kilde's trail while it loads, named from the list; null once the view draws its own.</summary>
+    private IReadOnlyList<DetailTrailStep>? LoadingTrail =>
+        _detailLoading && _kilde is null && _selectedDatasamlingId is null
+        && _kilder.FirstOrDefault(kilde => kilde.Id == _selectedId) is { } row
+            ? DetailTrail.Append(KildeTrail, RowName(row), Reader)
+            : null;
 
     /// <summary>The same, plus the kilde an open datasamling hangs off.</summary>
     /// <remarks>

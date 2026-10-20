@@ -123,12 +123,13 @@ internal static class DetailBlocks
             // to spend one dd, and the rule here is that the one a reader can press wins.
             else if (href is not null)
             {
-                builder.OpenElement(seq + 8, "a");
-                builder.AddAttribute(seq + 9, "href", href);
-                builder.AddAttribute(seq + 10, "rel",
-                                     CatalogueMarkdown.AllowedScheme(href) ? "noopener noreferrer" : null);
-                builder.AddContent(seq + 13, value);
-                builder.CloseElement();
+                builder.OpenComponent<CatalogueLink>(seq + 8);
+                builder.AddComponentParameter(seq + 9, nameof(CatalogueLink.Href), href);
+                builder.AddComponentParameter(seq + 10, nameof(CatalogueLink.Rel),
+                                              CatalogueMarkdown.AllowedScheme(href) ? "noopener noreferrer" : null);
+                builder.AddComponentParameter(seq + 13, nameof(CatalogueLink.ChildContent),
+                                              (RenderFragment)(inner => inner.AddContent(0, value)));
+                builder.CloseComponent();
             }
             else if (authored)
             {
@@ -195,7 +196,11 @@ internal static class DetailBlocks
         {
             builder.OpenElement(seq, "dd");
 
-            if (row.Values.Count == 1)
+            if (row.Values.Count == 1 && row.Items is { } items)
+            {
+                Items(builder, seq + 20, items, reader);
+            }
+            else if (row.Values.Count == 1)
             {
                 builder.AddAttribute(seq + 1, "lang", CatalogueProperties.Foreign(slot.Language, reader));
                 Text(builder, seq + 2, slot.Text, row);
@@ -268,14 +273,29 @@ internal static class DetailBlocks
         Anchor(builder, seq + 1, href, value);
     }
 
+    /// <summary>A multi-select's values as a list, the shape several addresses take, each with its own <c>lang</c>.</summary>
+    private static void Items(RenderTreeBuilder builder, int seq, IReadOnlyList<LocalisedText> items, string reader)
+    {
+        builder.OpenElement(seq, "ul");
+
+        foreach (var item in items)
+        {
+            builder.OpenElement(seq + 1, "li");
+            builder.AddAttribute(seq + 2, "lang", CatalogueProperties.Foreign(item.Language, reader));
+            builder.AddContent(seq + 3, item.Text);
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    }
+
     /// <summary>One catalogue link, the same whether it stands alone or in a list. Consumes four.</summary>
     private static void Anchor(RenderTreeBuilder builder, int seq, string href, string label)
     {
-        builder.OpenElement(seq, "a");
-        builder.AddAttribute(seq + 1, "href", href);
-        builder.AddAttribute(seq + 2, "rel", "noopener noreferrer");
-        builder.AddContent(seq + 3, label);
-        builder.CloseElement();
+        builder.OpenComponent<CatalogueLink>(seq);
+        builder.AddComponentParameter(seq + 1, nameof(CatalogueLink.Href), href);
+        builder.AddComponentParameter(seq + 3, nameof(CatalogueLink.ChildContent), (RenderFragment)(inner => inner.AddContent(0, label)));
+        builder.CloseComponent();
     }
 
     /// <summary>Headings at the level of the view's own blocks, so a handed section cannot nest under one.</summary>

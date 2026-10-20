@@ -1,0 +1,20 @@
+@page "/kildeutforsker"
+@using Fhi.Munin.Explorer.Blazor
+
+<PageTitle>Modern host — kildeutforskeren</PageTitle>
+
+<div class="hostchrome">
+    <p class="hostchrome-note">
+        <code>KildeExplorer</code>, the whole kildeutforsker, as a host that would rather not own
+        the address bar mounts it. <a href="/kilder">The kilder page</a> mounts the bare
+        <code>KildeSearch</code> behind a wrapper of its own instead. This page is here so the state
+        gate drives the browser's Back and Forward through the component's own history entries
+        (Fhi.Metadata-l9l2n.124), which the wrapper there would answer for it.
+    </p>
+</div>
+
+<div class="hostframe">
+    <KildeExplorer Language="no"
+                   VariableExplorerPath="/utforsker"
+                   @rendermode="@(new InteractiveServerRenderMode(prerender: false))" />
+</div>

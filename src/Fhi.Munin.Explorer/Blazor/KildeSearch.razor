@@ -50,6 +50,7 @@
    the host's circuit and ships no versioned static asset to fingerprint. (Fhi.Metadata-sqbei) *@
 @* lang, because the host's <html lang> need not follow the reader: helsedata's /en/ pages say "no",
    and everything unmarked in here inherits it (WCAG 3.1.2, Fhi.Metadata-nh7z2). *@
+<CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 <section class="munin-explorer"
          data-munin-explorer-version="@ExplorerVersion.Current"
          lang="@Reader"
@@ -100,6 +101,13 @@
             <button class="hd-button-square button-square--ghost-blue margin-bottom munin-explorer-kilder__back"
                     type="button"
                     @onclick="CloseAsync">@T.BackToKilder</button>
+        }
+
+        @* The trail ahead of the kilde, from the list's name for it: a host that hides the back
+           button beside a trail would otherwise flash it while the kilde loads (Fhi.Metadata-l9l2n.127). *@
+        @if (LoadingTrail is { } loadingTrail)
+        {
+            <DetailTrail Steps="loadingTrail" Label="@T.TrailLabel" />
         }
 
         @* Keep the landmark named while the shared detail heading is still loading. *@
@@ -261,7 +269,7 @@ else
        this one follows the heading it belongs to. (Fhi.Metadata-l9l2n.53) *@
     @if (Facets is { Count: > 0 } facets)
     {
-        <div class="munin-explorer-filters">
+        <div class="munin-explorer-filters@(_filterFold.Collapsed ? " munin-explorer-filters--collapsed" : "")">
             @FiltersHeading
 
             @* aria-expanded describes the attribute below it and nothing else. On a screen wide
@@ -362,8 +370,8 @@ else
 
                         @* Rendered whether or not the facet is open, and hidden by the disclosure
                            itself rather than by us. `open` is the same on every render between fold
-                           presses — the facets are counted over the unfiltered list — so Blazor
-                           writes it once and never again, and the fold is the reader's for as long
+                           presses — a facet stays drawn while the catalogue fills it, however its
+                           counts move — so Blazor writes it once, and the fold is the reader's for as long
                            as these elements live: narrowing cannot collapse what they opened, and
                            each facet folds alone. A press is the one thing that takes it back, by
                            rebuilding them under a new key. They do not survive a drill-in either,
@@ -376,7 +384,12 @@ else
                         @* Said rather than left as an empty list: a facet that has drawn nothing
                            reads as one whose values failed to load. `caption` is Stiler's muted
                            secondary text, the class the list's own status line wears. *@
-                        @if (options.Count == 0)
+                        @if (facet.Options.Count == 0)
+                        {
+                            @* The list's id on the line that stands in for it, so «Vis færre» still names something. *@
+                            <p class="caption" id="@FacetOptionsId(facet.Key)">@T.FacetNoValuesLeft</p>
+                        }
+                        else if (options.Count == 0)
                         {
                             <p class="caption">@T.FacetSearchNoMatch</p>
                         }
@@ -388,9 +401,9 @@ else
                                     @* The whole value in title, and only where the text on screen was
                                        cut — one databehandler on the live catalogue is over 200
                                        characters of free text, and a reader who wants to know which one
-                                       it is has nowhere else to read it. Keyed on the value: the options are built
-                                       off the unfiltered list so they never move, and the key is what
-                                       keeps that true if they ever do. *@
+                                       it is has nowhere else to read it. Keyed on the value: the options come
+                                       and go as the other facets narrow (Fhi.Metadata-l9l2n.130), and the
+                                       key keeps each checkbox with its own value. *@
                                     <li @key="option.Value">
                                         @* lang where the choice is drawn in the catalogue's own words
                                            rather than in this package's — databehandler, which is free
@@ -429,6 +442,14 @@ else
                 }
             </div>
         </div>
+
+        @* The wide screen's own fold, beside the panel so it stays when the panel is folded away;
+           apart from the phone's, which starts shut where this starts open. (Fhi.Metadata-amp8c) *@
+        <button class="hd-button-square button-square--ghost margin-bottom munin-explorer-filters__collapse"
+                type="button"
+                aria-expanded="@(_filterFold.Collapsed ? "false" : "true")"
+                aria-controls="@FacetsId"
+                @onclick="ToggleCollapseFromControl">@(_filterFold.Collapsed ? T.ShowFilters : T.HideFilters)</button>
     }
 
     @* Which filters are on, said over the results because the panel can be folded away or
@@ -779,9 +800,11 @@ else
                             {
                                 <td>@kilde.Code</td>
                             }
+                            @* Card: the cells a phone keeps under the name, with the counts' words in a
+                               `hidden` label only the host's narrow rule shows (Fhi.Metadata-ulkw3). *@
                             @if (ColumnVisible(KildeColumn.Kildetype))
                             {
-                                <td>@KildeTypeName(kilde.Kildetype)</td>
+                                <td class="munin-explorer-kilder__card">@KildeTypeName(kilde.Kildetype)</td>
                             }
                             <td>@(kilde.IsActive ? T.StatusActive : T.StatusPassive)</td>
                             @* CatalogueLang and not Foreign: both are free text the catalogue wrote in Norwegian,
@@ -815,11 +838,11 @@ else
                                 @* «–» for none in Munin, as Variabler draws it (Fhi.Metadata-bzqtu). *@
                                 @if (kilde.DatasamlingCount == 0)
                                 {
-                                    <td class="@DimmedCountClass" style="position:relative"><span aria-hidden="true">–</span><span class="screenreader-only">@T.NoDatasamlingerInMunin</span></td>
+                                    <td class="@DimmedCountClass munin-explorer-kilder__card" style="position:relative">@CardLabel(T.HeadingDataCollections)<span aria-hidden="true">–</span><span class="screenreader-only">@T.NoDatasamlingerInMunin</span></td>
                                 }
                                 else
                                 {
-                                    <td class="@CountClass(kilde.DatasamlingCount).Class">@kilde.DatasamlingCount</td>
+                                    <td class="@CountClass(kilde.DatasamlingCount).Class munin-explorer-kilder__card">@CardLabel(T.HeadingDataCollections)@kilde.DatasamlingCount</td>
                                 }
                             }
                             @if (ColumnVisible(KildeColumn.Variables))
@@ -833,12 +856,12 @@ else
                                 @if (kilde.TotalVariables == 0)
                                 {
                                     @* position:relative for the reason UnmeasuredShare gives: the hidden words must stay in the cell. *@
-                                    <td class="@variables.Class" style="position:relative"><span aria-hidden="true">–</span><span class="screenreader-only">@T.NoVariablesInMunin</span></td>
+                                    <td class="@variables.Class munin-explorer-kilder__card munin-explorer-kilder__card--variabler" style="position:relative">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))<span aria-hidden="true">–</span><span class="screenreader-only">@T.NoVariablesInMunin</span></td>
                                 }
                                 else
                                 {
                                 var barWords = BarWords(kilde, largestOfType);
-                                <td class="@variables.Class" style="position:relative" title="@($"{kilde.TotalVariables} {barWords}")">@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}<span class="screenreader-only">@($" {barWords}")</span></td>
+                                <td class="@variables.Class munin-explorer-kilder__card munin-explorer-kilder__card--variabler" style="position:relative" title="@($"{kilde.TotalVariables} {barWords}")">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}<span class="screenreader-only">@($" {barWords}")</span></td>
                                 }
                             }
                             @if (ColumnVisible(KildeColumn.KodeverkShare))
@@ -910,8 +933,14 @@ else
     }
 }
 </section>
+</CascadingValue>
 
 @code {
+    // The column's word for the card a phone draws; `hidden` until the host's narrow rule shows it,
+    // so a stylesheet without that rule draws the table exactly as before (Fhi.Metadata-ulkw3).
+    private static RenderFragment CardLabel(string words) =>
+        @<span class="munin-explorer-kilder__card-label" hidden>@($"{words} ")</span>;
+
     // Null is a kilde with no variables to measure and 0 is a measured none, so they must not read
     // alike: the dash is hidden and spoken as words, and both are dimmed as a nought count is. The
     // number is the API's own, already rounded, so nothing here rounds it again.
