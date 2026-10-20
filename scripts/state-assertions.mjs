@@ -584,6 +584,46 @@ async function roundTrip(page, kilde) {
 }
 
 /**
+ * Opens the first row from the list, then goes Back to the list and Forward to the row again, and
+ * ends on the list so the run under the control starts where this one did (Fhi.Metadata-l9l2n.124).
+ */
+async function backAndForward(page, { open, opened }) {
+  const shown = selector => page.locator(selector).first()
+    .waitFor({ state: 'visible', timeout: findTimeout }).then(() => true, () => false);
+  const gone = selector => page.locator(selector).first()
+    .waitFor({ state: 'detached', timeout: findTimeout }).then(() => true, () => false);
+
+  const list = page.url();
+  await page.locator(open).first().click();
+  await page.waitForURL(url => url.toString() !== list, { timeout: findTimeout });
+  if (!await shown(opened)) throw new Error(`pressing ${open} on ${list} opened nothing`);
+  const detail = page.url();
+
+  await page.goBack({ waitUntil: 'networkidle' });
+  if (page.url() !== list) return `Back from ${detail} went to ${page.url()}, not to the list at ${list}`;
+  if (!await gone(opened) || !await shown(open)) return `Back reached ${list} but did not draw the list`;
+
+  await page.goForward({ waitUntil: 'networkidle' });
+  if (page.url() !== detail) return `Forward from the list went to ${page.url()}, not back to ${detail}`;
+  if (!await shown(opened)) return `Forward reached ${detail} but did not open it again`;
+
+  await page.goBack({ waitUntil: 'networkidle' });
+  if (!await shown(open)) throw new Error(`a second Back did not return to the list at ${list}`);
+  return null;
+}
+
+/**
+ * The defect of Fhi.Metadata-l9l2n.124: every write to the address bar replaces the entry. Set before
+ * a reload, because Blazor's interop keeps the function it resolved for `history.pushState` once.
+ */
+async function replaceEveryPush(page) {
+  await page.addInitScript(() => {
+    history.pushState = (state, title, url) => history.replaceState(state, title, url);
+  });
+  await page.reload({ waitUntil: 'networkidle' });
+}
+
+/**
  * The row disclosures whose GLYPH is their state, one per surface. The picture is a cascade (base
  * icon rules at rest, hover rules over them; Fhi.Metadata-trfs0) that no test in test/ resolves.
  */
@@ -2143,6 +2183,25 @@ export const assertions = [
       await page.addInitScript(refuse);
       await page.evaluate(refuse);
     },
+  },
+  {
+    name: 'Back from a kilde opened from the list returns to the list, and Forward opens it again',
+    kind: 'invariant',
+    states: ['kildeutforsker-list'],
+    stage: () => ({}),
+    measure: page => backAndForward(page, { open: 'button.munin-explorer-kilder__name', opened: '.munin-explorer-kilde' }),
+    control: replaceEveryPush,
+  },
+  {
+    name: 'Back from a variable opened from the list returns to the list, and Forward opens it again',
+    kind: 'invariant',
+    states: ['utforsker-list'],
+    stage: () => ({}),
+    measure: page => backAndForward(page, {
+      open: 'button.munin-explorer-dataitem-main__name',
+      opened: 'button.munin-explorer-dataitem-main__name[aria-expanded="true"]',
+    }),
+    control: replaceEveryPush,
   },
   ...chevronAssertions,
 ];

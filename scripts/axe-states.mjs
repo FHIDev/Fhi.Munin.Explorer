@@ -163,6 +163,10 @@ export const states = {
   // how this gate read green against an unreachable API for as long as it has existed.
   'variables-list': page => rowsArePresent(page, 'button.munin-explorer-dataitem-main__name'),
   'kilder-list': page => rowsArePresent(page, 'button.munin-explorer-kilder__name'),
+  // The same two lists under KildeExplorer and VariableExplorer, the mounts that write their own
+  // history entries; named apart so only the Back and Forward assertions visit them.
+  'kildeutforsker-list': page => rowsArePresent(page, 'button.munin-explorer-kilder__name'),
+  'utforsker-list': page => rowsArePresent(page, 'button.munin-explorer-dataitem-main__name'),
 
   // The selection ribbon at its widest, which kilder-list above never reaches: ticking a row swaps
   // the handover's label for a longer one and puts the reset beside it. Measured at 320px, because
