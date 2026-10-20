@@ -22,7 +22,13 @@ const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 // Narrower widths each state is scanned at again once reached, the window resized in place: a phone
 // draws other markup (cards, a folded panel) from the same state, and a reload per width would triple
 // the job. Unset, one scan at the viewport above.
-const extraWidths = (process.env.AXE_EXTRA_WIDTHS ?? '').split(',').map(Number).filter(w => w > 0);
+const extraWidths = (process.env.AXE_EXTRA_WIDTHS ?? '').split(',').map(w => w.trim()).filter(w => w !== '');
+if (extraWidths.some(w => !/^[1-9][0-9]*$/.test(w))) {
+  // A width that cannot be read would drop the phone scans and leave their known lines unchecked.
+  console.error(`AXE_EXTRA_WIDTHS="${process.env.AXE_EXTRA_WIDTHS}" is not a list of pixel widths - TOOLING failure.`);
+  process.exit(2);
+}
+const extraWidthsPx = extraWidths.map(Number);
 
 // Findings a bead owns, from the file AXE_KNOWN_VIOLATIONS names; its header says how a line is used.
 // Only the sample host's scan names one: its lines describe that host's stylesheet, not helsedata's.
@@ -207,7 +213,7 @@ try {
       }
     }
 
-    const widths = wideOnlyStates.has(state) ? [null] : [null, ...extraWidths];
+    const widths = wideOnlyStates.has(state) ? [null] : [null, ...extraWidthsPx];
     for (const width of widths) {
       const at = width === null ? label : `${label} @${width}px`;
       if (width !== null) {
