@@ -128,19 +128,30 @@ public sealed class DetailToc : ComponentBase, IDisposable
         builder.OpenElement(0, "nav");
         builder.AddAttribute(1, "aria-label", Label);
 
-        builder.OpenElement(2, "h2");
-        builder.AddContent(3, Label);
+        // Drawn open, so a host without the browser module shows the whole list as before. The
+        // module shuts it on a phone, where it would otherwise fill the first screen (Fhi.Metadata-v40sa).
+        builder.OpenElement(2, "details");
+        builder.AddAttribute(3, "open", true);
+
+        builder.OpenElement(4, "summary");
+        builder.OpenElement(5, "h2");
+        builder.AddContent(6, Label);
+        builder.CloseElement();
+        builder.OpenElement(7, "span");
+        builder.AddAttribute(8, "class", "munin-explorer-page__toc-count");
+        builder.AddContent(9, $" ({Entries.Count})");
+        builder.CloseElement();
         builder.CloseElement();
 
-        builder.OpenElement(4, "ul");
-        builder.AddAttribute(5, "class", "form-menu__list");
+        builder.OpenElement(10, "ul");
+        builder.AddAttribute(11, "class", "form-menu__list");
 
         // Rooted-absolute, the shape UrlMirror.Address writes, so the fallback and the cascade agree.
         // It carries the host's path base whatever the document's <base href> says, because a rooted
         // href resolves against that base's ORIGIN and never against its path.
         var page = PageAddress is { Length: > 0 } given ? given : new Uri(Navigation.Uri).PathAndQuery;
 
-        var seq = 10;
+        var seq = 20;
 
         foreach (var entry in Entries)
         {
@@ -160,6 +171,7 @@ public sealed class DetailToc : ComponentBase, IDisposable
             seq += 10;
         }
 
+        builder.CloseElement();
         builder.CloseElement();
         builder.CloseElement();
     }

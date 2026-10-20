@@ -159,16 +159,40 @@ public class DetailTocTest : ExplorerTestContext
         Assert.Equal("Innhold", nav.GetAttribute("aria-label"));
         Assert.Null(nav.GetAttribute("class"));
 
-        Assert.Equal(2, nav.Children.Length);
-        Assert.Equal("h2", nav.Children[0].LocalName);
-        Assert.Equal("Innhold", nav.Children[0].TextContent);
-        Assert.Null(nav.Children[0].GetAttribute("class"));
+        var fold = Assert.Single(nav.Children);
+        Assert.Equal("details", fold.LocalName);
+        Assert.Equal(2, fold.Children.Length);
+        Assert.Equal("summary", fold.Children[0].LocalName);
 
-        Assert.Equal("form-menu__list", nav.Children[1].ClassName);
+        var heading = fold.Children[0].Children[0];
+        Assert.Equal("h2", heading.LocalName);
+        Assert.Equal("Innhold", heading.TextContent);
+        Assert.Null(heading.GetAttribute("class"));
+
+        Assert.Equal("form-menu__list", fold.Children[1].ClassName);
 
         // Exactly the base name on every item: --active and --active-child draw helsedata's
         // application-form panel, not the contents rail's mark.
         Assert.All(cut.FindAll("li"), item => Assert.Equal("form-menu__list__item", item.ClassName));
+    }
+
+    [Fact]
+    public void Render_WithoutTheBrowserModule_ThenTheListIsDrawnOpen()
+    {
+        // The module shuts it on a phone; a host without the module keeps the whole list on screen.
+        var cut = RenderToc(Three);
+
+        Assert.True(cut.Find("nav > details").HasAttribute("open"));
+    }
+
+    [Fact]
+    public void Render_WhenThereAreEntries_ThenTheSummaryCountsThem()
+    {
+        var cut = RenderToc(Three);
+
+        var summary = cut.Find("nav > details > summary");
+        Assert.Equal(" (3)", summary.QuerySelector(".munin-explorer-page__toc-count")!.TextContent);
+        Assert.Equal("Innhold (3)", summary.TextContent);
     }
 
     [Fact]

@@ -620,6 +620,51 @@ async function backAndForward(page, { open, opened }) {
 }
 
 /**
+ * Narrows the window to 375px (or loads the page there, when `fresh`) and asks for the contents
+ * list folded, opened by a tap, and open again with an inert summary at 1280px (Fhi.Metadata-v40sa).
+ */
+async function contentsFold(page, { fresh }) {
+  const fold = page.locator(`${TOC} details`).first();
+  const summary = fold.locator(':scope > summary');
+  const open = () => fold.evaluate(details => details.open);
+  const reached = (selector, state = 'attached') => page.locator(selector).first()
+    .waitFor({ state, timeout: findTimeout }).then(() => true, () => false);
+
+  await page.setViewportSize({ width: 375, height: 800 });
+  if (fresh) await page.reload({ waitUntil: 'networkidle' });
+  if (!await reached(TOC)) throw new Error(`${page.url()} drew no contents column at 375px`);
+  if (!await reached(`${TOC} details:not([open])`)) {
+    return `${fresh ? 'loaded at' : 'narrowed to'} 375px, the contents list stands open instead of folded`;
+  }
+
+  await summary.click();
+  if (!await open() || !await reached(`${TOC} a`, 'visible')) return 'at 375px a tap on «Innhold» did not open the list';
+  if (fresh) return null;
+  await summary.click();
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  if (!await reached(`${TOC} details[open]`)) return 'a list folded at 375px stayed folded once the window was 1280px wide';
+
+  await summary.click();
+  await page.waitForTimeout(PRESS_SETTLE_MS);
+  if (!await open()) return 'at 1280px a press on the heading folded the contents list';
+  return await summary.getAttribute('tabindex') === '-1'
+    ? null
+    : 'at 1280px the summary is a tab stop, though there is nothing for it to fold';
+}
+
+/** A module that never folds: every write to `open` is dropped, on this page and on a reload. */
+async function dropEveryFold(page) {
+  const drop = () => Object.defineProperty(HTMLDetailsElement.prototype, 'open', {
+    configurable: true,
+    get() { return this.hasAttribute('open'); },
+    set() {},
+  });
+  await page.addInitScript(drop);
+  await page.evaluate(drop);
+}
+
+/**
  * The defect of Fhi.Metadata-l9l2n.124: every write to the address bar replaces the entry. Set before
  * a reload, because Blazor's interop keeps the function it resolved for `history.pushState` once.
  */
@@ -819,6 +864,8 @@ export const assertions = [
     async stage(page) {
       await page.setViewportSize({ width: 320, height: 900 });
       await page.evaluate(() => document.fonts.ready);
+      // On a phone the list is folded behind its summary, and a reader opens it first (Fhi.Metadata-v40sa).
+      await page.locator(`${TOC} details:not([open]) > summary`).first().click();
       const column = page.locator('.munin-explorer-page__toc').first();
       const columnId = await column.getAttribute('id');
       const href = await column.locator('a[href*="#"]').first().getAttribute('href');
@@ -2209,6 +2256,24 @@ export const assertions = [
       opened: 'button.munin-explorer-dataitem-main__name[aria-expanded="true"]',
     }),
     control: replaceEveryPush,
+  },
+  {
+    // Drawn open and shut by the module, so only a browser sees which (Fhi.Metadata-v40sa).
+    name: 'the contents list folds as the window narrows to a phone, opens on a tap, and stays open on a wide screen',
+    kind: 'invariant',
+    states: ['variable-whole', 'kilde-hierarchy-collapsed'],
+    stage: () => ({}),
+    measure: page => contentsFold(page, { fresh: false }),
+    control: dropEveryFold,
+  },
+  {
+    // The first observe rather than the resize. Only the kilde page comes back as itself on a reload.
+    name: 'a detail page loaded on a phone starts with its contents list folded',
+    kind: 'invariant',
+    states: ['kilde-hierarchy-collapsed'],
+    stage: () => ({}),
+    measure: page => contentsFold(page, { fresh: true }),
+    control: dropEveryFold,
   },
   ...chevronAssertions,
 ];

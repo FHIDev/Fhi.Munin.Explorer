@@ -1104,6 +1104,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-page__stuckbar-inner` | handle |
   | `munin-explorer-page__stuckbar-name` | handle |
   | `munin-explorer-page__toc` | handle |
+  | `munin-explorer-page__toc-count` | handle |
   | `munin-explorer-pagination` | handle |
   | `munin-explorer-pagination-content` | handle |
   | `munin-explorer-pagination-pages` | meaning |
