@@ -382,6 +382,9 @@ set -e
 # row to zero height (Fhi.Metadata-l9l2n.41), so at the default viewport the states cannot be
 # entered at all and the scan stops before it judges anything. Drop this line the day that lands.
 set +e
+# One width and no known list: what Stiler itself does at 1440 is this scan's question, and every
+# finding here is one to see rather than one a sample-host line excuses (Fhi.Metadata-mhqx0.1).
+AXE_EXTRA_WIDTHS= AXE_KNOWN_VIOLATIONS= \
 ACCESSIBILITY_SETTLE_MS="$SETTLE_MS" AXE_VIEWPORT_WIDTH=1440 AXE_VIEWPORT_HEIGHT=900   node "$ROOT/scripts/axe-scan.mjs" "${urls[@]}"
 axe_status=$?
 set -e

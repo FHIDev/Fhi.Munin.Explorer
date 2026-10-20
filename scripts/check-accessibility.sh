@@ -31,9 +31,11 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 # data never arrived. Why states at all: AGENTS.md, "It scans states, not only pages".
 #
 # DELIBERATELY NOT COVERED, so nobody reads a green run as more than it is:
-#   - the whole-variable drill-in and the owner panel inside a row, two more presses each. The
-#     first has a state of its own now — `variable-whole`, which check-component-state.sh stages to
-#     ask its contents nav a question axe does not ask — and is still not scanned here;
+#   - the owner panel inside a row, two more presses. The whole-variable drill-in is scanned only
+#     stuck, in variable-stuckbar, never at the top of the page;
+#   - 375 and 320 as a fresh load: those are the state reached at 1280 and resized in place, the
+#     filter panel opened again as a phone reader would, and an open control the resize shut is a
+#     TOOLING failure rather than a clean scan (Fhi.Metadata-mhqx0.1);
 #   - the pager past page one, and anything reached by searching other than the reserved terms
 #     statistics-fixture.mjs answers, which open the Data tab's bars (Fhi.Metadata-9mxmw); the kildeutforsker's own list
 #     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's chip row and
@@ -112,6 +114,10 @@ TARGETS=(
   "/utforsker::explorer-save-all-confirm"
   "/utforsker::explorer-save-all-too-many"
   "/utforsker::explorer-saved-all"
+  "/utforsker::variable-stuckbar"
+  "/::variables-filters-collapsed"
+  "/kilder::kilder-filters-collapsed"
+  "/kilder::kilde-facet-ticked"
 )
 
 host_pid=""
@@ -254,7 +260,9 @@ node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.m
 }
 
 set +e
-node "$ROOT/scripts/axe-scan.mjs" $(for t in "${TARGETS[@]}"; do printf '%s ' "${BASE}${t}"; done)
+# Each state again at a phone's two widths once reached, resized in place (Fhi.Metadata-mhqx0.1).
+AXE_EXTRA_WIDTHS="${AXE_EXTRA_WIDTHS-375,320}" AXE_KNOWN_VIOLATIONS="$ROOT/test/axe-known-violations.txt" \
+  node "$ROOT/scripts/axe-scan.mjs" $(for t in "${TARGETS[@]}"; do printf '%s ' "${BASE}${t}"; done)
 scan_status=$?
 set -e
 
@@ -278,7 +286,7 @@ fi
 # scoped to states none of these is, three of them to the explorer-* states on /utforsker; and the
 # last three measure the detail chassis, which none of the five states here opens - both pages draw one in a detail
 # state, and neither of those is driven at 320; the two 320px card checks never ran here. Which and why: AGENTS.md, "And
-# check-accessibility.sh measures one width axe never looks at".
+# check-accessibility.sh measures reflow at the one width WCAG names for it".
 echo
 # A CI shard (SCAN_SHARD=k/n, scripts/scan-shard.mjs) splits the axe states above; the five reflow pages run in
 # shard 1 only, so each is measured once per run.

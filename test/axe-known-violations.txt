@@ -1,0 +1,13 @@
+# axe findings KNOWN to stand today, each owned by a bead that fixes it. check-accessibility.sh hands this
+# file to axe-scan.mjs: a listed node is reported as known rather than failing the run, and a line that no longer
+# matches anything in a state this run scanned fails the run, with an instruction to delete it.
+# Nothing writes this file; every line is a hand edit with its bead, so the count only goes down.
+#
+# FORMAT, one per line:  <rule>|<state>|<width or empty for the default>|<text the node's selector contains>|<bead>
+
+# Stiler's column picker draws the browser's 13px box on a phone (WCAG 2.5.8).
+target-size|list-actions-and-columns|375|.dropdown-choicepicker__item|Fhi.Metadata-mhqx0.6
+target-size|list-actions-and-columns|320|.dropdown-choicepicker__item|Fhi.Metadata-mhqx0.6
+
+# The open «Last ned» menu lies over part of the first result row's name button, that row alone (WCAG 2.5.8).
+target-size|search-download-open||-bc8a6515af3644d0aa10b498813327b4-|Fhi.Metadata-mhqx0.7

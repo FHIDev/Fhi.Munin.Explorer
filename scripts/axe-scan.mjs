@@ -5,16 +5,49 @@
 //
 // A target is a URL, or `URL::state` to drive the loaded page into a named state from
 // `axe-states.mjs` first: what a reader reaches by pressing is invisible to the plain form.
+import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 import { launchOptions } from './browser-launch.mjs';
 import AxeBuilder from '@axe-core/playwright';
-import { states } from './axe-states.mjs';
+import { states, wideOnlyStates } from './axe-states.mjs';
 import { describeShard, ownsItem, parseShard } from './scan-shard.mjs';
+import { scrollPast } from './reader-scroll.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
-const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+// WCAG 2.2 AA, the level helsedata's accessibility statement is written against (Fhi.Metadata-mhqx0).
+const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+
+// Narrower widths each state is scanned at again once reached, the window resized in place: a phone
+// draws other markup (cards, a folded panel) from the same state, and a reload per width would triple
+// the job. Unset, one scan at the viewport above.
+const extraWidths = (process.env.AXE_EXTRA_WIDTHS ?? '').split(',').map(w => w.trim()).filter(w => w !== '');
+if (extraWidths.some(w => !/^[1-9][0-9]*$/.test(w))) {
+  // A width that cannot be read would drop the phone scans and leave their known lines unchecked.
+  console.error(`AXE_EXTRA_WIDTHS="${process.env.AXE_EXTRA_WIDTHS}" is not a list of pixel widths - TOOLING failure.`);
+  process.exit(2);
+}
+const extraWidthsPx = extraWidths.map(Number);
+
+// Findings a bead owns, from the file AXE_KNOWN_VIOLATIONS names; its header says how a line is used.
+// Only the sample host's scan names one: its lines describe that host's stylesheet, not helsedata's.
+const known = (process.env.AXE_KNOWN_VIOLATIONS ? readFileSync(process.env.AXE_KNOWN_VIOLATIONS, 'utf8') : '')
+  .split('\n')
+  .map(line => line.trim())
+  .filter(line => line !== '' && !line.startsWith('#'))
+  .map(line => {
+    const fields = line.split('|').map(part => part.trim());
+    const [rule, state, width, selector, bead] = fields;
+    // A line that cannot match is a silent pass, so it is refused rather than read.
+    if (fields.length !== 5 || !rule || !selector || !bead || !Object.hasOwn(states, state)
+      || (width !== '' && !/^[0-9]+$/.test(width))) {
+      console.error(`unreadable line in ${process.env.AXE_KNOWN_VIOLATIONS}: ${line} - TOOLING failure.`);
+      process.exit(2);
+    }
+    return { line, rule, state, width: width === '' ? null : Number(width), selector, bead, seen: false };
+  });
+const scanned = new Set();
 
 // Playwright's own default is 1280x720, which is what every caller got before this existed and is
 // what a caller that sets nothing still gets. AXE_VIEWPORT_WIDTH is for the one caller that cannot
@@ -68,6 +101,71 @@ if (owned.length === 0) {
 const shardNote = describeShard(owned.length, plan.length, shard);
 if (shardNote) console.log(`${shardNote} page states.`);
 
+// What a state staged that a reader would still see after turning the phone: every open control and
+// a stuck name bar. The filter toggles are left out, each being drawn at one side of 1024px only.
+const STAGED = '[aria-expanded="true"]:not(.munin-explorer-filters__toggle):not(.munin-explorer-filters__collapse), '
+  + '.munin-explorer-page__stuckbar--on .munin-explorer-page__stuckbar-inner';
+
+/**
+ * Resizes in place and puts back what a phone reader would: the filter panel, shut below 1024px, is
+ * opened (and a menu that press shut, reopened), and a name bar the reflow unstuck is scrolled to again.
+ */
+async function resized(page, width, height) {
+  const panel = page.locator('.munin-explorer-filters__facets').first();
+  const panelShown = await panel.isVisible().catch(() => false);
+  const bar = page.locator('.munin-explorer-page__stuckbar--on .munin-explorer-page__stuckbar-inner').first();
+  const barShown = await bar.isVisible().catch(() => false);
+  const staged = await page.evaluate(selector => {
+    const shown = [...document.querySelectorAll(selector)].filter(el => el.getClientRects().length > 0);
+    shown.forEach((el, i) => el.setAttribute('data-axe-staged', String(i)));
+    return shown.length;
+  }, STAGED);
+
+  await page.setViewportSize({ width, height });
+  await page.waitForTimeout(500);
+
+  if (panelShown && !await panel.isVisible()) {
+    const toggle = page.locator('.munin-explorer-filters__toggle[aria-expanded="false"]').first();
+    if (await toggle.isVisible()) await toggle.click();
+    if (!await panel.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false)) {
+      return 'the filter panel would not open again';
+    }
+
+    // That press is outside any menu the state had open, which shuts it as it would for a reader:
+    // pressed open again, once, so the scan judges both.
+    for (let i = 0; i < staged; i++) {
+      const shut = page.locator(`[data-axe-staged="${i}"][aria-expanded="false"]`).first();
+      if (await shut.isVisible().catch(() => false)) await shut.click();
+    }
+  }
+
+  if (barShown && !await bar.isVisible()) {
+    const row = page.locator('.munin-explorer-page__facts').first();
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await scrollPast(page, await row.getAttribute('id'));
+    if (!await bar.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false)) {
+      return 'the name bar would not stick again';
+    }
+  }
+
+  // Asked until it holds or three seconds pass: a circuit under load can be mid-render at the first read.
+  let lost = null;
+  for (let tries = 0; tries < 12; tries++) {
+    lost = await page.evaluate(count => {
+      for (let i = 0; i < count; i++) {
+        const el = document.querySelector(`[data-axe-staged="${i}"]`);
+        if (!el || el.getClientRects().length === 0 || el.getAttribute('aria-expanded') === 'false') {
+          return el ? `${el.tagName.toLowerCase()}.${el.className} is no longer shown open` : 'a staged element is gone';
+        }
+      }
+      return null;
+    }, staged);
+    if (lost === null) return null;
+    await page.waitForTimeout(250);
+  }
+  return lost;
+}
+
 let browser;
 try {
   browser = await chromium.launch(launchOptions());
@@ -115,60 +213,88 @@ try {
       }
     }
 
-    const results = await new AxeBuilder({ page }).withTags(tags).analyze();
+    const widths = wideOnlyStates.has(state) ? [null] : [null, ...extraWidthsPx];
+    for (const width of widths) {
+      const at = width === null ? label : `${label} @${width}px`;
+      if (width !== null) {
+        console.log(`\n==> axe ${at}`);
+        const lost = await resized(page, width, viewport?.height ?? 900);
+        if (lost !== null) {
+          console.error(`the state did not survive the resize to ${width}px (${lost}) on ${label} - TOOLING failure.`);
+          await browser.close();
+          process.exit(2);
+        }
+      }
 
-    // The host's <html lang> need not follow the reader — helsedata's /en/ pages say "no" — so
-    // the explorer root states its own, and axe's language rules must have judged it (Fhi.Metadata-nh7z2).
-    const roots = await page.evaluate(() =>
-      [...document.querySelectorAll('[data-munin-explorer-version]')].map((root) => ({
-        lang: root.getAttribute('lang'),
-        norwegian: root.querySelectorAll('[lang="no"], [lang="nb"]').length,
-      })));
-    const judged = [...results.passes, ...results.violations].map((r) => r.id);
-    const unjudged = ['html-has-lang', 'valid-lang'].filter((id) => !judged.includes(id));
+      const results = await new AxeBuilder({ page }).withTags(tags).analyze();
+      scanned.add(`${state}|${width}`);
+
+      // A node a known line names is reported and not counted; a violation left with no node goes.
+      for (const v of results.violations) {
+        v.nodes = v.nodes.filter(node => {
+          const entry = known.find(k => k.rule === v.id && k.state === state && k.width === width
+            && node.target.join(' ').includes(k.selector));
+          if (!entry) return true;
+          entry.seen = true;
+          console.log(`    known  ${v.id} ${node.target.join(' ')} (${entry.bead})`);
+          return false;
+        });
+      }
+      results.violations = results.violations.filter(v => v.nodes.length > 0);
+
+      // The host's <html lang> need not follow the reader — helsedata's /en/ pages say "no" — so
+      // the explorer root states its own, and axe's language rules must have judged it (Fhi.Metadata-nh7z2).
+      const roots = await page.evaluate(() =>
+        [...document.querySelectorAll('[data-munin-explorer-version]')].map((root) => ({
+          lang: root.getAttribute('lang'),
+          norwegian: root.querySelectorAll('[lang="no"], [lang="nb"]').length,
+        })));
+      const judged = [...results.passes, ...results.violations].map((r) => r.id);
+      const unjudged = ['html-has-lang', 'valid-lang'].filter((id) => !judged.includes(id));
+
+      if (unjudged.length > 0) {
+        console.error(`axe never evaluated ${unjudged.join(', ')} on ${at} - TOOLING failure.`);
+        await browser.close();
+        process.exit(2);
+      }
+
+      if (roots.length === 0) {
+        console.error(`no explorer root on ${at} to check the lang of - TOOLING failure.`);
+        await browser.close();
+        process.exit(2);
+      }
+
+      let pageViolations = results.violations.length;
+      for (const root of roots) {
+        console.log(`    explorer root lang="${root.lang ?? ''}", ${root.norwegian} element(s) marked Norwegian inside it`);
+        if (root.lang !== 'no' && root.lang !== 'en') {
+          pageViolations += 1;
+          console.log(`\n  [serious] explorer-root-lang — the explorer root carries lang="${root.lang ?? ''}", not "no" or "en"`);
+        }
+      }
+
+      violationCount += pageViolations;
+      if (pageViolations === 0) {
+        console.log('    no violations');
+        continue;
+      }
+
+      for (const v of results.violations) {
+        console.log(`\n  [${v.impact ?? 'unknown'}] ${v.id} — ${v.help}`);
+        console.log(`  ${v.helpUrl}`);
+        for (const node of v.nodes.slice(0, 5)) {
+          console.log(`    ${node.target.join(' ')}`);
+          const detail = (node.failureSummary ?? '').split('\n').filter(Boolean)[0];
+          if (detail) console.log(`      ${detail}`);
+        }
+        if (v.nodes.length > 5) {
+          console.log(`    ...and ${v.nodes.length - 5} more`);
+        }
+      }
+    }
 
     await page.close();
     await context.close();
-
-    if (unjudged.length > 0) {
-      console.error(`axe never evaluated ${unjudged.join(', ')} on ${label} - TOOLING failure.`);
-      await browser.close();
-      process.exit(2);
-    }
-
-    if (roots.length === 0) {
-      console.error(`no explorer root on ${label} to check the lang of - TOOLING failure.`);
-      await browser.close();
-      process.exit(2);
-    }
-
-    let pageViolations = results.violations.length;
-    for (const root of roots) {
-      console.log(`    explorer root lang="${root.lang ?? ''}", ${root.norwegian} element(s) marked Norwegian inside it`);
-      if (root.lang !== 'no' && root.lang !== 'en') {
-        pageViolations += 1;
-        console.log(`\n  [serious] explorer-root-lang — the explorer root carries lang="${root.lang ?? ''}", not "no" or "en"`);
-      }
-    }
-
-    violationCount += pageViolations;
-    if (pageViolations === 0) {
-      console.log('    no violations');
-      continue;
-    }
-
-    for (const v of results.violations) {
-      console.log(`\n  [${v.impact ?? 'unknown'}] ${v.id} — ${v.help}`);
-      console.log(`  ${v.helpUrl}`);
-      for (const node of v.nodes.slice(0, 5)) {
-        console.log(`    ${node.target.join(' ')}`);
-        const detail = (node.failureSummary ?? '').split('\n').filter(Boolean)[0];
-        if (detail) console.log(`      ${detail}`);
-      }
-      if (v.nodes.length > 5) {
-        console.log(`    ...and ${v.nodes.length - 5} more`);
-      }
-    }
   }
 } catch (err) {
   // Anything reaching here is the scanner failing, not the page. Exit 1 would be read
@@ -182,4 +308,10 @@ try {
   await browser.close().catch(() => {});
 }
 
-process.exit(violationCount > 0 ? 1 : 0);
+// A line for a state and width this run scanned that matched nothing describes a fixed finding.
+const stale = known.filter(k => !k.seen && scanned.has(`${k.state}|${k.width}`));
+for (const k of stale) {
+  console.log(`\n  stale line in test/axe-known-violations.txt, delete it: ${k.line}`);
+}
+
+process.exit(violationCount > 0 || stale.length > 0 ? 1 : 0);
