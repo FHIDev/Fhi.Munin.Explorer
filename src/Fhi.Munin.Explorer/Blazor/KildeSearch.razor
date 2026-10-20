@@ -370,8 +370,8 @@ else
 
                         @* Rendered whether or not the facet is open, and hidden by the disclosure
                            itself rather than by us. `open` is the same on every render between fold
-                           presses — the facets are counted over the unfiltered list — so Blazor
-                           writes it once and never again, and the fold is the reader's for as long
+                           presses — a facet stays drawn while the catalogue fills it, however its
+                           counts move — so Blazor writes it once, and the fold is the reader's for as long
                            as these elements live: narrowing cannot collapse what they opened, and
                            each facet folds alone. A press is the one thing that takes it back, by
                            rebuilding them under a new key. They do not survive a drill-in either,
@@ -384,7 +384,11 @@ else
                         @* Said rather than left as an empty list: a facet that has drawn nothing
                            reads as one whose values failed to load. `caption` is Stiler's muted
                            secondary text, the class the list's own status line wears. *@
-                        @if (options.Count == 0)
+                        @if (facet.Options.Count == 0)
+                        {
+                            <p class="caption">@T.FacetNoValuesLeft</p>
+                        }
+                        else if (options.Count == 0)
                         {
                             <p class="caption">@T.FacetSearchNoMatch</p>
                         }
@@ -396,9 +400,9 @@ else
                                     @* The whole value in title, and only where the text on screen was
                                        cut — one databehandler on the live catalogue is over 200
                                        characters of free text, and a reader who wants to know which one
-                                       it is has nowhere else to read it. Keyed on the value: the options are built
-                                       off the unfiltered list so they never move, and the key is what
-                                       keeps that true if they ever do. *@
+                                       it is has nowhere else to read it. Keyed on the value: the options come
+                                       and go as the other facets narrow (Fhi.Metadata-l9l2n.130), and the
+                                       key keeps each checkbox with its own value. *@
                                     <li @key="option.Value">
                                         @* lang where the choice is drawn in the catalogue's own words
                                            rather than in this package's — databehandler, which is free

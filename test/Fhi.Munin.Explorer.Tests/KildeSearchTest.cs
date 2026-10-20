@@ -3561,7 +3561,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         var kildetype = Facet(cut, "Kildetype");
 
-        // Ordered by the label in the catalogue's own collation, and counted over the whole list.
+        // Ordered by the label in the catalogue's own collation; with nothing ticked, counted over the whole list.
         Assert.Equal(
         [
             "Biobank (1)",
@@ -3738,7 +3738,8 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
         Assert.Equal(["Folkehelseinstituttet (1)"], Choices(Facet(cut, "Databehandler")));
-        Assert.Equal(2, Choices(Facet(cut, "Kildetype")).Count);
+        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister (1)", "Sentralt helseregister (1)"],
+            Choices(Facet(cut, "Kildetype")));
         Assert.Equal(1, client.Calls);
     }
 
@@ -3794,6 +3795,60 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.Contains("Oslo universitetssykehus HF (0)", Choices(Facet(cut, "Databehandler")));
         Assert.DoesNotContain(Choices(Facet(cut, "Databehandler")), choice => choice.StartsWith("Folkehelse", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Facets_WhenAValueAtNoughtIsUnticked_ThenItStaysUntilTheNextPressSoFocusHasSomewhereToBe()
+    {
+        var cut = RenderWith(CrossFilterCatalogue());
+
+        Tick(cut, "Databehandler", "Oslo universitetssykehus HF");
+        cut.Find(".searchbox__freetext").Change("kreft");
+        Untick(cut, "Databehandler", "Oslo universitetssykehus HF");
+
+        Assert.Contains("Oslo universitetssykehus HF (0)", Choices(Facet(cut, "Databehandler")));
+        Assert.Equal(["Kreftregisteret"], RowNames(cut));
+
+        Tick(cut, "Databehandler", "Kreftregisteret");
+
+        Assert.DoesNotContain(Choices(Facet(cut, "Databehandler")), choice => choice.StartsWith("Oslo", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Facets_WhenTheSearchLeavesAFacetNothing_ThenTheFacetStaysAndSaysSo()
+    {
+        // A facet that came and went would move the panel under the reader and lose their fold.
+        var cut = RenderWith(CrossFilterCatalogue());
+
+        cut.Find(".searchbox__freetext").Change("finnes ikke");
+
+        Assert.Empty(Choices(Facet(cut, "Kildetype")));
+        Assert.Contains("Ingen verdier igjen med det som er valgt", Facet(cut, "Kildetype").TextContent);
+        Assert.Equal(["Kildetype", "Databehandler"], Facets(cut).Select(FacetName));
+    }
+
+    [Fact]
+    public void Facets_WhenAnOldLinkTicksAValueNoKildeCarries_ThenItHasAChipButNoCheckbox()
+    {
+        var cut = RenderWith(CrossFilterCatalogue(), p => p.Add(c => c.FacetChoices, new Dictionary<string, IReadOnlyList<string>>
+        {
+            ["databehandler"] = ["Nedlagt organisasjon"],
+        }));
+
+        Assert.DoesNotContain(Choices(Facet(cut, "Databehandler")), choice => choice.StartsWith("Nedlagt", StringComparison.Ordinal));
+        Assert.Contains(cut.FindAll(".munin-explorer-filters__chip"), chip => chip.TextContent.Contains("Nedlagt organisasjon", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Facets_WhenACapIsLiftedWhileTheFacetIsShort_ThenItStaysLiftedAsTheFacetGrowsBack()
+    {
+        var cut = RenderWith(CatalogueWithOneBigFacet());
+
+        Tick(cut, "Kildetype", "Biobank");
+        FoldAll(cut, expand: true);
+        Untick(cut, "Kildetype", "Biobank");
+
+        Assert.Equal(12, Choices(Facet(cut, "Databehandler")).Count);
     }
 
     [Fact]
@@ -4634,7 +4689,7 @@ public class KildeSearchTest : ExplorerTestContext
     [Fact]
     public void Facets_WhenTheFirstDefinedFacetHasNoValues_ThenTheFirstFacetDrawnIsTheOpenOne()
     {
-        // The flag is handed out after the empty facets are dropped, and that ordering is the whole
+        // The flag is handed out after the facets the catalogue never fills are dropped, and that ordering is the whole
         // of its correctness: index it over the definitions instead and a catalogue whose kilder
         // carry no kildetype opens nothing at all, which is the state the panel must never be in.
         var cut = RenderWith(new FakeClient(

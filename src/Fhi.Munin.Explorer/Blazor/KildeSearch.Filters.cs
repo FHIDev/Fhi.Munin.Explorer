@@ -20,7 +20,8 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// counted over the kilder the search and every OTHER facet leave, never its own choice, so its values stay
 /// beside the one ticked and say what ticking them as well would add. A value nothing is left to carry drops
 /// out, unless it is ticked; that one stays at nought, so a reader is never left a filter they cannot untick.
-/// The checkbox they are standing on cannot vanish: a press counts every facet but its own afresh.
+/// The value last pressed stays on screen until the next press, so an untick never takes the checkbox
+/// the reader is standing on out of the DOM.
 /// </para>
 /// <para>
 /// A facet with no options is not rendered at all — no heading, no container, nothing. Munin's
@@ -260,14 +261,23 @@ public sealed partial class KildeSearch
     /// Built per render, as the variable explorer's are, so a facet and the rows beside it cannot describe two moments.
     /// <c>OpenByDefault</c> goes to the first facet the whole catalogue fills, so ticking elsewhere never moves it.
     /// </remarks>
-    private IReadOnlyList<Facet> Facets =>
-    [
-        .. Definitions
-            .Select(Build)
-            .Where(facet => facet.Size > 0)
-            .Select((facet, index) => facet with { OpenByDefault = index == 0 })
-            .Where(facet => facet.Options.Count > 0)
-    ];
+    private IReadOnlyList<Facet> Facets
+    {
+        get
+        {
+            var searched = Searched(SearchText);
+
+            // Kept while the catalogue fills it, even with nothing left to offer: a facet that came and went
+            // as the reader ticked would move the panel under them and lose the fold they had set.
+            return
+            [
+                .. Definitions
+                    .Select(definition => Build(definition, searched))
+                    .Where(facet => facet.Size > 0)
+                    .Select((facet, index) => facet with { OpenByDefault = index == 0 })
+            ];
+        }
+    }
 
     /// <summary>How many values are ticked across every facet — what the folded panel is hiding.</summary>
     private int ChosenCount => _chosen.Values.Sum(values => values.Count);
@@ -275,12 +285,17 @@ public sealed partial class KildeSearch
     /// <summary>How many values are ticked in one facet — what a folded facet is hiding.</summary>
     private int ChosenIn(string key) => _chosen.TryGetValue(key, out var values) ? values.Count : 0;
 
+    /// <summary>The value last ticked or unticked, kept on screen at nought until the next press so focus is not lost.</summary>
+    private (string Key, string Value)? _pressed;
+
     /// <summary>One facet, counted over what the search and the other facets leave (Fhi.Metadata-l9l2n.130).</summary>
     /// <remarks>
     /// Distinct per kilde. A value nothing is left to carry drops out unless ticked, and then stays at nought.
     /// Ordered by label in catalogue collation (æ, ø and å last), then by value, for a stable order.
     /// </remarks>
-    private Facet Build(FacetDefinition definition)
+    private Facet Build(FacetDefinition definition) => Build(definition, Searched(SearchText));
+
+    private Facet Build(FacetDefinition definition, IReadOnlyList<KildeSummary> searched)
     {
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
         var size = new HashSet<string>(StringComparer.Ordinal);
@@ -290,7 +305,7 @@ public sealed partial class KildeSearch
             size.UnionWith(definition.Values(kilde));
         }
 
-        foreach (var kilde in Searched(SearchText))
+        foreach (var kilde in searched)
         {
             if (!MatchesFacets(kilde, definition.Key))
             {
@@ -310,6 +325,11 @@ public sealed partial class KildeSearch
             {
                 counts.TryAdd(value, 0);
             }
+        }
+
+        if (_pressed is { } pressed && pressed.Key == definition.Key && size.Contains(pressed.Value))
+        {
+            counts.TryAdd(pressed.Value, 0);
         }
 
         var options = counts
@@ -409,6 +429,8 @@ public sealed partial class KildeSearch
 
     private void Choose(string key, string value, bool chosen)
     {
+        _pressed = (key, value);
+
         if (!_chosen.TryGetValue(key, out var values))
         {
             values = new HashSet<string>(StringComparer.Ordinal);
@@ -447,6 +469,7 @@ public sealed partial class KildeSearch
         await RescueFocusAsync();
 
         _chosen.Clear();
+        _pressed = null;
 
         await RaiseFacetChoicesAsync();
     }
@@ -677,7 +700,7 @@ public sealed partial class KildeSearch
             // call site here asks, so the stored set holds no key a lifted cap could never honour.
             if (IsSearchable(facet))
             {
-                _expandedFacets[facet.Key] = facet.Options.Count;
+                _expandedFacets[facet.Key] = facet.Size;
             }
         }
     }
@@ -706,7 +729,8 @@ public sealed partial class KildeSearch
         }
         else
         {
-            _expandedFacets[facet.Key] = facet.Options.Count;
+            // The facet's whole size, so a lifted cap survives the counts growing back as the reader unticks.
+            _expandedFacets[facet.Key] = facet.Size;
         }
     }
 
@@ -828,7 +852,7 @@ public sealed partial class KildeSearch
     /// <summary>A facet's summary: its heading, sized as <see cref="KildeView"/>'s fact groups, and counts.</summary>
     /// <remarks>
     /// Counts sit beside the heading, drawn while folded: this panel is navigated by heading. (Fhi.Metadata-l9l2n.53)
-    /// The size is <c>Options.Count</c>, never what the cap or the search leaves drawn. (Fhi.Metadata-35w0p.53)
+    /// The size is <c>Options.Count</c>, what the other filters leave, never what the cap or the search draws. (Fhi.Metadata-35w0p.53)
     /// </remarks>
     private RenderFragment FacetSummary(Facet facet) => builder =>
     {
