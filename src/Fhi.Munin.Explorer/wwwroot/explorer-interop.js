@@ -13,6 +13,9 @@ const SHOWN = 'munin-explorer-page__stuckbar--on';
 /** The shown bar's height on the page root, which Stiler's sticky contents list clears. */
 const STUCK_HEIGHT = '--munin-explorer-stuckbar-height';
 
+// Room left between the stuck bar and a control focus brought out from under it.
+const FOCUS_CLEARANCE = 8;
+
 // Native dates expose an empty value for both a cleared control and an incomplete manual entry.
 export function readDateInput(id) {
   const input = document.getElementById(id);
@@ -61,6 +64,24 @@ export function observeHeroFacts(barId, factsId) {
   const focusout = () => queueMicrotask(update);
   bar.addEventListener('focusout', focusout);
 
+  // WCAG 2.4.11: what Tab lands on under the stuck bar is scrolled clear of it, after the browser's
+  // own focus scroll, which knows nothing of the bar (Fhi.Metadata-mhqx0.4).
+  const focusin = (event) => {
+    const target = event.target;
+    if (!(target instanceof Element) || bar.hidden || bar.contains(target) || !page?.contains(target)) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const bottom = inner?.getBoundingClientRect().bottom ?? 0;
+      const top = target.getBoundingClientRect().top;
+      if (!bar.hidden && top < bottom + FOCUS_CLEARANCE) {
+        document.scrollingElement?.scrollBy({ top: top - bottom - FOCUS_CLEARANCE, behavior: 'instant' });
+      }
+    });
+  };
+  document.addEventListener('focusin', focusin, true);
+
   // An IntersectionObserver notifies on a CROSSING, and a jump straight past the row — an in-page
   // anchor press, or one window.scrollTo — leaves both frames non-intersecting, so nothing is
   // delivered and the bar reads stale (Fhi.Metadata-14j7i). The box itself always answers.
@@ -103,6 +124,7 @@ export function observeHeroFacts(barId, factsId) {
     resized.disconnect();
     page?.style.removeProperty(STUCK_HEIGHT);
     bar.removeEventListener('focusout', focusout);
+    document.removeEventListener('focusin', focusin, true);
     window.removeEventListener('hashchange', reread);
     document.removeEventListener('scrollend', reread, { capture: true });
   });
