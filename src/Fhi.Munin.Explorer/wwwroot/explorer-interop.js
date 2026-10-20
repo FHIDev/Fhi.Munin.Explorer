@@ -480,6 +480,14 @@ export function restoreScroll(panelId) {
   (panel?.closest('tr')?.previousElementSibling ?? panel)?.scrollIntoView({ block: 'center' });
 }
 
+// The column picker, a native <details> the browser keeps open: one open over a menu crowded its boxes to
+// 19px of the menu's buttons on a phone (WCAG 2.5.8, Fhi.Metadata-mhqx0.6).
+function closePickersOutside(target) {
+  for (const picker of document.querySelectorAll('details.munin-explorer__dropdown[open]')) {
+    if (!picker.contains(target)) picker.open = false;
+  }
+}
+
 // A press outside an open menu or column picker closes it, as helsedata's own menus do; Tab out does not,
 // nor does theirs (Fhi.Metadata-ht2gj). It presses the menu's own toggle, so the component closes it the way it always does.
 let foldsWatched = false;
@@ -492,12 +500,11 @@ export function watchFolds() {
       if (toggle && !menu.contains(event.target)) toggle.click();
     }
 
-    // The column picker too, a native <details> the browser keeps open: one open over a menu crowded
-    // its boxes to 19px of the menu's buttons on a phone (WCAG 2.5.8, Fhi.Metadata-mhqx0.6).
-    for (const picker of document.querySelectorAll('details.munin-explorer__dropdown[open]')) {
-      if (!picker.contains(event.target)) picker.open = false;
-    }
+    closePickersOutside(event.target);
   }, true);
+
+  // Enter or Space on another control is a click with no pointerdown before it; the picker closes too.
+  document.addEventListener('click', event => closePickersOutside(event.target), true);
 
   // A menu opened near the bottom edge put its panel below the fold on a phone, where the reader saw
   // nothing happen (Fhi.Metadata-qlo45). Brought into view as it opens; 'nearest' leaves one already on screen be.
