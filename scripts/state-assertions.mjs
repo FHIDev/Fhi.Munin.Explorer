@@ -28,8 +28,8 @@
 //     folding one over a ticked value leaves the value ticked, the toolbar's Ikoner switch,
 //     where what is asked is what the redraw left alone, and a native dataperiode field corrected after a
 //     refused reversed interval, where both browser validity and component state must agree;
-//   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is not
-//     visited at all;
+//   - the kildeutforsker, which hangs the same shared ColumnPicker over its own table and is
+//     visited only for Back and Forward, which are history checks rather than presses;
 //   - the facet panel's OTHER refusal, the rollback when a fetch fails. Measured while writing this
 //     and deliberately left out: FetchRowsAsync renders once with the new filter before it asks, so
 //     the render after the rollback differs from the render before it and the DOM is corrected
@@ -592,8 +592,11 @@ async function backAndForward(page, { open, opened }) {
     .waitFor({ state: 'visible', timeout: findTimeout }).then(() => true, () => false);
   const gone = selector => page.locator(selector).first()
     .waitFor({ state: 'detached', timeout: findTimeout }).then(() => true, () => false);
+  // A Back or Forward between entries the page pushed stays in this document; a reload loses it.
+  const sameDocument = () => page.evaluate(() => window.__muninBackForward === true);
 
   const list = page.url();
+  await page.evaluate(() => { window.__muninBackForward = true; });
   await page.locator(open).first().click();
   await page.waitForURL(url => url.toString() !== list, { timeout: findTimeout });
   if (!await shown(opened)) throw new Error(`pressing ${open} on ${list} opened nothing`);
@@ -602,14 +605,18 @@ async function backAndForward(page, { open, opened }) {
   await page.goBack({ waitUntil: 'networkidle' });
   if (page.url() !== list) return `Back from ${detail} went to ${page.url()}, not to the list at ${list}`;
   if (!await gone(opened) || !await shown(open)) return `Back reached ${list} but did not draw the list`;
+  if (page.url() !== list) return `after Back drew the list, the address moved on to ${page.url()}`;
 
   await page.goForward({ waitUntil: 'networkidle' });
   if (page.url() !== detail) return `Forward from the list went to ${page.url()}, not back to ${detail}`;
   if (!await shown(opened)) return `Forward reached ${detail} but did not open it again`;
+  if (page.url() !== detail) return `after Forward opened it, the address moved on to ${page.url()}`;
 
   await page.goBack({ waitUntil: 'networkidle' });
-  if (!await shown(open)) throw new Error(`a second Back did not return to the list at ${list}`);
-  return null;
+  if (page.url() !== list || !await gone(opened) || !await shown(open)) {
+    return `a second Back from ${detail} did not return to the list at ${list}`;
+  }
+  return await sameDocument() ? null : 'Back and Forward reloaded the page instead of moving within it';
 }
 
 /**
