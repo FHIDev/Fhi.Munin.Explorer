@@ -795,24 +795,39 @@ internal static class CatalogueProperties
 
         var options = string.IsNullOrWhiteSpace(entry.OptionsJson) ? [] : Options(entry.OptionsJson, reader);
         var words = new List<(int Rank, LocalisedText Word)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var element in document.RootElement.EnumerateArray())
         {
             if (element.ValueKind is not JsonValueKind.String
                 || element.GetString() is not { } code
-                || string.IsNullOrWhiteSpace(code))
+                || string.IsNullOrWhiteSpace(code)
+                || !seen.Add(code.Trim()))
             {
                 continue;
             }
 
-            var rank = options.ToList().FindIndex(option => string.Equals(option.Value, code, StringComparison.OrdinalIgnoreCase));
+            var rank = Rank(options, code.Trim());
 
             words.Add(rank < 0
-                ? (int.MaxValue, new LocalisedText(code, "no"))
+                ? (int.MaxValue, new LocalisedText(code.Trim(), "no"))
                 : (rank, new LocalisedText(options[rank].Label, options[rank].Language)));
         }
 
         return words.Count == 0 ? null : [.. words.OrderBy(word => word.Rank).Select(word => word.Word)];
+    }
+
+    private static int Rank(IReadOnlyList<(string Value, string Label, string Language, bool Curated)> options, string code)
+    {
+        for (var i = 0; i < options.Count; i++)
+        {
+            if (string.Equals(options[i].Value, code, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     /// <summary>
