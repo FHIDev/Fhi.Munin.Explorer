@@ -30,7 +30,7 @@ public class ExceptionLoggingTest : ExplorerTestContext
             .Add(c => c.Datasamling, new DatasamlingDetail { VariableCount = 1 })
             .Add(c => c.ShowVariables, () => Task.FromException(Sentinel)));
 
-        await cut.Find(".munin-explorer-page__body button").ClickAsync(new());
+        await cut.Find(".munin-explorer-page__main button").ClickAsync(new());
 
         var entry = Assert.Single(recorder.Entries, e => e.Level == LogLevel.Error);
         Assert.Same(Sentinel, entry.Exception);
