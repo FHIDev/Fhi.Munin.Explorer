@@ -149,10 +149,12 @@ IDS=(
 
 # The same idea one attribute further out: names in the prefix that are neither classes nor ids,
 # so no rule is possible for them either. `data-munin-explorer-version` is the version every root
-# element carries; `--munin-explorer-stuckbar-height` is a custom property the browser module sets.
+# element carries; `--munin-explorer-stuckbar-height` is a custom property the browser module sets;
+# `data-munin-explorer-date-picker` names the calendar a dataperiode button opens.
 ATTRIBUTES=(
   munin-explorer-version
   munin-explorer-stuckbar-height
+  munin-explorer-date-picker
 )
 
 # Stiler 0.1.100 removed these roots' obsolete heading resets. They remain DOM markers;

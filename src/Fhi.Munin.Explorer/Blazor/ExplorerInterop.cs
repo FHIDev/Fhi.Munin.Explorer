@@ -252,6 +252,30 @@ internal sealed class ExplorerInterop : IAsyncDisposable
         }
     }
 
+    /// <summary>Opens the dataperiode fields' calendars from their buttons, page-wide and once.</summary>
+    /// <remarks>False when it did not get through, so a later render asks again; the buttons are drawn only after.</remarks>
+    internal async Task<bool> WatchDatePickersAsync()
+    {
+        if (_module is not { } module)
+        {
+            return false;
+        }
+
+        try
+        {
+            return await Tolerated<object>(async () =>
+            {
+                await module.InvokeVoidAsync("watchDatePickers").ConfigureAwait(false);
+
+                return true;
+            }).ConfigureAwait(false) is not null;
+        }
+        catch (JSException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>The same, for a component that holds no module of its own.</summary>
     internal static async Task<bool> WatchFoldsAsync(IJSRuntime js)
     {

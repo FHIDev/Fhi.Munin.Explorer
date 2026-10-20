@@ -1653,6 +1653,42 @@ export const assertions = [
     },
   },
   {
+    name: 'a day picked in the dataperiode calendar is written day-first and applied',
+    kind: 'invariant',
+    states: ['variables-list'],
+
+    // The picker itself cannot be driven, so the hidden input it writes to is: the native value is
+    // ISO in every locale, and what reaches the field and the filter must be dd.mm.yyyy.
+    async stage(page) {
+      const panel = page.locator(PANEL);
+      await panel.getByRole('button', { name: 'Utvid alle', exact: true }).first().click();
+      const button = panel.getByRole('button', { name: `Velg dato i kalender for ${DATE_FROM}`, exact: true });
+      await button.waitFor({ state: 'visible', timeout: findTimeout });
+      const calendar = page.locator(`#${await button.getAttribute('data-munin-explorer-date-picker')}`);
+      if (await calendar.getAttribute('type') !== 'date') {
+        throw new Error('the calendar button does not name a native date input');
+      }
+      await calendar.evaluate(input => {
+        input.value = '1940-01-01';
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await settleDateFilter(page, `${DATE_FROM}: ${DATE_WRITTEN}`);
+      return {};
+    },
+
+    async measure(page) {
+      const shown = await page.locator(PANEL).getByLabel(DATE_FROM, { exact: true }).inputValue();
+      return shown === DATE_WRITTEN
+        ? null
+        : `the field shows "${shown}" after 1940-01-01 was picked, not ${DATE_WRITTEN}`;
+    },
+
+    async control(page) {
+      await page.locator(PANEL).getByLabel(DATE_FROM, { exact: true })
+        .evaluate(input => { input.value = '1940-01-01'; });
+    },
+  },
+  {
     name: 'an incomplete dataperiode entry preserves the applied bounds and announces the error',
     kind: 'invariant',
     states: ['variables-list'],

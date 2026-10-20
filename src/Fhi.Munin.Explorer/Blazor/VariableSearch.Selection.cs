@@ -462,6 +462,9 @@ public partial class VariableSearch
     private ExplorerInterop? _interop;
     private bool _foldsWatched;
 
+    // The calendar buttons are drawn only once the script that opens them is listening.
+    private bool _datePickersWatched;
+
     // After every render: the half-ticks follow the filter, and markup alone cannot set them. Only from
     // OnAfterRenderAsync, which prerender never reaches, so there is a browser to ask. (Fhi.Metadata-cjezd)
     private async Task MarkMixedAsync()
@@ -486,6 +489,12 @@ public partial class VariableSearch
             if (!_foldsWatched)
             {
                 _foldsWatched = await interop.WatchFoldsAsync();
+            }
+
+            if (!_datePickersWatched && await interop.WatchDatePickersAsync() && !_disposed)
+            {
+                _datePickersWatched = true;
+                StateHasChanged();
             }
         }
 

@@ -5,6 +5,7 @@ using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 using static Fhi.Munin.Explorer.Tests.SortHeader;
 
@@ -4310,7 +4311,7 @@ public class VariableSearchTest : ExplorerTestContext
 
     private static IReadOnlyList<AngleSharp.Dom.IElement> DateInputs(
         IRenderedComponent<VariableSearch> cut) =>
-        [.. cut.FindAll(".munin-explorer-filters input[id^=munin-explorer-date-]")];
+        [.. cut.FindAll(".munin-explorer-filters input[id^=munin-explorer-date-]:not([type=date])")];
 
     /// <summary>The filter panel. <c>Panel</c> further down is the opened row's detail panel.</summary>
     private static AngleSharp.Dom.IElement FilterPanel(IRenderedComponent<VariableSearch> cut) =>
@@ -6281,6 +6282,92 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Theory]
+    [InlineData("no", "Velg dato i kalender for Fra og med", "Velg dato i kalender for Til og med")]
+    [InlineData("en", "Pick a date from a calendar for From", "Pick a date from a calendar for To")]
+    public void DateField_WhenTheScriptListens_ThenEachFieldHasACalendarButtonNamedAfterIt(
+        string language, string fromName, string toName)
+    {
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)),
+            b => b.Add(c => c.Language, language)
+                  .Add(c => c.Filter, new VariableFilter { DataFrom = new DateOnly(2020, 3, 5) }));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, CalendarButtons(cut).Count));
+
+        for (var i = 0; i < 2; i++)
+        {
+            var button = CalendarButtons(cut)[i];
+            var calendar = cut.Find($"#{button.GetAttribute("data-munin-explorer-date-picker")}");
+
+            Assert.Equal("button", button.GetAttribute("type"));
+            Assert.Equal(i == 0 ? fromName : toName, AccessibleName.Of(button));
+            Assert.Equal($"{DateInputs(cut)[i].Id}-calendar", calendar.Id);
+            Assert.Equal("date", calendar.GetAttribute("type"));
+            Assert.Equal("-1", calendar.GetAttribute("tabindex"));
+            Assert.Equal("true", calendar.GetAttribute("aria-hidden"));
+        }
+
+        // The calendar opens on the applied day, and the to-field's cannot go before it.
+        Assert.Equal("2020-03-05", cut.Find($"#{DateInputs(cut)[0].Id}-calendar").GetAttribute("value"));
+        Assert.Equal("2020-03-05", cut.Find($"#{DateInputs(cut)[1].Id}-calendar").GetAttribute("min"));
+    }
+
+    [Fact]
+    public void DateField_WhenTheScriptIsNotListening_ThenNoCalendarButtonIsDrawn()
+    {
+        // A button nothing opens is worse than none: typing still works without the script.
+        JSInterop.SetupModule(ExplorerInterop.ModulePath)
+            .SetupVoid("watchDatePickers")
+            .SetException(new JSException("unavailable"));
+
+        var cut = RenderWith(
+            new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025)));
+
+        Assert.Equal(2, DateInputs(cut).Count);
+        Assert.Empty(CalendarButtons(cut));
+        Assert.Empty(cut.FindAll(".munin-explorer-filters input[type=date]"));
+    }
+
+    [Theory]
+    [InlineData("no")]
+    [InlineData("en")]
+    public void DateField_WhenADayIsPickedInTheCalendar_ThenItIsAppliedAndWrittenDayFirst(string language)
+    {
+        VariableFilter? reported = null;
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var cut = RenderWith(client, b => b
+            .Add(c => c.Language, language)
+            .Add(c => c.FilterChanged, f => reported = f));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, CalendarButtons(cut).Count));
+        cut.Find($"#{DateInputs(cut)[0].Id}-calendar").Change("2024-03-05");
+
+        Assert.Equal(new DateOnly(2024, 3, 5), client.SearchFilter!.DataFrom);
+        Assert.Equal("05.03.2024", DateInputs(cut)[0].GetAttribute("value"));
+        Assert.Contains("dataFrom=2024-03-05",
+            new ExplorerUrlState { Filter = reported! }.ToQueryString(), StringComparison.Ordinal);
+        Assert.Null(DateInputs(cut)[0].GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public void DateField_WhenThePickedDayReversesTheInterval_ThenItIsRefusedLikeATypedOne()
+    {
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")), FacetsWith(range: DateRange2010To2025));
+        var filter = new VariableFilter { DataTo = new DateOnly(2020, 1, 1) };
+        var cut = RenderWith(client, b => b.Add(c => c.Filter, filter));
+        var searches = client.SearchCalls;
+
+        cut.WaitForAssertion(() => Assert.Equal(2, CalendarButtons(cut).Count));
+        cut.Find($"#{DateInputs(cut)[0].Id}-calendar").Change("2024-03-05");
+
+        Assert.Equal(searches, client.SearchCalls);
+        Assert.Equal(filter, client.SearchFilter);
+        Assert.Equal("true", DateInputs(cut)[0].GetAttribute("aria-invalid"));
+        Assert.Equal("05.03.2024", DateInputs(cut)[0].GetAttribute("value"));
+        Assert.EndsWith("Datoen må være til og med 01.01.2020.", DateError(cut, 0).TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData(0, "01.01.2027")]
     [InlineData(1, "31.12.1939")]
     public void DateField_WhenAnEditReversesTheInterval_ThenTheAppliedFilterIsUnchanged(int field, string typed)
@@ -6352,6 +6439,9 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(new DateOnly(1940, 1, 2), client.SearchFilter!.DataFrom);
         Assert.Equal("02.01.1940", DateInputs(cut)[0].GetAttribute("value"));
     }
+
+    private static IReadOnlyList<AngleSharp.Dom.IElement> CalendarButtons(IRenderedComponent<VariableSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters .munin-explorer-filters__date-button")];
 
     private static void ChangeDate(IRenderedComponent<VariableSearch> cut, int field, string typed)
     {

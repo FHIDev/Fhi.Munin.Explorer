@@ -338,6 +338,12 @@ These are not style preferences — each one is a host that breaks otherwise.
     described below: every facet's summary carries its size ("24 verdier") between the heading and
     `__chosen`, as a direct child of the summary like `__chosen` and never under `__branch`, so it
     gets the shared look and none of the branch grid's placement (`Fhi.Metadata-35w0p.53`).
+    The variabelutforsker's dataperiode adds `munin-explorer-filters__date`, the row that holds a
+    date's text field and its calendar button, and `munin-explorer-filters__date-button` on the
+    button (`Fhi.Metadata-d2fbu`). Handles both: undefined, the button is a browser-default button
+    under the field, named and operable, its `<svg>` sized 1em by its own attributes. What the
+    rules buy is the button beside the field at the field's height. The button opens a native date
+    input wearing `screenreader-only`, which a host must define or that input shows.
     The variabelutforsker's Kilde facet adds `munin-explorer-filters__search`, the box that narrows
     that facet's own values. A handle: undefined, it is a browser-default search field, which is
     visible, operable and named by a `<label>` of its own, so what a rule buys is the box — full
@@ -906,7 +912,9 @@ These are not style preferences — each one is a host that breaks otherwise.
     `munin-explorer-version` is read out of `data-munin-explorer-version` on every root element,
     and `munin-explorer-stuckbar-height` out of `--munin-explorer-stuckbar-height`, the shown
     sticky bar's height the browser module sets on a detail page's root for Stiler's contents
-    list to clear. Neither selects anything, and no stylesheet can have a rule for either.
+    list to clear. `munin-explorer-date-picker` is read out of `data-munin-explorer-date-picker`
+    on a dataperiode calendar button, naming the hidden date input it opens. None of them selects
+    anything, and no stylesheet can have a rule for any of them.
 
   <!-- class-names:start -->
   | Class name | Kind |
@@ -972,6 +980,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-datasamling__identifiers` | handle |
   | `munin-explorer-datasamling__main` | handle |
   | `munin-explorer-datatype` | id |
+  | `munin-explorer-date-picker` | attribute |
   | `munin-explorer-detail` | handle |
   | `munin-explorer-distribution` | handle |
   | `munin-explorer-distribution__bar` | handle |
@@ -996,6 +1005,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-filters__chosen` | handle |
   | `munin-explorer-filters__collapse` | meaning |
   | `munin-explorer-filters__count` | handle |
+  | `munin-explorer-filters__date` | handle |
+  | `munin-explorer-filters__date-button` | handle |
   | `munin-explorer-filters__disclosure` | handle |
   | `munin-explorer-filters__facets` | handle |
   | `munin-explorer-filters__groupcount` | handle |
@@ -1353,7 +1364,9 @@ empty page for everybody else.
 
 The data-period filters are text fields that take and show dates as `dd.mm.yyyy` (for example
 `25.03.2024`) in both languages, whatever the reader's browser or operating system is set to; only
-the hint under the label is translated. `d.m.yyyy`, eight bare digits (`25032024`, for a phone's
+the hint under the label is translated. A calendar button beside each field opens the browser's own
+calendar; the chosen day is written into the field as `dd.mm.yyyy` and checked like a typed one,
+and focus returns to the field. A browser without `showPicker()` leaves the button inert. `d.m.yyyy`, eight bare digits (`25032024`, for a phone's
 numeric keypad) and ISO `yyyy-mm-dd` are accepted too. Other slash and dash forms and two-digit
 years are refused, because `03/05/2024` means 5 March to an en-US reader. The filter updates when the reader leaves the field;
 `dataFrom`/`dataTo` query parameters remain ISO dates (`yyyy-MM-dd`). Both ends are inclusive, and

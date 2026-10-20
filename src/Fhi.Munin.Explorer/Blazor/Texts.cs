@@ -677,6 +677,9 @@ internal sealed record Texts(
     string FacetDateFormat,
     Func<string?, string?, string> FacetDateInvalid,
 
+    // The calendar button beside each date field, named after the field it fills.
+    Func<string, string> FacetDatePicker,
+
     // The box that narrows a long facet's own values, and the sentence for when it narrows them to
     // none. The label takes the facet's heading because several boxes can be on screen at once, and
     // controls all announcing "Søk i verdiene" are controls a screen reader cannot tell apart.
@@ -1585,6 +1588,7 @@ internal sealed record Texts(
             (null, { } to) => $"{DateFormatSentenceNo} Datoen må være til og med {to}.",
             _ => DateFormatSentenceNo
         },
+        FacetDatePicker: field => $"Velg dato i kalender for {field}",
         FacetAccessLevel: "Tilgangsnivå",
         FacetSearchLabel: heading => $"Søk i {heading}",
         FacetSearchPlaceholder: "Søk i verdiene",
@@ -2127,6 +2131,7 @@ internal sealed record Texts(
             (null, { } to) => $"{DateFormatSentenceEn} The date must be on or before {to}.",
             _ => DateFormatSentenceEn
         },
+        FacetDatePicker: field => $"Pick a date from a calendar for {field}",
         FacetAccessLevel: "Access level",
         FacetSearchLabel: heading => $"Search in {heading}",
         FacetSearchPlaceholder: "Search the values",

@@ -872,6 +872,47 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   height: 34px;
 }
 
+/* A dataperiode field and its calendar button on one row (Fhi.Metadata-d2fbu). Relative, so the
+   hidden native date input the button opens anchors its calendar under this row. The button's
+   hover and focus change its fill rather than draw a ring, for the reason the chip's do above. */
+.munin-explorer-filters__date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  margin: 4px 0 8px;
+}
+
+.munin-explorer-filters__date input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--dark);
+}
+
+.munin-explorer-filters__date-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  font-size: 1.125rem;
+  color: var(--dark);
+  background-color: #fff;
+  border: 1px solid rgb(114, 113, 150);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.munin-explorer-filters__date-button:hover,
+.munin-explorer-filters__date-button:focus-visible {
+  background-color: var(--grey60);
+  color: #fff;
+}
+
 /* The variabelutforsker's own version of that box, in the Kilde facet, and the one name in this
    panel that IS ours: `munin-explorer-filters__search`. The selector leads with the element on
    purpose and the rule is the stand-in for `Fhi.Helsedata.Stiler`'s, declaration for declaration —

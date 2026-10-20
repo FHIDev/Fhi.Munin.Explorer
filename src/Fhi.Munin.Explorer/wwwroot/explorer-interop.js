@@ -448,6 +448,28 @@ export function watchFolds() {
   }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
 }
 
+let datePickersWatched = false;
+
+// The dataperiode's calendar button opens a hidden native date input (Fhi.Metadata-d2fbu). Here and
+// not over the circuit: a browser opens a picker only inside the click, which a round trip can outlast.
+export function watchDatePickers() {
+  if (datePickersWatched) return;
+  datePickersWatched = true;
+  document.addEventListener('click', event => {
+    const button = event.target instanceof Element ? event.target.closest('[data-munin-explorer-date-picker]') : null;
+    const input = button && document.getElementById(button.getAttribute('data-munin-explorer-date-picker'));
+    if (!(input instanceof HTMLInputElement) || typeof input.showPicker !== 'function') return;
+    // Back to the text field, which holds the day the pick wrote; the hidden input is aria-hidden.
+    const field = document.getElementById(input.id.replace(/-calendar$/, ''));
+    input.addEventListener('change', () => field?.focus(), { once: true });
+    try {
+      input.showPicker();
+    } catch {
+      // Without a picker (an older Safari, or no activation) the text field is the way in.
+    }
+  });
+}
+
 // A reader's own setting, kept in this browser only (Fhi.Metadata-amp8c). Storage can be off, full or
 // private, so a failure reads as "no setting" and a write that fails is dropped.
 export function readPreference(key) {

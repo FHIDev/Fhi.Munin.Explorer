@@ -267,11 +267,14 @@ public partial class VariableSearch
         builder.AddContent(seq + 3, label);
         builder.CloseElement();
 
-        builder.OpenElement(seq + 5, "p");
-        builder.AddAttribute(seq + 6, "id", hintId);
-        builder.AddAttribute(seq + 7, "class", "caption");
-        builder.AddContent(seq + 8, T.FacetDateFormat);
+        builder.OpenElement(seq + 4, "p");
+        builder.AddAttribute(seq + 5, "id", hintId);
+        builder.AddAttribute(seq + 6, "class", "caption");
+        builder.AddContent(seq + 7, T.FacetDateFormat);
         builder.CloseElement();
+
+        builder.OpenElement(seq + 8, "div");
+        builder.AddAttribute(seq + 9, "class", "munin-explorer-filters__date");
 
         builder.OpenElement(seq + 10, "input");
         builder.AddAttribute(seq + 11, "id", id);
@@ -297,26 +300,106 @@ public partial class VariableSearch
             EventCallback.Factory.Create<FocusEventArgs>(this, _ => CommitDateAsync(id, min, max, set)));
         builder.CloseElement();
 
+        if (_datePickersWatched)
+        {
+            CalendarButton(builder, seq + 30, id, label, value, min, max, set);
+        }
+
+        builder.CloseElement();
+
         // Always rendered and empty until needed: validation runs as focus leaves, so the reader is
         // elsewhere by then, and a role="alert" inserted and filled in one update is announced
         // unreliably. The infobox is inside, so an unrefused field draws no empty box.
-        builder.OpenElement(seq + 30, "div");
-        builder.AddAttribute(seq + 31, "id", errorId);
-        builder.AddAttribute(seq + 32, "role", "alert");
-        builder.AddAttribute(seq + 33, "aria-live", "assertive");
-        builder.AddAttribute(seq + 34, "aria-atomic", "true");
+        builder.OpenElement(seq + 60, "div");
+        builder.AddAttribute(seq + 61, "id", errorId);
+        builder.AddAttribute(seq + 62, "role", "alert");
+        builder.AddAttribute(seq + 63, "aria-live", "assertive");
+        builder.AddAttribute(seq + 64, "aria-atomic", "true");
 
         if (refused)
         {
-            builder.OpenElement(seq + 35, "p");
-            builder.AddAttribute(seq + 36, "class", "infobox infobox--bg-yellow");
-            builder.AddContent(seq + 37, T.FacetDateInvalid(
+            builder.OpenElement(seq + 65, "p");
+            builder.AddAttribute(seq + 66, "class", "infobox infobox--bg-yellow");
+            builder.AddContent(seq + 67, T.FacetDateInvalid(
                 min is { } lo ? DayFirstDate.Format(lo) : null,
                 max is { } hi ? DayFirstDate.Format(hi) : null));
             builder.CloseElement();
         }
 
         builder.CloseElement();
+    }
+
+    // The browser's own calendar, opened from a hidden native input by explorer-interop.js. Only the
+    // calendar is native: the chosen day is written into the text field day-first and committed there.
+    private void CalendarButton(
+        RenderTreeBuilder builder, int seq, string id, string label, DateOnly? value,
+        DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
+    {
+        var calendarId = $"{id}-calendar";
+
+        builder.OpenElement(seq, "button");
+        builder.AddAttribute(seq + 1, "type", "button");
+        builder.AddAttribute(seq + 2, "class", "munin-explorer-filters__date-button");
+        builder.AddAttribute(seq + 3, "aria-label", T.FacetDatePicker(label));
+        builder.AddAttribute(seq + 4, "data-munin-explorer-date-picker", calendarId);
+        builder.OpenRegion(seq + 5);
+        CalendarGlyph(builder);
+        builder.CloseRegion();
+        builder.CloseElement();
+
+        // tabindex -1 with aria-hidden: the button is the control, this is only what it opens.
+        builder.OpenElement(seq + 10, "input");
+        builder.AddAttribute(seq + 11, "id", calendarId);
+        builder.AddAttribute(seq + 12, "type", "date");
+        builder.AddAttribute(seq + 13, "class", "screenreader-only");
+        builder.AddAttribute(seq + 14, "tabindex", "-1");
+        builder.AddAttribute(seq + 15, "aria-hidden", "true");
+        builder.AddAttribute(seq + 16, "value", value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "");
+        builder.AddAttribute(seq + 17, "min", min?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        builder.AddAttribute(seq + 18, "max", max?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        builder.AddAttribute(seq + 19, "onchange",
+            EventCallback.Factory.Create<ChangeEventArgs>(this, e => PickDateAsync(id, e.Value as string, min, max, set)));
+        builder.CloseElement();
+    }
+
+    private static void CalendarGlyph(RenderTreeBuilder builder)
+    {
+        builder.OpenElement(0, "svg");
+        builder.AddAttribute(1, "viewBox", "0 0 24 24");
+        builder.AddAttribute(2, "width", "1em");
+        builder.AddAttribute(3, "height", "1em");
+        builder.AddAttribute(4, "fill", "none");
+        builder.AddAttribute(5, "stroke", "currentColor");
+        builder.AddAttribute(6, "stroke-width", "2");
+        builder.AddAttribute(7, "stroke-linecap", "round");
+        builder.AddAttribute(8, "stroke-linejoin", "round");
+        builder.AddAttribute(9, "focusable", "false");
+        builder.AddAttribute(10, "aria-hidden", "true");
+        builder.OpenElement(11, "rect");
+        builder.AddAttribute(12, "x", "3");
+        builder.AddAttribute(13, "y", "4");
+        builder.AddAttribute(14, "width", "18");
+        builder.AddAttribute(15, "height", "18");
+        builder.AddAttribute(16, "rx", "2");
+        builder.CloseElement();
+        builder.OpenElement(17, "path");
+        builder.AddAttribute(18, "d", "M16 2v4M8 2v4M3 10h18");
+        builder.CloseElement();
+        builder.CloseElement();
+    }
+
+    // The native input always speaks ISO, whatever its calendar displays.
+    private Task PickDateAsync(string id, string? iso, DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
+    {
+        if (!DateOnly.TryParseExact(iso, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day))
+        {
+            return Task.CompletedTask;
+        }
+
+        _editedDates[id] = DayFirstDate.Format(day);
+        _refusedDates.Remove(id);
+
+        return CommitDateAsync(id, min, max, set);
     }
 
     private async Task CommitDateAsync(string id, DateOnly? min, DateOnly? max, Func<DateOnly?, Task> set)
