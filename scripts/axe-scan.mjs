@@ -10,8 +10,9 @@ import { chromium } from 'playwright';
 
 import { launchOptions } from './browser-launch.mjs';
 import AxeBuilder from '@axe-core/playwright';
-import { states } from './axe-states.mjs';
+import { states, wideOnlyStates } from './axe-states.mjs';
 import { describeShard, ownsItem, parseShard } from './scan-shard.mjs';
+import { scrollPast } from './reader-scroll.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
@@ -27,9 +28,17 @@ const extraWidths = (process.env.AXE_EXTRA_WIDTHS ?? '').split(',').map(Number).
 // Only the sample host's scan names one: its lines describe that host's stylesheet, not helsedata's.
 const known = (process.env.AXE_KNOWN_VIOLATIONS ? readFileSync(process.env.AXE_KNOWN_VIOLATIONS, 'utf8') : '')
   .split('\n')
-  .filter(line => line.trim() !== '' && !line.startsWith('#'))
+  .map(line => line.trim())
+  .filter(line => line !== '' && !line.startsWith('#'))
   .map(line => {
-    const [rule, state, width, selector, bead] = line.split('|').map(part => part.trim());
+    const fields = line.split('|').map(part => part.trim());
+    const [rule, state, width, selector, bead] = fields;
+    // A line that cannot match is a silent pass, so it is refused rather than read.
+    if (fields.length !== 5 || !rule || !selector || !bead || !Object.hasOwn(states, state)
+      || (width !== '' && !/^[0-9]+$/.test(width))) {
+      console.error(`unreadable line in ${process.env.AXE_KNOWN_VIOLATIONS}: ${line} - TOOLING failure.`);
+      process.exit(2);
+    }
     return { line, rule, state, width: width === '' ? null : Number(width), selector, bead, seen: false };
   });
 const scanned = new Set();
@@ -86,6 +95,64 @@ if (owned.length === 0) {
 const shardNote = describeShard(owned.length, plan.length, shard);
 if (shardNote) console.log(`${shardNote} page states.`);
 
+// What a state staged that a reader would still see after turning the phone: every open control and
+// a stuck name bar. The filter toggles are left out, each being drawn at one side of 1024px only.
+const STAGED = '[aria-expanded="true"]:not(.munin-explorer-filters__toggle):not(.munin-explorer-filters__collapse), '
+  + '.munin-explorer-page__stuckbar--on .munin-explorer-page__stuckbar-inner';
+
+/**
+ * Resizes in place and puts back what a phone reader would: the filter panel, shut below 1024px, is
+ * opened, and a name bar the reflow unstuck is scrolled to again. Answers what the state lost, or null.
+ */
+async function resized(page, width, height) {
+  const panel = page.locator('.munin-explorer-filters__facets').first();
+  const panelShown = await panel.isVisible().catch(() => false);
+  const bar = page.locator('.munin-explorer-page__stuckbar--on .munin-explorer-page__stuckbar-inner').first();
+  const barShown = await bar.isVisible().catch(() => false);
+  const staged = await page.evaluate(selector => {
+    const shown = [...document.querySelectorAll(selector)].filter(el => el.getClientRects().length > 0);
+    shown.forEach((el, i) => el.setAttribute('data-axe-staged', String(i)));
+    return shown.length;
+  }, STAGED);
+
+  await page.setViewportSize({ width, height });
+  await page.waitForTimeout(500);
+
+  if (panelShown && !await panel.isVisible()) {
+    const toggle = page.locator('.munin-explorer-filters__toggle[aria-expanded="false"]').first();
+    if (await toggle.isVisible()) await toggle.click();
+    if (!await panel.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false)) {
+      return 'the filter panel would not open again';
+    }
+  }
+
+  if (barShown && !await bar.isVisible()) {
+    const row = page.locator('.munin-explorer-page__facts').first();
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await scrollPast(page, await row.getAttribute('id'));
+    if (!await bar.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false)) {
+      return 'the name bar would not stick again';
+    }
+  }
+
+  // Asked until it holds or three seconds pass: a circuit under load can be mid-render at the first read.
+  let lost = null;
+  for (let tries = 0; tries < 12; tries++) {
+    lost = await page.evaluate(count => {
+      for (let i = 0; i < count; i++) {
+        const el = document.querySelector(`[data-axe-staged="${i}"]`);
+        if (!el || el.getClientRects().length === 0 || el.getAttribute('aria-expanded') === 'false') {
+          return el ? `${el.tagName.toLowerCase()}.${el.className} is no longer shown open` : 'a staged element is gone';
+        }
+      }
+      return null;
+    }, staged);
+    if (lost === null) return null;
+    await page.waitForTimeout(250);
+  }
+  return lost;
+}
+
 let browser;
 try {
   browser = await chromium.launch(launchOptions());
@@ -133,12 +200,17 @@ try {
       }
     }
 
-    for (const width of [null, ...extraWidths]) {
+    const widths = wideOnlyStates.has(state) ? [null] : [null, ...extraWidths];
+    for (const width of widths) {
       const at = width === null ? label : `${label} @${width}px`;
       if (width !== null) {
         console.log(`\n==> axe ${at}`);
-        await page.setViewportSize({ width, height: viewport?.height ?? 900 });
-        await page.waitForTimeout(500);
+        const lost = await resized(page, width, viewport?.height ?? 900);
+        if (lost !== null) {
+          console.error(`the state did not survive the resize to ${width}px (${lost}) on ${label} - TOOLING failure.`);
+          await browser.close();
+          process.exit(2);
+        }
       }
 
       const results = await new AxeBuilder({ page }).withTags(tags).analyze();

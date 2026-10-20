@@ -31,9 +31,11 @@ HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 # data never arrived. Why states at all: AGENTS.md, "It scans states, not only pages".
 #
 # DELIBERATELY NOT COVERED, so nobody reads a green run as more than it is:
-#   - the whole-variable drill-in and the owner panel inside a row, two more presses each. The
-#     first has a state of its own now — `variable-whole`, which check-component-state.sh stages to
-#     ask its contents nav a question axe does not ask — and is still not scanned here;
+#   - the owner panel inside a row, two more presses. The whole-variable drill-in is scanned only
+#     stuck, in variable-stuckbar, never at the top of the page;
+#   - 375 and 320 as a fresh load: those are the state reached at 1280 and resized in place, the
+#     filter panel opened again as a phone reader would, and an open control the resize shut is a
+#     TOOLING failure rather than a clean scan (Fhi.Metadata-mhqx0.1);
 #   - the pager past page one, and anything reached by searching other than the reserved terms
 #     statistics-fixture.mjs answers, which open the Data tab's bars (Fhi.Metadata-9mxmw); the kildeutforsker's own list
 #     narrowed by a facet IS covered, in kilde-facets, and the variable explorer's chip row and

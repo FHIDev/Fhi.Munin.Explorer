@@ -85,6 +85,9 @@ async function collapseFilters(page, row) {
     .waitFor({ state: 'attached', timeout: findTimeout });
 }
 
+/** States scanned at the default width only: their fold is drawn from 1024px up, so a phone has none to scan. */
+export const wideOnlyStates = new Set(['variables-filters-collapsed', 'kilder-filters-collapsed']);
+
 export const states = {
   // The script guards inventory these literal names without launching a browser.
   'tree-collapsed': treeStates['tree-collapsed'],
