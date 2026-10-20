@@ -112,6 +112,10 @@ TARGETS=(
   "/utforsker::explorer-save-all-confirm"
   "/utforsker::explorer-save-all-too-many"
   "/utforsker::explorer-saved-all"
+  "/utforsker::variable-stuckbar"
+  "/::variables-filters-collapsed"
+  "/kilder::kilder-filters-collapsed"
+  "/kilder::kilde-facet-ticked"
 )
 
 host_pid=""
@@ -254,7 +258,9 @@ node --test "$ROOT/scripts/test-axe-states.mjs" "$ROOT/scripts/test-scan-shard.m
 }
 
 set +e
-node "$ROOT/scripts/axe-scan.mjs" $(for t in "${TARGETS[@]}"; do printf '%s ' "${BASE}${t}"; done)
+# Each state again at a phone's two widths once reached, resized in place (Fhi.Metadata-mhqx0.1).
+AXE_EXTRA_WIDTHS="${AXE_EXTRA_WIDTHS-375,320}" AXE_KNOWN_VIOLATIONS="$ROOT/test/axe-known-violations.txt" \
+  node "$ROOT/scripts/axe-scan.mjs" $(for t in "${TARGETS[@]}"; do printf '%s ' "${BASE}${t}"; done)
 scan_status=$?
 set -e
 
@@ -278,7 +284,7 @@ fi
 # scoped to states none of these is, three of them to the explorer-* states on /utforsker; and the
 # last three measure the detail chassis, which none of the five states here opens - both pages draw one in a detail
 # state, and neither of those is driven at 320; the two 320px card checks never ran here. Which and why: AGENTS.md, "And
-# check-accessibility.sh measures one width axe never looks at".
+# check-accessibility.sh measures reflow at the one width WCAG names for it".
 echo
 # A CI shard (SCAN_SHARD=k/n, scripts/scan-shard.mjs) splits the axe states above; the five reflow pages run in
 # shard 1 only, so each is measured once per run.

@@ -75,6 +75,16 @@ async function press(scope, name) {
   await button.click();
 }
 
+/** Press the wide screen's «Skjul filtre», once the list it sits beside has rows. */
+async function collapseFilters(page, row) {
+  await rowsArePresent(page, row);
+  const collapse = page.locator('.munin-explorer-filters__collapse').first();
+  await collapse.waitFor({ state: 'visible', timeout: findTimeout });
+  await collapse.click();
+  await page.locator('.munin-explorer-filters__collapse[aria-expanded="false"]').first()
+    .waitFor({ state: 'attached', timeout: findTimeout });
+}
+
 export const states = {
   // The script guards inventory these literal names without launching a browser.
   'tree-collapsed': treeStates['tree-collapsed'],
@@ -546,6 +556,26 @@ export const states = {
     await page.locator('.munin-explorer-page__stuckbar--on .munin-explorer-page__stuckbar-inner')
       .first()
       .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+  // The variable page's sticky name bar, stuck, as kilde-stuckbar is for a kilde (Fhi.Metadata-mhqx0.1).
+  'variable-stuckbar': async page => {
+    await states['variable-whole'](page);
+    const row = page.locator('.munin-explorer-whole .munin-explorer-page__facts').first();
+    await row.waitFor({ state: 'visible', timeout: findTimeout });
+    await scrollPast(page, await row.getAttribute('id'));
+    await page.locator('.munin-explorer-page__stuckbar--on .munin-explorer-page__stuckbar-inner')
+      .first()
+      .waitFor({ state: 'visible', timeout: findTimeout });
+  },
+  // «Skjul filtre» pressed on a wide screen: the panel's own fold, apart from a phone's (Fhi.Metadata-mhqx0.1).
+  'variables-filters-collapsed': page => collapseFilters(page, 'button.munin-explorer-dataitem-main__name'),
+  'kilder-filters-collapsed': page => collapseFilters(page, 'button.munin-explorer-kilder__name'),
+  // A Kildeutforsker facet with a value ticked: its chip, the narrowed counts and the ticked box (Fhi.Metadata-mhqx0.1).
+  'kilde-facet-ticked': async page => {
+    await states['kilde-facets'](page);
+    const box = page.locator('.munin-explorer-filters__facets > details[open] input[type=checkbox]').first();
+    await box.check();
+    await page.locator('.munin-explorer-filters__chip').first().waitFor({ state: 'visible', timeout: findTimeout });
   },
   // A kilde row opened on its datasamlinger. The panel only exists after a press, so everything
   // in it - the colspan cell, the nested tables, the headings and the live region - is invisible
