@@ -475,6 +475,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
             return;
         }
 
+        // A remount: the browser already shows this address, and a late write could overwrite a Forward entry.
+        mirror.Arrived();
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = arrived;
         (_search, _facets, _ticked, _marked, _expanded, _columns) = list;
         _arrival++;

@@ -214,6 +214,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
 
         if (Linkable(arrived.ToState()).ToQueryString() != Linkable(_state.ToState()).ToQueryString())
         {
+            // A remount: the browser already shows this address, and a late write could overwrite a Forward entry.
+            mirror.Arrived();
             _state = arrived;
             _arrival++;
         }

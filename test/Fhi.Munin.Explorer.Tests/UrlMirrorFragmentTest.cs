@@ -96,8 +96,8 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
 
     private HistoryRecorder? _history;
 
-    /// <summary>The last URL a component mirrored, or null when none ever wrote one.</summary>
-
+    /// <summary>What the address bar shows: the last URL a component wrote, or a navigation since then.</summary>
+    /// <remarks>A navigation counts: Back and Forward move the address, and the mirror does not write back what they show.</remarks>
     private string? Mirrored() =>
         _history?.Written.LastOrDefault();
 
@@ -114,6 +114,48 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
         SetRendererInfo(new RendererInfo("Server", true));
         JSInterop.Mode = JSRuntimeMode.Loose;
         Navigation.NavigateTo(url);
+        Navigation.LocationChanged += (_, e) =>
+        {
+            _navigations++;
+            _history.Written.Add(new Uri(e.Location).PathAndQuery + new Uri(e.Location).Fragment);
+        };
+    }
+
+    private int _navigations;
+
+    /// <summary>How many times a component wrote the address, navigations left out.</summary>
+    private int Writes() => (_history?.Written.Count ?? 0) - _navigations;
+
+    [Fact]
+    public void Moved_WhenBackLandsAKildeReaderOnTheList_ThenTheListIsNotWrittenAgain()
+    {
+        // The write a quick Forward would have had land on the kilde's entry (Fhi.Metadata-l9l2n.124).
+        var cut = RenderKilder($"http://localhost/kilder?kilde={Als}");
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Als}", Mirrored()));
+        var before = Writes();
+
+        Navigation.NavigateTo("/kilder");
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder tbody th button")));
+
+        Assert.Equal(before, Writes());
+
+        OpenKilde(cut, "Reseptregisteret");
+
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={Resept}", Mirrored()));
+        Assert.True(Writes() > before);
+    }
+
+    [Fact]
+    public void Moved_WhenBackLandsAVariableReaderOnTheList_ThenTheListIsNotWrittenAgain()
+    {
+        var cut = RenderVariables($"http://localhost/variabler?variabelId={Speech}");
+        cut.WaitForAssertion(() => Assert.Equal($"/variabler?variabelId={Speech}", Mirrored()));
+        var before = Writes();
+
+        Navigation.NavigateTo("/variabler");
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("button.munin-explorer-dataitem-main__name[aria-expanded=\"true\"]")));
+
+        Assert.Equal(before, Writes());
     }
 
     private IRenderedComponent<KildeExplorer> RenderKilder(string url)
