@@ -102,7 +102,7 @@ const STAGED = '[aria-expanded="true"]:not(.munin-explorer-filters__toggle):not(
 
 /**
  * Resizes in place and puts back what a phone reader would: the filter panel, shut below 1024px, is
- * opened, and a name bar the reflow unstuck is scrolled to again. Answers what the state lost, or null.
+ * opened (and a menu that press shut, reopened), and a name bar the reflow unstuck is scrolled to again.
  */
 async function resized(page, width, height) {
   const panel = page.locator('.munin-explorer-filters__facets').first();
@@ -123,6 +123,13 @@ async function resized(page, width, height) {
     if (await toggle.isVisible()) await toggle.click();
     if (!await panel.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false)) {
       return 'the filter panel would not open again';
+    }
+
+    // That press is outside any menu the state had open, which shuts it as it would for a reader:
+    // pressed open again, once, so the scan judges both.
+    for (let i = 0; i < staged; i++) {
+      const shut = page.locator(`[data-axe-staged="${i}"][aria-expanded="false"]`).first();
+      if (await shut.isVisible().catch(() => false)) await shut.click();
     }
   }
 
