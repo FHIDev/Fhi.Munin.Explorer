@@ -692,6 +692,9 @@ async function focusClearOfStuckBar(page) {
   const bar = '.munin-explorer-page__stuckbar--on:not([hidden]) .munin-explorer-page__stuckbar-inner';
   for (const width of [1280, 375]) {
     await page.setViewportSize({ width, height: 800 });
+    // On a phone the contents list is in the flow, so its links are walked open too.
+    const fold = page.locator(`${TOC} .munin-explorer-page__toc-toggle > button[aria-expanded="false"]`).first();
+    if (await fold.isVisible().catch(() => false)) await fold.click();
     await scrollPast(page, await page.locator(HERO).first().getAttribute('id'));
     await page.locator(bar).first().waitFor({ state: 'visible', timeout: findTimeout });
     for (const key of [...Array(40).fill('Tab'), ...Array(40).fill('Shift+Tab')]) {

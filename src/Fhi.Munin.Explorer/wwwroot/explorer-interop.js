@@ -78,9 +78,12 @@ export function observeHeroFacts(barId, factsId) {
       const bottom = inner?.getBoundingClientRect().bottom ?? 0;
       // A bar over half the window leaves no room to clear; scrolling would push the control below it.
       if (bottom > window.innerHeight / 2) return;
-      const top = target.getBoundingClientRect().top;
-      if (top < bottom) {
-        scrollerOf(target).scrollBy({ top: top - bottom - FOCUS_CLEARANCE, behavior: 'instant' });
+      // Outwards through the scrolling ancestors: an inner one already at its top cannot clear it alone.
+      const root = document.scrollingElement ?? document.documentElement;
+      for (let scroller = scrollerOf(target); scroller; scroller = scroller === root ? null : scrollerOf(scroller)) {
+        const top = target.getBoundingClientRect().top;
+        if (top >= bottom) break;
+        scroller.scrollBy({ top: top - bottom - FOCUS_CLEARANCE, behavior: 'instant' });
       }
     });
   };
@@ -134,9 +137,9 @@ export function observeHeroFacts(barId, factsId) {
   });
 }
 
-/** Whether `el` keeps its own place on screen: sticky or fixed, or a contents entry or section the jump logic places. */
+/** Whether `el` keeps its own place on screen: sticky or fixed, or a section the contents jump places. */
 function ownsItsPlace(el) {
-  if (el.matches('[data-nav-section]') || el.closest('.munin-explorer-page__toc')) return true;
+  if (el.matches('[data-nav-section]')) return true;
   for (let e = el; e && e !== document.body; e = e.parentElement) {
     const position = getComputedStyle(e).position;
     if (position === 'sticky' || position === 'fixed') return true;
