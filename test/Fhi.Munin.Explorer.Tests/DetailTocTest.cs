@@ -159,17 +159,15 @@ public class DetailTocTest : ExplorerTestContext
         Assert.Equal("Innhold", nav.GetAttribute("aria-label"));
         Assert.Null(nav.GetAttribute("class"));
 
-        var fold = Assert.Single(nav.Children);
-        Assert.Equal("details", fold.LocalName);
-        Assert.Equal(2, fold.Children.Length);
-        Assert.Equal("summary", fold.Children[0].LocalName);
+        Assert.Equal(3, nav.Children.Length);
+        Assert.Equal("h2", nav.Children[0].LocalName);
+        Assert.Equal("Innhold", nav.Children[0].TextContent);
+        Assert.Null(nav.Children[0].GetAttribute("class"));
 
-        var heading = fold.Children[0].Children[0];
-        Assert.Equal("h2", heading.LocalName);
-        Assert.Equal("Innhold", heading.TextContent);
-        Assert.Null(heading.GetAttribute("class"));
+        Assert.Equal("h2", nav.Children[1].LocalName);
+        Assert.Equal("munin-explorer-page__toc-toggle", nav.Children[1].ClassName);
 
-        Assert.Equal("form-menu__list", fold.Children[1].ClassName);
+        Assert.Equal("form-menu__list", nav.Children[2].ClassName);
 
         // Exactly the base name on every item: --active and --active-child draw helsedata's
         // application-form panel, not the contents rail's mark.
@@ -177,22 +175,35 @@ public class DetailTocTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Render_WithoutTheBrowserModule_ThenTheListIsDrawnOpen()
+    public void Render_Always_ThenThePhonesDisclosureStartsFoldedAndControlsTheList()
     {
-        // The module shuts it on a phone; a host without the module keeps the whole list on screen.
+        // The WAI-ARIA disclosure: a button inside the heading, naming the list it shows (Fhi.Metadata-v40sa).
         var cut = RenderToc(Three);
 
-        Assert.True(cut.Find("nav > details").HasAttribute("open"));
+        var button = cut.Find("h2.munin-explorer-page__toc-toggle > button");
+        Assert.Equal("button", button.GetAttribute("type"));
+        Assert.Equal("false", button.GetAttribute("aria-expanded"));
+        Assert.Equal("Innhold (3)", button.TextContent);
+        Assert.Equal(cut.Find("ul").Id, button.GetAttribute("aria-controls"));
+        Assert.False(string.IsNullOrEmpty(cut.Find("ul").Id));
     }
 
     [Fact]
-    public void Render_WhenThereAreEntries_ThenTheSummaryCountsThem()
+    public void Toggle_WhenPressedTwice_ThenTheListOpensAndFoldsAgain()
     {
         var cut = RenderToc(Three);
 
-        var summary = cut.Find("nav > details > summary");
-        Assert.Equal(" (3)", summary.QuerySelector(".munin-explorer-page__toc-count")!.TextContent);
-        Assert.Equal("Innhold (3)", summary.TextContent);
+        cut.Find("h2.munin-explorer-page__toc-toggle > button").Click();
+        Assert.Equal("true", cut.Find("h2.munin-explorer-page__toc-toggle > button").GetAttribute("aria-expanded"));
+
+        cut.Find("h2.munin-explorer-page__toc-toggle > button").Click();
+        Assert.Equal("false", cut.Find("h2.munin-explorer-page__toc-toggle > button").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Render_TwoNavs_ThenTheirListsHaveDifferentIds()
+    {
+        Assert.NotEqual(RenderToc(Three).Find("ul").Id, RenderToc(Three).Find("ul").Id);
     }
 
     [Fact]

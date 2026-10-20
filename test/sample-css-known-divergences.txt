@@ -655,11 +655,4 @@ missing-selector|@media (max-width:767px)|.munin-explorer-kilde__datasamlinger:n
 unstyled-name||.munin-explorer-page__fact-line|
 
 # The contents list folded on a phone (Fhi.Metadata-v40sa); Stiler's rule is owed with it (Stiler patch to follow).
-invented-selector|@media (max-width:767px)|.munin-explorer-page__toc summary h2|display
-invented-selector|@media (max-width:767px)|.munin-explorer-page__toc summary h2|margin
-invented-selector|@media (max-width:767px)|.munin-explorer-page__toc summary|color
-invented-selector|@media (max-width:767px)|.munin-explorer-page__toc summary|cursor
-invented-selector|@media (max-width:767px)|.munin-explorer-page__toc summary|padding
-invented-selector|@media (min-width:768px)|.munin-explorer-page__toc summary::-webkit-details-marker|display
-invented-selector|@media (min-width:768px)|.munin-explorer-page__toc summary|display
-unstyled-name||.munin-explorer-page__toc-count|
+unstyled-name||.munin-explorer-page__toc-toggle|
