@@ -315,7 +315,8 @@ const cases = [
     assertion: 'a table cell holding visible text is at least 4em wide',
     defect: "Stiler 0.1.139's kilde cards gone at 320: a letter or two per line",
     path: '/kilder', state: 'kilde-hierarchy-metadata', width: 320,
-    apply: dropMediaRules('.munin-explorer-kilde__datasamlinger:not('),
+    // The phone's card blocks; Stiler 0.1.188 dropped the :not() these were once matched by.
+    apply: dropMediaRules('.munin-explorer-kilde__datasamlinger'),
   },
   {
     assertion: 'the saved list fits its box at every width',

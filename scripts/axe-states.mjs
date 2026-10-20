@@ -605,10 +605,11 @@ export const states = {
     await toggle.waitFor({ state: 'visible', timeout: findTimeout });
     await toggle.check();
 
+    // Attached, not visible: on a phone the table is cards and Stiler hides its header row (0.1.187).
     await page
       .locator('.munin-explorer-kilder thead th', { hasText: 'Delkilder' })
       .first()
-      .waitFor({ state: 'visible', timeout: findTimeout });
+      .waitFor({ state: 'attached', timeout: findTimeout });
 
     // Folded again before anything is measured: this state is here for the table, and every
     // geometry assertion would otherwise be measuring a dropdown hanging open over it.

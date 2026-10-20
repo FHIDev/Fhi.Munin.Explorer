@@ -645,7 +645,8 @@ export const assertions = [
         // list's narrow desktop columns, which reads fine on two lines.
         const room = cell.getBoundingClientRect().width;
         const floor = 4 * parseFloat(getComputedStyle(cell).fontSize);
-        if (room >= floor) continue;
+        // Half a pixel of rounding, as the box checks above allow: Stiler 0.1.191 sets that column at 71.7px.
+        if (room + 0.5 >= floor) continue;
         if (!cell.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
         const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
         let text = '';
