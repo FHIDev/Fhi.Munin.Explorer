@@ -35,7 +35,8 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     /// double-click toggles twice and ends where it began, from shut and from open alike, so the
     /// invariant above holds — but a shift-click toggles once and the disclosure DOES move. That is
     /// the summary's activation behaviour, identical on every <c>&lt;details&gt;</c> on the web, and
-    /// refusing it would take a <c>preventDefault</c> this package ships no script for.
+    /// refusing it would take a <c>preventDefault</c> this package ships no script for, except on the
+    /// contents fold at desktop widths, where the module refuses every press (Fhi.Metadata-v40sa).
     /// </para>
     /// <para>
     /// Measured in bUnit, gesturing one asserts nothing either way: a handler-free
