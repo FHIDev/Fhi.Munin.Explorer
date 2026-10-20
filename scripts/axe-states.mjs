@@ -924,6 +924,7 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
+  // As above: the press on «Last ned» shuts the picker first.
   'list-download-and-columns': async page => {
     await states['explorer-list-tab'](page);
     await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer__dropdown > summary').click();

@@ -713,7 +713,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     (the size warning, the status, a confirmation's question) and `munin-explorer-list-menu__check`
     the «Ta med kodeverk» row. Undrawn, the rows are bare buttons stacked in the panel and the hint
     runs on after the button's word. «Last ned utvalg» stands in the column picker's row, ahead of
-    «Kolonner», and a press outside an open menu closes it (the package's own script).
+    «Kolonner», and a press outside an open menu or column picker closes it (the package's own script).
     `munin-explorer-pagination-pages` joined this list under `Fhi.Metadata-ejcbi`, and it is worth
     saying why it moved out of the handles: the numbered pages wear helsedata's own
     `hd-button-reset`, which strips the button chrome, so unlike every other control here nothing
