@@ -2,11 +2,12 @@
 """Print the warden rules that apply to this branch's diff, as the Forge's assay picks them.
 
 Source of truth: Robin831/Forge internal/warden, RulesFile.FormatChecklistForDiffWithStats (rules.go),
-ported at commit 67459514506b6d9ce6c969fe973b6c582227d823. Identical copies live in FHIDev/Munin, Fhi.Munin.Explorer,
-Heimdall and Fhi.Munin.DevInfra; change all four together.
+ported at commit 67459514506b6d9ce6c969fe973b6c582227d823, plus Robin831/Forge#948 (ui and testing routing for C#)
+and #950 (cap 60, the sources term). Identical copies live in FHIDev/Munin, Fhi.Munin.Explorer, Heimdall and
+Fhi.Munin.DevInfra; change all four together.
 
 Usage (on Windows use `py -3` instead of `python3`):
-    python3 scripts/warden-checklist.py [--base origin/main] [--max-rules 30] [--all-rules]
+    python3 scripts/warden-checklist.py [--base origin/main] [--max-rules 60] [--all-rules]
 
 The selection is a port of Robin831/Forge internal/warden (filter.go FilterRulesIndexed,
 score.go scoreCandidates/selectRules, rules.go FormatChecklistForDiffWithSelection) and
@@ -27,11 +28,12 @@ import subprocess
 import sys
 
 RULES_FILE = ".forge/warden-rules.yaml"
-DEFAULT_MAX_RULES = 30
+DEFAULT_MAX_RULES = 60
 MIN_PATTERN_WORD_HITS = 2
 SPECIFICITY_WEIGHT = 1.0
 PATTERN_WEIGHT = 0.7
 RECENCY_WEIGHT = 0.5
+SOURCES_WEIGHT = 0.3
 
 CANONICAL_CATEGORIES = {"ui", "style", "testing", "error-handling", "security", "concurrency", "performance", "other"}
 
@@ -265,7 +267,15 @@ def categories_for_file(path):
     if lower.endswith("_test.tsx") or lower.endswith("tests.cs"):
         return {"testing", "other"}
     if lower.endswith(".cs"):
-        return {"error-handling", "security", "concurrency", "performance", "style", "other"}
+        cats = {"error-handling", "security", "concurrency", "performance", "style", "other"}
+        # Blazor UI C# and test projects, as Forge #948 routes them.
+        dirs = os.path.dirname(lower).replace("\\", "/").split("/")
+        if lower.endswith(".razor.cs") or any(d in ("components", "pages", "shared") for d in dirs):
+            cats.add("ui")
+        orig = os.path.dirname(path).replace("\\", "/").split("/")
+        if any(d.lower() in ("test", "tests") or d.lower().endswith(".tests") or (d.endswith("Tests") and len(d) > 5) for d in orig):
+            cats.add("testing")
+        return cats
     if lower.endswith(".tsx") or lower.endswith(".ts"):
         return set(CANONICAL_CATEGORIES)
     if lower.endswith(".css"):
@@ -364,6 +374,13 @@ def _ns(delta):
     return (delta.days * 86400 + delta.seconds) * 1_000_000_000 + delta.microseconds * 1000
 
 
+def sources_score(rule):
+    """How many review comments taught the rule: 0 for one, 1 - 1/n for more (score.go sourcesScore)."""
+    src = rule.get("source")
+    n = len(src) if isinstance(src, list) else (1 if src else 0)
+    return 0.0 if n <= 1 else 1 - 1 / n
+
+
 def select(rules, diff, changed, max_rules, use_all):
     diff_lower = diff.lower()
     stats = {"total": len(rules), "paths": 0, "category": 0, "matched": 0, "emitted": 0}
@@ -397,10 +414,13 @@ def select(rules, diff, changed, max_rules, use_all):
         if c["added"] is None:
             c["rec"] = 0.5
         elif span <= 0:
-            c["rec"] = 1.0
+            c["rec"] = 0.5  # one shared date says nothing: neutral, as Forge #950 does
         else:
             c["rec"] = float(_ns(c["added"] - oldest)) / float(span)
-        c["total"] = SPECIFICITY_WEIGHT * c["spec"] + PATTERN_WEIGHT * c["pat"] + RECENCY_WEIGHT * c["rec"]
+        # Recency and sources together are capped at recency's weight (Forge #950 secondaryScore), so sources
+        # settles near-ties but never lifts a broad rule past a scoped one.
+        secondary = min(RECENCY_WEIGHT * c["rec"] + SOURCES_WEIGHT * sources_score(c["rule"]), RECENCY_WEIGHT)
+        c["total"] = SPECIFICITY_WEIGHT * c["spec"] + PATTERN_WEIGHT * c["pat"] + secondary
 
     epoch = datetime.datetime(1, 1, 1)
     cands.sort(key=lambda c: (-c["total"], -_ns((c["added"] or epoch) - epoch), _tie_key(c["rule"])))
@@ -456,7 +476,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--base", default="origin/main", help="branch to diff against (default origin/main)")
     ap.add_argument("--max-rules", type=int, default=DEFAULT_MAX_RULES,
-                    help="cap, as assay's warden.max_rules_per_review (default 30; 0 = no cap)")
+                    help="cap, as assay's warden.max_rules_per_review (default 60; 0 = no cap)")
     ap.add_argument("--all-rules", action="store_true", help="skip the path/category/pattern filters (use_all_rules)")
     ap.add_argument("--rules", default=RULES_FILE, help=f"rules file (default {RULES_FILE})")
     ap.add_argument("--diff-file", help="read the diff from a file instead of git (for tests)")
