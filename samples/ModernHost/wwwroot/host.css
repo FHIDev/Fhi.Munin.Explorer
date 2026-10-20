@@ -5772,79 +5772,6 @@ a[target=_blank]:not(.hd-button-square):focus::after {
 /* Mirrored from Fhi.Helsedata.Stiler 0.1.191, the rules 0.1.179-0.1.191 added under this package's
    names (Fhi.Metadata-u7msf). In Stiler's own words; the crumb divider's icon is copied from the package into img/. */
 
-@media (max-width:1024px) {
-  .munin-explorer {
-    padding: 0 24px;
-  }
-}
-
-@media (max-width:767px) {
-  .munin-explorer-header__actions .dropdown {
-    width: 100%;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon--right {
-    margin-left: auto;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon {
-    margin-right: 0;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary {
-    column-gap: 8px;
-    width: 100%;
-    margin-right: 0;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button > .icon--right {
-    margin-left: auto;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button > .icon {
-    margin-right: 0;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button[aria-busy=true]::before {
-    margin-right: 0;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button {
-    column-gap: 8px;
-    width: 100%;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) {
-    display: grid;
-    grid-template-columns: max-content;
-    justify-content: start;
-  }
-
-  .munin-explorer-kilde__main > .munin-explorer-page__section > :is(h2, h3, h4, h5, h6):first-child {
-    font-size: 1.5rem;
-  }
-
-  .munin-explorer-results__toolbar > .munin-explorer-header:has( > .munin-explorer-header__actions > .munin-explorer-list-menu) {
-    margin-right: auto;
-  }
-
-  .munin-explorer {
-    padding: 0 16px;
-  }
-}
-
-@media (min-width:1081px) {
-  .munin-explorer-kilde .munin-explorer-page__facts:not(:has( > :nth-child(6))) {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-@media not all and (min-width:1024px) {
-  .munin-explorer-filters__collapse {
-    display: none;
-  }
-}
-
 .munin-explorer .breadcrumbs__divider {
   flex: none;
   height: 1.5rem;
@@ -5971,5 +5898,79 @@ a[target=_blank]:not(.hd-button-square):focus::after {
 @media (max-width: 767px) {
   .munin-explorer:has(.munin-explorer-kilde, .munin-explorer-datasamling, .munin-explorer-whole) {
     padding: 0 16px;
+  }
+}
+
+/* The breakpoints after the rules they adjust, in Stiler's source order. */
+@media (max-width:1024px) {
+  .munin-explorer {
+    padding: 0 24px;
+  }
+}
+
+@media (max-width:767px) {
+  .munin-explorer-header__actions .dropdown {
+    width: 100%;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon--right {
+    margin-left: auto;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon {
+    margin-right: 0;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary {
+    column-gap: 8px;
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button > .icon--right {
+    margin-left: auto;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button > .icon {
+    margin-right: 0;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button[aria-busy=true]::before {
+    margin-right: 0;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button {
+    column-gap: 8px;
+    width: 100%;
+  }
+
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) {
+    display: grid;
+    grid-template-columns: max-content;
+    justify-content: start;
+  }
+
+  .munin-explorer-kilde__main > .munin-explorer-page__section > :is(h2, h3, h4, h5, h6):first-child {
+    font-size: 1.5rem;
+  }
+
+  .munin-explorer-results__toolbar > .munin-explorer-header:has( > .munin-explorer-header__actions > .munin-explorer-list-menu) {
+    margin-right: auto;
+  }
+
+  .munin-explorer {
+    padding: 0 16px;
+  }
+}
+
+@media (min-width:1081px) {
+  .munin-explorer-kilde .munin-explorer-page__facts:not(:has( > :nth-child(6))) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media not all and (min-width:1024px) {
+  .munin-explorer-filters__collapse {
+    display: none;
   }
 }
