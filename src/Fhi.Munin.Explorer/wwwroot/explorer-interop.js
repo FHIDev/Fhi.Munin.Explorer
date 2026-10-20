@@ -465,8 +465,9 @@ export function watchDatePickers() {
       // Without a picker (an older Safari, or no activation) the text field is the way in.
     }
   });
-  // Back to the text field after a pick, a cancel, or a close that left focus nowhere (Escape put it on
-  // body); the hidden input is aria-hidden. A close that moved focus to another control is left be.
+  // Back to the text field after a pick. Chromium never focuses the hidden input, so Escape leaves focus
+  // on the button pressed; cancel and an empty focusout cover a browser that does focus it. A close that
+  // moved focus to another control is left be.
   const back = event => {
     const input = event.target;
     if (input instanceof HTMLInputElement && input.type === 'date' && input.id.endsWith('-calendar')
