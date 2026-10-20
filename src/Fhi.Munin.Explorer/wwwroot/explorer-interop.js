@@ -121,28 +121,6 @@ export function disconnectHeroFacts(barId) {
 // One scroll-spy per mounted contents column, keyed by the column's id, each holding its own undo.
 const spies = new Map();
 
-// Stiler's $mobile, below which the contents list folds behind its summary (Fhi.Metadata-v40sa).
-const PHONE = 'all and (max-width: 767px)';
-
-/**
- * Shuts each contents fold the first time it is seen on a phone, and opens them all again at a wider
- * width, where the summary is a heading rather than a control and so takes no focus.
- */
-function foldContents(column, phone, seen) {
-  for (const fold of column.querySelectorAll('details')) {
-    const first = !seen.has(fold);
-    seen.add(fold);
-    if (!phone.matches) {
-      fold.open = true;
-    } else if (first) {
-      fold.open = false;
-    }
-    const summary = fold.querySelector(':scope > summary');
-    if (phone.matches) summary?.removeAttribute('tabindex');
-    else summary?.setAttribute('tabindex', '-1');
-  }
-}
-
 /** Marks the contents nav entry in `columnId` whose section the reader is in with
  * `aria-current="location"`, and no other. Calling it again for the same column replaces the spy. */
 export function observeContents(columnId) {
@@ -161,17 +139,7 @@ export function observeContents(columnId) {
       markCurrent(spy);
     });
   };
-  const phone = window.matchMedia(PHONE);
-  const seen = new WeakSet();
-  const refold = () => {
-    for (const fold of column.querySelectorAll('details')) seen.delete(fold);
-    foldContents(column, phone, seen);
-  };
   const click = (event) => {
-    if (!phone.matches && event.target.closest?.('summary')) {
-      event.preventDefault();
-      return;
-    }
     // A modified or middle press opens another tab and leaves this one where it is.
     if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
       // The section's id rather than the link, which a re-render can replace.
@@ -234,10 +202,7 @@ export function observeContents(columnId) {
 
   // Entries and sections are looked up afresh on every pass, so a re-render is followed. The main
   // column is watched rather than the page, whose size the bold current entry itself can change.
-  const rendered = new MutationObserver(() => {
-    foldContents(column, phone, seen);
-    schedule();
-  });
+  const rendered = new MutationObserver(schedule);
   const resized = new ResizeObserver(schedule);
 
   rendered.observe(column, { childList: true, subtree: true, characterData: true });
@@ -247,7 +212,6 @@ export function observeContents(columnId) {
     resized.observe(main);
   }
   column.addEventListener('click', click);
-  phone.addEventListener('change', refold);
   document.addEventListener('scroll', scrolled, { capture: true, passive: true });
   window.addEventListener('resize', schedule, { passive: true });
 
@@ -261,7 +225,6 @@ export function observeContents(columnId) {
     rendered.disconnect();
     resized.disconnect();
     column.removeEventListener('click', click);
-    phone.removeEventListener('change', refold);
     document.removeEventListener('scroll', scrolled, { capture: true });
     window.removeEventListener('resize', schedule);
 
@@ -270,7 +233,6 @@ export function observeContents(columnId) {
     }
   });
 
-  foldContents(column, phone, seen);
   markCurrent(spy);
 }
 

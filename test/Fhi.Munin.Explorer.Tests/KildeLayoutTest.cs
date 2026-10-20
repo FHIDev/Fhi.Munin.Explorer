@@ -263,7 +263,7 @@ public class KildeLayoutTest : ExplorerTestContext
         // to be deduplicated away.
         var cut = Page(Placed());
 
-        Assert.Equal("Innhold", cut.Find(".munin-explorer-page__toc nav summary > h2").TextContent.Trim());
+        Assert.Equal("Innhold", cut.Find(".munin-explorer-page__toc nav > h2").TextContent.Trim());
         Assert.Equal("Innhold", cut.Find("#" + Anchor("innhold")).FirstElementChild!.TextContent.Trim());
         Assert.Contains(("#" + Anchor("innhold"), "Innhold"), Nav(cut));
     }

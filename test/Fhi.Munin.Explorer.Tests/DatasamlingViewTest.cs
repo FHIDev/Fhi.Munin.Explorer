@@ -813,9 +813,9 @@ public class DatasamlingViewTest : ExplorerTestContext
             "munin-explorer-page__stuckbar-inner",
             "munin-explorer-page__stuckbar-name",
             // The contents column, drawn now that the nav fills it. The nav inside wears
-            // helsedata's own form-menu names; its one name of ours is the count in its summary.
+            // helsedata's own form-menu names; its one name of ours is the phone's disclosure heading.
             "munin-explorer-page__toc",
-            "munin-explorer-page__toc-count",
+            "munin-explorer-page__toc-toggle",
         ], invented);
     }
 
@@ -2424,7 +2424,7 @@ public class DatasamlingViewTest : ExplorerTestContext
         // finished with a fresh per-instance discriminator, which is what keeps two mounts on one
         // host page from sharing a sticky bar or a contents column.
         Assert.Equal(3, ids.Count(DetailPage.IsChassisId));
-        Assert.All(ids.Where(id => !DetailPage.IsChassisId(id)),
+        Assert.All(ids.Where(id => !DetailPage.IsChassisId(id) && !DetailToc.IsListId(id)),
                    id => Assert.Contains(id, DetailSectionIdsUnderTest));
     }
 
