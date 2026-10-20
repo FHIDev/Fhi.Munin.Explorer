@@ -685,6 +685,8 @@ internal sealed record Texts(
     Func<string, string> FacetSearchLabel,
     string FacetSearchPlaceholder,
     string FacetSearchNoMatch,
+    // A Kildeutforsker facet the search and the other filters leave nothing in (Fhi.Metadata-l9l2n.130).
+    string FacetNoValuesLeft,
     // That kilde facet's own placeholder, because its box searches the whole tree below a kilde,
     // datasamlinger included, and nothing else said so. (Fhi.Metadata-35w0p.38)
     string FacetSearchPlaceholderKilder,
@@ -1583,6 +1585,7 @@ internal sealed record Texts(
         FacetSearchLabel: heading => $"Søk i {heading}",
         FacetSearchPlaceholder: "Søk i verdiene",
         FacetSearchNoMatch: "Ingen verdier passer søket",
+        FacetNoValuesLeft: "Ingen verdier igjen med det som er valgt",
         FacetSearchPlaceholderKilder: "Søk etter kilde eller datasamling",
         VariabelgruppeScopeLimit: max => $"Du kan velge opptil {max} variabelgrupper under datasamlinger i kildefilteret. Fjern et valg før du legger til flere.",
         ChosenBelow: count => $"({count} valgt under)",
@@ -2125,6 +2128,7 @@ internal sealed record Texts(
         FacetSearchLabel: heading => $"Search in {heading}",
         FacetSearchPlaceholder: "Search the values",
         FacetSearchNoMatch: "No values match the search",
+        FacetNoValuesLeft: "No values left with what is chosen",
         FacetSearchPlaceholderKilder: "Search for a source or data collection",
         VariabelgruppeScopeLimit: max => $"You can select up to {max} variable groups under data collections in the source filter. Remove a selection before adding more.",
         ChosenBelow: count => $"({count} chosen below)",
