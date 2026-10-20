@@ -979,9 +979,9 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
 .munin-explorer-drilldown > dl > dt { margin-top: 12px; }
 .munin-explorer-drilldown > dl > dd { margin: 0; }
 
-/* Stiler's base rule for the component root (_detail.scss:113), absent here until now: the
-   explorer is a <section> nothing above bounds, so without it the component runs past the 1488px
-   cap helsedata holds it to. This sample's own chrome adds to the 24px. (Fhi.Metadata-7e7de) */
+/* Stiler's base rule for the component root (_detail.scss:113): the explorer is a <section> nothing
+   above bounds. 1920px and 40px from Stiler 0.1.179-0.1.191; the detail pages keep 1488px and 24px, and the
+   phone gutters are mirrored at the end of this file. (Fhi.Metadata-7e7de, Fhi.Metadata-u7msf) */
 .munin-explorer {
   max-width: 1920px;
   width: 100%;
@@ -2116,7 +2116,7 @@ table.munin-explorer-data-list tbody th {
   border-bottom: 1px solid var(--grey30);
 }
 
-/* The kilde's own name block has no rule under it since Stiler 0.1.18x (Fhi.Metadata-u7msf). */
+/* The kilde's own name block has no rule under it between Stiler 0.1.179 and 0.1.191 (Fhi.Metadata-u7msf). */
 .munin-explorer-kilde__header {
   padding-bottom: 0;
   margin-bottom: 0;
@@ -3487,9 +3487,8 @@ table.munin-explorer-data-list tbody th {
 }
 .munin-explorer-pagination-size .caption { margin-right: 16px; }
 
-/* Element rather than class on purpose, and the reason there is no new name here: a `<select>`
-   draws itself at the browser's default where an unknown class name draws nothing, so the shape
-   is what carries the styling risk rather than a name Stiler may never have heard of. */
+/* Element rather than class on purpose: Stiler now styles every `select` in the explorer, mirrored at
+   the end of this file, which wins over this rule; this stays for the page-size control's spacing. */
 .munin-explorer-pagination-size select {
   padding: 8px 12px;
   border: 1px solid var(--grey40);
@@ -5771,7 +5770,7 @@ a[target=_blank]:not(.hd-button-square):focus::after {
 }
 
 /* Mirrored from Fhi.Helsedata.Stiler 0.1.191, the rules 0.1.179-0.1.191 added under this package's
-   names (Fhi.Metadata-u7msf). In Stiler's own words; the crumb divider's image path is Stiler's. */
+   names (Fhi.Metadata-u7msf). In Stiler's own words; the crumb divider's icon is copied from the package into img/. */
 
 @media (max-width:1024px) {
   .munin-explorer {
@@ -5827,10 +5826,6 @@ a[target=_blank]:not(.hd-button-square):focus::after {
 
   .munin-explorer-results__toolbar > .munin-explorer-header:has( > .munin-explorer-header__actions > .munin-explorer-list-menu) {
     margin-right: auto;
-  }
-
-  .munin-explorer:has(.munin-explorer-kilde, .munin-explorer-datasamling, .munin-explorer-whole) {
-    padding: 0 16px;
   }
 
   .munin-explorer {
@@ -5970,4 +5965,11 @@ a[target=_blank]:not(.hd-button-square):focus::after {
 .munin-explorer:has(.munin-explorer-kilde, .munin-explorer-datasamling, .munin-explorer-whole) {
   max-width: 1488px;
   padding: 0 24px;
+}
+
+/* After the rule above, as in Stiler: the detail pages' phone gutter. */
+@media (max-width: 767px) {
+  .munin-explorer:has(.munin-explorer-kilde, .munin-explorer-datasamling, .munin-explorer-whole) {
+    padding: 0 16px;
+  }
 }
