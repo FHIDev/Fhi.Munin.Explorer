@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
