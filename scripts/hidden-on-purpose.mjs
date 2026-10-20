@@ -6,7 +6,7 @@
 function install() {
   // The tell is the rule, not the element: a selector naming [hidden] was written about the
   // attribute, where `div { display: block }` was not. A control on screen saying it is shut fails
-  // anyway; one saying it is open (the wide panel's own fold, #606) agrees with the box. (fih3y)
+  // anyway; one saying it is open (the wide panel's own fold) agrees with the box. (Fhi.Metadata-fih3y)
   window.__muninUnhiddenOnPurpose = function unhiddenOnPurpose(el) {
     for (const control of document.querySelectorAll('[aria-controls]')) {
       const names = (control.getAttribute('aria-controls') ?? '').split(/\s+/);
