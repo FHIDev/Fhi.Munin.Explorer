@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **`KildeExplorer` takes `HeadingLevel`.** It is forwarded to `KildeSearch`, as `VariableExplorer` already does: the explorer's title renders at that level and the open kilde one below. Default 2, so nothing changes unless a host passes it. A host whose page has no heading of its own passes 1, so the explorer's title is the page's h1. The «Alle felt» focus ring is the rule `.munin-explorer-complete-record > summary:focus-visible` in Stiler; with an older Stiler that summary keeps the browser's default ring. (Fhi.Metadata-l9l2n.135)
