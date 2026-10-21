@@ -43,7 +43,11 @@ runs:
       run: |
         set -o pipefail
         # A renamed file counts at its old path too, so moving a file out of a high path is high.
-        gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)' > changed-files.txt
+        # A name with a line break would split into two paths here and be judged as neither; it fails the step instead,
+        # which labels the pull request high.
+        gh api "repos/$REPO/pulls/$PR/files" --paginate \
+          --jq '.[] | .filename, (.previous_filename // empty) | if test("[\r\n]") then error("a changed file name contains a line break") else . end' \
+          > changed-files.txt
         listed="$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' | wc -l)"
         python3 "$SCRIPT" --rules "$RULES" --author="$AUTHOR" --title="$TITLE" < changed-files.txt > tier.txt
         tier="$(sed -n 's/^tier=//p' tier.txt)"
@@ -75,10 +79,14 @@ runs:
             || gh api "repos/$REPO/labels" -f name="risk:$t" -f color="${colour[$t]}" \
                  -f description="Review tier from the changed paths (docs/review-risk-tiers.md in Fhi.Munin.DevInfra)" >/dev/null
         done
-        # The new label first, so the pull request never stands without one.
+        # The new label first, so the pull request never stands without one. A label that is already absent (404) is
+        # fine; any other failure fails the step, so the handler below labels high rather than leaving two labels.
         gh api "repos/$REPO/issues/$PR/labels" -f "labels[]=risk:$TIER" >/dev/null
         for t in low medium high; do
-          if [ "$t" != "$TIER" ]; then gh api -X DELETE "repos/$REPO/issues/$PR/labels/risk:$t" >/dev/null 2>&1 || true; fi
+          [ "$t" = "$TIER" ] && continue
+          if ! gh api -X DELETE "repos/$REPO/issues/$PR/labels/risk:$t" >/dev/null 2>delete-error.txt; then
+            grep -q "HTTP 404" delete-error.txt || { cat delete-error.txt; exit 1; }
+          fi
         done
         echo "risk:$TIER set on #$PR"
 
@@ -91,6 +99,10 @@ runs:
         REPO: ${{ github.repository }}
         PR: ${{ github.event.pull_request.number }}
       run: |
-        gh api "repos/$REPO/issues/$PR/labels" -f "labels[]=risk:high" >/dev/null || true
+        # Only once risk:high is on are the others removed, so a failure here never leaves the pull request unlabelled.
+        if ! gh api "repos/$REPO/issues/$PR/labels" -f "labels[]=risk:high" >/dev/null; then
+          echo "## The labeller failed and could not set risk:high; the previous label stands" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+        fi
         for t in low medium; do gh api -X DELETE "repos/$REPO/issues/$PR/labels/risk:$t" >/dev/null 2>&1 || true; done
         echo "## risk:high (the labeller failed; see the step above)" >> "$GITHUB_STEP_SUMMARY"
