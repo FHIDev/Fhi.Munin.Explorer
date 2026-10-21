@@ -94,6 +94,9 @@ Then, on every PR a session opens: the pre-PR review (the `pre-pr-reviewer` agen
 and one line in the PR body that says it ran, e.g. `Pre-PR review: ran, 3 findings, fixed` or
 `Pre-PR review: ran, no findings`. The four forms, and what `skipped, <reason>` is for, are in the `prove-it`
 skill, section 8.
+The body also carries `Testing:`, `Risk: low|medium|high – why` (the tier the `risk:` label gives) and
+`How to revert:` lines, each on a line of its own; the Pre-PR review line check fails when one is missing or empty, or
+the tier differs from the label (DevInfra-0f5.2).
 
 The Stiler comparison needs the package on disk, which means credentials for helsedata's Azure
 Artifacts feed and `dotnet restore samples/HostileHost/HostileHost.csproj` first — see

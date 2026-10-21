@@ -20,6 +20,13 @@
      "ran, 2 findings, 1 fixed, 1 left: why" / "skipped, reason". See the prove-it skill, section 8.
      A person may leave the section empty. -->
 
+## Testing, risk, revert
+
+<!-- For a PR opened by one of our sessions: three lines, each on a line of its own and filled in (DevInfra-0f5.2):
+     "Testing: what ran and its result, or what could not be run"
+     "Risk: low|medium|high – why" (the tier the risk: label gives; the check fails when they differ)
+     "How to revert: revert this PR, or the steps when a revert alone does not undo it" -->
+
 ## Changelog
 
 <!-- Anything that touches src/ needs a fragment: changelog.d/<slug>.md, one line saying what

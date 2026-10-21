@@ -5,6 +5,9 @@ excludeAgent: "cloud-agent"
 
 # Copilot Code Review Instructions
 
+`REVIEW.md` at the repository root says what an Important finding is here, how to report (`file:line` evidence, at
+most 5 Nits, a summary that starts with a count) and what not to report. Follow it.
+
 ## Intentional Patterns (Do Not Flag)
 
 These are deliberate project decisions — do **not** suggest alternatives:

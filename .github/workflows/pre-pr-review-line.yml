@@ -5,7 +5,8 @@ name: Pre-PR review line
 
 on:
   pull_request:
-    types: [opened, edited, reopened, synchronize]
+    # labeled/unlabeled: the risk label arrives after the pull request opens, and the Risk line must match it.
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
 permissions: {}
 
@@ -22,6 +23,11 @@ jobs:
       - name: The description says what the pre-PR review found
         env:
           BODY: ${{ github.event.pull_request.body }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+          CREATED: ${{ github.event.pull_request.created_at }}
+          # The three lines are required only of pull requests opened from this moment, so none already open turns
+          # red. Delete the cutoff, and the test on it below, once those have merged (DevInfra-0f5.2).
+          NEW_LINES_FROM: "2026-10-22T00:00:00Z"
         run: |
           # Carriage returns and trailing blanks go first: GitHub stores CRLF, and editors leave spaces.
           body=$(printf '%s' "$BODY" | tr -d '\r' | sed -E 's/[[:space:]]+$//')
@@ -77,3 +83,42 @@ jobs:
             exit 1
           fi
           echo "$lines"
+
+          # Testing, Risk and How to revert (DevInfra-0f5.2): one line each, filled in, the Risk tier as the label says.
+          if [[ "$CREATED" < "$NEW_LINES_FROM" ]]; then
+            echo "Opened before $NEW_LINES_FROM: Testing, Risk and How to revert are not required."
+            exit 0
+          fi
+          for key in "Testing" "Risk" "How to revert"; do
+            got=$(printf '%s\n' "$body" | grep -E "^${key}:" || true)
+            if [ -z "$got" ]; then
+              echo "::error::The description has no line that starts with '${key}:'. Add it on a line of its own (the pull request template describes it)."
+              exit 1
+            fi
+            if [ "$(printf '%s\n' "$got" | wc -l)" -ne 1 ]; then
+              echo "::error::The description has more than one '${key}:' line; keep one."
+              exit 1
+            fi
+            value=$(printf '%s' "${got#"${key}:"}" | sed -E 's/^[[:space:]]+//')
+            placeholder='<[^>]*>'
+            if [ "${#value}" -lt 3 ] || [[ $value =~ $placeholder ]]; then
+              echo "::error::'${got}' is not filled in."
+              exit 1
+            fi
+            echo "$got"
+          done
+          risk=$(printf '%s\n' "$body" | grep -E '^Risk:')
+          tiered='^Risk: (low|medium|high) (–|-) .+$'
+          if [[ ! $risk =~ $tiered ]]; then
+            echo "::error::'$risk' does not start with a tier: 'Risk: low|medium|high – why'."
+            exit 1
+          fi
+          tier=${BASH_REMATCH[1]}
+          for label in $LABELS; do
+            case "$label" in
+              risk:*) if [ "${label#risk:}" != "$tier" ]; then
+                  echo "::error::The Risk line says $tier, the label says ${label#risk:}. The label comes from the changed paths (docs/review-risk-tiers.md); write its tier and why."
+                  exit 1
+                fi;;
+            esac
+          done
