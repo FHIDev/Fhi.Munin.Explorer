@@ -1,17 +1,20 @@
 {
   "kildeId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
   "kildeName": "Tromsøundersøkelsen",
+  "kildeNameEn": "The Tromsø Study",
   "totalVariableCount": 12728,
   "historicalVariableCount": 0,
   "delkilder": [
     {
       "id": "53d58540-a5d0-4806-9635-096b9b2fc70d",
       "name": "Tromsø4 - Den fjerde Tromsøundersøkelsen",
+      "nameEn": "Tromsø4 - The Fourth Tromsø Study",
       "variableCount": 800,
       "datasamlinger": [
         {
           "id": "f2c193fe-ccd9-43c8-8de7-4f00960431f2",
           "name": "Tromsø4 - Den fjerde Tromsøundersøkelsen - føste besøk",
+          "nameEn": "Tromsø4 - The Fourth Tromsø Study - first visit",
           "variableCount": 570,
           "variabelgrupper": [
             {
@@ -248,6 +251,7 @@
         {
           "id": "08010ed0-ec9a-47be-87d9-a53f09847fa2",
           "name": "Tromsø4 - Den fjerde Tromsøundersøkelsen - andre besøk",
+          "nameEn": "Tromsø4 - The Fourth Tromsø Study - second visit",
           "variableCount": 230,
           "variabelgrupper": [
             {
@@ -330,11 +334,13 @@
     {
       "id": "5d918571-ae1a-41bf-ac56-56c65e6c7b04",
       "name": "Tromsø5 - Den femte Tromsøundersøkelsen",
+      "nameEn": "Tromsø5 - The Fifth Tromsø Study",
       "variableCount": 1066,
       "datasamlinger": [
         {
           "id": "5c5e4aa3-aa3c-47ba-a1b7-55398d8ea7e1",
           "name": "Tromsø5 - Den femte Tromsøundersøkelsen - første besøk",
+          "nameEn": "Tromsø5 - The Fifth Tromsø Study - first visit",
           "variableCount": 624,
           "variabelgrupper": [
             {
@@ -599,6 +605,7 @@
         {
           "id": "be0c142f-6fbc-4ef2-b95f-d662ee33e1a7",
           "name": "Tromsø5 - Den femte Tromsøundersøkelsen - andre besøk",
+          "nameEn": "Tromsø5 - The Fifth Tromsø Study - second visit",
           "variableCount": 442,
           "variabelgrupper": [
             {
@@ -694,11 +701,13 @@
     {
       "id": "db784dca-0f4a-4fc5-81bf-d1c0a57b3c1f",
       "name": "Tromsø6 - Den sjette Tromsøundersøkelsen",
+      "nameEn": "Tromsø6 - The Sixth Tromsø Study",
       "variableCount": 2659,
       "datasamlinger": [
         {
           "id": "6acd1e12-1c1e-4342-9f90-7682aedbf585",
           "name": "Tromsø6 - Den sjette Tromsøundersøkelsen første besøk",
+          "nameEn": "Tromsø6 - The Sixth Tromsø Study - first visit",
           "variableCount": 1066,
           "variabelgrupper": [
             {
@@ -992,6 +1001,7 @@
         {
           "id": "c0ab0929-0cb2-4191-901e-bbc824b2c0de",
           "name": "Tromsø6 - Den sjette Tromsøundersøkelsen - andre besøk",
+          "nameEn": "Tromsø6 - The Sixth Tromsø Study - second visit",
           "variableCount": 1593,
           "variabelgrupper": [
             {
@@ -1136,11 +1146,13 @@
     {
       "id": "de056903-7b6d-401f-9aa0-e245fd7f0235",
       "name": "Tromsø7 - Den sjuende Tromsøundersøkelsen",
+      "nameEn": "Tromsø7 - The Seventh Tromsø Study",
       "variableCount": 7667,
       "datasamlinger": [
         {
           "id": "4a6971d4-1c59-4693-a150-5cfde7a3fba4",
           "name": "Tromsø7 - Den sjuende Tromsøundersøkelsen - første besøk",
+          "nameEn": "Tromsø7 - The Seventh Tromsø Study - first visit",
           "variableCount": 4068,
           "variabelgrupper": [
             {
@@ -1790,6 +1802,7 @@
         {
           "id": "3b9a812b-c54c-4547-9c2c-af7eeee4b1da",
           "name": "Tromsø7 - Den sjuende Tromsøundersøkelsen - andre besøk",
+          "nameEn": "Tromsø7 - The Seventh Tromsø Study - second visit",
           "variableCount": 3599,
           "variabelgrupper": [
             {
@@ -2055,6 +2068,7 @@
     {
       "id": "3ca79c7e-f475-47cf-bae2-46b2de9865dc",
       "name": "Tromsø1 - Den første Tromsøundersøkelsen",
+      "nameEn": "Tromsø1 - The First Tromsø Study",
       "variableCount": 72,
       "variabelgrupper": [
         {
@@ -2138,6 +2152,7 @@
     {
       "id": "515fa447-b65d-49eb-afcf-d17701d0902e",
       "name": "Tromsø2 - Den andre Tromsøundersøkelsen",
+      "nameEn": "Tromsø2 - The Second Tromsø Study",
       "variableCount": 171,
       "variabelgrupper": [
         {
@@ -2249,6 +2264,7 @@
     {
       "id": "85fdc669-0511-4c3f-8acc-0f7fbf7f43fc",
       "name": "Tromsø3 - Den tredje Tromsøundersøkelsen",
+      "nameEn": "Tromsø3 - The Third Tromsø Study",
       "variableCount": 293,
       "variabelgrupper": [
         {

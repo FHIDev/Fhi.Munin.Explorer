@@ -2,16 +2,21 @@
   "id": "dac9121d-cf02-415d-b2a2-b935b8ab4118",
   "code": "V_ALS.F1.ALSFRSR1TALE",
   "preferredTerm": "1. Tale",
+  "preferredTermEn": null,
   "beskrivelse": "Angir pasientens grad av utfall på \"1. Tale\" i ALSFRS-R.",
+  "beskrivelseEn": null,
   "kildeId": "f7e53f99-a6e4-438e-bb8b-d0b20e0bb53f",
   "kildeName": "ALS Registeret",
+  "kildeNameEn": "Norwegian Registry for ALS and Other Motor Neuron Diseases",
   "kildeKortNavn": "ALS",
   "kildeType": "nasjonaltMedisinskKvalitetsregister",
   "datasamlingId": "36da9c5f-9e8d-4b28-b4f4-64dbd4e47bdd",
   "datasamlingName": "Inklusjon",
+  "datasamlingNameEn": null,
   "datasamlingStatistikkType": "yearly",
   "variabelgruppeId": "06682703-a576-4467-b3bc-1d483844e2ff",
   "variabelgruppeName": "Funksjonsscore",
+  "variabelgruppeNameEn": "Funksjonsscore",
   "dataFrom": "2010-01-01T00:00:00.000Z",
   "dataTo": "2025-06-01T00:00:00.000Z",
   "dataType": "2",
@@ -59,11 +64,13 @@
     {
       "id": "06682703-a576-4467-b3bc-1d483844e2ff",
       "name": "Funksjonsscore",
+      "nameEn": "Funksjonsscore",
       "parentId": "e55fdeb0-8f51-4007-ae61-86245b38f688"
     },
     {
       "id": "3d20fd90-d1f0-49fc-b1f0-96f88411c7bf",
       "name": "Funksjonsskala",
+      "nameEn": null,
       "parentId": null
     }
   ],
@@ -71,6 +78,7 @@
     {
       "id": "36da9c5f-9e8d-4b28-b4f4-64dbd4e47bdd",
       "name": "Inklusjon",
+      "nameEn": null,
       "validFrom": "2026-04-10T10:51:58.037Z",
       "validTo": null,
       "dataFrom": "2010-01-01T00:00:00.000Z",

@@ -23,8 +23,15 @@ public sealed record KildeDetail
     /// <summary>Display name. The list endpoint calls the same value <c>navn</c>.</summary>
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="PreferredTerm"/>.</summary>
+    [JsonPropertyName("preferredTermEn")] public string? PreferredTermEn { get; init; }
+
     [JsonPropertyName("kortNavn")] public string? ShortName { get; init; }
     [JsonPropertyName("beskrivelse")] public string? Description { get; init; }
+
+    /// <summary>The description in English; null when Munin has none, so the reader is shown <see cref="Description"/>.</summary>
+    [JsonPropertyName("beskrivelseEn")] public string? DescriptionEn { get; init; }
+
     /// <summary>Null when the kilde has no kildetype — see <see cref="KildeSummary.Kildetype"/>.</summary>
     [JsonPropertyName("kildetype")] public string? Kildetype { get; init; }
 
@@ -89,8 +96,15 @@ public sealed record KildeDatasamling
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="Name"/>.</summary>
+    [JsonPropertyName("nameEn")] public string? NameEn { get; init; }
+
     [JsonPropertyName("kortNavn")] public string? ShortName { get; init; }
     [JsonPropertyName("beskrivelse")] public string Description { get; init; } = "";
+
+    /// <summary>The description in English; null when Munin has none, so the reader is shown <see cref="Description"/>.</summary>
+    [JsonPropertyName("beskrivelseEn")] public string? DescriptionEn { get; init; }
 
     /// <summary>Visible published variables pinned into this datasamling.</summary>
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
@@ -170,8 +184,15 @@ public sealed record KildeDelkilde
     [JsonPropertyName("code")] public string Code { get; init; } = "";
 
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="Name"/>.</summary>
+    [JsonPropertyName("nameEn")] public string? NameEn { get; init; }
+
     [JsonPropertyName("kortNavn")] public string? ShortName { get; init; }
     [JsonPropertyName("beskrivelse")] public string Description { get; init; } = "";
+
+    /// <summary>The description in English; null when Munin has none, so the reader is shown <see cref="Description"/>.</summary>
+    [JsonPropertyName("beskrivelseEn")] public string? DescriptionEn { get; init; }
 
     /// <summary>Curated display order; null when unordered.</summary>
     [JsonPropertyName("presentationOrder")] public int? PresentationOrder { get; init; }
