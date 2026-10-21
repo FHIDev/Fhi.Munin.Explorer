@@ -29,6 +29,31 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.8.0 — 2026-10-21
+
+### Changed
+
+- **The list menus no longer lie over the results.** «Last ned utvalg», «Last ned», «Flere valg» and «Kolonner» opened as a box over the list, partly covering a row's name so it was too small to press (WCAG 2.2, 2.5.8).
+  - On a phone each one now opens as a sheet from the bottom of the screen, with the page dimmed and not pressable behind it, and a «Lukk» row at its end. Escape, «Lukk» or a press on the dimmed page closes it, and focus goes back to the button that opened it.
+  - On a wider screen a list menu opens in the page, on its own line under the buttons, and moves the list down instead of covering it. «Kolonner» is now one of these menus, its columns tick-box rows in the same panel.
+  - Between 480 and 767px the buttons above the list keep their width when a menu opens under them.
+  - In an open menu the arrow keys, Home and End move between its rows.
+
+### Fixed
+
+- **Keyboard focus is never hidden under the sticky name bar.** Moving through a detail page with Tab or Shift+Tab while the name bar is stuck at the top could leave the focused link wholly under the bar, out of sight (WCAG 2.2, 2.4.11). The page now scrolls a control that keyboard focus lands on clear of the bar, at the widths the explorer is tested at.
+- **An open column picker closes when you press outside it, as the list menus do.** On a phone, opening «Flere valg» or «Last ned» with «Kolonner» still open left the picker's tick boxes crowded against the menu's buttons, closer than the 24px a touch target needs (WCAG 2.2, 2.5.8). Now one of them is open at a time.
+
+### Notes for hosts
+
+- **The browser module listens for focus on the document.** While a detail page's name bar is stuck, a capture `focusin` listener scrolls a control that keyboard focus (`:focus-visible`) lands on under the bar to just below it, in the control's nearest scrolling ancestor or the document. A mouse press, a sticky or fixed control, the contents column and a contents jump's target are left alone. A host with its own focus scrolling can see the two add up; without the module there is no stuck bar and nothing changes.
+- **The list menus need a Stiler with their sheet and in-page rules.** Below 480px the browser module turns an open menu or column picker into a popover in the top layer and adds `munin-explorer-list-menu__panel--sheet`. It sets role="dialog" and aria-modal, and makes the rest of the page `inert` while it is open. From 480px the panel is laid out in the page by the stylesheet alone.
+  - Each panel ends in a `munin-explorer-list-menu__close` button, «Lukk», which the component hides everywhere but on a sheet. It wants a full-width row at least 44px tall with a rule above it; unstyled it is a bare button that still closes the sheet, so the cost is cosmetic.
+  - With an older Stiler the phone sheet shows in the browser's default popover box, the «Lukk» row is unstyled, and the desktop panel stays an overlay.
+  - A browser without the popover API keeps the overlay on phones.
+  - A host that needs its own content usable while a menu is open on a phone should know the page behind is inert until the sheet closes.
+- **«Kolonner» is no longer a `<details>` dropdown.** The column picker is now a list menu: a `munin-explorer-list-menu` wrapper, a button, and a `munin-explorer-list-menu__panel` of `munin-explorer-list-menu__check` rows. It no longer wears Stiler's `dropdown`, `munin-explorer__dropdown` or `dropdown-choicepicker*` names, so a host rule written for those no longer reaches it.
+
 ## 2.7.0 — 2026-10-20
 
 ### Changed
