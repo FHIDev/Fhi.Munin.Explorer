@@ -114,6 +114,13 @@ like bugs and can be tidied away without a single other check going red.
   the count against untouched `main` before believing it is yours; `.gitattributes` normalises to
   LF, so CI sees clean files.
 
+## Review risk tier
+
+Every pull request gets one label, `risk:low`, `risk:medium` or `risk:high`, from the paths it changes and
+`.github/risk-tiers.txt` (`.github/workflows/risk-label.yml`). What each tier needs before a merge is in
+[`docs/review-risk-tiers.md`](https://github.com/FHIDev/Fhi.Munin.DevInfra/blob/main/docs/review-risk-tiers.md) in
+Fhi.Munin.DevInfra. A path the rules get wrong: change the rule and add the path to `.github/risk-tiers.examples`.
+
 ## Beads
 
 Work is tracked in the **Munin** beads workspace, not this repository's issues — `.beads/redirect`
