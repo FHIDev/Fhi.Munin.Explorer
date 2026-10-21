@@ -52,6 +52,7 @@ public sealed partial class VariableListView
         else if (_menuOpen)
         {
             _downloadOpen = false;
+            Columns.Close();
         }
     }
 
@@ -63,6 +64,7 @@ public sealed partial class VariableListView
         if (_downloadOpen)
         {
             _menuOpen = false;
+            Columns.Close();
             DisarmConfirmations();
         }
     }
@@ -73,6 +75,7 @@ public sealed partial class VariableListView
         _readerMoves++;
         _menuOpen = false;
         _downloadOpen = false;
+        Columns.Close();
         DisarmConfirmations();
     }
 

@@ -315,8 +315,8 @@ public class SharedListViewTest : ExplorerTestContext
         // Behind the picker by default since Fhi.Metadata-b2w2z, so turned on first.
         foreach (var label in new[] { "Kodeverk", "Statistikk" })
         {
-            cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]")
-               .Single(b => b.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim() == label)
+            cut.FindAll("[aria-labelledby^='munin-explorer-columns-toggle-'] input[type=checkbox]")
+               .Single(b => b.ParentElement!.TextContent.Trim() == label)
                .Change(true);
         }
 

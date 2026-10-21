@@ -6456,12 +6456,17 @@ public class KildeSearchTest : ExplorerTestContext
             "munin-explorer-kilder__name",
             // The button inside each of the four sortable column headings (Fhi.Metadata-l9l2n.88).
             "munin-explorer-kilder__sort",
+            // «Kolonner», a list menu since Fhi.Metadata-mhqx0.8: its panel, its rows and its «Lukk».
+            "munin-explorer-list-menu",
+            "munin-explorer-list-menu__check",
+            "munin-explorer-list-menu__close",
+            "munin-explorer-list-menu__panel",
+            "munin-explorer-list-menu__panel--rows",
             "munin-explorer-results",            // shared
             // The row the count shares with the column picker. Drawn whether or not there are rows,
             // unlike the picker in it. (Fhi.Metadata-tciss)
             "munin-explorer-results__toolbar",
             "munin-explorer-search__clear",      // shared
-            "munin-explorer__dropdown",          // the picker, shared
         ], invented);
     }
 
@@ -6722,6 +6727,25 @@ public class KildeSearchTest : ExplorerTestContext
             Assert.Equal(code, next.TextContent.Trim());
             Assert.Equal(headers.ToList().IndexOf(CodeHeading), row.Children.ToList().IndexOf(next));
         }
+    }
+
+    // «Kolonner» is a list menu here as well, and the only one on the page (Fhi.Metadata-mhqx0.8).
+    [Fact]
+    public void Picker_WhenOpenedAndEscapeIsPressed_ThenItClosesAndFocusReturnsToItsButton()
+    {
+        var cut = RenderWith(CodeKilder());
+        AngleSharp.Dom.IElement Toggle() => cut.Find("button[id^='munin-explorer-columns-toggle-']");
+        AngleSharp.Dom.IElement Panel() => cut.Find($"#{Toggle().GetAttribute("aria-controls")}");
+
+        Toggle().Click();
+        Assert.Equal("true", Toggle().GetAttribute("aria-expanded"));
+        Assert.False(Panel().HasAttribute("hidden"));
+
+        Panel().ParentElement!.KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
+
+        Assert.Equal("false", Toggle().GetAttribute("aria-expanded"));
+        Assert.True(Panel().HasAttribute("hidden"));
+        cut.WaitForAssertion(() => JSInterop.VerifyInvoke("Blazor._internal.domWrapper.focus"));
     }
 
     [Fact]

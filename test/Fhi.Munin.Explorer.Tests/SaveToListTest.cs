@@ -804,11 +804,11 @@ public class SaveToListTest : ExplorerTestContext
 
     /// <summary>The picker's column names, in the order it lists them.</summary>
     private static IReadOnlyList<string> PickerNames(IRenderedComponent<VariableSearch> cut) =>
-        [.. cut.FindAll(".dropdown-choicepicker__item .form-control__label").Select(l => l.TextContent.Trim())];
+        [.. cut.FindAll("[aria-labelledby^='munin-explorer-columns-toggle-'] .munin-explorer-list-menu__check").Select(l => l.TextContent.Trim())];
 
     private static IElement PickerBox(IRenderedComponent<VariableSearch> cut, string label) =>
-        cut.FindAll(".dropdown-choicepicker__item")
-            .Single(i => i.QuerySelector(".form-control__label")!.TextContent.Trim() == label)
+        cut.FindAll("[aria-labelledby^='munin-explorer-columns-toggle-'] .munin-explorer-list-menu__check")
+            .Single(i => i.TextContent.Trim() == label)
             .QuerySelector("input[type=checkbox]")!;
 
     private static void PressColumn(IRenderedComponent<VariableSearch> cut, string label)

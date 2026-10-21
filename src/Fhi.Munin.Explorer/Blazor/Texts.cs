@@ -399,6 +399,8 @@ internal sealed record Texts(
     string SaveSharedListName,
     string SaveSharedListSubmit,
     string CloseSharedList,
+    // A list menu shown as a bottom sheet on a phone (Fhi.Metadata-mhqx0.8).
+    string CloseMenu,
     // Text, not a login control, for the reason SignInForVariableLists gives.
     string SignInToSaveSharedList,
     // (code) — an unknown, expired or malformed code.
@@ -1387,6 +1389,7 @@ internal sealed record Texts(
         SaveSharedListName: "Navn på din kopi av listen",
         SaveSharedListSubmit: "Lagre listen",
         CloseSharedList: "Lukk delt liste",
+        CloseMenu: "Lukk",
         SignInToSaveSharedList: "Logg inn for å lagre listen som din egen.",
         SharedListNotFound: code => $"Fant ingen delt liste med koden {code}. En kode virker i 90 dager.",
         SharedListError: "Kunne ikke åpne den delte listen nå. Prøv igjen om litt.",
@@ -1935,6 +1938,7 @@ internal sealed record Texts(
         SaveSharedListName: "Name of your copy of the list",
         SaveSharedListSubmit: "Save the list",
         CloseSharedList: "Close shared list",
+        CloseMenu: "Close",
         SignInToSaveSharedList: "Sign in to save the list as your own.",
         SharedListNotFound: code => $"No shared list was found with the code {code}. A code works for 90 days.",
         SharedListError: "Could not open the shared list just now. Try again shortly.",

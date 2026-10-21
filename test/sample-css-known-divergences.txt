@@ -543,3 +543,24 @@ invented-selector||.munin-explorer-meta__grid dd + dd|margin-top
 invented-selector||.munin-explorer-meta__grid dt|margin-bottom
 invented-selector||.munin-explorer-page__fields dd + dd|margin-top
 invented-selector||.munin-explorer-page__fields dt|margin-bottom
+
+# The list menus' phone sheet and in-page desktop panel (Fhi.Metadata-mhqx0.8): the sample draws them ahead of Stiler,
+# whose patch for the same rules is with Loki. Delete these lines when the Stiler pin carries them.
+invented-selector|@media (min-width:480px) and (prefers-reduced-motion:no-preference)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|interpolate-size
+invented-selector|@media (min-width:480px) and (prefers-reduced-motion:no-preference)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|overflow
+invented-selector|@media (min-width:480px) and (prefers-reduced-motion:no-preference)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|transition
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|border
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|box-shadow
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|flex-basis
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|max-width
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|min-width
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|order
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|position
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu--end > button|margin-left
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu|display
+unstyled-name||.munin-explorer-list-menu__close|
+unstyled-name||.munin-explorer-list-menu__panel--sheet|
+invented-selector|@media (min-width:480px) and (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > .munin-explorer-list-menu__panel|contain
+invented-selector|@media (min-width:480px) and (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > .munin-explorer-list-menu__panel|grid-column
+invented-selector||.munin-explorer-list-menu__check:has( > input[aria-disabled=true])|cursor
+invented-selector||.munin-explorer-list-menu__check:has( > input[aria-disabled=true])|opacity

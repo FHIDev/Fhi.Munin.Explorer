@@ -599,15 +599,15 @@ export const states = {
   // the seven columns behind it - and those cells are what a column added to the header and not to
   // the body would put under the wrong heading (Fhi.Metadata-ay3zz).
   'kilder-columns': async page => {
-    const picker = page.locator('.munin-explorer-header details').first();
+    const picker = page.locator('.munin-explorer-header .munin-explorer-list-menu:has(> [id^="munin-explorer-columns-toggle-"])').first();
     await picker.waitFor({ state: 'visible', timeout: findTimeout });
-    await picker.locator('summary').click();
+    await picker.locator(':scope > button').click();
 
     // Found through the item rather than by role: the box carries no text of its own, its name
     // coming from the sibling label span, and check() rather than click() so the state is what is
     // asked for and not whatever a press toggles it to (Fhi.Metadata-f6az7).
     const toggle = picker
-      .locator('.dropdown-choicepicker__item', { hasText: 'Dataansvarlig' })
+      .locator('.munin-explorer-list-menu__check', { hasText: 'Dataansvarlig' })
       .locator('input[type=checkbox]')
       .first();
     await toggle.waitFor({ state: 'visible', timeout: findTimeout });
@@ -625,14 +625,14 @@ export const states = {
   'kilder-counts': async page => {
     await rowsArePresent(page, 'button.munin-explorer-kilder__name');
 
-    const picker = page.locator('.munin-explorer-header details').first();
+    const picker = page.locator('.munin-explorer-header .munin-explorer-list-menu:has(> [id^="munin-explorer-columns-toggle-"])').first();
     await picker.waitFor({ state: 'visible', timeout: findTimeout });
-    await picker.locator('summary').click();
+    await picker.locator(':scope > button').click();
 
     // Through the item and not by role, for the reason kilder-columns above gives: the box carries
     // no text of its own, and check() asks for a state rather than flipping whatever is there.
     const toggle = picker
-      .locator('.dropdown-choicepicker__item', { hasText: 'Delkilder' })
+      .locator('.munin-explorer-list-menu__check', { hasText: 'Delkilder' })
       .locator('input[type=checkbox]')
       .first();
     await toggle.waitFor({ state: 'visible', timeout: findTimeout });
@@ -646,11 +646,11 @@ export const states = {
 
     // Folded again before anything is measured: this state is here for the table, and every
     // geometry assertion would otherwise be measuring a dropdown hanging open over it.
-    if (await picker.evaluate(el => el.open)) {
-      await picker.locator('summary').click();
+    if (await picker.evaluate(el => el.querySelector(':scope > button').getAttribute('aria-expanded') === 'true')) {
+      await picker.locator(':scope > button').click();
     }
-    if (await picker.evaluate(el => el.open)) {
-      throw new Error('The column picker stayed open after its summary was pressed');
+    if (await picker.evaluate(el => el.querySelector(':scope > button').getAttribute('aria-expanded') === 'true')) {
+      throw new Error('The column picker stayed open after its button was pressed');
     }
   },
 
@@ -660,11 +660,11 @@ export const states = {
   'kilder-every-column': async page => {
     await rowsArePresent(page, 'button.munin-explorer-kilder__name');
 
-    const picker = page.locator('.munin-explorer-header details').first();
+    const picker = page.locator('.munin-explorer-header .munin-explorer-list-menu:has(> [id^="munin-explorer-columns-toggle-"])').first();
     await picker.waitFor({ state: 'visible', timeout: findTimeout });
-    await picker.locator('summary').click();
+    await picker.locator(':scope > button').click();
 
-    const toggles = picker.locator('.dropdown-choicepicker__item input[type=checkbox]');
+    const toggles = picker.locator('.munin-explorer-list-menu__check input[type=checkbox]');
     await toggles.first().waitFor({ state: 'visible', timeout: findTimeout });
     // Pressed in the page: at 320px the open list hangs off the viewport's left edge
     // (Fhi.Metadata-w6lvr), where Playwright's own click refuses to land.
@@ -682,11 +682,11 @@ export const states = {
     }
 
     // Folded before anything is measured, for the reason kilder-counts gives.
-    if (await picker.evaluate(el => el.open)) {
-      await picker.locator('summary').click();
+    if (await picker.evaluate(el => el.querySelector(':scope > button').getAttribute('aria-expanded') === 'true')) {
+      await picker.locator(':scope > button').click();
     }
-    if (await picker.evaluate(el => el.open)) {
-      throw new Error('The column picker stayed open after its summary was pressed');
+    if (await picker.evaluate(el => el.querySelector(':scope > button').getAttribute('aria-expanded') === 'true')) {
+      throw new Error('The column picker stayed open after its button was pressed');
     }
     const box = await page.locator('.munin-explorer-kilder-scroll').first().getAttribute('class');
     console.log(`    kilder-every-column: ${box}`);
@@ -907,10 +907,10 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // The picker opened, then a menu: the press shuts the picker (Fhi.Metadata-mhqx0.6), so one popover is scanned.
+  // The picker opened, then a menu: one menu at a time, so opening «Flere valg» shuts «Kolonner» (Fhi.Metadata-mhqx0.8).
   'list-actions-and-columns': async page => {
     await states['explorer-list-tab'](page);
-    await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer__dropdown > summary').click();
+    await page.locator('[role=tabpanel]:not([hidden]) [id^="munin-explorer-columns-toggle-"]').click();
     await press(page, 'Flere valg');
     await page.getByRole('button', { name: 'Tøm liste', exact: true })
       .waitFor({ state: 'visible', timeout: findTimeout });
@@ -924,10 +924,10 @@ export const states = {
       .waitFor({ state: 'visible', timeout: findTimeout });
   },
 
-  // As above: the press on «Last ned» shuts the picker first.
+  // As above: opening «Last ned» shuts «Kolonner» first.
   'list-download-and-columns': async page => {
     await states['explorer-list-tab'](page);
-    await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer__dropdown > summary').click();
+    await page.locator('[role=tabpanel]:not([hidden]) [id^="munin-explorer-columns-toggle-"]').click();
     await press(page, 'Last ned');
     await page.getByRole('button', { name: 'Excel', exact: true })
       .waitFor({ state: 'visible', timeout: findTimeout });

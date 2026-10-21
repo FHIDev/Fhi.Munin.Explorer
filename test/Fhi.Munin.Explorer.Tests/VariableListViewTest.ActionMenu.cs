@@ -50,6 +50,29 @@ public partial class VariableListViewTest
     private static Task ChooseAsync(IRenderedComponent<VariableListView> cut, string word) =>
         cut.InvokeAsync(() => cut.FindAll($"{MenuPanel} button").First(b => AccessibleName.Of(b) == word).Click());
 
+    // «Kolonner» is one of the list's folds since Fhi.Metadata-mhqx0.8: one open at a time, either way round.
+    [Fact]
+    public void Columns_WhenOpened_ThenFlereValgAndLastNedShut_AndOpeningEitherShutsColumns()
+    {
+        var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
+        AngleSharp.Dom.IElement Columns() => cut.Find("button[id^='munin-explorer-columns-toggle-']");
+        AngleSharp.Dom.IElement Download() => cut.Find("button[aria-controls^='munin-explorer-list-download-']");
+
+        OpenMenu(cut);
+        Columns().Click();
+        Assert.Equal("true", Columns().GetAttribute("aria-expanded"));
+        Assert.Equal("false", Menu(cut).GetAttribute("aria-expanded"));
+
+        Download().Click();
+        Assert.Equal("true", Download().GetAttribute("aria-expanded"));
+        Assert.Equal("false", Columns().GetAttribute("aria-expanded"));
+
+        Columns().Click();
+        OpenMenu(cut);
+        Assert.Equal("true", Menu(cut).GetAttribute("aria-expanded"));
+        Assert.Equal("false", Columns().GetAttribute("aria-expanded"));
+    }
+
     [Fact]
     public void Folds_WhenTheListIsMountedAlone_ThenItInstallsThePressOutsideWatcherItself()
     {
@@ -125,13 +148,20 @@ public partial class VariableListViewTest
     {
         // helsedata's own menu order, as «Logg ut» stands last in their profile menu (Fhi.Metadata-ht2gj).
         var cut = RenderView(new ListClient(Item("Alder ved diagnose", "V_BDR.ALDER")));
-        var rows = cut.FindAll($"{MenuPanel} button");
+        var rows = cut.FindAll($"{MenuPanel} button:not(.munin-explorer-list-menu__close)");
 
         Assert.Equal(
             ["Gi nytt navn", "Del liste", "Kopier liste", "Åpne delt liste", "Tøm liste", "Slett listen"],
             Words(rows));
         Assert.All(rows, row => Assert.Contains("munin-explorer-list-menu__item", row.ClassList));
         Assert.Equal(["Tøm liste"], Words(rows.Where(row => row.ClassList.Contains("munin-explorer-list-menu__item--apart"))));
+
+        // «Lukk» ends the panel, out of sight until the script shows it on a phone's bottom sheet (Fhi.Metadata-mhqx0.8).
+        var close = cut.Find(MenuPanel).Children.Last();
+        Assert.Equal("Lukk", close.TextContent);
+        Assert.Contains("munin-explorer-list-menu__close", close.ClassList);
+        Assert.True(close.HasAttribute("hidden"));
+        Assert.Equal("display: none", close.GetAttribute("style"));
     }
 
     [Fact]
@@ -139,7 +169,7 @@ public partial class VariableListViewTest
     {
         var cut = RenderView(new ListClient { HasList = false });
 
-        Assert.Equal(["Åpne delt liste"], Words(cut.FindAll($"{MenuPanel} button")));
+        Assert.Equal(["Åpne delt liste"], Words(cut.FindAll($"{MenuPanel} button:not(.munin-explorer-list-menu__close)")));
     }
 
     [Fact]

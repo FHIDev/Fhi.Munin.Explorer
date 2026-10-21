@@ -217,8 +217,8 @@ public class DataPeriodAcrossSurfacesTest : ExplorerTestContext
             .Add(c => c.Language, language ?? "no"));
 
         // The list keeps the period behind its column picker by default (Fhi.Metadata-b2w2z).
-        list.FindAll(".dropdown-choicepicker__item input[type=checkbox]")
-            .Single(b => b.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim()
+        list.FindAll("[aria-labelledby^='munin-explorer-columns-toggle-'] input[type=checkbox]")
+            .Single(b => b.ParentElement!.TextContent.Trim()
                          == Texts.For(language).FieldDataPeriod)
             .Change(true);
 

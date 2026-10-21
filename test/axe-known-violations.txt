@@ -5,5 +5,3 @@
 #
 # FORMAT, one per line:  <rule>|<state>|<width or empty for the default>|<text the node's selector contains>|<bead>
 
-# The open «Last ned» menu lies over part of the first result row's name button, that row alone (WCAG 2.5.8).
-target-size|search-download-open||-bc8a6515af3644d0aa10b498813327b4-|Fhi.Metadata-mhqx0.7

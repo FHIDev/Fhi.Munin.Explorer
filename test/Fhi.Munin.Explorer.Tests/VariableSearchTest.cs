@@ -943,11 +943,11 @@ public class VariableSearchTest : ExplorerTestContext
 
     /// <summary>The picker's checkboxes, in the order it lists them.</summary>
     private static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<VariableSearch> cut) =>
-        cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
+        cut.FindAll("[aria-labelledby^='munin-explorer-columns-toggle-'] input[type=checkbox]");
 
     /// <summary>A checkbox's column, which is the label beside it rather than its own text.</summary>
     private static string ColumnName(IElement toggle) =>
-        toggle.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
+        toggle.ParentElement!.TextContent.Trim();
 
     /// <summary>Whether the column is on screen, as the rendered attribute has it.</summary>
     private static bool Ticked(IElement toggle) => toggle.HasAttribute("checked");
@@ -1853,84 +1853,83 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void Render_Always_ThenThePickerBorrowsItsClassNamesAndInventsNone()
     {
-        // The companion to the munin-explorer guard further down, which only inspects names in
-        // that prefix — the picker wears fourteen names outside it, and an invented fifteenth would
-        // slip past that test unnoticed. Every name here was read back off helsedata's compiled
-        // stylesheets; one that is not renders as a raw browser default inside a styled page.
+        // Every name the picker wears outside the munin-explorer prefix is Stiler's, and inside it a list menu's:
+        // an invented one would render as a browser default inside a styled page (Fhi.Metadata-mhqx0.8).
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+        var picker = cut.Find("[aria-labelledby^='munin-explorer-columns-toggle-']").ParentElement!;
 
-        var picker = cut.Find(".munin-explorer-header");
-
-        // «Last ned utvalg» shares the row and has its own guard: the inventory below. (Fhi.Metadata-ht2gj)
         var names = picker.QuerySelectorAll("[class]")
-            .Where(e => e.Closest(".munin-explorer-list-menu") is null)
             .Prepend(picker)
             .SelectMany(e => e.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Where(k => !HostClassNames.IsOwnStructureName(k))
             .Distinct()
             .Order(StringComparer.Ordinal)
             .ToList();
 
         Assert.Equal(
         [
-            "button-square--ghost",           // Stiler, the ghost colour the sort and facet
-                                              //   buttons already wear
-            "dropdown",                       // helsedata, variables.css — the trigger's width:
-                                              //   `.munin-explorer-header__actions .dropdown
-                                              //   { width: 100% }`, unconditional
-            "dropdown-choicepicker",          // helsedata, variables.css — the open list
-            "dropdown-choicepicker--right",
-            "dropdown-choicepicker__item",
-            "form-control",                   // Stiler, _formcontrol.scss — the row the checkbox
-                                              //   and its label share
-            "form-control__label",            // Stiler, and the choicepicker overrides its
-                                              //   word-break INSIDE dropdown-choicepicker__item
-            "hd-button-square",               // Stiler, the square shape
-            "icon",                           // Stiler, the 1.5rem icon box
-            "icon--right",                    // Stiler, the chevron's margin on the other side
-            "icon-keyboard-arrow-down",       // helsedata's own trigger carries both, and Stiler
-            "icon-keyboard-arrow-up",         //   hides whichever contradicts the open state
-            "icon-layout",                    // helsedata, leading their own "Vis kolonner"
-            "screenreader-only",              // Stiler, and load-bearing: it hides the sentence
-                                              //   saying why the last column will not turn off
+            "button-square--ghost",                  // Stiler, the ghost colour
+            "hd-button-square",                      // Stiler, the square shape
+            "icon",                                  // Stiler, the 1.5rem icon box
+            "icon--right",                           // Stiler, the chevron's margin on the other side
+            "icon-keyboard-arrow-down",              // the chevron for the state the component holds
+            "icon-layout",                           // helsedata, leading their own "Vis kolonner"
+            "munin-explorer-header__actions-button", // ours, Stiler components/munin-explorer/
+            "munin-explorer-list-menu",              // the list menus' own names, since Fhi.Metadata-mhqx0.8
+            "munin-explorer-list-menu__check",
+            "munin-explorer-list-menu__close",
+            "munin-explorer-list-menu__panel",
+            "munin-explorer-list-menu__panel--rows",
+            "screenreader-only",                     // Stiler: the sentence on why the last column will not turn off
         ], names);
 
-        // The nesting, not the count, which the list above already pins: every box sits inside the
-        // label that names it, which is what makes the whole line a target as well as a name.
-        Assert.Equal(picker.QuerySelectorAll(".dropdown-choicepicker__item").Length,
-                     picker.QuerySelectorAll("label.form-control > input[type=checkbox]").Length);
+        // Every box inside the label that names it, which makes the whole row a target as well as a name.
+        Assert.Equal(picker.QuerySelectorAll(".munin-explorer-list-menu__check").Length,
+                     picker.QuerySelectorAll("label.munin-explorer-list-menu__check > input[type=checkbox]").Length);
     }
 
     [Fact]
-    public void Render_Always_ThenThePickerCarriesHelsedatasOwnDropdownShape()
+    public void Render_Always_ThenThePickerIsAListMenuThatOpensAndClosesFromItsButton()
     {
-        // Their names, read off the compiled variables.css and styles.css rather than guessed at,
-        // and their nesting — dropdown-choicepicker is position:absolute and anchors to the
-        // wrapper, which Stiler now positions itself, so the RCL emits no inline style at all
-        // (Fhi.Metadata-f6az7).
+        // One of the list menus, so it opens in the page on a desktop and as a bottom sheet on a phone as
+        // «Last ned utvalg» beside it does (Fhi.Metadata-mhqx0.8), and no longer Stiler's <details> dropdown.
         var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+        IElement Toggle() => cut.Find("button[id^='munin-explorer-columns-toggle-']");
+        IElement Panel() => cut.Find($"#{Toggle().GetAttribute("aria-controls")}");
 
-        // Both their names, and the exact pair: `dropdown` is the width their actions row gives a
-        // trigger, `munin-explorer__dropdown` the z-index over the rows below. Asserted as a
-        // set rather than with Contains, which `munin-explorer__dropdown` would satisfy on its
-        // own and so could not tell the two apart.
-        var dropdown = cut.Find(".munin-explorer-header__actions > details");
-        Assert.Equal(["dropdown", "munin-explorer__dropdown"],
-                     dropdown.ClassName!.Split(' ', StringSplitOptions.RemoveEmptyEntries));
-        Assert.False(dropdown.HasAttribute("style"));
+        Assert.Empty(cut.FindAll(".munin-explorer-header__actions details"));
+        Assert.Contains("munin-explorer-list-menu", Toggle().ParentElement!.ClassList);
+        Assert.Equal("Kolonner", Toggle().TextContent.Trim());
+        Assert.Equal("false", Toggle().GetAttribute("aria-expanded"));
+        Assert.True(Panel().HasAttribute("hidden"));
+        Assert.Equal("group", Panel().GetAttribute("role"));
+        Assert.Equal(Toggle().Id, Panel().GetAttribute("aria-labelledby"));
+        Assert.Equal(7, Panel().QuerySelectorAll("label.munin-explorer-list-menu__check > input[type=checkbox]").Length);
 
-        // A <details>, because their dropdown opens and closes from React state and this package
-        // ships no script for it. Same reason the filter facets are disclosures.
-        var summary = cut.Find(".munin-explorer-header__actions > details > summary");
-        Assert.Contains("hd-button-square", summary.ClassName!);
-        Assert.Equal("Kolonner", summary.TextContent);
+        Toggle().Click();
+        Assert.Equal("true", Toggle().GetAttribute("aria-expanded"));
+        Assert.False(Panel().HasAttribute("hidden"));
 
-        Assert.NotNull(cut.Find("ul.dropdown-choicepicker.dropdown-choicepicker--right"));
-        Assert.Equal(7, cut.FindAll("li.dropdown-choicepicker__item").Count);
+        Panel().ParentElement!.KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        Assert.Equal("false", Toggle().GetAttribute("aria-expanded"));
+        Assert.True(Panel().HasAttribute("hidden"));
+    }
 
-        // Not sortable-dropdown, which the bead named: that is their MOBILE sort control and it is
-        // display:none above 1280px, so a picker wearing it would vanish on every desktop.
-        Assert.Empty(cut.FindAll(".sortable-dropdown"));
+    [Fact]
+    public void Columns_WhenOpened_ThenLastNedUtvalgShuts_AndTheOtherWayRound()
+    {
+        // One menu at a time in the row: two open crowd each other's targets on a phone (WCAG 2.5.8).
+        var cut = RenderWith(new FakeClient(OnePage(Variable("1. Tale", "KODE"))));
+        IElement Columns() => cut.Find("button[id^='munin-explorer-columns-toggle-']");
+        IElement Download() => cut.Find(".munin-explorer-header__actions > .munin-explorer-list-menu > button[aria-controls^='munin-explorer-download-panel-']");
+
+        Download().Click();
+        Columns().Click();
+        Assert.Equal("true", Columns().GetAttribute("aria-expanded"));
+        Assert.Equal("false", Download().GetAttribute("aria-expanded"));
+
+        Download().Click();
+        Assert.Equal("true", Download().GetAttribute("aria-expanded"));
+        Assert.Equal("false", Columns().GetAttribute("aria-expanded"));
     }
 
     [Fact]
@@ -2138,7 +2137,7 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-list-menu__check",
             "munin-explorer-list-menu__item",
             "munin-explorer-list-menu__hint",
-            "munin-explorer__dropdown",               // ours, Stiler (the z-index)
+            "munin-explorer-list-menu__close",        // «Lukk», on a phone's bottom sheet only (Fhi.Metadata-mhqx0.8)
             "munin-explorer-header__actions-button",  // ours, Stiler components/munin-explorer/
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/
@@ -10190,7 +10189,7 @@ public class VariableSearchTest : ExplorerTestContext
         var row = cut.Find(".munin-explorer-results__toolbar");
 
         Assert.Empty(row.QuerySelectorAll("select"));
-        Assert.Equal(["Kolonner"], row.QuerySelectorAll("summary").Select(s => s.TextContent.Trim()));
+        Assert.Equal(["Kolonner"], row.QuerySelectorAll("[id^='munin-explorer-columns-toggle-']").Select(s => s.TextContent.Trim()));
         Assert.NotNull(cut.Find(".munin-explorer-pagination-size select"));
         Assert.Empty(row.QuerySelectorAll(".munin-explorer-pagination-size"));
     }
@@ -15653,7 +15652,7 @@ public class VariableSearchTest : ExplorerTestContext
             "munin-explorer-list-menu__check",
             "munin-explorer-list-menu__item",
             "munin-explorer-list-menu__hint",
-            "munin-explorer__dropdown",              // that opens it. All four came from variables.css.
+            "munin-explorer-list-menu__close",       // «Lukk», on a phone's bottom sheet only (Fhi.Metadata-mhqx0.8)
             "munin-explorer-header__actions-button",
             "munin-explorer-container",  // ours, Stiler components/munin-explorer/
             "munin-explorer-results",    // ours, Stiler components/munin-explorer/

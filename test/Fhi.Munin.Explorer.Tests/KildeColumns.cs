@@ -20,11 +20,11 @@ internal static class KildeColumns
 {
     /// <summary>The picker's checkboxes, in the order it lists them.</summary>
     internal static IReadOnlyList<IElement> ColumnToggles(IRenderedComponent<KildeSearch> cut) =>
-        cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
+        cut.FindAll("[aria-labelledby^='munin-explorer-columns-toggle-'] input[type=checkbox]");
 
     /// <summary>A checkbox's column, which is the label beside it rather than its own text.</summary>
     internal static string ColumnName(IElement toggle) =>
-        toggle.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
+        toggle.ParentElement!.TextContent.Trim();
 
     /// <summary>Whether the column is on screen, as the rendered attribute has it.</summary>
     internal static bool Ticked(IElement toggle) => toggle.HasAttribute("checked");

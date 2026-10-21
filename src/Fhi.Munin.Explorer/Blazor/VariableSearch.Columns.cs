@@ -237,17 +237,22 @@ public partial class VariableSearch
     /// <summary>The hint the locked column points at, minted per instance like the other ids.</summary>
     private string ColumnsHintId => $"munin-explorer-columns-hint-{_instance}";
 
+    // One menu at a time in the row: «Last ned utvalg» shuts as «Kolonner» opens, and the other way round.
+    private ColumnsFold? _columns;
+
+    private ColumnsFold Columns => _columns ??= new(_instance, () => _downloadOpen = false);
+
     /// <summary>The column picker, drawn by the shared <see cref="Fhi.Munin.Explorer.Blazor.ColumnPicker"/>.</summary>
     /// <remarks>
-    /// The markup, the borrowed Stiler names and the decisions behind them live there, because the
-    /// kilde table hangs the same control over its own columns and a second copy would be a second
-    /// place for them to drift. What stays here is what is this list's own: which columns there
-    /// are, what each is called, and the rule that the last one cannot be turned off.
+    /// The markup is shared with the kilde table's; what is this list's own is which columns there are, what
+    /// each is called, and the rule that the last one cannot be turned off.
     /// </remarks>
     private RenderFragment ColumnPicker() =>
         Blazor.ColumnPicker.For(
             this,
+            Columns,
             T.Columns,
+            T.CloseMenu,
             [.. OfferedColumns.Select(column => new Blazor.ColumnPicker.Choice(
                 ColumnLabel(column),
                 ColumnVisible(column),

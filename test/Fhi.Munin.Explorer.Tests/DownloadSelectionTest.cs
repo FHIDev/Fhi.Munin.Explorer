@@ -490,7 +490,8 @@ public class DownloadSelectionTest : ExplorerTestContext
         var menu = Toggle(cut)!.ParentElement!;
         Assert.Contains("munin-explorer-list-menu", menu.ClassList);
         Assert.Contains("munin-explorer-header__actions", menu.ParentElement!.ClassList);
-        Assert.Equal("DETAILS", menu.NextElementSibling!.TagName);
+        // «Kolonner» beside it is a list menu too since Fhi.Metadata-mhqx0.8.
+        Assert.Contains("munin-explorer-list-menu", menu.NextElementSibling!.ClassList);
 
         Assert.Equal(["hd-button-square", "button-square--ghost"], Toggle(cut)!.ClassList);
         Assert.Equal("true", Toggle(cut)!.QuerySelector(".icon.icon-download")!.GetAttribute("aria-hidden"));

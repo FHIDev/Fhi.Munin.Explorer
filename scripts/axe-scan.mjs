@@ -124,7 +124,11 @@ async function resized(page, width, height) {
   await page.setViewportSize({ width, height });
   await page.waitForTimeout(500);
 
-  if (panelShown && !await panel.isVisible()) {
+  // A menu that became a phone's bottom sheet holds the page behind it inert: a reader cannot open the
+  // filter panel under it, so the scan judges the sheet and leaves the panel shut (Fhi.Metadata-mhqx0.8).
+  const sheetOpen = await page.evaluate(() => document.querySelector(':popover-open') !== null);
+
+  if (panelShown && !sheetOpen && !await panel.isVisible()) {
     const toggle = page.locator('.munin-explorer-filters__toggle[aria-expanded="false"]').first();
     if (await toggle.isVisible()) await toggle.click();
     if (!await panel.waitFor({ state: 'visible', timeout: 5000 }).then(() => true, () => false)) {

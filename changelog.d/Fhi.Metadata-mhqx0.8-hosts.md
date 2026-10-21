@@ -1,0 +1,7 @@
+category: Notes for hosts
+- **The list menus need a Stiler with their sheet and in-page rules.** Below 480px the browser module turns an open menu or column picker into a popover in the top layer and adds `munin-explorer-list-menu__panel--sheet`. It sets role="dialog" and aria-modal, and makes the rest of the page `inert` while it is open. From 480px the panel is laid out in the page by the stylesheet alone.
+  - Each panel ends in a `munin-explorer-list-menu__close` button, «Lukk», which the component hides everywhere but on a sheet. It wants a full-width row at least 44px tall with a rule above it; unstyled it is a bare button that still closes the sheet, so the cost is cosmetic.
+  - With an older Stiler the phone sheet shows in the browser's default popover box, the «Lukk» row is unstyled, and the desktop panel stays an overlay.
+  - A browser without the popover API keeps the overlay on phones.
+  - A host that needs its own content usable while a menu is open on a phone should know the page behind is inert until the sheet closes.
+- **«Kolonner» is no longer a `<details>` dropdown.** The column picker is now a list menu: a `munin-explorer-list-menu` wrapper, a button, and a `munin-explorer-list-menu__panel` of `munin-explorer-list-menu__check` rows. It no longer wears Stiler's `dropdown`, `munin-explorer__dropdown` or `dropdown-choicepicker*` names, so a host rule written for those no longer reaches it.
