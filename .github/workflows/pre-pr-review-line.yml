@@ -5,9 +5,14 @@ name: Pre-PR review line
 
 on:
   pull_request:
-    types: [opened, edited, reopened, synchronize]
+    # labeled/unlabeled: a person changing the risk label. The labeller's own label (set with GITHUB_TOKEN) starts no
+    # run, so the step below waits for the labeller's run on the head commit instead.
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
-permissions: {}
+# actions/pull-requests read: the Risk line is compared with the risk: label once the labeller's run is done.
+permissions:
+  actions: read
+  pull-requests: read
 
 concurrency:
   group: pre-pr-review-line-${{ github.event.pull_request.number }}
@@ -17,11 +22,21 @@ jobs:
   line:
     name: Pre-PR review line
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 4
     steps:
       - name: The description says what the pre-PR review found
         env:
           BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          ACTION: ${{ github.event.action }}
+          UPDATED: ${{ github.event.pull_request.updated_at }}
+          CREATED: ${{ github.event.pull_request.created_at }}
+          # The three lines are required only of pull requests opened from this moment, so none already open turns
+          # red. Delete the cutoff, and the test on it below, once those have merged (DevInfra-0f5.2).
+          NEW_LINES_FROM: "2026-10-22T00:00:00Z"
         run: |
           # Carriage returns and trailing blanks go first: GitHub stores CRLF, and editors leave spaces.
           body=$(printf '%s' "$BODY" | tr -d '\r' | sed -E 's/[[:space:]]+$//')
@@ -77,3 +92,64 @@ jobs:
             exit 1
           fi
           echo "$lines"
+
+          # Testing, Risk and How to revert (DevInfra-0f5.2): one line each, filled in, the Risk tier as the label says.
+          if [[ "$CREATED" < "$NEW_LINES_FROM" ]]; then
+            echo "Opened before $NEW_LINES_FROM: Testing, Risk and How to revert are not required."
+            exit 0
+          fi
+          for key in "Testing" "Risk" "How to revert"; do
+            got=$(printf '%s\n' "$body" | grep -E "^${key}:" || true)
+            if [ -z "$got" ]; then
+              hint=''
+              if printf '%s\n' "$body" | grep -q "${key}:"; then hint=" The text is there, but not at the start of a line: no bold, list or quote marker in front of it."; fi
+              echo "::error::The description has no line that starts with '${key}:'. Add it on a line of its own (the pull request template describes it).$hint"
+              exit 1
+            fi
+            if [ "$(printf '%s\n' "$got" | wc -l)" -ne 1 ]; then
+              echo "::error::The description has more than one '${key}:' line; keep one."
+              exit 1
+            fi
+            value=$(printf '%s' "${got#"${key}:"}" | sed -E 's/^[[:space:]]+//')
+            placeholder='^<.*>$|<why>|<low\|medium\|high>|<what ran|<revert this PR'
+            if [ "${#value}" -lt 3 ] || [[ $value =~ $placeholder ]]; then
+              echo "::error::'${got}' is not filled in."
+              exit 1
+            fi
+            echo "$got"
+          done
+          risk=$(printf '%s\n' "$body" | grep -E '^Risk:')
+          tiered='^Risk: (low|medium|high) (–|—|-) .+$'
+          if [[ ! $risk =~ $tiered ]]; then
+            echo "::error::'$risk' does not start with a tier: 'Risk: low|medium|high – why'."
+            exit 1
+          fi
+          tier=${BASH_REMATCH[1]}
+          # The labeller runs on pull_request_target, so its check runs sit on the base commit; its workflow run records
+          # this pull request's head commit. Wait for the runs this event started (created from 2 minutes before the
+          # event, which also covers a retarget), then read the labels as they are now. A person changing the label starts
+          # no labeller run: compare at once. No labeller run at all: nothing to compare with.
+          if [ "$ACTION" != labeled ] && [ "$ACTION" != unlabeled ]; then
+            since=$(date -u -d "$UPDATED - 2 minutes" +%Y-%m-%dT%H:%M:%SZ)
+            state=none
+            for attempt in $(seq 1 24); do
+              state=$(gh api "repos/$REPO/actions/runs?event=pull_request_target&head_sha=$HEAD_SHA&per_page=100" \
+                --jq "[.workflow_runs[] | select((.name | startswith(\"Risk label\")) and .created_at >= \"$since\")] | if length == 0 then \"none\" else (map(.status) | if all(. == \"completed\") then \"done\" else \"running\" end) end")
+              if [ "$state" = "done" ]; then break; fi
+              if [ "$state" = "none" ] && [ "$attempt" -ge 6 ]; then break; fi
+              sleep 5
+            done
+            if [ "$state" = "none" ]; then
+              echo "::notice::No Risk label run for $HEAD_SHA since $since, so the Risk line is not compared with a label."
+              exit 0
+            fi
+            if [ "$state" != "done" ]; then
+              echo "::error::The Risk label run for this change has not finished, so the Risk line could not be compared with its label. Re-run this check when it has."
+              exit 1
+            fi
+          fi
+          label=$(gh api "repos/$REPO/issues/$PR/labels" --jq '[.[].name | select(startswith("risk:"))] | first // ""')
+          if [ -n "$label" ] && [ "${label#risk:}" != "$tier" ]; then
+            echo "::error::The Risk line says $tier, the label says ${label#risk:}. The label comes from the changed paths (docs/review-risk-tiers.md in Fhi.Munin.DevInfra); write its tier and why."
+            exit 1
+          fi

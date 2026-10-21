@@ -65,6 +65,9 @@ matched than emitted, run it again with `--max-rules 0` and check the rest.
 
 ---
 
+Read `REVIEW.md` first: what an Important finding is here, the nit cap, `file:line` evidence for every finding, and a
+summary that starts with a count.
+
 # Part 1 — The four classes
 
 ## 1. A claim in prose must be true of the code it stands next to
