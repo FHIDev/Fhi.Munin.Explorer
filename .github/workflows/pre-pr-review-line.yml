@@ -31,6 +31,8 @@ jobs:
           REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          ACTION: ${{ github.event.action }}
+          UPDATED: ${{ github.event.pull_request.updated_at }}
           CREATED: ${{ github.event.pull_request.created_at }}
           # The three lines are required only of pull requests opened from this moment, so none already open turns
           # red. Delete the cutoff, and the test on it below, once those have merged (DevInfra-0f5.2).
@@ -124,19 +126,27 @@ jobs:
           fi
           tier=${BASH_REMATCH[1]}
           # The labeller runs on pull_request_target, so its check runs sit on the base commit; its workflow run records
-          # this pull request's head commit. Wait for those runs (up to 2 minutes), then read the labels as they are now.
-          # No labeller run for the head commit: nothing to compare with.
-          labelled=''
-          for attempt in $(seq 1 24); do
-            state=$(gh api "repos/$REPO/actions/runs?event=pull_request_target&head_sha=$HEAD_SHA&per_page=100" \
-              --jq '[.workflow_runs[] | select(.name | startswith("Risk label"))] | if length == 0 then "none" else (map(.status) | if all(. == "completed") then "done" else "running" end) end')
-            if [ "$state" = "done" ]; then labelled=yes; break; fi
-            if [ "$state" = "none" ] && [ "$attempt" -ge 6 ]; then break; fi
-            sleep 5
-          done
-          if [ -z "$labelled" ]; then
-            echo "::notice::No finished Risk label run on $HEAD_SHA, so the Risk line is not compared with a label."
-            exit 0
+          # this pull request's head commit. Wait for the runs this event started (created from 2 minutes before the
+          # event, which also covers a retarget), then read the labels as they are now. A person changing the label starts
+          # no labeller run: compare at once. No labeller run at all: nothing to compare with.
+          if [ "$ACTION" != labeled ] && [ "$ACTION" != unlabeled ]; then
+            since=$(date -u -d "$UPDATED - 2 minutes" +%Y-%m-%dT%H:%M:%SZ)
+            state=none
+            for attempt in $(seq 1 24); do
+              state=$(gh api "repos/$REPO/actions/runs?event=pull_request_target&head_sha=$HEAD_SHA&per_page=100" \
+                --jq "[.workflow_runs[] | select((.name | startswith(\"Risk label\")) and .created_at >= \"$since\")] | if length == 0 then \"none\" else (map(.status) | if all(. == \"completed\") then \"done\" else \"running\" end) end")
+              if [ "$state" = "done" ]; then break; fi
+              if [ "$state" = "none" ] && [ "$attempt" -ge 6 ]; then break; fi
+              sleep 5
+            done
+            if [ "$state" = "none" ]; then
+              echo "::notice::No Risk label run for $HEAD_SHA since $since, so the Risk line is not compared with a label."
+              exit 0
+            fi
+            if [ "$state" != "done" ]; then
+              echo "::error::The Risk label run for this change has not finished, so the Risk line could not be compared with its label. Re-run this check when it has."
+              exit 1
+            fi
           fi
           label=$(gh api "repos/$REPO/issues/$PR/labels" --jq '[.[].name | select(startswith("risk:"))] | first // ""')
           if [ -n "$label" ] && [ "${label#risk:}" != "$tier" ]; then
