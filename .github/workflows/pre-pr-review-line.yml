@@ -9,9 +9,9 @@ on:
     # run, so the step below waits for the labeller's run on the head commit instead.
     types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
-# checks/pull-requests read: the Risk line is compared with the risk: label once that commit's labeller run is done.
+# actions/pull-requests read: the Risk line is compared with the risk: label once the labeller's run is done.
 permissions:
-  checks: read
+  actions: read
   pull-requests: read
 
 concurrency:
@@ -123,12 +123,13 @@ jobs:
             exit 1
           fi
           tier=${BASH_REMATCH[1]}
-          # The labeller sets the label in its own run on the same commit; wait for that run (up to 2 minutes), then
-          # read the labels as they are now. No labeller run on the commit: nothing to compare with.
+          # The labeller runs on pull_request_target, so its check runs sit on the base commit; its workflow run records
+          # this pull request's head commit. Wait for those runs (up to 2 minutes), then read the labels as they are now.
+          # No labeller run for the head commit: nothing to compare with.
           labelled=''
           for attempt in $(seq 1 24); do
-            state=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" \
-              --jq '[.check_runs[] | select(.name | endswith("Risk label"))] | if length == 0 then "none" else (map(.status) | if all(. == "completed") then "done" else "running" end) end')
+            state=$(gh api "repos/$REPO/actions/runs?event=pull_request_target&head_sha=$HEAD_SHA&per_page=100" \
+              --jq '[.workflow_runs[] | select(.name | startswith("Risk label"))] | if length == 0 then "none" else (map(.status) | if all(. == "completed") then "done" else "running" end) end')
             if [ "$state" = "done" ]; then labelled=yes; break; fi
             if [ "$state" = "none" ] && [ "$attempt" -ge 6 ]; then break; fi
             sleep 5
