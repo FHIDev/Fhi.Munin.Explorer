@@ -3,8 +3,8 @@
 #
 # Explorer is public, so it cannot use DevInfra's private reusable workflow; it carries a copy of the action and
 # scripts/risk-tier.py, which DevInfra's pr-checks keeps identical to DevInfra's. pull_request_target runs this file,
-# the action, the script and the rules from main, never from the pull request, so a pull request cannot change how it
-# is judged, and a fork's pull request is labelled too. Nothing from the pull request is checked out or run: the
+# the action, the script and the rules from the pull request's base branch, never from the pull request, so a pull
+# request cannot change how it is judged, and a fork's pull request is labelled too. Nothing from the pull request is checked out or run: the
 # action reads only its list of changed files through the API.
 name: Risk label
 
@@ -30,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          persist-credentials: false
           sparse-checkout: |
             .github
             scripts

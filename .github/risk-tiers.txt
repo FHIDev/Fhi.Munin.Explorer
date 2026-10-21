@@ -6,11 +6,20 @@ high   src/Fhi.Munin.Explorer/Client/BearerTokenHandler.cs
 high   src/Fhi.Munin.Explorer/Contracts/IMuninExplorerTokenProvider.cs
 high   src/Fhi.Munin.Explorer/Contracts/IdentityLink.cs
 high   src/Fhi.Munin.Explorer/Contracts/MuninExplorerUnauthorizedException.cs
+high   src/Fhi.Munin.Explorer/Client/ServiceCollectionExtensions.cs
+# The labeller itself, which runs with a write token on every pull request, forks' included
+high   .github/actions/**
+high   scripts/risk-tier.py
+high   .github/CODEOWNERS
 # CI, the package release and what it publishes
 high   .github/workflows/*.yml
 high   .github/workflows/*.yaml
 high   scripts/release-changelog.sh
 high   scripts/flatten-release-notes.sh
+high   scripts/push-packages.sh
+high   scripts/assert-package-contents.sh
+high   scripts/assemble-changelog.ps1
+high   .github/dependabot.yml
 high   nuget.config
 high   Directory.Build.props
 high   src/Fhi.Munin.Explorer/Fhi.Munin.Explorer.csproj
@@ -20,6 +29,8 @@ medium AGENTS.md
 medium CLAUDE.md
 medium .claude/**
 medium BannedSymbols.txt
+medium .github/instructions/**
+medium .forge/warden-rules.yaml
 medium test/*/*.csproj
 
 # Docs, notes and tests
@@ -29,4 +40,5 @@ low    changelog.d/**
 low    .forge/**
 low    .beads/**
 low    test/**
-low    scripts/test-*.sh
+low    scripts/test-*
+low    scripts/test_*.py

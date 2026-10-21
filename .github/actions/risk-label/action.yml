@@ -45,11 +45,11 @@ runs:
         # A renamed file counts at its old path too, so moving a file out of a high path is high.
         gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)' > changed-files.txt
         listed="$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' | wc -l)"
-        python3 "$SCRIPT" --rules "$RULES" --author "$AUTHOR" --title "$TITLE" < changed-files.txt > tier.txt
+        python3 "$SCRIPT" --rules "$RULES" --author="$AUTHOR" --title="$TITLE" < changed-files.txt > tier.txt
         tier="$(sed -n 's/^tier=//p' tier.txt)"
         # The files API lists at most 3000 files; a pull request it cuts short is not judged on part of itself.
         if [ "$listed" -lt "${CHANGED_FILES:-0}" ]; then
-          echo "The API listed $listed of $CHANGED_FILES changed files, so the tier is high." >> tier.txt
+          echo "high   (the API listed $listed of $CHANGED_FILES changed files, so the tier is high)" >> tier.txt
           tier=high
         fi
         echo "tier=$tier" >> "$GITHUB_OUTPUT"

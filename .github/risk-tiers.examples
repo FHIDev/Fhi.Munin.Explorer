@@ -14,3 +14,11 @@ low    test/Fhi.Munin.Explorer.Tests/AccessLevelsTest.cs
 low    scripts/test-flatten-release-notes.sh
 medium src/Fhi.Munin.Explorer/Blazor/AccessLevels.cs
 low    changelog.d/Fhi.Metadata-mhqx0.4-hosts.md
+high   .github/actions/risk-label/action.yml
+high   scripts/risk-tier.py
+high   scripts/push-packages.sh
+high   .github/CODEOWNERS
+high   src/Fhi.Munin.Explorer/Client/ServiceCollectionExtensions.cs
+medium .github/instructions/code-review.instructions.md
+low    scripts/test-scan-shard.mjs
+low    scripts/test_comment_budget.py
