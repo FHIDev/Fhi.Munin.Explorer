@@ -559,8 +559,25 @@ export function watchFolds() {
       for (const panel of [...sheets.keys()]) {
         if (!panel.isConnected) closeSheet(panel, { keepFocus: true });
       }
+      // An alert outside the sheet sits in the inert page, where no reader hears it: a failed download says
+      // so there. The sheet steps aside so it is heard, and focus goes back to the menu's button.
+      if (records.some(record => alertedOutsideSheets(record))) {
+        for (const [panel, { toggle }] of [...sheets]) {
+          if (toggle) closeSheetFrom(panel, toggle);
+        }
+      }
     }
-    for (const { target, type } of records) {
+    for (const { target, type, addedNodes } of records) {
+      // A panel the component drew already open (a tab coming back) arrives as a new node, not as a change.
+      if (type === 'childList') {
+        for (const node of addedNodes) {
+          if (node.nodeType !== Node.ELEMENT_NODE) continue;
+          for (const panel of node.querySelectorAll?.('.munin-explorer-list-menu > .munin-explorer-list-menu__panel:not([hidden])') ?? []) {
+            if (phoneWidth().matches) openSheet(panel);
+          }
+        }
+        continue;
+      }
       if (type !== 'attributes' || !target.matches?.('.munin-explorer-list-menu > .munin-explorer-list-menu__panel')) continue;
       if (target.hidden) {
         closeSheet(target);
@@ -570,7 +587,45 @@ export function watchFolds() {
         requestAnimationFrame(() => target.scrollIntoView({ block: 'nearest' }));
       }
     }
-  }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
+  }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
+
+  // The page behind is inert, but an ancestor of the sheet that takes focus (a tab panel) is not: Tab and
+  // Shift+Tab go round inside the sheet, and focus that gets out anyway is brought back.
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return;
+    const panel = [...sheets.keys()].find(sheet => sheet.contains(event.target));
+    if (!panel) return;
+    const items = focusablesIn(panel);
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && event.target === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && event.target === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+  document.addEventListener('focusin', event => {
+    if (sheets.size === 0) return;
+    const panels = [...sheets.keys()];
+    if (panels.some(panel => panel.contains(event.target))) return;
+    focusablesIn(panels[panels.length - 1])[0]?.focus();
+  });
+}
+
+function focusablesIn(panel) {
+  return [...panel.querySelectorAll('button, input, select, textarea, [href]')]
+    .filter(item => !item.disabled && item.getClientRects().length > 0);
+}
+
+// An assertive region outside every open sheet that has just been given words.
+function alertedOutsideSheets(record) {
+  const node = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
+  const region = node?.closest?.('[role="alert"], [aria-live="assertive"]');
+  if (!region || [...sheets.keys()].some(panel => panel.contains(region))) return false;
+  return (region.textContent ?? '').trim().length > 0;
 }
 
 // A tap's click is aimed after the press: the sheet is gone by then, and the control under the finger would get it.

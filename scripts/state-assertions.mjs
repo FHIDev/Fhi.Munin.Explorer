@@ -2595,6 +2595,68 @@ export const assertions = [
     },
   },
   {
+    // The saved list's menus sit in a tab panel that takes focus itself, which the sheet's inert page leaves
+    // alone: Tab and Shift+Tab must go round inside the sheet, not out to that panel (Fhi.Metadata-mhqx0.8).
+    name: 'on a phone Tab and Shift+Tab stay inside an open sheet, the saved list\'s inside its tab panel too',
+    kind: 'invariant',
+    states: ['explorer-tabs'],
+
+    async stage(page) {
+      const tab = page.getByRole('tab', { name: 'Variabelliste', exact: true }).first();
+      await tab.waitFor({ state: 'visible', timeout: findTimeout });
+      await tab.click();
+      await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-list-scroll').first()
+        .waitFor({ state: 'visible', timeout: findTimeout });
+      return {};
+    },
+
+    async measure(page) {
+      const TOGGLES = '[role=tabpanel]:not([hidden]) .munin-explorer-list-menu > button[aria-controls]';
+      await page.setViewportSize({ width: 375, height: 800 });
+      await page.waitForTimeout(PRESS_SETTLE_MS);
+      let measured = 0;
+      for (let i = 0; i < await page.locator(TOGGLES).count(); i++) {
+        const toggle = page.locator(TOGGLES).nth(i);
+        if (!await toggle.isVisible()) continue;
+        const label = (await toggle.innerText()).trim();
+        await toggle.click();
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        const inSheet = () => page.evaluate(() => !!document.activeElement?.closest(':popover-open'));
+        if (!await page.evaluate(() => !!document.querySelector(':popover-open'))) {
+          throw new Error(`«${label}» opened no sheet, which the sheet's own assertion reports`);
+        }
+        const ends = () => page.evaluate(() => {
+          const items = [...document.querySelector(':popover-open').querySelectorAll('button, input, select, textarea, [href]')]
+            .filter(item => !item.disabled && item.getClientRects().length > 0);
+          return items.length;
+        });
+        if (await ends() === 0) throw new Error(`«${label}»'s sheet holds no control to Tab between`);
+        await page.evaluate(() => [...document.querySelector(':popover-open').querySelectorAll('button, input, select, textarea, [href]')]
+          .filter(item => !item.disabled && item.getClientRects().length > 0)[0].focus());
+        await page.keyboard.press('Shift+Tab');
+        if (!await inSheet()) return `Shift+Tab from the first control of «${label}»'s sheet left the sheet`;
+        await page.evaluate(() => [...document.querySelector(':popover-open').querySelectorAll('button, input, select, textarea, [href]')]
+          .filter(item => !item.disabled && item.getClientRects().length > 0).at(-1).focus());
+        await page.keyboard.press('Tab');
+        if (!await inSheet()) return `Tab from the last control of «${label}»'s sheet left the sheet`;
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        measured++;
+      }
+      if (measured === 0) throw new Error('no menu toggle was visible on the saved list\'s tab at 375px');
+      await page.setViewportSize({ width: 1280, height: 900 });
+      return null;
+    },
+
+    // As if the script kept no watch on Tab and focus: the browser's own order takes over.
+    async control(page) {
+      await page.evaluate(() => {
+        window.addEventListener('keydown', event => { if (event.key === 'Tab') event.stopPropagation(); }, true);
+        window.addEventListener('focusin', event => event.stopPropagation(), true);
+      });
+    },
+  },
+  {
     // A disclosure, not role="menu", but its rows answer to the arrows, Home and End as helsedata's own menus do
     // (Fhi.Metadata-mhqx0.8). At 1280, where the panel is in the page under its button.
     name: 'Arrow, Home and End move focus between the rows of an open «Last ned utvalg»',
