@@ -56,5 +56,5 @@
 
     // The list tab sits under the explorer's title like the search's own panels do (VariableSearch.RowLevel): at the
     // title's level a host passing 1 got three h1s, the title, «Filter» and the list's name (Fhi.Metadata-l9l2n.136).
-    private int ListLevel => Math.Clamp(HeadingLevel + 1, 1, 6);
+    private int ListLevel => Math.Clamp(Math.Clamp(HeadingLevel, 1, 6) + 1, 1, 6);
 }

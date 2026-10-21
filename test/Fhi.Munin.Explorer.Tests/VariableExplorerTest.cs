@@ -216,11 +216,13 @@ public class VariableExplorerTest : ExplorerTestContext
     // A host without a heading of its own passes 1; the list tab then drew three h1s: the title, «Filter» and the
     // list's name (Fhi.Metadata-l9l2n.136). The title is the one heading at the host's level, on either tab.
     [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    public void HeadingLevel_OnEitherTab_ThenOnlyTheTitleIsAtTheHostsLevelAndNothingIsAboveIt(int level)
+    [InlineData(0, 1)]
+    [InlineData(1, 1)]
+    [InlineData(2, 2)]
+    public void HeadingLevel_OnEitherTab_ThenOnlyTheTitleIsAtTheHostsLevelAndNothingIsAboveIt(int given, int level)
     {
-        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")), headingLevel: level);
+        // 0 is out of range and clamps to 1; the list tab must still sit below it (Copilot on #638).
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")), headingLevel: given);
         AssertOutline(cut, level);
 
         Tab(cut, "Variabelliste").Click();
