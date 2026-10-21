@@ -1961,6 +1961,11 @@ table.munin-explorer-data-list tbody th {
   padding: 4px 0;
 }
 
+.munin-explorer-complete-record > summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .munin-explorer-complete-record__fields {
   display: grid;
   grid-column-gap: 24px;

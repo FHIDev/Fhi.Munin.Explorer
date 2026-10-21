@@ -180,6 +180,13 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     /// </remarks>
     [Parameter] public string? Lede { get; set; }
 
+    /// <inheritdoc cref="KildeSearch.HeadingLevel"/>
+    /// <remarks>
+    /// Declared here and forwarded, for the reason <see cref="ShowAccessAndPrices"/> is: a host whose page has no heading
+    /// of its own passes 1, so the explorer's title is the page's h1 (Fhi.Metadata-l9l2n.135).
+    /// </remarks>
+    [Parameter] public int HeadingLevel { get; set; } = 2;
+
     /// <summary>
     /// Where the host mounted <see cref="VariableSearch"/>, so the chosen kilder can be handed
     /// over to it. Leave it null and neither way over is offered: no selection column, and no link

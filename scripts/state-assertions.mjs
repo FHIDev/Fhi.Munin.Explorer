@@ -1057,6 +1057,39 @@ export const assertions = [
       }, { barId, rowId });
     },
   },
+  {
+    // «Alle felt» had only the browser's 1px default ring, the one control on the page without the
+    // Explorer's own (Fhi.Metadata-l9l2n.135, ADO 122803). Reached with real Tab presses, as a reader would.
+    name: '«Alle felt» shows the Explorer\'s focus ring when Tab reaches it',
+    kind: 'invariant',
+    // The scan's two detail pages; the kilde view draws the same summary through DetailBlocks.
+    states: ['variable-whole', 'variable-datasamling'],
+    async stage(page) {
+      const summary = page.locator('.munin-explorer-complete-record > summary').first();
+      await summary.waitFor({ state: 'attached', timeout: findTimeout });
+      return {};
+    },
+    async measure(page) {
+      const summary = page.locator('.munin-explorer-complete-record > summary').first();
+      await summary.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      const ring = await summary.evaluate(e => {
+        const style = getComputedStyle(e);
+        return { focused: e === document.activeElement, style: style.outlineStyle, width: parseFloat(style.outlineWidth) };
+      });
+      if (!ring.focused) return 'Tab did not land on «Alle felt»';
+      return ring.style === 'solid' && ring.width >= 2
+        ? null
+        : `«Alle felt» shows a ${ring.width}px ${ring.style} ring, not the Explorer's 2px solid one`;
+    },
+    // The defect as it shipped: no rule of ours, so the browser's own thin ring.
+    async control(page) {
+      await page.addStyleTag({
+        content: '.munin-explorer-complete-record > summary:focus-visible { outline: 1px auto !important; }',
+      });
+    },
+  },
   ...treeAssertions,
   {
     name: 'nested criteria fragment clears a fixed host header without a contents entry',

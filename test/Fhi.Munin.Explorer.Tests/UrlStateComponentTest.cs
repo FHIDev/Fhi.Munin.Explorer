@@ -707,6 +707,28 @@ public class UrlStateComponentTest : ExplorerTestContext
         Assert.Equal(0, Pushes());
     }
 
+    // A CMS host mounts KildeExplorer, which dropped the level a page without a heading of its own needs: the explorer's
+    // title is then the page's h1 and the open kilde one below (Fhi.Metadata-l9l2n.135).
+    [Theory]
+    [InlineData(null, "H2", 3)]
+    [InlineData(1, "H1", 2)]
+    public void HeadingLevel_WhenAHostPassesIt_ThenTheTitleAndTheOpenKildeFollow(int? level, string titleTag, int kildeLevel)
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}",
+            b =>
+            {
+                if (level is { } given)
+                {
+                    b.Add(c => c.HeadingLevel, given);
+                }
+            });
+
+        cut.WaitForAssertion(() => Assert.Equal(kildeLevel, cut.FindComponent<KildeView>().Instance.HeadingLevel));
+        var titleId = cut.Find("[aria-labelledby]").GetAttribute("aria-labelledby");
+        Assert.Equal(titleTag, cut.Find($"#{titleId}").TagName);
+    }
+
     [Fact]
     public void History_WhenBackArrivesAtTheList_ThenTheKildeClosesAndForwardOpensItAgain()
     {

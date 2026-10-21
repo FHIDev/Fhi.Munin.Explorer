@@ -601,3 +601,8 @@ invented-selector||.munin-explorer-pagination-size select:focus|border-color
 invented-selector||.munin-explorer-results__toolbar select:focus|border-color
 invented-selector||table.munin-explorer-data-list > thead > :where(tr) > th:last-child|white-space
 invented-selector||table.munin-explorer-data-list > thead > :where(tr) > th:last-child|width
+
+# Fhi.Metadata-l9l2n.135: «Alle felt» (the complete record's <summary>) gets the Explorer's focus ring; the same rule is in
+# the Stiler patch for this bead. Delete these two lines when helsedata pins a Stiler that carries it.
+invented-selector||.munin-explorer-complete-record > summary:focus-visible|outline
+invented-selector||.munin-explorer-complete-record > summary:focus-visible|outline-offset
