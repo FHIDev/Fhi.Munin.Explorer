@@ -4292,9 +4292,12 @@ table.munin-explorer-data-list tbody th {
     margin-left: auto;
   }
 
+  /* Contained, so the open panel's own width never widens the row that sizes itself to its buttons:
+     the buttons stay where they were when a menu opens under them. */
   .munin-explorer-list-menu > .munin-explorer-list-menu__panel {
     border: 1px solid rgb(214, 213, 222);
     box-shadow: none;
+    contain: inline-size;
     flex-basis: 100%;
     max-width: none;
     min-width: 0;
@@ -4305,15 +4308,14 @@ table.munin-explorer-data-list tbody th {
 
 /* «Kolonner»'s last column left, inert rather than disabled so it still says why it will not move. */
 .munin-explorer-list-menu__check:has( > input[aria-disabled="true"]) {
+  color: rgb(81, 84, 123);
   cursor: default;
-  opacity: 0.6;
 }
 
-/* Under 768px the toolbar stacks its buttons in one column as wide as the widest (d86tj). The open panel
-   spans that column and adds nothing to its width, so the buttons stay as they were (Fhi.Metadata-mhqx0.8). */
+/* Under 768px the toolbar stacks its buttons in one column as wide as the widest (d86tj): the open panel
+   spans that column (Fhi.Metadata-mhqx0.8). */
 @media (min-width: 480px) and (max-width: 767px) {
   .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > .munin-explorer-list-menu__panel {
-    contain: inline-size;
     grid-column: 1 / -1;
   }
 }
@@ -4333,9 +4335,9 @@ table.munin-explorer-data-list tbody th {
   }
 }
 
-/* On a phone an open menu or column picker is a bottom sheet in the top layer, the page dimmed behind it
-   (Fhi.Metadata-mhqx0.8). The component adds --sheet only while it shows one there. Three classes' weight,
-   as the toolbar's rule on the picker's list has, and later, so the sheet's box wins. */
+/* On a phone an open menu is a bottom sheet in the top layer, the page dimmed behind it (Fhi.Metadata-mhqx0.8).
+   The component adds --sheet only while it shows one there. Three classes' weight, over the panel rules
+   above, so the sheet's box wins. */
 :root .munin-explorer-list-menu__panel--sheet:popover-open {
   border: 0;
   border-radius: 16px 16px 0 0;
@@ -4343,6 +4345,7 @@ table.munin-explorer-data-list tbody th {
   inset: auto 0 0 0;
   margin: 0;
   max-height: 85vh;
+  max-height: 85dvh;
   max-width: none;
   overflow-y: auto;
   padding-bottom: env(safe-area-inset-bottom);

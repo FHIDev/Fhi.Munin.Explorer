@@ -2554,19 +2554,24 @@ export const assertions = [
     },
   },
   {
-    // Under 768px the toolbar stacks its buttons in one column as wide as the widest (d86tj); an open panel
-    // in that column made both buttons as wide as the panel. It spans the row and adds no width, so a
-    // button keeps its width while any menu is open (Fhi.Metadata-mhqx0.8).
-    name: 'between 480 and 767px opening a list menu leaves every button in its row as wide as it was',
+    // An open panel in the page adds no width to the row above it: in Stiler's stacked column under 768px it
+    // made both buttons as wide as itself, and in a row sized by its buttons it pushed them sideways. Contained,
+    // the buttons stay where they were and as wide while any menu is open (Fhi.Metadata-mhqx0.8).
+    name: 'from 480px opening a list menu leaves every button in its row where it was and as wide',
     kind: 'invariant',
     states: ['variables-list', 'utforsker-list', 'kilder-list'],
     stage: () => ({}),
 
     async measure(page) {
       const TOGGLES = '.munin-explorer-list-menu > button[aria-controls]';
+      // Left edge and width: a panel that widens a row sized by its buttons moves them sideways (the review of
+      // the Stiler patch found it at 768px and up), and one in a stacked column widens them.
       const widths = () => page.locator(TOGGLES).evaluateAll(all =>
-        all.filter(el => el.getClientRects().length > 0).map(el => Math.round(el.getBoundingClientRect().width * 10) / 10));
-      for (const width of [767, 600, 480]) {
+        all.filter(el => el.getClientRects().length > 0).map(el => {
+          const box = el.getBoundingClientRect();
+          return `${Math.round(box.left)}+${Math.round(box.width * 10) / 10}`;
+        }));
+      for (const width of [1440, 1280, 1024, 768, 767, 600, 480]) {
         await page.setViewportSize({ width, height: 900 });
         await page.waitForTimeout(PRESS_SETTLE_MS);
         const before = await widths();
@@ -2581,7 +2586,7 @@ export const assertions = [
           await page.keyboard.press('Escape');
           await page.waitForTimeout(PRESS_SETTLE_MS);
           if (JSON.stringify(open) !== JSON.stringify(before)) {
-            return `at ${width}px opening «${label}» changed the buttons' widths from ${before.join(', ')} to ${open.join(', ')}`;
+            return `at ${width}px opening «${label}» moved the buttons (left+width) from ${before.join(', ')} to ${open.join(', ')}`;
           }
         }
       }

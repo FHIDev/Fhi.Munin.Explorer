@@ -560,7 +560,7 @@ invented-selector|@media (min-width:480px)|.munin-explorer-list-menu--end > butt
 invented-selector|@media (min-width:480px)|.munin-explorer-list-menu|display
 unstyled-name||.munin-explorer-list-menu__close|
 unstyled-name||.munin-explorer-list-menu__panel--sheet|
-invented-selector|@media (min-width:480px) and (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > .munin-explorer-list-menu__panel|contain
+invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-explorer-list-menu__panel|contain
 invented-selector|@media (min-width:480px) and (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > .munin-explorer-list-menu__panel|grid-column
 invented-selector||.munin-explorer-list-menu__check:has( > input[aria-disabled=true])|cursor
-invented-selector||.munin-explorer-list-menu__check:has( > input[aria-disabled=true])|opacity
+invented-selector||.munin-explorer-list-menu__check:has( > input[aria-disabled=true])|color
