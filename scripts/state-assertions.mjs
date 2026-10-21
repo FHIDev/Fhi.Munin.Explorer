@@ -1062,7 +1062,8 @@ export const assertions = [
     // Explorer's own (Fhi.Metadata-l9l2n.135, ADO 122803). Reached with real Tab presses, as a reader would.
     name: '«Alle felt» shows the Explorer\'s focus ring when Tab reaches it',
     kind: 'invariant',
-    states: ['kilde-drilldown'],
+    // The scan's two detail pages; the kilde view draws the same summary through DetailBlocks.
+    states: ['variable-whole', 'variable-datasamling'],
     async stage(page) {
       const summary = page.locator('.munin-explorer-complete-record > summary').first();
       await summary.waitFor({ state: 'attached', timeout: findTimeout });
