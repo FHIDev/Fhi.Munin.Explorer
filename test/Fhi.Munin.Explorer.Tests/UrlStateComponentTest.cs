@@ -716,7 +716,13 @@ public class UrlStateComponentTest : ExplorerTestContext
     {
         var id = Guid.NewGuid();
         var cut = RenderKilder(id, $"http://localhost/kilder?kilde={id}",
-            b => { if (level is { } given) b.Add(c => c.HeadingLevel, given); });
+            b =>
+            {
+                if (level is { } given)
+                {
+                    b.Add(c => c.HeadingLevel, given);
+                }
+            });
 
         cut.WaitForAssertion(() => Assert.Equal(kildeLevel, cut.FindComponent<KildeView>().Instance.HeadingLevel));
         var titleId = cut.Find("[aria-labelledby]").GetAttribute("aria-labelledby");
