@@ -20,11 +20,21 @@ public sealed record VariableDetail
     /// <summary>Display name, taken from the version being shown.</summary>
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="PreferredTerm"/>.</summary>
+    [JsonPropertyName("preferredTermEn")] public string? PreferredTermEn { get; init; }
+
     /// <summary>Description from the version being shown.</summary>
     [JsonPropertyName("beskrivelse")] public string Description { get; init; } = "";
 
+    /// <summary>The description in English; null when Munin has none, so the reader is shown <see cref="Description"/>.</summary>
+    [JsonPropertyName("beskrivelseEn")] public string? DescriptionEn { get; init; }
+
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("kildeName")] public string KildeName { get; init; } = "";
+
+    /// <summary>The kilde's name in English; null when Munin has none, so the reader is shown <see cref="KildeName"/>.</summary>
+    [JsonPropertyName("kildeNameEn")] public string? KildeNameEn { get; init; }
+
     [JsonPropertyName("kildeKortNavn")] public string KildeShortName { get; init; } = "";
     /// <summary>The owning kilde's kildetype; null when it has none — see <see cref="KildeSummary.Kildetype"/>.</summary>
     [JsonPropertyName("kildeType")] public string? KildeType { get; init; }
@@ -34,6 +44,9 @@ public sealed record VariableDetail
 
     [JsonPropertyName("datasamlingName")] public string? DatasamlingName { get; init; }
 
+    /// <summary>The datasamling's name in English; null when Munin has none, so the reader is shown <see cref="DatasamlingName"/>.</summary>
+    [JsonPropertyName("datasamlingNameEn")] public string? DatasamlingNameEn { get; init; }
+
     /// <summary>
     /// The enabled delkilde owning <see cref="DatasamlingId"/>. Null when that datasamling hangs
     /// straight off the kilde, when there is no primary one, or from an API older than the field.
@@ -41,6 +54,9 @@ public sealed record VariableDetail
     [JsonPropertyName("delkildeId")] public Guid? DelkildeId { get; init; }
 
     [JsonPropertyName("delkildeName")] public string? DelkildeName { get; init; }
+
+    /// <summary>The delkilde's name in English; null when Munin has none, so the reader is shown <see cref="DelkildeName"/>.</summary>
+    [JsonPropertyName("delkildeNameEn")] public string? DelkildeNameEn { get; init; }
 
     /// <summary>
     /// The primary datasamling's statistics cadence, e.g. <c>yearly</c>. Repeated here so a
@@ -52,6 +68,9 @@ public sealed record VariableDetail
     [JsonPropertyName("variabelgruppeId")] public Guid? VariabelgruppeId { get; init; }
 
     [JsonPropertyName("variabelgruppeName")] public string? VariabelgruppeName { get; init; }
+
+    /// <summary>The variabelgruppe's name in English; null when Munin has none, so the reader is shown <see cref="VariabelgruppeName"/>.</summary>
+    [JsonPropertyName("variabelgruppeNameEn")] public string? VariabelgruppeNameEn { get; init; }
 
     /// <summary>Earliest date the variable has data for, across all its datasamlinger.</summary>
     [JsonPropertyName("dataFrom")] public DateTimeOffset? DataFrom { get; init; }
@@ -284,6 +303,9 @@ public sealed record VariabelgruppeReference
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
 
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="Name"/>.</summary>
+    [JsonPropertyName("nameEn")] public string? NameEn { get; init; }
+
     /// <summary>Parent group, so the caller can show the full path rather than a bare leaf name.</summary>
     [JsonPropertyName("parentId")] public Guid? ParentId { get; init; }
 }
@@ -323,6 +345,9 @@ public sealed record DatasamlingReference
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="Name"/>.</summary>
+    [JsonPropertyName("nameEn")] public string? NameEn { get; init; }
 
     /// <summary>
     /// When the variable entered this datasamling. Note this is a catalogue timestamp on the

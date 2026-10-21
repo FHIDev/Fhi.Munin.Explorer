@@ -18,6 +18,10 @@ public sealed record KildeSummary
     [JsonPropertyName("code")] public string Code { get; init; } = "";
 
     [JsonPropertyName("navn")] public string Name { get; init; } = "";
+
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="Name"/>.</summary>
+    [JsonPropertyName("navnEn")] public string? NameEn { get; init; }
+
     [JsonPropertyName("kortNavn")] public string? ShortName { get; init; }
 
     /// <summary>

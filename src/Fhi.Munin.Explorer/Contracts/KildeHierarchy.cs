@@ -16,6 +16,9 @@ public sealed record KildeHierarchy
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("kildeName")] public string KildeName { get; init; } = "";
 
+    /// <summary>The kilde's name in English; null when Munin has none, so the reader is shown <see cref="KildeName"/>.</summary>
+    [JsonPropertyName("kildeNameEn")] public string? KildeNameEn { get; init; }
+
     /// <summary>Visible published variables under the whole kilde.</summary>
     [JsonPropertyName("totalVariableCount")] public int TotalVariableCount { get; init; }
 
@@ -33,6 +36,9 @@ public sealed record HierarchyDelkilde
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="Name"/>.</summary>
+    [JsonPropertyName("nameEn")] public string? NameEn { get; init; }
 
     /// <summary>Visible published variables under this delkilde, including its children.</summary>
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
@@ -64,6 +70,10 @@ public sealed record HierarchyDatasamling
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="Name"/>.</summary>
+    [JsonPropertyName("nameEn")] public string? NameEn { get; init; }
+
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
 
     /// <summary>Top-level variabelgrupper; each carries its own children.</summary>

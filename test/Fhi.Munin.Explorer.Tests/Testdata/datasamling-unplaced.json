@@ -3,7 +3,9 @@
   "code": "K_ALS.INKLUSJON",
   "kortNavn": "ALS",
   "preferredTerm": "Inklusjon",
+  "preferredTermEn": null,
   "beskrivelse": "Skjemaet inneholder opplysninger om utredning og oppstart av behandling fra symptomdebut fra symptomdebut til diagnosetidspunkt.",
+  "beskrivelseEn": null,
   "opprettet": "2026-05-19T13:03:18.807Z",
   "sistOppdatert": "2026-08-12T08:08:22.690Z",
   "gyldigFra": "2010-01-01T00:00:00.000Z",
@@ -357,5 +359,6 @@
   ],
   "parentDelkildeId": null,
   "parentKildeId": "8ec4c2c4-662d-47a5-a946-f1086a014070",
-  "parentKildeNavn": "Als registeret"
+  "parentKildeNavn": "Als registeret",
+  "parentKildeNavnEn": null
 }

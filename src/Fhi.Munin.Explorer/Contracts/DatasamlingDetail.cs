@@ -23,7 +23,14 @@ public sealed record DatasamlingDetail
     /// <summary>Display name. Called <c>name</c> where the datasamling is nested in a kilde.</summary>
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="PreferredTerm"/>.</summary>
+    [JsonPropertyName("preferredTermEn")] public string? PreferredTermEn { get; init; }
+
     [JsonPropertyName("beskrivelse")] public string? Description { get; init; }
+
+    /// <summary>The description in English; null when Munin has none, so the reader is shown <see cref="Description"/>.</summary>
+    [JsonPropertyName("beskrivelseEn")] public string? DescriptionEn { get; init; }
+
     [JsonPropertyName("opprettet")] public DateTimeOffset? Created { get; init; }
     [JsonPropertyName("sistOppdatert")] public DateTimeOffset? LastUpdated { get; init; }
 
@@ -136,4 +143,7 @@ public sealed record DatasamlingDetail
 
     /// <summary>Owning kilde's display name, for a breadcrumb without a second request.</summary>
     [JsonPropertyName("parentKildeNavn")] public string ParentKildeName { get; init; } = "";
+
+    /// <summary>The kilde's name in English; null when Munin has none, so the reader is shown <see cref="ParentKildeName"/>.</summary>
+    [JsonPropertyName("parentKildeNavnEn")] public string? ParentKildeNameEn { get; init; }
 }

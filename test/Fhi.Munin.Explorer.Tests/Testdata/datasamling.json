@@ -3,7 +3,9 @@
   "code": "K_ALS.INKLUSJON",
   "kortNavn": "ALS",
   "preferredTerm": "Inklusjon",
+  "preferredTermEn": null,
   "beskrivelse": "Inklusjon",
+  "beskrivelseEn": null,
   "opprettet": "2026-04-10T10:51:53.248Z",
   "sistOppdatert": "2026-08-14T14:02:43.546Z",
   "gyldigFra": "2010-01-01T00:00:00.000Z",
@@ -584,5 +586,6 @@
   ],
   "parentDelkildeId": null,
   "parentKildeId": "f7e53f99-a6e4-438e-bb8b-d0b20e0bb53f",
-  "parentKildeNavn": "ALS Registeret"
+  "parentKildeNavn": "ALS Registeret",
+  "parentKildeNavnEn": "Norwegian Registry for ALS and Other Motor Neuron Diseases"
 }
