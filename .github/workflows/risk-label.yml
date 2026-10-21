@@ -1,9 +1,15 @@
 # Sets risk:low|medium|high on a pull request from the paths it changes and .github/risk-tiers.txt (DevInfra-0f5.1).
 # The tiers and what each needs before a merge: docs/review-risk-tiers.md in FHIDev/Fhi.Munin.DevInfra.
+#
+# Explorer is public, so it cannot use DevInfra's private reusable workflow; it carries a copy of the action and
+# scripts/risk-tier.py, which DevInfra's pr-checks keeps identical to DevInfra's. pull_request_target runs this file,
+# the action, the script and the rules from main, never from the pull request, so a pull request cannot change how it
+# is judged, and a fork's pull request is labelled too. Nothing from the pull request is checked out or run: the
+# action reads only its list of changed files through the API.
 name: Risk label
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
@@ -11,6 +17,22 @@ permissions:
   pull-requests: write
   issues: write
 
+concurrency:
+  group: risk-label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   label:
-    uses: FHIDev/Fhi.Munin.DevInfra/.github/workflows/risk-label.yml@main
+    name: Risk label
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            .github
+            scripts
+      - uses: ./.github/actions/risk-label
+        with:
+          token: ${{ github.token }}
