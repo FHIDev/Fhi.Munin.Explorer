@@ -2350,5 +2350,35 @@ export const assertions = [
       await page.evaluate(() => window.addEventListener('focusin', event => event.stopPropagation(), true));
     },
   },
+  {
+    // Enter on «Last ned utvalg» is a click with no pointerdown, and it must shut an open column picker
+    // as a press does: both open crowd the picker's boxes on a phone (WCAG 2.5.8, Fhi.Metadata-mhqx0.6).
+    name: 'opening «Last ned utvalg» from the keyboard closes an open column picker',
+    kind: 'invariant',
+    states: ['variables-list'],
+    stage: () => ({}),
+
+    async measure(page) {
+      const picker = page.locator(PICKER).first();
+      if (!await picker.evaluate(el => el.open)) await picker.locator(':scope > summary').click();
+      if (!await picker.evaluate(el => el.open)) throw new Error('the column picker would not open');
+      await page.locator('.munin-explorer-header__actions > .munin-explorer-list-menu > button').first().focus();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(PRESS_SETTLE_MS);
+      const open = await picker.evaluate(el => el.open);
+      if (open) return 'Enter on «Last ned utvalg» left the column picker open beside the menu';
+      // Shut the menu again, so the run under the control starts as this one did.
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(PRESS_SETTLE_MS);
+      return null;
+    },
+
+    // As if explorer-interop.js listened for the pointer only: the click never reaches the document's listener.
+    async control(page) {
+      await page.evaluate(() => window.addEventListener('click', event => {
+        if (event.detail === 0) event.stopPropagation();
+      }, true));
+    },
+  },
   ...chevronAssertions,
 ];
