@@ -1,0 +1,16 @@
+# <expected tier> <path>, checked by risk-tier.py --examples in the risk label job.
+high   src/Fhi.Munin.Explorer/Client/BearerTokenHandler.cs
+high   .github/workflows/release.yml
+high   scripts/release-changelog.sh
+high   src/Fhi.Munin.Explorer/Fhi.Munin.Explorer.csproj
+high   Directory.Build.props
+high   src/Fhi.Munin.Explorer/Contracts/IdentityLink.cs
+medium AGENTS.md
+medium BannedSymbols.txt
+medium test/Fhi.Munin.Explorer.Tests/Fhi.Munin.Explorer.Tests.csproj
+medium samples/ModernHost/ModernHost.csproj
+low    README.md
+low    test/Fhi.Munin.Explorer.Tests/AccessLevelsTest.cs
+low    scripts/test-flatten-release-notes.sh
+medium src/Fhi.Munin.Explorer/Blazor/AccessLevels.cs
+low    changelog.d/Fhi.Metadata-mhqx0.4-hosts.md
