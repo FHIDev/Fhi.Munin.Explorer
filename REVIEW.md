@@ -35,5 +35,6 @@ Everything else (naming, wording, structure, a smaller way to write it) is a **N
 
 - What CI already checks: build and tests, format, the changelog fragment and assembly checks, the sample
   stylesheets in step, class names listed and noted for hosts, the comment budget, the portability guard, a host
-  needing no glue, the accessibility and geometry scans.
+  needing no glue, and the axe scan with the 320px reflow check. The geometry, hostile-host and Tab-walk scans run
+  nightly, not on a pull request, so a layout or keyboard change still needs a reviewer's eye.
 - Generated files: lockfiles, packed output.

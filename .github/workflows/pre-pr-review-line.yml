@@ -5,10 +5,14 @@ name: Pre-PR review line
 
 on:
   pull_request:
-    # labeled/unlabeled: the risk label arrives after the pull request opens, and the Risk line must match it.
+    # labeled/unlabeled: a person changing the risk label. The labeller's own label (set with GITHUB_TOKEN) starts no
+    # run, so the step below waits for the labeller's run on the head commit instead.
     types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
-permissions: {}
+# checks/pull-requests read: the Risk line is compared with the risk: label once that commit's labeller run is done.
+permissions:
+  checks: read
+  pull-requests: read
 
 concurrency:
   group: pre-pr-review-line-${{ github.event.pull_request.number }}
@@ -18,12 +22,15 @@ jobs:
   line:
     name: Pre-PR review line
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 4
     steps:
       - name: The description says what the pre-PR review found
         env:
           BODY: ${{ github.event.pull_request.body }}
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           CREATED: ${{ github.event.pull_request.created_at }}
           # The three lines are required only of pull requests opened from this moment, so none already open turns
           # red. Delete the cutoff, and the test on it below, once those have merged (DevInfra-0f5.2).
@@ -92,7 +99,9 @@ jobs:
           for key in "Testing" "Risk" "How to revert"; do
             got=$(printf '%s\n' "$body" | grep -E "^${key}:" || true)
             if [ -z "$got" ]; then
-              echo "::error::The description has no line that starts with '${key}:'. Add it on a line of its own (the pull request template describes it)."
+              hint=''
+              if printf '%s\n' "$body" | grep -q "${key}:"; then hint=" The text is there, but not at the start of a line: no bold, list or quote marker in front of it."; fi
+              echo "::error::The description has no line that starts with '${key}:'. Add it on a line of its own (the pull request template describes it).$hint"
               exit 1
             fi
             if [ "$(printf '%s\n' "$got" | wc -l)" -ne 1 ]; then
@@ -100,7 +109,7 @@ jobs:
               exit 1
             fi
             value=$(printf '%s' "${got#"${key}:"}" | sed -E 's/^[[:space:]]+//')
-            placeholder='<[^>]*>'
+            placeholder='^<.*>$|<why>|<low\|medium\|high>|<what ran|<revert this PR'
             if [ "${#value}" -lt 3 ] || [[ $value =~ $placeholder ]]; then
               echo "::error::'${got}' is not filled in."
               exit 1
@@ -108,17 +117,28 @@ jobs:
             echo "$got"
           done
           risk=$(printf '%s\n' "$body" | grep -E '^Risk:')
-          tiered='^Risk: (low|medium|high) (–|-) .+$'
+          tiered='^Risk: (low|medium|high) (–|—|-) .+$'
           if [[ ! $risk =~ $tiered ]]; then
             echo "::error::'$risk' does not start with a tier: 'Risk: low|medium|high – why'."
             exit 1
           fi
           tier=${BASH_REMATCH[1]}
-          for label in $LABELS; do
-            case "$label" in
-              risk:*) if [ "${label#risk:}" != "$tier" ]; then
-                  echo "::error::The Risk line says $tier, the label says ${label#risk:}. The label comes from the changed paths (docs/review-risk-tiers.md); write its tier and why."
-                  exit 1
-                fi;;
-            esac
+          # The labeller sets the label in its own run on the same commit; wait for that run (up to 2 minutes), then
+          # read the labels as they are now. No labeller run on the commit: nothing to compare with.
+          labelled=''
+          for attempt in $(seq 1 24); do
+            state=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" \
+              --jq '[.check_runs[] | select(.name | endswith("Risk label"))] | if length == 0 then "none" else (map(.status) | if all(. == "completed") then "done" else "running" end) end')
+            if [ "$state" = "done" ]; then labelled=yes; break; fi
+            if [ "$state" = "none" ] && [ "$attempt" -ge 6 ]; then break; fi
+            sleep 5
           done
+          if [ -z "$labelled" ]; then
+            echo "::notice::No finished Risk label run on $HEAD_SHA, so the Risk line is not compared with a label."
+            exit 0
+          fi
+          label=$(gh api "repos/$REPO/issues/$PR/labels" --jq '[.[].name | select(startswith("risk:"))] | first // ""')
+          if [ -n "$label" ] && [ "${label#risk:}" != "$tier" ]; then
+            echo "::error::The Risk line says $tier, the label says ${label#risk:}. The label comes from the changed paths (docs/review-risk-tiers.md in Fhi.Munin.DevInfra); write its tier and why."
+            exit 1
+          fi
