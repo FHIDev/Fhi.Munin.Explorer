@@ -37,14 +37,16 @@ async function assertHidden(bar) {
   }, 'a hidden toolbar must generate no boxes');
 }
 
-// Adjacent stops bound the walk: landing after the bar proves its action was skipped.
-// The same walk must reach the action when shown, and when the hiding rule is broken.
+// Adjacent stops bound the walk: landing after the bar proves its action was skipped; the same walk must reach
+// the action when shown, and when the hiding rule is broken. Fixed, so #624's focus listener does not scroll a
+// stop clear of the bar and hide it before Tab; Tab order still follows the DOM (#634).
 async function plantStops(bar) {
   await bar.evaluate(element => {
     for (const position of ['before', 'after']) {
       const stop = document.createElement('button');
       stop.id = `toolbar-${position}`;
       stop.textContent = position;
+      stop.style.cssText = 'position: fixed; bottom: 0; left: 0;';
       element[position](stop);
     }
   });
