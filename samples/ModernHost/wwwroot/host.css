@@ -1639,6 +1639,13 @@ button.munin-explorer-dataitem-main__name[aria-expanded="true"] .munin-explorer-
    other's rules — the flex row above and the table row below wear the same class names. */
 table.munin-explorer-data-list {
   border-collapse: collapse;
+  width: 100%;
+}
+
+/* Stiler PR 40317 (Fhi.Metadata-x0vme): the table fills its column, and «Valg» keeps its own width. */
+table.munin-explorer-data-list > thead > :where(tr) > th:last-child {
+  white-space: nowrap;
+  width: 1%;
 }
 
 /* Stiler 0.1.116's cells for the saved-list table (Fhi.Metadata-fs6lp), copied as compiled. */
@@ -4186,6 +4193,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 .munin-explorer-page__actions > label > select {
+  font-size: 1rem;
   width: 20rem;
 }
 
@@ -5112,10 +5120,6 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-results__toolbar .munin-explorer-header__actions {
   margin: 0;
-}
-
-.munin-explorer-results__toolbar select {
-  height: 2.75rem;
 }
 
 .munin-explorer-results__toolbar > div:has( > select) {
@@ -6076,5 +6080,35 @@ a[target=_blank]:not(.hd-button-square):focus::after {
 @media not all and (min-width:1024px) {
   .munin-explorer-filters__collapse {
     display: none;
+  }
+}
+
+/* Stiler PR 40317 (Fhi.Metadata-x0vme), copied as compiled: the three <select> get helsedata's arrow,
+   8px corners and the button height, with a $grey60 border (3:1, WCAG 1.4.11). Last in the file, as
+   Stiler's `_page` comes after `_buttons`, so it wins over `.munin-explorer select` above. */
+.munin-explorer-page__actions > label > select,
+.munin-explorer-pagination-size select,
+.munin-explorer-results__toolbar select {
+  appearance: none;
+  background: rgb(255, 255, 255) url(../img/icons/keyboard-arrow/icon_down.svg) no-repeat right 14px center/1rem;
+  border: 1px solid rgb(81, 84, 123);
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: rgb(38, 32, 69);
+  height: 2.75rem;
+  padding: 0 40px 0 16px;
+}
+.munin-explorer-page__actions > label > select:focus,
+.munin-explorer-pagination-size select:focus,
+.munin-explorer-results__toolbar select:focus {
+  border-color: rgb(66, 139, 255);
+}
+@media (forced-colors: active) {
+  .munin-explorer-page__actions > label > select,
+  .munin-explorer-pagination-size select,
+  .munin-explorer-results__toolbar select {
+    appearance: auto;
+    background-image: none;
+    padding: 0 8px;
   }
 }
