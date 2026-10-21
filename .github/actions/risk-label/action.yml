@@ -1,0 +1,108 @@
+name: Risk label
+description: >-
+  Sets exactly one risk:low|medium|high label on the pull request from the paths it changes and the calling
+  repository's .github/risk-tiers.txt (DevInfra-0f5.1, docs/review-risk-tiers.md). Never fails the pull request.
+inputs:
+  token:
+    description: A token that can read the pull request's files and set its labels.
+    required: true
+  rules:
+    description: The rules file, relative to the caller's checkout.
+    default: .github/risk-tiers.txt
+  examples:
+    description: The examples file, checked against the rules before labelling.
+    default: .github/risk-tiers.examples
+outputs:
+  tier:
+    description: low, medium or high.
+    value: ${{ steps.tier.outputs.tier }}
+runs:
+  using: composite
+  steps:
+    - name: The rules give every example its tier
+      shell: bash
+      env:
+        SCRIPT: ${{ github.action_path }}/../../../scripts/risk-tier.py
+        RULES: ${{ inputs.rules }}
+        EXAMPLES: ${{ inputs.examples }}
+      run: |
+        if [ -f "$EXAMPLES" ]; then python3 "$SCRIPT" --rules "$RULES" --examples "$EXAMPLES"; fi
+
+    - name: Tier from the changed paths
+      id: tier
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        SCRIPT: ${{ github.action_path }}/../../../scripts/risk-tier.py
+        RULES: ${{ inputs.rules }}
+        REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+        AUTHOR: ${{ github.event.pull_request.user.login }}
+        TITLE: ${{ github.event.pull_request.title }}
+        CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+      run: |
+        set -o pipefail
+        # A renamed file counts at its old path too, so moving a file out of a high path is high.
+        # A name with a line break would split into two paths here and be judged as neither; it fails the step instead,
+        # which labels the pull request high.
+        gh api "repos/$REPO/pulls/$PR/files" --paginate \
+          --jq '.[] | .filename, (.previous_filename // empty) | if test("[\r\n]") then error("a changed file name contains a line break") else . end' \
+          > changed-files.txt
+        listed="$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename' | wc -l)"
+        python3 "$SCRIPT" --rules "$RULES" --author="$AUTHOR" --title="$TITLE" < changed-files.txt > tier.txt
+        tier="$(sed -n 's/^tier=//p' tier.txt)"
+        # The files API lists at most 3000 files; a pull request it cuts short is not judged on part of itself.
+        if [ "$listed" -lt "${CHANGED_FILES:-0}" ]; then
+          echo "high   (the API listed $listed of $CHANGED_FILES changed files, so the tier is high)" >> tier.txt
+          tier=high
+        fi
+        echo "tier=$tier" >> "$GITHUB_OUTPUT"
+        {
+          echo "## risk:$tier"
+          echo
+          echo '```'
+          for t in high medium low; do grep "^$t " tier.txt || true; done | head -100
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Set the label
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+        TIER: ${{ steps.tier.outputs.tier }}
+      run: |
+        declare -A colour=([low]=0e8a16 [medium]=fbca04 [high]=b60205)
+        for t in low medium high; do
+          gh api "repos/$REPO/labels/risk:$t" >/dev/null 2>&1 \
+            || gh api "repos/$REPO/labels" -f name="risk:$t" -f color="${colour[$t]}" \
+                 -f description="Review tier from the changed paths (docs/review-risk-tiers.md in Fhi.Munin.DevInfra)" >/dev/null
+        done
+        # The new label first, so the pull request never stands without one. A label that is already absent (404) is
+        # fine; any other failure fails the step, so the handler below labels high rather than leaving two labels.
+        gh api "repos/$REPO/issues/$PR/labels" -f "labels[]=risk:$TIER" >/dev/null
+        for t in low medium high; do
+          [ "$t" = "$TIER" ] && continue
+          if ! gh api -X DELETE "repos/$REPO/issues/$PR/labels/risk:$t" >/dev/null 2>delete-error.txt; then
+            grep -q "HTTP 404" delete-error.txt || { cat delete-error.txt; exit 1; }
+          fi
+        done
+        echo "risk:$TIER set on #$PR"
+
+    # Fails safe: a run that could not decide leaves risk:high, never the previous, possibly lower, label.
+    - name: On failure, label the pull request high
+      if: failure()
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        # Only once risk:high is on are the others removed, so a failure here never leaves the pull request unlabelled.
+        if ! gh api "repos/$REPO/issues/$PR/labels" -f "labels[]=risk:high" >/dev/null; then
+          echo "## The labeller failed and could not set risk:high; the previous label stands" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+        fi
+        for t in low medium; do gh api -X DELETE "repos/$REPO/issues/$PR/labels/risk:$t" >/dev/null 2>&1 || true; done
+        echo "## risk:high (the labeller failed; see the step above)" >> "$GITHUB_STEP_SUMMARY"

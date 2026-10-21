@@ -1,0 +1,44 @@
+# Risk tier per changed path (Fhi.Munin.DevInfra docs/review-risk-tiers.md, read by risk-tier.py). A file takes the
+# first tier, in the order high, medium, low, with a matching glob; a file no glob matches is medium.
+
+# Tokens and sign-in: the package sends the host's bearer token to Munin
+high   src/Fhi.Munin.Explorer/Client/BearerTokenHandler.cs
+high   src/Fhi.Munin.Explorer/Contracts/IMuninExplorerTokenProvider.cs
+high   src/Fhi.Munin.Explorer/Contracts/IdentityLink.cs
+high   src/Fhi.Munin.Explorer/Contracts/MuninExplorerUnauthorizedException.cs
+high   src/Fhi.Munin.Explorer/Client/ServiceCollectionExtensions.cs
+# The labeller itself, which runs with a write token on every pull request, forks' included
+high   .github/actions/**
+high   scripts/risk-tier.py
+high   .github/CODEOWNERS
+# CI, the package release and what it publishes
+high   .github/workflows/*.yml
+high   .github/workflows/*.yaml
+high   scripts/release-changelog.sh
+high   scripts/flatten-release-notes.sh
+high   scripts/push-packages.sh
+high   scripts/assert-package-contents.sh
+high   scripts/assemble-changelog.ps1
+high   .github/dependabot.yml
+high   nuget.config
+high   Directory.Build.props
+high   src/Fhi.Munin.Explorer/Fhi.Munin.Explorer.csproj
+
+# Files that steer agents and reviewers
+medium AGENTS.md
+medium CLAUDE.md
+medium .claude/**
+medium BannedSymbols.txt
+medium .github/instructions/**
+medium .forge/warden-rules.yaml
+medium test/*/*.csproj
+
+# Docs, notes and tests
+low    **/*.md
+low    docs/**
+low    changelog.d/**
+low    .forge/**
+low    .beads/**
+low    test/**
+low    scripts/test-*
+low    scripts/test_*.py
