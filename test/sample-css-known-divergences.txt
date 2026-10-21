@@ -606,3 +606,14 @@ invented-selector||table.munin-explorer-data-list > thead > :where(tr) > th:last
 # the Stiler patch for this bead. Delete these two lines when helsedata pins a Stiler that carries it.
 invented-selector||.munin-explorer-complete-record > summary:focus-visible|outline
 invented-selector||.munin-explorer-complete-record > summary:focus-visible|outline-offset
+
+# Fhi.Metadata-l9l2n.136: the explorer title is placed by any heading tag, not h2 alone, so a host that passes HeadingLevel=1
+# keeps it in the head row on desktop. The same three selectors are in the Stiler patch for this bead; delete these
+# seven lines when helsedata pins a Stiler that carries it.
+invented-selector|@media (min-width:1024px)|.munin-explorer > *:not(:is(h1, h2, h3, h4, h5, h6)):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|grid-column
+invented-selector|@media (min-width:1024px)|.munin-explorer > *:not(:is(h1, h2, h3, h4, h5, h6)):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|min-inline-size
+invented-selector|@media (min-width:1024px)|.munin-explorer > :is(h1, h2, h3, h4, h5, h6)|grid-area
+invented-selector|@media (min-width:1024px)|.munin-explorer:has( > .munin-explorer-filters--collapsed) > *:not(:is(h1, h2, h3, h4, h5, h6)):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|grid-column
+missing-selector|@media (min-width:1024px)|.munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|
+missing-selector|@media (min-width:1024px)|.munin-explorer > h2|
+missing-selector|@media (min-width:1024px)|.munin-explorer:has( > .munin-explorer-filters--collapsed) > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede)|

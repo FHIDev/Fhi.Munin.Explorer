@@ -727,6 +727,10 @@ public class UrlStateComponentTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(kildeLevel, cut.FindComponent<KildeView>().Instance.HeadingLevel));
         var titleId = cut.Find("[aria-labelledby]").GetAttribute("aria-labelledby");
         Assert.Equal(titleTag, cut.Find($"#{titleId}").TagName);
+        if (level == 1)
+        {
+            Assert.Single(cut.FindAll("h1")); // DetailToc's own headings are h2 whatever the level (Fhi.Metadata-l9l2n.136)
+        }
     }
 
     [Fact]
