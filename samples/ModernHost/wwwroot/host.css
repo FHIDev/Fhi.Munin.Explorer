@@ -1029,7 +1029,7 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
     align-items: start;
   }
 
-  .munin-explorer > h2 { grid-area: head; }
+  .munin-explorer > :is(h1, h2, h3, h4, h5, h6) { grid-area: head; }
   .munin-explorer > form { grid-area: search; }
 
   .munin-explorer > .munin-explorer-filters {
@@ -1053,7 +1053,7 @@ input.munin-explorer-filters__search::-webkit-search-cancel-button {
     min-inline-size: 0;
   }
 
-  .munin-explorer > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede) {
+  .munin-explorer > *:not(:is(h1, h2, h3, h4, h5, h6)):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede) {
     grid-column: 2;
     min-inline-size: 0;
   }
@@ -5728,7 +5728,7 @@ table.munin-explorer-data-list > :where(thead, tbody) > :where(tr) > th[scope=ro
     display: none;
   }
 
-  .munin-explorer:has(> .munin-explorer-filters--collapsed) > *:not(h2):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede) {
+  .munin-explorer:has(> .munin-explorer-filters--collapsed) > *:not(:is(h1, h2, h3, h4, h5, h6)):not(form):not(.munin-explorer-filters):not(.munin-explorer-drilldown):not(.munin-explorer__lede) {
     grid-column: 1 / -1;
   }
 }

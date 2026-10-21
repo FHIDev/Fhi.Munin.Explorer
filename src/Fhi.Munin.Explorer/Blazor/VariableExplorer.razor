@@ -41,7 +41,7 @@
     // panel and still shares the circuit's VariableListState with the save button.
     private RenderFragment ReaderLists => @<VariableListView Language="@Language"
                                                             IsAuthenticated="@IsAuthenticated"
-                                                            HeadingLevel="@HeadingLevel"
+                                                            HeadingLevel="@ListLevel"
                                                             ShareCode="@_state.ShareCode"
                                                             ShareCodeChanged="@OnShareCodeChanged"
                                                             SharedListHref="@SharedListHref"
@@ -52,5 +52,9 @@
     // filter column, and the fragment above is drawn in the result one.
     private RenderFragment ReaderListFilters => @<VariableListFilters Language="@Language"
                                                                       IsAuthenticated="@IsAuthenticated"
-                                                                      HeadingLevel="@HeadingLevel" />;
+                                                                      HeadingLevel="@ListLevel" />;
+
+    // The list tab sits under the explorer's title like the search's own panels do (VariableSearch.RowLevel): at the
+    // title's level a host passing 1 got three h1s, the title, «Filter» and the list's name (Fhi.Metadata-l9l2n.136).
+    private int ListLevel => Math.Clamp(HeadingLevel + 1, 1, 6);
 }

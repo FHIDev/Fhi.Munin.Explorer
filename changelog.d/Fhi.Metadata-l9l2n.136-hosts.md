@@ -1,0 +1,2 @@
+category: Notes for hosts
+- **`HeadingLevel` 1 needs a Stiler that places the title by any heading level.** Stiler's desktop grid finds the explorer's title with `.munin-explorer > h2` and keeps it out of the results column with `:not(h2)`, so with `HeadingLevel` 1 on `VariableExplorer` or `KildeExplorer` the title lands in the results column. The Stiler fix (`:is(h1, h2, h3, h4, h5, h6)` in those three selectors) is a patch of its own; pass 1 only once your pinned Stiler carries it. (Fhi.Metadata-l9l2n.136)

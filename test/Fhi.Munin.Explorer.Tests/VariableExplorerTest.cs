@@ -213,6 +213,32 @@ public class VariableExplorerTest : ExplorerTestContext
         Assert.DoesNotContain("Henter filtre", cut.Markup, StringComparison.Ordinal);
     }
 
+    // A host without a heading of its own passes 1; the list tab then drew three h1s: the title, «Filter» and the
+    // list's name (Fhi.Metadata-l9l2n.136). The title is the one heading at the host's level, on either tab.
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void HeadingLevel_OnEitherTab_ThenOnlyTheTitleIsAtTheHostsLevelAndNothingIsAboveIt(int level)
+    {
+        var cut = RenderExplorer(new ExplorerClient(Variable("Alder ved diagnose", "V_BDR.ALDER")), headingLevel: level);
+        AssertOutline(cut, level);
+
+        Tab(cut, "Variabelliste").Click();
+        cut.WaitForAssertion(() => Assert.Contains("Mine hjertevariabler", cut.Markup, StringComparison.Ordinal));
+        Assert.NotEmpty(cut.FindAll($"h{level + 1}"));
+        AssertOutline(cut, level);
+    }
+
+    private static void AssertOutline(IRenderedComponent<VariableExplorer> cut, int level)
+    {
+        var atLevel = cut.FindAll($"h{level}");
+        Assert.Equal("Variabelutforsker", Assert.Single(atLevel).TextContent.Trim());
+        for (var above = 1; above < level; above++)
+        {
+            Assert.Empty(cut.FindAll($"h{above}"));
+        }
+    }
+
     private static VariableSummary Variable(string name, string code) =>
         new() { Id = Guid.NewGuid(), Code = code, PreferredTerm = name, KildeName = "Als registeret" };
 
@@ -230,13 +256,14 @@ public class VariableExplorerTest : ExplorerTestContext
     }
 
     private IRenderedComponent<VariableExplorer> RenderExplorer(
-        ExplorerClient client, bool signedIn = true, string language = "no")
+        ExplorerClient client, bool signedIn = true, string language = "no", int headingLevel = 2)
     {
         Prepare(client);
 
         return Render<VariableExplorer>(p => p
             .Add(c => c.IsAuthenticated, signedIn)
-            .Add(c => c.Language, language));
+            .Add(c => c.Language, language)
+            .Add(c => c.HeadingLevel, headingLevel));
     }
 
     private static IElement Tab<T>(IRenderedComponent<T> cut, string label) where T : IComponent =>
