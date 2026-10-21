@@ -1,0 +1,16 @@
+# Sets risk:low|medium|high on a pull request from the paths it changes and .github/risk-tiers.txt (DevInfra-0f5.1).
+# The tiers and what each needs before a merge: docs/review-risk-tiers.md in FHIDev/Fhi.Munin.DevInfra.
+name: Risk label
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  label:
+    uses: FHIDev/Fhi.Munin.DevInfra/.github/workflows/risk-label.yml@main
