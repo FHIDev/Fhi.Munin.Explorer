@@ -564,3 +564,40 @@ invented-selector|@media (min-width:480px)|.munin-explorer-list-menu > .munin-ex
 invented-selector|@media (min-width:480px) and (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > .munin-explorer-list-menu__panel|grid-column
 invented-selector||.munin-explorer-list-menu__check:has( > input[aria-disabled=true])|cursor
 invented-selector||.munin-explorer-list-menu__check:has( > input[aria-disabled=true])|color
+
+# The three <select> and the saved-list table (Fhi.Metadata-x0vme): the sample draws them as Stiler PR 40317 does,
+# ahead of the Stiler pin. Delete these lines when the Stiler pin carries 40317.
+invented-declaration||.munin-explorer-page__actions > label > select|appearance
+invented-declaration||.munin-explorer-page__actions > label > select|background
+invented-declaration||.munin-explorer-page__actions > label > select|border
+invented-declaration||.munin-explorer-page__actions > label > select|border-radius
+invented-declaration||.munin-explorer-page__actions > label > select|box-sizing
+invented-declaration||.munin-explorer-page__actions > label > select|color
+invented-declaration||.munin-explorer-page__actions > label > select|font-size
+invented-declaration||.munin-explorer-page__actions > label > select|height
+invented-declaration||.munin-explorer-page__actions > label > select|padding
+invented-declaration||.munin-explorer-pagination-size select|appearance
+invented-declaration||.munin-explorer-pagination-size select|background
+invented-declaration||.munin-explorer-pagination-size select|box-sizing
+invented-declaration||.munin-explorer-results__toolbar select|appearance
+invented-declaration||.munin-explorer-results__toolbar select|background
+invented-declaration||.munin-explorer-results__toolbar select|border
+invented-declaration||.munin-explorer-results__toolbar select|border-radius
+invented-declaration||.munin-explorer-results__toolbar select|box-sizing
+invented-declaration||.munin-explorer-results__toolbar select|color
+invented-declaration||.munin-explorer-results__toolbar select|padding
+invented-declaration||table.munin-explorer-data-list|width
+invented-selector|@media (forced-colors:active)|.munin-explorer-page__actions > label > select|appearance
+invented-selector|@media (forced-colors:active)|.munin-explorer-page__actions > label > select|background-image
+invented-selector|@media (forced-colors:active)|.munin-explorer-page__actions > label > select|padding
+invented-selector|@media (forced-colors:active)|.munin-explorer-pagination-size select|appearance
+invented-selector|@media (forced-colors:active)|.munin-explorer-pagination-size select|background-image
+invented-selector|@media (forced-colors:active)|.munin-explorer-pagination-size select|padding
+invented-selector|@media (forced-colors:active)|.munin-explorer-results__toolbar select|appearance
+invented-selector|@media (forced-colors:active)|.munin-explorer-results__toolbar select|background-image
+invented-selector|@media (forced-colors:active)|.munin-explorer-results__toolbar select|padding
+invented-selector||.munin-explorer-page__actions > label > select:focus|border-color
+invented-selector||.munin-explorer-pagination-size select:focus|border-color
+invented-selector||.munin-explorer-results__toolbar select:focus|border-color
+invented-selector||table.munin-explorer-data-list > thead > :where(tr) > th:last-child|white-space
+invented-selector||table.munin-explorer-data-list > thead > :where(tr) > th:last-child|width
