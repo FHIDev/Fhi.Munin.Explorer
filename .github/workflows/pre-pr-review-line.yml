@@ -1,5 +1,5 @@
 # Shows red when a session's PR lacks its "Pre-PR review:" line (DevInfra-9w1.40). The line and its four forms are
-# in the pull request template. Applies only to PRs whose description has the sessions' footer line; any other PR passes untouched.
+# in the pull request template. Applies only to PRs whose description has one of the sessions' footer lines; any other PR passes untouched.
 # It proves the line is there, not that the review ran. Not a required check: making it one is a ruleset change.
 name: Pre-PR review line
 
@@ -25,7 +25,8 @@ jobs:
         run: |
           # Carriage returns and trailing blanks go first: GitHub stores CRLF, and editors leave spaces.
           body=$(printf '%s' "$BODY" | tr -d '\r' | sed -E 's/[[:space:]]+$//')
-          if ! printf '%s\n' "$body" | grep -Eq '^🤖 Generated with AI$'; then
+          # Both footers the sessions write: the short one and Claude Code's own, which ends in a link.
+          if ! printf '%s\n' "$body" | grep -Eq '^🤖 Generated with (AI|\[Claude Code\]\(https://claude\.com/claude-code\))$'; then
             echo "Not a session's PR (the description has no footer line): nothing to check."
             exit 0
           fi
