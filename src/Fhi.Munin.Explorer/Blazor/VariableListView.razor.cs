@@ -1246,6 +1246,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
         CloseRow();
         _menuOpen = false;
         _downloadOpen = false;
+        Columns.Close();
     }
 
     /// <summary>

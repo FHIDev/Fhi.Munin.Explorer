@@ -58,6 +58,8 @@ export const assertions = [
         for (const panel of panels) {
           panel.scrollIntoView({ block: 'center', behavior: 'instant' });
           for (const control of panel.querySelectorAll('button, input')) {
+            // A control drawn nowhere takes no press to cover: «Lukk» outside a phone's sheet (Fhi.Metadata-mhqx0.8).
+            if (control.getClientRects().length === 0) continue;
             const box = control.getBoundingClientRect();
             for (const fraction of [0.1, 0.5, 0.9]) {
               const hit = document.elementFromPoint(box.left + box.width * fraction, box.top + box.height / 2);

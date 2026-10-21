@@ -4280,6 +4280,110 @@ table.munin-explorer-data-list tbody th {
   }
 }
 
+/* From 480px an open menu is a disclosure in the page: its panel takes a line of its own under the row
+   of buttons and pushes the list down, so it never lies over a row (WCAG 2.5.8, Fhi.Metadata-mhqx0.8).
+   `display: contents` makes the button and the panel items of the row itself; `--end` moves to the button. */
+@media (min-width: 480px) {
+  .munin-explorer-list-menu {
+    display: contents;
+  }
+
+  .munin-explorer-list-menu--end > button {
+    margin-left: auto;
+  }
+
+  /* Contained, so the open panel's own width never widens the row that sizes itself to its buttons:
+     the buttons stay where they were when a menu opens under them. */
+  .munin-explorer-list-menu > .munin-explorer-list-menu__panel {
+    border: 1px solid rgb(214, 213, 222);
+    box-shadow: none;
+    contain: inline-size;
+    flex-basis: 100%;
+    max-width: none;
+    min-width: 0;
+    order: 1;
+    position: static;
+  }
+}
+
+/* «Kolonner»'s last column left, inert rather than disabled so it still says why it will not move. */
+.munin-explorer-list-menu__check:has( > input[aria-disabled="true"]) {
+  color: rgb(81, 84, 123);
+  cursor: default;
+}
+
+/* Under 768px the toolbar stacks its buttons in one column as wide as the widest (d86tj): the open panel
+   spans that column (Fhi.Metadata-mhqx0.8). */
+@media (min-width: 480px) and (max-width: 767px) {
+  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > .munin-explorer-list-menu__panel {
+    grid-column: 1 / -1;
+  }
+}
+
+/* A short open, as a reader who asked for less motion does not get. */
+@media (min-width: 480px) and (prefers-reduced-motion: no-preference) {
+  .munin-explorer-list-menu > .munin-explorer-list-menu__panel {
+    interpolate-size: allow-keywords;
+    overflow: hidden;
+    transition: height 150ms ease-out;
+  }
+
+  @starting-style {
+    .munin-explorer-list-menu > .munin-explorer-list-menu__panel:not([hidden]) {
+      height: 0;
+    }
+  }
+}
+
+/* On a phone an open menu is a bottom sheet in the top layer, the page dimmed behind it (Fhi.Metadata-mhqx0.8).
+   The component adds --sheet only while it shows one there. Three classes' weight, over the panel rules
+   above, so the sheet's box wins. */
+:root .munin-explorer-list-menu__panel--sheet:popover-open {
+  border: 0;
+  border-radius: 16px 16px 0 0;
+  height: auto;
+  inset: auto 0 0 0;
+  margin: 0;
+  max-height: 85vh;
+  max-height: 85dvh;
+  max-width: none;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+  position: fixed;
+  width: 100%;
+}
+
+:root .munin-explorer-list-menu__panel--sheet:popover-open::backdrop {
+  background-color: rgba(38, 32, 69, 0.5);
+}
+
+/* The sheet's last row, apart from the rows above it: shown only on a sheet, by the component. */
+.munin-explorer-list-menu__close {
+  background: rgb(255, 255, 255);
+  border: 0;
+  border-top: 1px solid rgb(214, 213, 222);
+  color: rgb(38, 32, 69);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  min-height: 3rem;
+  padding: 12px 16px;
+  text-align: center;
+  width: 100%;
+}
+
+/* Centred in the menus too, where the panel's own rule puts its buttons' text at the start. */
+.munin-explorer-list-menu__panel > .munin-explorer-list-menu__close {
+  justify-content: center;
+  text-align: center;
+}
+
+.munin-explorer-list-menu__close:focus-visible {
+  outline: 2px solid rgb(38, 32, 69);
+  outline-offset: -4px;
+}
+
 .munin-explorer-list-menu > button::after {
   background-color: currentColor;
   content: "";

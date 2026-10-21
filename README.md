@@ -129,8 +129,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     `Fhi.Helsedata.Stiler`'s own name, every one read back off Stiler's compiled stylesheet rather
     than guessed at: `searchbox__freetext*`, `hd-button-square` with its `button-square--*`
     modifiers, `form-element__label`, `form-fieldset`, `headline`, `caption`, `infobox`,
-    `hd-button-reset`, `screenreader-only`, and `dropdown-choicepicker*` for the column picker's
-    open list. These are not ours to rename: a change to one of them is a change to Stiler. Every
+    `hd-button-reset` and `screenreader-only`. These are not ours to rename: a change to one of them is a change to Stiler. Every
     borrowed name is now one Stiler really defines, the detail views' contents nav included: it
     wears `form-menu__list` and `form-menu__list__item`, global unscoped classes in Stiler's
     `pages/_healthregisterpage.scss` that reach its compiled stylesheet. The detail pages'
@@ -713,7 +712,15 @@ These are not style preferences — each one is a host that breaks otherwise.
     (the size warning, the status, a confirmation's question) and `munin-explorer-list-menu__check`
     the «Ta med kodeverk» row. Undrawn, the rows are bare buttons stacked in the panel and the hint
     runs on after the button's word. «Last ned utvalg» stands in the column picker's row, ahead of
-    «Kolonner», and a press outside an open menu or column picker closes it (the package's own script).
+    «Kolonner», and a press outside an open menu closes it (the package's own script).
+    Since `Fhi.Metadata-mhqx0.8`, from 480px an open panel is a line of its own in the toolbar row
+    under the buttons (the menu wrapper is `display: contents`), and below it the script makes an
+    open panel a bottom sheet in the top layer, with the page behind it inert:
+    `munin-explorer-list-menu__panel--sheet` is on it while it is one, and
+    `munin-explorer-list-menu__close` is its «Lukk» row, hidden by the component everywhere else.
+    «Kolonner» is one of these menus since then, its columns `munin-explorer-list-menu__check` rows,
+    and no longer Stiler's `<details>` dropdown. Undrawn, the sheet is the browser's centred popover
+    box and «Lukk» a bare button.
     `munin-explorer-pagination-pages` joined this list under `Fhi.Metadata-ejcbi`, and it is worth
     saying why it moved out of the handles: the numbered pages wear helsedata's own
     `hd-button-reset`, which strips the button chrome, so unlike every other control here nothing
@@ -1069,12 +1076,14 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-list-menu` | meaning |
   | `munin-explorer-list-menu--end` | meaning |
   | `munin-explorer-list-menu__check` | meaning |
+  | `munin-explorer-list-menu__close` | meaning |
   | `munin-explorer-list-menu__hint` | meaning |
   | `munin-explorer-list-menu__item` | meaning |
   | `munin-explorer-list-menu__item--apart` | meaning |
   | `munin-explorer-list-menu__note` | meaning |
   | `munin-explorer-list-menu__panel` | meaning |
   | `munin-explorer-list-menu__panel--rows` | meaning |
+  | `munin-explorer-list-menu__panel--sheet` | meaning |
   | `munin-explorer-list-placeholder` | meaning |
   | `munin-explorer-list-scroll` | meaning |
   | `munin-explorer-meta` | handle |
@@ -1140,7 +1149,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-whole__header` | handle |
   | `munin-explorer-whole__list` | handle |
   | `munin-explorer-whole__main` | handle |
-  | `munin-explorer__dropdown` | handle |
   | `munin-explorer__lede` | handle |
   <!-- class-names:end -->
 

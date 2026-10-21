@@ -134,6 +134,15 @@ public partial class VariableSearch
             builder.CloseElement();
         }
 
+        // Shown only while the panel is a phone's bottom sheet; explorer-interop.js shows it and acts on it.
+        builder.OpenElement(492, "button");
+        builder.AddAttribute(493, "class", "munin-explorer-list-menu__close");
+        builder.AddAttribute(494, "type", "button");
+        builder.AddAttribute(495, "hidden", true);
+        builder.AddAttribute(496, "style", "display: none");
+        builder.AddContent(497, T.CloseMenu);
+        builder.CloseElement();
+
         builder.CloseElement();
 
         // Always present and empty until needed: a region inserted and filled at once is announced unreliably.
@@ -187,6 +196,10 @@ public partial class VariableSearch
         {
             _downloadOpen = !_downloadOpen;
             _downloadDoneFor = null;
+            if (_downloadOpen)
+            {
+                Columns.Close();
+            }
         }
     }
 

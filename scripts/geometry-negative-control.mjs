@@ -50,7 +50,7 @@ const cases = [
     // Laid over the open panel, one layer above it: since Stiler PR 40240 stacks the row the two no
     // longer overlap where they stand. Absolute, so it scrolls with the panel.
     apply: page => page.evaluate(() => {
-      const picker = document.querySelector('.munin-explorer__dropdown');
+      const picker = document.querySelector('.munin-explorer-header .munin-explorer-list-menu:has(> [id^="munin-explorer-columns-toggle-"])');
       picker.style.position = 'absolute';
       const origin = (picker.offsetParent ?? document.body).getBoundingClientRect();
       const open = document.querySelector('.munin-explorer-list-menu__panel:not([hidden])');

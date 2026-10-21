@@ -95,9 +95,31 @@ public sealed partial class KildeSearch : IAsyncDisposable
                    (IReadOnlyList<Guid>)[.. _kilder.Select(kilde => kilde.Id).Where(_expanded.Contains)],
                    Log);
 
+    private bool _foldsWatched;
+    private bool _watchingFolds;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await ReadFilterFoldAsync();
+
+        // The column picker's phone sheet, its «Lukk» and its outside press are the script's (Fhi.Metadata-mhqx0.8).
+        // The component's own module, as its scroll keeping uses: one import, and a refusal remembered.
+        if (!_foldsWatched && !_watchingFolds && !_disposed && Services.GetService<IJSRuntime>() is { } js)
+        {
+            var folds = _interop ??= new ExplorerInterop(js);
+            _watchingFolds = true;
+            try
+            {
+                if (await folds.TryLoadAsync())
+                {
+                    _foldsWatched = await folds.WatchFoldsAsync();
+                }
+            }
+            finally
+            {
+                _watchingFolds = false;
+            }
+        }
 
         var restore = _scrollPending && _expandedSeeded && _datasamlingerLoading.Count == 0;
         var remember = !_scrollRemembered && _expanded.Count > 0;

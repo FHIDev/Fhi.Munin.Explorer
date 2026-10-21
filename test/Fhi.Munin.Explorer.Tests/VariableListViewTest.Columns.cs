@@ -16,10 +16,10 @@ public partial class VariableListViewTest
         [.. cut.FindAll($"{OwnTable} thead th").Select(th => th.TextContent.Trim())];
 
     private static IReadOnlyList<IElement> ListColumnToggles(IRenderedComponent<VariableListView> cut) =>
-        cut.FindAll(".dropdown-choicepicker__item input[type=checkbox]");
+        cut.FindAll("[aria-labelledby^='munin-explorer-columns-toggle-'] input[type=checkbox]");
 
     private static string ListColumnName(IElement toggle) =>
-        toggle.ParentElement!.QuerySelector(".form-control__label")!.TextContent.Trim();
+        toggle.ParentElement!.TextContent.Trim();
 
     private static void ToggleListColumn(IRenderedComponent<VariableListView> cut, string label)
     {

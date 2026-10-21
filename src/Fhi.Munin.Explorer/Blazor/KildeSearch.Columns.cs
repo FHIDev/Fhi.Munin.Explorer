@@ -182,15 +182,21 @@ public sealed partial class KildeSearch
         _ => throw new ArgumentOutOfRangeException(nameof(column), column, "No label for this column.")
     };
 
+    private ColumnsFold? _columns;
+
+    private ColumnsFold Columns => _columns ??= new(_instance, () => { });
+
     /// <summary>The picker, drawn by the shared <see cref="Fhi.Munin.Explorer.Blazor.ColumnPicker"/>.</summary>
     /// <remarks>
-    /// No hint, because no column here can lock — see <see cref="ToggleColumnAsync"/>. The markup and
-    /// the borrowed Stiler names are the variable explorer's, shared rather than copied.
+    /// No hint, because no column here can lock — see <see cref="ToggleColumnAsync"/>. The markup is
+    /// the variable explorer's, shared rather than copied.
     /// </remarks>
     private RenderFragment ColumnPicker() =>
         Blazor.ColumnPicker.For(
             this,
+            Columns,
             T.Columns,
+            T.CloseMenu,
             [.. OptionalColumns.Select(column => new Blazor.ColumnPicker.Choice(
                 ColumnLabel(column),
                 ColumnVisible(column),

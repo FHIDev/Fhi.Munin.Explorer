@@ -708,11 +708,16 @@ public class KildeSelectionTest : ExplorerTestContext
             "munin-explorer-kilder__select",     // this bead's
             // The button inside each of the four sortable column headings (Fhi.Metadata-l9l2n.88).
             "munin-explorer-kilder__sort",
+            // «Kolonner», a list menu since Fhi.Metadata-mhqx0.8: its panel, its rows and its «Lukk».
+            "munin-explorer-list-menu",
+            "munin-explorer-list-menu__check",
+            "munin-explorer-list-menu__close",
+            "munin-explorer-list-menu__panel",
+            "munin-explorer-list-menu__panel--rows",
             "munin-explorer-results",            // shared
             "munin-explorer-results__toolbar",   // shared with the count above the table
             "munin-explorer-search__clear",      // shared
             "munin-explorer-selection",          // this bead's
-            "munin-explorer__dropdown",          // the picker, shared
         ], invented);
     }
 

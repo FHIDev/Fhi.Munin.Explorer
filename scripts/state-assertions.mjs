@@ -75,11 +75,11 @@ const TOC = '.munin-explorer-page__toc';
 /** The component's own root, for a message that says where it looked. */
 const MOUNT = '.munin-explorer';
 
-/** The picker is the one `<details>` in the header above the results. */
-const PICKER = '.munin-explorer-header details';
+/** The picker: the list menu in the header above the results whose button is «Kolonner» (Fhi.Metadata-mhqx0.8). */
+const PICKER = '.munin-explorer-header .munin-explorer-list-menu:has(> [id^="munin-explorer-columns-toggle-"])';
 
-/** One choice in the open picker — Stiler's name, borrowed, one per optional column. */
-const ITEM = '.dropdown-choicepicker__item';
+/** One choice in the open picker, a list menu's checkbox row, one per optional column. */
+const ITEM = '.munin-explorer-list-menu__check';
 
 /** The facet sidebar. Its values are checkboxes; the dataperiode facet is fields and has none. */
 const PANEL = '.munin-explorer-filters';
@@ -404,6 +404,44 @@ const STUCKBAR_ON = 'munin-explorer-page__stuckbar--on';
 
 /** Short enough that a detail page's hero row starts well below the fold on either sample page. */
 const SHORT_VIEWPORT = { width: 1280, height: 300 };
+
+const SHEET_TOGGLES = '.munin-explorer-list-menu > button[aria-controls]';
+
+/** Runs `check` for each visible menu or column picker toggle at both phone widths; the first fault ends it. */
+async function forEachPhoneSheet(page, check) {
+  for (const width of [375, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.waitForTimeout(PRESS_SETTLE_MS);
+    let measured = 0;
+    for (let i = 0; i < await page.locator(SHEET_TOGGLES).count(); i++) {
+      const toggle = page.locator(SHEET_TOGGLES).nth(i);
+      if (!await toggle.isVisible()) continue;
+      const fault = await check({ width, label: (await toggle.innerText()).trim(), toggle });
+      if (fault) return fault;
+      measured++;
+    }
+    if (measured === 0) throw new Error(`no menu or column picker toggle was visible at ${width}px`);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  return null;
+}
+
+/** The open sheet's box, role, name and whether focus is in it, or null when no sheet is open. */
+function readSheet(page) {
+  return page.evaluate(() => {
+    const panel = document.querySelector(':popover-open');
+    if (!panel) return null;
+    const box = panel.getBoundingClientRect();
+    const name = panel.getAttribute('aria-label')
+      ?? document.getElementById(panel.getAttribute('aria-labelledby') ?? '')?.textContent.trim();
+    return {
+      role: panel.getAttribute('role'), modal: panel.getAttribute('aria-modal'), name,
+      left: box.left, right: box.right, top: box.top, bottom: box.bottom, vw: innerWidth, vh: innerHeight,
+      focusInside: panel.contains(document.activeElement),
+    };
+  });
+}
+
 
 // A contents-nav press and then the module's answer to it. Longer than reader-scroll.mjs's settle,
 // which starts from a scroll that has already happened: here the router's own has to land first.
@@ -1280,7 +1318,7 @@ export const assertions = [
     async stage(page) {
       const picker = page.locator(PICKER).first();
       await picker.waitFor({ state: 'visible', timeout: findTimeout });
-      await picker.locator('summary').click();
+      await picker.locator(':scope > button').click();
 
       let choices = await readPicker(page);
       if (choices.length === 0) {
@@ -2351,33 +2389,368 @@ export const assertions = [
     },
   },
   {
-    // Enter on «Last ned utvalg» is a click with no pointerdown, and it must shut an open column picker
-    // as a press does: both open crowd the picker's boxes on a phone (WCAG 2.5.8, Fhi.Metadata-mhqx0.6).
-    name: 'opening «Last ned utvalg» from the keyboard closes an open column picker',
+    // On a phone an open menu or column picker is a bottom sheet: a named modal dialog, full width and inside
+    // the viewport, so it no longer lies over a row a press could reach (WCAG 2.5.8, Fhi.Metadata-mhqx0.8).
+    // Every toggle on the page, at both phone widths.
+    name: 'on a phone every list menu and column picker opens as a named full-width bottom sheet',
+    kind: 'invariant',
+    states: ['variables-list', 'utforsker-list', 'kilder-list'],
+    stage: () => ({}),
+
+    async measure(page) {
+      return forEachPhoneSheet(page, async ({ width, label, toggle }) => {
+        await toggle.click();
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        const sheet = await readSheet(page);
+        let fault = null;
+        if (!sheet) fault = `at ${width}px «${label}» opened as an overlay over the page, not as a bottom sheet`;
+        else if (sheet.role !== 'dialog' || sheet.modal !== 'true' || !sheet.name) {
+          fault = `at ${width}px «${label}»'s sheet is not a named modal dialog: ${JSON.stringify(sheet)}`;
+        } else if (Math.abs(sheet.left) > 0.5 || Math.abs(sheet.right - sheet.vw) > 0.5 || sheet.top < 0 || sheet.bottom > sheet.vh + 0.5) {
+          fault = `at ${width}px «${label}»'s sheet is not full width inside the viewport: ${JSON.stringify(sheet)}`;
+        } else if (!sheet.focusInside) fault = `at ${width}px opening «${label}» left focus outside its sheet`;
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        return fault;
+      });
+    },
+
+    // As in a browser without the popover API: the component falls back to the overlay it showed before.
+    async control(page) {
+      await page.evaluate(() => { HTMLElement.prototype.showPopover = undefined; });
+    },
+  },
+  {
+    // The page behind an open sheet takes no press: one on the dimmed page closes the sheet and reaches nothing,
+    // not even the toggle under it. Focus goes back to the toggle, nothing stays inert, and Escape closes it
+    // too, also with focus dropped to <body> by a press on the sheet's own text (Fhi.Metadata-mhqx0.8).
+    name: 'on a phone a press beside an open sheet reaches nothing behind it, and Escape closes it',
+    kind: 'invariant',
+    states: ['variables-list', 'utforsker-list', 'kilder-list'],
+    stage: () => ({}),
+
+    async measure(page) {
+      await page.evaluate(() => {
+        if (window.__pressWatched) return;
+        window.__pressWatched = true;
+        // The reader's own press only: the component closes a menu by clicking its toggle from script.
+        document.addEventListener('click', event => {
+          if (!event.isTrusted) return;
+          const hit = event.target.closest?.('button, a, summary, input');
+          if (hit && !hit.closest(':popover-open')) window.__pressedBehind = hit.outerHTML.slice(0, 80);
+        }, { capture: true });
+      });
+      return forEachPhoneSheet(page, async ({ width, label, toggle }) => {
+        // The toggle near the top, so a sheet up to 85% of the window tall leaves it, at least, above it.
+        await toggle.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 60));
+        await toggle.click();
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        if (!await readSheet(page)) {
+          throw new Error(`at ${width}px «${label}» opened no sheet, which the sheet's own assertion reports`);
+        }
+
+        // On a real control above the sheet: were the page behind not inert, this press would reach it.
+        const spot = await page.evaluate(() => {
+          const top = document.querySelector(':popover-open').getBoundingClientRect().top;
+          const control = [...document.querySelectorAll('button, a[href], summary, input:not([type="hidden"])')]
+            .filter(el => !el.closest(':popover-open') && el.getClientRects().length > 0)
+            .map(el => el.getBoundingClientRect())
+            .find(r => r.width >= 8 && r.height >= 8 && r.top + r.height / 2 > 2 && r.top + r.height / 2 < top - 2
+              && r.left + r.width / 2 > 0 && r.left + r.width / 2 < innerWidth);
+          return control ? { x: control.left + control.width / 2, y: control.top + control.height / 2 } : null;
+        });
+        if (!spot) throw new Error(`at ${width}px no control is visible above «${label}»'s sheet to press through to`);
+        await page.evaluate(() => { window.__pressedBehind = null; });
+        await page.mouse.click(spot.x, spot.y);
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        const after = await page.evaluate(() => ({
+          open: !!document.querySelector(':popover-open'), inert: document.querySelectorAll('[inert]').length,
+          pressed: window.__pressedBehind, focus: document.activeElement?.outerHTML.slice(0, 80),
+        }));
+        if (after.pressed) return `at ${width}px a press beside «${label}»'s sheet reached the page behind it: ${after.pressed}`;
+        if (after.open) return `at ${width}px a press on the page behind «${label}»'s sheet left it open`;
+        if (after.inert > 0) return `at ${width}px closing «${label}»'s sheet left ${after.inert} element(s) inert`;
+        if (!await toggle.evaluate(el => el === document.activeElement)) {
+          return `at ${width}px focus did not return to «${label}» after its sheet closed: ${after.focus}`;
+        }
+
+        for (const from of ['the sheet', '<body>']) {
+          await toggle.click();
+          await page.waitForTimeout(PRESS_SETTLE_MS);
+          if (from === '<body>') await page.evaluate(() => document.activeElement?.blur());
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(PRESS_SETTLE_MS);
+          if (await page.evaluate(() => !!document.querySelector(':popover-open'))) {
+            return `at ${width}px Escape with focus in ${from} left «${label}»'s sheet open`;
+          }
+          if (!await toggle.evaluate(el => el === document.activeElement)) {
+            return `at ${width}px focus did not return to «${label}» after Escape (focus in ${from}) closed its sheet`;
+          }
+        }
+        return null;
+      });
+    },
+
+    // As if the page behind were never made inert: the press lands on the control under the dimmed page.
+    async control(page) {
+      await page.evaluate(() => Object.defineProperty(HTMLElement.prototype, 'inert', {
+        configurable: true, get: () => false, set: () => {},
+      }));
+    },
+  },
+  {
+    // A tap's click is aimed after its press, and by then the sheet the press closed is gone: without the script
+    // eating that one click, the control under the finger is pressed through the backdrop (Fhi.Metadata-mhqx0.8).
+    // Its own page, since a tap needs a touch screen the scan's page has not got.
+    name: 'on a touch phone a tap beside an open sheet closes it and presses nothing behind it',
     kind: 'invariant',
     states: ['variables-list'],
     stage: () => ({}),
 
     async measure(page) {
-      const picker = page.locator(PICKER).first();
-      if (!await picker.evaluate(el => el.open)) await picker.locator(':scope > summary').click();
-      if (!await picker.evaluate(el => el.open)) throw new Error('the column picker would not open');
-      await page.locator('.munin-explorer-header__actions > .munin-explorer-list-menu > button').first().focus();
-      await page.keyboard.press('Enter');
+      const unswallowed = await page.evaluate(() => window.__keepTheTapsClick === true);
+      const context = await page.context().browser().newContext({ viewport: { width: 375, height: 800 }, hasTouch: true, isMobile: true });
+      try {
+        if (unswallowed) {
+          // The control's page: as if the script never ate the click after a backdrop press.
+          await context.addInitScript(() => {
+            const add = window.addEventListener;
+            window.addEventListener = function (type, listener, options) {
+              if (type === 'click' && options === true && listener?.name === 'swallow') return undefined;
+              return add.call(this, type, listener, options);
+            };
+          });
+        }
+        const touch = await context.newPage();
+        await touch.goto(page.url(), { waitUntil: 'networkidle' });
+        const toggle = touch.locator('.munin-explorer-header__actions > .munin-explorer-list-menu > button').first();
+        await toggle.waitFor({ state: 'visible', timeout: findTimeout });
+        await toggle.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().top - 60));
+        await toggle.tap();
+        await touch.waitForTimeout(PRESS_SETTLE_MS);
+        if (!await touch.evaluate(() => !!document.querySelector(':popover-open'))) {
+          throw new Error('a tap on «Last ned utvalg» opened no sheet, which the sheet\'s own assertion reports');
+        }
+        const spot = await toggle.boundingBox();
+        await touch.evaluate(() => {
+          window.__tapped = null;
+          document.addEventListener('click', event => {
+            const hit = event.isTrusted && event.target.closest?.('button, a, summary, input');
+            if (hit && !hit.closest(':popover-open')) window.__tapped = hit.outerHTML.slice(0, 80);
+          }, { capture: true });
+        });
+        await touch.touchscreen.tap(spot.x + spot.width / 2, spot.y + spot.height / 2);
+        await touch.waitForTimeout(PRESS_SETTLE_MS);
+        const after = await touch.evaluate(() => ({ open: !!document.querySelector(':popover-open'), tapped: window.__tapped }));
+        if (after.tapped) return `a tap beside the open sheet pressed ${after.tapped} behind it`;
+        return after.open ? 'a tap beside the open sheet left it open' : null;
+      } finally {
+        await context.close();
+      }
+    },
+
+    async control(page) {
+      await page.evaluate(() => { window.__keepTheTapsClick = true; });
+    },
+  },
+  {
+    // An open panel in the page adds no width to the row above it: in Stiler's stacked column under 768px it
+    // made both buttons as wide as itself, and in a row sized by its buttons it pushed them sideways. Contained,
+    // the buttons stay where they were and as wide while any menu is open (Fhi.Metadata-mhqx0.8).
+    name: 'from 480px opening a list menu leaves every button in its row where it was and as wide',
+    kind: 'invariant',
+    states: ['variables-list', 'utforsker-list', 'kilder-list'],
+    stage: () => ({}),
+
+    async measure(page) {
+      const TOGGLES = '.munin-explorer-list-menu > button[aria-controls]';
+      // Left edge and width: a panel that widens a row sized by its buttons moves them sideways (the review of
+      // the Stiler patch found it at 768px and up), and one in a stacked column widens them.
+      const widths = () => page.locator(TOGGLES).evaluateAll(all =>
+        all.filter(el => el.getClientRects().length > 0).map(el => {
+          const box = el.getBoundingClientRect();
+          return `${Math.round(box.left)}+${Math.round(box.width * 10) / 10}`;
+        }));
+      for (const width of [1440, 1280, 1024, 768, 767, 600, 480]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        const before = await widths();
+        if (before.length === 0) throw new Error(`no list menu toggle was visible at ${width}px`);
+        for (let i = 0; i < await page.locator(TOGGLES).count(); i++) {
+          const toggle = page.locator(TOGGLES).nth(i);
+          if (!await toggle.isVisible()) continue;
+          const label = (await toggle.innerText()).trim();
+          await toggle.click();
+          await page.waitForTimeout(PRESS_SETTLE_MS);
+          const open = await widths();
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(PRESS_SETTLE_MS);
+          if (JSON.stringify(open) !== JSON.stringify(before)) {
+            return `at ${width}px opening «${label}» moved the buttons (left+width) from ${before.join(', ')} to ${open.join(', ')}`;
+          }
+        }
+      }
+      await page.setViewportSize({ width: 1280, height: 900 });
+      return null;
+    },
+
+    // The open panel counted into the column's width again, as before the rule.
+    async control(page) {
+      await page.addStyleTag({ content: '.munin-explorer-list-menu__panel { contain: none !important; }' });
+    },
+  },
+  {
+    // The saved list's menus sit in a tab panel that takes focus itself, which the sheet's inert page leaves
+    // alone: Tab and Shift+Tab must go round inside the sheet, not out to that panel (Fhi.Metadata-mhqx0.8).
+    name: 'on a phone Tab and Shift+Tab stay inside an open sheet, the saved list\'s inside its tab panel too',
+    kind: 'invariant',
+    states: ['explorer-tabs'],
+
+    async stage(page) {
+      const tab = page.getByRole('tab', { name: 'Variabelliste', exact: true }).first();
+      await tab.waitFor({ state: 'visible', timeout: findTimeout });
+      await tab.click();
+      await page.locator('[role=tabpanel]:not([hidden]) .munin-explorer-list-scroll').first()
+        .waitFor({ state: 'visible', timeout: findTimeout });
+      return {};
+    },
+
+    async measure(page) {
+      const TOGGLES = '[role=tabpanel]:not([hidden]) .munin-explorer-list-menu > button[aria-controls]';
+      await page.setViewportSize({ width: 375, height: 800 });
       await page.waitForTimeout(PRESS_SETTLE_MS);
-      const open = await picker.evaluate(el => el.open);
-      if (open) return 'Enter on «Last ned utvalg» left the column picker open beside the menu';
-      // Shut the menu again, so the run under the control starts as this one did.
-      await page.keyboard.press('Enter');
+      let measured = 0;
+      for (let i = 0; i < await page.locator(TOGGLES).count(); i++) {
+        const toggle = page.locator(TOGGLES).nth(i);
+        if (!await toggle.isVisible()) continue;
+        const label = (await toggle.innerText()).trim();
+        await toggle.click();
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        const inSheet = () => page.evaluate(() => !!document.activeElement?.closest(':popover-open'));
+        if (!await page.evaluate(() => !!document.querySelector(':popover-open'))) {
+          throw new Error(`«${label}» opened no sheet, which the sheet's own assertion reports`);
+        }
+        const ends = () => page.evaluate(() => {
+          const items = [...document.querySelector(':popover-open').querySelectorAll('button, input, select, textarea, [href]')]
+            .filter(item => !item.disabled && item.getClientRects().length > 0);
+          return items.length;
+        });
+        if (await ends() === 0) throw new Error(`«${label}»'s sheet holds no control to Tab between`);
+        await page.evaluate(() => [...document.querySelector(':popover-open').querySelectorAll('button, input, select, textarea, [href]')]
+          .filter(item => !item.disabled && item.getClientRects().length > 0)[0].focus());
+        await page.keyboard.press('Shift+Tab');
+        if (!await inSheet()) return `Shift+Tab from the first control of «${label}»'s sheet left the sheet`;
+        await page.evaluate(() => [...document.querySelector(':popover-open').querySelectorAll('button, input, select, textarea, [href]')]
+          .filter(item => !item.disabled && item.getClientRects().length > 0).at(-1).focus());
+        await page.keyboard.press('Tab');
+        if (!await inSheet()) return `Tab from the last control of «${label}»'s sheet left the sheet`;
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        measured++;
+      }
+      if (measured === 0) throw new Error('no menu toggle was visible on the saved list\'s tab at 375px');
+      await page.setViewportSize({ width: 1280, height: 900 });
+      return null;
+    },
+
+    // As if the script kept no watch on Tab and focus: the browser's own order takes over.
+    async control(page) {
+      await page.evaluate(() => {
+        window.addEventListener('keydown', event => { if (event.key === 'Tab') event.stopPropagation(); }, true);
+        window.addEventListener('focusin', event => event.stopPropagation(), true);
+      });
+    },
+  },
+  {
+    // A disclosure, not role="menu", but its rows answer to the arrows, Home and End as helsedata's own menus do
+    // (Fhi.Metadata-mhqx0.8). At 1280, where the panel is in the page under its button.
+    name: 'Arrow, Home and End move focus between the rows of an open «Last ned utvalg»',
+    kind: 'invariant',
+    states: ['variables-list'],
+    stage: () => ({}),
+
+    async measure(page) {
+      const menu = page.locator('.munin-explorer-header__actions > .munin-explorer-list-menu').first();
+      await menu.locator(':scope > button').click();
+      await page.waitForTimeout(PRESS_SETTLE_MS);
+      const rows = menu.locator(':scope > .munin-explorer-list-menu__panel').locator('button, input');
+      const visible = [];
+      for (let i = 0; i < await rows.count(); i++) if (await rows.nth(i).isVisible()) visible.push(rows.nth(i));
+      if (visible.length < 3) throw new Error(`«Last ned utvalg» showed ${visible.length} rows, and this needs three`);
+      const focused = async row => row.evaluate(el => el === document.activeElement);
+      await visible[0].focus();
+      const steps = [['ArrowDown', visible[1]], ['End', visible.at(-1)], ['Home', visible[0]], ['ArrowUp', visible.at(-1)]];
+      for (const [key, expected] of steps) {
+        await page.keyboard.press(key);
+        if (!await focused(expected)) return `${key} in the open «Last ned utvalg» did not move focus to the row it names`;
+      }
+      await page.keyboard.press('Escape');
       await page.waitForTimeout(PRESS_SETTLE_MS);
       return null;
     },
 
-    // As if explorer-interop.js listened for the pointer only: the click never reaches the document's listener.
+    // As if explorer-interop.js listened for no keys: the arrows never reach the document's listener.
     async control(page) {
-      await page.evaluate(() => window.addEventListener('click', event => {
-        if (event.detail === 0) event.stopPropagation();
+      await page.evaluate(() => window.addEventListener('keydown', event => {
+        if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) event.stopPropagation();
       }, true));
+    },
+  },
+  {
+    // From 480px an open list menu is a disclosure in the page: its panel takes a line under the buttons and
+    // pushes the list down, so no row is ever partly under it (WCAG 2.5.8, Fhi.Metadata-mhqx0.8). Escape
+    // closes it with focus back on the button; Tab out leaving it open is the ht2gj assertion's.
+    name: 'on a desktop an open list menu lies over no row of the list, and Escape closes it from the keyboard',
+    kind: 'invariant',
+    states: ['variables-list', 'utforsker-list', 'kilder-list'],
+    stage: () => ({}),
+
+    async measure(page) {
+      const TOGGLES = '.munin-explorer-list-menu > button[aria-controls]';
+      const ROWS = 'button.munin-explorer-dataitem-main__name, .munin-explorer-dataitem, tbody > tr';
+      for (const width of [1440, 1280, 1024, 768]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.waitForTimeout(PRESS_SETTLE_MS);
+        let measured = 0;
+        for (let i = 0; i < await page.locator(TOGGLES).count(); i++) {
+          const toggle = page.locator(TOGGLES).nth(i);
+          if (!await toggle.isVisible()) continue;
+          const label = (await toggle.innerText()).trim();
+          await toggle.click();
+          await page.waitForTimeout(PRESS_SETTLE_MS);
+          const over = await toggle.evaluate((el, rows) => {
+            const panel = document.getElementById(el.getAttribute('aria-controls'));
+            if (!panel || panel.hidden) return 'the panel did not open';
+            const p = panel.getBoundingClientRect();
+            const hit = [...document.querySelectorAll(rows)].find(row => {
+              const r = row.getBoundingClientRect();
+              return r.width > 0 && r.bottom > p.top + 0.5 && r.top < p.bottom - 0.5 && r.right > p.left + 0.5 && r.left < p.right - 0.5;
+            });
+            return hit ? `it lies over ${hit.outerHTML.slice(0, 70)}` : null;
+          }, ROWS);
+          if (over) return `at ${width}px «${label}» open: ${over}`;
+
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(PRESS_SETTLE_MS);
+          if (await toggle.getAttribute('aria-expanded') !== 'false') return `at ${width}px Escape left «${label}» open`;
+          if (!await toggle.evaluate(el => el === document.activeElement)) {
+            return `at ${width}px Escape closed «${label}» without putting focus back on it`;
+          }
+          measured++;
+        }
+        if (measured === 0) throw new Error(`no list menu toggle was visible at ${width}px`);
+      }
+      await page.setViewportSize({ width: 1280, height: 900 });
+      return null;
+    },
+
+    // The anchored overlay the menus had before: positioned over whatever lies under the button.
+    async control(page) {
+      await page.addStyleTag({ content: `
+        .munin-explorer-list-menu { display: block !important; position: relative !important; }
+        .munin-explorer-list-menu > .munin-explorer-list-menu__panel:not([hidden]) {
+          position: absolute !important; top: calc(100% + 4px) !important; left: 0 !important; width: 14rem !important;
+        }` });
     },
   },
   ...chevronAssertions,

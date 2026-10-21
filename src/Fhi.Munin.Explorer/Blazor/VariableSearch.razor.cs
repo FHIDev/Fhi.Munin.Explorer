@@ -80,14 +80,8 @@ internal enum PanelTab
 /// </para>
 /// <para>
 /// The column picker sits in <c>munin-explorer-header</c> with its <c>__actions</c> and
-/// <c>__actions-button</c>; its open list is Stiler's <c>dropdown-choicepicker</c> with
-/// <c>--right</c> and <c>__item</c>, positioned against an inline <c>position: relative</c>, and
-/// the disclosure wears <c>munin-explorer__dropdown</c> and <c>dropdown</c>. A host that has none
-/// of them still gets a working <c>&lt;details&gt;</c>, drawn in the flow rather than over the
-/// list. What it must supply either way is <c>screenreader-only</c>, or the sentence explaining
-/// why the last column will not turn off is on screen for everyone — and rules taking the
-/// browser's disclosure marker off the <c>&lt;summary&gt;</c>, which would otherwise draw a
-/// triangle beside the button.
+/// <c>__actions-button</c>, one of the list menus. A host must supply <c>screenreader-only</c>, or
+/// the sentence on why the last column will not turn off is on screen for everyone.
 /// </para>
 /// <para>
 /// The detail panel adds no style name. It is a <c>&lt;dl&gt;</c> of labels and values under Om

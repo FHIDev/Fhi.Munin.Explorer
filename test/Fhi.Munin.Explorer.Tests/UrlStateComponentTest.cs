@@ -1091,7 +1091,7 @@ public class UrlStateComponentTest : ExplorerTestContext
 
     /// <summary>Turn one of the picker's columns on, so its heading is there to be pressed.</summary>
     private static void ShowColumn(IRenderedComponent<KildeExplorer> cut, string label) =>
-        cut.FindAll(".dropdown-choicepicker__item")
+        cut.FindAll("[aria-labelledby^='munin-explorer-columns-toggle-'] .munin-explorer-list-menu__check")
            .Single(item => item.TextContent.Contains(label, StringComparison.Ordinal))
            .QuerySelector("input[type=checkbox]")!
            .Change(true);

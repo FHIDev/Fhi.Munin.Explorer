@@ -480,41 +480,261 @@ export function restoreScroll(panelId) {
   (panel?.closest('tr')?.previousElementSibling ?? panel)?.scrollIntoView({ block: 'center' });
 }
 
-// The column picker, a native <details> the browser keeps open: one open over a menu crowded its boxes to
-// 19px of the menu's buttons on a phone (WCAG 2.5.8, Fhi.Metadata-mhqx0.6).
-function closePickersOutside(target) {
-  for (const picker of document.querySelectorAll('details.munin-explorer__dropdown[open]')) {
-    if (!picker.contains(target)) picker.open = false;
-  }
-}
-
-// A press outside an open menu or column picker closes it, as helsedata's own menus do; Tab out does not,
+// A press outside an open menu closes it, as helsedata's own menus do; Tab out does not,
 // nor does theirs (Fhi.Metadata-ht2gj). It presses the menu's own toggle, so the component closes it the way it always does.
 let foldsWatched = false;
 export function watchFolds() {
   if (foldsWatched) return;
   foldsWatched = true;
   document.addEventListener('pointerdown', event => {
+    // The page behind a sheet is inert, so a press on the dimmed backdrop lands on whatever ancestor is not.
+    for (const [panel, { toggle }] of sheets) {
+      if (panel.contains(event.target)) return;
+      // Without this the press's mousedown moves focus to <body> after the sheet has given it back.
+      event.preventDefault();
+      if (toggle) closeSheetFrom(panel, toggle);
+      swallowTheClickAfter(event);
+      return;
+    }
+
     for (const menu of document.querySelectorAll('.munin-explorer-list-menu')) {
       const toggle = menu.querySelector(':scope > button[aria-expanded="true"]');
       if (toggle && !menu.contains(event.target)) toggle.click();
     }
-
-    closePickersOutside(event.target);
   }, true);
 
-  // Enter or Space on another control is a click with no pointerdown before it; the picker closes too.
-  document.addEventListener('click', event => closePickersOutside(event.target), true);
+  // «Lukk» on a sheet, from a pointer or the keyboard alike: the click is what both send.
+  document.addEventListener('click', event => {
+    const close = event.target.closest?.('.munin-explorer-list-menu__close');
+    if (!close) return;
+    const toggle = close.closest('.munin-explorer-list-menu')?.querySelector(':scope > button[aria-expanded="true"]');
+    if (toggle) closeSheetFrom(close, toggle);
+  });
+
+  // Arrows, Home and End between an open panel's controls, as in helsedata's own menus (Fhi.Metadata-mhqx0.8).
+  // A disclosure, not role="menu": Tab still walks the same controls, and a text field keeps its own keys.
+  document.addEventListener('keydown', event => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) || event.altKey || event.ctrlKey || event.metaKey) return;
+    const panel = event.target.closest?.('.munin-explorer-list-menu > .munin-explorer-list-menu__panel');
+    if (!panel || event.target.matches('input:not([type="checkbox"]):not([type="radio"]), textarea, select')) return;
+    const items = [...panel.querySelectorAll('button, input, select, textarea, [href]')]
+      .filter(item => !item.disabled && item.getClientRects().length > 0);
+    if (items.length === 0) return;
+    const at = items.indexOf(event.target);
+    const next = {
+      ArrowDown: items[(at + 1) % items.length],
+      ArrowUp: items[(at - 1 + items.length) % items.length],
+      Home: items[0],
+      End: items[items.length - 1],
+    }[event.key];
+    event.preventDefault();
+    next.focus();
+  });
+
+  // A window turned or resized across the phone width while a menu is open: it changes form, open, where it is.
+  phoneWidth().addEventListener('change', () => {
+    for (const panel of document.querySelectorAll('.munin-explorer-list-menu > .munin-explorer-list-menu__panel:not([hidden])')) {
+      if (phoneWidth().matches) {
+        openSheet(panel, undefined, { keepFocus: true });
+      } else {
+        closeSheet(panel, { keepFocus: true });
+      }
+    }
+  });
+
+  // A press on a sheet's text drops focus to <body>, where no menu's own key handler hears Escape.
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || event.target !== document.body) return;
+    for (const [panel, { toggle }] of sheets) {
+      if (toggle) closeSheetFrom(panel, toggle);
+    }
+  });
 
   // A menu opened near the bottom edge put its panel below the fold on a phone, where the reader saw
   // nothing happen (Fhi.Metadata-qlo45). Brought into view as it opens; 'nearest' leaves one already on screen be.
   new MutationObserver(records => {
-    for (const { target } of records) {
-      if (target.matches?.('.munin-explorer-list-menu > .munin-explorer-list-menu__panel') && !target.hidden) {
+    // A sheet whose panel left the page while open (a navigation, a menu no longer drawn) would leave the
+    // page inert for good: nothing else closes it, since its hidden never changes again.
+    if (sheets.size > 0) {
+      for (const panel of [...sheets.keys()]) {
+        if (!panel.isConnected) closeSheet(panel, { keepFocus: true });
+      }
+      // An alert outside the sheet sits in the inert page, where no reader hears it: a failed download says
+      // so there. The sheet steps aside so it is heard, and focus goes back to the menu's button.
+      if (records.some(record => alertedOutsideSheets(record))) {
+        for (const [panel, { toggle }] of [...sheets]) {
+          if (toggle) closeSheetFrom(panel, toggle);
+        }
+      }
+    }
+    for (const { target, type, addedNodes } of records) {
+      // A panel the component drew already open (a tab coming back) arrives as a new node, not as a change.
+      if (type === 'childList') {
+        for (const node of addedNodes) {
+          if (node.nodeType !== Node.ELEMENT_NODE) continue;
+          for (const panel of node.querySelectorAll?.('.munin-explorer-list-menu > .munin-explorer-list-menu__panel:not([hidden])') ?? []) {
+            if (phoneWidth().matches) openSheet(panel);
+          }
+        }
+        continue;
+      }
+      if (type !== 'attributes' || !target.matches?.('.munin-explorer-list-menu > .munin-explorer-list-menu__panel')) continue;
+      if (target.hidden) {
+        closeSheet(target);
+      } else if (phoneWidth().matches) {
+        openSheet(target);
+      } else {
         requestAnimationFrame(() => target.scrollIntoView({ block: 'nearest' }));
       }
     }
-  }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['hidden'] });
+
+  // The page behind is inert, but an ancestor of the sheet that takes focus (a tab panel) is not: Tab and
+  // Shift+Tab go round inside the sheet, and focus that gets out anyway is brought back.
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return;
+    const panel = [...sheets.keys()].find(sheet => sheet.contains(event.target));
+    if (!panel) return;
+    const items = focusablesIn(panel);
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && event.target === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && event.target === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+  document.addEventListener('focusin', event => {
+    if (sheets.size === 0) return;
+    const panels = [...sheets.keys()];
+    if (panels.some(panel => panel.contains(event.target))) return;
+    focusablesIn(panels[panels.length - 1])[0]?.focus();
+  });
+}
+
+function focusablesIn(panel) {
+  return [...panel.querySelectorAll('button, input, select, textarea, [href]')]
+    .filter(item => !item.disabled && item.getClientRects().length > 0);
+}
+
+// An assertive region outside every open sheet that has just been given words.
+function alertedOutsideSheets(record) {
+  const node = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
+  const region = node?.closest?.('[role="alert"], [aria-live="assertive"]');
+  if (!region || [...sheets.keys()].some(panel => panel.contains(region))) return false;
+  return (region.textContent ?? '').trim().length > 0;
+}
+
+// A tap's click is aimed after the press: the sheet is gone by then, and the control under the finger would get it.
+// Armed from the press until its click; a press that became a scroll sends pointercancel and no click.
+function swallowTheClickAfter(press) {
+  if (press.pointerType === 'mouse') return;
+  let timer = 0;
+  const swallow = event => {
+    if (!event.isTrusted) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    done();
+  };
+  const lifted = event => {
+    if (event.pointerId !== press.pointerId) return;
+    window.removeEventListener('pointerup', lifted, true);
+    timer = setTimeout(done, 300);
+  };
+  const cancelled = event => {
+    if (event.pointerId === press.pointerId) done();
+  };
+  const done = () => {
+    window.removeEventListener('click', swallow, true);
+    window.removeEventListener('pointerup', lifted, true);
+    window.removeEventListener('pointercancel', cancelled, true);
+    clearTimeout(timer);
+  };
+  window.addEventListener('click', swallow, true);
+  window.addEventListener('pointerup', lifted, true);
+  window.addEventListener('pointercancel', cancelled, true);
+}
+
+// On a phone an open menu is a bottom sheet, not an overlay over the rows (WCAG 2.5.8, Fhi.Metadata-mhqx0.8):
+// in the top layer clear of sticky and scrolling ancestors, a modal dialog, and the page behind it inert.
+// Asked for on first use, not on import: importing the module must not touch the page.
+let phoneQuery = null;
+function phoneWidth() {
+  return phoneQuery ??= window.matchMedia('(max-width: 479.98px)');
+}
+const sheets = new Map();
+
+function openSheet(panel, toggle = panel.parentElement.querySelector(':scope > button[aria-controls]'), { keepFocus = false } = {}) {
+  if (sheets.has(panel) || typeof panel.showPopover !== 'function') return;
+  const restore = { toggle, role: panel.getAttribute('role'), labelledby: panel.getAttribute('aria-labelledby'), inert: [] };
+  sheets.set(panel, restore);
+
+  panel.setAttribute('popover', 'manual');
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-modal', 'true');
+  restore.label = panel.getAttribute('aria-label');
+  if (!panel.hasAttribute('aria-label')) {
+    if (toggle?.id) panel.setAttribute('aria-labelledby', toggle.id);
+    else if (toggle) panel.setAttribute('aria-label', toggle.textContent.trim());
+  }
+  panel.classList.add('munin-explorer-list-menu__panel--sheet');
+  for (const close of closeControlsOf(panel)) showCloseControl(close, true);
+  panel.showPopover();
+
+  // Everything beside the path from the sheet to <body>, so nothing behind it takes a press or focus.
+  for (let node = panel; node && node !== document.body; node = node.parentElement) {
+    for (const sibling of node.parentElement?.children ?? []) {
+      if (sibling !== node && !sibling.inert && sibling.localName !== 'script') {
+        sibling.inert = true;
+        restore.inert.push(sibling);
+      }
+    }
+  }
+
+  // Into the sheet, as a dialog takes it; on a resize only from outside it, since the page behind is now inert.
+  if (!keepFocus || !panel.contains(document.activeElement)) {
+    panel.querySelector('button:not([aria-disabled="true"]), input:not([disabled]), [href]')?.focus();
+  }
+}
+
+// The component may ask for focus on the toggle before this has run, while the toggle is still inert. A sheet
+// is modal, so focus still inside it (or dropped to <body>) is focus nothing else claimed: back to the toggle.
+function closeSheet(panel, { keepFocus = false } = {}) {
+  const restore = sheets.get(panel);
+  if (!restore) return;
+  sheets.delete(panel);
+  const focusIsOrphaned = !keepFocus && (panel.contains(document.activeElement) || document.activeElement === document.body);
+
+  for (const node of restore.inert) node.inert = false;
+  if (panel.matches(':popover-open')) panel.hidePopover();
+  panel.removeAttribute('popover');
+  panel.removeAttribute('aria-modal');
+  panel.classList.remove('munin-explorer-list-menu__panel--sheet');
+  for (const close of closeControlsOf(panel)) showCloseControl(close, false);
+  if (restore.role === null) panel.removeAttribute('role'); else panel.setAttribute('role', restore.role);
+  if (restore.labelledby === null) panel.removeAttribute('aria-labelledby'); else panel.setAttribute('aria-labelledby', restore.labelledby);
+  if (restore.label === null) panel.removeAttribute('aria-label');
+  if (focusIsOrphaned) restore.toggle?.focus();
+}
+
+function closeControlsOf(panel) {
+  return panel.querySelectorAll(':scope > .munin-explorer-list-menu__close');
+}
+
+// Inline as the markup has it: a host's display rule on the rows beats [hidden] alone.
+function showCloseControl(close, shown) {
+  close.hidden = !shown;
+  if (shown) close.style.removeProperty('display'); else close.style.display = 'none';
+}
+
+
+function closeSheetFrom(target, toggle) {
+  const panel = target.closest('.munin-explorer-list-menu__panel');
+  closeSheet(panel);
+  toggle.click();
 }
 
 // A reader's own setting, kept in this browser only (Fhi.Metadata-amp8c). Storage can be off, full or

@@ -46,10 +46,25 @@ public sealed partial class VariableListView
     // The name, Ønskede data and «Valg» always, and whichever of the rest are shown. The opened row spans them.
     private int OwnListColumnCount => 3 + OfferedListColumns.Count(Shown);
 
+    // One fold at a time, «Kolonner» among them: opening it shuts «Last ned» and «Flere valg» as theirs shut it.
+    private ColumnsFold? _columns;
+
+    private ColumnsFold Columns => _columns ??= new(
+        _instance,
+        () =>
+        {
+            _menuOpen = false;
+            _downloadOpen = false;
+            DisarmConfirmations();
+        },
+        moved: () => _readerMoves++);
+
     private RenderFragment ListColumnPicker() =>
         ColumnPicker.For(
             this,
+            Columns,
             T.Columns,
+            T.CloseMenu,
             [.. OfferedListColumns.Select(column => new ColumnPicker.Choice(
                 ListColumnLabel(column),
                 Shown(column),

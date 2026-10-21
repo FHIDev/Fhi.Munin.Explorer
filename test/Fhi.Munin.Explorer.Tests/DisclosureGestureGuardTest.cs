@@ -347,7 +347,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         // Three native: the Kildetype and Databehandler facet folds, and the column picker.
         Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
 
-        AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 3, native: 3);
+        AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 4, native: 2);
     }
 
     [Fact]
@@ -361,8 +361,8 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         AssertStandingGesturesAreRefused(
             () => Render<KildeSearch>(b => b.Add(
                 c => c.ExploreVariablesRequested, (IReadOnlyList<Guid> _) => { })),
-            expected: 3,
-            native: 3);
+            expected: 4,
+            native: 2);
     }
 
     [Fact]
@@ -374,7 +374,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Services.AddScoped<VariableListState>();
 
         // Four native: the Variabelgruppe and Andre filtre folds, the legend, and the column picker.
-        AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 7, native: 4);
+        AssertStandingGesturesAreRefused(OpenPanelOnData, expected: 8, native: 3);
     }
 
     [Fact]
@@ -387,7 +387,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         Services.AddScoped<VariableListState>();
 
         // Six native: the four of the scene above, plus the tree's own Type datakilde and Kilde.
-        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 6, native: 6);
+        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 7, native: 5);
     }
 
     [Fact]
@@ -400,7 +400,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
 
         // Three native, the same three as the scenes above: the cap is drawn inside the Databehandler
         // fold rather than beside it, so a facet past the threshold adds no <details> of its own.
-        AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 3, native: 3);
+        AssertStandingGesturesAreRefused(() => Render<KildeSearch>(), expected: 4, native: 2);
     }
 
     [Fact]
@@ -413,7 +413,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
 
         // Six native, the same six as the filter-tree scene: the kilde facet draws its Type datakilde
         // and Kilde folds whether or not the cap is past the threshold.
-        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 5, native: 6);
+        AssertStandingGesturesAreRefused(() => Render<VariableSearch>(), expected: 6, native: 5);
     }
 
     [Fact]
@@ -602,8 +602,8 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
 
         AssertStandingGesturesAreRefused(
             () => Render<VariableListView>(b => b.Add(c => c.IsAuthenticated, true)),
-            expected: 10,
-            native: 1);
+            expected: 11,
+            native: 0);
     }
 
     // -----------------------------------------------------------------------
@@ -627,6 +627,9 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
         typeof(VariableView),
     ];
 
+    // Shared fragments the swept components draw: «Kolonner» is gestured in each of them (Fhi.Metadata-mhqx0.8).
+    private static readonly string[] DrawnBySwept = ["ColumnPicker.cs"];
+
     /// <summary>The component sources, which are the only place a disclosure can be drawn.</summary>
     /// <remarks>
     /// Blazor/ rather than the project, because obj/ holds generated sources that would answer for
@@ -645,6 +648,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
             .Where(path => Renders(File.ReadAllText(path)))
             .Select(path => Path.GetFileName(path)!)
             .Where(name => !Swept.Any(c => name.StartsWith($"{c.Name}.", StringComparison.Ordinal)))
+            .Where(name => !DrawnBySwept.Contains(name))
             .Order(StringComparer.Ordinal)
             .ToList();
 
@@ -753,7 +757,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     }
 
     /// <summary>How many <c>&lt;details&gt;</c> and <c>&lt;summary&gt;</c> elements <c>src/</c> draws.</summary>
-    private const int NativeDisclosuresDrawn = 14;
+    private const int NativeDisclosuresDrawn = 12;
 
     /// <summary>Whether what a native disclosure was opened with means the package drives it.</summary>
     /// <remarks>
