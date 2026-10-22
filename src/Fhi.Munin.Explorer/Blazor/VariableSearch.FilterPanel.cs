@@ -1611,7 +1611,7 @@ public partial class VariableSearch
     /// <summary>Open the branches standing between the top of the Kilde facet and what the address chose.</summary>
     /// <remarks>
     /// Arriving from the Kildeutforsker with a kilde chosen left it under a shut kildetype heading, out of sight
-    /// (#6756). Once per arrival, so a branch the reader shuts stays shut; written where a press writes.
+    /// (#6756). Once per mount (VariableExplorer remounts on each arrival), so a branch the reader shuts stays shut.
     /// </remarks>
     private void OpenBranchesToChosenOnce()
     {
