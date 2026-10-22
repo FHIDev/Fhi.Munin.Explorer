@@ -626,7 +626,7 @@ invented-selector||.munin-explorer-versions__toggle:focus-visible|outline-offset
 unstyled-name||.munin-explorer-kilde__access|
 
 # Fhi.Metadata-l9l2n.139: no Explorer since 2.8.0 renders munin-explorer__dropdown, so the samples dropped its
-# rules; the pinned Stiler still carries them. Delete these lines when helsedata pins a Stiler without them.
+# rules; by the baseline before it, the pinned Stiler still carries them. Delete these when a pin drops them.
 missing-selector|@media (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon--right|
 missing-selector|@media (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon|
 missing-selector|@media (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary|
