@@ -27,7 +27,7 @@ internal sealed record HierarchyNode(
     IReadOnlyList<string>? Categories = null,
     int? DisplayOrder = null,
     Guid? OwnerId = null,
-    string? NameEn = null);
+    string? NameNo = null);
 
 /// <summary>Keyed by what each hangs under. Two datasamling lookups rather than one keyed by
 /// parent: the id spaces are independent Guids off the wire, so a kilde id equal to a delkilde id
@@ -120,7 +120,7 @@ internal static class FilterHierarchy
                         Datasamlinger(levels.DatasamlingerByKilde[kilde.Id], null, path, placements)),
             .. Variabelgrupper(placements.ByKilde[kilde.Id], path, kilde.Id)
         ],
-        NameEn: kilde.NameEn);
+        NameNo: kilde.NameNo);
     }
 
     /// <summary>One parent's delkilder and datasamlinger in the rank /filters sent, reordered only:
@@ -151,7 +151,7 @@ internal static class FilterHierarchy
                      .. Variabelgrupper(placements.ByDelkilde[delkilde.Id], path, delkilde.Id)
                  ],
                  DisplayOrder: RankUnder(delkilde.DisplayOrder, delkilde.ParentDelkildeId, drawnUnder),
-                 NameEn: delkilde.NameEn));
+                 NameNo: delkilde.NameNo));
 
     /// <summary>Datasamlinger as branches: what hangs under one is the groups placed in it.</summary>
     /// <remarks>Takes the buckets as they come, for the reason <see cref="Delkilder"/> gives.
@@ -171,7 +171,7 @@ internal static class FilterHierarchy
                 Variabelgrupper(placements.ByDatasamling[datasamling.Id], path, datasamling.Id),
                 Categories: datasamling.Categories,
                 DisplayOrder: RankUnder(datasamling.DisplayOrder, datasamling.DelkildeId, drawnUnder),
-                NameEn: datasamling.NameEn);
+                NameNo: datasamling.NameNo);
         })
     ];
 
@@ -193,7 +193,7 @@ internal static class FilterHierarchy
              variabelgruppe => variabelgruppe.ParentId,
              (variabelgruppe, _, path, nested) => new HierarchyNode(
                  path, HierarchyLevel.Variabelgruppe, variabelgruppe.Id, variabelgruppe.Name, null,
-                 variabelgruppe.Count, nested, OwnerId: owner, NameEn: variabelgruppe.NameEn));
+                 variabelgruppe.Count, nested, OwnerId: owner, NameNo: variabelgruppe.NameNo));
 
     /// <summary>Every variabelgruppe under the ids its owners name. Three lookups rather than one
     /// keyed by owner, for the reason <see cref="KildeLevelLookup"/> gives: the id spaces are

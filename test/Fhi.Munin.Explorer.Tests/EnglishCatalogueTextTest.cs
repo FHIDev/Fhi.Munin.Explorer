@@ -75,28 +75,29 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Facets_WhenMuninSendsEnglishNames_ThenEveryNamedFacetCarriesThem()
+    public void Facets_WhenMuninSendsTheNorwegianBesideTheResolvedName_ThenEveryNamedFacetCarriesIt()
     {
+        // A facet's name follows Accept-Language; nameNo is the Norwegian whatever it asked for.
         var facets = JsonSerializer.Deserialize<FilterOptions>(
             """
             {
-              "kilder": [ { "name": "Kilde", "nameEn": "Source" } ],
-              "delkilder": [ { "name": "Delkilde", "nameEn": "Sub-source" } ],
-              "datasamlinger": [ { "name": "Datasamling", "nameEn": "Collection" } ],
-              "variabelgrupper": [ { "name": "Gruppe", "nameEn": "Group" } ],
-              "hierarkiVariabelgrupper": [ { "name": "Gruppe", "nameEn": "Group" }, { "name": "Uten" } ],
-              "filtere": [ { "name": "Filter", "nameEn": "Saved filter" } ]
+              "kilder": [ { "name": "Source", "nameNo": "Kilde" } ],
+              "delkilder": [ { "name": "Sub-source", "nameNo": "Delkilde" } ],
+              "datasamlinger": [ { "name": "Collection", "nameNo": "Datasamling" } ],
+              "variabelgrupper": [ { "name": "Group", "nameNo": "Gruppe" } ],
+              "hierarkiVariabelgrupper": [ { "name": "Group", "nameNo": "Gruppe" }, { "name": "Uten" } ],
+              "filtere": [ { "name": "Saved filter", "nameNo": "Filter" } ]
             }
             """,
             MuninExplorerClient.Json)!;
 
-        Assert.Equal("Source", facets.Kilder[0].NameEn);
-        Assert.Equal("Sub-source", facets.Delkilder[0].NameEn);
-        Assert.Equal("Collection", facets.Datasamlinger[0].NameEn);
-        Assert.Equal("Group", facets.Variabelgrupper[0].NameEn);
-        Assert.Equal("Group", facets.HierarchyVariabelgrupper[0].NameEn);
-        Assert.Null(facets.HierarchyVariabelgrupper[1].NameEn);
-        Assert.Equal("Saved filter", facets.Filters[0].NameEn);
+        Assert.Equal("Kilde", facets.Kilder[0].NameNo);
+        Assert.Equal("Delkilde", facets.Delkilder[0].NameNo);
+        Assert.Equal("Datasamling", facets.Datasamlinger[0].NameNo);
+        Assert.Equal("Gruppe", facets.Variabelgrupper[0].NameNo);
+        Assert.Equal("Gruppe", facets.HierarchyVariabelgrupper[0].NameNo);
+        Assert.Null(facets.HierarchyVariabelgrupper[1].NameNo);
+        Assert.Equal("Filter", facets.Filters[0].NameNo);
     }
 
     [Fact]
@@ -428,18 +429,23 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
                 TotalPages = 1,
             });
 
+        // As Munin answers: name in the Accept-Language where it has one, nameNo always Norwegian.
         public override Task<FilterOptions> GetFiltersAsync(
             string? search = null, VariableFilter? filter = null, string? language = null,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new FilterOptions
+            CancellationToken cancellationToken = default)
+        {
+            var asked = ReaderLanguage.IsEnglish(language);
+
+            return Task.FromResult(new FilterOptions
             {
                 Kilder =
                 [
-                    new() { Id = KildeId, Name = "Kilde-fasett", NameEn = english ? "Source facet" : null, Count = 1 },
-                    new() { Id = Guid.NewGuid(), Name = "Annen kilde", NameEn = "Other source", Count = 1 },
+                    new() { Id = KildeId, Name = asked && english ? "Source facet" : "Kilde-fasett", NameNo = "Kilde-fasett", Count = 1 },
+                    new() { Id = Guid.NewGuid(), Name = asked ? "Other source" : "Annen kilde", NameNo = "Annen kilde", Count = 1 },
                 ],
                 TotalCount = 2,
             });
+        }
     }
 
     private IRenderedComponent<VariableSearch> RenderSearch(bool english, string language, VariableFilter? filter = null)

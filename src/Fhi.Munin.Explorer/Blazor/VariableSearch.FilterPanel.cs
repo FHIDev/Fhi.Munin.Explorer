@@ -89,12 +89,17 @@ public partial class VariableSearch
     /// Only the catalogue's own name is Norwegian; marking a code or this package's prose would read it
     /// in a Norwegian voice, which is <c>lang</c> applied backwards (WCAG 3.1.2).
     /// </remarks>
-    private (string Text, string? Language) CatalogueName(string? name, string? nameEn, string? code)
+    private (string Text, string? Language) CatalogueName(string? name, string? nameNo, string? code)
     {
-        var named = T.NamedFor(name, nameEn, code, Reader);
+        var (text, isName) = T.Named(name, code);
 
-        return (named.Text, named.Lang(Reader));
+        return (text, isName ? CatalogueProperties.Foreign(FacetNorwegian(name, nameNo), Reader) : null);
     }
+
+    /// <summary>Whether a facet's name, which the API resolves against <c>Accept-Language</c>, is
+    /// still the Norwegian: no English existed, or an API older than <c>nameNo</c>. (Fhi.Metadata-pfejp.7)</summary>
+    private static bool FacetNorwegian(string? name, string? nameNo) =>
+        nameNo is null || string.Equals(name?.Trim(), nameNo.Trim(), StringComparison.Ordinal);
 
     /// <summary>The facets on screen, in the order they are drawn.</summary>
     /// <remarks>
@@ -602,7 +607,7 @@ public partial class VariableSearch
     /// </remarks>
     private FacetValue KildeValue(KildeFacet kilde)
     {
-        var (label, language) = CatalogueName(kilde.Name, kilde.NameEn, kilde.ShortName);
+        var (label, language) = CatalogueName(kilde.Name, kilde.NameNo, kilde.ShortName);
 
         return new(FacetValueKey(HierarchyLevel.Kilde, kilde.Id),
             label,
@@ -653,7 +658,7 @@ public partial class VariableSearch
 
         FacetValue Value(HierarchyNode node)
         {
-            var (label, language) = CatalogueName(node.Name, node.NameEn, node.ShortName);
+            var (label, language) = CatalogueName(node.Name, node.NameNo, node.ShortName);
             IReadOnlyList<FacetValue> children = [.. node.Children.Select(Value)];
 
             // A guard and not a row the tree draws: HierarchyLevels reads all four levels the
@@ -723,7 +728,7 @@ public partial class VariableSearch
     }
 
     private (string Text, string? Language) DelkildeLabel(DelkildeFacet delkilde) =>
-        CatalogueName(delkilde.Name, delkilde.NameEn, null);
+        CatalogueName(delkilde.Name, delkilde.NameNo, null);
 
     /// <summary>A datasamling the same way, and out of the same one caller.</summary>
     private FacetValue DatasamlingValue(DatasamlingFacet datasamling)
@@ -744,7 +749,7 @@ public partial class VariableSearch
     }
 
     private (string Text, string? Language) DatasamlingLabel(DatasamlingFacet datasamling) =>
-        CatalogueName(datasamling.Name, datasamling.NameEn, null);
+        CatalogueName(datasamling.Name, datasamling.NameNo, null);
 
     private bool IsDelkildeChosen(Guid id) => _filter.DelkildeIds.Contains(id);
 
@@ -773,7 +778,7 @@ public partial class VariableSearch
         return new(FacetName(HierarchyLevel.Variabelgruppe),
             T.FieldVariableGroup,
             OpenByDefault: false,
-            Tree(grupper.Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, g.NameEn, null), g.Count)),
+            Tree(grupper.Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, g.NameNo, null), g.Count)),
                  $"{FacetName(HierarchyLevel.Variabelgruppe)}:",
                  IsGruppeChosen,
                  id => containers.Contains(id) ? null : ToggleGruppe(id), Counted),
@@ -819,7 +824,7 @@ public partial class VariableSearch
     /// values through <see cref="Tree"/>.</summary>
     private FacetValue VariabelgruppeValue(VariabelgruppeFacet gruppe)
     {
-        var (label, language) = CatalogueName(gruppe.Name, gruppe.NameEn, null);
+        var (label, language) = CatalogueName(gruppe.Name, gruppe.NameNo, null);
 
         // The chip stands for the group wherever it was ticked, so pressing it takes off every placement.
         return new(FacetValueKey(HierarchyLevel.Variabelgruppe, gruppe.Id),
@@ -878,7 +883,7 @@ public partial class VariableSearch
             T.FacetFilter,
             OpenByDefault: false,
             Tree(facets.Filters
-                     .Select(f => Node(f.Id, f.ParentId, CatalogueName(f.Name, f.NameEn, null), f.Count)),
+                     .Select(f => Node(f.Id, f.ParentId, CatalogueName(f.Name, f.NameNo, null), f.Count)),
                  "filter:",
                  IsSavedFilterChosen,
                  ToggleSavedFilter, Counted));

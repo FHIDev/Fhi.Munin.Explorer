@@ -316,7 +316,7 @@ public partial class VariableSearch
     /// the trail has a fallback label rather than assuming a name.
     /// </remarks>
     private (string Text, bool Norwegian)? KildeName(Guid id) =>
-        (_facets?.Kilder.FirstOrDefault(kilde => kilde.Id == id) is { } facet ? Shown(facet.Name, facet.NameEn) : null)
+        (_facets?.Kilder.FirstOrDefault(kilde => kilde.Id == id) is { } facet ? FacetShown(facet.Name, facet.NameNo) : null)
         ?? RowName(row => row.KildeId == id ? Shown(row.KildeName, row.KildeNameEn) : null);
 
     /// <summary>
@@ -328,7 +328,7 @@ public partial class VariableSearch
     /// fall back to.
     /// </remarks>
     private (string Text, bool Norwegian)? DelkildeName(Guid id) =>
-        _facets?.Delkilder.FirstOrDefault(delkilde => delkilde.Id == id) is { } facet ? Shown(facet.Name, facet.NameEn) : null;
+        _facets?.Delkilder.FirstOrDefault(delkilde => delkilde.Id == id) is { } facet ? FacetShown(facet.Name, facet.NameNo) : null;
 
     /// <summary>
     /// A datasamling's name, or null when neither the facets nor the rows carry it.
@@ -341,7 +341,7 @@ public partial class VariableSearch
     /// </remarks>
     private (string Text, bool Norwegian)? DatasamlingName(Guid id) =>
         (_facets?.Datasamlinger.FirstOrDefault(datasamling => datasamling.Id == id) is { } facet
-            ? Shown(facet.Name, facet.NameEn)
+            ? FacetShown(facet.Name, facet.NameNo)
             : null)
         ?? RowName(row => row.DatasamlingId == id ? Shown(row.DatasamlingName, row.DatasamlingNameEn) : null);
 
@@ -350,7 +350,7 @@ public partial class VariableSearch
     /// ticks groups the facet withholds, and one id gets one name. (Fhi.Metadata-km3zb)</remarks>
     private (string Text, bool Norwegian)? VariabelgruppeName(Guid id) =>
         (_facets is { } facets && ListedVariabelgrupper(facets).FirstOrDefault(gruppe => gruppe.Id == id) is { } facet
-            ? Shown(facet.Name, facet.NameEn)
+            ? FacetShown(facet.Name, facet.NameNo)
             : null)
         ?? RowName(row => row.VariabelgruppeId == id ? Shown(row.VariabelgruppeName, row.VariabelgruppeNameEn) : null);
 
@@ -358,7 +358,11 @@ public partial class VariableSearch
     private (string Text, bool Norwegian)? RowName(Func<VariableSummary, (string Text, bool Norwegian)?> name) =>
         _result?.Items.Select(name).FirstOrDefault(found => found is not null);
 
-    /// <summary>A name in the reader's language by <see cref="ReaderLanguage.Pick"/>, or null where it is blank in both.</summary>
+    /// <summary>A facet's name as the API resolved it, flagged Norwegian on <see cref="FacetNorwegian"/>'s terms.</summary>
+    private static (string Text, bool Norwegian)? FacetShown(string? name, string? nameNo) =>
+        DisplayText.Trimmed(name) is { } text ? (text, FacetNorwegian(text, nameNo)) : null;
+
+    /// <summary>A row's name in the reader's language by <see cref="ReaderLanguage.Pick"/>, or null where it is blank in both.</summary>
     private (string Text, bool Norwegian)? Shown(string? name, string? nameEn) =>
         ReaderLanguage.Pick(DisplayText.Trimmed(name), DisplayText.Trimmed(nameEn), Reader) is ({ } text, var norwegian)
             ? (text, norwegian)
