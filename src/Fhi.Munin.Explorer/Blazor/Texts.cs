@@ -336,6 +336,9 @@ internal sealed record Texts(
     // screen. Assembled here for the reason KildeCount is: the singular is this language's business
     // and not C#'s.
     Func<int, string> ListVariableCount,
+    // (variables, rows) — "2 variabler (3 rader)", for a list with more rows than variables because
+    // one variable is in it from several datasamlinger. (Fhi.Metadata-t7kx8)
+    Func<int, int, string> ListVariablesInRows,
     // (day) — "Sist endret: 7. sep. 2026". The day and never a clock time: this renders inside a
     // Blazor Server circuit, so the hour would be the server's rather than the reader's.
     Func<string, string> ListLastModified,
@@ -1365,6 +1368,8 @@ internal sealed record Texts(
         NoKilderInList: "Ingen kilder i listen ennå.",
         NoVariablesForTheseKilder: "Ingen variabler fra de valgte kildene.",
         ListVariableCount: count => count == 1 ? "1 variabel" : $"{count} variabler",
+        ListVariablesInRows: (variables, rows) =>
+            $"{(variables == 1 ? "1 variabel" : $"{variables} variabler")} ({(rows == 1 ? "1 rad" : $"{rows} rader")})",
         ListLastModified: day => $"Sist endret: {day}",
         ListKildeCount: count => count == 1 ? "fra 1 datakilde" : $"fra {count} datakilder",
         FieldDesiredData: "Ønskede data",
@@ -1926,6 +1931,8 @@ internal sealed record Texts(
         NoKilderInList: "No sources in the list yet.",
         NoVariablesForTheseKilder: "No variables from the selected sources.",
         ListVariableCount: count => count == 1 ? "1 variable" : $"{count} variables",
+        ListVariablesInRows: (variables, rows) =>
+            $"{(variables == 1 ? "1 variable" : $"{variables} variables")} ({(rows == 1 ? "1 row" : $"{rows} rows")})",
         ListLastModified: day => $"Last modified: {day}",
         ListKildeCount: count => count == 1 ? "from 1 source" : $"from {count} sources",
         FieldDesiredData: "Desired data",

@@ -47,6 +47,13 @@ public sealed partial class VariableListState
     public bool IsSaved(VariableDatasamlingKey item) => _saved.Contains(item);
 
     /// <summary>
+    /// The active list's distinct variables and its rows, or null until its membership is read. A
+    /// variable in two datasamlinger is one variable in two rows. (Fhi.Metadata-t7kx8)
+    /// </summary>
+    internal (int Variables, int Rows)? ActiveListCounts =>
+        _membershipLoaded ? (_saved.Select(key => key.VariableId).Distinct().Count(), _saved.Count) : null;
+
+    /// <summary>
     /// Picks the reader's first list as the active one and reads what is in it, so the rows know
     /// which variables are already saved before anybody presses anything.
     /// </summary>

@@ -1,0 +1,117 @@
+using Bunit;
+using Fhi.Munin.Explorer.Blazor;
+using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.State;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Fhi.Munin.Explorer.Tests;
+
+// The saved list's header counts variables, not rows: my/lists counts rows, and one variable from two
+// datasamlinger is two of them, so «3 variabler» stood over a list of two (Fhi.Metadata-t7kx8).
+public sealed class ListHeaderCountTest : ExplorerTestContext
+{
+    private static readonly Guid Als = Guid.NewGuid();
+    private static readonly Guid Tromso = Guid.NewGuid();
+    private static readonly Guid Inklusjon = Guid.NewGuid();
+    private static readonly Guid Oppfolging = Guid.NewGuid();
+
+    private sealed class ListClient(params VariableListItem[] items) : EmptyMuninExplorerClient
+    {
+        private static readonly Guid ListId = Guid.NewGuid();
+
+        // As Munin answers: variableCount is the stored rows.
+        public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<VariableList>>(
+                [new VariableList { Id = ListId, Name = "Mine", VariableCount = items.Length }]);
+
+        public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
+            Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
+            {
+                Items = items,
+                TotalCount = items.Length,
+                PageNumber = page,
+                Size = pageSize,
+                TotalPages = 1,
+            });
+    }
+
+    private static VariableListItem Row(Guid variable, Guid kilde, Guid datasamling) => new()
+    {
+        VariableId = variable,
+        AddedAt = DateTimeOffset.UtcNow,
+        VariableName = "Alder",
+        VariableCode = "V_ALS.ALDER",
+        KildeId = kilde,
+        KildeName = kilde == Als ? "Als registeret" : "Tromsøundersøkelsen",
+        DatasamlingId = datasamling,
+        DatasamlingName = datasamling == Inklusjon ? "Inklusjon" : "Oppfølging",
+        DataType = "2",
+    };
+
+    private string Header(string language, params VariableListItem[] rows)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new ListClient(rows));
+        Services.AddScoped<VariableListState>();
+
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, language));
+
+        return cut.Find("p.caption").TextContent;
+    }
+
+    [Theory]
+    [InlineData("no", "2 variabler (3 rader) · fra 2 datakilder")]
+    [InlineData("en", "2 variables (3 rows) · from 2 sources")]
+    public void Header_WhenAVariableIsInTheListFromTwoDatasamlinger_ThenItCountsVariablesAndSaysTheRows(
+        string language, string expected)
+    {
+        var alder = Guid.NewGuid();
+
+        var header = Header(language,
+            Row(alder, Als, Inklusjon), Row(alder, Als, Oppfolging), Row(Guid.NewGuid(), Tromso, Inklusjon));
+
+        Assert.StartsWith(expected, header, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("no", "1 variabel (2 rader) · fra 1 datakilde")]
+    [InlineData("en", "1 variable (2 rows) · from 1 source")]
+    public void Header_WhenTheOneVariableIsInTwoRows_ThenTheVariableIsSingularAndTheRowsPlural(
+        string language, string expected)
+    {
+        var alder = Guid.NewGuid();
+
+        var header = Header(language, Row(alder, Als, Inklusjon), Row(alder, Als, Oppfolging));
+
+        Assert.StartsWith(expected, header, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("no", "2 variabler · fra 2 datakilder")]
+    [InlineData("en", "2 variables · from 2 sources")]
+    public void Header_WhenEveryVariableIsOneRow_ThenTheRowsAreNotMentioned(string language, string expected)
+    {
+        var header = Header(language, Row(Guid.NewGuid(), Als, Inklusjon), Row(Guid.NewGuid(), Tromso, Inklusjon));
+
+        Assert.StartsWith(expected, header, StringComparison.Ordinal);
+        Assert.DoesNotContain("(", header, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("no", "1 variabel · fra 1 datakilde")]
+    [InlineData("en", "1 variable · from 1 source")]
+    public void Header_WhenTheListHoldsOneVariableInOneRow_ThenEveryCountIsSingular(string language, string expected)
+    {
+        Assert.StartsWith(expected, Header(language, Row(Guid.NewGuid(), Als, Inklusjon)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Texts_WhenRowsAreCounted_ThenBothLanguagesHandleTheSingularOfEach()
+    {
+        Assert.Equal("1 variabel (2 rader)", Texts.For("no").ListVariablesInRows(1, 2));
+        Assert.Equal("3 variabler (1 rad)", Texts.For("no").ListVariablesInRows(3, 1));
+        Assert.Equal("1 variable (2 rows)", Texts.For("en").ListVariablesInRows(1, 2));
+        Assert.Equal("3 variables (1 row)", Texts.For("en").ListVariablesInRows(3, 1));
+    }
+}

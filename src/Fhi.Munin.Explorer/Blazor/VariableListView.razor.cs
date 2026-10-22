@@ -410,9 +410,9 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     };
 
     /// <summary>
-    /// The list on screen: its size and last change off <c>my/lists</c>, so neither can contradict
-    /// the picker, and its kilde count off the membership walk — left out until that walk is done,
-    /// since empty is how a refused one reads, and at zero, which "0 variabler" has already said.
+    /// The list on screen: its last change off <c>my/lists</c>, and its variables, rows and kilder off
+    /// the membership walk — the size from <c>my/lists</c> until that walk is done, the kilde count left
+    /// out until then, since empty is how a refused one reads, and at zero, which "0 variabler" has said.
     /// </summary>
     private string? ListMeta
     {
@@ -423,7 +423,15 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 return null;
             }
 
-            List<string> parts = [T.ListVariableCount(shown.VariableCount)];
+            // my/lists counts rows, and a variable in two datasamlinger is two of them (Fhi.Metadata-t7kx8).
+            var counts = State is { } read && read.ActiveListId == _shownList ? read.ActiveListCounts : null;
+
+            List<string> parts =
+            [
+                counts is { } known && known.Rows > known.Variables
+                    ? T.ListVariablesInRows(known.Variables, known.Rows)
+                    : T.ListVariableCount(counts?.Variables ?? shown.VariableCount)
+            ];
 
             // The tally is the active list's, so it is only this list's while the two agree: a
             // switch clears it before it awaits, but a notification can still render between them.
