@@ -612,7 +612,8 @@ public class CopyAndEmptyListTest : ExplorerTestContext
 
         await cut.InvokeAsync(hold.SetResult);
 
-        cut.WaitForAssertion(() => Assert.Equal(reads + 1, client.PageReads[OtherId]));
+        // Read again at least once (the refresh also re-walks the active list's membership, which reads too).
+        cut.WaitForAssertion(() => Assert.True(client.PageReads[OtherId] > reads));
     }
 
     [Fact]
