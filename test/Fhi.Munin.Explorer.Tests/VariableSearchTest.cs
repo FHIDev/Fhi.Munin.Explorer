@@ -4790,6 +4790,47 @@ public class VariableSearchTest : ExplorerTestContext
         }
     }
 
+    // Arriving from the Kildeutforsker with a kilde chosen left it under a shut kildetype heading: the reader
+    // could not see the filter in force (#6756, Fhi.Metadata-lzrgg). Only the branches above a chosen value open.
+    [Fact]
+    public void Arrival_WithAKildeChosen_ThenItsBranchIsOpenAndTheOthersAreNot()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(), Facets()),
+            b => b.Add(c => c.Filter, new VariableFilter { KildeIds = [Dodsarsak] }));
+
+        cut.WaitForAssertion(() => Assert.Contains(DrawnValues(cut), v => v.StartsWith("Dødsårsaksregisteret", StringComparison.Ordinal)));
+        Assert.DoesNotContain(DrawnValues(cut), v => v.StartsWith("Tromsøundersøkelsen", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Arrival_WithADelkildeChosenTwoLevelsDown_ThenEveryBranchAboveItIsOpen()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(), Facets()),
+            b => b.Add(c => c.Filter, new VariableFilter { DelkildeIds = [Tromso4Visit] }));
+
+        cut.WaitForAssertion(() => Assert.Contains(DrawnValues(cut), v => v.StartsWith("Første besøk", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Arrival_WhenTheReaderShutsTheOpenedBranch_ThenTheNextAnswerLeavesItShut()
+    {
+        var cut = RenderWith(new FilteringClient(OnePage(), Facets()),
+            b => b.Add(c => c.Filter, new VariableFilter { KildeIds = [Dodsarsak] }));
+        cut.WaitForAssertion(() => Assert.Contains(DrawnValues(cut), v => v.StartsWith("Dødsårsaksregisteret", StringComparison.Ordinal)));
+
+        cut.FindAll(".munin-explorer-filters button[aria-expanded=true]")
+            .Single(b => b.GetAttribute("aria-controls")!.Contains("sentraltHelseregister", StringComparison.Ordinal)).Click();
+        cut.FindAll(".munin-explorer-filters li > label")
+            .First(l => l.TextContent.StartsWith("Tekst", StringComparison.Ordinal))
+            .QuerySelector("input[type=checkbox]")!.Change(true);
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain(DrawnValues(cut), v => v.StartsWith("Dødsårsaksregisteret", StringComparison.Ordinal)));
+    }
+
+    /// <summary>The facet values drawn right now, without opening anything first.</summary>
+    private static IReadOnlyList<string> DrawnValues(IRenderedComponent<VariableSearch> cut) =>
+        [.. cut.FindAll(".munin-explorer-filters li > label").Select(l => l.TextContent.Trim())];
+
     [Fact]
     public void Filter_WhenTheReaderArrivesOnALinkThatMatchesNothing_ThenTheControlsAreStillDrawn()
     {
