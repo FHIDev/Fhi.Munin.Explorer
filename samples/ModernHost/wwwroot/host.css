@@ -3272,6 +3272,11 @@ table.munin-explorer-data-list tbody th {
   background: var(--grey10);
 }
 
+.munin-explorer-versions__toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .munin-explorer-versions__name {
   flex: 1 1 auto;
   min-inline-size: 0;

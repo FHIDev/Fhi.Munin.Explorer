@@ -1058,6 +1058,38 @@ export const assertions = [
     },
   },
   {
+    // The version-history toggles had only the browser's thin default ring, like «Alle felt» before #637
+    // (Fhi.Metadata-l9l2n.144, ADO 122803). Reached with real Tab presses, as a reader would.
+    name: 'A version-history toggle shows the Explorer\'s focus ring when Tab reaches it',
+    kind: 'invariant',
+    states: ['variable-whole'],
+    async stage(page) {
+      const toggle = page.locator('.munin-explorer-versions__toggle').first();
+      await toggle.waitFor({ state: 'attached', timeout: findTimeout });
+      return {};
+    },
+    async measure(page) {
+      const toggle = page.locator('.munin-explorer-versions__toggle').first();
+      await toggle.focus();
+      await page.keyboard.press('Shift+Tab');
+      await page.keyboard.press('Tab');
+      const ring = await toggle.evaluate(e => {
+        const style = getComputedStyle(e);
+        return { focused: e === document.activeElement, style: style.outlineStyle, width: parseFloat(style.outlineWidth) };
+      });
+      if (!ring.focused) return 'Tab did not land on the version-history toggle';
+      return ring.style === 'solid' && ring.width >= 2
+        ? null
+        : `The version-history toggle shows a ${ring.width}px ${ring.style} ring, not the Explorer's 2px solid one`;
+    },
+    // The defect as it shipped: no rule of ours, so the browser's own thin ring.
+    async control(page) {
+      await page.addStyleTag({
+        content: '.munin-explorer-versions__toggle:focus-visible { outline: 1px auto !important; }',
+      });
+    },
+  },
+  {
     // «Alle felt» had only the browser's 1px default ring, the one control on the page without the
     // Explorer's own (Fhi.Metadata-l9l2n.135, ADO 122803). Reached with real Tab presses, as a reader would.
     name: '«Alle felt» shows the Explorer\'s focus ring when Tab reaches it',
