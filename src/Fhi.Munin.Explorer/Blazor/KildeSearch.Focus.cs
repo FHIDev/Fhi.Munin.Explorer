@@ -27,7 +27,14 @@ public sealed partial class KildeSearch
         if (focus == FocusAfterRender.Detail && _selectedId is not null && _detailRegion.Context is not null)
         {
             _focus = FocusAfterRender.None;
-            await _detailRegion.FocusAsync();
+            try
+            {
+                await _detailRegion.FocusAsync();
+            }
+            catch (JSException)
+            {
+                // A lost focus is not worth the rest of the render pass; the reader is no worse off than before.
+            }
         }
         else if (focus == FocusAfterRender.Row && _selectedId is null)
         {
