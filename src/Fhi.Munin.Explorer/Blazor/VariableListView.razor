@@ -72,7 +72,9 @@ else if (State?.IsAuthenticated == true)
                     }
 
                     <p class="caption">@T.ShareValidity</p>
-                    <a href="@ShareMailTo(made)">@T.ShareByEmail</a>
+                    <a href="@ShareMailTo(made)" aria-describedby="@ShareMailHintId">@T.ShareByEmail</a>
+                    @* A mailto opens nothing for a webmail reader; the fields above are the way (Fhi.Metadata-eeuey.4.34). *@
+                    <p class="caption margin--none" id="@ShareMailHintId">@T.ShareByEmailHint(made.Link is not null)</p>
                 </div>
             }
 

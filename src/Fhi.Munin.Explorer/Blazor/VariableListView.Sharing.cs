@@ -78,6 +78,8 @@ public sealed partial class VariableListView
 
     private string ShareLinkFieldId => $"munin-explorer-share-link-{_instance}";
 
+    private string ShareMailHintId => $"munin-explorer-share-mail-hint-{_instance}";
+
     private string OpenSharedToggleId => $"munin-explorer-open-shared-toggle-{_instance}";
 
     private string SharedCodeFieldId => $"munin-explorer-shared-code-{_instance}";
