@@ -692,10 +692,8 @@ internal sealed record Texts(
     string FacetDateFrom,
     string FacetDateTo,
 
-    // The format those fields take, shown under each label and as its placeholder, and the
-    // sentence a field points at when what was typed is not a day inside its range. The ends
-    // arrive already written in that format; a null end is an open one.
-    string FacetDateFormat,
+    // The sentence a field points at when what was typed is not a day inside its range. The ends
+    // arrive already written in the field's format; a null end is an open one.
     Func<string?, string?, string> FacetDateInvalid,
 
     // The box that narrows a long facet's own values, and the sentence for when it narrows them to
@@ -1165,10 +1163,6 @@ internal sealed record Texts(
     private const string AscendingEn = "ascending";
     private const string DescendingEn = "descending";
 
-    // The date fields' format, once per language: the hint and every arm of the refusal name it.
-    private const string DateFormatNo = "dd.mm.åååå";
-    private const string DateFormatEn = "yyyy-mm-dd";
-
     private static readonly Texts No = new(
         Title: "Variabelutforsker",
         SearchLabel: "Søk i variabler",
@@ -1623,7 +1617,6 @@ internal sealed record Texts(
         FacetDataCategory: "Datakategori (EHDS)",
         FacetDateFrom: "Fra og med",
         FacetDateTo: "Til og med",
-        FacetDateFormat: DateFormatNo,
         FacetDateInvalid: (min, max) => (min, max) switch
         {
             ({ } from, { } to) => $"Velg en gyldig dato fra og med {from} til og med {to}.",
@@ -2182,7 +2175,6 @@ internal sealed record Texts(
         FacetDataCategory: "Data category (EHDS)",
         FacetDateFrom: "From",
         FacetDateTo: "To",
-        FacetDateFormat: DateFormatEn,
         FacetDateInvalid: (min, max) => (min, max) switch
         {
             ({ } from, { } to) => $"Choose a valid date from {from} to {to}, inclusive.",
