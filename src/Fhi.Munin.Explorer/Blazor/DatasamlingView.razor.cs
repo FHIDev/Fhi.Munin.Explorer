@@ -139,14 +139,20 @@ public sealed partial class DatasamlingView : ComponentBase
     // The page trail names and links the kilde and the parent draws a back link: «Kildesti» and «Vis datakilden» would
     // be a third and fourth way to it, and «Kildesti» a second nav landmark (Fhi.Metadata-l9l2n.145).
     private bool TrailNamesKilde =>
-        HasKildeBackLink && Trail is { Count: > 0 } trail && Datasamling is { ParentKildeName: { Length: > 0 } name } &&
+        HasKildeBackLink && Trail is { Count: > 0 } trail && ParentKilde.Text is { Length: > 0 } name &&
         trail.Any(step => step.Label == name && step.Href is not null);
 
     private IReadOnlyList<DetailTrailStep>? SourceTrail =>
-        !TrailNamesKilde && Datasamling is { } datasamling && !string.IsNullOrWhiteSpace(datasamling.ParentKildeName)
-            ? [new(datasamling.ParentKildeName, ParentKildeAddress, CatalogueProperties.Foreign("no", Reader)),
+        !TrailNamesKilde && ParentKilde.Text is { } kilde && !string.IsNullOrWhiteSpace(kilde)
+            ? [new(kilde, ParentKildeAddress, ParentKildeLang),
                new(StickyNamed.Text, null, StickyNameLang)]
             : null;
+
+    /// <summary>The kilde's name as every line of this page draws it, by <see cref="ReaderLanguage.Pick"/>.</summary>
+    private (string? Text, bool Norwegian) ParentKilde =>
+        ReaderLanguage.Pick(Datasamling?.ParentKildeName, Datasamling?.ParentKildeNameEn, Reader);
+
+    private string? ParentKildeLang => CatalogueProperties.Foreign(ParentKilde.Norwegian, Reader);
 
     private async Task ShowKildeAsync()
     {
@@ -177,19 +183,19 @@ public sealed partial class DatasamlingView : ComponentBase
     /// The name the page's heading carries, resolved through the member the heading reads so the
     /// sticky bar and the name block cannot say it in different words.
     /// </summary>
-    private (string Text, bool Norwegian) StickyNamed =>
-        T.Named(Datasamling?.PreferredTerm, Datasamling?.Code);
+    private CatalogueName StickyNamed =>
+        T.NamedFor(Datasamling?.PreferredTerm, Datasamling?.PreferredTermEn, Datasamling?.Code, Reader);
 
-    private string? StickyNameLang => CatalogueProperties.Foreign(StickyNamed.Norwegian, Reader);
+    private string? StickyNameLang => StickyNamed.Lang(Reader);
 
     /// <summary>The code beside the bar's name, on the name block's own terms.</summary>
     /// <remarks>Nothing where the heading has already fallen back to the code. (Fhi.Metadata-w13lk)</remarks>
-    private string? StickyCode => StickyNamed.Norwegian ? Datasamling?.Code : null;
+    private string? StickyCode => StickyNamed.Named ? Datasamling?.Code : null;
 
     /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
     private IReadOnlyList<DetailTrailStep>? PageTrail =>
         Datasamling is { } datasamling
-            ? DetailTrail.Append(Trail, T.Named(datasamling.PreferredTerm, datasamling.Code), Reader)
+            ? DetailTrail.Append(Trail, StickyNamed.Marked, Reader)
             : null;
 
     /// <summary>The level for the block headings, and for each metadata group under them.</summary>
@@ -205,12 +211,16 @@ public sealed partial class DatasamlingView : ComponentBase
     /// beskrivelse, and an ingress restating the heading above it reads as a rendering fault.
     /// </remarks>
     private string? Description =>
-        Datasamling is { } datasamling
-        && !string.IsNullOrWhiteSpace(datasamling.Description)
-        && !string.Equals(datasamling.Description.Trim(), datasamling.PreferredTerm.Trim(),
-                          StringComparison.Ordinal)
-            ? datasamling.Description
+        Datasamling is not null
+        && ShownDescription.Text is { } description
+        && !string.IsNullOrWhiteSpace(description)
+        && !string.Equals(description.Trim(), StickyNamed.Text.Trim(), StringComparison.Ordinal)
+        && !string.Equals(description.Trim(), Datasamling.PreferredTerm.Trim(), StringComparison.Ordinal)
+            ? description
             : null;
+
+    private (string? Text, bool Norwegian) ShownDescription =>
+        ReaderLanguage.Pick(Datasamling?.Description, Datasamling?.DescriptionEn, Reader);
 
     private bool _resolved;
     private DatasamlingDetail? _resolvedDatasamling;
@@ -363,7 +373,7 @@ public sealed partial class DatasamlingView : ComponentBase
         Datasamling is not { } datasamling
             ? []
             : [
-                (T.FieldSource, datasamling.ParentKildeName, true,
+                (T.FieldSource, ParentKilde.Text, ParentKilde.Norwegian,
                  KildeHref?.Invoke(datasamling.ParentKildeId)),
                 (T.FacetKildeType, KildetypeLabel, false, null),
                 .. UnlessPlaced(CatalogueColumns.LegalBasis,
@@ -498,7 +508,7 @@ public sealed partial class DatasamlingView : ComponentBase
                 }.OfType<DetailFact>()];
 
     private DetailFact SourceFact =>
-        new(T.FieldSource, Datasamling?.ParentKildeName, CatalogueProperties.Foreign("no", Reader));
+        new(T.FieldSource, ParentKilde.Text, ParentKildeLang);
 
     private DetailFact VariablesFact =>
         new(T.HeadingVariables, VariableCount,

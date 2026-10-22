@@ -207,7 +207,11 @@ public sealed partial class VariableListView
         builder.CloseComponent();
     };
 
-    private static string? RowPanelDescription(VariableDetail detail) => DisplayText.Trimmed(detail.Description);
+    private (string Text, bool Norwegian)? RowPanelDescription(VariableDetail detail) =>
+        ReaderLanguage.Pick(DisplayText.Trimmed(detail.Description), DisplayText.Trimmed(detail.DescriptionEn), Reader)
+            is ({ } text, var norwegian)
+            ? (text, norwegian)
+            : null;
 
     private RenderFragment RowPanelTrail(VariableDetail detail) =>
         KildeTrailBlock.Write(KildeTrailBlock.Steps(detail, T, kildeTypeApiName: null), T);
@@ -226,6 +230,8 @@ public sealed partial class VariableListView
         for (var i = 0; i < groups.Count; i++)
         {
             var group = groups[i];
+            var name = ReaderLanguage.Pick(group.Name, group.NameEn, Reader);
+            var lang = name.Norwegian ? CatalogueLang(name.Text) : null;
 
             if (ShowSearch is { } search && group.Id != Guid.Empty)
             {
@@ -243,8 +249,8 @@ public sealed partial class VariableListView
                 builder.CloseElement();
                 builder.AddContent(20, " ");
                 builder.OpenElement(17, "span");
-                builder.AddAttribute(18, "lang", CatalogueLang(group.Name));
-                builder.AddContent(19, group.Name);
+                builder.AddAttribute(18, "lang", lang);
+                builder.AddContent(19, name.Text);
                 builder.CloseElement();
                 builder.CloseElement();
             }
@@ -252,8 +258,8 @@ public sealed partial class VariableListView
             {
                 builder.AddContent(8, i == 0 || asButtons ? "" : ", ");
                 builder.OpenElement(9, "span");
-                builder.AddAttribute(10, "lang", CatalogueLang(group.Name));
-                builder.AddContent(11, group.Name);
+                builder.AddAttribute(10, "lang", lang);
+                builder.AddContent(11, name.Text);
                 builder.CloseElement();
             }
         }

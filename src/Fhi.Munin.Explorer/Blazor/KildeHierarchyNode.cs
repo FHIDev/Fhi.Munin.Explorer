@@ -15,7 +15,8 @@ internal enum KildeNodeKind
 internal sealed record KildeHierarchyNode(
     string Key, string Name, int Count, int? Order, KildeNodeKind Kind,
     IReadOnlyList<string> Categories, IReadOnlyList<KildeHierarchyNode> Children,
-    Guid? DatasamlingId = null)
+    Guid? DatasamlingId = null,
+    string? NameEn = null)
 {
     internal static IReadOnlyList<KildeHierarchyNode> From(KildeHierarchy hierarchy) =>
         Siblings(hierarchy.Delkilder, hierarchy.DirectDatasamlinger, hierarchy.KildeId.ToString());
@@ -29,7 +30,8 @@ internal sealed record KildeHierarchyNode(
         [
             .. Siblings(node.Children, node.Datasamlinger, key),
             .. Ordered(node.UnassignedVariabelgrupper.Select(g => From(g, key)))
-        ]);
+        ],
+        NameEn: node.NameEn);
     }
 
     /// <summary>One parent's delkilder and datasamlinger on the API's shared displayOrder, never on
@@ -48,7 +50,7 @@ internal sealed record KildeHierarchyNode(
     {
         var key = $"{parent}/datasamling/{node.Id}";
         return new(key, node.Name, node.VariableCount, null, KildeNodeKind.Datasamling,
-            node.Categories, Ordered(node.Variabelgrupper.Select(g => From(g, key))), node.Id);
+            node.Categories, Ordered(node.Variabelgrupper.Select(g => From(g, key))), node.Id, node.NameEn);
     }
 
     private static KildeHierarchyNode From(HierarchyVariabelgruppe node, string parent)
@@ -56,7 +58,7 @@ internal sealed record KildeHierarchyNode(
         // One group can occur under several owners; browser disclosure state belongs to a position.
         var key = $"{parent}/variabelgruppe/{node.Id}";
         return new(key, node.Name, node.VariableCount, node.PresentationOrder, KildeNodeKind.Variabelgruppe, [],
-            Ordered(node.ChildVariabelgrupper.Select(g => From(g, key))));
+            Ordered(node.ChildVariabelgrupper.Select(g => From(g, key))), NameEn: node.NameEn);
     }
 
     private static IReadOnlyList<KildeHierarchyNode> Ordered(IEnumerable<KildeHierarchyNode> nodes) =>

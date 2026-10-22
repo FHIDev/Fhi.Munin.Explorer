@@ -141,7 +141,8 @@ internal sealed class VariablePanelTabs : ComponentBase
         if (ShowDescription)
         {
             builder.OpenElement(0, "div");
-            builder.AddContent(1, DetailValue(Detail.Description, authored: true));
+            var description = ReaderLanguage.Pick(Detail.Description, Detail.DescriptionEn, Reader);
+            builder.AddContent(1, DetailValue(description.Text, authored: true, norwegian: description.Norwegian));
             builder.CloseElement();
         }
 
@@ -167,9 +168,10 @@ internal sealed class VariablePanelTabs : ComponentBase
 
                 foreach (var datasamling in datasamlinger)
                 {
+                    var name = ReaderLanguage.Pick(datasamling.Name, datasamling.NameEn, Reader);
                     b.OpenElement(1, "li");
-                    b.AddAttribute(2, "lang", CatalogueProperties.Foreign("no", Reader));
-                    b.AddContent(3, datasamling.Name);
+                    b.AddAttribute(2, "lang", CatalogueProperties.Foreign(name.Norwegian, Reader));
+                    b.AddContent(3, name.Text);
                     b.CloseElement();
                 }
 
@@ -251,7 +253,7 @@ internal sealed class VariablePanelTabs : ComponentBase
     }
 
     /// <summary>One value: the catalogue's own words, marked Norwegian, or "Ikke oppgitt".</summary>
-    private RenderFragment DetailValue(string? value, bool authored = false) => builder =>
+    private RenderFragment DetailValue(string? value, bool authored = false, bool norwegian = true) => builder =>
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -261,7 +263,7 @@ internal sealed class VariablePanelTabs : ComponentBase
         }
 
         builder.OpenElement(1, "span");
-        builder.AddAttribute(2, "lang", "no");
+        builder.AddAttribute(2, "lang", norwegian ? "no" : null);
         builder.AddContent(3, authored ? CatalogueMarkdown.Render(value) : (RenderFragment)(b => b.AddContent(0, value)));
         builder.CloseElement();
     };

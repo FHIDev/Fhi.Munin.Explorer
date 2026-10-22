@@ -774,10 +774,8 @@ else
                                            @onclick:stopPropagation="true" />
                                 </td>
                             }
-                            @* The name is a th, not a td: it is what the rest of the row is about, and
-                               a screen reader reading a cell out of context should hear which kilde it
-                               belongs to. The catalogue holds one name, in Norwegian, so it is marked
-                               when the reader is not. *@
+                            @* A th, not a td: a cell read out of context should say which kilde it belongs
+                               to. English for an English reader where Munin has it; a Norwegian fallback is marked. *@
                             <th scope="row">
                                 @* The click stops here: the name goes to the kilde and the row opens the
                                    drawer, so a press on the name must not leave the row open behind it. The
@@ -908,7 +906,7 @@ else
                                         {
                                             @if (group.Heading is { } heading)
                                             {
-                                                @GroupHeading(heading, group.Code, group.Depth)
+                                                @GroupHeading(heading, group.HeadingEn, group.Code, group.Depth)
                                             }
                                             @DatasamlingTable.For(group.Rows, T, Language, Reader, MarksFor(kilde.Id))
                                         }

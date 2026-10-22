@@ -64,15 +64,17 @@ internal static class KildeTrailBlock
                                  Norwegian: false));
         }
 
-        if (!string.IsNullOrWhiteSpace(detail.KildeName))
+        var kilde = ReaderLanguage.Pick(detail.KildeName, detail.KildeNameEn, texts.Reader);
+
+        if (!string.IsNullOrWhiteSpace(kilde.Text))
         {
             var shortName = DisplayText.Trimmed(detail.KildeShortName);
             var sameThingTwice = shortName is null
-                || string.Equals(shortName, detail.KildeName, StringComparison.OrdinalIgnoreCase);
+                || string.Equals(shortName, kilde.Text, StringComparison.OrdinalIgnoreCase);
 
             crumbs.Add(new Crumb(
-                sameThingTwice ? detail.KildeName : $"{detail.KildeName} ({shortName})",
-                Norwegian: true,
+                sameThingTwice ? kilde.Text : $"{kilde.Text} ({shortName})",
+                Norwegian: kilde.Norwegian,
                 OpensKilde: true));
         }
 
@@ -82,12 +84,15 @@ internal static class KildeTrailBlock
         {
             // Only over one named datasamling: the delkilde is the primary's, and a count's others
             // may sit under other delkilder. Plain text, as nothing here opens a delkilde.
-            if (detail.DelkildeId is not null && !string.IsNullOrWhiteSpace(detail.DelkildeName))
+            var delkilde = ReaderLanguage.Pick(detail.DelkildeName, detail.DelkildeNameEn, texts.Reader);
+
+            if (detail.DelkildeId is not null && !string.IsNullOrWhiteSpace(delkilde.Text))
             {
-                crumbs.Add(new Crumb(detail.DelkildeName, Norwegian: true));
+                crumbs.Add(new Crumb(delkilde.Text, Norwegian: delkilde.Norwegian));
             }
 
-            crumbs.Add(new Crumb(datasamlinger[0].Name, Norwegian: true));
+            var datasamling = ReaderLanguage.Pick(datasamlinger[0].Name, datasamlinger[0].NameEn, texts.Reader);
+            crumbs.Add(new Crumb(datasamling.Text!, Norwegian: datasamling.Norwegian));
         }
         else if (datasamlinger.Count > 1)
         {
@@ -189,6 +194,7 @@ internal static class KildeTrailBlock
             {
                 Id = detail.DatasamlingId ?? Guid.Empty,
                 Name = detail.DatasamlingName,
+                NameEn = detail.DatasamlingNameEn,
             });
         }
 
@@ -216,6 +222,7 @@ internal static class KildeTrailBlock
             {
                 Id = detail.VariabelgruppeId ?? Guid.Empty,
                 Name = detail.VariabelgruppeName,
+                NameEn = detail.VariabelgruppeNameEn,
             });
         }
 
