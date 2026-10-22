@@ -7574,6 +7574,8 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Equal($"/kilder?kilde={kilde}", back.GetAttribute("href"));
         Assert.Contains("Tilbake til datakilden", back.TextContent, StringComparison.Ordinal);
         Assert.Empty(cut.FindAll(".munin-explorer-drilldown button.hd-button-square"));
+        // The handle a host hides it by beside its trail, as the kilde page's button has (Fhi.Metadata-l9l2n.145).
+        Assert.Contains("munin-explorer-kilder__back", back.ClassList);
     }
 
     [Fact]

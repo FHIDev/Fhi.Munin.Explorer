@@ -1,0 +1,2 @@
+category: Fixed
+- **A datasamling page in the kildeutforsker has one way back to its kilde, not four.** The page trail already names and links the kilde, so «Kildesti» (a second navigation landmark) and «Vis datakilden» are no longer drawn there; the back link stays for narrow screens. Where no trail links the kilde, as in the variabelutforsker, both stay as before, and so does a `DatasamlingView` a host mounts on its own (the new `HasKildeBackLink` parameter says the parent draws a back link). (Fhi.Metadata-l9l2n.145)

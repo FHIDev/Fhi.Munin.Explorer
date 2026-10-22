@@ -713,6 +713,51 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Contains("Registry category", cut.Find(".munin-explorer-page__body").TextContent);
     }
 
+    // Fhi.Metadata-l9l2n.145: Kelda's page trail names and links the kilde, so «Kildesti» (a second nav landmark) and
+    // «Vis datakilden» were a third and fourth way to it.
+    [Fact]
+    public void WaysBack_WhenThePageTrailLinksTheKilde_ThenNeitherKildestiNorVisDatakildenIsDrawn()
+    {
+        var data = Datasamling();
+        var cut = Render<DatasamlingView>(parameters => parameters
+            .Add(p => p.Datasamling, data)
+            .Add(p => p.KildeHref, _ => "/source")
+            .Add(p => p.Trail, new DetailTrailStep[] { new("Kildeutforsker", "/kilder"), new(data.ParentKildeName, "/source") })
+            .Add(p => p.HasKildeBackLink, true));
+
+        Assert.Single(cut.FindAll("nav.breadcrumbs"));
+        Assert.Empty(cut.FindAll(".munin-explorer-datasamling__header nav.breadcrumbs"));
+        Assert.DoesNotContain(cut.FindAll("a, button"), e => e.TextContent.Trim() == "Vis datakilden");
+    }
+
+    // Copilot on #645: mounted on its own (no parent back link), a host that hides the trail on a phone would have no
+    // way to the kilde, so the trail alone hides nothing.
+    [Fact]
+    public void WaysBack_WhenThePageTrailLinksTheKildeButNoBackLinkIsDrawn_ThenVisDatakildenStays()
+    {
+        var data = Datasamling();
+        var cut = Render<DatasamlingView>(parameters => parameters
+            .Add(p => p.Datasamling, data)
+            .Add(p => p.ShowKilde, _ => { })
+            .Add(p => p.Trail, new DetailTrailStep[] { new(data.ParentKildeName, "/source") }));
+
+        Assert.Contains(cut.FindAll("a, button"), e => e.TextContent.Trim() == "Vis datakilden");
+        Assert.NotEmpty(cut.FindAll(".munin-explorer-datasamling__header nav.breadcrumbs"));
+    }
+
+    [Fact]
+    public void WaysBack_WhenNoTrailLinksTheKilde_ThenKildestiAndVisDatakildenStay()
+    {
+        var data = Datasamling();
+        var cut = Render<DatasamlingView>(parameters => parameters
+            .Add(p => p.Datasamling, data)
+            .Add(p => p.KildeHref, _ => "/source")
+            .Add(p => p.Trail, new DetailTrailStep[] { new(data.ParentKildeName, null) }));
+
+        Assert.Contains(data.ParentKildeName, cut.Find(".munin-explorer-datasamling__header nav.breadcrumbs").TextContent);
+        Assert.Contains(cut.FindAll("a, button"), e => e.TextContent.Trim() == "Vis datakilden");
+    }
+
     [Fact]
     public void HeroFacts_WhenTheTrailAlreadyNamesTheSource_ThenTheHeroStillIncludesIt()
     {
