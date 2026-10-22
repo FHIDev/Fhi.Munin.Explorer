@@ -474,6 +474,27 @@ public class InstrumentTest : ExplorerTestContext
         Assert.NotEmpty(cut.FindAll("ul.munin-explorer-data-list"));
     }
 
+    // Fhi.Metadata-l9l2n.147: Back removes itself, so focus fell to <body>. Nothing on the page opened the instrument
+    // (it comes from the address alone), so Back sends focus to the search field; arriving takes none.
+    [Fact]
+    public void InstrumentPage_Back_ThenFocusGoesToTheSearchField_AndArrivingTookNone()
+    {
+        Services.AddSingleton<IMuninExplorerClient>(new InstrumentClient(Variable(), Instrument()));
+        var cut = Render<VariableSearch>(b => b
+            .Add(c => c.SelectedVariableId, VariableId)
+            .Add(c => c.SelectedInstrumentId, Sf36));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<InstrumentView>()));
+        Assert.DoesNotContain(JSInterop.Invocations, i => i.Identifier == "Blazor._internal.domWrapper.focus");
+
+        cut.Find(".munin-explorer-drilldown button").Click();
+
+        var field = (ElementReference)typeof(VariableSearch)
+            .GetField("_searchField", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(cut.Instance)!;
+        cut.WaitForAssertion(() => Assert.Contains(JSInterop.Invocations, i =>
+            i.Identifier == "Blazor._internal.domWrapper.focus" && i.Arguments[0] is ElementReference r && r.Id == field.Id));
+    }
+
     [Fact]
     public void InstrumentPage_WhenTheApiPublishesNoSuchInstrument_ThenItSaysSoWhereTheVariablePageDoes()
     {

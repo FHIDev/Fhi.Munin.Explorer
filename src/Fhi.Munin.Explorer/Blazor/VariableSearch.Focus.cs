@@ -8,7 +8,7 @@ namespace Fhi.Munin.Explorer.Blazor;
 // (Fhi.Metadata-l9l2n.143, after l9l2n.140).
 public partial class VariableSearch
 {
-    private enum FocusAfter { None, WholeVariable, WholeVariableOpener, Source, SourceOpener }
+    private enum FocusAfter { None, WholeVariable, WholeVariableOpener, Source, SourceOpener, InstrumentClosed }
 
     private ElementReference _wholeRegion;
     private ElementReference _wholeToggle;
@@ -69,6 +69,9 @@ public partial class VariableSearch
     {
         FocusAfter.WholeVariable => (false, _wholeVariable ? _wholeRegion : null),
         FocusAfter.Source => (false, _sourceKind is not null ? _sourceRegion : null),
+        // The instrument opens from the address alone, so nothing on the page opened it: Back goes to the search
+        // field (Fhi.Metadata-l9l2n.147).
+        FocusAfter.InstrumentClosed => (false, _instrumentId is null ? _searchField : null),
         FocusAfter.WholeVariableOpener when _wholeVariable => (false, null),
         FocusAfter.SourceOpener when _sourceKind is not null => (false, null),
         FocusAfter.WholeVariableOpener or FocusAfter.SourceOpener when _selected is null => (false, _searchField),
