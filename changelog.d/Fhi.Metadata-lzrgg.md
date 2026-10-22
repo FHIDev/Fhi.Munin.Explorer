@@ -1,0 +1,2 @@
+category: Fixed
+- **A kilde chosen in the address is visible in the Kilde filter.** Arriving at the variable explorer from a kilde's «Variabler» link chose the kilde but left it inside a shut kildetype heading, so the filter in force was out of sight. On arrival, the branches between the top of the Kilde filter and each chosen kilde, delkilde or datasamling now open. «Skjul alle» still shuts them, and a branch the reader shuts stays shut. (Fhi.Metadata-lzrgg, innmeldt #6756)
