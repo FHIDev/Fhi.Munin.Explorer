@@ -8,7 +8,7 @@ refuse_shared_browser_path() {
   local target="${PLAYWRIGHT_BROWSERS_PATH:-}"
   [ -z "$target" ] && return 0                            # Playwright's own per-user cache
   local resolved
-  resolved="$(cd "$target" 2>/dev/null && pwd -P || printf '%s' "${target%/}")"
+  resolved="$(readlink -f "$target" 2>/dev/null || printf '%s' "${target%/}")"
   if [ "$resolved" = "/opt/ms-playwright" ] || [ "${target%/}" = "/opt/ms-playwright" ]; then
     echo "refusing to install browsers into $target: it is the box's shared folder, and the install replaces it." >&2
     echo "use a folder of your own, for example:" >&2

@@ -16,7 +16,8 @@ check "with a trailing slash too" 2 PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright/
 check "a private folder is allowed" 0 PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/explorer-pw"
 check "unset (Playwright's own cache) is allowed" 0
 check "a browser channel downloads nothing, so even the shared path passes" 0 PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright PLAYWRIGHT_BROWSER_CHANNEL=msedge
-if ln -s /opt/ms-playwright "${TMPDIR:-/tmp}/pw-guard-link-$$" 2>/dev/null; then
+# A CI runner has no /opt/ms-playwright; the link case needs the folder to point at.
+if [ -d /opt/ms-playwright ] && ln -s /opt/ms-playwright "${TMPDIR:-/tmp}/pw-guard-link-$$" 2>/dev/null; then
   check "a link to the shared folder is refused" 2 PLAYWRIGHT_BROWSERS_PATH="${TMPDIR:-/tmp}/pw-guard-link-$$"
   rm -f "${TMPDIR:-/tmp}/pw-guard-link-$$"
 fi
