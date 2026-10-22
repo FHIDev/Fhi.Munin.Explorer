@@ -410,9 +410,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     };
 
     /// <summary>
-    /// The list on screen: its last change off <c>my/lists</c>, and its variables, rows and kilder off
-    /// the membership walk — the size from <c>my/lists</c> until that walk is done, the kilde count left
-    /// out until then, since empty is how a refused one reads, and at zero, which "0 variabler" has said.
+    /// The list on screen: its size by <see cref="CountsOf"/>, its kilder once the walk is done (empty is
+    /// how a refused one reads, and "0 variabler" has said zero), and its last change off <c>my/lists</c>.
     /// </summary>
     private string? ListMeta
     {
@@ -423,8 +422,7 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 return null;
             }
 
-            // my/lists counts rows, and a variable in two datasamlinger is two of them (Fhi.Metadata-t7kx8).
-            var counts = State is { } read && read.ActiveListId == _shownList ? read.ActiveListCounts : null;
+            var counts = CountsOf(shown.Id);
 
             List<string> parts =
             [
@@ -456,7 +454,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// at, and an <c>&lt;option&gt;</c> holds text and nothing else, so the two are one string here.
     /// </remarks>
     private string ListOption(VariableList list) =>
-        $"{list.Name} ({T.ListVariableCount(list.VariableCount)})";
+        $"{list.Name} ({T.ListVariableCount(CountsOf(list.Id)?.Variables ?? list.VariableCount)})";
+
+    /// <summary>
+    /// A list's distinct variables and rows once the walk has read it, which only the active list's is;
+    /// null before, when <c>my/lists</c>' count, which is rows, stands in. (Fhi.Metadata-t7kx8)
+    /// </summary>
+    private (int Variables, int Rows)? CountsOf(Guid listId) =>
+        State is { } read && read.ActiveListId == listId ? read.ActiveListCounts : null;
 
     // The gestures RowPress calls a selection, less the drag it takes a press to tell. All three
     // controls ask it: a double-click used to shut the form its own first click opened, and on the

@@ -22,15 +22,22 @@ public sealed class ListHeaderCountTest : ExplorerTestContext
         // As Munin answers: variableCount is the stored rows.
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>(
-                [new VariableList { Id = ListId, Name = "Mine", VariableCount = items.Length }]);
+                [
+                    new VariableList { Id = ListId, Name = "Mine", VariableCount = items.Length },
+                    new VariableList { Id = Guid.NewGuid(), Name = "Andre", VariableCount = 0 },
+                ]);
+
+        public override Task<bool> RemoveVariablesFromMyListAsync(
+            Guid id, IReadOnlyCollection<Guid> variableIds, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
 
         public override Task<Page<VariableListItem>?> GetMyListVariablesAsync(
             Guid id, int page = 1, int pageSize = 100, IReadOnlyCollection<Guid>? kildeIds = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
-                Items = items,
-                TotalCount = items.Length,
+                Items = id == ListId ? items : [],
+                TotalCount = id == ListId ? items.Length : 0,
                 PageNumber = page,
                 Size = pageSize,
                 TotalPages = 1,
@@ -50,15 +57,16 @@ public sealed class ListHeaderCountTest : ExplorerTestContext
         DataType = "2",
     };
 
-    private string Header(string language, params VariableListItem[] rows)
+    private IRenderedComponent<VariableListView> Mount(string language, params VariableListItem[] rows)
     {
         Services.AddSingleton<IMuninExplorerClient>(new ListClient(rows));
         Services.AddScoped<VariableListState>();
 
-        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, language));
-
-        return cut.Find("p.caption").TextContent;
+        return Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, language));
     }
+
+    private string Header(string language, params VariableListItem[] rows) =>
+        Mount(language, rows).Find("p.caption").TextContent;
 
     [Theory]
     [InlineData("no", "2 variabler (3 rader) · fra 2 datakilder")]
@@ -104,6 +112,30 @@ public sealed class ListHeaderCountTest : ExplorerTestContext
     public void Header_WhenTheListHoldsOneVariableInOneRow_ThenEveryCountIsSingular(string language, string expected)
     {
         Assert.StartsWith(expected, Header(language, Row(Guid.NewGuid(), Als, Inklusjon)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Picker_WhenTheListOnScreenHasMoreRowsThanVariables_ThenItsOptionCountsVariablesAsTheHeaderDoes()
+    {
+        // The option sits right above the header; «Mine (3 variabler)» over «2 variabler (3 rader)» is the bead again.
+        var alder = Guid.NewGuid();
+
+        var cut = Mount("no", Row(alder, Als, Inklusjon), Row(alder, Als, Oppfolging), Row(Guid.NewGuid(), Tromso, Inklusjon));
+
+        Assert.Equal("Mine (2 variabler)", cut.Find("option[selected]").TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task Header_WhenOneOfAVariablesRowsIsRemovedByVariable_ThenItsVariableAndRowsGoTogether()
+    {
+        // Removing a variable takes every row of it, so the count follows the walk's set live.
+        var alder = Guid.NewGuid();
+        var cut = Mount("no", Row(alder, Als, Inklusjon), Row(alder, Als, Oppfolging), Row(Guid.NewGuid(), Tromso, Inklusjon));
+        var state = Services.GetRequiredService<VariableListState>();
+
+        await cut.InvokeAsync(() => state.RemoveVariablesAsync(state.ActiveListId!.Value, [alder]));
+
+        cut.WaitForAssertion(() => Assert.StartsWith("1 variabel ·", cut.Find("p.caption").TextContent, StringComparison.Ordinal));
     }
 
     [Fact]
