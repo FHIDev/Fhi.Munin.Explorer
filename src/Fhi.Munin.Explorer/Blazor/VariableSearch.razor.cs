@@ -1165,6 +1165,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// <summary>Leaves the drill-in view and returns to the list, which was never torn down.</summary>
     private Task CloseSourceAsync()
     {
+        ReturnFocusToSourceOpener();
         _sourceKind = null;
         _kilde = null;
         _datasamling = null;
