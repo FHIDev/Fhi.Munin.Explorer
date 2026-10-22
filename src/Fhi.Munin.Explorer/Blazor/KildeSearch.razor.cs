@@ -1156,15 +1156,19 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>
     /// <see cref="DatasamlingTrail"/>'s steps before the datasamling arrives: its kilde from the list,
-    /// and the word «Datasamling» where its own name will stand. (Fhi.Metadata-l9l2n.146)
+    /// and the word «Datasamling» on purpose where its own name will stand. (Fhi.Metadata-l9l2n.146)
     /// </summary>
     private IReadOnlyList<DetailTrailStep>? LoadingDatasamlingTrail =>
         _datasamling is not null ? null
         : DetailTrail.Append(
-            KildeHref is { } kilde && _kilder.FirstOrDefault(row => row.Id == _selectedId) is { } row
+            LoadingKildeHref is { } kilde && _kilder.FirstOrDefault(row => row.Id == _selectedId) is { } row
                 ? [.. KildeTrail, new DetailTrailStep(RowName(row).Text, kilde, CatalogueProperties.Foreign(RowName(row).Norwegian, Reader))]
                 : KildeTrail,
             (T.EyebrowDatasamling, false), Reader);
+
+    /// <summary><see cref="KildeHref"/> with the opened kilde standing in for the payload's parent, so the step keeps its address.</summary>
+    private string? LoadingKildeHref => _selectedId is { } id && id != Guid.Empty
+        && KildeDetailHref is not null ? KildeDetailHref(id) : DatasamlingHref?.Invoke(null);
 
     /// <summary>The same, plus the kilde an open datasamling hangs off.</summary>
     /// <remarks>

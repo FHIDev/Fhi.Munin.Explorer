@@ -7453,7 +7453,44 @@ public class KildeSearchTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy")));
         var trail = Assert.Single(cut.FindAll(".munin-explorer-drilldown .breadcrumbs"));
-        Assert.Equal("Inklusjon", trail.QuerySelectorAll("li").Last().TextContent.Trim());
+        Assert.Equal(["Kildeutforsker", "Als registeret", "Inklusjon"],
+                     trail.QuerySelectorAll("li").Select(crumb => crumb.TextContent.Trim()));
+        Assert.Equal(["/kilder", $"/kilder?kilde={kilde}"],
+                     trail.QuerySelectorAll("a").Select(link => link.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void Trail_WhileADatasamlingLoadsUnderAKildeTheListLacks_ThenItIsStillDrawnWithoutTheKildeStep()
+    {
+        // No name to give the kilde step, but a trail all the same, so the back button still does not flash.
+        var listed = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(listed, datasamling) { StallDatasamling = true };
+
+        var cut = RenderDrillIn(client, Guid.NewGuid(), datasamling, wireList: true);
+
+        var loading = Assert.Single(cut.FindAll(".munin-explorer-drilldown .breadcrumbs"));
+        Assert.Equal(["Kildeutforsker", "Datasamling"],
+                     loading.QuerySelectorAll("li").Select(crumb => crumb.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Trail_WhileADatasamlingLoadsOnAHostWithKildePages_ThenTheKildeStepLinksTheKildePageAsItWillAfter()
+    {
+        // KildeHref prefers KildeDetailHref once the payload names the parent; the loading step must too.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { StallDatasamling = true };
+
+        var cut = RenderWith(client, p => p
+            .Add(c => c.SelectedKildeId, kilde)
+            .Add(c => c.SelectedDatasamlingId, datasamling)
+            .Add(c => c.KilderHref, () => "/kilder")
+            .Add(c => c.KildeDetailHref, id => $"/kilder/{id}"));
+
+        var loading = Assert.Single(cut.FindAll(".munin-explorer-drilldown .breadcrumbs"));
+        Assert.Equal(["/kilder", $"/kilder/{kilde}"],
+                     loading.QuerySelectorAll("a").Select(link => link.GetAttribute("href")));
     }
 
     [Fact]
