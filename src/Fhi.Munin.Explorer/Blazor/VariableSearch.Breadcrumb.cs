@@ -63,7 +63,7 @@ public partial class VariableSearch
     private sealed record HierarchyReading(
         HierarchyLevel Level,
         Func<IReadOnlyList<Guid>> Chosen,
-        Func<Guid, string?> Name,
+        Func<Guid, (string Text, bool Norwegian)?> Name,
         string Fallback,
         Func<IReadOnlyList<Guid>, VariableFilter> Apply);
 
@@ -155,12 +155,12 @@ public partial class VariableSearch
                 // trail is not information, and the step still has to be pressable to clear what
                 // is under it.
                 var known = level.Name(chosen[0]);
-                var text = known ?? level.Fallback;
+                var text = known?.Text ?? level.Fallback;
 
                 crumbs.Add(new HierarchyCrumb(
                     level.Level,
                     chosen.Count > 1 ? T.CrumbMore(text, chosen.Count - 1) : text,
-                    Norwegian: known is not null));
+                    Norwegian: known is { Norwegian: true }));
             }
 
             return crumbs;
@@ -315,9 +315,9 @@ public partial class VariableSearch
     /// selected can be absent from the payload describing what that selection leaves — which is why
     /// the trail has a fallback label rather than assuming a name.
     /// </remarks>
-    private string? KildeName(Guid id) =>
-        DisplayText.Trimmed(_facets?.Kilder.FirstOrDefault(kilde => kilde.Id == id)?.Name)
-        ?? RowName(row => row.KildeId == id ? row.KildeName : null);
+    private (string Text, bool Norwegian)? KildeName(Guid id) =>
+        (_facets?.Kilder.FirstOrDefault(kilde => kilde.Id == id) is { } facet ? Shown(facet.Name, facet.NameEn) : null)
+        ?? RowName(row => row.KildeId == id ? Shown(row.KildeName, row.KildeNameEn) : null);
 
     /// <summary>
     /// A delkilde's name, or null when the facets do not carry it.
@@ -327,8 +327,8 @@ public partial class VariableSearch
     /// datasamling and its variabelgruppe, but not the delkilde in between, so there is no row to
     /// fall back to.
     /// </remarks>
-    private string? DelkildeName(Guid id) =>
-        DisplayText.Trimmed(_facets?.Delkilder.FirstOrDefault(delkilde => delkilde.Id == id)?.Name);
+    private (string Text, bool Norwegian)? DelkildeName(Guid id) =>
+        _facets?.Delkilder.FirstOrDefault(delkilde => delkilde.Id == id) is { } facet ? Shown(facet.Name, facet.NameEn) : null;
 
     /// <summary>
     /// A datasamling's name, or null when neither the facets nor the rows carry it.
@@ -339,21 +339,28 @@ public partial class VariableSearch
     /// says so, and against an API predating <see cref="FilterOptions.Datasamlinger"/> they are
     /// still the only source there is.
     /// </remarks>
-    private string? DatasamlingName(Guid id) =>
-        DisplayText.Trimmed(_facets?.Datasamlinger.FirstOrDefault(datasamling => datasamling.Id == id)?.Name)
-        ?? RowName(row => row.DatasamlingId == id ? row.DatasamlingName : null);
+    private (string Text, bool Norwegian)? DatasamlingName(Guid id) =>
+        (_facets?.Datasamlinger.FirstOrDefault(datasamling => datasamling.Id == id) is { } facet
+            ? Shown(facet.Name, facet.NameEn)
+            : null)
+        ?? RowName(row => row.DatasamlingId == id ? Shown(row.DatasamlingName, row.DatasamlingNameEn) : null);
 
     /// <summary>A variabelgruppe's name — the facets, then the rows, as the kilde's is.</summary>
     /// <remarks><see cref="ListedVariabelgrupper"/> and not either collection raw: the kilde tree
     /// ticks groups the facet withholds, and one id gets one name. (Fhi.Metadata-km3zb)</remarks>
-    private string? VariabelgruppeName(Guid id) =>
-        DisplayText.Trimmed(
-            _facets is { } facets
-                ? ListedVariabelgrupper(facets).FirstOrDefault(gruppe => gruppe.Id == id)?.Name
-                : null)
-        ?? RowName(row => row.VariabelgruppeId == id ? row.VariabelgruppeName : null);
+    private (string Text, bool Norwegian)? VariabelgruppeName(Guid id) =>
+        (_facets is { } facets && ListedVariabelgrupper(facets).FirstOrDefault(gruppe => gruppe.Id == id) is { } facet
+            ? Shown(facet.Name, facet.NameEn)
+            : null)
+        ?? RowName(row => row.VariabelgruppeId == id ? Shown(row.VariabelgruppeName, row.VariabelgruppeNameEn) : null);
 
     /// <summary>The first name the visible rows can supply for a value, or null if none can.</summary>
-    private string? RowName(Func<VariableSummary, string?> name) =>
-        _result?.Items.Select(row => DisplayText.Trimmed(name(row))).FirstOrDefault(found => found is not null);
+    private (string Text, bool Norwegian)? RowName(Func<VariableSummary, (string Text, bool Norwegian)?> name) =>
+        _result?.Items.Select(name).FirstOrDefault(found => found is not null);
+
+    /// <summary>A name in the reader's language by <see cref="ReaderLanguage.Pick"/>, or null where it is blank in both.</summary>
+    private (string Text, bool Norwegian)? Shown(string? name, string? nameEn) =>
+        ReaderLanguage.Pick(DisplayText.Trimmed(name), DisplayText.Trimmed(nameEn), Reader) is ({ } text, var norwegian)
+            ? (text, norwegian)
+            : null;
 }

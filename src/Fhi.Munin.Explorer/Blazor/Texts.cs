@@ -949,6 +949,19 @@ internal sealed record Texts(
         : (NotSpecified, false);
 
     /// <summary>
+    /// <see cref="Named(string?, string?)"/> with the English name an English reader is shown
+    /// (<see cref="ReaderLanguage.Pick"/>). Two flags, since an English name is a name but not Norwegian.
+    /// </summary>
+    public CatalogueName NamedFor(string? name, string? nameEn, string? code, string? reader)
+    {
+        var picked = ReaderLanguage.Pick(name, nameEn, reader);
+
+        return !string.IsNullOrWhiteSpace(picked.Text) ? new(picked.Text, true, picked.Norwegian)
+            : !string.IsNullOrWhiteSpace(code) ? new(code, false, false)
+            : new(NotSpecified, false, false);
+    }
+
+    /// <summary>
     /// Prose for a kildetype token out of the table shipped in this package, falling back to what
     /// the API called it. <see cref="KildeTypeNameFromApi"/> is the reading that prefers the API.
     /// </summary>
@@ -2229,7 +2242,10 @@ internal sealed record Texts(
         ChooseDatasamlingNone: "Choose at least one datasamling.",
         ChooseDatasamlingError: "Could not save the choice right now. Try again shortly.",
         DatasamlingColumnHint: "Datasamling is always shown, because it tells a variable's rows apart.",
-        OpensInNewWindow: "(opens in a new window)");
+        OpensInNewWindow: "(opens in a new window)")
+    {
+        Reader = ReaderLanguage.English,
+    };
 
     /// <summary>The words for a reader, defaulting to Norwegian for anything that is not English.</summary>
     /// <remarks>
@@ -2238,4 +2254,7 @@ internal sealed record Texts(
     /// that refused to render would take the whole host page down with it.
     /// </remarks>
     public static Texts For(string? language) => ReaderLanguage.IsEnglish(language) ? En : No;
+
+    /// <summary>The language these words are in, as <see cref="ReaderLanguage.Of"/> spells it.</summary>
+    public string Reader { get; private init; } = ReaderLanguage.Norwegian;
 }

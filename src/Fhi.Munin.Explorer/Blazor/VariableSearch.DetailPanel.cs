@@ -38,7 +38,7 @@ public partial class VariableSearch
     // the panel. (Fhi.Metadata-yaco2)
     private RenderFragment DrawerHeading(VariableSummary v) => builder =>
     {
-        var named = T.Named(v.PreferredTerm, v.Code);
+        var named = T.NamedFor(v.PreferredTerm, v.PreferredTermEn, v.Code, Reader);
 
         builder.OpenElement(0, $"h{RowLevel}");
         builder.AddAttribute(1, "class", "munin-explorer-meta__heading");

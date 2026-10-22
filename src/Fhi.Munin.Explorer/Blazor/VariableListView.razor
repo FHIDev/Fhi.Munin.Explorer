@@ -848,7 +848,7 @@ else if (State?.IsAuthenticated == true)
                     <dt class="headline headline-xxs margin--none">@T.FieldDescription</dt>
                     @if (RowPanelDescription(detail) is { } description)
                     {
-                        <dd lang="no">@CatalogueMarkdown.Render(description)</dd>
+                        <dd lang="@(description.Norwegian ? "no" : null)">@CatalogueMarkdown.Render(description.Text)</dd>
                     }
                     else
                     {

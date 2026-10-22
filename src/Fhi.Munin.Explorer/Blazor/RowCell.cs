@@ -27,8 +27,8 @@ internal static class RowCell
     /// row it is still emitted for assistive technology, because a screen reader moving down a
     /// column has no header to glance up at; <paramref name="tableCell"/> is the row that has one.
     /// <para>
-    /// <paramref name="catalogue"/> says whose words the value is. Nearly always the catalogue's,
-    /// which are Norwegian whatever the reader's language is, so they are marked <c>lang="no"</c>.
+    /// <paramref name="catalogue"/> says whether the value is the catalogue's Norwegian, which is
+    /// marked <c>lang="no"</c>. An English name Munin sent for an English reader is passed as false.
     /// A column the component composes itself — the dataperiode — is in the reader's language
     /// already and is left unmarked, exactly like the "Ikke oppgitt" beside it, so it inherits the
     /// host page's language rather than claiming a language it is not in.
@@ -114,9 +114,8 @@ internal static class RowCell
         }
         else if (catalogue)
         {
-            // The label follows Language; the value does not. Munin's metadata is Norwegian
-            // whatever language the surrounding UI is in, and an English speech synthesiser
-            // reading Norwegian variable names is unintelligible (WCAG 3.1.2).
+            // The catalogue's Norwegian, marked: an English speech synthesiser reading Norwegian
+            // variable names is unintelligible (WCAG 3.1.2).
             builder.OpenElement(seq + 10, "span");
             builder.AddAttribute(seq + 11, "lang", "no");
             builder.AddContent(seq + 12, value);

@@ -104,6 +104,9 @@ public sealed record HierarchyVariabelgruppe
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="Name"/>.</summary>
+    [JsonPropertyName("nameEn")] public string? NameEn { get; init; }
     [JsonPropertyName("variableCount")] public int VariableCount { get; init; }
 
     /// <summary>Nested groups — walk recursively.</summary>

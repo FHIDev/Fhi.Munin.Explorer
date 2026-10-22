@@ -19,12 +19,12 @@
             @* The name block, under the kildetype as Skuld's top has it (Fhi.Metadata-4ggs9, which
                brings back what Fhi.Metadata-pnn4w took out). *@
             <div class="munin-explorer-kilde__header">
-                @{ var named = T.Named(kilde.PreferredTerm, kilde.Code); }
+                @{ var named = StickyNamed; }
 
-                @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not - and
-                   not when the catalogue left the name empty and this is the code standing in for it. *@
+                @* English where the reader reads it and the catalogue has it; the Norwegian is marked on an
+                   English page, and the code standing in for an empty name is not. *@
                 @DetailBlocks.Heading(HeadingLevel, named.Text, "headline headline-s margin--bottom",
-                                      HeadingId, CatalogueProperties.Foreign(named.Norwegian, Reader))
+                                      HeadingId, named.Lang(Reader))
 
                 @* The code is left out where the heading above has already fallen back to it: the code
                    twice, stacked, is what a naive fallback draws. (Fhi.Metadata-w13lk) *@
@@ -33,11 +33,10 @@
                     <p class="caption margin--none munin-explorer-kilde__identifiers">@line</p>
                 }
 
-                @* Norwegian whatever the reader's language: the catalogue stores one description. *@
                 @if (Description is { } description)
                 {
                     @DetailBlocks.Prose(description.Lead, "ingress munin-explorer-kilde__description",
-                                        CatalogueProperties.Foreign("no", Reader))
+                                        DescriptionLang)
 
                     @* In the DOM while folded, so the page holds the whole text; Folded is null where it fits.
                        The inline display is because Stiler's `div { display: block }` outranks [hidden]. *@
@@ -46,7 +45,7 @@
                         <div id="@DescriptionRestId" class="munin-explorer-kilde__description-rest"
                              hidden="@(!_descriptionOpen)" style="@(_descriptionOpen ? null : "display:none")">
                             @DetailBlocks.Prose(folded, "ingress munin-explorer-kilde__description",
-                                                CatalogueProperties.Foreign("no", Reader))
+                                                DescriptionLang)
                         </div>
                         <button type="button" class="hd-button-reset munin-explorer-kilde__description-toggle"
                                 aria-expanded="@(_descriptionOpen ? "true" : "false")"

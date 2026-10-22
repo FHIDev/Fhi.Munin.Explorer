@@ -28,10 +28,17 @@ public sealed record VariableSummary
     /// <summary>Display name for the variable.</summary>
     [JsonPropertyName("preferredTerm")] public string PreferredTerm { get; init; } = "";
 
+    /// <summary>The name in English; null when Munin has none, so the reader is shown <see cref="PreferredTerm"/>.</summary>
+    [JsonPropertyName("preferredTermEn")] public string? PreferredTermEn { get; init; }
+
     [JsonPropertyName("beskrivelse")] public string? Description { get; init; }
 
     [JsonPropertyName("kildeId")] public Guid? KildeId { get; init; }
     [JsonPropertyName("kildeName")] public string? KildeName { get; init; }
+
+    /// <summary>The kilde's name in English; null when Munin has none, so the reader is shown <see cref="KildeName"/>.</summary>
+    [JsonPropertyName("kildeNameEn")] public string? KildeNameEn { get; init; }
+
     [JsonPropertyName("kildeKortNavn")] public string? KildeShortName { get; init; }
     [JsonPropertyName("kildeType")] public string? KildeType { get; init; }
 
@@ -49,8 +56,14 @@ public sealed record VariableSummary
     [JsonPropertyName("datasamlingId")] public Guid? DatasamlingId { get; init; }
     [JsonPropertyName("datasamlingName")] public string? DatasamlingName { get; init; }
 
+    /// <summary>The datasamling's name in English; null when Munin has none, so the reader is shown <see cref="DatasamlingName"/>.</summary>
+    [JsonPropertyName("datasamlingNameEn")] public string? DatasamlingNameEn { get; init; }
+
     [JsonPropertyName("variabelgruppeId")] public Guid? VariabelgruppeId { get; init; }
     [JsonPropertyName("variabelgruppeName")] public string? VariabelgruppeName { get; init; }
+
+    /// <summary>The variabelgruppe's name in English; null when Munin has none, so the reader is shown <see cref="VariabelgruppeName"/>.</summary>
+    [JsonPropertyName("variabelgruppeNameEn")] public string? VariabelgruppeNameEn { get; init; }
 
     /// <summary>Start of the period the data covers, when known.</summary>
     [JsonPropertyName("dataFrom")] public DateTimeOffset? DataFrom { get; init; }
