@@ -100,6 +100,7 @@ public sealed partial class KildeSearch : IAsyncDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await MoveFocusAsync();
         await ReadFilterFoldAsync();
 
         // The column picker's phone sheet, its «Lukk» and its outside press are the script's (Fhi.Metadata-mhqx0.8).
