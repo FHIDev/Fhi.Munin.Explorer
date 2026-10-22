@@ -1228,7 +1228,7 @@ public class ListRowPanelTest : ExplorerTestContext
 
         cut.WaitForAssertion(() => Assert.Contains(
             cut.FindAll("[role=status]"),
-            s => s.TextContent.Trim() == "Nettleseren tillot ikke kopiering. Kopier lenken under, eller send den på e-post."));
+            s => s.TextContent.Trim() == "Nettleseren tillot ikke kopiering. Kopier lenken under."));
 
         var label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Lenke til variabelen");
         var field = cut.Find($"#{label.GetAttribute("for")}");
