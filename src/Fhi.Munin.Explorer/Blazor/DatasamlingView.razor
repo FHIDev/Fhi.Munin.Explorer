@@ -75,7 +75,7 @@
 
     private bool HasVariablesAction => Datasamling is { VariableCount: > 0 } && HasVariablesNavigation;
 
-    private bool HasKildeAction => Datasamling is { ParentKildeId: var id } && id != Guid.Empty &&
+    private bool HasKildeAction => !TrailNamesKilde && Datasamling is { ParentKildeId: var id } && id != Guid.Empty &&
         (!string.IsNullOrWhiteSpace(ParentKildeAddress) || ShowKilde.HasDelegate);
 
     private bool HasHeaderActions => HasVariablesAction || HasKildeAction || Actions is not null;

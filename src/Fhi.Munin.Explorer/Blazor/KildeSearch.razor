@@ -90,10 +90,10 @@
 
            An <a> out of a datasamling and a <button> out of a kilde, because
            the two do different things: one changes the address and one changes this component's own
-           state. Both wear Stiler's button names; the kilde one also has a handle a host can hide it by. *@
+           state. Both wear Stiler's button names and the handle a host hides them by beside a trail. *@
         @if (_selectedDatasamlingId is not null && KildeHref is { } kildeHref)
         {
-            <a class="hd-button-square button-square--ghost-blue margin-bottom"
+            <a class="hd-button-square button-square--ghost-blue margin-bottom munin-explorer-kilder__back"
                href="@kildeHref">@T.BackToKilde</a>
         }
         else

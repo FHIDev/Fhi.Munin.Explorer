@@ -130,8 +130,14 @@ public sealed partial class DatasamlingView : ComponentBase
     private string? ParentKildeAddress => Datasamling is { ParentKildeId: var id } && id != Guid.Empty
         ? KildeHref?.Invoke(id) : null;
 
+    // The page trail already names and links the kilde (Kelda's): then «Kildesti» and «Vis datakilden» are a third
+    // and fourth way to it, and «Kildesti» a second nav landmark (Fhi.Metadata-l9l2n.145).
+    private bool TrailNamesKilde =>
+        Trail is { Count: > 0 } trail && Datasamling is { ParentKildeName: { Length: > 0 } name } &&
+        trail.Any(step => step.Label == name && step.Href is not null);
+
     private IReadOnlyList<DetailTrailStep>? SourceTrail =>
-        Datasamling is { } datasamling && !string.IsNullOrWhiteSpace(datasamling.ParentKildeName)
+        !TrailNamesKilde && Datasamling is { } datasamling && !string.IsNullOrWhiteSpace(datasamling.ParentKildeName)
             ? [new(datasamling.ParentKildeName, ParentKildeAddress, CatalogueProperties.Foreign("no", Reader)),
                new(StickyNamed.Text, null, StickyNameLang)]
             : null;
