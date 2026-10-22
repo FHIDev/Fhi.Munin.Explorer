@@ -103,6 +103,16 @@ public sealed partial class KildeView : ComponentBase, IDisposable
     public RenderFragment? Actions { get; set; }
 
     /// <summary>
+    /// The host's pages «Søk om tilgang» points to. Null takes the ones registered with
+    /// <see cref="Client.MuninExplorerOptions.AccessLinks"/>, which is how a CMS mount that can set no parameter gets them.
+    /// </summary>
+    [Parameter]
+    public KildeAccessLinks? AccessLinks { get; set; }
+
+    private IReadOnlyList<KildeAccess.Offer> AccessOffers =>
+        Kilde is { } kilde ? KildeAccess.Offers(kilde, AccessLinks ?? Services.GetService<KildeAccessLinks>(), T) : [];
+
+    /// <summary>
     /// An id for the name heading, so a surrounding region can label itself by it.
     /// </summary>
     /// <remarks>

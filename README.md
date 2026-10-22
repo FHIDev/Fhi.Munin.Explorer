@@ -1032,6 +1032,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-hierarchy__metadata` | handle |
   | `munin-explorer-hierarchy__nodes` | handle |
   | `munin-explorer-hierarchy__open` | handle |
+  | `munin-explorer-kilde__access` | handle |
   | `munin-explorer-kilde__datasamling-select` | handle |
   | `munin-explorer-kilde__datasamlinger` | handle |
   | `munin-explorer-kilde__datasamlinger--selectable` | meaning |
