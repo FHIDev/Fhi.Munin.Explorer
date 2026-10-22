@@ -29,6 +29,22 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.9.0 — 2026-10-21
+
+### Added
+
+- **The contracts carry the English names and descriptions Munin now sends.** `KildeSummary.NameEn`; `KildeDetail.PreferredTermEn` and `DescriptionEn`, and `NameEn`/`DescriptionEn` on its datasamlinger and delkilder; `DatasamlingDetail.PreferredTermEn`, `DescriptionEn` and `ParentKildeNameEn`; `KildeHierarchy.KildeNameEn` and `NameEn` on its delkilde and datasamling nodes; `VariableDetail.PreferredTermEn`, `DescriptionEn`, `KildeNameEn`, `DatasamlingNameEn`, `DelkildeNameEn`, `VariabelgruppeNameEn`, and `NameEn` on `VariabelgruppeReference` and `DatasamlingReference`. Each is null when Munin has no English text, and the Norwegian field beside it is unchanged. The component does not show them yet; that follows in the English Explorer work.
+
+### Fixed
+
+- **«Alle felt» shows the explorer's focus ring.** On a kilde's page, Tab reaching «Alle felt» drew only the browser's thin default ring; it now gets the same 2px ring as the rest of the explorer, with a Stiler that carries the rule (until then the browser's own, as before). (Fhi.Metadata-l9l2n.135)
+- **The Variabelliste tab's headings sit under the explorer's title.** «Filter» and the list's name were drawn at the title's own level, so a host passing `HeadingLevel` 1 got three h1s on that tab; they are now one level below it, like the search's own panels. At the default level that makes them h3 (were h2) and their sub-headings h4 (were h3); the classes set the size, so they look the same, but a host that styles these headings by tag rather than by class should check. (Fhi.Metadata-l9l2n.136)
+
+### Notes for hosts
+
+- **`KildeExplorer` takes `HeadingLevel`.** It is forwarded to `KildeSearch`, as `VariableExplorer` already does: the explorer's title renders at that level and the open kilde one below. Default 2, so nothing changes unless a host passes it. A host whose page has no heading of its own can pass 1, so the explorer's title is the page's h1, once its Stiler places the title at any level (see the note for Fhi.Metadata-l9l2n.136). The «Alle felt» focus ring is the rule `.munin-explorer-complete-record > summary:focus-visible`, in a Stiler that carries it; with an older Stiler that summary keeps the browser's default ring. (Fhi.Metadata-l9l2n.135)
+- **`HeadingLevel` 1 needs a Stiler that places the title by any heading level.** Stiler's desktop grid finds the explorer's title with `.munin-explorer > h2` and keeps it out of the results column with `:not(h2)`, so with `HeadingLevel` 1 on `VariableExplorer` or `KildeExplorer` the title lands in the results column. The Stiler fix (`:is(h1, h2, h3, h4, h5, h6)` in those three selectors) is a patch of its own; pass 1 only once your pinned Stiler carries it. (Fhi.Metadata-l9l2n.136)
+
 ## 2.8.0 — 2026-10-21
 
 ### Changed
