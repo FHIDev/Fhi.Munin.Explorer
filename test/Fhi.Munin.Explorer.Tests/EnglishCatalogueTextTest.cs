@@ -161,11 +161,11 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
         var cut = RenderKilde(Kilde(english: true), "en");
 
         Assert.Equal(EnglishName, cut.Find("h2").TextContent.Trim());
-        Assert.Null(LangOf(cut.Find("h2")));
+        Assert.Equal("en", LangOf(cut.Find("h2")));
 
         foreach (var text in new[] { EnglishDescription, "Somatics", "Somatic stays.", "Stays", "Every stay." })
         {
-            Assert.Null(LangOf(Holding(cut, text)));
+            Assert.Equal("en", LangOf(Holding(cut, text)));
         }
 
         Assert.False(Shows(cut, NorwegianName));
@@ -184,7 +184,7 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
             Assert.Equal("no", LangOf(Holding(cut, text)));
         }
 
-        Assert.Null(LangOf(Holding(cut, "Discharges")));
+        Assert.Equal("en", LangOf(Holding(cut, "Discharges")));
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
         var cut = RenderKilde(Kilde(english: true) with { DescriptionEn = null }, "en");
 
         Assert.Equal(EnglishName, cut.Find("h2").TextContent.Trim());
-        Assert.Null(LangOf(cut.Find("h2")));
+        Assert.Equal("en", LangOf(cut.Find("h2")));
         Assert.Equal("no", LangOf(Holding(cut, NorwegianDescription)));
     }
 
@@ -244,9 +244,9 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
         var cut = RenderDatasamling(Datasamling(english: true), "en");
 
         Assert.Equal("Stays", cut.Find("h2").TextContent.Trim());
-        Assert.Null(LangOf(cut.Find("h2")));
-        Assert.Null(LangOf(Holding(cut, EnglishDescription)));
-        Assert.Null(LangOf(Holding(cut, EnglishName)));
+        Assert.Equal("en", LangOf(cut.Find("h2")));
+        Assert.Equal("en", LangOf(Holding(cut, EnglishDescription)));
+        Assert.Equal("en", LangOf(Holding(cut, EnglishName)));
         Assert.False(Shows(cut, NorwegianName));
     }
 
@@ -262,7 +262,7 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
             Assert.Equal("no", LangOf(Holding(cut, text)));
         }
 
-        Assert.Null(LangOf(Holding(cut, EnglishName)));
+        Assert.Equal("en", LangOf(Holding(cut, EnglishName)));
         Assert.False(Shows(cut, NorwegianName));
     }
 
@@ -305,7 +305,7 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
 
         foreach (var text in new[] { "Age at admission", EnglishDescription, EnglishName, "Stays", "The patient" })
         {
-            Assert.Null(LangOf(Holding(cut, text)));
+            Assert.Equal("en", LangOf(Holding(cut, text)));
         }
 
         Assert.False(Shows(cut, "Alder ved innleggelse"));
@@ -321,7 +321,7 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
             Assert.Equal("no", LangOf(Holding(cut, text)));
         }
 
-        Assert.Null(LangOf(Holding(cut, "The patient")));
+        Assert.Equal("en", LangOf(Holding(cut, "The patient")));
     }
 
     [Fact]
@@ -397,6 +397,9 @@ public sealed class EnglishCatalogueTextTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.True(Shows(cut, gruppe)));
         Assert.Equal(datasamlingLang, Holding(cut, datasamling, "span").GetAttribute("lang"));
         Assert.Equal(gruppeLang, Holding(cut, gruppe, "span").GetAttribute("lang"));
+        // What a screen reader uses: the mark, or the view's own root, never the host page's lang (WCAG 3.1.2).
+        Assert.Equal(datasamlingLang ?? language, LangOf(Holding(cut, datasamling, "span")));
+        Assert.Equal(gruppeLang ?? language, LangOf(Holding(cut, gruppe, "span")));
     }
 
     // ---- VariableSearch: rows, facets and the hierarchy trail ---------------------------------
