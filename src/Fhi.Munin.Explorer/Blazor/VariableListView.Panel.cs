@@ -70,6 +70,8 @@ public sealed partial class VariableListView
     private string RowLinkFieldId(VariableListItem item) =>
         $"munin-explorer-list-link-{_instance}-{ItemSuffix(item)}";
 
+    private string RowMailHintId(VariableListItem item) => $"{RowShareHeadingId(item)}-mail-hint";
+
     private string RowShareHeadingId(VariableListItem item) =>
         $"munin-explorer-list-share-{_instance}-{ItemSuffix(item)}";
 

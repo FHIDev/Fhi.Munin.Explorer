@@ -404,6 +404,8 @@ internal sealed record Texts(
     string VariableLinkNotCopied,
     string VariableLinkLabel,
     string SendVariableByEmail,
+    // Under the mailto link, which opens nothing for a reader with no mail program (Fhi.Metadata-eeuey.4.33).
+    string SendByEmailHint,
     // (variable name) — the e-mail's subject line.
     Func<string, string> ShareVariableMailSubject,
     // (variable name, link) — the e-mail's body.
@@ -1420,9 +1422,10 @@ internal sealed record Texts(
         ShareVariable: "Del variabel",
         CopyVariableLink: "Kopier lenke",
         VariableLinkCopied: "Lenken er kopiert.",
-        VariableLinkNotCopied: "Nettleseren tillot ikke kopiering. Kopier lenken under, eller send den på e-post.",
+        VariableLinkNotCopied: "Nettleseren tillot ikke kopiering. Kopier lenken under.",
         VariableLinkLabel: "Lenke til variabelen",
         SendVariableByEmail: "Send via e-post",
+        SendByEmailHint: "Åpner e-postprogrammet ditt. Bruker du e-post i nettleseren, kopier lenken i stedet.",
         ShareVariableMailSubject: name => $"Variabel: {name}",
         ShareVariableMailBody: (name, link) => $"{name}: {link}",
         OpenSharedList: "Åpne delt liste",
@@ -1983,9 +1986,10 @@ internal sealed record Texts(
         ShareVariable: "Share variable",
         CopyVariableLink: "Copy link",
         VariableLinkCopied: "The link is copied.",
-        VariableLinkNotCopied: "The browser did not allow copying. Copy the link below, or send it by email.",
+        VariableLinkNotCopied: "The browser did not allow copying. Copy the link below.",
         VariableLinkLabel: "Link to the variable",
         SendVariableByEmail: "Send by email",
+        SendByEmailHint: "Opens your mail program. If you use webmail, copy the link instead.",
         ShareVariableMailSubject: name => $"Variable: {name}",
         ShareVariableMailBody: (name, link) => $"{name}: {link}",
         OpenSharedList: "Open shared list",
