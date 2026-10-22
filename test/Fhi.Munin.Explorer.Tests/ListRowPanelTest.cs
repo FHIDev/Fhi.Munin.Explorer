@@ -243,7 +243,7 @@ public class ListRowPanelTest : ExplorerTestContext
     }
 
     private IRenderedComponent<VariableListView> RenderView(
-        PanelClient client, Func<VariableListItem, string>? variableHref = null)
+        PanelClient client, Func<VariableListItem, string>? variableHref = null, string? language = null)
     {
         Services.AddSingleton<IMuninExplorerClient>(client);
         Services.AddScoped<VariableListState>();
@@ -251,6 +251,11 @@ public class ListRowPanelTest : ExplorerTestContext
         return Render<VariableListView>(p =>
         {
             p.Add(c => c.IsAuthenticated, true);
+
+            if (language is not null)
+            {
+                p.Add(c => c.Language, language);
+            }
 
             if (variableHref is not null)
             {
@@ -1322,6 +1327,31 @@ public class ListRowPanelTest : ExplorerTestContext
 
         Assert.StartsWith("mailto:?subject=Variabel: Databaseversjon&body=", href);
         Assert.EndsWith("Databaseversjon: https://helsedata.example/variabler?search=V_HKR&variabelId=1", href);
+    }
+
+    [Theory]
+    [InlineData("no", "Send via e-post", "Kopier lenke",
+                "Åpner e-postprogrammet ditt. Bruker du e-post i nettleseren, kopier lenken i stedet.")]
+    [InlineData("en", "Send by email", "Copy link",
+                "Opens your mail program. If you use webmail, copy the link instead.")]
+    public void SendByEmail_Always_ThenAHintUnderItPointsAWebmailReaderAtTheCopyButtonBesideIt(
+        string language, string send, string copy, string hint)
+    {
+        // A mailto opens nothing without a mail program (Fhi.Metadata-eeuey.4.33).
+        var cut = RenderView(new PanelClient(DatabaseVersion), _ => "https://helsedata.example/variabler", language);
+
+        NameButton(cut, "Databaseversjon").Click();
+        cut.WaitForElement("[role=region][id^='munin-explorer-list-panel-']");
+
+        var mail = cut.FindAll("a").Single(a => a.TextContent.Trim() == send);
+        var described = cut.Find($"#{mail.GetAttribute("aria-describedby")}");
+
+        Assert.Equal(hint, described.TextContent.Trim());
+        Assert.Contains("caption", described.ClassList);
+
+        // The copy button the hint names is beside the link, and the hint is right under the two of them.
+        Assert.Contains(mail.ParentElement!.Children, button => button.TextContent.Trim() == copy);
+        Assert.Equal(described.Id, mail.ParentElement!.NextElementSibling?.Id);
     }
 
     private IRenderedComponent<VariableExplorer> OpenInExplorer(

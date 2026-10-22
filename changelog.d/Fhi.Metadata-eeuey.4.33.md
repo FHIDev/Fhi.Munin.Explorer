@@ -1,0 +1,2 @@
+category: Fixed
+- **«Send via e-post» on a saved list's variable says what it opens, and what to do with webmail.** The link is a `mailto:`, which opens nothing for a reader with no mail program. A caption under it now reads «Åpner e-postprogrammet ditt. Bruker du e-post i nettleseren, kopier lenken i stedet.» («Opens your mail program. If you use webmail, copy the link instead.»), right under «Kopier lenke» beside it, and the link is described by it for a screen reader. No new class name. (Fhi.Metadata-eeuey.4.33)
