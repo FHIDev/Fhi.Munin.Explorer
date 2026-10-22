@@ -42,6 +42,8 @@ BASE="http://localhost:${PORT}"
 STUB_PORT="${HOSTILE_STUB_PORT:-5096}"
 STUB_BASE="http://127.0.0.1:${STUB_PORT}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/scripts/browser-path-guard.sh"
+refuse_shared_browser_path
 HOST_PROJECT="$ROOT/samples/HostileHost/HostileHost.csproj"
 
 # `explorer-tabs` is the search results as they load; `explorer-list-tab` is the second tab open,

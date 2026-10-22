@@ -81,6 +81,8 @@ BASE="http://localhost:${PORT}"
 STUB_PORT="${STATE_STUB_PORT:-5094}"
 STUB_BASE="http://127.0.0.1:${STUB_PORT}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$ROOT/scripts/browser-path-guard.sh"
+refuse_shared_browser_path
 HOST_PROJECT="$ROOT/samples/ModernHost/ModernHost.csproj"
 
 # `/` is VariableSearch on its own, which is where the four refused presses live: the column picker

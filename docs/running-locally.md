@@ -191,6 +191,12 @@ helsedata's private Azure Artifacts feed. So:
   failed unpack. Both scripts now skip the install when a channel is set and name the browser they
   used.
 
+- **On a devbox, give the browser gates a folder of their own.** The box sets `PLAYWRIGHT_BROWSERS_PATH`
+  to the shared `/opt/ms-playwright`, and `playwright install chromium` replaces that folder's contents with this
+  repo's pin, which broke every other session's browser once. The three gates now refuse that path with exit 2;
+  run them as `PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/explorer-pw" bash scripts/check-component-state.sh`
+  (`Fhi.Metadata-l9l2n.148`).
+
 - **No root and no browser libraries — the Forge box — is handled for you, at a small price.**
   Playwright's bundled chromium dies there on "Host system is missing dependencies". There is no
   `sudo` for `playwright install-deps`, and no `msedge` or any other browser for
