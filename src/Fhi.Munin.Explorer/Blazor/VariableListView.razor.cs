@@ -410,9 +410,8 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     };
 
     /// <summary>
-    /// The list on screen: its size and last change off <c>my/lists</c>, so neither can contradict
-    /// the picker, and its kilde count off the membership walk — left out until that walk is done,
-    /// since empty is how a refused one reads, and at zero, which "0 variabler" has already said.
+    /// The list on screen: its size by <see cref="CountsOf"/>, its kilder once the walk is done (empty is
+    /// how a refused one reads, and "0 variabler" has said zero), and its last change off <c>my/lists</c>.
     /// </summary>
     private string? ListMeta
     {
@@ -423,7 +422,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
                 return null;
             }
 
-            List<string> parts = [T.ListVariableCount(shown.VariableCount)];
+            var counts = CountsOf(shown.Id);
+
+            List<string> parts =
+            [
+                counts is { } known && known.Rows > known.Variables
+                    ? T.ListVariablesInRows(known.Variables, known.Rows)
+                    : T.ListVariableCount(counts?.Variables ?? shown.VariableCount)
+            ];
 
             // The tally is the active list's, so it is only this list's while the two agree: a
             // switch clears it before it awaits, but a notification can still render between them.
@@ -448,7 +454,14 @@ public sealed partial class VariableListView : ComponentBase, IDisposable
     /// at, and an <c>&lt;option&gt;</c> holds text and nothing else, so the two are one string here.
     /// </remarks>
     private string ListOption(VariableList list) =>
-        $"{list.Name} ({T.ListVariableCount(list.VariableCount)})";
+        $"{list.Name} ({T.ListVariableCount(CountsOf(list.Id)?.Variables ?? list.VariableCount)})";
+
+    /// <summary>
+    /// A list's distinct variables and rows once the walk has read it, which only the active list's is;
+    /// null before, when <c>my/lists</c>' count, which is rows, stands in. (Fhi.Metadata-t7kx8)
+    /// </summary>
+    private (int Variables, int Rows)? CountsOf(Guid listId) =>
+        State is { } read && read.ActiveListId == listId ? read.ActiveListCounts : null;
 
     // The gestures RowPress calls a selection, less the drag it takes a press to tell. All three
     // controls ask it: a double-click used to shut the form its own first click opened, and on the

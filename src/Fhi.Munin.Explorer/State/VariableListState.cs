@@ -223,11 +223,19 @@ public sealed partial class VariableListState(
         }
     }
 
-    /// <summary>Forces the next <see cref="EnsureLoadedAsync"/> to read again.</summary>
+    /// <summary>Forces the next <see cref="EnsureLoadedAsync"/> to read again, and the active list's membership with it.</summary>
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
         _loaded = false;
         await EnsureLoadedAsync(cancellationToken).ConfigureAwait(false);
+
+        // The counts come from the membership walk, not my/lists. Until a new walk publishes, ActiveListCounts is null
+        // and the header falls back to the refreshed total; IsSaved keeps the previous set, as the walk swaps in whole.
+        if (_activeListId is not null && _membershipLoaded)
+        {
+            _membershipLoaded = false;
+            await LoadMembershipAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>Creates a list and returns it, or <see langword="null"/> when signed out.</summary>
