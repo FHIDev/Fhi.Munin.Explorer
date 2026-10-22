@@ -121,6 +121,7 @@ public partial class VariableSearch
         _instrument = null;
         _instrumentError = null;
         _instrumentLoading = false;
+        _focusAfter = FocusAfter.InstrumentClosed; // Back removes itself; focus would fall to <body>
 
         await RaiseAsync<Guid?>(SelectedInstrumentIdChanged, null, Log);
     }
