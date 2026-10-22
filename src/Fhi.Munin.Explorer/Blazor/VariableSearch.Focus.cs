@@ -16,9 +16,20 @@ public partial class VariableSearch
     private FocusAfter _focusAfter;
     private SourceKind? _focusSourceOpener;
 
+    // The button pressed in the row's panel. «Vis datakilden» inside a datasamling turns the view into its kilde,
+    // so the view's own kind is not the way back (Copilot on #643).
+    private SourceKind? _sourceOpenedFrom;
+
+    private void FocusSourceOpenedFrom(SourceKind kind)
+    {
+        _sourceOpenedFrom = kind;
+        _focusAfter = FocusAfter.Source;
+    }
+
     private void ReturnFocusToSourceOpener()
     {
-        _focusSourceOpener = _sourceKind;
+        _focusSourceOpener = _sourceOpenedFrom ?? _sourceKind;
+        _sourceOpenedFrom = null;
         _focusAfter = FocusAfter.SourceOpener;
     }
 

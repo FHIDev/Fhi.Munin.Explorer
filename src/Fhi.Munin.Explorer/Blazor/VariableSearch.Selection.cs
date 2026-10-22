@@ -353,7 +353,7 @@ public partial class VariableSearch
         }
 
         _sourceKind = kind;
-        _focusAfter = FocusAfter.Source;
+        FocusSourceOpenedFrom(kind);
         await LoadSourceAsync(kind, id);
     }
 
