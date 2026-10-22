@@ -2185,6 +2185,9 @@ table.munin-explorer-data-list tbody th {
 .munin-explorer-kilde__access {
   display: grid;
   gap: 8px;
+  /* A flex item in the action row: without these a long e-mail address sets its minimum width and overflows a phone. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .munin-explorer-kilde__access > p:has(a) {
