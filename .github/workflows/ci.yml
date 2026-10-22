@@ -257,6 +257,8 @@ jobs:
         # its own and needs no feed secret — so it stays green on a fork pull request, where the
         # job that reads the real Stiler skips itself and takes the engine with it.
         run: bash scripts/test-sample-css-declarations.sh
+      - name: The browser gates refuse the shared browser folder
+        run: bash scripts/test-browser-path-guard.sh
 
   # A class name new on this branch has to be written down for whoever updates Fhi.Helsedata.Stiler,
   # which lives in Azure DevOps and is unreachable from here. The sample-css job above compares
