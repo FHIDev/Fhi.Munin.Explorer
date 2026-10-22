@@ -47,6 +47,7 @@ public partial class VariableSearch
 
         _beforeWhole = new(_selected, _tab);
         _wholeVariable = true;
+        _focusAfter = FocusAfter.WholeVariable;
 
         return Task.CompletedTask;
     }
@@ -61,6 +62,7 @@ public partial class VariableSearch
     private async Task CloseWholeVariableAsync()
     {
         _wholeVariable = false;
+        _focusAfter = FocusAfter.WholeVariableOpener;
 
         var before = _beforeWhole;
         _beforeWhole = null;
@@ -339,6 +341,7 @@ public partial class VariableSearch
     {
         if (SourceOpen(kind))
         {
+            ReturnFocusToSourceOpener();
             ClearSource();
 
             return;
@@ -350,6 +353,7 @@ public partial class VariableSearch
         }
 
         _sourceKind = kind;
+        FocusSourceOpenedFrom(kind);
         await LoadSourceAsync(kind, id);
     }
 
@@ -431,6 +435,7 @@ public partial class VariableSearch
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await MoveFocusAsync();
         if (_focusSaveAll)
         {
             _focusSaveAll = false;

@@ -123,6 +123,8 @@ else if (_wholeVariable)
        the host has to own. *@
     <div class="munin-explorer-drilldown"
          id="@WholeVariableId"
+         @ref="_wholeRegion"
+         tabindex="-1"
          role="region"
          aria-labelledby="@WholeVariableHeadingId"
          aria-busy="@DetailBusy">
@@ -862,6 +864,7 @@ else
                                         <button class="hd-button-square button-square--ghost margin-right margin-bottom"
                                                 type="button"
                                                 id="@SourceToggleId(kind)"
+                                                @ref="_sourceToggles[kind]"
                                                 aria-expanded="@SourceExpanded(kind)"
                                                 aria-controls="@SourceControls(kind)"
                                                 @onclick="e => ToggleSourceFromControlAsync(kind, e)">@SourceToggleText(kind)</button>
@@ -877,6 +880,7 @@ else
                                        place, and the id would name a view only there once this is not. *@
                                     <button class="hd-button-square button-square--ghost margin-right margin-bottom"
                                             type="button"
+                                            @ref="_wholeToggle"
                                             @onclick="ToggleWholeVariableFromControlAsync">@T.ShowWholeVariable</button>
 
                                     @* The owner's own record, drawn inside the variable's panel.

@@ -1,0 +1,2 @@
+category: Fixed
+- **«Vis hele variabelen» and the datakilde and datasamling views move keyboard focus in, and Back returns it.** Each replaces the list, and the button the reader pressed with it, so focus fell to the page and the next Tab went to the host's footer. Focus now moves to the new view, which a screen reader announces by its name. Its Back button returns focus to the button that opened it, or to the search field if that row has left the page. (Fhi.Metadata-l9l2n.143)

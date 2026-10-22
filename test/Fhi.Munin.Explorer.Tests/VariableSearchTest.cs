@@ -5659,6 +5659,59 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Empty(RowGlyphs(cut, "Tromsøundersøkelsen"));
     }
 
+    // «Vis hele variabelen» and the drill-ins replace the list, the pressed button with it, so focus fell to <body>;
+    // Back removes itself the same way (Fhi.Metadata-l9l2n.143, the variable explorer's half of l9l2n.140).
+    [Fact]
+    public void Focus_WhenTheWholeVariableOpensAndCloses_ThenItMovesInAndBackToTheButton()
+    {
+        var cut = RenderWith(TwoRows());
+        Toggles(cut)[0].Click();
+        cut.WaitForAssertion(() => WholeVariableToggle(cut));
+
+        WholeVariableToggle(cut).Click();
+        cut.WaitForAssertion(() => Assert.Equal(RefOf(cut.Find(".munin-explorer-drilldown")), LastFocused()));
+
+        cut.Find(".munin-explorer-drilldown > button").Click();
+        cut.WaitForAssertion(() => Assert.Equal(RefOf(WholeVariableToggle(cut)), LastFocused()));
+    }
+
+    [Fact]
+    public void Focus_WhenADatakildeOpensAndCloses_ThenItMovesInAndBackToTheButton()
+    {
+        var cut = RenderWith(TwoRows());
+        Toggles(cut)[0].Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(SourceToggles(cut)));
+
+        SourceToggles(cut)[0].Click();
+        cut.WaitForAssertion(() => Assert.Equal(RefOf(cut.Find(".munin-explorer-drilldown")), LastFocused()));
+
+        cut.Find(".munin-explorer-drilldown > button").Click();
+        cut.WaitForAssertion(() => Assert.Equal(RefOf(SourceToggles(cut)[0]), LastFocused()));
+    }
+
+    [Fact]
+    public void Focus_WhenADatasamlingWentOnToItsKilde_ThenBackReturnsToVisDatasamling()
+    {
+        // The view turned into the kilde, but the reader pressed «Vis datasamling» (Copilot on #643).
+        var parent = Guid.NewGuid();
+        var client = TwoRows().Knows(Datasamling() with { ParentKildeId = parent }).Knows(Kilde() with { Id = parent });
+        var cut = RenderWith(client);
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[1].Click();
+        cut.FindAll(".munin-explorer-datasamling > .munin-explorer-page__actions button")
+            .Single(button => AccessibleName.Of(button) == "Vis datakilden").Click();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".munin-explorer-kilde")));
+
+        cut.Find(".munin-explorer-drilldown > button").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(RefOf(SourceToggles(cut)[1]), LastFocused()));
+    }
+
+    private static string? RefOf(AngleSharp.Dom.IElement element) => element.GetAttribute("blazor:elementreference");
+
+    private string? LastFocused() => JSInterop.Invocations["Blazor._internal.domWrapper.focus"]
+        .Select(i => i.Arguments[0] is ElementReference r ? r.Id : null).LastOrDefault();
+
     [Fact]
     public void Source_WhenTheNodeIconsAreOff_ThenTheKildeDrilledIntoDrawsNoneEither()
     {
