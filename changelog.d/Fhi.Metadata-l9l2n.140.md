@@ -1,0 +1,2 @@
+category: Fixed
+- **Opening a kilde from the list moves keyboard focus into its view.** The list, and the name the reader pressed, are replaced by the kilde's view, so focus fell to the page and the next Tab went to the host's footer. Focus now moves to the kilde's view, which a screen reader announces by its name, and «Tilbake til kildeutforsker» returns it to the kilde the reader opened. (Fhi.Metadata-l9l2n.140)

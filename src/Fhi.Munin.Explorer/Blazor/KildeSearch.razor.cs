@@ -967,6 +967,7 @@ public sealed partial class KildeSearch : ComponentBase
     {
         _selectedId = kilde.Id;
         _selectedName = RowName(kilde);
+        _focus = FocusAfterRender.Detail;
 
         // Before the callback rather than inside LoadKildeAsync after it: an asynchronous host —
         // one writing the URL, say — yields, and ComponentBase draws the open view in that gap.
@@ -992,6 +993,8 @@ public sealed partial class KildeSearch : ComponentBase
     private async Task CloseAsync()
     {
         _detailGeneration++;
+        _focusRowOf = _selectedId;
+        _focus = FocusAfterRender.Row;
         _selectedId = null;
         _selectedName = null;
         _kilde = null;
