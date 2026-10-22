@@ -8,7 +8,7 @@
                 Trail="@PageTrail"
                 TrailLabel="@T.TrailLabel"
                 Eyebrow="@KildetypeLabel"
-                Actions="@Actions"
+                Actions="@PageActions"
                 Facts="@HeroFacts"
                 StickyName="@StickyNamed.Text"
                 StickyNameLang="@StickyNameLang"
@@ -100,3 +100,30 @@
     </DetailPage>
 }
 </CascadingValue>
+
+@code {
+    /// <summary>«Søk om tilgang» first, then whatever the caller puts in the action row; nothing when both are empty.</summary>
+    private RenderFragment? PageActions => AccessOffers.Count == 0 ? Actions : @<text>
+        <div class="munin-explorer-kilde__access">
+            @foreach (var offer in AccessOffers)
+            {
+                <p class="margin--none">@foreach (var (text, fill) in KildeAccess.Pieces(offer))
+                {
+                    @text
+                    @if (fill is not null)
+                    {
+                        <span lang="@CatalogueProperties.Foreign(fill.Norwegian, Reader)">@fill.Text</span>
+                    }
+                }</p>
+                <p class="margin--none">
+                    @foreach (var link in offer.Links)
+                    {
+                        <a href="@link.Href" class="@(link.Primary ? "hd-button-square button-square--primary" : null)">@link.Text</a>
+                        @(" ")
+                    }
+                </p>
+            }
+        </div>
+        @Actions
+    </text>;
+}

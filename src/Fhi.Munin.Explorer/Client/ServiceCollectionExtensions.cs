@@ -20,6 +20,13 @@ public sealed class MuninExplorerOptions
     /// </para>
     /// </summary>
     public string? ApiBaseUrl { get; set; }
+
+    /// <summary>
+    /// The host's pages the kilde page's «Søk om tilgang» points to (configuration section
+    /// <c>MuninExplorer:AccessLinks</c>). Null, the default, gives no kilde an application through the host;
+    /// a registry's own page and open data are still linked.
+    /// </summary>
+    public Blazor.KildeAccessLinks? AccessLinks { get; set; }
 }
 
 /// <summary>The one call a host makes to use the explorer components.</summary>
@@ -101,6 +108,11 @@ public static class ServiceCollectionExtensions
         // singleton: that would be one user's lists served to every circuit on the server.
         services.TryAddScoped<VariableListState>();
 
+        if (options.AccessLinks is { } accessLinks)
+        {
+            services.TryAddSingleton(accessLinks);
+        }
+
         services.AddHttpClient<IMuninExplorerClient, MuninExplorerClient>(client =>
         {
             // Trailing slash so relative routes ("api/explorer/...") resolve against the
@@ -132,7 +144,8 @@ public static class ServiceCollectionExtensions
 
     /// <summary>
     /// Reads <c>MuninExplorer:ApiBaseUrl</c> from configuration
-    /// (environment variable <c>MuninExplorer__ApiBaseUrl</c>).
+    /// (environment variable <c>MuninExplorer__ApiBaseUrl</c>), and <c>MuninExplorer:AccessLinks</c> for
+    /// <see cref="MuninExplorerOptions.AccessLinks"/>.
     /// </summary>
     public static IServiceCollection AddMuninExplorer(
         this IServiceCollection services,
@@ -140,7 +153,13 @@ public static class ServiceCollectionExtensions
         string? developmentFallback = null)
     {
         var fromConfiguration = configuration["MuninExplorer:ApiBaseUrl"];
+        var access = configuration.GetSection("MuninExplorer:AccessLinks");
+        var accessLinks = new Blazor.KildeAccessLinks(
+            access["ApplicationHref"], access["PersonalDataGuideHref"], access["AnonymousDataGuideHref"], access["OpenDataHref"]);
         return services.AddMuninExplorer(o =>
-            o.ApiBaseUrl = string.IsNullOrWhiteSpace(fromConfiguration) ? developmentFallback : fromConfiguration);
+        {
+            o.ApiBaseUrl = string.IsNullOrWhiteSpace(fromConfiguration) ? developmentFallback : fromConfiguration;
+            o.AccessLinks = access.Exists() ? accessLinks : null;
+        });
     }
 }

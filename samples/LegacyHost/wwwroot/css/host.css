@@ -2181,6 +2181,19 @@ table.munin-explorer-data-list tbody th {
   outline-offset: 2px;
 }
 
+/* «Søk om tilgang» in the action row: each sentence over its links, the links side by side and wrapping (Fhi.Metadata-l9l2n.142). */
+.munin-explorer-kilde__access {
+  display: grid;
+  gap: 8px;
+}
+
+.munin-explorer-kilde__access > p:has(a) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
 /* Skuld's two jump links under the description, side by side and wrapping on a phone (Fhi.Metadata-4ggs9). */
 .munin-explorer-kilde__jumps {
   display: flex;
