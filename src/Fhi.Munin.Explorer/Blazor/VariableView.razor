@@ -3,7 +3,10 @@
 <CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 @if (Variable is { } variable)
 {
+    @* lang: mounted on its own, nothing above says what the reader reads, and the host's lang need
+       not follow it (WCAG 3.1.2). *@
     <DetailPage ViewRoot="munin-explorer-whole"
+                lang="@Reader"
                 ViewMain="munin-explorer-whole__main"
                 Eyebrow="@T.EyebrowVariable"
                 Trail="@PageTrail"
@@ -16,21 +19,22 @@
                 Contents="@DetailToc.Column(Toc, T.HeadingContents)">
         <Header>
             <div class="munin-explorer-whole__header">
-                @{ var named = T.Named(variable.PreferredTerm, variable.Code); }
+                @{ var named = StickyNamed; }
 
-                @* The catalogue holds one name, in Norwegian, so it is marked when the reader is not - and
-                   not when the catalogue left the name empty and this is the code standing in for it. *@
+                @* English where the reader reads it and the catalogue has it; the Norwegian is marked on an
+                   English page, and the code standing in for an empty name is not. *@
                 @DetailBlocks.Heading(HeadingLevel, named.Text, "headline headline-s margin--bottom",
-                                      HeadingId, CatalogueProperties.Foreign(named.Norwegian, Reader))
+                                      HeadingId, named.Lang(Reader))
 
                 @* Not when the heading above has already fallen back to it. (Fhi.Metadata-w13lk) *@
-                @if (named.Norwegian && !string.IsNullOrWhiteSpace(variable.Code))
+                @if (named.Named && !string.IsNullOrWhiteSpace(variable.Code))
                 {
                     <p class="caption margin--none munin-explorer-whole__code">@variable.Code</p>
                 }
 
-                @DetailBlocks.Prose(variable.Description, "ingress munin-explorer-whole__description",
-                                    CatalogueProperties.Foreign("no", Reader))
+                @{ var description = ReaderLanguage.Pick(variable.Description, variable.DescriptionEn, Reader); }
+                @DetailBlocks.Prose(description.Text, "ingress munin-explorer-whole__description",
+                                    CatalogueProperties.Foreign(description.Norwegian, Reader))
             </div>
         </Header>
         <ChildContent>
@@ -127,7 +131,8 @@
                            empty bullet for a group the catalogue left unnamed. *@
                         @foreach (var gruppe in Variabelgrupper)
                         {
-                            <li lang="@CatalogueProperties.Foreign("no", Reader)">@gruppe.Name</li>
+                            var shown = ReaderLanguage.Pick(gruppe.Name, gruppe.NameEn, Reader);
+                            <li lang="@CatalogueProperties.Foreign(shown.Norwegian, Reader)">@shown.Text</li>
                         }
                     </ul>
                 </DetailSection>
@@ -161,7 +166,8 @@
                         @foreach (var datasamling in Datasamlinger)
                         {
                             <li>
-                                <span lang="@CatalogueProperties.Foreign("no", Reader)">@datasamling.Name</span>
+                                @{ var shown = ReaderLanguage.Pick(datasamling.Name, datasamling.NameEn, Reader); }
+                                <span lang="@CatalogueProperties.Foreign(shown.Norwegian, Reader)">@shown.Text</span>
                                 @if (CatalogueDate.Period(datasamling.DataFrom, datasamling.DataTo, Language, T) is { } period)
                                 {
                                     <span class="caption"> (@period)</span>

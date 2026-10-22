@@ -89,12 +89,17 @@ public partial class VariableSearch
     /// Only the catalogue's own name is Norwegian; marking a code or this package's prose would read it
     /// in a Norwegian voice, which is <c>lang</c> applied backwards (WCAG 3.1.2).
     /// </remarks>
-    private (string Text, string? Language) CatalogueName(string? name, string? code)
+    private (string Text, string? Language) CatalogueName(string? name, string? nameNo, string? code)
     {
-        var (text, norwegian) = T.Named(name, code);
+        var (text, isName) = T.Named(name, code);
 
-        return (text, CatalogueProperties.Foreign(norwegian, Reader));
+        return (text, isName ? CatalogueProperties.Foreign(FacetNorwegian(name, nameNo), Reader) : null);
     }
+
+    /// <summary>Whether a facet's name, which the API resolves against <c>Accept-Language</c>, is
+    /// still the Norwegian: no English existed, or an API older than <c>nameNo</c>. (Fhi.Metadata-pfejp.7)</summary>
+    private static bool FacetNorwegian(string? name, string? nameNo) =>
+        nameNo is null || string.Equals(name?.Trim(), nameNo.Trim(), StringComparison.Ordinal);
 
     /// <summary>The facets on screen, in the order they are drawn.</summary>
     /// <remarks>
@@ -602,7 +607,7 @@ public partial class VariableSearch
     /// </remarks>
     private FacetValue KildeValue(KildeFacet kilde)
     {
-        var (label, language) = CatalogueName(kilde.Name, kilde.ShortName);
+        var (label, language) = CatalogueName(kilde.Name, kilde.NameNo, kilde.ShortName);
 
         return new(FacetValueKey(HierarchyLevel.Kilde, kilde.Id),
             label,
@@ -653,7 +658,7 @@ public partial class VariableSearch
 
         FacetValue Value(HierarchyNode node)
         {
-            var (label, language) = CatalogueName(node.Name, node.ShortName);
+            var (label, language) = CatalogueName(node.Name, node.NameNo, node.ShortName);
             IReadOnlyList<FacetValue> children = [.. node.Children.Select(Value)];
 
             // A guard and not a row the tree draws: HierarchyLevels reads all four levels the
@@ -723,7 +728,7 @@ public partial class VariableSearch
     }
 
     private (string Text, string? Language) DelkildeLabel(DelkildeFacet delkilde) =>
-        CatalogueName(delkilde.Name, null);
+        CatalogueName(delkilde.Name, delkilde.NameNo, null);
 
     /// <summary>A datasamling the same way, and out of the same one caller.</summary>
     private FacetValue DatasamlingValue(DatasamlingFacet datasamling)
@@ -744,7 +749,7 @@ public partial class VariableSearch
     }
 
     private (string Text, string? Language) DatasamlingLabel(DatasamlingFacet datasamling) =>
-        CatalogueName(datasamling.Name, null);
+        CatalogueName(datasamling.Name, datasamling.NameNo, null);
 
     private bool IsDelkildeChosen(Guid id) => _filter.DelkildeIds.Contains(id);
 
@@ -773,7 +778,7 @@ public partial class VariableSearch
         return new(FacetName(HierarchyLevel.Variabelgruppe),
             T.FieldVariableGroup,
             OpenByDefault: false,
-            Tree(grupper.Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, null), g.Count)),
+            Tree(grupper.Select(g => Node(g.Id, g.ParentId, CatalogueName(g.Name, g.NameNo, null), g.Count)),
                  $"{FacetName(HierarchyLevel.Variabelgruppe)}:",
                  IsGruppeChosen,
                  id => containers.Contains(id) ? null : ToggleGruppe(id), Counted),
@@ -819,7 +824,7 @@ public partial class VariableSearch
     /// values through <see cref="Tree"/>.</summary>
     private FacetValue VariabelgruppeValue(VariabelgruppeFacet gruppe)
     {
-        var (label, language) = CatalogueName(gruppe.Name, null);
+        var (label, language) = CatalogueName(gruppe.Name, gruppe.NameNo, null);
 
         // The chip stands for the group wherever it was ticked, so pressing it takes off every placement.
         return new(FacetValueKey(HierarchyLevel.Variabelgruppe, gruppe.Id),
@@ -878,7 +883,7 @@ public partial class VariableSearch
             T.FacetFilter,
             OpenByDefault: false,
             Tree(facets.Filters
-                     .Select(f => Node(f.Id, f.ParentId, CatalogueName(f.Name, null), f.Count)),
+                     .Select(f => Node(f.Id, f.ParentId, CatalogueName(f.Name, f.NameNo, null), f.Count)),
                  "filter:",
                  IsSavedFilterChosen,
                  ToggleSavedFilter, Counted));
@@ -945,7 +950,7 @@ public partial class VariableSearch
         // The OID when fhi.kodeverk could not be reached, because a nameless button is worse
         // than one labelled with the number the filter actually sends — and an OID is a number
         // rather than Norwegian, which is what CatalogueName marks the two apart by.
-        var (label, language) = CatalogueName(kodeverk.Name, kodeverk.Oid);
+        var (label, language) = CatalogueName(kodeverk.Name, null, kodeverk.Oid);
 
         return new($"ak:{kodeverk.Oid}",
             label,
@@ -962,7 +967,7 @@ public partial class VariableSearch
 
     private FacetValue InstrumentValue(InstrumentFacet instrument)
     {
-        var (label, language) = CatalogueName(instrument.Name, instrument.Code);
+        var (label, language) = CatalogueName(instrument.Name, null, instrument.Code);
 
         return new($"instrument:{instrument.Id}",
             label,
@@ -1774,12 +1779,12 @@ public partial class VariableSearch
                 .Select(id => (Id: id, Name: level.Name(id)))
                 .ToList();
 
-            // Every HierarchyReading.Name reads a facet's or a row's Name and never a code or a
-            // short name, so a non-null one is the catalogue's Norwegian — the split the trail
-            // records as HierarchyCrumb.Norwegian, the fallback below being this package's prose.
+            // Every HierarchyReading.Name reads a facet's or a row's name and never a code or a
+            // short name, so it says itself whether it is the catalogue's Norwegian — the split the
+            // trail records as HierarchyCrumb.Norwegian, the fallback below being this package's prose.
             foreach (var (id, name) in missing.Where(value => value.Name is not null))
             {
-                chips.Add(Chip(name!, Foreign(ReaderLanguage.Norwegian),
+                chips.Add(Chip(name!.Value.Text, name.Value.Norwegian ? Foreign(ReaderLanguage.Norwegian) : null,
                                () => ToggleAsync(level.Chosen(), id, level.Apply)));
             }
 

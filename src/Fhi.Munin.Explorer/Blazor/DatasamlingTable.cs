@@ -92,7 +92,7 @@ internal static class DatasamlingTable
 
             if (selection is not null)
             {
-                SelectCell(builder, ref seq, row, texts, selection);
+                SelectCell(builder, ref seq, row, texts, reader, selection);
             }
 
             // The name is a th, not a td: it is what the rest of the row is about, and a screen
@@ -100,17 +100,18 @@ internal static class DatasamlingTable
             // A datasamling carries no code, so the short name is what stands in - and an empty th
             // would cost every other cell in the row its row header, which is the one place the
             // bead was right about the header (Fhi.Metadata-w13lk).
-            var named = texts.Named(row.Name, row.ShortName);
+            var named = texts.NamedFor(row.Name, row.NameEn, row.ShortName, reader);
 
             builder.OpenElement(seq++, "th");
             builder.AddAttribute(seq++, "scope", "row");
-            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(named.Norwegian, reader));
-            builder.AddContent(seq++, named.Norwegian && !string.IsNullOrWhiteSpace(row.ShortName)
+            builder.AddAttribute(seq++, "lang", named.Lang(reader));
+            builder.AddContent(seq++, named.Named && !string.IsNullOrWhiteSpace(row.ShortName)
                 ? $"{named.Text} ({row.ShortName})"
                 : named.Text);
             builder.CloseElement();
 
-            DescriptionCell(builder, ref seq, texts.FieldDescription, row.Description, reader);
+            DescriptionCell(builder, ref seq, texts.FieldDescription,
+                            ReaderLanguage.Pick(row.Description, row.DescriptionEn, reader), reader);
             Cell(builder, ref seq, texts.FieldValidity,
                  CatalogueDate.Period(row.EffectiveValidFrom, row.EffectiveValidTo, language, texts),
                  reader,
@@ -154,9 +155,10 @@ internal static class DatasamlingTable
         ref int seq,
         KildeDatasamling row,
         Texts texts,
+        string reader,
         Selection selection)
     {
-        var named = texts.Named(row.Name, row.ShortName);
+        var named = texts.NamedFor(row.Name, row.NameEn, row.ShortName, reader);
 
         builder.OpenElement(seq++, "td");
         builder.AddAttribute(seq++, "class", "munin-explorer-kilde__datasamling-select");
@@ -188,12 +190,12 @@ internal static class DatasamlingTable
     /// markdown structure never shifts the cells after it.
     /// </summary>
     private static void DescriptionCell(
-        RenderTreeBuilder builder, ref int seq, string label, string? value, string reader)
+        RenderTreeBuilder builder, ref int seq, string label, (string? Text, bool Norwegian) value, string reader)
     {
         builder.OpenElement(seq++, "td");
         builder.AddAttribute(seq++, "data-label", label);
-        builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", reader));
-        builder.AddContent(seq++, CatalogueMarkdown.Render(value));
+        builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(value.Norwegian, reader));
+        builder.AddContent(seq++, CatalogueMarkdown.Render(value.Text));
         builder.CloseElement();
     }
 

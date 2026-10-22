@@ -878,7 +878,7 @@ public sealed partial class VariableSearch : ComponentBase
     // opens. The w13lk rule applies, so a blank PreferredTerm is named by its code.
     private string ExpandLabel(VariableSummary v)
     {
-        var name = T.Named(v.PreferredTerm, v.Code).Text;
+        var name = T.NamedFor(v.PreferredTerm, v.PreferredTermEn, v.Code, Reader).Text;
 
         return IsSelected(v) ? T.CollapseVariableDetail(name) : T.ExpandVariableDetail(name);
     }
@@ -933,10 +933,11 @@ public sealed partial class VariableSearch : ComponentBase
         // The save button in the open panel borrows these words for its name, so this id is on
         // the span holding the name alone and is written nowhere else (WCAG 4.1.1).
         builder.AddAttribute(17, "id", RowHeadingId(v));
-        // Munin's variable names are Norwegian whatever language the surrounding UI is in.
-        builder.AddAttribute(18, "lang", "no");
+        // Munin's English name where the reader reads English and it has one; the Norwegian is marked.
+        var shown = ReaderLanguage.Pick(v.PreferredTerm, v.PreferredTermEn, Reader);
+        builder.AddAttribute(18, "lang", shown.Norwegian ? "no" : null);
         // No title: Stiler wraps the name since 0.1.88, so a tooltip would repeat what is on screen.
-        builder.AddContent(19, v.PreferredTerm);
+        builder.AddContent(19, shown.Text);
         builder.CloseElement();
 
         builder.CloseElement();
@@ -1152,7 +1153,7 @@ public sealed partial class VariableSearch : ComponentBase
     private RenderFragment WholeVariableHeading => builder =>
     {
         var row = _result?.Items.FirstOrDefault(v => VariableDatasamlingKey.Of(v) == _selected);
-        var named = T.Named(row?.PreferredTerm, row?.Code);
+        var named = T.NamedFor(row?.PreferredTerm, row?.PreferredTermEn, row?.Code, Reader);
 
         builder.OpenElement(0, $"h{RowLevel}");
         builder.AddAttribute(1, "class", "headline headline-s margin--bottom");
@@ -1214,17 +1215,25 @@ public sealed partial class VariableSearch : ComponentBase
         // kortnavn is null or "".
         if (ColumnVisible(ResultColumn.Kilde))
         {
-            RowCell.Write(builder, 200, T.FieldSource, DisplayText.Trimmed(v.KildeShortName) ?? v.KildeName, "source", T.NotSpecified, tooltip: v.KildeName);
+            // Only the full name is picked: the short name has no English, so it stays marked as Norwegian.
+            var kilde = ReaderLanguage.Pick(v.KildeName, v.KildeNameEn, Reader);
+            var shortName = DisplayText.Trimmed(v.KildeShortName);
+            RowCell.Write(builder, 200, T.FieldSource, shortName ?? kilde.Text, "source", T.NotSpecified,
+                          tooltip: kilde.Text, catalogue: shortName is not null || kilde.Norwegian);
         }
 
         if (ColumnVisible(ResultColumn.Datasamling))
         {
-            RowCell.Write(builder, 300, T.FieldDataCollection, v.DatasamlingName, "dataCollection", T.NotSpecified);
+            var datasamling = ReaderLanguage.Pick(v.DatasamlingName, v.DatasamlingNameEn, Reader);
+            RowCell.Write(builder, 300, T.FieldDataCollection, datasamling.Text, "dataCollection", T.NotSpecified,
+                          catalogue: datasamling.Norwegian);
         }
 
         if (ColumnVisible(ResultColumn.Variabelgruppe))
         {
-            RowCell.Write(builder, 400, T.FieldVariableGroup, v.VariabelgruppeName, "theme", T.NotSpecified);
+            var gruppe = ReaderLanguage.Pick(v.VariabelgruppeName, v.VariabelgruppeNameEn, Reader);
+            RowCell.Write(builder, 400, T.FieldVariableGroup, gruppe.Text, "theme", T.NotSpecified,
+                          catalogue: gruppe.Norwegian);
         }
 
         if (ColumnVisible(ResultColumn.DataType))

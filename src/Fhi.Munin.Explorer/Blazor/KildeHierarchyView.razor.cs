@@ -208,7 +208,7 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
                 builder.AddAttribute(14, "href", href);
                 // A link list full of "Åpne" names nothing; the name opens with the visible word,
                 // which is what WCAG 2.5.3 asks, and goes on to say which datasamling.
-                builder.AddAttribute(15, "aria-label", T.OpenDatasamlingNamed(node.Name));
+                builder.AddAttribute(15, "aria-label", T.OpenDatasamlingNamed(Named(node).Text));
                 builder.AddContent(16, T.OpenDatasamling);
                 builder.CloseElement();
             }
@@ -218,6 +218,9 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
         builder.CloseElement();
     };
 
+    private CatalogueName Named(KildeHierarchyNode node) =>
+        T.NamedFor(node.Name, node.NameEn, null, ReaderLanguage.Of(Language));
+
     private RenderFragment Label(KildeHierarchyNode node) => builder =>
     {
         // NodeIcons.Write opens this fragment with sequence numbers of its own, so everything below
@@ -225,9 +228,9 @@ public sealed partial class KildeHierarchyView : ComponentBase, IDisposable
         var icons = ShowNodeIcons ? NodeIcons.For(node) : NodeIcons.None;
         NodeIcons.Write(builder, icons, NodeIconClasses.Hierarchy);
 
-        var named = T.Named(node.Name, null);
+        var named = Named(node);
         builder.OpenElement(20, "span");
-        builder.AddAttribute(21, "lang", CatalogueProperties.Foreign(named.Norwegian, ReaderLanguage.Of(Language)));
+        builder.AddAttribute(21, "lang", named.Lang(ReaderLanguage.Of(Language)));
         builder.AddContent(22, named.Text);
         builder.CloseElement();
 

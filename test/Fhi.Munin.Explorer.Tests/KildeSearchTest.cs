@@ -3561,6 +3561,25 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Equal("no", heading.GetAttribute("lang"));
     }
 
+    [Fact]
+    public void Language_WhenItSwitchesWhileAKildeIsOpening_ThenTheDrilldownHeadingFollowsTheNewReader()
+    {
+        // The heading is the list's name for the kilde until its own fetch answers. Opened in
+        // English and switched to Norwegian before that, it must not keep the English words: under
+        // the root's new lang="no" they would be read in a Norwegian voice.
+        var client = new FakeClient(Kilde("Als registeret", "K_ALS") with { NameEn = "ALS Registry" }) { StallDetail = true };
+        var cut = RenderWith(client, b => b.Add(c => c.Language, "en"));
+        cut.Find(".munin-explorer-kilder tbody th button").Click();
+
+        IElement Heading() => cut.Find($"#{cut.Find(".munin-explorer-drilldown").GetAttribute("aria-labelledby")}");
+        Assert.Equal("ALS Registry", Heading().TextContent.Trim());
+
+        cut.Render(b => b.Add(c => c.Language, "no"));
+
+        Assert.Equal("Als registeret", Heading().TextContent.Trim());
+        Assert.Null(Heading().GetAttribute("lang"));
+    }
+
     // ---------------------------------------------------------------------------------
     // The facets.
     // ---------------------------------------------------------------------------------

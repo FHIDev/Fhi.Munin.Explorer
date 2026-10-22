@@ -142,6 +142,12 @@ public sealed record KildeFacet
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
 
+    /// <summary>
+    /// The Norwegian name whatever the request's <c>Accept-Language</c>, which <see cref="Name"/>
+    /// follows. Null from an API older than it, whose <see cref="Name"/> is always Norwegian.
+    /// </summary>
+    [JsonPropertyName("nameNo")] public string? NameNo { get; init; }
+
     /// <summary>Abbreviation, e.g. <c>MFR</c>. Empty string — not null — when the kilde has none.</summary>
     [JsonPropertyName("kortNavn")] public string ShortName { get; init; } = "";
 
@@ -168,6 +174,12 @@ public sealed record VariabelgruppeFacet
 
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>
+    /// The Norwegian name whatever the request's <c>Accept-Language</c>, which <see cref="Name"/>
+    /// follows. Null from an API older than it, whose <see cref="Name"/> is always Norwegian.
+    /// </summary>
+    [JsonPropertyName("nameNo")] public string? NameNo { get; init; }
 
     /// <summary>
     /// The parent group, or null for a root. Resolvable inside whichever collection the row came
@@ -273,6 +285,12 @@ public sealed record FilterFacet
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>
+    /// The Norwegian name whatever the request's <c>Accept-Language</c>, which <see cref="Name"/>
+    /// follows. Null from an API older than it, whose <see cref="Name"/> is always Norwegian.
+    /// </summary>
+    [JsonPropertyName("nameNo")] public string? NameNo { get; init; }
     [JsonPropertyName("parentId")] public Guid? ParentId { get; init; }
     [JsonPropertyName("count")] public int Count { get; init; }
 }
@@ -285,6 +303,12 @@ public sealed record DelkildeFacet
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>
+    /// The Norwegian name whatever the request's <c>Accept-Language</c>, which <see cref="Name"/>
+    /// follows. Null from an API older than it, whose <see cref="Name"/> is always Norwegian.
+    /// </summary>
+    [JsonPropertyName("nameNo")] public string? NameNo { get; init; }
     [JsonPropertyName("parentDelkildeId")] public Guid? ParentDelkildeId { get; init; }
     [JsonPropertyName("kildeId")] public Guid KildeId { get; init; }
     [JsonPropertyName("count")] public int Count { get; init; }
@@ -305,6 +329,12 @@ public sealed record DatasamlingFacet
 {
     [JsonPropertyName("id")] public Guid Id { get; init; }
     [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    /// <summary>
+    /// The Norwegian name whatever the request's <c>Accept-Language</c>, which <see cref="Name"/>
+    /// follows. Null from an API older than it, whose <see cref="Name"/> is always Norwegian.
+    /// </summary>
+    [JsonPropertyName("nameNo")] public string? NameNo { get; init; }
 
     /// <summary>The delkilde it hangs under, or null when it hangs straight off its kilde.</summary>
     [JsonPropertyName("delkildeId")] public Guid? DelkildeId { get; init; }

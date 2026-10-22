@@ -66,6 +66,13 @@ internal static class ReaderLanguage
     internal static string ForApi(string? language) => IsEnglish(language) ? English : ApiNorwegian;
 
     /// <summary>
+    /// Per field, the catalogue's English where the reader reads English and it is not blank, else
+    /// the Norwegian as it came; <c>Norwegian</c> says which, for the <c>lang</c>. (Fhi.Metadata-pfejp.7)
+    /// </summary>
+    internal static (string? Text, bool Norwegian) Pick(string? norwegian, string? english, string? language) =>
+        IsEnglish(language) && !string.IsNullOrWhiteSpace(english) ? (english, false) : (norwegian, true);
+
+    /// <summary>
     /// The part of a language tag before its first subtag separator, trimmed.
     /// </summary>
     /// <remarks>

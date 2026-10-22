@@ -95,18 +95,19 @@ public sealed partial class VariableView : ComponentBase
     /// The name the page's heading carries, resolved through the member the heading reads so the
     /// sticky bar and the name block cannot say it in different words.
     /// </summary>
-    private (string Text, bool Norwegian) StickyNamed => T.Named(Variable?.PreferredTerm, Variable?.Code);
+    private CatalogueName StickyNamed =>
+        T.NamedFor(Variable?.PreferredTerm, Variable?.PreferredTermEn, Variable?.Code, Reader);
 
-    private string? StickyNameLang => CatalogueProperties.Foreign(StickyNamed.Norwegian, Reader);
+    private string? StickyNameLang => StickyNamed.Lang(Reader);
 
     /// <summary>The code beside the bar's name, on the name block's own terms.</summary>
     /// <remarks>Nothing where the heading has already fallen back to the code. (Fhi.Metadata-w13lk)</remarks>
-    private string? StickyCode => StickyNamed.Norwegian ? Variable?.Code : null;
+    private string? StickyCode => StickyNamed.Named ? Variable?.Code : null;
 
     /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
     private IReadOnlyList<DetailTrailStep>? PageTrail =>
         Variable is { } variable
-            ? DetailTrail.Append(Trail, T.Named(variable.PreferredTerm, variable.Code), Reader)
+            ? DetailTrail.Append(Trail, StickyNamed.Marked, Reader)
             : null;
 
     private int BlockLevel => Math.Min(HeadingLevel + 1, 6);
@@ -183,6 +184,9 @@ public sealed partial class VariableView : ComponentBase
     /// </remarks>
     private IReadOnlyList<InstrumentReference> Instruments => Variable?.Instruments ?? [];
 
+    private (string? Text, bool Norwegian) ShownKildeName =>
+        ReaderLanguage.Pick(Variable?.KildeName, Variable?.KildeNameEn, Reader);
+
     /// <summary>Where the variable lives: which source, under which name.</summary>
     /// <remarks>
     /// The third element says whether the value is the catalogue's own words, the same as the kilde
@@ -193,7 +197,7 @@ public sealed partial class VariableView : ComponentBase
         Variable is not { } variable
             ? []
             : [
-                (T.FieldKildeName, variable.KildeName, true),
+                (T.FieldKildeName, ShownKildeName.Text, ShownKildeName.Norwegian),
                 (T.FieldKildeShortName, variable.KildeShortName, true),
                 (T.FacetKildeType,
                  string.IsNullOrWhiteSpace(variable.KildeType)

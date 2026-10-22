@@ -1,6 +1,7 @@
 @namespace Fhi.Munin.Explorer.Blazor
 
-<div class="munin-explorer-hierarchy" aria-busy="@(_loading ? "true" : "false")">
+@* lang, for a hierarchy mounted on its own under a host lang that need not follow the reader (WCAG 3.1.2). *@
+<div class="munin-explorer-hierarchy" lang="@ReaderLanguage.Of(Language)" aria-busy="@(_loading ? "true" : "false")">
     <p class="caption" role="status">@Status</p>
     @if (_retryShown)
     {

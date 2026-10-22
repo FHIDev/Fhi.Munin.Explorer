@@ -141,16 +141,16 @@ public sealed partial class KildeView : ComponentBase, IDisposable
     /// The name the page's heading carries, resolved through the member the heading reads so the
     /// sticky bar and the name block cannot say it in different words.
     /// </summary>
-    private (string Text, bool Norwegian) StickyNamed => T.Named(Kilde?.PreferredTerm, Kilde?.Code);
+    private CatalogueName StickyNamed => T.NamedFor(Kilde?.PreferredTerm, Kilde?.PreferredTermEn, Kilde?.Code, Reader);
 
-    private string? StickyNameLang => CatalogueProperties.Foreign(StickyNamed.Norwegian, Reader);
+    private string? StickyNameLang => StickyNamed.Lang(Reader);
 
     /// <summary>The identifier line under the name, or nothing where it is not drawn.</summary>
     /// <remarks>
     /// Nothing where the heading has already fallen back to the code (Fhi.Metadata-w13lk). The name
     /// block, the sticky bar and <see cref="DrawnElsewhere"/> all read this one answer.
     /// </remarks>
-    private string? IdentifierLine => StickyNamed.Norwegian ? Identifiers : null;
+    private string? IdentifierLine => StickyNamed.Named ? Identifiers : null;
 
     /// <summary>«K_BDR · BDR · sist oppdatert i katalogen 24.08.2026», each part only where it has a value.</summary>
     private string? CodeLine =>
@@ -158,7 +158,7 @@ public sealed partial class KildeView : ComponentBase, IDisposable
             ? null
             : string.Join(" · ", new[]
               {
-                  StickyNamed.Norwegian ? kilde.Code : null,
+                  StickyNamed.Named ? kilde.Code : null,
                   kilde.ShortName,
                   CatalogueDate.DayOrNothing(kilde.LastUpdated, Language) is { } day ? T.CodeLineUpdated(day) : null,
               }.Where(part => !string.IsNullOrWhiteSpace(part))) is { Length: > 0 } line ? line : null;
@@ -201,7 +201,7 @@ public sealed partial class KildeView : ComponentBase, IDisposable
     /// <summary>The trail the chassis draws — see <see cref="DetailTrail.Append"/> for the rule.</summary>
     private IReadOnlyList<DetailTrailStep>? PageTrail =>
         Kilde is { } kilde
-            ? DetailTrail.Append(Trail, T.Named(kilde.PreferredTerm, kilde.Code), Reader)
+            ? DetailTrail.Append(Trail, StickyNamed.Marked, Reader)
             : null;
 
     /// <summary>The level for the two block headings, and for each metadata group under them.</summary>
@@ -228,7 +228,12 @@ public sealed partial class KildeView : ComponentBase, IDisposable
 
     /// <summary>The description as the name block draws it, or null where the catalogue holds none.</summary>
     private (string Lead, string? Folded)? Description =>
-        string.IsNullOrWhiteSpace(Kilde?.Description) ? null : DescriptionLead.Split(Kilde.Description);
+        ShownDescription.Text is { } text && !string.IsNullOrWhiteSpace(text) ? DescriptionLead.Split(text) : null;
+
+    private (string? Text, bool Norwegian) ShownDescription =>
+        ReaderLanguage.Pick(Kilde?.Description, Kilde?.DescriptionEn, Reader);
+
+    private string? DescriptionLang => CatalogueProperties.Foreign(ShownDescription.Norwegian, Reader);
 
     private readonly string _instance = Guid.NewGuid().ToString("N")[..8];
 
@@ -897,18 +902,18 @@ public sealed partial class KildeView : ComponentBase, IDisposable
             builder.OpenElement(seq++, "li");
             builder.AddAttribute(seq++, "class", "munin-explorer-kilde__delkilde");
 
-            var named = T.Named(delkilde.Name, delkilde.Code);
+            var named = T.NamedFor(delkilde.Name, delkilde.NameEn, delkilde.Code, Reader);
 
             builder.OpenElement(seq++, $"h{level}");
             builder.AddAttribute(seq++, "class",
                                  "headline headline-xxs margin--none munin-explorer-kilde__delkilde-name");
-            builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(named.Norwegian, Reader));
+            builder.AddAttribute(seq++, "lang", named.Lang(Reader));
             builder.AddContent(seq++, named.Text);
             builder.CloseElement();
 
             // The kilde's own identifier line, one level down and wearing the same name - unless the
             // heading above has already fallen back to it (Fhi.Metadata-w13lk).
-            if (named.Norwegian && Identifier(delkilde.Code, delkilde.ShortName) is { } identifiers)
+            if (named.Named && Identifier(delkilde.Code, delkilde.ShortName) is { } identifiers)
             {
                 builder.OpenElement(seq++, "p");
                 builder.AddAttribute(seq++, "class", "caption margin--none munin-explorer-kilde__identifiers");
@@ -916,15 +921,16 @@ public sealed partial class KildeView : ComponentBase, IDisposable
                 builder.CloseElement();
             }
 
-            // The delkilde's own words, under its name line. Norwegian whatever the reader's
-            // language, and authored with markdown links more often than any other field
-            // (Fhi.Metadata-3osk6), which is what CatalogueMarkdown is here to draw.
-            if (!string.IsNullOrWhiteSpace(delkilde.Description))
+            // The delkilde's own words, under its name line. Authored with markdown links more
+            // often than any other field (Fhi.Metadata-3osk6), which is what CatalogueMarkdown draws.
+            var description = ReaderLanguage.Pick(delkilde.Description, delkilde.DescriptionEn, Reader);
+
+            if (!string.IsNullOrWhiteSpace(description.Text))
             {
                 builder.OpenElement(seq++, "p");
                 builder.AddAttribute(seq++, "class", "munin-explorer-kilde__delkilde-description");
-                builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign("no", Reader));
-                builder.AddContent(seq++, CatalogueMarkdown.Render(delkilde.Description));
+                builder.AddAttribute(seq++, "lang", CatalogueProperties.Foreign(description.Norwegian, Reader));
+                builder.AddContent(seq++, CatalogueMarkdown.Render(description.Text));
                 builder.CloseElement();
             }
 

@@ -366,10 +366,11 @@ public sealed partial class KildeSearch : ComponentBase
     // only while there is something to clear, so pressing it is what takes it off the page.
     private ElementReference _searchField;
 
-    // The kilde whose view is open, what has been fetched for it, and the name the list already
-    // knew — which is what the region can be labelled by while the fetch is still running.
+    // The kilde whose view is open, what has been fetched for it, and the list's row for it, whose
+    // name labels the region while the fetch is still running. The row, not its name: the name
+    // depends on the reader, who can switch language before the fetch answers.
     private Guid? _selectedId;
-    private (string Text, bool Norwegian)? _selectedName;
+    private KildeSummary? _selectedRow;
     private KildeDetail? _kilde;
     private bool _detailLoading;
     private string? _detailError;
@@ -426,22 +427,23 @@ public sealed partial class KildeSearch : ComponentBase
 
     // A real heading rather than a styled <p>: a screen reader navigates the panel by these, and
     // KildeView draws the same delkilde names as headings too.
-    private RenderFragment GroupHeading(string? name, string? code, int depth) => builder =>
+    private RenderFragment GroupHeading(string? name, string? nameEn, string? code, int depth) => builder =>
     {
-        var named = T.Named(name, code);
+        var named = T.NamedFor(name, nameEn, code, Reader);
 
         builder.OpenElement(0, $"h{ExpandedGroupLevel(depth)}");
         builder.AddAttribute(1, "class",
                              "headline headline-xxs margin--none munin-explorer-kilde__delkilde-name");
-        builder.AddAttribute(2, "lang", CatalogueProperties.Foreign(named.Norwegian, Reader));
+        builder.AddAttribute(2, "lang", named.Lang(Reader));
         builder.AddContent(3, named.Text);
         builder.CloseElement();
     };
 
     // The row's name, and whether it is still the catalogue's Norwegian. An empty navn falls back
     // to the code, which the row already draws under the name and which is not Norwegian prose, so
-    // the lang marker comes off with it. (Fhi.Metadata-w13lk)
-    private (string Text, bool Norwegian) RowName(KildeSummary kilde) => T.Named(kilde.Name, kilde.Code);
+    // the lang marker comes off with it (Fhi.Metadata-w13lk), as it does for an English name.
+    private (string Text, bool Norwegian) RowName(KildeSummary kilde) =>
+        T.NamedFor(kilde.Name, kilde.NameEn, kilde.Code, Reader).Marked;
 
     private string ExpandLabel(KildeSummary kilde) =>
         IsExpanded(kilde.Id)
@@ -617,18 +619,18 @@ public sealed partial class KildeSearch : ComponentBase
     // One group per run of datasamlinger, in the rank KildeView draws them (Fhi.Metadata-fuzw0), at
     // every depth — flat would lose which belong to a delkilde (Fhi.Metadata-wgpeo). A run resumed
     // after a delkilde's groups is headed again by its parent, so it is not read as the delkilde's.
-    private IReadOnlyList<(string? Heading, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)> DatasamlingGroups(Guid id)
+    private IReadOnlyList<(string? Heading, string? HeadingEn, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)> DatasamlingGroups(Guid id)
     {
         if (!_datasamlinger.TryGetValue(id, out var detail) || detail is null)
         {
             return [];
         }
 
-        var groups = new List<(string? Heading, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)>();
+        var groups = new List<(string? Heading, string? HeadingEn, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)>();
 
         // The kilde's own run opens the panel under the panel's heading; one resumed later is
         // headed at that same level, one above its delkilder.
-        Collect(KildeChildren.Of(detail), detail.PreferredTerm, detail.Code, -1, groups);
+        Collect(KildeChildren.Of(detail), detail.PreferredTerm, detail.PreferredTermEn, detail.Code, -1, groups);
 
         return groups;
     }
@@ -636,9 +638,10 @@ public sealed partial class KildeSearch : ComponentBase
     private static void Collect(
         IReadOnlyList<KildeChild> children,
         string? heading,
+        string? headingEn,
         string? code,
         int depth,
-        List<(string? Heading, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)> groups)
+        List<(string? Heading, string? HeadingEn, string? Code, int Depth, IReadOnlyList<KildeDatasamling> Rows)> groups)
     {
         List<KildeDatasamling>? run = null;
 
@@ -650,7 +653,7 @@ public sealed partial class KildeSearch : ComponentBase
                 {
                     run = [];
                     var root = depth < 0 && groups.Count == 0;
-                    groups.Add((root ? null : heading, root ? null : code, depth, run));
+                    groups.Add((root ? null : heading, root ? null : headingEn, root ? null : code, depth, run));
                 }
 
                 run.Add(datasamling);
@@ -658,7 +661,7 @@ public sealed partial class KildeSearch : ComponentBase
             else if (child.Delkilde is { } delkilde)
             {
                 var before = groups.Count;
-                Collect(KildeChildren.Of(delkilde), delkilde.Name, delkilde.Code, depth + 1, groups);
+                Collect(KildeChildren.Of(delkilde), delkilde.Name, delkilde.NameEn, delkilde.Code, depth + 1, groups);
 
                 if (groups.Count > before)
                 {
@@ -666,7 +669,7 @@ public sealed partial class KildeSearch : ComponentBase
                     // goes in bare there or the outline would skip a level.
                     if (groups[before].Depth != depth + 1)
                     {
-                        groups.Insert(before, (delkilde.Name, delkilde.Code, depth + 1, []));
+                        groups.Insert(before, (delkilde.Name, delkilde.NameEn, delkilde.Code, depth + 1, []));
                     }
 
                     run = null;
@@ -791,7 +794,7 @@ public sealed partial class KildeSearch : ComponentBase
             ? _kilder.FirstOrDefault(kilde => kilde.Id == named)
             : null;
 
-        _selectedName = reopened is null ? null : RowName(reopened);
+        _selectedRow = reopened;
 
         // The render that puts the list on screen — or, on a deep link, the named drilldown that
         // has replaced it.
@@ -966,7 +969,7 @@ public sealed partial class KildeSearch : ComponentBase
     private async Task SelectAsync(KildeSummary kilde)
     {
         _selectedId = kilde.Id;
-        _selectedName = RowName(kilde);
+        _selectedRow = kilde;
         _focus = FocusAfterRender.Detail;
 
         // Before the callback rather than inside LoadKildeAsync after it: an asynchronous host —
@@ -996,7 +999,7 @@ public sealed partial class KildeSearch : ComponentBase
         _focusRowOf = _selectedId;
         _focus = FocusAfterRender.Row;
         _selectedId = null;
-        _selectedName = null;
+        _selectedRow = null;
         _kilde = null;
         _selectedDatasamlingId = null;
         _datasamling = null;
@@ -1152,12 +1155,14 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>The same, plus the kilde an open datasamling hangs off.</summary>
     /// <remarks>
-    /// <c>parentKildeNavn</c> on the payload saves a second request; it is the catalogue's Norwegian
-    /// with no code to fall back to, which is why the <c>lang</c> is a literal here.
+    /// <c>parentKildeNavn</c> on the payload saves a second request. Picked as DatasamlingView picks
+    /// it, which matches the step by its words to tell whether this trail already names the kilde.
     /// </remarks>
     private IReadOnlyList<DetailTrailStep> DatasamlingTrail(DatasamlingDetail datasamling) =>
-        KildeHref is { } kilde && !string.IsNullOrWhiteSpace(datasamling.ParentKildeName)
-            ? [.. KildeTrail, new DetailTrailStep(datasamling.ParentKildeName, kilde, CatalogueProperties.Foreign("no", Reader))]
+        KildeHref is { } kilde
+        && ReaderLanguage.Pick(datasamling.ParentKildeName, datasamling.ParentKildeNameEn, Reader) is ({ } name, var norwegian)
+        && !string.IsNullOrWhiteSpace(name)
+            ? [.. KildeTrail, new DetailTrailStep(name, kilde, CatalogueProperties.Foreign(norwegian, Reader))]
             : KildeTrail;
 
     /// <summary>
@@ -1213,7 +1218,7 @@ public sealed partial class KildeSearch : ComponentBase
     /// answers, so that heading follows the status line instead.
     /// </remarks>
     private (string Text, bool Norwegian)? DrilldownName =>
-        _selectedDatasamlingId is null ? _selectedName : null;
+        _selectedDatasamlingId is null && _selectedRow is { } row ? RowName(row) : null;
 
     /// <summary>
     /// The open view's heading until <see cref="KildeView"/> brings its own: the region is labelled
@@ -1327,7 +1332,7 @@ public sealed partial class KildeSearch : ComponentBase
 
         // At least 1, as the bar's own width is: a kilde with variables is never 0 % of another.
         var percent = Math.Max(1, (int)Math.Round(kilde.TotalVariables * 100m / largest.TotalVariables, MidpointRounding.AwayFromZero));
-        var name = string.IsNullOrWhiteSpace(largest.Name) ? largest.Code : largest.Name;
+        var name = RowName(largest).Text;
         return T.VariablesBarOfLargest(percent, name, largest.TotalVariables, type);
     }
 
