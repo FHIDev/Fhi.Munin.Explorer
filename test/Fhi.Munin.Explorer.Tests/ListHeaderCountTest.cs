@@ -19,11 +19,14 @@ public sealed class ListHeaderCountTest : ExplorerTestContext
     {
         private static readonly Guid ListId = Guid.NewGuid();
 
+        // Changeable, as another tab changes the list.
+        public List<VariableListItem> Rows { get; } = [.. items];
+
         // As Munin answers: variableCount is the stored rows.
         public override Task<IReadOnlyList<VariableList>> GetMyListsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<VariableList>>(
                 [
-                    new VariableList { Id = ListId, Name = "Mine", VariableCount = items.Length },
+                    new VariableList { Id = ListId, Name = "Mine", VariableCount = Rows.Count },
                     new VariableList { Id = Guid.NewGuid(), Name = "Andre", VariableCount = 0 },
                 ]);
 
@@ -36,8 +39,8 @@ public sealed class ListHeaderCountTest : ExplorerTestContext
             CancellationToken cancellationToken = default) =>
             Task.FromResult<Page<VariableListItem>?>(new Page<VariableListItem>
             {
-                Items = id == ListId ? items : [],
-                TotalCount = id == ListId ? items.Length : 0,
+                Items = id == ListId ? [.. Rows] : [],
+                TotalCount = id == ListId ? Rows.Count : 0,
                 PageNumber = page,
                 Size = pageSize,
                 TotalPages = 1,
@@ -145,5 +148,24 @@ public sealed class ListHeaderCountTest : ExplorerTestContext
         Assert.Equal("3 variabler (1 rad)", Texts.For("no").ListVariablesInRows(3, 1));
         Assert.Equal("1 variable (2 rows)", Texts.For("en").ListVariablesInRows(1, 2));
         Assert.Equal("3 variables (1 row)", Texts.For("en").ListVariablesInRows(3, 1));
+    }
+
+    [Fact]
+    public async Task Header_WhenAnotherTabAddsAVariableAndTheListsAreRefreshed_ThenTheCountsFollow()
+    {
+        // A refresh reads my/lists again; the counts drawn from the list's own walk must not keep the old answer.
+        var alder = Guid.NewGuid();
+        var client = new ListClient(Row(alder, Als, Inklusjon), Row(alder, Als, Oppfolging), Row(Guid.NewGuid(), Tromso, Inklusjon));
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddScoped<VariableListState>();
+        var cut = Render<VariableListView>(p => p.Add(c => c.IsAuthenticated, true).Add(c => c.Language, "no"));
+        cut.WaitForAssertion(() => Assert.StartsWith("2 variabler (3 rader)", cut.Find("p.caption").TextContent, StringComparison.Ordinal));
+        var state = Services.GetRequiredService<VariableListState>();
+
+        client.Rows.Add(Row(Guid.NewGuid(), Tromso, Oppfolging));
+        await cut.InvokeAsync(() => state.RefreshAsync());
+
+        cut.WaitForAssertion(() => Assert.StartsWith("3 variabler (4 rader)", cut.Find("p.caption").TextContent, StringComparison.Ordinal));
+        Assert.Equal("Mine (3 variabler)", cut.Find("option[selected]").TextContent.Trim());
     }
 }
