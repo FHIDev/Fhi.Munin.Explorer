@@ -366,10 +366,11 @@ public sealed partial class KildeSearch : ComponentBase
     // only while there is something to clear, so pressing it is what takes it off the page.
     private ElementReference _searchField;
 
-    // The kilde whose view is open, what has been fetched for it, and the name the list already
-    // knew — which is what the region can be labelled by while the fetch is still running.
+    // The kilde whose view is open, what has been fetched for it, and the list's row for it, whose
+    // name labels the region while the fetch is still running. The row, not its name: the name
+    // depends on the reader, who can switch language before the fetch answers.
     private Guid? _selectedId;
-    private (string Text, bool Norwegian)? _selectedName;
+    private KildeSummary? _selectedRow;
     private KildeDetail? _kilde;
     private bool _detailLoading;
     private string? _detailError;
@@ -793,7 +794,7 @@ public sealed partial class KildeSearch : ComponentBase
             ? _kilder.FirstOrDefault(kilde => kilde.Id == named)
             : null;
 
-        _selectedName = reopened is null ? null : RowName(reopened);
+        _selectedRow = reopened;
 
         // The render that puts the list on screen — or, on a deep link, the named drilldown that
         // has replaced it.
@@ -968,7 +969,7 @@ public sealed partial class KildeSearch : ComponentBase
     private async Task SelectAsync(KildeSummary kilde)
     {
         _selectedId = kilde.Id;
-        _selectedName = RowName(kilde);
+        _selectedRow = kilde;
         _focus = FocusAfterRender.Detail;
 
         // Before the callback rather than inside LoadKildeAsync after it: an asynchronous host —
@@ -998,7 +999,7 @@ public sealed partial class KildeSearch : ComponentBase
         _focusRowOf = _selectedId;
         _focus = FocusAfterRender.Row;
         _selectedId = null;
-        _selectedName = null;
+        _selectedRow = null;
         _kilde = null;
         _selectedDatasamlingId = null;
         _datasamling = null;
@@ -1217,7 +1218,7 @@ public sealed partial class KildeSearch : ComponentBase
     /// answers, so that heading follows the status line instead.
     /// </remarks>
     private (string Text, bool Norwegian)? DrilldownName =>
-        _selectedDatasamlingId is null ? _selectedName : null;
+        _selectedDatasamlingId is null && _selectedRow is { } row ? RowName(row) : null;
 
     /// <summary>
     /// The open view's heading until <see cref="KildeView"/> brings its own: the region is labelled

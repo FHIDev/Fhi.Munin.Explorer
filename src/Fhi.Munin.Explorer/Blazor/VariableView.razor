@@ -3,7 +3,10 @@
 <CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 @if (Variable is { } variable)
 {
+    @* lang: mounted on its own, nothing above says what the reader reads, and the host's lang need
+       not follow it (WCAG 3.1.2). *@
     <DetailPage ViewRoot="munin-explorer-whole"
+                lang="@Reader"
                 ViewMain="munin-explorer-whole__main"
                 Eyebrow="@T.EyebrowVariable"
                 Trail="@PageTrail"

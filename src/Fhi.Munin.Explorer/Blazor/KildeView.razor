@@ -3,7 +3,10 @@
 <CascadingValue Name="@CatalogueLink.ReaderName" Value="@Reader">
 @if (Kilde is { } kilde)
 {
+    @* lang: mounted on its own, nothing above says what the reader reads, and the host's lang need
+       not follow it (WCAG 3.1.2). *@
     <DetailPage ViewRoot="munin-explorer-kilde"
+                lang="@Reader"
                 ViewMain="munin-explorer-kilde__main"
                 Trail="@PageTrail"
                 TrailLabel="@T.TrailLabel"

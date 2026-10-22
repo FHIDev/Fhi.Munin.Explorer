@@ -2611,13 +2611,19 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Language_WhenTheReaderIsNorwegian_ThenNothingIsMarkedAtAll()
+    public void Language_WhenTheReaderIsNorwegian_ThenOnlyTheViewsRootSaysSo()
     {
-        // Text already in the reader's language is left unmarked so it inherits from the host. A
-        // lang="no" on every element would be noise, and noise a host cannot override.
+        // The root says what the reader reads, since the host's lang need not follow the reader;
+        // text in that language inside it is left unmarked. A lang="no" on every element would be
+        // noise.
         var cut = Render(Kilde());
 
-        Assert.Empty(cut.FindAll("[lang]"));
+        // The view's root and the embedded hierarchy's, which declares it for a standalone mount.
+        var marked = cut.FindAll("[lang]");
+        Assert.All(marked, element => Assert.Equal("no", element.GetAttribute("lang")));
+        Assert.All(marked, element => Assert.True(
+            element.ClassList.Contains("munin-explorer-kilde") || element.ClassList.Contains("munin-explorer-hierarchy")));
+        Assert.Contains(marked, element => element.ClassList.Contains("munin-explorer-kilde"));
     }
 
     [Fact]
