@@ -1606,6 +1606,36 @@ public partial class VariableSearch
         }
     }
 
+    private bool _chosenBranchesOpened;
+
+    /// <summary>Open the branches standing between the top of the Kilde facet and what the address chose.</summary>
+    /// <remarks>
+    /// Arriving from the Kildeutforsker with a kilde chosen left it under a shut kildetype heading, out of sight
+    /// (#6756). Once per mount (VariableExplorer remounts on each arrival), so a branch the reader shuts stays shut.
+    /// </remarks>
+    private void OpenBranchesToChosenOnce()
+    {
+        if (_chosenBranchesOpened || _facets is not { } facets)
+        {
+            return;
+        }
+
+        _chosenBranchesOpened = true;
+        OpenChosenBranches(KildeGroup(facets).Values, []);
+    }
+
+    private void OpenChosenBranches(IReadOnlyList<FacetValue> values, HashSet<string> walked)
+    {
+        foreach (var value in values)
+        {
+            if (value.ChosenBelow > 0 && value.Children.Count > 0 && walked.Add(value.Key))
+            {
+                _expandedBranches.Add(value.Key);
+                OpenChosenBranches(value.Children, walked);
+            }
+        }
+    }
+
     /// <summary>Open the branches standing between a kilde the search kept and the name that matched.</summary>
     /// <remarks>
     /// Branches start shut, so a deep match would otherwise keep a row whose matching name is nowhere
@@ -2018,6 +2048,7 @@ public partial class VariableSearch
 
             _facetError = null;
             _retryFacetsEnabled = false;
+            OpenBranchesToChosenOnce();
 
             // After the facets, because whether it is worth asking at all depends on what they
             // hold. Its own failure is swallowed inside — the counts arriving is what this try
