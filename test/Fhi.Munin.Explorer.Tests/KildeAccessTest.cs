@@ -166,6 +166,23 @@ public class KildeAccessTest : ExplorerTestContext
     }
 
     [Fact]
+    public void KildeView_AHostsOwnActions_KeepTheirRowBeforeTheName_AndTheAccessRowFollowsIt()
+    {
+        var cut = Render<KildeView>(b => b
+            .Add(c => c.Kilde, Kilde("""["soknad-via-helsedata"]"""))
+            .Add(c => c.AccessLinks, HostLinks)
+            .Add(c => c.Actions, (Microsoft.AspNetCore.Components.RenderFragment)(r => r.AddMarkupContent(0, "<button type=\"button\">Lagre</button>"))));
+
+        var rows = cut.FindAll(".munin-explorer-page__actions");
+        var heading = cut.Find("h1, h2, h3, h4, h5, h6");
+        Assert.Equal(2, rows.Count);
+        Assert.Equal("Lagre", rows[0].TextContent.Trim());
+        Assert.True(rows[0].CompareDocumentPosition(heading).HasFlag(AngleSharp.Dom.DocumentPositions.Following));
+        Assert.NotNull(rows[1].QuerySelector(".munin-explorer-kilde__access"));
+        Assert.True(heading.CompareDocumentPosition(rows[1]).HasFlag(AngleSharp.Dom.DocumentPositions.Following));
+    }
+
+    [Fact]
     public void KildeView_WithoutAParameter_TakesTheRegisteredLinks_AndWithNoLevelDrawsNoRow()
     {
         Services.AddSingleton(HostLinks);
