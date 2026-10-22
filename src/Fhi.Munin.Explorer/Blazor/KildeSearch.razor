@@ -85,12 +85,9 @@
          role="region"
          aria-labelledby="@DetailHeadingId"
          aria-busy="@DetailBusy">
-        @* --ghost-blue for the same reason the variable explorer's way out wears it: a plain ghost
-           shows nothing until :hover, and this is navigation. (Fhi.Metadata-l9l2n.34)
-
-           An <a> out of a datasamling and a <button> out of a kilde, because
-           the two do different things: one changes the address and one changes this component's own
-           state. Both wear Stiler's button names and the handle a host hides them by beside a trail. *@
+        @* --ghost-blue: a plain ghost shows nothing until :hover, and this is navigation (l9l2n.34). An <a> out of a
+           datasamling (the address changes), a <button> out of a kilde (this component's state does); both carry the
+           handle a host hides them by beside a trail. *@
         @if (_selectedDatasamlingId is not null && KildeHref is { } kildeHref)
         {
             <a class="hd-button-square button-square--ghost-blue margin-bottom munin-explorer-kilder__back"
