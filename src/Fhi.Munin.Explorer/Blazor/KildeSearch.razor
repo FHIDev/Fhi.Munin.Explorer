@@ -135,6 +135,7 @@
                                  HeadingLevel="@KildeLevel"
                                  HeadingId="@DetailHeadingId"
                                  KildeHref="@ParentKildeHref"
+                                 HasKildeBackLink="@(KildeHref is not null)"
                                  VariablesHref="@DatasamlingVariablesHref?.Invoke(datasamling.Id)"
                                  Trail="@DatasamlingTrail(datasamling)" />
             }

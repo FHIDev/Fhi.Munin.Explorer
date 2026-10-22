@@ -130,10 +130,16 @@ public sealed partial class DatasamlingView : ComponentBase
     private string? ParentKildeAddress => Datasamling is { ParentKildeId: var id } && id != Guid.Empty
         ? KildeHref?.Invoke(id) : null;
 
-    // The page trail already names and links the kilde (Kelda's): then «Kildesti» and «Vis datakilden» are a third
-    // and fourth way to it, and «Kildesti» a second nav landmark (Fhi.Metadata-l9l2n.145).
+    /// <summary>The parent draws its own back link to the kilde beside this view (KildeSearch does).</summary>
+    /// <remarks>With a page trail that links the kilde, «Kildesti» and «Vis datakilden» are then left out; without it
+    /// they stay, so a host that hides the trail on a phone still has a way to the kilde.</remarks>
+    [Parameter]
+    public bool HasKildeBackLink { get; set; }
+
+    // The page trail names and links the kilde and the parent draws a back link: «Kildesti» and «Vis datakilden» would
+    // be a third and fourth way to it, and «Kildesti» a second nav landmark (Fhi.Metadata-l9l2n.145).
     private bool TrailNamesKilde =>
-        Trail is { Count: > 0 } trail && Datasamling is { ParentKildeName: { Length: > 0 } name } &&
+        HasKildeBackLink && Trail is { Count: > 0 } trail && Datasamling is { ParentKildeName: { Length: > 0 } name } &&
         trail.Any(step => step.Label == name && step.Href is not null);
 
     private IReadOnlyList<DetailTrailStep>? SourceTrail =>
