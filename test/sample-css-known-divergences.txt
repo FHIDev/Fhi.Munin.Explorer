@@ -622,3 +622,7 @@ missing-selector|@media (min-width:1024px)|.munin-explorer:has( > .munin-explore
 # for this bead. Delete these two lines when helsedata pins a Stiler that carries it.
 invented-selector||.munin-explorer-versions__toggle:focus-visible|outline
 invented-selector||.munin-explorer-versions__toggle:focus-visible|outline-offset
+
+# Fhi.Metadata-l9l2n.142: «Søk om tilgang» (munin-explorer-kilde__access) ships with the Stiler patch AB#122579; delete this line
+# when helsedata pins a Stiler that carries it.
+unstyled-name||.munin-explorer-kilde__access|

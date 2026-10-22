@@ -76,6 +76,11 @@
                     </p>
                 }
             </div>
+
+            @if (AccessOffers.Count > 0)
+            {
+                @AccessRow
+            }
         </Header>
         <ChildContent>
 
@@ -100,3 +105,31 @@
     </DetailPage>
 }
 </CascadingValue>
+
+@code {
+    /// <summary>«Søk om tilgang», after the name block so a reader hears which kilde it is about first.</summary>
+    private RenderFragment AccessRow => @<text>
+        <div class="munin-explorer-page__actions">
+            <div class="munin-explorer-kilde__access">
+                @foreach (var offer in AccessOffers)
+                {
+                    <p class="margin--none">@foreach (var (text, fill) in KildeAccess.Pieces(offer))
+                    {
+                        @text
+                        @if (fill is not null)
+                        {
+                            <span lang="@CatalogueProperties.Foreign(fill.Norwegian, Reader)">@fill.Text</span>
+                        }
+                    }</p>
+                    <p class="margin--none">
+                        @foreach (var link in offer.Links)
+                        {
+                            <a href="@link.Href" class="@(link.Primary ? "hd-button-square button-square--primary" : null)">@link.Text</a>
+                            @(" ")
+                        }
+                    </p>
+                }
+            </div>
+        </div>
+    </text>;
+}
