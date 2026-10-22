@@ -80,6 +80,8 @@
        it landed in. *@
     <div class="munin-explorer-drilldown"
          id="@DetailId"
+         @ref="_detailRegion"
+         tabindex="-1"
          role="region"
          aria-labelledby="@DetailHeadingId"
          aria-busy="@DetailBusy">
@@ -784,6 +786,7 @@ else
                                    mousedown does not — a drag from the name onto the row is a selection. *@
                                 <button class="munin-explorer-kilder__name"
                                         type="button"
+                                        @ref="_nameButtons[kilde.Id]"
                                         lang="@CatalogueProperties.Foreign(RowName(kilde).Norwegian, Reader)"
                                         @onclick="e => SelectFromNameAsync(kilde, e)"
                                         @onclick:stopPropagation="true">@RowName(kilde).Text</button>

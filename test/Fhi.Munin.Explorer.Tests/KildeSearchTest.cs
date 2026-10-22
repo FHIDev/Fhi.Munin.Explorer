@@ -2755,6 +2755,35 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Equal("Tøm søket", AccessibleName.Of(cut.Find(".munin-explorer-search__clear")));
     }
 
+    // Opening a kilde replaces the list, the pressed name with it, so focus fell to <body> and the next Tab
+    // went to the host's footer (helsedata's «Søknadsveiledning»); Back removes itself the same way (Fhi.Metadata-l9l2n.140).
+    [Fact]
+    public void Open_WhenAKildeIsPressed_ThenFocusMovesToItsView()
+    {
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS")));
+
+        cut.Find("th button.munin-explorer-kilder__name").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(RefOf(cut.Find(".munin-explorer-drilldown")), LastFocused()));
+    }
+
+    [Fact]
+    public void Back_WhenPressed_ThenFocusReturnsToTheKildeTheReaderOpened()
+    {
+        var cut = RenderWith(new FakeClient(Kilde("Als registeret", "K_ALS"), Kilde("Kreftregisteret", "K_KREFT")));
+        cut.FindAll("th button.munin-explorer-kilder__name")[1].Click();
+
+        cut.Find(".munin-explorer-drilldown > button.munin-explorer-kilder__back").Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal(RefOf(cut.FindAll("th button.munin-explorer-kilder__name")[1]), LastFocused()));
+    }
+
+    private static string? RefOf(AngleSharp.Dom.IElement element) => element.GetAttribute("blazor:elementreference");
+
+    private string? LastFocused() => JSInterop.Invocations["Blazor._internal.domWrapper.focus"]
+        .Select(i => i.Arguments[0] is ElementReference r ? r.Id : null).LastOrDefault();
+
     [Fact]
     public void ClearSearch_WhenPressed_ThenFocusGoesToTheFieldRatherThanTheDocument()
     {
