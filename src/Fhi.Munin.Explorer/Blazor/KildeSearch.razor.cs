@@ -1148,10 +1148,23 @@ public sealed partial class KildeSearch : ComponentBase
 
     /// <summary>The kilde's trail while it loads, named from the list; null once the view draws its own.</summary>
     private IReadOnlyList<DetailTrailStep>? LoadingTrail =>
-        _detailLoading && _kilde is null && _selectedDatasamlingId is null
-        && _kilder.FirstOrDefault(kilde => kilde.Id == _selectedId) is { } row
+        !_detailLoading ? null
+        : _selectedDatasamlingId is not null ? LoadingDatasamlingTrail
+        : _kilde is null && _kilder.FirstOrDefault(kilde => kilde.Id == _selectedId) is { } row
             ? DetailTrail.Append(KildeTrail, RowName(row), Reader)
             : null;
+
+    /// <summary>
+    /// <see cref="DatasamlingTrail"/>'s steps before the datasamling arrives: its kilde from the list,
+    /// and the word «Datasamling» where its own name will stand. (Fhi.Metadata-l9l2n.146)
+    /// </summary>
+    private IReadOnlyList<DetailTrailStep>? LoadingDatasamlingTrail =>
+        _datasamling is not null ? null
+        : DetailTrail.Append(
+            KildeHref is { } kilde && _kilder.FirstOrDefault(row => row.Id == _selectedId) is { } row
+                ? [.. KildeTrail, new DetailTrailStep(RowName(row).Text, kilde, CatalogueProperties.Foreign(RowName(row).Norwegian, Reader))]
+                : KildeTrail,
+            (T.EyebrowDatasamling, false), Reader);
 
     /// <summary>The same, plus the kilde an open datasamling hangs off.</summary>
     /// <remarks>

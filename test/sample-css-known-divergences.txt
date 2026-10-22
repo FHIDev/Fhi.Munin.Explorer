@@ -636,3 +636,8 @@ missing-selector||.munin-explorer__dropdown[open] > summary > .icon-keyboard-arr
 missing-selector||.munin-explorer__dropdown[open]|
 missing-selector||.munin-explorer__dropdown|
 missing-selector||.munin-explorer-header__actions .munin-explorer__dropdown|
+
+# Fhi.Metadata-l9l2n.146: the datasamling description's fold, the kilde page's twin; its Stiler rule is a bead of its own.
+# Delete these two lines when helsedata pins a Stiler that carries it.
+unstyled-name||.munin-explorer-datasamling__description-rest|
+unstyled-name||.munin-explorer-datasamling__description-toggle|

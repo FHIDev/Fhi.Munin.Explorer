@@ -211,6 +211,44 @@ public class DatasamlingViewTest : ExplorerTestContext
         });
 
     [Fact]
+    public void Description_WhenLongerThanTheLimit_ThenTheRestIsFoldedBehindARealButtonAsOnTheKildePage()
+    {
+        // The kilde page's «Les mer» on its cut (Fhi.Metadata-nebok), for a datasamling (Fhi.Metadata-l9l2n.146).
+        var first = new string('a', 300) + ".";
+        var second = new string('b', 300) + ".";
+        var cut = Render(Datasamling() with { Description = $"{first}\n\n{second}" });
+
+        var paragraphs = cut.FindAll(".munin-explorer-datasamling__description");
+        var rest = cut.Find(".munin-explorer-datasamling__description-rest");
+        var toggle = cut.Find("button.munin-explorer-datasamling__description-toggle");
+
+        Assert.Equal(first, paragraphs[0].TextContent.Trim());
+        Assert.Contains(second, rest.TextContent, StringComparison.Ordinal);
+        Assert.True(rest.HasAttribute("hidden"));
+        Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+        Assert.Equal(rest.Id, toggle.GetAttribute("aria-controls"));
+        Assert.Equal("Les mer", toggle.TextContent.Trim());
+
+        toggle.Click();
+
+        Assert.False(cut.Find(".munin-explorer-datasamling__description-rest").HasAttribute("hidden"));
+        Assert.Equal("true", cut.Find("button.munin-explorer-datasamling__description-toggle").GetAttribute("aria-expanded"));
+        Assert.Equal("Vis mindre", cut.Find("button.munin-explorer-datasamling__description-toggle").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Description_WhenAnotherDatasamlingOpensInTheSameView_ThenItStartsFoldedAgain()
+    {
+        var text = $"{new string('a', 300)}.\n\n{new string('b', 300)}.";
+        var cut = Render(Datasamling() with { Description = text });
+
+        cut.Find("button.munin-explorer-datasamling__description-toggle").Click();
+        cut.Render(b => b.Add(c => c.Datasamling, Datasamling() with { Id = Guid.NewGuid(), Description = text }));
+
+        Assert.True(cut.Find(".munin-explorer-datasamling__description-rest").HasAttribute("hidden"));
+    }
+
+    [Fact]
     public void Eyebrow_Always_ThenItNamesTheKindOfPageAndIsNotAHeading()
     {
         // The eyebrow is above the title and is a <p>: rendered as an <h*> it would be a second
