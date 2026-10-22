@@ -531,8 +531,6 @@ invented-selector||.munin-explorer-meta__tab-content:focus-visible|outline-offse
 invented-selector||table.munin-explorer-data-list tbody th|color
 invented-selector||table.munin-explorer-data-list tbody th|font-weight
 invented-selector||table.munin-explorer-data-list tbody th|min-width
-invented-selector||.munin-explorer__dropdown > summary::-webkit-details-marker|display
-invented-selector||.munin-explorer__dropdown > summary|list-style
 invented-selector||.munin-explorer-hierarchy__branch|margin
 invented-selector||.munin-explorer-meta [role=tabpanel] > .munin-explorer-group:first-child|margin-top
 invented-selector||.munin-explorer-meta dl > dd|margin
@@ -626,3 +624,15 @@ invented-selector||.munin-explorer-versions__toggle:focus-visible|outline-offset
 # Fhi.Metadata-l9l2n.142: «Søk om tilgang» (munin-explorer-kilde__access) ships with the Stiler patch AB#122579; delete this line
 # when helsedata pins a Stiler that carries it.
 unstyled-name||.munin-explorer-kilde__access|
+
+# Fhi.Metadata-l9l2n.139: no Explorer since 2.8.0 renders munin-explorer__dropdown, so the samples dropped its
+# rules; the pinned Stiler still carries them. Delete these lines when helsedata pins a Stiler without them.
+missing-selector|@media (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon--right|
+missing-selector|@media (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon|
+missing-selector|@media (max-width:767px)|.munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary|
+missing-selector||.munin-explorer__dropdown > summary > .icon-keyboard-arrow-up|
+missing-selector||.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-down|
+missing-selector||.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-up|
+missing-selector||.munin-explorer__dropdown[open]|
+missing-selector||.munin-explorer__dropdown|
+missing-selector||.munin-explorer-header__actions .munin-explorer__dropdown|
