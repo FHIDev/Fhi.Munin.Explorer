@@ -1089,7 +1089,6 @@ export const assertions = [
       });
     },
   },
-
   {
     // «Alle felt» had only the browser's 1px default ring, the one control on the page without the
     // Explorer's own (Fhi.Metadata-l9l2n.135, ADO 122803). Reached with real Tab presses, as a reader would.
