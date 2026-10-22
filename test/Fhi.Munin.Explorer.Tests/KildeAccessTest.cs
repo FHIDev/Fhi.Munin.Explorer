@@ -10,11 +10,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// <summary>«Søk om tilgang» on the kilde page: what each Tilgangsnivå offers, and where the links come from (Fhi.Metadata-l9l2n.142).</summary>
 public class KildeAccessTest : ExplorerTestContext
 {
-    private static readonly KildeAccessLinks HostLinks = new(
-        ApplicationHref: "/no/soknader/?opprettSoknad=min-oversikt",
-        PersonalDataGuideHref: "/no/soknadsveiledning-oversikt/personidentifiserbare-opplysninger/",
-        AnonymousDataGuideHref: "/no/soknadsveiledning-oversikt/sok-om-anonyme-data/",
-        OpenDataHref: "/no/apne-data/");
+    private static readonly KildeAccessLinks HostLinks = KildeAccessLinks.Helsedata;
 
     public KildeAccessTest() => Services.AddSingleton<IMuninExplorerClient>(new HierarchyClient());
 
@@ -101,6 +97,21 @@ public class KildeAccessTest : ExplorerTestContext
         Assert.EndsWith("Se registerets nettsted for hvordan du søker.", Sentence(offer), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("mailto:x@example.org?subject=hei")]
+    [InlineData("[Søk her](https://example.org/sok)")]
+    public void Direct_ThePageIsAWebPage_AndMarkdownIsRead(string value)
+    {
+        var href = Offers(Kilde("""["tilgang-krever-soknad"]""", ("SoknadOmTilgangUrl", value), ("Hjemmeside", "https://example.org"))).Single().Links.Single().Href;
+        Assert.Equal(value.StartsWith("mailto", StringComparison.Ordinal) ? "https://example.org" : "https://example.org/sok", href);
+    }
+
+    [Fact]
+    public void Direct_AnAddressWithAPercent_IsNotLinked()
+    {
+        Assert.Empty(Offers(Kilde("""["tilgang-krever-soknad"]""", ("SoknadOmTilgangEpost", "a%0ABcc%3Ax@example.org"))));
+    }
+
     [Fact]
     public void Direct_WithNothingToLinkTo_ThenNothing()
     {
@@ -144,6 +155,9 @@ public class KildeAccessTest : ExplorerTestContext
             .Add(c => c.AccessLinks, HostLinks));
 
         var access = cut.Find(".munin-explorer-page__actions .munin-explorer-kilde__access");
+        // After the name heading in document order, so the kilde is named before what to do about it.
+        var heading = cut.Find("h1, h2, h3, h4, h5, h6");
+        Assert.True(heading.CompareDocumentPosition(access).HasFlag(AngleSharp.Dom.DocumentPositions.Following));
         var button = access.QuerySelector("a.hd-button-square.button-square--primary")!;
         Assert.Equal(("Apply for access", HostLinks.ApplicationHref), (button.TextContent, button.GetAttribute("href")));
         Assert.Equal(3, access.QuerySelectorAll("a").Length);
@@ -163,22 +177,45 @@ public class KildeAccessTest : ExplorerTestContext
         Assert.Empty(cut.FindAll(".munin-explorer-page__actions"));
     }
 
-    [Fact]
-    public void Configuration_TheAccessLinksSection_IsRegistered_AndWithoutItNothingIs()
+    private static KildeAccessLinks Registered(Dictionary<string, string?> settings)
     {
-        var configured = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["MuninExplorer:ApiBaseUrl"] = "https://explorer.munin.skytest.fhi.no",
-            ["MuninExplorer:AccessLinks:ApplicationHref"] = "/no/soknader/?opprettSoknad=min-oversikt",
-            ["MuninExplorer:AccessLinks:OpenDataHref"] = "/no/apne-data/",
-        }).Build();
-        var links = new ServiceCollection().AddMuninExplorer(configured).BuildServiceProvider().GetRequiredService<KildeAccessLinks>();
-        Assert.Equal(new KildeAccessLinks(ApplicationHref: "/no/soknader/?opprettSoknad=min-oversikt", OpenDataHref: "/no/apne-data/"), links);
+        settings["MuninExplorer:ApiBaseUrl"] = "https://explorer.munin.skytest.fhi.no";
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+        return new ServiceCollection().AddMuninExplorer(configuration).BuildServiceProvider().GetRequiredService<KildeAccessLinks>();
+    }
 
-        var bare = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+    [Fact]
+    public void Configuration_WithNoSection_ThenHelsedatasPages()
+    {
+        Assert.Equal(new KildeAccessLinks(
+            ApplicationHref: "/no/soknader/?opprettSoknad=min-oversikt",
+            PersonalDataGuideHref: "/no/soknadsveiledning-oversikt/personidentifiserbare-opplysninger/",
+            AnonymousDataGuideHref: "/no/soknadsveiledning-oversikt/sok-om-anonyme-data/",
+            OpenDataHref: "/no/apne-data/"), Registered([]));
+    }
+
+    [Fact]
+    public void Configuration_EachKeyOverridesOnlyItself_AndAnEmptyOneDropsItsLink()
+    {
+        var links = Registered(new()
         {
-            ["MuninExplorer:ApiBaseUrl"] = "https://explorer.munin.skytest.fhi.no",
-        }).Build();
-        Assert.Null(new ServiceCollection().AddMuninExplorer(bare).BuildServiceProvider().GetService<KildeAccessLinks>());
+            ["MuninExplorer:AccessLinks:ApplicationHref"] = "/sok",
+            ["MuninExplorer:AccessLinks:PersonalDataGuideHref"] = "",
+        });
+
+        Assert.Equal(KildeAccessLinks.Helsedata with { ApplicationHref = "/sok", PersonalDataGuideHref = "" }, links);
+        Assert.DoesNotContain(Offers(Kilde("""["soknad-via-helsedata"]"""), links).Single().Links, l => l.Text.Contains("personidentifiserbare", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Options_NullAccessLinks_RegistersNone()
+    {
+        var services = new ServiceCollection().AddMuninExplorer(o =>
+        {
+            o.ApiBaseUrl = "https://explorer.munin.skytest.fhi.no";
+            o.AccessLinks = null;
+        }).BuildServiceProvider();
+
+        Assert.Null(services.GetService<KildeAccessLinks>());
     }
 }

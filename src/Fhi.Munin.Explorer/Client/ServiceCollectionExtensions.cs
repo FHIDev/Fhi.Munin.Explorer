@@ -23,10 +23,10 @@ public sealed class MuninExplorerOptions
 
     /// <summary>
     /// The host's pages the kilde page's «Søk om tilgang» points to (configuration section
-    /// <c>MuninExplorer:AccessLinks</c>). Null, the default, gives no kilde an application through the host;
-    /// a registry's own page and open data are still linked.
+    /// <c>MuninExplorer:AccessLinks</c>). Defaults to helsedata.no's; a host without them sets its own, or an empty
+    /// href to drop that link. Null gives no kilde an application through the host.
     /// </summary>
-    public Blazor.KildeAccessLinks? AccessLinks { get; set; }
+    public Blazor.KildeAccessLinks? AccessLinks { get; set; } = Blazor.KildeAccessLinks.Helsedata;
 }
 
 /// <summary>The one call a host makes to use the explorer components.</summary>
@@ -153,13 +153,18 @@ public static class ServiceCollectionExtensions
         string? developmentFallback = null)
     {
         var fromConfiguration = configuration["MuninExplorer:ApiBaseUrl"];
+        // Each key overrides helsedata's default only where it is set, so a host can drop one link with an empty value.
         var access = configuration.GetSection("MuninExplorer:AccessLinks");
+        var defaults = Blazor.KildeAccessLinks.Helsedata;
         var accessLinks = new Blazor.KildeAccessLinks(
-            access["ApplicationHref"], access["PersonalDataGuideHref"], access["AnonymousDataGuideHref"], access["OpenDataHref"]);
+            access["ApplicationHref"] ?? defaults.ApplicationHref,
+            access["PersonalDataGuideHref"] ?? defaults.PersonalDataGuideHref,
+            access["AnonymousDataGuideHref"] ?? defaults.AnonymousDataGuideHref,
+            access["OpenDataHref"] ?? defaults.OpenDataHref);
         return services.AddMuninExplorer(o =>
         {
             o.ApiBaseUrl = string.IsNullOrWhiteSpace(fromConfiguration) ? developmentFallback : fromConfiguration;
-            o.AccessLinks = access.Exists() ? accessLinks : null;
+            o.AccessLinks = accessLinks;
         });
     }
 }

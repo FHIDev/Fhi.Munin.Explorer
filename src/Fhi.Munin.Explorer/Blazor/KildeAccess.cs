@@ -103,7 +103,7 @@ internal static partial class KildeAccess
             return new Offer(RequiresApplication, t.AccessDirect, [name], [new Link(t.AccessApplyToRegistry, page, Primary: true)]);
         }
 
-        if (Present(Value(kilde, ApplicationEmailKey)) is { } email && EmailPattern().IsMatch(email))
+        if (Present(Value(kilde, ApplicationEmailKey)) is { } email && EmailPattern().IsMatch(email) && !email.Contains('%'))
         {
             return new Offer(RequiresApplication, t.AccessDirectByEmail, [name, new Fill(email, Norwegian: false)],
                 [new Link(t.AccessSendEmail, "mailto:" + email, Primary: true)]);
@@ -117,8 +117,10 @@ internal static partial class KildeAccess
     private static string? Website(string? raw) =>
         CatalogueMarkdown.Link(raw)?.Href ?? CatalogueMarkdown.LinkList(raw)?.FirstOrDefault();
 
+    // A web page only: AllowedScheme also lets mailto through, which no «page» link should be.
     private static string? Url(string? raw) =>
-        Present(raw) is { } url && CatalogueMarkdown.AllowedScheme(url) ? url : null;
+        CatalogueMarkdown.Link(raw)?.Href is { } href && Uri.TryCreate(href, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) ? href : null;
 
     private static string? Value(KildeDetail kilde, string key) =>
         kilde.AdditionalProperties?.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase)).Value;
@@ -130,7 +132,7 @@ internal static partial class KildeAccess
     [GeneratedRegex(@"\{(\d)\}")]
     private static partial Regex HolePattern();
 
-    // Munin's own rule for its Email type, so an address it accepts is one this links.
+    // Munin's own rule for its Email type; a '%' is refused besides, since a mail client decodes it in a mailto.
     [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")]
     private static partial Regex EmailPattern();
 }
