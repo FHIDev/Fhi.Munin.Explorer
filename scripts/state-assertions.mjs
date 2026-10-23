@@ -2239,6 +2239,11 @@ export const assertions = [
         throw new Error('the page does not scroll, so the mark has nowhere to follow the reader');
       }
 
+      // The links are drawn a render before the circuit has started the spy, so wait for its first
+      // mark; a spy that never marks falls through to measure and is a finding (Fhi.Metadata-7896y).
+      await page.waitForFunction(toc => document.querySelector(`${toc} a[aria-current]`) !== null,
+        TOC, { timeout: findTimeout }).catch(() => {});
+
       return { ids };
     },
 
