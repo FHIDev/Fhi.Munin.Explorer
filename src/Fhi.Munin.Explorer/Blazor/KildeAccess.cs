@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -80,7 +81,7 @@ internal static partial class KildeAccess
         }
 
         if ((Has(codes, OpenData) || Has(codes, StatisticsBank))
-            && (Url(Value(kilde, OpenDataUrlKey)) ?? Present(links?.OpenDataHref)) is { } open)
+            && (Url(Value(kilde, OpenDataUrlKey)) ?? DisplayText.Trimmed(links?.OpenDataHref)) is { } open)
         {
             offers.Add(new Offer(OpenData, t.AccessOpenData, [name], [new Link(t.AccessSeeOpenData, open, Primary: false)]));
         }
@@ -91,17 +92,17 @@ internal static partial class KildeAccess
     private static Offer? ThroughHost(KildeDetail kilde, KildeAccessLinks? links, Texts t)
     {
         List<Link> found = [];
-        if (Present(links?.ApplicationHref) is { } apply)
+        if (DisplayText.Trimmed(links?.ApplicationHref) is { } apply)
         {
             found.Add(new Link(t.AccessApply, apply, Primary: true));
         }
 
-        if (Present(links?.PersonalDataGuideHref) is { } personal)
+        if (DisplayText.Trimmed(links?.PersonalDataGuideHref) is { } personal)
         {
             found.Add(new Link(t.AccessGuidePersonal, personal, Primary: false));
         }
 
-        if (Present(links?.AnonymousDataGuideHref) is { } anonymous)
+        if (DisplayText.Trimmed(links?.AnonymousDataGuideHref) is { } anonymous)
         {
             found.Add(new Link(t.AccessGuideAnonymous, anonymous, Primary: false));
         }
@@ -111,7 +112,7 @@ internal static partial class KildeAccess
             return null;
         }
 
-        return Present(kilde.DataController) is { } controller
+        return DisplayText.Trimmed(kilde.DataController) is { } controller
             ? new Offer(ViaHelsedata, t.AccessViaHelsedataFrom, [new Fill(controller, Norwegian: true)], found)
             : new Offer(ViaHelsedata, t.AccessViaHelsedata, [], found);
     }
@@ -123,7 +124,7 @@ internal static partial class KildeAccess
             return new Offer(RequiresApplication, t.AccessDirect, [name], [new Link(t.AccessApplyToRegistry, page, Primary: true)]);
         }
 
-        if (Present(Value(kilde, ApplicationEmailKey)) is { } email && EmailPattern().IsMatch(email) && !email.Contains('%'))
+        if (DisplayText.Trimmed(Value(kilde, ApplicationEmailKey)) is { } email && EmailPattern().IsMatch(email) && !email.Contains('%'))
         {
             return new Offer(RequiresApplication, t.AccessDirectByEmail, [name, new Fill(email, Norwegian: false)],
                 [new Link(t.AccessSendEmail, "mailto:" + email, Primary: true)]);
@@ -144,8 +145,6 @@ internal static partial class KildeAccess
 
     private static string? Value(KildeDetail kilde, string key) =>
         kilde.AdditionalProperties?.FirstOrDefault(p => string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase)).Value;
-
-    private static string? Present(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static bool Has(IReadOnlyList<string> codes, string code) => codes.Contains(code, StringComparer.OrdinalIgnoreCase);
 
