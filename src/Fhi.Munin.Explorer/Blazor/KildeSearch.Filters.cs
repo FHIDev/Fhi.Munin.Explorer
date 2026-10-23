@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Fhi.Munin.Explorer.Contracts;
+using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
@@ -623,13 +624,9 @@ public sealed partial class KildeSearch
     /// <summary>The same, as it counts: null for a field that is empty or holds only spaces.</summary>
     /// <remarks>
     /// One definition of "there is a search here", as <c>SearchText</c> is over the list, so none disagree on spaces.
-    /// <see cref="AsTerm"/> holds it, as <see cref="RemovesDrawnOptions"/> asks it of a term not yet committed.
+    /// <see cref="DisplayText.Trimmed"/> holds it, as <see cref="RemovesDrawnOptions"/> asks it of a term not yet committed.
     /// </remarks>
-    private string? FacetSearchTerm(string key) => AsTerm(FacetSearchValue(key));
-
-    /// <summary>What a field holds, as a search: null where it holds nothing that could narrow anything.</summary>
-    private static string? AsTerm(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+    private string? FacetSearchTerm(string key) => DisplayText.Trimmed(FacetSearchValue(key));
 
     /// <summary>Commit a facet search: focus first, state after, guarded as <see cref="ClearSearchAndRefocusAsync"/> is.</summary>
     /// <remarks>
@@ -653,7 +650,7 @@ public sealed partial class KildeSearch
     /// </remarks>
     private bool RemovesDrawnOptions(string key, string? text)
     {
-        if (AsTerm(text) is not { } term ||
+        if (DisplayText.Trimmed(text) is not { } term ||
             Definitions.FirstOrDefault(definition => definition.Key == key) is not { } definition)
         {
             return false;
