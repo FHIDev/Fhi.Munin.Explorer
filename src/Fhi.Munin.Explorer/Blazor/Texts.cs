@@ -391,6 +391,8 @@ internal sealed record Texts(
     string ShareCodeLabel,
     string ShareLinkLabel,
     string ShareByEmail,
+    // (whether a link is shown) — under the list's mailto, pointing at the fields above it (Fhi.Metadata-eeuey.4.34).
+    Func<bool, string> ShareByEmailHint,
     // (list name) — the e-mail's subject line.
     Func<string, string> ShareMailSubject,
     // (code, link or null) — the e-mail's body.
@@ -1413,6 +1415,9 @@ internal sealed record Texts(
         ShareCodeLabel: "Delekode",
         ShareLinkLabel: "Lenke til listen",
         ShareByEmail: "Send koden på e-post",
+        ShareByEmailHint: hasLink => hasLink
+            ? "Åpner e-postprogrammet ditt. Bruker du e-post i nettleseren, kopier delekoden eller lenken over i stedet."
+            : "Åpner e-postprogrammet ditt. Bruker du e-post i nettleseren, kopier delekoden over i stedet.",
         ShareMailSubject: name => $"Delt variabelliste: {name}",
         ShareMailBody: (code, link) => link is null
             ? $"Åpne listen med delekoden {code}. Koden virker i 90 dager."
@@ -1977,6 +1982,9 @@ internal sealed record Texts(
         ShareCodeLabel: "Share code",
         ShareLinkLabel: "Link to the list",
         ShareByEmail: "Send the code by email",
+        ShareByEmailHint: hasLink => hasLink
+            ? "Opens your mail program. If you use webmail, copy the share code or the link above instead."
+            : "Opens your mail program. If you use webmail, copy the share code above instead.",
         ShareMailSubject: name => $"Shared variable list: {name}",
         ShareMailBody: (code, link) => link is null
             ? $"Open the list with the share code {code}. The code works for 90 days."
