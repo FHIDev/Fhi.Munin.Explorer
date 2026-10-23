@@ -1,4 +1,4 @@
-// SCAN_SHARD="k/n" splits a scan's work items across n CI jobs: round-robin with ownsItem, by measured time with packByCost.
+// SCAN_SHARD="k/n" splits a scan's work items across n CI jobs, by measured time with packByCost (ownsItem is round-robin).
 // Unset, a scan takes every item, so a developer's local run is unchanged. A malformed value is a TOOLING failure, never a
 // silent "all" or "none": a shard that scanned nothing would pass. (Fhi.Metadata-ln1s6)
 

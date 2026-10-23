@@ -22,7 +22,7 @@ import { states } from './axe-states.mjs';
 import { assertions } from './state-assertions.mjs';
 import { launchOptions } from './browser-launch.mjs';
 import { describeShard, isFirstShard, packByCost, parseShard } from './scan-shard.mjs';
-import { DEFAULT_SECONDS, pairSeconds } from './state-pair-seconds.mjs';
+import { pairCost } from './state-pair-seconds.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
@@ -122,7 +122,7 @@ try {
 // their measured time, in the order the loop below meets them.
 const pairCosts = plan.flatMap(({ state }) => assertions
   .filter(a => a.states === undefined || a.states.includes(state))
-  .map(({ name }) => pairSeconds[`${state}: ${name}`] ?? DEFAULT_SECONDS));
+  .map(({ name }) => pairCost(state, name)));
 const pairCount = pairCosts.length;
 const shardOf = packByCost(pairCosts, shard.count);
 let pairIndex = -1;

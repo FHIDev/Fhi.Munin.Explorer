@@ -67,21 +67,23 @@ async function statePairs() {
   const targets = /^TARGETS=\(\n([\s\S]*?)\n\)/m.exec(script)[1].match(/"[^"]*"/g).map(t => t.slice(1, -1));
   return targets.flatMap(target => {
     const state = target.split('::')[1] ?? null;
-    return assertions.filter(a => a.states === undefined || a.states.includes(state)).map(({ name }) => `${state}: ${name}`);
+    return assertions.filter(a => a.states === undefined || a.states.includes(state)).map(({ name }) => ({ state, name }));
   });
 }
 
 test('the measured state table names only pairs the state scan runs', async () => {
-  const [pairs, { pairSeconds }] = await Promise.all([statePairs(), import('./state-pair-seconds.mjs')]);
-  assert.deepEqual(Object.keys(pairSeconds).filter(key => !pairs.includes(key)), []);
+  const [pairs, { pairKey, pairSeconds }] = await Promise.all([statePairs(), import('./state-pair-seconds.mjs')]);
+  const keys = pairs.map(({ state, name }) => pairKey(state, name));
+  assert.deepEqual(Object.keys(pairSeconds).filter(key => !keys.includes(key)), []);
 });
 
-test('the state pairs pack onto four shards once each, none far over a quarter', async () => {
-  const [pairs, { DEFAULT_SECONDS, pairSeconds }] = await Promise.all([statePairs(), import('./state-pair-seconds.mjs')]);
-  const costs = pairs.map(key => pairSeconds[key] ?? DEFAULT_SECONDS);
+test('the state pairs pack onto four shards, each busy and none far over a quarter', async () => {
+  const [pairs, { DEFAULT_SECONDS, pairCost }] = await Promise.all([statePairs(), import('./state-pair-seconds.mjs')]);
+  const costs = pairs.map(({ state, name }) => pairCost(state, name));
   const shardOf = packByCost(costs, 4);
   const load = [0, 0, 0, 0];
   costs.forEach((cost, i) => { load[shardOf[i] - 1] += cost; });
-  assert.equal(shardOf.filter(k => k >= 1 && k <= 4).length, pairs.length);
+  assert.ok(shardOf.length === pairs.length && shardOf.every(k => k >= 1 && k <= 4), `shards ${shardOf}`);
+  assert.ok(load.every(seconds => seconds > 0), `loads ${load}`);
   assert.ok(Math.max(...load) <= costs.reduce((a, b) => a + b) / 4 + DEFAULT_SECONDS, `loads ${load}`);
 });

@@ -1,7 +1,10 @@
-// Median CI seconds per (state, assertion) pair, from the shard logs of six runs on 2026-10-23. state-scan.mjs packs
-// the shards by them (Fhi.Metadata-56lxp); a pair missing here costs DEFAULT_SECONDS, about what the cheapest take.
+// Median CI seconds per (state, assertion) pair, from the shard logs. state-scan.mjs packs the shards by them
+// (Fhi.Metadata-56lxp); a pair missing here costs DEFAULT_SECONDS, about what the cheapest take.
 // Most of the time is PRESS_SETTLE_MS waits, once per width and press; remeasure when one moves.
 export const DEFAULT_SECONDS = 5;
+
+export const pairKey = (state, name) => `${state}: ${name}`;
+export const pairCost = (state, name) => pairSeconds[pairKey(state, name)] ?? DEFAULT_SECONDS;
 
 export const pairSeconds = {
   'utforsker-list: from 480px opening a list menu leaves every button in its row where it was and as wide': 40,
