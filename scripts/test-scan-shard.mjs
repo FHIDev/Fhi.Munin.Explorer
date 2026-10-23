@@ -60,7 +60,8 @@ async function statePairs() {
   const block = /^TARGETS=\(\r?\n([\s\S]*?)\r?\n\)/m.exec(script);
   assert.ok(block, 'no TARGETS=( ... ) block in check-component-state.sh');
   const lines = block[1].split(/\r?\n/).map(line => line.trim()).filter(line => line !== '' && !line.startsWith('#'));
-  assert.deepEqual(lines.filter(line => !/^"[^"]*"$/.test(line)), [], 'TARGETS lines this test cannot read');
+  const unread = lines.filter(line => !/^"[^"$`]+"$/.test(line));
+  assert.deepEqual(unread, [], `TARGETS needs one plain "double-quoted" target per line, no trailing comment: ${unread.join(' | ')}`);
   const targets = lines.map(line => line.slice(1, -1));
   assert.ok(targets.length > 0, 'the TARGETS block in check-component-state.sh lists no target');
   return targets.flatMap(target => {
