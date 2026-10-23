@@ -1,5 +1,5 @@
-// SCAN_SHARD="k/n" splits a scan's work items across n CI jobs, item i going to job (i mod n) + 1. Unset, a scan
-// takes every item, so a developer's local run is unchanged. A malformed value is a TOOLING failure, never a
+// SCAN_SHARD="k/n" splits a scan's work items across n CI jobs: round-robin with ownsItem, by measured time with packByCost.
+// Unset, a scan takes every item, so a developer's local run is unchanged. A malformed value is a TOOLING failure, never a
 // silent "all" or "none": a shard that scanned nothing would pass. (Fhi.Metadata-ln1s6)
 
 export function parseShard(raw = process.env.SCAN_SHARD) {
@@ -14,6 +14,20 @@ export function parseShard(raw = process.env.SCAN_SHARD) {
 }
 
 export const ownsItem = (itemIndex, { index, count } = parseShard()) => itemIndex % count === index - 1;
+
+// Longest first onto the least-loaded shard, ties to the lowest: round-robin put both heavy filter states with
+// their neighbours and one shard set the PR's wall clock (Fhi.Metadata-w6v38). firstLoad is work shard 1 does anyway.
+export function packByCost(costs, count, firstLoad = 0) {
+  const load = Array.from({ length: count }, (_, i) => (i === 0 ? firstLoad : 0));
+  const shardOf = new Array(costs.length);
+  const order = costs.map((cost, i) => [cost, i]).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  for (const [cost, item] of order) {
+    const lightest = load.indexOf(Math.min(...load));
+    shardOf[item] = lightest + 1;
+    load[lightest] += cost;
+  }
+  return shardOf;
+}
 
 export const isFirstShard = ({ index } = parseShard()) => index === 1;
 

@@ -432,9 +432,9 @@ jobs:
   # section - the gate's blind spots included - from being a sentence nobody checks. Its own job,
   # required on main since 2026-08-28, for the guards' reasons above.
   #
-  # Split four ways (SCAN_SHARD, scripts/scan-shard.mjs): one job scanning every page state in a row set the PR's
-  # wall clock. Each shard scans every fourth state; the 320px reflow runs in shard 1. The
-  # required check keeps its name: the "accessibility" job below passes only when every shard did. (Fhi.Metadata-ln1s6)
+  # Split four ways (SCAN_SHARD, scripts/scan-shard.mjs) by each state's measured time (scripts/axe-state-seconds.mjs,
+  # Fhi.Metadata-w6v38); the 320px reflow runs in shard 1. The required check keeps its name: the "accessibility"
+  # job below passes only when every shard did. (Fhi.Metadata-ln1s6)
   accessibility-shard:
     name: accessibility ${{ matrix.shard }}/4
     runs-on: ubuntu-latest

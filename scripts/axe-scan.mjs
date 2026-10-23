@@ -11,7 +11,8 @@ import { chromium } from 'playwright';
 import { launchOptions } from './browser-launch.mjs';
 import AxeBuilder from '@axe-core/playwright';
 import { states, wideOnlyStates } from './axe-states.mjs';
-import { describeShard, ownsItem, parseShard } from './scan-shard.mjs';
+import { describeShard, packByCost, parseShard } from './scan-shard.mjs';
+import { DEFAULT_SECONDS, REFLOW_SECONDS, stateSeconds } from './axe-state-seconds.mjs';
 import { scrollPast } from './reader-scroll.mjs';
 
 const targets = process.argv.slice(2);
@@ -85,7 +86,7 @@ for (const target of targets) {
   plan.push({ url, state, label: state === null ? url : `${url} [${state}]` });
 }
 
-// A CI shard scans every n-th page state; unset, all of them.
+// A CI shard scans the states packByCost gives it by their measured time; unset, all of them.
 let shard;
 try {
   shard = parseShard();
@@ -93,7 +94,8 @@ try {
   console.error(`${err.message} - TOOLING failure.`);
   process.exit(2);
 }
-const owned = plan.filter((_, i) => ownsItem(i, shard));
+const shardOf = packByCost(plan.map(({ state }) => stateSeconds[state] ?? DEFAULT_SECONDS), shard.count, REFLOW_SECONDS);
+const owned = plan.filter((_, i) => shardOf[i] === shard.index);
 if (owned.length === 0) {
   console.error('this shard has no page state to scan - TOOLING failure: fewer states than shards.');
   process.exit(2);
