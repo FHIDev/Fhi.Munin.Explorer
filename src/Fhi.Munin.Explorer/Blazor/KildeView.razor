@@ -59,6 +59,12 @@
                     }
                 }
 
+                @* Above the jump links, as Skuld's «Søk om tilgang» artboard orders them (Robin, 2026-10-23). *@
+                @if (KildeAccess.Buttons(AccessOffers, T) is { Count: > 0 } buttons)
+                {
+                    @AccessButtonRow(buttons)
+                }
+
                 @if (JumpToVariables is not null || JumpToDataCollections is not null)
                 {
                     <p class="margin--none munin-explorer-kilde__jumps">
@@ -78,11 +84,6 @@
                     </p>
                 }
             </div>
-
-            @if (KildeAccess.Button(AccessOffers, T) is { } button)
-            {
-                @AccessButtonRow(button)
-            }
         </Header>
         <ChildContent>
 
@@ -109,10 +110,13 @@
 </CascadingValue>
 
 @code {
-    /// <summary>The one button at the top, after the name block, so a reader hears which kilde it is about first.</summary>
-    private RenderFragment AccessButtonRow(KildeAccess.Link button) => @<text>
+    /// <summary>The buttons under the ingress: the first is the primary, a second (open data beside an application) tertiary.</summary>
+    private RenderFragment AccessButtonRow(IReadOnlyList<KildeAccess.Link> buttons) => @<text>
         <div class="munin-explorer-page__actions">
-            <a href="@button.Href" class="hd-button-square button-square--primary">@button.Text</a>
+            @foreach (var button in buttons)
+            {
+                <a href="@button.Href" class="hd-button-square @(button.Primary ? "button-square--primary" : "button-square--tertiary")">@button.Text</a>
+            }
         </div>
     </text>;
 

@@ -177,7 +177,11 @@ public class KildeAccessTest : ExplorerTestContext
     public void KildeView_TheTopHasOnlyTheButton_AndTheWholeBlockOpensTilgangOgAnsvar()
     {
         // Robin, 2026-10-23: Skuld and the design pages have a button at the top, not the full text.
-        var cut = RenderKilde(Kilde("""["soknad-via-helsedata"]"""), "en");
+        var cut = Render<KildeView>(b => b
+            .Add(c => c.Kilde, Kilde("""["soknad-via-helsedata"]""") with { TotalVariables = 3 })
+            .Add(c => c.Language, "en")
+            .Add(c => c.VariablesHref, "/en/variabler/?kilde=x")
+            .Add(c => c.AccessLinks, HostLinks));
 
         var top = cut.Find(".munin-explorer-page__actions");
         Assert.Equal(["Apply for access"], top.QuerySelectorAll("a").Select(a => a.TextContent));
@@ -187,6 +191,9 @@ public class KildeAccessTest : ExplorerTestContext
         var markup = cut.Markup;
         Assert.True(markup.IndexOf("Testregisteret</h2>", StringComparison.Ordinal)
                     < markup.IndexOf("munin-explorer-page__actions", StringComparison.Ordinal));
+        // Above the jump links, as Skuld orders them (Robin, 2026-10-23).
+        Assert.True(markup.IndexOf("munin-explorer-page__actions", StringComparison.Ordinal)
+                    < markup.IndexOf("munin-explorer-kilde__jumps", StringComparison.Ordinal));
 
         var section = AccessSection(cut);
         var block = section.QuerySelector(".munin-explorer-kilde__access")!;
@@ -248,11 +255,12 @@ public class KildeAccessTest : ExplorerTestContext
     }
 
     [Fact]
-    public void KildeView_ApplicationAndOpenData_ThenOneButton_AndBothExplainedInTheSection()
+    public void KildeView_ApplicationAndOpenData_ThenTwoButtons_AndBothExplainedInTheSection()
     {
         var cut = RenderKilde(Kilde("""["soknad-via-helsedata","apne-data"]""", ("AapneDataUrl", "https://norgeshelsa.no/")));
 
-        Assert.Equal(["Søk om tilgang"], cut.FindAll(".munin-explorer-page__actions a").Select(a => a.TextContent));
+        Assert.Equal([("Søk om tilgang", "hd-button-square button-square--primary"), ("Se åpne data", "hd-button-square button-square--tertiary")],
+            cut.FindAll(".munin-explorer-page__actions a").Select(a => (a.TextContent, a.GetAttribute("class"))));
         Assert.Contains("https://norgeshelsa.no/", AccessSection(cut).QuerySelectorAll("a").Select(a => a.GetAttribute("href")));
     }
 
