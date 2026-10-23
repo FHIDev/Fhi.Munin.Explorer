@@ -976,6 +976,8 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-datasamling` | handle |
   | `munin-explorer-datasamling__criteria` | handle |
   | `munin-explorer-datasamling__description` | handle |
+  | `munin-explorer-datasamling__description-rest` | handle |
+  | `munin-explorer-datasamling__description-toggle` | meaning |
   | `munin-explorer-datasamling__header` | handle |
   | `munin-explorer-datasamling__identifiers` | handle |
   | `munin-explorer-datasamling__main` | handle |

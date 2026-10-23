@@ -2193,6 +2193,24 @@ table.munin-explorer-data-list tbody th {
   outline-offset: 2px;
 }
 
+/* The same fold on a datasamling's description, as the kilde's above (Fhi.Metadata-l9l2n.146). */
+.munin-explorer-datasamling__description-rest {
+  margin: 0;
+}
+
+.munin-explorer-datasamling__description-toggle {
+  color: rgb(50, 55, 141);
+  cursor: pointer;
+  margin: 8px 0 0;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.munin-explorer-datasamling__description-toggle:focus-visible {
+  outline: 2px solid rgb(66, 139, 255);
+  outline-offset: 2px;
+}
+
 /* «Søk om tilgang» explained, inside the infobox at the top of Tilgang og ansvar: each sentence over its links, the
    button alone and each guide on a line of its own under it (Robin, 2026-10-23; Fhi.Metadata-l9l2n.142, .151). */
 .munin-explorer-kilde__access {

@@ -593,6 +593,24 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     }
 
     [Fact]
+    public void DatasamlingView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
+    {
+        // One: «Les mer» under a long description (Fhi.Metadata-l9l2n.146). A datasamling this thin
+        // draws no contents list, so the kilde page's second disclosure is not here.
+        Services.AddSingleton<IMuninExplorerClient>(new DisclosureClient());
+        var datasamling = new DatasamlingDetail
+        {
+            Id = Guid.NewGuid(),
+            Code = "K_ALS.INKLUSJON",
+            PreferredTerm = "Inklusjon",
+            Description = new string('a', 400) + ".\n\n" + new string('b', 400) + ".",
+        };
+
+        AssertStandingGesturesAreRefused(
+            () => Render<DatasamlingView>(b => b.Add(c => c.Datasamling, datasamling)), expected: 1, native: 0);
+    }
+
+    [Fact]
     public void VariableListView_WhenEveryDisclosureIsGestured_ThenNoneOfThemMoves()
     {
         // Ten: create, open a shared list, rename, copy, the delete confirmation, the empty
@@ -617,6 +635,7 @@ public class DisclosureGestureGuardTest : ExplorerTestContext
     /// </remarks>
     private static readonly Type[] Swept =
     [
+        typeof(DatasamlingView),
         typeof(DetailToc),
         typeof(KildeSearch),
         typeof(KildeView),

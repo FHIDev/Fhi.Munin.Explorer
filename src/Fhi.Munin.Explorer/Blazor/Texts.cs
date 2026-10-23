@@ -721,7 +721,7 @@ internal sealed record Texts(
     Func<int, string> ShowMoreFacetValues,
     string ShowFewerFacetValues,
 
-    // The kilde description's own toggle, under the name (Fhi.Metadata-nebok).
+    // The kilde's and the datasamling's description toggle, under the name (Fhi.Metadata-nebok).
     string DescriptionReadMore,
     string DescriptionShowLess,
 

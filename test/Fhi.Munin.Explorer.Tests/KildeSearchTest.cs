@@ -7425,6 +7425,75 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public async Task Trail_WhileTheOpenedDatasamlingIsStillLoading_ThenItIsAlreadyDrawnAndOnlyOnceAfter()
+    {
+        // The kilde page's l9l2n.127 fix, for a datasamling: without a trail while it loads, a host
+        // hiding the back button beside one flashes it (Fhi.Metadata-l9l2n.146).
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { StallDatasamling = true };
+
+        var cut = RenderDrillIn(client, kilde, datasamling, wireList: true);
+
+        var loading = Assert.Single(cut.FindAll(".munin-explorer-drilldown .breadcrumbs"));
+        Assert.Equal(["Kildeutforsker", "Als registeret", "Datasamling"],
+                     loading.QuerySelectorAll("li").Select(crumb => crumb.TextContent.Trim()));
+        Assert.Equal(["/kilder", $"/kilder?kilde={kilde}"],
+                     loading.QuerySelectorAll("a").Select(link => link.GetAttribute("href")));
+        Assert.Equal("true", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy"));
+
+        await cut.InvokeAsync(() => client.AnswerStalled(new DatasamlingDetail
+        {
+            Id = datasamling,
+            Code = "K_ALS.INKLUSJON",
+            PreferredTerm = "Inklusjon",
+            ParentKildeId = kilde,
+            ParentKildeName = "Als registeret",
+        }));
+
+        cut.WaitForAssertion(() => Assert.Equal("false", cut.Find(".munin-explorer-drilldown").GetAttribute("aria-busy")));
+        var trail = Assert.Single(cut.FindAll(".munin-explorer-drilldown .breadcrumbs"));
+        Assert.Equal(["Kildeutforsker", "Als registeret", "Inklusjon"],
+                     trail.QuerySelectorAll("li").Select(crumb => crumb.TextContent.Trim()));
+        Assert.Equal(["/kilder", $"/kilder?kilde={kilde}"],
+                     trail.QuerySelectorAll("a").Select(link => link.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void Trail_WhileADatasamlingLoadsUnderAKildeTheListLacks_ThenItIsStillDrawnWithoutTheKildeStep()
+    {
+        // No name to give the kilde step, but a trail all the same, so the back button still does not flash.
+        var listed = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(listed, datasamling) { StallDatasamling = true };
+
+        var cut = RenderDrillIn(client, Guid.NewGuid(), datasamling, wireList: true);
+
+        var loading = Assert.Single(cut.FindAll(".munin-explorer-drilldown .breadcrumbs"));
+        Assert.Equal(["Kildeutforsker", "Datasamling"],
+                     loading.QuerySelectorAll("li").Select(crumb => crumb.TextContent.Trim()));
+    }
+
+    [Fact]
+    public void Trail_WhileADatasamlingLoadsOnAHostWithKildePages_ThenTheKildeStepLinksTheKildePageAsItWillAfter()
+    {
+        // KildeHref prefers KildeDetailHref once the payload names the parent; the loading step must too.
+        var kilde = Guid.NewGuid();
+        var datasamling = Guid.NewGuid();
+        var client = new DrillInClient(kilde, datasamling) { StallDatasamling = true };
+
+        var cut = RenderWith(client, p => p
+            .Add(c => c.SelectedKildeId, kilde)
+            .Add(c => c.SelectedDatasamlingId, datasamling)
+            .Add(c => c.KilderHref, () => "/kilder")
+            .Add(c => c.KildeDetailHref, id => $"/kilder/{id}"));
+
+        var loading = Assert.Single(cut.FindAll(".munin-explorer-drilldown .breadcrumbs"));
+        Assert.Equal(["/kilder", $"/kilder/{kilde}"],
+                     loading.QuerySelectorAll("a").Select(link => link.GetAttribute("href")));
+    }
+
+    [Fact]
     public void Trail_WhenTheKildeIsOpen_ThenItNamesTheListAndTheKildeAndNothingElse()
     {
         var kilde = Guid.NewGuid();
