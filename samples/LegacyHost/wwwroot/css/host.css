@@ -2194,7 +2194,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* «Søk om tilgang» explained, inside the infobox at the top of Tilgang og ansvar: each sentence over its links, the
-   links side by side and wrapping (Fhi.Metadata-l9l2n.142, .151). */
+   button alone and each guide on a line of its own under it (Robin, 2026-10-23; Fhi.Metadata-l9l2n.142, .151). */
 .munin-explorer-kilde__access {
   display: grid;
   gap: 8px;
@@ -2205,9 +2205,9 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-kilde__access > p:has(a) {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 24px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 /* At phone width the registry's «Søk om tilgang hos registeret» and an icon are wider than the box's column, and the
