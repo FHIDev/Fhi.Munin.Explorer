@@ -412,6 +412,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
   word-break: break-word;
 }
 .infobox--bg-yellow { background-color: var(--warning-light); }
+@media all and (max-width: 767px) { .infobox { flex-direction: column; } }
 
 /* components/_infobox.scss and base/_illustrations.scss — the «Søknad om tilgang til data» box helsedata's kilde pages
    draw, which «Søk om tilgang» reuses in Tilgang og ansvar (Fhi.Metadata-l9l2n.151). The brand-sign SVG ships with
@@ -2207,6 +2208,17 @@ table.munin-explorer-data-list tbody th {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 24px;
+}
+
+/* At phone width the registry's «Søk om tilgang hos registeret» and an icon are wider than the box's column, and the
+   button's nowrap would push it out; here it wraps instead (Copilot on #657). */
+@media all and (max-width: 767px) {
+  .munin-explorer-kilde__access .hd-button-square {
+    height: auto;
+    min-height: 2.75rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* Skuld's two jump links under the description, side by side and wrapping on a phone (Fhi.Metadata-4ggs9). */
