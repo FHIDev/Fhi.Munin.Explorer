@@ -45,8 +45,31 @@
                     <DetailTrail Steps="sourceTrail" Label="@T.FieldKildePath" />
                 }
 
-                @DetailBlocks.Prose(Description, "ingress munin-explorer-datasamling__description",
-                                    CatalogueProperties.Foreign(ShownDescription.Norwegian, Reader))
+                @* Folded as the kilde page folds its own, on DescriptionLead's cut (Fhi.Metadata-l9l2n.146).
+                   The inline display is because Stiler's `div { display: block }` outranks [hidden]. *@
+                @if (Description is { } description)
+                {
+                    var (lead, folded) = DescriptionLead.Split(description);
+                    var descriptionLang = CatalogueProperties.Foreign(ShownDescription.Norwegian, Reader);
+
+                    @DetailBlocks.Prose(lead, "ingress munin-explorer-datasamling__description",
+                                        descriptionLang)
+
+                    @if (folded is not null)
+                    {
+                        <div id="@DescriptionRestId" class="munin-explorer-datasamling__description-rest"
+                             hidden="@(!_descriptionOpen)" style="@(_descriptionOpen ? null : "display:none")">
+                            @DetailBlocks.Prose(folded, "ingress munin-explorer-datasamling__description",
+                                                descriptionLang)
+                        </div>
+                        <button type="button" class="hd-button-reset munin-explorer-datasamling__description-toggle"
+                                aria-expanded="@(_descriptionOpen ? "true" : "false")"
+                                aria-controls="@DescriptionRestId"
+                                @onclick="ToggleDescription">
+                            @(_descriptionOpen ? T.DescriptionShowLess : T.DescriptionReadMore)
+                        </button>
+                    }
+                }
             </div>
         </Header>
         <ChildContent>
