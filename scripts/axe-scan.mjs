@@ -97,7 +97,7 @@ try {
 const shardOf = packByCost(plan.map(({ state }) => stateSeconds[state] ?? DEFAULT_SECONDS), shard.count, REFLOW_SECONDS);
 const owned = plan.filter((_, i) => shardOf[i] === shard.index);
 if (owned.length === 0) {
-  console.error('this shard has no page state to scan - TOOLING failure: fewer states than shards.');
+  console.error('this shard has no page state to scan - TOOLING failure: fewer states than shards, or the measured times in axe-state-seconds.mjs left it none.');
   process.exit(2);
 }
 const shardNote = describeShard(owned.length, plan.length, shard);

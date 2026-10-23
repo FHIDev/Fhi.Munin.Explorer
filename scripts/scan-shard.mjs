@@ -15,8 +15,8 @@ export function parseShard(raw = process.env.SCAN_SHARD) {
 
 export const ownsItem = (itemIndex, { index, count } = parseShard()) => itemIndex % count === index - 1;
 
-// Longest first onto the least-loaded shard, ties to the lowest: round-robin put both heavy filter states with
-// their neighbours and one shard set the PR's wall clock (Fhi.Metadata-w6v38). firstLoad is work shard 1 does anyway.
+// Longest first onto the least-loaded shard, ties to the lowest, so every process computes the same split; round-robin
+// ignores cost and lets one heavy item set the wall clock. firstLoad is work shard 1 does anyway (Fhi.Metadata-w6v38).
 export function packByCost(costs, count, firstLoad = 0) {
   const load = Array.from({ length: count }, (_, i) => (i === 0 ? firstLoad : 0));
   const shardOf = new Array(costs.length);

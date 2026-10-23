@@ -35,7 +35,11 @@ test('packing by cost gives every item one shard and spreads the heavy ones', ()
   const load = [29, 0, 0, 0];
   costs.forEach((cost, i) => { load[shardOf[i] - 1] += cost; });
   assert.ok(Math.max(...load) <= 138 + 8, `loads ${load}`);
-  assert.deepEqual(packByCost(costs, 4, 29), shardOf);
+});
+
+test('equal costs go to the lowest free shard, in item order', () => {
+  assert.deepEqual(packByCost([5, 5, 5, 5], 4), [1, 2, 3, 4]);
+  assert.deepEqual(packByCost([5, 5, 5, 5, 5], 2), [1, 2, 1, 2, 1]);
 });
 
 test('one shard takes everything, and shard 1 is charged its extra work', () => {
