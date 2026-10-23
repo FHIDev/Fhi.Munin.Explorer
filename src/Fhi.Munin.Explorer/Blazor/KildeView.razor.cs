@@ -703,7 +703,7 @@ public sealed partial class KildeView : ComponentBase, IDisposable
                 builder.AddContent(0, AccessDetails);
                 builder.AddContent(1, body);
             }
-            : body;
+    : body;
 
     /// <summary>
     /// This view's own sections, each under the key a placement row moves it by, in the order the
