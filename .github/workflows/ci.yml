@@ -491,8 +491,8 @@ jobs:
   # left 1477 unit tests green, because bUnit renders a render tree and the browser's own flip of a
   # checkbox never happens in one. (Fhi.Metadata-1s7z1)
   #
-  # Split four ways like accessibility: each shard runs every fourth (page, assertion) pair, each with its own
-  # host and stub, so a hold one pair stages never meets another's. (Fhi.Metadata-ln1s6)
+  # Split four ways like accessibility, by each (page, assertion) pair's measured time (scripts/state-pair-seconds.mjs,
+  # Fhi.Metadata-56lxp); each shard has its own host and stub, so a hold one pair stages never meets another's.
   component-state-shard:
     name: state after a refused press ${{ matrix.shard }}/4
     runs-on: ubuntu-latest

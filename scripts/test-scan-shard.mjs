@@ -58,3 +58,30 @@ test('the heavy items are placed first, so small ones fill in around them', () =
   packByCost(costs, 2).forEach((k, i) => { load[k - 1] += costs[i]; });
   assert.ok(Math.max(...load) <= 144, `loads ${load}`);
 });
+
+// The (state, assertion) pairs state-scan.mjs runs, for the targets check-component-state.sh hands it.
+async function statePairs() {
+  const { readFile } = await import('node:fs/promises');
+  const [{ assertions }, script] = await Promise.all([
+    import('./state-assertions.mjs'), readFile(new URL('./check-component-state.sh', import.meta.url), 'utf8')]);
+  const targets = /^TARGETS=\(\n([\s\S]*?)\n\)/m.exec(script)[1].match(/"[^"]*"/g).map(t => t.slice(1, -1));
+  return targets.flatMap(target => {
+    const state = target.split('::')[1] ?? null;
+    return assertions.filter(a => a.states === undefined || a.states.includes(state)).map(({ name }) => `${state}: ${name}`);
+  });
+}
+
+test('the measured state table names only pairs the state scan runs', async () => {
+  const [pairs, { pairSeconds }] = await Promise.all([statePairs(), import('./state-pair-seconds.mjs')]);
+  assert.deepEqual(Object.keys(pairSeconds).filter(key => !pairs.includes(key)), []);
+});
+
+test('the state pairs pack onto four shards once each, none far over a quarter', async () => {
+  const [pairs, { DEFAULT_SECONDS, pairSeconds }] = await Promise.all([statePairs(), import('./state-pair-seconds.mjs')]);
+  const costs = pairs.map(key => pairSeconds[key] ?? DEFAULT_SECONDS);
+  const shardOf = packByCost(costs, 4);
+  const load = [0, 0, 0, 0];
+  costs.forEach((cost, i) => { load[shardOf[i] - 1] += cost; });
+  assert.equal(shardOf.filter(k => k >= 1 && k <= 4).length, pairs.length);
+  assert.ok(Math.max(...load) <= costs.reduce((a, b) => a + b) / 4 + DEFAULT_SECONDS, `loads ${load}`);
+});

@@ -21,7 +21,8 @@ import { chromium } from 'playwright';
 import { states } from './axe-states.mjs';
 import { assertions } from './state-assertions.mjs';
 import { launchOptions } from './browser-launch.mjs';
-import { describeShard, isFirstShard, ownsItem, parseShard } from './scan-shard.mjs';
+import { describeShard, isFirstShard, packByCost, parseShard } from './scan-shard.mjs';
+import { DEFAULT_SECONDS, pairSeconds } from './state-pair-seconds.mjs';
 
 const targets = process.argv.slice(2);
 const settleMs = Number(process.env.ACCESSIBILITY_SETTLE_MS ?? 4000);
@@ -117,9 +118,13 @@ try {
   process.exit(2);
 }
 
-// Each applicable (page, assertion) pair is one unit of work; a CI shard takes every n-th one.
-const pairCount = plan.reduce((sum, { state }) =>
-  sum + assertions.filter(a => a.states === undefined || a.states.includes(state)).length, 0);
+// Each applicable (page, assertion) pair is one unit of work; a CI shard takes the ones packByCost gives it by
+// their measured time, in the order the loop below meets them.
+const pairCosts = plan.flatMap(({ state }) => assertions
+  .filter(a => a.states === undefined || a.states.includes(state))
+  .map(({ name }) => pairSeconds[`${state}: ${name}`] ?? DEFAULT_SECONDS));
+const pairCount = pairCosts.length;
+const shardOf = packByCost(pairCosts, shard.count);
 let pairIndex = -1;
 let owned = 0;
 
@@ -160,7 +165,7 @@ try {
       }
 
       pairIndex += 1;
-      if (!ownsItem(pairIndex, shard)) continue;
+      if (shardOf[pairIndex] !== shard.index) continue;
       owned += 1;
 
       console.log(`\n==> state ${label}: ${name}`);
