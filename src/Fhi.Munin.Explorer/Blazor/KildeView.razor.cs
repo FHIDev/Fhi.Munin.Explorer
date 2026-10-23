@@ -110,7 +110,7 @@ public sealed partial class KildeView : ComponentBase, IDisposable
     public KildeAccessLinks? AccessLinks { get; set; }
 
     private IReadOnlyList<KildeAccess.Offer> AccessOffers =>
-        Kilde is { } kilde ? KildeAccess.Offers(kilde, AccessLinks ?? Services.GetService<KildeAccessLinks>(), T) : [];
+        Kilde is { } kilde ? KildeAccess.Offers(kilde, (AccessLinks ?? Services.GetService<KildeAccessLinks>())?.For(Reader), T) : [];
 
     /// <summary>
     /// An id for the name heading, so a surrounding region can label itself by it.
@@ -678,11 +678,32 @@ public sealed partial class KildeView : ComponentBase, IDisposable
                      .Select(group => new DetailLayoutSection(
                          group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
                          CatalogueProperties.Foreign(group.NameLanguage, Reader),
-                         DetailBlocks.GroupBody(group, Language, CompleteRecordFacts))),
+                         AccessFirst(group.Key, DetailBlocks.GroupBody(group, Language, CompleteRecordFacts)))),
         ];
 
-        return DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
+        List<DetailLayoutSection> blocks = [.. Blocks(ungrouped)];
+
+        // Without a «Tilgang og ansvar» section in the payload the explanation still has to be somewhere: its own
+        // section, after the placed ones, rather than nowhere.
+        if (AccessOffers.Count > 0 && !groups.Any(group => group.Key == AccessGroupKey))
+        {
+            blocks.Add(new(null, DetailSectionIds.Access, T.HeadingAccess, null, AccessDetails));
+        }
+
+        return DetailLayout.Order(kilde.Sections, groups, blocks);
     }
+
+    /// <summary>The section «Søk om tilgang» is explained at the top of; Tilgangsnivå itself is placed there.</summary>
+    internal const string AccessGroupKey = "tilgang-og-ansvar";
+
+    private RenderFragment AccessFirst(string? groupKey, RenderFragment body) =>
+        groupKey == AccessGroupKey && AccessOffers.Count > 0
+            ? builder =>
+            {
+                builder.AddContent(0, AccessDetails);
+                builder.AddContent(1, body);
+            }
+    : body;
 
     /// <summary>
     /// This view's own sections, each under the key a placement row moves it by, in the order the

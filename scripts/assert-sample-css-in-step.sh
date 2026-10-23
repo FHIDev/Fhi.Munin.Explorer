@@ -132,6 +132,7 @@ THEIRS=(
 # the name is styled somewhere, which it is not — it is not a class at all.
 IDS=(
   munin-explorer-source
+  munin-explorer-access
   munin-explorer-accesscriteria
   munin-explorer-codelists
   munin-explorer-criteria

@@ -41,6 +41,26 @@ internal static partial class KildeAccess
         }
     }
 
+    /// <summary>
+    /// The kilde page's buttons: «Søk om tilgang» to the application's target, then «Se åpne data» where the kilde has
+    /// open data too; with open data alone, that one is the primary.
+    /// </summary>
+    internal static IReadOnlyList<Link> Buttons(IReadOnlyList<Offer> offers, Texts t)
+    {
+        List<Link> buttons = [];
+        if (offers.FirstOrDefault(o => o.Level != OpenData)?.Links.FirstOrDefault(l => l.Primary) is { } apply)
+        {
+            buttons.Add(apply with { Text = t.AccessApply });
+        }
+
+        if (offers.FirstOrDefault(o => o.Level == OpenData)?.Links.FirstOrDefault() is { } open)
+        {
+            buttons.Add(open with { Primary = buttons.Count == 0 });
+        }
+
+        return buttons;
+    }
+
     internal static IReadOnlyList<Offer> Offers(KildeDetail kilde, KildeAccessLinks? links, Texts t)
     {
         var codes = AccessLevels.Codes(kilde.AdditionalProperties);
