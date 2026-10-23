@@ -3041,13 +3041,8 @@ table.munin-explorer-data-list tbody th {
 
    Our names now — they were helsedata's `variable-explorer-header*` until the rename — and their
    arrangement throughout: a ghost button above the results, and the choices drawn as a card that
-   hangs off it. Their React sets `position: relative` inline on the wrapper; Stiler puts it on
-   the element itself, so a host without Stiler supplies it below (Fhi.Metadata-f6az7). The open list is
-   `dropdown-choicepicker`, which is Stiler's own name and stays that way.
-
-   The component builds it from <details> and <summary> because it ships no script. That is the
-   one place the shape differs from theirs, and it costs two rules — the browser's disclosure
-   marker, which their button does not have. */
+   hangs off it. Since 2.8.0 the picker is a list menu (`munin-explorer-list-menu`), not a <details>
+   wearing `munin-explorer__dropdown`, whose rules went with it (Fhi.Metadata-l9l2n.139). */
 .munin-explorer-header {
   position: relative;
   margin-bottom: 8px;
@@ -3063,13 +3058,6 @@ table.munin-explorer-data-list tbody th {
   justify-content: flex-end;
 }
 
-/* And the trigger inside it, for a host that gives the dropdown the full row as Stiler does. Text
-   alignment and not flex or an auto margin: an inline-level box resolves an auto margin to zero,
-   and `display: flex` on a <details> stops it hiding its own closed content. The list resets it. */
-.munin-explorer-header__actions .munin-explorer__dropdown {
-  text-align: right;
-}
-
 .munin-explorer-header__actions .dropdown-choicepicker {
   text-align: left;
   top: 36px;
@@ -3078,16 +3066,6 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-header__actions-button {
   border: none;
-}
-
-/* What the component stopped emitting inline: the open list is absolutely positioned and anchors
-   to the nearest positioned ancestor, which has to be this element. (Fhi.Metadata-f6az7) */
-.munin-explorer__dropdown {
-  position: relative;
-}
-
-.munin-explorer__dropdown[open] {
-  z-index: 99;
 }
 
 /* The picker's chevrons are Stiler's base images; its layout icon has none here, so it stays a
@@ -3106,25 +3084,6 @@ table.munin-explorer-data-list tbody th {
 
 .munin-explorer-header__actions-button > .icon-layout::before {
   content: "⊞";           /* ⊞ */
-}
-
-/* Both chevrons are drawn and one is hidden, because the component ships no script and cannot
-   swap a class — the open state is the <details>'s own and only a selector can read it. */
-.munin-explorer__dropdown > summary > .icon-keyboard-arrow-up,
-.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-down {
-  display: none;
-}
-
-.munin-explorer__dropdown[open] > summary > .icon-keyboard-arrow-up {
-  display: inline-block;
-}
-
-.munin-explorer__dropdown > summary {
-  list-style: none;
-}
-
-.munin-explorer__dropdown > summary::-webkit-details-marker {
-  display: none;
 }
 
 /* The open list, over the header rather than pushing it down: a picker that moved the columns
@@ -6045,20 +6004,6 @@ a[target=_blank]:not(.hd-button-square):focus::after {
 @media (max-width:767px) {
   .munin-explorer-header__actions .dropdown {
     width: 100%;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon--right {
-    margin-left: auto;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary > .icon {
-    margin-right: 0;
-  }
-
-  .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer__dropdown > summary {
-    column-gap: 8px;
-    width: 100%;
-    margin-right: 0;
   }
 
   .munin-explorer-header__actions:has( > .munin-explorer-list-menu) > .munin-explorer-list-menu > button > .icon--right {
