@@ -207,6 +207,27 @@ public class KildeAccessTest : ExplorerTestContext
         Assert.Contains("The data itself comes from St. Olavs hospital HF.", block.TextContent, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void KildeView_WithNoTilgangOgAnsvarSection_TheBoxGetsASectionOfItsOwn()
+    {
+        // An older Munin, or a kilde with nothing placed there: the explanation must not vanish with the section.
+        var cut = RenderKilde(Kilde("""["soknad-via-helsedata"]""") with { Sections = [], PropertyMetadata = [] });
+
+        var own = cut.Find($"section#{DetailSectionIds.Access}");
+        Assert.Equal("Tilgang og ansvar", own.QuerySelector("h3")!.TextContent);
+        Assert.NotNull(own.QuerySelector(".infobox.infobox__datasources-block .munin-explorer-kilde__access"));
+        Assert.Single(cut.FindAll(".munin-explorer-kilde__access"));
+    }
+
+    [Fact]
+    public void KildeView_WithTheSection_ThereIsNoSecondOne()
+    {
+        var cut = RenderKilde(Kilde("""["soknad-via-helsedata"]"""));
+
+        Assert.Empty(cut.FindAll($"section#{DetailSectionIds.Access}"));
+        Assert.Single(cut.FindAll(".munin-explorer-kilde__access"));
+    }
+
     [Theory]
     [InlineData("SoknadOmTilgangUrl", "https://example.org/sok", "https://example.org/sok")]
     [InlineData("SoknadOmTilgangEpost", "data@example.org", "mailto:data@example.org")]

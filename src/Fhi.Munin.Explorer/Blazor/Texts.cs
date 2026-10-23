@@ -207,6 +207,7 @@ internal sealed record Texts(
 
     // Headings and fields the kilde view needs, which the variable panel has no use for.
     string HeadingMetadata,
+    string HeadingAccess,
     string HeadingAboutDatasamling,
     string HeadingSourceInformation,
     string HeadingStatistics,
@@ -1280,6 +1281,7 @@ internal sealed record Texts(
         AllVariablesInInstrument: count => count == 1 ? "Vis 1 variabel" : $"Vis alle {count} variabler",
         TrailLabel: "Brødsmulesti",
         HeadingMetadata: "Metadata",
+        HeadingAccess: "Tilgang og ansvar",
         HeadingAboutDatasamling: "Om datasamlingen",
         HeadingSourceInformation: "Kildeinformasjon",
         HeadingStatistics: "Statistikk",
@@ -1847,6 +1849,7 @@ internal sealed record Texts(
         AllVariablesInInstrument: count => count == 1 ? "View 1 variable" : $"View all {count} variables",
         TrailLabel: "Breadcrumb",
         HeadingMetadata: "Metadata",
+        HeadingAccess: "Access and responsibility",
         HeadingAboutDatasamling: "About the data collection",
         HeadingSourceInformation: "Source information",
         HeadingStatistics: "Statistics",

@@ -761,7 +761,7 @@ These are not style preferences — each one is a host that breaks otherwise.
     statistics. Undrawn, "Ingen" reads at full weight, as though it were the catalogue's own value.
 
   The detail views' section ids are the one exception to the paragraph below, and a deliberate
-  one: `munin-explorer-metadata`, `-criteria`, `-source`, `-placement`, `-statistics`,
+  one: `munin-explorer-metadata`, `-access`, `-criteria`, `-source`, `-placement`, `-statistics`,
   `-datacollections`, `-versions`, `-dataperiod`, `-datatype`, `-variablegroups`, `-instruments`
   and `-validity`, and the explorers' own `-variables`, `-accesscriteria`, `-prices` and
   `-codelists`, carry the package's prefix and **no** per-instance discriminator. They are the same
@@ -920,6 +920,7 @@ These are not style preferences — each one is a host that breaks otherwise.
   | --- | --- |
   | `munin-explorer` | handle |
   | `munin-explorer-absent` | meaning |
+  | `munin-explorer-access` | id |
   | `munin-explorer-accesscriteria` | id |
   | `munin-explorer-alert` | handle |
   | `munin-explorer-breadcrumb` | meaning |

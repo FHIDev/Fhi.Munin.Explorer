@@ -413,6 +413,17 @@ h1, h2, h3, h4, h5, h6 { color: var(--dark); margin: 16px 0; }
 }
 .infobox--bg-yellow { background-color: var(--warning-light); }
 
+/* components/_infobox.scss and base/_illustrations.scss — the «Søknad om tilgang til data» box helsedata's kilde pages
+   draw, which «Søk om tilgang» reuses in Tilgang og ansvar (Fhi.Metadata-l9l2n.151). The brand-sign SVG ships with
+   Stiler, not with the samples, so here the picture's place stays empty. */
+.infobox .illustration { flex-shrink: 0; width: 4rem; height: 4rem; margin-right: 16px; }
+.infobox__datasources-block { background-color: #e4eeff; max-width: 100%; margin-top: 16px; margin-bottom: 16px; }
+.infobox__datasources-block .editor-content { margin-top: 8px; margin-bottom: 8px; }
+.infobox__datasources-block .editor-content > p { margin: 0; }
+.illustration { content: ""; display: inline-block; position: relative; flex-shrink: 0; height: 7.75rem; width: 7.75rem; }
+.illustration_brand-sign { background: url(../img/illustrations/brand/illustration_brand_sign.svg) center/4rem no-repeat; }
+.hd-button-square.button-square--tertiary { border: 1px solid var(--grey40); background-color: #fff; }
+
 /* components/_datasourcecard.scss — the shape the results had until `Fhi.Metadata-zs56s`, when
    they took the shape of helsedata's variable-page rows instead (`munin-explorer-data-list`, far
    below — their `variable-data-list` at the time, ours since the rename). The
@@ -2181,11 +2192,12 @@ table.munin-explorer-data-list tbody th {
   outline-offset: 2px;
 }
 
-/* «Søk om tilgang» in the action row: each sentence over its links, the links side by side and wrapping (Fhi.Metadata-l9l2n.142). */
+/* «Søk om tilgang» explained, inside the infobox at the top of Tilgang og ansvar: each sentence over its links, the
+   links side by side and wrapping (Fhi.Metadata-l9l2n.142, .151). */
 .munin-explorer-kilde__access {
   display: grid;
   gap: 8px;
-  /* A flex item in the action row: without these a long e-mail address sets its minimum width and overflows a phone. */
+  /* A flex item in the infobox's row: without these a long e-mail address sets its minimum width and overflows a phone. */
   min-width: 0;
   overflow-wrap: anywhere;
 }

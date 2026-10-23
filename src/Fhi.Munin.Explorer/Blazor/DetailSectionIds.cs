@@ -18,6 +18,9 @@ internal static class DetailSectionIds
 {
     internal const string Metadata = "munin-explorer-metadata";
 
+    /// <summary>«Søk om tilgang» explained, for a kilde whose payload places no «Tilgang og ansvar» section.</summary>
+    internal const string Access = "munin-explorer-access";
+
     internal const string Criteria = "munin-explorer-criteria";
 
     internal const string Source = "munin-explorer-source";
