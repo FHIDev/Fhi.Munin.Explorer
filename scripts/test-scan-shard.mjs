@@ -59,7 +59,9 @@ async function statePairs() {
     import('./state-assertions.mjs'), readFile(new URL('./check-component-state.sh', import.meta.url), 'utf8')]);
   const block = /^TARGETS=\(\r?\n([\s\S]*?)\r?\n\)/m.exec(script);
   assert.ok(block, 'no TARGETS=( ... ) block in check-component-state.sh');
-  const targets = (block[1].match(/^\s*"[^"]*"\s*$/gm) ?? []).map(t => t.trim().slice(1, -1));
+  const lines = block[1].split(/\r?\n/).map(line => line.trim()).filter(line => line !== '' && !line.startsWith('#'));
+  assert.deepEqual(lines.filter(line => !/^"[^"]*"$/.test(line)), [], 'TARGETS lines this test cannot read');
+  const targets = lines.map(line => line.slice(1, -1));
   assert.ok(targets.length > 0, 'the TARGETS block in check-component-state.sh lists no target');
   return targets.flatMap(target => {
     const state = target.split('::')[1] ?? null;
