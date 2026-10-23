@@ -79,9 +79,9 @@
                 }
             </div>
 
-            @if (AccessOffers.Count > 0)
+            @if (KildeAccess.Button(AccessOffers, T) is { } button)
             {
-                @AccessRow
+                @AccessButtonRow(button)
             }
         </Header>
         <ChildContent>
@@ -109,24 +109,44 @@
 </CascadingValue>
 
 @code {
-    /// <summary>«Søk om tilgang», after the name block so a reader hears which kilde it is about first.</summary>
-    private RenderFragment AccessRow => @<text>
+    /// <summary>The one button at the top, after the name block, so a reader hears which kilde it is about first.</summary>
+    private RenderFragment AccessButtonRow(KildeAccess.Link button) => @<text>
         <div class="munin-explorer-page__actions">
+            <a href="@button.Href" class="hd-button-square button-square--primary">@button.Text</a>
+        </div>
+    </text>;
+
+    /// <summary>
+    /// What «Søk om tilgang» means for this kilde, at the top of Tilgang og ansvar, in the light-blue box helsedata.no's
+    /// own kilde pages use for «Søknad om tilgang til data» (Robin, 2026-10-23); every class is one Stiler defines.
+    /// </summary>
+    private RenderFragment AccessDetails => @<text>
+        <div class="infobox infobox__datasources-block">
+            <span class="illustration illustration_brand-sign" aria-hidden="true"></span>
             <div class="munin-explorer-kilde__access">
                 @foreach (var offer in AccessOffers)
                 {
-                    <p class="margin--none">@foreach (var (text, fill) in KildeAccess.Pieces(offer))
-                    {
-                        @text
-                        @if (fill is not null)
+                    <div class="editor-content">
+                        <p>@foreach (var (text, fill) in KildeAccess.Pieces(offer))
                         {
-                            <span lang="@CatalogueProperties.Foreign(fill.Norwegian, Reader)">@fill.Text</span>
-                        }
-                    }</p>
+                            @text
+                            @if (fill is not null)
+                            {
+                                <span lang="@CatalogueProperties.Foreign(fill.Norwegian, Reader)">@fill.Text</span>
+                            }
+                        }</p>
+                    </div>
                     <p class="margin--none">
                         @foreach (var link in offer.Links)
                         {
-                            <a href="@link.Href" class="@(link.Primary ? "hd-button-square button-square--primary" : null)">@link.Text</a>
+                            @if (link.Primary)
+                            {
+                                <a href="@link.Href" class="hd-button-square button-square--tertiary"><span aria-hidden="true" class="icon icon-plus--dark"></span>@link.Text</a>
+                            }
+                            else
+                            {
+                                <a href="@link.Href">@link.Text</a>
+                            }
                             @(" ")
                         }
                     </p>

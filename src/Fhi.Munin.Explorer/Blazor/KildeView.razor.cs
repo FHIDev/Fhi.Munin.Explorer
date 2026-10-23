@@ -110,7 +110,7 @@ public sealed partial class KildeView : ComponentBase, IDisposable
     public KildeAccessLinks? AccessLinks { get; set; }
 
     private IReadOnlyList<KildeAccess.Offer> AccessOffers =>
-        Kilde is { } kilde ? KildeAccess.Offers(kilde, AccessLinks ?? Services.GetService<KildeAccessLinks>(), T) : [];
+        Kilde is { } kilde ? KildeAccess.Offers(kilde, (AccessLinks ?? Services.GetService<KildeAccessLinks>())?.For(Reader), T) : [];
 
     /// <summary>
     /// An id for the name heading, so a surrounding region can label itself by it.
@@ -678,11 +678,23 @@ public sealed partial class KildeView : ComponentBase, IDisposable
                      .Select(group => new DetailLayoutSection(
                          group.Key, DetailSectionIds.ReserveGroupId(group.Key!, ids), group.Name,
                          CatalogueProperties.Foreign(group.NameLanguage, Reader),
-                         DetailBlocks.GroupBody(group, Language, CompleteRecordFacts))),
+                         AccessFirst(group.Key, DetailBlocks.GroupBody(group, Language, CompleteRecordFacts)))),
         ];
 
         return DetailLayout.Order(kilde.Sections, groups, Blocks(ungrouped));
     }
+
+    /// <summary>The section «Søk om tilgang» is explained at the top of; Tilgangsnivå itself is placed there.</summary>
+    internal const string AccessGroupKey = "tilgang-og-ansvar";
+
+    private RenderFragment AccessFirst(string? groupKey, RenderFragment body) =>
+        groupKey == AccessGroupKey && AccessOffers.Count > 0
+            ? builder =>
+            {
+                builder.AddContent(0, AccessDetails);
+                builder.AddContent(1, body);
+            }
+            : body;
 
     /// <summary>
     /// This view's own sections, each under the key a placement row moves it by, in the order the

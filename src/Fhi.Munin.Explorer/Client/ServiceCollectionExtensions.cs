@@ -153,18 +153,28 @@ public static class ServiceCollectionExtensions
         string? developmentFallback = null)
     {
         var fromConfiguration = configuration["MuninExplorer:ApiBaseUrl"];
-        // Each key overrides helsedata's default only where it is set, so a host can drop one link with an empty value.
+        // Each key overrides helsedata's default only where it is set, so a host can drop one link with an empty value;
+        // MuninExplorer:AccessLinks:<no|en>:<key> does the same for one language.
         var access = configuration.GetSection("MuninExplorer:AccessLinks");
         var defaults = Blazor.KildeAccessLinks.Helsedata;
+        var languages = new[] { "no", "en" }
+            .Where(language => access.GetSection(language).Exists())
+            .ToDictionary(language => language, language => Links(access.GetSection(language)));
         var accessLinks = new Blazor.KildeAccessLinks(
             access["ApplicationHref"] ?? defaults.ApplicationHref,
             access["PersonalDataGuideHref"] ?? defaults.PersonalDataGuideHref,
             access["AnonymousDataGuideHref"] ?? defaults.AnonymousDataGuideHref,
-            access["OpenDataHref"] ?? defaults.OpenDataHref);
+            access["OpenDataHref"] ?? defaults.OpenDataHref)
+        {
+            Languages = languages.Count > 0 ? languages : null,
+        };
         return services.AddMuninExplorer(o =>
         {
             o.ApiBaseUrl = string.IsNullOrWhiteSpace(fromConfiguration) ? developmentFallback : fromConfiguration;
             o.AccessLinks = accessLinks;
         });
     }
+
+    private static Blazor.KildeAccessLinks Links(IConfiguration section) =>
+        new(section["ApplicationHref"], section["PersonalDataGuideHref"], section["AnonymousDataGuideHref"], section["OpenDataHref"]);
 }

@@ -35,11 +35,32 @@ public class KildeAccessTest : ExplorerTestContext
             PreferredTerm = "Testregisteret",
             DataController = "St. Olavs hospital HF",
             AdditionalProperties = bag,
+            // Tilgangsnivå is placed in Tilgang og ansvar (Munin 0056), which is where the block is explained.
+            PropertyMetadata =
+            [
+                new PropertyMetadataEntry
+                {
+                    Key = AccessLevels.Key,
+                    SortOrder = 10,
+                    GroupKey = KildeView.AccessGroupKey,
+                    GroupTranslations = new Dictionary<string, string> { ["no"] = "Tilgang og ansvar" },
+                    DisplayNameTranslations = new Dictionary<string, string> { ["no"] = "Tilgangsnivå" },
+                },
+            ],
+            Sections =
+            [
+                new SectionPlacement
+                {
+                    Key = KildeView.AccessGroupKey,
+                    SortOrder = 1,
+                    Translations = new Dictionary<string, string> { ["no"] = "Tilgang og ansvar", ["en"] = "Access and responsibility" },
+                },
+            ],
         };
     }
 
     private static IReadOnlyList<KildeAccess.Offer> Offers(KildeDetail kilde, KildeAccessLinks? links = null) =>
-        KildeAccess.Offers(kilde, links ?? HostLinks, Texts.For("no"));
+        KildeAccess.Offers(kilde, (links ?? HostLinks).For("no"), Texts.For("no"));
 
     private static string Sentence(KildeAccess.Offer offer) =>
         string.Concat(KildeAccess.Pieces(offer).Select(p => p.Text + p.Fill?.Text));
@@ -51,9 +72,9 @@ public class KildeAccessTest : ExplorerTestContext
 
         Assert.Equal(KildeAccess.ViaHelsedata, offer.Level);
         Assert.Equal(
-            [("Søk om tilgang", HostLinks.ApplicationHref, true),
-             ("Veileder for personidentifiserbare data", HostLinks.PersonalDataGuideHref, false),
-             ("Veileder for anonyme, aggregerte data", HostLinks.AnonymousDataGuideHref, false)],
+            [("Søk om tilgang", "/no/soknader/?opprettSoknad=min-oversikt", true),
+             ("Veileder for personidentifiserbare data", "/no/soknadsveiledning-oversikt/personidentifiserbare-opplysninger/", false),
+             ("Veileder for anonyme, aggregerte data", "/no/soknadsveiledning-oversikt/sok-om-anonyme-data/", false)],
             offer.Links.Select(l => (l.Text, (string?)l.Href, l.Primary)));
         Assert.Equal(
             "Søknaden behandles av Helsedataservice. Selve opplysningene får du fra St. Olavs hospital HF. Les søknadsveilederen før du søker.",
@@ -146,27 +167,76 @@ public class KildeAccessTest : ExplorerTestContext
         Assert.Empty(Offers(Kilde(levels!, ("SoknadOmTilgangUrl", "https://example.org/sok"), ("AapneDataUrl", "https://example.org/data"))));
     }
 
-    [Fact]
-    public void KildeView_DrawsTheOfferInTheActionRow_WithTheCataloguesWordsMarkedForAnEnglishReader()
-    {
-        var cut = Render<KildeView>(b => b
-            .Add(c => c.Kilde, Kilde("""["soknad-via-helsedata"]"""))
-            .Add(c => c.Language, "en")
-            .Add(c => c.AccessLinks, HostLinks));
+    private IRenderedComponent<KildeView> RenderKilde(KildeDetail kilde, string language = "no") =>
+        Render<KildeView>(b => b.Add(c => c.Kilde, kilde).Add(c => c.Language, language).Add(c => c.AccessLinks, HostLinks));
 
-        var access = cut.Find(".munin-explorer-page__actions .munin-explorer-kilde__access");
-        // After the name heading in document order, so the kilde is named before what to do about it.
-        var heading = cut.Find("h1, h2, h3, h4, h5, h6");
-        Assert.True(heading.CompareDocumentPosition(access).HasFlag(AngleSharp.Dom.DocumentPositions.Following));
-        var button = access.QuerySelector("a.hd-button-square.button-square--primary")!;
-        Assert.Equal(("Apply for access", HostLinks.ApplicationHref), (button.TextContent, button.GetAttribute("href")));
-        Assert.Equal(3, access.QuerySelectorAll("a").Length);
-        Assert.Equal("no", access.QuerySelector("span[lang]")!.GetAttribute("lang"));
-        Assert.Contains("The data itself comes from St. Olavs hospital HF.", access.TextContent, StringComparison.Ordinal);
+    private static AngleSharp.Dom.IElement AccessSection(IRenderedComponent<KildeView> cut) =>
+        cut.FindAll("section").Single(section => section.QuerySelector(".munin-explorer-kilde__access") is not null);
+
+    [Fact]
+    public void KildeView_TheTopHasOnlyTheButton_AndTheWholeBlockOpensTilgangOgAnsvar()
+    {
+        // Robin, 2026-10-23: Skuld and the design pages have a button at the top, not the full text.
+        var cut = RenderKilde(Kilde("""["soknad-via-helsedata"]"""), "en");
+
+        var top = cut.Find(".munin-explorer-page__actions");
+        Assert.Equal(["Apply for access"], top.QuerySelectorAll("a").Select(a => a.TextContent));
+        Assert.Equal("/en/soknader/?opprettSoknad=min-oversikt", top.QuerySelector("a.hd-button-square.button-square--primary")!.GetAttribute("href"));
+        Assert.Null(top.QuerySelector(".munin-explorer-kilde__access"));
+        // One snapshot: the view renders again once the hierarchy loads, and nodes from two renders cannot be compared.
+        var markup = cut.Markup;
+        Assert.True(markup.IndexOf("Testregisteret</h2>", StringComparison.Ordinal)
+                    < markup.IndexOf("munin-explorer-page__actions", StringComparison.Ordinal));
+
+        var section = AccessSection(cut);
+        var block = section.QuerySelector(".munin-explorer-kilde__access")!;
+        Assert.Same(block.ParentElement, section.QuerySelector("h3 + *"));
+        Assert.Equal(
+            ["/en/soknader/?opprettSoknad=min-oversikt",
+             "/en/soknadsveiledning-oversikt/personidentifiserbare-opplysninger/",
+             "/en/soknadsveiledning-oversikt/sok-om-anonyme-data/"],
+            block.QuerySelectorAll("a").Select(a => a.GetAttribute("href")));
+        // helsedata.no's own «Søknad om tilgang til data» box, a white button with a grey border, not a second primary.
+        var box = block.ParentElement!;
+        Assert.Equal(["infobox", "infobox__datasources-block"], box.ClassList);
+        Assert.NotNull(box.QuerySelector(":scope > .illustration.illustration_brand-sign[aria-hidden=true]"));
+        Assert.Equal(["/en/soknader/?opprettSoknad=min-oversikt"],
+            block.QuerySelectorAll("a.hd-button-square.button-square--tertiary").Select(a => a.GetAttribute("href")));
+        Assert.Empty(block.QuerySelectorAll(".button-square--primary"));
+        Assert.Equal("no", block.QuerySelector("span[lang]")!.GetAttribute("lang"));
+        Assert.Contains("The data itself comes from St. Olavs hospital HF.", block.TextContent, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("SoknadOmTilgangUrl", "https://example.org/sok", "https://example.org/sok")]
+    [InlineData("SoknadOmTilgangEpost", "data@example.org", "mailto:data@example.org")]
+    [InlineData("Hjemmeside", "https://example.org", "https://example.org")]
+    public void KildeView_TheButtonSaysSokOmTilgang_AndGoesToTheRegistrysTarget(string key, string value, string href)
+    {
+        var button = RenderKilde(Kilde("""["tilgang-krever-soknad"]""", (key, value))).Find(".munin-explorer-page__actions a");
+
+        Assert.Equal(("Søk om tilgang", href), (button.TextContent, button.GetAttribute("href")));
     }
 
     [Fact]
-    public void KildeView_AHostsOwnActions_KeepTheirRowBeforeTheName_AndTheAccessRowFollowsIt()
+    public void KildeView_WithOnlyOpenData_TheButtonIsSeApneData()
+    {
+        var button = RenderKilde(Kilde("""["apne-data"]""")).Find(".munin-explorer-page__actions a");
+
+        Assert.Equal(("Se åpne data", "/no/apne-data/"), (button.TextContent, button.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void KildeView_ApplicationAndOpenData_ThenOneButton_AndBothExplainedInTheSection()
+    {
+        var cut = RenderKilde(Kilde("""["soknad-via-helsedata","apne-data"]""", ("AapneDataUrl", "https://norgeshelsa.no/")));
+
+        Assert.Equal(["Søk om tilgang"], cut.FindAll(".munin-explorer-page__actions a").Select(a => a.TextContent));
+        Assert.Contains("https://norgeshelsa.no/", AccessSection(cut).QuerySelectorAll("a").Select(a => a.GetAttribute("href")));
+    }
+
+    [Fact]
+    public void KildeView_AHostsOwnActions_KeepTheirRowBeforeTheName_AndTheButtonRowFollowsIt()
     {
         var cut = Render<KildeView>(b => b
             .Add(c => c.Kilde, Kilde("""["soknad-via-helsedata"]"""))
@@ -178,7 +248,7 @@ public class KildeAccessTest : ExplorerTestContext
         Assert.Equal(2, rows.Count);
         Assert.Equal("Lagre", rows[0].TextContent.Trim());
         Assert.True(rows[0].CompareDocumentPosition(heading).HasFlag(AngleSharp.Dom.DocumentPositions.Following));
-        Assert.NotNull(rows[1].QuerySelector(".munin-explorer-kilde__access"));
+        Assert.Equal("Søk om tilgang", rows[1].QuerySelector("a")!.TextContent);
         Assert.True(heading.CompareDocumentPosition(rows[1]).HasFlag(AngleSharp.Dom.DocumentPositions.Following));
     }
 
@@ -188,7 +258,7 @@ public class KildeAccessTest : ExplorerTestContext
         Services.AddSingleton(HostLinks);
 
         var cut = Render<KildeView>(b => b.Add(c => c.Kilde, Kilde("""["soknad-via-helsedata"]""")));
-        Assert.Equal(HostLinks.ApplicationHref, cut.Find(".munin-explorer-kilde__access a").GetAttribute("href"));
+        Assert.Equal("/no/soknader/?opprettSoknad=min-oversikt", cut.Find(".munin-explorer-page__actions a").GetAttribute("href"));
 
         cut.Render(b => b.Add(c => c.Kilde, Kilde("[]")));
         Assert.Empty(cut.FindAll(".munin-explorer-page__actions"));
@@ -204,11 +274,14 @@ public class KildeAccessTest : ExplorerTestContext
     [Fact]
     public void Configuration_WithNoSection_ThenHelsedatasPages()
     {
+        var links = Registered([]);
+        Assert.Equal(KildeAccessLinks.Helsedata, links);
         Assert.Equal(new KildeAccessLinks(
-            ApplicationHref: "/no/soknader/?opprettSoknad=min-oversikt",
-            PersonalDataGuideHref: "/no/soknadsveiledning-oversikt/personidentifiserbare-opplysninger/",
-            AnonymousDataGuideHref: "/no/soknadsveiledning-oversikt/sok-om-anonyme-data/",
-            OpenDataHref: "/no/apne-data/"), Registered([]));
+            ApplicationHref: "/en/soknader/?opprettSoknad=min-oversikt",
+            PersonalDataGuideHref: "/en/soknadsveiledning-oversikt/personidentifiserbare-opplysninger/",
+            AnonymousDataGuideHref: "/en/soknadsveiledning-oversikt/sok-om-anonyme-data/",
+            OpenDataHref: "/en/apne-data/"), links.For("en"));
+        Assert.Equal("/no/apne-data/", links.For("no").OpenDataHref);
     }
 
     [Fact]
@@ -222,6 +295,23 @@ public class KildeAccessTest : ExplorerTestContext
 
         Assert.Equal(KildeAccessLinks.Helsedata with { ApplicationHref = "/sok", PersonalDataGuideHref = "" }, links);
         Assert.DoesNotContain(Offers(Kilde("""["soknad-via-helsedata"]"""), links).Single().Links, l => l.Text.Contains("personidentifiserbare", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Configuration_ALanguagesOwnKey_WinsForThatLanguageOnly_AndAnEmptyOneDropsItThere()
+    {
+        var links = Registered(new()
+        {
+            ["MuninExplorer:AccessLinks:ApplicationHref"] = "/{language}/sok",
+            ["MuninExplorer:AccessLinks:en:ApplicationHref"] = "/english/apply",
+            ["MuninExplorer:AccessLinks:en:PersonalDataGuideHref"] = "",
+        });
+
+        Assert.Equal(("/english/apply", ""), (links.For("en").ApplicationHref, links.For("en").PersonalDataGuideHref));
+        Assert.Equal("/no/sok", links.For("no").ApplicationHref);
+        Assert.Equal("/no/soknadsveiledning-oversikt/personidentifiserbare-opplysninger/", links.For("no").PersonalDataGuideHref);
+        Assert.DoesNotContain(Offers(Kilde("""["soknad-via-helsedata"]"""), links.For("en")).Single().Links,
+            l => l.Text.Contains("personidentifiserbare", StringComparison.Ordinal));
     }
 
     [Fact]
