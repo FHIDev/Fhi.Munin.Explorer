@@ -19,7 +19,7 @@
 // Assertions select extra widths only where the browser behavior depends on responsive layout.
 import { chromium } from 'playwright';
 import { states } from './axe-states.mjs';
-import { assertions } from './state-assertions.mjs';
+import { applies, assertions } from './state-assertions.mjs';
 import { launchOptions } from './browser-launch.mjs';
 import { describeShard, isFirstShard, packByCost, parseShard } from './scan-shard.mjs';
 import { pairCost } from './state-pair-seconds.mjs';
@@ -121,7 +121,7 @@ try {
 // Each applicable (page, assertion) pair is one unit of work; a CI shard takes the ones packByCost gives it by
 // their measured time, in the order the loop below meets them.
 const pairCosts = plan.flatMap(({ state }) => assertions
-  .filter(a => a.states === undefined || a.states.includes(state))
+  .filter(a => applies(a, state))
   .map(({ name }) => pairCost(state, name)));
 const pairCount = pairCosts.length;
 const shardOf = packByCost(pairCosts, shard.count);
@@ -153,7 +153,7 @@ try {
 
       // Printed, never skipped silently. An assertion whose press cannot be staged here is not a
       // pass, and a run that reported it as one is what this file exists to prevent.
-      if (appliesTo !== undefined && !appliesTo.includes(state)) {
+      if (!applies(assertion, state)) {
         // Printed by one shard only, so the n/a lines read once across the jobs.
         if (!isFirstShard(shard)) continue;
         inapplicable += 1;

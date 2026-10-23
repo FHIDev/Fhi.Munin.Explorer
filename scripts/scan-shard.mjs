@@ -1,4 +1,4 @@
-// SCAN_SHARD="k/n" splits a scan's work items across n CI jobs, by measured time with packByCost (ownsItem is round-robin).
+// SCAN_SHARD="k/n" splits a scan's work items across n CI jobs, by measured time with packByCost.
 // Unset, a scan takes every item, so a developer's local run is unchanged. A malformed value is a TOOLING failure, never a
 // silent "all" or "none": a shard that scanned nothing would pass. (Fhi.Metadata-ln1s6)
 
@@ -12,8 +12,6 @@ export function parseShard(raw = process.env.SCAN_SHARD) {
   }
   return { index, count };
 }
-
-export const ownsItem = (itemIndex, { index, count } = parseShard()) => itemIndex % count === index - 1;
 
 // Longest first onto the least-loaded shard, ties to the lowest, so every process computes the same split; round-robin
 // ignores cost and lets one heavy item set the wall clock. firstLoad is work shard 1 does anyway (Fhi.Metadata-w6v38).

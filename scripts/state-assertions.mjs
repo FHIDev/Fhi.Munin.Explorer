@@ -904,6 +904,9 @@ const chevronAssertions = CHEVRONS.map(chevron => ({
   },
 }));
 
+/** Whether an assertion runs in a state; the state scan and its shard packing both ask this. */
+export const applies = ({ states: scoped }, state) => scoped === undefined || scoped.includes(state);
+
 export const assertions = [
   {
     // helsedata's own menus close on a press outside them and stay open when focus Tabs out (their

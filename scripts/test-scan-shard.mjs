@@ -1,19 +1,12 @@
 // node --test scripts/test-scan-shard.mjs: the CI split of the browser scans (Fhi.Metadata-ln1s6).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isFirstShard, ownsItem, packByCost, parseShard } from './scan-shard.mjs';
+import { isFirstShard, packByCost, parseShard } from './scan-shard.mjs';
 
 test('unset takes every item, so a local run is unchanged', () => {
   // '' and not undefined: an explicit undefined takes the default, which is CI's own SCAN_SHARD.
   assert.deepEqual(parseShard(''), { index: 1, count: 1 });
-  assert.ok([0, 1, 2, 3].every(i => ownsItem(i, parseShard(''))));
-});
-
-test('three shards take every item exactly once between them', () => {
-  const items = Array.from({ length: 40 }, (_, i) => i);
-  const shards = [1, 2, 3].map(k => items.filter(i => ownsItem(i, parseShard(`${k}/3`))));
-  assert.deepEqual(shards.flat().sort((a, b) => a - b), items);
-  assert.deepEqual(shards.map(s => s.length), [14, 13, 13]);
+  assert.deepEqual(packByCost([5, 9, 1], parseShard('').count), [1, 1, 1]);
 });
 
 test('a malformed value is refused rather than read as all or none', () => {
@@ -62,12 +55,15 @@ test('the heavy items are placed first, so small ones fill in around them', () =
 // The (state, assertion) pairs state-scan.mjs runs, for the targets check-component-state.sh hands it.
 async function statePairs() {
   const { readFile } = await import('node:fs/promises');
-  const [{ assertions }, script] = await Promise.all([
+  const [{ applies, assertions }, script] = await Promise.all([
     import('./state-assertions.mjs'), readFile(new URL('./check-component-state.sh', import.meta.url), 'utf8')]);
-  const targets = /^TARGETS=\(\n([\s\S]*?)\n\)/m.exec(script)[1].match(/"[^"]*"/g).map(t => t.slice(1, -1));
+  const block = /^TARGETS=\(\r?\n([\s\S]*?)\r?\n\)/m.exec(script);
+  assert.ok(block, 'no TARGETS=( ... ) block in check-component-state.sh');
+  const targets = (block[1].match(/^\s*"[^"]*"\s*$/gm) ?? []).map(t => t.trim().slice(1, -1));
+  assert.ok(targets.length > 0, 'the TARGETS block in check-component-state.sh lists no target');
   return targets.flatMap(target => {
     const state = target.split('::')[1] ?? null;
-    return assertions.filter(a => a.states === undefined || a.states.includes(state)).map(({ name }) => ({ state, name }));
+    return assertions.filter(a => applies(a, state)).map(({ name }) => ({ state, name }));
   });
 }
 
