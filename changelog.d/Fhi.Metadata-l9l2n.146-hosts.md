@@ -1,2 +1,0 @@
-category: Notes for hosts
-- **Two new names on the datasamling page: `munin-explorer-datasamling__description-rest` and `munin-explorer-datasamling__description-toggle`.** They are the datasamling twins of `munin-explorer-kilde__description-rest` and `munin-explorer-kilde__description-toggle`: the held-back paragraphs of a long description, and the «Les mer» button (`hd-button-reset`) that shows them. Stiler has no rule for them yet; the sample hosts give them the kilde toggle's rules, a link-coloured underlined button with a focus ring. (Fhi.Metadata-l9l2n.146)
