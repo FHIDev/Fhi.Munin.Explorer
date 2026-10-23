@@ -1,7 +1,7 @@
 // node --test scripts/test-scan-shard.mjs: the CI split of the browser scans (Fhi.Metadata-ln1s6).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isFirstShard, ownsItem, parseShard } from './scan-shard.mjs';
+import { isFirstShard, ownsItem, packByCost, parseShard } from './scan-shard.mjs';
 
 test('unset takes every item, so a local run is unchanged', () => {
   // '' and not undefined: an explicit undefined takes the default, which is CI's own SCAN_SHARD.
@@ -25,4 +25,36 @@ test('a malformed value is refused rather than read as all or none', () => {
 
 test('only shard 1 is the first, which prints the n/a lines and measures the reflow', () => {
   assert.deepEqual(['', '1/3', '2/3', '3/3'].map(raw => isFirstShard(parseShard(raw))), [true, true, false, false]);
+});
+
+test('packing by cost gives every item one shard and spreads the heavy ones', () => {
+  const costs = [8, 138, 8, 112, 8, 8, 12, 8, 8, 10];
+  const shardOf = packByCost(costs, 4, 29);
+  assert.ok(shardOf.every(k => k >= 1 && k <= 4));
+  assert.notEqual(shardOf[1], shardOf[3]);
+  const load = [29, 0, 0, 0];
+  costs.forEach((cost, i) => { load[shardOf[i] - 1] += cost; });
+  assert.ok(Math.max(...load) <= 138 + 8, `loads ${load}`);
+});
+
+test('equal costs go to the lowest free shard, in item order', () => {
+  assert.deepEqual(packByCost([5, 5, 5, 5], 4), [1, 2, 3, 4]);
+  assert.deepEqual(packByCost([5, 5, 5, 5, 5], 2), [1, 2, 1, 2, 1]);
+});
+
+test('one shard takes everything, and shard 1 is charged its extra work', () => {
+  assert.deepEqual(packByCost([5, 9, 1], 1, 29), [1, 1, 1]);
+  assert.deepEqual(packByCost([10, 10], 2, 29), [2, 2]);
+});
+
+test('the measured table names only states axe-states.mjs has', async () => {
+  const [{ states }, { stateSeconds }] = await Promise.all([import('./axe-states.mjs'), import('./axe-state-seconds.mjs')]);
+  assert.deepEqual(Object.keys(stateSeconds).filter(name => !Object.hasOwn(states, name)), []);
+});
+
+test('the heavy items are placed first, so small ones fill in around them', () => {
+  const costs = [8, 8, 8, 8, 138, 112];
+  const load = [0, 0];
+  packByCost(costs, 2).forEach((k, i) => { load[k - 1] += costs[i]; });
+  assert.ok(Math.max(...load) <= 144, `loads ${load}`);
 });
