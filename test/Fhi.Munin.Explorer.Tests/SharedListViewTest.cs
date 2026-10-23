@@ -217,7 +217,7 @@ public class SharedListViewTest : ExplorerTestContext
     }
 
     private IRenderedComponent<VariableListView> RenderView(
-        ShareClient client, bool signedIn = true, string language = "no", string? shareCode = null)
+        ShareClient client, bool signedIn = true, string language = "no", string? shareCode = null, bool withLink = true)
     {
         Register(this, client);
 
@@ -225,7 +225,7 @@ public class SharedListViewTest : ExplorerTestContext
             .Add(c => c.IsAuthenticated, signedIn)
             .Add(c => c.Language, language)
             .Add(c => c.ShareCode, shareCode)
-            .Add(c => c.SharedListHref, code => $"https://helsedata.example/variabler?delekode={code}"));
+            .Add(c => c.SharedListHref, withLink ? code => $"https://helsedata.example/variabler?delekode={code}" : null));
     }
 
     private static IRenderedComponent<VariableExplorer> RenderExplorer(
@@ -796,6 +796,34 @@ public class SharedListViewTest : ExplorerTestContext
         Button(cut, w.Submit).Click();
 
         cut.WaitForAssertion(() => Assert.Equal(w.NotFound, Alert(cut)));
+    }
+
+    [Theory]
+    [InlineData("no", true, "Del liste", "Send koden på e-post",
+                "Åpner e-postprogrammet ditt. Bruker du e-post i nettleseren, kopier delekoden eller lenken over i stedet.")]
+    [InlineData("no", false, "Del liste", "Send koden på e-post",
+                "Åpner e-postprogrammet ditt. Bruker du e-post i nettleseren, kopier delekoden over i stedet.")]
+    [InlineData("en", true, "Share list", "Send the code by email",
+                "Opens your mail program. If you use webmail, copy the share code or the link above instead.")]
+    [InlineData("en", false, "Share list", "Send the code by email",
+                "Opens your mail program. If you use webmail, copy the share code above instead.")]
+    public void ShareByEmail_WhenAListIsShared_ThenAHintUnderTheMailLinkPointsAtTheFieldsAbove(
+        string language, bool withLink, string share, string byEmail, string hint)
+    {
+        // A mailto opens nothing without a mail program; the hint names only the fields that are there (Fhi.Metadata-eeuey.4.34).
+        var cut = RenderView(new ShareClient(new ShareStore()) { OwnItems = Three }, language: language, withLink: withLink);
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+
+        Button(cut, share).Click();
+
+        var mail = cut.WaitForElement("a[href^='mailto:']");
+        var described = cut.Find($"#{mail.GetAttribute("aria-describedby")}");
+
+        Assert.Equal(byEmail, mail.TextContent.Trim());
+        Assert.Equal(hint, described.TextContent.Trim());
+        Assert.Contains("caption", described.ClassList);
+        Assert.Equal(described.Id, mail.NextElementSibling?.Id);
+        Assert.Equal(withLink ? 2 : 1, mail.ParentElement!.QuerySelectorAll("input[readonly]").Length);
     }
 
     [Theory]
