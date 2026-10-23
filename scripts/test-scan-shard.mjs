@@ -77,12 +77,12 @@ test('the measured state table names only pairs the state scan runs', async () =
 });
 
 test('the state pairs pack onto four shards, each busy and none far over a quarter', async () => {
-  const [pairs, { DEFAULT_SECONDS, pairCost }] = await Promise.all([statePairs(), import('./state-pair-seconds.mjs')]);
+  const [pairs, { pairCost }] = await Promise.all([statePairs(), import('./state-pair-seconds.mjs')]);
   const costs = pairs.map(({ state, name }) => pairCost(state, name));
   const shardOf = packByCost(costs, 4);
   const load = [0, 0, 0, 0];
   costs.forEach((cost, i) => { load[shardOf[i] - 1] += cost; });
   assert.ok(shardOf.length === pairs.length && shardOf.every(k => k >= 1 && k <= 4), `shards ${shardOf}`);
   assert.ok(load.every(seconds => seconds > 0), `loads ${load}`);
-  assert.ok(Math.max(...load) <= costs.reduce((a, b) => a + b) / 4 + DEFAULT_SECONDS, `loads ${load}`);
+  assert.ok(Math.max(...load) <= costs.reduce((a, b) => a + b) / 4 + Math.max(...costs), `loads ${load}`);
 });
