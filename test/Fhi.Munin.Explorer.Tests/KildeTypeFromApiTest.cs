@@ -336,7 +336,7 @@ public class KildeTypeFromApiTest : ExplorerTestContext
     }
 
     /// <summary>Answers two kildetyper in Munin's fixed order, which is not the alphabetical one.</summary>
-    private sealed class RankedClient : EmptyMuninExplorerClient
+    private sealed class RankedClient(bool onlyBiobankHasVariables = false) : EmptyMuninExplorerClient
     {
         public override Task<FilterOptions> GetFiltersAsync(
             string? search = null,
@@ -345,11 +345,13 @@ public class KildeTypeFromApiTest : ExplorerTestContext
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new FilterOptions
             {
-                KildeTyper =
-                [
-                    new KildetypeFacet { Value = "sentraltHelseregister", DisplayName = "Sentralt helseregister" },
-                    new KildetypeFacet { Value = "biobank", DisplayName = "Biobank" },
-                ],
+                KildeTyper = onlyBiobankHasVariables
+                    ? [new KildetypeFacet { Value = "biobank", DisplayName = "Biobank" }]
+                    :
+                    [
+                        new KildetypeFacet { Value = "sentraltHelseregister", DisplayName = "Sentralt helseregister" },
+                        new KildetypeFacet { Value = "biobank", DisplayName = "Biobank" },
+                    ],
             });
 
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
@@ -361,11 +363,14 @@ public class KildeTypeFromApiTest : ExplorerTestContext
             ]);
     }
 
-    [Fact]
-    public void KildeSearch_WhenTheApiRanksTheKildetyper_ThenTheFacetFollowsItsOrderNotTheLabel()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void KildeSearch_WhenTheApiRanksTheKildetyper_ThenTheFacetFollowsItsOrderNotTheLabel(bool onlyBiobankHasVariables)
     {
-        // Fhi.Metadata-dmxpz (innmeldt Munin#6832): by label, Biobank would come first.
-        Services.AddSingleton<IMuninExplorerClient>(new RankedClient());
+        // Fhi.Metadata-dmxpz (innmeldt Munin#6832): by label, Biobank would come first. The filters answer lists only
+        // types with variables, so a Sentralt helseregister without any must still lead (Fhi.Metadata-yk2ur).
+        Services.AddSingleton<IMuninExplorerClient>(new RankedClient(onlyBiobankHasVariables));
 
         var cut = Render<KildeSearch>();
 

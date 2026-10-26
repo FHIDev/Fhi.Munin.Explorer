@@ -2604,7 +2604,7 @@ public class KildeSearchTest : ExplorerTestContext
         var cut = RenderWith(new FakeClient([.. kilder]));
 
         Assert.Equal(
-            ["Nasjonalt medisinsk kvalitetsregister (2)", "Sentralt helseregister (1)"],
+            ["Sentralt helseregister (1)", "Nasjonalt medisinsk kvalitetsregister (2)"],
             Choices(Facet(cut, "Kildetype")));
 
         // Unticked it is one of the four rows, so the drop above is the facet's doing, not the list's.
@@ -3609,12 +3609,12 @@ public class KildeSearchTest : ExplorerTestContext
 
         var kildetype = Facet(cut, "Kildetype");
 
-        // Ordered by the label in the catalogue's own collation; with nothing ticked, counted over the whole list.
+        // Munin's fixed order, then the label (Fhi.Metadata-yk2ur); with nothing ticked, counted over the whole list.
         Assert.Equal(
         [
-            "Biobank (1)",
+            "Sentralt helseregister (2)",
             "Nasjonalt medisinsk kvalitetsregister (1)",
-            "Sentralt helseregister (2)"
+            "Biobank (1)"
         ], Choices(kildetype));
 
         Tick(cut, "Kildetype", "Sentralt helseregister");
@@ -3786,7 +3786,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
         Assert.Equal(["Folkehelseinstituttet (1)"], Choices(Facet(cut, "Databehandler")));
-        Assert.Equal(["Nasjonalt medisinsk kvalitetsregister (1)", "Sentralt helseregister (1)"],
+        Assert.Equal(["Sentralt helseregister (1)", "Nasjonalt medisinsk kvalitetsregister (1)"],
             Choices(Facet(cut, "Kildetype")));
         Assert.Equal(1, client.Calls);
     }
@@ -3803,7 +3803,7 @@ public class KildeSearchTest : ExplorerTestContext
     {
         var cut = RenderWith(CrossFilterCatalogue());
 
-        Assert.Equal(["Biobank (2)", "Sentralt helseregister (2)"], Choices(Facet(cut, "Kildetype")));
+        Assert.Equal(["Sentralt helseregister (2)", "Biobank (2)"], Choices(Facet(cut, "Kildetype")));
         Assert.Equal(["Folkehelseinstituttet (2)", "Kreftregisteret (1)", "Oslo universitetssykehus HF (1)"],
             Choices(Facet(cut, "Databehandler")));
     }
@@ -3815,7 +3815,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         Tick(cut, "Kildetype", "Biobank");
 
-        Assert.Equal(["Biobank (2)", "Sentralt helseregister (2)"], Choices(Facet(cut, "Kildetype")));
+        Assert.Equal(["Sentralt helseregister (2)", "Biobank (2)"], Choices(Facet(cut, "Kildetype")));
         Assert.Equal(["Folkehelseinstituttet (1)", "Oslo universitetssykehus HF (1)"], Choices(Facet(cut, "Databehandler")));
     }
 
@@ -3829,7 +3829,7 @@ public class KildeSearchTest : ExplorerTestContext
 
         Assert.Equal(["Dødsårsaksregisteret"], RowNames(cut));
         // Kildetype over Folkehelseinstituttet's kilder, Databehandler over the central registers.
-        Assert.Equal(["Biobank (1)", "Sentralt helseregister (1)"], Choices(Facet(cut, "Kildetype")));
+        Assert.Equal(["Sentralt helseregister (1)", "Biobank (1)"], Choices(Facet(cut, "Kildetype")));
         Assert.Equal(["Folkehelseinstituttet (1)", "Kreftregisteret (1)"], Choices(Facet(cut, "Databehandler")));
     }
 
