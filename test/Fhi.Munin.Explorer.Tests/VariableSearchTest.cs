@@ -10840,6 +10840,8 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Contains("variabel funnet", RowsStatus(cut).TextContent, StringComparison.Ordinal);
         Assert.Equal("true", RowsStatus(cut).QuerySelector("span")?.GetAttribute("aria-hidden"));
         Assert.Contains("Oppdaterer filtrene", RowsStatus(cut).QuerySelector("span")!.TextContent, StringComparison.Ordinal);
+        // Blazor drops a whitespace-only text node, which ran the summary into the note («stigendeOppdaterer»).
+        Assert.StartsWith(" ", RowsStatus(cut).QuerySelector("span")!.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
