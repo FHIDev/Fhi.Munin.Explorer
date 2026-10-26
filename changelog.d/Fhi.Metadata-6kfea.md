@@ -1,0 +1,2 @@
+category: Added
+- **The Datakategori filter shows each category's icon** - the variable search's Datakategori filter now leads each category with the glyph the icon legend explains, as the kilde tree does (the retired slugs resolve to their successors), and drops it with the «Ikoner» switch. The category name is said once to a screen reader: the glyph is decoration here, since the label already is the name. (Fhi.Metadata-6kfea)
