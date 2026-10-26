@@ -47,12 +47,13 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
 
     private async Task ApplyPendingVariabelgruppeAsync()
     {
-        if (_loading || _pendingVariabelgruppe is not { } id)
+        if (PressInFlight || _pendingVariabelgruppe is not { } id)
         {
             return;
         }
 
-        _pendingVariabelgruppe = null;
+        // It replaces the whole filter, so a press held from the panel meanwhile goes with it (Fhi.Metadata-7v7ki).
+        (_pendingVariabelgruppe, _queuedFilter, _queuedClearSearch) = (null, null, false);
         await ApplyFilterAsync(VariableFilter.None with { VariabelgruppeIds = [id] }, clearSearch: true);
     }
 
