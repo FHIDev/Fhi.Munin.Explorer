@@ -4420,6 +4420,60 @@ public class VariableSearchTest : ExplorerTestContext
             .QuerySelector("input[type=checkbox]")!
             .Change(true);
 
+    [Theory]
+    [InlineData("mfr")]
+    [InlineData("MFR")]
+    [InlineData("fødsel")]
+    public void KildeSearch_WhenTheTermIsTheShortNameOrPartOfTheName_ThenTheKildeIsFound(string term)
+    {
+        // Fhi.Metadata-99slh (innmeldt #6836): readers know kilder by their short name, but only the name shown was searched.
+        var facets = FacetsWithManyKilder();
+        facets = facets with
+        {
+            Kilder =
+            [
+                new Contracts.KildeFacet
+                {
+                    Id = new Guid("cccccccc-0000-0000-0000-999999999999"),
+                    Name = "Medisinsk fødselsregister",
+                    ShortName = "MFR",
+                    KildeType = "sentraltHelseregister",
+                    Count = 1,
+                },
+                .. facets.Kilder,
+            ],
+        };
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        SearchKilder(cut, term);
+
+        Assert.Equal(["Medisinsk fødselsregister"], KildeRows(cut));
+    }
+
+    [Fact]
+    public void KildeSearch_WhenOnlyAHiddenNameUnderAShutBranchMatches_ThenTheBranchIsOpenedToIt()
+    {
+        // An English reader searching a datasamling's Norwegian name: the kilde is kept, so the branch must open to the match.
+        var facets = ManyDatasamlinger(kilder: 24, each: 1) is var many
+            ? many with
+            {
+                Datasamlinger =
+                [
+                    many.Datasamlinger[0] with { Name = "Birth data", NameNo = "Fødselsdata" },
+                    .. many.Datasamlinger.Skip(1),
+                ],
+            }
+            : null!;
+        var cut = RenderWith(new FilteringClient(OnePage(), facets), b => b.Add(c => c.Language, "en"));
+
+        IElement Source() => Disclosures(cut).Single(d => d.FirstElementChild!.TextContent.Trim().StartsWith("Source", StringComparison.Ordinal));
+
+        Source().QuerySelector("input.munin-explorer-filters__search")!.Change("fødsels");
+
+        var drawn = Source().QuerySelectorAll("li > label").Select(label => FacetName(label).TextContent).ToList();
+        Assert.Equal(["Kilde 0", "Birth data"], drawn);
+    }
+
     [Fact]
     public void FacetCap_WhenTheKildeFacetIsLong_ThenItDrawsTheThresholdManyAndOffersTheRest()
     {

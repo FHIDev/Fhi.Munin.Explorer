@@ -74,7 +74,9 @@ public partial class VariableSearch
         bool GroupHeading = false,
         IReadOnlyList<NodeIcon>? Icons = null,
         string? Badge = null,
-        int ChosenBelow = 0);
+        int ChosenBelow = 0,
+        string? NameNo = null,
+        string? ShortName = null);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
     /// <remarks>The flat parented facets all become trees through <see cref="Tree"/>, so the rule lives once.</remarks>
@@ -549,13 +551,20 @@ public partial class VariableSearch
     /// match is <see cref="OpenBranchesToMatches"/>'s business.
     /// </remarks>
     private bool KildeMatches(KildeFacet kilde, IReadOnlyDictionary<Guid, HierarchyNode> tree, string term) =>
-        LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)
+        NameMatches(kilde.Name, kilde.NameNo, kilde.ShortName, term)
         || (tree.TryGetValue(kilde.Id, out var node)
             && node.Children.Any(child => NodeMatches(child, term)));
 
     private bool NodeMatches(HierarchyNode node, string term) =>
-        LabelMatches(T.Named(node.Name, node.ShortName).Text, term)
+        NameMatches(node.Name, node.NameNo, node.ShortName, term)
         || node.Children.Any(child => NodeMatches(child, term));
+
+    // The short name as well as the name shown: many readers know a kilde as «mfr» or «lmr» (Fhi.Metadata-99slh).
+    private static bool NameMatches(string? name, string? nameNo, string? shortName, string term) =>
+        Holds(name, term) || Holds(nameNo, term) || Holds(shortName, term);
+
+    private static bool Holds(string? name, string term) =>
+        !string.IsNullOrWhiteSpace(name) && LabelMatches(name, term);
 
     private static bool LabelMatches(string label, string term) =>
         label.Contains(term, StringComparison.OrdinalIgnoreCase);
@@ -619,7 +628,9 @@ public partial class VariableSearch
             // The same folder a delkilde wears: the two are one level of grouping as far as the
             // tree is concerned, and Kelda's own hierarchy draws them alike.
             Icons: [DataCategoryIcons.Folder],
-            Badge: T.KildeTypeBadge(kilde.KildeType));
+            Badge: T.KildeTypeBadge(kilde.KildeType),
+            NameNo: kilde.NameNo,
+            ShortName: kilde.ShortName);
     }
 
     /// <summary>What hangs under each kilde, by kilde id: the whole tree the builder places.</summary>
@@ -668,7 +679,7 @@ public partial class VariableSearch
             {
                 return new FacetValue(
                     NodeKey(node), label, language, Count: null, Selected: false, Toggle: null, children,
-                    Icons: Glyphs(node));
+                    Icons: Glyphs(node), NameNo: node.NameNo, ShortName: node.ShortName);
             }
 
             // A variabelgruppe ticks under the placement it is drawn at, as Runa does: a bare id
@@ -679,7 +690,9 @@ public partial class VariableSearch
                                       IsPlacementChosen(node.Id, owner),
                                       () => TogglePlacementAsync(node.Id, owner),
                                       children,
-                                      Icons: Glyphs(node));
+                                      Icons: Glyphs(node),
+                                      NameNo: node.NameNo,
+                                      ShortName: node.ShortName);
             }
 
             return new FacetValue(NodeKey(node),
@@ -689,7 +702,9 @@ public partial class VariableSearch
                                   reading.Chosen().Contains(node.Id),
                                   () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply),
                                   children,
-                                  Icons: Glyphs(node));
+                                  Icons: Glyphs(node),
+                                  NameNo: node.NameNo,
+                                  ShortName: node.ShortName);
         }
 
         // A delkilde wears the folder its kilde does: the two are one level of grouping as far as
@@ -1674,7 +1689,8 @@ public partial class VariableSearch
                 _expandedBranches.Add(value.Key);
             }
 
-            matched = matched || below || LabelMatches(value.Label, term);
+            matched = matched || below || LabelMatches(value.Label, term)
+                || Holds(value.NameNo, term) || Holds(value.ShortName, term);
         }
 
         return matched;
