@@ -68,6 +68,19 @@ internal sealed class KildeTypeVocabulary
                 ?.DisplayName
             : null;
 
+    // Munin's fixed order (innmeldt Munin#6832), by code like its KildetypeOrder. Not read from the filters answer:
+    // that lists only kildetyper with variables, and the kilde explorer also lists kilder without any (Fhi.Metadata-yk2ur).
+    private static readonly string[] Ranked =
+        ["sentraltHelseregister", "befolkningsbasertHelseundersokelse", "nasjonaltMedisinskKvalitetsregister", "annenDatakilde"];
+
+    /// <summary>A kildetype's place in the fixed order; every other type ranks after it, so the label decides.</summary>
+    internal static int Rank(string? value)
+    {
+        var index = Array.FindIndex(Ranked, code => string.Equals(code, value, StringComparison.OrdinalIgnoreCase));
+
+        return index < 0 ? Ranked.Length : index;
+    }
+
     private static async Task<IReadOnlyList<KildetypeFacet>> FetchAsync(
         IMuninExplorerClient? client, string apiLanguage, ILogger? log)
     {

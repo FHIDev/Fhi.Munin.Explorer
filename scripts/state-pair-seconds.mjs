@@ -24,7 +24,7 @@ export const pairSeconds = {
   'variables-list: on a phone every list menu and column picker opens as a named full-width bottom sheet': 13,
   'kilde-hierarchy-collapsed: a hashchange alone brings the sticky fact bar back to what the hero row says': 12,
   'kilde-hierarchy-collapsed: one jump back to the top puts the sticky fact bar away again': 12,
-  'variables-list: a facet press dropped mid-fetch leaves its checkbox agreeing with the filter in force': 12,
+  'variables-list: a facet press made mid-fetch is applied after it and its checkbox agrees with the filter in force': 14,
   'kilde-hierarchy-collapsed: one jump straight past the hero row still shows the sticky fact bar': 11,
   'kilde-hierarchy-collapsed: the sticky fact bar stays away until the hero row has left the viewport upwards': 11,
   'variable-whole: a contents jump leaves its heading below a wrapped sticky bar': 11,

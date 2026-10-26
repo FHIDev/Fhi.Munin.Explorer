@@ -3738,7 +3738,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new HeldFacetsClient(OnePage(Typed("1. Tale", "KODE"))));
 
         Assert.DoesNotContain("Henter variabler", RowsStatus(cut).TextContent, StringComparison.Ordinal);
-        Assert.NotEqual("", RowsStatus(cut).TextContent.Trim());
+        Assert.Contains("variabel funnet", RowsStatus(cut).TextContent, StringComparison.Ordinal);
         Assert.Equal("false", cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-busy"));
     }
 
@@ -3956,7 +3956,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         // Never completed. A search asked for while this is set stays in flight for the rest of
         // the test, which is the only way to press a second facet while the first is still running.
-        private readonly TaskCompletionSource<Page<VariableSummary>> _stalled =
+        private TaskCompletionSource<Page<VariableSummary>> _stalled =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public VariableFilter? SearchFilter { get; private set; }
@@ -3992,6 +3992,16 @@ public class VariableSearchTest : ExplorerTestContext
 
         /// <summary>Never answer a search from the next one on — the in-flight path.</summary>
         public bool StallSearch { get; set; }
+
+        /// <summary>Answer the stalled search after all, so what was held behind it can run.</summary>
+        /// <remarks>A later stalled search waits on a fresh stall, so each can be answered in turn.</remarks>
+        public void AnswerStalled(Page<VariableSummary> page)
+        {
+            var stalled = _stalled;
+
+            _stalled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            stalled.TrySetResult(page);
+        }
 
         /// <summary>How many times a kilde's hierarchy was asked for.</summary>
         /// <remarks>
@@ -4419,6 +4429,60 @@ public class VariableSearchTest : ExplorerTestContext
             .Single(label => FacetName(label).TextContent == name)
             .QuerySelector("input[type=checkbox]")!
             .Change(true);
+
+    [Theory]
+    [InlineData("mfr")]
+    [InlineData("MFR")]
+    [InlineData("fødsel")]
+    public void KildeSearch_WhenTheTermIsTheShortNameOrPartOfTheName_ThenTheKildeIsFound(string term)
+    {
+        // Fhi.Metadata-99slh (innmeldt #6836): readers know kilder by their short name, but only the name shown was searched.
+        var facets = FacetsWithManyKilder();
+        facets = facets with
+        {
+            Kilder =
+            [
+                new Contracts.KildeFacet
+                {
+                    Id = new Guid("cccccccc-0000-0000-0000-999999999999"),
+                    Name = "Medisinsk fødselsregister",
+                    ShortName = "MFR",
+                    KildeType = "sentraltHelseregister",
+                    Count = 1,
+                },
+                .. facets.Kilder,
+            ],
+        };
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        SearchKilder(cut, term);
+
+        Assert.Equal(["Medisinsk fødselsregister"], KildeRows(cut));
+    }
+
+    [Fact]
+    public void KildeSearch_WhenOnlyAHiddenNameUnderAShutBranchMatches_ThenTheBranchIsOpenedToIt()
+    {
+        // An English reader searching a datasamling's Norwegian name: the kilde is kept, so the branch must open to the match.
+        var facets = ManyDatasamlinger(kilder: 24, each: 1) is var many
+            ? many with
+            {
+                Datasamlinger =
+                [
+                    many.Datasamlinger[0] with { Name = "Birth data", NameNo = "Fødselsdata" },
+                    .. many.Datasamlinger.Skip(1),
+                ],
+            }
+            : null!;
+        var cut = RenderWith(new FilteringClient(OnePage(), facets), b => b.Add(c => c.Language, "en"));
+
+        IElement Source() => Disclosures(cut).Single(d => d.FirstElementChild!.TextContent.Trim().StartsWith("Source", StringComparison.Ordinal));
+
+        Source().QuerySelector("input.munin-explorer-filters__search")!.Change("fødsels");
+
+        var drawn = Source().QuerySelectorAll("li > label").Select(label => FacetName(label).TextContent).ToList();
+        Assert.Equal(["Kilde 0", "Birth data"], drawn);
+    }
 
     [Fact]
     public void FacetCap_WhenTheKildeFacetIsLong_ThenItDrawsTheThresholdManyAndOffersTheRest()
@@ -10738,13 +10802,10 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Filter_WhenAFetchIsAlreadyRunning_ThenTheClickIsIgnored()
+    public void Filter_WhenAFetchIsAlreadyRunning_ThenTheClickIsHeldShownAndAppliedAfterIt()
     {
-        // The fourth entry point to the loading state, and the one that does the most on the far
-        // side of the guard. Two overlapping applications interleave their rollback captures, so a
-        // second fetch that fails can restore a filter that is neither what is on screen nor what
-        // was asked for — and then report that filter to the host, which is exactly the "the URL
-        // claims something the page is not showing" failure the rollback tests exist to prevent.
+        // Innmeldt Munin#6830: the second press was dropped, its box ticked over rows that ignored it.
+        // Held instead, never run alongside the first, so two rollback captures cannot interleave.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
@@ -10752,9 +10813,119 @@ public class VariableSearchTest : ExplorerTestContext
         ClickFacet(cut, "Dødsårsaksregisteret");
         ClickFacet(cut, "Tekst");
 
-        Assert.Equal(2, client.SearchCalls); // the initial load and the first press, not the second
-        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
+        Assert.Equal(2, client.SearchCalls); // the initial load and the first press; the second waits
         Assert.Empty(client.SearchFilter!.DataTypes);
+        Assert.True(FacetChosen(cut, "Tekst"));
+
+        client.StallSearch = false;
+        cut.InvokeAsync(() => client.AnswerStalled(OnePage(Variable("1. Tale", "KODE"))));
+
+        cut.WaitForAssertion(() => Assert.Equal(3, client.SearchCalls));
+        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
+        Assert.Equal(["1"], client.SearchFilter!.DataTypes);
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.True(FacetChosen(cut, "Tekst"));
+    }
+
+    [Fact]
+    public void Filter_WhileAPressesCountsAreRead_ThenTheStatusLineKeepsTheSummaryAndShowsTheyAreUpdating()
+    {
+        // The facets' half is the long one on a cold cache; said over the rows so the panel does not move.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        client.HoldFacets = true;
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Contains("variabel funnet", RowsStatus(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal("true", RowsStatus(cut).QuerySelector("span")?.GetAttribute("aria-hidden"));
+        Assert.Contains("Oppdaterer filtrene", RowsStatus(cut).QuerySelector("span")!.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenAChosenKildeIsUntickedWhileAFetchIsRunning_ThenItsChipGoesWithIt()
+    {
+        // The chips read the held filter as the boxes do, or a chip would stand for a kilde just let go.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        cut.WaitForAssertion(() => Assert.Contains(Chips(cut), chip => chip.Contains("Dødsårsaksregisteret", StringComparison.Ordinal)));
+
+        client.StallSearch = true;
+        ClickFacet(cut, "Tekst");
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.DoesNotContain(Chips(cut), chip => chip.Contains("Dødsårsaksregisteret", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Filter_WhenAPressArrivesWhileTheHostIsStillBeingTold_ThenItWaitsForThatToEnd()
+    {
+        // _loading is down while FilterChanged runs; a press then must not start a second application beside the first.
+        var told = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var calls = 0;
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, async _ =>
+        {
+            if (++calls == 1)
+            {
+                await told.Task;
+            }
+        }));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        cut.WaitForAssertion(() => Assert.Equal(1, calls));
+        ClickFacet(cut, "Tekst");
+
+        Assert.Equal(2, client.SearchCalls);
+
+        cut.InvokeAsync(told.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal(3, client.SearchCalls));
+        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
+        Assert.Equal(["1"], client.SearchFilter!.DataTypes);
+    }
+
+    [Fact]
+    public void Filter_WhenTheHeldPressesOwnFetchAnswersLater_ThenThePanelIsNoLongerBusy()
+    {
+        // Applied from OnAfterRenderAsync, whose completion renders nothing: the last render would be the busy one.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.StallSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Tekst");
+        cut.InvokeAsync(() => client.AnswerStalled(OnePage(Variable("1. Tale", "KODE"))));
+        cut.WaitForAssertion(() => Assert.Equal(3, client.SearchCalls));
+
+        client.StallSearch = false;
+        cut.InvokeAsync(() => client.AnswerStalled(OnePage(Variable("1. Tale", "KODE"))));
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal("false", cut.Find("fieldset.munin-explorer-filters").GetAttribute("aria-busy")));
+        Assert.True(FacetChosen(cut, "Tekst"));
+    }
+
+    [Fact]
+    public void Filter_WhenTwoPressesArriveWhileAFetchIsRunning_ThenBothAreApplied()
+    {
+        // They compose on the held filter, not on the one in force, so the second does not undo the first.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.StallSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Tekst");
+        ClickFacet(cut, "Biobank");
+
+        client.StallSearch = false;
+        cut.InvokeAsync(() => client.AnswerStalled(OnePage(Variable("1. Tale", "KODE"))));
+
+        cut.WaitForAssertion(() => Assert.Equal(3, client.SearchCalls));
+        Assert.Equal(["1"], client.SearchFilter!.DataTypes);
+        Assert.Equal("biobank", client.SearchFilter.KildeType);
     }
 
     [Fact]

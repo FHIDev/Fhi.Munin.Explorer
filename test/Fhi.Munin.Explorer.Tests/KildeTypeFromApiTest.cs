@@ -334,4 +334,55 @@ public class KildeTypeFromApiTest : ExplorerTestContext
         Assert.Null(vocabulary.ApiName("en", Token));
         Assert.Null(vocabulary.Load(new FiltersClient(), "en", log: null));
     }
+
+    /// <summary>Answers a Sentralt helseregister and a Biobank kilde; the filters answer may list only Biobank.</summary>
+    private sealed class RankedClient(bool onlyBiobankHasVariables = false) : EmptyMuninExplorerClient
+    {
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null,
+            VariableFilter? filter = null,
+            string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new FilterOptions
+            {
+                KildeTyper = onlyBiobankHasVariables
+                    ? [new KildetypeFacet { Value = "biobank", DisplayName = "Biobank" }]
+                    :
+                    [
+                        new KildetypeFacet { Value = "sentraltHelseregister", DisplayName = "Sentralt helseregister" },
+                        new KildetypeFacet { Value = "biobank", DisplayName = "Biobank" },
+                    ],
+            });
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+            [
+                new KildeSummary { Id = Guid.NewGuid(), Code = "K_BIO", Name = "Biobanken", Kildetype = "biobank" },
+                new KildeSummary { Id = Guid.NewGuid(), Code = "K_DAR", Name = "Dødsårsaksregisteret", Kildetype = "sentraltHelseregister" },
+            ]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void KildeSearch_WhateverTheApiLists_ThenTheKildetypeFacetFollowsTheFixedOrderNotTheLabel(bool onlyBiobankHasVariables)
+    {
+        // Fhi.Metadata-dmxpz (innmeldt Munin#6832): by label, Biobank would come first. The filters answer lists only
+        // types with variables, so a Sentralt helseregister without any must still lead (Fhi.Metadata-yk2ur).
+        Services.AddSingleton<IMuninExplorerClient>(new RankedClient(onlyBiobankHasVariables));
+
+        var cut = Render<KildeSearch>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var facet = cut.FindAll(".munin-explorer-filters__facets > details")
+                .Single(details => details.QuerySelector("summary")!.TextContent.Contains("Kildetype", StringComparison.Ordinal));
+            var labels = facet.QuerySelectorAll("li label").Select(label => label.TextContent).ToList();
+
+            Assert.Equal(2, labels.Count);
+            Assert.Contains("Sentralt helseregister", labels[0], StringComparison.Ordinal);
+            Assert.Contains("Biobank", labels[1], StringComparison.Ordinal);
+        });
+    }
 }

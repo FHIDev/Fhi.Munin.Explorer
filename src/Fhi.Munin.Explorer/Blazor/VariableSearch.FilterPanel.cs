@@ -75,6 +75,8 @@ public partial class VariableSearch
         IReadOnlyList<NodeIcon>? Icons = null,
         string? Badge = null,
         int ChosenBelow = 0,
+        string? NameNo = null,
+        string? ShortName = null,
         bool SpeakIcons = true);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
@@ -165,9 +167,9 @@ public partial class VariableSearch
             // Ordinal, like every other string facet here, because that is what ToggleAsync removes
             // with: a case-insensitive mark over a case-sensitive toggle draws a token as chosen
             // and then appends a duplicate when it is pressed.
-            _filter.Categories.Contains(category.Value),
-            () => ToggleAsync(_filter.Categories, category.Value,
-                              values => _filter with { Categories = values }),
+            Pending.Categories.Contains(category.Value),
+            () => ToggleAsync(Pending.Categories, category.Value,
+                              values => Pending with { Categories = values }),
             [],
             // The legend's glyph for the category, behind Ikoner as the tree's are (Fhi.Metadata-6kfea).
             // Not spoken: the label already is the category's name.
@@ -219,16 +221,16 @@ public partial class VariableSearch
     {
         List<FacetValue> chosen = [];
 
-        if (_filter.DataFrom is { } from)
+        if (Pending.DataFrom is { } from)
         {
             chosen.Add(DateValue("date-from", T.FacetDateFrom, from,
-                                 () => ApplyFilterAsync(_filter with { DataFrom = null })));
+                                 () => ApplyFilterAsync(Pending with { DataFrom = null })));
         }
 
-        if (_filter.DataTo is { } to)
+        if (Pending.DataTo is { } to)
         {
             chosen.Add(DateValue("date-to", T.FacetDateTo, to,
-                                 () => ApplyFilterAsync(_filter with { DataTo = null })));
+                                 () => ApplyFilterAsync(Pending with { DataTo = null })));
         }
 
         return chosen;
@@ -250,13 +252,13 @@ public partial class VariableSearch
     // The API matches overlapping periods, so catalogue dates must not constrain the search interval.
     private RenderFragment DateFields() => builder =>
     {
-        DateField(builder, 0, DateFromId, T.FacetDateFrom, _filter.DataFrom,
-                  null, _filter.DataTo,
-                  value => ApplyFilterAsync(_filter with { DataFrom = value }));
+        DateField(builder, 0, DateFromId, T.FacetDateFrom, Pending.DataFrom,
+                  null, Pending.DataTo,
+                  value => ApplyFilterAsync(Pending with { DataFrom = value }));
 
-        DateField(builder, 100, DateToId, T.FacetDateTo, _filter.DataTo,
-                  _filter.DataFrom, null,
-                  value => ApplyFilterAsync(_filter with { DataTo = value }));
+        DateField(builder, 100, DateToId, T.FacetDateTo, Pending.DataTo,
+                  Pending.DataFrom, null,
+                  value => ApplyFilterAsync(Pending with { DataTo = value }));
     };
 
     // Native controls display the browser's local format but exchange ISO dates with Blazor.
@@ -403,7 +405,7 @@ public partial class VariableSearch
             T.KildeTypeNameFromApi(type.Value, type.DisplayName),
             Language: null,
             Counted(type.Count),
-            string.Equals(_filter.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
+            string.Equals(Pending.KildeType, type.Value, StringComparison.OrdinalIgnoreCase),
             () => SetKildeTypeAsync(type.Value),
             []);
 
@@ -462,15 +464,15 @@ public partial class VariableSearch
     private IReadOnlyList<FacetValue> ChosenKilder(FilterOptions facets, KildeLevelLookup levels) =>
     [
         .. ListedKilder(facets)
-            .Where(kilde => _filter.KildeIds.Contains(kilde.Id))
+            .Where(kilde => Pending.KildeIds.Contains(kilde.Id))
             .Select(kilde => KildeValue(kilde)),
         .. ListedKilder(facets)
             .SelectMany(kilde => levels.Delkilder[kilde.Id])
-            .Where(delkilde => _filter.DelkildeIds.Contains(delkilde.Id))
+            .Where(delkilde => Pending.DelkildeIds.Contains(delkilde.Id))
             .Select(DelkildeValue),
         .. facets.Datasamlinger
             .DistinctBy(datasamling => datasamling.Id)
-            .Where(datasamling => _filter.DatasamlingIds.Contains(datasamling.Id))
+            .Where(datasamling => Pending.DatasamlingIds.Contains(datasamling.Id))
             .Select(DatasamlingValue)
     ];
 
@@ -554,13 +556,20 @@ public partial class VariableSearch
     /// match is <see cref="OpenBranchesToMatches"/>'s business.
     /// </remarks>
     private bool KildeMatches(KildeFacet kilde, IReadOnlyDictionary<Guid, HierarchyNode> tree, string term) =>
-        LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)
+        NameMatches(kilde.Name, kilde.NameNo, kilde.ShortName, term)
         || (tree.TryGetValue(kilde.Id, out var node)
             && node.Children.Any(child => NodeMatches(child, term)));
 
     private bool NodeMatches(HierarchyNode node, string term) =>
-        LabelMatches(T.Named(node.Name, node.ShortName).Text, term)
+        NameMatches(node.Name, node.NameNo, node.ShortName, term)
         || node.Children.Any(child => NodeMatches(child, term));
+
+    // The short name as well as the name shown: many readers know a kilde as «mfr» or «lmr» (Fhi.Metadata-99slh).
+    private static bool NameMatches(string? name, string? nameNo, string? shortName, string term) =>
+        Holds(name, term) || Holds(nameNo, term) || Holds(shortName, term);
+
+    private static bool Holds(string? name, string term) =>
+        !string.IsNullOrWhiteSpace(name) && LabelMatches(name, term);
 
     private static bool LabelMatches(string label, string term) =>
         label.Contains(term, StringComparison.OrdinalIgnoreCase);
@@ -618,13 +627,15 @@ public partial class VariableSearch
             label,
             language,
             null,
-            _filter.KildeIds.Contains(kilde.Id),
-            () => ToggleAsync(_filter.KildeIds, kilde.Id, ids => _filter with { KildeIds = ids }),
+            Pending.KildeIds.Contains(kilde.Id),
+            () => ToggleAsync(Pending.KildeIds, kilde.Id, ids => Pending with { KildeIds = ids }),
             [],
             // The same folder a delkilde wears: the two are one level of grouping as far as the
             // tree is concerned, and Kelda's own hierarchy draws them alike.
             Icons: [DataCategoryIcons.Folder],
-            Badge: T.KildeTypeBadge(kilde.KildeType));
+            Badge: T.KildeTypeBadge(kilde.KildeType),
+            NameNo: kilde.NameNo,
+            ShortName: kilde.ShortName);
     }
 
     /// <summary>What hangs under each kilde, by kilde id: the whole tree the builder places.</summary>
@@ -673,7 +684,7 @@ public partial class VariableSearch
             {
                 return new FacetValue(
                     NodeKey(node), label, language, Count: null, Selected: false, Toggle: null, children,
-                    Icons: Glyphs(node));
+                    Icons: Glyphs(node), NameNo: node.NameNo, ShortName: node.ShortName);
             }
 
             // A variabelgruppe ticks under the placement it is drawn at, as Runa does: a bare id
@@ -684,7 +695,9 @@ public partial class VariableSearch
                                       IsPlacementChosen(node.Id, owner),
                                       () => TogglePlacementAsync(node.Id, owner),
                                       children,
-                                      Icons: Glyphs(node));
+                                      Icons: Glyphs(node),
+                                      NameNo: node.NameNo,
+                                      ShortName: node.ShortName);
             }
 
             return new FacetValue(NodeKey(node),
@@ -694,7 +707,9 @@ public partial class VariableSearch
                                   reading.Chosen().Contains(node.Id),
                                   () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply),
                                   children,
-                                  Icons: Glyphs(node));
+                                  Icons: Glyphs(node),
+                                  NameNo: node.NameNo,
+                                  ShortName: node.ShortName);
         }
 
         // A delkilde wears the folder its kilde does: the two are one level of grouping as far as
@@ -744,9 +759,9 @@ public partial class VariableSearch
             label,
             language,
             null,
-            _filter.DatasamlingIds.Contains(datasamling.Id),
-            () => ToggleAsync(_filter.DatasamlingIds, datasamling.Id,
-                              ids => _filter with { DatasamlingIds = ids }),
+            Pending.DatasamlingIds.Contains(datasamling.Id),
+            () => ToggleAsync(Pending.DatasamlingIds, datasamling.Id,
+                              ids => Pending with { DatasamlingIds = ids }),
             [],
             // Off the facet payload this row was already built from, so the glyphs cost no request —
             // and read whatever parent the row hangs from, since a category is the datasamling's own.
@@ -756,10 +771,10 @@ public partial class VariableSearch
     private (string Text, string? Language) DatasamlingLabel(DatasamlingFacet datasamling) =>
         CatalogueName(datasamling.Name, datasamling.NameNo, null);
 
-    private bool IsDelkildeChosen(Guid id) => _filter.DelkildeIds.Contains(id);
+    private bool IsDelkildeChosen(Guid id) => Pending.DelkildeIds.Contains(id);
 
     private Func<Task> ToggleDelkilde(Guid id) =>
-        () => ToggleAsync(_filter.DelkildeIds, id, ids => _filter with { DelkildeIds = ids });
+        () => ToggleAsync(Pending.DelkildeIds, id, ids => Pending with { DelkildeIds = ids });
 
     /// <summary>The variabelgruppe facet, as a tree.</summary>
     /// <remarks>
@@ -797,7 +812,7 @@ public partial class VariableSearch
     private IReadOnlyList<FacetValue> ChosenVariabelgrupper(FilterOptions facets) =>
     [
         .. ListedVariabelgrupper(facets)
-            .Where(gruppe => ChosenVariabelgruppeIds().Contains(gruppe.Id))
+            .Where(gruppe => ChosenVariabelgruppeIds(Pending).Contains(gruppe.Id))
             .Select(VariabelgruppeValue)
     ];
 
@@ -837,7 +852,7 @@ public partial class VariableSearch
             language,
             null,
             true,
-            () => ApplyFilterAsync(KeepVariabelgrupper([.. ChosenVariabelgruppeIds().Where(id => id != gruppe.Id)])),
+            () => ApplyFilterAsync(KeepVariabelgrupper(Pending, [.. ChosenVariabelgruppeIds(Pending).Where(id => id != gruppe.Id)])),
             []);
     }
 
@@ -847,10 +862,10 @@ public partial class VariableSearch
 
     private string ScopeLimitText => T.VariabelgruppeScopeLimit(VariableFilter.MaxVariabelgruppeScopes);
 
-    private bool IsGruppeChosen(Guid id) => _filter.VariabelgruppeIds.Contains(id);
+    private bool IsGruppeChosen(Guid id) => Pending.VariabelgruppeIds.Contains(id);
 
     private bool IsPlacementChosen(Guid id, Guid owner) =>
-        IsGruppeChosen(id) || _filter.VariabelgruppeScopes.Contains(new VariabelgruppeScope(id, owner));
+        IsGruppeChosen(id) || Pending.VariabelgruppeScopes.Contains(new VariabelgruppeScope(id, owner));
 
     /// <summary>Tick or untick a group under one placement.</summary>
     /// <remarks>A group chosen everywhere is one filter, so unticking any placement takes it off.
@@ -864,22 +879,22 @@ public partial class VariableSearch
 
         var scope = new VariabelgruppeScope(id, owner);
 
-        if (!_filter.VariabelgruppeScopes.Contains(scope)
-            && _filter.VariabelgruppeScopes.Count >= VariableFilter.MaxVariabelgruppeScopes)
+        if (!Pending.VariabelgruppeScopes.Contains(scope)
+            && Pending.VariabelgruppeScopes.Count >= VariableFilter.MaxVariabelgruppeScopes)
         {
             _scopeLimitRefused = true;
             return Task.CompletedTask;
         }
 
-        return ToggleAsync(_filter.VariabelgruppeScopes, scope, scopes => _filter with { VariabelgruppeScopes = scopes });
+        return ToggleAsync(Pending.VariabelgruppeScopes, scope, scopes => Pending with { VariabelgruppeScopes = scopes });
     }
 
     // Choosing a group everywhere supersedes its placements, so their scopes go with the tick.
     private Func<Task> ToggleGruppe(Guid id) =>
-        () => ToggleAsync(_filter.VariabelgruppeIds, id, ids => _filter with
+        () => ToggleAsync(Pending.VariabelgruppeIds, id, ids => Pending with
         {
             VariabelgruppeIds = ids,
-            VariabelgruppeScopes = [.. _filter.VariabelgruppeScopes.Where(scope => scope.VariabelgruppeId != id)]
+            VariabelgruppeScopes = [.. Pending.VariabelgruppeScopes.Where(scope => scope.VariabelgruppeId != id)]
         });
 
     /// <summary>The saved catalogue filters — see <see cref="FilterOptions.Filters"/> for why this is usually empty.</summary>
@@ -893,10 +908,10 @@ public partial class VariableSearch
                  IsSavedFilterChosen,
                  ToggleSavedFilter, Counted));
 
-    private bool IsSavedFilterChosen(Guid id) => _filter.FilterIds.Contains(id);
+    private bool IsSavedFilterChosen(Guid id) => Pending.FilterIds.Contains(id);
 
     private Func<Task> ToggleSavedFilter(Guid id) =>
-        () => ToggleAsync(_filter.FilterIds, id, ids => _filter with { FilterIds = ids });
+        () => ToggleAsync(Pending.FilterIds, id, ids => Pending with { FilterIds = ids });
 
     private FacetGroup DataTypeGroup(FilterOptions facets) =>
         new("datatype", T.FacetDataType, OpenByDefault: false, [.. facets.DataTypes.Select(DataTypeValue)]);
@@ -911,8 +926,8 @@ public partial class VariableSearch
             DataTypeFacetLabel(dataType),
             Language: null,
             Counted(dataType.Count),
-            _filter.DataTypes.Contains(dataType.Value),
-            () => ToggleAsync(_filter.DataTypes, dataType.Value, values => _filter with { DataTypes = values }),
+            Pending.DataTypes.Contains(dataType.Value),
+            () => ToggleAsync(Pending.DataTypes, dataType.Value, values => Pending with { DataTypes = values }),
             []);
 
     /// <summary>The word on a datatype facet button, on the same terms as the result rows.</summary>
@@ -939,9 +954,9 @@ public partial class VariableSearch
             kodeverk.ShortName,
             Language: null,
             Counted(kodeverk.Count),
-            _filter.HelsefagligKodeverk.Contains(kodeverk.ShortName),
-            () => ToggleAsync(_filter.HelsefagligKodeverk, kodeverk.ShortName,
-                              values => _filter with { HelsefagligKodeverk = values }),
+            Pending.HelsefagligKodeverk.Contains(kodeverk.ShortName),
+            () => ToggleAsync(Pending.HelsefagligKodeverk, kodeverk.ShortName,
+                              values => Pending with { HelsefagligKodeverk = values }),
             []);
 
     private FacetGroup AdministrativtKodeverkGroup(FilterOptions facets) =>
@@ -961,9 +976,9 @@ public partial class VariableSearch
             label,
             language,
             Counted(kodeverk.Count),
-            _filter.AdministrativtKodeverk.Contains(kodeverk.Oid),
-            () => ToggleAsync(_filter.AdministrativtKodeverk, kodeverk.Oid,
-                              values => _filter with { AdministrativtKodeverk = values }),
+            Pending.AdministrativtKodeverk.Contains(kodeverk.Oid),
+            () => ToggleAsync(Pending.AdministrativtKodeverk, kodeverk.Oid,
+                              values => Pending with { AdministrativtKodeverk = values }),
             []);
     }
 
@@ -978,8 +993,8 @@ public partial class VariableSearch
             label,
             language,
             Counted(instrument.Count),
-            _filter.InstrumentIds.Contains(instrument.Id),
-            () => ToggleAsync(_filter.InstrumentIds, instrument.Id, ids => _filter with { InstrumentIds = ids }),
+            Pending.InstrumentIds.Contains(instrument.Id),
+            () => ToggleAsync(Pending.InstrumentIds, instrument.Id, ids => Pending with { InstrumentIds = ids }),
             []);
     }
 
@@ -996,12 +1011,12 @@ public partial class VariableSearch
                 // Both unmarked: the words are this package's own, already in the reader's language.
                 new FacetValue("has-kildekodeverk", T.HasKildekodeverk, Language: null,
                                Counted(facets.KildeKodeverkCount),
-                               _filter.HasKildekodeverk == true, ToggleKildekodeverkAsync, []),
+                               Pending.HasKildekodeverk == true, ToggleKildekodeverkAsync, []),
 
                 // No count of its own: the API reports no facet for it, and the number it would
                 // change is the total, which the status line already states.
                 new FacetValue("include-historical", T.IncludeHistorical, Language: null, Count: null,
-                               _filter.IncludeHistorical, ToggleHistoricalAsync, [])
+                               Pending.IncludeHistorical, ToggleHistoricalAsync, [])
             ],
             NameInChips: true);
 
@@ -1679,7 +1694,8 @@ public partial class VariableSearch
                 _expandedBranches.Add(value.Key);
             }
 
-            matched = matched || below || LabelMatches(value.Label, term);
+            matched = matched || below || LabelMatches(value.Label, term)
+                || Holds(value.NameNo, term) || Holds(value.ShortName, term);
         }
 
         return matched;
@@ -1706,9 +1722,9 @@ public partial class VariableSearch
     /// </remarks>
     private Task SetKildeTypeAsync(string value)
     {
-        var chosen = string.Equals(_filter.KildeType, value, StringComparison.OrdinalIgnoreCase);
+        var chosen = string.Equals(Pending.KildeType, value, StringComparison.OrdinalIgnoreCase);
 
-        return ApplyFilterAsync(_filter with { KildeType = chosen ? null : value });
+        return ApplyFilterAsync(Pending with { KildeType = chosen ? null : value });
     }
 
     /// <summary>Keep only variables that have a kildekodeverk link, or stop filtering on it.</summary>
@@ -1716,10 +1732,10 @@ public partial class VariableSearch
     /// Two states, not three: the API's <c>false</c> is a question nobody asks of a catalogue browser.
     /// </remarks>
     private Task ToggleKildekodeverkAsync() =>
-        ApplyFilterAsync(_filter with { HasKildekodeverk = _filter.HasKildekodeverk == true ? null : true });
+        ApplyFilterAsync(Pending with { HasKildekodeverk = Pending.HasKildekodeverk == true ? null : true });
 
     private Task ToggleHistoricalAsync() =>
-        ApplyFilterAsync(_filter with { IncludeHistorical = !_filter.IncludeHistorical });
+        ApplyFilterAsync(Pending with { IncludeHistorical = !Pending.IncludeHistorical });
 
     /// <summary>The chosen values as the row over the results draws them, in the panel's own order.</summary>
     /// <remarks>
@@ -1855,13 +1871,39 @@ public partial class VariableSearch
     /// </remarks>
     private async Task ApplyFilterAsync(VariableFilter next, bool clearSearch = false)
     {
-        // Dropped rather than queued while a fetch is in flight, the same as a second submit, a
-        // sort click and a page turn.
-        if (_loading)
+        // Held while one is in flight, the last press winning, and applied when it ends: a dropped
+        // press left its box ticked over rows that ignored it (Fhi.Metadata-7v7ki).
+        if (PressInFlight)
         {
+            var held = next != _filter || clearSearch;
+
+            _queuedFilter = held ? next : null;
+            _queuedClearSearch = held && (_queuedClearSearch || clearSearch);
+            StateHasChanged();
             return;
         }
 
+        // The whole application, host callbacks included: _loading drops between its two fetches.
+        _applying = true;
+
+        try
+        {
+            await ApplyFilterNowAsync(next, clearSearch);
+        }
+        finally
+        {
+            _applying = false;
+        }
+
+        // A press held during the callbacks above has no render of its own to be applied after.
+        if (_queuedFilter is not null)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilterNowAsync(VariableFilter next, bool clearSearch)
+    {
         // A press that asks for the filter already in force costs no request — clearing an empty
         // selection, say. VariableFilter compares by what it narrows, not by the identity of its
         // lists; see the note on it.
@@ -1932,6 +1974,43 @@ public partial class VariableSearch
         // Narrowing renumbers the pages, so a host mirroring this into a URL has to drop the page
         // it was holding. Same rule as the filter: whatever is in force, rolled back or not.
         await NotifyPageChangedAsync();
+    }
+
+    /// <summary>A press that arrived while a fetch was in flight, to be applied when it has ended.</summary>
+    private VariableFilter? _queuedFilter;
+
+    private bool _queuedClearSearch;
+
+    private bool _applying;
+
+    /// <summary>Whether a press now would overlap a fetch, or an application still telling its host.</summary>
+    private bool PressInFlight => _loading || _applying;
+
+    /// <summary>What the panel's boxes show: a held press over the filter in force, so presses compose.</summary>
+    private VariableFilter Pending => _queuedFilter ?? _filter;
+
+    /// <summary>Apply the held press once nothing is in flight; called after every render.</summary>
+    private async Task ApplyQueuedFilterAsync()
+    {
+        if (PressInFlight || _queuedFilter is not { } queued)
+        {
+            return;
+        }
+
+        var clearSearch = _queuedClearSearch;
+
+        (_queuedFilter, _queuedClearSearch) = (null, false);
+
+        // A list's «Vis variabelgruppe» waiting to replace the whole filter makes this press moot.
+        if (_pendingVariabelgruppe is not null)
+        {
+            return;
+        }
+
+        await ApplyFilterAsync(queued, clearSearch);
+
+        // Run from OnAfterRenderAsync, whose completion renders nothing, so the panel would stay busy.
+        StateHasChanged();
     }
 
     /// <summary>The catalogue's own words for the EHDS tokens the datakategori facet is made of.</summary>
