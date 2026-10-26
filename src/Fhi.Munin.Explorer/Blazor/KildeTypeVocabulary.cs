@@ -68,6 +68,28 @@ internal sealed class KildeTypeVocabulary
                 ?.DisplayName
             : null;
 
+    /// <summary>A kildetype's place in the API's list, which carries Munin's fixed order (Fhi.Metadata-dmxpz).</summary>
+    /// <remarks>A type the list lacks, or any type before it has loaded, ranks last, so the label decides.</remarks>
+    internal int Rank(string? language, string? value)
+    {
+        if (!_byLanguage.TryGetValue(ReaderLanguage.ForApi(language), out var fetch) || !fetch.IsCompletedSuccessfully)
+        {
+            return int.MaxValue;
+        }
+
+        var types = fetch.Result;
+
+        for (var index = 0; index < types.Count; index++)
+        {
+            if (string.Equals(types[index].Value, value, StringComparison.OrdinalIgnoreCase))
+            {
+                return index;
+            }
+        }
+
+        return int.MaxValue;
+    }
+
     private static async Task<IReadOnlyList<KildetypeFacet>> FetchAsync(
         IMuninExplorerClient? client, string apiLanguage, ILogger? log)
     {

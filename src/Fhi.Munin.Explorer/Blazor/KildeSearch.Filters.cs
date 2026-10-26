@@ -242,7 +242,8 @@ public sealed partial class KildeSearch
             return _definitions =
             [
                 new(KildetypeFacet, T.ColumnKildetype,
-                    kilde => One(kilde.Kildetype), value => Translated(KildeTypeName(value), value)),
+                    kilde => One(kilde.Kildetype), value => Translated(KildeTypeName(value), value),
+                    value => _kildeTypes.Rank(Language, value)),
                 new(CategoryFacet, T.FacetCategory, Categories, value => Vocabulary(CategoryKey, value)),
                 // helsedata.no's own levels, in its order (Fhi.Metadata-l9l2n.129); Munin's EU accessRights is not filtered on.
                 new(AccessLevelFacet, T.FacetAccessLevel,
