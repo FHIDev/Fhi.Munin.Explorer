@@ -795,6 +795,9 @@ internal sealed record Texts(
     // The lead of the sentence that ends in a Variabelreferanse link; "also" when Munin has variables too.
     string VariablesDescribedHere,
     string VariablesAlsoDescribedHere,
+    // The Variables section's link to the variable explorer narrowed to the kilde, where the reference
+    // sentence stands for a kilde without variables (Inge, #6509 follow-up).
+    string VariablesInExplorer,
     // In place of a count of none, where the variables are documented somewhere else.
     string VariablesDescribedElsewhere,
     // The kilde list's «–» for a kilde Munin holds no variables for, link or not. The names keep
@@ -1696,6 +1699,7 @@ internal sealed record Texts(
             : $"{count} publiserte variabler i denne kilden.",
         VariablesDescribedHere: "Variablene er beskrevet her:",
         VariablesAlsoDescribedHere: "Variablene er også beskrevet her:",
+        VariablesInExplorer: "Se variablene i Variabelutforskeren",
         VariablesDescribedElsewhere: "Beskrevet utenfor helsedata.no",
         NoVariablesInMunin: "Ingen variabler registrert",
         NoDatasamlingerInMunin: "Ingen datasamlinger registrert",
@@ -2259,6 +2263,7 @@ internal sealed record Texts(
             : $"{count} published variables in this source.",
         VariablesDescribedHere: "The variables are described here:",
         VariablesAlsoDescribedHere: "The variables are also described here:",
+        VariablesInExplorer: "See the variables in the variable explorer",
         VariablesDescribedElsewhere: "Described outside helsedata.no",
         NoVariablesInMunin: "No variables recorded",
         NoDatasamlingerInMunin: "No data collections recorded",

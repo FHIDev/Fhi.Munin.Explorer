@@ -3371,6 +3371,45 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.Equal($"/variabler?kilde={als.Id}", cut.FindComponent<KildeView>().Instance.VariablesHref);
     }
 
+    // Inge on #6509 (Fhi.Metadata-b6eru): a kilde with variables links to the variable explorer in its
+    // Variabler section, where a kilde without them gives its Variabelreferanse: the same place for both.
+    [Theory]
+    [InlineData("no", "204 variabler", "Se variablene i Variabelutforskeren")]
+    [InlineData("en", "204 variables", "See the variables in the variable explorer")]
+    public void Variables_WhenTheOpenKildeHasVariables_ThenItsSectionLinksToTheExplorerAfterTheCount(string language, string count, string link)
+    {
+        var hodepine = Kilde("Hodepineregisteret", "K_HDPINE", datasamlinger: 4, variables: 204);
+        var cut = RenderWith(new FakeClient(hodepine).Publishing(hodepine), b => b
+            .Add(c => c.SelectedKildeId, hodepine.Id)
+            .Add(c => c.Language, language)
+            .Add(c => c.KildeVariablesHref, id => $"/variabler?kilde={id}"));
+
+        var section = cut.Find($"#{DetailSectionIds.Variables}");
+        var anchor = section.QuerySelector("a")!;
+        Assert.Equal($"/variabler?kilde={hodepine.Id}", anchor.GetAttribute("href"));
+        Assert.Equal(link, anchor.TextContent.Replace("→", "", StringComparison.Ordinal).Trim());
+        Assert.True(section.TextContent.IndexOf(count, StringComparison.Ordinal) < section.TextContent.IndexOf(link, StringComparison.Ordinal), "the count first");
+    }
+
+    [Fact]
+    public void Variables_WhenNoAddressIsWired_ThenItsSectionHasNoExplorerLink()
+    {
+        var hodepine = Kilde("Hodepineregisteret", "K_HDPINE", datasamlinger: 4, variables: 204);
+        var unwired = RenderWith(new FakeClient(hodepine).Publishing(hodepine), b => b.Add(c => c.SelectedKildeId, hodepine.Id));
+        Assert.Null(unwired.Find($"#{DetailSectionIds.Variables}").QuerySelector("a"));
+    }
+
+    [Fact]
+    public void Variables_WhenTheKildeHasNone_ThenItsSectionHasNoExplorerLink()
+    {
+        var førti = WithReference(Kilde("Førtiåringsundersøkelsene", "K_40", datasamlinger: 0, variables: 0), "https://eksempel.no/variabler");
+        var none = RenderWith(new FakeClient(førti).Publishing(førti), b => b
+            .Add(c => c.SelectedKildeId, førti.Id)
+            .Add(c => c.KildeVariablesHref, id => $"/variabler?kilde={id}"));
+        var anchors = none.Find($"#{DetailSectionIds.Variables}").QuerySelectorAll("a");
+        Assert.DoesNotContain(anchors, a => (a.GetAttribute("href") ?? "").StartsWith("/variabler", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Select_WhenTheKildeIsOpen_ThenTheRegionIsNamedByTheHeadingInsideIt()
     {

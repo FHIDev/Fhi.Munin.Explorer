@@ -1271,10 +1271,15 @@ public sealed partial class KildeSearch : ComponentBase
         return sections;
     }
 
-    // The count; with a Variabelreferanse the link too, and in place of a count of none.
+    // The count, then the link to the variable explorer for a kilde with variables, in the place the
+    // Variabelreferanse sentence takes for one without (Fhi.Metadata-b6eru); the reference after both.
     private RenderFragment VariablesBody(KildeDetail kilde)
     {
         var count = Caption(T.KildeVariableCount(kilde.TotalVariables));
+        if (kilde.TotalVariables > 0 && KildeVariablesHref?.Invoke(kilde.Id) is { Length: > 0 } href)
+        {
+            count = DetailBlocks.Both(count, ExplorerLink(href));
+        }
 
         if (VariableReference.Of(kilde.AdditionalProperties) is not { } address)
         {
@@ -1285,6 +1290,20 @@ public sealed partial class KildeSearch : ComponentBase
             ? VariableReference.Sentence(T.VariablesDescribedHere, address)
             : DetailBlocks.Both(count, VariableReference.Sentence(T.VariablesAlsoDescribedHere, address));
     }
+
+    private RenderFragment ExplorerLink(string href) => builder =>
+    {
+        builder.OpenElement(0, "p");
+        builder.OpenElement(1, "a");
+        builder.AddAttribute(2, "href", href);
+        builder.AddContent(3, T.VariablesInExplorer);
+        builder.OpenElement(4, "span");
+        builder.AddAttribute(5, "aria-hidden", "true");
+        builder.AddContent(6, " →");
+        builder.CloseElement();
+        builder.CloseElement();
+        builder.CloseElement();
+    };
 
     // A classless <p> picks no size at all, so on a host carrying Stiler and nothing else it would
     // land at the browser's own paragraph size.
