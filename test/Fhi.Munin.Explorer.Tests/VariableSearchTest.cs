@@ -5793,6 +5793,46 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Filter_WhenTheApiOffersDatakategorier_ThenEachRowLeadsWithTheLegendsGlyph()
+    {
+        // Inge's #6842 (Fhi.Metadata-6kfea): the glyph the legend explains, as the kilde tree draws it,
+        // with the retired slugs resolved to their successors exactly as the tree resolves them.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories), vocabulary: CategoryWords()));
+
+        Assert.Equal(["RPDG"], RowGlyphs(cut, "Befolkningsundersøkelser"));
+        Assert.Equal(["EINS"], RowGlyphs(cut, "ehds-cat:biobanks"));
+    }
+
+    [Fact]
+    public void Filter_WhenIkonerIsOff_ThenTheDatakategoriRowsDropTheirGlyphs()
+    {
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories), vocabulary: CategoryWords()));
+
+        NodeIconsSwitch(cut).Click();
+
+        Assert.Empty(RowGlyphs(cut, "Befolkningsundersøkelser"));
+        Assert.Empty(Facet(cut, "Befolkningsundersøkelser").QuerySelectorAll(".munin-explorer-filters__icons"));
+
+        NodeIconsSwitch(cut).Click();
+
+        Assert.Equal(["RPDG"], RowGlyphs(cut, "Befolkningsundersøkelser"));
+    }
+
+    [Fact]
+    public void Filter_WhenADatakategoriRowHasItsGlyph_ThenItsNameIsSaidOnce()
+    {
+        // The tree's rows say their categories after the name because the name is a kilde's; here the
+        // name is the category, and saying it twice would be noise for a screen reader.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith(TwoCategories), vocabulary: CategoryWords()));
+
+        Assert.Equal("Befolkningsundersøkelser (12)", AccessibleName.Of(FacetBox(cut, "Befolkningsundersøkelser")));
+        Assert.Empty(Facet(cut, "Befolkningsundersøkelser").QuerySelectorAll(".screenreader-only"));
+    }
+
+    [Fact]
     public void Filter_WhenTheVocabularyCannotBeFetched_ThenTheFacetStillFiltersOnTokens()
     {
         // The vocabulary is a label lookup, not the facet. Losing it costs the choices their words

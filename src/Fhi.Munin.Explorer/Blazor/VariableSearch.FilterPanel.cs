@@ -74,7 +74,8 @@ public partial class VariableSearch
         bool GroupHeading = false,
         IReadOnlyList<NodeIcon>? Icons = null,
         string? Badge = null,
-        int ChosenBelow = 0);
+        int ChosenBelow = 0,
+        bool SpeakIcons = true);
 
     /// <summary>A node on the way to becoming a <see cref="FacetValue"/> tree.</summary>
     /// <remarks>The flat parented facets all become trees through <see cref="Tree"/>, so the rule lives once.</remarks>
@@ -167,7 +168,11 @@ public partial class VariableSearch
             _filter.Categories.Contains(category.Value),
             () => ToggleAsync(_filter.Categories, category.Value,
                               values => _filter with { Categories = values }),
-            []);
+            [],
+            // The legend's glyph for the category, behind Ikoner as the tree's are (Fhi.Metadata-6kfea).
+            // Not spoken: the label already is the category's name.
+            Icons: DataCategoryIcons.For([category.Value]),
+            SpeakIcons: false);
     }
 
     /// <summary>
@@ -1428,7 +1433,7 @@ public partial class VariableSearch
                 }
 
                 // Keep the spoken categories after the name even though the decorative icons lead it.
-                if (icons is { Count: > 0 })
+                if (icons is { Count: > 0 } && value.SpeakIcons)
                 {
                     builder.AddContent(44, (RenderFragment)(nested =>
                         NodeIcons.WriteSpoken(nested, icons, T)));
