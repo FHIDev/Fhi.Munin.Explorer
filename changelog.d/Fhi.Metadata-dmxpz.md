@@ -1,6 +1,6 @@
 category: Changed
-- **The kilde explorer's kildetype filter follows Munin's order.** It listed the kildetyper
-  alphabetically by label; it now lists them in the order Munin's filters endpoint gives them.
-  A Munin that ranks them puts Sentralt helseregister, Befolkningsbasert helseundersøkelse,
-  Nasjonalt medisinsk kvalitetsregister and Annen datakilde first, then the rest. A type the endpoint does not
-  list, or every type while it has not answered, still sorts by label.
+- **The kilde explorer's kildetype filter lists kildetyper in Munin's fixed order.** It listed them
+  alphabetically by label; it now puts Sentralt helseregister, Befolkningsbasert
+  helseundersøkelse, Nasjonalt medisinsk kvalitetsregister and Annen datakilde first, in that
+  order, then the rest by label, in every language. The order is by code and does not depend on
+  which kildetyper the filters endpoint lists, so a type with no variables keeps its place.

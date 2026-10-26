@@ -335,7 +335,7 @@ public class KildeTypeFromApiTest : ExplorerTestContext
         Assert.Null(vocabulary.Load(new FiltersClient(), "en", log: null));
     }
 
-    /// <summary>Answers two kildetyper in Munin's fixed order, which is not the alphabetical one.</summary>
+    /// <summary>Answers a Sentralt helseregister and a Biobank kilde; the filters answer may list only Biobank.</summary>
     private sealed class RankedClient(bool onlyBiobankHasVariables = false) : EmptyMuninExplorerClient
     {
         public override Task<FilterOptions> GetFiltersAsync(
@@ -366,7 +366,7 @@ public class KildeTypeFromApiTest : ExplorerTestContext
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void KildeSearch_WhenTheApiRanksTheKildetyper_ThenTheFacetFollowsItsOrderNotTheLabel(bool onlyBiobankHasVariables)
+    public void KildeSearch_WhateverTheApiLists_ThenTheKildetypeFacetFollowsTheFixedOrderNotTheLabel(bool onlyBiobankHasVariables)
     {
         // Fhi.Metadata-dmxpz (innmeldt Munin#6832): by label, Biobank would come first. The filters answer lists only
         // types with variables, so a Sentralt helseregister without any must still lead (Fhi.Metadata-yk2ur).
