@@ -549,13 +549,17 @@ public partial class VariableSearch
     /// match is <see cref="OpenBranchesToMatches"/>'s business.
     /// </remarks>
     private bool KildeMatches(KildeFacet kilde, IReadOnlyDictionary<Guid, HierarchyNode> tree, string term) =>
-        LabelMatches(T.Named(kilde.Name, kilde.ShortName).Text, term)
+        NameMatches(term, T.Named(kilde.Name, kilde.ShortName).Text, kilde.NameNo, kilde.ShortName)
         || (tree.TryGetValue(kilde.Id, out var node)
             && node.Children.Any(child => NodeMatches(child, term)));
 
     private bool NodeMatches(HierarchyNode node, string term) =>
-        LabelMatches(T.Named(node.Name, node.ShortName).Text, term)
+        NameMatches(term, T.Named(node.Name, node.ShortName).Text, node.NameNo, node.ShortName)
         || node.Children.Any(child => NodeMatches(child, term));
+
+    // The short name as well as the name shown: many readers know a kilde as «mfr» or «lmr» (Fhi.Metadata-99slh).
+    private static bool NameMatches(string term, params string?[] names) =>
+        names.Any(name => !string.IsNullOrWhiteSpace(name) && LabelMatches(name, term));
 
     private static bool LabelMatches(string label, string term) =>
         label.Contains(term, StringComparison.OrdinalIgnoreCase);

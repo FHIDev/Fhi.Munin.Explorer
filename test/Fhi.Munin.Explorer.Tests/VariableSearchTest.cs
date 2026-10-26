@@ -4420,6 +4420,36 @@ public class VariableSearchTest : ExplorerTestContext
             .QuerySelector("input[type=checkbox]")!
             .Change(true);
 
+    [Theory]
+    [InlineData("mfr")]
+    [InlineData("MFR")]
+    [InlineData("fødsel")]
+    public void KildeSearch_WhenTheTermIsTheShortNameOrPartOfTheName_ThenTheKildeIsFound(string term)
+    {
+        // Fhi.Metadata-99slh (innmeldt #6836): readers know kilder by their short name, but only the name shown was searched.
+        var facets = FacetsWithManyKilder();
+        facets = facets with
+        {
+            Kilder =
+            [
+                new Contracts.KildeFacet
+                {
+                    Id = new Guid("cccccccc-0000-0000-0000-999999999999"),
+                    Name = "Medisinsk fødselsregister",
+                    ShortName = "MFR",
+                    KildeType = "sentraltHelseregister",
+                    Count = 1,
+                },
+                .. facets.Kilder,
+            ],
+        };
+        var cut = RenderWith(new FilteringClient(OnePage(), facets));
+
+        SearchKilder(cut, term);
+
+        Assert.Equal(["Medisinsk fødselsregister"], KildeRows(cut));
+    }
+
     [Fact]
     public void FacetCap_WhenTheKildeFacetIsLong_ThenItDrawsTheThresholdManyAndOffersTheRest()
     {
