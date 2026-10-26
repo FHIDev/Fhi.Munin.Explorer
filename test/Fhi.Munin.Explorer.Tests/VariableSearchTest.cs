@@ -5805,6 +5805,16 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Filter_WhenADatakategoriTokenIsUnknown_ThenItsRowTakesTheCatchAllGlyphAsKeldaDoes()
+    {
+        // Kelda's datakategoriIcon draws its fallback for a token it cannot resolve; the two explorers agree.
+        var cut = RenderWith(new FilteringClient(
+            OnePage(Variable("1. Tale", "KODE")), FacetsWith([new() { Value = "ehds-cat:not-a-category", Count = 1 }])));
+
+        Assert.Equal([DataCategoryIcons.Other], RowGlyphs(cut, "ehds-cat:not-a-category"));
+    }
+
+    [Fact]
     public void Filter_WhenIkonerIsOff_ThenTheDatakategoriRowsDropTheirGlyphs()
     {
         var cut = RenderWith(new FilteringClient(
