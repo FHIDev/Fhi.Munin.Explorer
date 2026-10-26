@@ -4451,6 +4451,30 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void KildeSearch_WhenOnlyAHiddenNameUnderAShutBranchMatches_ThenTheBranchIsOpenedToIt()
+    {
+        // An English reader searching a datasamling's Norwegian name: the kilde is kept, so the branch must open to the match.
+        var facets = ManyDatasamlinger(kilder: 24, each: 1) is var many
+            ? many with
+            {
+                Datasamlinger =
+                [
+                    many.Datasamlinger[0] with { Name = "Birth data", NameNo = "Fødselsdata" },
+                    .. many.Datasamlinger.Skip(1),
+                ],
+            }
+            : null!;
+        var cut = RenderWith(new FilteringClient(OnePage(), facets), b => b.Add(c => c.Language, "en"));
+
+        IElement Source() => Disclosures(cut).Single(d => d.FirstElementChild!.TextContent.Trim().StartsWith("Source", StringComparison.Ordinal));
+
+        Source().QuerySelector("input.munin-explorer-filters__search")!.Change("fødsels");
+
+        var drawn = Source().QuerySelectorAll("li > label").Select(label => FacetName(label).TextContent).ToList();
+        Assert.Equal(["Kilde 0", "Birth data"], drawn);
+    }
+
+    [Fact]
     public void FacetCap_WhenTheKildeFacetIsLong_ThenItDrawsTheThresholdManyAndOffersTheRest()
     {
         // The defect: nothing capped the list, so a catalogue of 24 kilder drew 24 rows and the
