@@ -667,6 +667,12 @@ else
             {
                 @T.NoResults(_executedSearch, _filter.ActiveCount, !_filter.IncludeHistorical)
             }
+            @* Seen, not announced: the summary stands, and aria-busy on the panel is the hook. Here and
+               not in the panel, so nothing under the reader's pointer moves. (Fhi.Metadata-7v7ki) *@
+            @if (_loading && !_rowsLoading)
+            {
+                <span aria-hidden="true"> @T.FiltersUpdating</span>
+            }
         </p>
 
         @* The column picker, at the end of the row — which is where helsedata's own variable page
