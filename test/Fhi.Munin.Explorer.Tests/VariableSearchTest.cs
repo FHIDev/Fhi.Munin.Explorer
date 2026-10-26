@@ -3993,6 +3993,9 @@ public class VariableSearchTest : ExplorerTestContext
         /// <summary>Never answer a search from the next one on — the in-flight path.</summary>
         public bool StallSearch { get; set; }
 
+        /// <summary>Answer the stalled search after all, so what was held behind it can run.</summary>
+        public void AnswerStalled(Page<VariableSummary> page) => _stalled.TrySetResult(page);
+
         /// <summary>How many times a kilde's hierarchy was asked for.</summary>
         /// <remarks>
         /// Nought on every path this component has. Counted so that a tree drawn from a second
@@ -10742,13 +10745,10 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Filter_WhenAFetchIsAlreadyRunning_ThenTheClickIsIgnored()
+    public void Filter_WhenAFetchIsAlreadyRunning_ThenTheClickIsHeldShownAndAppliedAfterIt()
     {
-        // The fourth entry point to the loading state, and the one that does the most on the far
-        // side of the guard. Two overlapping applications interleave their rollback captures, so a
-        // second fetch that fails can restore a filter that is neither what is on screen nor what
-        // was asked for — and then report that filter to the host, which is exactly the "the URL
-        // claims something the page is not showing" failure the rollback tests exist to prevent.
+        // Innmeldt Munin#6830: the second press was dropped, its box ticked over rows that ignored it.
+        // Held instead, never run alongside the first, so two rollback captures cannot interleave.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
         var cut = RenderWith(client);
 
@@ -10756,9 +10756,41 @@ public class VariableSearchTest : ExplorerTestContext
         ClickFacet(cut, "Dødsårsaksregisteret");
         ClickFacet(cut, "Tekst");
 
-        Assert.Equal(2, client.SearchCalls); // the initial load and the first press, not the second
-        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
+        Assert.Equal(2, client.SearchCalls); // the initial load and the first press; the second waits
         Assert.Empty(client.SearchFilter!.DataTypes);
+        Assert.True(FacetChosen(cut, "Tekst"));
+        Assert.Contains("Oppdaterer treff og filtre", cut.Find(".munin-explorer-filters__facets").TextContent);
+
+        client.StallSearch = false;
+        cut.InvokeAsync(() => client.AnswerStalled(OnePage(Variable("1. Tale", "KODE"))));
+
+        cut.WaitForAssertion(() => Assert.Equal(3, client.SearchCalls));
+        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
+        Assert.Equal(["1"], client.SearchFilter!.DataTypes);
+        Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.True(FacetChosen(cut, "Tekst"));
+        cut.WaitForAssertion(() =>
+            Assert.DoesNotContain("Oppdaterer treff og filtre", cut.Find(".munin-explorer-filters__facets").TextContent));
+    }
+
+    [Fact]
+    public void Filter_WhenTwoPressesArriveWhileAFetchIsRunning_ThenBothAreApplied()
+    {
+        // They compose on the held filter, not on the one in force, so the second does not undo the first.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.StallSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Tekst");
+        ClickFacet(cut, "Biobank");
+
+        client.StallSearch = false;
+        cut.InvokeAsync(() => client.AnswerStalled(OnePage(Variable("1. Tale", "KODE"))));
+
+        cut.WaitForAssertion(() => Assert.Equal(3, client.SearchCalls));
+        Assert.Equal(["1"], client.SearchFilter!.DataTypes);
+        Assert.Equal("biobank", client.SearchFilter.KildeType);
     }
 
     [Fact]
