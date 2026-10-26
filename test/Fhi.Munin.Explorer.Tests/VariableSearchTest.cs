@@ -10759,7 +10759,6 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(2, client.SearchCalls); // the initial load and the first press; the second waits
         Assert.Empty(client.SearchFilter!.DataTypes);
         Assert.True(FacetChosen(cut, "Tekst"));
-        Assert.Contains("Oppdaterer treff og filtre", cut.Find(".munin-explorer-filters__facets").TextContent);
 
         client.StallSearch = false;
         cut.InvokeAsync(() => client.AnswerStalled(OnePage(Variable("1. Tale", "KODE"))));
@@ -10769,8 +10768,64 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal(["1"], client.SearchFilter!.DataTypes);
         Assert.True(FacetChosen(cut, "Dødsårsaksregisteret"));
         Assert.True(FacetChosen(cut, "Tekst"));
-        cut.WaitForAssertion(() =>
-            Assert.DoesNotContain("Oppdaterer treff og filtre", cut.Find(".munin-explorer-filters__facets").TextContent));
+    }
+
+    [Fact]
+    public void Filter_WhileAPressesCountsAreRead_ThenTheStatusLineSaysTheFiltersAreUpdating()
+    {
+        // The facets' half is the long one on a cold cache; said over the rows so the panel does not move.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        client.HoldFacets = true;
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.Contains("Oppdaterer filtrene", RowsStatus(cut).TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Filter_WhenAChosenKildeIsUntickedWhileAFetchIsRunning_ThenItsChipGoesWithIt()
+    {
+        // The chips read the held filter as the boxes do, or a chip would stand for a kilde just let go.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        cut.WaitForAssertion(() => Assert.Contains(Chips(cut), chip => chip.Contains("Dødsårsaksregisteret", StringComparison.Ordinal)));
+
+        client.StallSearch = true;
+        ClickFacet(cut, "Tekst");
+        ClickFacet(cut, "Dødsårsaksregisteret");
+
+        Assert.False(FacetChosen(cut, "Dødsårsaksregisteret"));
+        Assert.DoesNotContain(Chips(cut), chip => chip.Contains("Dødsårsaksregisteret", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Filter_WhenAPressArrivesWhileTheHostIsStillBeingTold_ThenItWaitsForThatToEnd()
+    {
+        // _loading is down while FilterChanged runs; a press then must not start a second application beside the first.
+        var told = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var calls = 0;
+        var cut = RenderWith(client, b => b.Add(c => c.FilterChanged, async _ =>
+        {
+            if (++calls == 1)
+            {
+                await told.Task;
+            }
+        }));
+
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        cut.WaitForAssertion(() => Assert.Equal(1, calls));
+        ClickFacet(cut, "Tekst");
+
+        Assert.Equal(2, client.SearchCalls);
+
+        cut.InvokeAsync(told.SetResult);
+
+        cut.WaitForAssertion(() => Assert.Equal(3, client.SearchCalls));
+        Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
+        Assert.Equal(["1"], client.SearchFilter!.DataTypes);
     }
 
     [Fact]

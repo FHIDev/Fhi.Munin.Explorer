@@ -27,7 +27,7 @@ internal sealed record Texts(
     string RetryLists,
     string RetryListsName,
     string FiltersLoading,
-    // Over a panel already drawn while a press is fetched; a press made meanwhile is applied after it (Fhi.Metadata-7v7ki).
+    // The status line while a press's facets are fetched; a press made meanwhile is applied after it (Fhi.Metadata-7v7ki).
     string FiltersUpdating,
     // A datatype cell before the names arrive with the facet counts, in place of the bare code.
     string DataTypeLoading,
@@ -1179,7 +1179,7 @@ internal sealed record Texts(
         // Starts with the caption, so a voice-control user can say what they see (WCAG 2.5.3).
         RetryListsName: "Prøv igjen å hente listene",
         FiltersLoading: "Henter filtre …",
-        FiltersUpdating: "Oppdaterer treff og filtre …",
+        FiltersUpdating: "Oppdaterer filtrene …",
         DataTypeLoading: "Henter …",
         Error: "Kunne ikke hente variabler nå. Prøv igjen om litt.",
         RateLimitError: "Du har gjort for mange forespørsler. Vent litt før du prøver igjen.",
@@ -1747,7 +1747,7 @@ internal sealed record Texts(
         RetryLists: "Try again",
         RetryListsName: "Try again to load the lists",
         FiltersLoading: "Loading filters …",
-        FiltersUpdating: "Updating results and filters …",
+        FiltersUpdating: "Updating the filters …",
         DataTypeLoading: "Loading …",
         Error: "Could not load variables right now. Please try again shortly.",
         RateLimitError: "You have made too many requests. Please wait a little before trying again.",

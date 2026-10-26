@@ -363,11 +363,6 @@ else
                both say the number already, and this said it without saying which.
                (Fhi.Metadata-l9l2n.83) *@
             <legend class="form-element__label">@T.FiltersTitle</legend>
-            @* Seen, not announced: the line over the rows is the live region, and aria-busy is the hook. (Fhi.Metadata-7v7ki) *@
-            @if (_loading)
-            {
-                <p class="caption">@T.FiltersUpdating</p>
-            }
 
             @* The toolbar. Utvid alle and Skjul alle do the one thing a native disclosure cannot do
                for itself; Nivålinjer and Ikoner are switches and say so with role and aria-checked.
@@ -663,6 +658,12 @@ else
             @if (_rowsLoading)
             {
                 @T.Loading
+            }
+            else if (_loading)
+            {
+                @* The facets' half of a press, which on a cold cache is the long one; here, not in the
+                   panel, so nothing under the reader's pointer moves. (Fhi.Metadata-7v7ki) *@
+                @T.FiltersUpdating
             }
             else if (_result is { Items.Count: > 0 })
             {

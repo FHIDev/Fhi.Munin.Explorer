@@ -807,7 +807,7 @@ public partial class VariableSearch
     private IReadOnlyList<FacetValue> ChosenVariabelgrupper(FilterOptions facets) =>
     [
         .. ListedVariabelgrupper(facets)
-            .Where(gruppe => ChosenVariabelgruppeIds().Contains(gruppe.Id))
+            .Where(gruppe => ChosenVariabelgruppeIds(Pending).Contains(gruppe.Id))
             .Select(VariabelgruppeValue)
     ];
 
@@ -847,7 +847,7 @@ public partial class VariableSearch
             language,
             null,
             true,
-            () => ApplyFilterAsync(KeepVariabelgrupper([.. ChosenVariabelgruppeIds().Where(id => id != gruppe.Id)])),
+            () => ApplyFilterAsync(KeepVariabelgrupper(Pending, [.. ChosenVariabelgruppeIds(Pending).Where(id => id != gruppe.Id)])),
             []);
     }
 
@@ -1866,15 +1866,39 @@ public partial class VariableSearch
     /// </remarks>
     private async Task ApplyFilterAsync(VariableFilter next, bool clearSearch = false)
     {
-        // Held while a fetch is in flight, the last press winning, and applied when it ends: a dropped
+        // Held while one is in flight, the last press winning, and applied when it ends: a dropped
         // press left its box ticked over rows that ignored it (Fhi.Metadata-7v7ki).
-        if (_loading)
+        if (PressInFlight)
         {
-            _queuedFilter = next == _filter && !clearSearch ? null : next;
-            _queuedClearSearch |= clearSearch;
+            var held = next != _filter || clearSearch;
+
+            _queuedFilter = held ? next : null;
+            _queuedClearSearch = held && (_queuedClearSearch || clearSearch);
             StateHasChanged();
             return;
         }
+
+        // The whole application, host callbacks included: _loading drops between its two fetches.
+        _applying = true;
+
+        try
+        {
+            await ApplyFilterNowAsync(next, clearSearch);
+        }
+        finally
+        {
+            _applying = false;
+        }
+
+        // A press held during the callbacks above has no render of its own to be applied after.
+        if (_queuedFilter is not null)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilterNowAsync(VariableFilter next, bool clearSearch)
+    {
 
         // A press that asks for the filter already in force costs no request — clearing an empty
         // selection, say. VariableFilter compares by what it narrows, not by the identity of its
@@ -1953,13 +1977,18 @@ public partial class VariableSearch
 
     private bool _queuedClearSearch;
 
+    private bool _applying;
+
+    /// <summary>Whether a press now would overlap a fetch, or an application still telling its host.</summary>
+    private bool PressInFlight => _loading || _applying;
+
     /// <summary>What the panel's boxes show: a held press over the filter in force, so presses compose.</summary>
     private VariableFilter Pending => _queuedFilter ?? _filter;
 
     /// <summary>Apply the held press once nothing is in flight; called after every render.</summary>
     private async Task ApplyQueuedFilterAsync()
     {
-        if (_loading || _queuedFilter is not { } queued)
+        if (PressInFlight || _queuedFilter is not { } queued)
         {
             return;
         }

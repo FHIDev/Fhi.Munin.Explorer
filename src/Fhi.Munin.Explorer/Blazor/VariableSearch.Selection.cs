@@ -406,7 +406,8 @@ public partial class VariableSearch
     /// </remarks>
     private async Task ShowSourceVariablesAsync()
     {
-        if (_sourceKind is not { } kind || _sourceTargetId is not { } id)
+        // Dropped while busy, as the trail is: built on the filter in force, it would replace a held press.
+        if (PressInFlight || _sourceKind is not { } kind || _sourceTargetId is not { } id)
         {
             return;
         }
@@ -456,7 +457,7 @@ public partial class VariableSearch
             StateHasChanged();
         }
 
-        if (!_loading && _pendingVariabelgruppe is not null)
+        if (!PressInFlight && _pendingVariabelgruppe is not null)
         {
             await ApplyPendingVariabelgruppeAsync();
             StateHasChanged();

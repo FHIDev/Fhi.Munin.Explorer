@@ -67,38 +67,41 @@ public partial class VariableSearch
         string Fallback,
         Func<IReadOnlyList<Guid>, VariableFilter> Apply);
 
-    /// <summary>The four levels, outermost first.</summary>
-    private IReadOnlyList<HierarchyReading> HierarchyLevels =>
+    /// <summary>The four levels, outermost first, as the panel shows them: a held press included (Fhi.Metadata-7v7ki).</summary>
+    private IReadOnlyList<HierarchyReading> HierarchyLevels => HierarchyLevelsOf(Pending);
+
+    /// <summary>The four levels of <paramref name="filter"/>; the trail reads the one in force.</summary>
+    private IReadOnlyList<HierarchyReading> HierarchyLevelsOf(VariableFilter filter) =>
     [
-        new(HierarchyLevel.Kilde, () => _filter.KildeIds, KildeName, T.FieldSource,
-            ids => _filter with { KildeIds = ids }),
-        new(HierarchyLevel.Delkilde, () => _filter.DelkildeIds, DelkildeName, T.FieldDelkilde,
-            ids => _filter with { DelkildeIds = ids }),
-        new(HierarchyLevel.Datasamling, () => _filter.DatasamlingIds, DatasamlingName, T.FieldDataCollection,
-            ids => _filter with { DatasamlingIds = ids }),
-        new(HierarchyLevel.Variabelgruppe, ChosenVariabelgruppeIds, VariabelgruppeName,
-            T.FieldVariableGroup, KeepVariabelgrupper)
+        new(HierarchyLevel.Kilde, () => filter.KildeIds, KildeName, T.FieldSource,
+            ids => filter with { KildeIds = ids }),
+        new(HierarchyLevel.Delkilde, () => filter.DelkildeIds, DelkildeName, T.FieldDelkilde,
+            ids => filter with { DelkildeIds = ids }),
+        new(HierarchyLevel.Datasamling, () => filter.DatasamlingIds, DatasamlingName, T.FieldDataCollection,
+            ids => filter with { DatasamlingIds = ids }),
+        new(HierarchyLevel.Variabelgruppe, () => ChosenVariabelgruppeIds(filter), VariabelgruppeName,
+            T.FieldVariableGroup, ids => KeepVariabelgrupper(filter, ids))
     ];
 
     /// <summary>Every chosen group once, whether ticked everywhere or under one placement: a chip
     /// and a trail step name a group, not where it was pressed. (Fhi.Metadata-59dh0)</summary>
-    private IReadOnlyList<Guid> ChosenVariabelgruppeIds() =>
+    private IReadOnlyList<Guid> ChosenVariabelgruppeIds(VariableFilter filter) =>
     [
-        .. _filter.VariabelgruppeIds
-            .Concat(_filter.VariabelgruppeScopes.Select(scope => scope.VariabelgruppeId))
+        .. filter.VariabelgruppeIds
+            .Concat(filter.VariabelgruppeScopes.Select(scope => scope.VariabelgruppeId))
             .Distinct()
     ];
 
     /// <summary>The variabelgruppe selection cut down to <paramref name="ids"/>: a group left out goes
     /// from both lists, and one new to them is chosen everywhere, as the flat facet chooses it.</summary>
-    private VariableFilter KeepVariabelgrupper(IReadOnlyList<Guid> ids) => _filter with
+    private static VariableFilter KeepVariabelgrupper(VariableFilter filter, IReadOnlyList<Guid> ids) => filter with
     {
         VariabelgruppeIds =
         [
-            .. ids.Where(id => _filter.VariabelgruppeIds.Contains(id)
-                               || _filter.VariabelgruppeScopes.All(scope => scope.VariabelgruppeId != id))
+            .. ids.Where(id => filter.VariabelgruppeIds.Contains(id)
+                               || filter.VariabelgruppeScopes.All(scope => scope.VariabelgruppeId != id))
         ],
-        VariabelgruppeScopes = [.. _filter.VariabelgruppeScopes.Where(scope => ids.Contains(scope.VariabelgruppeId))]
+        VariabelgruppeScopes = [.. filter.VariabelgruppeScopes.Where(scope => ids.Contains(scope.VariabelgruppeId))]
     };
 
     /// <summary>
@@ -141,7 +144,7 @@ public partial class VariableSearch
         {
             List<HierarchyCrumb> crumbs = new(4);
 
-            foreach (var level in HierarchyLevels)
+            foreach (var level in HierarchyLevelsOf(_filter))
             {
                 var chosen = level.Chosen();
 
@@ -294,6 +297,12 @@ public partial class VariableSearch
     /// </remarks>
     private Task NarrowToAsync(HierarchyLevel level)
     {
+        // Dropped while busy, as before: built on the filter in force, it would replace a held press.
+        if (PressInFlight)
+        {
+            return Task.CompletedTask;
+        }
+
         return ApplyFilterAsync(_filter with
         {
             DelkildeIds = Keep(HierarchyLevel.Delkilde, _filter.DelkildeIds),
