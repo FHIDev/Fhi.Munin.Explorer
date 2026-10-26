@@ -68,26 +68,17 @@ internal sealed class KildeTypeVocabulary
                 ?.DisplayName
             : null;
 
-    /// <summary>A kildetype's place in the API's list, which carries Munin's fixed order (Fhi.Metadata-dmxpz).</summary>
-    /// <remarks>A type the list lacks, or any type before it has loaded, ranks last, so the label decides.</remarks>
-    internal int Rank(string? language, string? value)
+    // Munin's fixed order (innmeldt Munin#6832), by code like its KildetypeOrder. Not read from the filters answer:
+    // that lists only kildetyper with variables, and the kilde explorer also lists kilder without any (Fhi.Metadata-yk2ur).
+    private static readonly string[] Ranked =
+        ["sentraltHelseregister", "befolkningsbasertHelseundersokelse", "nasjonaltMedisinskKvalitetsregister", "annenDatakilde"];
+
+    /// <summary>A kildetype's place in the fixed order; every other type ranks after it, so the label decides.</summary>
+    internal static int Rank(string? value)
     {
-        if (!_byLanguage.TryGetValue(ReaderLanguage.ForApi(language), out var fetch) || !fetch.IsCompletedSuccessfully)
-        {
-            return int.MaxValue;
-        }
+        var index = Array.FindIndex(Ranked, code => string.Equals(code, value, StringComparison.OrdinalIgnoreCase));
 
-        var types = fetch.Result;
-
-        for (var index = 0; index < types.Count; index++)
-        {
-            if (string.Equals(types[index].Value, value, StringComparison.OrdinalIgnoreCase))
-            {
-                return index;
-            }
-        }
-
-        return int.MaxValue;
+        return index < 0 ? Ranked.Length : index;
     }
 
     private static async Task<IReadOnlyList<KildetypeFacet>> FetchAsync(
