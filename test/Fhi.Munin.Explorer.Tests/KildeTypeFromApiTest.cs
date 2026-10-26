@@ -334,4 +334,50 @@ public class KildeTypeFromApiTest : ExplorerTestContext
         Assert.Null(vocabulary.ApiName("en", Token));
         Assert.Null(vocabulary.Load(new FiltersClient(), "en", log: null));
     }
+
+    /// <summary>Answers two kildetyper in Munin's fixed order, which is not the alphabetical one.</summary>
+    private sealed class RankedClient : EmptyMuninExplorerClient
+    {
+        public override Task<FilterOptions> GetFiltersAsync(
+            string? search = null,
+            VariableFilter? filter = null,
+            string? language = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new FilterOptions
+            {
+                KildeTyper =
+                [
+                    new KildetypeFacet { Value = "sentraltHelseregister", DisplayName = "Sentralt helseregister" },
+                    new KildetypeFacet { Value = "biobank", DisplayName = "Biobank" },
+                ],
+            });
+
+        public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
+            string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<KildeSummary>>(
+            [
+                new KildeSummary { Id = Guid.NewGuid(), Code = "K_BIO", Name = "Biobanken", Kildetype = "biobank" },
+                new KildeSummary { Id = Guid.NewGuid(), Code = "K_DAR", Name = "Dødsårsaksregisteret", Kildetype = "sentraltHelseregister" },
+            ]);
+    }
+
+    [Fact]
+    public void KildeSearch_WhenTheApiRanksTheKildetyper_ThenTheFacetFollowsItsOrderNotTheLabel()
+    {
+        // Fhi.Metadata-dmxpz (innmeldt Munin#6832): by label, Biobank would come first.
+        Services.AddSingleton<IMuninExplorerClient>(new RankedClient());
+
+        var cut = Render<KildeSearch>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var facet = cut.FindAll(".munin-explorer-filters__facets > details")
+                .Single(details => details.QuerySelector("summary")!.TextContent.Contains("Kildetype", StringComparison.Ordinal));
+            var labels = facet.QuerySelectorAll("li label").Select(label => label.TextContent).ToList();
+
+            Assert.Equal(2, labels.Count);
+            Assert.Contains("Sentralt helseregister", labels[0], StringComparison.Ordinal);
+            Assert.Contains("Biobank", labels[1], StringComparison.Ordinal);
+        });
+    }
 }
