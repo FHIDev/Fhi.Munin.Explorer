@@ -2123,6 +2123,8 @@ export const assertions = [
 
     async stage(page) {
       const staged = await stageStickyBar(page);
+      // A spy starting between the staging presses and measure's would move where they land.
+      await spyStarted(page);
       const links = page.locator(`${TOC} a[href*="#"]`);
       const count = await links.count();
       let past = -1;
