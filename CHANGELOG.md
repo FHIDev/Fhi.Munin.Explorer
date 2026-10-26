@@ -29,6 +29,35 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.11.0 — 2026-10-26
+
+### Added
+
+- **The Datakategori filter shows each category's icon** - the variable search's Datakategori filter now leads each category with the glyph the icon legend explains, as the kilde tree does (the retired slugs resolve to their successors), and drops it with the «Ikoner» switch. The category name is said once to a screen reader: the glyph is decoration here, since the label already is the name. (Fhi.Metadata-6kfea)
+- **A kilde with variables links to the variable explorer in its Variabler section** - the kilde page's Variabler section now says how many variables Munin holds and links to the variable explorer narrowed to the kilde («Se variablene i Variabelutforskeren»), in the place where a kilde without variables gives where its variables are described (its Variabelreferanse). The header's «Vis N variabler» stays. Inge, FHIDev/Munin#6509. (Fhi.Metadata-b6eru)
+
+### Changed
+
+- **The kilde explorer's kildetype filter lists kildetyper in Munin's fixed order.** It listed them
+  alphabetically by label; it now puts Sentralt helseregister, Befolkningsbasert
+  helseundersøkelse, Nasjonalt medisinsk kvalitetsregister and Annen datakilde first, in that
+  order, then the rest by label, in every language. The order is by code and does not depend on
+  which kildetyper the filters endpoint lists, so a type with no variables keeps its place.
+
+### Fixed
+
+- **A filter pressed while the explorer is loading is applied when the load ends.** It was
+  dropped: the box stayed ticked over results that ignored it, and on a cold cache that could
+  last ten seconds. The press is now held (the last one wins, and presses made meanwhile
+  combine), its box shows it at once, and it is applied as soon as the fetch in flight ends.
+  The status line over the results adds «Oppdaterer filtrene …» after its summary while the
+  filters are fetched; it is seen, not announced. The trail and «Vis variablene» are still
+  ignored while a fetch is in flight.
+- **The kilde filter's search finds a kilde by its short name.** Searching «mfr» or «lmr» in the
+  variable explorer's Kilde filter found nothing, because only the name shown was searched. The
+  short name and the Norwegian name are now searched as well, for kilder and the delkilder and
+  datasamlinger under them.
+
 ## 2.10.0 — 2026-10-23
 
 ### Added

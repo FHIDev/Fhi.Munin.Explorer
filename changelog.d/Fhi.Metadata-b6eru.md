@@ -1,2 +1,0 @@
-category: Added
-- **A kilde with variables links to the variable explorer in its Variabler section** - the kilde page's Variabler section now says how many variables Munin holds and links to the variable explorer narrowed to the kilde («Se variablene i Variabelutforskeren»), in the place where a kilde without variables gives where its variables are described (its Variabelreferanse). The header's «Vis N variabler» stays. Inge, FHIDev/Munin#6509. (Fhi.Metadata-b6eru)
