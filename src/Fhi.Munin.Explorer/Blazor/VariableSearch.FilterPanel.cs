@@ -1899,7 +1899,6 @@ public partial class VariableSearch
 
     private async Task ApplyFilterNowAsync(VariableFilter next, bool clearSearch)
     {
-
         // A press that asks for the filter already in force costs no request — clearing an empty
         // selection, say. VariableFilter compares by what it narrows, not by the identity of its
         // lists; see the note on it.

@@ -659,12 +659,6 @@ else
             {
                 @T.Loading
             }
-            else if (_loading)
-            {
-                @* The facets' half of a press, which on a cold cache is the long one; here, not in the
-                   panel, so nothing under the reader's pointer moves. (Fhi.Metadata-7v7ki) *@
-                @T.FiltersUpdating
-            }
             else if (_result is { Items.Count: > 0 })
             {
                 @Summary
@@ -672,6 +666,12 @@ else
             else if (_result is not null)
             {
                 @T.NoResults(_executedSearch, _filter.ActiveCount, !_filter.IncludeHistorical)
+            }
+            @* Seen, not announced: the summary stands, and aria-busy on the panel is the hook. Here and
+               not in the panel, so nothing under the reader's pointer moves. (Fhi.Metadata-7v7ki) *@
+            @if (_loading && !_rowsLoading)
+            {
+                <span aria-hidden="true"> @T.FiltersUpdating</span>
             }
         </p>
 

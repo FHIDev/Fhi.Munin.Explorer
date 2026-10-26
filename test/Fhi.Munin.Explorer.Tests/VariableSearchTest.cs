@@ -3738,7 +3738,7 @@ public class VariableSearchTest : ExplorerTestContext
         var cut = RenderWith(new HeldFacetsClient(OnePage(Typed("1. Tale", "KODE"))));
 
         Assert.DoesNotContain("Henter variabler", RowsStatus(cut).TextContent, StringComparison.Ordinal);
-        Assert.NotEqual("", RowsStatus(cut).TextContent.Trim());
+        Assert.Contains("variabel funnet", RowsStatus(cut).TextContent, StringComparison.Ordinal);
         Assert.Equal("false", cut.Find("ul.munin-explorer-data-list").GetAttribute("aria-busy"));
     }
 
@@ -10771,7 +10771,7 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Filter_WhileAPressesCountsAreRead_ThenTheStatusLineSaysTheFiltersAreUpdating()
+    public void Filter_WhileAPressesCountsAreRead_ThenTheStatusLineKeepsTheSummaryAndShowsTheyAreUpdating()
     {
         // The facets' half is the long one on a cold cache; said over the rows so the panel does not move.
         var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
@@ -10780,7 +10780,9 @@ public class VariableSearchTest : ExplorerTestContext
 
         ClickFacet(cut, "Dødsårsaksregisteret");
 
-        Assert.Contains("Oppdaterer filtrene", RowsStatus(cut).TextContent, StringComparison.Ordinal);
+        Assert.Contains("variabel funnet", RowsStatus(cut).TextContent, StringComparison.Ordinal);
+        Assert.Equal("true", RowsStatus(cut).QuerySelector("span")?.GetAttribute("aria-hidden"));
+        Assert.Contains("Oppdaterer filtrene", RowsStatus(cut).QuerySelector("span")!.TextContent, StringComparison.Ordinal);
     }
 
     [Fact]

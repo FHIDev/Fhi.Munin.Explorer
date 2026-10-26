@@ -38,9 +38,7 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
         await RaiseSelectionAsync();
         await ShowSearchFromListAsync();
 
-        // A fetch in flight would drop the narrowing, so it waits for that fetch to land instead. It
-        // replaces the whole filter, so a press held from the panel goes with it (Fhi.Metadata-7v7ki).
-        (_queuedFilter, _queuedClearSearch) = (null, false);
+        // A fetch in flight would drop the narrowing, so it waits for that fetch to land instead.
         _pendingVariabelgruppe = id;
         await ApplyPendingVariabelgruppeAsync();
     }
@@ -54,7 +52,8 @@ public partial class VariableSearch : IDisposable, IAsyncDisposable
             return;
         }
 
-        _pendingVariabelgruppe = null;
+        // It replaces the whole filter, so a press held from the panel meanwhile goes with it (Fhi.Metadata-7v7ki).
+        (_pendingVariabelgruppe, _queuedFilter, _queuedClearSearch) = (null, null, false);
         await ApplyFilterAsync(VariableFilter.None with { VariabelgruppeIds = [id] }, clearSearch: true);
     }
 
