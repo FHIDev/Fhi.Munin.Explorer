@@ -3956,7 +3956,7 @@ public class VariableSearchTest : ExplorerTestContext
 
         // Never completed. A search asked for while this is set stays in flight for the rest of
         // the test, which is the only way to press a second facet while the first is still running.
-        private readonly TaskCompletionSource<Page<VariableSummary>> _stalled =
+        private TaskCompletionSource<Page<VariableSummary>> _stalled =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public VariableFilter? SearchFilter { get; private set; }
@@ -3994,7 +3994,14 @@ public class VariableSearchTest : ExplorerTestContext
         public bool StallSearch { get; set; }
 
         /// <summary>Answer the stalled search after all, so what was held behind it can run.</summary>
-        public void AnswerStalled(Page<VariableSummary> page) => _stalled.TrySetResult(page);
+        /// <remarks>A later stalled search waits on a fresh stall, so each can be answered in turn.</remarks>
+        public void AnswerStalled(Page<VariableSummary> page)
+        {
+            var stalled = _stalled;
+
+            _stalled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            stalled.TrySetResult(page);
+        }
 
         /// <summary>How many times a kilde's hierarchy was asked for.</summary>
         /// <remarks>
@@ -10828,6 +10835,27 @@ public class VariableSearchTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(3, client.SearchCalls));
         Assert.Equal([Dodsarsak], client.SearchFilter?.KildeIds);
         Assert.Equal(["1"], client.SearchFilter!.DataTypes);
+    }
+
+    [Fact]
+    public void Filter_WhenTheHeldPressesOwnFetchAnswersLater_ThenThePanelIsNoLongerBusy()
+    {
+        // Applied from OnAfterRenderAsync, whose completion renders nothing: the last render would be the busy one.
+        var client = new FilteringClient(OnePage(Variable("1. Tale", "KODE")));
+        var cut = RenderWith(client);
+
+        client.StallSearch = true;
+        ClickFacet(cut, "Dødsårsaksregisteret");
+        ClickFacet(cut, "Tekst");
+        cut.InvokeAsync(() => client.AnswerStalled(OnePage(Variable("1. Tale", "KODE"))));
+        cut.WaitForAssertion(() => Assert.Equal(3, client.SearchCalls));
+
+        client.StallSearch = false;
+        cut.InvokeAsync(() => client.AnswerStalled(OnePage(Variable("1. Tale", "KODE"))));
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal("false", cut.Find("fieldset.munin-explorer-filters").GetAttribute("aria-busy")));
+        Assert.True(FacetChosen(cut, "Tekst"));
     }
 
     [Fact]

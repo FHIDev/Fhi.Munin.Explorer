@@ -1996,7 +1996,16 @@ public partial class VariableSearch
 
         (_queuedFilter, _queuedClearSearch) = (null, false);
 
+        // A list's «Vis variabelgruppe» waiting to replace the whole filter makes this press moot.
+        if (_pendingVariabelgruppe is not null)
+        {
+            return;
+        }
+
         await ApplyFilterAsync(queued, clearSearch);
+
+        // Run from OnAfterRenderAsync, whose completion renders nothing, so the panel would stay busy.
+        StateHasChanged();
     }
 
     /// <summary>The catalogue's own words for the EHDS tokens the datakategori facet is made of.</summary>

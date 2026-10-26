@@ -1470,19 +1470,15 @@ export const assertions = [
   },
 
   {
-    name: 'a facet press dropped mid-fetch leaves its checkbox agreeing with the filter in force',
+    name: 'a facet press made mid-fetch is applied after it and its checkbox agrees with the filter in force',
     kind: 'invariant',
     states: ['variables-list'],
 
-    // The one refusal the panel has that writes nothing at all. ApplyFilterAsync returns at
-    // `if (_loading)` while a fetch is in flight, so the render the press provokes is equal to the
-    // render before it — and an equal render writes nothing back to the DOM, leaving the browser's
-    // own flip of the box as the only thing that moved.
-    //
-    // Deliberately NOT the rolled-back path the same method has, though the bead named both:
-    // measured here, a failed fetch corrects the box on its own, because FetchRowsAsync renders
-    // once with the new filter before it asks and the render after the rollback therefore differs.
-    // An assertion on that path holds with the call and without it, which is no assertion at all.
+    // A press while a fetch is in flight is held and applied when it ends (Fhi.Metadata-7v7ki); it
+    // used to be dropped, leaving the browser's own flip of the box standing. Two presses on one box:
+    // the second, held, undoes the first, so the facet must end with nothing chosen and nothing ticked.
+    // The held press is applied from OnAfterRenderAsync, which renders nothing on its own: a missing
+    // render there leaves the panel busy, which the wait below turns into a failure to stage.
     async stage(page, stub) {
       const panel = page.locator(PANEL);
       await panel.waitFor({ state: 'visible', timeout: findTimeout });
@@ -1522,17 +1518,25 @@ export const assertions = [
 
           await box.click();
 
-          // And out the other side, which is the render after the held fetch lands. Measuring
-          // before it would read the DOM while the press's own render was still in flight — and
-          // that render is exactly what the working case writes and the broken one does not.
+          // Out the other side twice over: the held fetch landing, then the held press's own fetch.
+          // The facet's count reaching nought is the second one's answer drawn.
           await panel.and(page.locator('[aria-busy="false"]'))
             .waitFor({ state: 'visible', timeout: HOLD_MS + findTimeout });
+          for (const deadline = Date.now() + findTimeout; ;) {
+            if (await chosenInFacet(facet) === 0 && await panel.getAttribute('aria-busy') === 'false') {
+              break;
+            }
+            if (Date.now() > deadline) {
+              throw new Error('the held press was never applied: the facet still counts a choice or the panel is busy');
+            }
+            await page.waitForTimeout(100);
+          }
 
           // Read back rather than assumed spent. A hold nothing ever asked for would leave a press
           // that was never dropped looking exactly like one that was, and every line below would
           // hold.
           if ((await stub.holding()).some(one => one.path === SEARCH)) {
-            throw new Error(`the press did not refetch ${SEARCH}, so nothing was dropped`);
+            throw new Error(`the press did not refetch ${SEARCH}, so nothing was held`);
           }
         } finally {
           await stub.release();
@@ -1553,11 +1557,10 @@ export const assertions = [
       const chosen = await chosenInFacet(facet);
       const ticked = await tickedInFacet(facet);
 
-      // Reported for the reason the picker's refusal is: a second press that went through is the
-      // panel failing to drop it, and a run that read that as a pass would have measured nothing.
-      if (chosen !== 1) {
-        return `the panel says ${chosen} value(s) are chosen where the dropped press should have ` +
-          'left exactly the one the first press chose';
+      // The held press undid the first; one still chosen is the held press lost.
+      if (chosen !== 0) {
+        return `the panel says ${chosen} value(s) are chosen where the held press should have ` +
+          'undone the first press';
       }
 
       if (ticked === chosen) {
@@ -1565,7 +1568,7 @@ export const assertions = [
       }
 
       return `${ticked} checkbox(es) are ticked in a facet the panel says holds ${chosen}: ` +
-        "the dropped press left the browser's own flip standing";
+        "the held press left the browser's own flip standing";
     },
 
     // The flip the missing call would leave behind, put there by hand. Nothing re-renders, so it

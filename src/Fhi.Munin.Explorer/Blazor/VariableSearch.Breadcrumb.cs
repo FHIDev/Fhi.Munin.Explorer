@@ -68,19 +68,20 @@ public partial class VariableSearch
         Func<IReadOnlyList<Guid>, VariableFilter> Apply);
 
     /// <summary>The four levels, outermost first, as the panel shows them: a held press included (Fhi.Metadata-7v7ki).</summary>
-    private IReadOnlyList<HierarchyReading> HierarchyLevels => HierarchyLevelsOf(Pending);
+    private IReadOnlyList<HierarchyReading> HierarchyLevels => HierarchyLevelsOf(() => Pending);
 
-    /// <summary>The four levels of <paramref name="filter"/>; the trail reads the one in force.</summary>
-    private IReadOnlyList<HierarchyReading> HierarchyLevelsOf(VariableFilter filter) =>
+    /// <summary>The four levels of the filter <paramref name="filter"/> gives, read when a delegate runs, not when drawn.</summary>
+    /// <remarks>Read late because a chip's removal awaits focus first, and a press can land meanwhile.</remarks>
+    private IReadOnlyList<HierarchyReading> HierarchyLevelsOf(Func<VariableFilter> filter) =>
     [
-        new(HierarchyLevel.Kilde, () => filter.KildeIds, KildeName, T.FieldSource,
-            ids => filter with { KildeIds = ids }),
-        new(HierarchyLevel.Delkilde, () => filter.DelkildeIds, DelkildeName, T.FieldDelkilde,
-            ids => filter with { DelkildeIds = ids }),
-        new(HierarchyLevel.Datasamling, () => filter.DatasamlingIds, DatasamlingName, T.FieldDataCollection,
-            ids => filter with { DatasamlingIds = ids }),
-        new(HierarchyLevel.Variabelgruppe, () => ChosenVariabelgruppeIds(filter), VariabelgruppeName,
-            T.FieldVariableGroup, ids => KeepVariabelgrupper(filter, ids))
+        new(HierarchyLevel.Kilde, () => filter().KildeIds, KildeName, T.FieldSource,
+            ids => filter() with { KildeIds = ids }),
+        new(HierarchyLevel.Delkilde, () => filter().DelkildeIds, DelkildeName, T.FieldDelkilde,
+            ids => filter() with { DelkildeIds = ids }),
+        new(HierarchyLevel.Datasamling, () => filter().DatasamlingIds, DatasamlingName, T.FieldDataCollection,
+            ids => filter() with { DatasamlingIds = ids }),
+        new(HierarchyLevel.Variabelgruppe, () => ChosenVariabelgruppeIds(filter()), VariabelgruppeName,
+            T.FieldVariableGroup, ids => KeepVariabelgrupper(filter(), ids))
     ];
 
     /// <summary>Every chosen group once, whether ticked everywhere or under one placement: a chip
@@ -144,7 +145,7 @@ public partial class VariableSearch
         {
             List<HierarchyCrumb> crumbs = new(4);
 
-            foreach (var level in HierarchyLevelsOf(_filter))
+            foreach (var level in HierarchyLevelsOf(() => _filter))
             {
                 var chosen = level.Chosen();
 
