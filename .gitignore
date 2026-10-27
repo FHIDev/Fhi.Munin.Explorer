@@ -454,3 +454,6 @@ src/Fhi.Munin.Explorer/PortabilityGuardProbe.g.cs
 
 # Written by the build from the package version (Fhi.Metadata-l9l2n.123); never committed.
 src/Fhi.Munin.Explorer/wwwroot/version.json
+
+# The Forge's per-run logs; they belong to the run, never to a PR (DevInfra #495 committed four).
+.forge-logs/
