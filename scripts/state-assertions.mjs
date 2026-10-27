@@ -266,6 +266,11 @@ async function leaveDateField(page, field) {
 /** Playwright's default is generous; a control that is not there is not coming. */
 const findTimeout = 15_000;
 
+// The contents links are drawn a render before the circuit starts the scroll-spy, so wait for its
+// first mark; a spy that never starts falls through to measure and is a finding (Fhi.Metadata-7896y).
+const spyStarted = page => page.waitForFunction(toc => document.querySelector(`${toc} a[aria-current]`) !== null,
+  TOC, { timeout: findTimeout }).catch(() => {});
+
 /**
  * Press the contents nav's first entry from the keyboard, and wait until the page has answered.
  *
@@ -974,6 +979,8 @@ export const assertions = [
       if (!columnId || sizes.bar <= sizes.margin) {
         throw new Error(`the sticky bar must exceed the section's jump clearance: ${JSON.stringify(sizes)}`);
       }
+      // The bar is started before the spy, and only the spy clears a jump of it (Fhi.Metadata-fg7uz).
+      await spyStarted(page);
       return { columnId, sectionId };
     },
 
@@ -2116,6 +2123,8 @@ export const assertions = [
 
     async stage(page) {
       const staged = await stageStickyBar(page);
+      // A spy starting between the staging presses and measure's would move where they land.
+      await spyStarted(page);
       const links = page.locator(`${TOC} a[href*="#"]`);
       const count = await links.count();
       let past = -1;
@@ -2245,10 +2254,7 @@ export const assertions = [
         throw new Error('the page does not scroll, so the mark has nowhere to follow the reader');
       }
 
-      // The links are drawn a render before the circuit has started the spy, so wait for its first
-      // mark; a spy that never marks falls through to measure and is a finding (Fhi.Metadata-7896y).
-      await page.waitForFunction(toc => document.querySelector(`${toc} a[aria-current]`) !== null,
-        TOC, { timeout: findTimeout }).catch(() => {});
+      await spyStarted(page);
 
       return { ids };
     },
