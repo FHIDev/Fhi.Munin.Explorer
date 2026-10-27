@@ -144,6 +144,12 @@ is a new `0.1.x`. Check the feed for the newest rather than assuming — and say
 which Stiler PRs are included, because helsedata's reviewers cannot see the ADO repo's
 history from the GitHub side.
 
+**Microsoft package versions in helsedata.** Explorer's Microsoft 10.0.x packages (#679 moved them to 10.0.14)
+are a floor for the host: helsedata pinning any `Microsoft.*` 10.0.x package below Explorer's gets **NU1605** (package
+downgrade) at restore, and its build fails. Before the pin PR, list helsedata **main's** Microsoft pins (not a local
+checkout, which may be stale) against Explorer's `Directory.Packages.props`/csproj at the release tag, and bump any
+lower one in the same helsedata PR; name them in the PR text.
+
 **The ADO work item**: a **Task** under feature **120543**, area
 `Fhi.Helsedata\Helsedata\Metadata`. Norwegian, HTML body, signed *Skrevet av AI* — see
 the `ado-work-item` skill, which also says to draft it and **ask before creating**.
