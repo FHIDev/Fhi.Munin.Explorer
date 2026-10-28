@@ -1347,6 +1347,30 @@ already is the component's type; they carry ids, page numbers and the like, neve
 response body or anything the reader typed — the user's access token reaches the wire through `BearerTokenHandler`'s
 `Authorization` header, which no exception message here repeats.
 
+### A legacy Blazor Server host on .NET 10
+
+A host on `AddServerSideBlazor()`, `blazor.server.js` and the `<component>` tag helper, as helsedata's is, needs one
+option and one element of its own, or a reader coming back from a break finds a page that no longer answers:
+
+```csharp
+services.AddServerSideBlazor(o => o.PersistedCircuitInMemoryMaxRetained = 0);
+```
+
+```html
+<div id="blazor-error-ui" role="alert" style="display: none">
+    Noe gikk galt, og siden svarer ikke lenger. <a href="" class="reload">Last inn på nytt</a>
+</div>
+```
+
+The reason is .NET 10's circuit resume. Once the network has been gone longer than the server keeps a disconnected
+circuit (three minutes by default, after a 30-second timeout), `ConnectCircuit` is refused and `blazor.server.js` tries
+`ResumeCircuit` next. On a page mounted this way the resume reports success with none of the components back, so the
+reconnect overlay goes away, nothing reloads, and every click after that fails on the server. With no circuit state
+stored the resume is refused too, and the script reloads the page; the explorer's state is in the URL, so the reader is
+back where they were. `#blazor-error-ui` is what `blazor.server.js` shows for any other circuit failure, with `.reload`
+wired to reload; without it that failure is silent as well. `samples/LegacyHost` and `samples/HostileHost` carry both.
+Measured on helsedata test-1-opt and on LegacyHost, with the WebSocket's frames dropped for longer than the retention.
+
 ### What a host mounts
 
 `VariableExplorer` is the whole variabelutforsker: the search, the reader's own variable lists
