@@ -1588,6 +1588,15 @@
         "NavnEngelsk": "Tromsø4 - The Fourth Tromsø Study",
         "BeskrivelseEngelsk": "The fourth survey of the Tromsø Study (Tromsø4), which was carried out in 1994-95, is the largest of the Tromsø Studies. This study included a total of 27,158 people (12,865 men and 14,293 women in the 25-97 age group). Everyone in Tromsø aged 25 or elder (born before 1970) was invited to participate in this study.\n[Tromsø4 - The Fourth Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708901)"
       },
+      "inheritedProperties": {
+        "Hjemmeside": {
+          "value": "https://uit.no/research/tromsostudy",
+          "sourceLevel": "kilde",
+          "sourceId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+          "sourceName": "Tromsøundersøkelsen",
+          "sourceNameEn": "The Tromsø Study"
+        }
+      },
       "datasamlinger": [
         {
           "id": "f2c193fe-ccd9-43c8-8de7-4f00960431f2",
@@ -1678,6 +1687,15 @@
         "SistOppdatert": "20230327",
         "NavnEngelsk": "Tromsø5 - The Fifth Tromsø Study",
         "BeskrivelseEngelsk": "The fifth survey of the Tromsø Study (Tromsø5) was conducted in 2001. A total of 8130 men and women aged between 30 and 89 participated in this study. Two groups of people were invited to participate. The largest group comprised men and women in the Tromsø municipality who had participated in the special study in 1994-95 (the Tromsø Study Panel). A somewhat smaller group of 1916 men and women consisted of people who the Norwegian Institute of Public Health (FHI) wanted to study as part of its nationwide health study of people in the following age groups: 30, 40, 45, 60 or 75 (the FHI panel)."
+      },
+      "inheritedProperties": {
+        "Hjemmeside": {
+          "value": "https://uit.no/research/tromsostudy",
+          "sourceLevel": "kilde",
+          "sourceId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+          "sourceName": "Tromsøundersøkelsen",
+          "sourceNameEn": "The Tromsø Study"
+        }
       },
       "datasamlinger": [
         {
@@ -1771,6 +1789,15 @@
         "NavnEngelsk": "Tromsø6 - The Sixth Tromsø Study",
         "BeskrivelseEngelsk": "The sixth survey of the Tromsø Study (Tromsø6) was conducted in 2007-08. A total of 12984 men and women aged 30-87 took part. The invited population consisted of four groups: Subjects who took part in the special study in the Tromsø 4, a 10 % random sample of subjects aged 30-39, all individuals aged 40-42 or 60-87 and a 40 % random sample of subjects aged 43-59 years. A total of 12984 men and women (65,7 % of the invited population) attended the survey.\n[Tromsø6 - The Sixth Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708904)"
       },
+      "inheritedProperties": {
+        "Hjemmeside": {
+          "value": "https://uit.no/research/tromsostudy",
+          "sourceLevel": "kilde",
+          "sourceId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+          "sourceName": "Tromsøundersøkelsen",
+          "sourceNameEn": "The Tromsø Study"
+        }
+      },
       "datasamlinger": [
         {
           "id": "6acd1e12-1c1e-4342-9f90-7682aedbf585",
@@ -1862,6 +1889,15 @@
         "SistOppdatert": "20230327",
         "NavnEngelsk": "Tromsø7 - The Seventh Tromsø Study",
         "BeskrivelseEngelsk": "The seventh survey of the Tromsø Study (Tromsø7) was carried out in 2015 and 2016. An invitation was sent to 32 591 people from the age of 40 years and older. In total, 21 083 men and women between the ages of 40 to 99 years participated (65% attendance).\n[Tromsø7 - The Seventh Tromsø Study](https://uit.no/research/tromsostudy/project?pid=708909)"
+      },
+      "inheritedProperties": {
+        "Hjemmeside": {
+          "value": "https://uit.no/research/tromsostudy",
+          "sourceLevel": "kilde",
+          "sourceId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3",
+          "sourceName": "Tromsøundersøkelsen",
+          "sourceNameEn": "The Tromsø Study"
+        }
       },
       "datasamlinger": [
         {
