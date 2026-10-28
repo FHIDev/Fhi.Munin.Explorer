@@ -1380,8 +1380,10 @@ collected with — whose own page `InstrumentView` draws in place of the result 
 the Instrument entry on a variable. A link can carry it beside `?variabelId=`, because the variable
 underneath is never torn down; the instrument is the one that opens, since that is the page the
 link was made on. `?datasamlingId=` goes beside `?variabelId=`: a variable is a row per datasamling
-it is delivered from, so the pair names the open row, and a link with the variable alone opens its
-first row. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
+it is delivered from, so the pair names the open row and the list shows only that row, opened, until
+the reader searches, filters, sorts, changes the page size or presses «Vis alle treff». A host that
+mirrors the open row therefore reopens a reloaded page on that one row. A link with the variable alone
+opens its first row over the whole list. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
 `page`, `pageSize`, `variabelId`, `datasamlingId`, `instrumentId` and `delekode` — plus
 `VariableFilter.QueryKeys`, and any of the scalars can be declined.
 
