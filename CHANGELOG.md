@@ -29,6 +29,26 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.12.0 — 2026-10-28
+
+### Changed
+
+- **A shared variable link shows only that variable.** A link to one variable (`?variabelId=` with
+  `datasamlingId=`, as «Kopier lenke» writes it) used to show every row the variable's code matched,
+  so a code shared by several datasamlinger came up several times. The list now shows only the linked
+  row, opened. A search, a filter change, a new sort or page size, or «Vis alle treff» returns to every
+  match; download and «Lagre disse variablene» wait until then, since they act on every match. If the
+  linked row is not among the matches, the list shows as before. A host that mirrors the open row into
+  its address opens a reloaded page the same way. Links without a datasamling are unchanged.
+  New text: `ShowAllMatches` («Vis alle treff» / "Show all matches"). (Fhi.Metadata-9huq2.8)
+- **The package's Microsoft dependencies move to 10.0.14.** `Microsoft.AspNetCore.Components.Web`,
+  `Microsoft.Extensions.Configuration.Abstractions`, `Microsoft.Extensions.Logging` and
+  `Microsoft.Extensions.Logging.Abstractions` go from 10.0.13, and `Microsoft.Extensions.Http` from
+  10.0.12. They are servicing patches with no API change, so nothing a host compiles against moves.
+  What moves is the floor, transitives included: a host that pins any Microsoft 10.0.x package this
+  one pulls below 10.0.14 gets NU1605 on restore, and has to move its own pin or drop it.
+  (Fhi.Metadata-l9l2n.154)
+
 ## 2.11.0 — 2026-10-26
 
 ### Added
