@@ -391,8 +391,9 @@ public class UrlStateComponentTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Selection_WhenALinkNamesTheVariableAndItsDatasamling_ThenThatRowOpens()
+    public void Selection_WhenALinkNamesTheVariableAndItsDatasamling_ThenOnlyThatRowIsShownOpen()
     {
+        // The shared variable link: the other datasamling's row of the same code is left out until «Vis alle treff».
         Services.AddSingleton<IMuninExplorerClient>(new TwoRowClient());
         Services.AddScoped<VariableListState>();
         Prepare();
@@ -400,7 +401,7 @@ public class UrlStateComponentTest : ExplorerTestContext
             $"http://localhost/variabler?variabelId={TwoRowClient.VariableId}&datasamlingId={TwoRowClient.Livmorhals}");
         var cut = Render<VariableExplorer>();
 
-        Assert.Equal(["false", "true"], Rows(cut).Select(r => r.GetAttribute("aria-expanded")));
+        Assert.Equal(["true"], Rows(cut).Select(r => r.GetAttribute("aria-expanded")));
     }
 
     [Fact]

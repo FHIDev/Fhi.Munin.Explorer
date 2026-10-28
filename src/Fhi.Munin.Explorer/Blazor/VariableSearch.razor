@@ -675,6 +675,12 @@ else
             }
         </p>
 
+        @* A shared link shows only the row it names; this is the way back to every match. *@
+        @if (_pinnedRow is not null && _result is { Items.Count: > 0 } && !_rowsLoading)
+        {
+            <button class="hd-button-square button-square--secondary" type="button" @onclick="ShowAllMatchesAsync">@T.ShowAllMatches</button>
+        }
+
         @* The column picker, at the end of the row — which is where helsedata's own variable page
            puts theirs, in what they call `variable-explorer-header__actions`. Not inside
            `munin-explorer-data-list__header`, where the bead expected it: that row is the columns

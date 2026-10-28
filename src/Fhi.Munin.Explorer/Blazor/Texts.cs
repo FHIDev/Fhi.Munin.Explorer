@@ -641,6 +641,8 @@ internal sealed record Texts(
     // its own noun: ClearSearch empties the box, ClearFilters unticks the facets, ClearSelection
     // drops the row ticks. (Fhi.Metadata-5ghur)
     string ClearSearch,
+    // A shared link to one variable shows only its row; this returns to everything the search and filters match.
+    string ShowAllMatches,
     string SelectAllKilder,
     string ClearSelection,
     // One button, three payloads — see Handover in KildeSearch.Selection.cs. "Alle" over a
@@ -1608,6 +1610,7 @@ internal sealed record Texts(
         NoDatasamlinger: "Ingen datasamlinger registrert",
         AllVariablesForKilde: name => $"Vis alle variabler i {name}",
         ClearSearch: "Tøm søket",
+        ShowAllMatches: "Vis alle treff",
         SelectAllKilder: "Velg alle synlige kilder",
         ClearSelection: "Nullstill utvalg",
         ExploreVariables: "Utforsk variabler for utvalget",
@@ -2172,6 +2175,7 @@ internal sealed record Texts(
         NoDatasamlinger: "No data collections recorded",
         AllVariablesForKilde: name => $"Show all variables in {name}",
         ClearSearch: "Clear search",
+        ShowAllMatches: "Show all matches",
         SelectAllKilder: "Select all visible sources",
         ClearSelection: "Clear selection",
         ExploreVariables: "Explore variables for this selection",

@@ -586,6 +586,9 @@ public sealed partial class VariableSearch : ComponentBase
     private string? _error;
     private Page<VariableSummary>? _result;
 
+    // The row a shared link named, while the list shows only it (see PinnedTo).
+    private VariableDatasamlingKey? _pinnedRow;
+
     // The request that failed and what pressing the button beside it would do. The request is the
     // control's presence too — one field rather than a flag that could only ever disagree with it —
     // and it outlives its own retry by one fetch, so the pressed button keeps its focus.

@@ -16,6 +16,10 @@ public partial class VariableSearch
         _filter = Filter ?? VariableFilter.None;
         _selected = SelectedVariableId is { } selected ? new VariableDatasamlingKey(selected, SelectedDatasamlingId) : null;
         _selectionNeedsRow = SelectedVariableId is not null && SelectedDatasamlingId is null;
+        // A shared link names one row: the list shows only it until the reader searches, filters or asks for all.
+        _pinnedRow = SelectedVariableId is { } variable && SelectedDatasamlingId is { } datasamling
+            ? new VariableDatasamlingKey(variable, datasamling)
+            : null;
         _instrumentId = SelectedInstrumentId;
         _sort = _sortParameter = Sort;
         _direction = Direction;
@@ -109,6 +113,8 @@ public partial class VariableSearch
         {
             return;
         }
+
+        _pinnedRow = null;
 
         // A different search is a different result set; page 7 of the old one means nothing in it.
         _page = 1;
@@ -588,6 +594,7 @@ public partial class VariableSearch
                 sort: _sort,
                 direction: _direction);
             _executedSearch = DisplayText.Trimmed(search);
+            _result = PinnedTo(_result);
 
             // The page that arrived, not the one asked for: a server clamping page 12 to page 8, say,
             // would otherwise caption the rows "Side 12 av 8" and keep Neste walking away from them.
@@ -787,6 +794,39 @@ public partial class VariableSearch
         if (_pageSize != previousSize)
         {
             await RaiseAsync(PageSizeChanged, _pageSize, Log);
+        }
+
+        await NotifyPageChangedAsync();
+    }
+
+    /// <summary>
+    /// The page narrowed to the linked row while the list is pinned to it. A page without that row is
+    /// left whole, so a link to a row the search no longer finds shows the list instead of nothing.
+    /// </summary>
+    private Page<VariableSummary>? PinnedTo(Page<VariableSummary>? page)
+    {
+        if (_pinnedRow is not { } pinned || page is null)
+        {
+            return page;
+        }
+
+        var row = page.Items.FirstOrDefault(item => VariableDatasamlingKey.Of(item) == pinned);
+        return row is null ? page : page with { Items = [row], TotalCount = 1, TotalPages = 1, PageNumber = 1 };
+    }
+
+    /// <summary>Back to every match of the search and filters, from the pinned row a link opened on.</summary>
+    private async Task ShowAllMatchesAsync()
+    {
+        if (_loading || _pinnedRow is null)
+        {
+            return;
+        }
+
+        _pinnedRow = null;
+        _page = 1;
+        if (await FetchAsync(_search))
+        {
+            await FetchFacetsAsync();
         }
 
         await NotifyPageChangedAsync();

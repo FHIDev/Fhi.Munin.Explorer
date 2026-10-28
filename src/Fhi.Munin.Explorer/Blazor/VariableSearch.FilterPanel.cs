@@ -1925,6 +1925,7 @@ public partial class VariableSearch
         var previousKeepPager = _keepPager;
 
         _filter = next;
+        _pinnedRow = null;
 
         // A refused date entry stops standing in for its field once any filter is applied, so
         // both fields show what the results are actually narrowed by.

@@ -265,16 +265,55 @@ public class RowsPerDatasamlingTest : ExplorerTestContext
     }
 
     [Fact]
-    public void DeepLink_WhenTheLinkNamesTheDatasamling_ThenThatRowOpens()
+    public void DeepLink_WhenTheLinkNamesTheDatasamling_ThenOnlyThatRowIsShownAndOpen()
     {
+        // A shared variable link: its code is in two datasamlinger, and the link names one of them.
         var client = new RowClient();
         var cut = RenderRows(client, signedIn: false, p => p
             .Add(c => c.SelectedVariableId, Variable)
             .Add(c => c.SelectedDatasamlingId, Livmorhals));
 
-        cut.WaitForAssertion(() =>
-            Assert.Equal(["false", "true"], NameButtons(cut).Select(b => b.GetAttribute("aria-expanded"))));
+        cut.WaitForAssertion(() => Assert.Equal(["true"], NameButtons(cut).Select(b => b.GetAttribute("aria-expanded"))));
+        Assert.Equal("Livmorhalsregisteret",
+            cut.Find(".munin-explorer-dataitem-main__dataCollection .munin-explorer-dataitem-main__column__text").TextContent);
+        Assert.StartsWith("1 variabel funnet", cut.Find("p[role='status']").TextContent.Trim());
         Assert.Equal((Variable, (Guid?)Livmorhals), Assert.Single(client.DetailsAskedFor));
+    }
+
+    [Fact]
+    public void DeepLink_WhenShowAllIsPressed_ThenEveryMatchComesBackAndTheButtonGoes()
+    {
+        var cut = RenderRows(new RowClient(), signedIn: false, p => p
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Livmorhals));
+        cut.WaitForAssertion(() => Assert.Single(NameButtons(cut)));
+
+        cut.FindAll("button").Single(b => b.TextContent == "Vis alle treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent == "Vis alle treff");
+    }
+
+    [Fact]
+    public void DeepLink_WhenTheReaderSearches_ThenTheListIsNoLongerPinned()
+    {
+        var cut = RenderRows(new RowClient(), signedIn: false, p => p
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Livmorhals));
+        cut.WaitForAssertion(() => Assert.Single(NameButtons(cut)));
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
+    }
+
+    [Fact]
+    public void List_WhenNoLinkNamesARow_ThenEveryMatchIsShownWithoutTheButton()
+    {
+        var cut = RenderRows(new RowClient(), signedIn: false);
+
+        cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent == "Vis alle treff");
     }
 
     [Fact]
