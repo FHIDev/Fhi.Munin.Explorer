@@ -214,6 +214,7 @@ public partial class VariableSearch
             return;
         }
 
+        _pinnedRow = null;
         var previousSort = _sort;
         var previousDirection = _direction;
         var previousPage = _page;
@@ -582,6 +583,8 @@ public partial class VariableSearch
     /// </remarks>
     private async Task<bool> FetchRowsAsync(string? search, bool keepResult = false)
     {
+        // The pin this request was made with: a filter's retry stays unpinned, a first load's keeps its row.
+        var pinAtFetch = _pinnedRow;
         _loading = true;
         _rowsLoading = true;
         _requestedSearch = DisplayText.Trimmed(search);
@@ -651,7 +654,7 @@ public partial class VariableSearch
             if (!rateLimited)
             {
                 _failedRows = new RowRequest(
-                    search, _page, _pageSize, _sort, _direction, _filter, _keepPager);
+                    search, _page, _pageSize, _sort, _direction, _filter, _keepPager, pinAtFetch);
                 _retryRowsEnabled = true;
             }
             else
@@ -683,7 +686,8 @@ public partial class VariableSearch
         SortField Sort,
         SortDirection Direction,
         VariableFilter Filter,
-        bool KeepPager);
+        bool KeepPager,
+        VariableDatasamlingKey? Pin);
 
     /// <summary>
     /// Resend the failed row request unchanged; <see cref="SearchAsync"/> would read the box, which may have been edited since.
@@ -711,6 +715,7 @@ public partial class VariableSearch
         var previousKeepPager = _keepPager;
         var previousResult = _result;
         var previousPanel = CapturePanel();
+        var previousPin = _pinnedRow;
 
         _page = request.Page;
         _pageSize = request.Size;
@@ -718,6 +723,7 @@ public partial class VariableSearch
         _direction = request.Direction;
         _filter = request.Filter;
         _keepPager = request.KeepPager;
+        _pinnedRow = request.Pin;
 
         // Only this call is the retry the button offered, which is what the failure box reads to
         // decide whether to say so. Nothing derived from _loading can tell them apart: the offer
@@ -728,7 +734,7 @@ public partial class VariableSearch
         {
             await RetryRowsFetchAsync(
                 request, previousSearch, previousPage, previousSize, previousSort,
-                previousDirection, previousFilter, previousKeepPager, previousResult, previousPanel);
+                previousDirection, previousFilter, previousKeepPager, previousResult, previousPanel, previousPin);
         }
         finally
         {
@@ -740,7 +746,8 @@ public partial class VariableSearch
     private async Task RetryRowsFetchAsync(
         RowRequest request, string? previousSearch, int previousPage, int previousSize,
         SortField previousSort, SortDirection previousDirection, VariableFilter previousFilter,
-        bool previousKeepPager, Page<VariableSummary>? previousResult, PanelState previousPanel)
+        bool previousKeepPager, Page<VariableSummary>? previousResult, PanelState previousPanel,
+        VariableDatasamlingKey? previousPin)
     {
         // keepResult, because a failed page turn's rows are still on screen and a failed search's
         // are already gone: either way the retry must not be what empties the list.
@@ -754,6 +761,7 @@ public partial class VariableSearch
             _direction = previousDirection;
             _filter = previousFilter;
             _keepPager = previousKeepPager;
+            _pinnedRow = previousPin;
 
             // Same focus rule as after a success: a 429 clears the offer, and this button is the
             // element under the reader's finger. Back inert — _retryRowsEnabled stayed false — and
@@ -822,7 +830,8 @@ public partial class VariableSearch
             return page;
         }
 
-        return page with { Items = [row], TotalCount = 1, TotalPages = 1, PageNumber = 1 };
+        // PageNumber stays: the host's address keeps the page the row was found on, so a reload finds it.
+        return page with { Items = [row], TotalCount = 1, TotalPages = 1 };
     }
 
     /// <summary>Back to every match of the search and filters, from the pinned row a link opened on.</summary>
@@ -833,8 +842,14 @@ public partial class VariableSearch
             return;
         }
 
-        // Focus first: the button leaves the page with the pin, and focus would fall to the body.
+        // Focus first: the button leaves the page with the pin, and focus would fall to the body. The
+        // await can let a search start meanwhile; it owns the list then, so this stops.
         await _searchField.FocusAsync();
+        if (_loading || _pinnedRow is null)
+        {
+            return;
+        }
+
         _pinnedRow = null;
         _page = 1;
         _keepPager = false;

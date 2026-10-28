@@ -44,6 +44,7 @@ public class RowsPerDatasamlingTest : ExplorerTestContext
         public int LegacyAddCalls { get; private set; }
         public HashSet<VariableDatasamlingKey> Stored { get; } = [];
         public List<string?> Searches { get; } = [];
+        public bool FailNextSearch { get; set; }
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
@@ -51,11 +52,17 @@ public class RowsPerDatasamlingTest : ExplorerTestContext
             CancellationToken cancellationToken = default)
         {
             Searches.Add(search);
+            if (FailNextSearch)
+            {
+                FailNextSearch = false;
+                throw new HttpRequestException("down for a moment");
+            }
+
             return Task.FromResult(new Page<VariableSummary>
             {
                 Items = [LungekreftRow with { }, LivmorhalsRow with { }],
                 TotalCount = 2,
-                PageNumber = 1,
+                PageNumber = page,
                 Size = 25,
                 TotalPages = 1,
             });
@@ -369,6 +376,67 @@ public class RowsPerDatasamlingTest : ExplorerTestContext
         Assert.Contains("Lagre disse variablene", all);
         Assert.DoesNotContain("Lagre disse variablene", pinned);
         Assert.DoesNotContain("Last ned", pinned);
+    }
+
+    [Fact]
+    public void DeepLink_WhenTheLinkIsForALaterPage_ThenTheHostKeepsThatPageAndTheCaptionCountsOne()
+    {
+        // A reload of the mirrored address must find the row again, so its page stays in the URL.
+        var pages = new List<int>();
+        var cut = RenderRows(new RowClient(), signedIn: false, p => p
+            .Add(c => c.Page, 2)
+            .Add(c => c.PageChanged, (int page) => pages.Add(page))
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Livmorhals));
+
+        cut.WaitForAssertion(() => Assert.Single(NameButtons(cut)));
+        Assert.Equal(2, pages[^1]);
+        Assert.StartsWith("1 variabel funnet", cut.Find("p[role='status']").TextContent.Trim());
+    }
+
+    [Fact]
+    public void DeepLink_WhenAFailedFilterChangeIsRetried_ThenTheRetryIsUnpinned()
+    {
+        var client = new RowClient();
+        var cut = RenderRows(client, signedIn: false, p => p
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Livmorhals));
+        cut.WaitForAssertion(() => Assert.Single(NameButtons(cut)));
+
+        client.FailNextSearch = true;
+        cut.FindAll("input[type=checkbox]").Single(i => i.ParentElement!.TextContent.Contains("Vis historiske", StringComparison.Ordinal)).Change(true);
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("button"), b => b.TextContent == "Prøv søket på nytt"));
+
+        cut.FindAll("button").Single(b => b.TextContent == "Prøv søket på nytt").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
+    }
+
+    [Fact]
+    public void DeepLink_WhenTheFirstLoadFailsAndIsRetried_ThenTheRetryKeepsTheLinkedRow()
+    {
+        var client = new RowClient { FailNextSearch = true };
+        var cut = RenderRows(client, signedIn: false, p => p
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Livmorhals));
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("button"), b => b.TextContent == "Prøv søket på nytt"));
+
+        cut.FindAll("button").Single(b => b.TextContent == "Prøv søket på nytt").Click();
+
+        cut.WaitForAssertion(() => Assert.Single(NameButtons(cut)));
+    }
+
+    [Fact]
+    public void DeepLink_WhenTheHostChangesTheSort_ThenTheListIsNoLongerPinned()
+    {
+        var cut = RenderRows(new RowClient(), signedIn: false, p => p
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Livmorhals));
+        cut.WaitForAssertion(() => Assert.Single(NameButtons(cut)));
+
+        cut.Render(p => p.Add(c => c.Sort, SortField.Name));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
     }
 
     [Fact]

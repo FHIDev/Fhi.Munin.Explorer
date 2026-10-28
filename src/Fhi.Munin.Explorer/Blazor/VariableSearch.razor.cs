@@ -811,7 +811,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// Guarded on the rows, as <see cref="LastItemOnPage"/> is, or an empty page reads "Viser 26–0 av 312".
     /// </remarks>
     private int FirstItemOnPage =>
-        _result is null || _result.Items.Count == 0 ? 0 : ((ResultPage - 1) * ResultPageSize) + 1;
+        _result is null || _result.Items.Count == 0 ? 0 : _pinnedRow is not null ? 1 : ((ResultPage - 1) * ResultPageSize) + 1;
 
     /// <summary>The 1-based position of the last row on screen, counted from the rows delivered.</summary>
     /// <remarks>
