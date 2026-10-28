@@ -43,12 +43,15 @@ public class RowsPerDatasamlingTest : ExplorerTestContext
         public int IdsCalls { get; private set; }
         public int LegacyAddCalls { get; private set; }
         public HashSet<VariableDatasamlingKey> Stored { get; } = [];
+        public List<string?> Searches { get; } = [];
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
             SortField sort = SortField.Default, SortDirection direction = SortDirection.Ascending,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new Page<VariableSummary>
+            CancellationToken cancellationToken = default)
+        {
+            Searches.Add(search);
+            return Task.FromResult(new Page<VariableSummary>
             {
                 Items = [LungekreftRow with { }, LivmorhalsRow with { }],
                 TotalCount = 2,
@@ -56,6 +59,7 @@ public class RowsPerDatasamlingTest : ExplorerTestContext
                 Size = 25,
                 TotalPages = 1,
             });
+        }
 
         public override Task<VariableDetail?> GetVariableAsync(
             Guid id, bool includeHistorical = false, CancellationToken cancellationToken = default)
@@ -305,6 +309,66 @@ public class RowsPerDatasamlingTest : ExplorerTestContext
         cut.Find("form").Submit();
 
         cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
+    }
+
+    [Fact]
+    public void DeepLink_WhenTheLinkedRowIsNotOnThePage_ThenThePinEndsAndNothingSnapsBackLater()
+    {
+        var cut = RenderRows(new RowClient(), signedIn: false, p => p
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Guid.NewGuid()));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent == "Vis alle treff");
+    }
+
+    [Fact]
+    public void DeepLink_WhenAFilterChanges_ThenTheListIsNoLongerPinned()
+    {
+        var cut = RenderRows(new RowClient(), signedIn: false, p => p
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Livmorhals));
+        cut.WaitForAssertion(() => Assert.Single(NameButtons(cut)));
+
+        cut.FindAll("input[type=checkbox]").Single(i => i.ParentElement!.TextContent.Contains("Vis historiske", StringComparison.Ordinal)).Change(true);
+
+        cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
+    }
+
+    [Fact]
+    public void DeepLink_WhenShowAllIsPressedWithUnsubmittedText_ThenTheSearchInForceIsFetched()
+    {
+        var client = new RowClient();
+        var cut = RenderRows(client, signedIn: false, p => p
+            .Add(c => c.Search, "V_CODE")
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Livmorhals));
+        cut.WaitForAssertion(() => Assert.Single(NameButtons(cut)));
+
+        cut.Find("form[role=search] input[type=text]").Change("typed but not submitted");
+        cut.FindAll("button").Single(b => b.TextContent == "Vis alle treff").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
+        Assert.Equal("V_CODE", client.Searches[^1]);
+    }
+
+    [Fact]
+    public void DeepLink_WhilePinned_ThenDownloadAndSaveAllAreNotOffered()
+    {
+        var cut = RenderRows(new RowClient(), signedIn: true, p => p
+            .Add(c => c.SelectedVariableId, Variable)
+            .Add(c => c.SelectedDatasamlingId, Livmorhals));
+        cut.WaitForAssertion(() => Assert.Single(NameButtons(cut)));
+        var pinned = cut.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+
+        cut.FindAll("button").Single(b => b.TextContent == "Vis alle treff").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, NameButtons(cut).Count));
+        var all = cut.FindAll("button").Select(b => b.TextContent.Trim()).ToList();
+
+        // «Lagre disse variablene» and «Last ned» act on every match, so they wait until every match is shown.
+        Assert.Contains("Lagre disse variablene", all);
+        Assert.DoesNotContain("Lagre disse variablene", pinned);
+        Assert.DoesNotContain("Last ned", pinned);
     }
 
     [Fact]

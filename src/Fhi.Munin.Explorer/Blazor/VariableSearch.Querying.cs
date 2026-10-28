@@ -147,6 +147,9 @@ public partial class VariableSearch
             return;
         }
 
+        // An order is over every match; one linked row has none.
+        _pinnedRow = null;
+
         // Kept so a failed fetch can put them back — see below. The page and the pager as well as
         // the order: reordering sends the reader to page one, and if the reorder never arrives they
         // are still on the page they were on.
@@ -322,6 +325,8 @@ public partial class VariableSearch
         {
             return;
         }
+
+        _pinnedRow = null;
 
         var previousSize = _pageSize;
         var previousPage = _page;
@@ -800,8 +805,8 @@ public partial class VariableSearch
     }
 
     /// <summary>
-    /// The page narrowed to the linked row while the list is pinned to it. A page without that row is
-    /// left whole, so a link to a row the search no longer finds shows the list instead of nothing.
+    /// The page narrowed to the linked row while the list is pinned to it. A page without that row ends
+    /// the pin, so a link to a row the search no longer finds shows the list, and nothing snaps back later.
     /// </summary>
     private Page<VariableSummary>? PinnedTo(Page<VariableSummary>? page)
     {
@@ -811,7 +816,13 @@ public partial class VariableSearch
         }
 
         var row = page.Items.FirstOrDefault(item => VariableDatasamlingKey.Of(item) == pinned);
-        return row is null ? page : page with { Items = [row], TotalCount = 1, TotalPages = 1, PageNumber = 1 };
+        if (row is null)
+        {
+            _pinnedRow = null;
+            return page;
+        }
+
+        return page with { Items = [row], TotalCount = 1, TotalPages = 1, PageNumber = 1 };
     }
 
     /// <summary>Back to every match of the search and filters, from the pinned row a link opened on.</summary>
@@ -822,13 +833,14 @@ public partial class VariableSearch
             return;
         }
 
+        // Focus first: the button leaves the page with the pin, and focus would fall to the body.
+        await _searchField.FocusAsync();
         _pinnedRow = null;
         _page = 1;
-        if (await FetchAsync(_search))
-        {
-            await FetchFacetsAsync();
-        }
+        _keepPager = false;
 
+        // The search that is in force, not the box's unsubmitted text; the facets already count every match.
+        await FetchAsync(_executedSearch);
         await NotifyPageChangedAsync();
     }
 }

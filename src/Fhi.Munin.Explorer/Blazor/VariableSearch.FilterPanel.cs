@@ -1923,6 +1923,7 @@ public partial class VariableSearch
         var previous = _filter;
         var previousPage = _page;
         var previousKeepPager = _keepPager;
+        var previousPin = _pinnedRow;
 
         _filter = next;
         _pinnedRow = null;
@@ -1961,6 +1962,7 @@ public partial class VariableSearch
             _filter = previous;
             _page = previousPage;
             _keepPager = previousKeepPager;
+            _pinnedRow = previousPin;
         }
 
         // _filter and not next: what the host is told is what is in force, rolled back or not.

@@ -557,9 +557,12 @@ public sealed partial class VariableSearch : ComponentBase
     /// per datasamling it is delivered from, so the variable alone does not say which row is open.
     /// </summary>
     /// <remarks>
-    /// Read once, with <see cref="SelectedVariableId"/>. Null with a variable set opens that variable's
-    /// first row on the page — what an older link carries — and the component then reports the row's
-    /// datasamling through <see cref="SelectedDatasamlingIdChanged"/>.
+    /// Read once, with <see cref="SelectedVariableId"/>. Both set (what «Kopier lenke» writes, and what a
+    /// host mirrors while a row is open) shows only that row, opened, until the reader searches, filters,
+    /// sorts, changes the page size or presses «Vis alle treff»; download and «Lagre alle» are not offered
+    /// meanwhile. Null with a variable set opens that variable's first row on the page — what an older link
+    /// carries — over the whole list, and the component then reports the row's datasamling through
+    /// <see cref="SelectedDatasamlingIdChanged"/>.
     /// </remarks>
     [Parameter] public Guid? SelectedDatasamlingId { get; set; }
 
