@@ -12,7 +12,9 @@ using Fhi.Munin.Explorer.Client;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddServerSideBlazor();
+// No stored circuit state: on .NET 10 a page that comes back after its circuit expired is otherwise "resumed" with
+// none of its components and stops responding without a word. Refused instead, blazor.server.js reloads the page.
+builder.Services.AddServerSideBlazor(o => o.PersistedCircuitInMemoryMaxRetained = 0);
 
 // No token provider, unlike LegacyHost. This host has no sign-in at all: the view mounts with
 // IsAuthenticated="true" so the tabs and the reader's list panel exist to be measured, which is
