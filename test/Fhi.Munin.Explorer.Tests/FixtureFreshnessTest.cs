@@ -87,6 +87,14 @@ public class FixtureFreshnessTest
             """{"navn":"B","additionalProperties":{"Kontaktperson":"Nobody"}}"""));
 
     [Fact]
+    public void Against_WhenTheInheritedFieldsDiffer_ThenNothingIsReported() =>
+        // Which kilde fields a delkilde inherits is the catalogue too: the live kilde and the
+        // fixture's need not inherit the same ones. (Fhi.Metadata-l9l2n.152)
+        Assert.Empty(FixtureFreshness.Against(
+            """{"navn":"A","inheritedProperties":{"OrgnrDataansvarlig":{"value":"974749025","sourceLevel":"kilde"}}}""",
+            """{"navn":"B","inheritedProperties":{"Hjemmeside":{"value":"https://uit.no","sourceLevel":"kilde"}}}"""));
+
+    [Fact]
     public void Against_WhenATranslationMapLosesALanguage_ThenItIsReported() =>
         // Only additionalProperties is opaque, not every dictionary the contracts declare. A
         // translation map is keyed by language code, a closed vocabulary, and a capture that

@@ -27,12 +27,13 @@ namespace Fhi.Munin.Explorer.Tests;
 internal static class FixtureFreshness
 {
     /// <summary>
-    /// The one member whose interior is catalogue data rather than shape.
+    /// The members whose interior is catalogue data rather than shape.
     /// </summary>
     /// <remarks>
     /// <c>additionalProperties</c> is curated per-entity metadata: one kilde carries
     /// <c>NavnEngelsk</c> and the next does not, so comparing its keys across two entities reports
-    /// the catalogue, not the API.
+    /// the catalogue, not the API. <c>inheritedProperties</c> is keyed the same way, by whichever
+    /// kilde fields an entity happens to inherit; the shape of its values is ContractDriftTest's.
     /// <para>
     /// Deliberately this member and not every dictionary the contracts declare. The translation
     /// maps on <see cref="PropertyMetadataEntry"/> are keyed by language code, a closed vocabulary
@@ -140,12 +141,13 @@ internal static class FixtureFreshness
         }
     }
 
-    /// <summary>The JSON name the contracts give the free-form bag, on every type that declares one.</summary>
+    /// <summary>The JSON names the contracts give the free-form bags, on every type that declares one.</summary>
     private static HashSet<string> OpenBagNames() =>
         typeof(KildeDetail).Assembly.GetTypes()
             .Where(type => type.Namespace == typeof(KildeDetail).Namespace)
             .SelectMany(type => type.GetProperties())
-            .Where(property => property.Name == nameof(KildeDetail.AdditionalProperties)
+            .Where(property => (property.Name == nameof(KildeDetail.AdditionalProperties)
+                    || property.Name == nameof(DatasamlingDetail.InheritedProperties))
                 && property.PropertyType.IsGenericType
                 && property.PropertyType.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>))
             .Select(JsonNameOf)

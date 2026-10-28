@@ -254,8 +254,8 @@ public sealed record KildeDelkilde
         new Dictionary<string, string?>();
 
     /// <summary>
-    /// Public kilde fields this one leaves blank, by key, each with where its value comes from. Only keys whose kilde
-    /// definition is enabled and public; empty when nothing is inherited.
+    /// Public kilde fields this one leaves blank, by key, each with where its value comes from. The keys are among
+    /// Hjemmeside, OrgnrDataansvarlig, HERidDataansvarlig and HERidDatakilde; empty when nothing is inherited.
     /// </summary>
     [JsonPropertyName("inheritedProperties")]
     public IReadOnlyDictionary<string, InheritedValue> InheritedProperties { get; init; } =

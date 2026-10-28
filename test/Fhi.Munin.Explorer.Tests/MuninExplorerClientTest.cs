@@ -1062,6 +1062,54 @@ public class MuninExplorerClientTest
 
     // ------------------------------------------------- wire names the capture cannot pin
 
+    private const string InheritedFields = """
+        {
+          "Hjemmeside": {"value": "https://uit.no/research/tromsostudy", "sourceLevel": "kilde",
+                         "sourceId": "b37d66c3-d2a4-4e58-b13e-12f96d38e9f3", "sourceName": "Tromsøundersøkelsen",
+                         "sourceNameEn": "The Tromsø Study"},
+          "OrgnrDataansvarlig": {"value": "974749025", "sourceLevel": "delkilde",
+                                 "sourceId": "5c8e3d0e-6a2f-4d0b-9c1e-0f6a2b7d4e11", "sourceName": "Tromsø 7",
+                                 "sourceNameEn": null}
+        }
+        """;
+
+    private static void AssertInheritedFields(IReadOnlyDictionary<string, InheritedValue> inherited)
+    {
+        Assert.Equal(["Hjemmeside", "OrgnrDataansvarlig"], inherited.Keys.Order());
+        var fromKilde = inherited["Hjemmeside"];
+        Assert.Equal(("https://uit.no/research/tromsostudy", "kilde", "Tromsøundersøkelsen", "The Tromsø Study"),
+                     (fromKilde.Value, fromKilde.SourceLevel, fromKilde.SourceName, fromKilde.SourceNameEn));
+        Assert.Equal(Guid.Parse("b37d66c3-d2a4-4e58-b13e-12f96d38e9f3"), fromKilde.SourceId);
+        var fromDelkilde = inherited["OrgnrDataansvarlig"];
+        Assert.Equal(("974749025", "delkilde", "Tromsø 7"), (fromDelkilde.Value, fromDelkilde.SourceLevel, fromDelkilde.SourceName));
+        Assert.Null(fromDelkilde.SourceNameEn);
+    }
+
+    [Fact]
+    public async Task GetKildeAsync_WhenADelkildeInheritsFields_ThenEachValueAndItsSourceAreRead()
+    {
+        // The capture's delkilder inherit only from the kilde, and always with an English name, so the delkilde level and
+        // the missing name are pinned here. (Fhi.Metadata-l9l2n.152)
+        var kilde = await WithJson($$"""
+            {"id": "{{Guid.NewGuid()}}", "delkilder": [
+              {"id": "{{Guid.NewGuid()}}", "children": [{"id": "{{Guid.NewGuid()}}", "inheritedProperties": {{InheritedFields}}}]}
+            ]}
+            """).GetKildeAsync(Guid.NewGuid());
+
+        AssertInheritedFields(kilde!.Delkilder.Single().Children.Single().InheritedProperties);
+        Assert.Empty(kilde.Delkilder.Single().InheritedProperties);
+    }
+
+    [Fact]
+    public async Task GetDatasamlingAsync_WhenItInheritsFields_ThenEachValueAndItsSourceAreRead()
+    {
+        // datasamling.json's datasamling inherits nothing, so its {} pins the wire name but not the value type.
+        var datasamling = await WithJson($$"""{"id": "{{Guid.NewGuid()}}", "inheritedProperties": {{InheritedFields}}}""")
+            .GetDatasamlingAsync(Guid.NewGuid());
+
+        AssertInheritedFields(datasamling!.InheritedProperties);
+    }
+
     [Fact]
     public async Task GetKildeHierarchyAsync_WhenAGroupNestsOthers_ThenTheChildrenAndBothHalvesOfTheOrderAreRead()
     {

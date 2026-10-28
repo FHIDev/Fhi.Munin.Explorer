@@ -8,11 +8,13 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// </summary>
 public sealed record InheritedValue
 {
+    /// <summary>Never blank: Munin leaves a field out rather than send an empty value.</summary>
     [JsonPropertyName("value")] public string Value { get; init; } = "";
 
     /// <summary><c>"delkilde"</c> or <c>"kilde"</c>.</summary>
     [JsonPropertyName("sourceLevel")] public string SourceLevel { get; init; } = "";
 
+    /// <summary>The id of the delkilde or kilde <see cref="SourceLevel"/> names.</summary>
     [JsonPropertyName("sourceId")] public Guid SourceId { get; init; }
 
     [JsonPropertyName("sourceName")] public string SourceName { get; init; } = "";
