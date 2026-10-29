@@ -25,6 +25,8 @@ jobs:
   publish:
     name: publish to the internal feed
     runs-on: ubuntu-latest
+    # The fhi-munin App key lives in this environment, which only main and v* tags may use (DevInfra-cbq.16).
+    environment: github-app
     timeout-minutes: 20
 
     steps:
@@ -291,7 +293,7 @@ jobs:
       # anything. Nothing here is secret - the source is public and the licence is MIT - but where
       # a consumer is meant to get a build from is a decision, and it should have one answer.
       - name: Create the GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           name: v${{ steps.version.outputs.version }}
           # The assembled section first, then the generated commit titles under it. The section
