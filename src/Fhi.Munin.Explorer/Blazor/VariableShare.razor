@@ -1,0 +1,24 @@
+@namespace Fhi.Munin.Explorer.Blazor
+
+<div role="group" aria-labelledby="@HeadingId">
+    <p class="headline headline-xxs margin--none" id="@HeadingId">@T.ShareVariable</p>
+    <div style="@VariableListView.OwnerButtonGrid">
+        <button class="hd-button-square button-square--ghost"
+                style="@VariableListView.OwnerButtonCell"
+                type="button"
+                @onclick="CopyAsync">@T.CopyVariableLink</button>
+        <a class="hd-button-square button-square--ghost"
+           style="@VariableListView.OwnerButtonCell"
+           href="@MailTo"
+           aria-describedby="@MailHintId">@T.SendVariableByEmail</a>
+    </div>
+    @* A mailto opens nothing for a webmail reader, so the copy button beside it is named as the way. *@
+    <p class="caption margin--none" id="@MailHintId">@T.SendByEmailHint</p>
+    <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_status</p>
+
+    @if (_notCopied)
+    {
+        <label class="form-element__label" for="@FieldId">@T.VariableLinkLabel</label>
+        <input type="text" id="@FieldId" readonly value="@Link" />
+    }
+</div>

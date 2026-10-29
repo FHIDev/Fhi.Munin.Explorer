@@ -302,6 +302,7 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
                 .ToString();
 
     private Func<VariableListItem, string?>? _variableAddress;
+    private Func<VariableSummary, string?>? _searchVariableAddress;
 
     private Uri? ExportPageUrl => Declined("variabelId") || Declined("search") || Declined("datasamlingId")
         ? null
@@ -311,18 +312,27 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     // within the kilde; without a code, or with search declined, no link could open the variable.
     private Func<VariableListItem, string?>? VariableHref => Declined("variabelId") || Declined("search")
         ? null
-        : _variableAddress ??= item => string.IsNullOrWhiteSpace(item.VariableCode)
+        : _variableAddress ??= item =>
+            VariableAddress(item.VariableCode, item.KildeId, item.VersionStatus, item.VariableId, item.DatasamlingId);
+
+    // The same link from a search row and from the whole variable, so «Del variabel» opens one thing everywhere.
+    private Func<VariableSummary, string?>? SearchVariableHref => Declined("variabelId") || Declined("search")
+        ? null
+        : _searchVariableAddress ??= v => VariableAddress(v.Code, v.KildeId, v.VersionStatus, v.Id, v.DatasamlingId);
+
+    private string? VariableAddress(string? code, Guid? kildeId, string? versionStatus, Guid variableId, Guid? datasamlingId) =>
+        string.IsNullOrWhiteSpace(code)
             ? null
             : Navigation.ToAbsoluteUri(_mirror.Address(Linkable(new ExplorerUrlState
             {
-                Search = item.VariableCode,
+                Search = code,
                 Filter = VariableFilter.None with
                 {
-                    KildeIds = item.KildeId is { } kilde ? [kilde] : [],
-                    IncludeHistorical = VersionStatusRule.IsHistorical(item.VersionStatus),
+                    KildeIds = kildeId is { } kilde ? [kilde] : [],
+                    IncludeHistorical = VersionStatusRule.IsHistorical(versionStatus),
                 },
-                SelectedVariableId = item.VariableId,
-                SelectedDatasamlingId = item.DatasamlingId,
+                SelectedVariableId = variableId,
+                SelectedDatasamlingId = datasamlingId,
             }).ToQueryString())).ToString();
 
     private void OnShareCodeChanged(string? code) => _state.ShareCode = code;

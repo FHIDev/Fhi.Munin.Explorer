@@ -229,6 +229,12 @@ public sealed partial class VariableSearch : ComponentBase
     [Parameter] public Func<Guid, string>? DatasamlingVariablesHref { get; set; }
 
     /// <summary>
+    /// An absolute address that opens one variable, for «Del variabel» on an open row and on the whole variable.
+    /// </summary>
+    /// <remarks>Null, or null for a variable, and there is no share group. Signed in or not.</remarks>
+    [Parameter] public Func<VariableSummary, string?>? VariableHref { get; set; }
+
+    /// <summary>
     /// The reader's own variable lists, drawn behind a second tab beside the results.
     /// </summary>
     /// <remarks>
@@ -1090,6 +1096,22 @@ public sealed partial class VariableSearch : ComponentBase
     /// Not <c>ReaderLanguage</c>: a member of that name would shadow the type in every partial.
     /// </remarks>
     private string Reader => ReaderLanguage.Of(Language);
+
+    private string ShareHeadingId(string where) => $"munin-explorer-share-{_instance}-{where}";
+
+    private string ShareFieldId(string where) => $"munin-explorer-share-link-{_instance}-{where}";
+
+    // The whole variable's link from its own record, so it holds when its row is not on this page.
+    private static VariableSummary SummaryOf(VariableDetail d) => new()
+    {
+        Id = d.Id,
+        Code = d.Code,
+        PreferredTerm = d.PreferredTerm,
+        PreferredTermEn = d.PreferredTermEn,
+        KildeId = d.KildeId,
+        DatasamlingId = d.DatasamlingId,
+        VersionStatus = d.VersionStatus,
+    };
 
     private string? Foreign(string language) => CatalogueProperties.Foreign(language, Reader);
 

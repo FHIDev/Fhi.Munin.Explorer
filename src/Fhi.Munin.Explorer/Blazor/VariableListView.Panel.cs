@@ -3,7 +3,6 @@ using Fhi.Munin.Explorer.Display;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
-using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
 
@@ -51,8 +50,6 @@ public sealed partial class VariableListView
     private sealed record NotesWrite(
         string Text, bool Saved, int? RefusedMax, bool Pending = false,
         DesiredDataFailure Failure = DesiredDataFailure.None);
-    private string? _linkStatus;
-    private bool _linkNotCopied;
 
     private static bool IsOrphan(VariableListItem item) => string.IsNullOrWhiteSpace(item.VariableName);
 
@@ -69,8 +66,6 @@ public sealed partial class VariableListView
 
     private string RowLinkFieldId(VariableListItem item) =>
         $"munin-explorer-list-link-{_instance}-{ItemSuffix(item)}";
-
-    private string RowMailHintId(VariableListItem item) => $"{RowShareHeadingId(item)}-mail-hint";
 
     private string RowShareHeadingId(VariableListItem item) =>
         $"munin-explorer-list-share-{_instance}-{ItemSuffix(item)}";
@@ -112,7 +107,6 @@ public sealed partial class VariableListView
         _openId = VariableDatasamlingKey.Of(item);
         _openListId = _shownList;
         _openTab = PanelTab.Data;
-        ForgetLinkStatus();
         ForgetPicker();
         _notesDraft = OpenNotesWrite is { } written ? written.Text : item.Notes ?? "";
 
@@ -126,7 +120,6 @@ public sealed partial class VariableListView
         _openError = null;
         _openLoading = false;
         _openCodes = null;
-        ForgetLinkStatus();
         ClearSource();
 
         // Disowns a fetch still in flight for the row that was open.
@@ -278,52 +271,6 @@ public sealed partial class VariableListView
             ? CatalogueDate.Period(item.DataFrom, item.DataTo, Language, T)
             : CatalogueDate.Period(detail.DataFrom, detail.DataTo, Language, T))
         ?? T.NotSpecified;
-
-    private string VariableMailTo(VariableListItem item, string link)
-    {
-        var name = RowName(item);
-        var subject = T.ShareVariableMailSubject(name);
-        var body = T.ShareVariableMailBody(name, link);
-
-        return $"mailto:?subject={Uri.EscapeDataString(subject)}&body={Uri.EscapeDataString(body)}";
-    }
-
-    private void ForgetLinkStatus()
-    {
-        _linkStatus = null;
-        _linkNotCopied = false;
-    }
-
-    // Safari refuses a clipboard write that arrives after a server round trip, so a refusal shows the
-    // link itself to be copied by hand. Emptied first, so a second press is announced again.
-    private async Task CopyVariableLinkAsync(string link)
-    {
-        ForgetLinkStatus();
-        var row = _openGeneration;
-
-        try
-        {
-            await Js.InvokeVoidAsync("navigator.clipboard.writeText", link);
-            SayLinkStatus(row, T.VariableLinkCopied, notCopied: false);
-        }
-        catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException)
-        {
-            Log?.LogWarning(ex, "the browser refused to copy a variable link");
-            SayLinkStatus(row, T.VariableLinkNotCopied, notCopied: true);
-        }
-    }
-
-    // Only into the panel that asked: another row opened meanwhile has its own link.
-    private void SayLinkStatus(int row, string status, bool notCopied)
-    {
-        if (row != _openGeneration)
-        {
-            return;
-        }
-
-        _linkStatus = status;
-        _linkNotCopied = notCopied;
-    }
 
     private string RowDesiredDataId(VariableListItem item) =>
         $"munin-explorer-list-panel-desired-{_instance}-{ItemSuffix(item)}";
