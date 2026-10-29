@@ -91,8 +91,6 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// <c>munin-explorer-kilder__count</c> for the three columns that hold a number, joined by
 /// <c>munin-explorer-kilder__count--zero</c> on a cell whose count is nought or that draws «–» for none
 /// in Munin, so a host's rule for it dims rather than hides,
-/// <c>munin-explorer-kilder__bar</c> and <c>munin-explorer-kilder__bar-fill</c> for the
-/// proportion bar under a non-zero variable count, its width inline,
 /// <c>munin-explorer-kilder__select</c> for the checkbox column a host that wired
 /// <see cref="ExploreVariablesRequested"/> gets in front of them, with
 /// <c>munin-explorer-kilde__datasamlinger--selectable</c> and
@@ -1325,55 +1323,20 @@ public sealed partial class KildeSearch : ComponentBase
     /// <summary>A cell's value, with the package's own words for one the catalogue left empty.</summary>
     private string Value(string? value) => string.IsNullOrWhiteSpace(value) ? T.NotSpecified : value;
 
-    /// <summary>The classes for a cell holding a count, marked when the count is nought, and its bar.</summary>
+    /// <summary>The classes for a cell holding a count, marked when the count is nought.</summary>
     /// <remarks>
     /// A nought delkilde count is a measurement and keeps its digit, dimmed; Variabler and Datasamlinger
     /// draw «–» for none in Munin and wear the same dimmed class (Fhi.Metadata-bzqtu).
     /// </remarks>
-    /// <param name="count">A zero gets no bar, which also keeps a zero <paramref name="largest"/> from dividing.</param>
-    /// <param name="largest">The largest count among the drawn rows, or 0 for a column with no bar.</param>
-    private static CountCell CountClass(int count, int largest = 0) =>
-        count == 0
-            ? new(DimmedCountClass, null)
-            : new("munin-explorer-kilder__count", largest > 0 ? BarWidth(count, largest) : null);
+    private static CountCell CountClass(int count) =>
+        new(count == 0 ? DimmedCountClass : "munin-explorer-kilder__count");
 
     // One dimmed look worn on purpose by a nought count and by the unmeasured share cell alike, so
     // editing it restyles both.
     private const string DimmedCountClass = "munin-explorer-kilder__count munin-explorer-kilder__count--zero";
 
-    /// <summary>A whole percent, 1 to 100, so a non-zero count never draws an empty fill.</summary>
-    private static string BarWidth(int count, int largest) =>
-        FormattableString.Invariant(
-            $"width:{Math.Clamp((int)Math.Round(count * 100m / largest, MidpointRounding.AwayFromZero), 1, 100)}%");
-
-    /// <summary>The kilde with the most variables per kildetype among <paramref name="visible"/>; a missing type is its own group.</summary>
-    private static Dictionary<string, KildeSummary> LargestByKildetype(IEnumerable<KildeSummary> visible) =>
-        visible
-            .GroupBy(KildetypeKey, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.MaxBy(k => k.TotalVariables)!, StringComparer.OrdinalIgnoreCase);
-
-    private static string KildetypeKey(KildeSummary kilde) =>
-        string.IsNullOrWhiteSpace(kilde.Kildetype) ? "" : kilde.Kildetype.Trim();
-
-    /// <summary>What the bar shows, in words after the count: the screen reader's text, and with the count the hover text.</summary>
-    private string BarWords(KildeSummary kilde, KildeSummary largest)
-    {
-        var key = KildetypeKey(kilde);
-        var type = key is "" ? T.NotSpecified : KildeTypeName(key);
-
-        if (largest.Id == kilde.Id || largest.TotalVariables <= kilde.TotalVariables)
-        {
-            return T.VariablesBarLargest(type);
-        }
-
-        // At least 1, as the bar's own width is: a kilde with variables is never 0 % of another.
-        var percent = Math.Max(1, (int)Math.Round(kilde.TotalVariables * 100m / largest.TotalVariables, MidpointRounding.AwayFromZero));
-        var name = RowName(largest).Text;
-        return T.VariablesBarOfLargest(percent, name, largest.TotalVariables, type);
-    }
-
-    /// <summary>A count cell's classes, and the inline width of its bar's fill when it has one.</summary>
-    private readonly record struct CountCell(string Class, string? BarWidth);
+    /// <summary>A count cell's classes.</summary>
+    private readonly record struct CountCell(string Class);
 
     /// <summary>The founding year as the import file states it, verbatim.</summary>
     /// <remarks>

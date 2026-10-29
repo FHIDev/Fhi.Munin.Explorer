@@ -807,10 +807,6 @@ internal sealed record Texts(
     string NoVariablesInMunin,
     string NoDatasamlingerInMunin,
 
-    // The variable bar's words after the count: percent of the largest of the same kildetype, that kilde, its count, the type (Fhi.Metadata-r6ht3).
-    Func<int, string, int, string, string> VariablesBarOfLargest,
-
-    Func<string, string> VariablesBarLargest,
     // (shown, total, filters, order, direction) — the kilde list's own "56 kilder av 66, avgrenset
     // av 2 filtre, sortert etter Variabler, synkende", assembled here for ResultSummary's reason:
     // where each clause sits is this language's grammar, and so is the plural. The filter clause
@@ -1706,9 +1702,6 @@ internal sealed record Texts(
         VariablesDescribedElsewhere: "Beskrevet utenfor helsedata.no",
         NoVariablesInMunin: "Ingen variabler registrert",
         NoDatasamlingerInMunin: "Ingen datasamlinger registrert",
-        VariablesBarOfLargest: (percent, largest, largestCount, type) =>
-            $"variabler, {percent} % av {largest} ({largestCount}), som har flest variabler av typen {type} i lista",
-        VariablesBarLargest: type => $"variabler, flest av typen {type} i lista",
         KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 kilde" : $"{shown} kilder")
             + (shown == total ? "" : $" av {total}")
@@ -2271,9 +2264,6 @@ internal sealed record Texts(
         VariablesDescribedElsewhere: "Described outside helsedata.no",
         NoVariablesInMunin: "No variables recorded",
         NoDatasamlingerInMunin: "No data collections recorded",
-        VariablesBarOfLargest: (percent, largest, largestCount, type) =>
-            $"variables, {percent}% of {largest} ({largestCount}), which has the most variables of type {type} in the list",
-        VariablesBarLargest: type => $"variables, the most of type {type} in the list",
         KildeCount: (shown, total, filters, order, direction) =>
             (shown == 1 ? "1 source" : $"{shown} sources")
             + (shown == total ? "" : $" of {total}")

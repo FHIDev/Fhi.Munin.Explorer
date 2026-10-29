@@ -1053,8 +1053,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilder` | handle |
   | `munin-explorer-kilder-scroll` | meaning |
   | `munin-explorer-kilder__back` | handle |
-  | `munin-explorer-kilder__bar` | handle |
-  | `munin-explorer-kilder__bar-fill` | handle |
   | `munin-explorer-kilder__card` | handle |
   | `munin-explorer-kilder__card-label` | handle |
   | `munin-explorer-kilder__card--variabler` | handle |
