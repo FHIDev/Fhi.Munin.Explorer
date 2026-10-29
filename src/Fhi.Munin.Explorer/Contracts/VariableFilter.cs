@@ -17,7 +17,8 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// </para>
 /// <para>
 /// Every list is a logical OR within its own facet and an AND between facets, which is what the
-/// Explorer API does: two kilder means "either kilde", a kilde and a datatype means "both".
+/// Explorer API does: two kilder means "either kilde", a kilde and a datatype means "both". The
+/// one exception is <see cref="OrTreeTicks"/>, which ORs the kilde tree's levels with each other.
 /// </para>
 /// <para>
 /// The property names are English, the domain terms are not — <c>kilde</c>, <c>delkilde</c>,
@@ -127,11 +128,11 @@ public sealed record VariableFilter
     /// <see cref="DelkildeIds"/>, <see cref="DatasamlingIds"/> and <see cref="VariabelgruppeScopes"/>.
     /// </summary>
     /// <remarks>
-    /// The API's <c>treeTicks=or</c> (Munin #6961): a tick with a more specific tick below it still only narrows, and every
-    /// other filter stays ANDed. The explorer's tree sets it, since a reader ticking two branches means «alt som er krysset
-    /// av» (Inge, 28.10). A kilde handed over by a kilde page or «Vis kildens variabler» means «this kilde's variabler in
-    /// that datasamling» and leaves it off. Sent only when two or more tree ticks are set, since one tick reads the same
-    /// either way; not counted in <see cref="ActiveCount"/>, since it narrows nothing on its own.
+    /// The API's <c>treeTicks=or</c> (Munin #6961, Fhi.Metadata-emsc0.1.1): a tick with a more specific tick below it still
+    /// only narrows, and every other filter stays ANDed. A tick in the explorer's kilde tree sets it. A hand-over from the
+    /// kildeutforsker and «Vis bare variabler fra denne datakilden/datasamlingen» clear it, until the reader ticks the tree
+    /// again. Sent only when two or more of the four levels are ticked, the only case the API combines; not counted in
+    /// <see cref="ActiveCount"/>, since it narrows nothing on its own.
     /// </remarks>
     public bool OrTreeTicks { get; init; }
 
@@ -152,6 +153,10 @@ public sealed record VariableFilter
     /// <see cref="None"/>: a UI would then say "avgrenset av 1 filter" over a live clear button
     /// whose press asks for the filter already in force and does nothing, with no other control
     /// able to reach that state either.
+    /// </para>
+    /// <para>
+    /// <see cref="OrTreeTicks"/>'s <c>treeTicks</c> is the one key on the wire not counted: it says how the tree's ticks
+    /// combine, and is not a filter of its own.
     /// </para>
     /// </remarks>
     public int ActiveCount => ToQuery().Count(pair => pair.Name != TreeTicksKey);
@@ -266,7 +271,7 @@ public sealed record VariableFilter
             yield return ("includeHistorical", "true");
         }
 
-        if (OrTreeTicks && KildeIds.Count + DelkildeIds.Count + DatasamlingIds.Count + VariabelgruppeScopes.Count > 1)
+        if (OrTreeTicks && new[] { KildeIds.Count, DelkildeIds.Count, DatasamlingIds.Count, VariabelgruppeScopes.Count }.Count(n => n > 0) > 1)
         {
             yield return (TreeTicksKey, "or");
         }

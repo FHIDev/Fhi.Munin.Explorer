@@ -248,7 +248,8 @@ public sealed partial class VariableExplorer : ComponentBase, IAsyncDisposable
     private Func<Guid, string> DatasamlingVariablesHref => _collectionVariablesAddress ??= id =>
         _mirror.Address(Linkable(_state.ToState() with
         {
-            Filter = _state.Filter with { DatasamlingIds = [id] },
+            // «This datasamling's variabler» narrows the reader's other ticks, never widens them (Fhi.Metadata-emsc0.1.1).
+            Filter = _state.Filter with { DatasamlingIds = [id], OrTreeTicks = false },
             Page = 1,
             SelectedVariableId = null,
             SelectedDatasamlingId = null,

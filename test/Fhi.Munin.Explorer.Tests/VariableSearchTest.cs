@@ -8555,7 +8555,7 @@ public class VariableSearchTest : ExplorerTestContext
     [Fact]
     public void KildeTree_WhenADatasamlingAndAGroupUnderAnotherAreTicked_ThenTheListAndTheCountsAskForTreeTicksOr()
     {
-        // Inge 28.10, «alt som er krysset av»: ticks in different branches are OR'ed (Fhi.Metadata-emsc0.1.1).
+        // «Alt som er krysset av»: ticks in different branches are OR'ed (Fhi.Metadata-emsc0.1.1).
         var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
         var cut = RenderWith(client);
         ExpandBranches(cut);
@@ -8571,6 +8571,35 @@ public class VariableSearchTest : ExplorerTestContext
         Assert.Equal([new VariabelgruppeScope(Nutrition, Tromso1)], client.SearchFilter.VariabelgruppeScopes);
         Assert.Contains("treeTicks=or", client.SearchFilter.ToQueryString(), StringComparison.Ordinal);
         Assert.Contains("treeTicks=or", client.FacetFilter!.ToQueryString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void KildeTree_WhenAKildeRowIsTicked_ThenTheFilterOrsTheTree()
+    {
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderWith(client, p => p.Add(x => x.Filter, new VariableFilter { DatasamlingIds = [Tromso1] }));
+
+        Press(SurfaceBox(KildeFacet(cut), "Tromsøundersøkelsen"));
+
+        Assert.True(client.SearchFilter!.OrTreeTicks);
+    }
+
+    [Fact]
+    public void KildeTree_WhenAChipIsRemovedOrTheStandaloneGroupFacetIsTicked_ThenAnAndedTreeStaysAnded()
+    {
+        // Neither is a tick in the tree, so a hand-over's ANDed ticks must not turn into an OR (Fhi.Metadata-emsc0.1.1).
+        var anded = new VariableFilter { KildeIds = [Tromso], DatasamlingIds = [Tromso1, Tromso4Round] };
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderWith(client, p => p.Add(x => x.Filter, anded));
+        ExpandBranches(cut);
+
+        RemoveChip(cut, "Fjerde runde");
+        Assert.False(client.SearchFilter!.OrTreeTicks);
+        Assert.Equal([Tromso1], client.SearchFilter.DatasamlingIds);
+
+        Press(SurfaceBox(StandaloneFacet(cut), "Kosthold"));
+        Assert.False(client.SearchFilter!.OrTreeTicks);
+        Assert.Equal([Nutrition], client.SearchFilter.VariabelgruppeIds);
     }
 
     [Fact]

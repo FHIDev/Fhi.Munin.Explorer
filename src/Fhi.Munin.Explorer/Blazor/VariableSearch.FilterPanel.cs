@@ -612,6 +612,8 @@ public partial class VariableSearch
         {
             Count = Counted(kilde.Count),
             Children = tree.TryGetValue(kilde.Id, out var node) ? HierarchyValues(node.Children) : [],
+            // The tree's row ticks; the chip built from the same value only removes, and keeps the mode.
+            Toggle = () => ToggleTickAsync(Pending.KildeIds, kilde.Id, ids => Pending with { KildeIds = ids }),
         };
 
     /// <summary>A kilde on its own: its words and its toggle, with neither a count nor its tree.</summary>
@@ -628,7 +630,7 @@ public partial class VariableSearch
             language,
             null,
             Pending.KildeIds.Contains(kilde.Id),
-            () => ToggleTickAsync(Pending.KildeIds, kilde.Id, ids => Pending with { KildeIds = ids }),
+            () => ToggleAsync(Pending.KildeIds, kilde.Id, ids => Pending with { KildeIds = ids }),
             [],
             // The same folder a delkilde wears: the two are one level of grouping as far as the
             // tree is concerned, and Kelda's own hierarchy draws them alike.
@@ -760,7 +762,7 @@ public partial class VariableSearch
             language,
             null,
             Pending.DatasamlingIds.Contains(datasamling.Id),
-            () => ToggleTickAsync(Pending.DatasamlingIds, datasamling.Id,
+            () => ToggleAsync(Pending.DatasamlingIds, datasamling.Id,
                               ids => Pending with { DatasamlingIds = ids }),
             [],
             // Off the facet payload this row was already built from, so the glyphs cost no request —
@@ -774,7 +776,7 @@ public partial class VariableSearch
     private bool IsDelkildeChosen(Guid id) => Pending.DelkildeIds.Contains(id);
 
     private Func<Task> ToggleDelkilde(Guid id) =>
-        () => ToggleTickAsync(Pending.DelkildeIds, id, ids => Pending with { DelkildeIds = ids });
+        () => ToggleAsync(Pending.DelkildeIds, id, ids => Pending with { DelkildeIds = ids });
 
     /// <summary>The variabelgruppe facet, as a tree.</summary>
     /// <remarks>
@@ -891,7 +893,7 @@ public partial class VariableSearch
 
     // Choosing a group everywhere supersedes its placements, so their scopes go with the tick.
     private Func<Task> ToggleGruppe(Guid id) =>
-        () => ToggleTickAsync(Pending.VariabelgruppeIds, id, ids => Pending with
+        () => ToggleAsync(Pending.VariabelgruppeIds, id, ids => Pending with
         {
             VariabelgruppeIds = ids,
             VariabelgruppeScopes = [.. Pending.VariabelgruppeScopes.Where(scope => scope.VariabelgruppeId != id)]

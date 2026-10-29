@@ -333,6 +333,15 @@ public class VariableFilterTest
         Assert.DoesNotContain("treeTicks", filter.ToQueryString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void OrTreeTicks_WhenTheTicksAreAllOnOneLevel_ThenNothingIsSent()
+    {
+        // The API combines only two or more levels; two kilder are ORed as a facet either way.
+        var filter = new VariableFilter { KildeIds = [TreeA, TreeB], OrTreeTicks = true };
+
+        Assert.DoesNotContain("treeTicks", filter.ToQueryString(), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("treeTicks=and")]
     [InlineData("treeTicks=bogus")]

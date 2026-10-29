@@ -69,6 +69,23 @@ public class UrlStateComponentTest : ExplorerTestContext
         Assert.Contains("lang=en", href);
     }
 
+    [Fact]
+    public void CollectionLink_WhenTheTreeTicksWereOred_ThenTheLinkAndsTheCollectionWithTheOtherTicks()
+    {
+        // «This datasamling's variabler» narrows; an OR would add the whole kilde (Fhi.Metadata-emsc0.1.1).
+        var kilde = Guid.NewGuid();
+        var collection = Guid.NewGuid();
+        RenderExplorer($"http://localhost/variables?kildeIds={kilde}&datasamlingIds={Guid.NewGuid()}&treeTicks=or", out var cut);
+
+        var href = cut.FindComponent<VariableSearch>().Instance.DatasamlingVariablesHref!(collection);
+        var state = ExplorerUrlState.Parse(new Uri(new Uri("http://localhost"), href).Query);
+
+        Assert.Equal([kilde], state.Filter.KildeIds);
+        Assert.Equal([collection], state.Filter.DatasamlingIds);
+        Assert.False(state.Filter.OrTreeTicks);
+        Assert.DoesNotContain("treeTicks", href, StringComparison.Ordinal);
+    }
+
     private const string ReplaceState = "history.replaceState";
 
     /// <summary>Cleared by the one test that mounts a component the way a host must not.</summary>
