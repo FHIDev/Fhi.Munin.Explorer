@@ -8,6 +8,27 @@ conventions a compiler cannot check. This file adds the Claude-Code-specific wor
 
 ---
 
+## Beads: Varde's tools first, bd only where they don't exist
+
+When the `varde-chat` MCP tools (`beads_*`) are available, as on every devbox, read and write beads with them and never run `bd`. Use `bd` only where they are not: the Forge, or a laptop without Varde. This rule wins over every `bd` step further down in this file: those are for the places without Varde, and a step with no Varde tool (below: worktree, preflight) is skipped or done with git. Varde's reads come from a snapshot refreshed every five minutes, so the claim or write itself is the check, not a read just before it.
+
+| Instead of | Use |
+| --- | --- |
+| `bd show <id>`, `bd dep tree`, `bd graph` | `beads_show` (blockers, what it blocks, children) |
+| `bd list …`, `bd children`, `bd blocked`, `bd stale` | `beads_list` (`status`, `type`, `label`, `assignee`, `q`, `parent`, `blocked`, `stale_days`; `next` pages) |
+| `bd ready` | `beads_ready` |
+| waits (`venter:`, needs-human, blocked) | `beads_waiting` |
+| `bd create` | `beads_create` (a type, and a parent epic unless it is one) |
+| `bd update --claim` / an empty assignee | `beads_claim` / `beads_release` |
+| `bd update --append-notes` | `beads_note` (never `--notes`: it replaces every earlier note) |
+| `bd update --title/--description/--priority/--parent/--type/--acceptance` | `beads_update` |
+| `bd label add`, `bd dep add` | `beads_label`, `beads_dep` (forge labels: `beads_forge_label`, the coordinator only) |
+| `bd close`, `bd reopen` | `beads_close` (normally the bead-closer does it; `kind` done, not-doing, duplicate-of or superseded-by otherwise), `beads_reopen` |
+| `bd worktree create` | `git worktree add` (the `.beads/redirect` matters only to bd) |
+| `bd remember`/`recall`, `bd preflight`, `bd mol`, `bd prime`, `bd doctor` | nothing: skip them where Varde's tools are |
+
+---
+
 ## The rules that bite
 
 Four things here fail *silently* when broken — no build error, no failing test, just wrong
@@ -132,6 +153,8 @@ points there, so `bd` behaves exactly as it does in Munin and sees the same data
 `Fhi.Metadata-2fomm` (Kelda).
 
 ### Every bead for this repository gets `helsedata` and `rcl`
+
+With Varde's tools: `beads_create` with `labels: ["helsedata", "rcl"]` (and `beads_label` to add one later). Where they are not available:
 
 ```bash
 bd create --title="..." --description="..." --label=helsedata --label=rcl

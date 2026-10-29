@@ -5,6 +5,25 @@ components must follow — no `@page`, no `@rendermode`, no CSS, nothing host-sp
 [`README.md`](README.md) under "Rules the components follow" and are enforced by
 `BannedSymbols.txt`. This file covers the conventions a compiler cannot check.
 
+## Beads: Varde's tools first, bd only where they don't exist
+
+When the `varde-chat` MCP tools (`beads_*`) are available, as on every devbox, read and write beads with them and never run `bd`. Use `bd` only where they are not: the Forge, or a laptop without Varde. The table applies only where the Varde tools are; the `bd` sections further down are for the places without them, and there they still hold (`bd worktree create`, for one, writes the `.beads/redirect` bd needs).
+
+| Instead of | Use |
+| --- | --- |
+| `bd show <id>`, `bd dep tree`, `bd graph` | `beads_show` (blockers, what it blocks, children) |
+| `bd list …`, `bd children`, `bd blocked`, `bd stale` | `beads_list` (`status`, `type`, `label`, `assignee`, `q`, `parent`, `blocked`, `stale_days`; `next` pages) |
+| `bd ready` | `beads_ready` |
+| waits (`venter:`, needs-human, blocked) | `beads_waiting` |
+| `bd create` | `beads_create` (a type, and a parent epic unless it is one) |
+| `bd update --claim` / an empty assignee | `beads_claim` / `beads_release` |
+| `bd update --append-notes` | `beads_note` (never `--notes`: it replaces every earlier note) |
+| `bd update --title/--description/--priority/--parent/--type/--acceptance` | `beads_update` |
+| `bd label add`, `bd dep add` | `beads_label`, `beads_dep` (forge labels: `beads_forge_label`, the coordinator only) |
+| `bd close`, `bd reopen` | `beads_close` (normally the bead-closer does it; `kind` done, not-doing, duplicate-of or superseded-by otherwise), `beads_reopen` |
+| `bd worktree create` | `git worktree add` (the `.beads/redirect` matters only to bd) |
+| `bd remember`/`recall`, `bd preflight`, `bd mol`, `bd prime`, `bd doctor` | nothing: skip them where Varde's tools are |
+
 ## Identifiers are English
 
 **Code identifiers in this repository are English.** Types, members, parameters, locals, test
