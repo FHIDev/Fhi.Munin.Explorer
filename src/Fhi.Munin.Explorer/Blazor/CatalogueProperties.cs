@@ -17,7 +17,7 @@ internal readonly record struct LocalisedText(string Text, string Language);
 /// Every language the value holds, the reader's first. One entry for all but the multilingual
 /// types, whose bags the catalogue leaves open.
 /// </param>
-/// <param name="Href">Where the value should link, for the properties the catalogue types as a URL.</param>
+/// <param name="Href">Where the value should link, for the properties the catalogue types as a URL or an Email.</param>
 /// <param name="Hrefs">One target per address, where the value is a <c>;</c>-joined list of them.</param>
 /// <param name="Authored">Drawn through <see cref="CatalogueMarkdown"/>; see <see cref="CatalogueProperties.AuthoredKeys"/>.</param>
 /// <param name="InlineLinks">Drawn through <see cref="CatalogueMarkdown.Linked"/>: Lovverk with an address in it.</param>
@@ -286,6 +286,13 @@ internal static class CatalogueProperties
                 continue;
             }
 
+            // An Email field is there to be written to: one valid address becomes a mailto, anything else stays text.
+            if (Typed(entry, EmailType) && CatalogueMarkdown.Mailto(raw) is { } mailto)
+            {
+                rows.Add(new PropertyRow(label, labelLanguage, [new LocalisedText(mailto["mailto:".Length..], reader)], mailto));
+                continue;
+            }
+
             var authored = AuthoredKeys.Contains(entry.Key);
             var inlineLinks = !authored
                               && string.Equals(entry.Key, CatalogueColumns.LegalBasis, StringComparison.Ordinal)
@@ -550,6 +557,7 @@ internal static class CatalogueProperties
     // deserialisation, and casing that shifts there must not put the envelope back on the page.
     private const string MultilingualTextType = "MultilingualText";
     private const string UrlType = "Url";
+    private const string EmailType = "Email";
     private const string LangTaggedListType = "LangTaggedList";
     private const string MultiSelectType = "MultiSelect";
     private const string ObjectType = "Object";

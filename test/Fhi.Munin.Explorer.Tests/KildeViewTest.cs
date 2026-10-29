@@ -2856,6 +2856,49 @@ public class KildeViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Properties_WhenAFieldIsTypedEmail_ThenAValidAddressIsAMailtoLink()
+    {
+        // FHIDev/Munin#6896: E-post read as plain text while Hjemmeside beside it was a link.
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Epost", 10, "Kontakt") with { Type = "Email" }],
+            AdditionalProperties = new Dictionary<string, string?> { ["Epost"] = "  tromsous@uit.no " },
+        };
+
+        var anchor = Render(kilde).Find(".munin-explorer-page__fields dd a");
+
+        Assert.Equal("mailto:tromsous@uit.no", anchor.GetAttribute("href"));
+        Assert.Equal("tromsous@uit.no", anchor.Label());
+
+        // A mail client is not a new window, and an address is prose in no language (WCAG 3.1.2).
+        Assert.Null(anchor.GetAttribute("target"));
+        Assert.Empty(anchor.QuerySelectorAll(".screenreader-only"));
+        Assert.Null(anchor.ParentElement!.GetAttribute("lang"));
+    }
+
+    [Theory]
+    [InlineData("ikke en adresse")]
+    [InlineData("post@uit.no; annen@uit.no")]
+    [InlineData("post@uit.no?cc=noen@example.com")]
+    [InlineData("post%40uit.no@example.com")]
+    [InlineData("\"><script>alert(1)</script>@uit.no")]
+    [InlineData("mailto:post@uit.no")]
+    public void Properties_WhenAnEmailFieldHoldsAnythingButOneAddress_ThenItStaysText(string value)
+    {
+        var kilde = Kilde() with
+        {
+            PropertyMetadata = [Entry("Epost", 10, "Kontakt") with { Type = "Email" }],
+            AdditionalProperties = new Dictionary<string, string?> { ["Epost"] = value },
+        };
+
+        var cell = Render(kilde).Find(".munin-explorer-page__fields dd");
+
+        Assert.Empty(cell.QuerySelectorAll("a"));
+        Assert.Empty(cell.QuerySelectorAll("script"));
+        Assert.Equal(value, cell.TextContent);
+    }
+
+    [Fact]
     public void Properties_WhenAUrlIsStoredSchemeless_ThenHttpsIsAssumedAndTheCellStaysUnmarked()
     {
         // The other captured Hjemmeside shape: www.barnediabetes.no, no scheme, which an href
