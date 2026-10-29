@@ -9,6 +9,10 @@ namespace Fhi.Munin.Explorer.Blazor;
 /// «Del variabel»: copy a link to one variable, or open an e-mail with it. One group for every place a variable is
 /// shown, so the list row, the search row and the whole variable say and do the same thing.
 /// </summary>
+/// <remarks>
+/// A building block of the explorer's own views, public only because Razor makes every component so. Hosts get it
+/// through <see cref="VariableExplorer"/>; mounting it alone carries no stability promise.
+/// </remarks>
 public sealed partial class VariableShare : ComponentBase
 {
     [Inject] private IServiceProvider ServiceProvider { get; set; } = null!;

@@ -231,7 +231,10 @@ public sealed partial class VariableSearch : ComponentBase
     /// <summary>
     /// An absolute address that opens one variable, for «Del variabel» on an open row and on the whole variable.
     /// </summary>
-    /// <remarks>Null, or null for a variable, and there is no share group. Signed in or not.</remarks>
+    /// <remarks>
+    /// When null, or when it returns null for a variable, that variable has no share group. Shown whether or not
+    /// the reader is signed in. <see cref="VariableExplorer"/> passes it; a host mounting this component alone does not.
+    /// </remarks>
     [Parameter] public Func<VariableSummary, string?>? VariableHref { get; set; }
 
     /// <summary>
@@ -1101,8 +1104,8 @@ public sealed partial class VariableSearch : ComponentBase
 
     private string ShareFieldId(string where) => $"munin-explorer-share-link-{_instance}-{where}";
 
-    // The whole variable's link from its own record, so it holds when its row is not on this page.
-    private static VariableSummary SummaryOf(VariableDetail d) => new()
+    // The open row's own summary when it is on this page, so both links name the same datasamling; else the record.
+    private VariableSummary SummaryOf(VariableDetail d) => _result?.Items.FirstOrDefault(v => IsSelected(v) && v.Id == d.Id) ?? new()
     {
         Id = d.Id,
         Code = d.Code,

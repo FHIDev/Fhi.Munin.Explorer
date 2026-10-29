@@ -18,12 +18,19 @@ public class SearchShareTest : ExplorerTestContext
     private static readonly Guid VariableId = Guid.Parse("7a1f0c4e-2b8d-4e5a-9c3f-1d2e3f4a5b6c");
     private static readonly Guid KildeId = Guid.Parse("11111111-2222-3333-4444-555555555555");
     private static readonly Guid DatasamlingId = Guid.Parse("66666666-7777-8888-9999-000000000000");
+    private static readonly Guid OtherDatasamlingId = Guid.Parse("12121212-3434-5656-7878-909090909090");
     private const string Code = "V_HKR.KJONN";
     private const string Name = "Kjønn";
 
     private sealed class ShareClient : EmptyMuninExplorerClient, IMuninExplorerClient
     {
         public List<(string? Search, VariableFilter? Filter)> Searches { get; } = [];
+
+        /// <summary>The version status of the one row and of its record.</summary>
+        public string VersionStatus { get; init; } = "Active";
+
+        /// <summary>The datasamling the record answers with, which can differ from the row's.</summary>
+        public Guid? DetailDatasamlingId { get; init; } = DatasamlingId;
 
         public override Task<Page<VariableSummary>> SearchVariablesAsync(
             string? search, VariableFilter? filter = null, int page = 1, int pageSize = 25,
@@ -37,8 +44,14 @@ public class SearchShareTest : ExplorerTestContext
                 [
                     new VariableSummary
                     {
-                        Id = VariableId, Code = Code, PreferredTerm = Name, KildeId = KildeId, KildeName = "Hjerte- og karregisteret",
-                        DatasamlingId = DatasamlingId, DatasamlingName = "Hjerteinfarkt", VersionStatus = "Aktiv",
+                        Id = VariableId,
+                        Code = Code,
+                        PreferredTerm = Name,
+                        KildeId = KildeId,
+                        KildeName = "Hjerte- og karregisteret",
+                        DatasamlingId = DatasamlingId,
+                        DatasamlingName = "Hjerteinfarkt",
+                        VersionStatus = VersionStatus,
                     },
                 ],
                 TotalCount = 1,
@@ -58,20 +71,20 @@ public class SearchShareTest : ExplorerTestContext
                 KildeId = KildeId,
                 KildeName = "Hjerte- og karregisteret",
                 KildeShortName = "HKR",
-                DatasamlingId = DatasamlingId,
+                DatasamlingId = DetailDatasamlingId,
                 DatasamlingName = "Hjerteinfarkt",
-                VersionStatus = "Aktiv",
+                VersionStatus = VersionStatus,
             });
     }
 
-    private (IRenderedComponent<VariableExplorer> Cut, ShareClient Client) RenderExplorer(string address = "http://localhost/variabler?search=kjonn")
+    private IRenderedComponent<VariableExplorer> RenderExplorer(
+        ShareClient? client = null, string address = "http://localhost/variabler?search=kjonn", string[]? declined = null)
     {
-        var client = new ShareClient();
-        Services.AddSingleton<IMuninExplorerClient>(client);
+        Services.AddSingleton<IMuninExplorerClient>(client ?? new ShareClient());
         Services.AddScoped<VariableListState>();
         SetRendererInfo(new RendererInfo("Server", true));
         Services.GetRequiredService<NavigationManager>().NavigateTo(address);
-        return (Render<VariableExplorer>(), client);
+        return Render<VariableExplorer>(b => b.Add(c => c.DeclinedKeys, declined));
     }
 
     private static void OpenRow(IRenderedComponent<VariableExplorer> cut)
@@ -80,11 +93,20 @@ public class SearchShareTest : ExplorerTestContext
         cut.WaitForElement(".munin-explorer-detail");
     }
 
-    private static AngleSharp.Dom.IElement ShareGroup(AngleSharp.Dom.IElement within) =>
-        within.QuerySelectorAll("[role=group]").Single(g =>
-            within.QuerySelector($"#{g.GetAttribute("aria-labelledby")}")?.TextContent.Trim() == "Del variabel");
+    private static IElementLike ShareGroup(AngleSharp.Dom.IElement within) =>
+        new(within.QuerySelectorAll("[role=group]").Single(g =>
+            within.QuerySelector($"#{g.GetAttribute("aria-labelledby")}")?.TextContent.Trim() == "Del variabel"));
 
-    private static void AssertTheLinkOpensThisVariable(string link)
+    private sealed record IElementLike(AngleSharp.Dom.IElement Group)
+    {
+        public AngleSharp.Dom.IElement Copy => Group.QuerySelectorAll("button").Single(b => b.TextContent.Trim() == "Kopier lenke");
+
+        public AngleSharp.Dom.IElement Mail => Group.QuerySelectorAll("a").Single(a => a.TextContent.Trim() == "Send via e-post");
+
+        public string Status => Group.QuerySelector("[role=status]")!.TextContent.Trim();
+    }
+
+    private static void AssertTheLinkOpensThisVariable(string link, bool historical = false)
     {
         var uri = new Uri(link);
         Assert.True(uri.IsAbsoluteUri);
@@ -93,84 +115,112 @@ public class SearchShareTest : ExplorerTestContext
         Assert.Equal(KildeId.ToString(), query["kildeIds"].ToString());
         Assert.Equal(VariableId.ToString(), query["variabelId"].ToString());
         Assert.Equal(DatasamlingId.ToString(), query["datasamlingId"].ToString());
+        Assert.Equal(historical ? "true" : "", query.TryGetValue("includeHistorical", out var h) ? h.ToString() : "");
+    }
+
+    private static string MailLink(IElementLike share)
+    {
+        var mail = Uri.UnescapeDataString(share.Mail.GetAttribute("href")!);
+        return mail[mail.IndexOf("http", StringComparison.Ordinal)..];
     }
 
     [Fact]
-    public void OpenRow_SignedOut_ThenItOffersDelVariabelWithItsAccessibleNames()
+    public void OpenRow_WhenSignedOut_ThenItOffersDelVariabelWithItsAccessibleNames()
     {
-        var (cut, _) = RenderExplorer();
+        var cut = RenderExplorer();
 
         OpenRow(cut);
 
-        var group = ShareGroup(cut.Find(".munin-explorer-detail"));
-        Assert.Single(group.QuerySelectorAll("button"), b => b.TextContent.Trim() == "Kopier lenke");
-        var mail = group.QuerySelectorAll("a").Single(a => a.TextContent.Trim() == "Send via e-post");
-        Assert.StartsWith("Åpner e-postprogrammet ditt.", cut.Find($"#{mail.GetAttribute("aria-describedby")}").TextContent.Trim());
-        Assert.Single(group.QuerySelectorAll("[role=status][aria-live=polite]"));
+        var share = ShareGroup(cut.Find(".munin-explorer-detail"));
+        Assert.Equal("Kopier lenke", share.Copy.TextContent.Trim());
+        Assert.StartsWith("Åpner e-postprogrammet ditt.", cut.Find($"#{share.Mail.GetAttribute("aria-describedby")}").TextContent.Trim());
+        Assert.Single(share.Group.QuerySelectorAll("[role=status][aria-live=polite]"));
+        AssertTheLinkOpensThisVariable(MailLink(share));
     }
 
     [Fact]
-    public void CopyLink_OnAnOpenRow_ThenTheClipboardGetsTheLinkToThisVariableAndThatIsSaid()
+    public void CopyLink_WhenPressedOnAnOpenRow_ThenTheClipboardGetsTheLinkAndTheGroupSaysSo()
     {
         var copied = JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
         copied.SetVoidResult();
-        var (cut, _) = RenderExplorer();
+        var cut = RenderExplorer();
         OpenRow(cut);
 
-        ShareGroup(cut.Find(".munin-explorer-detail")).QuerySelectorAll("button").Single(b => b.TextContent.Trim() == "Kopier lenke").Click();
+        ShareGroup(cut.Find(".munin-explorer-detail")).Copy.Click();
 
         cut.WaitForAssertion(() => AssertTheLinkOpensThisVariable((string)copied.Invocations.Single().Arguments.Single()!));
-        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("[role=status]"), s => s.TextContent.Trim() == "Lenken er kopiert."));
+        cut.WaitForAssertion(() => Assert.Equal("Lenken er kopiert.", ShareGroup(cut.Find(".munin-explorer-detail")).Status));
     }
 
     [Fact]
     public void CopyLink_WhenTheBrowserRefuses_ThenTheLinkIsShownToCopyByHand()
     {
         JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true).SetException(new JSException("NotAllowedError"));
-        var (cut, _) = RenderExplorer();
+        var cut = RenderExplorer();
         OpenRow(cut);
 
-        ShareGroup(cut.Find(".munin-explorer-detail")).QuerySelectorAll("button").Single(b => b.TextContent.Trim() == "Kopier lenke").Click();
+        ShareGroup(cut.Find(".munin-explorer-detail")).Copy.Click();
 
-        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("[role=status]"),
-            s => s.TextContent.Trim() == "Nettleseren tillot ikke kopiering. Kopier lenken under."));
+        cut.WaitForAssertion(() => Assert.Equal("Nettleseren tillot ikke kopiering. Kopier lenken under.",
+            ShareGroup(cut.Find(".munin-explorer-detail")).Status));
         var label = cut.FindAll("label").Single(l => l.TextContent.Trim() == "Lenke til variabelen");
         AssertTheLinkOpensThisVariable(cut.Find($"#{label.GetAttribute("for")}").GetAttribute("value")!);
     }
 
     [Fact]
-    public void WholeVariable_SignedOut_ThenItOffersTheSameShareWithTheSameLinkAndMail()
+    public void ShowWholeVariable_WhenSignedOut_ThenItOffersTheSameShareWithTheSameLinkAndMail()
     {
-        var (cut, _) = RenderExplorer();
+        var cut = RenderExplorer();
         OpenRow(cut);
-        var rowMail = ShareGroup(cut.Find(".munin-explorer-detail")).QuerySelectorAll("a").Single(a => a.TextContent.Trim() == "Send via e-post").GetAttribute("href");
+        var rowMail = ShareGroup(cut.Find(".munin-explorer-detail")).Mail.GetAttribute("href");
 
         cut.FindAll(".munin-explorer-detail button").Single(b => b.TextContent == "Vis hele variabelen").Click();
-        var whole = cut.WaitForElement("[id^='munin-variable-'][role=region]");
+        var share = ShareGroup(cut.WaitForElement("[id^='munin-variable-'][role=region]"));
 
-        var group = ShareGroup(whole);
-        Assert.Single(group.QuerySelectorAll("button"), b => b.TextContent.Trim() == "Kopier lenke");
-        var mail = Uri.UnescapeDataString(group.QuerySelectorAll("a").Single(a => a.TextContent.Trim() == "Send via e-post").GetAttribute("href")!);
+        Assert.Equal("Kopier lenke", share.Copy.TextContent.Trim());
+        var mail = Uri.UnescapeDataString(share.Mail.GetAttribute("href")!);
         Assert.Equal(Uri.UnescapeDataString(rowMail!), mail);
         Assert.StartsWith($"mailto:?subject=Variabel: {Name}&body=", mail);
-        AssertTheLinkOpensThisVariable(mail[(mail.IndexOf("http", StringComparison.Ordinal))..]);
+        AssertTheLinkOpensThisVariable(MailLink(share));
     }
 
     [Fact]
-    public async Task TheSharedLink_WhenOpened_ThenItShowsThatOneVariableWithItsRowOpen()
+    public void ShowWholeVariable_WhenTheRecordNamesAnotherDatasamling_ThenTheLinkKeepsTheRowsOwn()
+    {
+        var cut = RenderExplorer(new ShareClient { DetailDatasamlingId = OtherDatasamlingId });
+        OpenRow(cut);
+
+        cut.FindAll(".munin-explorer-detail button").Single(b => b.TextContent == "Vis hele variabelen").Click();
+        var share = ShareGroup(cut.WaitForElement("[id^='munin-variable-'][role=region]"));
+
+        AssertTheLinkOpensThisVariable(MailLink(share));
+    }
+
+    [Fact]
+    public void OpenRow_WhenTheVariableIsHistorical_ThenTheLinkSearchesHistoricalVariablesToo()
+    {
+        var cut = RenderExplorer(new ShareClient { VersionStatus = "Historical" }, "http://localhost/variabler?search=kjonn&includeHistorical=true");
+
+        OpenRow(cut);
+
+        AssertTheLinkOpensThisVariable(MailLink(ShareGroup(cut.Find(".munin-explorer-detail"))), historical: true);
+    }
+
+    [Fact]
+    public async Task NavigateTo_WhenGivenTheCopiedLink_ThenTheSearchIsForThatOneVariableWithItsRowOpen()
     {
         var copied = JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
         copied.SetVoidResult();
-        var (first, _) = RenderExplorer();
+        var client = new ShareClient();
+        var first = RenderExplorer(client);
         OpenRow(first);
-        ShareGroup(first.Find(".munin-explorer-detail")).QuerySelectorAll("button").Single(b => b.TextContent.Trim() == "Kopier lenke").Click();
+        ShareGroup(first.Find(".munin-explorer-detail")).Copy.Click();
         first.WaitForAssertion(() => Assert.Single(copied.Invocations));
         var link = (string)copied.Invocations.Single().Arguments.Single()!;
         await Renderer.DisposeComponents();
 
         Services.GetRequiredService<NavigationManager>().NavigateTo(link);
         var cut = Render<VariableExplorer>();
-        var client = (ShareClient)Services.GetRequiredService<IMuninExplorerClient>();
 
         cut.WaitForAssertion(() =>
         {
@@ -183,19 +233,54 @@ public class SearchShareTest : ExplorerTestContext
         });
     }
 
-    [Fact]
-    public void Search_WhenTheHostDeclinesTheSearchKey_ThenThereIsNoShareGroup()
+    [Theory]
+    [InlineData("search")]
+    [InlineData("variabelId")]
+    public void OpenRow_WhenTheHostDeclinesAnAddressKey_ThenNeitherTheRowNorTheWholeVariableOffersSharing(string key)
     {
-        var client = new ShareClient();
-        Services.AddSingleton<IMuninExplorerClient>(client);
-        Services.AddScoped<VariableListState>();
-        SetRendererInfo(new RendererInfo("Server", true));
-        Services.GetRequiredService<NavigationManager>().NavigateTo("http://localhost/variabler?search=kjonn");
-        var cut = Render<VariableExplorer>(b => b.Add(c => c.DeclinedKeys, ["search"]));
+        var cut = RenderExplorer(declined: [key]);
 
-        cut.WaitForElement("ul.munin-explorer-data-list button.munin-explorer-dataitem-main__name").Click();
-        var panel = cut.WaitForElement(".munin-explorer-detail");
+        OpenRow(cut);
+        Assert.DoesNotContain("Del variabel", cut.Find(".munin-explorer-detail").TextContent);
 
-        Assert.DoesNotContain("Del variabel", panel.TextContent);
+        cut.FindAll(".munin-explorer-detail button").Single(b => b.TextContent == "Vis hele variabelen").Click();
+        Assert.DoesNotContain("Del variabel", cut.WaitForElement("[id^='munin-variable-'][role=region]").TextContent);
+    }
+}
+
+/// <summary>The share group on its own: what it says belongs to the link it was asked about.</summary>
+public class VariableShareTest : ExplorerTestContext
+{
+    [Fact]
+    public void CopyLink_WhenTheClipboardAnswersAfterTheLinkChanged_ThenNothingIsSaid()
+    {
+        var copy = JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true);
+        var cut = Render<VariableShare>(p => p
+            .Add(c => c.Link, "https://helsedata.example/variabler?variabelId=1")
+            .Add(c => c.Name, "Kjønn")
+            .Add(c => c.HeadingId, "share-heading")
+            .Add(c => c.FieldId, "share-field"));
+
+        cut.Find("button").Click();
+        cut.Render(p => p.Add(c => c.Link, "https://helsedata.example/variabler?variabelId=2"));
+        copy.SetVoidResult();
+
+        cut.WaitForAssertion(() => Assert.Single(copy.Invocations));
+        Assert.Equal("", cut.Find("[role=status]").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Render_Always_ThenTheGroupIsNamedByItsHeadingAndTheMailLinkByItsHint()
+    {
+        var cut = Render<VariableShare>(p => p
+            .Add(c => c.Link, "https://helsedata.example/variabler?variabelId=1")
+            .Add(c => c.Name, "Kjønn")
+            .Add(c => c.HeadingId, "share-heading")
+            .Add(c => c.FieldId, "share-field"));
+
+        Assert.Equal("share-heading", cut.Find("[role=group]").GetAttribute("aria-labelledby"));
+        Assert.Equal("Del variabel", cut.Find("#share-heading").TextContent.Trim());
+        Assert.Equal("share-heading-mail-hint", cut.Find("a").GetAttribute("aria-describedby"));
+        Assert.StartsWith("mailto:?subject=Variabel%3A%20Kj%C3%B8nn&body=", cut.Find("a").GetAttribute("href"));
     }
 }
