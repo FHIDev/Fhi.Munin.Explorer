@@ -87,6 +87,64 @@ public class SharedListClientTest
     }
 
     // -----------------------------------------------------------------------
+    // ShareMyListAsync: a saved list is shared by id, so the code dies with the list (Fhi.Metadata-9huq2.10)
+
+    [Fact]
+    public async Task ShareMyListAsync_WhenASavedListIsShared_ThenItPostsToTheListsShareRouteWithNoBody()
+    {
+        var handler = StubHttpHandler.Answering(HttpStatusCode.Created, """{"code":"AB12CD"}""");
+
+        var code = await Client(handler).ShareMyListAsync(One);
+
+        Assert.Equal("AB12CD", code);
+        Assert.Equal(HttpMethod.Post, handler.LastMethod);
+        Assert.Equal($"/api/explorer/my/lists/{One}/share", handler.LastUri?.AbsolutePath);
+        Assert.True(string.IsNullOrEmpty(handler.LastBody));
+    }
+
+    [Fact]
+    public async Task ShareMyListAsync_WhenTheListIsGone_ThenItAnswersNull()
+    {
+        var handler = StubHttpHandler.Answering(HttpStatusCode.NotFound, "");
+
+        Assert.Null(await Client(handler).ShareMyListAsync(One));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public async Task ShareMyListAsync_WhenTheTokenIsRefused_ThenItThrowsUnauthorized(HttpStatusCode status)
+    {
+        var handler = StubHttpHandler.Answering(status, "");
+
+        await Assert.ThrowsAsync<MuninExplorerUnauthorizedException>(() => Client(handler).ShareMyListAsync(One));
+    }
+
+    [Fact]
+    public async Task ShareMyListAsync_WhenTheApiRefusesAnEmptyList_ThenItThrows()
+    {
+        var handler = StubHttpHandler.Answering(HttpStatusCode.BadRequest, """{"error":"The list is empty."}""");
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => Client(handler).ShareMyListAsync(One));
+    }
+
+    [Fact]
+    public async Task ShareMyListAsync_WhenTheAnswerHasNoCode_ThenItThrows()
+    {
+        var handler = StubHttpHandler.Answering(HttpStatusCode.Created, "{}");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Client(handler).ShareMyListAsync(One));
+    }
+
+    [Fact]
+    public async Task ShareMyListAsync_WhenThrottled_ThenItThrowsRateLimited()
+    {
+        var handler = StubHttpHandler.Answering(HttpStatusCode.TooManyRequests, "");
+
+        await Assert.ThrowsAsync<MuninExplorerRateLimitedException>(() => Client(handler).ShareMyListAsync(One));
+    }
+
+    // -----------------------------------------------------------------------
     // GetSharedListAsync
 
     [Fact]

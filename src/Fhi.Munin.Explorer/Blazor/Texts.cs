@@ -388,8 +388,8 @@ internal sealed record Texts(
     string ListNameRequired,
     string ListNameTooLong,
     string ListNameTaken,
-    // Sharing a list as a code, and opening one somebody shared (Fhi.Metadata-ntpbd.1). The code
-    // is readable by anyone who has it for 90 days, which is why the validity is said beside it.
+    // Sharing a list as a code, and opening one somebody shared (Fhi.Metadata-ntpbd.1). Anyone with the
+    // code can read it until the list is deleted, 90 days at most, which is why the validity is said beside it.
     string ShareList,
     string ShareCodeLabel,
     string ShareLinkLabel,
@@ -1420,9 +1420,9 @@ internal sealed record Texts(
             : "Åpner e-postprogrammet ditt. Bruker du e-post i nettleseren, kopier delekoden over i stedet.",
         ShareMailSubject: name => $"Delt variabelliste: {name}",
         ShareMailBody: (code, link) => link is null
-            ? $"Åpne listen med delekoden {code}. Koden virker i 90 dager."
-            : $"Åpne listen med delekoden {code}, eller med denne lenken: {link} Koden virker i 90 dager.",
-        ShareValidity: "Koden virker i 90 dager.",
+            ? $"Åpne listen med delekoden {code}. Koden virker i opptil 90 dager."
+            : $"Åpne listen med delekoden {code}, eller med denne lenken: {link} Koden virker i opptil 90 dager.",
+        ShareValidity: "Koden slutter å virke hvis du sletter listen, og senest etter 90 dager.",
         ShareError: "Kunne ikke dele listen nå. Prøv igjen om litt.",
         ShareVariable: "Del variabel",
         CopyVariableLink: "Kopier lenke",
@@ -1443,7 +1443,7 @@ internal sealed record Texts(
         CloseSharedList: "Lukk delt liste",
         CloseMenu: "Lukk",
         SignInToSaveSharedList: "Logg inn for å lagre listen som din egen.",
-        SharedListNotFound: code => $"Fant ingen delt liste med koden {code}. En kode virker i 90 dager.",
+        SharedListNotFound: code => $"Fant ingen delt liste med koden {code}. En kode virker i opptil 90 dager, og slutter å virke hvis listen slettes.",
         SharedListError: "Kunne ikke åpne den delte listen nå. Prøv igjen om litt.",
         ListNameRequired: "Skriv et navn på listen.",
         ListNameTooLong: "Navnet kan være høyst 200 tegn.",
@@ -1987,9 +1987,9 @@ internal sealed record Texts(
             : "Opens your mail program. If you use webmail, copy the share code above instead.",
         ShareMailSubject: name => $"Shared variable list: {name}",
         ShareMailBody: (code, link) => link is null
-            ? $"Open the list with the share code {code}. The code works for 90 days."
-            : $"Open the list with the share code {code}, or with this link: {link} The code works for 90 days.",
-        ShareValidity: "The code works for 90 days.",
+            ? $"Open the list with the share code {code}. The code works for up to 90 days."
+            : $"Open the list with the share code {code}, or with this link: {link} The code works for up to 90 days.",
+        ShareValidity: "The code stops working if you delete the list, and after 90 days at the latest.",
         ShareError: "Could not share the list just now. Try again shortly.",
         ShareVariable: "Share variable",
         CopyVariableLink: "Copy link",
@@ -2010,7 +2010,7 @@ internal sealed record Texts(
         CloseSharedList: "Close shared list",
         CloseMenu: "Close",
         SignInToSaveSharedList: "Sign in to save the list as your own.",
-        SharedListNotFound: code => $"No shared list was found with the code {code}. A code works for 90 days.",
+        SharedListNotFound: code => $"No shared list was found with the code {code}. A code works for up to 90 days, and stops working if the list is deleted.",
         SharedListError: "Could not open the shared list just now. Try again shortly.",
         ListNameRequired: "Enter a name for the list.",
         ListNameTooLong: "The name can be at most 200 characters.",

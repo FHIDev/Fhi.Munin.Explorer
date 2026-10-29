@@ -729,6 +729,10 @@ public interface IMuninExplorerClient
     /// field names are the ones Runa posts, so a code made here opens in Runa and the other way round.
     /// </para>
     /// <para>
+    /// For a list that is not saved. The list view shares the reader's saved lists with
+    /// <see cref="ShareMyListAsync"/>, whose code stops working when the list is deleted; this one's does not.
+    /// </para>
+    /// <para>
     /// The API refuses an empty list, a blank name, a name over 200 characters, more than 10 000
     /// items or a payload over 1 MB with a 400, which throws. Carries a default body for the reader
     /// <see cref="ExportListAsync"/> gives.
@@ -744,6 +748,25 @@ public interface IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ShareListAsync)}. " +
+            "Consume MuninExplorerClient, or implement the member.");
+
+    /// <summary>
+    /// Share one of the reader's saved lists behind a six-character code, and return the code. Null when the list is
+    /// gone or was never the reader's.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="ShareListAsync"/>, nothing travels in the body: the API builds the snapshot from the stored
+    /// list, without notes or desired data, and ties the code to the list, so deleting the list makes the code answer
+    /// 404. It still expires after 90 days. Needs the reader's token, as the rest of <c>my/lists</c> does; a 401 or 403
+    /// throws <see cref="MuninExplorerUnauthorizedException"/>. An empty list, or one over 10 000 items, is a 400 and
+    /// throws.
+    /// </remarks>
+    /// <param name="id">The saved list's id.</param>
+    /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
+    /// <returns>The code, as the API minted it, or null for a list the reader does not have.</returns>
+    Task<string?> ShareMyListAsync(Guid id, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            $"This {nameof(IMuninExplorerClient)} does not implement {nameof(ShareMyListAsync)}. " +
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>

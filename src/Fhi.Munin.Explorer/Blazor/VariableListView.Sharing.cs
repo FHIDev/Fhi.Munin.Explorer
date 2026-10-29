@@ -315,7 +315,7 @@ public sealed partial class VariableListView
 
     private async Task ShareShownListAsync()
     {
-        if (_shownList is not { } list || ShownList is not { VariableCount: > 0 } shown || _shareInFlight)
+        if (_shownList is not { } list || ShownList is not { VariableCount: > 0 } || _shareInFlight)
         {
             return;
         }
@@ -325,39 +325,52 @@ public sealed partial class VariableListView
 
         try
         {
-            var items = await ReadWholeListAsync(list);
+            // By id, so the API builds the snapshot and the code dies with the list (Fhi.Metadata-9huq2.10).
+            var code = await Client.ShareMyListAsync(list);
 
-            if (items is not { Count: > 0 } || _shownList != list)
+            if (_shownList != list)
             {
                 return;
             }
 
-            var code = await Client.ShareListAsync(shown.Name, items);
-
-            if (_shownList == list)
+            if (code is null)
             {
-                _shareMade = new ShareMade(list, code, SharedListHref?.Invoke(code));
+                // Another tab deleted the list, it was never this reader's, or the API predates the route.
+                Log?.LogWarning("the API found no list {ListId} to share", list);
+                _shareFailure = ListActionFailure.Failed;
+                return;
             }
+
+            _shareMade = new ShareMade(list, code, SharedListHref?.Invoke(code));
         }
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused sharing list {ListId}", list);
-            _shareFailure = ListActionFailure.Throttled;
+            FailShareOf(list, ListActionFailure.Throttled);
         }
         catch (MuninExplorerUnauthorizedException ex)
         {
-            // The walk in front of the share reads my/lists, which is the host's token to fix.
-            Log?.LogWarning(ex, "the API refused reading list {ListId} for sharing as unauthorised", list);
-            _shareFailure = ListActionFailure.Failed;
+            // The share is a my/lists call, so the host's token is what to fix.
+            Log?.LogWarning(ex, "the API refused sharing list {ListId} as unauthorised", list);
+            FailShareOf(list, ListActionFailure.Failed);
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not share list {ListId}", list);
-            _shareFailure = ListActionFailure.Failed;
+            FailShareOf(list, ListActionFailure.Failed);
         }
         finally
         {
             _shareInFlight = false;
+        }
+    }
+
+    // A failure for a list the reader has left is not said over the one they are on now.
+    private void FailShareOf(Guid list, ListActionFailure failure)
+    {
+        if (_shownList == list)
+        {
+            _shareFailure = failure;
         }
     }
 
