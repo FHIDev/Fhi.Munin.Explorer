@@ -17,7 +17,8 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// </para>
 /// <para>
 /// Every list is a logical OR within its own facet and an AND between facets, which is what the
-/// Explorer API does: two kilder means "either kilde", a kilde and a datatype means "both".
+/// Explorer API does: two kilder means "either kilde", a kilde and a datatype means "both". The
+/// one exception is <see cref="OrTreeTicks"/>, which ORs the kilde tree's levels with each other.
 /// </para>
 /// <para>
 /// The property names are English, the domain terms are not — <c>kilde</c>, <c>delkilde</c>,
@@ -122,6 +123,25 @@ public sealed record VariableFilter
     /// </summary>
     public bool IncludeHistorical { get; init; }
 
+    /// <summary>
+    /// Ticks in different branches of the kilde tree are OR'ed rather than ANDed: <see cref="KildeIds"/>,
+    /// <see cref="DelkildeIds"/>, <see cref="DatasamlingIds"/> and <see cref="VariabelgruppeScopes"/>.
+    /// </summary>
+    /// <remarks>
+    /// The API's <c>treeTicks=or</c> (Munin #6961, Fhi.Metadata-emsc0.1.1): a tick with a more specific tick below it still
+    /// only narrows, and every other filter stays ANDed. A tick in the explorer's kilde tree sets it. A hand-over from the
+    /// kildeutforsker, «Vis bare variabler fra denne datakilden/datasamlingen» and a datasamling's «Vis variablene» clear
+    /// it, until the reader ticks the tree again. Sent only when two or more of the four levels are ticked, the only case the API combines; not counted in
+    /// <see cref="ActiveCount"/>, since it narrows nothing on its own.
+    /// </remarks>
+    public bool OrTreeTicks { get; init; }
+
+    private const string TreeTicksKey = "treeTicks";
+
+    private int TreeLevelsTicked =>
+        (KildeIds.Count > 0 ? 1 : 0) + (DelkildeIds.Count > 0 ? 1 : 0) + (DatasamlingIds.Count > 0 ? 1 : 0)
+        + (VariabelgruppeScopes.Count > 0 ? 1 : 0);
+
     /// <summary>How many separate choices are active, which is what a UI counts in "3 filtre".</summary>
     /// <remarks>
     /// <para>
@@ -138,8 +158,12 @@ public sealed record VariableFilter
     /// whose press asks for the filter already in force and does nothing, with no other control
     /// able to reach that state either.
     /// </para>
+    /// <para>
+    /// <see cref="OrTreeTicks"/>'s <c>treeTicks</c> is the one key on the wire not counted: it says how the tree's ticks
+    /// combine, and is not a filter of its own.
+    /// </para>
     /// </remarks>
-    public int ActiveCount => ToQuery().Count();
+    public int ActiveCount => ToQuery().Count(pair => pair.Name != TreeTicksKey);
 
     /// <summary>Whether this narrows anything at all.</summary>
     public bool IsEmpty => ActiveCount == 0;
@@ -155,7 +179,7 @@ public sealed record VariableFilter
     [
         "kildeIds", "kildeType", "delkildeIds", "datasamlingIds", "variabelgruppeIds", "variabelgruppeScopes", "filterIds",
         "datatypes", "helsefagligKodeverkReferanser", "administrativtKodeverkOids", "instrumentIds",
-        "datakategorier", "harKildekodeverk", "dataFrom", "dataTo", "includeHistorical"
+        "datakategorier", "harKildekodeverk", "dataFrom", "dataTo", "includeHistorical", TreeTicksKey
     ], StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -249,6 +273,11 @@ public sealed record VariableFilter
         if (IncludeHistorical)
         {
             yield return ("includeHistorical", "true");
+        }
+
+        if (OrTreeTicks && TreeLevelsTicked > 1)
+        {
+            yield return (TreeTicksKey, "or");
         }
     }
 
@@ -370,6 +399,7 @@ public sealed record VariableFilter
         bool? hasKildekodeverk = null;
         DateOnly? dataFrom = null, dataTo = null;
         var includeHistorical = false;
+        var orTreeTicks = false;
 
         // Keyed by the API's own parameter names, spelled exactly as ToQuery writes them a few
         // lines above: this file's one job is to keep those two lists identical, and a lowercased
@@ -392,7 +422,8 @@ public sealed record VariableFilter
             ["harKildekodeverk"] = value => hasKildekodeverk = Bool(value) ?? hasKildekodeverk,
             ["dataFrom"] = value => dataFrom = Date(value) ?? dataFrom,
             ["dataTo"] = value => dataTo = Date(value) ?? dataTo,
-            ["includeHistorical"] = value => includeHistorical = Bool(value) ?? includeHistorical
+            ["includeHistorical"] = value => includeHistorical = Bool(value) ?? includeHistorical,
+            [TreeTicksKey] = value => orTreeTicks = string.Equals(value, "or", StringComparison.OrdinalIgnoreCase)
         };
 
         foreach (var (_, name, value) in QueryPairs.Split(queryString, MaxParameters))
@@ -425,7 +456,8 @@ public sealed record VariableFilter
             HasKildekodeverk = hasKildekodeverk,
             DataFrom = dataFrom,
             DataTo = dataTo,
-            IncludeHistorical = includeHistorical
+            IncludeHistorical = includeHistorical,
+            OrTreeTicks = orTreeTicks
         };
     }
 
