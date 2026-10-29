@@ -1073,7 +1073,7 @@ public class KildeSearchTest : ExplorerTestContext
     }
 
     // Three kilder with a zero, a small and a large variable count.
-    private static FakeClient BarKilder() => new(
+    private static FakeClient CountKilder() => new(
         Kilde("Hjerte- og karregisteret", "K_HKR", kildetype: "nasjonaltMedisinskKvalitetsregister",
             datasamlinger: 0, variables: 0),
         Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
@@ -1116,7 +1116,7 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.All(counts, cell => Assert.NotNull(cell.QuerySelector(":scope > .munin-explorer-kilder__card-label[hidden]")));
     }
 
-    /// <summary>A count cell's text as it is drawn: words for a screen reader and the phone card's hidden label left out.</summary>
+    /// <summary>A count cell's text as it is drawn, the phone card's hidden label left out.</summary>
     private static string ShownText(IElement cell)
     {
         // The phone card's label is `hidden` here: no wide screen draws it (Fhi.Metadata-ulkw3).
@@ -1127,12 +1127,10 @@ public class KildeSearchTest : ExplorerTestContext
             label.Remove();
         }
 
-        return cell.FirstChild?.NodeType == NodeType.Text && cell.QuerySelector(":scope > .screenreader-only") is { } words
-            ? cell.TextContent.Replace(words.TextContent, "", StringComparison.Ordinal).Trim()
-            : cell.TextContent.Trim();
+        return cell.TextContent.Trim();
     }
 
-    private static readonly Dictionary<string, string> BarNames = new(StringComparer.Ordinal)
+    private static readonly Dictionary<string, string> KildeNames = new(StringComparer.Ordinal)
     {
         ["K_HKR"] = "Hjerte- og karregisteret",
         ["K_ALS"] = "Als registeret",
@@ -1143,7 +1141,7 @@ public class KildeSearchTest : ExplorerTestContext
     /// <remarks>By name, because the code is a column the default table does not draw.</remarks>
     private static IElement VariablesCell(IRenderedComponent<KildeSearch> cut, string code)
     {
-        var name = BarNames[code];
+        var name = KildeNames[code];
         var column = cut.FindAll(".munin-explorer-kilder thead th")
             .ToList()
             .FindIndex(th => th.TextContent.Contains("Variab", StringComparison.Ordinal));
@@ -1159,7 +1157,7 @@ public class KildeSearchTest : ExplorerTestContext
     [Fact]
     public void VariablesCell_WhenTheCountIsAboveZero_ThenItHoldsTheDigitsAndNothingElse()
     {
-        var cut = RenderWith(BarKilder());
+        var cut = RenderWith(CountKilder());
 
         foreach (var (code, digits) in (ValueTuple<string, string>[])[("K_ALS", "23"), ("K_DAR", "2506")])
         {
@@ -1176,7 +1174,7 @@ public class KildeSearchTest : ExplorerTestContext
     [Fact]
     public void VariablesCell_WhenTheVariableCountIsZero_ThenItReadsADimmedDash()
     {
-        var cut = RenderWith(BarKilder());
+        var cut = RenderWith(CountKilder());
 
         var cell = VariablesCell(cut, "K_HKR");
 
@@ -1188,7 +1186,7 @@ public class KildeSearchTest : ExplorerTestContext
     [Fact]
     public void Render_WhenEveryColumnIsOn_ThenNoCellDrawsAProportionBar()
     {
-        var cut = RenderWith(BarKilder());
+        var cut = RenderWith(CountKilder());
         TurnEveryColumnOn(cut);
 
         Assert.Empty(cut.FindAll(".munin-explorer-kilder__bar, .munin-explorer-kilder__bar-fill"));

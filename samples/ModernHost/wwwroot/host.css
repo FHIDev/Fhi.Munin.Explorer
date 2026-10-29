@@ -2827,6 +2827,7 @@ table.munin-explorer-data-list tbody th {
 }
 
 /* ---- the proportion bar under a non-zero variable count ----
+   No longer emitted (Fhi.Metadata-l9l2n.155); kept while Stiler ships it, until Fhi.Metadata-l9l2n.156.
    Stiler's rules as merged by Fhi.Metadata-35w0p.68. A block under the digits, not beside them, so
    the column does not widen; the fill's width is inline from the component, never set here. */
 .munin-explorer-kilder .munin-explorer-kilder__bar {
@@ -5782,7 +5783,7 @@ a[target=_blank]:not(.hd-button-square):focus::after {
 /* ---- Stiler, under components/munin-explorer: the kilde list as cards on a phone ----
 
    Fhi.Metadata-ulkw3 (Robin, 2026-10-19). Under 768px each kilde is a card: name, kildetype, the
-   datasamlinger count and the variable bar; the other columns and the sideways scroll go. The head
+   datasamlinger count and the variable count; the other columns and the sideways scroll go. The head
    stays as a sort line with Navn and Variabler. `__card-label` is `hidden` in the markup, so a
    stylesheet without these rules draws the table as before. Read back off Stiler's patch for it. */
 @media all and (max-width: 767px) {
