@@ -145,6 +145,15 @@ else if (_wholeVariable)
                               InstrumentHref="@InstrumentHref"
                               NamedSections="@KodeverkSections(whole)" />
             </CascadingValue>
+
+            @if (VariableHref?.Invoke(SummaryOf(whole)) is { } wholeLink)
+            {
+                <VariableShare Link="@wholeLink"
+                               Name="@T.NamedFor(whole.PreferredTerm, whole.PreferredTermEn, whole.Code, Reader).Text"
+                               HeadingId="@ShareHeadingId("whole")"
+                               FieldId="@ShareFieldId("whole")"
+                               Language="@Language" />
+            }
         }
         else
         {
@@ -914,6 +923,16 @@ else
                                    or not the detail has loaded, so a failed fetch still lets the reader save it. *@
                                 @PanelSaveButton(v)
                                 @PanelSaveStatus(v)
+
+                                @* Last, as in the reader's own list, and for everyone: a link needs no sign-in. *@
+                                @if (VariableHref?.Invoke(v) is { } rowLink)
+                                {
+                                    <VariableShare Link="@rowLink"
+                                                   Name="@T.NamedFor(v.PreferredTerm, v.PreferredTermEn, v.Code, Reader).Text"
+                                                   HeadingId="@ShareHeadingId("row")"
+                                                   FieldId="@ShareFieldId("row")"
+                                                   Language="@Language" />
+                                }
                             </div>@* munin-explorer-meta munin-explorer-detail *@
                             </div>@* the row's last cell *@
                         }
