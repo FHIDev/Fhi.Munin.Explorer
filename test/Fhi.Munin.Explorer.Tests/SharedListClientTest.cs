@@ -129,6 +129,14 @@ public class SharedListClientTest
     }
 
     [Fact]
+    public async Task ShareMyListAsync_WhenTheAnswerHasNoCode_ThenItThrows()
+    {
+        var handler = StubHttpHandler.Answering(HttpStatusCode.Created, "{}");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Client(handler).ShareMyListAsync(One));
+    }
+
+    [Fact]
     public async Task ShareMyListAsync_WhenThrottled_ThenItThrowsRateLimited()
     {
         var handler = StubHttpHandler.Answering(HttpStatusCode.TooManyRequests, "");

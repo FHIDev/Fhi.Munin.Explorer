@@ -335,7 +335,8 @@ public sealed partial class VariableListView
 
             if (code is null)
             {
-                // Another tab deleted the list, or it was never this reader's.
+                // Another tab deleted the list, it was never this reader's, or the API predates the route.
+                Log?.LogWarning("the API found no list {ListId} to share", list);
                 _shareFailure = ListActionFailure.Failed;
                 return;
             }
@@ -345,22 +346,31 @@ public sealed partial class VariableListView
         catch (MuninExplorerRateLimitedException ex)
         {
             Log?.LogWarning(ex, "the rate limiter refused sharing list {ListId}", list);
-            _shareFailure = ListActionFailure.Throttled;
+            FailShareOf(list, ListActionFailure.Throttled);
         }
         catch (MuninExplorerUnauthorizedException ex)
         {
             // The share is a my/lists call, so the host's token is what to fix.
             Log?.LogWarning(ex, "the API refused sharing list {ListId} as unauthorised", list);
-            _shareFailure = ListActionFailure.Failed;
+            FailShareOf(list, ListActionFailure.Failed);
         }
         catch (Exception ex)
         {
             Log?.LogError(ex, "could not share list {ListId}", list);
-            _shareFailure = ListActionFailure.Failed;
+            FailShareOf(list, ListActionFailure.Failed);
         }
         finally
         {
             _shareInFlight = false;
+        }
+    }
+
+    // A failure for a list the reader has left is not said over the one they are on now.
+    private void FailShareOf(Guid list, ListActionFailure failure)
+    {
+        if (_shownList == list)
+        {
+            _shareFailure = failure;
         }
     }
 

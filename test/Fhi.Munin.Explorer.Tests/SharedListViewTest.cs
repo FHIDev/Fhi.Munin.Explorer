@@ -327,6 +327,38 @@ public class SharedListViewTest : ExplorerTestContext
         Assert.Empty(cut.FindAll("input[readonly]"));
     }
 
+    [Fact]
+    public void Share_WhenTheShareIsThrottled_ThenTheAlertSaysToWaitAndNoCodeShows()
+    {
+        var cut = RenderView(new ShareClient(new ShareStore())
+        {
+            OwnItems = Three,
+            ShareThrows = new MuninExplorerRateLimitedException(null),
+        });
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Del liste").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Du har gjort for mange forespørsler. Vent litt før du prøver igjen.", Alert(cut)));
+        Assert.Empty(cut.FindAll("input[readonly]"));
+    }
+
+    [Fact]
+    public void Share_WhenTheTokenIsRefused_ThenTheAlertSaysTheShareFailedAndNoCodeShows()
+    {
+        var cut = RenderView(new ShareClient(new ShareStore())
+        {
+            OwnItems = Three,
+            ShareThrows = new MuninExplorerUnauthorizedException(),
+        });
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Del liste").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke dele listen nå. Prøv igjen om litt.", Alert(cut)));
+        Assert.Empty(cut.FindAll("input[readonly]"));
+    }
+
     // -----------------------------------------------------------------------
     // AC4: an unknown code, or a failure, is said in the alert region and nothing throws
 

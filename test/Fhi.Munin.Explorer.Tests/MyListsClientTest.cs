@@ -995,6 +995,11 @@ public class MyListsClientTest
                 return Answer(HttpStatusCode.Created, CreatedList);
             }
 
+            if (request.Method == HttpMethod.Post && path.EndsWith("/share", StringComparison.Ordinal))
+            {
+                return Answer(HttpStatusCode.Created, """{"code":"AB12CD"}""");
+            }
+
             if (request.Method == HttpMethod.Get)
             {
                 return Answer(
@@ -1024,7 +1029,8 @@ public class MyListsClientTest
             ("SetMyListItemDesiredDataAsync", () => client.SetMyListItemDesiredDataAsync(ListId, ids[0], "C76")),
             ("SetMyListItemNotesAsync", () => client.SetMyListItemNotesAsync(ListId, ids[0], "Spør om 2012")),
             ("ExportMyListAsync", () => client.ExportMyListAsync(ListId)),
-            ("ExportMyListAsync with host page", () => client.ExportMyListAsync(ListId, new Uri("https://host.example/variables/")))
+            ("ExportMyListAsync with host page", () => client.ExportMyListAsync(ListId, new Uri("https://host.example/variables/"))),
+            ("ShareMyListAsync", () => client.ShareMyListAsync(ListId))
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);
@@ -1072,7 +1078,8 @@ public class MyListsClientTest
             () => client.SetMyListItemDesiredDataAsync(ListId, ids[0], "C76"),
             () => client.SetMyListItemNotesAsync(ListId, ids[0], "Spør om 2012"),
             () => client.ExportMyListAsync(ListId),
-            () => client.ExportMyListAsync(ListId, new Uri("https://host.example/variables/"))
+            () => client.ExportMyListAsync(ListId, new Uri("https://host.example/variables/")),
+            () => client.ShareMyListAsync(ListId)
         };
 
         AssertEveryMyListsMethodIsSwept(calls.Length);

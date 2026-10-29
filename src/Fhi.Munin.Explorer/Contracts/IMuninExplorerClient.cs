@@ -729,6 +729,10 @@ public interface IMuninExplorerClient
     /// field names are the ones Runa posts, so a code made here opens in Runa and the other way round.
     /// </para>
     /// <para>
+    /// For a list that is not saved. The list view shares the reader's saved lists with
+    /// <see cref="ShareMyListAsync"/>, whose code stops working when the list is deleted; this one's does not.
+    /// </para>
+    /// <para>
     /// The API refuses an empty list, a blank name, a name over 200 characters, more than 10 000
     /// items or a payload over 1 MB with a 400, which throws. Carries a default body for the reader
     /// <see cref="ExportListAsync"/> gives.
