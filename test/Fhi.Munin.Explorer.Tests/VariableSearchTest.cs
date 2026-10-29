@@ -8553,6 +8553,27 @@ public class VariableSearchTest : ExplorerTestContext
     }
 
     [Fact]
+    public void KildeTree_WhenADatasamlingAndAGroupUnderAnotherAreTicked_ThenTheListAndTheCountsAskForTreeTicksOr()
+    {
+        // Inge 28.10, «alt som er krysset av»: ticks in different branches are OR'ed (Fhi.Metadata-emsc0.1.1).
+        var client = new FilteringClient(OnePage(), FacetsWithBothSurfaces());
+        var cut = RenderWith(client);
+        ExpandBranches(cut);
+
+        Press(SurfaceBox(KildeFacet(cut), "Fjerde runde"));
+
+        // One tick reads the same either way, so nothing extra is sent.
+        Assert.DoesNotContain("treeTicks", client.SearchFilter!.ToQueryString(), StringComparison.Ordinal);
+
+        Press(SurfaceBox(KildeFacet(cut), "Kosthold"));
+
+        Assert.Equal([Tromso4Round], client.SearchFilter!.DatasamlingIds);
+        Assert.Equal([new VariabelgruppeScope(Nutrition, Tromso1)], client.SearchFilter.VariabelgruppeScopes);
+        Assert.Contains("treeTicks=or", client.SearchFilter.ToQueryString(), StringComparison.Ordinal);
+        Assert.Contains("treeTicks=or", client.FacetFilter!.ToQueryString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Variabelgrupper_WhenAScopedTickWouldPassTheCap_ThenItIsRefusedWithAMessageThatTheNextFilterChangeClears()
     {
         // The API refuses the whole search past MaxVariabelgruppeScopes, so the 51st tick is not sent;
@@ -16740,6 +16761,24 @@ public class VariableSearchTest : ExplorerTestContext
         NarrowButton(cut).Click();
 
         Assert.Equal(new VariableFilter { KildeIds = [AlsId] }, reported);
+    }
+
+    [Fact]
+    public void Source_WhenTheTreeTicksWereOred_ThenNarrowingToTheKildeAndsItWithTheOtherTicks()
+    {
+        // «This kilde's variabler in that datasamling» (Fhi.Metadata-emsc0.1.1): an OR would widen it instead.
+        var datasamling = new Guid("eeeeeeee-0000-0000-0000-0000000000fe");
+        VariableFilter? reported = null;
+        var cut = RenderWith(TwoRows(), b => b
+            .Add(c => c.Filter, new VariableFilter { DatasamlingIds = [datasamling], OrTreeTicks = true })
+            .Add(c => c.FilterChanged, f => reported = f));
+
+        Toggles(cut)[0].Click();
+        SourceToggles(cut)[0].Click();
+        NarrowButton(cut).Click();
+
+        Assert.False(reported!.OrTreeTicks);
+        Assert.DoesNotContain("treeTicks", reported.ToQueryString(), StringComparison.Ordinal);
     }
 
     [Fact]

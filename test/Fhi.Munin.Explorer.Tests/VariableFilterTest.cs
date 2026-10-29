@@ -287,6 +287,57 @@ public class VariableFilterTest
         HasKildekodeverk = true,
         DataFrom = new DateOnly(2010, 1, 1),
         DataTo = new DateOnly(2025, 6, 30),
-        IncludeHistorical = true
+        IncludeHistorical = true,
+        OrTreeTicks = true
     };
+
+    // -----------------------------------------------------------------------
+    // OrTreeTicks (Fhi.Metadata-emsc0.1.1): treeTicks=or, sent only where it can change the answer
+
+    private static readonly Guid TreeA = new("0f0f0f0f-0000-0000-0000-000000000001");
+    private static readonly Guid TreeB = new("0f0f0f0f-0000-0000-0000-000000000002");
+
+    [Fact]
+    public void OrTreeTicks_WhenTwoTreeTicksAreSet_ThenTreeTicksOrIsSentAndReadBack()
+    {
+        var filter = new VariableFilter { KildeIds = [TreeA], DatasamlingIds = [TreeB], OrTreeTicks = true };
+
+        Assert.EndsWith("&treeTicks=or", filter.ToQueryString(), StringComparison.Ordinal);
+        Assert.True(VariableFilter.Parse(filter.ToQueryString()).OrTreeTicks);
+        Assert.Equal(filter, VariableFilter.Parse(filter.ToQueryString()));
+        Assert.Contains("treeTicks", VariableFilter.QueryKeys);
+    }
+
+    [Fact]
+    public void OrTreeTicks_WhenItIsSet_ThenItIsNotCountedAsAFilter()
+    {
+        var filter = new VariableFilter { KildeIds = [TreeA], DatasamlingIds = [TreeB], OrTreeTicks = true };
+
+        Assert.Equal(2, filter.ActiveCount);
+    }
+
+    [Theory]
+    [InlineData(false, 2)]
+    [InlineData(true, 1)]
+    [InlineData(true, 0)]
+    public void OrTreeTicks_WhenOffOrUnderTwoTicks_ThenNothingIsSent(bool or, int ticks)
+    {
+        var filter = new VariableFilter
+        {
+            DelkildeIds = ticks > 0 ? [TreeA] : [],
+            VariabelgruppeScopes = ticks > 1 ? [new VariabelgruppeScope(TreeB, TreeA)] : [],
+            DataTypes = ["Integer"],
+            OrTreeTicks = or,
+        };
+
+        Assert.DoesNotContain("treeTicks", filter.ToQueryString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("treeTicks=and")]
+    [InlineData("treeTicks=bogus")]
+    public void OrTreeTicks_WhenTheUrlSaysAnythingButOr_ThenItIsOff(string query)
+    {
+        Assert.False(VariableFilter.Parse($"kildeIds={TreeA}&datasamlingIds={TreeB}&{query}").OrTreeTicks);
+    }
 }

@@ -412,9 +412,10 @@ public partial class VariableSearch
             return;
         }
 
+        // «This kilde's variabler in that datasamling»: ANDed with the reader's other ticks, not OR'ed.
         var narrowed = kind == SourceKind.Kilde
-            ? _filter with { KildeIds = [id] }
-            : _filter with { DatasamlingIds = [id] };
+            ? _filter with { KildeIds = [id], OrTreeTicks = false }
+            : _filter with { DatasamlingIds = [id], OrTreeTicks = false };
 
         _focusSearchAfterSource = true;
         ClearSelection();

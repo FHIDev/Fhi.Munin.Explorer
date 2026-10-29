@@ -628,7 +628,7 @@ public partial class VariableSearch
             language,
             null,
             Pending.KildeIds.Contains(kilde.Id),
-            () => ToggleAsync(Pending.KildeIds, kilde.Id, ids => Pending with { KildeIds = ids }),
+            () => ToggleTickAsync(Pending.KildeIds, kilde.Id, ids => Pending with { KildeIds = ids }),
             [],
             // The same folder a delkilde wears: the two are one level of grouping as far as the
             // tree is concerned, and Kelda's own hierarchy draws them alike.
@@ -705,7 +705,7 @@ public partial class VariableSearch
                                   language,
                                   Counted(node.Count),
                                   reading.Chosen().Contains(node.Id),
-                                  () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply),
+                                  () => ToggleTickAsync(reading.Chosen(), node.Id, reading.Apply),
                                   children,
                                   Icons: Glyphs(node),
                                   NameNo: node.NameNo,
@@ -760,7 +760,7 @@ public partial class VariableSearch
             language,
             null,
             Pending.DatasamlingIds.Contains(datasamling.Id),
-            () => ToggleAsync(Pending.DatasamlingIds, datasamling.Id,
+            () => ToggleTickAsync(Pending.DatasamlingIds, datasamling.Id,
                               ids => Pending with { DatasamlingIds = ids }),
             [],
             // Off the facet payload this row was already built from, so the glyphs cost no request —
@@ -774,7 +774,7 @@ public partial class VariableSearch
     private bool IsDelkildeChosen(Guid id) => Pending.DelkildeIds.Contains(id);
 
     private Func<Task> ToggleDelkilde(Guid id) =>
-        () => ToggleAsync(Pending.DelkildeIds, id, ids => Pending with { DelkildeIds = ids });
+        () => ToggleTickAsync(Pending.DelkildeIds, id, ids => Pending with { DelkildeIds = ids });
 
     /// <summary>The variabelgruppe facet, as a tree.</summary>
     /// <remarks>
@@ -886,12 +886,12 @@ public partial class VariableSearch
             return Task.CompletedTask;
         }
 
-        return ToggleAsync(Pending.VariabelgruppeScopes, scope, scopes => Pending with { VariabelgruppeScopes = scopes });
+        return ToggleTickAsync(Pending.VariabelgruppeScopes, scope, scopes => Pending with { VariabelgruppeScopes = scopes });
     }
 
     // Choosing a group everywhere supersedes its placements, so their scopes go with the tick.
     private Func<Task> ToggleGruppe(Guid id) =>
-        () => ToggleAsync(Pending.VariabelgruppeIds, id, ids => Pending with
+        () => ToggleTickAsync(Pending.VariabelgruppeIds, id, ids => Pending with
         {
             VariabelgruppeIds = ids,
             VariabelgruppeScopes = [.. Pending.VariabelgruppeScopes.Where(scope => scope.VariabelgruppeId != id)]
@@ -1714,6 +1714,11 @@ public partial class VariableSearch
 
         return ApplyFilterAsync(apply([.. selected, value]));
     }
+
+    // A tick in the kilde tree: ticks in different branches are OR'ed from here on (Fhi.Metadata-emsc0.1.1).
+    private Task ToggleTickAsync<TItem>(
+        IReadOnlyList<TItem> selected, TItem value, Func<IReadOnlyList<TItem>, VariableFilter> apply) =>
+        ToggleAsync(selected, value, chosen => apply(chosen) with { OrTreeTicks = true });
 
     /// <summary>Choose a kildetype, or clear it by choosing the one already chosen.</summary>
     /// <remarks>
