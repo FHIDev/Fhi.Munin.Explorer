@@ -124,10 +124,10 @@ internal static partial class KildeAccess
             return new Offer(RequiresApplication, t.AccessDirect, [name], [new Link(t.AccessApplyToRegistry, page, Primary: true)]);
         }
 
-        if (DisplayText.Trimmed(Value(kilde, ApplicationEmailKey)) is { } email && EmailPattern().IsMatch(email) && !email.Contains('%'))
+        if (DisplayText.Trimmed(Value(kilde, ApplicationEmailKey)) is { } email && CatalogueMarkdown.Mailto(email) is { } mailto)
         {
             return new Offer(RequiresApplication, t.AccessDirectByEmail, [name, new Fill(email, Norwegian: false)],
-                [new Link(t.AccessSendEmail, "mailto:" + email, Primary: true)]);
+                [new Link(t.AccessSendEmail, mailto, Primary: true)]);
         }
 
         return WebsiteKeys.Select(key => Website(Value(kilde, key))).FirstOrDefault(href => href is not null) is { } site
@@ -151,7 +151,4 @@ internal static partial class KildeAccess
     [GeneratedRegex(@"\{(\d)\}")]
     private static partial Regex HolePattern();
 
-    // Munin's own rule for its Email type; a '%' is refused besides, since a mail client decodes it in a mailto.
-    [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")]
-    private static partial Regex EmailPattern();
 }

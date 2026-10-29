@@ -20,6 +20,22 @@ public class CatalogueMarkdownTest : ExplorerTestContext
 {
     private IRenderedComponent<IComponent> Rendered(string text) => Render(CatalogueMarkdown.Render(text));
 
+    [Theory]
+    [InlineData("post@uit.no", "mailto:post@uit.no")]
+    [InlineData("  Ola.Nordmann+npr@fhi.no ", "mailto:Ola.Nordmann+npr@fhi.no")]
+    [InlineData("post@uit", null)]
+    [InlineData("post@uit.no?subject=x", null)]
+    [InlineData("post@uit.no#x", null)]
+    [InlineData("a%0Abcc@uit.no", null)]
+    [InlineData("\"post\"@uit.no", null)]
+    [InlineData("post@uit.no; annen@uit.no", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void Mailto_OnlyOneValidAddress_BecomesAnHref(string? value, string? expected)
+    {
+        Assert.Equal(expected, CatalogueMarkdown.Mailto(value));
+    }
+
     [Fact]
     public void Render_WhenTheTextCarriesAMarkdownLink_ThenItBecomesAGuardedAnchor()
     {

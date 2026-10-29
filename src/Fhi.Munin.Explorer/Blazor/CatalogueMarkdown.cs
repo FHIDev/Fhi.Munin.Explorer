@@ -53,6 +53,18 @@ internal static partial class CatalogueMarkdown
     private static partial Regex WebAddress();
 
     /// <summary>The schemes a link is allowed to carry; anything else renders as text.</summary>
+    /// <summary>
+    /// One valid e-mail address as its <c>mailto:</c> href, by Munin's Email rule; <c>%</c> is refused since a mail
+    /// client decodes it, and the rule admits no quote, <c>?</c> or <c>#</c>.
+    /// </summary>
+    internal static string? Mailto(string? raw) =>
+        raw?.Trim() is { Length: > 0 } address && EmailPattern().IsMatch(address) && !address.Contains('%')
+            ? "mailto:" + address
+            : null;
+
+    [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")]
+    private static partial Regex EmailPattern();
+
     internal static bool AllowedScheme(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri)
         && uri.Scheme is "http" or "https" or "mailto";
