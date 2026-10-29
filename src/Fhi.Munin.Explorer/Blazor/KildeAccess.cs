@@ -150,5 +150,4 @@ internal static partial class KildeAccess
 
     [GeneratedRegex(@"\{(\d)\}")]
     private static partial Regex HolePattern();
-
 }

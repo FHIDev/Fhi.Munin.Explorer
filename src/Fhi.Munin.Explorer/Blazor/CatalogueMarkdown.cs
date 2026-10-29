@@ -53,21 +53,33 @@ internal static partial class CatalogueMarkdown
     private static partial Regex WebAddress();
 
     /// <summary>The schemes a link is allowed to carry; anything else renders as text.</summary>
+    internal static bool AllowedScheme(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri)
+        && uri.Scheme is "http" or "https" or "mailto";
+
     /// <summary>
     /// One valid e-mail address as its <c>mailto:</c> href, by Munin's Email rule; <c>%</c> is refused since a mail
     /// client decodes it, and the rule admits no quote, <c>?</c> or <c>#</c>.
     /// </summary>
-    internal static string? Mailto(string? raw) =>
-        raw?.Trim() is { Length: > 0 } address && EmailPattern().IsMatch(address) && !address.Contains('%')
-            ? "mailto:" + address
-            : null;
+    internal static string? Mailto(string? raw)
+    {
+        if (raw?.Trim() is not { Length: > 0 } address || address.Contains('%'))
+        {
+            return null;
+        }
 
-    [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")]
+        try
+        {
+            return EmailPattern().IsMatch(address) ? "mailto:" + address : null;
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return null;
+        }
+    }
+
+    [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.None, 250)]
     private static partial Regex EmailPattern();
-
-    internal static bool AllowedScheme(string? url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var uri)
-        && uri.Scheme is "http" or "https" or "mailto";
 
     /// <summary>
     /// A whole value that is one link — <c>[label](url)</c> or a bare URL — as label and href, or
