@@ -249,7 +249,7 @@ jobs:
       # The scripts run node; pin the fleet's major (DevInfra-jna.4) instead of the runner's own.
       - uses: actions/setup-node@v6
         with:
-          node-version: 26.12.1
+          node-version: 26.13.0
 
       - name: Assert the sample hosts' stylesheets are identical and complete
         # The same script developers can run locally before pushing, so a red check here is
@@ -454,7 +454,7 @@ jobs:
       # The scripts run node; pin the fleet's major (DevInfra-jna.4) instead of the runner's own.
       - uses: actions/setup-node@v6
         with:
-          node-version: 26.12.1
+          node-version: 26.13.0
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -516,7 +516,7 @@ jobs:
       # The scripts run node; pin the fleet's major (DevInfra-jna.4) instead of the runner's own.
       - uses: actions/setup-node@v6
         with:
-          node-version: 26.12.1
+          node-version: 26.13.0
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -594,7 +594,7 @@ jobs:
       # The scripts run node; pin the fleet's major (DevInfra-jna.4) instead of the runner's own.
       - uses: actions/setup-node@v6
         with:
-          node-version: 26.12.1
+          node-version: 26.13.0
 
       # The credential the private feed needs. It goes in the environment and not in a build
       # argument, which persists in image history — the same rule that makes a container build of
