@@ -29,6 +29,33 @@ under alpha.8, which is the whole reason this file exists.
 
 <!-- assemble-changelog: new version sections are inserted directly below this line, newest first. -->
 
+## 2.13.0 — 2026-10-29
+
+### Fixed
+
+- **An Email field in the details is a mailto link again.** A kilde's E-post read as plain text while
+  Hjemmeside beside it was a link (FHIDev/Munin#6896). A field the catalogue types `Email` now links with
+  `mailto:` when its whole value is one valid address, by the same rule the access offer already used; anything
+  else stays the text it was.
+
+### Removed
+
+- **The proportion bar under the kilde list's variable count is gone.** The «Variabler» cell now holds only the number,
+  with no bar, hover text or screen-reader comparison; readers found the bar confusing and see a kilde's variables
+  elsewhere (FHIDev/Munin#6718). (Fhi.Metadata-l9l2n.155)
+
+### Notes for hosts
+
+- **`munin-explorer-kilder__bar` and `munin-explorer-kilder__bar-fill` are no longer emitted.** A host's rules for them
+  now match nothing and can go. The sample stylesheets keep theirs only while Stiler still ships the same rules.
+  (Fhi.Metadata-l9l2n.155)
+- **A legacy Blazor Server host on .NET 10 needs `PersistedCircuitInMemoryMaxRetained = 0` and a `#blazor-error-ui`.**
+  Without them, a reader who comes back after the network was gone longer than the circuit retention gets a page that
+  no longer answers and says nothing: .NET 10 "resumes" the expired circuit with none of the components. With the
+  option the resume is refused and `blazor.server.js` reloads the page, the explorer's state coming back from the URL.
+  `samples/LegacyHost` and `samples/HostileHost` now carry both, and the README has the two snippets under «A legacy
+  Blazor Server host on .NET 10». Reported on helsedata test (FHIDev/Munin#6911). (Fhi.Metadata-u21je)
+
 ## 2.12.0 — 2026-10-28
 
 ### Changed
