@@ -315,7 +315,7 @@ public sealed partial class VariableListView
 
     private async Task ShareShownListAsync()
     {
-        if (_shownList is not { } list || ShownList is not { VariableCount: > 0 } shown || _shareInFlight)
+        if (_shownList is not { } list || ShownList is not { VariableCount: > 0 } || _shareInFlight)
         {
             return;
         }
@@ -325,19 +325,22 @@ public sealed partial class VariableListView
 
         try
         {
-            var items = await ReadWholeListAsync(list);
+            // By id, so the API builds the snapshot and the code dies with the list (Fhi.Metadata-9huq2.10).
+            var code = await Client.ShareMyListAsync(list);
 
-            if (items is not { Count: > 0 } || _shownList != list)
+            if (_shownList != list)
             {
                 return;
             }
 
-            var code = await Client.ShareListAsync(shown.Name, items);
-
-            if (_shownList == list)
+            if (code is null)
             {
-                _shareMade = new ShareMade(list, code, SharedListHref?.Invoke(code));
+                // Another tab deleted the list, or it was never this reader's.
+                _shareFailure = ListActionFailure.Failed;
+                return;
             }
+
+            _shareMade = new ShareMade(list, code, SharedListHref?.Invoke(code));
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -346,8 +349,8 @@ public sealed partial class VariableListView
         }
         catch (MuninExplorerUnauthorizedException ex)
         {
-            // The walk in front of the share reads my/lists, which is the host's token to fix.
-            Log?.LogWarning(ex, "the API refused reading list {ListId} for sharing as unauthorised", list);
+            // The share is a my/lists call, so the host's token is what to fix.
+            Log?.LogWarning(ex, "the API refused sharing list {ListId} as unauthorised", list);
             _shareFailure = ListActionFailure.Failed;
         }
         catch (Exception ex)

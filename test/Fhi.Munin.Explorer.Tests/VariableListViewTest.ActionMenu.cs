@@ -22,8 +22,7 @@ public partial class VariableListViewTest
         /// <summary>Holds the share open until released, the window a reader can act in.</summary>
         public TaskCompletionSource? HoldShare { get; init; }
 
-        public override async Task<string> ShareListAsync(
-            string name, IReadOnlyCollection<VariableListItem> items, CancellationToken cancellationToken = default)
+        public override async Task<string?> ShareMyListAsync(Guid id, CancellationToken cancellationToken = default)
         {
             if (HoldShare is not null)
             {

@@ -544,6 +544,8 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
     private static string MyListExport(Guid id) => $"{MyList(id)}/export";
 
+    private static string MyListShare(Guid id) => $"{MyList(id)}/share";
+
     /// <summary>The per-variable annotation route. The API spells the segment <c>variabelId</c>.</summary>
     private static string MyListVariableDesiredData(Guid id, Guid variableId) =>
         $"{MyListVariables(id)}/{variableId}/desired-data";
@@ -1126,6 +1128,34 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
             ? code
             : throw new InvalidOperationException(
                 $"{ShareLists} answered {(int)response.StatusCode} without a code in the body. "
+                + "The endpoint answers 201 with {\"code\": \"...\"}.");
+    }
+
+    public async Task<string?> ShareMyListAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        using var response = await SendAsync(HttpMethod.Post, MyListShare(id), body: null, cancellationToken);
+
+        // Another tab deleted the list, or it was never this reader's: the API answers both alike.
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            throw new MuninExplorerUnauthorizedException();
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var answer = await response.Content
+            .ReadFromJsonAsync<CodeBody>(Json, cancellationToken)
+            .ConfigureAwait(false);
+
+        return answer?.Code is { Length: > 0 } code
+            ? code
+            : throw new InvalidOperationException(
+                $"{MyListShare(id)} answered {(int)response.StatusCode} without a code in the body. "
                 + "The endpoint answers 201 with {\"code\": \"...\"}.");
     }
 
