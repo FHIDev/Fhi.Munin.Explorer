@@ -8600,6 +8600,11 @@ public class VariableSearchTest : ExplorerTestContext
         Press(SurfaceBox(StandaloneFacet(cut), "Kosthold"));
         Assert.False(client.SearchFilter!.OrTreeTicks);
         Assert.Equal([Nutrition], client.SearchFilter.VariabelgruppeIds);
+
+        // The kilde chip shares its value with the tree's row, whose toggle alone ticks.
+        RemoveChip(cut, "Tromsøundersøkelsen");
+        Assert.False(client.SearchFilter!.OrTreeTicks);
+        Assert.Empty(client.SearchFilter.KildeIds);
     }
 
     [Fact]

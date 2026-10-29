@@ -612,7 +612,7 @@ public partial class VariableSearch
         {
             Count = Counted(kilde.Count),
             Children = tree.TryGetValue(kilde.Id, out var node) ? HierarchyValues(node.Children) : [],
-            // The tree's row ticks; the chip built from the same value only removes, and keeps the mode.
+            // The tree's row ticks; the chip is built from the base reading, whose toggle keeps the mode.
             Toggle = () => ToggleTickAsync(Pending.KildeIds, kilde.Id, ids => Pending with { KildeIds = ids }),
         };
 

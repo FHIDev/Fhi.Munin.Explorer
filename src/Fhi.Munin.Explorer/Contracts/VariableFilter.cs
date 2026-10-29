@@ -130,13 +130,17 @@ public sealed record VariableFilter
     /// <remarks>
     /// The API's <c>treeTicks=or</c> (Munin #6961, Fhi.Metadata-emsc0.1.1): a tick with a more specific tick below it still
     /// only narrows, and every other filter stays ANDed. A tick in the explorer's kilde tree sets it. A hand-over from the
-    /// kildeutforsker and «Vis bare variabler fra denne datakilden/datasamlingen» clear it, until the reader ticks the tree
-    /// again. Sent only when two or more of the four levels are ticked, the only case the API combines; not counted in
+    /// kildeutforsker, «Vis bare variabler fra denne datakilden/datasamlingen» and a datasamling's «Vis variablene» clear
+    /// it, until the reader ticks the tree again. Sent only when two or more of the four levels are ticked, the only case the API combines; not counted in
     /// <see cref="ActiveCount"/>, since it narrows nothing on its own.
     /// </remarks>
     public bool OrTreeTicks { get; init; }
 
     private const string TreeTicksKey = "treeTicks";
+
+    private int TreeLevelsTicked =>
+        (KildeIds.Count > 0 ? 1 : 0) + (DelkildeIds.Count > 0 ? 1 : 0) + (DatasamlingIds.Count > 0 ? 1 : 0)
+        + (VariabelgruppeScopes.Count > 0 ? 1 : 0);
 
     /// <summary>How many separate choices are active, which is what a UI counts in "3 filtre".</summary>
     /// <remarks>
@@ -271,7 +275,7 @@ public sealed record VariableFilter
             yield return ("includeHistorical", "true");
         }
 
-        if (OrTreeTicks && new[] { KildeIds.Count, DelkildeIds.Count, DatasamlingIds.Count, VariabelgruppeScopes.Count }.Count(n => n > 0) > 1)
+        if (OrTreeTicks && TreeLevelsTicked > 1)
         {
             yield return (TreeTicksKey, "or");
         }
