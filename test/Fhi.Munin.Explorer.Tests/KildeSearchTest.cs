@@ -1072,23 +1072,13 @@ public class KildeSearchTest : ExplorerTestContext
             cells.Select(cell => ShownText(cell)).Order(StringComparer.Ordinal));
     }
 
-    // The three kilder the bar is specified against (Fhi.Metadata-35w0p.30): a zero, a small count
-    // and the largest, which 23 is 0.9% of. Two kildetyper, so a facet can take the largest away.
+    // Three kilder with a zero, a small and a large variable count.
     private static FakeClient BarKilder() => new(
         Kilde("Hjerte- og karregisteret", "K_HKR", kildetype: "nasjonaltMedisinskKvalitetsregister",
             datasamlinger: 0, variables: 0),
         Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
             datasamlinger: 23, variables: 23),
         Kilde("Dødsårsaksregisteret", "K_DAR", datasamlinger: 2506, variables: 2506));
-
-    // DAR moved into ALS's kildetype, and under another data processor so a facet can take it away (Fhi.Metadata-r6ht3).
-    private static FakeClient SameTypeBarKilder() => new(
-        Kilde("Hjerte- og karregisteret", "K_HKR", kildetype: "nasjonaltMedisinskKvalitetsregister",
-            datasamlinger: 0, variables: 0),
-        Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister",
-            datasamlinger: 23, variables: 23),
-        Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "nasjonaltMedisinskKvalitetsregister",
-            dataProcessor: "Helse Bergen HF", datasamlinger: 2506, variables: 2506));
 
     [Theory]
     [InlineData("no", "Datasamlinger ", "Variabler ")]
@@ -1126,7 +1116,7 @@ public class KildeSearchTest : ExplorerTestContext
         Assert.All(counts, cell => Assert.NotNull(cell.QuerySelector(":scope > .munin-explorer-kilder__card-label[hidden]")));
     }
 
-    /// <summary>A count cell's text as it is drawn: the bar's words for a screen reader and the phone card's hidden label left out.</summary>
+    /// <summary>A count cell's text as it is drawn: words for a screen reader and the phone card's hidden label left out.</summary>
     private static string ShownText(IElement cell)
     {
         // The phone card's label is `hidden` here: no wide screen draws it (Fhi.Metadata-ulkw3).
@@ -1165,212 +1155,43 @@ public class KildeSearchTest : ExplorerTestContext
         return row.Children[column];
     }
 
-    private static string? FillWidth(IRenderedComponent<KildeSearch> cut, string code) =>
-        VariablesCell(cut, code).QuerySelector(".munin-explorer-kilder__bar-fill")?.GetAttribute("style");
-
+    // Inge #6718 (Fhi.Metadata-l9l2n.155): the proportion bar under the count is gone; the digits are the cell.
     [Fact]
-    public void Bar_WhenAVariableCountIsAboveZero_ThenItsCellHoldsOneTrackWithOneFillAfterTheDigits()
+    public void VariablesCell_WhenTheCountIsAboveZero_ThenItHoldsTheDigitsAndNothingElse()
     {
         var cut = RenderWith(BarKilder());
 
-        foreach (var code in (string[])["K_ALS", "K_DAR"])
+        foreach (var (code, digits) in (ValueTuple<string, string>[])[("K_ALS", "23"), ("K_DAR", "2506")])
         {
             var cell = VariablesCell(cut, code);
-            var bars = cell.QuerySelectorAll("span.munin-explorer-kilder__bar");
 
-            var bar = Assert.Single(bars);
-            Assert.Same(cell, bar.ParentElement);
-            Assert.Single(bar.QuerySelectorAll("span.munin-explorer-kilder__bar-fill"));
-            Assert.Single(bar.Children);
-
-            // After the digits: the phone card's hidden label, then the text node, the track next, and the
-            // words for a screen reader last.
-            var label = Assert.IsAssignableFrom<IElement>(cell.FirstChild);
+            Assert.Equal(digits, ShownText(cell));
+            Assert.False(cell.HasAttribute("title"));
+            Assert.Empty(cell.QuerySelectorAll(".screenreader-only, [aria-hidden]"));
+            var label = Assert.Single(cell.Children);
             Assert.True(label.HasAttribute("hidden"));
-            Assert.Equal(NodeType.Text, label.NextSibling!.NodeType);
-            Assert.Same(bar, label.NextSibling!.NextSibling);
-            Assert.Contains("screenreader-only", ((IElement)cell.LastChild!).ClassList);
-        }
-    }
-
-    [Theory]
-    [InlineData("nb-NO")]
-    [InlineData("en-US")]
-    public void Bar_WhenDrawn_ThenItsFillIsAWholePercentOfTheLargestOfTheSameKildetypeInAnyCulture(string culture)
-    {
-        var previous = CultureInfo.CurrentCulture;
-        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
-        try
-        {
-            var cut = RenderWith(SameTypeBarKilder());
-
-            Assert.Equal("width:100%", FillWidth(cut, "K_DAR"));
-            // 23 * 100 / 2506 is 0.92, rounded to 1.
-            Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
-        }
-        finally
-        {
-            CultureInfo.CurrentCulture = previous;
-        }
-    }
-
-    [Theory]
-    [InlineData(5, 8, "width:63%")]    // 62.5: away from zero, where banker's rounding says 62
-    [InlineData(1, 1000, "width:1%")]  // 0.1 rounds to 0 and is clamped up: a non-zero count draws
-    [InlineData(999, 1000, "width:100%")]
-    [InlineData(1, 3, "width:33%")]
-    public void Bar_WhenTheShareIsNotWhole_ThenItRoundsHalfAwayFromZeroAndNeverDrawsZero(
-        int count, int largest, string expected)
-    {
-        var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS", variables: count),
-            Kilde("Dødsårsaksregisteret", "K_DAR", variables: largest)));
-
-        Assert.Equal(expected, FillWidth(cut, "K_ALS"));
-    }
-
-    [Fact]
-    public void Bar_WhenAFacetTakesTheLargestOfTheTypeAway_ThenTheNextLargestOfTheTypeIsTheWholeWidth()
-    {
-        var cut = RenderWith(SameTypeBarKilder());
-
-        Tick(cut, "Databehandler", "Folkehelseinstituttet");
-
-        Assert.DoesNotContain(
-            cut.FindAll(".munin-explorer-kilder tbody th"),
-            th => th.TextContent.Contains("Dødsårsaksregisteret", StringComparison.Ordinal));
-        Assert.Equal("width:100%", FillWidth(cut, "K_ALS"));
-
-        Untick(cut, "Databehandler", "Folkehelseinstituttet");
-
-        Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
-        Assert.Equal("width:100%", FillWidth(cut, "K_DAR"));
-    }
-
-    // Robin 2026-10-16 (#6718): a register is not measured against a survey with ten times the variables.
-    [Fact]
-    public void Bar_WhenALargerKildeIsOfAnotherKildetype_ThenItDoesNotShrinkTheBar()
-    {
-        var cut = RenderWith(BarKilder());
-
-        Assert.Equal("width:100%", FillWidth(cut, "K_ALS"));
-        Assert.Equal("width:100%", FillWidth(cut, "K_DAR"));
-    }
-
-    [Theory]
-    [InlineData("no", "variabler, 1 % av Dødsårsaksregisteret (2506), som har flest variabler av typen Nasjonalt medisinsk kvalitetsregister i lista",
-                      "variabler, flest av typen Nasjonalt medisinsk kvalitetsregister i lista")]
-    [InlineData("en", "variables, 1% of Dødsårsaksregisteret (2506), which has the most variables of type National medical quality registry in the list",
-                      "variables, the most of type National medical quality registry in the list")]
-    public void Bar_WhenDrawn_ThenItsCellSaysInWordsWhatItComparesWith(string language, string als, string dar)
-    {
-        var cut = RenderWith(SameTypeBarKilder(), p => p.Add(c => c.Language, language));
-
-        foreach (var (code, count, words) in new[] { ("K_ALS", 23, als), ("K_DAR", 2506, dar) })
-        {
-            var cell = VariablesCell(cut, code);
-            // The hover text carries the count; the hidden words follow the visible digits, so they do not repeat it.
-            Assert.Equal($"{count} {words}", cell.GetAttribute("title"));
-            Assert.Equal($" {words}", cell.QuerySelector(":scope > .screenreader-only")!.TextContent);
-            Assert.Equal("true", cell.QuerySelector(".munin-explorer-kilder__bar")!.GetAttribute("aria-hidden"));
         }
     }
 
     [Fact]
-    public void Bar_WhenOneVariableIsSetAgainstThousands_ThenTheWordsSayOnePercentAsTheBarDraws()
-    {
-        var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister", variables: 1),
-            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: "nasjonaltMedisinskKvalitetsregister", variables: 2506)));
-
-        Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
-        Assert.Contains(" 1 % av Dødsårsaksregisteret", VariablesCell(cut, "K_ALS").GetAttribute("title"), StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Bar_WhenKildetypesDifferOnlyInCaseOrSpace_ThenTheyAreOneGroup()
-    {
-        var cut = RenderWith(new FakeClient(
-            Kilde("Als registeret", "K_ALS", kildetype: "nasjonaltMedisinskKvalitetsregister", variables: 23),
-            Kilde("Dødsårsaksregisteret", "K_DAR", kildetype: " NasjonaltMedisinskKvalitetsregister ", variables: 2506)));
-
-        Assert.Equal("width:1%", FillWidth(cut, "K_ALS"));
-        // The padded token is named as the group is keyed, not shown raw (Copilot on #579).
-        Assert.Equal(
-            "2506 variabler, flest av typen Nasjonalt medisinsk kvalitetsregister i lista",
-            VariablesCell(cut, "K_DAR").GetAttribute("title"));
-    }
-
-    [Fact]
-    public void Bar_WhenTheVariableCountIsZero_ThenTheCellHasNoBarAndReadsADimmedDash()
+    public void VariablesCell_WhenTheVariableCountIsZero_ThenItReadsADimmedDash()
     {
         var cut = RenderWith(BarKilder());
 
         var cell = VariablesCell(cut, "K_HKR");
 
-        // The control: this render does draw bars, so the zero's absence is a decision about it.
-        Assert.NotNull(VariablesCell(cut, "K_ALS").QuerySelector(".munin-explorer-kilder__bar"));
-
-        // Absent rather than an empty track: a grey track with nothing in it reads as a measurement.
-        Assert.Null(cell.QuerySelector(".munin-explorer-kilder__bar"));
         Assert.Equal("–", cell.QuerySelector("[aria-hidden='true']")!.TextContent);
+        Assert.Equal("–Ingen variabler registrert", ShownText(cell));
         Assert.Contains("munin-explorer-kilder__count--zero", cell.ClassList);
     }
 
     [Fact]
-    public void Bar_WhenEveryDrawnRowCountsZero_ThenNoRowHasABar()
-    {
-        var cut = RenderWith(new FakeClient(
-            Kilde("Hjerte- og karregisteret", "K_HKR", kildetype: "biobank", variables: 0),
-            Kilde("Als registeret", "K_ALS", kildetype: "biobank", variables: 0),
-            Kilde("Dødsårsaksregisteret", "K_DAR", variables: 2506)));
-
-        Assert.Single(cut.FindAll(".munin-explorer-kilder__bar"));
-
-        // The largest drawn count is now 0 too, which must not be divided by.
-        Tick(cut, "Kildetype", "Biobank");
-
-        Assert.Equal(2, cut.FindAll(".munin-explorer-kilder tbody tr").Count);
-        Assert.Empty(cut.FindAll(".munin-explorer-kilder__bar"));
-    }
-
-    [Fact]
-    public void Bar_WhenDrawn_ThenItIsHiddenFromTheAccessibilityTreeAndTheDigitsAreTheCellsText()
-    {
-        var cut = RenderWith(BarKilder());
-
-        var bars = cut.FindAll("span.munin-explorer-kilder__bar");
-        Assert.Equal(2, bars.Count);
-
-        foreach (var span in bars.Concat(cut.FindAll("span.munin-explorer-kilder__bar-fill")))
-        {
-            Assert.Equal("", span.TextContent);
-            Assert.False(span.HasAttribute("title"));
-            Assert.False(span.HasAttribute("aria-label"));
-        }
-
-        Assert.All(bars, bar => Assert.Equal("true", bar.GetAttribute("aria-hidden")));
-
-        Assert.Equal("–Ingen variabler registrert", ShownText(VariablesCell(cut, "K_HKR")));
-        Assert.Equal("23", ShownText(VariablesCell(cut, "K_ALS")));
-        Assert.Equal("2506", ShownText(VariablesCell(cut, "K_DAR")));
-    }
-
-    [Fact]
-    public void Bar_WhenEveryColumnIsOn_ThenOnlyTheVariablerCellsCarryOne()
+    public void Render_WhenEveryColumnIsOn_ThenNoCellDrawsAProportionBar()
     {
         var cut = RenderWith(BarKilder());
         TurnEveryColumnOn(cut);
 
-        var bars = cut.FindAll(".munin-explorer-kilder__bar");
-
-        // The same two as with the default columns: Delkilder and Datasamlinger add none.
-        Assert.Equal(2, bars.Count);
-        Assert.All(bars, bar => Assert.Contains(
-            bar.ParentElement,
-            (IElement[])[VariablesCell(cut, "K_ALS"), VariablesCell(cut, "K_DAR")]));
-
-        Assert.Empty(cut.FindAll(".munin-explorer-kilder thead .munin-explorer-kilder__bar"));
+        Assert.Empty(cut.FindAll(".munin-explorer-kilder__bar, .munin-explorer-kilder__bar-fill"));
     }
 
     [Fact]
@@ -6530,9 +6351,6 @@ public class KildeSearchTest : ExplorerTestContext
             // And the count of header cells it is holding, for a stylesheet that has to vary the box
             // by how wide the table is. Seven here: four always drawn, three optional columns on.
             "munin-explorer-kilder-scroll--cols-7",
-            // The proportion bar under a non-zero variable count (Fhi.Metadata-35w0p.30).
-            "munin-explorer-kilder__bar",
-            "munin-explorer-kilder__bar-fill",
             "munin-explorer-kilder__card",       // the phone's card (Fhi.Metadata-ulkw3)
             "munin-explorer-kilder__card--variabler",
             "munin-explorer-kilder__card-label",
