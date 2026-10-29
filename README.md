@@ -1358,7 +1358,7 @@ services.AddServerSideBlazor(o => o.PersistedCircuitInMemoryMaxRetained = 0);
 
 ```html
 <div id="blazor-error-ui" role="alert" style="display: none">
-    Noe gikk galt, og siden svarer ikke lenger. <a href="" class="reload">Last inn på nytt</a>
+    Noe gikk galt, og siden svarer ikke lenger. <button type="button" class="reload">Last inn på nytt</button>
 </div>
 ```
 
@@ -1371,7 +1371,7 @@ stored the resume is refused too, and the script reloads the page; the explorer'
 back where they were. The option switches circuit persistence off for the whole host, so any resume that would
 have worked becomes a reload as well; for these components, whose state is in the URL, that costs nothing.
 `#blazor-error-ui` is what `blazor.server.js` shows for any other circuit failure, with `.reload`
-wired to reload; without it that failure is silent as well. `samples/LegacyHost` and `samples/HostileHost` carry both.
+wired to reload; without it that failure is silent as well. Make `.reload` a button, not `<a href="">`: the script wires it only when it shows the bar, and under a `<base href>`, as helsedata has, an empty link goes to the front page. `samples/LegacyHost` and `samples/HostileHost` carry both.
 Measured on helsedata test-1-opt and on LegacyHost, with the WebSocket's frames dropped for longer than the retention.
 
 ### What a host mounts
