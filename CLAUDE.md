@@ -10,7 +10,7 @@ conventions a compiler cannot check. This file adds the Claude-Code-specific wor
 
 ## Beads: Varde's tools first, bd only where they don't exist
 
-When the `varde-chat` MCP tools (`beads_*`) are available, as on every devbox, read and write beads with them and never run `bd`. Use `bd` only where they are not: the Forge, or a laptop without Varde. This rule wins over every `bd` step further down in this file: those are for the places without Varde, and a step with no Varde tool (below: worktree, preflight, remember) is skipped or done with git. Varde's reads come from a snapshot refreshed every five minutes, so the claim or write itself is the check, not a read just before it.
+When the `varde-chat` MCP tools (`beads_*`) are available, as on every devbox, read and write beads with them and never run `bd`. Use `bd` only where they are not: the Forge, or a laptop without Varde. This rule wins over every `bd` step further down in this file: those are for the places without Varde, and a step with no Varde tool (below: worktree, preflight) is skipped or done with git. Varde's reads come from a snapshot refreshed every five minutes, so the claim or write itself is the check, not a read just before it.
 
 | Instead of | Use |
 | --- | --- |
@@ -153,6 +153,8 @@ points there, so `bd` behaves exactly as it does in Munin and sees the same data
 `Fhi.Metadata-2fomm` (Kelda).
 
 ### Every bead for this repository gets `helsedata` and `rcl`
+
+With Varde's tools: `beads_create` with `labels: ["helsedata", "rcl"]` (and `beads_label` to add one later). Where they are not available:
 
 ```bash
 bd create --title="..." --description="..." --label=helsedata --label=rcl
