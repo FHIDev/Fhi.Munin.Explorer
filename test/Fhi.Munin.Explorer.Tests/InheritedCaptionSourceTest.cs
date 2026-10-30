@@ -288,17 +288,20 @@ public class InheritedCaptionSourceTest : ExplorerTestContext
     }
 
     private static PropertyMetadataEntry Definition(string key, string label, string type, int sortOrder,
-                                                    string? optionsJson = null) => new()
+                                                    string? optionsJson = null)
     {
-        Key = key,
-        SortOrder = sortOrder,
-        Type = type,
-        OptionsJson = optionsJson,
-        GroupKey = "datakilde",
-        GroupSortOrder = 1,
-        DisplayNameTranslations = new Dictionary<string, string> { ["no"] = label },
-        GroupTranslations = new Dictionary<string, string> { ["no"] = "Datakilde" },
-    };
+        return new PropertyMetadataEntry
+        {
+            Key = key,
+            SortOrder = sortOrder,
+            Type = type,
+            OptionsJson = optionsJson,
+            GroupKey = "datakilde",
+            GroupSortOrder = 1,
+            DisplayNameTranslations = new Dictionary<string, string> { ["no"] = label },
+            GroupTranslations = new Dictionary<string, string> { ["no"] = "Datakilde" },
+        };
+    }
 
     private IRenderedComponent<DatasamlingView> Render(DatasamlingDetail datasamling) =>
         Render<DatasamlingView>(b => b.Add(c => c.Datasamling, datasamling));
