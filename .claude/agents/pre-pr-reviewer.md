@@ -335,6 +335,29 @@ defect we ship becomes helsedata's to answer for, on their domain.
   the key passes with a wrong wire name or type. Check the diff's fixtures carry each new key; if
   none can, flag the missing inline-JSON test.
 
+## 11a. The address bar and history: every state the URL can pass through
+
+Copilot found four of these on #702 (code links in `KildeExplorer`) after this review passed it. When a change alters
+what `KildeExplorer`, `VariableExplorer` or `UrlMirror` reads from or writes to the address, walk each case against the
+code, and ask for a test where none reaches it:
+
+- **An async step before the first write.** If the component waits on the API before it knows what the address means
+  (a code resolved to an id), check that a navigation arriving meanwhile (Back, a link) cancels it. A late answer must
+  not reopen a view or rewrite the entry the reader has moved to. A guard that compares only the resolved state reads
+  «nothing pending» as «nothing changed». Test it with a resolver held open by a `TaskCompletionSource`.
+- **The same view, said another way.** A fragment-only or host-parameter-only navigation to a view the component already
+  shows must keep it (no remount, no refetch). That holds when the address names it differently from the internal
+  state (a code for an id): the arrival comparison must recognise both spellings.
+- **A rewrite that changes only the representation** (id to code, a key's order) must keep what `UrlMirror` ties to
+  the first query. `TakeFragment` spends the section fragment at the first different query, so a representation-only
+  rewrite has to re-own it (`UrlMirror.Reown`). Test with a delayed source and a `#fragment` link.
+- **A link the component writes must open what it names, on every host.** Writing a form into the address because the
+  data has it (a code from the list) is not proof that the link opens: a host on the contract's default body, or an
+  older API, would turn a working link into not found. Write the new form only after the API has confirmed it, and
+  test the host that cannot confirm.
+
+Each miss is **Important**.
+
 ## 12. Scope
 
 ```bash

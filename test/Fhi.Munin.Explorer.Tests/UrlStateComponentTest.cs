@@ -625,23 +625,32 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// And one datasamling under it, because the drill-in Kelda offers out of a kilde is a link
     /// this component builds the address for — the tree has to have a node to hang it on.
     /// </remarks>
-    private sealed class OneKildeClient(Guid id, Guid? datasamling = null, bool expandable = false, string code = "")
+    private sealed class OneKildeClient(
+        Guid id, Guid? datasamling = null, bool expandable = false, string code = "", bool resolves = true,
+        TaskCompletionSource<Guid?>? held = null)
         : EmptyMuninExplorerClient
     {
+        public int DetailFetches { get; private set; }
+
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<KildeSummary>>([Kilde(id, "Als registeret", expandable ? 1 : 0, code)]);
 
         public override Task<Guid?> FindKildeIdByCodeAsync(string linkCode, CancellationToken cancellationToken = default) =>
-            Task.FromResult<Guid?>(code.Length > 0 && string.Equals(linkCode, code[2..], StringComparison.OrdinalIgnoreCase) ? id : null);
+            held?.Task ?? Task.FromResult<Guid?>(
+                resolves && code.Length > 0 && string.Equals(linkCode, code[2..], StringComparison.OrdinalIgnoreCase) ? id : null);
 
-        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
-            Task.FromResult<KildeDetail?>(new KildeDetail
+        public override Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            DetailFetches++;
+            return Task.FromResult<KildeDetail?>(new KildeDetail
             {
                 Id = id,
+                Code = code,
                 PreferredTerm = "Als registeret",
                 Datasamlinger = expandable ? [new() { Name = "Inklusjon", VariableCount = 12 }] : [],
             });
+        }
 
         public override Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult<KildeHierarchy?>(datasamling is { } open
@@ -834,7 +843,8 @@ public class UrlStateComponentTest : ExplorerTestContext
 
         cut.Find(".munin-explorer-kilder__name").Click();
         cut.WaitForAssertion(() => Assert.Equal(1, Pushes()));
-        Assert.Equal("/kilder?kilde=als", JSInterop.Invocations["history.pushState"][^1].Arguments[2]);
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?kilde=als", Mirrored()));
+        Assert.Equal(1, Pushes());
 
         Navigation.NavigateTo("http://localhost/kilder");
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".munin-explorer-drilldown")));
@@ -844,6 +854,66 @@ public class UrlStateComponentTest : ExplorerTestContext
         cut.WaitForAssertion(() => cut.Find(".munin-explorer-kilder__back").Click());
 
         cut.WaitForAssertion(() => Assert.Equal(1, Backs()));
+    }
+
+    private IRenderedComponent<KildeExplorer> RenderCoded(OneKildeClient client, string url)
+    {
+        Services.AddSingleton<IMuninExplorerClient>(client);
+        Prepare();
+        Navigation.NavigateTo(url);
+        return Render<KildeExplorer>();
+    }
+
+    [Fact]
+    public void Code_WhenTheResolverCannotConfirmIt_ThenTheAddressKeepsTheId()
+    {
+        // The interface's default resolver, or a Munin without the code route: a learned code alone is no working link.
+        var id = Guid.NewGuid();
+        var cut = RenderCoded(new OneKildeClient(id, code: "K_ALS", resolves: false), $"http://localhost/kilder?kilde={id}");
+
+        cut.WaitForAssertion(() => Assert.Equal($"/kilder?kilde={id}", Mirrored()));
+    }
+
+    [Fact]
+    public void Code_WhenAnIdLinkCarriesASection_ThenTheRewriteToTheCodeKeepsIt()
+    {
+        var id = Guid.NewGuid();
+        var cut = RenderCoded(new OneKildeClient(id, code: "K_ALS"), $"http://localhost/kilder?kilde={id}#munin-explorer-metadata");
+
+        cut.WaitForAssertion(() => Assert.Equal("/kilder?kilde=als#munin-explorer-metadata", Mirrored()));
+    }
+
+    [Fact]
+    public void Code_WhenOnlyASectionIsAddedToAResolvedCode_ThenTheViewIsKept()
+    {
+        var id = Guid.NewGuid();
+        var client = new OneKildeClient(id, code: "K_ALS");
+        var cut = RenderCoded(client, "http://localhost/kilder?kilde=als");
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown")));
+        var fetches = client.DetailFetches;
+
+        Navigation.NavigateTo("http://localhost/kilder?kilde=als#munin-explorer-metadata");
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-drilldown")));
+        Assert.Equal(fetches, client.DetailFetches);
+    }
+
+    [Fact]
+    public void Code_WhenTheReaderLeavesBeforeItResolves_ThenTheLateAnswerOpensNothing()
+    {
+        var id = Guid.NewGuid();
+        var held = new TaskCompletionSource<Guid?>();
+        var cut = RenderCoded(new OneKildeClient(id, code: "K_ALS", held: held), "http://localhost/kilder");
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder__name")));
+
+        Navigation.NavigateTo("http://localhost/kilder?kilde=als");
+        Navigation.NavigateTo("http://localhost/kilder");
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder__name")));
+        cut.InvokeAsync(() => held.SetResult(id));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".munin-explorer-kilder__name")));
+        Assert.Empty(cut.FindAll(".munin-explorer-drilldown"));
+        Assert.DoesNotContain("kilde=", Mirrored() ?? "", StringComparison.Ordinal);
     }
 
     [Fact]

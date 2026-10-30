@@ -355,6 +355,38 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         _pendingCode = null;
         _missingCode = id is null ? code : null;
         _selectedKildeId = id ?? Guid.Empty;
+
+        if (id is { } found)
+        {
+            // The code the reader followed works, so the address keeps it until the short form is confirmed too.
+            _codes.Verify(found, code);
+        }
+    }
+
+    // Writes the short form only once the API has said it opens this kilde: a host on the default resolver, or a Munin
+    // without the code route, keeps ids. The fragment the reader arrived with stays across the rewrite.
+    private async Task VerifyAsync(Guid id, string shortForm)
+    {
+        Guid? found;
+        try
+        {
+            found = await Client.FindKildeIdByCodeAsync(shortForm);
+        }
+        catch (Exception ex)
+        {
+            Log?.LogWarning(ex, "could not confirm the kilde code for the address");
+            return;
+        }
+
+        if (found != id || _selectedKildeId != id)
+        {
+            return;
+        }
+
+        var before = Query(_selectedKildeId, _selectedDatasamlingId);
+        _codes.Verify(id, shortForm);
+        _mirror.Reown(before, Query(_selectedKildeId, _selectedDatasamlingId));
+        StateHasChanged();
     }
 
     // The open kilde's code arrived after the address was written with its id: write it again with the code.
@@ -526,6 +558,14 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         var list = ReadList(mirror);
         var code = LinkCode(mirror);
 
+        // A code already resolved to the open kilde is that kilde: a section jump or a host parameter keeps the view.
+        if (code is not null && _pendingCode is null && _selectedKildeId is { } current
+            && string.Equals(code, _codes.ShortFormFor(current), StringComparison.OrdinalIgnoreCase))
+        {
+            arrived = (current, arrived.Datasamling, arrived.Order, arrived.Direction);
+            code = null;
+        }
+
         // Above the guard, because a navigation changing only the host's own keys leaves the owned
         // ones equal: refreshed below it, the mirror would keep carrying parameters the navigation
         // dropped and put them back into every later link and rewrite.
@@ -535,7 +575,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         // Forward, has the list under it; one a link or a host parameter made has something else.
         var pushedFromList = e.HistoryEntryState == UrlMirror.OpenedFromList && (arrived.Item1 is not null || code is not null);
 
-        if (code is null
+        if (code is null && _pendingCode is null
             && arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction)
             && list.Query() == List.Query())
         {
@@ -624,6 +664,11 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         _mirroredSelection = selection;
 
         await _mirror.MirrorAsync(Query(_selectedKildeId, _selectedDatasamlingId), push, _detailPushed);
+
+        if (_selectedKildeId is { } open && open != Guid.Empty && _codes.NextToVerify(open) is { } shortForm)
+        {
+            _ = InvokeAsync(() => VerifyAsync(open, shortForm));
+        }
     }
 
     /// <summary>The keys this component owns, as a query string, omitting what is at its default.</summary>
@@ -669,7 +714,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     private string KildeValue(Guid id) =>
         id == Guid.Empty && _missingCode is { } missing
             ? missing
-            : _codes.ShortFormFor(id) ?? id.ToString();
+            : _codes.ShortFormFor(id)?.ToLowerInvariant() ?? id.ToString();
 
     /// <summary>
     /// This page's address showing the open kilde, and the datasamling named — or the kilde alone
