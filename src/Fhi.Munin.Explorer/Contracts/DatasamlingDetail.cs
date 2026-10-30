@@ -134,8 +134,9 @@ public sealed record DatasamlingDetail
         new Dictionary<string, InheritedValue>();
 
     /// <summary>
-    /// The same public kilde fields where this datasamling holds a value itself, by key; never a key of
-    /// <see cref="InheritedProperties"/> or <see cref="AdditionalProperties"/>. Empty from a Munin that predates it.
+    /// The same public kilde fields where this datasamling holds a value itself, by key. Munin keeps the keys apart
+    /// from <see cref="InheritedProperties"/> and <see cref="AdditionalProperties"/>; should one appear in both, the
+    /// own value is drawn. Empty from a Munin that predates it.
     /// </summary>
     [JsonPropertyName("ownKildeProperties")]
     public IReadOnlyDictionary<string, string?> OwnKildeProperties { get; init; } =

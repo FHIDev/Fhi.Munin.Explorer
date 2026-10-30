@@ -368,7 +368,7 @@ public sealed partial class DatasamlingView : ComponentBase
     /// <summary>Where the datasamling's data comes from, labelled as the kilde view labels the same fields.</summary>
     /// <remarks>
     /// Column-backed rows yield to a section that places them (<see cref="UnlessPlaced"/>) and the rest follow them
-    /// there (Fhi.Metadata-lr6yh); Kilde, Kildetype, the inherited kilde fields and the timestamps cannot be placed.
+    /// there (Fhi.Metadata-lr6yh); Kilde, Kildetype, the public kilde fields and the timestamps cannot be placed.
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> SourceInformation =>
         Datasamling is not { } datasamling
@@ -388,7 +388,7 @@ public sealed partial class DatasamlingView : ComponentBase
                 .. UnlessPlaced(CatalogueColumns.PersonIdentification,
                                 Unlinked(T.FieldPersonIdentification, PersonIdentification, false)),
                 .. ValidityRows.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)),
-                .. InheritedRows(datasamling),
+                .. KildeFieldRows(datasamling),
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false, null),
                 (T.FieldCreatedInMunin, CatalogueDate.DayOrNothing(datasamling.Created, Language), false, null),
             ];
@@ -397,7 +397,7 @@ public sealed partial class DatasamlingView : ComponentBase
     /// <remarks>
     /// Not in the datasamling's own metadata, so no section can place them and they carry this package's labels.
     /// </remarks>
-    private IEnumerable<(string Label, string? Value, bool Norwegian, string? Href)> InheritedRows(
+    private IEnumerable<(string Label, string? Value, bool Norwegian, string? Href)> KildeFieldRows(
         DatasamlingDetail datasamling)
     {
         foreach (var (key, label) in InheritedLabels)
@@ -421,7 +421,7 @@ public sealed partial class DatasamlingView : ComponentBase
     }
 
     private static string? KildeFieldValue(DatasamlingDetail datasamling, string key) =>
-        datasamling.OwnKildeProperties.TryGetValue(key, out var own) && !string.IsNullOrWhiteSpace(own)
+        InheritedCaptions.Own(datasamling, key) is { } own
             ? own
             : datasamling.InheritedProperties.TryGetValue(key, out var inherited)
                 ? inherited.Value

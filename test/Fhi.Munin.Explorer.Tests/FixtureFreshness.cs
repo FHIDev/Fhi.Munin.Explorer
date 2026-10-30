@@ -147,7 +147,8 @@ internal static class FixtureFreshness
             .Where(type => type.Namespace == typeof(KildeDetail).Namespace)
             .SelectMany(type => type.GetProperties())
             .Where(property => (property.Name == nameof(KildeDetail.AdditionalProperties)
-                    || property.Name == nameof(DatasamlingDetail.InheritedProperties))
+                    || property.Name == nameof(DatasamlingDetail.InheritedProperties)
+                    || property.Name == nameof(DatasamlingDetail.OwnKildeProperties))
                 && property.PropertyType.IsGenericType
                 && property.PropertyType.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>))
             .Select(JsonNameOf)
