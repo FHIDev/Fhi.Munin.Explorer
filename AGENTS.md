@@ -47,8 +47,8 @@ bash scripts/test-sample-css-declarations.sh    # only if you touched the compar
 python3 scripts/comment-budget.py               # comment blocks this branch added, against origin/main
 ```
 
-Then the pre-PR review: the `pre-pr-reviewer` agent on `git diff origin/main...HEAD`, answered per the warden
-checklist, and one line in the PR body in one of four forms: `Pre-PR review: ran, no findings`, `ran, N findings,
+**Pre-PR review.** The `pre-pr-reviewer` agent on `git diff origin/main...HEAD`, which answers the warden checklist
+(`python3 scripts/warden-checklist.py`; each rule ✓, ✗ with `file:line`, or n/a), and one line in the PR body in one of four forms: `Pre-PR review: ran, no findings`, `ran, N findings,
 fixed`, `ran, N findings, M fixed, K left: <why>` or `skipped, <reason>` (only for a change with nothing to review;
 `prove-it` section 8). The body also carries `Testing:`, `Risk: low|medium|high – <why>` (the tier the `risk:`
 label gives) and `How to revert:`, each on its own line; the review-line check fails a PR where one is missing or
@@ -142,11 +142,13 @@ behaviour found later by someone else.
 Identifiers are English, and borrowed class names belong to `Fhi.Helsedata.Stiler` while the `munin-explorer`
 prefix is ours: both have full sections below. Two things about the class names that the section takes for granted:
 
-- **Know what the guards here can see.** Both ask whether a name has a rule that declares something, in
+- **Know what the guards here can see.** Both guards (`HostClassNames` in the tests and
+  `scripts/assert-sample-css-in-step.sh`) ask whether a name has a rule that declares something, in
   `test/host-class-names.txt` (a capture of the live helsedata page, its page-specific stylesheets included) or in
   the sample stylesheet. Neither reads Stiler at all, and neither can say which declarations a rule has to carry.
   `skiplink-pagination` was in both sources the whole time it was broken, because helsedata styles it and so do the
-  samples, while a Stiler-only host got nothing: a rule somewhere is not a rule where it is needed.
+  samples, while a Stiler-only host got nothing: a rule somewhere is not a rule where it is needed, and that host is the one the prefix
+  exists for.
 - **Read the selector, not just the name.** The first Stiler rule for that link, on the unpublished
   `feature/munin-explorer-scss` branch, was scoped `.munin-explorer-header .skiplink-pagination` and could never have
   matched, since that header opens and closes entirely inside `ColumnPicker()`.
