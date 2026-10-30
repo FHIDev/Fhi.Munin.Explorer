@@ -344,8 +344,11 @@ public class MuninExplorerClientTest
         Assert.Equal("Inklusjon", datasamling.PreferredTerm);
         Assert.Equal("yearly", datasamling.StatisticsType);
         Assert.Equal(104, datasamling.VariableCount);
-        Assert.Equal(21, datasamling.PropertyMetadata.Count);
+        Assert.Equal(25, datasamling.PropertyMetadata.Count);
         Assert.Equal("ALS Registeret", datasamling.ParentKildeName);
+        Assert.Null(datasamling.ValidFromSource);
+        Assert.Equal(("kilde", "ALS Registeret"), (datasamling.PersonIdentificationLevelSource?.SourceLevel,
+                                                   datasamling.PersonIdentificationLevelSource?.SourceName));
         Assert.Null(datasamling.ParentDelkildeId); // hangs directly off the kilde
         Assert.NotNull(datasamling.InclusionAndExclusionCriteria);
         Assert.Equal("Pasienter over eller er lik 18 år, diagnostisert med ICD-10 G12.2. ",

@@ -208,7 +208,8 @@ internal static class Fixture
     public static readonly IReadOnlyDictionary<string, FrozenFixture> Frozen = new Dictionary<string, FrozenFixture>
     {
         [DatasamlingUnplaced] = new(Datasamling,
-            ["$.propertyMetadata[].groupKey", "$.propertyMetadata[].groupSortOrder", "$.sections"]),
+            ["$.gradAvPersonidentifikasjonSource", "$.propertyMetadata[].groupKey",
+             "$.propertyMetadata[].groupSortOrder", "$.sections"]),
         [KilderNullKildetype] = new(Kilder, ["$[].andelKodeverk", "$[].andelStatistikk"]),
     };
 }
