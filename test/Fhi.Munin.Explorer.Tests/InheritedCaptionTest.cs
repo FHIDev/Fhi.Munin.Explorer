@@ -87,6 +87,20 @@ public class InheritedCaptionTest : ExplorerTestContext
         Assert.Empty(captions);
     }
 
+    [Fact]
+    public void For_WhenAnInheritedValueIsBlank_ThenItHasNothingToCaption()
+    {
+        var captions = InheritedCaptions.For(Datasamling() with
+        {
+            InheritedProperties = new Dictionary<string, InheritedValue>
+            {
+                [InheritedCaptions.Homepage] = From("kilde", "K") with { Value = "  " },
+            },
+        }, Texts.For("nb"), ReaderLanguage.Norwegian, NothingOmitted);
+
+        Assert.Empty(captions);
+    }
+
     [Theory]
     [InlineData(CatalogueColumns.Kildetype)]
     [InlineData(CatalogueColumns.LegalBasis)]

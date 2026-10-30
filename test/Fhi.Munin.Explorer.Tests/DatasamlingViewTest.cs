@@ -2855,16 +2855,24 @@ public class DatasamlingViewTest : ExplorerTestContext
         {
             [InheritedCaptions.Homepage] = new()
             {
-                Value = "https://uit.no/tromso7", SourceLevel = "delkilde", SourceId = Guid.NewGuid(),
+                Value = "https://uit.no/tromso7",
+                SourceLevel = "delkilde",
+                SourceId = Guid.NewGuid(),
                 SourceName = "Tromsø7",
             },
             [InheritedCaptions.DataControllerHerId] = new()
             {
-                Value = "8090", SourceLevel = "kilde", SourceId = Guid.NewGuid(), SourceName = "Tromsøundersøkelsen",
+                Value = "8090",
+                SourceLevel = "kilde",
+                SourceId = Guid.NewGuid(),
+                SourceName = "Tromsøundersøkelsen",
             },
             [InheritedCaptions.DataControllerOrgNumber] = new()
             {
-                Value = "970422528", SourceLevel = "kilde", SourceId = Guid.NewGuid(), SourceName = "Tromsøundersøkelsen",
+                Value = "970422528",
+                SourceLevel = "kilde",
+                SourceId = Guid.NewGuid(),
+                SourceName = "Tromsøundersøkelsen",
             },
         },
     };
@@ -2912,7 +2920,10 @@ public class DatasamlingViewTest : ExplorerTestContext
             {
                 [InheritedCaptions.Homepage] = new()
                 {
-                    Value = website, SourceLevel = "delkilde", SourceId = Guid.NewGuid(), SourceName = "Tromsø7",
+                    Value = website,
+                    SourceLevel = "delkilde",
+                    SourceId = Guid.NewGuid(),
+                    SourceName = "Tromsø7",
                 },
             },
         };
