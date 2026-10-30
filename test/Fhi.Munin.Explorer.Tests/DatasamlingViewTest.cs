@@ -2894,6 +2894,8 @@ public class DatasamlingViewTest : ExplorerTestContext
 
         var caption = Row(box, "HER-ID data controller").QuerySelector("dd p.caption")!;
         Assert.Equal("Inherited from the source Tromsøundersøkelsen", caption.TextContent);
+        // A code is in no language, so its value stays unmarked while its name is marked.
+        Assert.Null(Row(box, "HER-ID data controller").QuerySelector("dd")!.GetAttribute("lang"));
         Assert.Equal("no", caption.QuerySelector("span")!.GetAttribute("lang"));
         Assert.Contains("Website", Labels(box));
     }
