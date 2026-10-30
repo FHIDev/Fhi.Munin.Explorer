@@ -116,6 +116,23 @@ public class InheritedCaptionSourceTest : ExplorerTestContext
     }
 
     [Fact]
+    public void For_WhenTheStartIsInheritedAndTheEndOwn_ThenThePeriodIsNotCaptioned()
+    {
+        var captions = Captions(Inheriting() with { ValidToSource = null });
+
+        Assert.True(captions.ContainsKey(CatalogueColumns.ValidFrom));
+        Assert.False(captions.ContainsKey(InheritedCaptions.ValidityPeriod));
+    }
+
+    [Fact]
+    public void For_WhenOnlyTheEndIsKnown_ThenThePeriodTakesItsCaption()
+    {
+        var captions = Captions(Inheriting() with { EffectiveValidFrom = null, ValidFromSource = null });
+
+        Assert.Equal("Tromsø7", captions[InheritedCaptions.ValidityPeriod].Name);
+    }
+
+    [Fact]
     public void For_WhenTheValidityIsOpenEnded_ThenThePeriodTakesTheCaptionOfItsStart()
     {
         var captions = Captions(Inheriting() with { EffectiveValidTo = null, ValidToSource = null });
@@ -242,6 +259,24 @@ public class InheritedCaptionSourceTest : ExplorerTestContext
         Assert.Equal("Arvet fra delkilden Tromsø7", CaptionOf("Gyldig fra"));
         Assert.Equal("Arvet fra delkilden Tromsø7", CaptionOf("Gyldig til"));
         Assert.Equal("Arvet fra kilden Tromsøundersøkelsen", CaptionOf("Grad av personidentifikasjon"));
+    }
+
+    [Theory]
+    [InlineData(CatalogueColumns.ValidTo, "Gyldig til", "Gyldig fra", "Arvet fra delkilden Tromsø7")]
+    [InlineData(CatalogueColumns.ValidFrom, "Gyldig fra", "Gyldig til", "Arvet fra kilden Tromsøundersøkelsen")]
+    public void Placement_WhenASectionDrawsOneEnd_ThenTheOtherEndsOwnRowIsCaptionedToo(
+        string placedKey, string placedLabel, string unplacedLabel, string caption)
+    {
+        var cut = Render(Inheriting() with
+        {
+            ValidToSource = Kilde,
+            Sections = [new SectionPlacement { Key = "datakilde", SortOrder = 1, Translations = new Dictionary<string, string> { ["no"] = "Datakilde" } }],
+            PropertyMetadata = [Definition(placedKey, placedLabel, "Date", 1)],
+        });
+
+        var rows = cut.FindAll("dl > div");
+        Assert.Equal(caption, rows.Single(row => row.QuerySelector("dt")?.TextContent == unplacedLabel)
+                         .QuerySelector("dd p.caption")?.TextContent);
     }
 
     private static PropertyMetadataEntry Definition(string key, string label, string type, int sortOrder,
