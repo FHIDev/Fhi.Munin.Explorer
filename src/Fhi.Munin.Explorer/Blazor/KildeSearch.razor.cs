@@ -154,6 +154,9 @@ public sealed partial class KildeSearch : ComponentBase
     /// </remarks>
     [Parameter] public Guid? SelectedKildeId { get; set; }
 
+    /// <summary>Where the loaded kilder's codes go, when <see cref="KildeExplorer"/> mounts this; null otherwise.</summary>
+    [CascadingParameter(Name = KildeCodeBook.CascadeName)] private KildeCodeBook? Codes { get; set; }
+
     /// <summary>
     /// Raised when the open kilde changes, so the host can reflect it in its own URL. The
     /// SelectedKildeId/SelectedKildeIdChanged naming gives the host
@@ -848,6 +851,11 @@ public sealed partial class KildeSearch : ComponentBase
         try
         {
             _kilder = await Client.GetKilderAsync();
+
+            foreach (var kilde in _kilder)
+            {
+                Codes?.Learn(kilde.Id, kilde.Code);
+            }
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -1025,6 +1033,7 @@ public sealed partial class KildeSearch : ComponentBase
             }
 
             _kilde = detail;
+            Codes?.Learn(id, detail?.Code);
 
             // Null is the answer for a kilde the catalogue does not publish, which is not a fault —
             // see the remarks on IMuninExplorerClient — so it says so rather than reporting an error
