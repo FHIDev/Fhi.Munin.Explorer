@@ -3,7 +3,7 @@
 # Fails if the RCL's portability guard is not actually armed.
 #
 # BannedSymbols.txt is what stops host-specific types — IHttpContextAccessor, EPiServer, file IO —
-# from reaching a component that has to render in two different hosts. README.md and CLAUDE.md both
+# from reaching a component that has to render in two different hosts. README.md and AGENTS.md both
 # say it "turns that into a build error". It only does so while three separate things line up: the
 # ItemGroup in Directory.Build.props matches the RCL's project name, BannedApiAnalyzers is
 # referenced from it, and BannedSymbols.txt reaches the compiler as an AdditionalFile.

@@ -1,0 +1,62 @@
+name: Team doc copy
+
+# AGENTS.md is this repo's one instructions file. It carries the team's shared rules as a block synced from
+# FHIDev/Fhi.Munin.DevInfra docs/team/working-together.md (DevInfra-gbx.11, gbx.25); CLAUDE.md and
+# .github/copilot-instructions.md only point at it. This check fails when the block is missing or was edited by hand,
+# or when a pointer is missing, carries a block, or (CLAUDE.md) lacks an @AGENTS.md line outside a code block. Change
+# the canonical doc in DevInfra and sync it here with its scripts/team-doc-sync.mjs. DevInfra's daily job checks the
+# rest: that the copy is current, and that bd writes appear only in the marked fallback section.
+on:
+  pull_request:
+    paths:
+      - AGENTS.md
+      - CLAUDE.md
+      - .github/copilot-instructions.md
+      - .github/workflows/team-doc-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: AGENTS.md carries an intact team doc block, and the pointers point
+        run: |
+          # shellcheck disable=SC2016 # the script is JavaScript in single quotes on purpose
+          node --input-type=module -e '
+            import fs from "node:fs";
+            import crypto from "node:crypto";
+            const block = /<!-- team-doc:begin sha256=([0-9a-f]{64}) source=[^ ]+ -->\n([\s\S]*?)<!-- team-doc:end -->/g;
+            const markers = /<!-- team-doc:(?:begin|end)\b/g;
+            const read = file => fs.existsSync(file) ? fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n") : null;
+            let failed = 0;
+            const fail = (file, why) => { console.log(`::error file=${file}::${why}`); failed++; };
+            const agents = read("AGENTS.md");
+            if (agents === null) fail("AGENTS.md", "missing");
+            else {
+              const found = [...agents.matchAll(block)];
+              if (found.length !== 1) fail("AGENTS.md", `${found.length} team-doc blocks; there must be exactly one`);
+              else if ([...agents.matchAll(markers)].length !== 2) fail("AGENTS.md", "a team-doc marker is malformed or unpaired");
+              else if (crypto.createHash("sha256").update(found[0][2]).digest("hex") !== found[0][1])
+                fail("AGENTS.md", "the team-doc block was edited by hand: change docs/team/working-together.md in FHIDev/Fhi.Munin.DevInfra and sync");
+            }
+            // An import counts only outside a code block (a fence, or a four-space indent): Claude Code reads none there.
+            const imports = text => { let fence = ""; return text.split("\n").some(line => {
+              const opener = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+              if (!fence && opener) { fence = opener[1]; return false; }
+              if (fence) { if (opener && opener[1][0] === fence[0] && opener[1].length >= fence.length && !opener[2].trim()) fence = ""; return false; }
+              return /^@AGENTS\.md\s*$/.test(line);
+            }); };
+            for (const file of ["CLAUDE.md", ".github/copilot-instructions.md"]) {
+              const text = read(file);
+              if (text === null) { fail(file, "missing: it points at AGENTS.md"); continue; }
+              if ([...text.matchAll(markers)].length) fail(file, "carries a team-doc block: it lives in AGENTS.md only");
+              if (file === "CLAUDE.md" ? !imports(text) : !/AGENTS\.md/.test(text))
+                fail(file, file === "CLAUDE.md" ? "must import AGENTS.md with a line @AGENTS.md outside a code block" : "does not point at AGENTS.md");
+            }
+            if (failed) process.exit(1);
+            console.log("team-doc: AGENTS.md carries an intact copy, and the pointers point");
+          '
