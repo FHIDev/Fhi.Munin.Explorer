@@ -46,7 +46,8 @@ public partial class VariableSearch
 
     private bool WarnDownload => TotalCount > WarnDownloadFrom;
 
-    private bool ShowDownload => _result is { Items.Count: > 0 } && _resultsTab == ExplorerTab.Search;
+    // Not while a link shows one row: the download is every match, not the row on screen.
+    private bool ShowDownload => _result is { Items.Count: > 0 } && _resultsTab == ExplorerTab.Search && _pinnedRow is null;
 
     // A large selection takes many seconds. The ready text is for the search it was made from, as the failure is.
     private string? DownloadStatus =>

@@ -117,6 +117,8 @@ TARGETS=(
   "/utforsker::explorer-save-all-too-many"
   "/utforsker::explorer-saved-all"
   "/utforsker::variable-stuckbar"
+  "/utforsker::variable-detail"
+  "/utforsker::variable-whole"
   "/::variables-filters-collapsed"
   "/kilder::kilder-filters-collapsed"
   "/kilder::kilde-facet-ticked"

@@ -65,6 +65,10 @@ internal abstract class EmptyMuninExplorerClient : IMuninExplorerClient
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("This fake does not share lists.");
 
+    /// <summary>Refuses, like the interface's own default: a made-up code would open nothing.</summary>
+    public virtual Task<string?> ShareMyListAsync(Guid id, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("This fake does not share saved lists.");
+
     /// <summary>The API's 404: no shared list behind any code.</summary>
     public virtual Task<SharedList?> GetSharedListAsync(
         string? code,

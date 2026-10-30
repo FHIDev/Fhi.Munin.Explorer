@@ -20,6 +20,12 @@
         @RenderBody()
     </main>
 
+    @* Shown by blazor.server.js when the circuit fails; without it a failed page just stops answering. *@
+    <div id="blazor-error-ui" role="alert"
+         style="display: none; position: fixed; inset: auto 0 0 0; z-index: 10001; padding: 1rem 1.5rem; background: #1a1a2e; color: #fff;">
+        Noe gikk galt, og siden svarer ikke lenger.
+        <a href="" class="reload" style="color: #fff; text-decoration: underline; margin-left: 0.5rem;">Last inn på nytt</a>
+    </div>
     @* Legacy Blazor Server: blazor.server.js, not blazor.web.js. *@
     <script src="_framework/blazor.server.js"></script>
     @await RenderSectionAsync("Scripts", required: false)

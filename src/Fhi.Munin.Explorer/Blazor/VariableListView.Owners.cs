@@ -36,10 +36,10 @@ public sealed partial class VariableListView
 
     // Inline because Stiler has no rule for it: fixed tracks, so the group, owner and share buttons
     // line up in the same columns whatever the names, and a long name wraps inside its button.
-    private const string OwnerButtonGrid =
+    internal const string OwnerButtonGrid =
         "display:grid;grid-template-columns:repeat(auto-fill,12rem);gap:0.5rem 1rem;margin-bottom:1rem";
 
-    private const string OwnerButtonCell = "width:100%;white-space:normal";
+    internal const string OwnerButtonCell = "width:100%;white-space:normal";
 
     private string OwnerButtonText(SourceKind kind) => kind == SourceKind.Kilde ? T.ShowKilde : T.ShowDatasamling;
 

@@ -229,6 +229,15 @@ public sealed partial class VariableSearch : ComponentBase
     [Parameter] public Func<Guid, string>? DatasamlingVariablesHref { get; set; }
 
     /// <summary>
+    /// An absolute address that opens one variable, for «Del variabel» on an open row and on the whole variable.
+    /// </summary>
+    /// <remarks>
+    /// When null, or when it returns null for a variable, that variable has no share group. Shown whether or not
+    /// the reader is signed in. <see cref="VariableExplorer"/> passes it; a host mounting this component alone does not.
+    /// </remarks>
+    [Parameter] public Func<VariableSummary, string?>? VariableHref { get; set; }
+
+    /// <summary>
     /// The reader's own variable lists, drawn behind a second tab beside the results.
     /// </summary>
     /// <remarks>
@@ -557,9 +566,12 @@ public sealed partial class VariableSearch : ComponentBase
     /// per datasamling it is delivered from, so the variable alone does not say which row is open.
     /// </summary>
     /// <remarks>
-    /// Read once, with <see cref="SelectedVariableId"/>. Null with a variable set opens that variable's
-    /// first row on the page — what an older link carries — and the component then reports the row's
-    /// datasamling through <see cref="SelectedDatasamlingIdChanged"/>.
+    /// Read once, with <see cref="SelectedVariableId"/>. Both set (what «Kopier lenke» writes, and what a
+    /// host mirrors while a row is open) shows only that row, opened, until the reader searches, filters,
+    /// sorts, changes the page size or presses «Vis alle treff»; download and «Lagre alle» are not offered
+    /// meanwhile. Null with a variable set opens that variable's first row on the page — what an older link
+    /// carries — over the whole list, and the component then reports the row's datasamling through
+    /// <see cref="SelectedDatasamlingIdChanged"/>.
     /// </remarks>
     [Parameter] public Guid? SelectedDatasamlingId { get; set; }
 
@@ -585,6 +597,9 @@ public sealed partial class VariableSearch : ComponentBase
     private bool _rowsLoading;
     private string? _error;
     private Page<VariableSummary>? _result;
+
+    // The row a shared link named, while the list shows only it (see PinnedTo).
+    private VariableDatasamlingKey? _pinnedRow;
 
     // The request that failed and what pressing the button beside it would do. The request is the
     // control's presence too — one field rather than a flag that could only ever disagree with it —
@@ -805,7 +820,7 @@ public sealed partial class VariableSearch : ComponentBase
     /// Guarded on the rows, as <see cref="LastItemOnPage"/> is, or an empty page reads "Viser 26–0 av 312".
     /// </remarks>
     private int FirstItemOnPage =>
-        _result is null || _result.Items.Count == 0 ? 0 : ((ResultPage - 1) * ResultPageSize) + 1;
+        _result is null || _result.Items.Count == 0 ? 0 : _pinnedRow is not null ? 1 : ((ResultPage - 1) * ResultPageSize) + 1;
 
     /// <summary>The 1-based position of the last row on screen, counted from the rows delivered.</summary>
     /// <remarks>
@@ -1084,6 +1099,22 @@ public sealed partial class VariableSearch : ComponentBase
     /// Not <c>ReaderLanguage</c>: a member of that name would shadow the type in every partial.
     /// </remarks>
     private string Reader => ReaderLanguage.Of(Language);
+
+    private string ShareHeadingId(string where) => $"munin-explorer-share-{_instance}-{where}";
+
+    private string ShareFieldId(string where) => $"munin-explorer-share-link-{_instance}-{where}";
+
+    // The open row's own summary when it is on this page, so both links name the same datasamling; else the record.
+    private VariableSummary SummaryOf(VariableDetail d) => _result?.Items.FirstOrDefault(v => IsSelected(v) && v.Id == d.Id) ?? new()
+    {
+        Id = d.Id,
+        Code = d.Code,
+        PreferredTerm = d.PreferredTerm,
+        PreferredTermEn = d.PreferredTermEn,
+        KildeId = d.KildeId,
+        DatasamlingId = d.DatasamlingId,
+        VersionStatus = d.VersionStatus,
+    };
 
     private string? Foreign(string language) => CatalogueProperties.Foreign(language, Reader);
 

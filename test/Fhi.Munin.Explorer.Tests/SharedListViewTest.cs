@@ -80,25 +80,35 @@ public class SharedListViewTest : ExplorerTestContext
         public List<Guid> PageReads { get; } = [];
         public int CreateCalls { get; private set; }
         public int ShareCalls { get; private set; }
+        public List<Guid> SharedListIds { get; } = [];
+
+        /// <summary>The share by id answers 404, as for a list another tab deleted.</summary>
+        public bool ShareFindsNoList { get; init; }
         public int SharedReads { get; private set; }
         public List<Guid> Added { get; } = [];
 
         private bool _readAfterCreateThrown;
 
-        public override Task<string> ShareListAsync(
-            string name, IReadOnlyCollection<VariableListItem> items, CancellationToken cancellationToken = default)
+        /// <summary>The share by id: the snapshot comes from the stored list, as the API builds it.</summary>
+        public override Task<string?> ShareMyListAsync(Guid id, CancellationToken cancellationToken = default)
         {
             ShareCalls++;
+            SharedListIds.Add(id);
 
             if (ShareThrows is not null)
             {
                 throw ShareThrows;
             }
 
-            var code = $"SHARE{store.ByCode.Count}";
-            store.ByCode[code] = new SharedList(name, [.. items]);
+            if (ShareFindsNoList || _lists.FirstOrDefault(l => l.Id == id) is not { } list)
+            {
+                return Task.FromResult<string?>(null);
+            }
 
-            return Task.FromResult(code);
+            var code = $"SHARE{store.ByCode.Count}";
+            store.ByCode[code] = new SharedList(list.Name, [.. _items[id]]);
+
+            return Task.FromResult<string?>(code);
         }
 
         /// <summary>Reads left in flight, by code, so a test can finish them out of order.</summary>
@@ -288,6 +298,67 @@ public class SharedListViewTest : ExplorerTestContext
         Assert.Contains("Mine hjertevariabler", opened.Markup);
     }
 
+    // Fhi.Metadata-9huq2.10: the shown list is a saved one, so it is shared by id and never through the anonymous route.
+    [Fact]
+    public void Share_WhenASavedListIsShared_ThenItIsSharedByIdAndTheCaptionSaysTheCodeDiesWithTheList()
+    {
+        var client = new ShareClient(new ShareStore()) { OwnItems = Three };
+        var cut = RenderView(client);
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Del liste").Click();
+
+        cut.WaitForAssertion(() => Assert.Matches("^[A-Z0-9]{6}$", Labelled(cut, "Delekode").GetAttribute("value") ?? ""));
+        Assert.Equal([OwnListId], client.SharedListIds);
+        Assert.Contains(
+            cut.FindAll("p.caption"),
+            p => p.TextContent == "Koden slutter å virke hvis du sletter listen, og senest etter 90 dager.");
+    }
+
+    [Fact]
+    public void Share_WhenTheListIsGoneByTheTimeItIsShared_ThenTheAlertSaysTheShareFailedAndNoCodeShows()
+    {
+        var cut = RenderView(new ShareClient(new ShareStore()) { OwnItems = Three, ShareFindsNoList = true });
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Del liste").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke dele listen nå. Prøv igjen om litt.", Alert(cut)));
+        Assert.Empty(cut.FindAll("input[readonly]"));
+    }
+
+    [Fact]
+    public void Share_WhenTheShareIsThrottled_ThenTheAlertSaysToWaitAndNoCodeShows()
+    {
+        var cut = RenderView(new ShareClient(new ShareStore())
+        {
+            OwnItems = Three,
+            ShareThrows = new MuninExplorerRateLimitedException(null),
+        });
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Del liste").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Du har gjort for mange forespørsler. Vent litt før du prøver igjen.", Alert(cut)));
+        Assert.Empty(cut.FindAll("input[readonly]"));
+    }
+
+    [Fact]
+    public void Share_WhenTheTokenIsRefused_ThenTheAlertSaysTheShareFailedAndNoCodeShows()
+    {
+        var cut = RenderView(new ShareClient(new ShareStore())
+        {
+            OwnItems = Three,
+            ShareThrows = new MuninExplorerUnauthorizedException(),
+        });
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Button(cut, "Del liste").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Kunne ikke dele listen nå. Prøv igjen om litt.", Alert(cut)));
+        Assert.Empty(cut.FindAll("input[readonly]"));
+    }
+
     // -----------------------------------------------------------------------
     // AC4: an unknown code, or a failure, is said in the alert region and nothing throws
 
@@ -297,7 +368,7 @@ public class SharedListViewTest : ExplorerTestContext
         var cut = RenderView(new ShareClient(new ShareStore()) { OwnItems = Three }, shareCode: "ZZ99ZZ");
 
         cut.WaitForAssertion(() => Assert.Equal(
-            "Fant ingen delt liste med koden ZZ99ZZ. En kode virker i 90 dager.", Alert(cut)));
+            "Fant ingen delt liste med koden ZZ99ZZ. En kode virker i opptil 90 dager, og slutter å virke hvis listen slettes.", Alert(cut)));
         Assert.Equal(3, RowNames(cut).Count);
     }
 
@@ -363,7 +434,7 @@ public class SharedListViewTest : ExplorerTestContext
         var cut = RenderView(client, signedIn: false, shareCode: "ZZ99ZZ");
 
         cut.WaitForAssertion(() => Assert.Equal(
-            "Fant ingen delt liste med koden ZZ99ZZ. En kode virker i 90 dager.", Alert(cut)));
+            "Fant ingen delt liste med koden ZZ99ZZ. En kode virker i opptil 90 dager, og slutter å virke hvis listen slettes.", Alert(cut)));
         Assert.True(HasButton(cut, "Lukk delt liste"));
         Assert.Equal(0, client.MyListsCalls);
     }
@@ -379,7 +450,7 @@ public class SharedListViewTest : ExplorerTestContext
         Button(cut, "Åpne listen").Click();
 
         cut.WaitForAssertion(() => Assert.Equal(
-            "Fant ingen delt liste med koden ZZ99ZZ. En kode virker i 90 dager.", Alert(cut)));
+            "Fant ingen delt liste med koden ZZ99ZZ. En kode virker i opptil 90 dager, og slutter å virke hvis listen slettes.", Alert(cut)));
         Assert.Equal(3, RowNames(cut).Count);
     }
 
@@ -395,7 +466,7 @@ public class SharedListViewTest : ExplorerTestContext
         Button(cut, "Åpne listen").Click();
 
         cut.WaitForAssertion(() => Assert.Equal(
-            "Fant ingen delt liste med koden abc. En kode virker i 90 dager.", Alert(cut)));
+            "Fant ingen delt liste med koden abc. En kode virker i opptil 90 dager, og slutter å virke hvis listen slettes.", Alert(cut)));
         Assert.Equal(0, client.SharedReads);
     }
 
@@ -753,20 +824,20 @@ public class SharedListViewTest : ExplorerTestContext
         {
             "no", new Words(
                 "Del liste", "Delekode", "Lenke til listen", "Send koden på e-post", "Delt variabelliste: Mine hjertevariabler",
-                "Koden virker i 90 dager.", "Kunne ikke dele listen nå. Prøv igjen om litt.", "Åpne delt liste",
+                "Koden slutter å virke hvis du sletter listen, og senest etter 90 dager.", "Kunne ikke dele listen nå. Prøv igjen om litt.", "Åpne delt liste",
                 "Delekode for listen du vil åpne", "Åpne listen", "Delt liste", "Lagre som min liste",
                 "Navn på din kopi av listen", "Lagre listen", "Lukk delt liste", "Logg inn for å lagre listen som din egen.",
-                "Fant ingen delt liste med koden ZZ99ZZ. En kode virker i 90 dager.",
+                "Fant ingen delt liste med koden ZZ99ZZ. En kode virker i opptil 90 dager, og slutter å virke hvis listen slettes.",
                 "Kunne ikke åpne den delte listen nå. Prøv igjen om litt.", "Skriv et navn på listen.",
                 "Navnet kan være høyst 200 tegn.", "Du har allerede en liste med dette navnet. Velg et annet navn.")
         },
         {
             "en", new Words(
                 "Share list", "Share code", "Link to the list", "Send the code by email", "Shared variable list: Mine hjertevariabler",
-                "The code works for 90 days.", "Could not share the list just now. Try again shortly.", "Open shared list",
+                "The code stops working if you delete the list, and after 90 days at the latest.", "Could not share the list just now. Try again shortly.", "Open shared list",
                 "Share code of the list to open", "Open the list", "Shared list", "Save as my list",
                 "Name of your copy of the list", "Save the list", "Close shared list", "Sign in to save the list as your own.",
-                "No shared list was found with the code ZZ99ZZ. A code works for 90 days.",
+                "No shared list was found with the code ZZ99ZZ. A code works for up to 90 days, and stops working if the list is deleted.",
                 "Could not open the shared list just now. Try again shortly.", "Enter a name for the list.",
                 "The name can be at most 200 characters.", "You already have a list with this name. Choose another name.")
         },

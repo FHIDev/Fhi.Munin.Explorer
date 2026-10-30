@@ -902,28 +902,11 @@ else if (State?.IsAuthenticated == true)
 
         @if (VariableHref?.Invoke(item) is { } link)
         {
-            <div role="group" aria-labelledby="@RowShareHeadingId(item)">
-                <p class="headline headline-xxs margin--none" id="@RowShareHeadingId(item)">@T.ShareVariable</p>
-                <div style="@OwnerButtonGrid">
-                    <button class="hd-button-square button-square--ghost"
-                            style="@OwnerButtonCell"
-                            type="button"
-                            @onclick="() => CopyVariableLinkAsync(link)">@T.CopyVariableLink</button>
-                    <a class="hd-button-square button-square--ghost"
-                       style="@OwnerButtonCell"
-                       href="@VariableMailTo(item, link)"
-                       aria-describedby="@RowMailHintId(item)">@T.SendVariableByEmail</a>
-                </div>
-                @* A mailto opens nothing for a webmail reader, so the copy button beside it is named as the way. *@
-                <p class="caption margin--none" id="@RowMailHintId(item)">@T.SendByEmailHint</p>
-                <p class="caption" role="status" aria-live="polite" aria-atomic="true">@_linkStatus</p>
-
-                @if (_linkNotCopied)
-                {
-                    <label class="form-element__label" for="@RowLinkFieldId(item)">@T.VariableLinkLabel</label>
-                    <input type="text" id="@RowLinkFieldId(item)" readonly value="@link" />
-                }
-            </div>
+            <VariableShare Link="@link"
+                           Name="@RowName(item)"
+                           HeadingId="@RowShareHeadingId(item)"
+                           FieldId="@RowLinkFieldId(item)"
+                           Language="@Language" />
         }
     </div>;
 

@@ -612,6 +612,8 @@ public partial class VariableSearch
         {
             Count = Counted(kilde.Count),
             Children = tree.TryGetValue(kilde.Id, out var node) ? HierarchyValues(node.Children) : [],
+            // The tree's row ticks; the chip is built from the base reading, whose toggle keeps the mode.
+            Toggle = () => ToggleTickAsync(Pending.KildeIds, kilde.Id, ids => Pending with { KildeIds = ids }),
         };
 
     /// <summary>A kilde on its own: its words and its toggle, with neither a count nor its tree.</summary>
@@ -705,7 +707,7 @@ public partial class VariableSearch
                                   language,
                                   Counted(node.Count),
                                   reading.Chosen().Contains(node.Id),
-                                  () => ToggleAsync(reading.Chosen(), node.Id, reading.Apply),
+                                  () => ToggleTickAsync(reading.Chosen(), node.Id, reading.Apply),
                                   children,
                                   Icons: Glyphs(node),
                                   NameNo: node.NameNo,
@@ -886,7 +888,7 @@ public partial class VariableSearch
             return Task.CompletedTask;
         }
 
-        return ToggleAsync(Pending.VariabelgruppeScopes, scope, scopes => Pending with { VariabelgruppeScopes = scopes });
+        return ToggleTickAsync(Pending.VariabelgruppeScopes, scope, scopes => Pending with { VariabelgruppeScopes = scopes });
     }
 
     // Choosing a group everywhere supersedes its placements, so their scopes go with the tick.
@@ -1715,6 +1717,11 @@ public partial class VariableSearch
         return ApplyFilterAsync(apply([.. selected, value]));
     }
 
+    // A tick in the kilde tree: ticks in different branches are OR'ed from here on (Fhi.Metadata-emsc0.1.1).
+    private Task ToggleTickAsync<TItem>(
+        IReadOnlyList<TItem> selected, TItem value, Func<IReadOnlyList<TItem>, VariableFilter> apply) =>
+        ToggleAsync(selected, value, chosen => apply(chosen) with { OrTreeTicks = true });
+
     /// <summary>Choose a kildetype, or clear it by choosing the one already chosen.</summary>
     /// <remarks>
     /// One at a time because the API takes one; a checkbox rather than a radio, since there is no
@@ -1923,8 +1930,10 @@ public partial class VariableSearch
         var previous = _filter;
         var previousPage = _page;
         var previousKeepPager = _keepPager;
+        var previousPin = _pinnedRow;
 
         _filter = next;
+        _pinnedRow = null;
 
         // A refused date entry stops standing in for its field once any filter is applied, so
         // both fields show what the results are actually narrowed by.
@@ -1960,6 +1969,7 @@ public partial class VariableSearch
             _filter = previous;
             _page = previousPage;
             _keepPager = previousKeepPager;
+            _pinnedRow = previousPin;
         }
 
         // _filter and not next: what the host is told is what is in force, rolled back or not.

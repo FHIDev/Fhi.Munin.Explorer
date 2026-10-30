@@ -14,7 +14,9 @@ using Microsoft.AspNetCore.Components.Server.Circuits;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddServerSideBlazor();
+// No stored circuit state: on .NET 10 a page that comes back after its circuit expired is otherwise "resumed" with
+// none of its components and stops responding without a word. Refused instead, blazor.server.js reloads the page.
+builder.Services.AddServerSideBlazor(o => o.PersistedCircuitInMemoryMaxRetained = 0);
 
 // Calling Munin as the signed-in user. Registered BEFORE AddMuninExplorer, which is not a
 // style choice: AddMuninExplorer uses TryAdd, so whoever registers first wins. Register after

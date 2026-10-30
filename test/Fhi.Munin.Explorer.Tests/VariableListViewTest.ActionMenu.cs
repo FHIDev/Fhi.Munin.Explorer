@@ -22,12 +22,19 @@ public partial class VariableListViewTest
         /// <summary>Holds the share open until released, the window a reader can act in.</summary>
         public TaskCompletionSource? HoldShare { get; init; }
 
-        public override async Task<string> ShareListAsync(
-            string name, IReadOnlyCollection<VariableListItem> items, CancellationToken cancellationToken = default)
+        /// <summary>Thrown once the hold is released, standing in for a 500.</summary>
+        public Exception? ShareThrows { get; init; }
+
+        public override async Task<string?> ShareMyListAsync(Guid id, CancellationToken cancellationToken = default)
         {
             if (HoldShare is not null)
             {
                 await HoldShare.Task;
+            }
+
+            if (ShareThrows is not null)
+            {
+                throw ShareThrows;
             }
 
             return "ABC123";
@@ -538,6 +545,32 @@ public partial class VariableListViewTest
         cut.WaitForAssertion(() => Assert.Equal("Hjertet mitt", ListHeading(cut).TextContent));
         await cut.InvokeAsync(() => { });
         Assert.Equal(Held(cut, "_shareCodeField"), FocusedId());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Share_WhenTheReaderSwitchesListWhileAShareIsOut_ThenItsAnswerShowsNoCodeAndNoAlert(bool fails)
+    {
+        var held = new TaskCompletionSource();
+        var client = new ShareClient(Item("Alder ved diagnose", "V_BDR.ALDER"))
+        {
+            ListCount = 2,
+            SecondListCount = 1,
+            HoldShare = held,
+            ShareThrows = fails ? new HttpRequestException("500") : null,
+        };
+        var cut = RenderView(client);
+        OpenMenu(cut);
+        var share = ChooseAsync(cut, "Del liste");
+
+        await cut.InvokeAsync(() => cut.Find("select").Change(ListClient.SecondListId.ToString()));
+        await cut.InvokeAsync(held.SetResult);
+        await share;
+        await cut.InvokeAsync(() => { });
+
+        Assert.DoesNotContain("Kunne ikke dele listen nå", cut.Markup);
+        Assert.DoesNotContain("ABC123", cut.Markup);
     }
 
     [Fact]

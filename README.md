@@ -1053,8 +1053,6 @@ These are not style preferences — each one is a host that breaks otherwise.
   | `munin-explorer-kilder` | handle |
   | `munin-explorer-kilder-scroll` | meaning |
   | `munin-explorer-kilder__back` | handle |
-  | `munin-explorer-kilder__bar` | handle |
-  | `munin-explorer-kilder__bar-fill` | handle |
   | `munin-explorer-kilder__card` | handle |
   | `munin-explorer-kilder__card-label` | handle |
   | `munin-explorer-kilder__card--variabler` | handle |
@@ -1347,6 +1345,33 @@ already is the component's type; they carry ids, page numbers and the like, neve
 response body or anything the reader typed — the user's access token reaches the wire through `BearerTokenHandler`'s
 `Authorization` header, which no exception message here repeats.
 
+### A legacy Blazor Server host on .NET 10
+
+A host on `AddServerSideBlazor()`, `blazor.server.js` and the `<component>` tag helper, as helsedata's is, needs one
+option and one element of its own, or a reader coming back from a break finds a page that no longer answers:
+
+```csharp
+services.AddServerSideBlazor(o => o.PersistedCircuitInMemoryMaxRetained = 0);
+```
+
+```html
+<div id="blazor-error-ui" role="alert" style="display: none">
+    Noe gikk galt, og siden svarer ikke lenger. <a href="" class="reload">Last inn på nytt</a>
+</div>
+```
+
+The reason is .NET 10's circuit resume. Once the network has been gone longer than the server keeps a disconnected
+circuit (`DisconnectedCircuitRetentionPeriod`, three minutes by default, counted from when SignalR's 30-second
+`ClientTimeoutInterval` gives up on the silent client), `ConnectCircuit` is refused and `blazor.server.js` tries
+`ResumeCircuit` next. On a page mounted this way the resume reports success with none of the components back, so the
+reconnect overlay goes away, nothing reloads, and every click after that fails on the server. With no circuit state
+stored the resume is refused too, and the script reloads the page; the explorer's state is in the URL, so the reader is
+back where they were. The option switches circuit persistence off for the whole host, so any resume that would
+have worked becomes a reload as well; for these components, whose state is in the URL, that costs nothing.
+`#blazor-error-ui` is what `blazor.server.js` shows for any other circuit failure, with `.reload`
+wired to reload; without it that failure is silent as well. `samples/LegacyHost` and `samples/HostileHost` carry both.
+Measured on helsedata test-1-opt and on LegacyHost, with the WebSocket's frames dropped for longer than the retention.
+
 ### What a host mounts
 
 `VariableExplorer` is the whole variabelutforsker: the search, the reader's own variable lists
@@ -1380,8 +1405,10 @@ collected with — whose own page `InstrumentView` draws in place of the result 
 the Instrument entry on a variable. A link can carry it beside `?variabelId=`, because the variable
 underneath is never torn down; the instrument is the one that opens, since that is the page the
 link was made on. `?datasamlingId=` goes beside `?variabelId=`: a variable is a row per datasamling
-it is delivered from, so the pair names the open row, and a link with the variable alone opens its
-first row. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
+it is delivered from, so the pair names the open row and the list shows only that row, opened, until
+the reader searches, filters, sorts, changes the page size or presses «Vis alle treff». A host that
+mirrors the open row therefore reopens a reloaded page on that one row. A link with the variable alone
+opens its first row over the whole list. The full set is `ExplorerUrlState.ScalarQueryKeys` — `search`, `sort`, `sortDir`,
 `page`, `pageSize`, `variabelId`, `datasamlingId`, `instrumentId` and `delekode` — plus
 `VariableFilter.QueryKeys`, and any of the scalars can be declined.
 

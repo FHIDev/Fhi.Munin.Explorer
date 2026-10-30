@@ -163,9 +163,6 @@ else
        correctness, as the variable explorer's `@if (HierarchyCrumbs is { Count: > 0 } crumbs)` is. *@
     var visible = Visible;
     var summary = Summary(visible);
-    @* Over every row the filter lets through, not the whole load (Fhi.Metadata-35w0p.30), and only
-       against the same kildetype: a register beside a survey with ten times the variables (Fhi.Metadata-r6ht3). *@
-    var largestByType = LargestByKildetype(visible);
     var searchText = SearchText;
 
     @* role="search" makes this a search landmark, and aria-labelledby names it after this
@@ -846,10 +843,7 @@ else
                             }
                             @if (ColumnVisible(KildeColumn.Variables))
                             {
-                                @* The bar is decoration under the digits, which stay the cell's text.
-                                   Variabler only: the mockup draws it on no other count. *@
-                                var largestOfType = largestByType[KildetypeKey(kilde)];
-                                var variables = CountClass(kilde.TotalVariables, largestOfType.TotalVariables);
+                                var variables = CountClass(kilde.TotalVariables);
                                 @* No variables in Munin is one fact with one mark, «–», whether or not a Variabelreferanse
                                    describes them elsewhere; the kilde's own page carries the link (Fhi.Metadata-db81e). *@
                                 @if (kilde.TotalVariables == 0)
@@ -859,8 +853,7 @@ else
                                 }
                                 else
                                 {
-                                var barWords = BarWords(kilde, largestOfType);
-                                <td class="@variables.Class munin-explorer-kilder__card munin-explorer-kilder__card--variabler" style="position:relative" title="@($"{kilde.TotalVariables} {barWords}")">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))@kilde.TotalVariables@if (variables.BarWidth is { } width){<span class="munin-explorer-kilder__bar" aria-hidden="true"><span class="munin-explorer-kilder__bar-fill" style="@width"></span></span>}<span class="screenreader-only">@($" {barWords}")</span></td>
+                                <td class="@variables.Class munin-explorer-kilder__card munin-explorer-kilder__card--variabler">@CardLabel(T.KildeOrderLabel(KildeSortOrder.Variables))@kilde.TotalVariables</td>
                                 }
                             }
                             @if (ColumnVisible(KildeColumn.KodeverkShare))
