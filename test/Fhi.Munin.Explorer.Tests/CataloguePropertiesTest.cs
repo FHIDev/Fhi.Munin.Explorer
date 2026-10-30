@@ -531,6 +531,24 @@ public class CataloguePropertiesTest
         Assert.Equal("20200302", Assert.Single(row.Values).Text);
     }
 
+    [Theory]
+    [InlineData("String", "FHI")]
+    [InlineData("Url", "https://fhi.no")]
+    [InlineData("Email", "post@fhi.no")]
+    [InlineData("String", "https://fhi.no;https://uit.no")]
+    public void Groups_WhenAKeyHasACaption_ThenOnlyItsRowCarriesItWhateverShapeTheRowTakes(string type, string value)
+    {
+        var caption = new InheritedCaption("Arvet fra kilden", "K", null, "no");
+        Dictionary<string, string?> values = new() { ["Dataansvarlig"] = value, ["Formaal"] = "Overvåking" };
+
+        var group = Assert.Single(CatalogueProperties.Groups(
+            [Entry("Dataansvarlig", 10, "Kilde", type: type), Entry("Formaal", 20, "Kilde", type: "String")],
+            values, "no", captions: new Dictionary<string, InheritedCaption> { ["Dataansvarlig"] = caption }));
+
+        Assert.Equal(caption, group.Rows[0].Caption);
+        Assert.Null(group.Rows[1].Caption);
+    }
+
     [Fact]
     public void Groups_WhenTheGroupNameCarriesTheCataloguesStorageQualifier_ThenItIsStrippedToo()
     {

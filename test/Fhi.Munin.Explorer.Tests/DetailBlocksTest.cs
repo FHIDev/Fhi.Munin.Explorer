@@ -200,6 +200,24 @@ public class DetailBlocksTest : ExplorerTestContext
             .Add(c => c.CompleteRecord, completeRecord)).Markup;
 
     [Fact]
+    public void GroupBody_WhenARowIsInherited_ThenItsCaptionSitsOnceUnderItsLastLanguageAndNowhereElse()
+    {
+        var caption = new InheritedCaption("Arvet fra kilden", "Tromsøundersøkelsen", null, "no");
+        var group = new PropertyGroup("Innhold", ReaderLanguage.Norwegian,
+            [
+                new PropertyRow("Formål", "no", [new LocalisedText("Overvåking", "no")]),
+                new PropertyRow("Tittel", "no", [new LocalisedText("Tittel", "no"), new LocalisedText("Title", "en")],
+                                Caption: caption),
+            ]);
+
+        var cut = Render<GroupHost>(p => p.Add(c => c.Group, group).Add(c => c.WithHeading, false));
+
+        var captioned = Assert.Single(cut.FindAll("dd p.caption"));
+        Assert.Equal("Arvet fra kilden Tromsøundersøkelsen", captioned.TextContent);
+        Assert.Same(cut.FindAll("dd")[^1], captioned.ParentElement);
+    }
+
+    [Fact]
     public void GroupBody_WhenTheSameGroupIsDrawnWithItsHeadingAndWithout_ThenTheBodyIsTheSameMarkupEitherWay()
     {
         // Group delegates its body to GroupBody, whose dl restarts at sequence 0 where it used to

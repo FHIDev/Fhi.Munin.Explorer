@@ -22,6 +22,7 @@ internal readonly record struct LocalisedText(string Text, string Language);
 /// <param name="Authored">Drawn through <see cref="CatalogueMarkdown"/>; see <see cref="CatalogueProperties.AuthoredKeys"/>.</param>
 /// <param name="InlineLinks">Drawn through <see cref="CatalogueMarkdown.Linked"/>: Lovverk with an address in it.</param>
 /// <param name="Items">A multi-select's several values, one per line in the vocabulary's order; <c>Values</c> joins them.</param>
+/// <param name="Caption">Where an inherited value came from, drawn under it; null for a record's own value.</param>
 internal readonly record struct PropertyRow(
     string Label,
     string LabelLanguage,
@@ -30,7 +31,8 @@ internal readonly record struct PropertyRow(
     IReadOnlyList<string>? Hrefs = null,
     bool Authored = false,
     bool InlineLinks = false,
-    IReadOnlyList<LocalisedText>? Items = null);
+    IReadOnlyList<LocalisedText>? Items = null,
+    InheritedCaption? Caption = null);
 
 /// <summary>A named group of properties, as the catalogue arranges them.</summary>
 /// <remarks>
@@ -223,7 +225,8 @@ internal static class CatalogueProperties
         IEnumerable<PropertyMetadataEntry> metadata,
         IReadOnlyDictionary<string, string?>? values,
         string reader,
-        IReadOnlySet<string>? drawnElsewhere = null)
+        IReadOnlySet<string>? drawnElsewhere = null,
+        IReadOnlyDictionary<string, InheritedCaption>? captions = null)
     {
         var rows = new List<PropertyRow>();
         var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
@@ -248,6 +251,9 @@ internal static class CatalogueProperties
             }
 
             var label = WithoutStorageQualifier(rawLabel);
+            InheritedCaption? caption = captions is not null && captions.TryGetValue(entry.Key, out var found)
+                ? found
+                : null;
 
             // A curated label that was ONLY the qualifier — "(språkmerket)" with nothing before
             // it — strips to nothing rather than to prose, and an empty <dt> is worse than the
@@ -269,7 +275,7 @@ internal static class CatalogueProperties
             if (resolved is [{ Text: var text }] && text == raw && CatalogueMarkdown.LinkList(raw) is { } hrefs)
             {
                 rows.Add(new PropertyRow(label, labelLanguage, [new LocalisedText(raw.Trim(), reader)],
-                                         Hrefs: hrefs));
+                                         Hrefs: hrefs, Caption: caption));
                 continue;
             }
 
@@ -282,14 +288,14 @@ internal static class CatalogueProperties
 
                 rows.Add(new PropertyRow(label, labelLanguage,
                                          [new LocalisedText(link.Label, labelIsTheAddress ? reader : "no")],
-                                         link.Href));
+                                         link.Href, Caption: caption));
                 continue;
             }
 
             // An Email field is there to be written to: one valid address becomes a mailto, anything else stays text.
             if (Typed(entry, EmailType) && CatalogueMarkdown.Mailto(raw) is { } mailto)
             {
-                rows.Add(new PropertyRow(label, labelLanguage, [new LocalisedText(mailto["mailto:".Length..], reader)], mailto));
+                rows.Add(new PropertyRow(label, labelLanguage, [new LocalisedText(mailto["mailto:".Length..], reader)], mailto, Caption: caption));
                 continue;
             }
 
@@ -303,7 +309,7 @@ internal static class CatalogueProperties
                 ? chosen
                 : null;
             rows.Add(new PropertyRow(label, labelLanguage, resolved, Authored: authored, InlineLinks: inlineLinks,
-                                     Items: items));
+                                     Items: items, Caption: caption));
         }
 
         return rows;
@@ -456,7 +462,8 @@ internal static class CatalogueProperties
         string reader,
         IReadOnlySet<string>? drawnElsewhere = null,
         IReadOnlyDictionary<string, string?>? completeRecordValues = null,
-        IReadOnlySet<string>? repeatedInRecord = null)
+        IReadOnlySet<string>? repeatedInRecord = null,
+        IReadOnlyDictionary<string, InheritedCaption>? captions = null)
     {
         var present = values ?? ReadOnlyDictionary<string, string?>.Empty;
         var groups = new List<Gathering>();
@@ -506,8 +513,8 @@ internal static class CatalogueProperties
                            && string.Equals(group.Key, CatchAllGroupKey, StringComparison.Ordinal);
 
             var rows = complete
-                ? Rows(metadata, completeRecordValues, reader, repeatedInRecord)
-                : Rows(group.Entries, present, reader);
+                ? Rows(metadata, completeRecordValues, reader, repeatedInRecord, captions)
+                : Rows(group.Entries, present, reader, captions: captions);
 
             if (rows.Count == 0)
             {

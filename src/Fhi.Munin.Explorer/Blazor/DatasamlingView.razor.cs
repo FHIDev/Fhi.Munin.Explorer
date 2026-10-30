@@ -244,6 +244,7 @@ public sealed partial class DatasamlingView : ComponentBase
     private string? _resolvedLanguage;
     private IReadOnlyList<PropertyGroup> _groups = [];
     private CataloguePlacement _placement = CataloguePlacement.None;
+    private IReadOnlyDictionary<string, InheritedCaption> _captions = new Dictionary<string, InheritedCaption>();
 
     /// <summary>The catalogue's metadata, grouped and ordered as the catalogue arranges it.</summary>
     /// <remarks>
@@ -304,6 +305,7 @@ public sealed partial class DatasamlingView : ComponentBase
         {
             _placement = CataloguePlacement.None;
             _groups = [];
+            _captions = new Dictionary<string, InheritedCaption>();
 
             return;
         }
@@ -313,9 +315,11 @@ public sealed partial class DatasamlingView : ComponentBase
                                             Reader,
                                             DrawnElsewhere);
 
+        _captions = InheritedCaptions.For(datasamling, T, Reader);
         _groups = CatalogueProperties.Groups(datasamling.PropertyMetadata, _placement.Values, Reader,
                                              _placement.DrawnElsewhere,
-                                             CompleteRecord.Values(datasamling, _placement.Values));
+                                             CompleteRecord.Values(datasamling, _placement.Values),
+                                             captions: _captions);
     }
 
     /// <inheritdoc cref="KildeView.CompleteRecordFacts"/>
@@ -361,30 +365,10 @@ public sealed partial class DatasamlingView : ComponentBase
     private static (string Label, string? Value, bool Norwegian, string? Href) Unlinked(
         string label, string? value, bool norwegian) => (label, value, norwegian, null);
 
-    /// <summary>
-    /// The facts every datasamling has, labelled as the kilde view labels the same fields.
-    /// </summary>
+    /// <summary>Where the datasamling's data comes from, labelled as the kilde view labels the same fields.</summary>
     /// <remarks>
-    /// The third element says whether the value is the catalogue's own words, and the fourth is
-    /// where the row goes. The kildetype and the identification level are vocabularies this package
-    /// translates; the rest are stored once, in Norwegian, however the reader is reading.
-    /// <para>
-    /// Every row but Kilde, Kildetype and the two Munin timestamps is a column-backed property the
-    /// catalogue can place in a section of its own, and each yields when it does — see
-    /// <see cref="UnlessPlaced"/> and <see cref="ValidityRows"/>, which answers for Gyldig fra and
-    /// Gyldig til apart although they share one row. The four are not among them: no section can
-    /// draw a fact nothing merges into the renderable set, and the timestamps are Munin's own.
-    /// </para>
-    /// <para>
-    /// Kilde is the one row with somewhere to go, and only where <see cref="KildeHref"/> was wired:
-    /// the id is on the payload for exactly this, so the return path out of a collection costs no
-    /// second request (Fhi.Metadata-35w0p.50).
-    /// </para>
-    /// <para>
-    /// What is left after the yielding follows the yielded fields into their section rather than
-    /// heading one of its own — see <see cref="BuildLayout"/>, and Fhi.Metadata-lr6yh for why a
-    /// page carrying both Kildeinformasjon and Datakilde was the defect.
-    /// </para>
+    /// Column-backed rows yield to a section that places them (<see cref="UnlessPlaced"/>) and the rest follow them
+    /// there (Fhi.Metadata-lr6yh); Kilde, Kildetype, the inherited kilde fields and the timestamps cannot be placed.
     /// </remarks>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> SourceInformation =>
         Datasamling is not { } datasamling
@@ -404,9 +388,65 @@ public sealed partial class DatasamlingView : ComponentBase
                 .. UnlessPlaced(CatalogueColumns.PersonIdentification,
                                 Unlinked(T.FieldPersonIdentification, PersonIdentification, false)),
                 .. ValidityRows.Select(row => (row.Label, row.Value, row.Norwegian, (string?)null)),
+                .. InheritedRows(datasamling),
                 (T.FieldLastUpdated, CatalogueDate.DayOrNothing(datasamling.LastUpdated, Language), false, null),
                 (T.FieldCreatedInMunin, CatalogueDate.DayOrNothing(datasamling.Created, Language), false, null),
             ];
+
+    /// <summary>The public kilde fields this datasamling inherits, each only where Munin sent a value.</summary>
+    /// <remarks>
+    /// Not in the datasamling's own metadata, so no section can place them and they carry this package's labels.
+    /// </remarks>
+    private IEnumerable<(string Label, string? Value, bool Norwegian, string? Href)> InheritedRows(
+        DatasamlingDetail datasamling)
+    {
+        foreach (var (key, label) in InheritedLabels)
+        {
+            if (!datasamling.InheritedProperties.TryGetValue(key, out var inherited)
+                || string.IsNullOrWhiteSpace(inherited.Value))
+            {
+                continue;
+            }
+
+            if (key == InheritedCaptions.Homepage && CatalogueMarkdown.Link(inherited.Value) is { } link)
+            {
+                yield return (label, link.Label, !CatalogueMarkdown.IsAddress(link), link.Href);
+                continue;
+            }
+
+            // A Hjemmeside that is no address is the catalogue's words; the codes are in no language.
+            yield return (label, inherited.Value, key == InheritedCaptions.Homepage, null);
+        }
+    }
+
+    private IReadOnlyList<(string Key, string Label)> InheritedLabels =>
+    [
+        (InheritedCaptions.Homepage, T.FieldWebsite),
+        (InheritedCaptions.DataControllerOrgNumber, T.FieldDataControllerOrgNumber),
+        (InheritedCaptions.DataControllerHerId, T.FieldDataControllerHerId),
+        (InheritedCaptions.DataSourceHerId, T.FieldDataSourceHerId),
+    ];
+
+    /// <summary>The captions for <see cref="SourceInformation"/>, by the label each of its rows is drawn under.</summary>
+    private IReadOnlyDictionary<string, InheritedCaption> SourceCaptions
+    {
+        get
+        {
+            Resolve();
+
+            IReadOnlyList<(string Key, string Label)> rows =
+            [
+                (CatalogueColumns.Kildetype, T.FacetKildeType),
+                (CatalogueColumns.LegalBasis, T.FieldLegalBasis),
+                (CatalogueColumns.DataController, T.FieldDataController),
+                (CatalogueColumns.DataProcessor, T.FieldDataProcessor),
+                .. InheritedLabels,
+            ];
+
+            return rows.Where(row => _captions.ContainsKey(row.Key))
+                       .ToDictionary(row => row.Label, row => _captions[row.Key], StringComparer.Ordinal);
+        }
+    }
 
     /// <inheritdoc cref="CataloguePlacement.ValidityRows"/>
     private IReadOnlyList<(string Label, string? Value, bool Norwegian)> ValidityRows =>
@@ -709,7 +749,8 @@ public sealed partial class DatasamlingView : ComponentBase
 
             var content = facts.Count == 0
                 ? body
-                : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language, linkedLabel: T.FieldLegalBasis));
+                : DetailBlocks.Both(body, DetailBlocks.LinkedFacts(facts, Language, linkedLabel: T.FieldLegalBasis,
+                                                                captions: SourceCaptions));
 
             // A curated Variables group with no numbers still takes the reference, rather than a second section.
             if (!AnyStatistics && VariableReferenceLine is { } line
@@ -854,7 +895,8 @@ public sealed partial class DatasamlingView : ComponentBase
         {
             blocks.Add(new(SectionKeys.SourceInformation, DetailSectionIds.Source,
                            T.HeadingSourceInformation, null,
-                           DetailBlocks.LinkedFacts(sourceFacts, Language, linkedLabel: T.FieldLegalBasis)));
+                           DetailBlocks.LinkedFacts(sourceFacts, Language, linkedLabel: T.FieldLegalBasis,
+                                                    captions: SourceCaptions)));
         }
 
         if (!statisticsDrawn && AnyStatistics)
