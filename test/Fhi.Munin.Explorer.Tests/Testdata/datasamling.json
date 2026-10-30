@@ -7,7 +7,7 @@
   "beskrivelse": "Inklusjon",
   "beskrivelseEn": null,
   "opprettet": "2026-04-10T10:51:53.248Z",
-  "sistOppdatert": "2026-08-14T14:02:43.546Z",
+  "sistOppdatert": "2026-10-23T12:30:22.982Z",
   "gyldigFra": "2010-01-01T00:00:00.000Z",
   "gyldigTil": null,
   "lovverk": null,
@@ -24,6 +24,14 @@
   "effectiveGradAvPersonidentifikasjon": "indirectlyIdentifiable",
   "effectiveGyldigFra": "2010-01-01T00:00:00.000Z",
   "effectiveGyldigTil": null,
+  "gradAvPersonidentifikasjonSource": {
+    "sourceLevel": "kilde",
+    "sourceId": "f7e53f99-a6e4-438e-bb8b-d0b20e0bb53f",
+    "sourceName": "ALS Registeret",
+    "sourceNameEn": "Norwegian Registry for ALS and Other Motor Neuron Diseases"
+  },
+  "gyldigFraSource": null,
+  "gyldigTilSource": null,
   "effectiveKildetype": "nasjonaltMedisinskKvalitetsregister",
   "variableCount": 104,
   "inklusjonsOgEksklusjonskriterier": "Pasienter over eller er lik 18 år, diagnostisert med ICD-10 G12.2. ",
@@ -35,7 +43,8 @@
     "Dataansvarlig": "St. Olavs hospital ",
     "Databehandler": "St. Olavs hospital ",
     "Lovverk": "Innmelding av opplysninger fra det enkelte helseforetak til kvalitetsregistrene som inngår i § 2-3 i Forskrift om medisinske kvalitetsregistre. Personopplysningsloven, personvernforordningen (jf. Personopplysningsloven § 1) og helseregisterloven gjelder for behandling av helseopplysninger i medisinske kvalitetsregistre. Behandlingsgrunnlaget for ALS-registeret er personvernforordningen artikkel 6 nr. 1 bokstav e og artikkel 9 nr. 2 bokstav g, h, i og j. Overgang fra samtykkebasert register til reservasjonsbasert register 04.04.2024.",
-    "healthCategory": "[\"MRMR\"]"
+    "healthCategory": "[\"MRMR\"]",
+    "healthTheme": "[\"healthdcatap:rare-diseases\",\"NONCOMMUNICABLE_DISEASES\"]"
   },
   "inheritedProperties": {},
   "propertyMetadata": [
@@ -138,7 +147,7 @@
       "groupSortOrder": 1001,
       "sortOrder": 1006,
       "type": "MultiSelect",
-      "optionsJson": "[{\"value\":\"PHDR\",\"label\":\"Befolkningsbaserte helseregistre\",\"labelEn\":\"Population health data registries\",\"description\":\"Nasjonale og regionale registre som dekker hele befolkningen, for eksempel fødselsregister og vaksinasjonsregister.\",\"descriptionEn\":\"National and regional registries covering the whole population, such as birth and immunisation registries.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"MRMR\",\"label\":\"Medisinske registre og dødsårsaksregistre\",\"labelEn\":\"Medical and mortality registries\",\"description\":\"Sykdoms- og diagnoseregistre og registre over dødsårsak.\",\"descriptionEn\":\"Disease and diagnosis registries and cause-of-death registries.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"RMMD\",\"label\":\"Legemiddel- og utstyrsregistre\",\"labelEn\":\"Registries of medicinal products and medical devices\",\"description\":\"Registre over legemidler og medisinsk utstyr, inkludert resept- og forskrivningsdata.\",\"descriptionEn\":\"Registries of medicinal products and medical devices, including prescription and dispensing data.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"HPML\",\"label\":\"Helsepersonell og autorisasjon\",\"labelEn\":\"Health professionals and licensing\",\"description\":\"Data om helsepersonell, autorisasjon og godkjenning.\",\"descriptionEn\":\"Data on health professionals, licensing and accreditation.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"RPDG\",\"label\":\"Forskningskohorter og helseundersøkelser\",\"labelEn\":\"Research population data and cohorts\",\"description\":\"Kohorter, spørreundersøkelser og befolkningsbaserte helseundersøkelser. For kliniske utprøvinger, velg Forskningsstudier og kliniske utprøvinger.\",\"descriptionEn\":\"Cohorts, questionnaires and population-based health surveys. For clinical trials, choose Research studies and clinical trials.\",\"group\":\"Forskning\",\"groupEn\":\"Research\"},{\"value\":\"RQSH\",\"label\":\"Forskningsstudier og kliniske utprøvinger\",\"labelEn\":\"Research studies and clinical trials\",\"description\":\"Data samlet inn i forskningsstudier og kliniske utprøvinger. For kohorter og helseundersøkelser, velg Forskningskohorter og helseundersøkelser.\",\"descriptionEn\":\"Data collected in research studies and clinical trials. For cohorts and health surveys, choose Research population data and cohorts.\",\"group\":\"Forskning\",\"groupEn\":\"Research\"},{\"value\":\"NRPE\",\"label\":\"Publisert forskningsdokumentasjon\",\"labelEn\":\"Non-routine published evidence\",\"description\":\"Publisert forskningsdokumentasjon og evidens som ikke stammer fra rutinemessig datainnsamling.\",\"descriptionEn\":\"Published research documentation and evidence that does not come from routine data collection.\",\"group\":\"Forskning\",\"groupEn\":\"Research\"},{\"value\":\"EHRS\",\"label\":\"Pasientjournaler\",\"labelEn\":\"Electronic health records\",\"description\":\"Data fra elektroniske pasientjournaler i helsetjenesten.\",\"descriptionEn\":\"Data from electronic health records held by health services.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"HRAD\",\"label\":\"Administrative helsedata\",\"labelEn\":\"Healthcare-related administrative data\",\"description\":\"Administrative data knyttet til helsetjenesten, for eksempel henvisninger, oppgjør og refusjoner.\",\"descriptionEn\":\"Administrative data related to healthcare, such as referrals, claims and reimbursements.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"EHCT\",\"label\":\"Helsetjenestebehov og -utgifter\",\"labelEn\":\"Healthcare needs and expenditure\",\"description\":\"Data om behov for helsetjenester, ressursbruk og utgifter.\",\"descriptionEn\":\"Data on healthcare needs, resource use and expenditure.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"EINS\",\"label\":\"Biobanker og prøvesamlinger\",\"labelEn\":\"Health data from biobanks\",\"description\":\"Biobanker og prøvesamlinger, inkludert data om de biologiske prøvene som er lagret.\",\"descriptionEn\":\"Biobanks and sample collections, including data about the biological samples held.\",\"group\":\"Biologiske data\",\"groupEn\":\"Biological data\"},{\"value\":\"HGPD\",\"label\":\"Genetiske og genomiske data\",\"labelEn\":\"Human genetic and genomic data\",\"description\":\"Genetiske og genomiske data om mennesker, inkludert genomsekvenser.\",\"descriptionEn\":\"Human genetic and genomic data, including genome sequences.\",\"group\":\"Biologiske data\",\"groupEn\":\"Biological data\"},{\"value\":\"PGEH\",\"label\":\"Omikkdata (proteom, metabolom m.m.)\",\"labelEn\":\"Proteomic and other omics data\",\"description\":\"Andre omikkdata enn genom. For genomdata, velg Genetiske og genomiske data\",\"descriptionEn\":\"Omics data other than genomics. For genomic data, choose Human genetic and genomic data\",\"group\":\"Biologiske data\",\"groupEn\":\"Biological data\"},{\"value\":\"IDHP\",\"label\":\"Smittsomme sykdommer og patogener\",\"labelEn\":\"Infectious diseases and human pathogens\",\"description\":\"Data om smittsomme sykdommer og humane patogener, inkludert smitteovervåking.\",\"descriptionEn\":\"Data on infectious diseases and human pathogens, including surveillance.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"DIOH\",\"label\":\"Helsedeterminanter\",\"labelEn\":\"Determinants impacting on health\",\"description\":\"Forhold som påvirker helse, for eksempel levevaner, miljø, yrke og sosioøkonomiske forhold.\",\"descriptionEn\":\"Factors that influence health, such as lifestyle, environment, occupation and socioeconomic conditions.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"EMRD\",\"label\":\"Data fra medisinsk utstyr\",\"labelEn\":\"Electronic medical device data\",\"description\":\"Måledata fra medisinsk utstyr og digitale helseløsninger.\",\"descriptionEn\":\"Measurement data from medical devices and digital health solutions.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"WELA\",\"label\":\"Data fra helseapper\",\"labelEn\":\"Wellness application data\",\"description\":\"Data fra helse- og treningsapper og annen forbrukerteknologi for helse.\",\"descriptionEn\":\"Data from wellness and fitness applications and other consumer health technology.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\",\"description\":\"Datasamlinger som ikke hører hjemme i noen av kategoriene over. Beholdt fordi EHDS v7 ikke har en samlekategori.\",\"descriptionEn\":\"Data collections that do not belong in any of the categories above. Retained because EHDS v7 has no catch-all category.\",\"group\":\"Annet\",\"groupEn\":\"Other\"}]",
+      "optionsJson": "[{\"value\":\"PHDR\",\"label\":\"Befolkningsbaserte helseregistre\",\"labelEn\":\"Population health data registries\",\"description\":\"Nasjonale og regionale registre som dekker hele befolkningen, for eksempel fødselsregister og vaksinasjonsregister.\",\"descriptionEn\":\"National and regional registries covering the whole population, such as birth and immunisation registries.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"MRMR\",\"label\":\"Medisinske registre og dødsårsaksregistre\",\"labelEn\":\"Medical and mortality registries\",\"description\":\"Sykdoms- og diagnoseregistre og registre over dødsårsak.\",\"descriptionEn\":\"Disease and diagnosis registries and cause-of-death registries.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"RMMD\",\"label\":\"Legemiddel- og utstyrsregistre\",\"labelEn\":\"Registries of medicinal products and medical devices\",\"description\":\"Registre over legemidler og medisinsk utstyr, inkludert resept- og forskrivningsdata.\",\"descriptionEn\":\"Registries of medicinal products and medical devices, including prescription and dispensing data.\",\"group\":\"Registre\",\"groupEn\":\"Registries\"},{\"value\":\"RQSH\",\"label\":\"Forskningskohorter, spørreskjemaer og helseundersøkelser\",\"labelEn\":\"Research cohorts, questionnaires and health surveys\",\"description\":\"Data fra forskningskohorter, spørreskjemaer og undersøkelser knyttet til helse, etter at resultatene er publisert første gang. For kliniske studier, velg Data fra kliniske studier, kliniske utprøvinger og kliniske undersøkelser.\",\"descriptionEn\":\"Data from research cohorts, questionnaires and surveys related to health, after the first publication of the related results. For clinical trials, choose Clinical trials and studies.\",\"group\":\"Forskning\",\"groupEn\":\"Research\"},{\"value\":\"EHCT\",\"label\":\"Data fra kliniske studier, kliniske utprøvinger og kliniske undersøkelser\",\"labelEn\":\"Clinical trials and studies\",\"description\":\"Data fra kliniske utprøvinger, kliniske studier, klinisk utprøving av medisinsk utstyr og ytelsesstudier som omfattes av forordning (EU) nr. 536\\/2014, forordning (EU) 2024\\/1938, forordning (EU) 2017\\/745 og forordning (EU) 2017\\/746.\",\"descriptionEn\":\"Data from clinical trials, clinical studies, clinical investigations and performance studies subject to Regulation (EU) No 536\\/2014, Regulation (EU) 2024\\/1938, Regulation (EU) 2017\\/745 and Regulation (EU) 2017\\/746.\",\"group\":\"Forskning\",\"groupEn\":\"Research\"},{\"value\":\"EHRS\",\"label\":\"Pasientjournaler\",\"labelEn\":\"Electronic health records\",\"description\":\"Data fra elektroniske pasientjournaler i helsetjenesten.\",\"descriptionEn\":\"Data from electronic health records held by health services.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"HRAD\",\"label\":\"Administrative helsedata\",\"labelEn\":\"Healthcare-related administrative data\",\"description\":\"Administrative data knyttet til helsetjenesten, for eksempel henvisninger, oppgjør og refusjoner.\",\"descriptionEn\":\"Administrative data related to healthcare, such as referrals, claims and reimbursements.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"NRPE\",\"label\":\"Aggregerte data om helsetjenester og ressursbruk\",\"labelEn\":\"Aggregated data on healthcare\",\"description\":\"Aggregerte data om behov for helsetjenester, ressurser til helsetjenesten, yting av og tilgang til helsetjenester, og utgifter til og finansiering av helsetjenesten.\",\"descriptionEn\":\"Aggregated data on healthcare needs, resources allocated to healthcare, the provision of and access to healthcare, healthcare expenditure and financing.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"IDHP\",\"label\":\"Data om helsepersonell\",\"labelEn\":\"Data on health professionals\",\"description\":\"Data om yrkesstatus, spesialisering og institusjon for helsepersonell som deltar i behandlingen av en fysisk person.\",\"descriptionEn\":\"Data on professional status, and on the specialisation and institution of health professionals involved in the treatment of a natural person.\",\"group\":\"Helsetjenestedata\",\"groupEn\":\"Health service data\"},{\"value\":\"EINS\",\"label\":\"Biobanker og prøvesamlinger\",\"labelEn\":\"Health data from biobanks\",\"description\":\"Biobanker og prøvesamlinger, inkludert data om de biologiske prøvene som er lagret.\",\"descriptionEn\":\"Biobanks and sample collections, including data about the biological samples held.\",\"group\":\"Biologiske data\",\"groupEn\":\"Biological data\"},{\"value\":\"HGPD\",\"label\":\"Genetiske og genomiske data\",\"labelEn\":\"Human genetic and genomic data\",\"description\":\"Genetiske og genomiske data om mennesker, inkludert genomsekvenser.\",\"descriptionEn\":\"Human genetic and genomic data, including genome sequences.\",\"group\":\"Biologiske data\",\"groupEn\":\"Biological data\"},{\"value\":\"HPML\",\"label\":\"Omikkdata og andre molekylære data\",\"labelEn\":\"Omics and other molecular data\",\"description\":\"Andre molekylære data fra mennesker, for eksempel proteomiske, transkriptomiske, metabolomiske, lipidomiske og andre omikkdata. For genetiske og genomiske data, velg Genetiske og genomiske data.\",\"descriptionEn\":\"Other human molecular data such as proteomic, transcriptomic, metabolomic, lipidomic and other omic data. For genetic and genomic data, choose Human genetic and genomic data.\",\"group\":\"Biologiske data\",\"groupEn\":\"Biological data\"},{\"value\":\"RPDG\",\"label\":\"Data om patogener\",\"labelEn\":\"Data on pathogens\",\"description\":\"Data om patogener som påvirker menneskers helse.\",\"descriptionEn\":\"Data on pathogens that impact human health.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"DIOH\",\"label\":\"Helsedeterminanter\",\"labelEn\":\"Determinants impacting on health\",\"description\":\"Forhold som påvirker helse, for eksempel levevaner, miljø, yrke og sosioøkonomiske forhold.\",\"descriptionEn\":\"Factors that influence health, such as lifestyle, environment, occupation and socioeconomic conditions.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"PGEH\",\"label\":\"Personlige helsedata generert av medisinsk utstyr\",\"labelEn\":\"Personal health data generated by medical devices\",\"description\":\"Personlige elektroniske helsedata som genereres automatisk av medisinsk utstyr. For andre data fra medisinsk utstyr, velg Andre helsedata fra medisinsk utstyr.\",\"descriptionEn\":\"Personal electronic health data automatically generated through medical devices. For other data from medical devices, choose Other health data from medical devices.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"EMRD\",\"label\":\"Andre helsedata fra medisinsk utstyr\",\"labelEn\":\"Other health data from medical devices\",\"description\":\"Andre helsedata fra medisinsk utstyr enn personlige helsedata som utstyret genererer automatisk. For slike data, velg Personlige helsedata generert av medisinsk utstyr.\",\"descriptionEn\":\"Health data from medical devices other than the personal health data a device generates automatically. For those, choose Personal health data generated by medical devices.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"WELA\",\"label\":\"Data fra helseapper\",\"labelEn\":\"Wellness application data\",\"description\":\"Data fra helse- og treningsapper og annen forbrukerteknologi for helse.\",\"descriptionEn\":\"Data from wellness and fitness applications and other consumer health technology.\",\"group\":\"Folkehelse og måledata\",\"groupEn\":\"Public health and measurement data\"},{\"value\":\"ehds-cat:other\",\"label\":\"Annet\",\"labelEn\":\"Other\",\"description\":\"Datasamlinger som ikke hører hjemme i noen av kategoriene over. Beholdt fordi EHDS v7 ikke har en samlekategori.\",\"descriptionEn\":\"Data collections that do not belong in any of the categories above. Retained because EHDS v7 has no catch-all category.\",\"group\":\"Annet\",\"groupEn\":\"Other\"}]",
       "options": [
         {
           "value": "PHDR",
@@ -153,20 +162,12 @@
           "displayName": "Legemiddel- og utstyrsregistre"
         },
         {
-          "value": "HPML",
-          "displayName": "Helsepersonell og autorisasjon"
-        },
-        {
-          "value": "RPDG",
-          "displayName": "Forskningskohorter og helseundersøkelser"
-        },
-        {
           "value": "RQSH",
-          "displayName": "Forskningsstudier og kliniske utprøvinger"
+          "displayName": "Forskningskohorter, spørreskjemaer og helseundersøkelser"
         },
         {
-          "value": "NRPE",
-          "displayName": "Publisert forskningsdokumentasjon"
+          "value": "EHCT",
+          "displayName": "Data fra kliniske studier, kliniske utprøvinger og kliniske undersøkelser"
         },
         {
           "value": "EHRS",
@@ -177,8 +178,12 @@
           "displayName": "Administrative helsedata"
         },
         {
-          "value": "EHCT",
-          "displayName": "Helsetjenestebehov og -utgifter"
+          "value": "NRPE",
+          "displayName": "Aggregerte data om helsetjenester og ressursbruk"
+        },
+        {
+          "value": "IDHP",
+          "displayName": "Data om helsepersonell"
         },
         {
           "value": "EINS",
@@ -189,20 +194,24 @@
           "displayName": "Genetiske og genomiske data"
         },
         {
-          "value": "PGEH",
-          "displayName": "Omikkdata (proteom, metabolom m.m.)"
+          "value": "HPML",
+          "displayName": "Omikkdata og andre molekylære data"
         },
         {
-          "value": "IDHP",
-          "displayName": "Smittsomme sykdommer og patogener"
+          "value": "RPDG",
+          "displayName": "Data om patogener"
         },
         {
           "value": "DIOH",
           "displayName": "Helsedeterminanter"
         },
         {
+          "value": "PGEH",
+          "displayName": "Personlige helsedata generert av medisinsk utstyr"
+        },
+        {
           "value": "EMRD",
-          "displayName": "Data fra medisinsk utstyr"
+          "displayName": "Andre helsedata fra medisinsk utstyr"
         },
         {
           "value": "WELA",
@@ -211,6 +220,104 @@
         {
           "value": "ehds-cat:other",
           "displayName": "Annet"
+        }
+      ]
+    },
+    {
+      "key": "healthTheme",
+      "displayNameTranslations": {
+        "no": "Helsetema",
+        "en": "Health theme"
+      },
+      "groupTranslations": {
+        "no": "Om datasamlingen",
+        "en": "About the data collection"
+      },
+      "groupKey": "om-datasamlingen",
+      "groupSortOrder": 1001,
+      "sortOrder": 1007,
+      "type": "MultiSelect",
+      "optionsJson": "[{\"value\":\"ANTIMICROBIAL_CONTROL\",\"label\":\"Antimikrobiell resistens og smittevern\",\"labelEn\":\"Antimicrobial resistance & infection control\"},{\"value\":\"BLOOD_INFECTIONS\",\"label\":\"Blod- og seksuelt overførbare infeksjoner\",\"labelEn\":\"Blood-borne & sexually transmitted infections\"},{\"value\":\"CANCER_DISEASE\",\"label\":\"Kreft\",\"labelEn\":\"Cancer\"},{\"value\":\"CLIMATE_HEALTH\",\"label\":\"Klima og planetarisk helse\",\"labelEn\":\"Climate & planetary health\"},{\"value\":\"EMERGENCY_SETTINGS\",\"label\":\"Nødsituasjoner, katastrofer, reiser og humanitære forhold\",\"labelEn\":\"Emergencies, disasters, travel & humanitarian settings\"},{\"value\":\"ENTERIC_INFECTIONS\",\"label\":\"Tarm-, vann- og matbårne infeksjoner\",\"labelEn\":\"Enteric, water- & food-borne infections\"},{\"value\":\"ENVIRONMENTAL_HEALTH\",\"label\":\"Miljø-, arbeids- og strålehelse (inkl. WASH og by)\",\"labelEn\":\"Environmental, occupational & radiation health (incl. WASH & urban)\"},{\"value\":\"HEALTH_PRODUCTS\",\"label\":\"Helseprodukter, teknologier, data og forskning\",\"labelEn\":\"Health products, technologies, data & research\"},{\"value\":\"HEALTH_SYSTEMS\",\"label\":\"Helsevesen, kvalitet, omsorgsmodeller og determinanter\",\"labelEn\":\"Health systems, quality, care models & determinants\"},{\"value\":\"IMMUNIZATION_DISEASES\",\"label\":\"Immunisering og vaksineforebyggbare sykdommer\",\"labelEn\":\"Immunization & vaccine-preventable diseases\"},{\"value\":\"INJURY_PREVENTION\",\"label\":\"Skader, forgiftning og drukning\",\"labelEn\":\"Injuries, envenoming & drowning\"},{\"value\":\"LIFECOURSE_HEALTH\",\"label\":\"Livsløpshelse: mødre, nyfødte, barn, ungdom og aldring\",\"labelEn\":\"Life-course health: maternal, newborn, child, adolescent & ageing\"},{\"value\":\"MENTAL_HEALTH\",\"label\":\"Psykisk, nevrologisk og rusmiddelbruk\",\"labelEn\":\"Mental, neurological & substance use\"},{\"value\":\"NONCOMMUNICABLE_DISEASES\",\"label\":\"Ikke-smittsomme sykdommer – metabolske og kardiopulmonale\",\"labelEn\":\"Noncommunicable diseases – metabolic & cardiopulmonary\"},{\"value\":\"NUTRITION_SECURITY\",\"label\":\"Ernæring og matsikkerhet\",\"labelEn\":\"Nutrition & food security\"},{\"value\":\"REPRODUCTIVE_HEALTH\",\"label\":\"Seksuell og reproduktiv helse og rettigheter\",\"labelEn\":\"Sexual & reproductive health and rights\"},{\"value\":\"RESPIRATORY_DISEASES\",\"label\":\"Respiratoriske smittsomme sykdommer\",\"labelEn\":\"Respiratory infectious diseases\"},{\"value\":\"SENSORY_HEALTH\",\"label\":\"Munn-, øye- og sansehelse\",\"labelEn\":\"Oral, eye & sensory health\"},{\"value\":\"TROPICAL_DISEASES\",\"label\":\"Forsømte tropiske, parasittiske og soppsykdommer i huden\",\"labelEn\":\"Neglected tropical, parasitic & fungal skin diseases\"},{\"value\":\"VECTOR_DISEASES\",\"label\":\"Vektor- og zoonotiske virussykdommer\",\"labelEn\":\"Vector-borne & zoonotic viral diseases\"}]",
+      "options": [
+        {
+          "value": "ANTIMICROBIAL_CONTROL",
+          "displayName": "Antimikrobiell resistens og smittevern"
+        },
+        {
+          "value": "BLOOD_INFECTIONS",
+          "displayName": "Blod- og seksuelt overførbare infeksjoner"
+        },
+        {
+          "value": "CANCER_DISEASE",
+          "displayName": "Kreft"
+        },
+        {
+          "value": "CLIMATE_HEALTH",
+          "displayName": "Klima og planetarisk helse"
+        },
+        {
+          "value": "EMERGENCY_SETTINGS",
+          "displayName": "Nødsituasjoner, katastrofer, reiser og humanitære forhold"
+        },
+        {
+          "value": "ENTERIC_INFECTIONS",
+          "displayName": "Tarm-, vann- og matbårne infeksjoner"
+        },
+        {
+          "value": "ENVIRONMENTAL_HEALTH",
+          "displayName": "Miljø-, arbeids- og strålehelse (inkl. WASH og by)"
+        },
+        {
+          "value": "HEALTH_PRODUCTS",
+          "displayName": "Helseprodukter, teknologier, data og forskning"
+        },
+        {
+          "value": "HEALTH_SYSTEMS",
+          "displayName": "Helsevesen, kvalitet, omsorgsmodeller og determinanter"
+        },
+        {
+          "value": "IMMUNIZATION_DISEASES",
+          "displayName": "Immunisering og vaksineforebyggbare sykdommer"
+        },
+        {
+          "value": "INJURY_PREVENTION",
+          "displayName": "Skader, forgiftning og drukning"
+        },
+        {
+          "value": "LIFECOURSE_HEALTH",
+          "displayName": "Livsløpshelse: mødre, nyfødte, barn, ungdom og aldring"
+        },
+        {
+          "value": "MENTAL_HEALTH",
+          "displayName": "Psykisk, nevrologisk og rusmiddelbruk"
+        },
+        {
+          "value": "NONCOMMUNICABLE_DISEASES",
+          "displayName": "Ikke-smittsomme sykdommer – metabolske og kardiopulmonale"
+        },
+        {
+          "value": "NUTRITION_SECURITY",
+          "displayName": "Ernæring og matsikkerhet"
+        },
+        {
+          "value": "REPRODUCTIVE_HEALTH",
+          "displayName": "Seksuell og reproduktiv helse og rettigheter"
+        },
+        {
+          "value": "RESPIRATORY_DISEASES",
+          "displayName": "Respiratoriske smittsomme sykdommer"
+        },
+        {
+          "value": "SENSORY_HEALTH",
+          "displayName": "Munn-, øye- og sansehelse"
+        },
+        {
+          "value": "TROPICAL_DISEASES",
+          "displayName": "Forsømte tropiske, parasittiske og soppsykdommer i huden"
+        },
+        {
+          "value": "VECTOR_DISEASES",
+          "displayName": "Vektor- og zoonotiske virussykdommer"
         }
       ]
     },
@@ -288,39 +395,43 @@
       "groupSortOrder": 4001,
       "sortOrder": 4003,
       "type": "SingleSelect",
-      "optionsJson": "[{\"value\":\"daily\",\"label\":\"Daglig\",\"labelEn\":\"Daily\"},{\"value\":\"weekly\",\"label\":\"Ukentlig\",\"labelEn\":\"Weekly\"},{\"value\":\"monthly\",\"label\":\"Månedlig\",\"labelEn\":\"Monthly\"},{\"value\":\"quarterly\",\"label\":\"Kvartalsvis\",\"labelEn\":\"Quarterly\"},{\"value\":\"yearly\",\"label\":\"Årlig\",\"labelEn\":\"Yearly\"},{\"value\":\"onDemand\",\"label\":\"På forespørsel\",\"labelEn\":\"On demand\"},{\"value\":\"continuous\",\"label\":\"Kontinuerlig\",\"labelEn\":\"Continuous\"},{\"value\":\"other\",\"label\":\"Annet\",\"labelEn\":\"Other\"}]",
+      "optionsJson": "[{\"value\":\"sjeldnereEnnArlig\",\"label\":\"Sjeldnere enn årlig\",\"labelEn\":\"Less frequently than annual\"},{\"value\":\"arlig\",\"label\":\"Årlig\",\"labelEn\":\"Annual\"},{\"value\":\"halvarlig\",\"label\":\"Halvårlig\",\"labelEn\":\"Semiannual\"},{\"value\":\"tertialvis\",\"label\":\"Tertialvis\",\"labelEn\":\"Three times a year\"},{\"value\":\"kvartalsvis\",\"label\":\"Kvartalsvis\",\"labelEn\":\"Quarterly\"},{\"value\":\"manedlig\",\"label\":\"Månedlig\",\"labelEn\":\"Monthly\"},{\"value\":\"ukentlig\",\"label\":\"Ukentlig\",\"labelEn\":\"Weekly\"},{\"value\":\"daglig\",\"label\":\"Daglig\",\"labelEn\":\"Daily\"},{\"value\":\"hyppigereEnnDaglig\",\"label\":\"Hyppigere enn daglig\",\"labelEn\":\"More frequently than daily\"}]",
       "options": [
         {
-          "value": "daily",
-          "displayName": "Daglig"
+          "value": "sjeldnereEnnArlig",
+          "displayName": "Sjeldnere enn årlig"
         },
         {
-          "value": "weekly",
-          "displayName": "Ukentlig"
-        },
-        {
-          "value": "monthly",
-          "displayName": "Månedlig"
-        },
-        {
-          "value": "quarterly",
-          "displayName": "Kvartalsvis"
-        },
-        {
-          "value": "yearly",
+          "value": "arlig",
           "displayName": "Årlig"
         },
         {
-          "value": "onDemand",
-          "displayName": "På forespørsel"
+          "value": "halvarlig",
+          "displayName": "Halvårlig"
         },
         {
-          "value": "continuous",
-          "displayName": "Kontinuerlig"
+          "value": "tertialvis",
+          "displayName": "Tertialvis"
         },
         {
-          "value": "other",
-          "displayName": "Annet"
+          "value": "kvartalsvis",
+          "displayName": "Kvartalsvis"
+        },
+        {
+          "value": "manedlig",
+          "displayName": "Månedlig"
+        },
+        {
+          "value": "ukentlig",
+          "displayName": "Ukentlig"
+        },
+        {
+          "value": "daglig",
+          "displayName": "Daglig"
+        },
+        {
+          "value": "hyppigereEnnDaglig",
+          "displayName": "Hyppigere enn daglig"
         }
       ]
     },
@@ -416,8 +527,8 @@
         "en": "Code"
       },
       "groupTranslations": {
-        "no": "Alle metadatafelt",
-        "en": "All metadata fields"
+        "no": "Metadata",
+        "en": "Metadata"
       },
       "groupKey": "alle-metadatafelt",
       "groupSortOrder": 9001,
@@ -433,8 +544,8 @@
         "en": "Short name"
       },
       "groupTranslations": {
-        "no": "Alle metadatafelt",
-        "en": "All metadata fields"
+        "no": "Metadata",
+        "en": "Metadata"
       },
       "groupKey": "alle-metadatafelt",
       "groupSortOrder": 9001,
@@ -450,8 +561,8 @@
         "en": "Name in English"
       },
       "groupTranslations": {
-        "no": "Alle metadatafelt",
-        "en": "All metadata fields"
+        "no": "Metadata",
+        "en": "Metadata"
       },
       "groupKey": "alle-metadatafelt",
       "groupSortOrder": 9001,
@@ -467,8 +578,8 @@
         "en": "Description in English"
       },
       "groupTranslations": {
-        "no": "Alle metadatafelt",
-        "en": "All metadata fields"
+        "no": "Metadata",
+        "en": "Metadata"
       },
       "groupKey": "alle-metadatafelt",
       "groupSortOrder": 9001,
@@ -484,8 +595,8 @@
         "en": "Preferred term"
       },
       "groupTranslations": {
-        "no": "Alle metadatafelt",
-        "en": "All metadata fields"
+        "no": "Metadata",
+        "en": "Metadata"
       },
       "groupKey": "alle-metadatafelt",
       "groupSortOrder": 9001,
@@ -501,8 +612,8 @@
         "en": "Recommended Use Cases"
       },
       "groupTranslations": {
-        "no": "Alle metadatafelt",
-        "en": "All metadata fields"
+        "no": "Metadata",
+        "en": "Metadata"
       },
       "groupKey": "alle-metadatafelt",
       "groupSortOrder": 9001,
@@ -518,13 +629,64 @@
         "en": "Keywords"
       },
       "groupTranslations": {
-        "no": "Alle metadatafelt",
-        "en": "All metadata fields"
+        "no": "Metadata",
+        "en": "Metadata"
       },
       "groupKey": "alle-metadatafelt",
       "groupSortOrder": 9001,
       "sortOrder": 9009,
       "type": "String",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "numberOfRecords",
+      "displayNameTranslations": {
+        "no": "Antall registreringer",
+        "en": "Number of records"
+      },
+      "groupTranslations": {
+        "no": "Metadata",
+        "en": "Metadata"
+      },
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9010,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "numberOfUniqueIndividuals",
+      "displayNameTranslations": {
+        "no": "Antall unike individer",
+        "en": "Number of unique individuals"
+      },
+      "groupTranslations": {
+        "no": "Metadata",
+        "en": "Metadata"
+      },
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9011,
+      "type": "Number",
+      "optionsJson": "[]",
+      "options": []
+    },
+    {
+      "key": "Variabelreferanse",
+      "displayNameTranslations": {
+        "no": "Variabelreferanse",
+        "en": "Variable reference"
+      },
+      "groupTranslations": {
+        "no": "Metadata",
+        "en": "Metadata"
+      },
+      "groupKey": "alle-metadatafelt",
+      "groupSortOrder": 9001,
+      "sortOrder": 9012,
+      "type": "Url",
       "optionsJson": "[]",
       "options": []
     }
@@ -578,8 +740,8 @@
     {
       "groupKey": "alle-metadatafelt",
       "groupTranslations": {
-        "no": "Alle metadatafelt",
-        "en": "All metadata fields"
+        "no": "Metadata",
+        "en": "Metadata"
       },
       "groupSortOrder": 9001,
       "isBuiltIn": false
