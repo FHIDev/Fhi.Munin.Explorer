@@ -106,6 +106,14 @@ public class InheritedCaptionSourceTest : ExplorerTestContext
     }
 
     [Fact]
+    public void For_WhenTheEndsShareAnIdButNotALevel_ThenThePeriodIsNotCaptioned()
+    {
+        var captions = Captions(Inheriting() with { ValidToSource = Kilde with { SourceId = Tromso7 } });
+
+        Assert.False(captions.ContainsKey(InheritedCaptions.ValidityPeriod));
+    }
+
+    [Fact]
     public void For_WhenOneEndIsOwnAndTheOtherInherited_ThenThePeriodIsNotCaptioned()
     {
         var captions = Captions(Inheriting() with { ValidFromSource = null });
@@ -169,9 +177,9 @@ public class InheritedCaptionSourceTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Contract_WhenAResponseWasCachedBeforeMuninSentTheSources_ThenTheyReadAsNullAndNothingIsCaptioned()
+    public void DatasamlingDetail_WhenAResponseLacksTheSourceKeys_ThenTheyReadAsNullAndNothingIsCaptioned()
     {
-        // Munin output-caches the detail, so for a while after #6965 deploys a response lacks the keys entirely.
+        // A detail output-cached before Munin sent the keys lacks them entirely.
         var datasamling = JsonSerializer.Deserialize<DatasamlingDetail>(
             """
             {
@@ -187,9 +195,9 @@ public class InheritedCaptionSourceTest : ExplorerTestContext
     }
 
     [Fact]
-    public void Contract_WhenMuninSendsTheSources_ThenEveryFieldLandsUnderItsWireName()
+    public void DatasamlingDetail_WhenMuninSendsTheSources_ThenEveryFieldLandsUnderItsWireName()
     {
-        // The shape sandbox served on 2026-10-30, read with unmapped members refused.
+        // Munin's wire shape, read with unmapped members refused.
         var strict = new JsonSerializerOptions(MuninExplorerClient.Json)
         {
             UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow,

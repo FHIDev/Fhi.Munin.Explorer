@@ -35,7 +35,10 @@ internal readonly record struct InheritedCaption(string Lead, string Name, strin
     }
 }
 
-/// <summary>Which of a datasamling's drawn values come from an ancestor, by catalogue key, and from whom.</summary>
+/// <summary>
+/// Which of a datasamling's drawn values come from an ancestor, by catalogue key or <see cref="ValidityPeriod"/>, and
+/// from whom.
+/// </summary>
 internal static class InheritedCaptions
 {
     /// <summary>The public kilde fields Munin sends in <see cref="DatasamlingDetail.InheritedProperties"/>.</summary>
