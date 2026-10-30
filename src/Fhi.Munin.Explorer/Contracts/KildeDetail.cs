@@ -253,6 +253,14 @@ public sealed record KildeDelkilde
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
 
+    /// <summary>
+    /// Public kilde fields this one leaves blank, by key, each with where its value comes from. The keys are among
+    /// Hjemmeside, OrgnrDataansvarlig, HERidDataansvarlig and HERidDatakilde; empty when nothing is inherited.
+    /// </summary>
+    [JsonPropertyName("inheritedProperties")]
+    public IReadOnlyDictionary<string, InheritedValue> InheritedProperties { get; init; } =
+        new Dictionary<string, InheritedValue>();
+
     /// <summary>Datasamlinger hanging directly off this delkilde.</summary>
     [JsonPropertyName("datasamlinger")] public IReadOnlyList<KildeDatasamling> Datasamlinger { get; init; } = [];
 

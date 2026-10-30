@@ -125,6 +125,14 @@ public sealed record DatasamlingDetail
     public IReadOnlyDictionary<string, string?> AdditionalProperties { get; init; } =
         new Dictionary<string, string?>();
 
+    /// <summary>
+    /// Public kilde fields this one leaves blank, by key, each with where its value comes from. The keys are among
+    /// Hjemmeside, OrgnrDataansvarlig, HERidDataansvarlig and HERidDatakilde; empty when nothing is inherited.
+    /// </summary>
+    [JsonPropertyName("inheritedProperties")]
+    public IReadOnlyDictionary<string, InheritedValue> InheritedProperties { get; init; } =
+        new Dictionary<string, InheritedValue>();
+
     /// <summary>Labels, grouping and order for the keys in <see cref="AdditionalProperties"/>.</summary>
     [JsonPropertyName("propertyMetadata")] public IReadOnlyList<PropertyMetadataEntry> PropertyMetadata { get; init; } = [];
 
