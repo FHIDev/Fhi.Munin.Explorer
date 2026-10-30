@@ -154,4 +154,14 @@ public sealed record DatasamlingDetail
 
     /// <summary>The kilde's name in English; null when Munin has none, so the reader is shown <see cref="ParentKildeName"/>.</summary>
     [JsonPropertyName("parentKildeNavnEn")] public string? ParentKildeNameEn { get; init; }
+
+    /// <summary>Who supplied <see cref="EffectiveValidFrom"/>; null when the datasamling holds it itself, or nobody does.</summary>
+    /// <remarks>Also null from an API, or a cached response, that predates the field.</remarks>
+    [JsonPropertyName("gyldigFraSource")] public ValueSource? ValidFromSource { get; init; }
+
+    /// <summary>Who supplied <see cref="EffectiveValidTo"/>; null as for <see cref="ValidFromSource"/>.</summary>
+    [JsonPropertyName("gyldigTilSource")] public ValueSource? ValidToSource { get; init; }
+
+    /// <summary>Who supplied <see cref="EffectivePersonIdentificationLevel"/>; null as for <see cref="ValidFromSource"/>.</summary>
+    [JsonPropertyName("gradAvPersonidentifikasjonSource")] public ValueSource? PersonIdentificationLevelSource { get; init; }
 }

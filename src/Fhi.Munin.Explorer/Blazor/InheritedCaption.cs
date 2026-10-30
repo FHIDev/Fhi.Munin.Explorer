@@ -64,12 +64,15 @@ internal static class InheritedCaptions
         DataSourceHerId,
     };
 
+    /// <summary>The key of the one row that draws gyldig fra and gyldig til together; no catalogue key.</summary>
+    internal const string ValidityPeriod = "GyldigFra+GyldigTil";
+
     /// <summary>
     /// A caption for every inherited value the page can draw, less <paramref name="omitted"/> (by default <see cref="Omitted"/>).
     /// </summary>
     /// <remarks>
     /// Lovverk, dataansvarlig and databehandler fall back to the kilde alone, so they name it. Validity and identification
-    /// level go through the delkilde chain, and the payload does not yet say who answered (Fhi.Metadata-zogen.1.2).
+    /// level go through the delkilde chain, so Munin names who answered; where it sends no source, nothing is captioned.
     /// </remarks>
     internal static IReadOnlyDictionary<string, InheritedCaption> For(DatasamlingDetail datasamling, Texts text,
                                                                       string reader, IReadOnlySet<string>? omitted = null)
@@ -84,16 +87,28 @@ internal static class InheritedCaptions
                 datasamling.EffectiveDataProcessor, kilde);
         Inherit(captions, CatalogueColumns.Kildetype, null, datasamling.EffectiveKildetype, kilde);
 
+        var from = datasamling.EffectiveValidFrom is null ? null : datasamling.ValidFromSource;
+        var to = datasamling.EffectiveValidTo is null ? null : datasamling.ValidToSource;
+        Inherit(captions, CatalogueColumns.ValidFrom, from, text, reader);
+        Inherit(captions, CatalogueColumns.ValidTo, to, text, reader);
+        Inherit(captions, CatalogueColumns.PersonIdentification,
+                string.IsNullOrWhiteSpace(datasamling.EffectivePersonIdentificationLevel)
+                    ? null
+                    : datasamling.PersonIdentificationLevelSource, text, reader);
+
+        // One caption under both ends, so only when every end shown came from the same place.
+        static bool Own(DateTimeOffset? end, ValueSource? source) => end is not null && source is null;
+        if (!Own(datasamling.EffectiveValidFrom, from) && !Own(datasamling.EffectiveValidTo, to)
+            && (from ?? to) is { } period
+            && (from is null || to is null || (from.SourceLevel, from.SourceId) == (to.SourceLevel, to.SourceId)))
+        {
+            Inherit(captions, ValidityPeriod, period, text, reader);
+        }
+
         foreach (var (key, value) in datasamling.InheritedProperties)
         {
-            var lead = value.SourceLevel switch
-            {
-                "kilde" => text.InheritedFromKilde,
-                "delkilde" => text.InheritedFromDelkilde,
-                _ => null,
-            };
+            var lead = Lead(value.SourceLevel, text);
 
-            // A level this package does not know could be either, and a wrong name is worse than none.
             if (lead is not null && !string.IsNullOrWhiteSpace(value.Value))
             {
                 captions[key] = Caption(lead, value.SourceName, value.SourceNameEn, reader);
@@ -113,6 +128,23 @@ internal static class InheritedCaptions
             captions[key] = source;
         }
     }
+
+    private static void Inherit(Dictionary<string, InheritedCaption> captions, string key, ValueSource? source,
+                                Texts text, string reader)
+    {
+        if (source is not null && Lead(source.SourceLevel, text) is { } lead)
+        {
+            captions[key] = Caption(lead, source.SourceName, source.SourceNameEn, reader);
+        }
+    }
+
+    // A level this package does not know could be either, and a wrong name is worse than none.
+    private static string? Lead(string level, Texts text) => level switch
+    {
+        "kilde" => text.InheritedFromKilde,
+        "delkilde" => text.InheritedFromDelkilde,
+        _ => null,
+    };
 
     private static InheritedCaption Caption(string lead, string? name, string? nameEn, string reader)
     {

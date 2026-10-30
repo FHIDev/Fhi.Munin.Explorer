@@ -440,6 +440,10 @@ public sealed partial class DatasamlingView : ComponentBase
                 (CatalogueColumns.LegalBasis, T.FieldLegalBasis),
                 (CatalogueColumns.DataController, T.FieldDataController),
                 (CatalogueColumns.DataProcessor, T.FieldDataProcessor),
+                (CatalogueColumns.PersonIdentification, T.FieldPersonIdentification),
+                (CatalogueColumns.ValidFrom, T.FieldValidFrom),
+                (CatalogueColumns.ValidTo, T.FieldValidTo),
+                (InheritedCaptions.ValidityPeriod, T.FieldValidity),
                 .. InheritedLabels,
             ];
 
