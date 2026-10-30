@@ -8,7 +8,7 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Both rules bind the package, not one component of it — <c>AGENTS.md</c> and <c>CLAUDE.md</c>
+/// Both rules bind the package, not one component of it — <c>README.md</c> and <c>AGENTS.md</c>
 /// state them that way — so they are enumerated over <c>src/</c> rather than pinned to a path. A
 /// guard written against one file is a guard the next root component does not get, and the
 /// component that has one is never the one that breaks the rule.

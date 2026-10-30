@@ -31,7 +31,8 @@ canonical doc, not this block.
 
 The Munin variable explorer, packaged as a Blazor Razor Class Library for helsedata.no (the NuGet package
 `Fhi.Munin.Explorer`). This file is the one set of instructions for every agent in this repo, and it covers the
-conventions a compiler cannot check; `CLAUDE.md` imports it, and Copilot's review reads
+conventions a compiler cannot check; the architectural rules the components follow are in `README.md` under «Rules
+the components follow». `CLAUDE.md` imports this file; Copilot's review reads `.github/copilot-instructions.md` and
 `.github/instructions/code-review.instructions.md`.
 
 ## Before opening a PR
@@ -45,6 +46,13 @@ bash scripts/test-sample-css-declarations.sh    # only if you touched the compar
 ./scripts/assert-portability-guard-armed.sh     # only if you touched Directory.Build.props
 python3 scripts/comment-budget.py               # comment blocks this branch added, against origin/main
 ```
+
+Then the pre-PR review: the `pre-pr-reviewer` agent on `git diff origin/main...HEAD`, answered per the warden
+checklist, and one line in the PR body in one of four forms: `Pre-PR review: ran, no findings`, `ran, N findings,
+fixed`, `ran, N findings, M fixed, K left: <why>` or `skipped, <reason>` (only for a change with nothing to review;
+`prove-it` section 8). The body also carries `Testing:`, `Risk: low|medium|high – <why>` (the tier the `risk:`
+label gives) and `How to revert:`, each on its own line; the review-line check fails a PR where one is missing or
+empty, or the tier differs from the label.
 
 The Stiler comparison needs the package on disk, which means credentials for helsedata's Azure
 Artifacts feed and `dotnet restore samples/HostileHost/HostileHost.csproj` first — see
@@ -76,6 +84,8 @@ read-only), `Fhi.Metadata-dfy9u` (v2 login and variable lists), `Fhi.Metadata-2f
   repository's work: eleven unlabelled beads were invisible to that filter by 19 August 2026.
 - Close a bead with a **`Closes-Bead: Fhi.Metadata-abc12`** line in the PR body; the bead-closer reads merged PRs
   here. `Bead: <id>` when the PR only partly delivers it. `Closes FHIDev/Munin#N` closes no bead.
+- Varde's reads come from a snapshot up to five minutes old: the claim (`beads_claim`) or the write itself is the
+  check, not an earlier read.
 - Work in a git worktree; work is not done until it is pushed.
 
 ## Gates by kind of change
@@ -106,7 +116,7 @@ read-only), `Fhi.Metadata-dfy9u` (v2 login and variable lists), `Fhi.Metadata-2f
   `PLAYWRIGHT_BROWSER_CHANNEL=msedge` on the terms above.
 - **A new or renamed `munin-explorer*` name needs a rule in `Fhi.Helsedata.Stiler`, filed as its
   own bead before this PR merges** — `beads_create` with the labels `stiler`, `rcl` and `helsedata` —
-  not as a clause in the RCL bead's criteria, which is in nobody's `bd ready` and cannot be
+  not as a clause in the RCL bead's criteria, which is in nobody's `beads_ready` and cannot be
   claimed by anyone. Green here is still not evidence the element is styled on helsedata.no —
   nothing in this repository reads Stiler — but you can go and look, and
   `docs/running-locally.md` says how without needing feed credentials. Do that before asserting
@@ -130,7 +140,18 @@ Five things here fail *silently* when broken — no build error, no failing test
 behaviour found later by someone else.
 
 Identifiers are English, and borrowed class names belong to `Fhi.Helsedata.Stiler` while the `munin-explorer`
-prefix is ours: both have full sections below. The other three:
+prefix is ours: both have full sections below. Two things about the class names that the section takes for granted:
+
+- **Know what the guards here can see.** Both ask whether a name has a rule that declares something, in
+  `test/host-class-names.txt` (a capture of the live helsedata page, its page-specific stylesheets included) or in
+  the sample stylesheet. Neither reads Stiler at all, and neither can say which declarations a rule has to carry.
+  `skiplink-pagination` was in both sources the whole time it was broken, because helsedata styles it and so do the
+  samples, while a Stiler-only host got nothing: a rule somewhere is not a rule where it is needed.
+- **Read the selector, not just the name.** The first Stiler rule for that link, on the unpublished
+  `feature/munin-explorer-scss` branch, was scoped `.munin-explorer-header .skiplink-pagination` and could never have
+  matched, since that header opens and closes entirely inside `ColumnPicker()`.
+
+The other three:
 
 3. **The package ships no CSS.** No `.razor.css`, and nothing in `wwwroot` but the one JavaScript
    module `explorer-interop.js` (Fhi.Metadata-35w0p.14) and `version.json`, which the build writes
@@ -744,7 +765,7 @@ it as evidence about the package has already produced one confidently-wrong bead
 
 **The Stiler rule therefore gets its own bead, filed before the PR that introduces the name
 merges** — labels `stiler`, `rcl` and `helsedata` — and not a clause inside the RCL bead's own
-acceptance criteria. A clause is not work anyone can be handed: it is in nobody's `bd ready`, it
+acceptance criteria. A clause is not work anyone can be handed: it is in nobody's `beads_ready`, it
 cannot be claimed, and the bead holding it reads as finished the moment its PR merges. #161
 (`Fhi.Metadata-3osk6`) was careful about exactly this and it still was not enough — it used `Refs`
 rather than `Closes` so the bead would stay open until the Stiler half landed, and the bead is open

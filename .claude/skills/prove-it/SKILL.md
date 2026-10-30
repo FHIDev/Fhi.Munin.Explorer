@@ -146,7 +146,7 @@ generated.
 Write `Bead: <bead-id>` instead when the change only partly satisfies the bead: `Closes-Bead`
 shuts it whether or not the acceptance criteria are met.
 
-Then:
+Then, only where Varde's bead tools are missing (the Forge):
 
 ```bash
 bd preflight --check
