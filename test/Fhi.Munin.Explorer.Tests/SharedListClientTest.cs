@@ -161,15 +161,28 @@ public class SharedListClientTest
         Assert.Equal("/api/explorer/lists/share/ZZ99ZZ", handler.LastUri?.AbsolutePath);
     }
 
+    [Fact]
+    public async Task GetSharedListAsync_WhenTheCodeHasTenCharacters_ThenItIsSentUpperCased()
+    {
+        var handler = StubHttpHandler.Ok("""{"name":"x","items":[]}""");
+
+        var shared = await Client(handler).GetSharedListAsync(" ab12cd34ef ");
+
+        Assert.NotNull(shared);
+        Assert.Equal("/api/explorer/lists/share/AB12CD34EF", handler.LastUri?.AbsolutePath);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("ABC12")]
     [InlineData("ABC1234")]
+    [InlineData("AB12CD34E")]
+    [InlineData("AB12CD34EF5")]
     [InlineData("AB-12C")]
     [InlineData("ÆØÅ123")]
     [InlineData("../x/y")]
-    public async Task GetSharedListAsync_WhenTheCodeIsNotSixAsciiLettersOrDigits_ThenNothingIsSent(string? code)
+    public async Task GetSharedListAsync_WhenTheCodeIsNotSixOrTenAsciiLettersOrDigits_ThenNothingIsSent(string? code)
     {
         var handler = StubHttpHandler.Ok("""{"name":"x","items":[]}""");
 

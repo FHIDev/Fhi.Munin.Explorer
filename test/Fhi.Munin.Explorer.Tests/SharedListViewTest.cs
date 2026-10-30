@@ -286,7 +286,7 @@ public class SharedListViewTest : ExplorerTestContext
         cut.WaitForAssertion(() =>
         {
             code = Labelled(cut, "Delekode").GetAttribute("value") ?? "";
-            Assert.Matches("^[A-Z0-9]{6}$", code);
+            Assert.Matches("^([A-Z0-9]{6}|[A-Z0-9]{10})$", code);
         });
 
         // A fresh context is a fresh circuit: its own VariableListState, the same share endpoint.
@@ -308,7 +308,7 @@ public class SharedListViewTest : ExplorerTestContext
         cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
         Button(cut, "Del liste").Click();
 
-        cut.WaitForAssertion(() => Assert.Matches("^[A-Z0-9]{6}$", Labelled(cut, "Delekode").GetAttribute("value") ?? ""));
+        cut.WaitForAssertion(() => Assert.Matches("^([A-Z0-9]{6}|[A-Z0-9]{10})$", Labelled(cut, "Delekode").GetAttribute("value") ?? ""));
         Assert.Equal([OwnListId], client.SharedListIds);
         Assert.Contains(
             cut.FindAll("p.caption"),
@@ -509,6 +509,26 @@ public class SharedListViewTest : ExplorerTestContext
     }
 
     [Fact]
+    public void Open_WhenTheFieldNamesATenCharacterCode_ThenTheSharedListShowsAndTheHostIsTold()
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD34EF"] = new SharedList("Kollegas liste", Three);
+        Register(this, new ShareClient(store) { OwnItems = [Item("Min egen", "EGEN")] });
+        string? announced = null;
+        var cut = Render<VariableListView>(p => p
+            .Add(c => c.IsAuthenticated, true)
+            .Add(c => c.ShareCodeChanged, code => announced = code));
+        cut.WaitForAssertion(() => Assert.Single(RowNames(cut)));
+
+        Button(cut, "Åpne delt liste").Click();
+        Labelled(cut, "Delekode for listen du vil åpne").Change(" ab12cd34ef ");
+        Button(cut, "Åpne listen").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Assert.Equal("AB12CD34EF", announced);
+    }
+
+    [Fact]
     public async Task Open_WhenAnEarlierCodeFailsAfterALaterOneOpened_ThenTheLaterListStays()
     {
         var store = new ShareStore();
@@ -553,6 +573,18 @@ public class SharedListViewTest : ExplorerTestContext
         Assert.False(HasButton(cut, "Lagre som min liste"));
         Assert.Contains("Logg inn for å lagre listen som din egen.", cut.Markup);
         Assert.Equal(0, client.MyListsCalls);
+    }
+
+    [Fact]
+    public void Open_WhenALinkNamesATenCharacterCode_ThenTheSharedListShows()
+    {
+        var store = new ShareStore();
+        store.ByCode["AB12CD34EF"] = new SharedList("Kollegas liste", Three);
+
+        var cut = RenderExplorer(this, new ShareClient(store), "/variabler?delekode=ab12cd34ef", signedIn: false);
+
+        cut.WaitForAssertion(() => Assert.Equal(3, RowNames(cut).Count));
+        Assert.Contains("Kollegas liste", cut.Markup);
     }
 
     [Fact]
