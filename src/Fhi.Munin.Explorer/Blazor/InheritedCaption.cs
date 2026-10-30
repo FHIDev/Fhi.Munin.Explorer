@@ -41,7 +41,10 @@ internal readonly record struct InheritedCaption(string Lead, string Name, strin
 /// </summary>
 internal static class InheritedCaptions
 {
-    /// <summary>The public kilde fields Munin sends in <see cref="DatasamlingDetail.InheritedProperties"/>.</summary>
+    /// <summary>
+    /// The public kilde fields Munin sends in <see cref="DatasamlingDetail.InheritedProperties"/> and
+    /// <see cref="DatasamlingDetail.OwnKildeProperties"/>.
+    /// </summary>
     internal const string Homepage = "Hjemmeside";
 
     /// <inheritdoc cref="Homepage"/>
@@ -112,7 +115,7 @@ internal static class InheritedCaptions
         {
             var lead = Lead(value.SourceLevel, text);
 
-            if (lead is not null && !string.IsNullOrWhiteSpace(value.Value))
+            if (lead is not null && !string.IsNullOrWhiteSpace(value.Value) && OwnKildeValue(datasamling, key) is null)
             {
                 captions[key] = Caption(lead, value.SourceName, value.SourceNameEn, reader);
             }
@@ -122,6 +125,10 @@ internal static class InheritedCaptions
 
         return captions;
     }
+
+    /// <summary>The datasamling's own value for a public kilde field, or null; drawn instead of an inherited one, uncaptioned.</summary>
+    internal static string? OwnKildeValue(DatasamlingDetail datasamling, string key) =>
+        datasamling.OwnKildeProperties.TryGetValue(key, out var own) && !string.IsNullOrWhiteSpace(own) ? own : null;
 
     private static void Inherit(Dictionary<string, InheritedCaption> captions, string key, string? own,
                                 string? effective, InheritedCaption source)

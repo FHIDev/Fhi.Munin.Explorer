@@ -2955,4 +2955,70 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Empty(cut.FindAll("dd p.caption"));
         Assert.DoesNotContain("Hjemmeside", Labels(SourceInformation(cut)));
     }
+
+    [Fact]
+    public void SourceInformation_WhenTheDatasamlingHoldsItsOwnWebsite_ThenItIsALinkWithoutACaption()
+    {
+        var datasamling = Sparse() with
+        {
+            OwnKildeProperties = new Dictionary<string, string?> { [InheritedCaptions.Homepage] = "www.norskalsregister.no" },
+        };
+
+        var website = Row(SourceInformation(Render(datasamling)), "Hjemmeside");
+
+        Assert.Equal("https://www.norskalsregister.no", website.QuerySelector("a")!.GetAttribute("href"));
+        Assert.Null(website.QuerySelector(".caption"));
+    }
+
+    [Fact]
+    public void SourceInformation_WhenAnOwnAndAnInheritedValueShareAKey_ThenOnlyTheOwnOneIsDrawnAndUncaptioned()
+    {
+        var datasamling = Inheriting() with
+        {
+            OwnKildeProperties = new Dictionary<string, string?>
+            {
+                [InheritedCaptions.Homepage] = "https://egen.example",
+                [InheritedCaptions.DataControllerHerId] = "4242",
+            },
+        };
+
+        var box = SourceInformation(Render(datasamling));
+
+        var website = Assert.Single(box.QuerySelectorAll("dl > div"), row => row.QuerySelector("dt")?.TextContent == "Hjemmeside");
+        Assert.Equal("https://egen.example", website.QuerySelector("a")!.GetAttribute("href"));
+        Assert.Null(website.QuerySelector(".caption"));
+        var herId = Row(box, "HER-ID dataansvarlig");
+        Assert.Equal("4242", herId.QuerySelector("dd")!.TextContent);
+        Assert.Null(herId.QuerySelector(".caption"));
+    }
+
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("[Hjem](javascript:alert(1))")]
+    [InlineData("data:text/html,<b>x</b>")]
+    public void SourceInformation_WhenAnOwnWebsiteIsNoHttpAddress_ThenItIsNoLink(string website)
+    {
+        var datasamling = Sparse() with
+        {
+            OwnKildeProperties = new Dictionary<string, string?> { [InheritedCaptions.Homepage] = website },
+        };
+
+        var row = Row(SourceInformation(Render(datasamling)), "Hjemmeside");
+
+        Assert.Empty(row.QuerySelectorAll("[href]"));
+    }
+
+    [Fact]
+    public void SourceInformation_WhenTheOwnValueIsBlank_ThenTheInheritedOneKeepsItsCaption()
+    {
+        var datasamling = Inheriting() with
+        {
+            OwnKildeProperties = new Dictionary<string, string?> { [InheritedCaptions.Homepage] = " " },
+        };
+
+        var website = Row(SourceInformation(Render(datasamling)), "Hjemmeside");
+
+        Assert.Equal("https://uit.no/tromso7", website.QuerySelector("a")!.GetAttribute("href"));
+        Assert.Equal("Arvet fra delkilden Tromsø7", website.QuerySelector("dd p.caption")!.TextContent);
+    }
 }

@@ -26,20 +26,10 @@ namespace Fhi.Munin.Explorer.Tests;
 /// </remarks>
 internal static class FixtureFreshness
 {
-    /// <summary>
-    /// The members whose interior is catalogue data rather than shape.
-    /// </summary>
+    /// <summary>The members whose interior is catalogue data rather than shape.</summary>
     /// <remarks>
-    /// <c>additionalProperties</c> is curated per-entity metadata: one kilde carries
-    /// <c>NavnEngelsk</c> and the next does not, so comparing its keys across two entities reports
-    /// the catalogue, not the API. <c>inheritedProperties</c> is keyed the same way, by whichever
-    /// kilde fields an entity happens to inherit; the shape of its values is ContractDriftTest's.
-    /// <para>
-    /// Deliberately this member and not every dictionary the contracts declare. The translation
-    /// maps on <see cref="PropertyMetadataEntry"/> are keyed by language code, a closed vocabulary
-    /// whose drift — an <c>en</c> the API now sends and a capture lacks — is exactly what this is
-    /// for. Read off the contracts so it covers all eight types that declare the bag.
-    /// </para>
+    /// Their keys are whichever fields an entity carries, inherits or holds, so they differ between two entities without
+    /// the API changing. Translation maps stay compared: a language code is a closed vocabulary, and its drift is the point.
     /// </remarks>
     private static readonly HashSet<string> OpenBags = OpenBagNames();
 
@@ -147,7 +137,8 @@ internal static class FixtureFreshness
             .Where(type => type.Namespace == typeof(KildeDetail).Namespace)
             .SelectMany(type => type.GetProperties())
             .Where(property => (property.Name == nameof(KildeDetail.AdditionalProperties)
-                    || property.Name == nameof(DatasamlingDetail.InheritedProperties))
+                    || property.Name == nameof(DatasamlingDetail.InheritedProperties)
+                    || property.Name == nameof(DatasamlingDetail.OwnKildeProperties))
                 && property.PropertyType.IsGenericType
                 && property.PropertyType.GetGenericTypeDefinition() == typeof(IReadOnlyDictionary<,>))
             .Select(JsonNameOf)

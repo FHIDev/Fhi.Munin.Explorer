@@ -278,6 +278,21 @@ public class ContractCoverageTest
     }
 
     [Fact]
+    public void DatasamlingDetail_WhenTheCaptureIsRoundTripped_ThenOwnKildePropertiesComesBackAsItWasSent()
+    {
+        // The read ignores case, so only the written name pins the wire spelling.
+        const string field = "ownKildeProperties";
+        var captured = JsonDocument.Parse(TestData.Read("datasamling.json")).RootElement.GetProperty(field);
+
+        var datasamling = JsonSerializer.Deserialize<DatasamlingDetail>(TestData.Read("datasamling.json"), MuninExplorerClient.Json);
+        var written = JsonDocument.Parse(JsonSerializer.Serialize(datasamling, MuninExplorerClient.Json))
+            .RootElement.GetProperty(field);
+
+        Assert.Equal(captured.GetProperty("Hjemmeside").GetString(),
+                     written.GetProperty("Hjemmeside").GetString());
+    }
+
+    [Fact]
     public void VariableDetail_WhenReadFromARealResponse_ThenEveryFieldIsCovered() =>
         Covers<VariableDetail>("variable.json");
 

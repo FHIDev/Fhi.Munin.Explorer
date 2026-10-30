@@ -126,6 +126,25 @@ public class InheritedCaptionTest : ExplorerTestContext
         Assert.False(captions.ContainsKey(key));
     }
 
+    [Fact]
+    public void For_WhenTheDatasamlingAlsoHoldsTheKeyItself_ThenThatKeyHasNoCaption()
+    {
+        var datasamling = Datasamling() with
+        {
+            InheritedProperties = new Dictionary<string, InheritedValue>
+            {
+                [InheritedCaptions.Homepage] = From("kilde", "Tromsøundersøkelsen"),
+                [InheritedCaptions.DataControllerHerId] = From("kilde", "Tromsøundersøkelsen"),
+            },
+            OwnKildeProperties = new Dictionary<string, string?> { [InheritedCaptions.Homepage] = "https://egen.example" },
+        };
+
+        var captions = InheritedCaptions.For(datasamling, Texts.For("nb"), ReaderLanguage.Norwegian, NothingOmitted);
+
+        Assert.False(captions.ContainsKey(InheritedCaptions.Homepage));
+        Assert.True(captions.ContainsKey(InheritedCaptions.DataControllerHerId));
+    }
+
     [Theory]
     [InlineData("Tromsø7", "no", "Arvet fra delkilden Tromsø7", "no")]
     [InlineData("", null, "Arvet fra delkilden", null)]
