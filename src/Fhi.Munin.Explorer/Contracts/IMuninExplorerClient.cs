@@ -718,7 +718,7 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
-    /// Store a snapshot of a list behind a six-character code, and return the code.
+    /// Store a snapshot of a list behind a share code, and return the code.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -741,7 +741,7 @@ public interface IMuninExplorerClient
     /// <param name="name">The list's name, shown to whoever opens the code.</param>
     /// <param name="items">The variables in the order they should be shown.</param>
     /// <param name="cancellationToken">Cancelled when the caller goes away — in a Blazor host, when the component is disposed.</param>
-    /// <returns>The code, as the API minted it: six upper-case letters or digits.</returns>
+    /// <returns>The code, as the API minted it: 6 or 10 upper-case letters or digits.</returns>
     Task<string> ShareListAsync(
         string name,
         IReadOnlyCollection<VariableListItem> items,
@@ -751,7 +751,7 @@ public interface IMuninExplorerClient
             "Consume MuninExplorerClient, or implement the member.");
 
     /// <summary>
-    /// Share one of the reader's saved lists behind a six-character code, and return the code. Null when the list is
+    /// Share one of the reader's saved lists behind a share code, and return the code. Null when the list is
     /// gone or was never the reader's.
     /// </summary>
     /// <remarks>
@@ -773,7 +773,7 @@ public interface IMuninExplorerClient
     /// Read a shared list back by its code. Null when the code is unknown, expired or malformed.
     /// </summary>
     /// <remarks>
-    /// Case-insensitive. A code that is not six ASCII letters or digits answers null without a
+    /// Case-insensitive. A code that is not 6 or 10 ASCII letters or digits answers null without a
     /// request, since the API cannot have minted it. The snapshot is read tolerantly — see
     /// <see cref="SharedList"/>. Carries a default body for the reader
     /// <see cref="ExportListAsync"/> gives.

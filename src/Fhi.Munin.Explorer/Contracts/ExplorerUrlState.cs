@@ -76,7 +76,7 @@ public sealed record ExplorerUrlState
     /// The code of a shared variable list to open, upper-cased, or null. Written as <c>delekode</c>.
     /// </summary>
     /// <remarks>
-    /// <see cref="Parse"/> drops a value that is not six ASCII letters or digits, since the API
+    /// <see cref="Parse"/> drops a value that is not 6 or 10 ASCII letters or digits, since the API
     /// cannot have minted it. See <see cref="SharedList"/> for what the code opens.
     /// </remarks>
     public string? ShareCode { get; init; }

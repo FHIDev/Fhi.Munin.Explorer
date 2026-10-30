@@ -14,18 +14,19 @@ namespace Fhi.Munin.Explorer.Contracts;
 /// <param name="Items">The variables, in the order the snapshot holds them, each id once.</param>
 public sealed record SharedList(string Name, IReadOnlyList<VariableListItem> Items)
 {
-    /// <summary>How many characters a share code has. The API mints them from A–Z and 0–9.</summary>
+    /// <summary>How many characters the API's first share codes have.</summary>
+    [Obsolete("Share codes have 6 or 10 characters; check one with NormalizeCode. CodeLength is removed in 3.0.0.")]
     public const int CodeLength = 6;
 
     /// <summary>
-    /// The code upper-cased, or <see langword="null"/> when it is not six ASCII letters or digits
-    /// — the only codes the API can have minted.
+    /// The code upper-cased, or <see langword="null"/> when it is not 6 or 10 ASCII letters or digits
+    /// — the only codes the API can have minted. It mints from A–Z and 0–9.
     /// </summary>
     public static string? NormalizeCode(string? code)
     {
         var trimmed = code?.Trim();
 
-        return trimmed is { Length: CodeLength } && trimmed.All(char.IsAsciiLetterOrDigit)
+        return trimmed is { Length: 6 or 10 } && trimmed.All(char.IsAsciiLetterOrDigit)
             ? trimmed.ToUpperInvariant()
             : null;
     }
