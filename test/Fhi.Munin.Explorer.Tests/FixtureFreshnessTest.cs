@@ -95,6 +95,12 @@ public class FixtureFreshnessTest
             """{"navn":"B","inheritedProperties":{"Hjemmeside":{"value":"https://uit.no","sourceLevel":"kilde"}}}"""));
 
     [Fact]
+    public void Against_WhenTheOwnKildeFieldsDiffer_ThenNothingIsReported() =>
+        Assert.Empty(FixtureFreshness.Against(
+            """{"navn":"A","ownKildeProperties":{"OrgnrDataansvarlig":"974749025"}}""",
+            """{"navn":"B","ownKildeProperties":{"Hjemmeside":"www.norskalsregister.no"}}"""));
+
+    [Fact]
     public void Against_WhenATranslationMapLosesALanguage_ThenItIsReported() =>
         // Only additionalProperties is opaque, not every dictionary the contracts declare. A
         // translation map is keyed by language code, a closed vocabulary, and a capture that

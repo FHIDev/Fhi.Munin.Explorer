@@ -135,8 +135,8 @@ public sealed record DatasamlingDetail
 
     /// <summary>
     /// The same public kilde fields where this datasamling holds a value itself, by key. Munin keeps the keys apart
-    /// from <see cref="InheritedProperties"/> and <see cref="AdditionalProperties"/>; should one appear in both, the
-    /// own value is drawn. Empty from a Munin that predates it.
+    /// from <see cref="InheritedProperties"/> and <see cref="AdditionalProperties"/>; should a key also appear in
+    /// <see cref="InheritedProperties"/>, the own value is drawn instead. Empty from a Munin that predates it.
     /// </summary>
     [JsonPropertyName("ownKildeProperties")]
     public IReadOnlyDictionary<string, string?> OwnKildeProperties { get; init; } =
