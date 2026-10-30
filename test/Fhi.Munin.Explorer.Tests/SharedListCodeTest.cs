@@ -2,7 +2,7 @@ using Fhi.Munin.Explorer.Contracts;
 
 namespace Fhi.Munin.Explorer.Tests;
 
-/// <summary>The 6-character codes stay readable until they expire beside the 10 the API mints next (Fhi.Metadata-ayqlp.7).</summary>
+/// <summary>Share codes have 6 or 10 ASCII letters or digits, and nothing else reaches the API (Fhi.Metadata-ayqlp.7).</summary>
 public class SharedListCodeTest
 {
     [Theory]

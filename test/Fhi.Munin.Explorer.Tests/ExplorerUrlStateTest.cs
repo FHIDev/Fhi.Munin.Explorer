@@ -339,7 +339,7 @@ public class ExplorerUrlStateTest
         Assert.Equal("AB12CD", ExplorerUrlState.Parse("?Delekode=aB12cD").ShareCode);
     }
 
-    // Fhi.Metadata-ayqlp.7: the API mints 10 characters from ayqlp.8 on, and 6-character codes stay readable.
+    // 6-character codes stay readable beside the 10-character ones (Fhi.Metadata-ayqlp.7).
     [Fact]
     public void ShareCode_WhenTenCharactersAreRoundTripped_ThenTheyComeBackUpperCasedUnderDelekode()
     {
