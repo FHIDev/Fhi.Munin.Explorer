@@ -41,8 +41,8 @@ public class UrlMirrorFragmentTest : ExplorerTestContext
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<KildeSummary>>(
             [
-                new KildeSummary { Id = Als, Name = "Als registeret", Code = "K_ALS" },
-                new KildeSummary { Id = Resept, Name = "Reseptregisteret", Code = "K_RESEPT" },
+                new KildeSummary { Id = Als, Name = "Als registeret" },
+                new KildeSummary { Id = Resept, Name = "Reseptregisteret" },
             ]);
 
         public override Task<KildeDetail?> GetKildeAsync(

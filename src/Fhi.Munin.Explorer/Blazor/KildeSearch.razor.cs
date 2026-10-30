@@ -152,6 +152,9 @@ public sealed partial class KildeSearch : ComponentBase
     /// does not publish opens a view that says so rather than throwing — an id in a URL somebody
     /// edited is a normal event on a public page.
     /// </remarks>
+    /// <summary>Where the loaded kilder's codes go, when <see cref="KildeExplorer"/> mounts this; null otherwise.</summary>
+    [CascadingParameter(Name = KildeCodeBook.CascadeName)] private KildeCodeBook? Codes { get; set; }
+
     [Parameter] public Guid? SelectedKildeId { get; set; }
 
     /// <summary>
@@ -848,6 +851,11 @@ public sealed partial class KildeSearch : ComponentBase
         try
         {
             _kilder = await Client.GetKilderAsync();
+
+            foreach (var kilde in _kilder)
+            {
+                Codes?.Learn(kilde.Id, kilde.Code);
+            }
         }
         catch (MuninExplorerRateLimitedException ex)
         {
@@ -1025,6 +1033,7 @@ public sealed partial class KildeSearch : ComponentBase
             }
 
             _kilde = detail;
+            Codes?.Learn(id, detail?.Code);
 
             // Null is the answer for a kilde the catalogue does not publish, which is not a fault —
             // see the remarks on IMuninExplorerClient — so it says so rather than reporting an error

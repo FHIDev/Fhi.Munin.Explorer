@@ -1,6 +1,8 @@
 using Fhi.Munin.Explorer.Contracts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Fhi.Munin.Explorer.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
 namespace Fhi.Munin.Explorer.Blazor;
@@ -162,6 +164,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
+    [Inject] private IMuninExplorerClient Client { get; set; } = default!;
+
     /// <inheritdoc cref="KildeSearch.Language"/>
     [Parameter] public string Language { get; set; } = "no";
 
@@ -245,6 +249,17 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     private UrlMirror _mirror = default!;
 
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    private ILogger? _log;
+    private ILogger? Log => _log ??= ExplorerLog.For<KildeExplorer>(Services);
+
+    // A link may name the kilde by its code (?kilde=dar, Fhi.Metadata-9huq2.12): the code waits here until the API names
+    // its id, and a code that names nothing stays in the address as typed, over the not-found view.
+    private readonly KildeCodeBook _codes = new();
+    private string? _pendingCode;
+    private string? _missingCode;
+
     /// <summary>
     /// How many times the address has moved under a standing circuit, which is the key
     /// <see cref="KildeSearch"/> is mounted under.
@@ -297,8 +312,58 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         _mirror = new UrlMirror(Navigation, JS, Owns);
         (_selectedKildeId, _selectedDatasamlingId, _order, _direction) = Read(_mirror);
         (_search, _facets, _ticked, _marked, _expanded, _columns) = ReadList(_mirror);
+        _pendingCode = LinkCode(_mirror);
 
         Navigation.LocationChanged += Moved;
+        _codes.Learned += CodeLearned;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_pendingCode is { } code)
+        {
+            await ResolveCodeAsync(code);
+        }
+    }
+
+    /// <summary>The kilde key when it is a code rather than an id, else null.</summary>
+    private static string? LinkCode(UrlMirror mirror) =>
+        mirror.Value(QueryKey) is { } value && !Guid.TryParse(value, out _) && KildeCodes.IsLinkCode(value)
+            ? value.Trim()
+            : null;
+
+    /// <summary>Open the kilde <paramref name="code"/> names, or the not-found view when it names none.</summary>
+    private async Task ResolveCodeAsync(string code)
+    {
+        Guid? id;
+        try
+        {
+            id = await Client.FindKildeIdByCodeAsync(code);
+        }
+        catch (Exception ex)
+        {
+            // Unreachable or throttled reads as not found: the reader gets the view a stale id link gives.
+            Log?.LogWarning(ex, "could not resolve the kilde code in the address");
+            id = null;
+        }
+
+        if (_pendingCode != code)
+        {
+            return;
+        }
+
+        _pendingCode = null;
+        _missingCode = id is null ? code : null;
+        _selectedKildeId = id ?? Guid.Empty;
+    }
+
+    // The open kilde's code arrived after the address was written with its id: write it again with the code.
+    private void CodeLearned(Guid id)
+    {
+        if (id == _selectedKildeId)
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
     }
 
     /// <summary>What the kilde and order keys say, or their defaults where the URL says nothing usable.</summary>
@@ -314,7 +379,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
     {
         var kilde = Guid.TryParse(mirror.Value(QueryKey), out var parsed) ? parsed : (Guid?)null;
 
-        var datasamling = kilde is not null && Guid.TryParse(mirror.Value(DatasamlingQueryKey), out var open)
+        var datasamling = (kilde is not null || LinkCode(mirror) is not null)
+                          && Guid.TryParse(mirror.Value(DatasamlingQueryKey), out var open)
             ? open
             : (Guid?)null;
 
@@ -458,6 +524,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         var mirror = new UrlMirror(address, JS, Owns);
         var arrived = Read(mirror);
         var list = ReadList(mirror);
+        var code = LinkCode(mirror);
 
         // Above the guard, because a navigation changing only the host's own keys leaves the owned
         // ones equal: refreshed below it, the mirror would keep carrying parameters the navigation
@@ -468,7 +535,8 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         // Forward, has the list under it; one a link or a host parameter made has something else.
         var pushedFromList = e.HistoryEntryState == UrlMirror.OpenedFromList && arrived.Item1 is not null;
 
-        if (arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction)
+        if (code is null
+            && arrived == (_selectedKildeId, _selectedDatasamlingId, _order, _direction)
             && list.Query() == List.Query())
         {
             _detailPushed = pushedFromList;
@@ -491,11 +559,27 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         _mirroredSelection = (_selectedKildeId, _selectedDatasamlingId);
         _detailPushed = pushedFromList;
         _pushedListQuery = _detailPushed ? Query(null, null) : null;
+        _pendingCode = code;
+        _missingCode = null;
 
         StateHasChanged();
+
+        if (code is not null)
+        {
+            _ = InvokeAsync(async () =>
+            {
+                await ResolveCodeAsync(code);
+                _mirroredSelection = (_selectedKildeId, _selectedDatasamlingId);
+                StateHasChanged();
+            });
+        }
     }
 
-    public void Dispose() => Navigation.LocationChanged -= Moved;
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= Moved;
+        _codes.Learned -= CodeLearned;
+    }
 
     private static bool Owns(string key) =>
         string.Equals(key, QueryKey, StringComparison.OrdinalIgnoreCase)
@@ -511,6 +595,12 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Until the code names a kilde, the address keeps what the reader followed.
+        if (_pendingCode is not null)
+        {
+            return;
+        }
+
         var selection = (_selectedKildeId, _selectedDatasamlingId);
 
         if (_closeByBack)
@@ -555,7 +645,7 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
         string[] owned =
         [
             kilde is { } id
-                ? QueryKey + "=" + Uri.EscapeDataString(id.ToString())
+                ? QueryKey + "=" + Uri.EscapeDataString(KildeValue(id))
                 : "",
             kilde is not null && datasamling is { } open
                 ? DatasamlingQueryKey + "=" + Uri.EscapeDataString(open.ToString())
@@ -571,6 +661,15 @@ public sealed partial class KildeExplorer : ComponentBase, IDisposable
 
         return string.Join("&", owned.Where(pair => pair.Length != 0));
     }
+
+    /// <summary>
+    /// How the address names a kilde: its short code where the code is known (<c>dar</c> for K_DAR), else its id. A code
+    /// that named nothing is written back as the reader typed it.
+    /// </summary>
+    private string KildeValue(Guid id) =>
+        id == Guid.Empty && _missingCode is { } missing
+            ? missing
+            : KildeCodes.ShortForm(_codes.For(id)) ?? id.ToString();
 
     /// <summary>
     /// This page's address showing the open kilde, and the datasamling named — or the kilde alone

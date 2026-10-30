@@ -618,7 +618,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     /// drawer at all — <c>KildeSearch.CanExpand</c> draws no toggle on a kilde with none.
     /// </summary>
     private static KildeSummary Kilde(Guid id, string name, int datasamlinger = 0) =>
-        new() { Id = id, Name = name, Code = "K", DatasamlingCount = datasamlinger };
+        new() { Id = id, Name = name, Code = "", DatasamlingCount = datasamlinger };
 
     /// <summary>Answers with one kilde, so there is a row to open and a selection to hand over.</summary>
     /// <remarks>
@@ -1841,7 +1841,7 @@ public class UrlStateComponentTest : ExplorerTestContext
             {
                 Id = id,
                 Name = name,
-                Code = "K",
+                Code = "",
                 Kildetype = kildetype,
                 DataProcessor = processor,
                 IsActive = true,
@@ -2192,7 +2192,7 @@ public class UrlStateComponentTest : ExplorerTestContext
     private sealed class TwoDrawersClient : EmptyMuninExplorerClient
     {
         private static KildeSummary Row(Guid id, string name) =>
-            new() { Id = id, Name = name, Code = "K", IsActive = true, DatasamlingCount = 2 };
+            new() { Id = id, Name = name, Code = "", IsActive = true, DatasamlingCount = 2 };
 
         public override Task<IReadOnlyList<KildeSummary>> GetKilderAsync(
             string? search = null, string? kildeType = null, CancellationToken cancellationToken = default) =>
@@ -2469,7 +2469,7 @@ public class UrlStateComponentTest : ExplorerTestContext
             [
                 .. Ids.Select((id, at) => new KildeSummary
                 {
-                    Id = id, Name = $"Kilde {at + 1:D2}", Code = "K", IsActive = true, DatasamlingCount = 1,
+                    Id = id, Name = $"Kilde {at + 1:D2}", Code = "", IsActive = true, DatasamlingCount = 1,
                 }),
             ]);
 

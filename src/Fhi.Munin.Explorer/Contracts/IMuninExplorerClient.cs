@@ -191,6 +191,17 @@ public interface IMuninExplorerClient
     Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The id of the kilde a link's code names (<c>?kilde=dar</c>): with or without «K_», in any case, with the reader's
+    /// ÆØÅ. Null when no published kilde has it, or two do.
+    /// </summary>
+    /// <remarks>
+    /// Carries a default body, answering null, so a host implementing this contract itself keeps building; its readers
+    /// then get the not-found view for a code link, and id links work as before.
+    /// </remarks>
+    Task<Guid?> FindKildeIdByCodeAsync(string code, CancellationToken cancellationToken = default) =>
+        Task.FromResult<Guid?>(null);
+
+    /// <summary>
     /// Fetch the kilde's navigation tree — ids, names and counts only. Null when no such kilde is
     /// published. Prefer this over <see cref="GetKildeAsync"/> when all that is needed is a tree.
     /// </summary>

@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using Fhi.Munin.Explorer.Blazor;
 using Fhi.Munin.Explorer.Contracts;
 using Fhi.Munin.Explorer.Logging;
 using Microsoft.Extensions.Logging;
@@ -144,6 +145,14 @@ internal sealed class MuninExplorerClient(HttpClient httpClient, ILogger<MuninEx
 
     public Task<KildeDetail?> GetKildeAsync(Guid id, CancellationToken cancellationToken = default) =>
         GetOrNullAsync<KildeDetail>($"api/explorer/kilder/{id}", cancellationToken);
+
+    public async Task<Guid?> FindKildeIdByCodeAsync(string code, CancellationToken cancellationToken = default) =>
+        KildeCodes.IsLinkCode(code)
+            ? (await GetOrNullAsync<KildeCodeMatch>(
+                $"api/explorer/kilder/code/{Uri.EscapeDataString(code.Trim())}", cancellationToken))?.Id
+            : null;
+
+    private sealed record KildeCodeMatch([property: JsonPropertyName("id")] Guid Id, [property: JsonPropertyName("code")] string Code);
 
     public Task<KildeHierarchy?> GetKildeHierarchyAsync(Guid id, CancellationToken cancellationToken = default) =>
         GetOrNullAsync<KildeHierarchy>($"api/explorer/kilder/{id}/hierarchy", cancellationToken);
