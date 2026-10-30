@@ -84,7 +84,8 @@ internal static class DetailBlocks
     /// </remarks>
     internal static RenderFragment LinkedFacts(
         IReadOnlyList<(string Label, string? Value, bool Norwegian, string? Href)> facts, string? language,
-        bool authored = false, string? linkedLabel = null) => builder =>
+        bool authored = false, string? linkedLabel = null,
+        IReadOnlyDictionary<string, InheritedCaption>? captions = null) => builder =>
     {
         if (Shown(facts).Count == 0)
         {
@@ -144,14 +145,19 @@ internal static class DetailBlocks
                 builder.AddContent(seq + 12, value);
             }
 
-            builder.CloseElement();
+            // By label, as linkedLabel is: these rows carry no catalogue key.
+            if (captions is not null && captions.TryGetValue(label, out var caption))
+            {
+                caption.Render(builder, seq + 20);
+            }
 
             builder.CloseElement();
 
-            // Twenty rather than ten: a row's dd branches run to seq + 13, past where the next row
-            // began under the old stride. No rendered markup differs either way — the diff
-            // tolerates the repeat — so this is the numbering contract kept, not a defect fixed.
-            seq += 20;
+            builder.CloseElement();
+
+            // Thirty: a row's dd branches and its caption run to seq + 25. No rendered markup differs
+            // either way, so this is the numbering contract kept, not a defect fixed.
+            seq += 30;
         }
 
         builder.CloseElement();
@@ -192,7 +198,9 @@ internal static class DetailBlocks
     /// </remarks>
     internal static int Values(RenderTreeBuilder builder, int seq, PropertyRow row, string reader, Texts text)
     {
-        foreach (var slot in row.Values)
+        var last = row.Values.Count - 1;
+
+        foreach (var (slot, index) in row.Values.Select((slot, index) => (slot, index)))
         {
             builder.OpenElement(seq, "dd");
 
@@ -218,8 +226,13 @@ internal static class DetailBlocks
                 builder.CloseElement();
             }
 
+            if (index == last && row.Caption is { } caption)
+            {
+                caption.Render(builder, seq + 30);
+            }
+
             builder.CloseElement();
-            seq += 30;
+            seq += 40;
         }
 
         return seq;

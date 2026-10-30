@@ -2845,4 +2845,64 @@ public class DatasamlingViewTest : ExplorerTestContext
         Assert.Single(BlockHeadings(cut), heading => heading == "Variabler");
         Assert.Single(cut.FindAll("a[href='https://eksempel.no/variabler/oppfolging']"));
     }
+    private static DatasamlingDetail Inheriting() => Sparse() with
+    {
+        ParentKildeId = Guid.NewGuid(),
+        ParentKildeName = "Tromsøundersøkelsen",
+        EffectiveLegalBasis = "Helseregisterloven",
+        InheritedProperties = new Dictionary<string, InheritedValue>
+        {
+            [InheritedCaptions.Homepage] = new()
+            {
+                Value = "https://uit.no/tromso7", SourceLevel = "delkilde", SourceId = Guid.NewGuid(),
+                SourceName = "Tromsø7",
+            },
+            [InheritedCaptions.DataControllerHerId] = new()
+            {
+                Value = "8090", SourceLevel = "kilde", SourceId = Guid.NewGuid(), SourceName = "Tromsøundersøkelsen",
+            },
+            [InheritedCaptions.DataControllerOrgNumber] = new()
+            {
+                Value = "970422528", SourceLevel = "kilde", SourceId = Guid.NewGuid(), SourceName = "Tromsøundersøkelsen",
+            },
+        },
+    };
+
+    [Fact]
+    public void SourceInformation_WhenPublicKildeFieldsAreInherited_ThenEachIsARowAndTheCaptionedOnesNameTheirSource()
+    {
+        var box = SourceInformation(Render(Inheriting()));
+
+        var website = Row(box, "Hjemmeside");
+        Assert.Equal("https://uit.no/tromso7", website.QuerySelector("a")!.GetAttribute("href"));
+        Assert.Equal("Arvet fra delkilden Tromsø7", website.QuerySelector("dd p.caption")!.TextContent);
+        Assert.Equal("Arvet fra kilden Tromsøundersøkelsen",
+                     Row(box, "HER-ID dataansvarlig").QuerySelector("dd p.caption")!.TextContent);
+        Assert.Equal("970422528", Row(box, "Org.nr. dataansvarlig").QuerySelector("dd")!.TextContent);
+        // Normally set on the kilde alone, so neither carries a caption.
+        Assert.Null(Row(box, "Org.nr. dataansvarlig").QuerySelector(".caption"));
+        Assert.Null(Row(box, "Lovverk").QuerySelector(".caption"));
+        // Not inherited, so not drawn: the page shows no field it did not show before but these.
+        Assert.DoesNotContain("HER-ID datakilde", Labels(box));
+    }
+
+    [Fact]
+    public void SourceInformation_WhenTheReaderReadsEnglish_ThenTheRowsAndTheCaptionAreInEnglishAndTheNameIsMarked()
+    {
+        var box = SourceInformation(Render(Inheriting(), language: "en"));
+
+        var caption = Row(box, "HER-ID data controller").QuerySelector("dd p.caption")!;
+        Assert.Equal("Inherited from the source Tromsøundersøkelsen", caption.TextContent);
+        Assert.Equal("no", caption.QuerySelector("span")!.GetAttribute("lang"));
+        Assert.Contains("Website", Labels(box));
+    }
+
+    [Fact]
+    public void SourceInformation_WhenNothingIsInherited_ThenNoInheritedRowOrCaptionIsDrawn()
+    {
+        var cut = Render(Datasamling());
+
+        Assert.Empty(cut.FindAll("dd p.caption"));
+        Assert.DoesNotContain("Hjemmeside", Labels(SourceInformation(cut)));
+    }
 }
