@@ -115,7 +115,7 @@ internal static class InheritedCaptions
         {
             var lead = Lead(value.SourceLevel, text);
 
-            if (lead is not null && !string.IsNullOrWhiteSpace(value.Value) && Own(datasamling, key) is null)
+            if (lead is not null && !string.IsNullOrWhiteSpace(value.Value) && OwnKildeValue(datasamling, key) is null)
             {
                 captions[key] = Caption(lead, value.SourceName, value.SourceNameEn, reader);
             }
@@ -127,7 +127,7 @@ internal static class InheritedCaptions
     }
 
     /// <summary>The datasamling's own value for a public kilde field, or null; drawn instead of an inherited one, uncaptioned.</summary>
-    internal static string? Own(DatasamlingDetail datasamling, string key) =>
+    internal static string? OwnKildeValue(DatasamlingDetail datasamling, string key) =>
         datasamling.OwnKildeProperties.TryGetValue(key, out var own) && !string.IsNullOrWhiteSpace(own) ? own : null;
 
     private static void Inherit(Dictionary<string, InheritedCaption> captions, string key, string? own,

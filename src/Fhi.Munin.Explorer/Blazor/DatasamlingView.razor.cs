@@ -421,7 +421,7 @@ public sealed partial class DatasamlingView : ComponentBase
     }
 
     private static string? KildeFieldValue(DatasamlingDetail datasamling, string key) =>
-        InheritedCaptions.Own(datasamling, key) is { } own
+        InheritedCaptions.OwnKildeValue(datasamling, key) is { } own
             ? own
             : datasamling.InheritedProperties.TryGetValue(key, out var inherited)
                 ? inherited.Value
